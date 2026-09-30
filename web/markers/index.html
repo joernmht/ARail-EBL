@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARail Marker Sheets</title>
+<meta name="description" content="Print ArUco and AprilTag markers at an exact size for ARail-EBL.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../app/app.css">
+<style>
+  /* Layout: settings column left, sheet previews right (stacked on phones). */
+  .page { max-width: 1240px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 20px; }
+  @media (min-width: 900px) { .page { grid-template-columns: 340px minmax(0, 1fr); align-items: start; } }
+  .settings { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 14px; }
+  .settings h1 { margin: 0; font-size: 1.3rem; font-stretch: 80%; }
+  .sheets { display: grid; gap: 18px; min-width: 0; }
+  .sheet { background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.18); border-radius: 2px; width: 100%; height: auto; display: block; }
+  ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: .88rem; color: var(--text-2); }
+  @media print {
+    @page { margin: 0; }
+    body { background: #fff; }
+    .bar, .settings { display: none !important; }
+    .page { display: block; max-width: none; padding: 0; margin: 0; }
+    .sheets { display: block; }
+    .sheet { box-shadow: none; border-radius: 0; break-after: page; width: var(--sheet-w); height: var(--sheet-h); }
+  }
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+  <span class="layout-name">Marker sheets</span>
+  <span class="spacer"></span>
+  <a class="btn" href="../app/">Open the app</a>
+</header>
+<div class="page">
+  <form class="settings" id="settings">
+    <h1>Print markers</h1>
+    <div class="fields">
+      <label class="field wide" for="dict"><span>Marker type</span><select id="dict"></select></label>
+      <label class="field wide" for="ids"><span>Marker IDs</span><input type="text" id="ids" value="0-7" aria-describedby="idsHelp">
+        <small class="help" id="idsHelp">For example <code>0-7</code> or <code>0, 1, 4-6</code>. The app uses IDs 0–49 by default.</small></label>
+      <label class="field" for="size"><span>Size <small>(mm, black square)</small></span><input type="number" id="size" min="10" max="180" step="0.5" value="30"></label>
+      <label class="field" for="margin"><span>White border <small>(mm)</small></span><input type="number" id="margin" min="2" max="40" step="0.5" value="6"></label>
+      <label class="field" for="paper"><span>Paper</span><select id="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a3">A3</option></select></label>
+      <label class="field check" for="labels"><input type="checkbox" id="labels" checked> ID labels</label>
+      <label class="field check" for="cutlines"><input type="checkbox" id="cutlines" checked> Cut lines</label>
+    </div>
+    <div class="row">
+      <button class="btn primary" type="button" id="print">Print</button>
+      <button class="btn" type="button" id="svg">Download SVG</button>
+    </div>
+    <ol class="steps">
+      <li>Print at 100 % (“actual size”, not “fit to page”).</li>
+      <li>Check the 100 mm bar on the sheet with a ruler.</li>
+      <li>Enter the measured size of the black square in the app (Build → Layout).</li>
+      <li>Lay the markers flat on the layout; they may be rotated freely. Keep the white border visible.</li>
+    </ol>
+    <p class="hint" id="status"></p>
+  </form>
+  <main class="sheets" id="sheets" aria-label="Preview of the sheets"></main>
+</div>
+<script src="../vendor/js-aruco2/cv.js"></script>
+<script src="../vendor/js-aruco2/aruco.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_4x4_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_5x5_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_6x6_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_7x7_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/apriltag_36h11.js"></script>
+<script type="module" src="markers.js"></script>
+</body>
+</html>

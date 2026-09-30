@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARail App</title>
+<meta name="description" content="Augmented reality for model railway labs: platforms, passengers, bus terminals, disruptions and scenery over the camera image.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <header class="bar" id="bar">
+    <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+    <span class="layout-name" id="layoutName"></span>
+    <span class="spacer"></span>
+    <div class="sources" role="group" aria-label="Image source">
+      <button class="btn primary" id="btnLive" type="button" hidden><span class="long">Live camera</span><span class="short">Camera</span></button>
+      <label class="btn" for="filePhoto"><span class="long">Take photo</span><span class="short">Photo</span></label>
+      <input class="visually-hidden" type="file" id="filePhoto" accept="image/*" capture="environment">
+      <label class="btn" for="fileVideo"><span class="long">Record video</span><span class="short">Video</span></label>
+      <input class="visually-hidden" type="file" id="fileVideo" accept="video/*" capture="environment">
+      <label class="btn" for="fileOpen"><span class="long">Open file</span><span class="short">File</span></label>
+      <input class="visually-hidden" type="file" id="fileOpen" accept="image/*,video/*">
+      <label class="visually-hidden" for="exampleSelect">Example</label>
+      <select id="exampleSelect"></select>
+    </div>
+  </header>
+
+  <div class="main">
+    <main class="stage" id="stageWrap">
+      <canvas id="stage" width="1280" height="720" aria-label="Camera image with augmented reality"></canvas>
+      <div class="empty-stage" id="emptyStage" hidden></div>
+      <div class="hud" id="hud" aria-live="polite"></div>
+      <div class="stage-tools">
+        <button class="btn" id="btnFreeze" type="button" aria-pressed="false" title="Keep the current frame (for editing)">Freeze</button>
+        <button class="btn" id="btnFullscreen" type="button" title="Full screen">Full screen</button>
+      </div>
+      <div class="placing" id="placing" hidden></div>
+      <div class="toast" id="toast" role="status" hidden></div>
+    </main>
+
+    <aside class="panel" id="panel">
+      <nav class="tabs" role="tablist" aria-label="Panels">
+        <button role="tab" id="tab-view" aria-controls="panel-view" aria-selected="true">View</button>
+        <button role="tab" id="tab-build" aria-controls="panel-build" aria-selected="false">Build</button>
+        <button role="tab" id="tab-simulate" aria-controls="panel-simulate" aria-selected="false">Simulate</button>
+        <button role="tab" id="tab-disrupt" aria-controls="panel-disrupt" aria-selected="false">Disruptions</button>
+        <button role="tab" id="tab-control" aria-controls="panel-control" aria-selected="false" title="Connection to the control system">Control</button>
+      </nav>
+      <section class="tabpanel" role="tabpanel" id="panel-view" aria-labelledby="tab-view"></section>
+      <section class="tabpanel" role="tabpanel" id="panel-build" aria-labelledby="tab-build" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-simulate" aria-labelledby="tab-simulate" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-disrupt" aria-labelledby="tab-disrupt" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-control" aria-labelledby="tab-control" hidden></section>
+    </aside>
+  </div>
+</div>
+
+<!-- Marker detection (js-aruco2, vendored; classic scripts defining AR and CV) -->
+<script src="../vendor/js-aruco2/cv.js"></script>
+<script src="../vendor/js-aruco2/aruco.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_4x4_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_5x5_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_6x6_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/aruco_7x7_1000.js"></script>
+<script src="../vendor/js-aruco2/dictionaries/apriltag_36h11.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

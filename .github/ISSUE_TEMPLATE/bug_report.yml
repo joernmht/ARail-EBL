@@ -1,0 +1,45 @@
+name: Bug report
+description: Something does not work as described.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! For tracking problems, a photo or a short video of the layout helps most.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part?
+      options:
+        - Marker detection / tracking
+        - Drawing of objects or passengers
+        - Editor (Build panel)
+        - Simulation, disruptions or scenarios
+        - Control-system bridge / feed
+        - Marker sheets
+        - Calibration or other Python tools
+        - Documentation
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device, browser and camera
+      placeholder: e.g. Pixel 9 Pro, Chrome 141, rear camera; or Windows 11, Edge, Logitech C920
+  - type: textarea
+    id: layout
+    attributes:
+      label: Layout and markers
+      description: Scale, marker type and size, distance of the camera. Attach the layout file if you can.
+  - type: textarea
+    id: media
+    attributes:
+      label: Photos, videos, console output
+      description: Drag files here. Browser console errors (F12) are very helpful.

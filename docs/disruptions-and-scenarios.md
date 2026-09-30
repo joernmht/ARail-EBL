@@ -1,0 +1,76 @@
+# Disruptions and scenarios
+
+Disruptions change how vehicles run and how passengers behave. Start them in the **Disruptions** panel, from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed, a 10-minute delay lasts 5 real minutes.
+
+## Built-in disruptions
+
+| Type | Label | Target | What happens |
+| --- | --- | --- | --- |
+| `delay` | Delay | any stop | Vehicles are held back. Waiting passengers get annoyed faster. When the delay ends, the next vehicle comes within a few seconds, and its passengers alight in a bad mood. |
+| `cancellation` | Cancellations | any stop | Scheduled vehicles do not run (the board shows the cancellations); moods drop. |
+| `closure` | Closure | any stop | Nobody enters, waiting passengers leave, vehicles do not stop. The area is hatched red. |
+| `replacement-bus` | Rail replacement bus | platform | Trains at the platform are cancelled, passengers leave; at the chosen bus terminal buses run 2.5× as often with more passengers. |
+| `crowd` | Crowd surge | any stop | Passenger demand multiplied (default 4×), e.g. after a football match. |
+| `signal-failure` | Signal failure | platforms (all by default) | Trains are held; strong mood penalty. |
+
+"Any stop" means platforms and bus terminals. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops.
+
+## Effects
+
+Each disruption type translates into a small set of *effects* per stop area; the effects of all active disruptions are combined:
+
+| Effect | Type | Meaning |
+| --- | --- | --- |
+| `closed` | yes/no | no passengers enter, no vehicles stop |
+| `hold` | yes/no | vehicles are held (they come soon after the hold ends) |
+| `cancel` | yes/no | scheduled vehicles are cancelled |
+| `leave` | yes/no | waiting passengers give up and leave |
+| `demand` | factor | passenger arrival rate (factors multiply) |
+| `frequency` | factor | vehicle frequency, > 1 = more often |
+| `mood` | per second | extra change of passenger mood while waiting (negative = worse) |
+| `messages` | text | shown on the stop's sign and on the board |
+
+The services (trains and buses) and the passenger simulation only look at these effects, not at disruption types. New disruption types therefore work with every simulation, and new simulations react to every disruption type. How to add a type: [Extending ARail](extending.md#disruption-types).
+
+## Scenarios
+
+A scenario is a timeline stored in the layout file. It is played from the Disruptions panel or with `?scenario=<id>` in the app URL.
+
+```json
+{
+  "id": "signal-failure",
+  "name": "Rush hour with a signal failure",
+  "description": "Many commuters; a signal failure holds all trains, then platform 2 is served by replacement buses.",
+  "steps": [
+    { "at": 0, "set": { "demand": 1.5 }, "message": "Rush hour: many commuters are on their way." },
+    { "at": 30, "start": { "id": "sf", "type": "signal-failure", "target": "*", "params": { "minutes": 3 } } },
+    { "at": 210, "start": { "id": "rb", "type": "replacement-bus", "target": "platform-2",
+                            "params": { "bus_terminal": "bus-terminal-1", "minutes": 5 } } },
+    { "at": 510, "set": { "demand": 1 }, "message": "Services are back to normal." }
+  ]
+}
+```
+
+`at` is simulated seconds after the start. A step can contain several actions:
+
+| Action | Example | Effect |
+| --- | --- | --- |
+| `set` | `{"demand": 1.5, "speed": 5}` | passenger demand and time-lapse speed |
+| `message` | `"Signal failure!"` | shown in the app (event `scenario.message`) |
+| `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`) |
+| `start` | `{"id": "sf", "type": "delay", "target": "platform-1", "params": {"minutes": 5}, "duration": 300}` | start a disruption; `duration` in seconds overrides the default |
+| `stop` | `"sf"` | stop a disruption by its `id` |
+| `emit` | `{"name": "myplugin.event", "payload": {}}` | a custom event for plugins |
+
+The example layout contains three scenarios: a signal failure at rush hour, a crowd after a football match with extra trains, and a platform closure. They are meant as starting points for exercises in teaching: for example, let students decide which disruption to start, and watch the effect on passengers.
+
+## From the control system
+
+A control system can start and stop disruptions through the bridge, e.g. when a real signal fails in the lab:
+
+```json
+{ "type": "disruption", "action": "start", "disruption": "signal-failure", "target": "*", "id": "sf1", "duration_s": 300 }
+{ "type": "disruption", "action": "stop", "id": "sf1" }
+```
+
+See [Control-system interface](control-system-interface.md).

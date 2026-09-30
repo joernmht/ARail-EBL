@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
+# Generated test fixtures (python -m arail_tools.fixtures tests/fixtures)
+tests/fixtures/
+
+# Camera calibrations belong to one camera and resolution
+camera-calibration*.json
+
+# TLS material for the control-system bridge
+*.pem
+*.key
+
+# Recorded videos and scratch output; example media is kept on purpose
+*.mp4
+*.webm
+!examples/media/*.mp4
+!web/media/*.mp4
+!web/media/*.webm
+out/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,94 @@
+{
+  "format": "arail-layout/1",
+  "name": "EBL lab (example)",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. Village, forest and bus terminal are virtual.",
+  "scale": 87,
+  "markers": {
+    "dictionary": "ARUCO",
+    "size_mm": 30,
+    "codes": 50,
+    "origin": 0,
+    "poses": {
+      "0": [0, 0, 0],
+      "1": [700.4, 18.9, 1.47],
+      "2": [-9.8, 143, 1.49],
+      "3": [708.3, 162.3, 0.39],
+      "4": [1159.7, 188.5, -0.69]
+    }
+  },
+  "services": {
+    "rail_headway_s": 70,
+    "rail_dwell_s": 24,
+    "bus_headway_s": 80,
+    "bus_dwell_s": 20,
+    "approach_s": 6
+  },
+  "simulations": [
+    { "type": "passengers", "base_rate": 0.5, "max_per_area": 140 },
+    { "type": "road-traffic", "cars_per_km": 90, "speed_kmh": 35 }
+  ],
+  "objects": [
+    {
+      "id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1",
+      "between": [0, 1], "width_mm": 70, "sides": "both", "track_left": "G2", "track_right": "G3", "lines": "RE 1, RB 33"
+    },
+    {
+      "id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2",
+      "between": [2, 3], "width_mm": 37, "sides": "both", "track_right": "G1", "lines": "S 2, S 8"
+    },
+    { "id": "track-g1", "type": "track", "track_id": "G1", "points": [[-150, 100.2], [1450, 143.2]] },
+    { "id": "track-g2", "type": "track", "track_id": "G2", "points": [[-150, 43], [1450, 86.1]] },
+    { "id": "track-g3", "type": "track", "track_id": "G3", "points": [[-150, -58], [1450, -14.9]] },
+    {
+      "id": "bus-terminal-1", "type": "bus-terminal", "name": "Bus station",
+      "position": [610, -266], "rotation_deg": 1.5, "bays": 2, "bay_length_m": 16, "width_m": 2.8, "lane_width_m": 3.2, "lines": "62, 85"
+    },
+    { "id": "building-1", "type": "building", "name": "Station building", "position": [70, 492], "rotation_deg": 1.5, "width_m": 14, "depth_m": 8.5, "floors": 2, "roof": "gable", "color": "#e8d5b5", "roof_color": "#a0472f" },
+    { "id": "building-2", "type": "building", "name": "Office block", "position": [255, 490], "rotation_deg": 1.5, "width_m": 11, "depth_m": 8, "floors": 4, "roof": "flat", "color": "#d9dde3" },
+    { "id": "building-3", "type": "building", "name": "House", "position": [420, 494], "rotation_deg": 1.5, "width_m": 10, "depth_m": 8, "floors": 2, "roof": "gable", "color": "#f0e0c0", "roof_color": "#7a3b2e" },
+    { "id": "building-4", "type": "building", "name": "House", "position": [548, 498], "rotation_deg": 91.5, "width_m": 9, "depth_m": 7.5, "floors": 1, "roof": "gable", "color": "#e3c9a8", "roof_color": "#6b4f3a" },
+    { "id": "tree-1", "type": "tree", "position": [160, 452], "kind": "deciduous", "height_m": 11 },
+    { "id": "tree-2", "type": "tree", "position": [340, 538], "kind": "conifer", "height_m": 13 },
+    { "id": "tree-3", "type": "tree", "position": [345, 448], "kind": "deciduous", "height_m": 9 },
+    { "id": "forest-1", "type": "forest", "name": "Forest", "points": [[640, 432], [1080, 444], [1076, 552], [640, 548]], "kind": "mixed", "height_m": 15, "spacing_m": 8, "seed": 3 },
+    { "id": "area-1", "type": "area", "name": "Fields", "kind": "field", "points": [[1110, 446], [1440, 455], [1437, 555], [1107, 548]], "opacity": 0.5 },
+    { "id": "windmill-1", "type": "windmill", "name": "Windmill", "position": [1250, 505], "rotation_deg": 1.5, "height_m": 16 },
+    { "id": "road-1", "type": "road", "name": "Station road", "points": [[40, -283], [424, -272]], "width_m": 4.5 }
+  ],
+  "scenarios": [
+    {
+      "id": "signal-failure",
+      "name": "Rush hour with a signal failure",
+      "description": "Many commuters; a signal failure holds all trains, then platform 2 is served by replacement buses.",
+      "steps": [
+        { "at": 0, "set": { "demand": 1.5 }, "message": "Rush hour: many commuters are on their way." },
+        { "at": 30, "start": { "id": "sf", "type": "signal-failure", "target": "*", "params": { "minutes": 3 } }, "message": "Signal failure: all trains are held." },
+        { "at": 210, "start": { "id": "rb", "type": "replacement-bus", "target": "platform-2", "params": { "bus_terminal": "bus-terminal-1", "minutes": 5 } }, "message": "Platform 2: replacement buses from the bus station." },
+        { "at": 510, "set": { "demand": 1 }, "message": "Services are back to normal." }
+      ]
+    },
+    {
+      "id": "football",
+      "name": "After the football match",
+      "description": "A crowd surge on platform 1; extra trains are sent.",
+      "steps": [
+        { "at": 0, "message": "The match is over: fans are heading to platform 1." },
+        { "at": 5, "start": { "id": "fans", "type": "crowd", "target": "platform-1", "params": { "factor": 6, "minutes": 4 } } },
+        { "at": 60, "call": "platform-1", "message": "Extra train on platform 1." },
+        { "at": 130, "call": "platform-1" },
+        { "at": 200, "call": "platform-1" }
+      ]
+    },
+    {
+      "id": "closure",
+      "name": "Platform closure",
+      "description": "Platform 2 is closed for maintenance; trains on platform 1 are delayed.",
+      "steps": [
+        { "at": 0, "start": { "id": "closed", "type": "closure", "target": "platform-2", "params": { "minutes": 5 } }, "message": "Platform 2 is closed." },
+        { "at": 45, "start": { "id": "late", "type": "delay", "target": "platform-1", "params": { "minutes": 3 } }, "message": "Trains on platform 1 are delayed." }
+      ]
+    }
+  ],
+  "plugins": ["../plugins/windmill.js", "../plugins/road-traffic.js"],
+  "view": { "image": "../media/ebl-lab.jpg" }
+}

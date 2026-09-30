@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARail-EBL</title>
+<meta name="description" content="Open-source augmented reality for model railway labs: platforms with passengers, bus terminals, scenery, disruptions and a control-system interface, in the browser.">
+<meta property="og:title" content="ARail-EBL">
+<meta property="og:description" content="Augmented reality for model railway labs, in the browser.">
+<meta property="og:image" content="assets/ebl-lab-ar.jpg">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..900&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a station concourse. A departure-board band carries the headline and the
+   before/after demo; below it, signage panels explain the parts, and numbered platform
+   signs mark the real setup sequence. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --ink-2: #566374;
+  --line: #d3dae2;
+  --accent: #1d4f9c;
+  --accent-ink: #ffffff;
+  --board: #0f1a2b;
+  --board-2: #18263b;
+  --board-ink: #e8eef8;
+  --board-muted: #93a4bb;
+  --amber: #f2a93b;
+  --ok: #7ee29a;
+  --code-bg: #0f1a2b;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
+    --accent: #3d74cf; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
+    --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
+  --accent: #3d74cf; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
+  --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--body); }
+img { max-width: 100%; display: block; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
+h1, h2, h3 { font-family: var(--display); line-height: 1.05; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 850; font-stretch: 70%; text-transform: uppercase; letter-spacing: .01em; }
+h3 { font-size: 1.2rem; font-weight: 800; font-stretch: 85%; }
+p { margin: 0; }
+.lead { font-size: 1.1rem; color: var(--ink-2); max-width: 62ch; }
+
+/* ---------------------------------------------------------------- top bar and hero */
+.board { background: var(--board); color: var(--board-ink); }
+.top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 14px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
+.brand { display: flex; align-items: baseline; color: inherit; text-decoration: none; font-family: var(--display); font-weight: 850; font-stretch: 72%; font-size: 1.55rem; }
+.brand .sign { background: var(--accent); color: var(--accent-ink); padding: 0 6px; border-radius: 3px; margin-right: 1px; }
+.brand small { font-size: .74rem; letter-spacing: .12em; color: var(--board-muted); margin-left: 8px; font-weight: 700; }
+.top nav { margin-left: auto; display: flex; gap: 4px 18px; flex-wrap: wrap; }
+.top nav a { color: var(--board-ink); text-decoration: none; font-weight: 700; font-stretch: 87%; }
+.top nav a:hover { color: var(--amber); }
+
+.hero { display: grid; gap: 28px; padding-block: 28px 48px; }
+@media (min-width: 980px) { .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; padding-block: 44px 64px; } }
+.eyebrow { font-family: var(--mono); font-size: .8rem; letter-spacing: .06em; color: var(--amber); text-transform: uppercase; }
+.hero h1 { font-size: clamp(2.6rem, 6.4vw, 4.6rem); font-weight: 900; font-stretch: 62%; text-transform: uppercase; letter-spacing: .005em; margin: 10px 0 16px; }
+.hero h1 em { font-style: normal; color: var(--amber); }
+.hero .lead { color: var(--board-muted); }
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 6px; font-weight: 800; font-stretch: 87%; text-decoration: none; border: 1px solid transparent; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.12); }
+.btn.ghost { color: var(--board-ink); border-color: #2c3d57; background: var(--board-2); }
+.btn.ghost:hover { border-color: var(--amber); }
+.facts { display: flex; gap: 8px 18px; flex-wrap: wrap; margin-top: 22px; font-family: var(--mono); font-size: .78rem; color: var(--board-muted); }
+
+.compare { position: relative; margin: 0; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0,0,0,.45); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare .before { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
+.compare .divider { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; margin-left: -1.5px; background: var(--amber); pointer-events: none; }
+.compare .divider::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--amber); color: #1b1305; font: 800 1rem/1 var(--body); padding: 8px 9px 9px; border-radius: 999px; white-space: nowrap; }
+.compare input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+.compare input:focus-visible + .divider { background: #fff; }
+.compare .tag { position: absolute; top: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: rgba(10,17,29,.8); color: #e8eef8; pointer-events: none; }
+.compare .tag.l { left: 12px; }
+.compare .tag.r { right: 12px; background: var(--accent); }
+figcaption.note { margin-top: 10px; font-size: .85rem; color: var(--board-muted); }
+
+/* ---------------------------------------------------------------- sections */
+section { padding-block: 64px; }
+.section-head { display: grid; gap: 12px; margin-bottom: 32px; }
+.features { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.feature { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 10px; align-content: start; }
+.feature .sym { width: 44px; height: 44px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.feature .sym svg { width: 26px; height: 26px; }
+.feature p { color: var(--ink-2); font-size: .96rem; }
+.feature code { font-family: var(--mono); font-size: .82em; }
+
+.pipeline { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.pipeline div { padding: 18px 18px 20px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
+.pipeline div:last-child { border-right: 0; }
+.pipeline b { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.pipeline span { color: var(--ink-2); font-size: .92rem; }
+@media (max-width: 720px) { .pipeline div { border-right: 0; border-bottom: 1px solid var(--line); } .pipeline div:last-child { border-bottom: 0; } }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.steps li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+.steps .num { background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-weight: 900; font-stretch: 70%; font-size: 1.9rem; width: 3rem; height: 3.4rem; display: grid; place-items: center; border-radius: 3px; }
+.steps p { color: var(--ink-2); margin-top: 4px; }
+.split { display: grid; gap: 32px; }
+@media (min-width: 980px) { .split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; } }
+
+pre { margin: 0; background: var(--code-bg); color: #dfe7f3; border-radius: 8px; padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
+pre .c { color: #7f91a8; }
+pre .k { color: #f2a93b; }
+pre .s { color: #7ee29a; }
+
+/* departure board */
+.departures { background: var(--board); color: var(--board-ink); border-radius: 8px; overflow: hidden; }
+.departures header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 18px; background: var(--board-2); flex-wrap: wrap; }
+.departures header h3 { text-transform: uppercase; letter-spacing: .04em; }
+.departures header span { font-family: var(--mono); font-size: .78rem; color: var(--board-muted); }
+.table-wrap { overflow-x: auto; }
+.departures table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; min-width: 560px; }
+.departures th { text-align: left; font: 700 .7rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--board-muted); padding: 12px 18px 8px; }
+.departures td { padding: 11px 18px; border-top: 1px solid #22324b; vertical-align: top; }
+.departures td:first-child { font-family: var(--mono); color: var(--amber); white-space: nowrap; }
+.departures td.dest { font-weight: 800; font-stretch: 87%; }
+.departures td.dest small { display: block; font-weight: 500; font-stretch: 100%; color: var(--board-muted); font-size: .84rem; margin-top: 2px; }
+.pill { display: inline-block; padding: 3px 8px; border-radius: 3px; font: 700 .72rem/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.pill.arrived { background: #1f5c34; color: var(--ok); }
+.pill.boarding { background: #5c4211; color: var(--amber); }
+.pill.planned { background: #22324b; color: var(--board-muted); }
+
+footer { padding-block: 40px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .9rem; }
+footer .wrap { display: grid; gap: 10px; }
+footer a { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="wrap">
+    <div class="top">
+      <a class="brand" href="./"><span class="sign">AR</span>ail <small>EBL</small></a>
+      <nav aria-label="Main">
+        <a href="app/">App</a>
+        <a href="markers/">Markers</a>
+        <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
+        <a href="https://github.com/joernmht/ARail-EBL">GitHub</a>
+      </nav>
+    </div>
+    <div class="hero">
+      <div>
+        <p class="eyebrow">Open source · runs in the browser</p>
+        <h1>Augmented reality for <em>model railway labs</em></h1>
+        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers, bus terminals, houses and trees on it, simulates delays and closures, and shows the trains your control system reports.</p>
+        <div class="ctas">
+          <a class="btn primary" href="app/">Open the app</a>
+          <a class="btn ghost" href="markers/">Print markers</a>
+          <a class="btn ghost" href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a>
+        </div>
+        <p class="facts"><span>H0 · TT · N · any scale</span><span>ArUco &amp; AprilTag markers</span><span>No install, no calibration board</span></p>
+      </div>
+      <figure class="compare" id="compare">
+        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: two platforms with waiting passengers and trains, a bus station with a bus, houses, trees and a field." width="1600" height="1205">
+        <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
+        <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
+        <span class="divider" aria-hidden="true"></span>
+        <span class="tag l">Photo</span><span class="tag r">ARail</span>
+      </figure>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>What goes on the layout</h2>
+        <p class="lead">Everything is placed on the real layout in model millimetres and scaled to the prototype, so a person on an H0 platform is 20&nbsp;mm tall.</p>
+      </div>
+      <div class="features">
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h18M5 13h14M8 13V7h8v6M6 17l-1 3M18 17l1 3"/></svg></div>
+          <h3>Platforms with passengers</h3>
+          <p>Lay a platform between two markers. Passengers arrive, wait at the edge, board and alight through the doors. Their colour shows their mood, from green to red.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M7 20v-3M17 20v-3"/></svg></div>
+          <h3>Bus terminals</h3>
+          <p>Bays along a bus lane, shelters and stop signs. Buses come on a timetable, or more often when a rail replacement service is running.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l6-5 6 5v9H3zM15 20h6v-7l-3-3"/><path d="M7 20v-4h4v4"/></svg></div>
+          <h3>Houses and landscape</h3>
+          <p>Buildings with floors and roofs, single trees and forests, fields, water and roads. Tap to place them, drag to move them.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.5"/></svg></div>
+          <h3>Disruptions and scenarios</h3>
+          <p>Delays, cancellations, closures, signal failures, crowd surges and replacement buses, started by hand or scripted as scenarios for teaching.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 10h3l2-3 2 6 2-3h1"/></svg></div>
+          <h3>Your control system</h3>
+          <p>A small Python bridge forwards train positions over WebSocket. When a real train stops at a platform, the virtual passengers board it.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13 5l-2 14"/></svg></div>
+          <h3>Your own objects and simulations</h3>
+          <p>Plugins add object types, simulations and disruption types in plain JavaScript modules. The editor builds their settings forms automatically.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="padding-top: 0">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>How it works</h2>
+        <p class="lead">Printed square markers lie flat on the layout. From the camera image alone, without a calibration board, ARail works out where the layout plane is and draws on it.</p>
+      </div>
+      <div class="pipeline">
+        <div><b>Markers</b><span>ArUco or AprilTag codes, 30&nbsp;mm, anywhere on the layout, any rotation.</span></div>
+        <div><b>Marker map</b><span>Their positions are surveyed from the images and stored with the layout.</span></div>
+        <div><b>Camera pose</b><span>All visible markers give one stable view of the plane; the focal length is estimated too.</span></div>
+        <div><b>Virtual layout</b><span>Platforms, bus terminals and scenery from a JSON layout file.</span></div>
+        <div><b>Simulation</b><span>Trains, buses, passengers and disruptions, in prototype metres and seconds.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="setup" style="padding-top: 0">
+    <div class="wrap split">
+      <div class="section-head">
+        <h2>Set up your lab</h2>
+        <p class="lead">The first four steps take an afternoon. The control system can follow later.</p>
+      </div>
+      <ol class="steps">
+        <li><span class="num">1</span><div><h3>Print markers</h3><p>Use the <a href="markers/">marker sheets</a> and check the 100&nbsp;mm bar with a ruler. The black square is the marker size.</p></div></li>
+        <li><span class="num">2</span><div><h3>Lay them out</h3><p>One marker at each end of every platform, more across the layout. Wherever the camera looks, one or two should be in view.</p></div></li>
+        <li><span class="num">3</span><div><h3>Open the app</h3><p>Take a photo, record a video or start the live camera. Unknown markers are measured automatically when they are seen next to known ones.</p></div></li>
+        <li><span class="num">4</span><div><h3>Build and export</h3><p>Add platforms, a bus terminal and scenery in the Build panel, then export the layout file and keep it in your fork.</p></div></li>
+        <li><span class="num">5</span><div><h3>Connect the control system</h3><p>Run <code>arail-bridge</code> next to it with an adapter for your system. The simulated control system shows the flow without one.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="extend" style="padding-top: 0">
+    <div class="wrap split">
+      <div class="section-head">
+        <h2>Extend it</h2>
+        <p class="lead">No build step, no framework. A plugin is an ES module that registers what it adds; layouts load it by URL.</p>
+        <p><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/layout-format.md">Layout file format</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/control-system-interface.md">Control-system interface</a></p>
+      </div>
+      <pre aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
+<span class="k">export default function</span> (arail) {
+  <span class="k">class</span> Windmill <span class="k">extends</span> arail.LayoutObject {
+    <span class="k">static</span> type = <span class="s">"windmill"</span>;
+    <span class="k">static</span> label = <span class="s">"Windmill"</span>;
+    <span class="k">static</span> params = [{
+      key: <span class="s">"height_m"</span>, label: <span class="s">"Height"</span>,
+      type: <span class="s">"number"</span>, unit: <span class="s">"m"</span>, default: 18,
+    }];
+    computeGeometry() {
+      <span class="k">const</span> c = arail.resolvePoint(<span class="k">this</span>.world.map, <span class="k">this</span>.spec.position);
+      <span class="k">return</span> c && { center: c };
+    }
+    draw(view) {
+      <span class="k">const</span> [x, y] = <span class="k">this</span>.geometry.center;
+      <span class="k">const</span> h = view.m(<span class="k">this</span>.spec.height_m);   <span class="c">// metres → model mm</span>
+      view.prism(arail.rectFootprint([x, y], view.m(5), view.m(5)), 0, h,
+                 { side: <span class="s">"#e8e1d0"</span>, top: <span class="s">"#8a5a3c"</span> });
+    }
+  }
+  arail.registry.registerObject(Windmill);
+}</code></pre>
+    </div>
+  </section>
+
+  <section id="status" style="padding-top: 0">
+    <div class="wrap">
+      <div class="departures">
+        <header><h3>Departures · project status</h3><span>as of September 2026</span></header>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Version</th><th>Destination</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>0.1</td><td class="dest">Tracking without a calibration board<small>Marker map survey, focal length estimate, tested on the lab photo</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>0.1</td><td class="dest">Platforms, bus terminals, scenery, editor<small>Layout files, plugins, passenger simulation</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>0.1</td><td class="dest">Disruptions, scenarios, control-system bridge<small>Simulated, replayed and TCP JSON feeds</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">Live sessions in the EBL<small>Phones, webcams and a projector on the real layout</small></td><td><span class="pill boarding">Boarding</span></td></tr>
+              <tr><td>next</td><td class="dest">Adapter for the EBL control system<small>Real train positions instead of the simulator</small></td><td><span class="pill planned">Scheduled</span></td></tr>
+              <tr><td>later</td><td class="dest">Occlusion by real trains, more vehicle types<small>Ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>ARail-EBL is open source under the MIT license. Marker detection uses <a href="https://github.com/damianofalcioni/js-aruco2">js-aruco2</a>; the tools use <a href="https://opencv.org">OpenCV</a>.</p>
+    <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a></p>
+  </div>
+</footer>
+
+<script>
+  const fig = document.getElementById("compare");
+  const range = document.getElementById("compareRange");
+  const set = (v) => fig.style.setProperty("--pos", `${v}%`);
+  range.addEventListener("input", () => set(range.value));
+  set(range.value);
+</script>
+</body>
+</html>

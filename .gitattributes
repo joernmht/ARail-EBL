@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.gif binary
+*.mp4 binary
+*.webm binary
+*.pdf binary
+*.zip binary
+
+# Third-party code is kept byte-identical to the upstream package
+web/vendor/** -text linguist-vendored

@@ -1,0 +1,28 @@
+{
+  "name": "arail-ebl",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ARail-EBL: an augmented-reality framework for model railway laboratories",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://joernmht.github.io/ARail-EBL/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joernmht/ARail-EBL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/joernmht/ARail-EBL/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node tools/serve.mjs web 8000",
+    "test": "node --test \"tests/js/*.test.js\"",
+    "test:e2e": "playwright test",
+    "fixtures": "python -m arail_tools.fixtures tests/fixtures"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

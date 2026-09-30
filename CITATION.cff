@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use ARail-EBL in research or teaching, please cite it as below."
+title: "ARail-EBL: augmented reality for model railway laboratories"
+type: software
+authors:
+  - given-names: Jörn
+    family-names: Maurischat
+repository-code: "https://github.com/joernmht/ARail-EBL"
+url: "https://joernmht.github.io/ARail-EBL/"
+license: MIT
+version: 0.1.0
+keywords:
+  - augmented reality
+  - model railway
+  - railway operations
+  - passenger simulation
+  - ArUco
+  - teaching

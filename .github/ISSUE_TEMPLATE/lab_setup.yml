@@ -1,0 +1,22 @@
+name: Help with a lab setup
+description: Questions about using ARail with your layout, cameras or control system.
+labels: ["question"]
+body:
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup
+      description: Layout size and scale, markers, cameras, control system (if any).
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Photos or videos
+      description: A photo of the layout with its markers makes answers much easier.
