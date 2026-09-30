@@ -14,6 +14,7 @@
 <body>
 <div class="app">
   <header class="bar" id="bar">
+    <h1 class="visually-hidden">ARail app</h1>
     <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
     <span class="layout-name" id="layoutName"></span>
     <span class="spacer"></span>
@@ -32,9 +33,9 @@
 
   <div class="main">
     <main class="stage" id="stageWrap">
-      <canvas id="stage" width="1280" height="720" aria-label="Camera image with augmented reality"></canvas>
+      <canvas id="stage" width="1280" height="720" role="img" aria-label="Camera image with augmented reality"></canvas>
       <div class="empty-stage" id="emptyStage" hidden></div>
-      <div class="hud" id="hud" aria-live="polite"></div>
+      <div class="hud" id="hud"></div>
       <div class="stage-tools">
         <button class="btn" id="btnFreeze" type="button" aria-pressed="false" title="Keep the current frame (for editing)">Freeze</button>
         <button class="btn" id="btnFullscreen" type="button" title="Full screen">Full screen</button>

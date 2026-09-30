@@ -20,7 +20,6 @@
   .sheet { background: #fff; box-shadow: 0 2px 14px rgba(0,0,0,.18); border-radius: 2px; width: 100%; height: auto; display: block; }
   ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: .88rem; color: var(--text-2); }
   @media print {
-    @page { margin: 0; }
     body { background: #fff; }
     .bar, .settings { display: none !important; }
     .page { display: block; max-width: none; padding: 0; margin: 0; }
@@ -28,6 +27,7 @@
     .sheet { box-shadow: none; border-radius: 0; break-after: page; width: var(--sheet-w); height: var(--sheet-h); }
   }
 </style>
+<style id="pageSize">@page { size: A4; margin: 0; }</style>
 </head>
 <body>
 <header class="bar" id="bar">
@@ -36,9 +36,9 @@
   <span class="spacer"></span>
   <a class="btn" href="../app/">Open the app</a>
 </header>
-<div class="page">
-  <form class="settings" id="settings">
-    <h1>Print markers</h1>
+<main class="page" id="main">
+  <form class="settings" id="settings" aria-labelledby="settingsTitle">
+    <h1 id="settingsTitle">Print markers</h1>
     <div class="fields">
       <label class="field wide" for="dict"><span>Marker type</span><select id="dict"></select></label>
       <label class="field wide" for="ids"><span>Marker IDs</span><input type="text" id="ids" value="0-7" aria-describedby="idsHelp">
@@ -61,8 +61,8 @@
     </ol>
     <p class="hint" id="status"></p>
   </form>
-  <main class="sheets" id="sheets" aria-label="Preview of the sheets"></main>
-</div>
+  <section class="sheets" id="sheets" aria-label="Preview of the sheets"></section>
+</main>
 <script src="../vendor/js-aruco2/cv.js"></script>
 <script src="../vendor/js-aruco2/aruco.js"></script>
 <script src="../vendor/js-aruco2/dictionaries/aruco_4x4_1000.js"></script>

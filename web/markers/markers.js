@@ -58,14 +58,16 @@ function build() {
       const cx = x0 + (k % cols) * cellW, cy = PAGE_MARGIN + Math.floor(k / cols) * cellH;
       if (cut) body += `<rect x="${fmt(cx)}" y="${fmt(cy)}" width="${fmt(cellW)}" height="${fmt(cellH)}" fill="none" stroke="#bbb" stroke-width="0.2" stroke-dasharray="1.5 1.5"/>`;
       body += markerSvg(markerBits(window.AR, dict, id), cx + margin, cy + margin, size);
-      if (labels) body += `<text x="${fmt(cx + cellW / 2)}" y="${fmt(cy + margin + size + 4.2)}" font-family="Archivo, Arial, sans-serif" font-size="3.4" font-weight="700" text-anchor="middle" fill="#222">ID ${id}</text>`;
+      // the label sits in its own band below the white border, which must stay empty for detection
+      if (labels) body += `<text x="${fmt(cx + cellW / 2)}" y="${fmt(cy + 2 * margin + size + 4.2)}" font-family="Archivo, Arial, sans-serif" font-size="3.4" font-weight="700" text-anchor="middle" fill="#222">ID ${id}</text>`;
     });
-    // 100 mm scale bar to verify the print scale
-    const by = H - PAGE_MARGIN - 6;
+    // 100 mm scale bar to verify the print scale, in the 14 mm kept free at the bottom
+    const by = H - PAGE_MARGIN - 9;
     body += `<g font-family="Archivo, Arial, sans-serif" font-size="3" fill="#222">`;
     body += `<rect x="${PAGE_MARGIN}" y="${by}" width="100" height="2" fill="#222"/>`;
     for (let i = 0; i <= 10; i++) body += `<rect x="${fmt(PAGE_MARGIN + i * 10 - 0.15)}" y="${by - 2}" width="0.3" height="${i % 5 ? 2 : 3}" fill="#222"/>`;
-    body += `<text x="${PAGE_MARGIN + 104}" y="${by + 2}">100 mm: check with a ruler · ${def.label}, ${size} mm · ARail-EBL marker sheet ${p + 1}/${Math.ceil(ids.length / perPage)}</text></g>`;
+    body += `<text x="${PAGE_MARGIN + 104}" y="${by + 2}">100 mm: check with a ruler</text>`;
+    body += `<text x="${PAGE_MARGIN}" y="${by + 7}">${def.label}, ${size} mm · ARail-EBL marker sheet ${p + 1}/${Math.ceil(ids.length / perPage)}</text></g>`;
     bodies.push(body);
     pages.push(`<svg xmlns="${SVG_NS}" class="sheet" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" role="img" aria-label="Marker sheet ${p + 1}">${body}</svg>`);
   }
@@ -85,6 +87,8 @@ function render() {
     const { pages, W, H, count } = build();
     document.documentElement.style.setProperty("--sheet-w", `${W}mm`);
     document.documentElement.style.setProperty("--sheet-h", `${H}mm`);
+    // paper size for printing, so that a sheet is not split when the printer's default paper differs
+    $("pageSize").textContent = `@page { size: ${W}mm ${H}mm; margin: 0; }`;
     $("sheets").innerHTML = pages.join("");
     status.classList.remove("error");
     status.textContent = `${count} marker${count === 1 ? "" : "s"} on ${pages.length} sheet${pages.length === 1 ? "" : "s"}.`;
@@ -115,6 +119,7 @@ function init() {
     document.body.append(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   });
   render();
 }

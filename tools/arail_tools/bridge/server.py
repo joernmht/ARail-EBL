@@ -14,7 +14,7 @@ import logging
 import time
 from pathlib import Path
 
-from aiohttp import WSMsgType, web
+from aiohttp import WSCloseCode, WSMsgType, web
 
 from . import protocol
 from .adapters.base import Adapter
@@ -60,6 +60,11 @@ class BridgeServer:
     async def publish(self, message: dict) -> None:
         """Validate a message and send it to all connected apps."""
         message = protocol.validate(message)
+        try:
+            # browsers reject NaN and Infinity, and with them the whole message
+            text = json.dumps(message, separators=(",", ":"), allow_nan=False)
+        except ValueError as exc:
+            raise protocol.ProtocolError(f"message is not valid JSON: {exc}") from exc
         if message["type"] == "trains":
             if message.get("full", True):
                 self.last_trains = message
@@ -67,7 +72,6 @@ class BridgeServer:
         if self._record:
             self._record.write(json.dumps({"t": round(time.time() - self.started, 3), **message}) + "\n")
             self._record.flush()
-        text = json.dumps(message, separators=(",", ":"))
         clients = list(self.clients)
         results = await asyncio.gather(*(ws.send_str(text) for ws in clients), return_exceptions=True)
         for ws, r in zip(clients, results, strict=True):
@@ -130,7 +134,9 @@ class BridgeServer:
             raise web.HTTPForbidden()
         if path.is_dir():
             if rel and not rel.endswith("/"):
-                raise web.HTTPFound(f"/{rel}/")
+                # built from the checked path, never from the request (no redirects to other sites)
+                inside = path.relative_to(self.static_dir).as_posix()
+                raise web.HTTPFound("/" if inside == "." else f"/{inside}/")
             path = path / "index.html"
         if not path.is_file():
             raise web.HTTPNotFound()
@@ -149,7 +155,8 @@ class BridgeServer:
         async def start(_):
             self._task = asyncio.create_task(self._run_adapter())
 
-        async def stop(_):
+        async def shutdown(_):
+            # before aiohttp waits for open requests: connected apps would keep it waiting
             if self._task:
                 self._task.cancel()
                 try:
@@ -157,10 +164,13 @@ class BridgeServer:
                 except (asyncio.CancelledError, Exception):
                     pass
             for ws in list(self.clients):
-                await ws.close()
+                await ws.close(code=WSCloseCode.GOING_AWAY, message=b"bridge stopped")
+
+        async def cleanup(_):
             if self._record:
                 self._record.close()
 
         app.on_startup.append(start)
-        app.on_cleanup.append(stop)
+        app.on_shutdown.append(shutdown)
+        app.on_cleanup.append(cleanup)
         return app

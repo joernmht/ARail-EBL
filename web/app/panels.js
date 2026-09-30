@@ -1,6 +1,6 @@
 // Panels: View, Simulate, Disruptions, Control system.
 import { moodColor, dockStatus, MockFeed, WebSocketFeed } from "../arail/index.js";
-import { h, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
+import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10];
 
@@ -47,7 +47,7 @@ export class Panels {
       ),
       section("Record",
         h("div", { class: "row" },
-          h("button", { class: "btn small", type: "button", id: "btnRecord", "aria-pressed": "false", onclick: () => app.toggleRecording() }, "Record video of the stage"),
+          h("button", { class: "btn small", type: "button", id: "btnRecord", "aria-pressed": app.recorder ? "true" : "false", onclick: () => app.toggleRecording() }, "Record video of the stage"),
         ),
         h("p", { class: "hint" }, "Saves the camera image with everything drawn on it as a WebM video."),
       ),
@@ -81,10 +81,10 @@ export class Panels {
       ["Reprojection error", st.used.length ? `${st.rms.toFixed(2)} px` : "–"],
       ["Frame rate", app.source && app.source.kind !== "image" ? `${app.fps.toFixed(0)} fps, detection at ${Math.round(app.procMax)} px` : "–"],
     ];
-    mount(this.viewInfo, rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
+    morph(this.viewInfo, rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
     const source = { calibrated: "calibrated", manual: "set by hand", estimated: "estimated", default: "initial guess" }[cam.focalSource];
     const step = (k) => () => { if (!cam.calibrated) { cam.setManualFocal(cam.focal * k); this.updateView(); } };
-    mount(this.focalRow,
+    morph(this.focalRow,
       h("span", { class: "mono" }, `${cam.focal.toFixed(0)} px`), h("span", { class: "hint" }, source),
       h("button", { class: "btn small", type: "button", disabled: cam.calibrated, onclick: step(1 / 1.05), "aria-label": "Shorter focal length" }, "−"),
       h("button", { class: "btn small", type: "button", disabled: cam.calibrated, onclick: step(1.05), "aria-label": "Longer focal length" }, "+"),
@@ -99,7 +99,7 @@ export class Panels {
     this.board = h("div", { class: "board", "aria-live": "off" });
     this.speedSeg = h("div", { class: "seg", role: "group", "aria-label": "Speed" });
     this.pauseBtn = h("button", { class: "btn", type: "button", onclick: () => { w.paused = !w.paused; this.updateSimulateControls(); } });
-    const demand = h("input", { type: "range", id: "demandRange", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
+    const demand = h("input", { type: "range", id: "demandRange", "aria-label": "Passenger demand", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
       oninput: (e) => { w.demand = 2 ** Number(e.target.value); demandOut.textContent = `× ${w.demand.toFixed(2)}`; } });
     const demandOut = h("output", { for: "demandRange", class: "mono" }, `× ${w.demand.toFixed(2)}`);
     mount(el,
@@ -120,7 +120,7 @@ export class Panels {
     const w = this.world;
     this.pauseBtn.textContent = w.paused ? "Resume" : "Pause";
     this.pauseBtn.setAttribute("aria-pressed", w.paused ? "true" : "false");
-    mount(this.speedSeg, SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.updateSimulateControls(); } }, `${s}×`)));
+    morph(this.speedSeg, SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.updateSimulateControls(); } }, `${s}×`)));
   }
 
   updateBoard() {
@@ -128,16 +128,16 @@ export class Panels {
     const w = this.world, sim = w.simulations[0];
     const areas = w.stopAreas();
     if (!areas.length) {
-      mount(this.board, h("p", { class: "status" }, "No platforms or bus terminals on this layout yet (or their markers are not known yet). Add one in the Build panel."));
+      morph(this.board, h("p", { class: "status" }, "No platforms or bus terminals on this layout yet (or their markers are not known yet). Add one in the Build panel."));
       return;
     }
-    mount(this.board, areas.map((a, i) => {
+    morph(this.board, areas.map((a, i) => {
       const s = sim?.stats(a.id) || { count: 0, mood: 1, inPerMin: 0, outPerMin: 0 };
       const fx = w.disruptions.effectsFor(a);
       const status = fx.messages[0] || dockStatus(w, a);
       const docks = w.services.forArea(a.id);
       const bus = a.kind === "bus";
-      return h("div", { class: "stop" },
+      return h("div", { class: "stop", "data-id": a.id },
         h("div", { class: `num${bus ? " bus" : ""}`, title: `Key ${i + 1}` }, a.owner.spec.number || (bus ? "H" : String(i + 1))),
         h("div", { class: "title" }, a.owner.name),
         h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`), h("span", {}, `mood ${(s.mood * 100).toFixed(0)} %`), h("span", {}, `in ${s.inPerMin}/min · out ${s.outPerMin}/min`)),
@@ -175,7 +175,7 @@ export class Panels {
     const params = {};
     for (const p of def.params || []) params[p.key] = draft.params[p.key] ?? p.default;
     mount(this.newDisruption,
-      h("h3", {}, "Start a disruption"),
+      h("h2", {}, "Start a disruption"),
       h("div", { class: "fields" },
         h("label", { class: "field", for: "disType" }, h("span", {}, "Kind"),
           h("select", { id: "disType", onchange: (e) => { draft.type = e.target.value; draft.params = {}; this.renderNewDisruption(); } },
@@ -208,12 +208,12 @@ export class Panels {
     if (!this.activeList) return;
     const w = this.world;
     const act = w.disruptions.active;
-    mount(this.activeList,
-      h("h3", {}, "Active ", h("span", { class: "count" }, act.length ? `(${act.length})` : "")),
+    morph(this.activeList,
+      h("h2", {}, "Active ", h("span", { class: "count" }, act.length ? `(${act.length})` : "")),
       act.length ? act.map((d) => {
         const target = d.target === "*" ? "everywhere" : w.getObject(d.target)?.name || d.target;
         const left = d.until == null ? "until stopped" : `${Math.max(0, Math.ceil((d.until - w.time) / 60))} min left (simulated)`;
-        return h("div", { class: "disruption" }, h("strong", {}, `${d.def.label} · ${target}`), h("small", {}, left),
+        return h("div", { class: "disruption", "data-id": d.id }, h("strong", {}, `${d.def.label} · ${target}`), h("small", {}, left),
           h("button", { class: "btn small", type: "button", onclick: () => w.disruptions.stop(d.id) }, "Stop"));
       }) : h("p", { class: "hint" }, "No disruptions. Everything runs to plan."),
     );
@@ -222,12 +222,12 @@ export class Panels {
   updateScenarios() {
     if (!this.scenarioList) return;
     const sp = this.world.scenarios;
-    mount(this.scenarioList,
-      h("h3", {}, "Scenarios"),
+    morph(this.scenarioList,
+      h("h2", {}, "Scenarios"),
       sp.scenarios.length ? sp.scenarios.map((sc) => {
         const running = sp.current === sc;
         const end = Math.max(1, ...sc.steps.map((s) => s.at || 0));
-        return h("div", { class: "scenario" },
+        return h("div", { class: "scenario", "data-id": sc.id },
           h("div", { class: "row" }, h("strong", { style: { flex: 1 } }, sc.name || sc.id),
             h("button", { class: `btn small${running ? "" : " primary"}`, type: "button", onclick: () => (running ? sp.stop() : sp.play(sc.id)) }, running ? "Stop" : "Play")),
           sc.description ? h("p", {}, sc.description) : null,
@@ -307,9 +307,9 @@ export class Panels {
       text = { connecting: "Connecting…", connected: tr.active ? `Connected to ${tr.source || "the bridge"}. ${f.messages} messages.` : "Connected, waiting for train positions…", disconnected: "Connection lost, retrying…", error: `Error: ${f.error || "cannot connect"}`, idle: "Not connected." }[f.status] || f.status;
       if (f.rejected) text += ` ${f.rejected} invalid messages (${f.error}).`;
     }
-    mount(this.feedStatus, h("span", { class: `status-dot ${dot}` }), text);
+    morph(this.feedStatus, h("span", { class: `status-dot ${dot}` }), text);
     const trains = [...tr.trains.values()];
-    mount(this.trainTable, trains.length
+    morph(this.trainTable, trains.length
       ? h("div", { class: "table-wrap" }, h("table", {},
         h("thead", {}, h("tr", {}, ["Train", "Position", "Speed", "At"].map((t) => h("th", {}, t)))),
         h("tbody", {}, trains.map((t) => h("tr", {},

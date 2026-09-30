@@ -21,7 +21,7 @@ First open-source version, built from the "Bahnsteig-AR" prototype (Python + bro
 - Control-system interface: feed protocol `arail-feed/1`, WebSocket client, in-browser simulated control system; Python bridge with simulator, replay and TCP JSON-lines adapters and an adapter template.
 - Printable marker sheets with a scale check bar.
 - Python tools: camera calibration with markers (JSON output for the app), synthetic test scenes.
-- Tests (node:test, pytest, Playwright), CI and GitHub Pages deployment; documentation.
+- Tests (node:test, pytest, Playwright with accessibility checks), CI and GitHub Pages deployment; documentation.
 
 ### Changed compared with the prototype
 

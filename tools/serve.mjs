@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // Minimal static file server for local development, without dependencies.
-//   node tools/serve.mjs [directory=web] [port=8000]
+//   node tools/serve.mjs [directory=web] [port=8000] [host=127.0.0.1]
 // ES modules need correct MIME types, which `python -m http.server` does not always
 // provide (e.g. on some Windows installations). Camera access in the browser also
 // requires a secure context: http://localhost counts as one, a LAN address does not.
+// Only this computer can connect unless another host is given (0.0.0.0 = all networks).
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { extname, join, normalize, relative, resolve, sep } from "node:path";
 
 const root = resolve(process.argv[2] || "web");
 const port = Number(process.argv[3] || process.env.PORT || 8000);
+const host = process.argv[4] || process.env.HOST || "127.0.0.1";
 const types = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -40,7 +42,9 @@ createServer(async (req, res) => {
     const info = await stat(file).catch(() => null);
     if (info && info.isDirectory()) {
       if (!path.endsWith("/")) {
-        res.writeHead(301, { Location: path + "/" }).end();
+        // built from the checked file path, never from the request (no redirects to other sites)
+        const rel = relative(root, file).split(sep).join("/");
+        res.writeHead(301, { Location: rel ? `/${rel}/` : "/" }).end();
         return;
       }
       file = join(file, "index.html");
@@ -54,6 +58,7 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain" }).end("Not found");
   }
-}).listen(port, () => {
-  console.log(`Serving ${root} at http://localhost:${port}/`);
+}).listen(port, host, () => {
+  const where = host === "127.0.0.1" || host === "localhost" ? "localhost" : host;
+  console.log(`Serving ${root} at http://${where}:${port}/`);
 });

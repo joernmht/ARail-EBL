@@ -21,11 +21,14 @@ log = logging.getLogger(__name__)
 
 
 def to_message(obj) -> dict:
-    """Turn a received JSON value into a protocol message."""
+    """Turn a received JSON value into a protocol message; raises ProtocolError."""
     if isinstance(obj, list):
-        return protocol.trains_message(obj, full=True)
-    if isinstance(obj, dict) and "type" not in obj and "id" in obj:
-        return protocol.trains_message([obj], full=False)
+        if not all(isinstance(tr, dict) for tr in obj):
+            raise protocol.ProtocolError("a list must contain train objects")
+        return protocol.validate(protocol.trains_message(obj, full=True))
+    if isinstance(obj, dict) and "id" in obj and obj.get("type") not in protocol.MESSAGE_TYPES:
+        # a single train; its own fields may include a "type" (e.g. "ICE")
+        return protocol.validate(protocol.trains_message([obj], full=False))
     return protocol.validate(obj)
 
 
@@ -55,16 +58,18 @@ class TcpJsonAdapter(Adapter):
                 reader, writer = await asyncio.open_connection(self.host, self.port)
                 log.info("connected to %s:%s", self.host, self.port)
                 delay = 1.0
-                while line := await reader.readline():
-                    text = line.decode("utf-8", "replace").strip()
-                    if not text:
-                        continue
-                    try:
-                        await publish(to_message(json.loads(text)))
-                    except (json.JSONDecodeError, protocol.ProtocolError) as exc:
-                        log.warning("ignored line (%s): %s", exc, text[:200])
-                writer.close()
-                log.warning("connection closed by %s:%s", self.host, self.port)
+                try:
+                    while line := await reader.readline():
+                        text = line.decode("utf-8", "replace").strip()
+                        if not text:
+                            continue
+                        try:
+                            await publish(to_message(json.loads(text)))
+                        except (ValueError, TypeError) as exc:  # includes JSON and protocol errors
+                            log.warning("ignored line (%s): %s", exc, text[:200])
+                    log.warning("connection closed by %s:%s", self.host, self.port)
+                finally:
+                    writer.close()
             except OSError as exc:
                 log.warning("cannot connect to %s:%s (%s); retrying in %.0f s", self.host, self.port, exc, delay)
             await asyncio.sleep(delay)

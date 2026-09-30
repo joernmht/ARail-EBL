@@ -59,24 +59,35 @@ export class World {
     this.layout = layout;
     this.scale = layout.scale;
     const m = layout.markers;
-    this.map = new MarkerMap({ size: m.size_mm, sizes: m.sizes_mm, poses: m.poses, origin: m.origin });
+    const markers = { size: m.size_mm, sizes: m.sizes_mm, poses: m.poses, origin: m.origin };
+    // the map object stays the same, so trackers built on `world.map` keep working
+    if (this.map) this.map.configure(markers);
+    else this.map = new MarkerMap(markers);
     this.objects = [];
     this.time = 0;
+    this.demand = 1;
     this.rng = createRng(this.seed);
     this.services.reset();
     this.disruptions.reset();
     this.trains.reset();
     this._areas = null;
+    this._syncedAreas = null;
     for (const spec of layout.objects) this._create(spec);
     for (const s of this.simulations || []) s.dispose?.();
     this.simulations = [];
-    for (const cfg of layout.simulations) {
+    // settings of simulations whose plugin is missing are kept and saved unchanged
+    this._simulationEntries = layout.simulations.map((cfg) => {
       const Sim = this.registry.simulations.get(cfg.type);
-      if (Sim) this.simulations.push(new Sim(this, cfg));
-      else console.warn(`Unknown simulation type "${cfg.type}" (missing plugin?)`);
-    }
+      if (!Sim) {
+        console.warn(`Unknown simulation type "${cfg.type}" (missing plugin?)`);
+        return { cfg };
+      }
+      const sim = new Sim(this, cfg);
+      this.simulations.push(sim);
+      return { sim };
+    });
     this.scenarios.load(layout.scenarios);
-    this.services.sync();
+    this._syncStops();
     this.events.emit("layout.loaded", { layout });
   }
 
@@ -90,7 +101,7 @@ export class World {
       scale: this.scale,
       markers: { ...L.markers, poses: this.map.toJSON() },
       services: L.services,
-      simulations: this.simulations.map((s) => s.toJSON()),
+      simulations: this._simulationEntries.map((e) => (e.sim ? e.sim.toJSON() : e.cfg)),
       objects: this.objects.map((o) => o.toJSON()),
       scenarios: L.scenarios,
       plugins: L.plugins,
@@ -148,7 +159,7 @@ export class World {
   objectChanged(obj) {
     this._areas = null;
     this._areasKey = null;
-    this.services.sync();
+    this._syncStops();
     if (obj) this.events.emit("object.changed", { object: obj });
   }
 
@@ -158,10 +169,16 @@ export class World {
     if (!this._areas || this._areasKey !== key) {
       this._areasKey = key;
       this._areas = this.objects.flatMap((o) => (o.geometry ? o.stopAreas() : []));
-      // the dock list may change when markers get surveyed
-      queueMicrotask(() => this.services.sync());
     }
     return this._areas;
+  }
+
+  /** Keep the service docks in line with the stop areas (they change when markers get surveyed). */
+  _syncStops() {
+    const areas = this.stopAreas();
+    if (this._syncedAreas === areas) return;
+    this._syncedAreas = areas;
+    this.services.sync();
   }
 
   getStopArea(id) {
@@ -175,6 +192,7 @@ export class World {
    * @param {number} dtReal real seconds since the last call
    */
   step(dtReal) {
+    this._syncStops();
     this.trains.step(Math.min(dtReal, 1));
     if (this.paused) return;
     let dt = Math.min(dtReal, 0.1) * this.speed;
@@ -193,6 +211,7 @@ export class World {
 
   /** Queue everything on the view and render it. */
   draw(view, { selected = null } = {}) {
+    this._syncStops();
     for (const o of this.objects) if (o.geometry) o.draw(view);
     this.services.draw(view);
     this.trains.draw(view);

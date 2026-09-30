@@ -150,8 +150,9 @@ export class DisruptionManager {
     const p = {};
     for (const ps of def.params || []) if (ps.default !== undefined) p[ps.key] = ps.default;
     Object.assign(p, params);
-    const dur = duration !== undefined ? duration : def.duration ? def.duration(p) : null;
-    const d = { id: id || `d${nextId++}`, type, def, target: target || "*", params: p, started: this.world.time, until: dur == null ? null : this.world.time + dur };
+    const dur = Number(duration !== undefined ? duration : def.duration ? def.duration(p) : null);
+    const until = duration === null || !(dur > 0) ? null : this.world.time + dur;
+    const d = { id: id || `d${nextId++}`, type, def, target: target || "*", params: p, started: this.world.time, until };
     this.stop(d.id);
     this.active.push(d);
     this._cache.clear();

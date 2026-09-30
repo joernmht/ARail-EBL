@@ -159,7 +159,7 @@ export class ServiceManager {
 
   feedDeparted(dockId) {
     const st = this.docks.get(dockId);
-    if (!st?.vehicle || st.vehicle.source !== "feed") return;
+    if (!st?.vehicle || st.vehicle.source !== "feed" || st.vehicle.phase === "departing") return;
     const v = st.vehicle;
     v.phase = "departing";
     v.progress = 0;
@@ -176,25 +176,27 @@ export class ServiceManager {
     const effects = this.world.disruptions;
     for (const st of this.docks.values()) {
       const fx = effects.effectsFor(st.dock.area);
-      const v = st.vehicle;
-      if (v) {
-        this._advance(st, v, dt, fx);
-        continue;
-      }
+      if (st.vehicle) this._advance(st, st.vehicle, dt, fx);
       if (st.mode !== "timetable") continue;
-      if (fx.closed || fx.hold) {
-        st.heldFor += dt;
-        continue;
+      // The timetable runs on while a vehicle is at the dock: the headway is the time between
+      // arrivals. A due vehicle waits while the dock is occupied, closed or held; the waiting
+      // time is its delay, and it arrives as soon as it may.
+      if (st.timer > 0) {
+        st.timer -= dt * Math.max(0, fx.frequency ?? 1);
+        if (st.timer > 0) continue;
       }
-      if (st.heldFor > 0 && !fx.cancel) st.timer = Math.min(st.timer, 4); // held vehicles come soon after
-      st.timer -= dt * (fx.frequency || 1);
-      if (st.timer > 0) continue;
-      st.timer = this._headway(st.dock);
       if (fx.cancel) {
         const cancelled = new Vehicle({ kind: this._vehicleKind(st.dock), dock: st.dock, line: this._lineFor(st.dock), source: "timetable" });
         this._emit("vehicle.cancelled", cancelled);
+        st.timer = this._headway(st.dock);
+        st.heldFor = 0;
         continue;
       }
+      if (st.vehicle || fx.closed || fx.hold) {
+        st.heldFor += dt;
+        continue;
+      }
+      st.timer = this._headway(st.dock);
       this._dispatch(st);
     }
   }

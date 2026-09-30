@@ -28,7 +28,16 @@ export class MarkerMap {
    * @param {Object<string, number[]>} [options.poses] known poses: ID -> [x_mm, y_mm, rotation_deg]
    * @param {number | null} [options.origin] marker that defines the layout frame when surveying
    */
-  constructor({ size = 30, sizes = {}, poses = {}, origin = null } = {}) {
+  constructor(options = {}) {
+    /** Incremented on every change, so dependants can cache derived geometry. */
+    this.version = 0;
+    /** Incremented by `configure`: trackers then start their survey afresh. */
+    this.generation = 0;
+    this.configure(options);
+  }
+
+  /** Replace sizes, origin and all poses (e.g. when another layout is loaded). */
+  configure({ size = 30, sizes = {}, poses = {}, origin = null } = {}) {
     this.size = size;
     this.sizes = { ...sizes };
     this.origin = origin;
@@ -36,8 +45,8 @@ export class MarkerMap {
     this.entries = new Map();
     /** Marker the survey is anchored to (its pose never changes). */
     this.anchor = null;
-    /** Incremented on every change, so dependants can cache derived geometry. */
-    this.version = 0;
+    this.generation++;
+    this.version++;
     for (const [id, p] of Object.entries(poses)) {
       this.set(Number(id), { x: +p[0], y: +p[1], theta: toRad(+p[2] || 0) }, true);
     }
@@ -139,6 +148,7 @@ export class PlaneTracker {
     this.holdSeconds = holdSeconds;
     this.minSurveyFrames = minSurveyFrames;
     this.acc = new Map(); // survey accumulators per marker ID
+    this.generation = map.generation;
     this.reset();
   }
 
@@ -171,6 +181,12 @@ export class PlaneTracker {
    * @returns {TrackingState}
    */
   update(detections, time, camera, { still = false } = {}) {
+    if (this.generation !== this.map.generation) {
+      // the map was configured anew (another layout): start over
+      this.generation = this.map.generation;
+      this.acc.clear();
+      this.reset();
+    }
     const markers = {};
     for (const [key, corners] of Object.entries(detections)) {
       const id = Number(key);

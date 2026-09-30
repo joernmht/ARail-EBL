@@ -47,7 +47,7 @@ export { ServiceManager, Vehicle } from "./core/services.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
-export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout } from "./core/layout.js";
+export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout, isLayout } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, PALETTE } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
@@ -85,11 +85,14 @@ export function createWorld(layout = {}, { seed, registry: reg = registry } = {}
  * Only same-origin URLs are loaded unless `allowCrossOrigin` is set.
  * @param {string[]} urls module URLs, relative to `base`
  * @param {string} base base URL (e.g. the layout file URL)
+ * @param {{allowCrossOrigin?: boolean, registry?: Registry}} [options] registry: where the
+ *   plugins register (default: the default registry)
  * @returns {Promise<string[]>} errors (empty if all plugins loaded)
  */
-export async function loadPlugins(urls, base, { allowCrossOrigin = false } = {}) {
+export async function loadPlugins(urls, base, { allowCrossOrigin = false, registry: reg } = {}) {
   const errors = [];
-  const api = await import("./index.js");
+  const module = await import("./index.js");
+  const api = reg && reg !== registry ? { ...module, registry: reg } : module;
   for (const u of urls || []) {
     try {
       const url = new URL(u, base);
@@ -97,7 +100,8 @@ export async function loadPlugins(urls, base, { allowCrossOrigin = false } = {})
         throw new Error("cross-origin plugins are disabled");
       }
       const mod = await import(url.href);
-      if (typeof mod.default === "function") await mod.default(api);
+      if (typeof mod.default !== "function") throw new Error("a plugin needs a default export function");
+      await mod.default(api);
     } catch (err) {
       errors.push(`${u}: ${err.message}`);
     }

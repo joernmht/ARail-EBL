@@ -61,6 +61,7 @@ export class TrainRegistry {
     this.timeout = 15; // s without messages -> feed inactive
     this.stopSpeed = 3; // model mm/s; below this a train counts as standing
     this.stopAfter = 1.5; // s standing before passengers board
+    this.quietAfter = 3; // s without new positions: a train without speed_mm_s counts as standing
   }
 
   /** True while a feed has delivered messages recently. */
@@ -93,7 +94,12 @@ export class TrainRegistry {
       for (const id of msg.ids) this._remove(String(id));
     } else if (msg.type === "disruption") {
       if (msg.action === "stop") this.world.disruptions.stop(msg.id);
-      else this.world.disruptions.start({ type: msg.disruption, target: msg.target, params: msg.params, duration: msg.duration_s, id: msg.id });
+      else {
+        // duration_s: simulated seconds; null = until stopped; missing or invalid = the type's default
+        const d = msg.duration_s === null ? null : Number(msg.duration_s);
+        const duration = d === null || (Number.isFinite(d) && d > 0) ? d : undefined;
+        this.world.disruptions.start({ type: msg.disruption, target: msg.target, params: msg.params, duration, id: msg.id });
+      }
     }
     this._syncModes();
     return msg;
@@ -113,16 +119,24 @@ export class TrainRegistry {
   }
 
   _update(t) {
-    const prev = this.trains.get(t.id);
     const r = this._resolve(t);
-    const train = prev || { id: t.id, stoppedFor: 0, movingFor: 0, dockId: null, speedEst: null };
-    let speedEst = train.speedEst;
-    if (prev && r.pos && prev.pos) {
-      const dt = this.clock - prev.updated;
-      if (dt > 0.05) speedEst = Math.hypot(r.pos[0] - prev.pos[0], r.pos[1] - prev.pos[1]) / dt;
+    const train = this.trains.get(t.id) || { id: t.id, stoppedFor: 0, movingFor: 0, dockId: null, speedEst: null, ref: null };
+    if (r.pos) {
+      // Speed from positions (for feeds without speed_mm_s), measured against a reference
+      // position at least 0.25 s old, so that fast feeds get an estimate too.
+      const ref = train.ref;
+      const dt = ref ? this.clock - ref.time : 0;
+      if (ref && dt >= 0.25) train.speedEst = Math.hypot(r.pos[0] - ref.pos[0], r.pos[1] - ref.pos[1]) / dt;
+      if (!ref || dt >= 0.25) train.ref = { pos: r.pos, time: this.clock };
     }
-    Object.assign(train, t, { pos: r.pos, heading: r.heading, path: r.path || null, updated: this.clock, speedEst });
+    Object.assign(train, t, { pos: r.pos, heading: r.heading, path: r.path || null, updated: this.clock });
     this.trains.set(t.id, train);
+  }
+
+  /** Speed (mm/s) of a train: reported, else estimated; without new positions for a while it stands. */
+  _speed(t) {
+    if (t.speed != null) return t.speed;
+    return this.clock - t.updated > this.quietAfter ? 0 : t.speedEst ?? 0;
   }
 
   _remove(id) {
@@ -171,8 +185,7 @@ export class TrainRegistry {
         this._remove(t.id);
         continue;
       }
-      const speed = t.speed ?? t.speedEst ?? 0;
-      if (speed < this.stopSpeed) {
+      if (this._speed(t) < this.stopSpeed) {
         t.stoppedFor += dtReal;
         t.movingFor = 0;
       } else {
@@ -199,7 +212,7 @@ export class TrainRegistry {
       if (!t.pos) continue;
       if (style === "solid" && t.dockId) continue; // drawn as a virtual train at its platform
       const lenMM = t.length ?? 250;
-      if (t.path && t.offset != null) {
+      if (t.path?.track.geometry && t.offset != null) {
         const { track } = t.path;
         const a = t.offset - (t.direction >= 0 ? lenMM : 0), b = a + lenMM;
         const pts = [];
@@ -216,7 +229,7 @@ export class TrainRegistry {
         for (let k = 0; k < 16; k++) ring.push([t.pos[0] + r * Math.cos((k * Math.PI) / 8), t.pos[1] + r * Math.sin((k * Math.PI) / 8)]);
         view.polygon(ring, { fill: "rgba(0,229,255,0.3)", stroke: "rgba(0,229,255,0.9)", width: 1.5, order: 30 });
       }
-      const standing = t.dockId ? " · at platform" : (t.speed ?? t.speedEst ?? 0) < this.stopSpeed ? " · standing" : "";
+      const standing = t.dockId ? " · at platform" : this._speed(t) < this.stopSpeed ? " · standing" : "";
       view.label([t.pos[0], t.pos[1], view.m(6)], `${t.name}${standing}`, { size: 11, background: "rgba(0,70,90,0.88)", order: 4 });
     }
   }

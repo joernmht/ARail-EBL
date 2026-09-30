@@ -86,6 +86,17 @@ def test_tcp_json_accepts_lists_and_single_trains():
     assert to_message({"type": "remove", "ids": ["a"]})["type"] == "remove"
 
 
+def test_protocol_rejects_unknown_types_and_bad_train_lists():
+    with pytest.raises(protocol.ProtocolError):
+        protocol.validate({"type": "ICE", "id": "a"})
+    # a single train may carry its own "type" field
+    msg = to_message({"id": "a", "type": "ICE", "x_mm": 1, "y_mm": 2})
+    assert msg["type"] == "trains" and msg["trains"][0]["type"] == "ICE"
+    for bad in (["a", "b"], [1, 2], [{"name": "no id"}]):
+        with pytest.raises(protocol.ProtocolError):
+            to_message(bad)
+
+
 def test_all_adapters_have_names_and_options():
     parser = argparse.ArgumentParser()
     for name, cls in ADAPTERS.items():
@@ -138,5 +149,47 @@ def test_server_end_to_end(tmp_path):
             await runner.cleanup()
         lines = record.read_text().splitlines()
         assert lines and json.loads(lines[0])["type"] == "trains"
+
+    asyncio.run(scenario())
+
+
+def test_server_rejects_nan_redirects_safely_and_stops_quickly():
+    aiohttp = pytest.importorskip("aiohttp")
+    import time
+
+    from aiohttp import web
+    from yarl import URL
+
+    from arail_tools.bridge.server import BridgeServer
+
+    web_dir = os.path.join(ROOT, "web")
+
+    async def scenario():
+        server = BridgeServer(SimulatorAdapter(sim_args()), static_dir=web_dir)
+        with pytest.raises(protocol.ProtocolError):
+            await server.publish({"type": "trains", "trains": [{"id": "a", "note": float("nan")}]})
+        runner = web.AppRunner(server.app())
+        await runner.setup()
+        port = free_port()
+        await web.TCPSite(runner, "127.0.0.1", port).start()
+        async with aiohttp.ClientSession() as session:
+            # a directory without the trailing slash: the redirect stays on this server
+            evil = f"http://127.0.0.1:{port}//evil.example/..%2F..%2F{web_dir.lstrip('/')}/app"
+            async with session.get(URL(evil, encoded=True), allow_redirects=False) as r:
+                assert r.status == 302 and r.headers["Location"] == "/app/"
+            async with session.ws_connect(f"http://127.0.0.1:{port}/feed") as ws:
+
+                async def read_until_closed():  # like the app: read all the time
+                    while (msg := await ws.receive()).type == aiohttp.WSMsgType.TEXT:
+                        pass
+                    return msg
+
+                reader = asyncio.create_task(read_until_closed())
+                t0 = time.monotonic()
+                await asyncio.wait_for(runner.cleanup(), timeout=20)
+                assert time.monotonic() - t0 < 5, "connected apps do not delay stopping the bridge"
+                msg = await asyncio.wait_for(reader, timeout=5)
+                assert msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED)
+                assert ws.close_code == 1001  # going away
 
     asyncio.run(scenario())

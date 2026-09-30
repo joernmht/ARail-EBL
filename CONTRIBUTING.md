@@ -22,7 +22,7 @@ npm run fixtures                              # generates tests/fixtures (images
 npm start                                     # http://localhost:8000
 ```
 
-The web app has **no build step**: edit files in `web/` and reload the page.
+The web app has **no build step**: edit files in `web/` and reload the page. `npm start` only accepts connections from this computer; to try the app on a phone in the same network, use `node tools/serve.mjs web 8000 0.0.0.0` (without https the phone can open photos and videos, but not the live camera).
 
 ## Tests
 
@@ -30,7 +30,7 @@ The web app has **no build step**: edit files in `web/` and reload the page.
 npm test                          # JavaScript unit and integration tests (node:test)
 python -m pytest tests/python     # Python tests
 npx playwright install chromium   # once
-npm run test:e2e                  # browser tests (the app, the project page, the marker sheets)
+npm run test:e2e                  # browser tests (the app, the project page, the marker sheets, accessibility)
 ```
 
 Run the fixtures again after changing `tools/arail_tools/synthetic.py` or the example images. CI runs all three suites on every pull request.

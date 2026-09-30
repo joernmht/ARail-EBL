@@ -108,8 +108,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 16px; }
 .section { display: grid; gap: 8px; }
-.section > h3 { margin: 0; font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
-.section > h3 .count { font-weight: 700; color: var(--text); letter-spacing: 0; text-transform: none; }
+.section > h2 { margin: 0; font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.section > h2 .count { font-weight: 700; color: var(--text); letter-spacing: 0; text-transform: none; }
 .hint { margin: 0; color: var(--text-2); font-size: .85rem; }
 .hint.error { color: var(--danger); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -145,11 +145,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .palette button small { font-weight: 500; color: var(--text-2); font-size: .72rem; }
 .palette button:hover { border-color: var(--accent); }
 .palette button[aria-pressed="true"] { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 22%, var(--surface)); }
-.palette h4 { grid-column: 1 / -1; margin: 4px 0 0; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.palette h3 { grid-column: 1 / -1; margin: 4px 0 0; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
 
-.list { display: grid; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.list button, .list .item { display: flex; gap: 8px; align-items: center; justify-content: space-between; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: var(--surface); padding: 8px 10px; cursor: pointer; font-size: .9rem; }
-.list > :last-child { border-bottom: 0; }
+.list { display: grid; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; list-style: none; margin: 0; padding: 0; }
+.list button, .list .item { display: flex; gap: 8px; align-items: center; justify-content: space-between; width: 100%; text-align: left; border: 0; background: var(--surface); padding: 8px 10px; cursor: pointer; font-size: .9rem; }
+.list > li + li { border-top: 1px solid var(--line); }
 .list .meta { color: var(--text-2); font-size: .78rem; font-family: var(--mono); }
 .list button[aria-current="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
 .list .item { cursor: default; }

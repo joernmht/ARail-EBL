@@ -36,6 +36,7 @@ export class WebSocketFeed {
   connect() {
     this._closed = false;
     clearTimeout(this._timer);
+    this._drop();
     if (!this.WebSocketImpl) {
       this._setStatus("error", "WebSockets are not available");
       return;
@@ -49,12 +50,15 @@ export class WebSocketFeed {
     }
     this.ws = ws;
     this._setStatus("connecting");
+    // events of an older socket (replaced by a new connect()) are ignored
     ws.onopen = () => {
+      if (this.ws !== ws) return;
       this._retry = 1;
       this._setStatus("connected");
       ws.send(JSON.stringify({ type: "hello", protocol: "arail-feed/1", client: "arail-web" }));
     };
     ws.onmessage = (e) => {
+      if (this.ws !== ws) return;
       try {
         this.world.trains.apply(typeof e.data === "string" ? e.data : String(e.data));
         this.messages++;
@@ -63,8 +67,11 @@ export class WebSocketFeed {
         this.error = `Invalid message: ${err.message}`;
       }
     };
-    ws.onerror = () => this._setStatus("error", "Connection failed");
+    ws.onerror = () => {
+      if (this.ws === ws) this._setStatus("error", "Connection failed");
+    };
     ws.onclose = () => {
+      if (this.ws !== ws) return;
       this.ws = null;
       if (this._closed) return this._setStatus("idle");
       this._setStatus("disconnected", this.error);
@@ -75,11 +82,23 @@ export class WebSocketFeed {
     };
   }
 
+  /** Close the current socket without triggering a reconnect. */
+  _drop() {
+    const ws = this.ws;
+    if (!ws) return;
+    this.ws = null;
+    try {
+      ws.close();
+    } catch {
+      // already closed
+    }
+  }
+
   close() {
     this._closed = true;
     clearTimeout(this._timer);
-    if (this.ws) this.ws.close();
-    else this._setStatus("idle");
+    this._drop();
+    this._setStatus("idle");
     this.world.trains.reset();
   }
 }

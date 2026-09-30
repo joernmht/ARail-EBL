@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 PROTOCOL = "arail-feed/1"
+MESSAGE_TYPES = ("hello", "trains", "train", "remove", "disruption")
 
 
 @dataclass
@@ -115,6 +116,15 @@ def _num(v):
     return f
 
 
+def _check_train(tr) -> None:
+    if not isinstance(tr, dict) or isinstance(tr.get("id"), bool) or not isinstance(tr.get("id"), (str, int)):
+        raise ProtocolError("every train must be an object with an 'id'")
+    for key in ("x_mm", "y_mm", "heading_deg", "offset_mm", "speed_mm_s", "length_mm", "direction"):
+        _num(tr.get(key))
+    if (tr.get("x_mm") is None) != (tr.get("y_mm") is None):
+        raise ProtocolError(f"train {tr['id']}: give both x_mm and y_mm")
+
+
 def validate(message: dict | str) -> dict[str, Any]:
     """Check a message (dict or JSON text) and return it as a dict; raises ProtocolError."""
     if isinstance(message, str):
@@ -125,17 +135,16 @@ def validate(message: dict | str) -> dict[str, Any]:
     if not isinstance(message, dict) or not isinstance(message.get("type"), str):
         raise ProtocolError("a message must be an object with a string 'type'")
     t = message["type"]
+    if t not in MESSAGE_TYPES:
+        raise ProtocolError(f"unknown message type {t!r} (expected one of {', '.join(MESSAGE_TYPES)})")
     if t == "trains":
         trains = message.get("trains")
         if not isinstance(trains, list):
             raise ProtocolError("'trains' message needs a 'trains' list")
         for tr in trains:
-            if not isinstance(tr, dict) or not isinstance(tr.get("id"), (str, int)):
-                raise ProtocolError("every train needs an 'id'")
-            for key in ("x_mm", "y_mm", "heading_deg", "offset_mm", "speed_mm_s", "length_mm", "direction"):
-                _num(tr.get(key))
-            if (tr.get("x_mm") is None) != (tr.get("y_mm") is None):
-                raise ProtocolError(f"train {tr['id']}: give both x_mm and y_mm")
+            _check_train(tr)
+    elif t == "train":
+        _check_train(message.get("train", message))
     elif t == "remove":
         if not isinstance(message.get("ids"), list):
             raise ProtocolError("'remove' message needs an 'ids' list")

@@ -1,6 +1,6 @@
 // Build mode: place, select, move and edit layout objects on the camera image.
 import { applyH, dist2, toDeg } from "../arail/index.js";
-import { $, download, h, mount, paramFields, readFile, section, toast } from "./ui.js";
+import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 
 const CATEGORIES = ["Transport", "Scenery", "Infrastructure"];
 const HINTS = {
@@ -135,6 +135,20 @@ export class Editor {
     this.renderPalette();
   }
 
+  /** Forget placing, dragging and the selection (before another layout is loaded). */
+  reset() {
+    this.placing = null;
+    this.drag = null;
+    this.app.canvas.classList.remove("dragging");
+    this.renderPlacing();
+    this.select(null);
+  }
+
+  /** True if the object belongs to the loaded layout (not to one loaded before). */
+  _inWorld(obj) {
+    return !!obj && this.world.objects.includes(obj);
+  }
+
   _addPoint(p) {
     const { cls } = this.placing;
     const marker = cls.placement === "segment" ? this.nearestMarker(p, 15) : null;
@@ -180,6 +194,11 @@ export class Editor {
     }
     this.placing = null;
     let obj;
+    if (replace && !this._inWorld(replace)) {
+      this.renderPlacing();
+      this.renderPalette();
+      return toast("That object is no longer on the layout.");
+    }
     if (replace) {
       replace.set(geo);
       obj = replace;
@@ -202,7 +221,8 @@ export class Editor {
   }
 
   deleteSelected() {
-    if (!this.selected) return;
+    if (!this._inWorld(this.selected)) return this.select(null);
+    if (this.placing?.replace === this.selected) this.cancel();
     const name = this.selected.name;
     this.world.removeObject(this.selected.id);
     this.select(null);
@@ -242,7 +262,7 @@ export class Editor {
     if (!this.placing?.points.length) return;
     const pts = this.placing.points
       .map((q) => (q.marker != null ? this.world.map.get(q.marker) : { x: q.xy[0], y: q.xy[1] }))
-      .map((e) => view.project(e.x, e.y, 0))
+      .map((e) => e && view.project(e.x, e.y, 0))
       .filter(Boolean);
     ctx.save();
     ctx.strokeStyle = "#f2a93b";
@@ -266,7 +286,7 @@ export class Editor {
   render(container) {
     this.el = {
       palette: h("div", { class: "palette" }),
-      objects: h("div", { class: "list", role: "list" }),
+      objects: h("ul", { class: "list" }),
       inspector: h("div", { class: "section" }),
       layout: h("div", { class: "section" }),
       markers: h("div", { class: "section" }),
@@ -297,7 +317,7 @@ export class Editor {
     for (const cls of reg.objects.values()) (groups[cls.category] ||= []).push(cls);
     const cats = [...CATEGORIES, ...Object.keys(groups).filter((c) => !CATEGORIES.includes(c))];
     mount(this.el.palette, cats.filter((c) => groups[c]).map((c) => [
-      h("h4", {}, c),
+      h("h3", {}, c),
       groups[c].map((cls) => h("button", {
         type: "button", "aria-pressed": this.placing?.cls === cls && !this.placing.replace ? "true" : "false", title: cls.description,
         onclick: () => (this.placing?.cls === cls ? this.cancel() : this.startPlacing(cls.type)),
@@ -328,10 +348,10 @@ export class Editor {
     const objs = this.world.objects;
     $("#objCount").textContent = objs.length ? `(${objs.length})` : "";
     mount(this.el.objects, objs.length
-      ? objs.map((o) => h("button", {
-        type: "button", role: "listitem", "aria-current": o === this.selected ? "true" : "false", onclick: () => this.select(o === this.selected ? null : o),
-      }, h("span", {}, o.name), h("span", { class: "meta" }, o.geometry ? o.type : `${o.type} · not placed`)))
-      : h("div", { class: "item" }, h("span", { class: "hint" }, "Nothing placed yet. Pick an object type above and tap on the layout.")));
+      ? objs.map((o) => h("li", {}, h("button", {
+        type: "button", "aria-current": o === this.selected ? "true" : "false", onclick: () => this.select(o === this.selected ? null : o),
+      }, h("span", {}, o.name), h("span", { class: "meta" }, o.geometry ? o.type : `${o.type} · not placed`))))
+      : h("li", { class: "item" }, h("span", { class: "hint" }, "Nothing placed yet. Pick an object type above and tap on the layout.")));
   }
 
   renderInspector() {
@@ -349,7 +369,7 @@ export class Editor {
     };
     const geo = this._geometryFields(o);
     mount(this.el.inspector,
-      h("h3", {}, `Selected: ${cls.label}`),
+      h("h2", {}, `Selected: ${cls.label}`),
       cls.description ? h("p", { class: "hint" }, cls.description) : null,
       paramFields(cls.params, o.spec, change, { idPrefix: `obj-${o.id}`, world: this.world }),
       geo,
@@ -366,22 +386,29 @@ export class Editor {
     const s = o.spec;
     const num = (id, label, value, set) => h("label", { class: "field", for: id }, h("span", {}, label, h("small", {}, " (mm)")),
       h("input", { type: "number", id, step: "any", value: value, onchange: (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) { set(v); this.app.saveLayout(); } } }));
+    // setters read the current spec: another field may have changed it since this form was drawn
     if (Array.isArray(s.position)) {
+      const setXY = (i, v) => { const p = [...o.spec.position]; p[i] = v; o.set({ position: p }); };
       return h("div", { class: "fields" },
-        num(`geo-${o.id}-x`, "X", s.position[0], (v) => o.set({ position: [v, s.position[1]] })),
-        num(`geo-${o.id}-y`, "Y", s.position[1], (v) => o.set({ position: [s.position[0], v] })));
+        num(`geo-${o.id}-x`, "X", s.position[0], (v) => setXY(0, v)),
+        num(`geo-${o.id}-y`, "Y", s.position[1], (v) => setXY(1, v)));
     }
     if (s.position && s.position.marker != null) {
       const off = s.position.offset || [0, 0];
+      const setOffset = (i, v) => {
+        const pos = o.spec.position, next = [...(pos.offset || [0, 0])];
+        next[i] = v;
+        o.set({ position: { ...pos, offset: next } });
+      };
       return h("div", { class: "fields" },
         h("p", { class: "hint wide" }, `Anchored to marker ${s.position.marker}: moves with it.`),
-        num(`geo-${o.id}-dx`, "Offset X", off[0], (v) => o.set({ position: { ...s.position, offset: [v, off[1]] } })),
-        num(`geo-${o.id}-dy`, "Offset Y", off[1], (v) => o.set({ position: { ...s.position, offset: [off[0], v] } })));
+        num(`geo-${o.id}-dx`, "Offset X", off[0], (v) => setOffset(0, v)),
+        num(`geo-${o.id}-dy`, "Offset Y", off[1], (v) => setOffset(1, v)));
     }
     if (Array.isArray(s.between)) {
       const ids = this.world.map.ids();
       const sel = (i) => h("label", { class: "field", for: `geo-${o.id}-m${i}` }, h("span", {}, i ? "End marker" : "Start marker"),
-        h("select", { id: `geo-${o.id}-m${i}`, onchange: (e) => { const b = [...s.between]; b[i] = Number(e.target.value); o.set({ between: b }); this.app.saveLayout(); } },
+        h("select", { id: `geo-${o.id}-m${i}`, onchange: (e) => { const b = [...o.spec.between]; b[i] = Number(e.target.value); o.set({ between: b }); this.app.saveLayout(); } },
           [...new Set([...ids, ...s.between])].map((m) => h("option", { value: m, selected: m === s.between[i] }, `Marker ${m}`))));
       return h("div", { class: "fields" }, sel(0), sel(1));
     }
@@ -397,7 +424,7 @@ export class Editor {
     const importInput = h("input", { type: "file", id: "layoutImport", accept: ".json,application/json", class: "visually-hidden",
       onchange: async (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) this.app.importLayout(await readFile(f), f.name); } });
     mount(this.el.layout,
-      h("h3", {}, "Layout"),
+      h("h2", {}, "Layout"),
       h("div", { class: "fields" },
         h("label", { class: "field wide", for: "layoutNameField" }, h("span", {}, "Name"),
           h("input", { type: "text", id: "layoutNameField", value: L.name, onchange: (e) => { L.name = e.target.value; this.app.saveLayout(); this.app.showLayoutName(); } })),
@@ -428,8 +455,8 @@ export class Editor {
       return h("tr", {}, h("td", {}, id), h("td", {}, e.x.toFixed(1)), h("td", {}, e.y.toFixed(1)), h("td", {}, `${toDeg(e.theta).toFixed(1)}°`),
         h("td", {}, id === map.anchor ? "origin" : e.fixed ? "fixed" : "surveyed"));
     });
-    mount(this.el.markers,
-      h("h3", {}, "Marker map ", h("span", { class: "count" }, `(${map.ids().length})`)),
+    morph(this.el.markers,
+      h("h2", {}, "Marker map ", h("span", { class: "count" }, `(${map.ids().length})`)),
       h("p", { class: "hint" }, "Positions of the markers on the layout (mm). Unknown markers are measured automatically when they are seen together with known ones."),
       rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
       h("div", { class: "row" },

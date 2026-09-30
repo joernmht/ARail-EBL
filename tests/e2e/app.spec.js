@@ -100,3 +100,61 @@ test("the synthetic example is surveyed from scratch", async ({ page }) => {
   expect(placed).toBe(7);
   expect(errors).toEqual([]);
 });
+
+test("switching layouts while placing an object keeps the app running", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await page.selectOption("#exampleSelect", "../layouts/synthetic-demo.json");
+  await page.waitForFunction(() => {
+    const a = window.__arail;
+    return a.world.layout.name === "Synthetic test layout" && a.tracker.state.H && a.world.map.has(7);
+  });
+  await page.getByRole("button", { name: /^Rail platform/ }).click();
+  const marker = await page.evaluate(() => {
+    const e = window.__arail.world.map.get(7);
+    return [e.x, e.y];
+  });
+  const p = await screenPoint(page, marker[0], marker[1]);
+  await page.mouse.click(p.x, p.y);
+  await expect.poll(() => page.evaluate(() => window.__arail.editor.placing?.points.length)).toBe(1);
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name !== "Synthetic test layout" && window.__arail.tracker.state.H);
+  await expect(page.locator("#placing")).toBeHidden();
+  const t0 = await page.evaluate(() => window.__arail.clock);
+  await expect.poll(() => page.evaluate(() => window.__arail.clock)).toBeGreaterThan(t0 + 0.2); // frames still run
+  expect(errors).toEqual([]);
+});
+
+test("importing a file that is not a layout changes nothing", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  const before = await page.evaluate(() => JSON.stringify(window.__arail.world.toJSON().objects));
+  const calibration = { format: "arail-camera/1", image_size: [1920, 1080], camera_matrix: [[1500, 0, 960], [0, 1500, 540], [0, 0, 1]] };
+  await page.locator("#layoutImport").setInputFiles({
+    name: "camera-calibration.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(calibration)),
+  });
+  await expect(page.locator("#toast")).toContainText("not an ARail layout file");
+  expect(await page.evaluate(() => JSON.stringify(window.__arail.world.toJSON().objects))).toBe(before);
+  expect(errors).toEqual([]);
+});
+
+test("editing offset X and then offset Y keeps both", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.waitForFunction(() => window.__arail.world.getObject("bus-terminal-1")?.geometry);
+  await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-terminal-1")));
+  await page.locator("#geo-bus-terminal-1-dx").fill("250");
+  await page.locator("#geo-bus-terminal-1-dx").press("Enter");
+  await page.locator("#geo-bus-terminal-1-dy").fill("20");
+  await page.locator("#geo-bus-terminal-1-dy").press("Enter");
+  await expect.poll(() => page.evaluate(() => window.__arail.world.getObject("bus-terminal-1").spec.position.offset)).toEqual([250, 20]);
+  expect(errors).toEqual([]);
+});
+
+test("periodic panel updates keep keyboard focus on buttons", async ({ page }) => {
+  const errors = await openApp(page, "/app/#view");
+  await page.getByRole("button", { name: "Longer focal length" }).focus();
+  await page.waitForTimeout(1000); // the panel is refreshed every 400 ms
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Longer focal length");
+  await page.keyboard.press("Space");
+  await expect.poll(() => page.evaluate(() => window.__arail.camera.focalSource)).toBe("manual");
+  expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false); // Space pressed the button
+  expect(errors).toEqual([]);
+});

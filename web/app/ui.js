@@ -11,8 +11,11 @@ export function h(tag, attrs = {}, ...children) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
-    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
-    else if (k === "style" && typeof v === "object") Object.assign(el.style, v);
+    else if (k.startsWith("on") && typeof v === "function") {
+      // handler properties (not listeners), so that `morph` can carry them over
+      el[k] = v;
+      (el._handlers ||= []).push(k);
+    } else if (k === "style" && typeof v === "object") Object.assign(el.style, v);
     else if (k === "value") el.value = v;
     else if (k === "checked") el.checked = !!v;
     else if (v === true) el.setAttribute(k, "");
@@ -31,8 +34,41 @@ export function mount(el, ...children) {
   return el;
 }
 
+/**
+ * Like `mount`, but changes the existing elements in place where they match (same tag at
+ * the same position). For content that is refreshed periodically: buttons stay the same
+ * elements, so focus and clicks in progress are not lost.
+ */
+export function morph(el, ...children) {
+  morphChildren(el, mount(document.createElement(el.tagName), ...children));
+  return el;
+}
+
+function morphChildren(target, source) {
+  const old = [...target.childNodes], next = [...source.childNodes];
+  next.forEach((b, i) => {
+    const a = old[i];
+    if (!a) target.append(b);
+    else if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) target.replaceChild(b, a);
+    else if (a.nodeType === Node.TEXT_NODE) {
+      if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue;
+    } else morphElement(a, b);
+  });
+  for (const a of old.slice(next.length)) a.remove();
+}
+
+function morphElement(a, b) {
+  for (const { name } of [...a.attributes]) if (!b.hasAttribute(name)) a.removeAttribute(name);
+  for (const { name, value } of [...b.attributes]) if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+  for (const k of new Set([...(a._handlers || []), ...(b._handlers || [])])) a[k] = b[k] || null;
+  a._handlers = b._handlers;
+  if ("value" in b && a.value !== b.value && a !== document.activeElement) a.value = b.value;
+  if ("checked" in b && a.checked !== b.checked) a.checked = b.checked;
+  morphChildren(a, b);
+}
+
 export function section(title, ...children) {
-  return h("div", { class: "section" }, h("h3", {}, title), ...children);
+  return h("div", { class: "section" }, h("h2", {}, title), ...children);
 }
 
 let toastTimer = null;

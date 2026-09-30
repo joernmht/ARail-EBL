@@ -2,7 +2,7 @@
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Panels } from "./panels.js";
-import { $, h, mount, storage, toast } from "./ui.js";
+import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
 const EXAMPLES = [
@@ -33,6 +33,7 @@ class App {
     this.display = { markers: false, opacity: 1, ...storage.get("arail.display", {}) };
     this.layoutUrl = null;
     this.recorder = null;
+    this._loadToken = 0;
   }
 
   /* ---------------------------------------------------------------- start */
@@ -56,20 +57,27 @@ class App {
     this._wireUi();
     this._wireEvents();
     const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
-    await this.loadLayoutFromUrl(layout);
-    if (params.get("image")) this.loadImage(new URL(params.get("image"), location.href).href, "Image");
+    const image = params.get("image");
+    await this.loadLayoutFromUrl(layout, { withImage: !image && params.get("camera") !== "1" });
+    if (image) this.loadImage(new URL(image, location.href).href, "Image");
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
     if (params.get("scenario")) setTimeout(() => this.world.scenarios.play(params.get("scenario")), 500);
     const tab = location.hash.slice(1);
     if (TABS.includes(tab)) this.selectTab(tab);
-    let last = performance.now();
+    let last = performance.now(), failing = false;
     const loop = (t) => {
+      requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
       const dt = Math.min(0.1, Math.max(0, (t - last) / 1000));
       last = t;
-      this.frame(dt);
-      requestAnimationFrame(loop);
+      try {
+        this.frame(dt);
+        failing = false;
+      } catch (err) {
+        if (!failing) console.error("Frame failed:", err);
+        failing = true;
+      }
     };
     requestAnimationFrame(loop);
     setInterval(() => this.refreshPanels(), 400);
@@ -91,8 +99,8 @@ class App {
       e.target.value = "";
       if (!f) return;
       const url = URL.createObjectURL(f);
-      if (f.type.startsWith("video")) this.loadVideo(url, f.name);
-      else this.loadImage(url, f.name);
+      if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
+      else this.loadImage(url, f.name, url);
     };
     for (const id of ["filePhoto", "fileVideo", "fileOpen"]) $(`#${id}`).addEventListener("change", onFile);
     if (navigator.mediaDevices?.getUserMedia && window.isSecureContext) {
@@ -140,6 +148,8 @@ class App {
   _key(e) {
     const tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "select" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
+    // Space and Enter activate focused buttons and links; they are not shortcuts there
+    if ((e.key === " " || e.key === "Enter") && e.target.closest?.("button, a, summary, label, [role=button], [role=tab]")) return;
     const w = this.world;
     if (e.key === " ") {
       w.paused = !w.paused;
@@ -201,11 +211,13 @@ class App {
   /* ---------------------------------------------------------------- layouts */
 
   async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image" } = {}) {
+    this.flushSave(); // pending edits belong to the current layout
     let json;
     try {
       const res = await fetch(url, { cache: "no-cache" });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       json = await res.json();
+      if (!ARail.isLayout(json)) throw new Error("this is not an ARail layout file");
     } catch (err) {
       toast(`Could not load the layout ${url}: ${err.message}`);
       json = {};
@@ -214,8 +226,24 @@ class App {
     this.originalLayout = json;
     storage.set("arail.lastLayout", url);
     const edited = storage.get(this._layoutKey());
-    await this._applyLayout(edited || json);
-    if (edited) toast("Your changes to this layout were restored. Use Build → Reset to original to discard them.");
+    let restored = false;
+    if (edited) {
+      try {
+        await this._applyLayout(edited);
+        restored = true;
+        toast("Your changes to this layout were restored. Use Build → Reset to original to discard them.");
+      } catch (err) {
+        console.warn("Saved changes could not be applied:", err);
+      }
+    }
+    if (!restored) {
+      try {
+        await this._applyLayout(json);
+      } catch (err) {
+        toast(`The layout ${url} could not be loaded: ${err.message}`, 7000);
+        await this._applyLayout({});
+      }
+    }
     const img = json.view?.image;
     if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
   }
@@ -224,6 +252,7 @@ class App {
     return `arail.layout:${this.layoutUrl}`;
   }
 
+  /** Load a layout into the world; on an error the previous layout stays loaded and the error is thrown. */
   async _applyLayout(json) {
     if (json.plugins?.length) {
       const errors = await ARail.loadPlugins(json.plugins, this.layoutUrl || location.href);
@@ -231,15 +260,22 @@ class App {
     }
     const problems = ARail.validateLayout(json, this.world.registry);
     const settings = { ...this.world.settings, ...storage.get("arail.settings", {}) };
-    this.world.load(json);
-    Object.assign(this.world.settings, settings);
-    this.tracker = new ARail.PlaneTracker(this.world.map);
-    this.applyDictionary();
-    this.showLayoutName();
+    this.editor.reset();
+    const previous = this.world.toJSON();
+    try {
+      this.world.load(json);
+    } catch (err) {
+      this.world.load(previous);
+      throw err;
+    } finally {
+      Object.assign(this.world.settings, settings);
+      this.tracker = new ARail.PlaneTracker(this.world.map);
+      this.applyDictionary();
+      this.showLayoutName();
+      this.renderPanel(this.activeTab);
+      this.redetect();
+    }
     if (problems.length) console.warn("Layout problems:", problems);
-    this.editor.select(null);
-    this.renderPanel(this.activeTab);
-    this.redetect();
   }
 
   async importLayout(text, name) {
@@ -250,21 +286,49 @@ class App {
       toast(`${name} is not valid JSON: ${err.message}`);
       return;
     }
-    await this._applyLayout(json);
+    if (!ARail.isLayout(json)) {
+      toast(`${name} is not an ARail layout file (expected "format": "${ARail.LAYOUT_FORMAT}"). Nothing was changed.`, 7000);
+      return;
+    }
+    this.flushSave();
+    try {
+      await this._applyLayout(json);
+    } catch (err) {
+      toast(`${name} could not be loaded: ${err.message}. Nothing was changed.`, 7000);
+      return;
+    }
     const problems = ARail.validateLayout(json, this.world.registry);
     this.saveLayout();
     toast(problems.length ? `Layout loaded with warnings: ${problems[0]}` : `Layout “${this.world.layout.name}” loaded.`);
   }
 
   async resetLayout() {
+    this.cancelSave();
     storage.remove(this._layoutKey());
     await this._applyLayout(this.originalLayout || {});
     toast("Layout reset to the original file.");
   }
 
+  /** Save the layout in this browser (shortly after the last change). */
   saveLayout() {
     clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => storage.set(this._layoutKey(), this.world.toJSON()), 300);
+    const key = this._layoutKey(); // the layout being edited now, even if another one is loaded meanwhile
+    this._pendingSave = () => {
+      this._pendingSave = null;
+      storage.set(key, this.world.toJSON());
+    };
+    this._saveTimer = setTimeout(this._pendingSave, 300);
+  }
+
+  /** Save a pending change now (before another layout is loaded). */
+  flushSave() {
+    clearTimeout(this._saveTimer);
+    this._pendingSave?.();
+  }
+
+  cancelSave() {
+    clearTimeout(this._saveTimer);
+    this._pendingSave = null;
   }
 
   savePrefs() {
@@ -280,7 +344,14 @@ class App {
 
   applyDictionary() {
     if (!this.detector) return;
-    const d = this.world.layout.markers.dictionary;
+    const { dictionary: d, codes } = this.world.layout.markers;
+    if (this.detector.codes !== codes) {
+      try {
+        this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes });
+      } catch (err) {
+        toast(`Marker detection could not be set up for ${codes} codes: ${err.message}`);
+      }
+    }
     try {
       this.detector.setDictionary(d === "auto" ? null : d);
     } catch {
@@ -291,10 +362,12 @@ class App {
 
   /* ---------------------------------------------------------------- sources */
 
-  setSource(el, kind, nw, nh, name) {
-    if (this.source?.kind === "live" && kind !== "live") this.stopLive();
+  setSource(el, kind, nw, nh, name, objectUrl = null) {
+    const old = this.source;
+    if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name };
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl };
+    if (old && old.el !== el) this._release(old);
     this.canvas.width = this.source.w;
     this.canvas.height = this.source.h;
     this.camera.setSize(this.source.w, this.source.h);
@@ -308,15 +381,26 @@ class App {
     if (kind === "image") this.redetect();
   }
 
-  loadImage(src, name) {
+  /**
+   * Load an image as the source. A source requested later wins, even if it loads faster.
+   * @param {string} src URL
+   * @param {string} name shown in the app
+   * @param {string | null} [objectUrl] object URL to revoke when the source is replaced
+   */
+  loadImage(src, name, objectUrl = null) {
+    const token = ++this._loadToken;
     const img = new Image();
     img.crossOrigin = "anonymous"; // images from other sites must allow it, or the canvas cannot be read
-    img.onload = () => this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name);
-    img.onerror = () => toast(`The image ${name} could not be loaded.`);
+    img.onload = () => {
+      if (token === this._loadToken) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl);
+      else if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+    img.onerror = () => token === this._loadToken && toast(`The image ${name} could not be loaded.`);
     img.src = src;
   }
 
-  loadVideo(url, name, stream = null) {
+  loadVideo(url, name, stream = null, objectUrl = null) {
+    const token = ++this._loadToken;
     const v = document.createElement("video");
     v.muted = true;
     v.playsInline = true;
@@ -325,14 +409,32 @@ class App {
     if (stream) v.srcObject = stream;
     else v.src = url;
     v.onloadedmetadata = () => {
-      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name);
+      if (token !== this._loadToken) return this._release({ el: v, kind: stream ? "live" : "video", objectUrl });
+      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl);
       v.play().catch(() => toast("The video cannot be played here. Take a photo instead."));
     };
-    v.onerror = () => toast("The video cannot be played here. Take a photo instead.");
+    v.onerror = () => token === this._loadToken && toast("The video cannot be played here. Take a photo instead.");
+  }
+
+  /** Stop a source that is replaced: camera stream, video decoding, object URL. */
+  _release(src) {
+    if (src.kind !== "image") {
+      const v = src.el;
+      v.onloadedmetadata = v.onerror = null;
+      v.srcObject?.getTracks?.().forEach((t) => t.stop());
+      v.pause();
+      v.srcObject = null;
+      v.removeAttribute("src");
+      v.load();
+    }
+    if (src.objectUrl) URL.revokeObjectURL(src.objectUrl);
   }
 
   async startLive() {
+    if (this._startingLive) return;
+    this._startingLive = true;
     try {
+      this.stopLive(); // phones cannot open the camera twice
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
       });
@@ -340,6 +442,8 @@ class App {
       this._wakeLock = await navigator.wakeLock?.request("screen").catch(() => null);
     } catch (err) {
       toast(`No access to the camera: ${err.message}. Allow camera access, or use “Take photo”.`, 7000);
+    } finally {
+      this._startingLive = false;
     }
   }
 
@@ -496,13 +600,14 @@ class App {
     if (this.world.trains.active) chips.push(["ok", `Control system · ${this.world.trains.trains.size} trains`]);
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);
-    mount($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
+    morph($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
   }
 
   /* ---------------------------------------------------------------- recording */
 
   toggleRecording() {
-    const btn = $("#btnRecord");
+    // the View panel may be rendered anew while recording: always use the current button
+    const setPressed = (on) => $("#btnRecord")?.setAttribute("aria-pressed", on ? "true" : "false");
     if (this.recorder) {
       this.recorder.stop();
       return;
@@ -514,7 +619,7 @@ class App {
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
     rec.onstop = () => {
       this.recorder = null;
-      btn?.setAttribute("aria-pressed", "false");
+      setPressed(false);
       const blob = new Blob(chunks, { type: "video/webm" });
       const url = URL.createObjectURL(blob);
       const a = h("a", { href: url, download: `arail-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm` });
@@ -526,7 +631,7 @@ class App {
     };
     rec.start(1000);
     this.recorder = rec;
-    btn?.setAttribute("aria-pressed", "true");
+    setPressed(true);
     toast("Recording… press the button again to stop.");
   }
 }

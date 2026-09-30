@@ -58,7 +58,7 @@ The current positions of the trains:
 | `heading_deg` | direction of travel, counter-clockwise from the layout x axis |
 | `track`, `offset_mm` | alternatively: position along a `track` object whose `track_id` matches, in mm from its first point (plus `offset_start_mm`) |
 | `track` alone | occupancy only: the train is somewhere on this track |
-| `speed_mm_s` | model speed; `0` = standing. If missing, ARail estimates the speed from successive positions. |
+| `speed_mm_s` | model speed; `0` = standing. If missing, ARail estimates the speed from successive positions; a train whose position has not been updated for 3 s counts as standing (for systems that only report changes). |
 | `length_mm` | for drawing the train outline |
 | `direction` | `+1` if the train moves towards increasing offsets, `-1` otherwise |
 
@@ -78,6 +78,8 @@ Start or stop a [disruption](disruptions-and-scenarios.md):
 { "type": "disruption", "action": "start", "disruption": "delay", "target": "platform-1", "params": { "minutes": 5 }, "id": "d1" }
 { "type": "disruption", "action": "stop", "id": "d1" }
 ```
+
+`duration_s` (simulated seconds) overrides the disruption type's duration; `null` keeps the disruption running until it is stopped.
 
 ## How arrivals are detected
 

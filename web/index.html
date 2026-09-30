@@ -23,6 +23,7 @@
   --ink-2: #566374;
   --line: #d3dae2;
   --accent: #1d4f9c;
+  --accent-text: #1d4f9c;
   --accent-ink: #ffffff;
   --board: #0f1a2b;
   --board-2: #18263b;
@@ -38,14 +39,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
-    --accent: #3d74cf; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
+    --accent: #2f5fae; --accent-text: #8fb3ef; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
     --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
-  --accent: #3d74cf; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
+  --accent: #2f5fae; --accent-text: #8fb3ef; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
   --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
   color-scheme: dark;
 }
@@ -53,7 +54,7 @@
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--body); }
 img { max-width: 100%; display: block; }
-a { color: var(--accent); }
+a { color: var(--accent-text); }
 :focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
 @media (min-width: 700px) { .wrap { padding-inline: 28px; } }
@@ -112,7 +113,7 @@ section { padding-block: 64px; }
 .pipeline { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
 .pipeline div { padding: 18px 18px 20px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
 .pipeline div:last-child { border-right: 0; }
-.pipeline b { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.pipeline b { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
 .pipeline span { color: var(--ink-2); font-size: .92rem; }
 @media (max-width: 720px) { .pipeline div { border-right: 0; border-bottom: 1px solid var(--line); } .pipeline div:last-child { border-bottom: 0; } }
 
@@ -149,13 +150,16 @@ footer { padding-block: 40px; border-top: 1px solid var(--line); color: var(--in
 footer .wrap { display: grid; gap: 10px; }
 footer a { color: inherit; }
 
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--amber); color: #111; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+.skip-link:focus { top: 12px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <div class="board">
   <div class="wrap">
-    <div class="top">
+    <header class="top">
       <a class="brand" href="./"><span class="sign">AR</span>ail <small>EBL</small></a>
       <nav aria-label="Main">
         <a href="app/">App</a>
@@ -163,11 +167,11 @@ footer a { color: inherit; }
         <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
         <a href="https://github.com/joernmht/ARail-EBL">GitHub</a>
       </nav>
-    </div>
-    <div class="hero">
+    </header>
+    <section class="hero" aria-labelledby="intro">
       <div>
         <p class="eyebrow">Open source · runs in the browser</p>
-        <h1>Augmented reality for <em>model railway labs</em></h1>
+        <h1 id="intro">Augmented reality for <em>model railway labs</em></h1>
         <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers, bus terminals, houses and trees on it, simulates delays and closures, and shows the trains your control system reports.</p>
         <div class="ctas">
           <a class="btn primary" href="app/">Open the app</a>
@@ -183,11 +187,11 @@ footer a { color: inherit; }
         <span class="divider" aria-hidden="true"></span>
         <span class="tag l">Photo</span><span class="tag r">ARail</span>
       </figure>
-    </div>
+    </section>
   </div>
 </div>
 
-<main>
+<main id="main">
   <section id="features">
     <div class="wrap">
       <div class="section-head">
@@ -268,7 +272,7 @@ footer a { color: inherit; }
         <p class="lead">No build step, no framework. A plugin is an ES module that registers what it adds; layouts load it by URL.</p>
         <p><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/layout-format.md">Layout file format</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/control-system-interface.md">Control-system interface</a></p>
       </div>
-      <pre aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
+      <pre tabindex="0" aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
 <span class="k">export default function</span> (arail) {
   <span class="k">class</span> Windmill <span class="k">extends</span> arail.LayoutObject {
     <span class="k">static</span> type = <span class="s">"windmill"</span>;
@@ -297,7 +301,7 @@ footer a { color: inherit; }
     <div class="wrap">
       <div class="departures">
         <header><h3>Departures · project status</h3><span>as of September 2026</span></header>
-        <div class="table-wrap">
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Project status">
           <table>
             <thead><tr><th>Version</th><th>Destination</th><th>Status</th></tr></thead>
             <tbody>
