@@ -246,11 +246,15 @@ class App {
     this.layoutUrl = new URL(url, location.href).href;
     this.originalLayout = json;
     storage.set("arail.lastLayout", url);
+    const img = json.view?.image;
+    // the layout's own image follows: the image shown until then belongs to the previous layout,
+    // and markers detected in it must not be measured into this layout's marker map
+    const options = { redetect: !(withImage && img) };
     const edited = storage.get(this._layoutKey());
     let restored = false;
     if (edited) {
       try {
-        await this._applyLayout(edited);
+        await this._applyLayout(edited, options);
         restored = true;
         toast("Your changes to this layout were restored. Use Build → Reset to original to discard them.");
       } catch (err) {
@@ -259,13 +263,12 @@ class App {
     }
     if (!restored) {
       try {
-        await this._applyLayout(json);
+        await this._applyLayout(json, options);
       } catch (err) {
         toast(`The layout ${url} could not be loaded: ${err.message}`, 7000);
         await this._applyLayout({});
       }
     }
-    const img = json.view?.image;
     if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
   }
 
@@ -273,8 +276,12 @@ class App {
     return `arail.layout:${this.layoutUrl}`;
   }
 
-  /** Load a layout into the world; on an error the previous layout stays loaded and the error is thrown. */
-  async _applyLayout(json) {
+  /**
+   * Load a layout into the world; on an error the previous layout stays loaded and the error is thrown.
+   * @param {object} json
+   * @param {{redetect?: boolean}} [options] redetect: look for markers in the current still image (false when the layout's own image follows)
+   */
+  async _applyLayout(json, { redetect = true } = {}) {
     if (json.plugins?.length) {
       const errors = await ARail.loadPlugins(json.plugins, this.layoutUrl || location.href);
       if (errors.length) toast(`Plugins could not be loaded: ${errors.join("; ")}`, 8000);
@@ -295,7 +302,7 @@ class App {
       this.showLayoutName();
       this.flyover.layoutChanged();
       this.renderPanel(this.activeTab);
-      this.redetect();
+      if (redetect) this.redetect();
     }
     if (problems.length) console.warn("Layout problems:", problems);
   }

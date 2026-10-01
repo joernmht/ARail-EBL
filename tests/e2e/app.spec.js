@@ -130,6 +130,23 @@ test("switching layouts while placing an object keeps the app running", async ({
   expect(errors).toEqual([]);
 });
 
+test("a layout chosen from the Layouts menu gets only its own markers, not those of the previous photo", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout" && window.__arail.world.map.ids().length === 8);
+  // the lab photo arrives late: meanwhile the synthetic photo (markers 0–7) is still the source
+  await page.route("**/media/ebl-lab.jpg", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  expect(errors).toEqual([]);
+});
+
 test("importing a file that is not a layout changes nothing", async ({ page }) => {
   const errors = await openApp(page, "/app/#build");
   const before = await page.evaluate(() => JSON.stringify(window.__arail.world.toJSON().objects));
