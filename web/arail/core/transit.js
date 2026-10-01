@@ -1053,7 +1053,7 @@ export class Transit {
     const m = (x) => view.m(x);
     const lit = view.darkness > 0.35;
     const body = PALETTE.bus;
-    const colours = { side: body, top: shade(body, 1.4), end: shade(body, 0.9), alpha: 0.95 };
+    const colours = { side: body, top: shade(body, 1.4), end: shade(body, 0.9), alpha: 1 };
     const z0 = m(0.3), z1 = m(3.1), len = this.meters(dist2(front, rear));
     const doors = bus.doorsOpen ? [len - 1.6, len - 6.4] : [];
     // the doors open towards the stop: on the right at a bus stop, on the left in the bays of a
