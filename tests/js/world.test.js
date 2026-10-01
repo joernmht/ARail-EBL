@@ -57,9 +57,18 @@ test("passengers arrive, trains come and people board and alight", () => {
   const world = createWorld(LAB, { seed: 7 });
   const events = {};
   world.events.on("*", (_, name) => (events[name] = (events[name] || 0) + 1));
+  // at most one vehicle at a dock at a time (also at the docks of bus lines, which the timetable does not serve)
+  const atDock = new Map();
+  let crowded = 0;
+  world.events.on("vehicle.arrived", (e) => {
+    const n = (atDock.get(e.dock.id) || 0) + 1;
+    atDock.set(e.dock.id, n);
+    if (n > 1) crowded++;
+  });
+  world.events.on("vehicle.departed", (e) => atDock.set(e.dock.id, (atDock.get(e.dock.id) || 0) - 1));
   run(world, 400);
   assert.ok(events["vehicle.arrived"] >= 6, `vehicles arrived: ${events["vehicle.arrived"]}`);
-  assert.equal(events["vehicle.arrived"] - (events["vehicle.departed"] || 0) <= world.services.docks.size, true);
+  assert.equal(crowded, 0, "one vehicle at a dock at a time");
   const sim = world.simulations[0];
   for (const id of ["platform-1", "platform-2", "bus-terminal-1"]) {
     const s = sim.stats(id);

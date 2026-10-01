@@ -1,10 +1,11 @@
 // German house types and the building kit: geometry, capacity, entrances, the estate's plots,
 // JSON round trips and drawing (greyscale by day, lit windows at night) through a fake canvas.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
-  Camera, View, createWorld, registry, pointInPolygon, polygonArea, PALETTE, parseColor,
+  Camera, View, createWorld, registry, pointInPolygon, polygonArea, PALETTE, parseColor, parseRgba,
   BuildingBase, PLATTENBAU_SERIES, defaultOccupancy, lightWindows, hash01, polygonNormal,
 } from "../../web/arail/index.js";
 
@@ -90,7 +91,7 @@ function drawWorld(world, { eye = [2000, -3500, 2600], target = [2000, 900, 0], 
   return { fills, view };
 }
 
-const rgb = (css) => (typeof css === "string" ? parseColor(css) : null);
+const rgb = (css) => (Array.isArray(css) ? css : typeof css === "string" ? parseColor(css) : null);
 const isGrey = (css) => {
   const c = rgb(css);
   return !!c && c[0] === c[1] && c[1] === c[2];
@@ -252,9 +253,14 @@ test("the generic building keeps its parameters and old layouts' colours", () =>
   assert.equal(b.spec.color, "#f2f2f2");
   assert.equal(b.spec.roof_color, "#a6a6a6");
   assert.equal(b.use(), "residential");
-  assert.ok(b.geometry.parts[0].faces.some((f) => f.color === "#f2f2f2"));
-  assert.ok(old.geometry.parts[0].faces.some((f) => f.color === "#e8d5b5"));
-  assert.ok(old.geometry.parts[0].faces.some((f) => f.color === "#a0472f"));
+  // (face colours are shaded once when the geometry is made: the colour times a brightness 0.75 .. 1)
+  const shadeOf = (f, css) => {
+    const c = parseColor(css), k = f.color[0] / c[0];
+    return k >= 0.75 - 1e-9 && k <= 1 + 1e-9 && f.color.every((v, i) => Math.abs(v - c[i] * k) < 1e-6);
+  };
+  assert.ok(b.geometry.parts[0].faces.some((f) => shadeOf(f, "#f2f2f2")));
+  assert.ok(old.geometry.parts[0].faces.some((f) => shadeOf(f, "#e8d5b5")));
+  assert.ok(old.geometry.parts[0].faces.some((f) => shadeOf(f, "#a0472f")));
   assert.deepEqual(old.toJSON(), { id: "old", type: "building", position: [300, 0], color: "#e8d5b5", roof_color: "#a0472f", floors: 3, roof: "gable" });
   b.set({ use: "shop" });
   assert.ok(b.capacity().visitors > 0 && b.capacity().residents === 0);
@@ -305,7 +311,7 @@ test("lit windows follow the occupancy from the town simulation", () => {
   assert.equal(p.occupancy(), 1, "clamped");
   // lit windows are emissive and warm; unlit ones grey again
   const w = g.windows.find((x) => x.d.emissive);
-  assert.equal(w.d.color, PALETTE.litWindow);
+  assert.deepEqual(w.d.color, parseColor(PALETTE.litWindow));
   lightWindows(g, { main: 0, shop: 0 });
   assert.ok(isGrey(w.d.color) && !w.d.emissive);
   // the same windows light up every time (no flicker)
@@ -362,4 +368,122 @@ test("faces of the models point outwards (culling and shading rely on it)", () =
       }
     }
   }
+});
+
+test("level of detail: panel joints only when they are about a pixel wide", () => {
+  const world = createWorld({ objects: [{ id: "p", type: "plattenbau", position: [0, 0] }] });
+  const front = world.objects[0].geometry.parts[0].faces.find((f) => f.lod && f.normal[1] < -0.99);
+  // 0.27 px per mm: the windows (14 mm) are 3.7 px, the joints (1.15 mm) only 0.3 px
+  drawWorld(world, { eye: [0, -4000, 1800], target: [0, 0, 0] });
+  assert.equal(front.decals, front.lod[1], "windows, but no sub-pixel joints");
+});
+
+test("by day the buildings stay in the greys from about mid grey up to white, seen from every side", () => {
+  const world = createWorld({ objects: ALL });
+  world.clock.set("12:00");
+  for (const eye of [[2000, -3500, 2600], [2000, 5000, 2600], [-2500, 900, 2600], [6500, 900, 2600]]) {
+    const { fills } = drawWorld(world, { eye, target: [2000, 900, 0] });
+    let n = 0;
+    for (const f of fills) {
+      const c = typeof f === "string" ? parseRgba(f) : null;
+      if (!c || c[3] < 0.5) continue; // soft shadows
+      n++;
+      // the darkest: windows and doors in the shade (0.47 × 0.75)
+      assert.ok(Math.min(c[0], c[1], c[2]) >= 0.33 * 255, `too dark: ${f} (eye ${eye})`);
+    }
+    assert.ok(n > 300, `fills: ${n}`);
+  }
+  // walls in the shade are light grey, not mid grey
+  for (const o of world.objects) {
+    if (o.type === "building") continue; // (colours from the layout)
+    for (const f of o.geometry.parts[0].faces) {
+      const wall = Math.abs(f.normal[2]) < 1e-9 && f.pts.length === 4 && Math.min(...f.pts.map((p) => p[2])) === 0;
+      if (wall) assert.ok(f.color[0] >= 0.6 * 255, `${o.id}: wall ${f.color[0].toFixed(0)}`);
+    }
+  }
+});
+
+/** Run module code in a child process (a regression that hangs fails instead of blocking the tests). */
+function isolated(body) {
+  const index = new URL("../../web/arail/index.js", import.meta.url).href;
+  const code = `import { createWorld } from ${JSON.stringify(index)};\n${body}`;
+  const r = spawnSync(process.execPath, ["--input-type=module", "-e", code], { timeout: 20_000, encoding: "utf8" });
+  assert.equal(r.signal, null, "finished in time");
+  assert.equal(r.status, 0, r.stderr);
+  return JSON.parse(r.stdout);
+}
+
+test("estate: an outline whose points coincide (three taps on one spot) gives no plots and no hang", () => {
+  const out = isolated(`
+    const out = [];
+    for (const points of [[[100, 100], [100, 100], [100, 100]], [[0, 0], [500, 0], [1000, 0]], [[0, 0], [0, 0], [500, 500]]]) {
+      const o = createWorld({ objects: [{ id: "e", type: "house-estate", points }] }).objects[0];
+      out.push({ plots: o.geometry.plots.length, entrances: o.entrances().length, anchor: o.anchorPoint().every(Number.isFinite) });
+    }
+    console.log(JSON.stringify(out));`);
+  assert.deepEqual(out, Array(3).fill({ plots: 0, entrances: 0, anchor: true }));
+});
+
+test("estate: no plot across a narrow notch of the outline", () => {
+  // 1600 × 700 mm with a slit 20 mm (1.7 m) wide, cut in from the long edge, narrower than a plot
+  const P = [[0, 0], [690, 0], [690, 600], [710, 600], [710, 0], [1600, 0], [1600, 700], [0, 700]];
+  const world = createWorld({ objects: [{ id: "e", type: "house-estate", points: P, density: 1 }] });
+  const g = world.objects[0].geometry;
+  // (proper crossings only: plots may lie along the outline; 1e-6 mm² for rounding)
+  const side = (o, a, b) => {
+    const c = (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    return Math.abs(c) < 1e-6 ? 0 : Math.sign(c);
+  };
+  const crosses = (a, b, c, d) => side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+  assert.ok(g.plots.length >= 8, `plots: ${g.plots.length}`);
+  for (const plot of g.plots) {
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < P.length; j++) assert.ok(!crosses(plot[i], plot[(i + 1) % 4], P[j], P[(j + 1) % P.length]), "plot edge crosses the outline");
+    }
+  }
+  for (const h of g.houses) assert.ok(Math.abs(h.center[0] - 700) > 50, "no house on the slit");
+});
+
+test("neighbouring blocks and estates are not clones; another seed gives another variant", () => {
+  const block = { type: "altbau-block", position: [0, 0] };
+  const area = (x) => [[x, 0], [x + 1200, 0], [x + 1200, 700], [x, 700]];
+  const world = createWorld({ objects: [
+    { id: "a1", ...block }, { id: "a2", ...block, position: [800, 0] },
+    { id: "e1", type: "house-estate", points: area(0) }, { id: "e2", type: "house-estate", points: area(1300) },
+  ] });
+  const look = (o) => o.geometry.parts.map((p) => p.faces.map((f) => rgb(f.color).map(Math.round).join("/")).join()).join("|");
+  const lit = (o) => o.geometry.windows.map((w) => w.h.toFixed(6)).join();
+  const [a1, a2, e1, e2] = world.objects;
+  assert.notEqual(look(a1), look(a2), "parcels of two blocks differ");
+  assert.notEqual(lit(a1), lit(a2), "other windows lit");
+  assert.notEqual(e1.geometry.houses.map((h) => h.style).join() + look(e1), e2.geometry.houses.map((h) => h.style).join() + look(e2));
+  // the same layout always looks the same; a new seed gives another block
+  const again = createWorld({ objects: [{ id: "a1", ...block }] }).objects[0];
+  assert.equal(look(again), look(a1));
+  const before = look(a1);
+  a1.set({ seed: 2 });
+  assert.notEqual(look(a1), before);
+});
+
+test("absurd sizes stay within the parameter ranges (a mistyped number must not hang the app)", () => {
+  const out = isolated(`
+    const world = createWorld({ objects: [
+      { id: "b", type: "building", position: [0, 0], width_m: 1e6, depth_m: -50, floors: 1e4, floor_height_m: 0 },
+      { id: "o", type: "office", position: [0, 0], floors: 1e6 },
+      { id: "h", type: "house", position: [0, 0], floors: 1e6 },
+    ] });
+    const [b, o, h] = world.objects;
+    const fp = b.footprint(), k = 1000 / 87;
+    console.log(JSON.stringify({
+      size: [Math.hypot(fp[1][0] - fp[0][0], fp[1][1] - fp[0][1]) / k, Math.hypot(fp[2][0] - fp[1][0], fp[2][1] - fp[1][1]) / k],
+      height: b.heightMM() / k,
+      floors: [b.floorsCount(), o.floorsCount(), h.floorsCount()],
+      officeHeight: o.heightMM() / k,
+      down: world.objects.some((x) => x.geometry.parts.some((p) => p.faces.some((f) => f.normal[2] < -0.5))),
+    }));`);
+  assert.ok(Math.abs(out.size[0] - 120) < 1e-6 && Math.abs(out.size[1] - 3) < 1e-6, `width at most 120 m, depth at least 3 m: ${out.size}`);
+  assert.ok(Math.abs(out.height - 30 * 3 - Math.tan((35 * Math.PI) / 180) * 1.5) < 1e-6, "30 floors of 3 m (0 = default)");
+  assert.deepEqual(out.floors, [30, 20, 2]);
+  assert.ok(Math.abs(out.officeHeight - (20 * 3.6 + 0.9)) < 1e-6);
+  assert.equal(out.down, false, "no faces turned inside out");
 });

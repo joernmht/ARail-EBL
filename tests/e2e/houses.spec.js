@@ -118,3 +118,23 @@ test("buildings: draw a single-family estate as an outline", async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.__arail.editor.selected.geometry.houses.every((h) => h.style === "bungalow"))).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("buildings: an estate tapped three times on one spot keeps the app running", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await page.locator(".palette").getByRole("button", { name: /^Single-family estate/ }).click();
+  const q = await screenPoint(page, 900, 300);
+  for (let i = 0; i < 3; i++) await page.mouse.click(q.x, q.y);
+  await page.locator("#placing").getByRole("button", { name: "Finish" }).click();
+  await page.waitForFunction(() => window.__arail.editor.selected?.type === "house-estate", null, { timeout: 10_000 });
+  const estate = await page.evaluate(() => {
+    const o = window.__arail.editor.selected;
+    window.__arail.render();
+    return { plots: o.geometry.plots.length, entrances: o.entrances().length };
+  });
+  expect(estate).toEqual({ plots: 0, entrances: 0 });
+  // the app still answers (it hung before) and the estate can be deleted again
+  const before = await page.evaluate(() => window.__arail.world.objects.length);
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect.poll(() => page.evaluate(() => window.__arail.world.objects.length)).toBe(before - 1);
+  expect(errors).toEqual([]);
+});
