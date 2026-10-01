@@ -7,6 +7,8 @@
  * @module arail/core/layout
  */
 
+import { DEFAULT_CLOCK } from "./clock.js";
+
 export const LAYOUT_FORMAT = "arail-layout/1";
 
 export const DEFAULT_SERVICES = {
@@ -45,6 +47,7 @@ export function normalizeLayout(json = {}) {
       poses,
     },
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
+    clock: { ...DEFAULT_CLOCK, ...(isObject(j.clock) ? j.clock : {}) },
     simulations: list(j.simulations, typed) ?? [{ type: "passengers" }],
     objects: list(j.objects, typed) ?? [],
     scenarios: list(j.scenarios) ?? [],

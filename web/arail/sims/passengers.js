@@ -162,7 +162,8 @@ export class PassengerSimulation extends Simulation {
     const fx = this.world.disruptions.effectsFor(a);
     const len = dock.s1 - dock.s0;
     const bus = dock.kind === "bus";
-    const n = fx.closed ? 0 : rng.poisson((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25));
+    const tod = this.world.clock.demand("passengers");
+    const n = fx.closed ? 0 : rng.poisson(((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25)) * Math.min(1, 0.25 + tod));
     const late = vehicle.delayMin > 0.5;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const s = rng.pick(doors) + rng.uniform(-0.4, 0.4);
@@ -210,7 +211,7 @@ export class PassengerSimulation extends Simulation {
     const fx = world.disruptions.effectsFor(a);
     c.t += dt;
     const disrupted = fx.hold || fx.cancel;
-    const rate = fx.closed ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25);
+    const rate = fx.closed ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const dock = a.docks.length ? rng.pick(a.docks).id : null;
@@ -386,7 +387,7 @@ export class PassengerSimulation extends Simulation {
         const pts = p.trail.concat([p.pos]).map((q) => a.toLayout(q[0], q[1]));
         view.line(pts, { stroke: moodColor(p.mood, 1, 0.8), width: 2, alpha: 0.6, order: 8 });
       }
-      const colour = moodColor(p.mood), legs = moodColor(p.mood, 1, 0.55);
+      const colour = view.dim(moodColor(p.mood), 0.5), legs = view.dim(moodColor(p.mood, 1, 0.55), 0.5);
       view.solid(view.depth(x, y, 0), (ctx) => {
         const body = Math.max(2, ref * 0.42), leg = Math.max(1, ref * 0.14), headR = Math.max(1.6, ref * 0.15);
         ctx.lineCap = "round";

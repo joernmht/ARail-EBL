@@ -40,7 +40,7 @@ export class Label extends LayoutObject {
       const s = Math.max(10 * view.px, view.pxPerMM(c[0], c[1], z) * view.m(0.9));
       ctx.font = `700 ${s * 0.72}px "Archivo", system-ui, sans-serif`;
       const w = ctx.measureText(this.spec.text || "").width + s * 0.8;
-      ctx.strokeStyle = "#4b5563";
+      ctx.strokeStyle = view.dim("#4b5563");
       ctx.lineWidth = 1.5 * view.px;
       for (const dx of [-w * 0.35, w * 0.35]) {
         ctx.beginPath();

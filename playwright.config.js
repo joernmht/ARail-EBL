@@ -1,7 +1,7 @@
 // Browser tests: npx playwright install chromium && npm run test:e2e
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 8123;
+const PORT = Number(process.env.ARAIL_PORT) || 8123;
 
 export default defineConfig({
   testDir: "tests/e2e",

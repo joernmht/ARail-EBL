@@ -5,7 +5,8 @@ import { createWorld, PlaneTracker, Registry, registerBuiltins, WebSocketFeed, W
 import { readJSON } from "./helpers.js";
 
 // the example layout without its plugins and simulations: services only, fast to run
-const LAB = { ...readJSON("web/layouts/ebl-lab.json"), plugins: [], simulations: [] };
+// (and with the clock's day profiles switched off: the timetable runs at its set interval)
+const LAB = { ...readJSON("web/layouts/ebl-lab.json"), plugins: [], simulations: [], clock: { profiles: false } };
 
 /** Run the simulation for `seconds` of simulated time. */
 function run(world, seconds, dtReal = 0.05) {

@@ -15,7 +15,7 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
   const base = view.project(p[0], p[1], 0), top = view.project(p[0], p[1], H);
   if (!base || !top) return;
   const scale = view.pxPerMM(p[0], p[1], H * 0.6);
-  const crown = color || (kind === "conifer" ? PALETTE.conifer : PALETTE.leaves);
+  const crown = view.dim(color || (kind === "conifer" ? PALETTE.conifer : PALETTE.leaves));
   // shadow on the ground
   const sh = view.m(heightM * 0.22);
   const shadow = [];
@@ -27,7 +27,7 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
   view.solid(view.depth(p[0], p[1], 0), (ctx) => {
     const trunkTop = kind === "conifer" ? 0.25 : 0.45;
     const tx = base[0] + (top[0] - base[0]) * trunkTop, ty = base[1] + (top[1] - base[1]) * trunkTop;
-    ctx.strokeStyle = PALETTE.trunk;
+    ctx.strokeStyle = view.dim(PALETTE.trunk);
     ctx.lineCap = "round";
     ctx.lineWidth = Math.max(1.2 * view.px, scale * view.m(heightM * 0.045));
     ctx.beginPath();

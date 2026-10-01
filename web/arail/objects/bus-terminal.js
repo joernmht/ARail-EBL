@@ -98,7 +98,7 @@ export class BusTerminal extends LayoutObject {
     const top = view.project(p[0], p[1], view.m(2.9)), foot = view.project(p[0], p[1], 0);
     if (!top || !foot) return;
     view.solid(view.depth(p[0], p[1], 0), (ctx) => {
-      ctx.strokeStyle = "#5b6470";
+      ctx.strokeStyle = view.dim("#5b6470");
       ctx.lineWidth = 1.5 * view.px;
       ctx.beginPath();
       ctx.moveTo(foot[0], foot[1]);

@@ -16,6 +16,19 @@ export function parseColor(c) {
   return [128, 128, 128];
 }
 
+/** Parse a CSS colour into [r, g, b, a] (alpha 1 unless given by rgba() or #rrggbbaa); null if unknown. */
+export function parseRgba(c) {
+  if (Array.isArray(c)) return [c[0], c[1], c[2], c[3] ?? 1];
+  const s = String(c).trim();
+  if (/^#[0-9a-f]{3}$/i.test(s) || /^#[0-9a-f]{6}$/i.test(s)) return [...parseColor(s), 1];
+  if (/^#[0-9a-f]{8}$/i.test(s)) return [...parseColor(s), parseInt(s.slice(7, 9), 16) / 255];
+  const m = s.match(/^rgba?\(([^)]+)\)$/i);
+  if (!m) return null;
+  const v = m[1].split(/[\s,/]+/).filter(Boolean).map((x) => (x.endsWith("%") ? Number(x.slice(0, -1)) / 100 : Number(x)));
+  if (v.length < 3 || v.slice(0, 3).some((x) => !Number.isFinite(x))) return null;
+  return [v[0], v[1], v[2], Number.isFinite(v[3]) ? v[3] : 1];
+}
+
 export function rgba(c, alpha = 1) {
   const [r, g, b] = parseColor(c);
   return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${alpha})`;
@@ -47,6 +60,28 @@ export function moodColor(m, alpha = 1, k = 1) {
   return rgba([0, 1, 2].map((i) => (p[i] + (q[i] - p[i]) * t) * k), alpha);
 }
 
+/**
+ * Colours of the corporate design of the Chair of Railway Operations, TU Dresden
+ * (source of truth: the chair's CD repository `tud_cro_chaircd`). The app uses them for its
+ * interface and the signs drawn over the layout; Gelb (yellow) is for diagrams and details.
+ */
+export const CD = {
+  tuerkis: "#0A777F", // main brand colour
+  brillantblau: "#00008C", // logo blue
+  rot: "#D20F41",
+  orange: "#C85000", // accent (the 10 %), attention
+  gelb: "#FFC700", // secondary, diagrams only
+  dunkelblau: "#001450",
+  black: "#000000",
+  white: "#FFFFFF",
+};
+
+/** A neutral grey: 0 = black ... 1 = white (buildings are greyscale, like a white model). */
+export function grey(v) {
+  const h = Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, "0");
+  return `#${h}${h}${h}`;
+}
+
 /** Palette used by the built-in objects. */
 export const PALETTE = {
   platform: "#e9e6de",
@@ -62,6 +97,7 @@ export const PALETTE = {
   trainDoor: "#f0c828",
   bus: "#e8b321",
   busWindow: "#2a3548",
+  litWindow: "#ffe2a0", // windows with the lights on (night)
   warning: "#e5322d",
   signBlue: "#1d4f9c",
   signText: "#ffffff",

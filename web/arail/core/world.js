@@ -17,6 +17,7 @@ import { ServiceManager } from "./services.js";
 import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
+import { Clock } from "./clock.js";
 
 export class World {
   /**
@@ -43,7 +44,11 @@ export class World {
       trails: true, // walking trails of passengers
       showTracks: false, // draw track objects (normally hidden: the real track is there)
       feedVehicles: "outline", // how trains from the control system are drawn: outline | solid | none
+      lighting: true, // day/night lighting from the clock
+      peopleColour: "purpose", // colour of people: "purpose" (where they are going) | "mood"
     };
+    /** Time of day (fast clock), see core/clock.js. */
+    this.clock = new Clock();
     this.services = new ServiceManager(this);
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
@@ -66,6 +71,7 @@ export class World {
     this.objects = [];
     this.time = 0;
     this.demand = 1;
+    this.clock.configure(layout.clock);
     this.rng = createRng(this.seed);
     this.services.reset();
     this.disruptions.reset();
@@ -101,6 +107,7 @@ export class World {
       scale: this.scale,
       markers: { ...L.markers, poses: this.map.toJSON() },
       services: L.services,
+      clock: this.clock.toJSON(),
       simulations: this._simulationEntries.map((e) => (e.sim ? e.sim.toJSON() : e.cfg)),
       objects: this.objects.map((o) => o.toJSON()),
       scenarios: L.scenarios,
@@ -201,6 +208,7 @@ export class World {
     dt /= n;
     for (let i = 0; i < n; i++) {
       this.time += dt;
+      if (this.clock.advance(dt)) this.events.emit("clock.day", { day: this.clock.day });
       this.scenarios.step();
       this.disruptions.step();
       this.services.step(dt);
@@ -209,8 +217,14 @@ export class World {
     }
   }
 
+  /** Darkness 0 (day) .. 1 (night) for drawing, 0 while the lighting is switched off. */
+  night() {
+    return this.settings.lighting === false ? 0 : this.clock.night();
+  }
+
   /** Queue everything on the view and render it. */
   draw(view, { selected = null } = {}) {
+    if (view.night == null) view.night = this.night();
     this._syncStops();
     for (const o of this.objects) if (o.geometry) o.draw(view);
     this.services.draw(view);

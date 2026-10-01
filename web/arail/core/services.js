@@ -182,7 +182,9 @@ export class ServiceManager {
       // arrivals. A due vehicle waits while the dock is occupied, closed or held; the waiting
       // time is its delay, and it arrives as soon as it may.
       if (st.timer > 0) {
-        st.timer -= dt * Math.max(0, fx.frequency ?? 1);
+        // fewer vehicles at night and more in the rush hours (see core/clock.js)
+        const tod = this.world.clock.demand(st.dock.kind === "bus" ? "bus" : "rail");
+        st.timer -= dt * Math.max(0, fx.frequency ?? 1) * tod;
         if (st.timer > 0) continue;
       }
       if (fx.cancel) {

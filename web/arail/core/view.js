@@ -7,10 +7,15 @@
  * - solid layer: 3D things (buildings, trees, vehicles, people), far to near,
  * - overlay layer: labels and signs, always on top.
  * `render()` sorts and draws the list. Objects never draw directly in `draw(view)`.
+ *
+ * Day and night: `night` (0 = day ... 1 = night) darkens the background (the camera image)
+ * and every ground and solid item; colours marked `emissive` (lit windows, lamps, headlights)
+ * keep their brightness. Objects that draw with their own canvas code use `view.dim(colour)`.
+ * Overlays (labels, the editor's selection) are never darkened.
  * @module arail/core/view
  */
 import { poseFromHomography } from "./geometry.js";
-import { parseColor, rgba } from "./colors.js";
+import { parseColor, parseRgba, rgba } from "./colors.js";
 
 const LIGHT = (() => {
   const l = [-0.45, 0.55, 0.7];
@@ -19,6 +24,9 @@ const LIGHT = (() => {
 })();
 
 export const LAYER = { ground: 0, solid: 1, overlay: 2 };
+
+/** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
+const NIGHT_TINT = [0, 20, 80];
 
 export class View {
   /**
@@ -31,8 +39,12 @@ export class View {
    * @param {number} [options.opacity=1] global opacity of virtual objects
    * @param {number} [options.time=0] simulation time in seconds (for animations)
    * @param {number} [options.labelScale=1] size factor for labels (smaller on small screens)
+   * @param {number | null} [options.night] darkness 0 (day) .. 1 (night); null = set by `World.draw` from the clock
+   * @param {boolean} [options.virtual=false] true for a virtual camera (flyover): there is no camera
+   *   image, so objects also draw what is real in the lab (platform surfaces, tracks, the table)
+   * @param {boolean} [options.darken=true] darken the background (camera image) at night
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1 }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -41,6 +53,9 @@ export class View {
     this.opacity = opacity;
     this.time = time;
     this.labelScale = labelScale;
+    this.night = night;
+    this.virtual = virtual;
+    this.darken = darken;
     /** Rectangles of labels drawn so far (labels avoid overlapping each other). */
     this.placed = [];
     this.pose = poseFromHomography(H, camera.intrinsics);
@@ -114,6 +129,26 @@ export class View {
     return 0.62 + 0.38 * Math.max(0, d);
   }
 
+  /* ---------------------------------------------------------------- day and night */
+
+  /** Darkness 0 .. 1 (0 while unset). */
+  get darkness() {
+    return Math.min(1, Math.max(0, this.night || 0));
+  }
+
+  /**
+   * A colour as it looks at the current time of day (alpha is kept). `amount` scales the
+   * effect (0.5 = half as dark, e.g. for things under station lights).
+   * @param {string} colour CSS colour (#hex, rgb(), rgba())
+   */
+  dim(colour, amount = 1) {
+    const n = this.darkness * amount;
+    if (!n || !colour) return colour;
+    const c = parseRgba(colour);
+    if (!c) return colour;
+    return rgba(dimRgb(c, n), c[3]);
+  }
+
   /** Normal (layout frame) -> camera frame. */
   normalToCamera(nrm) {
     const { ex, ey, ez } = this;
@@ -153,6 +188,15 @@ export class View {
       return a.key - b.key || a.seq - b.seq;
     });
     const ctx = this.ctx;
+    const n = this.darkness;
+    if (n > 0.01 && this.darken) {
+      // the real world (camera image or flyover background) gets darker, too
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(0,12,48,${(0.58 * n).toFixed(3)})`;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.restore();
+    }
     for (const it of items) {
       ctx.save();
       ctx.globalAlpha = this.opacity;
@@ -173,7 +217,8 @@ export class View {
    * Flat polygon on the layout (or at height z). Coordinates in mm.
    * @param {number[][]} points
    * @param {{z?: number, fill?: string, stroke?: string, width?: number, alpha?: number,
-   *   dash?: number[], order?: number, layer?: "ground" | "overlay"}} [style]
+   *   dash?: number[], order?: number, layer?: "ground" | "overlay", emissive?: boolean}} [style]
+   *   `emissive`: not darkened at night (lights); overlays are never darkened
    */
   polygon(points, style = {}) {
     const z = style.z || 0;
@@ -218,8 +263,9 @@ export class View {
     pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
     if (closed) ctx.closePath();
     if (style.alpha != null) ctx.globalAlpha *= style.alpha;
+    const lit = style.emissive || style.layer === "overlay";
     if (style.fill && closed) {
-      ctx.fillStyle = style.fill;
+      ctx.fillStyle = lit ? style.fill : this.dim(style.fill);
       ctx.fill();
     }
     if (style.stroke) {
@@ -227,7 +273,7 @@ export class View {
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       if (style.dash) ctx.setLineDash(style.dash.map((d) => d * this.px));
-      ctx.strokeStyle = style.stroke;
+      ctx.strokeStyle = lit ? style.stroke : this.dim(style.stroke);
       ctx.stroke();
     }
   }
@@ -235,10 +281,12 @@ export class View {
   /**
    * Draw a set of 3D faces as one solid item: back faces are culled, the rest is shaded
    * and drawn far to near.
-   * @param {{pts: number[][], normal?: number[], color: string, alpha?: number,
-   *   stroke?: string, twoSided?: boolean, flat?: boolean, decals?: {pts: number[][], color: string}[]}[]} faces
+   * @param {{pts: number[][], normal?: number[], color: string, alpha?: number, emissive?: boolean,
+   *   stroke?: string, twoSided?: boolean, flat?: boolean,
+   *   decals?: {pts: number[][], color: string, alpha?: number, emissive?: boolean}[]}[]} faces
    *   points [x, y, z] in mm; `normal` in the layout frame (needed for culling and shading);
-   *   `decals` are coplanar details (windows, doors) drawn right after their face
+   *   `decals` are coplanar details (windows, doors) drawn right after their face;
+   *   `emissive` faces and decals (lit windows, lamps) are neither shaded nor darkened at night
    * @param {number[]} ref reference point [x, y, z] for sorting against other solids
    * @param {{outline?: string}} [style]
    */
@@ -255,38 +303,42 @@ export class View {
       const img = camPts.map((c) => this.camera.project(c));
       if (img.some((p) => !p)) continue;
       const k = f.normal && !f.flat ? this.light(f.normal) : 1;
-      const [r, g, b] = parseColor(f.color);
       const decals = [];
       for (const d of f.decals || []) {
         const di = this.projectAll(d.pts);
         if (!di) continue;
-        const [dr, dg, db] = parseColor(d.color);
-        decals.push({ img: di, fill: rgba([dr * k, dg * k, db * k], d.alpha ?? f.alpha ?? 1) });
+        decals.push({ img: di, rgb: parseColor(d.color), k: d.emissive ? 1 : k, emissive: !!d.emissive, alpha: d.alpha ?? f.alpha ?? 1 });
       }
-      drawn.push({ img, depth: Math.hypot(...centre), fill: rgba([r * k, g * k, b * k], f.alpha ?? 1), stroke: f.stroke, decals });
+      drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals });
     }
     if (!drawn.length) return;
     drawn.sort((a, b) => b.depth - a.depth);
     const outline = style.outline;
     this.solid(this.depth(ref[0], ref[1], ref[2] || 0), (ctx) => {
+      // colours are worked out when drawing, so that `night` may be set after queueing
+      const n = this.darkness;
+      const fill = (it) => {
+        const c = [it.rgb[0] * it.k, it.rgb[1] * it.k, it.rgb[2] * it.k];
+        return rgba(it.emissive || !n ? c : dimRgb(c, n), it.alpha);
+      };
       ctx.lineJoin = "round";
       for (const f of drawn) {
         ctx.beginPath();
         f.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
         ctx.closePath();
-        ctx.fillStyle = f.fill;
+        ctx.fillStyle = fill(f);
         ctx.fill();
         const s = f.stroke || outline;
         if (s) {
           ctx.lineWidth = 0.8 * this.px;
-          ctx.strokeStyle = s;
+          ctx.strokeStyle = this.dim(s);
           ctx.stroke();
         }
         for (const d of f.decals) {
           ctx.beginPath();
           d.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
           ctx.closePath();
-          ctx.fillStyle = d.fill;
+          ctx.fillStyle = fill(d);
           ctx.fill();
         }
       }
@@ -301,6 +353,64 @@ export class View {
     const faces = prismFaces(footprint, z0, z1, colors);
     const c = centroid(footprint);
     this.faces(faces, [c[0], c[1], (z0 + z1) / 2], { outline: colors.outline });
+  }
+
+  /**
+   * A light seen as a soft glow (street lamps, headlights, lit signs); drawn only at night.
+   * @param {number[]} at [x, y, z] in mm
+   * @param {number} radiusMM size of the glow (model mm)
+   * @param {string} [colour] colour of the light
+   * @param {number} [strength=1] 0..1
+   */
+  glow(at, radiusMM, colour = "#ffe2a0", strength = 1) {
+    const a = this.darkness * strength;
+    if (a < 0.03) return;
+    const p = this.project(at[0], at[1], at[2] || 0);
+    if (!p) return;
+    const r = Math.max(1.5 * this.px, this.pxPerMM(at[0], at[1], at[2] || 0) * radiusMM);
+    const [cr, cg, cb] = parseColor(colour);
+    // slightly in front of what the light is attached to
+    this.solid(this.depth(at[0], at[1], at[2] || 0) - 1, (ctx) => {
+      const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
+      g.addColorStop(0, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.25, `rgba(${cr},${cg},${cb},${0.85 * a})`);
+      g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], r, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+  }
+
+  /**
+   * Light falling on the ground (pool of light under a street lamp); drawn only at night.
+   * @param {number[]} center [x, y] in mm
+   * @param {number} radiusMM radius on the ground (model mm)
+   */
+  lightPool(center, radiusMM, colour = "#ffd98a", strength = 1, order = 0.8) {
+    const a = this.darkness * strength;
+    if (a < 0.03) return;
+    const ring = [];
+    for (let k = 0; k < 16; k++) {
+      const t = (k * Math.PI) / 8;
+      ring.push([center[0] + radiusMM * Math.cos(t), center[1] + radiusMM * Math.sin(t), 0]);
+    }
+    const img = this.projectAll(ring), c = this.project(center[0], center[1], 0);
+    if (!img || !c) return;
+    const r = Math.max(...img.map((q) => Math.hypot(q[0] - c[0], q[1] - c[1])));
+    const [cr, cg, cb] = parseColor(colour);
+    this.ground(order, (ctx) => {
+      const g = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], r);
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.55 * a})`);
+      g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      img.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])));
+      ctx.closePath();
+      ctx.fill();
+    });
   }
 
   /**
@@ -319,6 +429,12 @@ export class View {
 }
 
 /* ---------------------------------------------------------------- helpers */
+
+/** Darken an [r, g, b] colour for the night (n = 0 .. 1) towards the night tint. */
+function dimRgb(c, n) {
+  const k = 1 - 0.62 * n, t = 0.3 * n;
+  return [0, 1, 2].map((i) => c[i] * k + NIGHT_TINT[i] * t);
+}
 
 function centroid(poly) {
   let x = 0, y = 0;
