@@ -70,7 +70,8 @@ export class Panels {
       h("input", { type: "checkbox", id, checked: get(), onchange: (e) => set(e.target.checked) }), label);
     const button = (cmd, label, text) => h("button", { class: "btn small", type: "button", "data-fly": cmd, "aria-label": label, title: label }, text);
     const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
-    mount(box,
+    // morph, not mount: the toggle that redrew this section keeps the keyboard focus
+    morph(box,
       h("h2", {}, "Flyover"),
       h("div", { class: "row" },
         h("button", { class: "btn", type: "button", id: "btnFlyoverPanel", "aria-pressed": on ? "true" : "false", onclick: () => fly.toggle() }, "Flyover"),

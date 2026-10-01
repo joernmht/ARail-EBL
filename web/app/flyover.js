@@ -63,11 +63,15 @@ export class Flyover {
     c.tabIndex = 0;
     c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt.");
     c.hidden = false;
+    // a message on the empty stage (no image yet) comes back when the flyover is left
+    this._emptyShown = !$("#emptyStage").hidden;
     $("#emptyStage").hidden = true;
     $("#flyNav").hidden = false;
     $("#btnFreeze").hidden = true;
     this.resize();
     this._restoreCamera();
+    // switched on with the key F (nothing focused): the stage takes the keys; a focused button keeps the focus
+    if (!document.activeElement || document.activeElement === document.body) c.focus({ preventScroll: true });
     this._modeChanged();
   }
 
@@ -93,8 +97,12 @@ export class Flyover {
       c.width = src.w;
       c.height = src.h;
       if (this._resumeVideo && src.kind === "video") src.el.play().catch(() => {});
-    } else app.ctx.clearRect(0, 0, c.width, c.height);
+    } else {
+      app.ctx.clearRect(0, 0, c.width, c.height);
+      if (this._emptyShown) $("#emptyStage").hidden = false;
+    }
     this._resumeVideo = false;
+    this._emptyShown = false;
     $("#btnFreeze").hidden = !src || src.kind === "image";
     app.fitCanvas();
     this._modeChanged();
@@ -251,21 +259,24 @@ export class Flyover {
     if (ops[name]) this.move(ops[name]);
   }
 
-  /** Keys while the stage has the focus; returns true if the key was used. */
+  /** Keys while the stage (the canvas or its buttons) has the focus; returns true if the key was used. */
   key(e) {
     if (!this.active) return false;
-    const t = e.target, onStage = t === document.body || t === this.app.canvas || !!t.closest?.("#stageWrap");
+    // elsewhere (also on the body, e.g. after a click on panel text) arrows and Page Up/Down scroll as usual
+    const t = e.target, onStage = t === this.app.canvas || !!t.closest?.("#stageWrap");
     if (!onStage) return false;
     const c = this.app.canvas, W = c.width, H = c.height, s = e.shiftKey ? 3 : 1, d = 0.12 * Math.min(W, H) * s;
+    // zoom steps ignore Shift: on many keyboards "+" (or "_") needs it, and in and out must stay symmetric
+    const ZOOM = 1.25;
     const ops = {
       ArrowLeft: (k) => k.pan(d, 0, W, H),
       ArrowRight: (k) => k.pan(-d, 0, W, H),
       ArrowUp: (k) => k.pan(0, d, W, H),
       ArrowDown: (k) => k.pan(0, -d, W, H),
-      "+": (k) => k.zoomAt(1.25 * s, null, null, W, H),
-      "=": (k) => k.zoomAt(1.25 * s, null, null, W, H),
-      "-": (k) => k.zoomAt(1 / (1.25 * s), null, null, W, H),
-      _: (k) => k.zoomAt(1 / (1.25 * s), null, null, W, H),
+      "+": (k) => k.zoomAt(ZOOM, null, null, W, H),
+      "=": (k) => k.zoomAt(ZOOM, null, null, W, H),
+      "-": (k) => k.zoomAt(1 / ZOOM, null, null, W, H),
+      _: (k) => k.zoomAt(1 / ZOOM, null, null, W, H),
       q: (k) => k.orbit(toRad(15 * s)),
       e: (k) => k.orbit(toRad(-15 * s)),
       PageUp: (k) => k.orbit(0, toRad(10 * s)),
@@ -552,9 +563,20 @@ export class Flyover {
   _drawOrtho(view, night) {
     const app = this.app, o = orthoOf(app.world.layout);
     if (!o) return;
-    const url = new URL(o.image, app.layoutUrl || location.href).href;
+    const failed = () => toast(`The photo of the table (${o.image}) could not be loaded.`);
+    let url;
+    try {
+      url = new URL(o.image, app.layoutUrl || location.href).href;
+    } catch {
+      // not a valid URL: the flyover is drawn without the photo (and says so once)
+      if (this.ortho?.url !== o.image) failed();
+      this.ortho = { url: o.image, ok: false };
+      return;
+    }
     if (this.ortho?.url !== url) {
       const img = new Image();
+      // as for the camera images: a photo from another site must allow it, or the stage canvas can no longer be read or recorded
+      img.crossOrigin = "anonymous";
       const entry = (this.ortho = { url, img, ok: false, levels: null });
       img.onload = () => {
         // the parts of the photo no frame covered are a flat grey: transparent, so tables show
@@ -563,7 +585,7 @@ export class Flyover {
         entry.ok = true;
       };
       img.onerror = () => {
-        if (this.ortho === entry) toast(`The photo of the table (${o.image}) could not be loaded.`);
+        if (this.ortho === entry) failed();
       };
       img.src = url;
     }

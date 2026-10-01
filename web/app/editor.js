@@ -1,5 +1,5 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
-import { applyH, dist2, FONT, OVERLAY, pointSegment, polylineAt, polylineProject, rgba, snapToGrid, toDeg } from "../arail/index.js";
+import { applyH, dist2, FONT, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
@@ -83,6 +83,8 @@ export class Editor {
     const order = [...this.world.objects].reverse().sort((a, b) => rank(a) - rank(b));
     for (const o of order) {
       if (!o.geometry) continue;
+      // the outline of a real table is only drawn in the flyover: over the camera image it is not picked (by accident)
+      if (o.physical && this.app.mode !== "flyover") continue;
       if (o.constructor.background && o !== this.selected ? this._onEdge(o, p, 1.5 * tol) : o.contains(p, tol)) return o;
     }
     return null;
@@ -143,9 +145,15 @@ export class Editor {
     return hit;
   }
 
-  /** The point of an object that snaps to the grid when it is dragged. */
+  /**
+   * The point of an object that snaps to the grid when it is dragged: its own `snapPoint()`, else
+   * the first point drawn of a line, outline or segment (points placed on the grid stay on it;
+   * their centre is mostly between grid lines), else its anchor point.
+   */
   _snapAnchor(o) {
-    return o.snapPoint?.() ?? o.anchorPoint();
+    if (o.snapPoint) return o.snapPoint();
+    const s = o.spec, first = Array.isArray(s.points) ? s.points[0] : s.from;
+    return (first != null && resolvePoint(this.world.map, first)) || o.anchorPoint();
   }
 
   /** Drag the grabbed object so that it follows the pointer at p; its anchor snaps to the grid. */
@@ -627,6 +635,14 @@ export class Editor {
     };
     const geo = this._geometryFields(o);
     const problems = typeof o.problems === "function" ? o.problems() : [];
+    // the inspector is drawn anew after turning: the button keeps the focus (it can be pressed again)
+    const rotateButton = (id, deg, title, symbol, words) => h("button", {
+      class: "btn small", type: "button", id, title,
+      onclick: () => {
+        this.rotateSelected(deg);
+        document.getElementById(id)?.focus();
+      },
+    }, h("span", { "aria-hidden": "true" }, symbol), " 90°", h("span", { class: "visually-hidden" }, words));
     mount(this.el.inspector,
       h("h2", {}, `Selected: ${cls.label}`),
       cls.description ? h("p", { class: "hint" }, cls.description) : null,
@@ -634,10 +650,8 @@ export class Editor {
       paramFields(cls.params, o.spec, change, { idPrefix: `obj-${o.id}`, world: this.world }),
       geo,
       this._rotatable(cls) ? h("div", { class: "row", role: "group", "aria-label": "Rotate" },
-        h("button", { class: "btn small", type: "button", title: "Turn 90° counter-clockwise (Shift+R; R turns by 15°)", onclick: () => this.rotateSelected(90) },
-          h("span", { "aria-hidden": "true" }, "↺"), " 90°", h("span", { class: "visually-hidden" }, " counter-clockwise")),
-        h("button", { class: "btn small", type: "button", title: "Turn 90° clockwise", onclick: () => this.rotateSelected(-90) },
-          h("span", { "aria-hidden": "true" }, "↻"), " 90°", h("span", { class: "visually-hidden" }, " clockwise")),
+        rotateButton(`rot-ccw-${o.id}`, 90, "Turn 90° counter-clockwise (Shift+R; R turns by 15°)", "↺", " counter-clockwise"),
+        rotateButton(`rot-cw-${o.id}`, -90, "Turn 90° clockwise", "↻", " clockwise"),
       ) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", onclick: () => this.startPlacing(o.type, o) }, cls.placement === "stops" ? "Pick the stops again" : "Redraw position"),
