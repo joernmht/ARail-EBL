@@ -98,8 +98,8 @@ when people are in (`world.occupancy`).
 
 People in the town are coloured by the purpose of their trip, in the chair's corporate-design
 colours: **to work** Türkis, **to school** Orange, **shopping** Gelb, **home** Brillantblau,
-**to the train** Rot. Other passengers at platforms and stops keep the mood colours (green or
-türkis = happy, red = annoyed). **Simulate → Town → Colour of people** switches between both, or
+**to the train** Rot. Other passengers at platforms and stops keep the mood colours (Türkis = happy,
+Gelb = so-so, Rot = annoyed). **Simulate → Town → Colour of people** switches between both, or
 everybody by purpose or by mood. The Town section also counts who is at home, at work, at school,
 shopping, on the bus, at stops and away.
 
