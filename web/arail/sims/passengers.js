@@ -16,7 +16,7 @@
  * @module arail/sims/passengers
  */
 import { Simulation } from "../core/simulation.js";
-import { mix, moodColor } from "../core/colors.js";
+import { mix, moodColor, OVERLAY } from "../core/colors.js";
 
 /** Colour of people who are not agents of another simulation, when people show their trip purpose. */
 export const NEUTRAL_PERSON = "#e3e3e3";
@@ -519,9 +519,10 @@ export class PassengerSimulation extends Simulation {
     const status = fx.messages.length ? fx.messages[0] : dockStatus(this.world, a);
     if (status) lines.push(status);
     const badge = owner.spec.number || (a.kind === "bus" ? "H" : null);
+    // the bus badge keeps the green of the German bus stop sign ("H"), platforms get CD Türkis
     view.label([at[0], at[1], view.m(4.5)], lines, {
-      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor: a.kind === "bus" ? "#1f8a3b" : "#1d4f9c",
-      colors: [null, fx.messages.length ? "#ff8a80" : "#ffd400"], bar: mood, barColor: moodColor(mood), order: 1,
+      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor: a.kind === "bus" ? "#1f8a3b" : OVERLAY.sign,
+      colors: [null, fx.messages.length ? OVERLAY.alert : OVERLAY.status], bar: mood, barColor: moodColor(mood), order: 1,
     });
   }
 }

@@ -4,7 +4,7 @@
  * All sizes are prototype metres.
  * @module arail/core/vehicles
  */
-import { PALETTE } from "./colors.js";
+import { OVERLAY, PALETTE, rgba, shade } from "./colors.js";
 
 /** Box faces of a vehicle segment in stop-area coordinates (metres), converted to layout mm. */
 function vehicleFaces(area, view, { s0, s1, t0, t1, z0, z1 }, colors, decorate) {
@@ -44,7 +44,7 @@ export const TRAIN = {
   draw(view, v, place) {
     const area = v.dock.area;
     const alpha = 0.62;
-    const colors = { body: PALETTE.train, roof: "#3c7396", end: "#508cb4", alpha };
+    const colors = { body: PALETTE.train, roof: shade(PALETTE.train, 0.78), end: shade(PALETTE.train, 0.9), alpha };
     const z0 = this.floor_m, z1 = this.height_m;
     const doors = v.doorsOpen ? this.doors(v.dock) : [];
     const inner = v.dock.side > 0 ? "right" : "left"; // wall facing the platform
@@ -70,7 +70,7 @@ export const TRAIN = {
     }
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(place.s1 - 2, (place.t0 + place.t1) / 2);
-      view.label([top[0], top[1], view.m(5)], v.line, { size: 11, background: "rgba(29,79,156,0.9)" });
+      view.label([top[0], top[1], view.m(5)], v.line, { size: 11, background: rgba(OVERLAY.sign, 0.92) });
     }
   },
 };
@@ -93,7 +93,7 @@ export const BUS = {
   draw(view, v, place) {
     const area = v.dock.area;
     const alpha = 0.9;
-    const colors = { body: PALETTE.bus, roof: "#f3d27a", end: "#d9a41b", alpha };
+    const colors = { body: PALETTE.bus, roof: shade(PALETTE.bus, 1.45), end: shade(PALETTE.bus, 0.88), alpha };
     const z0 = this.floor_m, z1 = this.height_m;
     const doors = v.doorsOpen ? this.doors(v.dock) : [];
     const inner = v.dock.side > 0 ? "right" : "left";
@@ -119,7 +119,7 @@ export const BUS = {
     view.faces(faces, [mid[0], mid[1], view.m(1.6)]);
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(s1 - 1, (place.t0 + place.t1) / 2);
-      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: "rgba(40,40,40,0.85)" });
+      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: OVERLAY.label });
     }
   },
 };

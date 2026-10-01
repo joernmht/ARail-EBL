@@ -7,7 +7,7 @@ import { LayoutObject } from "../core/object.js";
 import { resolveSegment, round1 } from "../core/anchors.js";
 import { StopArea } from "../core/stops.js";
 import { add2, len2, lerp2, perpLeft, scale2, sub2 } from "../core/math.js";
-import { PALETTE } from "../core/colors.js";
+import { FONT, PALETTE } from "../core/colors.js";
 
 export class Platform extends LayoutObject {
   static type = "platform";
@@ -137,7 +137,7 @@ export class Platform extends LayoutObject {
       ctx.fillStyle = PALETTE.signBlue;
       ctx.fillRect(top[0] - s / 2, top[1] - s, s, s);
       ctx.fillStyle = "#fff";
-      ctx.font = `800 ${s * 0.7}px "Archivo", system-ui, sans-serif`;
+      ctx.font = `700 ${s * 0.7}px ${FONT}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(number), top[0], top[1] - s / 2);

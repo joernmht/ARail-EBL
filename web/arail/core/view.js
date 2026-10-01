@@ -15,7 +15,7 @@
  * @module arail/core/view
  */
 import { poseFromHomography } from "./geometry.js";
-import { parseColor, parseRgba, rgba } from "./colors.js";
+import { FONT, OVERLAY, parseColor, parseRgba, rgba } from "./colors.js";
 
 const LIGHT = (() => {
   const l = [-0.45, 0.55, 0.7];
@@ -483,7 +483,7 @@ export function rectFootprint(c, w, d, angle = 0) {
 function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   const size = (style.size || 13) * px;
   const pad = (style.padding ?? 6) * px;
-  ctx.font = `${style.bold === false ? 500 : 700} ${size}px "Archivo", system-ui, sans-serif`;
+  ctx.font = `${style.bold === false ? 500 : 700} ${size}px ${FONT}`;
   const widths = lines.map((l) => ctx.measureText(l).width);
   const badgeW = style.badge ? size * 1.7 : 0;
   const lineH = size * 1.25;
@@ -505,15 +505,15 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   y = Math.max(2, Math.min(H - h - 2, y));
   placed.push({ x, y, w, h });
   if (style.background !== "none") {
-    ctx.fillStyle = style.background || "rgba(15,26,43,0.86)";
+    ctx.fillStyle = style.background || OVERLAY.label;
     roundRect(ctx, x, y, w, h, 4 * px);
     ctx.fill();
   }
   if (style.badge) {
-    ctx.fillStyle = style.badgeColor || "#1d4f9c";
+    ctx.fillStyle = style.badgeColor || OVERLAY.sign;
     roundRect(ctx, x, y, badgeW, h, 4 * px);
     ctx.fill();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = OVERLAY.labelText;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(style.badge, x + badgeW / 2, y + h / 2);
@@ -521,7 +521,7 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((l, i) => {
-    ctx.fillStyle = (style.colors && style.colors[i]) || style.color || "#fff";
+    ctx.fillStyle = (style.colors && style.colors[i]) || style.color || OVERLAY.labelText;
     ctx.fillText(l, x + badgeW + pad, y + pad + i * lineH);
   });
   if (barH) {
