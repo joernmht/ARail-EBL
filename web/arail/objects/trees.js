@@ -24,6 +24,9 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
     shadow.push([p[0] + sh * Math.cos(a) + view.m(heightM * 0.12), p[1] + sh * 0.7 * Math.sin(a) - view.m(heightM * 0.1)]);
   }
   view.polygon(shadow, { fill: "rgba(20,30,15,0.25)", order: 6 });
+  // trunk and crown lie between base and top, at most a crown radius (the widest part) to the side
+  const reach = Math.max(2 * view.px, scale * view.m(heightM * 0.3)) + view.px;
+  if (view.boxOffImage(Math.min(base[0], top[0]) - reach, Math.min(base[1], top[1]) - reach, Math.max(base[0], top[0]) + reach, Math.max(base[1], top[1]) + reach)) return;
   view.solid(view.depth(p[0], p[1], 0), (ctx) => {
     const trunkTop = kind === "conifer" ? 0.25 : 0.45;
     const tx = base[0] + (top[0] - base[0]) * trunkTop, ty = base[1] + (top[1] - base[1]) * trunkTop;
