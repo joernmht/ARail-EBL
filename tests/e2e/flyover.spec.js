@@ -331,7 +331,7 @@ test("View panel: grid spacing and snapping, markers; the camera view shows the 
 
 test("the orthophoto of the table is drawn in perspective; night darkens the flyover", async ({ page }) => {
   const errors = await openApp(page);
-  // a test photo: left half pure red, right half pure blue
+  // a test photo: left half pure red with its bottom quarter green, right half pure blue
   await page.evaluate(() => {
     const c = document.createElement("canvas");
     c.width = 400;
@@ -339,6 +339,8 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
     const g = c.getContext("2d");
     g.fillStyle = "#ff0000";
     g.fillRect(0, 0, 200, 200);
+    g.fillStyle = "#00ff00";
+    g.fillRect(0, 150, 200, 50);
     g.fillStyle = "#0000ff";
     g.fillRect(200, 0, 200, 200);
     const a = window.__arail;
@@ -357,6 +359,8 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
   }, [x, y]);
   await expect.poll(() => sample(163, 337)).toEqual([255, 0, 0]); // left half (x < 700), between grid lines, away from objects
   expect(await sample(1313, 337)).toEqual([0, 0, 255]); // right half, on the table (the example town is in front of it, y < -320)
+  // row 0 of the image is at ymax: its bottom quarter (y < -150) lies at the front of the table
+  expect(await sample(575, -225)).toEqual([0, 255, 0]);
   // at night the photo is darker, too
   await page.evaluate(() => window.__arail.world.setTime("23:30"));
   const night = await sample(163, 337);
