@@ -3,9 +3,9 @@
  * a yellow disc, Zeichen 224; a real-world sign, so it keeps its colours) on a post.
  * @module arail/objects/signs
  */
-import { FONT, grey } from "../core/colors.js";
+import { FONT, grey, OVERLAY } from "../core/colors.js";
 
-export const STOP_SIGN = { disc: "#f7d417", text: "#1f8a3b", post: grey(0.4) };
+export const STOP_SIGN = { disc: "#f7d417", text: OVERLAY.busStop, post: grey(0.4) };
 
 /**
  * A bus stop sign on a post.
@@ -34,7 +34,7 @@ export function drawStopSign(view, p, { letter = "", height_m = 2.9 } = {}) {
     ctx.strokeStyle = view.dim(STOP_SIGN.text, 0.5);
     ctx.stroke();
     ctx.fillStyle = view.dim(STOP_SIGN.text, 0.5);
-    ctx.font = `800 ${r * 1.3}px ${FONT}`;
+    ctx.font = `700 ${r * 1.3}px ${FONT}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("H", top[0], top[1] + r * 0.05);
