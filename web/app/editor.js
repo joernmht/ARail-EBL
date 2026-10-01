@@ -1,6 +1,7 @@
 // Build mode: place, select, move and edit layout objects on the camera image.
 import { applyH, dist2, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
+import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
 const CATEGORIES = ["Transport", "Scenery", "Infrastructure"];
 const HINTS = {
@@ -137,6 +138,7 @@ export class Editor {
 
   /** Forget placing, dragging and the selection (before another layout is loaded). */
   reset() {
+    this.surveyState?.survey.cancel();
     this.placing = null;
     this.drag = null;
     this.app.canvas.classList.remove("dragging");
@@ -463,7 +465,78 @@ export class Editor {
         h("button", { class: "btn small", type: "button", onclick: () => { map.fixAll(); this.app.saveLayout(); this.renderMarkers(); toast("Marker positions kept."); } }, "Keep positions"),
         h("button", { class: "btn small", type: "button", onclick: () => { this.app.tracker.resurvey(); this.app.redetect(); this.app.saveLayout(); this.renderMarkers(); toast("Surveyed markers cleared. They are measured again."); } }, "Measure again"),
       ),
+      this._surveyBlock(),
     );
+  }
+
+  /* ---------------------------------------------------------------- survey a video */
+
+  _surveyBlock() {
+    const st = this.surveyState;
+    const input = h("input", { type: "file", id: "surveyVideo", accept: "video/*", class: "visually-hidden",
+      onchange: (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) this.startSurvey(f); } });
+    const head = [
+      h("h3", { class: "subhead" }, "Survey a video"),
+      h("p", { class: "hint" }, "Film the whole layout slowly with all markers in view now and then, then let the app measure every marker in the video. Afterwards press Keep positions and export the layout: it is then fixed. See the lab-session guide (docs/lab-session.md)."),
+    ];
+    if (!st) {
+      return h("div", { class: "survey" }, head, h("div", { class: "row" }, h("label", { class: "btn small primary", for: "surveyVideo" }, "Survey a video…"), input));
+    }
+    const p = st.progress;
+    const plot = h("div", { class: "plot" });
+    plot.innerHTML = markerPlotSvg(this.world.map, st.survey.seen);
+    if (st.running) {
+      return h("div", { class: "survey", "aria-busy": "true" }, head,
+        h("progress", { max: p?.total || 1, value: p?.frame || 0, "aria-label": "Survey progress" }),
+        h("p", { class: "hint", role: "status" }, p ? `${st.name}: frame ${p.frame} of ${p.total} · ${p.markers} markers known · ${p.used.length} in view` : `${st.name}: opening the video…`),
+        plot,
+        h("div", { class: "row" }, h("button", { class: "btn small", type: "button", onclick: () => st.survey.cancel() }, "Cancel")),
+      );
+    }
+    const r = st.result;
+    const rare = r ? [...r.seen].filter(([, n]) => n < 5).map(([id]) => id) : [];
+    return h("div", { class: "survey" }, head,
+      st.error ? h("p", { class: "hint error", role: "alert" }, `${st.name}: ${st.error}`) : null,
+      r ? h("p", { class: "hint", role: "status" },
+        `${st.name}: ${r.cancelled ? "cancelled after" : "done,"} ${r.frames} frames analysed, ${r.tracked} with the layout in view; ${r.markers.length} markers known.`,
+        rare.length ? ` Seen fewer than 5 times (check or film again): ${rare.join(", ")}.` : "") : null,
+      plot,
+      h("div", { class: "row" },
+        h("button", { class: "btn small primary", type: "button", onclick: () => { this.world.map.fixAll(); this.app.saveLayout(); this.renderMarkers(); toast("Marker positions kept: the layout is fixed."); } }, "Keep positions"),
+        h("button", { class: "btn small", type: "button", onclick: () => download(`${slug(this.world.layout.name)}.json`, JSON.stringify(this.world.toJSON(), null, 2) + "\n") }, "Export layout"),
+        h("label", { class: "btn small", for: "surveyVideo" }, "Survey another video…"), input,
+      ),
+    );
+  }
+
+  /** Measure the marker map from a video file (Build → Marker map). */
+  async startSurvey(file) {
+    if (this.surveyState?.running) return;
+    if (!this.app.detector) return toast("Marker detection is not available.");
+    const survey = new VideoSurvey({
+      world: this.world, detector: this.app.detector, source: file,
+      onProgress: (p) => {
+        st.progress = p;
+        const now = performance.now();
+        if (now - (st.drawn || 0) > 250) {
+          st.drawn = now;
+          this.renderMarkers();
+        }
+      },
+    });
+    const st = (this.surveyState = { running: true, survey, progress: null, result: null, error: null, name: file.name || "video" });
+    this.renderMarkers();
+    try {
+      st.result = await survey.run();
+      toast(st.result.cancelled ? "Survey cancelled." : `Survey done: ${st.result.markers.length} markers. Press Keep positions to fix them.`, 6000);
+    } catch (err) {
+      st.error = err.message;
+      toast(`The video could not be surveyed: ${err.message}`, 7000);
+    } finally {
+      st.running = false;
+      this.app.saveLayout();
+      if (this.surveyState === st) this.renderMarkers();
+    }
   }
 }
 
