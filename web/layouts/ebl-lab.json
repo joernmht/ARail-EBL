@@ -90,5 +90,8 @@
     }
   ],
   "plugins": ["../plugins/windmill.js", "../plugins/road-traffic.js"],
-  "view": { "image": "../media/ebl-lab.jpg" }
+  "view": {
+    "image": "../media/ebl-lab.jpg",
+    "ortho": { "image": "../media/ebl-lab-ortho.jpg", "bounds_mm": [-300, -320.2, 1870.2, 700] }
+  }
 }

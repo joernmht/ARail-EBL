@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "arail-tools"
 version = "0.1.0"
-description = "ARail-EBL tools: camera calibration, control-system bridge and synthetic test scenes"
+description = "ARail-EBL tools: camera calibration, lab survey, control-system bridge and synthetic test scenes"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [{ name = "ARail-EBL contributors" }]
 dependencies = ["numpy>=1.24"]
 
 [project.optional-dependencies]
-# OpenCV is needed for calibration and synthetic scenes, not for the bridge.
+# OpenCV is needed for calibration, the lab survey and synthetic scenes, not for the bridge.
 # Use "opencv" on desktops (with GUI windows) and "headless" on servers/CI.
 opencv = ["opencv-python>=4.8"]
 headless = ["opencv-python-headless>=4.8"]
@@ -23,6 +23,7 @@ dev = ["pytest>=8", "ruff>=0.6"]
 [project.scripts]
 arail-bridge = "arail_tools.bridge.__main__:main"
 arail-calibrate = "arail_tools.calibrate:main"
+arail-survey = "arail_tools.survey:main"
 arail-synthetic = "arail_tools.synthetic:main"
 
 [project.urls]

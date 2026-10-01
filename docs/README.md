@@ -4,6 +4,7 @@
 
 - [Getting started](getting-started.md): the app, its panels, keyboard shortcuts and URL options
 - [Setting up a lab](lab-setup.md): markers, printing, placement, cameras and the marker map
+- [Lab session](lab-session.md): stickers on the whole layout, one video, `arail-survey`: a fixed layout and an orthophoto
 - [Disruptions and scenarios](disruptions-and-scenarios.md): what each disruption does, and how to script exercises
 - [Camera calibration](calibration.md): only needed for wide-angle webcams
 

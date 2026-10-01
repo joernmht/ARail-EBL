@@ -51,6 +51,8 @@ You do not need to measure it. When the app sees an unknown marker together with
 
 After moving markers, press **Measure again**. You can also type in measured positions in the layout file; they are used as they are.
 
+To survey a whole layout at once (stickers everywhere, one video, a fixed layout and an orthophoto of the table for the flyover), follow the [lab-session checklist](lab-session.md).
+
 On the lab photo, the surveyed distances between the platform markers were 700.7 mm and 718.4 mm, matching the earlier measurements of the platforms (about 700 and 720 mm).
 
 ## Scale and sizes
