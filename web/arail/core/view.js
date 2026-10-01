@@ -28,6 +28,13 @@ export const LAYER = { ground: 0, solid: 1, overlay: 2 };
 /** Flat things closer to the camera than this (mm) are cut off. */
 const NEAR_MM = 2;
 
+/**
+ * Drawings whose points all lie further outside the image than this (CSS px, plus half the line
+ * width) are not queued: they cannot change a pixel (anti-aliasing, round joins and outlines
+ * reach less far). In the camera view most of a town on table extensions is outside the picture.
+ */
+const CULL_MARGIN_PX = 4;
+
 /** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
 const NIGHT_TINT = [0, 20, 80];
 
@@ -145,6 +152,31 @@ export class View {
     return !!p && p[0] > -margin && p[1] > -margin && p[0] < this.camera.width + margin && p[1] < this.camera.height + margin;
   }
 
+  /**
+   * Are all these image points (px) further than `margin` px outside the image, on the same side?
+   * Then a drawing made of them cannot change a pixel. The image is the camera image (or the
+   * canvas, if that is larger). NaN coordinates are left out (the canvas ignores such points, too).
+   * @param {number[][]} pts image points
+   * @param {number} [margin] px; default: a few CSS px
+   */
+  offImage(pts, margin = CULL_MARGIN_PX * this.px) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      if (p[0] < x0) x0 = p[0];
+      if (p[0] > x1) x1 = p[0];
+      if (p[1] < y0) y0 = p[1];
+      if (p[1] > y1) y1 = p[1];
+    }
+    return this.boxOffImage(x0, y0, x1, y1, margin);
+  }
+
+  /** Is the box [x0, x1] × [y0, y1] (image px) further than `margin` px outside the image? See {@link View#offImage}. */
+  boxOffImage(x0, y0, x1, y1, margin = CULL_MARGIN_PX * this.px) {
+    const canvas = this.ctx?.canvas;
+    const W = Math.max(this.camera.width, canvas?.width || 0), H = Math.max(this.camera.height, canvas?.height || 0);
+    return x1 < -margin || y1 < -margin || x0 > W + margin || y0 > H + margin;
+  }
+
   /** Brightness factor for a surface with the given layout-frame normal. */
   light(normal) {
     const d = normal[0] * LIGHT[0] + normal[1] * LIGHT[1] + normal[2] * LIGHT[2];
@@ -166,9 +198,20 @@ export class View {
   dim(colour, amount = 1) {
     const n = this.darkness * amount;
     if (!n || !colour) return colour;
+    // the same colours come again and again (hundreds a frame at night): remembered for this view
+    // per amount of darkening (a view normally lives for one frame; the memo stays small anyway)
+    let memo = null;
+    if (typeof colour === "string") {
+      if (!this._dimmed || this._dimmed.size > 16) this._dimmed = new Map();
+      memo = this._dimmed.get(n);
+      if (!memo || memo.size > 4096) this._dimmed.set(n, (memo = new Map()));
+      const hit = memo.get(colour);
+      if (hit !== undefined) return hit;
+    }
     const c = parseRgba(colour);
-    if (!c) return colour;
-    return rgba(dimRgb(c, n), c[3]);
+    const out = c ? rgba(dimRgb(c, n), c[3]) : colour;
+    memo?.set(colour, out);
+    return out;
   }
 
   /** Normal (layout frame) -> camera frame. */
@@ -180,13 +223,18 @@ export class View {
   /* ---------------------------------------------------------------- display list */
 
   /**
-   * Queue a drawing operation.
+   * Queue a drawing operation. It is drawn with the canvas state it started with (the view saves
+   * and restores the state around it), unless `draw.plain` is true: then it promises to set the
+   * fill and stroke styles and the line width before it uses them, and to change nothing but
+   * these, line caps and joins and the opacity (multiplying it is fine; no transform, composite
+   * operation, line dash, font or clip), so that a run of such drawings can share one
+   * save/restore (see `render`; it sets the opacity, caps and joins back for each).
    * @param {number} layer LAYER.ground, LAYER.solid or LAYER.overlay
    * @param {number} key ground: order (low first); solid: depth (far first); overlay: order
-   * @param {(ctx: CanvasRenderingContext2D, view: View) => void} draw
+   * @param {((ctx: CanvasRenderingContext2D, view: View) => void) & {plain?: boolean}} draw
    */
   add(layer, key, draw) {
-    this.items.push({ layer, key, seq: this.seq++, draw });
+    this.items.push({ layer, key, seq: this.seq++, draw, plain: draw.plain === true });
   }
 
   ground(order, draw) {
@@ -219,16 +267,31 @@ export class View {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       ctx.restore();
     }
+    // Every drawing starts with the canvas state as it was before (save/restore). Plain drawings
+    // set their styles and line width themselves: one save/restore serves a run of them (it costs
+    // about as much as filling a small polygon, and there are hundreds a frame); their opacity,
+    // caps and joins are set back for each (thin outlines use the caps even on closed paths).
+    let run = false, cap, join;
     for (const it of items) {
-      ctx.save();
+      if (!it.plain || !run) {
+        if (run) ctx.restore();
+        ctx.save();
+        run = it.plain;
+        cap = ctx.lineCap;
+        join = ctx.lineJoin;
+      } else {
+        ctx.lineCap = cap;
+        ctx.lineJoin = join;
+      }
       ctx.globalAlpha = this.opacity;
       try {
         it.draw(ctx, this);
       } catch (err) {
         console.error("draw error", err);
       }
-      ctx.restore();
+      if (!it.plain) ctx.restore();
     }
+    if (run) ctx.restore();
     this.items = [];
     this.placed = [];
   }
@@ -244,17 +307,24 @@ export class View {
    */
   polygon(points, style = {}) {
     const pts = this._projectClipped(points, style.z || 0, true)[0];
-    if (!pts) return;
-    const draw = (ctx) => this._path(ctx, pts, true, style);
+    if (!pts || this.offImage(pts, this._margin(style))) return;
+    const draw = plain((ctx) => this._path(ctx, pts, true, style), !style.dash);
     if (style.layer === "overlay") this.overlay(draw, style.order ?? 0);
     else this.ground(style.order ?? 0, draw);
   }
 
-  /** Polyline on the layout (ground layer). Width in CSS px, or `widthMM` in model mm. */
+  /** Polyline on the layout (ground layer); style as for `polygon` without the fill (`width` in CSS px). */
   line(points, style = {}) {
+    const margin = this._margin(style);
     for (const pts of this._projectClipped(points, style.z || 0, false)) {
-      this.ground(style.order ?? 1, (ctx) => this._path(ctx, pts, false, style));
+      if (this.offImage(pts, margin)) continue;
+      this.ground(style.order ?? 1, plain((ctx) => this._path(ctx, pts, false, style), !style.dash));
     }
+  }
+
+  /** How far (px) a polygon or line drawn with this style reaches beyond its points. */
+  _margin(style) {
+    return (CULL_MARGIN_PX + (style.stroke ? style.width || 1 : 0)) * this.px;
   }
 
   /**
@@ -356,6 +426,8 @@ export class View {
    */
   faces(faces, ref, style = {}) {
     const drawn = [];
+    // outlines are 0.8 px wide
+    const margin = (CULL_MARGIN_PX + 1) * this.px;
     for (const f of faces) {
       const camPts = f.pts.map((p) => this.cam(p[0], p[1], p[2] || 0));
       if (camPts.some((c) => !(c[2] > 1))) continue;
@@ -368,45 +440,49 @@ export class View {
       if (img.some((p) => !p)) continue;
       const k = f.normal && !f.flat ? this.light(f.normal) : 1;
       const decals = [];
+      // a face outside the image is left out, unless one of its decals reaches into it
+      let off = this.offImage(img, margin);
       for (const d of f.decals || []) {
         const di = this.projectAll(d.pts);
         if (!di) continue;
+        if (off && !this.offImage(di, margin)) off = false;
         decals.push({ img: di, rgb: parseColor(d.color), k: d.emissive ? 1 : k, emissive: !!d.emissive, alpha: d.alpha ?? f.alpha ?? 1 });
       }
+      if (off) continue;
       drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals });
     }
     if (!drawn.length) return;
     drawn.sort((a, b) => b.depth - a.depth);
     const outline = style.outline;
-    this.solid(this.depth(ref[0], ref[1], ref[2] || 0), (ctx) => {
+    const draw = (ctx) => {
       // colours are worked out when drawing, so that `night` may be set after queueing
       const n = this.darkness;
-      const fill = (it) => {
-        const c = [it.rgb[0] * it.k, it.rgb[1] * it.k, it.rgb[2] * it.k];
-        return rgba(it.emissive || !n ? c : dimRgb(c, n), it.alpha);
-      };
+      let stroke = null, strokeStyle = null;
       ctx.lineJoin = "round";
       for (const f of drawn) {
-        ctx.beginPath();
-        f.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-        ctx.closePath();
-        ctx.fillStyle = fill(f);
+        tracePath(ctx, f.img);
+        ctx.fillStyle = faceFill(f, n);
         ctx.fill();
         const s = f.stroke || outline;
         if (s) {
+          if (s !== stroke) {
+            stroke = s;
+            strokeStyle = this.dim(s);
+          }
           ctx.lineWidth = 0.8 * this.px;
-          ctx.strokeStyle = this.dim(s);
+          ctx.strokeStyle = strokeStyle;
           ctx.stroke();
         }
         for (const d of f.decals) {
-          ctx.beginPath();
-          d.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-          ctx.closePath();
-          ctx.fillStyle = fill(d);
+          tracePath(ctx, d.img);
+          ctx.fillStyle = faceFill(d, n);
           ctx.fill();
         }
       }
-    });
+    };
+    // sets all it uses (joins, styles, widths): needs no save/restore of its own
+    draw.plain = true;
+    this.solid(this.depth(ref[0], ref[1], ref[2] || 0), draw);
   }
 
   /**
@@ -432,6 +508,7 @@ export class View {
     const p = this.project(at[0], at[1], at[2] || 0);
     if (!p) return;
     const r = Math.max(1.5 * this.px, this.pxPerMM(at[0], at[1], at[2] || 0) * radiusMM);
+    if (this.boxOffImage(p[0] - r, p[1] - r, p[0] + r, p[1] + r)) return;
     const [cr, cg, cb] = parseColor(colour);
     // slightly in front of what the light is attached to
     this.solid(this.depth(at[0], at[1], at[2] || 0) - 1, (ctx) => {
@@ -461,7 +538,7 @@ export class View {
       ring.push([center[0] + radiusMM * Math.cos(t), center[1] + radiusMM * Math.sin(t), 0]);
     }
     const img = this.projectAll(ring), c = this.project(center[0], center[1], 0);
-    if (!img || !c) return;
+    if (!img || !c || this.offImage(img)) return;
     const r = Math.max(...img.map((q) => Math.hypot(q[0] - c[0], q[1] - c[1])));
     const [cr, cg, cb] = parseColor(colour);
     this.ground(order, (ctx) => {
@@ -502,6 +579,35 @@ export class View {
 function dimRgb(c, n) {
   const k = 1 - 0.62 * n, t = 0.3 * n;
   return [0, 1, 2].map((i) => c[i] * k + NIGHT_TINT[i] * t);
+}
+
+/**
+ * Fill colour of a queued face or decal ({rgb, k, emissive, alpha}) at darkness n: shaded by k and
+ * darkened like {@link dimRgb} unless emissive (the same numbers, without arrays: hundreds a frame).
+ */
+function faceFill(it, n) {
+  let r = it.rgb[0] * it.k, g = it.rgb[1] * it.k, b = it.rgb[2] * it.k;
+  if (n && !it.emissive) {
+    const k = 1 - 0.62 * n, t = 0.3 * n;
+    r = r * k + NIGHT_TINT[0] * t;
+    g = g * k + NIGHT_TINT[1] * t;
+    b = b * k + NIGHT_TINT[2] * t;
+  }
+  return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${it.alpha})`;
+}
+
+/** Begin a new path along image points and close it. */
+function tracePath(ctx, pts) {
+  ctx.beginPath();
+  if (pts.length) ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+}
+
+/** Mark a drawing of `_path` as plain (see `View#add`) when it sets no line dash. */
+function plain(draw, yes) {
+  draw.plain = yes;
+  return draw;
 }
 
 function centroid(poly) {

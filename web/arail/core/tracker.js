@@ -212,6 +212,16 @@ export class MarkerMap {
  * @property {number | null} heading direction of the marker's x axis (from its left to its right edge) in the layout frame (rad)
  */
 
+/**
+ * How the survey writes its estimates into the marker map. Every change of the map makes all
+ * objects work out their geometry, the stop areas and the road network anew, which takes longer
+ * than the rest of a frame's simulation. A marker seen in more than `settled` frames creeps by a
+ * few hundredths of a millimetre per frame: its estimate is written every `every` frames, or at
+ * once when it is more than `mm` or `rad` away from the map's pose. New and young markers are
+ * written in every frame.
+ */
+export const SURVEY_WRITE = { settled: 10, every: 8, mm: 0.25, rad: 5e-4 };
+
 export class PlaneTracker {
   /**
    * @param {MarkerMap} map
@@ -326,6 +336,7 @@ export class PlaneTracker {
     const map = this.map;
     const ids = Object.keys(markers).map(Number).sort((a, b) => a - b);
     if (!ids.length) return;
+    this.surveyFrames = (this.surveyFrames || 0) + 1;
     if (!map.entries.size) {
       const root = map.origin != null && markers[map.origin] ? map.origin : ids[0];
       map.set(root, { x: 0, y: 0, theta: 0 });
@@ -353,7 +364,10 @@ export class PlaneTracker {
         a.frames = 200;
       }
       if (still || a.frames >= this.minSurveyFrames || entry) {
-        map.set(id, { x: a.sx / a.sw, y: a.sy / a.sw, theta: Math.atan2(a.ss, a.sc) });
+        const x = a.sx / a.sw, y = a.sy / a.sw, theta = Math.atan2(a.ss, a.sc), S = SURVEY_WRITE;
+        const write = still || !entry || a.frames <= S.settled || this.surveyFrames % S.every === 0 ||
+          Math.abs(x - entry.x) > S.mm || Math.abs(y - entry.y) > S.mm || Math.abs(wrapAngle(theta - entry.theta)) > S.rad;
+        if (write) map.set(id, { x, y, theta });
       }
     }
     // A configured origin defines the layout frame as soon as it is known.

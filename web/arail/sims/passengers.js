@@ -39,6 +39,45 @@ function screenLength(view, areas) {
   return best;
 }
 
+/** People closer than this (m) count as neighbours (they slow each other down and get unhappy). */
+const NEIGHBOUR_M = 1.3;
+/** People closer than this (m) push each other apart. */
+const PUSH_M = 0.6;
+
+/**
+ * Neighbours and repulsion in a crowd (social forces), in the stop area's (s, t) frame (m): for
+ * each person the number of people closer than 1.3 m, and the push away from those closer than
+ * 0.6 m. Pairs that are 1.3 m or more apart along s or t are skipped before the distance is
+ * worked out; the result is the same as for all pairs (same sums, in the same order).
+ * @param {{pos: number[]}[]} people
+ * @returns {{neighbours: number[], push: number[][]}}
+ */
+export function crowdForces(people) {
+  const n = people.length, R = PUSH_M, N = NEIGHBOUR_M;
+  const neighbours = new Array(n).fill(0), push = people.map(() => [0, 0]);
+  for (let i = 0; i < n; i++) {
+    const pi = people[i].pos;
+    for (let j = i + 1; j < n; j++) {
+      const pj = people[j].pos, dx = pi[0] - pj[0], dy = pi[1] - pj[1];
+      // the distance is at least |dx| and |dy|
+      if (dx >= N || dx <= -N || dy >= N || dy <= -N) continue;
+      const d = Math.max(Math.hypot(dx, dy), 1e-6);
+      if (d < N) {
+        neighbours[i]++;
+        neighbours[j]++;
+      }
+      if (d < R) {
+        const w = (((R - d) / R) * 1.4) / d;
+        push[i][0] += dx * w;
+        push[i][1] += dy * w;
+        push[j][0] -= dx * w;
+        push[j][1] -= dy * w;
+      }
+    }
+  }
+  return { neighbours, push };
+}
+
 class Person {
   constructor(rng, pos, target, state, mood, dock) {
     this.pos = pos.slice();
@@ -411,25 +450,7 @@ export class PassengerSimulation extends Simulation {
     }
     const active = c.visible(), n = active.length;
     if (!n) return;
-    // neighbours and repulsion (social forces)
-    const neighbours = new Array(n).fill(0), push = active.map(() => [0, 0]), R = 0.6;
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const dx = active[i].pos[0] - active[j].pos[0], dy = active[i].pos[1] - active[j].pos[1];
-        const d = Math.max(Math.hypot(dx, dy), 1e-6);
-        if (d < 1.3) {
-          neighbours[i]++;
-          neighbours[j]++;
-        }
-        if (d < R) {
-          const w = (((R - d) / R) * 1.4) / d;
-          push[i][0] += dx * w;
-          push[i][1] += dy * w;
-          push[j][0] -= dx * w;
-          push[j][1] -= dy * w;
-        }
-      }
-    }
+    const { neighbours, push } = crowdForces(active);
     const gone = new Set();
     active.forEach((p, i) => {
       const density = Math.max(0, neighbours[i] - 2);
@@ -663,17 +684,20 @@ export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, heigh
   const vertical = Math.hypot(top[0] - foot[0], top[1] - foot[1]) / h;
   const ground = Math.hypot(side[0] - foot[0], side[1] - foot[1]) / 0.3;
   const ref = Math.max(vertical, 0.5 * ground); // px per prototype metre
-  view.ground(7, (ctx) => {
+  // shadow and figure set all the canvas state they use: "plain" drawings (see View#add)
+  const shadow = (ctx) => {
     ctx.globalAlpha *= 0.45 * (1 - 0.6 * view.darkness);
     ctx.fillStyle = "#141414";
     const r = Math.hypot(side[0] - foot[0], side[1] - foot[1]);
     ctx.beginPath();
     ctx.ellipse(foot[0], foot[1], r, r * 0.45, 0, 0, 2 * Math.PI);
     ctx.fill();
-  });
+  };
+  shadow.plain = true;
+  view.ground(7, shadow);
   // people are under street and station lights: only half as dark at night
   const body = view.dim(colour, 0.5), legColour = view.dim(legs || shadeLegs(colour), 0.5);
-  view.solid(view.depth(x, y, 0), (ctx) => {
+  const figure = (ctx) => {
     const bw = Math.max(2, ref * 0.42), lw = Math.max(1, ref * 0.14), headR = Math.max(1.6, ref * 0.15);
     ctx.lineCap = "round";
     const line = (u, v, w, style) => {
@@ -698,7 +722,9 @@ export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, heigh
     ctx.arc(head[0], head[1], headR, 0, 2 * Math.PI);
     ctx.fillStyle = body;
     ctx.fill();
-  });
+  };
+  figure.plain = true;
+  view.solid(view.depth(x, y, 0), figure);
 }
 
 /** Legs a bit darker than the body. */

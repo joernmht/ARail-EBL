@@ -4,7 +4,7 @@ import test from "node:test";
 import { Camera } from "../../web/arail/core/camera.js";
 import { MarkerDetector } from "../../web/arail/core/detector.js";
 import { applyH, toDeg, wrapAngle } from "../../web/arail/core/math.js";
-import { MarkerMap, PlaneTracker } from "../../web/arail/core/tracker.js";
+import { MarkerMap, PlaneTracker, SURVEY_WRITE } from "../../web/arail/core/tracker.js";
 import { FIXTURE_HINT, fixtureImage, fixtureMeta, hasFixtures, loadAruco, median } from "./helpers.js";
 
 const skip = hasFixtures() ? false : FIXTURE_HINT;
@@ -221,4 +221,46 @@ test("a marker made a moving one by mistake gets its pose back when it is no lon
   map.clear(true);
   map.setMoving([]);
   assert.deepEqual(map.ids(), []);
+});
+
+test("the survey writes a settled marker's small refinements every few frames, and bigger changes at once", () => {
+  const map = new MarkerMap({ size: 30, poses: KNOWN, origin: 0 });
+  const tracker = new PlaneTracker(map);
+  const camera = new Camera(1280, 720);
+  const W = SURVEY_WRITE;
+  // marker 7 is not in the map; it trembles by hundredths of a millimetre, as an estimate does
+  const scene = (i, x) => ({ ...KNOWN, 7: [x + 0.02 * Math.sin(i), 120 + 0.02 * Math.cos(1.7 * i), 40 + 0.001 * Math.sin(0.7 * i)] });
+  const estimate = () => {
+    const a = tracker.acc.get(7);
+    return { x: a.sx / a.sw, y: a.sy / a.sw, theta: Math.atan2(a.ss, a.sc) };
+  };
+  const written = [];
+  let i = 0;
+  const frame = (x, options) => {
+    const v = map.version;
+    tracker.update(detectionsAt(VIEW_H, scene(i, x)), i / 30, camera, options);
+    written.push(map.version !== v);
+    i++;
+    if (!map.has(7)) return;
+    // the map is never far from the survey's estimate
+    const e = map.get(7), s = estimate();
+    assert.ok(Math.abs(e.x - s.x) <= W.mm && Math.abs(e.y - s.y) <= W.mm && Math.abs(wrapAngle(e.theta - s.theta)) <= W.rad, `frame ${i}`);
+  };
+  for (let k = 0; k < 60; k++) frame(220);
+  assert.equal(written.indexOf(true), 2, "added when it was seen the third time");
+  assert.ok(written.slice(2, W.settled).every(Boolean), "written in every frame while it is young");
+  const settled = written.slice(W.settled + 1).map((w, k) => (w ? W.settled + 1 + k : null)).filter((k) => k != null);
+  assert.ok(settled.length >= 4, `written in frames ${settled}`);
+  assert.ok(settled.every((k) => (k + 1) % W.every === 0), `then only every ${W.every} frames: ${settled}`);
+  const e = map.get(7);
+  assert.ok(Math.hypot(e.x - 220, e.y - 120) < 0.1 && Math.abs(toDeg(wrapAngle(e.theta)) - 40) < 0.05, `surveyed at ${e.x}, ${e.y}`);
+  // a single photo is written at once, also between the regular writes and when the estimate
+  // hardly changes (there may be no next frame)
+  while ((i + 1) % W.every === 0) frame(220);
+  frame(220, { still: true });
+  assert.equal(written.at(-1), true, "a still photo");
+  // the marker is moved by 20 mm: written at once, also between the regular writes
+  while ((i + 1) % W.every === 0) frame(220);
+  frame(240);
+  assert.equal(written.at(-1), true, "moved by 20 mm");
 });

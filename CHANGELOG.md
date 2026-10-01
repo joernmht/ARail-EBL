@@ -34,6 +34,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - The EBL example layout: the coloured village on the real table is replaced by the town on table modules in front of it; it uses the built-in road traffic instead of the `road-traffic` plugin. Both examples have an orthophoto.
 - Tracks are drawn in the flyover (ballast, sleepers, rails) where the orthophoto does not show them.
 - Labels of things far outside the picture are no longer pulled to its edge.
+- Faster frames on phones, with the same pictures: what lies entirely outside the image is not drawn (over the camera image of the EBL example 72 % of the queued drawings), the view's own polygons, lines and faces and the people share canvas save/restores, night colours are worked out once per frame, and the crowds at the stops skip pairs of people that are far apart. At 4× CPU throttling on a 390 × 844 phone the camera view's drawing takes about 25–35 % less time, the flyover's 5–15 % less, and a simulation step at 30× speed about 30 % less.
+- While the marker map is surveyed (live camera or video, unlocked map), a marker seen in more than 10 frames is written into the map every 8 frames, or at once when it moved by more than 0.25 mm or 0.03°. Before, every frame made all objects work out their geometry and the road network anew: a simulation step took about 8 ms instead of 1.5–2 ms at 4× CPU throttling.
 
 ### Fixed
 
