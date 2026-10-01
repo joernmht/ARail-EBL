@@ -25,7 +25,8 @@ and at 10× a whole day passes in twelve minutes.
 
 In the app (**Simulate → Time of day**) you can set the time with the slider or the presets
 (morning, noon, evening, night), choose another fast-clock ratio, switch the day/night lighting
-off and stop the clock. The time is shown at the top left of the stage.
+off and stop the clock. The time is shown at the top left of the stage (*07:32*, with *· night*
+between sunset and sunrise).
 
 ### Light
 
@@ -76,7 +77,7 @@ They are:
 
 Some adults go shopping in the evening. Shops are open 07:00–21:00, schools 07:30–15:30. Without
 platforms nobody commutes by train, without schools there are no pupils, and without shops
-nobody goes shopping. Every day gets new, reproducible plans (from the layout seed).
+nobody goes shopping. Every day gets new, reproducible plans (from the world's random seed).
 
 ### How they travel
 
@@ -123,7 +124,8 @@ Setting the clock by hand puts everybody where their plan says they are at that 
 ## For plugins: handing people over at stops
 
 The passenger simulation can take care of people of other simulations at stops, so waiting,
-boarding and alighting look the same for everybody:
+boarding and alighting look the same for everybody (the full API is in [Extending
+ARail](extending.md#handing-people-over-at-stops)):
 
 ```js
 const pax = world.simulations.find((s) => s.constructor.type === "passengers");

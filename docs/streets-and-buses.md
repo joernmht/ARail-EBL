@@ -97,8 +97,8 @@ buses and cars switch on their head and tail lights, and the windows of buses ar
 
 ## Layout file
 
-See [Layout file format](layout-format.md#road) for the parameters of `road`, `bus-stop` and
-`bus-line`, and the `traffic` simulation.
+See [Layout file format](layout-format.md#road-street) for the parameters of `road`, `bus-stop` and
+`bus-line`, and [`simulations`](layout-format.md#simulations) for the `traffic` simulation.
 
 ## For plugins and simulations
 

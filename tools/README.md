@@ -35,3 +35,5 @@ orthophoto for the flyover). The marker map is written locked (`markers.locked`:
 only these markers; `--unlocked` to skip), and markers on vehicles (`markers.moving`, `--moving
 40,41`) are left out of the map. `arail-survey --help` lists all options; the
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
+For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
+Survey a video.
