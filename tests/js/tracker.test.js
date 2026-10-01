@@ -198,3 +198,27 @@ test("a locked map needs only the detector codes up to its highest marker ID", (
   assert.equal(map.detectionCodes(50), 50);
   assert.equal(new MarkerMap({ locked: true }).detectionCodes(50), 50, "an empty locked map keeps all codes");
 });
+
+test("a marker made a moving one by mistake gets its pose back when it is no longer moving", () => {
+  const map = new MarkerMap({ size: 30, poses: { ...KNOWN, 41: [80, 90, 30] }, origin: 0, moving: [41] });
+  assert.deepEqual(map.ids(), [0, 1, 2, 3], "the pose of moving marker 41 in the file is not used");
+  map.lock();
+  // a typo: 1 instead of 41
+  assert.deepEqual(map.setMoving([1]), [1]);
+  assert.ok(!map.has(1) && map.has(41), "41 is back with the pose from the file");
+  assert.deepEqual(map.toJSON()[41], [80, 90, 30]);
+  assert.equal(map.get(41).fixed, true);
+  assert.deepEqual(map.setMoving([41]), [41]);
+  assert.deepEqual(map.toJSON()[1], [400, 0, 0], "marker 1 is back where it was, fixed");
+  assert.equal(map.get(1).fixed, true);
+  assert.deepEqual(map.ids(), [0, 1, 2, 3]);
+  // measured anew while it was moving: the new pose wins
+  map.setMoving([1, 41]);
+  map.set(1, { x: 5, y: 6, theta: 0 });
+  map.setMoving([41]);
+  assert.deepEqual(map.toJSON()[1], [5, 6, 0]);
+  // "Measure again" forgets the poses kept aside, too
+  map.clear(true);
+  map.setMoving([]);
+  assert.deepEqual(map.ids(), []);
+});

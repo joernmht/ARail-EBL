@@ -18,7 +18,7 @@ The type is set per layout (Build → Layout → Marker type, or `markers.dictio
 Choosing a dictionary and the IDs:
 
 - Use **one dictionary** for everything: the stickers you survey and the markers you track live with.
-- Use the IDs **0 … N−1**, with N just covering the printed stickers, and set `markers.codes` = N (Build → Layout, or the layout file). Fewer codes are further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
+- Use the IDs **0 … N−1**, with N just covering the printed stickers, and set `markers.codes` = N in the layout file. Fewer codes are further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
 - **4×4** markers have the largest cells for a given size: the most robust choice when markers are small in the image. ArUco Original (used in the EBL) has 5×5 bits but codes that lie close together.
 - After the survey, **lock the marker map** (Keep positions, or the `markers.locked` that `arail-survey` writes): live tracking then uses only the measured stickers, reads only the codes up to the highest of their IDs, ignores unknown and misread IDs, and drops markers whose position does not fit (moved stickers, misreads) as outliers. Stickers with IDs above the highest one in the map must then not lie on the layout.
 - Markers on vehicles (e.g. container wagons) are *moving markers* (Build → Marker map → Moving markers, `markers.moving`): never part of the map.

@@ -112,7 +112,7 @@ Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers 
 - **Keep positions** locks the marker map (in the app: Build → Marker map; `arail-survey` writes `markers.locked`). Live mode then accepts only the measured sticker IDs: nothing is surveyed, unknown and misread IDs are ignored, a sticker whose position does not fit is dropped as an outlier, and the detector reads only the codes up to the highest ID (fewer codes: more bit errors corrected safely). The HUD says "Tracking · 5 markers · locked". **Unlock** opens the map again.
 - If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again** (this unlocks the map), film, then **Keep positions**. **Survey a video…** unlocks the map for its run and offers **Keep positions** at the end.
 - After re-sticking many markers: `--resurvey`.
-- **Moving markers**: markers on vehicles (e.g. container wagons) are never part of the map. Enter their IDs in Build → Marker map → *Moving markers* (`markers.moving`, `arail-survey --moving`). Give them IDs within `markers.codes`, but do not stick them on the table.
+- **Moving markers**: markers on vehicles (e.g. container wagons) are never part of the map. Enter their IDs in Build → Marker map → *Moving markers* (`markers.moving`, `arail-survey --moving`). Give them IDs within `markers.codes` (the app refuses others; `arail-survey` raises `markers.codes`) and do not stick them on the table. Objects cannot be placed relative to them.
 
 ## The EBL example
 

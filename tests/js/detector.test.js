@@ -89,3 +89,27 @@ test("fewer codes (a locked map) correct more bit errors, but never accept chanc
   // codes are compared in all four orientations: a code turned by 90 degrees is 0 bits away
   assert.equal(orientedDistance(["1000000000000000", "0001000000000000"]), 0);
 });
+
+test("a sticker misread as a known ID does not replace the real marker (fewest bit errors win)", () => {
+  const aruco = loadAruco();
+  const name = "ARUCO_4X4_1000";
+  // ID 499 is two bits from ID 0: with 5 codes (a locked map of markers 0-4) it is read as 0
+  assert.equal(orientedDistance([0, 499].map((id) => markerBits(aruco.AR, name, id).flat().join(""))), 2);
+  const W = 640, H = 320, cell = 20, data = new Uint8ClampedArray(W * H * 4).fill(255);
+  [499, 0].forEach((id, k) => {
+    const bits = markerBits(aruco.AR, name, id);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      const white = i > 0 && j > 0 && i < 5 && j < 5 && bits[i - 1][j - 1] === 1;
+      for (let y = 0; y < cell; y++) {
+        for (let x = 0; x < cell; x++) {
+          const p = ((60 + i * cell + y) * W + 60 + k * 300 + j * cell + x) * 4;
+          data.fill(white ? 255 : 0, p, p + 3);
+        }
+      }
+    }
+  });
+  const found = new MarkerDetector({ ...aruco, dictionary: name, codes: 5 }).detect({ width: W, height: H, data });
+  assert.deepEqual(Object.keys(found), ["0"]);
+  const cx = found[0].reduce((s, p) => s + p[0], 0) / 4;
+  assert.ok(Math.abs(cx - 420) < 2, `marker 0 found at x = ${cx.toFixed(1)} (the real one is at 420, the misread one at 120)`);
+});

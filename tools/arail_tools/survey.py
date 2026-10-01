@@ -1905,10 +1905,10 @@ def _sizes(v: str):
 
 
 def _ids_arg(v: str) -> list[int]:
-    try:
-        return [int(x) for x in v.replace(" ", "").split(",") if x]
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("expected marker IDs separated by commas, e.g. 40,41") from exc
+    ids = [x for x in v.replace(" ", "").split(",") if x]
+    if not all(x.isdigit() for x in ids):
+        raise argparse.ArgumentTypeError("expected marker IDs (0, 1, ...) separated by commas, e.g. 40,41")
+    return [int(x) for x in ids]
 
 
 def _positive(kind):
@@ -2076,6 +2076,12 @@ def run(args, log) -> int:
     origin = 0 if origin is None else int(origin)
     if origin in moving:
         raise SurveyError(f"The origin marker {origin} is a moving marker (markers.moving, --moving).")
+    for m in sorted(moving):
+        if users := _objects_using(base, [m]):
+            raise SurveyError(
+                f"Marker {m} is a moving marker (markers.moving, --moving), but objects of the layout are placed "
+                f"relative to it: {', '.join(users)}."
+            )
     fixed = {}
     if not args.resurvey:
         for k, p in (lm.get("poses") or {}).items():

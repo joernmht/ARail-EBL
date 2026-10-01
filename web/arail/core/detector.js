@@ -336,21 +336,24 @@ export class MarkerDetector {
     if (!best) return null;
     let c = det.rotate2(corners, 4 - rot);
     if (entry.quarterTurns) c = det.rotate2(c, entry.quarterTurns);
-    return { id: best.id, corners: c };
+    return { id: best.id, corners: c, distance: best.distance };
   }
 
+  /** Decode all candidates; per ID the one read with the fewest bit errors (a misread must not replace the real marker). */
   _decode(entry, candidates) {
-    const found = {};
+    const best = {};
     for (const k of candidates) {
       for (const attempt of k.attempts) {
         const bits = attempt.bits[entry.cells];
         const m = bits && this._match(entry, bits, attempt.corners);
         if (m) {
-          if (!found[m.id]) found[m.id] = m.corners;
+          if (!best[m.id] || m.distance < best[m.id].distance) best[m.id] = m;
           break;
         }
       }
     }
+    const found = {};
+    for (const id in best) found[id] = best[id].corners;
     return found;
   }
 

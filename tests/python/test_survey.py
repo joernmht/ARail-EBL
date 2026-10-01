@@ -401,6 +401,14 @@ def test_command_line_moving_markers_codes_and_resurvey(tmp_path, stills):
     assert "5" not in m["poses"] and "7" not in m["poses"] and "9" in m["poses"], "kept: not seen, still known"
     with pytest.raises(SystemExit, match="origin marker 0 is a moving marker"):
         sv.main([stills, "--moving", "0", "-o", str(out), "-q"])
+    # objects placed relative to a moving marker could not be placed: refused (not silently dropped)
+    unmoved = {"format": "arail-layout/1", "markers": markers | {"moving": []}, "objects": objects}
+    layout_in.write_text(json.dumps(unmoved))
+    with pytest.raises(SystemExit, match="Marker 9 is a moving marker .* placed relative to it: Platform 9"):
+        sv.main([stills, "--layout", str(layout_in), "--moving", "9", "-o", str(out), "-q"])
+    with pytest.raises(SystemExit) as exc:
+        sv.main([stills, "--moving", "-1", "-o", str(out), "-q"])
+    assert exc.value.code == 2, "a negative marker ID is refused by the argument parser"
 
 
 def test_command_line_errors(tmp_path, texture):

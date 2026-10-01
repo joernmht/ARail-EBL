@@ -367,12 +367,15 @@ class App {
   /**
    * Set up the marker detector for the layout: its marker type and number of codes (a locked
    * marker map needs only the codes up to its highest ID, see MarkerMap.detectionCodes). Call it
-   * again when the map is locked or unlocked or its moving markers change.
+   * again when the map is locked or unlocked or its moving markers change, with `keepType`: a
+   * marker type that was detected automatically is then kept.
+   * @param {{keepType?: boolean}} [options]
    */
-  applyDictionary() {
+  applyDictionary({ keepType = false } = {}) {
     if (!this.detector) return;
     const { dictionary: d } = this.world.layout.markers;
     const codes = this.world.map.detectionCodes(this.world.layout.markers.codes);
+    const found = keepType && d === "auto" ? this.detector.selected?.name ?? null : null;
     if (this.detector.codes !== codes) {
       try {
         this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes });
@@ -381,7 +384,7 @@ class App {
       }
     }
     try {
-      this.detector.setDictionary(d === "auto" ? null : d);
+      this.detector.setDictionary(d === "auto" ? found : d);
     } catch {
       toast(`Unknown marker type “${d}”; detecting automatically.`);
       this.detector.setDictionary(null);

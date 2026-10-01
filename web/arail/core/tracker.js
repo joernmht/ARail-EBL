@@ -58,11 +58,14 @@ export class MarkerMap {
     this.locked = !!locked;
     /** IDs of markers on vehicles: never part of the map, never used for the pose. @type {Set<number>} */
     this.moving = new Set(markerIds(moving));
+    /** Poses of the moving markers that were in the map: back in it when they are no longer moving. */
+    this.parked = new Map();
     this.generation++;
     this.version++;
     for (const [id, p] of Object.entries(poses)) {
-      if (this.moving.has(Number(id))) continue; // a moving marker has no place in the map
-      this.set(Number(id), { x: +p[0], y: +p[1], theta: toRad(+p[2] || 0) }, true);
+      const pose = { x: +p[0], y: +p[1], theta: wrapAngle(toRad(+p[2] || 0)), fixed: true };
+      if (this.moving.has(Number(id))) this.parked.set(Number(id), pose); // a moving marker has no place in the map
+      else this.set(Number(id), pose, true);
     }
     if (this.entries.size) this.anchor = this.origin != null && this.entries.has(this.origin) ? this.origin : this.ids()[0];
   }
@@ -92,6 +95,7 @@ export class MarkerMap {
   /** Forget surveyed poses; keep the ones marked fixed (unless `all`). */
   clear(all = false) {
     for (const [id, e] of this.entries) if (all || !e.fixed) this.entries.delete(id);
+    for (const [id, e] of this.parked) if (all || !e.fixed) this.parked.delete(id);
     if (!this.entries.has(this.anchor)) this.anchor = this.entries.size ? this.ids()[0] : null;
     this.version++;
   }
@@ -115,14 +119,23 @@ export class MarkerMap {
 
   /**
    * Set the markers on vehicles. Their poses are removed from the map (they are no longer part
-   * of it). Returns the IDs that were removed.
+   * of it) and kept aside: a marker that is no longer moving gets its pose back (e.g. after a
+   * typo in the list), unless it was measured anew meanwhile. Returns the IDs that were removed.
    * @param {Iterable<number>} ids
    * @returns {number[]}
    */
   setMoving(ids) {
     this.moving = new Set(markerIds([...ids]));
+    for (const [id, pose] of this.parked) {
+      if (this.moving.has(id)) continue;
+      this.parked.delete(id);
+      if (!this.entries.has(id)) this.set(id, pose, pose.fixed);
+    }
     const removed = this.ids().filter((id) => this.moving.has(id));
-    for (const id of removed) this.delete(id);
+    for (const id of removed) {
+      this.parked.set(id, { ...this.entries.get(id) });
+      this.delete(id);
+    }
     return removed;
   }
 

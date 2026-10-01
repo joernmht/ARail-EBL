@@ -1,5 +1,5 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
-import { applyH, dist2, FONT, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
+import { applyH, dist2, FONT, markersUsed, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
@@ -766,7 +766,7 @@ export class Editor {
     const map = this.world.map;
     if (!map.ids().length) return toast("No markers known yet: there are no positions to keep.");
     map.lock();
-    this.app.applyDictionary(); // a locked map needs fewer codes
+    this.app.applyDictionary({ keepType: true }); // a locked map needs fewer codes
     this.app.saveLayout();
     this.renderMarkers();
     this.app.updateHud();
@@ -775,7 +775,7 @@ export class Editor {
 
   unlockMap() {
     this.world.map.unlock();
-    this.app.applyDictionary();
+    this.app.applyDictionary({ keepType: true });
     this.app.redetect();
     this.app.saveLayout();
     this.renderMarkers();
@@ -786,7 +786,7 @@ export class Editor {
   /** "Measure again": forget the marker positions (the map is unlocked), they are surveyed afresh. */
   measureAgain() {
     this.app.tracker.resurvey();
-    this.app.applyDictionary();
+    this.app.applyDictionary({ keepType: true });
     this.app.redetect();
     this.app.saveLayout();
     this.renderMarkers();
@@ -799,22 +799,34 @@ export class Editor {
     const map = this.world.map;
     const parts = String(text).split(/[\s,;]+/).filter(Boolean);
     const ids = parts.map(Number);
-    const bad = parts.filter((p, i) => !/^\d+$/.test(p) || !Number.isInteger(ids[i]));
+    const bad = parts.find((p, i) => !/^\d+$/.test(p) || !Number.isInteger(ids[i]));
     const origin = [map.origin, map.anchor].find((m) => m != null && ids.includes(m));
-    if (bad.length || origin != null) {
-      toast(bad.length ? `Moving markers: “${bad[0]}” is not a marker ID. Enter IDs separated by commas, e.g. 40, 41.` : `Marker ${origin} defines the layout frame; it cannot be a moving marker.`, 6000);
+    const codes = this.world.layout.markers.codes;
+    const beyond = ids.find((id) => id >= codes);
+    // objects placed relative to a marker (platform ends, positions) could no longer be placed
+    const used = ids.map((id) => [id, this.world.objects.filter((o) => markersUsed(o.spec).includes(id))]).find(([, objs]) => objs.length);
+    const problem = bad != null ? `Moving markers: “${bad}” is not a marker ID. Enter IDs separated by commas, e.g. 40, 41.`
+      : origin != null ? `Marker ${origin} defines the layout frame; it cannot be a moving marker.`
+        : beyond != null ? `Marker ${beyond} cannot be detected: the layout uses the marker IDs 0 … ${codes - 1} (markers.codes in the layout file).`
+          : used ? `Marker ${used[0]} cannot be a moving marker: ${used[1].map((o) => o.name).join(", ")} ${used[1].length > 1 ? "are" : "is"} placed relative to it.`
+            : null;
+    if (problem) {
+      toast(problem, 7000);
       this.renderMarkers();
       return;
     }
+    const before = new Set(map.ids()), version = map.version;
     const removed = map.setMoving(ids);
-    this.app.applyDictionary();
-    if (removed.length) this.world.objectChanged(null);
+    const restored = map.ids().filter((id) => !before.has(id));
+    this.app.applyDictionary({ keepType: true });
+    if (map.version !== version) this.world.objectChanged(null);
     this.app.saveLayout();
     this.renderMarkers();
-    const list = removed.join(", ");
-    toast(removed.length > 1 ? `Markers ${list} are moving markers now and were removed from the map.`
-      : removed.length ? `Marker ${list} is a moving marker now and was removed from the map.`
-        : ids.length ? `Moving markers: ${[...map.moving].join(", ")}.` : "No moving markers.");
+    const list = (a) => a.join(", ");
+    const said = [];
+    if (removed.length) said.push(removed.length > 1 ? `Markers ${list(removed)} are moving markers now and were removed from the map.` : `Marker ${list(removed)} is a moving marker now and was removed from the map.`);
+    if (restored.length) said.push(restored.length > 1 ? `Markers ${list(restored)} are back in the map.` : `Marker ${list(restored)} is back in the map.`);
+    toast(said.length ? said.join(" ") : map.moving.size ? `Moving markers: ${list([...map.moving])}.` : "No moving markers.", 6000);
   }
 
   /* ---------------------------------------------------------------- survey a video */
@@ -861,11 +873,11 @@ export class Editor {
   async startSurvey(file) {
     if (this.surveyState?.running) return;
     if (!this.app.detector) return toast("Marker detection is not available.");
-    const wasLocked = this.world.map.locked;
+    const map = this.world.map, wasLocked = map.locked, version = map.version;
     if (wasLocked) {
       // a locked map surveys nothing: unlocked for this run, Keep positions locks it again
-      this.world.map.unlock();
-      this.app.applyDictionary();
+      map.unlock();
+      this.app.applyDictionary({ keepType: true });
       this.app.updateHud();
     }
     const survey = new VideoSurvey({
@@ -882,17 +894,27 @@ export class Editor {
     const st = (this.surveyState = { running: true, survey, progress: null, result: null, error: null, name: file.name || "video" });
     this.renderMarkers();
     if (wasLocked) toast("The marker map was unlocked for the survey. Press Keep positions afterwards to lock it again.", 6000);
+    let message;
     try {
       st.result = await survey.run();
-      toast(st.result.cancelled ? "Survey cancelled." : `Survey done: ${st.result.markers.length} markers. Press Keep positions to fix them and lock the map.`, 6000);
+      message = st.result.cancelled ? "Survey cancelled." : `Survey done: ${st.result.markers.length} markers. Press Keep positions to fix them and lock the map.`;
     } catch (err) {
       st.error = err.message;
-      toast(`The video could not be surveyed: ${err.message}`, 7000);
+      message = `The video could not be surveyed: ${err.message}.`;
     } finally {
       st.running = false;
+      if (wasLocked && !map.locked && map.version === version) {
+        // nothing was measured (a video that cannot be played, cancelled at once, no new markers): locked again
+        map.lock();
+        this.app.applyDictionary({ keepType: true });
+        this.app.updateHud();
+        message = st.error ? `${message} The marker map is locked again.`
+          : `Survey ${st.result.cancelled ? "cancelled" : "done"}: no marker was added or changed, the marker map is locked again.`;
+      }
       this.app.saveLayout();
       if (this.surveyState === st) this.renderMarkers();
     }
+    toast(message, st.error ? 8000 : 6000);
   }
 }
 

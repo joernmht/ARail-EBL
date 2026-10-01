@@ -76,3 +76,72 @@ test("moving markers are taken out of the map and still detected", async ({ page
   expect(await page.evaluate(() => [...window.__arail.world.map.moving])).toEqual([4, 40]);
   expect(errors).toEqual([]);
 });
+
+test("moving markers: IDs that cannot be detected or that objects use are refused; a typo can be undone", async ({ page }) => {
+  const errors = await openBuild(page);
+  const field = page.getByLabel("Moving markers");
+  const state = () => page.evaluate(() => ({ moving: [...window.__arail.world.map.moving], ids: window.__arail.world.map.ids() }));
+  // beyond markers.codes (50): the detector would never read it
+  await field.fill("60");
+  await field.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Marker 60 cannot be detected: the layout uses the marker IDs 0 … 49");
+  // Platform 1 lies between markers 0 and 1: it could no longer be placed
+  await field.fill("1");
+  await field.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Marker 1 cannot be a moving marker: Platform 1 is placed relative to it.");
+  expect(await state()).toEqual({ moving: [], ids: [0, 1, 2, 3, 4] });
+  expect(await page.evaluate(() => !!window.__arail.world.getObject("platform-1").geometry)).toBe(true);
+  // marker 4 (no object uses it) by mistake, then corrected: its fixed pose comes back
+  await page.getByRole("button", { name: "Keep positions" }).click();
+  await field.fill("4");
+  await field.press("Enter");
+  expect(await state()).toEqual({ moving: [4], ids: [0, 1, 2, 3] });
+  await field.fill("40");
+  await field.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Marker 4 is back in the map.");
+  expect(await state()).toEqual({ moving: [40], ids: [0, 1, 2, 3, 4] });
+  expect(await page.evaluate(() => window.__arail.world.toJSON().markers.poses["4"])).toEqual([1159.7, 188.5, -0.69]);
+  expect(errors).toEqual([]);
+});
+
+test("a video survey that measures nothing leaves the marker map locked", async ({ page }) => {
+  const errors = await openBuild(page);
+  await page.getByRole("button", { name: "Keep positions" }).click();
+  expect(await codes(page)).toBe(5);
+  await page.locator("#surveyVideo").setInputFiles({ name: "not-a-video.mp4", mimeType: "video/mp4", buffer: Buffer.from("not a video") });
+  await expect(page.locator("#toast")).toContainText("could not be surveyed", { timeout: 30_000 });
+  await expect(page.locator("#toast")).toContainText("The marker map is locked again.");
+  expect(await page.evaluate(() => window.__arail.world.map.locked)).toBe(true);
+  expect(await codes(page)).toBe(5);
+  await expect(page.locator("#markerMapStatus")).toContainText("Marker map locked");
+  // also in the browser's copy of the layout
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith("arail.layout:"))) || "{}").markers?.locked)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("locking keeps a marker type that was detected automatically", async ({ page }) => {
+  const errors = await openBuild(page);
+  await page.selectOption("#layoutDictionary", "auto");
+  const detector = () => page.evaluate(() => ({ codes: window.__arail.detector.codes, auto: window.__arail.detector.autoDetecting, label: window.__arail.detector.dictionaryLabel }));
+  // the lab photo shows five markers: two detections give enough votes
+  for (let i = 0; i < 3 && (await detector()).auto; i++) {
+    await page.evaluate(() => window.__arail.redetect());
+    await page.waitForTimeout(600);
+  }
+  expect(await detector()).toEqual({ codes: 50, auto: false, label: "ArUco Original" });
+  await page.getByRole("button", { name: "Keep positions" }).click();
+  expect(await detector()).toEqual({ codes: 5, auto: false, label: "ArUco Original" });
+  await page.getByRole("button", { name: "Unlock" }).click();
+  expect(await detector()).toEqual({ codes: 50, auto: false, label: "ArUco Original" });
+  // choosing "detect automatically" again starts a new detection (read at once: a detection of the photo follows)
+  const restarted = await page.evaluate(() => {
+    const select = document.querySelector("#layoutDictionary");
+    for (const v of ["ARUCO", "auto"]) {
+      select.value = v;
+      select.dispatchEvent(new Event("change"));
+    }
+    return window.__arail.detector.autoDetecting;
+  });
+  expect(restarted).toBe(true);
+  expect(errors).toEqual([]);
+});
