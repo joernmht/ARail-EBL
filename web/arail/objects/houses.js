@@ -149,7 +149,7 @@ export class Plattenbau extends BuildingBase {
       footprint: m.rect(x0, y0, x1, y1),
       height: top + (S.lift ? 2.6 : 0),
       capacity: { residents: Math.round((L * D * floors) / 30) },
-      detail: { window: 1.2, fine: fh },
+      detail: { window: 1.2, fine: J },
       size: { length: L, depth: D, sections: n, floors },
     });
   }
@@ -337,7 +337,7 @@ export class AltbauBlock extends BuildingBase {
       footprint: m.rect(X0, Y0, X1, Y1),
       height,
       capacity: { residents: Math.round(residents), jobs: Math.round(jobs) },
-      detail: { window: 1.25, fine: 3.5 },
+      detail: { window: 1.25, fine: 0.2 },
       form,
       pieces: pieces.length,
     });
@@ -573,7 +573,7 @@ export class House extends BuildingBase {
       garage: !!s.garage, garageSide: 1, chimney: s.chimney !== false,
       wallTone: m.rng.uniform(0.9, 0.98), roofTone: m.rng.uniform(...TONES.roof),
     });
-    return m.finish({ footprint: h.footprint, height: h.height, capacity: { residents: h.residents }, detail: { window: 1.1, fine: 2.75 } });
+    return m.finish({ footprint: h.footprint, height: h.height, capacity: { residents: h.residents }, detail: { window: 1.1 } });
   }
 }
 
@@ -619,7 +619,8 @@ export class HouseEstate extends BuildingBase {
       }
     }
     const a = pts[ia], b = pts[(ia + 1) % pts.length];
-    let ux = (b[0] - a[0]) / best, uy = (b[1] - a[1]) / best;
+    // (an outline whose points all coincide has no direction: no plots, but no NaN either)
+    let ux = best > 1e-9 ? (b[0] - a[0]) / best : 1, uy = best > 1e-9 ? (b[1] - a[1]) / best : 0;
     const c = polygonCentroid(pts);
     if ((c[0] - a[0]) * -uy + (c[1] - a[1]) * ux < 0) {
       ux = -ux;
@@ -636,10 +637,23 @@ export class HouseEstate extends BuildingBase {
       ymin = Math.min(ymin, y);
       ymax = Math.max(ymax, y);
     }
+    // a plot is used when it lies completely inside the outline: its corners inside, no corner
+    // of the outline in it and no edge of the outline crossing it (a narrow notch or slit)
+    const cross = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+    const crosses = (p, q, r, t) => {
+      const d1 = cross(p, q, r), d2 = cross(p, q, t), d3 = cross(r, t, p), d4 = cross(r, t, q);
+      return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+    };
     const inside = (x0, y0, x1, y1) => {
       const e = 0.02;
-      if (!corners({ x0: x0 + e, y0: y0 + e, x1: x1 - e, y1: y1 - e }).every((q) => pointInPolygon(q, local))) return false;
-      return !local.some(([x, y]) => x > x0 + e && x < x1 - e && y > y0 + e && y < y1 - e);
+      const c = corners({ x0: x0 + e, y0: y0 + e, x1: x1 - e, y1: y1 - e });
+      if (!c.every((q) => pointInPolygon(q, local))) return false;
+      if (local.some(([x, y]) => x > x0 + e && x < x1 - e && y > y0 + e && y < y1 - e)) return false;
+      for (let i = 0; i < local.length; i++) {
+        const p = local[i], q = local[(i + 1) % local.length];
+        for (let k = 0; k < 4; k++) if (crosses(p, q, c[k], c[(k + 1) % 4])) return false;
+      }
+      return true;
     };
     const nCols = Math.floor((xmax - xmin) / pw);
     const xs = xmin + ((xmax - xmin) - nCols * pw) / 2;
@@ -653,7 +667,7 @@ export class HouseEstate extends BuildingBase {
     const t0 = Math.max(0, ymin);
     for (let r = 0; ; r++) {
       const y0 = t0 + Math.floor(r / 2) * (2 * pd + st) + (r % 2) * pd;
-      if (y0 + pd > ymax + 1e-6) break;
+      if (!(y0 + pd <= ymax + 1e-6)) break; // (also stops on NaN)
       const facing = r % 2 === 0 ? -1 : 1; // front towards −y (the edge or a street) or +y
       for (let j = 0; j < nCols; j++) {
         const x0 = xs + j * pw, x1 = x0 + pw;
@@ -684,7 +698,7 @@ export class HouseEstate extends BuildingBase {
       layoutFootprint: pts,
       height,
       capacity: { residents },
-      detail: { window: 1.1, fine: 2.75 },
+      detail: { window: 1.1 },
       center: polygonCentroid(pts),
       plots: plots.map((p) => p.map(([x, y]) => frame.xy(x, y))),
       houses,
@@ -742,7 +756,7 @@ export class Office extends BuildingBase {
     m.part(m.box(x1 - pw - 2, -pd / 2, x1 - 2, pd / 2, top, top + 2.4, { wall: grey(0.86), top: grey(0.78) }).faces, { after: true, facing: roof });
     m.shadow(m.rect(x0, y0, x1, y1), top);
     m.entrance(0, y0);
-    return m.finish({ footprint: m.rect(x0, y0, x1, y1), height: top, capacity: { jobs: Math.round((w * d * floors) / 25) }, detail: { window: 2, fine: fh } });
+    return m.finish({ footprint: m.rect(x0, y0, x1, y1), height: top, capacity: { jobs: Math.round((w * d * floors) / 25) }, detail: { window: 2 } });
   }
 }
 
@@ -810,7 +824,7 @@ export class School extends BuildingBase {
       footprint: m.rect(x0, y0 - 3, x1, ymax),
       height: top + 1.2,
       capacity: { pupils: 100 * floors, jobs: 10 * floors },
-      detail: { window: 1.9, fine: fh },
+      detail: { window: 1.9, fine: 0.15 },
     });
   }
 
@@ -874,7 +888,7 @@ export class Supermarket extends BuildingBase {
       footprint: m.rect(x0, fy0, x1, y1),
       height: H + 1.4,
       capacity: { visitors: Math.round((w * d) / 12), jobs: Math.max(5, Math.round((w * d) / 90)) },
-      detail: { window: 2.4, fine: 2.5 },
+      detail: { window: 2.4 },
       lights,
     });
   }
@@ -949,6 +963,6 @@ export class Factory extends BuildingBase {
       fx1 = x1 + 4;
     }
     m.entrance(x0 + w * 0.6 + 0.55, y0);
-    return m.finish({ footprint: m.rect(x0, y0, fx1, y1), height: chimney ? 28 : H + rise, capacity: { jobs: Math.round((w * d) / 40) }, detail: { window: 2.4, fine: 2 } });
+    return m.finish({ footprint: m.rect(x0, y0, fx1, y1), height: chimney ? 28 : H + rise, capacity: { jobs: Math.round((w * d) / 40) }, detail: { window: 2.4, fine: 0.06 } });
   }
 }

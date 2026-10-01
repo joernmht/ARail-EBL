@@ -5,6 +5,7 @@
  * @module arail/objects/building
  */
 import { grey } from "../core/colors.js";
+import { clamp } from "../core/math.js";
 import { BuildingBase, TONES, USE_OPTIONS, capacityFor, gableRoof } from "./building-kit.js";
 
 export class Building extends BuildingBase {
@@ -27,15 +28,16 @@ export class Building extends BuildingBase {
   ];
 
   floorsCount() {
-    return Math.max(1, Math.round(+this.spec.floors || 1));
+    return clamp(Math.round(+this.spec.floors || 1), 1, 30);
   }
 
   computeGeometry() {
     const m = this.model();
     if (!m) return null;
     const s = this.spec;
-    const w = +s.width_m || 12, d = +s.depth_m || 9;
-    const fh = +s.floor_height_m || 3, floors = this.floorsCount(), H = fh * floors;
+    // sizes within the ranges of the parameters (a mistyped 1e6 m would hang the app)
+    const w = clamp(+s.width_m || 12, 3, 120), d = clamp(+s.depth_m || 9, 3, 80);
+    const fh = clamp(+s.floor_height_m || 3, 2.4, 6), floors = this.floorsCount(), H = fh * floors;
     const wall = s.color || "#f2f2f2", roof = s.roof_color || "#a6a6a6";
     const flat = s.roof === "flat";
     m.setAnchor(0, 0, H / 2, Math.hypot(w, d) / 2 + 1);
@@ -66,7 +68,7 @@ export class Building extends BuildingBase {
       footprint: m.rect(-w / 2, -d / 2, w / 2, d / 2),
       height,
       capacity: capacityFor(this.use(), w * d * floors),
-      detail: { window: 1.3, fine: fh },
+      detail: { window: 1.3 },
     });
   }
 }

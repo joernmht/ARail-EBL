@@ -29,7 +29,7 @@
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint } from "../core/anchors.js";
 import { clamp, createRng, toRad } from "../core/math.js";
-import { PALETTE, grey } from "../core/colors.js";
+import { PALETTE, grey, parseColor } from "../core/colors.js";
 import { profileAt } from "../core/clock.js";
 
 /** What a building is used for (the town simulation sends people there). */
@@ -190,10 +190,34 @@ export function convexHull(points) {
   return lower.slice(0, -1).concat(upper.slice(0, -1));
 }
 
+/** Direction the light comes from (layout frame), the same as the View's light. */
+const SUN = (() => {
+  const l = [-0.45, 0.55, 0.7], n = Math.hypot(...l);
+  return l.map((v) => v / n);
+})();
 /** Direction the sun shadows fall in (layout frame, per unit of height), matching the View's light. */
-const SHADOW = [0.45 / 0.7, -0.55 / 0.7];
+const SHADOW = [-SUN[0] / SUN[2], -SUN[1] / SUN[2]];
 /** Shadows are shortened (a high summer sun reads better on a model). */
 const SHADOW_LENGTH = 0.45;
+
+/**
+ * Shading of the white model: brightness = ambient + direct × (light on the face). Softer than
+ * the View's shading of other solids (0.62 .. 1), so that walls in the shade stay light grey and
+ * the windows and roofs stay in the greys from about mid grey up to white.
+ */
+export const MODEL_LIGHT = { ambient: 0.75, direct: 0.25 };
+
+/** Brightness factor of a face of a building with this (layout frame) normal. */
+export function modelLight(normal) {
+  const d = normal[0] * SUN[0] + normal[1] * SUN[1] + normal[2] * SUN[2];
+  return MODEL_LIGHT.ambient + MODEL_LIGHT.direct * Math.max(0, d);
+}
+
+/** A colour (CSS or [r, g, b]) times a brightness factor, as [r, g, b]. */
+function shadeRgb(colour, k) {
+  const c = parseColor(colour);
+  return [c[0] * k, c[1] * k, c[2] * k];
+}
 
 /**
  * Collects the faces, decals, lit windows, shadows and ground drawings of a building.
@@ -386,15 +410,24 @@ export class BuildingModel {
    * layout mm, `height` in metres and `capacity`).
    * @param {{footprint?: number[][], layoutFootprint?: number[][], height: number, capacity?: object,
    *   detail?: {window?: number, fine?: number}}} extra
-   *   `detail`: size (m) of windows and of the finest details (joints), for the level of detail
+   *   `detail`: size (m) of the windows and of the finest details (the width of panel joints, lintels,
+   *   slats), for the level of detail: windows are left out below about 1.5 px, the finest details below
+   *   about 0.8 px on screen
    */
   finish({ footprint = null, layoutFootprint = null, height, capacity = {}, detail = {}, ...extra }) {
     for (const f of this._faces) {
       const [a, b, c] = f.tiers;
+      // shaded once here (the light is fixed on the layout): the View neither shades these
+      // faces nor parses their colours every frame
+      const k = modelLight(f.normal);
+      f.color = shadeRgb(f.color, k);
+      f.flat = true;
+      for (const tier of f.tiers) for (const d of tier) d.color = shadeRgb(d.color, k);
       f.lod = a.length || b.length || c.length ? [a, a.concat(b), a.concat(b, c)] : null;
       f.decals = f.lod ? f.lod[2] : undefined;
       delete f.tiers;
     }
+    for (const w of this.windows) w.base = w.d.color;
     this._faces = [];
     const k = this.k;
     return {
@@ -410,7 +443,7 @@ export class BuildingModel {
       shadows: this.shadows,
       ground: this.ground,
       entrances: this.entrances,
-      detail: { window: (detail.window ?? 1.2) * k, fine: (detail.fine ?? 3) * k },
+      detail: { window: (detail.window ?? 1.2) * k, fine: (detail.fine ?? 0.15) * k },
       lit: null,
     };
   }
@@ -436,7 +469,7 @@ function anchorLevel(view, a, detail) {
   const q = view.project(a.p[0], a.p[1], a.p[2]);
   const m = a.r * s + 40 * view.px;
   a.visible = !!q && q[0] > -m && q[1] > -m && q[0] < view.camera.width + m && q[1] < view.camera.height + m;
-  a.level = s * detail.window < 1.5 * view.px ? 0 : s * detail.fine < 6 * view.px ? 1 : 2;
+  a.level = s * detail.window < 1.5 * view.px ? 0 : s * detail.fine < 0.8 * view.px ? 1 : 2;
   return a.visible ? a.level : -1;
 }
 
@@ -490,9 +523,10 @@ export function lightWindows(g, lit) {
   const key = Math.round(lit.main * 500) * 1000 + Math.round(lit.shop * 500);
   if (g.lit === key) return;
   g.lit = key;
+  const light = parseColor(PALETTE.litWindow);
   for (const w of g.windows) {
     const on = w.h < (w.group === "shop" ? lit.shop : lit.main);
-    w.d.color = on ? PALETTE.litWindow : w.base;
+    w.d.color = on ? light : w.base;
     w.d.emissive = on;
     w.d.alpha = on ? w.a : undefined;
   }
@@ -712,9 +746,11 @@ export class BuildingBase extends LayoutObject {
     return this.geometry?.entrances ?? [];
   }
 
-  /** Number of full floors. */
+  /** Number of floors (an attic counts as a floor), within the range of the `floors` parameter. */
   floorsCount() {
-    return Math.max(1, Math.ceil(+this.spec.floors || 1));
+    const cls = /** @type {typeof BuildingBase} */ (this.constructor);
+    const p = cls.params.find((q) => q.key === "floors");
+    return Math.ceil(clamp(+this.spec.floors || p?.default || 1, p?.min ?? 1, p?.max ?? 100));
   }
 
   /** Overall height (top of the roof, layout mm). */
@@ -750,9 +786,14 @@ export class BuildingBase extends LayoutObject {
     };
   }
 
-  /** Seed for the variation of this building (from `seed` if the type has one, else the id). */
+  /**
+   * Seed for the variation of this building and for which of its windows are lit: from the id
+   * (neighbours differ) and the `seed` parameter if the type has one (another seed, another variant).
+   */
   seed() {
-    return hashString(`${this.type}:${this.spec.seed ?? this.id ?? ""}`);
+    const cls = /** @type {typeof BuildingBase} */ (this.constructor);
+    const own = cls.params.some((p) => p.key === "seed") ? `:${this.spec.seed ?? ""}` : "";
+    return hashString(`${this.type}:${this.id ?? ""}${own}`);
   }
 
   /**

@@ -142,15 +142,37 @@ to the bus lane); the other bays keep the timetable buses.
 
 Geometry: `position` (centre).
 
+A generic building. Like all buildings it looks like a white architectural model (neutral greys
+from mid grey up to white; at night the windows light up, depending on the time of day and on how
+many people are inside), has a use for the town simulation and a capacity from its size.
+
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `rotation_deg` | `0` | |
-| `width_m`, `depth_m` | `12`, `9` | footprint |
-| `floors` | `2` | |
+| `rotation_deg` | `0` | `0`: the front (with the entrance) faces −y |
+| `width_m`, `depth_m` | `12`, `9` | footprint (3–120 m, 3–80 m) |
+| `floors` | `2` | 1–30 |
 | `floor_height_m` | `3` | |
 | `roof` | `"gable"` | `gable` or `flat` |
-| `color`, `roof_color` | `#e2d3b8`, `#9b4a3c` | |
+| `use` | `"residential"` | `residential`, `work`, `school`, `shop`, `other` |
+| `color`, `roof_color` | `#f2f2f2`, `#a6a6a6` | wall and roof colour (older layouts set their own) |
 | `windows` | `true` | |
+
+### German house types
+
+Geometry: `position` (centre) and `rotation_deg` (`0`: the street front with the entrances faces
+−y); the estate has `points` (polygon) instead. Sizes are prototype metres. `seed` picks another
+variant of the same building (neighbouring buildings differ anyway).
+
+| Type | Parameters (defaults) | |
+| --- | --- | --- |
+| `plattenbau` | `series` (`wbs70`: WBS 70 with 6 floors, `wbs70-11`: 11 floors, `qp61`: QP 61 with 8 floors, `p2`: P2 with 5 floors), `sections` (4 entrances, 1–12), `floors` (empty: the series'), `balconies` (true: loggias on the garden side) | GDR slab block |
+| `altbau-block` | `width_m` (60), `depth_m` (50), `wing_depth_m` (13), `floors` (5, 3–6), `form` (`closed`, `u`: open on one side, `row`), `rear_wings` (false: side wings and rear buildings in the courtyard), `roof` (`mansard`, `pitched`), `seed` (1) | Gründerzeit perimeter block of parcels, shops on the ground floor |
+| `house` | `style` (`gable`, `hip`: Stadtvilla, `bungalow`, `semi`: semi-detached), `width_m` (10), `depth_m` (9), `floors` (1.5: a floor and an attic; 1–2), `garage` (true), `chimney` (true) | single-family house |
+| `house-estate` | `plot_width_m` (16), `plot_depth_m` (28), `mix` (`mixed`, `gable`, `hip`, `bungalow`), `garages` (true), `density` (0.85: share of the plots built), `street_m` (12: room for a street between each pair of rows), `seed` (1) | rows of plots along the longest edge of the polygon; only plots completely inside |
+| `office` | `width_m` (30), `depth_m` (15), `floors` (4, 1–20) | use `work` |
+| `school` | `floors` (3), `gym` (true) | GDR "Typ Erfurt", 60 × 13 m; use `school` |
+| `supermarket` | `width_m` (45), `depth_m` (30), `parking` (true) | use `shop` |
+| `factory` | `width_m` (40), `depth_m` (25), `chimney` (true) | sawtooth roof; use `work` |
 
 ### `tree`
 
