@@ -141,3 +141,38 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(await a(() => window.__arail.world.clock.label())).toMatch(/^22:3/);
   expect(errors).toEqual([]);
 });
+
+test("keyboard placing in the flyover: a bus line picks the stop under the cross; a held Enter places one point", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await page.keyboard.press("f");
+  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await page.locator(".palette").getByRole("button", { name: /^Bus line/ }).click();
+  await page.locator("#stage").focus();
+  /** Point the middle of the view at the layout point p (as the arrow keys would). */
+  const aimAt = (p) => page.evaluate((q) => {
+    const f = window.__arail.flyover;
+    f.anim = null;
+    f.cam.set({ target: q });
+  }, p);
+  const stops = await page.evaluate(() => window.__arail.world.objects.filter((o) => o.type === "bus-stop").slice(0, 2).map((o) => ({ id: o.id, at: o.anchorPoint() })));
+  expect(stops.length).toBe(2);
+  for (const [i, stop] of stops.entries()) {
+    await aimAt(stop.at);
+    await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => window.__arail.editor.placing.points.map((q) => q.id))).toEqual(stops.slice(0, i + 1).map((s) => s.id));
+  }
+  // the cross shows where Enter picks
+  const cross = await page.evaluate(() => window.__arail.editor.hoverPoint?.stopAt);
+  expect(Math.hypot(cross[0] - stops[1].at[0], cross[1] - stops[1].at[1])).toBeLessThan(1);
+  await page.keyboard.press("Escape");
+  // a street: holding Enter (key repeat) adds one point, not a row of points in the same place
+  await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
+  await page.locator("#stage").focus();
+  await aimAt([stops[0].at[0] + 200, stops[0].at[1]]);
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.up("Enter");
+  expect(await page.evaluate(() => window.__arail.editor.placing.points.length)).toBe(1);
+  expect(errors).toEqual([]);
+});

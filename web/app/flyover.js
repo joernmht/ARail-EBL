@@ -273,6 +273,7 @@ export class Flyover {
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
     if (e.key === "Enter") {
       if (!placing || t !== c) return false;
+      if (e.repeat) return true; // a held Enter places one point, not one per key repeat
       this._keyAim = true;
       if (this.anim) this.cam.set(this.anim.to); // where the last key move was going
       this.anim = null;

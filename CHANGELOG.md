@@ -41,8 +41,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - Mistyped building sizes (e.g. a width of 1e6 m) froze the app; sizes now stay within the ranges of their parameters.
 - Overlapping roads were drawn darker where they overlap.
 - The hidden file inputs made the page much taller than the Build panel.
-- Keyboard focus was invisible on the buttons that open files (Take photo, Record video, Open file, Load calibration, Import layout).
-- While placing, the placing bar covered the Freeze and Full screen buttons; it now sits above the stage buttons (and beside the flyover's camera buttons).
+- Keyboard focus was invisible on the buttons that open files (Take photo, Record video, Open file, Load calibration, Import layout, Survey a video).
+- While placing, the placing bar covered the Flyover, Freeze and Full screen buttons; it now sits above the stage buttons (and beside the flyover's camera buttons).
+- The list of example layouts showed "Layouts…" but was named "Example" for screen readers and speech input; it is named "Layouts" now.
 
 ## [0.1.0] – 2026-09-30
 

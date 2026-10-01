@@ -180,3 +180,10 @@ test("the time chip says night after sunset, also with the day and night lightin
   await expect(chip).not.toContainText("night");
   expect(errors).toEqual([]);
 });
+
+test("the layout list is named by the text it shows (Layouts…), for speech input", async ({ page }) => {
+  await openApp(page, "/app/");
+  const list = page.getByRole("combobox", { name: "Layouts", exact: true });
+  await expect(list).toHaveAttribute("id", "exampleSelect");
+  await expect(list.locator("option").first()).toHaveText("Layouts…");
+});

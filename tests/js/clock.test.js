@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { Clock, createWorld, daylightAt, formatTime, parseTime, profileAt, PROFILES } from "../../web/arail/index.js";
@@ -42,19 +43,39 @@ test("clock: daylight, night and demand profiles", () => {
   assert.equal(c.demand("unknown"), 1);
 });
 
-test("clock: the demand table of docs/day-and-night.md", () => {
-  const at = (kind, h) => Math.round(profileAt(PROFILES[kind], h * 60) * 100) / 100;
-  for (const kind of ["rail", "bus"]) for (const h of [1, 2.5, 4.5]) assert.equal(at(kind, h), 0, `${kind} at ${h} h: no service`);
-  assert.equal(at("car", 3), 0.15);
-  assert.ok(at("passengers", 3) <= 0.05, "almost no random passengers at night");
-  for (const kind of ["rail", "bus"]) assert.equal(at(kind, 7.5), 1.5);
-  assert.equal(at("car", 7), 1.4);
-  assert.equal(at("passengers", 7.5), 1.6);
-  assert.deepEqual([at("rail", 12), at("bus", 12), at("car", 9), at("car", 16), at("passengers", 12)], [1, 1, 1, 1.2, 1]);
-  assert.deepEqual([at("rail", 17), at("bus", 17), at("car", 17), at("passengers", 17)], [1.4, 1.4, 1.5, 1.5]);
-  // 21:00 to midnight: trains 0.6 -> 0.4, buses 0.5 -> 0.3, cars 0.5 -> 0.15, random passengers 0.5 -> 0.3
-  assert.deepEqual([at("rail", 21), at("rail", 23.999), at("bus", 21), at("bus", 23.999)], [0.6, 0.4, 0.5, 0.3]);
-  assert.deepEqual([at("car", 21), at("car", 23.999), at("passengers", 21), at("passengers", 23.999)], [0.53, 0.15, 0.5, 0.3]);
+test("clock: the demand table of docs/day-and-night.md matches PROFILES", () => {
+  // read the table itself, so that the docs and the profiles cannot drift apart
+  const md = readFileSync(new URL("../../docs/day-and-night.md", import.meta.url), "utf8").split("\n");
+  const head = md.findIndex((l) => l.startsWith("| Time | Trains and buses | Cars | Random passengers |"));
+  assert.ok(head >= 0, "the demand table is in the docs");
+  const rows = [];
+  for (let i = head + 2; md[i]?.startsWith("|"); i++) rows.push(md[i].split("|").slice(1, -1).map((c) => c.trim()));
+  assert.ok(rows.length >= 5, "the demand table has its rows");
+  const minutes = (s) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
+  const COLUMNS = [null, ["rail", "bus"], ["car"], ["passengers"]], NAMES = { trains: "rail", buses: "bus" };
+  const near = (v, x) => Math.abs(v - Number(x)) < 0.05; // the table rounds to one decimal
+  for (const [time, ...cells] of rows) {
+    const range = time.match(/^(\d\d:\d\d)–(\d\d:\d\d)$/) || time.match(/^from (\d\d:\d\d)()$/);
+    assert.ok(range, `time range "${time}"`);
+    const t0 = minutes(range[1]), t1 = Math.min(range[2] ? minutes(range[2]) : 1440, 1439.99);
+    const samples = (kind) => Array.from({ length: Math.ceil((t1 - t0) / 15) + 1 }, (_, i) => profileAt(PROFILES[kind], Math.min(t0 + i * 15, t1)));
+    cells.forEach((cell, i) => {
+      // a cell is one claim for the column's kinds, or "trains …, buses …"
+      const claims = /^(trains|buses) /.test(cell) ? cell.split(", ").map((part) => [[NAMES[part.split(" ")[0]]], part.replace(/^\w+ /, "")]) : [[COLUMNS[i + 1], cell]];
+      for (const [kinds, claim] of claims) {
+        for (const kind of kinds) {
+          const v = samples(kind), what = `${time}, ${kind}: "${claim}" (profile ${v.map((x) => x.toFixed(2)).join(" ")})`;
+          let m;
+          if (claim === "no service") assert.ok(v.every((x) => x === 0), what);
+          else if (claim === "almost none") assert.ok(v.every((x) => x <= 0.05), what);
+          else if ((m = claim.match(/^up to ([\d.]+)$/))) assert.ok(near(Math.max(...v), m[1]), what);
+          else if ((m = claim.match(/^([\d.]+) → ([\d.]+)$/))) assert.ok(near(v[0], m[1]) && near(v.at(-1), m[2]), what);
+          else if ((m = claim.match(/^([\d.]+)$/))) assert.ok(v.every((x) => near(x, m[1])), what);
+          else assert.fail(`unknown claim ${what}`);
+        }
+      }
+    });
+  }
 });
 
 test("clock: layouts carry their clock settings; no trains during the night break", () => {
