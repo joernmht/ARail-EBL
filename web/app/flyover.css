@@ -24,6 +24,11 @@
 /* zoom in/out and rotate left/right belong together */
 .fly-nav [data-fly="zoom-out"], .fly-nav [data-fly="rotate-right"] { margin-bottom: 6px; }
 
+/* the placing bar and messages leave the column of camera buttons free (its width, one or two
+   columns, is measured by flyover.js: --fly-nav-w) */
+.fly-nav:not([hidden]) ~ .placing { right: calc(16px + var(--fly-nav-w, 38px)); }
+.fly-nav:not([hidden]) ~ .toast { max-width: min(560px, calc(100% - 32px - 2 * var(--fly-nav-w, 38px))); }
+
 /* View panel: the same buttons as text */
 .flyover-section .fly-buttons .btn { min-width: 2.4rem; }
 

@@ -45,9 +45,9 @@ the timetable settings such as "A train every 70 s" are the off-peak intervals):
 | --- | --- | --- | --- |
 | 01:00–04:30 | no service | 0.15 | almost none |
 | 06:30–08:30 | 1.5 | up to 1.4 | 1.6 |
-| 09:00–15:30 | 1 | 1 | 1 |
+| 09:00–15:30 | 1 | 1 → 1.2 | 1 |
 | 16:00–18:30 | 1.4 | up to 1.5 | 1.5 |
-| from 21:00 | 0.6 → 0.3 | 0.4 → 0.15 | 0.5 → 0.3 |
+| 21:00–24:00 | trains 0.6 → 0.4, buses 0.5 → 0.3 | 0.5 → 0.15 | 0.5 → 0.3 |
 
 The profiles are in `core/clock.js` (`PROFILES`); plugins can read `world.clock.demand(kind)`.
 

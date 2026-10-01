@@ -690,7 +690,8 @@ class App {
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
     else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
     else chips.push(["bad", "No markers in view"]);
-    chips.push(["info clock", `${this.world.clock.label()}${this.world.night() > 0.5 ? " · night" : ""}`]);
+    // the clock's night (between sunset and sunrise), also while the day/night lighting is switched off
+    chips.push(["info clock", `${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`]);
     if (this.world.paused) chips.push(["info", "Paused"]);
     if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
     if (this.world.disruptions.active.length) chips.push(["bad", `${this.world.disruptions.active.length} disruption${this.world.disruptions.active.length > 1 ? "s" : ""}`]);

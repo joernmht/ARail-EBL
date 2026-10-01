@@ -73,6 +73,24 @@ for (const [scheme, expected] of Object.entries(MODES)) {
   });
 }
 
+for (const scheme of ["light", "dark"]) {
+  test(`the white chair logo stays visible in a high-contrast theme (forced colours, ${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ forcedColors: "active", colorScheme: scheme });
+    await page.goto("/app/#view");
+    await page.waitForFunction(() => window.__arail?.world);
+    // the bar takes the system's background (white in a light theme); the logo (an image) stays white
+    const backdrop = await page.locator(".cro-logo").evaluate((img) => {
+      for (let el = img; el; el = el.parentElement) {
+        const c = getComputedStyle(el).backgroundColor.match(/[\d.]+/g).map(Number);
+        if (c.length < 4 || c[3] > 0.5) return c.slice(0, 3);
+      }
+      return [255, 255, 255];
+    });
+    const lum = (c) => c.map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+    expect((1 + 0.05) / (lum(backdrop) + 0.05), `white logo on rgb(${backdrop})`).toBeGreaterThanOrEqual(3);
+  });
+}
+
 test.describe("layout of the app bar and the tabs", () => {
   test.use({ viewport: { width: 1024, height: 768 } });
 
