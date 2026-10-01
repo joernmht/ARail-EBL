@@ -10,10 +10,12 @@ import {
 import { readJSON, ROOT } from "./helpers.js";
 
 const LAB = readJSON("web/layouts/ebl-lab.json");
-// the example layout uses the example plugins (windmill, road traffic), loaded like the app does
-const pluginErrors = await loadPlugins(LAB.plugins, pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
+// the example layout uses the windmill plugin, loaded like the app does; the road-traffic example
+// plugin (replaced in the example by the built-in traffic simulation) must keep loading, too
+const pluginErrors = await loadPlugins([...LAB.plugins, "../plugins/road-traffic.js"], pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
 
 test("example plugins load and register their types", () => {
+  assert.deepEqual(LAB.plugins, ["../plugins/windmill.js"]);
   assert.deepEqual(pluginErrors, []);
   assert.ok(registry.objects.has("windmill"));
   assert.ok(registry.simulations.has("road-traffic"));
@@ -34,13 +36,47 @@ test("example layouts are valid and load completely", () => {
     assert.ok(!world.objects.some((o) => o.constructor.name === "UnknownObject"), "all object types known");
   }
   const world = createWorld(LAB);
-  assert.equal(world.simulations.length, 2, "passengers and road traffic");
+  assert.deepEqual(world.simulations.map((s) => s.constructor.type), ["passengers", "town", "traffic"]);
+  assert.equal(world.clock.label(), "07:00");
   for (const o of world.objects) assert.ok(o.geometry, `${o.id} has geometry (all markers are in the map)`);
   const areas = world.stopAreas();
-  assert.deepEqual(areas.map((a) => a.id).sort(), ["bus-terminal-1", "platform-1", "platform-2"]);
+  const stops = ["altmarkt", "schule", "siedlung"].flatMap((s) => [`bus-stop-${s}:left`, `bus-stop-${s}:right`]);
+  assert.deepEqual(areas.map((a) => a.id).sort(), [...stops, "bus-terminal-1", "platform-1", "platform-2"].sort());
   const p1 = world.getObject("platform-1");
   assert.ok(Math.abs(p1.lengthM - 700.7 * 0.087) < 0.5, `platform 1 is ${p1.lengthM.toFixed(1)} m long`);
-  assert.equal(world.services.docks.size, 2 + 2 + 2, "two tracks per platform, two bus bays");
+  // the timetable serves both tracks of each platform and one bus bay; the other two bays and the stops belong to the bus lines
+  assert.equal(world.services.docks.size, 2 + 2 + 1, "two tracks per platform, one bus bay");
+});
+
+test("the lab example: a town in front of the real table, with streets, bus lines and houses", () => {
+  const world = createWorld(LAB);
+  const of = (type) => world.objects.filter((o) => o.type === type);
+  // the town stands on table modules in front of the real table's near edge (y < -320 mm)
+  const physical = of("tabletop").filter((t) => t.spec.kind === "physical");
+  assert.equal(physical.length, 1, "the real table, drawn in the flyover");
+  assert.ok(of("tabletop").length >= 5, "table modules extend the tabletop");
+  const real = (o) => !["platform", "track", "tabletop"].includes(o.type);
+  for (const o of world.objects.filter(real)) {
+    const fp = o.footprint?.() || (o.anchorPoint?.() ? [o.anchorPoint()] : []);
+    for (const p of fp) assert.ok(p[1] < -320, `${o.id} is in front of the real table (${p.map(Math.round)})`);
+  }
+  // German house types, greyscale
+  for (const type of ["plattenbau", "altbau-block", "house-estate", "school", "supermarket", "office", "factory"]) assert.ok(of(type).length, type);
+  // streets connected to the station: every building entrance and every stop has a way on foot
+  const net = world.network();
+  for (const a of world.stopAreas()) a.access.forEach((_, i) => assert.notEqual(net.place(`area:${a.id}:${i}`), null, `${a.id} access ${i}`));
+  for (const o of world.objects) (o.entrances?.() || []).forEach((_, i) => assert.notEqual(net.place(`building:${o.id}:${i}`), null, `${o.id} entrance ${i}`));
+  // two bus lines in CD colours, without problems, ending at the bus station "Bahnhof"
+  world.transit.sync();
+  const lines = [...world.transit.lines.values()];
+  assert.deepEqual(lines.map((l) => [l.label, l.color]).sort(), [["62", "#0A777F"], ["85", "#C85000"]]);
+  for (const l of lines) {
+    assert.ok(l.ok && !l.problems.length, `line ${l.label}: ${l.problems.join("; ")}`);
+    assert.equal(l.directions[0].stops[0].objectId, "bus-terminal-1");
+    assert.ok(l.directions[0].stops.length >= 4, `line ${l.label} has several stops`);
+  }
+  assert.equal(world.getObject("bus-terminal-1").name, "Bahnhof");
+  assert.deepEqual(world.objects.filter((o) => o.problems?.()?.length).map((o) => o.id), []);
 });
 
 test("layout JSON round trip keeps objects, markers and scenarios", () => {

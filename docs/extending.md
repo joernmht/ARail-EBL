@@ -19,7 +19,7 @@ A layout loads its plugins by URL, relative to the layout file (same origin only
 { "plugins": ["../plugins/windmill.js", "../plugins/road-traffic.js"] }
 ```
 
-The example layout does exactly this with the two example plugins in [`web/plugins/`](../web/plugins): [`windmill.js`](../web/plugins/windmill.js) (an object type with animation) and [`road-traffic.js`](../web/plugins/road-traffic.js) (a simulation). Read them next to this guide.
+There are two example plugins in [`web/plugins/`](../web/plugins): [`windmill.js`](../web/plugins/windmill.js) (an object type with animation; the EBL lab example loads it for the windmill in its fields) and [`road-traffic.js`](../web/plugins/road-traffic.js) (a simulation, a much simpler version of the built-in `traffic`). Read them next to this guide.
 
 In your own page or a test, load the API and call the plugin yourself:
 

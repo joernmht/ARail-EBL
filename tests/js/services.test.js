@@ -62,9 +62,14 @@ test("disruptions: frequency 0 stops all vehicles", () => {
   reg.registerDisruption({ type: "no-service", targets: "any", effects: () => ({ frequency: 0 }) });
   const world = new World({ registry: reg, layout: LAB, seed: 4 });
   world.disruptions.start({ type: "no-service" });
-  const arrivals = countArrivals(world);
+  // the buses of the bus lines that were already on their way when the layout was opened finish
+  // their round; no new ones depart
+  const arrivals = countArrivals(world, (e) => e.vehicle.source !== "line");
+  let lineDepartures = 0;
+  world.events.on("vehicle.departing", (e) => e.vehicle.source === "line" && e.dock.id.startsWith("bus-terminal-1") && lineDepartures++);
   run(world, 600);
   assert.equal(arrivals.length, 0);
+  assert.equal(lineDepartures, 0, "no bus line departs from the bus station");
 });
 
 test("simulations of missing plugins are kept when saving", () => {
@@ -95,11 +100,11 @@ test("loading a layout resets demand and keeps the marker map object", () => {
 
 test("docks follow the marker survey without a passenger simulation", () => {
   const world = createWorld({ ...LAB, markers: { ...LAB.markers, poses: {} } });
-  assert.equal(world.services.docks.size, 2, "no marker known yet: only the bus bays (placed by coordinates)");
+  assert.equal(world.services.docks.size, 1, "no marker known yet: only the bus bay of the timetable (placed by coordinates; the other bays belong to the bus lines)");
   for (const [id, p] of Object.entries(LAB.markers.poses)) world.map.set(Number(id), { x: p[0], y: p[1], theta: (p[2] * Math.PI) / 180 });
   const arrivals = countArrivals(world, (e) => e.dock.kind === "rail");
   run(world, 300);
-  assert.equal(world.services.docks.size, 6);
+  assert.equal(world.services.docks.size, 5);
   assert.ok(arrivals.length > 4, `${arrivals.length} trains arrived`);
 });
 

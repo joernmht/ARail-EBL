@@ -766,6 +766,16 @@ export class RoadNetwork {
       outS.push(s);
     };
     const right = (d) => [d[1], -d[0]];
+    // the lane's corner point stands in for the samples close to a vertex where the path turns:
+    // offset samples there would fold the lane back on itself (e.g. where a main road with a wider
+    // lane offset meets a street), and a vehicle on such a fold blocks the others for good
+    const setback = (j, o) => {
+      if (j <= 0 || j >= n - 1) return 0;
+      const a = unit2(sub2(P[j], P[j - 1])), b = unit2(sub2(P[j + 1], P[j]));
+      const c = clamp(dot2(a, b), -1, 1);
+      if (c > 0.9995) return 0;
+      return Math.max(Math.abs(o), Math.abs(offset(cum[j]))) * Math.tan(Math.min(Math.acos(c) / 2, 1.3));
+    };
     let k = 0;
     for (let i = 0; i < n; i++) {
       const s = cum[i], o = offset(s);
@@ -795,6 +805,7 @@ export class RoadNetwork {
         while (k < extra.length && extra[k] <= s) k++;
         for (; k < extra.length && extra[k] < cum[i + 1]; k++) {
           const t = extra[k], q = polylineAt(P, t, cum).point, oo = offset(t);
+          if (t - s < setback(i, oo) || cum[i + 1] - t < setback(i + 1, oo)) continue;
           push([q[0] + r[0] * oo, q[1] + r[1] * oo], t);
         }
       }

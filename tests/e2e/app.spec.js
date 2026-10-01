@@ -96,8 +96,14 @@ test("the synthetic example is surveyed from scratch", async ({ page }) => {
     const a = window.__arail;
     return a.world.layout.name === "Synthetic test layout" && a.tracker.state.H && a.world.map.ids().length >= 6;
   });
-  const placed = await page.evaluate(() => window.__arail.world.objects.filter((o) => o.geometry).length);
-  expect(placed).toBe(7);
+  // all objects are placed: the platforms, the bus station, two houses and two trees relative to
+  // the surveyed markers, the town on the table module by coordinates
+  const [placed, total] = await page.evaluate(() => {
+    const objects = window.__arail.world.objects;
+    return [objects.filter((o) => o.geometry).length, objects.length];
+  });
+  expect(total).toBe(18);
+  expect(placed).toBe(total);
   expect(errors).toEqual([]);
 });
 

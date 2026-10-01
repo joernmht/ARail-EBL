@@ -487,6 +487,10 @@ export class View {
   label(at, text, style = {}) {
     const p = this.project(at[0], at[1], at[2] || 0);
     if (!p) return;
+    // labels of things just outside the picture are pulled in at its edge; far away ones (e.g. the
+    // stops of a town on table extensions beyond the photo) would only pile up there
+    const W = this.camera.width, H = this.camera.height;
+    if (p[0] < -0.25 * W || p[0] > 1.25 * W || p[1] < -0.25 * H || p[1] > 1.25 * H) return;
     const lines = Array.isArray(text) ? text : [text];
     this.overlay((ctx) => drawLabel(ctx, p, lines, style, this.px * this.labelScale, this.camera.width, this.camera.height, this.placed), style.order ?? 0);
   }
