@@ -6,6 +6,7 @@ Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL):
 | --- | --- | --- |
 | `arail-bridge` | connects a control system to the ARail web app (WebSocket feed) | `bridge` |
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
+| `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
 | `arail-synthetic` | renders the synthetic test layout | `opencv` or `headless` |
 | `python -m arail_tools.fixtures` | generates the images for the JavaScript tests | `opencv` or `headless` |
 
@@ -16,4 +17,19 @@ pip install -e "tools[headless,bridge,dev]"    # servers, CI, development
 ```
 
 Install either `opencv` or `headless`, not both. See the documentation:
-[control-system interface](../docs/control-system-interface.md), [calibration](../docs/calibration.md).
+[control-system interface](../docs/control-system-interface.md), [calibration](../docs/calibration.md),
+[lab session](../docs/lab-session.md).
+
+## Surveying a layout
+
+Stick markers all over the layout, film it, then:
+
+```bash
+arail-survey lab.mp4 photos/*.jpg --layout web/layouts/ebl-lab.json -o ebl-lab.json \
+    --report report.json --ortho web/media/ebl-lab-ortho.jpg --check check.jpg
+```
+
+The marker poses of `--layout` are kept (markers that moved are measured again), all other markers
+are surveyed, and the result is merged into the layout: `markers.poses` and `view.ortho` (the
+orthophoto for the flyover). `arail-survey --help` lists all options; the
+[lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
