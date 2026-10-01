@@ -895,8 +895,9 @@ export class TownSimulation extends Simulation {
   _checkRide(a, rider) {
     const bus = a.vehicle, V = this.world.transit?.lines?.get?.(bus.lineId)?.visits;
     if (!V?.length || V.some((v) => v.dockId === rider.toDockId)) return;
-    // standing at a stop: the people for it got off already
-    const next = V[(bus.next + (bus.phase === "dwelling" ? 1 : 0)) % V.length];
+    // standing at a stop (also while the doors close): the people for it got off already
+    const atStop = bus.phase === "dwelling" || (bus.phase === "departing" && bus.doorsLeft > 0);
+    const next = V[(bus.next + (atStop ? 1 : 0)) % V.length];
     rider.toDockId = next?.dockId ?? null;
     const leg = a.trip?.legs[a.trip.leg];
     if (leg?.type === "ride") leg.toDockId = rider.toDockId;

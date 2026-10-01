@@ -62,15 +62,18 @@ const right = (d) => [d[1], -d[0]];
  * @param {number[][]} points
  */
 export function turningNumber(points) {
-  const P = points.length > 1 && dist2(points[0], points[points.length - 1]) < 1e-6 ? points.slice(0, -1) : points;
+  // without repeated points (a corner between two of them would not count) and the closing point
+  const P = [];
+  for (const p of points) if (!P.length || dist2(p, P[P.length - 1]) > 1e-6) P.push(p);
+  if (P.length > 1 && dist2(P[0], P[P.length - 1]) <= 1e-6) P.pop();
   const n = P.length;
+  if (n < 3) return 0;
   let total = 0;
   for (let i = 0; i < n; i++) {
     const u = sub2(P[i], P[(i - 1 + n) % n]), v = sub2(P[(i + 1) % n], P[i]);
-    if (Math.hypot(u[0], u[1]) < 1e-9 || Math.hypot(v[0], v[1]) < 1e-9) continue;
     total += Math.atan2(cross2(u, v), dot2(u, v));
   }
-  return Math.round(total / (2 * Math.PI));
+  return Math.round(total / (2 * Math.PI)) || 0;
 }
 
 /**

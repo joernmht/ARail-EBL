@@ -550,7 +550,8 @@ export class PassengerSimulation extends Simulation {
 
   /**
    * The board of a stop object over its stop areas: name, people waiting, mood and the next
-   * vehicle (for a bus stop on both sides of the street: per side). Seen from far away (the stop
+   * vehicle (for a bus stop on both sides of the street: per side; at a bus terminal: per line,
+   * see {@link boardStatus}). Seen from far away (the stop
    * shorter than {@link BOARD_MIN_PX} on the screen) only a small badge with the people waiting.
    * @param {import("../core/view.js").View} view
    * @param {object} owner the stop object
@@ -574,8 +575,7 @@ export class PassengerSimulation extends Simulation {
       return;
     }
     const lines = [`${owner.name} · ${count} ${count === 1 ? "person" : "people"} · ${(mood * 100).toFixed(0)} %`];
-    const status = alert ? [alert] : [...new Set(areas.map((a) => dockStatus(this.world, a)).filter(Boolean))];
-    lines.push(...status.slice(0, 2));
+    lines.push(...(alert ? [alert] : boardStatus(this.world, areas)));
     view.label([at[0], at[1], z], lines, {
       size: 12, anchor: "bottom", badge: badge || undefined, badgeColor,
       colors: [null, ...lines.slice(1).map(() => (alert ? OVERLAY.alert : OVERLAY.status))], bar: mood, barColor: moodColor(mood), order: 1,
@@ -585,23 +585,49 @@ export class PassengerSimulation extends Simulation {
 
 /**
  * Short status text for the docks of an area ("Train arriving", "Next train in 25 s", "Bus 62 to
- * Station in 3 min", ...). Docks served by bus lines ask `world.transit`.
+ * Station in 3 min", ...): the first of {@link statusLines}.
  */
 export function dockStatus(world, area) {
+  return statusLines(world, area)[0] ?? "";
+}
+
+/**
+ * Status texts for the docks of an area, the most important first: a timetable vehicle at a dock
+ * ("RE 1 boarding", "Bus 305 arriving"), the next bus of each bus line that stops here (asked from
+ * `world.transit`; the bays of a bus terminal can serve several lines), else the next vehicle of
+ * the timetable ("Next train in 25 s").
+ * @returns {string[]}
+ */
+export function statusLines(world, area) {
   const states = world.services.forArea(area.id);
-  const lines = world.transit ? area.docks.filter((d) => d.managed).map((d) => world.transit.statusFor(d.id)).filter(Boolean) : [];
-  if (lines.length && !states.some((st) => st.vehicle)) return lines[0];
-  if (!states.length) return "";
+  const lines = world.transit ? [...new Set(area.docks.filter((d) => d.managed).map((d) => world.transit.statusFor(d.id)).filter(Boolean))] : [];
+  if (!states.length) return lines;
   const noun = area.kind === "bus" ? "Bus" : "Train";
   const busy = states.find((st) => st.vehicle);
   if (busy) {
     const v = busy.vehicle;
     const verb = { arriving: "arriving", dwelling: "boarding", departing: "departing" }[v.phase];
-    return `${v.line || noun} ${verb}${states.length > 1 && busy.dock.label ? ` (${busy.dock.label})` : ""}`;
+    // a bus of the timetable says "Bus 305 …", like the buses of the lines
+    const name = !v.line ? noun : noun === "Bus" && !/^bus\b/i.test(v.line) ? `Bus ${v.line}` : v.line;
+    return [`${name} ${verb}${states.length > 1 && busy.dock.label ? ` (${busy.dock.label})` : ""}`, ...lines];
   }
-  if (states.every((st) => st.mode === "feed")) return "Waiting for the next train";
+  if (lines.length) return lines;
+  if (states.every((st) => st.mode === "feed")) return ["Waiting for the next train"];
   const next = Math.min(...states.map((st) => st.timer)) / (world.speed || 1);
-  return `Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`;
+  return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];
+}
+
+/**
+ * Status lines for the board of a stop object over its stop areas (a bus stop on both sides of
+ * the street has two): the most important line of each area first (the next bus on each side),
+ * then the others (the next bus of the other lines at a terminal); at most `max`.
+ * @param {object} world
+ * @param {object[]} areas
+ * @param {number} [max=2]
+ */
+export function boardStatus(world, areas, max = 2) {
+  const per = areas.map((a) => statusLines(world, a));
+  return [...new Set([...per.map((s) => s[0]), ...per.flatMap((s) => s.slice(1))].filter(Boolean))].slice(0, max);
 }
 
 /** Colour of a person when people show their trip purpose: the agent's colour, else neutral. */

@@ -1,5 +1,5 @@
 // Panels: View, Simulate, Disruptions, Control system.
-import { moodColor, dockStatus, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, WebSocketFeed } from "../arail/index.js";
+import { moodColor, boardStatus, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -230,7 +230,8 @@ export class Panels {
     morph(this.board, areas.map((a, i) => {
       const s = sim?.stats(a.id) || { count: 0, mood: 1, inPerMin: 0, outPerMin: 0 };
       const fx = w.disruptions.effectsFor(a);
-      const status = fx.messages[0] || dockStatus(w, a);
+      // the next bus of each line at a terminal's bays, as on the board over the stop
+      const status = fx.messages[0] || boardStatus(w, [a]).join(" · ");
       const docks = w.services.forArea(a.id);
       const bus = a.kind === "bus";
       return h("div", { class: "stop", "data-id": a.id },

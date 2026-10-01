@@ -35,7 +35,9 @@ bus shows its line number and *to* … or *Ring ↻* on its destination sign whi
 stop (*Not in service* on its way to the depot).
 
 A stop on both sides of the street has **one board** for both sides: the name, the people waiting
-on both sides, their mood and the next bus on each side. Seen from far away (the stop shorter
+on both sides, their mood and the next bus on each side. The board of a bus terminal shows the
+next bus of each line that starts there (and *Bus 305 boarding* while one of the terminal's own
+timetable buses stands in its bay). Seen from far away (the stop shorter
 than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a
 small badge with the stop sign and the number of people waiting; zoom in for the full board.
 Platforms and bus terminals are longer, so they keep their full boards unless they are tiny. The
@@ -123,6 +125,10 @@ See [Layout file format](layout-format.md#road) for the parameters of `road`, `b
   `{vehicle, dock, area}` at the stop docks. The town simulation puts its people into `riders`
   and lets them get off when the bus arrives at their stop.
 - Docks with `managed` set are left alone by the timetable (`core/services.js`).
+- The texts of the boards come from `sims/passengers.js`: `statusLines(world, area)` (the most
+  important first: a timetable vehicle at a dock, the next bus of each line, the next timetable
+  vehicle), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas)` (the lines
+  of a stop's board over all its areas, at most two).
 - Simulations with vehicles on the streets can expose `roadUsers()` (`[{vehicle, front, rear, dir,
   approach}]`): buses and the traffic simulation keep their distance to them and give way at
   junctions.

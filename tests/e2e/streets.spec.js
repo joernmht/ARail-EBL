@@ -149,6 +149,10 @@ test("stops board: both sides of a stop as Stop A and B; loop lines go round as 
   await expect(board.locator(".stop .status").filter({ hasText: /^Bus 62 Ring ↺/ }).first()).toBeVisible();
   await expect(board.locator(".stop .status").filter({ hasText: /^Bus 85 Ring ↻/ }).first()).toBeVisible();
   await expect(board).not.toContainText("(loop)");
+  // both lines start at the station's bus terminal: its row shows the next bus of each
+  // (unless a timetable bus of the terminal's third bay is there, then that one and the next line)
+  await expect(board.locator('.stop[data-id="bus-terminal-1"] .status')).toHaveText(/^Bus (62 Ring ↺.* · Bus 85 Ring ↻|30[58] .* · Bus (62|85) Ring)/);
+  await expect(board.locator(".stop .status").filter({ hasText: /(^|· )30[58] / })).toHaveCount(0);
   // the inspector of a loop line says which way round its buses go
   await page.locator("#tab-build").click();
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-line-85")));

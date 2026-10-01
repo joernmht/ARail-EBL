@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  BOARD_MIN_PX, Camera, createWorld, dot2, FlyCamera, gapAhead, LayoutObject, rectFootprint, Registry, registerBuiltins, resolvePoint,
+  BOARD_MIN_PX, Camera, createWorld, dockStatus, dot2, FlyCamera, gapAhead, LayoutObject, rectFootprint, Registry, registerBuiltins, resolvePoint,
   ringName, toRad, turningNumber, View, World,
 } from "../../web/arail/index.js";
 
@@ -215,6 +215,29 @@ test("town: riders whose stop is taken off the line get off at the next stop", (
   assert.ok(riders.some((a) => a.inside === "office"), "walked on to work from the stop before");
 });
 
+test("town: riders whose stop is removed while their bus closes its doors get off at the next stop, not this one", () => {
+  const w = townWorld([
+    ...STREET,
+    { id: "home", type: "test-box", position: [400, 160], use: "residential", people: 300 },
+    { id: "office", type: "test-box", position: [3600, 160], use: "work", people: 300 },
+    { id: "l", type: "bus-line", number: "62", headway_s: 60, stops: ["a", "b", "c"] },
+  ]);
+  const town = w.simulations.find((s) => s.constructor.type === "town");
+  w.speed = 10;
+  // a bus with riders for East (c) closes its doors at Centre (b)
+  const closing = () => w.transit.buses.find((b) => b.phase === "departing" && b.doorsLeft > 0 && b.dock?.id === "b:right" && b.riders.some((r) => r.toDockId?.startsWith("c:")));
+  while (!closing() && w.clock.minutes < 10 * 60) w.step(0.05);
+  const bus = closing();
+  assert.ok(bus, "a bus with riders for East closing its doors at Centre");
+  w.removeObject("c");
+  w.transit.sync();
+  town._sanity();
+  const riders = bus.riders.filter((r) => town.agents.includes(r.agent));
+  assert.ok(riders.length > 0);
+  // Centre's people got off already: the riders get off at the stop after it
+  for (const r of riders) assert.notEqual(r.toDockId, "b:right", "the stop the bus is leaving");
+});
+
 test("the doors of a bus open towards the stop: on the right at a bus stop, on the left in a terminal bay", () => {
   const w = world([
     { id: "main", type: "road", points: [[-500, 0], [5000, 0]] },
@@ -251,6 +274,11 @@ test("loop lines: the buses go round clockwise or counter-clockwise (Ring ↻ / 
   assert.equal(turningNumber(square), 1, "counter-clockwise");
   assert.equal(turningNumber([...square].reverse()), -1, "clockwise");
   assert.equal(turningNumber([[0, 0], [100, 100], [100, 0], [0, 100], [0, 0]]), 0, "figure eight");
+  // repeated points (e.g. where two pieces of a route meet) do not hide the corners between them
+  const repeated = [[0, 0], [100, 0], [100, 0], [100, 100], [100, 100], [0, 100], [0, 100], [0, 0], [0, 0]];
+  assert.equal(turningNumber(repeated), 1);
+  assert.equal(turningNumber([...repeated].reverse()), -1);
+  assert.ok(Object.is(turningNumber([[0, 0], [100, 0], [0, 0]]), 0), "there and back: no way round");
   assert.deepEqual([ringName(-1), ringName(1), ringName(0)], ["Ring ↻", "Ring ↺", "Ring"]);
   // east on the main street (the stops are on its right side), back on the northern street
   const block = [...STREET.slice(0, 1), { id: "n", type: "road", points: [[0, 0], [0, 1000], [4000, 1000], [4000, 0]] }, ...STREET.slice(1)];
@@ -323,6 +351,41 @@ test("one board per stop; from far away only a badge with the people waiting", (
   assert.ok(badges.every((l) => l.lines.length === 1 && /^\d+$/.test(l.lines[0])), badges.map((l) => l.lines.join("/")).join(", "));
   assert.ok(badges.some((l) => l.lines[0] === "4"));
   assert.ok(BOARD_MIN_PX >= 25);
+});
+
+test("the board of a bus terminal shows the next bus of every line that starts there; timetable buses say Bus", () => {
+  // two lines lay over in their own bays, the third bay keeps the terminal's timetable buses ("305")
+  const w = world([
+    { id: "main", type: "road", points: [[-500, 0], [5000, 0]] },
+    { id: "t", type: "bus-terminal", name: "Station", position: [700, -150], bays: 3, lines: "305" },
+    { id: "e", type: "bus-stop", name: "East", position: [3000, -70], side: "both" },
+    { id: "f", type: "bus-stop", name: "Far", position: [4500, -70], side: "both" },
+    { id: "l1", type: "bus-line", number: "1", headway_s: 300, stops: ["t", "e"] },
+    { id: "l2", type: "bus-line", number: "2", headway_s: 300, stops: ["t", "f"] },
+  ]);
+  const pax = w.simulations[0];
+  const area = w.stopAreas().find((a) => a.owner.id === "t");
+  const board = () => {
+    const { view, labels } = viewAt([700, -150], 700);
+    pax.draw(view);
+    return labels.find((l) => l.lines[0].startsWith("Station"));
+  };
+  const seen = new Set(), timetable = new Set();
+  w.speed = 1;
+  for (let i = 0; i < 4800; i++) {
+    w.step(0.25);
+    if (i % 8) continue;
+    const b = board();
+    assert.ok(b, "a board over the terminal");
+    for (const s of b.lines.slice(1)) seen.add(s.replace(/ (in \d+ min|arriving|waiting|boarding|departing)$/, ""));
+    const busy = w.services.forArea(area.id).some((st) => st.vehicle);
+    if (busy) timetable.add(dockStatus(w, area));
+  }
+  // both lines on the board (the board used to show only the first bay's line)
+  assert.ok(seen.has("Bus 1 to East") && seen.has("Bus 2 to Far"), [...seen].join(" | "));
+  // the timetable buses of the third bay: "Bus 305 boarding", like the buses of the lines
+  assert.ok(timetable.size > 0, "a timetable bus came");
+  for (const s of timetable) assert.match(s, /^Bus 305 (arriving|boarding|departing)$/);
 });
 
 /* ------------------------------------------------------------------ streets */

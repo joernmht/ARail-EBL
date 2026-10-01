@@ -75,7 +75,7 @@ export {
   gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
 } from "./objects/building-kit.js";
 export { drawTree } from "./objects/trees.js";
-export { BOARD_MIN_PX, dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
+export { BOARD_MIN_PX, boardStatus, dockStatus, drawPerson, NEUTRAL_PERSON, statusLines } from "./sims/passengers.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
