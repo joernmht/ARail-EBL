@@ -261,9 +261,10 @@ export class Editor {
     this.renderPalette();
   }
 
-  /** Forget placing, dragging and the selection (before another layout is loaded). */
+  /** Forget placing, dragging, the selection and a video survey (before another layout is loaded). */
   reset() {
     this.surveyState?.survey.cancel();
+    this.surveyState = null; // it belongs to the layout it was started on
     this.placing = null;
     this.drag = null;
     this.rectDrag = null;
@@ -907,16 +908,21 @@ export class Editor {
       message = `The video could not be surveyed: ${err.message}.`;
     } finally {
       st.running = false;
-      if (wasLocked && !map.locked && map.version === version) {
-        // nothing was measured (a video that cannot be played, cancelled at once, no new markers): locked again
-        map.lock();
-        this.app.applyDictionary({ keepType: true });
-        this.app.updateHud();
-        message = st.error ? `${message} The marker map is locked again.`
-          : `Survey ${st.result.cancelled ? "cancelled" : "done"}: no marker was added or changed, the marker map is locked again.`;
+      if (this.surveyState !== st) {
+        // another layout was loaded meanwhile (reset() cancelled the survey): it is neither locked nor saved here
+        message = "Survey cancelled: another layout was loaded.";
+      } else {
+        if (wasLocked && !map.locked && map.version === version) {
+          // nothing was measured (a video that cannot be played, cancelled at once, no new markers): locked again
+          map.lock();
+          this.app.applyDictionary({ keepType: true });
+          this.app.updateHud();
+          message = st.error ? `${message} The marker map is locked again.`
+            : `Survey ${st.result.cancelled ? "cancelled" : "done"}: no marker was added or changed, the marker map is locked again.`;
+        }
+        this.app.saveLayout();
+        this.renderMarkers();
       }
-      this.app.saveLayout();
-      if (this.surveyState === st) this.renderMarkers();
     }
     toast(message, st.error ? 8000 : 6000);
   }
