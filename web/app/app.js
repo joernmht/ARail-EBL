@@ -67,7 +67,13 @@ class App {
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
-    if (params.get("scenario")) setTimeout(() => this.world.scenarios.play(params.get("scenario")), 500);
+    const scenario = params.get("scenario");
+    if (scenario) {
+      setTimeout(() => {
+        if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
+        else toast(`This layout has no scenario “${scenario}” (see the Disruptions panel).`, 7000);
+      }, 500);
+    }
     const tab = location.hash.slice(1);
     if (TABS.includes(tab)) this.selectTab(tab);
     let last = performance.now(), failing = false;
@@ -246,6 +252,10 @@ class App {
     this.layoutUrl = new URL(url, location.href).href;
     this.originalLayout = json;
     storage.set("arail.lastLayout", url);
+    const img = json.view?.image;
+    // the layout's own image follows: the photo or video shown until then belongs to the previous
+    // layout, and markers detected in it must not be measured into this layout's marker map
+    if (withImage && img && this.source) this.source.stale = true;
     const edited = storage.get(this._layoutKey());
     let restored = false;
     if (edited) {
@@ -265,7 +275,6 @@ class App {
         await this._applyLayout({});
       }
     }
-    const img = json.view?.image;
     if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
   }
 
@@ -559,12 +568,12 @@ class App {
 
   /** Detect markers in a still image once, at high resolution. */
   redetect() {
-    if (!this.source || !this.detector) return;
+    if (!this.source || !this.detector || this.source.stale) return;
     if (this.source.kind !== "image") return; // video frames are processed continuously
     const { el, nw, nh } = this.source;
-    toast("Looking for markers…", 1500);
+    toast("Looking for markers…", 1500, { minor: true }); // e.g. "Your changes to this layout were restored" stays
     setTimeout(() => {
-      if (this.source?.el !== el) return;
+      if (this.source?.el !== el || this.source.stale) return;
       const s = Math.min(1, 2000 / Math.max(nw, nh));
       const pw = Math.round(nw * s), ph = Math.round(nh * s);
       this.proc.width = pw;
@@ -614,7 +623,7 @@ class App {
     this.clock += dt;
     if (dt > 0) this.fps = 0.9 * this.fps + 0.1 / Math.max(dt, 1e-3);
     const fly = this.flyover.active;
-    if (!fly && this.source && this.source.kind !== "image" && !this.frozen) this._processVideo();
+    if (!fly && this.source && this.source.kind !== "image" && !this.frozen && !this.source.stale) this._processVideo();
     if (this.feed?.tick) this.feed.tick(dt);
     this.world.step(dt);
     if (fly) this.flyover.step(dt);

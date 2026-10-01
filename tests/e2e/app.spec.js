@@ -1,4 +1,5 @@
 // End-to-end tests of the app in a real browser (Chromium).
+import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
@@ -127,6 +128,95 @@ test("switching layouts while placing an object keeps the app running", async ({
   await expect(page.locator("#placing")).toBeHidden();
   const t0 = await page.evaluate(() => window.__arail.clock);
   await expect.poll(() => page.evaluate(() => window.__arail.clock)).toBeGreaterThan(t0 + 0.2); // frames still run
+  expect(errors).toEqual([]);
+});
+
+test("a layout chosen from the Layouts menu gets only its own markers, not those of the previous photo", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout" && window.__arail.world.map.ids().length === 8);
+  // the lab photo arrives late: meanwhile the synthetic photo (markers 0–7) is still the source
+  await page.route("**/media/ebl-lab.jpg", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  expect(errors).toEqual([]);
+});
+
+test("a layout chosen from the Layouts menu while a video plays is not tracked in that video", async ({ page }) => {
+  const VIDEO = "tests/fixtures/synthetic-survey.webm";
+  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
+  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.locator("#fileVideo").setInputFiles(VIDEO);
+  await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
+  // the lab photo comes later: meanwhile the video of the synthetic layout (markers 0–7) is still shown
+  let sendPhoto;
+  await page.route("**/media/ebl-lab.jpg", async (route) => {
+    await new Promise((resolve) => (sendPhoto = resolve));
+    await route.continue();
+  });
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForTimeout(800); // many video frames
+  expect(await page.evaluate(() => ({ ids: window.__arail.world.map.ids(), tracked: !!window.__arail.tracker.state.H }))).toEqual({ ids: [0, 1, 2, 3, 4], tracked: false });
+  await expect.poll(() => typeof sendPhoto).toBe("function");
+  sendPhoto();
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  expect(errors).toEqual([]);
+});
+
+test("a layout saved in this browser by version 0.1.0 is restored, and the app says so", async ({ page }) => {
+  // as World.toJSON() of 0.1.0 wrote it (no grid, clock or town; road kind "road", coloured buildings, the road-traffic plugin)
+  const saved = {
+    format: "arail-layout/1", name: "EBL lab (example)", scale: 87,
+    markers: { dictionary: "ARUCO", size_mm: 30, codes: 50, origin: 0, sizes_mm: {}, poses: { 0: [0, 0, 0], 1: [700.4, 18.9, 1.47], 2: [-9.8, 143, 1.49], 3: [708.3, 162.3, 0.39], 4: [1159.7, 188.5, -0.69] } },
+    services: { rail_headway_s: 70, rail_dwell_s: 24, bus_headway_s: 80, bus_dwell_s: 20, approach_s: 6 },
+    simulations: [{ base_rate: 0.5, max_per_area: 140, type: "passengers" }, { type: "road-traffic", cars_per_km: 90, speed_kmh: 35 }],
+    objects: [
+      { name: "Platform 1", number: "1", width_mm: 70, sides: "both", track_left: "G2", track_right: "G3", lines: "RE 1, RB 33", id: "platform-1", type: "platform", between: [0, 1] },
+      { track_id: "G2", id: "track-g2", type: "track", points: [[-150, 43], [1450, 86.1]] },
+      { name: "Bus station", rotation_deg: 1.5, bays: 2, bay_length_m: 16, width_m: 2.8, lane_width_m: 3.2, lines: "62, 85", id: "bus-terminal-1", type: "bus-terminal", position: [610, -266] },
+      { name: "House", rotation_deg: 1.5, width_m: 10, depth_m: 8, floors: 2, roof: "gable", color: "#f0e0c0", roof_color: "#7a3b2e", id: "building-3", type: "building", position: [420, 494] },
+      { name: "My road", kind: "road", width_m: 6, type: "road", points: [[100, 300], [900, 320]], id: "road-2" },
+    ],
+    scenarios: [], plugins: ["../plugins/road-traffic.js"], view: { image: "../media/ebl-lab.jpg" },
+  };
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/app/#build");
+  await page.evaluate((json) => {
+    localStorage.clear();
+    localStorage.setItem(`arail.layout:${new URL("../layouts/ebl-lab.json", location.href).href}`, JSON.stringify(json));
+    localStorage.setItem("arail.settings", JSON.stringify({ labels: true, trails: false, showTracks: true, feedVehicles: "outline" }));
+  }, saved);
+  await page.reload();
+  await page.waitForFunction(() => window.__arail?.tracker.state.H && window.__arail.source?.kind === "image", null, { timeout: 30_000 });
+  // the message is not replaced by the note that the photo is being analysed
+  await page.waitForTimeout(600);
+  await expect(page.locator("#toast")).toContainText("Your changes to this layout were restored");
+  const state = await page.evaluate(() => {
+    const w = window.__arail.world, road = w.getObject("road-2");
+    return { n: w.objects.length, placed: w.objects.every((o) => o.geometry), street: road.roadInfo().car, colour: w.getObject("building-3").spec.color, sims: w.simulations.map((s) => s.constructor.type), lighting: w.settings.lighting };
+  });
+  expect(state).toEqual({ n: 5, placed: true, street: true, colour: "#f0e0c0", sims: ["passengers", "road-traffic"], lighting: true });
+  // Reset to original: the example town of this version
+  await page.getByRole("button", { name: "Reset to original" }).click();
+  await expect.poll(() => page.evaluate(() => window.__arail.world.objects.length)).toBeGreaterThan(50);
+  expect(errors).toEqual([]);
+});
+
+test("URL option ?scenario= plays a scenario of the layout; an unknown one is named in a message", async ({ page }) => {
+  const errors = await openApp(page, "/app/?scenario=football#disrupt");
+  await expect.poll(() => page.evaluate(() => window.__arail.world.scenarios.current?.id)).toBe("football");
+  await page.goto("/app/?scenario=nope");
+  await page.waitForFunction(() => window.__arail?.tracker.state.H);
+  await expect(page.locator("#toast")).toContainText("no scenario “nope”");
   expect(errors).toEqual([]);
 });
 

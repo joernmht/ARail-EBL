@@ -147,12 +147,13 @@ export class Editor {
 
   /**
    * The point of an object that snaps to the grid when it is dragged: its own `snapPoint()`, else
-   * the first point drawn of a line, outline or segment (points placed on the grid stay on it;
-   * their centre is mostly between grid lines), else its anchor point.
+   * the first point drawn of a line, outline or segment, or the position of a point object (points
+   * placed on the grid stay on it; a centre is mostly between grid lines, and the point a bus stop
+   * shows on its street does not follow the pointer across the street), else its anchor point.
    */
   _snapAnchor(o) {
     if (o.snapPoint) return o.snapPoint();
-    const s = o.spec, first = Array.isArray(s.points) ? s.points[0] : s.from;
+    const s = o.spec, first = Array.isArray(s.points) ? s.points[0] : s.from ?? s.position;
     return (first != null && resolvePoint(this.world.map, first)) || o.anchorPoint();
   }
 
@@ -260,9 +261,10 @@ export class Editor {
     this.renderPalette();
   }
 
-  /** Forget placing, dragging and the selection (before another layout is loaded). */
+  /** Forget placing, dragging, the selection and a video survey (before another layout is loaded). */
   reset() {
     this.surveyState?.survey.cancel();
+    this.surveyState = null; // it belongs to the layout it was started on
     this.placing = null;
     this.drag = null;
     this.rectDrag = null;
@@ -628,13 +630,20 @@ export class Editor {
       return;
     }
     const cls = o.constructor;
+    const problemsOf = () => (typeof o.problems === "function" ? o.problems() : []);
+    const problems = problemsOf();
     const change = (key, value) => {
       o.set({ [key]: value });
       this.app.saveLayout();
       if (key === "name" || key === "text") this.renderObjects();
+      if (problemsOf().join("\n") !== problems.join("\n")) {
+        // e.g. a footpath chosen as a bus stop's street: the problems shown follow the change (the field keeps the focus)
+        const focused = document.activeElement?.id;
+        this.renderInspector();
+        if (focused) document.getElementById(focused)?.focus();
+      }
     };
     const geo = this._geometryFields(o);
-    const problems = typeof o.problems === "function" ? o.problems() : [];
     // the inspector is drawn anew after turning: the button keeps the focus (it can be pressed again)
     const rotateButton = (id, deg, title, symbol, words) => h("button", {
       class: "btn small", type: "button", id, title,
@@ -906,16 +915,21 @@ export class Editor {
       message = `The video could not be surveyed: ${err.message}.`;
     } finally {
       st.running = false;
-      if (wasLocked && !map.locked && map.version === version) {
-        // nothing was measured (a video that cannot be played, cancelled at once, no new markers): locked again
-        map.lock();
-        this.app.applyDictionary({ keepType: true });
-        this.app.updateHud();
-        message = st.error ? `${message} The marker map is locked again.`
-          : `Survey ${st.result.cancelled ? "cancelled" : "done"}: no marker was added or changed, the marker map is locked again.`;
+      if (this.surveyState !== st) {
+        // another layout was loaded meanwhile (reset() cancelled the survey): it is neither locked nor saved here
+        message = "Survey cancelled: another layout was loaded.";
+      } else {
+        if (wasLocked && !map.locked && map.version === version) {
+          // nothing was measured (a video that cannot be played, cancelled at once, no new markers): locked again
+          map.lock();
+          this.app.applyDictionary({ keepType: true });
+          this.app.updateHud();
+          message = st.error ? `${message} The marker map is locked again.`
+            : `Survey ${st.result.cancelled ? "cancelled" : "done"}: no marker was added or changed, the marker map is locked again.`;
+        }
+        this.app.saveLayout();
+        this.renderMarkers();
       }
-      this.app.saveLayout();
-      if (this.surveyState === st) this.renderMarkers();
     }
     toast(message, st.error ? 8000 : 6000);
   }

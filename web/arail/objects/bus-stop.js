@@ -111,7 +111,11 @@ export class BusStop extends LayoutObject {
   problems() {
     const g = this.geometry;
     if (!g || g.ok) return [];
-    return [this.spec.road ? "The chosen street is not placed." : "Not next to a street: move the stop onto the sidewalk of a street."];
+    if (!this.spec.road) return ["Not next to a street: move the stop onto the sidewalk of a street."];
+    const road = this.world.getObject(this.spec.road);
+    const info = road?.geometry && typeof road.roadInfo === "function" ? road.roadInfo() : null;
+    if (info && !info.car) return [`${road.name} is a footpath: buses cannot drive there. Choose a street.`];
+    return ["The chosen street is not placed."];
   }
 
   stopAreas() {

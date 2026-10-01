@@ -424,6 +424,21 @@ test("one board per stop; from far away only a badge with the people waiting", (
   assert.ok(BOARD_MIN_PX >= 25);
 });
 
+test("a disruption at a stop on both sides of the street has one warning label, like the stop has one board", () => {
+  const w = world(STREET);
+  w.disruptions.start({ type: "closure", target: "b", params: { minutes: 10 } });
+  const close = viewAt([2000, 0], 700);
+  w.disruptions.draw(close.view);
+  const warnings = close.labels.filter((l) => l.style?.badge === "!");
+  assert.deepEqual(warnings.map((l) => l.lines), [["Closed (10 min left)"]]);
+  // one side only (a disruption of one stop area): its label
+  w.disruptions.reset();
+  w.disruptions.start({ type: "delay", target: "b:left", params: { minutes: 5 } });
+  const one = viewAt([2000, 0], 700);
+  w.disruptions.draw(one.view);
+  assert.deepEqual(one.labels.filter((l) => l.style?.badge === "!").map((l) => l.lines), [["Delay (5 min left)"]]);
+});
+
 test("the board of a bus terminal shows the next bus of every line that starts there; timetable buses say Bus", () => {
   // two lines lay over in their own bays, the third bay keeps the terminal's timetable buses ("305")
   const w = world([
