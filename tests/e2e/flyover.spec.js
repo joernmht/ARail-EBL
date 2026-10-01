@@ -157,33 +157,34 @@ test("flyover navigation: drag to orbit, Shift-drag to pan, wheel to zoom, pinch
 test("flyover build: a table module by two taps on the grid, dragging snaps, R turns", async ({ page }) => {
   const errors = await openApp(page, "/app/#build");
   await enterFlyover(page);
-  await setCamera(page, { target: [1500, 100], distance: 3000, yaw_deg: 90, pitch_deg: 90 });
+  await setCamera(page, { target: [2000, 100], distance: 3000, yaw_deg: 90, pitch_deg: 90 });
   await page.waitForTimeout(100);
   const palette = page.locator(".palette");
   await expect(palette.getByRole("heading", { name: "Table" })).toBeVisible();
   await palette.getByRole("button", { name: /^Table module/ }).click();
   await expect(page.locator("#placing")).toContainText("snap to the 50 mm grid");
   const before = await page.evaluate(() => window.__arail.world.objects.length);
-  // two taps, off the grid: the corners snap to (1550, -400) and (2300, 600)
-  for (const [x, y] of [[1563, -388], [2287, 612]]) {
+  // two taps, off the grid, beside the real table (x up to 1870 mm): the corners snap to (2050, -400) and (2800, 600)
+  for (const [x, y] of [[2063, -388], [2787, 612]]) {
     const p = await screenPoint(page, x, y);
     await page.mouse.click(p.x, p.y);
   }
   await page.waitForFunction((n) => window.__arail.world.objects.length === n + 1, before);
   const table = await page.evaluate(() => window.__arail.editor.selected.toJSON());
-  expect(table).toMatchObject({ type: "tabletop", position: [1925, 100], width_mm: 750, depth_mm: 1000, rotation_deg: 0 });
-  // drag a house: its position snaps to the grid
+  expect(table).toMatchObject({ type: "tabletop", position: [2425, 100], width_mm: 750, depth_mm: 1000, rotation_deg: 0 });
+  // drag an object (the windmill in the fields of the example town): its position snaps to the grid
   await page.evaluate(() => window.__arail.editor.select(null));
-  const start = await page.evaluate(() => window.__arail.world.getObject("building-3").spec.position);
+  await setCamera(page, { target: [300, -2100], distance: 2000, yaw_deg: 90, pitch_deg: 90 });
+  const start = await page.evaluate(() => window.__arail.world.getObject("windmill-1").spec.position);
   const from = await screenPoint(page, start[0], start[1]);
   const to = await screenPoint(page, start[0] + 237, start[1] - 141);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 8 });
   await page.mouse.up();
-  const moved = await page.evaluate(() => window.__arail.world.getObject("building-3").spec.position);
-  expect(moved[0] % 50).toBe(0);
-  expect(moved[1] % 50).toBe(0);
+  const moved = await page.evaluate(() => window.__arail.world.getObject("windmill-1").spec.position);
+  expect(Math.abs(moved[0] % 50)).toBe(0);
+  expect(Math.abs(moved[1] % 50)).toBe(0);
   expect(Math.abs(moved[0] - (start[0] + 237))).toBeLessThanOrEqual(25);
   expect(Math.abs(moved[1] - (start[1] - 141))).toBeLessThanOrEqual(25);
   // ... and freely with Alt held
@@ -194,10 +195,10 @@ test("flyover build: a table module by two taps on the grid, dragging snaps, R t
   await page.mouse.move(to2.x, to2.y, { steps: 4 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
-  const free = await page.evaluate(() => window.__arail.world.getObject("building-3").spec.position);
+  const free = await page.evaluate(() => window.__arail.world.getObject("windmill-1").spec.position);
   expect(Math.abs(free[0] - moved[0] - 13)).toBeLessThan(2);
   expect(Math.abs(free[1] - moved[1] - 7)).toBeLessThan(2);
-  // turn the selected house: R by 15°, the inspector button by 90°
+  // turn the selected object: R by 15°, the inspector button by 90°
   const rot0 = await page.evaluate(() => window.__arail.editor.selected.spec.rotation_deg);
   await page.locator("#stage").focus();
   await page.keyboard.press("r");
@@ -206,10 +207,11 @@ test("flyover build: a table module by two taps on the grid, dragging snaps, R t
   await expect.poll(() => page.evaluate(() => window.__arail.editor.selected.spec.rotation_deg)).toBeCloseTo(rot0 - 75, 5);
   // the table module is saved with the layout and drawn: its middle shows the table colour
   await page.evaluate(() => window.__arail.editor.select(null));
+  await setCamera(page, { target: [2000, 100], distance: 3000, yaw_deg: 90, pitch_deg: 90 });
   const colour = await page.evaluate(() => {
     const a = window.__arail;
     a.render();
-    const H = a.pose().H, [x, y] = [1712, 313]; // between grid lines
+    const H = a.pose().H, [x, y] = [2212, 313]; // between grid lines
     const w = H[6] * x + H[7] * y + H[8], u = Math.round((H[0] * x + H[1] * y + H[2]) / w), v = Math.round((H[3] * x + H[4] * y + H[5]) / w);
     return [...a.ctx.getImageData(u, v, 1, 1).data].slice(0, 3);
   });
@@ -223,29 +225,30 @@ test("flyover build: a table module by two taps on the grid, dragging snaps, R t
 test("flyover build: drag out a table module; tables are picked at their edges, a drag inside pans", async ({ page }) => {
   const errors = await openApp(page, "/app/#build");
   await enterFlyover(page);
-  await setCamera(page, { target: [1200, 100], distance: 3200, yaw_deg: 90, pitch_deg: 90 });
+  await setCamera(page, { target: [1700, 100], distance: 3200, yaw_deg: 90, pitch_deg: 90 });
   await page.locator(".palette").getByRole("button", { name: /^Table module/ }).click();
-  const a = await screenPoint(page, 1610, -390), b = await screenPoint(page, 2190, 390);
+  const a = await screenPoint(page, 2110, -390), b = await screenPoint(page, 2690, 390);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 4 });
   await page.mouse.move(b.x, b.y, { steps: 4 });
   await page.mouse.up();
   await page.waitForFunction(() => window.__arail.editor.selected?.type === "tabletop");
-  expect(await page.evaluate(() => window.__arail.editor.selected.toJSON())).toMatchObject({ position: [1900, 0], width_mm: 600, depth_mm: 800 });
+  const added = await page.evaluate(() => window.__arail.editor.selected.toJSON());
+  expect(added).toMatchObject({ position: [2400, 0], width_mm: 600, depth_mm: 800 });
   await page.evaluate(() => window.__arail.editor.select(null));
   // a drag inside the (unselected) table pans the view
   const t0 = await page.evaluate(() => window.__arail.flyover.cam.target);
-  const c = await screenPoint(page, 1900, 0);
+  const c = await screenPoint(page, 2400, 0);
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
   await page.mouse.move(c.x - 80, c.y, { steps: 4 });
   await page.mouse.up();
   const t1 = await page.evaluate(() => window.__arail.flyover.cam.target);
   expect(t1[0]).toBeGreaterThan(t0[0] + 50);
-  expect(await page.evaluate(() => window.__arail.world.objects.find((o) => o.type === "tabletop").spec.position)).toEqual([1900, 0]);
+  expect(await page.evaluate((id) => window.__arail.world.getObject(id).spec.position, added.id)).toEqual([2400, 0]); // not moved
   // a tap at its edge selects it
-  const edge = await screenPoint(page, 2200, 0);
+  const edge = await screenPoint(page, 2700, 0);
   await page.mouse.click(edge.x, edge.y);
   await expect.poll(() => page.evaluate(() => window.__arail.editor.selected?.type)).toBe("tabletop");
   expect(errors).toEqual([]);
@@ -330,7 +333,7 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
     return [...a.ctx.getImageData(u, v, 1, 1).data].slice(0, 3);
   }, [x, y]);
   await expect.poll(() => sample(163, 337)).toEqual([255, 0, 0]); // left half (x < 700), between grid lines, away from objects
-  expect(await sample(1313, -337)).toEqual([0, 0, 255]);
+  expect(await sample(1313, 337)).toEqual([0, 0, 255]); // right half, on the table (the example town is in front of it, y < -320)
   // at night the photo is darker, too
   await page.evaluate(() => window.__arail.world.setTime("23:30"));
   const night = await sample(163, 337);

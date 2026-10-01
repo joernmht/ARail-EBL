@@ -156,6 +156,12 @@ export function gapAhead(self, front, dir, users, lookMM, laneMM) {
     if (o.vehicle === self) continue;
     const d = sub2(o.rear, front);
     const along = dot2(d, dir);
+    if (along < -laneMM && best > 0 && dot2(o.dir, dir) >= 0.3) {
+      // side by side in the lane (e.g. both turned into it at a junction): the one behind waits
+      const f = sub2(o.front, front);
+      if (dot2(f, dir) > 0 && Math.abs(cross2(dir, f)) <= laneMM) best = 0;
+      continue;
+    }
     if (along < -laneMM || along > lookMM || along >= best) continue;
     if (Math.abs(cross2(dir, d)) > laneMM) continue;
     if (dot2(o.dir, dir) < 0.3) continue;

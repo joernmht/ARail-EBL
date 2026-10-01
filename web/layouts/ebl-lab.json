@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL lab (example)",
-  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. Village, forest and bus terminal are virtual.",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -23,37 +23,79 @@
     "bus_dwell_s": 20,
     "approach_s": 6
   },
+  "clock": {
+    "start": "07:00"
+  },
   "simulations": [
-    { "type": "passengers", "base_rate": 0.5, "max_per_area": 140 },
-    { "type": "road-traffic", "cars_per_km": 90, "speed_kmh": 35 }
+    {"type": "passengers", "base_rate": 0.5, "max_per_area": 140},
+    {"type": "town", "people_per_100": 25, "walk_max_m": 80, "bus_share": 0.85},
+    {"type": "traffic", "cars_per_km": 20}
   ],
   "objects": [
-    {
-      "id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1",
-      "between": [0, 1], "width_mm": 70, "sides": "both", "track_left": "G2", "track_right": "G3", "lines": "RE 1, RB 33"
-    },
-    {
-      "id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2",
-      "between": [2, 3], "width_mm": 37, "sides": "both", "track_right": "G1", "lines": "S 2, S 8"
-    },
-    { "id": "track-g1", "type": "track", "track_id": "G1", "points": [[-150, 100.2], [1450, 143.2]] },
-    { "id": "track-g2", "type": "track", "track_id": "G2", "points": [[-150, 43], [1450, 86.1]] },
-    { "id": "track-g3", "type": "track", "track_id": "G3", "points": [[-150, -58], [1450, -14.9]] },
-    {
-      "id": "bus-terminal-1", "type": "bus-terminal", "name": "Bus station",
-      "position": [610, -266], "rotation_deg": 1.5, "bays": 2, "bay_length_m": 16, "width_m": 2.8, "lane_width_m": 3.2, "lines": "62, 85"
-    },
-    { "id": "building-1", "type": "building", "name": "Station building", "position": [70, 492], "rotation_deg": 1.5, "width_m": 14, "depth_m": 8.5, "floors": 2, "roof": "gable", "color": "#e8d5b5", "roof_color": "#a0472f" },
-    { "id": "building-2", "type": "building", "name": "Office block", "position": [255, 490], "rotation_deg": 1.5, "width_m": 11, "depth_m": 8, "floors": 4, "roof": "flat", "color": "#d9dde3" },
-    { "id": "building-3", "type": "building", "name": "House", "position": [420, 494], "rotation_deg": 1.5, "width_m": 10, "depth_m": 8, "floors": 2, "roof": "gable", "color": "#f0e0c0", "roof_color": "#7a3b2e" },
-    { "id": "building-4", "type": "building", "name": "House", "position": [548, 498], "rotation_deg": 91.5, "width_m": 9, "depth_m": 7.5, "floors": 1, "roof": "gable", "color": "#e3c9a8", "roof_color": "#6b4f3a" },
-    { "id": "tree-1", "type": "tree", "position": [160, 452], "kind": "deciduous", "height_m": 11 },
-    { "id": "tree-2", "type": "tree", "position": [340, 538], "kind": "conifer", "height_m": 13 },
-    { "id": "tree-3", "type": "tree", "position": [345, 448], "kind": "deciduous", "height_m": 9 },
-    { "id": "forest-1", "type": "forest", "name": "Forest", "points": [[640, 432], [1080, 444], [1076, 552], [640, 548]], "kind": "mixed", "height_m": 15, "spacing_m": 8, "seed": 3 },
-    { "id": "area-1", "type": "area", "name": "Fields", "kind": "field", "points": [[1110, 446], [1440, 455], [1437, 555], [1107, 548]], "opacity": 0.5 },
-    { "id": "windmill-1", "type": "windmill", "name": "Windmill", "position": [1250, 505], "rotation_deg": 1.5, "height_m": 16 },
-    { "id": "road-1", "type": "road", "name": "Station road", "points": [[40, -283], [424, -272]], "width_m": 4.5 }
+    {"id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1", "between": [0, 1], "width_mm": 70, "sides": "both", "track_left": "G2", "track_right": "G3", "lines": "RE 1, RB 33"},
+    {"id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2", "between": [2, 3], "width_mm": 37, "sides": "both", "track_right": "G1", "lines": "S 2, S 8"},
+    {"id": "track-g1", "type": "track", "track_id": "G1", "points": [[-150, 100.2], [1450, 143.2]]},
+    {"id": "track-g2", "type": "track", "track_id": "G2", "points": [[-150, 43], [1450, 86.1]]},
+    {"id": "track-g3", "type": "track", "track_id": "G3", "points": [[-150, -58], [1450, -14.9]]},
+    {"id": "table-lab", "type": "tabletop", "name": "EBL lab table", "kind": "physical", "position": [785, 340], "width_mm": 2170, "depth_mm": 1320},
+    {"id": "table-1", "type": "tabletop", "name": "Town module A1", "position": [250, -570], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-2", "type": "tabletop", "name": "Town module A2", "position": [1050, -570], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-3", "type": "tabletop", "name": "Town module B1", "position": [250, -1070], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-4", "type": "tabletop", "name": "Town module B2", "position": [1050, -1070], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-5", "type": "tabletop", "name": "Town module C1", "position": [250, -1570], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-6", "type": "tabletop", "name": "Town module C2", "position": [1050, -1570], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-7", "type": "tabletop", "name": "Country module D1", "position": [250, -2070], "width_mm": 800, "depth_mm": 500, "surface": "green"},
+    {"id": "table-8", "type": "tabletop", "name": "Country module D2", "position": [1050, -2070], "width_mm": 800, "depth_mm": 500, "surface": "green"},
+    {"id": "road-bahnhofstrasse", "type": "road", "name": "Bahnhofstraße", "kind": "main", "points": [[-150, -410], [1450, -410]]},
+    {"id": "road-schulstrasse", "type": "road", "name": "Schulstraße", "points": [[650, -410], [650, -1700]]},
+    {"id": "road-ostring", "type": "road", "name": "Ostring", "points": [[1380, -410], [1380, -1700]]},
+    {"id": "road-lindenallee", "type": "road", "name": "Lindenallee", "points": [[-150, -1070], [1380, -1070]]},
+    {"id": "road-am-feldrain", "type": "road", "name": "Am Feldrain", "kind": "residential", "points": [[-150, -1700], [1380, -1700]]},
+    {"id": "road-feldweg", "type": "road", "name": "Feldweg", "kind": "path", "lamps": false, "points": [[650, -1700], [650, -2320]]},
+    {"id": "building-1", "type": "building", "name": "Station building", "position": [470, -558], "rotation_deg": 180, "width_m": 14, "depth_m": 9, "floors": 2, "roof": "gable", "use": "work"},
+    {"id": "bus-terminal-1", "type": "bus-terminal", "name": "Bahnhof", "position": [993.5, -546], "rotation_deg": 0, "bays": 3, "bay_length_m": 15, "width_m": 4.5, "lane_width_m": 3.5, "lines": "305, 328"},
+    {"id": "altbau-1", "type": "altbau-block", "name": "Altbau block Altmarkt", "position": [112, -746], "width_m": 42, "depth_m": 42, "floors": 5, "form": "closed", "rear_wings": true, "seed": 3},
+    {"id": "area-altmarkt", "type": "area", "name": "Altmarkt", "kind": "plaza", "points": [[372, -625], [575, -625], [575, -995], [372, -995]], "opacity": 0.8},
+    {"id": "tree-altmarkt-1", "type": "tree", "position": [415, -665], "kind": "deciduous", "height_m": 10},
+    {"id": "tree-altmarkt-2", "type": "tree", "position": [530, -760], "kind": "deciduous", "height_m": 11},
+    {"id": "tree-altmarkt-3", "type": "tree", "position": [415, -860], "kind": "deciduous", "height_m": 10},
+    {"id": "tree-altmarkt-4", "type": "tree", "position": [530, -950], "kind": "deciduous", "height_m": 11},
+    {"id": "office-1", "type": "office", "name": "Office building", "position": [821, -802], "rotation_deg": -90, "width_m": 30, "depth_m": 15, "floors": 5},
+    {"id": "altbau-2", "type": "altbau-block", "name": "Altbau Lindenallee", "position": [1117, -805], "width_m": 32, "depth_m": 30, "floors": 4, "form": "u", "roof": "pitched", "seed": 7},
+    {"id": "school-1", "type": "school", "name": "School", "position": [225, -1256], "rotation_deg": 180, "floors": 3},
+    {"id": "area-sportplatz", "type": "area", "name": "Sports field", "kind": "grass", "points": [[285, -1330], [565, -1330], [565, -1620], [285, -1620]], "opacity": 0.7},
+    {"id": "estate-1", "type": "house-estate", "name": "Siedlung", "points": [[724, -1146], [1306, -1146], [1306, -1630], [724, -1630]], "plot_width_m": 12.6, "plot_depth_m": 21, "density": 0.95, "seed": 4},
+    {"id": "plattenbau-1", "type": "plattenbau", "name": "WBS 70 Am Feldrain", "position": [166, -1844], "rotation_deg": 180, "series": "wbs70", "sections": 4},
+    {"id": "area-playground", "type": "area", "name": "Playground", "kind": "sand", "points": [[470, -1790], [590, -1790], [590, -1880], [470, -1880]], "opacity": 0.6},
+    {"id": "supermarket-1", "type": "supermarket", "name": "Supermarket", "position": [872, -2120], "rotation_deg": 180, "width_m": 30, "depth_m": 20},
+    {"id": "factory-1", "type": "factory", "name": "Workshop", "position": [1260, -1878], "rotation_deg": 180, "width_m": 26, "depth_m": 18},
+    {"id": "area-fields", "type": "area", "name": "Fields", "kind": "field", "points": [[-140, -1960], [625, -1960], [625, -2310], [-140, -2310]], "opacity": 0.6},
+    {"id": "windmill-1", "type": "windmill", "name": "Windmill", "position": [60, -2140], "rotation_deg": 0, "height_m": 16},
+    {"id": "forest-1", "type": "forest", "name": "Forest", "points": [[1080, -2050], [1445, -2050], [1445, -2310], [1080, -2310]], "kind": "mixed", "height_m": 14, "spacing_m": 8, "seed": 3},
+    {"id": "tree-linden-1", "type": "tree", "position": [-100, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-2", "type": "tree", "position": [72, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-3", "type": "tree", "position": [244, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-4", "type": "tree", "position": [416, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-5", "type": "tree", "position": [760, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-6", "type": "tree", "position": [932, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-7", "type": "tree", "position": [1104, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-8", "type": "tree", "position": [1276, -1006], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-9", "type": "tree", "position": [-14, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-10", "type": "tree", "position": [158, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-11", "type": "tree", "position": [330, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-12", "type": "tree", "position": [502, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-13", "type": "tree", "position": [846, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-14", "type": "tree", "position": [1018, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-15", "type": "tree", "position": [1190, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-linden-16", "type": "tree", "position": [1362, -1134], "kind": "deciduous", "height_m": 13},
+    {"id": "tree-1", "type": "tree", "position": [-80, -1925], "kind": "conifer", "height_m": 12},
+    {"id": "tree-2", "type": "tree", "position": [330, -1928], "kind": "deciduous", "height_m": 12},
+    {"id": "tree-3", "type": "tree", "position": [535, -1925], "kind": "conifer", "height_m": 12},
+    {"id": "bus-stop-altmarkt", "type": "bus-stop", "name": "Altmarkt", "road": "road-schulstrasse", "position": [650, -760], "side": "both"},
+    {"id": "bus-stop-schule", "type": "bus-stop", "name": "Schule", "road": "road-schulstrasse", "position": [650, -1380], "side": "both"},
+    {"id": "bus-stop-siedlung", "type": "bus-stop", "name": "Siedlung", "road": "road-am-feldrain", "position": [1010, -1700], "side": "both"},
+    {"id": "bus-line-62", "type": "bus-line", "name": "Line 62", "number": "62", "color": "#0A777F", "headway_s": 100, "mode": "loop", "stops": ["bus-terminal-1", "bus-stop-altmarkt", "bus-stop-schule", "bus-stop-siedlung"]},
+    {"id": "bus-line-85", "type": "bus-line", "name": "Line 85", "number": "85", "color": "#C85000", "headway_s": 100, "mode": "loop", "stops": ["bus-terminal-1", "bus-stop-siedlung", "bus-stop-schule", "bus-stop-altmarkt"]}
   ],
   "scenarios": [
     {
@@ -61,10 +103,10 @@
       "name": "Rush hour with a signal failure",
       "description": "Many commuters; a signal failure holds all trains, then platform 2 is served by replacement buses.",
       "steps": [
-        { "at": 0, "set": { "demand": 1.5 }, "message": "Rush hour: many commuters are on their way." },
-        { "at": 30, "start": { "id": "sf", "type": "signal-failure", "target": "*", "params": { "minutes": 3 } }, "message": "Signal failure: all trains are held." },
-        { "at": 210, "start": { "id": "rb", "type": "replacement-bus", "target": "platform-2", "params": { "bus_terminal": "bus-terminal-1", "minutes": 5 } }, "message": "Platform 2: replacement buses from the bus station." },
-        { "at": 510, "set": { "demand": 1 }, "message": "Services are back to normal." }
+        {"at": 0, "set": {"demand": 1.5}, "message": "Rush hour: many commuters are on their way."},
+        {"at": 30, "start": {"id": "sf", "type": "signal-failure", "target": "*", "params": {"minutes": 3}}, "message": "Signal failure: all trains are held."},
+        {"at": 210, "start": {"id": "rb", "type": "replacement-bus", "target": "platform-2", "params": {"bus_terminal": "bus-terminal-1", "minutes": 5}}, "message": "Platform 2: replacement buses from the bus station."},
+        {"at": 510, "set": {"demand": 1}, "message": "Services are back to normal."}
       ]
     },
     {
@@ -72,11 +114,11 @@
       "name": "After the football match",
       "description": "A crowd surge on platform 1; extra trains are sent.",
       "steps": [
-        { "at": 0, "message": "The match is over: fans are heading to platform 1." },
-        { "at": 5, "start": { "id": "fans", "type": "crowd", "target": "platform-1", "params": { "factor": 6, "minutes": 4 } } },
-        { "at": 60, "call": "platform-1", "message": "Extra train on platform 1." },
-        { "at": 130, "call": "platform-1" },
-        { "at": 200, "call": "platform-1" }
+        {"at": 0, "message": "The match is over: fans are heading to platform 1."},
+        {"at": 5, "start": {"id": "fans", "type": "crowd", "target": "platform-1", "params": {"factor": 6, "minutes": 4}}},
+        {"at": 60, "call": "platform-1", "message": "Extra train on platform 1."},
+        {"at": 130, "call": "platform-1"},
+        {"at": 200, "call": "platform-1"}
       ]
     },
     {
@@ -84,14 +126,17 @@
       "name": "Platform closure",
       "description": "Platform 2 is closed for maintenance; trains on platform 1 are delayed.",
       "steps": [
-        { "at": 0, "start": { "id": "closed", "type": "closure", "target": "platform-2", "params": { "minutes": 5 } }, "message": "Platform 2 is closed." },
-        { "at": 45, "start": { "id": "late", "type": "delay", "target": "platform-1", "params": { "minutes": 3 } }, "message": "Trains on platform 1 are delayed." }
+        {"at": 0, "start": {"id": "closed", "type": "closure", "target": "platform-2", "params": {"minutes": 5}}, "message": "Platform 2 is closed."},
+        {"at": 45, "start": {"id": "late", "type": "delay", "target": "platform-1", "params": {"minutes": 3}}, "message": "Trains on platform 1 are delayed."}
       ]
     }
   ],
-  "plugins": ["../plugins/windmill.js", "../plugins/road-traffic.js"],
+  "plugins": ["../plugins/windmill.js"],
   "view": {
     "image": "../media/ebl-lab.jpg",
-    "ortho": { "image": "../media/ebl-lab-ortho.jpg", "bounds_mm": [-300, -320.2, 1870.2, 700] }
+    "ortho": {
+      "image": "../media/ebl-lab-ortho.jpg",
+      "bounds_mm": [-300, -320.2, 1870.2, 700]
+    }
   }
 }

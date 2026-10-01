@@ -45,14 +45,16 @@ test("streets: draw a street, place bus stops and a bus line; a bus serves the s
   const palette = page.locator(".palette");
   for (const name of ["Street", "Bus stop", "Bus line"]) await expect(palette.getByRole("button", { name: new RegExp(`^${name}`) })).toBeVisible();
 
-  // two streets (between the tracks and the houses of the lab example); the second one starts
-  // near the end of the first: its first point snaps onto that end
+  // two streets on the far part of the lab table (the example town is in front of it); the second
+  // one starts near the end of the first: its first point snaps onto that end
+  const count = (type) => page.evaluate((t) => window.__arail.world.objects.filter((o) => o.type === t).length, type);
+  const roads0 = await count("road"), stops0 = await count("bus-stop");
   const streets = [];
   for (const points of [[[100, 300], [400, 290], [700, 300]], [[703, 302], [1000, 330]]]) {
     await palette.getByRole("button", { name: /^Street/ }).click();
     for (const [x, y] of points) await tap(page, x, y);
     await page.locator("#placing").getByRole("button", { name: "Finish" }).click();
-    await page.waitForFunction((n) => window.__arail.world.objects.filter((o) => o.type === "road").length === n, streets.length + 2);
+    await page.waitForFunction((n) => window.__arail.world.objects.filter((o) => o.type === "road").length === n, roads0 + streets.length + 1);
     streets.push(await page.evaluate(() => window.__arail.editor.selected.spec));
   }
   expect(streets[0].points.length).toBe(3);
@@ -69,7 +71,7 @@ test("streets: draw a street, place bus stops and a bus line; a bus serves the s
   for (const [x, y] of [[250, 250], [900, 270]]) {
     await palette.getByRole("button", { name: /^Bus stop/ }).click();
     await tap(page, x, y);
-    await page.waitForFunction((n) => window.__arail.world.objects.filter((o) => o.type === "bus-stop").length === n, stops.length + 1);
+    await page.waitForFunction((n) => window.__arail.world.objects.filter((o) => o.type === "bus-stop").length === n, stops0 + stops.length + 1);
     const id = await page.evaluate(() => window.__arail.editor.selected.id);
     await page.selectOption(`#obj-${id}-side`, "both");
     await expect.poll(() => page.evaluate(() => window.__arail.world.stopAreas().filter((a) => a.owner === window.__arail.editor.selected).length)).toBe(2);
@@ -107,14 +109,14 @@ test("streets: draw a street, place bus stops and a bus line; a bus serves the s
   expect(results.violations.map((v) => v.id)).toEqual([]);
 
   // run: a bus of the line arrives at a stop with its doors open
-  await page.evaluate(() => {
+  await page.evaluate((lineId) => {
     const w = window.__arail.world;
     window.__arrived = [];
-    w.events.on("vehicle.arrived", (e) => e.vehicle.source === "line" && window.__arrived.push(e.dock.id));
+    w.events.on("vehicle.arrived", (e) => e.vehicle.lineId === lineId && window.__arrived.push(e.dock.id)); // (the example has bus lines, too)
     w.setTime("10:00");
     w.speed = 30;
     w.paused = false;
-  });
+  }, line.id);
   await page.waitForFunction(() => window.__arrived.length > 0, null, { timeout: 60_000 });
   const arrived = await page.evaluate(() => window.__arrived[0]);
   expect(line.visits).toContain(arrived);

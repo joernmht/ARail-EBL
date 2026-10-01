@@ -1,39 +1,53 @@
 {
   "format": "arail-layout/1",
   "name": "Synthetic test layout",
-  "description": "Computer-generated H0 board with two platforms and markers 0-7 (used by the automated tests).",
+  "description": "Computer-generated H0 board with two platforms and markers 0-7 (used by the automated tests), and a small town on a table module in front of it.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
     "size_mm": 30,
     "codes": 50,
     "origin": 0,
-    "poses": {}
+    "poses": {
+
+    }
   },
-  "simulations": [{ "type": "passengers" }],
+  "clock": {
+    "start": "07:00"
+  },
+  "simulations": [
+    {"type": "passengers"},
+    {"type": "town", "people_per_100": 25, "walk_max_m": 60},
+    {"type": "traffic", "cars_per_km": 15}
+  ],
   "objects": [
-    { "id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1", "between": [0, 1], "width_mm": 70, "sides": "both" },
-    { "id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2", "between": [2, 3], "width_mm": 37, "sides": "both" },
-    {
-      "id": "bus-terminal-1", "type": "bus-terminal", "name": "Bus station",
-      "position": { "marker": 4, "offset": [230, -10] }, "rotation_deg": 0, "bays": 2, "bay_length_m": 16, "width_m": 3.5, "lane_width_m": 3.5
-    },
-    { "id": "building-1", "type": "building", "name": "House", "position": { "marker": 6, "offset": [170, -5] }, "width_m": 9, "depth_m": 5, "floors": 2 },
-    { "id": "building-2", "type": "building", "name": "House", "position": { "marker": 6, "offset": [300, -5] }, "width_m": 9, "depth_m": 5, "floors": 3, "roof": "flat", "color": "#d9dde3" },
-    { "id": "tree-1", "type": "tree", "position": { "marker": 6, "offset": [80, -5] }, "height_m": 10 },
-    { "id": "tree-2", "type": "tree", "position": { "marker": 7, "offset": [-80, -5] }, "kind": "conifer", "height_m": 12 }
+    {"id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1", "between": [0, 1], "width_mm": 70, "sides": "both"},
+    {"id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2", "between": [2, 3], "width_mm": 37, "sides": "both"},
+    {"id": "bus-terminal-1", "type": "bus-terminal", "name": "Bahnhof", "position": {"marker": 6, "offset": [242.5, -240]}, "rotation_deg": 0, "bays": 2, "bay_length_m": 15, "width_m": 4.5, "lane_width_m": 3.5, "lines": "305"},
+    {"id": "building-1", "type": "building", "name": "House", "position": {"marker": 6, "offset": [90, -550]}, "width_m": 9, "depth_m": 5, "floors": 2},
+    {"id": "building-2", "type": "building", "name": "House", "position": {"marker": 6, "offset": [235, -550]}, "width_m": 9, "depth_m": 5, "floors": 3, "roof": "flat"},
+    {"id": "tree-1", "type": "tree", "position": {"marker": 6, "offset": [10, -555]}, "height_m": 10},
+    {"id": "tree-2", "type": "tree", "position": {"marker": 7, "offset": [-40, -560]}, "kind": "conifer", "height_m": 12},
+    {"id": "table-board", "type": "tabletop", "name": "Test board", "kind": "physical", "position": [270, -70], "width_mm": 800, "depth_mm": 500},
+    {"id": "table-1", "type": "tabletop", "name": "Town module", "position": [270, -620], "width_mm": 800, "depth_mm": 600},
+    {"id": "road-hauptstrasse", "type": "road", "name": "Hauptstraße", "points": [[-130, -400], [670, -400]]},
+    {"id": "road-lindenweg", "type": "road", "name": "Lindenweg", "kind": "residential", "points": [[420, -400], [420, -920]]},
+    {"id": "bus-stop-lindenweg", "type": "bus-stop", "name": "Lindenweg", "road": "road-lindenweg", "position": [420, -660], "side": "both"},
+    {"id": "bus-line-1", "type": "bus-line", "name": "Line 1", "number": "1", "color": "#0A777F", "headway_s": 120, "stops": ["bus-terminal-1", "bus-stop-lindenweg"]},
+    {"id": "altbau-1", "type": "altbau-block", "name": "Altbau row", "position": [62, -668], "rotation_deg": 180, "width_m": 30, "depth_m": 13, "floors": 4, "form": "row", "seed": 2},
+    {"id": "supermarket-1", "type": "supermarket", "name": "Supermarket", "position": [580, -592], "rotation_deg": -90, "width_m": 20, "depth_m": 15, "parking": false},
+    {"id": "house-1", "type": "house", "name": "House", "position": [308, -700], "rotation_deg": 90, "style": "hip", "width_m": 9, "depth_m": 8, "floors": 2, "garage": false},
+    {"id": "tree-3", "type": "tree", "position": [600, -745], "height_m": 11},
+    {"id": "tree-4", "type": "tree", "position": [-105, -755], "kind": "conifer", "height_m": 12}
   ],
   "scenarios": [
-    {
-      "id": "delay",
-      "name": "Delay on platform 1",
-      "steps": [
-        { "at": 0, "start": { "type": "delay", "target": "platform-1", "params": { "minutes": 3 } }, "message": "Trains on platform 1 are delayed." }
-      ]
-    }
+    {"id": "delay", "name": "Delay on platform 1", "steps": [{"at": 0, "start": {"type": "delay", "target": "platform-1", "params": {"minutes": 3}}, "message": "Trains on platform 1 are delayed."}]}
   ],
   "view": {
     "image": "../media/synthetic-layout.jpg",
-    "ortho": { "image": "../media/synthetic-ortho.jpg", "bounds_mm": [-130, -320, 670, 180] }
+    "ortho": {
+      "image": "../media/synthetic-ortho.jpg",
+      "bounds_mm": [-130, -320, 670, 180]
+    }
   }
 }

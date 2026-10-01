@@ -109,6 +109,32 @@ test("network: routes for walking and driving; footpaths are for people only", (
   assert.equal(one.routeDirected(m, [1, 0], e, [1, 0]).uturns, 0);
 });
 
+test("network: the driving line turns cleanly where streets of different widths meet", () => {
+  // a main road (wider lane offset) and streets: every turn at the junctions changes the offset
+  const w = world([
+    { id: "main", type: "road", kind: "main", points: [[0, 0], [2000, 0]] },
+    { id: "street", type: "road", points: [[1000, 0], [1000, -1500]] },
+    { id: "res", type: "road", kind: "residential", points: [[0, -1500], [2000, -1500]] },
+  ]);
+  const net = w.network();
+  const ends = [[0, 0], [2000, 0], [0, -1500], [2000, -1500]].map((p) => nodesNear(net, p)[0]);
+  for (const a of ends) {
+    for (const b of ends) {
+      if (a === b) continue;
+      const route = net.route(a, b, { mode: "car" });
+      const line = net.drivingLine(route);
+      // never backwards: consecutive pieces of the lane do not fold back on each other
+      for (let i = 2; i < line.points.length; i++) {
+        const p = line.points[i - 2], q = line.points[i - 1], r = line.points[i];
+        const u = [q[0] - p[0], q[1] - p[1]], v = [r[0] - q[0], r[1] - q[1]];
+        const cos = dot2(u, v) / (Math.hypot(...u) * Math.hypot(...v));
+        assert.ok(cos > -0.2, `${a.pos} → ${b.pos}: the lane folds back at ${q.map(Math.round)}`);
+      }
+      assert.ok(Math.abs(line.length - route.length) < 0.05 * route.length, "about as long as the centre line");
+    }
+  }
+});
+
 /** A building with an entrance (the building API the network uses). */
 class Box extends LayoutObject {
   static type = "test-box";
@@ -270,6 +296,9 @@ test("traffic: cars come in at the street ends, keep their distance and leave ag
   w.speed = 1;
   const seen = new Set();
   let minGap = Infinity;
+  // in the junction itself a car that has waited long enough goes anyway and may briefly
+  // overlap a crossing one; along the streets cars keep their distance
+  const inJunction = (p) => Math.hypot(p[0] - 2000, p[1]) < 8 * K;
   for (let i = 0; i < 3000; i++) {
     w.step(0.1);
     for (const c of traffic.cars) seen.add(c.id);
@@ -280,7 +309,7 @@ test("traffic: cars come in at the street ends, keep their distance and leave ag
         if (o === u || dot2(u.dir, o.dir) < 0.9) continue;
         const d = [o.rear[0] - u.front[0], o.rear[1] - u.front[1]];
         const along = dot2(d, u.dir), lateral = Math.abs(u.dir[0] * d[1] - u.dir[1] * d[0]);
-        if (lateral > 10 || along < -60) continue;
+        if (lateral > 10 || along < -60 || inJunction(u.front) || inJunction(o.rear)) continue;
         minGap = Math.min(minGap, along);
       }
     }
