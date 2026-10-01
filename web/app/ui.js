@@ -72,10 +72,15 @@ export function section(title, ...children) {
 }
 
 let toastTimer = null;
-/** Show a short message over the stage. */
-export function toast(text, ms = 4500) {
+/**
+ * Show a short message over the stage.
+ * @param {string} text
+ * @param {number} [ms] how long it is shown
+ * @param {{minor?: boolean}} [options] minor: a passing note that does not replace a message being shown
+ */
+export function toast(text, ms = 4500, { minor = false } = {}) {
   const el = $("#toast");
-  if (!el) return;
+  if (!el || (minor && !el.hidden)) return;
   el.textContent = text;
   el.hidden = false;
   clearTimeout(toastTimer);

@@ -575,7 +575,7 @@ class App {
     if (!this.source || !this.detector) return;
     if (this.source.kind !== "image") return; // video frames are processed continuously
     const { el, nw, nh } = this.source;
-    toast("Looking for markers…", 1500);
+    toast("Looking for markers…", 1500, { minor: true }); // e.g. "Your changes to this layout were restored" stays
     setTimeout(() => {
       if (this.source?.el !== el) return;
       const s = Math.min(1, 2000 / Math.max(nw, nh));
