@@ -41,6 +41,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - Mistyped building sizes (e.g. a width of 1e6 m) froze the app; sizes now stay within the ranges of their parameters.
 - Overlapping roads were drawn darker where they overlap.
 - The hidden file inputs made the page much taller than the Build panel.
+- A layout chosen from the Layouts menu could get markers of the previous layout's photo in its marker map (at wrong positions), because that photo was analysed again before the layout's own image had loaded.
+- The message "Your changes to this layout were restored" was replaced at once by "Looking for markers…", so it could not be read.
+- An unknown scenario in the URL (`?scenario=`) threw an error; the app now says that the layout has no such scenario.
 
 ## [0.1.0] – 2026-09-30
 
