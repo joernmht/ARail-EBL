@@ -57,7 +57,7 @@ The chips at the top left of the stage show the state:
 | *Markers hidden · holding position* | all markers are hidden for a moment; the last pose is kept for 1.5 s |
 | *Markers 7, 9 seen, none known yet* | markers are in view, but none is in the marker map yet (*none in the locked marker map* when it is locked) |
 | *Flyover · plan view*, *Grid 50 mm · snap* | in the flyover: the camera and the grid |
-| *07:32 · night* | the time of day of the fast clock (see [Day and night](day-and-night.md)) |
+| *07:32*, *22:30 · night* | the time of day of the fast clock, *· night* between sunset and sunrise (see [Day and night](day-and-night.md)) |
 | *Paused*, *5× time*, *1 disruption*, *Control system · 3 trains*, *Frozen frame*, *Recording* | simulation and recording state |
 
 Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop sign (platform number or "H"), the name, the number of people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events: *Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board.
@@ -70,7 +70,7 @@ People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot =
 
 - *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate.
 - *Flyover*: see above.
-- *Show*: signs and boards, walking trails, marker outlines (key M; markers in use light Türkis, unknown ones Orange), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
+- *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md).
 - *Record*: records the stage as a WebM video.
 

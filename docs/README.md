@@ -21,6 +21,6 @@
 | [Extending ARail](extending.md) | Plugins: object types (also buildings), simulations, disruptions and vehicles; the drawing, clock, road and transit APIs |
 | [Architecture](architecture.md) | Modules, data flow, coordinate systems, tracking maths, rendering, simulation and tests |
 
-The Python tools (`arail-bridge`, `arail-calibrate`, `arail-survey`) are listed in [`tools/README.md`](../tools/README.md). What changed between versions is in the [changelog](../CHANGELOG.md).
+The Python tools (`arail-bridge`, `arail-calibrate`, `arail-survey`, `arail-synthetic`) are listed in [`tools/README.md`](../tools/README.md). What changed between versions is in the [changelog](../CHANGELOG.md).
 
 Contributions to the documentation are welcome, see [CONTRIBUTING.md](../CONTRIBUTING.md).

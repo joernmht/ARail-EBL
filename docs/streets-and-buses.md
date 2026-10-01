@@ -92,7 +92,7 @@ where they can; cars that would end up on top of others leave. The example plugi
 
 ## Day and night
 
-Street lamps (every 30 m, alternating sides) and the shelters of bus stops light up at night;
+Street lamps (every 30 m on each side, staggered) and the shelters of bus stops light up at night;
 buses and cars switch on their head and tail lights, and the windows of buses are lit.
 
 ## Layout file

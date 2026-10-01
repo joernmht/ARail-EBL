@@ -36,6 +36,7 @@ export class LayoutObject {
   /**
    * How the editor places a new object:
    * "point" (tap once), "segment" (two points or two markers), "polygon", "polyline",
+   * "rect" (two opposite corners, e.g. table modules: `position` = the centre, `width_mm`, `depth_mm`),
    * "stops" (tap stops in order, e.g. bus lines: `spec.stops` = their ids; `static stopTypes` lists the types).
    */
   static placement = "point";

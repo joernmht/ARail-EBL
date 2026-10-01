@@ -3,8 +3,8 @@
  *
  * People arrive through the entrances of a stop area, wait near the edge where their
  * vehicle will stop, board through the doors, or alight and walk to an exit. A simple
- * social-force model keeps them apart. Their colour shows their mood (green = happy,
- * red = annoyed): waiting, crowding and disruptions make it worse, boarding makes it better.
+ * social-force model keeps them apart. Their colour shows their mood (Türkis = happy, Gelb =
+ * so-so, Rot = annoyed): waiting, crowding and disruptions make it worse, boarding makes it better.
  *
  * Everything is in prototype metres and simulated seconds. The simulation only uses the
  * generic stop-area/dock/vehicle interfaces, so it works for new object types, too.

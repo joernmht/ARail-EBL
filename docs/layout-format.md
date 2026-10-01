@@ -72,7 +72,7 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 | `size_mm` | `30` | edge of the black square |
 | `sizes_mm` | `{}` | sizes of individual markers, e.g. `{"7": 60}` |
 | `codes` | `50` | number of codes used: marker IDs `0 … codes-1`. Set it to the number of stickers you printed (IDs 0 … N−1, see [choosing a dictionary and the IDs](lab-setup.md#choosing-a-dictionary-and-the-ids)). Fewer codes mean more correctable bit errors. With a locked map the app reads only the codes up to the highest ID in `poses` and `moving`. |
-| `origin` | `null` | marker that defines the layout frame while surveying; usually `0` |
+| `origin` | `null` | marker that defines the layout frame while surveying; usually `0` (`null`: the lowest ID among the first markers seen) |
 | `locked` | `false` | the marker map is complete (**Keep positions** in the app, or `arail-survey`): live tracking surveys nothing, markers that are not in `poses` are ignored, and misread or moved markers are dropped from the pose as outliers |
 | `moving` | `[]` | IDs of markers on vehicles, e.g. `[40, 41]` for container wagons: never part of the map and never used for the pose, locked or not (a pose for such an ID is ignored). They must be below `codes`, must not be the origin, and objects cannot be placed relative to them. The tracker reports where they are seen (`tracker.state.moving`, see [Extending](extending.md#tracking-moving-markers)). |
 | `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`. Poses in the file are kept fixed; unknown markers are surveyed (unless the map is locked). |
@@ -133,7 +133,7 @@ A **segment** (platforms) is `"between": [idA, idB]` (the two marker centres) or
 
 ## Objects
 
-Every object has a unique `id`, a `type` and, except labels, an optional `name`. The other fields depend on the type. Parameters left out take the defaults listed here; the app omits defaults when exporting.
+Every object has a unique `id`, a `type` and, except labels, an optional `name`. The other fields depend on the type. Parameters left out take the defaults listed here; when it exports, the app leaves out parameters that are at their default and were set neither in the file nor in the editor.
 
 | Type | Editor label (palette group) | Geometry |
 | --- | --- | --- |
@@ -196,7 +196,7 @@ A street (or footpath). Geometry: `points` (polyline). Streets whose ends meet, 
 | `width_m` | by kind | carriageway (path) width: 7 street, 6 residential, 10 main road, 3 footpath |
 | `sidewalk_m` | `2.5` | sidewalk width on each side, 0 = none (footpaths have none) |
 | `speed_kmh` | by kind | speed limit |
-| `lamps` | `true` | street lamps every 30 m on alternating sides (lit at night) |
+| `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side) |
 | `crossings` | `true` | zebra crossings next to junctions |
 
 ### `bus-stop`

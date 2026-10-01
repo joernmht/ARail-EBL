@@ -131,7 +131,7 @@ The editor builds the settings form from `params`. Parameter types: `number`, `t
 | `update(dt)` | per-step animation or state (simulated seconds) |
 | `stopAreas()` | places where passengers wait and vehicles stop, see below |
 | `drawSelection(view)` | highlight in the editor (default: the footprint, dashed Orange) |
-| `toJSON()` | the entry written to the layout file (parameters at their default are left out) |
+| `toJSON()` | the entry written to the layout file (parameters at their default are left out unless the file or the editor set them) |
 
 Optional methods the editor and the other parts look for:
 
@@ -212,7 +212,7 @@ Useful helpers: `view.project(x, y, z)` (image pixels or `null` if behind the ca
 
 **Day and night.** `view.night` (0 = day … 1 = night) is set by `World.draw` from the clock (0 while the lighting is switched off); `view.darkness` is the same value clamped to 0 … 1. At night the view darkens the camera image and every ground and solid item towards Dunkelblau. Colours marked `emissive: true` (polygons, faces, decals) keep their brightness: lit windows, lamps, headlights. Labels and overlays are never darkened. In your own canvas code (`view.ground`, `view.solid`) use `view.dim(colour, amount)` for colours that should darken, and draw lights with `view.glow` and `view.lightPool`.
 
-**Virtual camera.** In the flyover there is no camera image: `view.virtual` is true and objects also draw what is real in the lab (a platform its surface, a track its sleepers and rails, a real table its top). `view.showsReal(points)` is true where the real lab is visible anyway: always over the camera image, and in the flyover where the orthophoto (`view.groundPhoto`) covers all the points. A `View` for your own virtual camera takes the camera pose as an option (`pose`, as returned by `FlyCamera.homography()`); otherwise it recovers the pose from `H`.
+**Virtual camera.** In the flyover there is no camera image: `view.virtual` is true and objects also draw what is real in the lab (a platform its surface, a track its sleepers and rails, a real table its top). `view.showsReal(points)` is true where the real lab is visible anyway: always over the camera image, and in the flyover where the orthophoto (`view.groundPhoto`) covers all the points. A `View` for your own virtual camera takes the camera pose as an option (`pose`: the `pose` of `FlyCamera.homography(width, height)`, next to its `H`); otherwise it recovers the pose from `H`, which needs the layout origin in front of the camera.
 
 ### Stops for passengers
 
@@ -288,11 +288,11 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.network()` | the road network of the streets: places, routes, sidewalks, lanes (see [Streets, bus lines and road traffic](streets-and-buses.md#for-plugins-and-simulations)) |
 | `world.transit` | bus lines in operation: `lines`, `connections(fromAreaId, toAreaId)`, `vehicleAt(dockId)`, `statusFor(dockId)`, `buses` |
 | `world.clock`, `world.setTime(t)`, `world.night()` | the time of day (below); `night()` is the darkness used for drawing (0 when the lighting is off) |
-| `world.occupancy` | `Map` building id → people inside, written by the town simulation |
+| `world.occupancy` | `Map` building id → people inside, written by the town simulation (unset without one) |
 | `world.disruptions` | `start(spec)`, `stop(id)`, `active`, `effectsFor(area)` |
 | `world.scenarios` | `play(id)`, `stop()` |
 | `world.trains` | trains reported by the control system |
-| `world.map` | the marker map (`MarkerMap`: poses, `locked`, `moving`) |
+| `world.map` | the marker map (`MarkerMap`: `ids()`, `get(id)` → `{x, y, theta, fixed}`, `locked`, `moving`, `version`) |
 | `world.events` | the event bus: `on(name, fn)` returns an unsubscribe function |
 | `world.time`, `speed`, `paused`, `demand`, `scale`, `rng` | simulation state; use `world.rng` (or `createRng(seed)`) for reproducible randomness, never `Math.random` |
 | `world.settings` | display settings: `labels`, `trails`, `showTracks`, `feedVehicles`, `lighting` (day/night lighting on), `peopleColour` (`auto`, `purpose`, `mood`) |
@@ -322,7 +322,7 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `clock.day` | `{day}` at midnight |
 | `clock.set` | `{minutes}` after `world.setTime()` |
 | `disruption.started`, `disruption.ended` | `{disruption}` |
-| `scenario.started`, `scenario.ended`, `scenario.message` | `{scenario, text}` |
+| `scenario.started`, `scenario.ended`, `scenario.message` | `{scenario}`; `scenario.message` also `text` |
 | `object.added`, `object.changed`, `object.removed` | `{object}` |
 | `layout.loaded` | `{layout}` |
 | `feed.status`, `feed.trains` | `{status, error}`, `{trains}` |

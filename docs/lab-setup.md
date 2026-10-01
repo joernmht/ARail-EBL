@@ -50,7 +50,7 @@ Use the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (or `
 
 ## The marker map
 
-Each layout has a *layout frame*: millimetres on the layout, with its origin at the **origin marker** (`markers.origin`, usually 0; without it, the first marker seen), the x axis pointing along the origin marker's printed "right" and y along its "up". The *marker map* stores where every marker lies in this frame (`markers.poses`: x, y in mm and rotation in degrees).
+Each layout has a *layout frame*: millimetres on the layout, with its origin at the **origin marker** (`markers.origin`, usually 0; without it, the lowest ID among the first markers seen), the x axis pointing along the origin marker's printed "right" and y along its "up". The *marker map* stores where every marker lies in this frame (`markers.poses`: x, y in mm and rotation in degrees).
 
 You do not need to measure it. When the app sees an unknown marker together with known ones, it computes the unknown marker's position from the images (after three frames of video, or at once in a photo) and refines it while you keep filming. In practice:
 

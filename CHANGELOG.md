@@ -27,7 +27,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - The app follows the corporate design of the Chair of Railway Operations, TU Dresden: Türkis app bar with the chair's logo, Noto Sans, Orange for pressed and active things, Rot for disruptions, Dunkelblau boards, and a Dunkelblau dark mode. The project website and the marker sheets keep their blue design.
-- Colours drawn over the layout follow the CD too: mood Rot → Gelb → Türkis, selection and placing preview Orange, markers in use light Türkis and unknown ones Orange, virtual trains Türkis, buses Gelb, disruption areas Rot.
+- Colours drawn over the layout follow the CD too: mood Rot → Gelb → Türkis, selection and placing preview Orange, markers used for the pose light Türkis and the others Orange, virtual trains Türkis, buses Gelb, disruption areas Rot.
 - Buildings are grey: the generic building's default colours are `#f2f2f2` and `#a6a6a6` (colours set in layouts are kept), and it has a `use` for the town.
 - `road` objects are now labelled "Street" and form the road network; the old kind `road` still loads and means `street`.
 - With fewer detector codes (a locked map) more bit errors are corrected, but never so many that chance matches become more likely than with 50 codes.
