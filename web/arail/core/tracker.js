@@ -10,9 +10,16 @@
  * Every frame, all visible known markers yield one least-squares homography
  * layout (mm) -> image (px). Many markers spread over the layout make this stable,
  * and hidden markers do not matter as long as some others are visible.
+ *
+ * A *locked* map is complete (e.g. after a survey of the whole layout and "Keep positions"):
+ * nothing is surveyed any more, markers that are not in the map are ignored, and misread or
+ * moved markers are dropped from the pose as outliers. *Moving* markers (on vehicles, e.g.
+ * container wagons) are never part of the map and never used for the pose; their detections
+ * are reported in `state.moving`.
  * @module arail/core/tracker
  */
 import { focalFromHomography, markerCorners, markerHomography, relativeMarkerPose, spread } from "./geometry.js";
+import { markerIds } from "./layout.js";
 import {
   applyH, homography4, homographyLS, inv3, lerp2, meanAngle, poseApply, poseCompose, poseInverse,
   toDeg, toRad, wrapAngle,
@@ -27,6 +34,8 @@ export class MarkerMap {
    * @param {Object<string, number>} [options.sizes] per-marker sizes in mm (by ID)
    * @param {Object<string, number[]>} [options.poses] known poses: ID -> [x_mm, y_mm, rotation_deg]
    * @param {number | null} [options.origin] marker that defines the layout frame when surveying
+   * @param {boolean} [options.locked=false] the map is complete: no survey, other markers are ignored
+   * @param {number[]} [options.moving] IDs of markers on vehicles (never part of the map)
    */
   constructor(options = {}) {
     /** Incremented on every change, so dependants can cache derived geometry. */
@@ -36,8 +45,8 @@ export class MarkerMap {
     this.configure(options);
   }
 
-  /** Replace sizes, origin and all poses (e.g. when another layout is loaded). */
-  configure({ size = 30, sizes = {}, poses = {}, origin = null } = {}) {
+  /** Replace sizes, origin, all poses and the locked and moving settings (e.g. when another layout is loaded). */
+  configure({ size = 30, sizes = {}, poses = {}, origin = null, locked = false, moving = [] } = {}) {
     this.size = size;
     this.sizes = { ...sizes };
     this.origin = origin;
@@ -45,9 +54,14 @@ export class MarkerMap {
     this.entries = new Map();
     /** Marker the survey is anchored to (its pose never changes). */
     this.anchor = null;
+    /** Complete map: trackers survey nothing, markers not in the map are ignored. */
+    this.locked = !!locked;
+    /** IDs of markers on vehicles: never part of the map, never used for the pose. @type {Set<number>} */
+    this.moving = new Set(markerIds(moving));
     this.generation++;
     this.version++;
     for (const [id, p] of Object.entries(poses)) {
+      if (this.moving.has(Number(id))) continue; // a moving marker has no place in the map
       this.set(Number(id), { x: +p[0], y: +p[1], theta: toRad(+p[2] || 0) }, true);
     }
     if (this.entries.size) this.anchor = this.origin != null && this.entries.has(this.origin) ? this.origin : this.ids()[0];
@@ -88,6 +102,47 @@ export class MarkerMap {
     this.version++;
   }
 
+  /** "Keep positions": fix all poses and lock the map (only these markers are used from now on). */
+  lock() {
+    this.fixAll();
+    this.locked = true;
+  }
+
+  /** Unknown markers are surveyed again when they are seen together with known ones. */
+  unlock() {
+    this.locked = false;
+  }
+
+  /**
+   * Set the markers on vehicles. Their poses are removed from the map (they are no longer part
+   * of it). Returns the IDs that were removed.
+   * @param {Iterable<number>} ids
+   * @returns {number[]}
+   */
+  setMoving(ids) {
+    this.moving = new Set(markerIds([...ids]));
+    const removed = this.ids().filter((id) => this.moving.has(id));
+    for (const id of removed) this.delete(id);
+    return removed;
+  }
+
+  /** Highest marker ID in the map or the list of moving markers (-1 if none). */
+  highestId() {
+    return Math.max(-1, ...this.entries.keys(), ...this.moving);
+  }
+
+  /**
+   * Number of codes the marker detector needs (IDs 0 ... n-1): all `codes` of the layout, or, for
+   * a locked map, only up to its highest ID (moving markers included). Fewer codes are further
+   * apart, so the detector can correct more bit errors safely, and IDs that cannot be on the
+   * layout are not even read.
+   * @param {number} codes `markers.codes` of the layout
+   */
+  detectionCodes(codes) {
+    const highest = this.highestId();
+    return this.locked && highest >= 0 ? Math.min(codes, highest + 1) : codes;
+  }
+
   sizeOf(id) {
     return this.sizes[id] ?? this.size;
   }
@@ -111,7 +166,7 @@ export class MarkerMap {
     this.version++;
   }
 
-  /** Poses as stored in layout files: ID -> [x_mm, y_mm, rotation_deg]. */
+  /** Poses as stored in layout files (`markers.poses`): ID -> [x_mm, y_mm, rotation_deg]. */
   toJSON() {
     const out = {};
     for (const id of this.ids()) {
@@ -132,13 +187,23 @@ export class MarkerMap {
  * @property {number[]} used IDs of the markers that determined H
  * @property {boolean} holding true while showing the last pose because no marker is visible
  * @property {number} rms reprojection error of H (px)
+ * @property {Object<number, MovingMarker>} moving detections of the map's moving markers (on vehicles)
+ */
+
+/**
+ * A moving marker seen in the current frame (groundwork for vehicles that carry markers).
+ * @typedef {object} MovingMarker
+ * @property {number[][]} corners image corners (px; TL, TR, BR, BL; undistorted like the pose)
+ * @property {number[] | null} center where the marker's centre is seen on the layout plane (mm), null without a pose.
+ *   A marker on a vehicle lies above the plane: this point is shifted away from the camera by its height.
+ * @property {number | null} heading direction of the marker's x axis (from its left to its right edge) in the layout frame (rad)
  */
 
 export class PlaneTracker {
   /**
    * @param {MarkerMap} map
    * @param {object} [options]
-   * @param {boolean} [options.survey=true] add and refine unknown markers automatically
+   * @param {boolean} [options.survey=true] add and refine unknown markers automatically (never in a locked map)
    * @param {number} [options.holdSeconds=1.5] keep the last pose this long when all markers are hidden
    * @param {number} [options.minSurveyFrames=3] frames an unknown marker must be seen before it is used
    */
@@ -158,17 +223,18 @@ export class PlaneTracker {
     this.Hinv = null;
     this.lastSeen = -Infinity;
     /** @type {TrackingState} */
-    this.state = { H: null, Hinv: null, visible: [], used: [], holding: false, rms: 0 };
+    this.state = { H: null, Hinv: null, visible: [], used: [], holding: false, rms: 0, moving: {} };
     this.markers = {};
   }
 
   /**
    * Measure the markers again: forget surveyed poses (with `all`, also the fixed ones;
-   * the origin marker then defines the layout frame again when it is seen).
+   * the origin marker then defines the layout frame again when it is seen). Unlocks the map.
    */
   resurvey(all = true) {
     this.acc.clear();
     this.map.clear(all);
+    this.map.unlock();
     this.reset();
   }
 
@@ -187,15 +253,19 @@ export class PlaneTracker {
       this.acc.clear();
       this.reset();
     }
-    const markers = {};
+    const markers = {}, moving = {};
     for (const [key, corners] of Object.entries(detections)) {
       const id = Number(key);
       const c = camera.undistortPoints(corners);
+      if (this.map.moving.has(id)) {
+        moving[id] = c; // on a vehicle: neither surveyed nor used for the pose
+        continue;
+      }
       const H = markerHomography(c, this.map.sizeOf(id));
       if (H && H.every(Number.isFinite)) markers[id] = { H, corners: c };
     }
     this.markers = markers;
-    if (this.survey) this._survey(markers, still);
+    if (this.survey && !this.map.locked) this._survey(markers, still);
 
     const est = this._estimate(markers);
     let holding = false;
@@ -216,8 +286,25 @@ export class PlaneTracker {
       used: est ? est.ids : [],
       holding,
       rms: est ? est.rms : 0,
+      moving: this._moving(moving),
     };
     return this.state;
+  }
+
+  /** Moving markers in the image and, with a pose, where they are seen on the layout plane. */
+  _moving(moving) {
+    const out = {};
+    for (const [id, corners] of Object.entries(moving)) {
+      let center = null, heading = null;
+      const p = this.Hinv ? corners.map((c) => applyH(this.Hinv, c)) : null;
+      if (p && p.every((q) => q.every(Number.isFinite))) {
+        center = [(p[0][0] + p[1][0] + p[2][0] + p[3][0]) / 4, (p[0][1] + p[1][1] + p[2][1] + p[3][1]) / 4];
+        // the marker's x axis: from its left edge (TL, BL) to its right edge (TR, BR)
+        heading = Math.atan2(p[1][1] + p[2][1] - p[0][1] - p[3][1], p[1][0] + p[2][0] - p[0][0] - p[3][0]);
+      }
+      out[id] = { corners, center, heading };
+    }
+    return out;
   }
 
   /* ---------------------------------------------------------------- survey */
@@ -300,7 +387,7 @@ export class PlaneTracker {
 
   /** Least-squares homography from all visible known markers, dropping inconsistent ones. */
   _estimate(markers) {
-    let ids = Object.keys(markers).map(Number).filter((id) => this.map.has(id));
+    let ids = Object.keys(markers).map(Number).filter((id) => this.map.has(id) && !this.map.moving.has(id));
     while (ids.length) {
       const src = [], dst = [];
       for (const id of ids) {

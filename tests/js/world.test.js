@@ -235,3 +235,26 @@ test("plugins can add object types with their own parameters", () => {
   const w2 = createWorld({ ...LAB, objects: [...LAB.objects, { id: "x", type: "not-registered", foo: 1 }] });
   assert.deepEqual(w2.toJSON().objects.at(-1), { id: "x", type: "not-registered", foo: 1 });
 });
+
+test("a locked marker map and moving markers are kept in layout files (written only when set)", () => {
+  const world = createWorld({ markers: { codes: 50, poses: { 0: [0, 0, 0], 3: [120, 0, 0], 40: [5, 5, 0] }, locked: true, moving: [41, "40", 40, -1, "x"] } });
+  assert.equal(world.map.locked, true);
+  assert.deepEqual([...world.map.moving], [40, 41]);
+  assert.deepEqual(world.map.ids(), [0, 3], "the pose of moving marker 40 is ignored");
+  const m = world.toJSON().markers;
+  assert.equal(m.locked, true);
+  assert.deepEqual(m.moving, [40, 41]);
+  assert.deepEqual(Object.keys(m.poses), ["0", "3"]);
+  assert.deepEqual(Object.keys(m).slice(-3), ["locked", "moving", "poses"]);
+  // round trip, and unlocked without moving markers: the keys are left out
+  assert.deepEqual(createWorld(world.toJSON()).toJSON().markers, m);
+  world.map.unlock();
+  world.map.setMoving([]);
+  const tidy = world.toJSON().markers;
+  assert.ok(!("locked" in tidy) && !("moving" in tidy), JSON.stringify(tidy));
+  // problems are reported
+  const problems = validateLayout({ markers: { locked: "yes", moving: [40, "x"], poses: {} } });
+  assert.ok(problems.some((p) => p.startsWith("markers.locked")) && problems.some((p) => p.startsWith("markers.moving")), problems.join("; "));
+  assert.ok(validateLayout({ markers: { moving: [40], poses: { 40: [0, 0, 0] } } }).some((p) => p.includes("moving marker")));
+  assert.deepEqual(validateLayout({ markers: { locked: true, moving: [40, 41], poses: { 0: [0, 0, 0] } } }), []);
+});

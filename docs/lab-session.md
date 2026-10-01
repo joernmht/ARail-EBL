@@ -62,7 +62,9 @@ arail-survey lab.mp4 photos/*.jpg --layout web/layouts/ebl-lab.json \
 
 - Inputs: videos and photos, any number, glob patterns allowed. Every 2nd video frame is analysed (`--every`; use 3 or 4 for 60 fps).
 - `--layout`: the marker type, size and origin come from the layout, its known marker poses are kept, and the result is merged into it (objects, scenarios and everything else stay). Without `--layout` a new layout is written; the origin marker (`--origin`, default 0) defines the layout frame.
-- `--resurvey`: ignore the poses in `--layout` (after markers were re-stuck); `--refine-fixed`: refine them too.
+- `--resurvey`: ignore the poses in `--layout` (after markers were re-stuck; the report names layout markers that were not seen again and the objects that use them); `--refine-fixed`: refine them too (as measurements of 2 mm / 0.5° next to the images).
+- The layout is written **locked** (`markers.locked`): the app then uses only the surveyed markers (see [Keeping positions](#keeping-positions)); `--unlocked` leaves it open.
+- `--moving 40,41` (or `markers.moving` in the layout): markers on vehicles, e.g. container wagons. They are left out of the adjustment and of the marker map.
 - `--distance A B MM`: a measured distance between two marker centres. Without known poses it sets the scale; with known poses it is only checked.
 - `--ortho-bounds XMIN YMIN XMAX YMAX` (mm, `auto` for single sides) clips the orthophoto to the table: the floor beyond the table edge is not on the table plane. Read the edges off the grid of the check image. `--ortho-res` sets the resolution (1 mm per pixel; at most 2000 px, `--ortho-max`).
 - `--mask X0,Y0,X1,Y1` leaves an image region out of the orthophoto (fractions of the image, e.g. a timestamp). Static watermarks are found automatically.
@@ -83,6 +85,9 @@ The summary lists every marker: position, rotation, the number of frames it was 
 | High residuals | the sticker is not flat, bent, or moved while filming |
 | Poorly determined (+-mm above 2) | film from closer, with more neighbours in view |
 | Markers moved since the layout was made | they are measured again; objects attached to them follow |
+| Not seen together with other markers, kept as in the layout | known markers the video did not check; film them if they might have moved |
+| Markers with IDs above … were seen and ignored | stickers beyond `markers.codes`: raise it (or `--codes`) if they belong to the layout |
+| Markers of the layout not placed by the new survey, left out (`--resurvey`) | film them, or the objects placed relative to them cannot be placed |
 | Measured freely, the marker map is … % larger/smaller than the layout's | the marker size is wrong, or the lens distorts (use the main camera or a calibration) |
 | Only … % of the frames show two or more markers | add markers where the camera looks |
 
@@ -91,7 +96,7 @@ Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers 
 ## Importing the layout
 
 - With `-o web/layouts/<name>.json` the layout file is updated in place; otherwise copy the output there, or load it in the app with **Build → Layout → Import layout**.
-- All marker poses are in `markers.poses`. The app treats poses from the file as fixed: **Build → Marker map** shows them as *fixed*, and nothing is surveyed again.
+- All marker poses are in `markers.poses`. The app treats poses from the file as fixed: **Build → Marker map** shows them as *fixed*. The map is locked (`markers.locked`), so nothing is surveyed again and other markers are ignored.
 - `view.ortho` (`{"image": "../media/<name>-ortho.jpg", "bounds_mm": [xmin, ymin, xmax, ymax]}`, image row 0 at `ymax`, column 0 at `xmin`) puts the orthophoto on the table in the flyover. The image path is relative to the layout file.
 - Commit the layout and the orthophoto.
 
@@ -104,8 +109,10 @@ Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers 
 ## Keeping positions
 
 - The stickers stay where they are. As long as nobody moves them, the layout file is valid; the app starts tracking at once.
-- If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again**, film, then **Keep positions**.
+- **Keep positions** locks the marker map (in the app: Build → Marker map; `arail-survey` writes `markers.locked`). Live mode then accepts only the measured sticker IDs: nothing is surveyed, unknown and misread IDs are ignored, a sticker whose position does not fit is dropped as an outlier, and the detector reads only the codes up to the highest ID (fewer codes: more bit errors corrected safely). The HUD says "Tracking · 5 markers · locked". **Unlock** opens the map again.
+- If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again** (this unlocks the map), film, then **Keep positions**. **Survey a video…** unlocks the map for its run and offers **Keep positions** at the end.
 - After re-sticking many markers: `--resurvey`.
+- **Moving markers**: markers on vehicles (e.g. container wagons) are never part of the map. Enter their IDs in Build → Marker map → *Moving markers* (`markers.moving`, `arail-survey --moving`). Give them IDs within `markers.codes`, but do not stick them on the table.
 
 ## The EBL example
 

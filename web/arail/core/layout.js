@@ -74,6 +74,10 @@ export function normalizeLayout(json = {}) {
       codes: Number(markers.codes) > 0 ? Number(markers.codes) : 50,
       origin: markers.origin ?? null,
       sizes_mm: isObject(markers.sizes_mm) ? markers.sizes_mm : {},
+      // complete map (after "Keep positions" or arail-survey): live tracking surveys nothing
+      locked: markers.locked === true,
+      // markers on vehicles (e.g. container wagons): never part of the map
+      moving: markerIds(markers.moving),
       poses,
     },
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
@@ -89,6 +93,16 @@ export function normalizeLayout(json = {}) {
 
 function isObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+/** A marker ID: a non-negative integer, or a string of digits. */
+function isMarkerId(v) {
+  return (typeof v === "number" && Number.isInteger(v) && v >= 0) || (typeof v === "string" && /^\s*\d+\s*$/.test(v));
+}
+
+/** Marker IDs of a list, as numbers, sorted and unique; anything else is left out. */
+export function markerIds(list) {
+  return [...new Set((Array.isArray(list) ? list : []).filter(isMarkerId).map(Number))].sort((a, b) => a - b);
 }
 
 function validPose(id, p) {
@@ -117,6 +131,13 @@ export function validateLayout(json, registry) {
   for (const [id, p] of Object.entries(poses)) {
     if (!/^\d+$/.test(id)) problems.push(`markers.poses: "${id}" is not a marker ID`);
     else if (!validPose(id, p)) problems.push(`markers.poses.${id} must be [x_mm, y_mm, rotation_deg]`);
+  }
+  const markers = isObject(json.markers) ? json.markers : {};
+  if (markers.locked != null && typeof markers.locked !== "boolean") problems.push("markers.locked must be true or false");
+  if (markers.moving != null) {
+    const ok = Array.isArray(markers.moving) && markers.moving.every(isMarkerId);
+    if (!ok) problems.push("markers.moving must be a list of marker IDs, e.g. [40, 41]");
+    else for (const id of markerIds(markers.moving)) if (poses[id] != null) problems.push(`markers.poses.${id}: marker ${id} is a moving marker; its pose is ignored`);
   }
   const ids = new Set();
   if (json.objects != null && !Array.isArray(json.objects)) problems.push("objects must be a list");

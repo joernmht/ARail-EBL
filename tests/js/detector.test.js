@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DICTIONARIES, MarkerDetector, markerBits } from "../../web/arail/core/detector.js";
+import { acceptedBitErrors, DICTIONARIES, MarkerDetector, markerBits, orientedDistance } from "../../web/arail/core/detector.js";
 import { FIXTURE_HINT, fixtureImage, fixtureMeta, hasFixtures, loadAruco } from "./helpers.js";
 
 const skip = hasFixtures() ? false : FIXTURE_HINT;
@@ -60,4 +60,32 @@ test("markers are found on the real photo of the lab layout", { skip }, () => {
     const e = Math.max(...cv.map((c, k) => Math.hypot(found[id][k][0] - c[0], found[id][k][1] - c[1])));
     assert.ok(e < 2, `marker ${id}: corners ${e.toFixed(2)} px from OpenCV`);
   }
+});
+
+test("fewer codes (a locked map) correct more bit errors, but never accept chance matches more often", () => {
+  const { AR } = loadAruco();
+  const patterns = (bits, e) => {
+    let sum = 0, c = 1;
+    for (let k = 0; k <= e; k++) {
+      sum += c;
+      c = (c * (bits - k)) / (k + 1);
+    }
+    return sum;
+  };
+  for (const d of DICTIONARIES) {
+    const bits = AR.DICTIONARIES[d.name].nBits;
+    const at50 = acceptedBitErrors(AR, d.name, 50);
+    for (const codes of [1, 2, 5, 10, 49]) {
+      const e = acceptedBitErrors(AR, d.name, codes);
+      assert.ok(Number.isInteger(e) && e >= at50 && e < bits / 2, `${d.name}, ${codes} codes: ${e} bit errors`);
+      assert.ok(codes * patterns(bits, e) <= 50 * patterns(bits, at50), `${d.name}, ${codes} codes: chance matches`);
+    }
+  }
+  // a single code: other markers are not read as it (it used to accept any bit pattern)
+  const one = new MarkerDetector({ ...loadAruco(), dictionary: "ARUCO_4X4_1000", codes: 1 });
+  const corners = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  for (let id = 1; id < 50; id++) assert.equal(one._match(one.selected, markerBits(one.AR, "ARUCO_4X4_1000", id), corners), null, `marker ${id}`);
+  assert.equal(one._match(one.selected, markerBits(one.AR, "ARUCO_4X4_1000", 0), corners)?.id, 0);
+  // codes are compared in all four orientations: a code turned by 90 degrees is 0 bits away
+  assert.equal(orientedDistance(["1000000000000000", "0001000000000000"]), 0);
 });

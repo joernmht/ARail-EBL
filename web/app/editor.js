@@ -739,16 +739,82 @@ export class Editor {
       return h("tr", {}, h("td", {}, id), h("td", {}, e.x.toFixed(1)), h("td", {}, e.y.toFixed(1)), h("td", {}, `${toDeg(e.theta).toFixed(1)}°`),
         h("td", {}, id === map.anchor ? "origin" : e.fixed ? "fixed" : "surveyed"));
     });
+    const n = map.ids().length;
+    const surveying = !!this.surveyState?.running; // the video survey works on the map: no changes meanwhile
     morph(this.el.markers,
-      h("h2", {}, "Marker map ", h("span", { class: "count" }, `(${map.ids().length})`)),
-      h("p", { class: "hint" }, "Positions of the markers on the layout (mm). Unknown markers are measured automatically when they are seen together with known ones."),
+      h("h2", {}, "Marker map ", h("span", { class: "count" }, `(${n})`)),
+      h("p", { class: "hint", id: "markerMapStatus" }, map.locked
+        ? `Marker map locked: only these ${n} markers are used; new markers are ignored.`
+        : "Positions of the markers on the layout (mm). Unknown markers are measured automatically when they are seen together with known ones. Keep positions fixes them and locks the map."),
       rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
       h("div", { class: "row" },
-        h("button", { class: "btn small", type: "button", onclick: () => { map.fixAll(); this.app.saveLayout(); this.renderMarkers(); toast("Marker positions kept."); } }, "Keep positions"),
-        h("button", { class: "btn small", type: "button", onclick: () => { this.app.tracker.resurvey(); this.app.redetect(); this.app.saveLayout(); this.renderMarkers(); toast("Surveyed markers cleared. They are measured again."); } }, "Measure again"),
+        h("button", { class: "btn small", type: "button", disabled: surveying, onclick: () => this.keepPositions() }, "Keep positions"),
+        map.locked ? h("button", { class: "btn small", type: "button", id: "btnUnlockMap", disabled: surveying, onclick: () => this.unlockMap() }, "Unlock") : null,
+        h("button", { class: "btn small", type: "button", disabled: surveying, onclick: () => this.measureAgain() }, "Measure again"),
       ),
+      h("div", { class: "fields" },
+        h("label", { class: "field wide", for: "movingMarkers" }, h("span", {}, "Moving markers"),
+          h("input", { type: "text", id: "movingMarkers", value: [...map.moving].join(", "), placeholder: "e.g. 40, 41", autocomplete: "off", disabled: surveying, "aria-describedby": "movingMarkers-help",
+            onchange: (e) => this.setMovingMarkers(e.target.value) }),
+          h("small", { class: "help", id: "movingMarkers-help" }, "Markers on vehicles, e.g. container wagons: never part of the map. IDs separated by commas."))),
       this._surveyBlock(),
     );
+  }
+
+  /** "Keep positions": fix all marker positions and lock the map (only these markers are used). */
+  keepPositions() {
+    const map = this.world.map;
+    if (!map.ids().length) return toast("No markers known yet: there are no positions to keep.");
+    map.lock();
+    this.app.applyDictionary(); // a locked map needs fewer codes
+    this.app.saveLayout();
+    this.renderMarkers();
+    this.app.updateHud();
+    toast(`Marker map locked: only these ${map.ids().length} markers are used; new markers are ignored.`, 6000);
+  }
+
+  unlockMap() {
+    this.world.map.unlock();
+    this.app.applyDictionary();
+    this.app.redetect();
+    this.app.saveLayout();
+    this.renderMarkers();
+    this.app.updateHud();
+    toast("Marker map unlocked: new markers are measured when they are seen together with known ones.", 6000);
+  }
+
+  /** "Measure again": forget the marker positions (the map is unlocked), they are surveyed afresh. */
+  measureAgain() {
+    this.app.tracker.resurvey();
+    this.app.applyDictionary();
+    this.app.redetect();
+    this.app.saveLayout();
+    this.renderMarkers();
+    this.app.updateHud();
+    toast("Marker positions cleared and the map unlocked. The markers are measured again.");
+  }
+
+  /** The "Moving markers" field: IDs of markers on vehicles, separated by commas or spaces. */
+  setMovingMarkers(text) {
+    const map = this.world.map;
+    const parts = String(text).split(/[\s,;]+/).filter(Boolean);
+    const ids = parts.map(Number);
+    const bad = parts.filter((p, i) => !/^\d+$/.test(p) || !Number.isInteger(ids[i]));
+    const origin = [map.origin, map.anchor].find((m) => m != null && ids.includes(m));
+    if (bad.length || origin != null) {
+      toast(bad.length ? `Moving markers: “${bad[0]}” is not a marker ID. Enter IDs separated by commas, e.g. 40, 41.` : `Marker ${origin} defines the layout frame; it cannot be a moving marker.`, 6000);
+      this.renderMarkers();
+      return;
+    }
+    const removed = map.setMoving(ids);
+    this.app.applyDictionary();
+    if (removed.length) this.world.objectChanged(null);
+    this.app.saveLayout();
+    this.renderMarkers();
+    const list = removed.join(", ");
+    toast(removed.length > 1 ? `Markers ${list} are moving markers now and were removed from the map.`
+      : removed.length ? `Marker ${list} is a moving marker now and was removed from the map.`
+        : ids.length ? `Moving markers: ${[...map.moving].join(", ")}.` : "No moving markers.");
   }
 
   /* ---------------------------------------------------------------- survey a video */
@@ -759,7 +825,7 @@ export class Editor {
       onchange: (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) this.startSurvey(f); } });
     const head = [
       h("h3", { class: "subhead" }, "Survey a video"),
-      h("p", { class: "hint" }, "Film the whole layout slowly with all markers in view now and then, then let the app measure every marker in the video. Afterwards press Keep positions and export the layout: it is then fixed. See the lab-session guide (docs/lab-session.md)."),
+      h("p", { class: "hint" }, "Film the whole layout slowly with all markers in view now and then, then let the app measure every marker in the video. Afterwards press Keep positions (fixes the positions and locks the map) and export the layout. See the lab-session guide (docs/lab-session.md)."),
     ];
     if (!st) {
       return h("div", { class: "survey" }, head, h("div", { class: "row" }, h("label", { class: "btn small primary", for: "surveyVideo" }, "Survey a video…"), input));
@@ -784,7 +850,7 @@ export class Editor {
         rare.length ? ` Seen fewer than 5 times (check or film again): ${rare.join(", ")}.` : "") : null,
       plot,
       h("div", { class: "row" },
-        h("button", { class: "btn small primary", type: "button", onclick: () => { this.world.map.fixAll(); this.app.saveLayout(); this.renderMarkers(); toast("Marker positions kept: the layout is fixed."); } }, "Keep positions"),
+        h("button", { class: "btn small primary", type: "button", onclick: () => this.keepPositions() }, "Keep positions"),
         h("button", { class: "btn small", type: "button", onclick: () => download(`${slug(this.world.layout.name)}.json`, JSON.stringify(this.world.toJSON(), null, 2) + "\n") }, "Export layout"),
         h("label", { class: "btn small", for: "surveyVideo" }, "Survey another video…"), input,
       ),
@@ -795,6 +861,13 @@ export class Editor {
   async startSurvey(file) {
     if (this.surveyState?.running) return;
     if (!this.app.detector) return toast("Marker detection is not available.");
+    const wasLocked = this.world.map.locked;
+    if (wasLocked) {
+      // a locked map surveys nothing: unlocked for this run, Keep positions locks it again
+      this.world.map.unlock();
+      this.app.applyDictionary();
+      this.app.updateHud();
+    }
     const survey = new VideoSurvey({
       world: this.world, detector: this.app.detector, source: file,
       onProgress: (p) => {
@@ -808,9 +881,10 @@ export class Editor {
     });
     const st = (this.surveyState = { running: true, survey, progress: null, result: null, error: null, name: file.name || "video" });
     this.renderMarkers();
+    if (wasLocked) toast("The marker map was unlocked for the survey. Press Keep positions afterwards to lock it again.", 6000);
     try {
       st.result = await survey.run();
-      toast(st.result.cancelled ? "Survey cancelled." : `Survey done: ${st.result.markers.length} markers. Press Keep positions to fix them.`, 6000);
+      toast(st.result.cancelled ? "Survey cancelled." : `Survey done: ${st.result.markers.length} markers. Press Keep positions to fix them and lock the map.`, 6000);
     } catch (err) {
       st.error = err.message;
       toast(`The video could not be surveyed: ${err.message}`, 7000);

@@ -349,6 +349,7 @@ def test_command_line_end_to_end(tmp_path, stills, capsys):
     assert layout["view"]["ortho"]["bounds_mm"] == BOARD
     assert layout["markers"]["dictionary"] == "ARUCO" and layout["markers"]["origin"] == 0
     assert layout["markers"]["locked"] is True, "the app uses only the surveyed markers"
+    assert json.dumps(layout["markers"]["size_mm"]) == "30", "written as in the input layout"
     assert "moving" not in layout["markers"]
     poses = layout["markers"]["poses"]
     assert sorted(poses, key=int) == [str(m) for m in range(8)]

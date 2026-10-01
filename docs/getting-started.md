@@ -37,7 +37,7 @@ Each stop has a sign with its number, the number of waiting people, their averag
 - *Objects*: tap a name or tap the object on the image to select it. Drag a selected object to move it. A platform anchored to markers moves sideways (its offset changes).
 - *Selected*: all settings of the object, generated from the object type's parameters. **Redraw position** places it again, **Duplicate** and **Delete** do what they say.
 - *Layout*: name, model scale, marker size and marker type, **Export layout** (downloads the JSON file), **Import layout**, **Reset to original**.
-- *Marker map*: the surveyed marker positions. **Keep positions** fixes them; **Measure again** forgets them after markers were moved.
+- *Marker map*: the surveyed marker positions. **Keep positions** fixes them and locks the map (only these markers are used from then on; **Unlock** opens it again); **Measure again** forgets them after markers were moved. *Moving markers*: IDs of markers on vehicles, never part of the map. **Survey a video** measures the map from a video of the whole layout.
 
 Changes are kept in the browser (per layout file). Export the layout to share it or to keep it in your repository.
 

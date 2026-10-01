@@ -364,9 +364,15 @@ class App {
     document.title = `${this.world.layout.name} · ARail App`;
   }
 
+  /**
+   * Set up the marker detector for the layout: its marker type and number of codes (a locked
+   * marker map needs only the codes up to its highest ID, see MarkerMap.detectionCodes). Call it
+   * again when the map is locked or unlocked or its moving markers change.
+   */
   applyDictionary() {
     if (!this.detector) return;
-    const { dictionary: d, codes } = this.world.layout.markers;
+    const { dictionary: d } = this.world.layout.markers;
+    const codes = this.world.map.detectionCodes(this.world.layout.markers.codes);
     if (this.detector.codes !== codes) {
       try {
         this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes });
@@ -668,9 +674,9 @@ class App {
       chips.push(["ok", `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
       chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
     } else if (!this.source) chips.push(["warn", "No image yet"]);
-    else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}`]);
+    else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
-    else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, none known yet`]);
+    else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
     else chips.push(["bad", "No markers in view"]);
     chips.push(["info clock", `${this.world.clock.label()}${this.world.night() > 0.5 ? " · night" : ""}`]);
     if (this.world.paused) chips.push(["info", "Paused"]);

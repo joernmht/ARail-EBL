@@ -24,9 +24,11 @@ How it works:
    as watermarks and markers covered by a hand are left out), with a narrow blend at the seams.
    The frames' exposure is balanced first.
 
-Outputs: the layout with all marker poses (the app keeps poses from the file fixed), a JSON report,
-the orthophoto with its ``bounds_mm`` (``view.ortho`` in the layout), and a check image with the
-layout's markers, platforms and tracks drawn on the orthophoto.
+Outputs: the layout with all marker poses (the app keeps poses from the file fixed; the map is
+written locked, ``markers.locked``, so live tracking uses only these markers; markers on vehicles,
+``markers.moving``, are never part of it), a JSON report, the orthophoto with its ``bounds_mm``
+(``view.ortho`` in the layout), and a check image with the layout's markers, platforms and tracks
+drawn on the orthophoto.
 """
 
 from __future__ import annotations
@@ -1767,9 +1769,9 @@ def layout_json(
     markers = dict(out.get("markers") or {})
     if dictionary:
         markers["dictionary"] = app_dictionary(dictionary)
-    markers["size_mm"] = size_mm
+    markers["size_mm"] = _tidy(size_mm)
     if sizes_mm:
-        markers["sizes_mm"] = {str(k): v for k, v in sorted(sizes_mm.items())}
+        markers["sizes_mm"] = {str(k): _tidy(v) for k, v in sorted(sizes_mm.items())}
     moving = sorted({int(m) for m in moving})
     highest = max([*result.poses, *moving], default=-1)
     markers["codes"] = max(int(markers.get("codes") or 0), codes, highest + 1)
@@ -1788,6 +1790,11 @@ def layout_json(
         view["ortho"] = ortho
         out["view"] = view
     return out
+
+
+def _tidy(v: float):
+    """A whole number as int (30, not 30.0: layout files stay as people write them)."""
+    return int(v) if float(v).is_integer() else float(v)
 
 
 def report_json(result: SurveyResult, sources: list[Source], settings: dict, ortho: dict | None = None) -> dict:
