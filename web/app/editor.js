@@ -3,7 +3,7 @@ import { applyH, dist2, FONT, OVERLAY, rgba, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
-const CATEGORIES = ["Transport", "Scenery", "Infrastructure"];
+const CATEGORIES = ["Transport", "Buildings", "Scenery", "Infrastructure", "Table"];
 const HINTS = {
   point: "Tap on the layout where it should go.",
   segment: "Tap the start and the end. Tap on a marker to anchor the end to it.",

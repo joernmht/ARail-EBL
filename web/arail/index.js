@@ -23,6 +23,7 @@ import { BUS, TRAIN } from "./core/vehicles.js";
 import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
+import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
 import { Forest, Tree } from "./objects/trees.js";
 import { Area, Road } from "./objects/landscape.js";
 import { Track } from "./objects/track.js";
@@ -55,6 +56,11 @@ export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, 
 export { TRAIN, BUS } from "./core/vehicles.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation, TownSimulation };
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
+export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
+export {
+  BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
+  gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
+} from "./objects/building-kit.js";
 export { drawTree } from "./objects/trees.js";
 export { dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
@@ -62,7 +68,9 @@ export { MockFeed } from "./feeds/mock.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
-  for (const cls of [Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label]) registry.registerObject(cls);
+  for (const cls of [Platform, BusTerminal, Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Road, Track, Label]) {
+    registry.registerObject(cls);
+  }
   registry.registerSimulation(PassengerSimulation);
   registry.registerSimulation(TownSimulation);
   for (const def of BUILTIN_DISRUPTIONS) registry.registerDisruption(def);
