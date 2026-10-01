@@ -527,9 +527,14 @@ export class PassengerSimulation extends Simulation {
   }
 }
 
-/** Short status text for the docks of an area ("Train arriving", "Next train in 25 s", ...). */
+/**
+ * Short status text for the docks of an area ("Train arriving", "Next train in 25 s", "Bus 62 to
+ * Station in 3 min", ...). Docks served by bus lines ask `world.transit`.
+ */
 export function dockStatus(world, area) {
   const states = world.services.forArea(area.id);
+  const lines = world.transit ? area.docks.filter((d) => d.managed).map((d) => world.transit.statusFor(d.id)).filter(Boolean) : [];
+  if (lines.length && !states.some((st) => st.vehicle)) return lines[0];
   if (!states.length) return "";
   const noun = area.kind === "bus" ? "Bus" : "Train";
   const busy = states.find((st) => st.vehicle);

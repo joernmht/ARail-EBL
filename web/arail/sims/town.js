@@ -842,10 +842,12 @@ export class TownSimulation extends Simulation {
 
   /** Repair agents whose stop, vehicle or building disappeared. */
   _sanity() {
-    const buses = new Set(this.world.transit?.buses || []);
+    const transit = this.world.transit;
+    const buses = new Set(transit?.buses || []);
     for (const a of this.agents) {
-      if (a.state === "riding" && (!a.vehicle || (buses.size && !buses.has(a.vehicle)) || !a.vehicle.riders?.some((r) => r.agent === a))) {
-        this._finishTrip(a);
+      if (a.state === "riding") {
+        // the bus is gone (line deleted or changed, out of service) or the agent is not on board
+        if (!a.vehicle || (transit && !buses.has(a.vehicle)) || !a.vehicle.riders?.some((r) => r.agent === a)) this._finishTrip(a);
       } else if (a.state === "inside" && a.inside && !this.world.getObject(a.inside)) {
         this._goHome(a);
       } else if (a.state === "stop" && !a.person && !a.trip) {

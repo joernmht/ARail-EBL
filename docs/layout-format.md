@@ -116,6 +116,9 @@ Geometry: `position` (centre). A waiting area with bays along a bus lane on its 
 | `headway_s` | layout default | average time between buses per bay |
 | `shelter` | `true` | shelters at the bays |
 
+A bus line that has the terminal as a stop gets a bay of its own (its buses come over the streets
+to the bus lane); the other bays keep the timetable buses.
+
 ### `building`
 
 Geometry: `position` (centre).
@@ -144,7 +147,46 @@ Geometry: `points` (polygon). A coloured area: `kind` (`grass`, `field`, `water`
 
 ### `road`
 
-Geometry: `points` (polyline). Parameters: `kind` (`road`, `path`), `width_m` (7). Roads wider than 5 m get a centre line. The example plugin `road-traffic` drives cars on them.
+A street (or footpath). Geometry: `points` (polyline). Streets whose ends meet, that end on another
+street or that cross are connected (the road network, see [Streets, bus lines and road
+traffic](streets-and-buses.md)).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `kind` | `"street"` | `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h), `main` (main road, 50 km/h, wider), `path` (footpath, no cars) |
+| `width_m` | by kind | carriageway (path) width: 7 street, 6 residential, 10 main road, 3 footpath |
+| `sidewalk_m` | `2.5` | sidewalk width on each side, 0 = none (footpaths have none) |
+| `speed_kmh` | by kind | speed limit |
+| `lamps` | `true` | street lamps every 30 m (lit at night) |
+| `crossings` | `true` | zebra crossings next to junctions |
+
+### `bus-stop`
+
+Geometry: `position`, projected onto the nearest street (or the street in `road`). A waiting area
+on the sidewalk where the buses of bus lines stop. Each side is a stop area with one dock
+(`<id>:right`, `<id>:left`) that the bus lines serve (`managed`: the timetable leaves it alone).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `road` | nearest street | id of the street |
+| `side` | `"right"` | `right`, `left` or `both`, seen in the street's drawing direction; buses on the right side drive in that direction |
+| `length_m` | `18` | length of the stop |
+| `width_m` | `2.5` | width of the waiting area |
+| `shelter` | `true` | a shelter |
+
+### `bus-line`
+
+Buses that run along the streets from stop to stop. Geometry: `stops`, the ids of bus stops (or
+bus terminals) in the order they are served.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `number` | `""` | line number on buses and signs (empty: the name, else the number in the id) |
+| `color` | `"#0A777F"` | colour of the route and of the stripe on the buses |
+| `headway_s` | `240` | time between buses outside the rush hours (simulated seconds); more often in the rush hours, none at night |
+| `mode` | `"back-and-forth"` | `back-and-forth` (in order, then in reverse) or `loop` (round, back to the first stop) |
+| `speed_kmh` | `40` | top speed |
+| `show_route` | `true` | draw the route |
 
 ### `track`
 
@@ -170,6 +212,7 @@ A list of `{"type": ..., <settings>}`. Built in:
 | Type | Settings |
 | --- | --- |
 | `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140), `enabled` (true) |
+| `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic), `enabled` (true): cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
 
 Plugins can add more, e.g. `{"type": "road-traffic", "cars_per_km": 30, "speed_kmh": 40}`.
 

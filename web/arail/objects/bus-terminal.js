@@ -1,5 +1,10 @@
 /**
  * Bus terminal: a waiting area with bus bays along a bus lane.
+ *
+ * Without bus lines, timetable buses (core/services.js) stop at the bays. A bus line that has
+ * the terminal as a stop gets a bay of its own (the lines serving a terminal share the bays in
+ * the order of their ids); its buses come over the road network: the bus lane is connected to
+ * the nearest streets (`busLane()`, see core/network.js).
  * @module arail/objects/bus-terminal
  */
 import { LayoutObject } from "../core/object.js";
@@ -7,6 +12,8 @@ import { resolvePoint } from "../core/anchors.js";
 import { StopArea } from "../core/stops.js";
 import { add2, perpLeft, scale2, toRad } from "../core/math.js";
 import { PALETTE } from "../core/colors.js";
+import { linesServing } from "../core/transit.js";
+import { drawStopSign } from "./signs.js";
 
 export class BusTerminal extends LayoutObject {
   static type = "bus-terminal";
@@ -55,15 +62,28 @@ export class BusTerminal extends LayoutObject {
     const svc = this.world.layout.services;
     const headway = Number(this.spec.headway_s) > 0 ? Number(this.spec.headway_s) : svc.bus_headway_s;
     const bayLen = +this.spec.bay_length_m || 16;
+    // bays used by bus lines are managed by the lines (core/transit.js), not by the timetable
+    const lines = linesServing(this.world, this.id).length;
     const docks = [];
     for (let i = 0; i < g.bays; i++) {
-      docks.push({ id: `${this.id}:bay${i + 1}`, side: -1, s0: i * bayLen, s1: (i + 1) * bayLen, kind: "bus", label: `Bay ${String.fromCharCode(65 + i)}`, headway, dwell: svc.bus_dwell_s });
+      docks.push({
+        id: `${this.id}:bay${i + 1}`, side: -1, s0: i * bayLen, s1: (i + 1) * bayLen, kind: "bus", label: `Bay ${String.fromCharCode(65 + i)}`, headway, dwell: svc.bus_dwell_s,
+        managed: i < lines ? "line" : null,
+      });
     }
     const Lm = g.bays * bayLen, Wm = +this.spec.width_m || 4.5;
     return [new StopArea({
       id: this.id, owner: this, kind: "bus", origin: g.origin, dir: g.u, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, docks,
       access: [{ s: Lm / 2, t: Wm / 2 - 0.3, weight: 0.5 }, { s: 0.3, t: 0, weight: 0.25 }, { s: Lm - 0.3, t: 0, weight: 0.25 }],
     })];
+  }
+
+  /** The bus lane (centre line, layout mm) for the road network: buses drive along it in the direction of the bays. */
+  busLane() {
+    const g = this.geometry;
+    if (!g) return null;
+    const c = add2(g.center, scale2(g.n, -g.W / 2));
+    return { points: [add2(c, scale2(g.u, -g.L / 2)), add2(c, scale2(g.u, g.L / 2))], width: g.lane };
   }
 
   draw(view) {
@@ -83,7 +103,7 @@ export class BusTerminal extends LayoutObject {
     for (let i = 0; i < g.bays; i++) {
       const front = bayLen * (i + 1) - m(1);
       if (this.spec.shelter !== false) this._shelter(view, P, bayLen * i + bayLen * 0.35, g.W / 2 - m(1.1));
-      this._stopSign(view, P(front, -g.W / 2 + m(0.5)), String.fromCharCode(65 + i));
+      drawStopSign(view, P(front, -g.W / 2 + m(0.5)), { letter: String.fromCharCode(65 + i) });
     }
   }
 
@@ -92,36 +112,5 @@ export class BusTerminal extends LayoutObject {
     const w = m(4), d = m(1.4);
     const fp = [P(s - w / 2, t - d / 2), P(s + w / 2, t - d / 2), P(s + w / 2, t + d / 2), P(s - w / 2, t + d / 2)];
     view.prism(fp, 0, m(2.4), { side: PALETTE.glass, top: "#6d7f91", alpha: 0.45 });
-  }
-
-  _stopSign(view, p, letter) {
-    const top = view.project(p[0], p[1], view.m(2.9)), foot = view.project(p[0], p[1], 0);
-    if (!top || !foot) return;
-    view.solid(view.depth(p[0], p[1], 0), (ctx) => {
-      ctx.strokeStyle = view.dim("#5b6470");
-      ctx.lineWidth = 1.5 * view.px;
-      ctx.beginPath();
-      ctx.moveTo(foot[0], foot[1]);
-      ctx.lineTo(top[0], top[1]);
-      ctx.stroke();
-      const r = Math.max(5 * view.px, view.pxPerMM(p[0], p[1], view.m(2.9)) * view.m(0.35));
-      ctx.beginPath();
-      ctx.arc(top[0], top[1], r, 0, 2 * Math.PI);
-      ctx.fillStyle = "#f7d417";
-      ctx.fill();
-      ctx.lineWidth = Math.max(1, r * 0.12);
-      ctx.strokeStyle = "#1f8a3b";
-      ctx.stroke();
-      ctx.fillStyle = "#1f8a3b";
-      ctx.font = `900 ${r * 1.3}px "Archivo", system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("H", top[0], top[1] + r * 0.05);
-      if (r > 8 * view.px) {
-        ctx.font = `700 ${r * 0.6}px "Archivo", system-ui, sans-serif`;
-        ctx.fillStyle = "#fff";
-        ctx.fillText(letter, top[0], top[1] + r * 1.6);
-      }
-    });
   }
 }

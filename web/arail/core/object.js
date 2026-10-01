@@ -35,7 +35,8 @@ export class LayoutObject {
   static category = "Scenery";
   /**
    * How the editor places a new object:
-   * "point" (tap once), "segment" (two points or two markers), "polygon", "polyline".
+   * "point" (tap once), "segment" (two points or two markers), "polygon", "polyline",
+   * "stops" (tap stops in order, e.g. bus lines: `spec.stops` = their ids; `static stopTypes` lists the types).
    */
   static placement = "point";
   /** @type {ParamSpec[]} */

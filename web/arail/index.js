@@ -25,11 +25,15 @@ import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
 import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
 import { Forest, Tree } from "./objects/trees.js";
-import { Area, Road } from "./objects/landscape.js";
+import { Area } from "./objects/landscape.js";
+import { Road } from "./objects/road.js";
+import { BusStop } from "./objects/bus-stop.js";
+import { BusLine } from "./objects/bus-line.js";
 import { Track } from "./objects/track.js";
 import { Label } from "./objects/label.js";
 import { PassengerSimulation } from "./sims/passengers.js";
 import { TownSimulation } from "./sims/town.js";
+import { TrafficSimulation } from "./sims/traffic.js";
 
 export const VERSION = "0.1.0";
 
@@ -46,6 +50,8 @@ export { LayoutObject, UnknownObject } from "./core/object.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
+export { RoadNetwork, dockPose, joinPaths, PLACE_MAX_M } from "./core/network.js";
+export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, JUNCTION_WAIT_S } from "./core/transit.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
@@ -55,6 +61,10 @@ export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelat
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation, TownSimulation };
+export { BusStop, BusLine, TrafficSimulation };
+export { ROAD_KINDS, roadKind, offsetPolyline, drawStreetLamp } from "./objects/road.js";
+export { drawStopSign, STOP_SIGN } from "./objects/signs.js";
+export { CAR_COLOURS } from "./sims/traffic.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
 export {
@@ -68,11 +78,15 @@ export { MockFeed } from "./feeds/mock.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
-  for (const cls of [Platform, BusTerminal, Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Road, Track, Label]) {
+  for (const cls of [
+    Platform, BusTerminal, Road, BusStop, BusLine,
+    Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label,
+  ]) {
     registry.registerObject(cls);
   }
   registry.registerSimulation(PassengerSimulation);
   registry.registerSimulation(TownSimulation);
+  registry.registerSimulation(TrafficSimulation);
   for (const def of BUILTIN_DISRUPTIONS) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);

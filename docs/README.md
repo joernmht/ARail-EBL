@@ -5,6 +5,7 @@
 - [Getting started](getting-started.md): the app, its panels, keyboard shortcuts and URL options
 - [Setting up a lab](lab-setup.md): markers, printing, placement, cameras and the marker map
 - [Disruptions and scenarios](disruptions-and-scenarios.md): what each disruption does, and how to script exercises
+- [Streets, bus lines and road traffic](streets-and-buses.md): the road network, bus stops, bus lines and cars
 - [Camera calibration](calibration.md): only needed for wide-angle webcams
 
 **Building on ARail**
