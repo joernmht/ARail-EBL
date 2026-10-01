@@ -57,6 +57,38 @@ function hash(s) {
 const right = (d) => [d[1], -d[0]];
 
 /**
+ * How often a closed polyline turns round: +1 counter-clockwise, -1 clockwise (seen from above:
+ * the layout's x to the right, y away from the viewer), 0 for a figure eight.
+ * @param {number[][]} points
+ */
+export function turningNumber(points) {
+  const P = points.length > 1 && dist2(points[0], points[points.length - 1]) < 1e-6 ? points.slice(0, -1) : points;
+  const n = P.length;
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const u = sub2(P[i], P[(i - 1 + n) % n]), v = sub2(P[(i + 1) % n], P[i]);
+    if (Math.hypot(u[0], u[1]) < 1e-9 || Math.hypot(v[0], v[1]) < 1e-9) continue;
+    total += Math.atan2(cross2(u, v), dot2(u, v));
+  }
+  return Math.round(total / (2 * Math.PI));
+}
+
+/**
+ * Where the buses of a loop line go, as on their destination sign: "Ring ↻" (clockwise),
+ * "Ring ↺" (counter-clockwise) or "Ring" (like the Berlin Ringbahn). Lines that run back and
+ * forth go "to <terminus>".
+ * @param {number} turns turning number of the route (see {@link turningNumber})
+ */
+export function ringName(turns) {
+  return turns < 0 ? "Ring ↻" : turns > 0 ? "Ring ↺" : "Ring";
+}
+
+/** The words for the direction of a line: "to Bahnhof", or "Ring ↻" for a loop. */
+export function towards(destination, loop) {
+  return destination ? (loop ? destination : `to ${destination}`) : "";
+}
+
+/**
  * Faces of a box vehicle between its rear and front point (layout mm) on the ground.
  * @param {number[]} rear
  * @param {number[]} front
@@ -165,6 +197,8 @@ export function gapAhead(self, front, dir, users, lookMM, laneMM) {
     if (along < -laneMM || along > lookMM || along >= best) continue;
     if (Math.abs(cross2(dir, d)) > laneMM) continue;
     if (dot2(o.dir, dir) < 0.3) continue;
+    // level with or behind this one (two vehicles on one spot would wait for each other for good)
+    if (along <= 0 && dot2(sub2(o.front, front), dir) <= 0) continue;
     best = Math.max(0, along);
   }
   return best;
@@ -234,6 +268,8 @@ export class LineBus {
     this.waited = 0;
     /** Takes the next departure at its terminus. */
     this.due = false;
+    /** At the end of its last trip: people get off, nobody gets on, then it goes to the depot. */
+    this.outOfService = false;
     this._arrivingSent = false;
     this._leaving = null;
   }
@@ -489,6 +525,7 @@ export class Transit {
       return line;
     }
     line.circuit = { points: drive.points, lengths: drive.lengths, length: drive.length, speeds: drive.speeds };
+    line.turns = turningNumber(drive.points);
     line.junctions = net.junctionsAlong(path, drive);
     line.visits = chosen.map((v, k) => ({
       index: k, objectId: v.o.id, name: v.o.name, area: v.dock.area, areaId: v.dock.area.id, dock: v.dock, dockId: v.dock.id,
@@ -505,15 +542,17 @@ export class Transit {
       }
       const dest = V[j];
       const from = V[i].s, to = j === i ? from + drive.length : dest.s + (dest.s <= from ? drive.length : 0);
-      // a loop ends where it began
-      const destination = j === i ? `${dest.name} (loop)` : dest.name;
+      // a loop ends where it began: its buses go round the ring, clockwise or counter-clockwise
+      const loop = j === i;
+      const destination = loop ? ringName(line.turns) : dest.name;
       for (const k of stopsOf) {
         V[k].destination = destination;
+        V[k].loop = loop;
         // buses only arrive here (they leave from the other side of the street)
         V[k].terminus = !V[k].start && dest.name === V[k].name;
       }
       line.directions.push({
-        dir: V[i].dir, from: V[i].name, destination,
+        dir: V[i].dir, from: V[i].name, destination, loop,
         stops: [...stopsOf, j].map((k) => ({ objectId: V[k].objectId, areaId: V[k].areaId, dockId: V[k].dockId, name: V[k].name, s: V[k].s })),
         route: this._slice(line.circuit, from, to),
       });
@@ -570,9 +609,7 @@ export class Transit {
     const tod = this.world.clock.demand("bus");
     if (!(tod > 0)) return;
     const L = line.circuit.length;
-    const dwell = line.visits.reduce((s, v) => s + Math.max(MIN_DWELL_S, v.dock.dwell), 0);
-    const cycle = this.meters(L) / (0.7 * line.speed) + dwell;
-    const n = Math.min(12, Math.floor(cycle / (line.headway / tod)));
+    const n = Math.min(12, Math.floor(this._cycle(line) / (line.headway / tod)));
     const rng = createRng(hash(`${this.world.seed}:${line.id}:populate`));
     const offset = rng.uniform(0.2, 0.8);
     for (let k = 0; k < n; k++) {
@@ -584,6 +621,22 @@ export class Transit {
       bus.v = line.speed * 0.6;
       this.buses.push(bus);
     }
+  }
+
+  /** Expected time (simulated s) for one round of a line, with the stops. */
+  _cycle(line) {
+    const dwell = line.visits.reduce((s, v) => s + Math.max(MIN_DWELL_S, v.dock.dwell), 0);
+    return this.meters(line.circuit.length) / (0.7 * line.speed) + dwell;
+  }
+
+  /**
+   * Buses a line needs now: one per departure during a round, and one to spare; none at night.
+   * More buses than that (after the rush hour) go to the depot at the end of their trip.
+   */
+  _needed(line) {
+    const tod = this.world.clock.demand("bus");
+    if (!(tod > 0)) return 0;
+    return Math.ceil(this._cycle(line) / (line.headway / tod)) + 1;
   }
 
   /** Direction and destination of a bus on its way to visit `next`. */
@@ -620,6 +673,8 @@ export class Transit {
 
   /** Take a bus out of service (it goes to the depot). */
   _drop(bus) {
+    // its last events say so: it leaves for the depot, not in service
+    bus.outOfService = true;
     if (bus.phase === "dwelling" || (bus.phase === "departing" && bus.doorsLeft > 0)) {
       if (bus.phase === "dwelling") this._emit("vehicle.departing", bus, bus.dock);
       this._emit("vehicle.departed", bus, bus.dock);
@@ -638,6 +693,7 @@ export class Transit {
   vehicleAt(dockId) {
     let arriving = null;
     for (const bus of this.buses) {
+      if (bus.outOfService) continue;
       if ((bus.phase === "dwelling" || (bus.phase === "departing" && bus.doorsLeft > 0)) && bus.dock?.id === dockId) return bus;
       if (bus.phase === "arriving" && this.lines.get(bus.lineId)?.visits[bus.next]?.dockId === dockId) arriving = bus;
     }
@@ -686,7 +742,7 @@ export class Transit {
     };
     let best = Infinity;
     for (const bus of this.buses) {
-      if (bus.lineId !== line.id) continue;
+      if (bus.lineId !== line.id || bus.outOfService) continue;
       const t = travel(bus.s, visit.s);
       if (!t.passesStart) best = Math.min(best, t.time + (bus.phase === "dwelling" ? Math.min(bus.dwellRemaining, line.headway) : 0));
     }
@@ -700,7 +756,11 @@ export class Transit {
     return best;
   }
 
-  /** Status text for a stop dock served by bus lines, e.g. "Bus 62 to Station in 3 min". */
+  /**
+   * Status text for a stop dock served by bus lines: the next bus, e.g. "Bus 62 to Station in 3 min",
+   * "Bus 85 Ring ↻ boarding" (a loop line, clockwise), "Bus 62 arrives in 2 min (terminus)" or
+   * "Bus 62: no buses at night".
+   */
   statusFor(dockId) {
     this.sync();
     // hardly any service: as good as none (the first buses of the morning are not announced)
@@ -709,7 +769,7 @@ export class Transit {
     for (const line of this.lines.values()) {
       const visit = line.visits.find((v) => v.dockId === dockId);
       if (!visit) continue;
-      const name = `Bus ${line.label}`, to = visit.destination && !visit.terminus ? ` to ${visit.destination}` : "";
+      const name = `Bus ${line.label}`, to = visit.destination && !visit.terminus ? ` ${towards(visit.destination, visit.loop)}` : "";
       const bus = this.vehicleAt(dockId);
       if (bus && bus.lineId === line.id) {
         if (visit.terminus) return `${name} ${bus.phase === "arriving" ? "arriving" : "arrived"} (terminus)`;
@@ -780,6 +840,8 @@ export class Transit {
     const fxOf = (v) => this.world.disruptions.effectsFor(v.area);
     for (const st of line.starts) {
       const v = line.visits[st.index], fx = fxOf(v);
+      // no service (the night): a bus still waiting for room to come in stays in the depot
+      if (!(tod > 0)) st.pending = 0;
       if (st.pending > 0) this._spawn(line, st);
       st.timer -= dt * tod * Math.max(0, fx.frequency ?? 1);
       if (st.timer > 0) continue;
@@ -836,8 +898,14 @@ export class Transit {
         const tod = this.world.clock.demand("bus");
         // no departure for a long time (or the night): to the depot
         if (bus.waited > Math.max(3 * line.headway, 600) || (!(tod > 0) && bus.waited > 60)) this._drop(bus);
-        // another bus waits behind for this stop: leave now with the next departure
-        else if (this._queuedBehind(bus)) {
+        else if (this._queuedBehind(bus, users)) {
+          // a vehicle waits behind: leave now with the next departure, or (no departures because of
+          // a disruption) make room and go to the depot
+          const e = fx(v);
+          if ((e.frequency ?? 1) <= 0 || e.cancel) {
+            this._drop(bus);
+            return;
+          }
           bus.waiting = false;
           bus.dwellLeft = Math.min(bus.dwellLeft, 4);
           const st = line.starts.find((x) => x.index === bus.next);
@@ -850,7 +918,8 @@ export class Transit {
         return;
       }
       bus.dwellLeft -= dt;
-      if (bus.dwellLeft <= 0) {
+      if (bus.dwellLeft <= 0 && bus.outOfService) this._drop(bus);
+      else if (bus.dwellLeft <= 0) {
         bus.phase = "departing";
         bus.doorsLeft = DOORS_S;
         this._emit("vehicle.departing", bus, bus.dock);
@@ -912,16 +981,28 @@ export class Transit {
     if (this.meters(left) < 0.25 && bus.v < 0.6) this._arrive(bus, line, target);
   }
 
-  /** Is another bus waiting close behind a bus for the stop it stands at? */
-  _queuedBehind(bus) {
+  /**
+   * Is a vehicle waiting close behind a bus that lays over? Another bus for the same stop, or any
+   * vehicle stuck behind it in its lane: a bus of another line on its way to the next bay of a
+   * terminal, the cars behind a bus that lays over at a stop on the street.
+   */
+  _queuedBehind(bus, users = this._users) {
     const me = bus._pose;
     if (!me) return false;
-    return this._users.some((u) => {
+    const behind = this.mm(GAP_M + 20), lane = this.mm(2.5);
+    for (const u of around(users, me.rear, behind + lane)) {
       const o = u.vehicle;
-      if (o === bus || o.phase === "dwelling" || o.v > 1) return false;
-      if (this.lines.get(o.lineId)?.visits[o.next]?.dockId !== bus.dock?.id) return false;
-      return dist2(u.front, me.rear) < this.mm(GAP_M + 20);
-    });
+      if (o === bus || o.phase === "dwelling" || o.v > 1) continue;
+      if (o.lineId && this.lines.get(o.lineId)?.visits[o.next]?.dockId === bus.dock?.id) {
+        if (dist2(u.front, me.rear) < behind) return true;
+        continue;
+      }
+      // in the lane behind (it may still be turning into it)
+      const d = sub2(me.rear, u.front), along = dot2(d, me.dir);
+      if (along < -this.mm(1) || along > behind || Math.abs(cross2(me.dir, d)) > lane || dot2(u.dir, me.dir) < 0) continue;
+      return true;
+    }
+    return false;
   }
 
   _arrive(bus, line, v) {
@@ -939,7 +1020,10 @@ export class Transit {
     if (v.destination) bus.destination = v.destination;
     if (v.start) {
       if (bus.due) bus.dwellLeft = Math.max(bus.dwellLeft, 15);
-      else {
+      else if (this.buses.filter((b) => b.lineId === line.id && b.phase !== "gone" && !b.outOfService).length > this._needed(line)) {
+        // one bus too many (after the rush hour, at night): people get off, then to the depot
+        bus.outOfService = true;
+      } else {
         bus.waiting = true;
         bus.waited = 0;
       }
@@ -995,11 +1079,15 @@ export class Transit {
       }
       view.lightPool([front[0] + u[0] * m(5), front[1] + u[1] * m(5)], m(4), "#fff1c9", 0.35);
     }
-    if (bus.phase === "dwelling" && this.world.settings.labels !== false) {
+    // the destination sign while it stands at a stop (not when the bus is tiny on the screen)
+    const a = view.project(front[0], front[1], 0), b = view.project(rear[0], rear[1], 0);
+    const big = a && b && Math.hypot(a[0] - b[0], a[1] - b[1]) / (view.px || 1) >= 24;
+    if (bus.phase === "dwelling" && big && this.world.settings.labels !== false) {
       // line number on the line's colour, then the destination
       const at = [front[0] - (front[0] - rear[0]) * 0.1, front[1] - (front[1] - rear[1]) * 0.1];
       const short = bus.line.length <= 3;
-      const text = short ? bus.destination || "Bus" : `${bus.line}${bus.destination ? ` ${bus.destination}` : ""}`;
+      const dest = bus.outOfService ? "Not in service" : bus.destination;
+      const text = short ? dest || "Bus" : `${bus.line}${dest ? ` ${dest}` : ""}`;
       view.label([at[0], at[1], m(4.4)], text, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2 });
     }
   }

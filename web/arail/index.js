@@ -53,7 +53,7 @@ export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
 export { RoadNetwork, dockPose, joinPaths, PLACE_MAX_M } from "./core/network.js";
-export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, JUNCTION_WAIT_S } from "./core/transit.js";
+export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
@@ -75,7 +75,7 @@ export {
   gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
 } from "./objects/building-kit.js";
 export { drawTree } from "./objects/trees.js";
-export { dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
+export { BOARD_MIN_PX, dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 

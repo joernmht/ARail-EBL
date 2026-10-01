@@ -21,6 +21,24 @@ import { mix, moodColor, OVERLAY } from "../core/colors.js";
 /** Colour of people who are not agents of another simulation, when people show their trip purpose. */
 export const NEUTRAL_PERSON = "#e3e3e3";
 
+/**
+ * A stop shorter than this on the screen (CSS px) gets a small badge (its sign letter or number
+ * and the people waiting) instead of the full board, so that the boards of far away stops do not
+ * cover the town (the flyover's overview, a phone).
+ */
+export const BOARD_MIN_PX = 60;
+
+/** Length (CSS px) of the longest of the stop areas on the screen (0 when it is not in front of the camera). */
+function screenLength(view, areas) {
+  let best = 0;
+  for (const a of areas) {
+    const p = a.toLayout(0, 0), q = a.toLayout(a.L, 0);
+    const P = view.project(p[0], p[1], 0), Q = view.project(q[0], q[1], 0);
+    if (P && Q) best = Math.max(best, Math.hypot(P[0] - Q[0], P[1] - Q[1]) / (view.px || 1));
+  }
+  return best;
+}
+
 class Person {
   constructor(rng, pos, target, state, mood, dock) {
     this.pos = pos.slice();
@@ -223,6 +241,7 @@ export class PassengerSimulation extends Simulation {
     if (p.state !== "waiting" && p.state !== "arriving") return false;
     if (p.dock !== dock.id && !(p.anyDock && p.dock == null)) return false;
     if (p.line && vehicle?.lineId !== p.line) return false;
+    if (vehicle?.outOfService) return false; // a bus on its way to the depot
     return true;
   }
 
@@ -237,6 +256,16 @@ export class PassengerSimulation extends Simulation {
   }
 
   /* ---------------------------------------------------------------- places */
+
+  /**
+   * Do vehicles come to a stop area now? Not at night: timetables and bus lines follow the clock
+   * (`clock.demand`), while a control system may send its trains at any time.
+   */
+  _inService(a) {
+    if (this.world.clock.demand(a.kind === "bus" ? "bus" : "rail") > 0) return true;
+    return this.world.services.forArea(a.id).some((st) => st.mode === "feed" || st.vehicle)
+      || a.docks.some((d) => d.managed && this.world.transit?.vehicleAt?.(d.id));
+  }
 
   _access(c) {
     const a = c.area;
@@ -342,7 +371,9 @@ export class PassengerSimulation extends Simulation {
     const fx = world.disruptions.effectsFor(a);
     c.t += dt;
     const disrupted = fx.hold || fx.cancel;
-    const rate = fx.closed ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
+    // no service (the night): nobody comes to wait, and the people waiting go home after a while
+    const service = this._inService(a);
+    const rate = fx.closed || !service ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const dock = a.docks.length ? rng.pick(a.docks).id : null;
@@ -351,10 +382,10 @@ export class PassengerSimulation extends Simulation {
       c.people.push(p);
       c.inTimes.push(c.t);
     }
-    // give up and leave (closures, replacement services)
-    if (fx.leave) {
+    // give up and leave (closures, replacement services; the night, except agents: their owners decide)
+    if (fx.leave || !service) {
       for (const p of c.people) {
-        if ((p.state === "waiting" || p.state === "arriving") && rng.chance(0.25 * dt)) {
+        if ((p.state === "waiting" || p.state === "arriving") && (fx.leave || !p.agent) && rng.chance((fx.leave ? 0.25 : 0.02) * dt)) {
           p.state = "leaving";
           p.target = this._exit(c, p.pos);
         }
@@ -478,15 +509,22 @@ export class PassengerSimulation extends Simulation {
   draw(view) {
     if (!this.enabled) return;
     const settings = this.world.settings;
+    // one board per stop object (a bus stop on both sides of the street has two stop areas)
+    const boards = new Map();
     for (const c of this.crowds.values()) {
       const a = c.area;
       if (!a.owner?.geometry) continue;
       const vis = c.visible();
-      const mood = vis.length ? vis.reduce((s, p) => s + p.mood, 0) / vis.length : 1;
+      const moodSum = vis.reduce((s, p) => s + p.mood, 0);
+      const mood = vis.length ? moodSum / vis.length : 1;
       view.polygon(a.outline(), { fill: moodColor(mood), alpha: 0.3, order: 5 });
       this._drawPeople(view, a, vis, settings.trails);
-      if (settings.labels) this._drawSign(view, c, vis.length, mood);
+      if (!settings.labels) continue;
+      const b = boards.get(a.owner);
+      if (b) b.push({ c, count: vis.length, moodSum });
+      else boards.set(a.owner, [{ c, count: vis.length, moodSum }]);
     }
+    for (const [owner, parts] of boards) this._drawSign(view, owner, parts);
   }
 
   _drawPeople(view, a, people, trails) {
@@ -510,19 +548,37 @@ export class PassengerSimulation extends Simulation {
     }
   }
 
-  _drawSign(view, c, count, mood) {
-    const a = c.area;
-    const owner = a.owner;
-    const at = a.toLayout(0, 0);
-    const lines = [`${owner.name}: ${count} ${count === 1 ? "person" : "people"} · ${(mood * 100).toFixed(0)} %`];
-    const fx = this.world.disruptions.effectsFor(a);
-    const status = fx.messages.length ? fx.messages[0] : dockStatus(this.world, a);
-    if (status) lines.push(status);
-    const badge = owner.spec.number || (a.kind === "bus" ? "H" : null);
+  /**
+   * The board of a stop object over its stop areas: name, people waiting, mood and the next
+   * vehicle (for a bus stop on both sides of the street: per side). Seen from far away (the stop
+   * shorter than {@link BOARD_MIN_PX} on the screen) only a small badge with the people waiting.
+   * @param {import("../core/view.js").View} view
+   * @param {object} owner the stop object
+   * @param {Array<{c: Crowd, count: number, moodSum: number}>} parts its stop areas
+   */
+  _drawSign(view, owner, parts) {
+    const areas = parts.map((p) => p.c.area), first = areas[0];
+    const count = parts.reduce((s, p) => s + p.count, 0);
+    const mood = count ? parts.reduce((s, p) => s + p.moodSum, 0) / count : 1;
+    // above the middle of the stop (between both sides of the street), or the start of a platform
+    const ends = areas.flatMap((a) => [a.toLayout(0, 0), a.toLayout(a.L, 0)]);
+    const at = areas.length > 1 ? [ends.reduce((s, p) => s + p[0], 0) / ends.length, ends.reduce((s, p) => s + p[1], 0) / ends.length] : first.toLayout(0, 0);
+    const z = view.m(4.5);
+    const badge = owner.spec.number || (first.kind === "bus" ? "H" : null);
     // the bus badge keeps the green of the German bus stop sign ("H"), platforms get CD Türkis
-    view.label([at[0], at[1], view.m(4.5)], lines, {
-      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor: a.kind === "bus" ? OVERLAY.busStop : OVERLAY.sign,
-      colors: [null, fx.messages.length ? OVERLAY.alert : OVERLAY.status], bar: mood, barColor: moodColor(mood), order: 1,
+    const badgeColor = first.kind === "bus" ? OVERLAY.busStop : OVERLAY.sign;
+    const fxs = areas.map((a) => this.world.disruptions.effectsFor(a));
+    const alert = fxs.find((fx) => fx.messages.length)?.messages[0];
+    if (screenLength(view, areas) < BOARD_MIN_PX) {
+      view.label([at[0], at[1], z], String(count), { size: 11, padding: 3, anchor: "bottom", badge: badge || "·", badgeColor: alert ? OVERLAY.danger : badgeColor, order: 1 });
+      return;
+    }
+    const lines = [`${owner.name} · ${count} ${count === 1 ? "person" : "people"} · ${(mood * 100).toFixed(0)} %`];
+    const status = alert ? [alert] : [...new Set(areas.map((a) => dockStatus(this.world, a)).filter(Boolean))];
+    lines.push(...status.slice(0, 2));
+    view.label([at[0], at[1], z], lines, {
+      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor,
+      colors: [null, ...lines.slice(1).map(() => (alert ? OVERLAY.alert : OVERLAY.status))], bar: mood, barColor: moodColor(mood), order: 1,
     });
   }
 }

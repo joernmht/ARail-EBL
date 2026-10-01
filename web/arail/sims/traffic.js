@@ -14,7 +14,7 @@
  * @module arail/sims/traffic
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, polylineAt, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, dot2, pointSegment, polylineAt, polylineProject, sub2, unit2 } from "../core/math.js";
 import { CD, grey, mix, shade } from "../core/colors.js";
 import { APPROACH_M, boxFaces, gapAhead, JUNCTION_WAIT_S, mustYield, RoadUsers } from "../core/transit.js";
 import { joinPaths } from "../core/network.js";
@@ -179,21 +179,46 @@ export class TrafficSimulation extends Simulation {
     }
   }
 
-  /** The streets changed: put the cars on the new network (or let them go). */
+  /**
+   * The streets changed (or the scale): put the cars on the new network where they are, or let
+   * them go. A car keeps its place when a route from the node behind it passes there; else it
+   * moves on to the node ahead. Cars never end up on top of each other (they would block each
+   * other for good).
+   */
   _rebind(net) {
-    const out = [];
+    const out = [], placed = (this.world.transit?.roadUsers?.() || []).slice();
+    const len = this.mm(LENGTH_M);
+    const ends = net.boundaryNodes();
     for (const car of this.cars) {
       const pose = this._pose(car);
       const oldDest = car.destPos;
       const ahead = [pose.front[0] + pose.dir[0] * this.mm(6), pose.front[1] + pose.dir[1] * this.mm(6)];
-      const from = net.nearestNode(ahead, { mode: "car" });
-      if (!from || dist2(from.pos, pose.front) > this.mm(40)) continue;
-      const ends = net.boundaryNodes();
-      let to = null;
-      for (const n of ends.length ? ends : net.nodes) if (n !== from && n.carDegree && (!to || dist2(n.pos, oldDest || from.pos) < dist2(to.pos, oldDest || from.pos))) to = n;
-      const route = to ? net.route(from, to, { mode: "car" }) : null;
-      const next = route ? this._car(net, route, to.id) : null;
+      // the nearest nodes behind the car (one of them begins the street it is on), then the node ahead
+      const behind = net.nodes.filter((n) => n.carDegree > 0 && dot2(sub2(n.pos, pose.rear), pose.dir) < 0)
+        .map((n) => ({ n, d: dist2(n.pos, pose.rear) })).sort((x, y) => x.d - y.d).slice(0, 3).map((x) => [x.n, true]);
+      let next = null;
+      for (const [start, keep] of [...behind, [null, false]]) {
+        const from = start || net.nearestNode(ahead, { mode: "car" });
+        if (!from || dist2(from.pos, keep ? pose.rear : ahead) > this.mm(keep ? 400 : 40)) continue;
+        let to = null;
+        for (const n of ends.length ? ends : net.nodes) if (n !== from && n.carDegree && (!to || dist2(n.pos, oldDest || from.pos) < dist2(to.pos, oldDest || from.pos))) to = n;
+        const route = to ? net.route(from, to, { mode: "car" }) : null;
+        const c = route ? this._car(net, route, to.id) : null;
+        if (!c) continue;
+        if (keep) {
+          // where the car is on the new route (it must pass there, in the same direction)
+          const pr = polylineProject(c.path.points, pose.front, c.path.lengths);
+          const dir = polylineAt(c.path.points, pr.s, c.path.lengths).dir;
+          if (pr.distance > this.mm(2.5) || pr.s < len || dot2(dir, pose.dir) < 0.7) continue;
+          c.s = pr.s;
+        } else c.s = Math.min(len, c.path.length - this.mm(0.5));
+        next = c;
+        break;
+      }
       if (!next) continue;
+      const np = this._pose(next);
+      if (placed.some((u) => overlapping(u, np, this.mm(1.2)))) continue;
+      placed.push(np);
       next.id = car.id;
       next.colour = car.colour;
       next.factor = car.factor;
@@ -325,6 +350,12 @@ export class TrafficSimulation extends Simulation {
 
 function midpoint(u) {
   return [(u.front[0] + u.rear[0]) / 2, (u.front[1] + u.rear[1]) / 2];
+}
+
+/** Do two road users ({front, rear}) overlap (closer than `tol` mm between their centre lines)? */
+function overlapping(a, b, tol) {
+  return pointSegment(a.front, b.rear, b.front).distance < tol || pointSegment(b.front, a.rear, a.front).distance < tol
+    || pointSegment(a.rear, b.rear, b.front).distance < tol || pointSegment(b.rear, a.rear, a.front).distance < tol;
 }
 
 /** Index of the polyline segment containing arc length s. */

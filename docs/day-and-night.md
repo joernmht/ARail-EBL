@@ -88,8 +88,11 @@ nobody goes shopping. Every day gets new, reproducible plans (from the layout se
   walking. People wait at the stop, board only their line, ride, get off at their stop and walk
   on. Nobody waits longer than 20 clock minutes: then they walk (or go home instead of taking
   the train).
-- **Train**: commuters walk to the nearest platform and take the next train on either side.
-  Visitors and returning commuters get off arriving trains (up to 14 per train).
+- **Train**: commuters go to the nearest platform and take the next train on either side. A
+  long way to the platform is taken by bus like any other (see above): to a stop near the
+  platform, e.g. the station's bus terminal, and on foot to the platform. Visitors and returning
+  commuters get off arriving trains (up to 14 per train) and walk, or take the bus when it is far,
+  to work, home or the shop. Riders whose stop is taken off the line get off at the next stop.
 
 While people are inside a building they are not drawn; the building lights its windows at night
 when people are in (`world.occupancy`).

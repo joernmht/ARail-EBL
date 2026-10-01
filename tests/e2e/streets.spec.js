@@ -132,3 +132,26 @@ test("streets: a bus stop away from the streets says so in the inspector", async
   await expect(page.locator(".section").filter({ hasText: "Selected: Bus stop" }).locator(".hint.error")).toContainText("Not next to a street");
   expect(errors).toEqual([]);
 });
+
+test("stops board: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
+  const errors = await openApp(page, "/app/#simulate");
+  await page.evaluate(() => {
+    const w = window.__arail.world;
+    w.setTime("10:00");
+    w.speed = 10;
+    w.paused = false;
+  });
+  const board = page.locator(".board");
+  await expect(board.locator(".stop .title").filter({ hasText: /^Altmarkt · Stop A$/ })).toHaveCount(1);
+  await expect(board.locator(".stop .title").filter({ hasText: /^Altmarkt · Stop B$/ })).toHaveCount(1);
+  await expect(board.locator(".stop .title").filter({ hasText: /^Bahnhof$/ })).toHaveCount(1);
+  // the example's two lines go round the town in opposite directions
+  await expect(board.locator(".stop .status").filter({ hasText: /^Bus 62 Ring ↺/ }).first()).toBeVisible();
+  await expect(board.locator(".stop .status").filter({ hasText: /^Bus 85 Ring ↻/ }).first()).toBeVisible();
+  await expect(board).not.toContainText("(loop)");
+  // the inspector of a loop line says which way round its buses go
+  await page.locator("#tab-build").click();
+  await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-line-85")));
+  await expect(page.locator(".section").filter({ hasText: "Selected: Bus line" })).toContainText("The buses go round clockwise (“Ring ↻” on the signs).");
+  expect(errors).toEqual([]);
+});

@@ -235,7 +235,8 @@ export class Panels {
       const bus = a.kind === "bus";
       return h("div", { class: "stop", "data-id": a.id },
         h("div", { class: `num${bus ? " bus" : ""}`, title: `Key ${i + 1}` }, a.owner.spec.number || (bus ? "H" : String(i + 1))),
-        h("div", { class: "title" }, a.owner.name),
+        // a bus stop on both sides of the street: "Stop A" and "Stop B" (the letters on its signs)
+        h("div", { class: "title" }, areas.filter((x) => x.owner === a.owner).length > 1 && a.docks[0]?.label ? `${a.owner.name} · ${a.docks[0].label}` : a.owner.name),
         h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`), h("span", {}, `mood ${(s.mood * 100).toFixed(0)} %`), h("span", {}, `in ${s.inPerMin}/min · out ${s.outPerMin}/min`)),
         h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),

@@ -26,9 +26,21 @@ All three are in **Build → Add to the layout → Transport**.
    cannot reach, no way along the streets) are listed in the inspector.
 
 The route of a line is drawn in its colour along the right lane of the streets, with a dot at
-each stop. Stop signs and the **Simulate → Stops** board show the next bus, e.g. *Bus 62 to
-Station in 6 min* (in clock minutes), *Bus 62 to Station boarding*, or *Bus 62 arrives in
-3 min (terminus)* on the side where buses only arrive.
+each stop. The board over each stop and the **Simulate → Stops** board show the next bus, e.g.
+*Bus 62 to Station in 6 min* (in clock minutes), *Bus 62 to Station boarding*, or *Bus 62
+arrives in 3 min (terminus)* on the side where buses only arrive. The buses of a *loop* go round
+a ring, which the signs show like the Berlin Ringbahn: *Bus 62 Ring ↻ in 4 min* (clockwise, seen
+from above) or *Ring ↺* (counter-clockwise); the bus line's inspector says which way round. A
+bus shows its line number and *to* … or *Ring ↻* on its destination sign while it stands at a
+stop (*Not in service* on its way to the depot).
+
+A stop on both sides of the street has **one board** for both sides: the name, the people waiting
+on both sides, their mood and the next bus on each side. Seen from far away (the stop shorter
+than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a
+small badge with the stop sign and the number of people waiting; zoom in for the full board.
+Platforms and bus terminals are longer, so they keep their full boards unless they are tiny. The
+**Simulate → Stops** board lists both sides of such a stop as *Stop A* and *Stop B* (the letters
+on its signs).
 
 ## How the buses run
 
@@ -39,12 +51,18 @@ Station in 6 min* (in clock minutes), *Bus 62 to Station boarding*, or *Bus 62 a
 - At the first stop of each direction (the terminus) buses lay over with the doors open until
   their departure. A bus departs every `headway_s` simulated seconds × the time-of-day demand
   (more often in the rush hours, none between 01:00 and 04:30). Buses come in from the depot when
-  none is waiting and go back to it when they are not needed (at night).
+  none is waiting. A line keeps only as many buses as its timetable needs (one per departure
+  during a round trip, and one to spare): after the rush hour, and at night, a bus that is not
+  needed lets its passengers off at the terminus and goes to the depot (*Not in service*;
+  nobody gets on).
 - Buses accelerate and brake, keep to the speed limit of the street and the line's top speed,
   keep their distance to the vehicle ahead, and give way at junctions to vehicles that are already
   crossing. At a stop the front of the bus stands 1.5 m before the end of the stop, and the doors
   open on the stop side; people get off, then the waiting passengers of this line get on. A bus
-  laying over at a stop leaves early when another bus waits behind it.
+  laying over does not block the street: when a vehicle waits behind it (another bus for the
+  stop, a bus of another line on its way to the next bay of a terminal, cars behind a terminus on
+  the street) it leaves early with its next departure; while departures are suspended by a
+  disruption it makes room by going to the depot.
 - Bus lines can also use **bus terminals**: each line serving a terminal gets a bay of its own
   (the lines share the bays in the order of their ids); the terminal's bus lane is connected to
   the nearest streets. Bays that no line uses keep the terminal's own timetable buses.
@@ -65,7 +83,9 @@ their distance to the vehicle ahead (cars and buses), wait before a junction whi
 vehicle crosses it or is closer to it (at most 4 s, so nothing gets stuck) and leave the layout
 again. Their number is `cars_per_km` per kilometre of street at normal daytime traffic, more in the
 rush hours and few at night (`clock.demand("car")`). On streets without dead ends (a ring) cars
-appear on the streets and drive from place to place. The example plugin
+appear on the streets and drive from place to place. When the streets change (a street drawn or
+moved, a bus stop placed, the scale changed) the cars stay where they are on the new streets
+where they can; cars that would end up on top of others leave. The example plugin
 [`road-traffic.js`](../web/plugins/road-traffic.js) is a much simpler version of this.
 
 ## Day and night
@@ -93,10 +113,12 @@ See [Layout file format](layout-format.md#road) for the parameters of `road`, `b
 - Objects take part through methods: `roadInfo()` (a street: points, width, sidewalk, speed,
   offsets), `entrances()` (doors of a building), `stopAreas()` and `busLane()` (a lane for buses).
 - `world.transit` (`core/transit.js`): `lines` (id → `{id, label, color, ok, problems, visits,
-  directions: [{dir, from, destination, stops, route}], circuit}`), `connections(fromAreaId,
-  toAreaId)` → `[{lineId, dir, fromDockId, toDockId, stops, rideMM}]`, `vehicleAt(dockId)`,
-  `statusFor(dockId)`, `buses` (each with `kind: "bus"`, `line`, `lineId`, `direction`,
-  `destination`, `riders`, `dock`, `phase`, `doorsOpen`). Line buses emit the usual
+  directions: [{dir, from, destination, loop, stops, route}], circuit, turns}`; a loop's
+  `destination` is `"Ring ↻"` or `"Ring ↺"` by its turning number `turns`, see `ringName()` and
+  `turningNumber()`), `connections(fromAreaId, toAreaId)` → `[{lineId, dir, fromDockId,
+  toDockId, stops, rideMM}]`, `vehicleAt(dockId)`, `statusFor(dockId)`, `buses` (each with
+  `kind: "bus"`, `line`, `lineId`, `direction`, `destination`, `riders`, `dock`, `phase`,
+  `doorsOpen`, and `outOfService` on its way to the depot: nobody boards it). Line buses emit the usual
   `vehicle.arriving`, `vehicle.arrived`, `vehicle.departing` and `vehicle.departed` events with
   `{vehicle, dock, area}` at the stop docks. The town simulation puts its people into `riders`
   and lets them get off when the bus arrives at their stop.

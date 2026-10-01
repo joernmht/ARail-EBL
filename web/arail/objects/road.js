@@ -117,7 +117,14 @@ function disc(c, r, n = 20) {
   return out;
 }
 
-/** Fill many polygons (pieces of a street, road markings) as one ground item. */
+/** Polygons of all streets per view and layer (see fillPolygons). */
+const LAYERS = new WeakMap();
+
+/**
+ * Fill many polygons (pieces of a street, road markings) as one ground item. The pieces of all
+ * streets in the same layer (order, colour, alpha) are filled together, in one path: where
+ * streets overlap (junctions) the semi-transparent asphalt is not darker than elsewhere.
+ */
 function fillPolygons(view, quads, colour, order, alpha = 0.92) {
   if (!quads.length) return;
   const img = [];
@@ -126,11 +133,22 @@ function fillPolygons(view, quads, colour, order, alpha = 0.92) {
     if (p) img.push(p);
   }
   if (!img.length) return;
+  let layers = LAYERS.get(view);
+  if (!layers) LAYERS.set(view, (layers = new Map()));
+  const key = `${order}|${colour}|${alpha}`;
+  const batch = layers.get(key);
+  if (batch && !batch.drawn) {
+    for (const p of img) batch.polys.push(p);
+    return;
+  }
+  const b = { polys: img, drawn: false };
+  layers.set(key, b);
   view.ground(order, (ctx) => {
+    b.drawn = true;
     ctx.globalAlpha *= alpha;
     ctx.fillStyle = view.dim(colour);
     ctx.beginPath();
-    for (const p of img) {
+    for (const p of b.polys) {
       ctx.moveTo(p[0][0], p[0][1]);
       for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
       ctx.closePath();

@@ -695,7 +695,10 @@ export class Editor {
     if (Array.isArray(s.points)) return h("p", { class: "hint" }, `${s.points.length} points. Use “Redraw position” to change the outline.`);
     if (Array.isArray(s.stops)) {
       const names = s.stops.map((id) => this.world.getObject(id)?.name || `${id} (missing)`);
-      return h("p", { class: "hint" }, `Stops: ${names.join(" → ")}.`);
+      // a loop: which way round its buses go (the arrow on their signs)
+      const ring = o.info?.()?.directions?.find((d) => d.loop);
+      const round = ring ? ` The buses go round ${ring.destination.endsWith("↻") ? "clockwise" : ring.destination.endsWith("↺") ? "counter-clockwise" : "the loop"} (“${ring.destination}” on the signs).` : "";
+      return h("p", { class: "hint" }, `Stops: ${names.join(" → ")}.${round}`);
     }
     return null;
   }

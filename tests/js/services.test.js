@@ -66,7 +66,8 @@ test("disruptions: frequency 0 stops all vehicles", () => {
   // their round; no new ones depart
   const arrivals = countArrivals(world, (e) => e.vehicle.source !== "line");
   let lineDepartures = 0;
-  world.events.on("vehicle.departing", (e) => e.vehicle.source === "line" && e.dock.id.startsWith("bus-terminal-1") && lineDepartures++);
+  // (a bus that makes room for the vehicles behind it goes to the depot: that is no departure in service)
+  world.events.on("vehicle.departing", (e) => e.vehicle.source === "line" && !e.vehicle.outOfService && e.dock.id.startsWith("bus-terminal-1") && lineDepartures++);
   run(world, 600);
   assert.equal(arrivals.length, 0);
   assert.equal(lineDepartures, 0, "no bus line departs from the bus station");

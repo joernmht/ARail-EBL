@@ -460,7 +460,7 @@ export class TownSimulation extends Simulation {
         this._setAway(a);
         return;
       }
-      a.trip = { legs, leg: 0, purpose: step.purpose, dest: null };
+      a.trip = { legs, leg: 0, purpose: step.purpose, dest: null, station: true };
     } else {
       a.trip = { legs: this._legsTo(a, from, fromKey, destId), leg: 0, purpose: step.purpose, dest: destId };
     }
@@ -479,22 +479,31 @@ export class TownSimulation extends Simulation {
     if (!dest) return [];
     const destKey = `building:${destId}:0`;
     const walk = this._walkPath(from, dest, fromKey, destKey);
-    const walkM = this._metres(walk.length);
+    const bus = this._busChoice(a, from, fromKey, dest, destKey, this._metres(walk.length));
+    if (bus) return [...this._busLegs(bus), { type: "walk", path: null, toBuilding: destId }];
+    return [{ type: "walk", path: walk, toBuilding: destId }];
+  }
+
+  /**
+   * A bus connection for a way of `walkM` metres, or null: only for long ways (`walk_max_m`),
+   * for a share of the people (`bus_share`, a little more for pupils and seniors) and when the
+   * bus is not much slower than walking (see `_bestBus`).
+   */
+  _busChoice(a, from, fromKey, dest, destKey, walkM) {
     const transit = this.world.transit, pax = this.passengers;
     const shareBoost = a.role === "pupil" || a.role === "senior" ? 0.1 : 0;
     const rng = createRng(hash(this.world.seed, a.id, this.world.clock.day, a.next, "mode"));
-    if (transit && pax && walkM > (+this.config.walk_max_m || 150) && rng.chance(Math.min(1, (+this.config.bus_share || 0) + shareBoost))) {
-      const bus = this._bestBus(from, dest, fromKey, destKey, walkM);
-      if (bus) {
-        return [
-          { type: "walk", path: bus.walk1, to: { area: bus.fromArea.id } },
-          { type: "wait", area: bus.fromArea.id, dockId: bus.conn.fromDockId, line: bus.conn.lineId, toDockId: bus.conn.toDockId },
-          { type: "ride", toDockId: bus.conn.toDockId, toArea: bus.toArea.id },
-          { type: "walk", path: null, toBuilding: destId },
-        ];
-      }
-    }
-    return [{ type: "walk", path: walk, toBuilding: destId }];
+    if (!transit || !pax || !(walkM > (+this.config.walk_max_m || 150)) || !rng.chance(Math.min(1, (+this.config.bus_share || 0) + shareBoost))) return null;
+    return this._bestBus(from, dest, fromKey, destKey, walkM);
+  }
+
+  /** Walk to the stop, wait for the bus of the connection, ride it to the other stop. */
+  _busLegs(bus) {
+    return [
+      { type: "walk", path: bus.walk1, target: bus.access, to: { area: bus.fromArea.id } },
+      { type: "wait", area: bus.fromArea.id, dockId: bus.conn.fromDockId, line: bus.conn.lineId, toDockId: bus.conn.toDockId },
+      { type: "ride", toDockId: bus.conn.toDockId, toArea: bus.toArea.id },
+    ];
   }
 
   /** Best bus connection between two points, or null when walking is about as good. */
@@ -505,8 +514,9 @@ export class TownSimulation extends Simulation {
     if (!stops.length) return null;
     const near = (p, key) => stops.map((area) => {
       const i = this._nearestAccess(area, p);
-      const path = key === "dest" ? this._walkPath(this._accessPoint(area, i), p, `area:${area.id}:${i}`, destKey) : this._walkPath(p, this._accessPoint(area, i), fromKey, `area:${area.id}:${i}`);
-      return { area, path, m: this._metres(path.length) };
+      const access = { pos: this._accessPoint(area, i), key: `area:${area.id}:${i}` };
+      const path = key === "dest" ? this._walkPath(access.pos, p, access.key, destKey) : this._walkPath(p, access.pos, fromKey, access.key);
+      return { area, path, access, m: this._metres(path.length) };
     }).filter((x) => x.m <= ACCESS_M);
     const origins = near(from, "from"), targets = near(dest, "dest");
     let best = null;
@@ -517,7 +527,7 @@ export class TownSimulation extends Simulation {
           const headway = this._headway(conn.lineId);
           const ride = this._metres(conn.rideMM || 0) / BUS_SPEED;
           const time = (o.m + t.m) / 1.3 + headway / 2 + ride;
-          if (!best || time < best.time) best = { time, conn, fromArea: o.area, toArea: t.area, walk1: o.path };
+          if (!best || time < best.time) best = { time, conn, fromArea: o.area, toArea: t.area, walk1: o.path, access: o.access };
         }
       }
     }
@@ -531,7 +541,11 @@ export class TownSimulation extends Simulation {
     return Number.isFinite(h) && h > 0 ? h : 240;
   }
 
-  /** Legs to the nearest platform and onto a train. */
+  /**
+   * Legs to the nearest platform and onto any train there. A long way to the station is taken by
+   * bus (like other long ways) to a stop near the platform, e.g. the station's bus terminal; from
+   * there people walk to the platform.
+   */
   _trainLegs(a, from, fromKey) {
     const areas = this._railAreas();
     if (!areas.length) return null;
@@ -539,12 +553,17 @@ export class TownSimulation extends Simulation {
     for (const area of areas) {
       const i = this._nearestAccess(area, from);
       const path = this._walkPath(from, this._accessPoint(area, i), fromKey, `area:${area.id}:${i}`);
-      if (!best || path.length < best.path.length) best = { area, path };
+      if (!best || path.length < best.path.length) best = { area, path, i };
     }
-    return [
-      { type: "walk", path: best.path, to: { area: best.area.id } },
+    const target = { pos: this._accessPoint(best.area, best.i), key: `area:${best.area.id}:${best.i}` };
+    const toTrain = [
+      { type: "walk", path: best.path, target, to: { area: best.area.id } },
       { type: "wait", area: best.area.id, dockId: null, line: null, train: true },
     ];
+    const bus = this._busChoice(a, from, fromKey, target.pos, target.key, this._metres(best.path.length));
+    if (!bus) return toTrain;
+    toTrain[0].path = null; // from the stop where the bus stops
+    return [...this._busLegs(bus), ...toTrain];
   }
 
   _beginLeg(a) {
@@ -554,7 +573,10 @@ export class TownSimulation extends Simulation {
       return;
     }
     if (leg.type === "walk") {
-      if (!leg.path) {
+      // planned from another point (e.g. where people leave the platform): from here
+      if (leg.path && a.pos && dist2(a.pos, leg.path.points[0]) > 1) leg.path = null;
+      if (!leg.path && leg.target) leg.path = this._walkPath(a.pos, leg.target.pos, null, leg.target.key);
+      else if (!leg.path) {
         const dest = this._buildingPos(leg.toBuilding);
         if (!dest) return this._finishTrip(a);
         leg.path = this._walkPath(a.pos, dest, null, `building:${leg.toBuilding}:0`);
@@ -575,9 +597,15 @@ export class TownSimulation extends Simulation {
     }
   }
 
-  /** The stop cannot be used (no passenger simulation or the stop is gone). */
+  /** The stop cannot be used (no passenger simulation or the stop is gone, or no bus came). */
   _skipStop(a, leg) {
     if (leg.train) return this._setAway(a);
+    // on the way to the train: walk to the platform instead
+    const k = a.trip?.legs.findIndex((l) => l.type === "wait" && l.train) ?? -1;
+    if (k > 0 && a.trip.legs[k - 1].type === "walk") {
+      a.trip = { ...a.trip, legs: [{ ...a.trip.legs[k - 1], path: null }, a.trip.legs[k]], leg: 0 };
+      return this._beginLeg(a);
+    }
     // walk the rest of the way
     const dest = a.trip?.dest;
     if (!dest) return this._goHome(a);
@@ -592,12 +620,13 @@ export class TownSimulation extends Simulation {
   }
 
   _finishTrip(a) {
-    const dest = a.trip?.dest ?? null;
+    const dest = a.trip?.dest ?? null, station = !!a.trip?.station;
     a.trip = null;
     a.path = null;
     a.person = null;
     a.vehicle = null;
     if (dest && this.world.getObject(dest)) this._setInside(a, dest);
+    else if (station) this._setAway(a); // on the way to the train (e.g. its bus was taken out of service)
     else this._goHome(a, true);
   }
 
@@ -705,6 +734,7 @@ export class TownSimulation extends Simulation {
     if (!a) return;
     a.person = null;
     if (a.trip?.dest) this._setInside(a, a.trip.dest);
+    else if (a.trip?.station) this._setAway(a);
     else this._goHome(a);
     a.trip = null;
   }
@@ -754,7 +784,10 @@ export class TownSimulation extends Simulation {
           destId = shopId;
         }
       }
-      a.trip = { legs: [{ type: "train-off" }, { type: "walk", path: null, toBuilding: destId }], leg: 0, purpose: a.purpose, dest: destId };
+      // from the platform exit nearest the destination: on foot, or by bus when it is far
+      const i = this._nearestAccess(dock.area, this._buildingPos(destId) || this._accessPoint(dock.area));
+      const legs = this._legsTo(a, this._accessPoint(dock.area, i), `area:${dock.area.id}:${i}`, destId);
+      a.trip = { legs: [{ type: "train-off" }, ...(legs.length ? legs : [{ type: "walk", path: null, toBuilding: destId }])], leg: 0, purpose: a.purpose, dest: destId };
       a.state = "stop";
     }
     if (pax) {
@@ -847,13 +880,26 @@ export class TownSimulation extends Simulation {
     for (const a of this.agents) {
       if (a.state === "riding") {
         // the bus is gone (line deleted or changed, out of service) or the agent is not on board
-        if (!a.vehicle || (transit && !buses.has(a.vehicle)) || !a.vehicle.riders?.some((r) => r.agent === a)) this._finishTrip(a);
+        const rider = a.vehicle?.riders?.find?.((r) => r.agent === a);
+        if (!a.vehicle || (transit && !buses.has(a.vehicle)) || !rider) this._finishTrip(a);
+        else this._checkRide(a, rider);
       } else if (a.state === "inside" && a.inside && !this.world.getObject(a.inside)) {
         this._goHome(a);
       } else if (a.state === "stop" && !a.person && !a.trip) {
         this._goHome(a);
       }
     }
+  }
+
+  /** The stop a rider wants to get off at is not served any more (taken off the line): off at the next stop. */
+  _checkRide(a, rider) {
+    const bus = a.vehicle, V = this.world.transit?.lines?.get?.(bus.lineId)?.visits;
+    if (!V?.length || V.some((v) => v.dockId === rider.toDockId)) return;
+    // standing at a stop: the people for it got off already
+    const next = V[(bus.next + (bus.phase === "dwelling" ? 1 : 0)) % V.length];
+    rider.toDockId = next?.dockId ?? null;
+    const leg = a.trip?.legs[a.trip.leg];
+    if (leg?.type === "ride") leg.toDockId = rider.toDockId;
   }
 
   /* ================================================================ drawing and figures */
