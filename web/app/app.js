@@ -67,7 +67,13 @@ class App {
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
-    if (params.get("scenario")) setTimeout(() => this.world.scenarios.play(params.get("scenario")), 500);
+    const scenario = params.get("scenario");
+    if (scenario) {
+      setTimeout(() => {
+        if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
+        else toast(`This layout has no scenario “${scenario}” (see the Disruptions panel).`, 7000);
+      }, 500);
+    }
     const tab = location.hash.slice(1);
     if (TABS.includes(tab)) this.selectTab(tab);
     let last = performance.now(), failing = false;

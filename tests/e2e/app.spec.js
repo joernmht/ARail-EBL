@@ -147,6 +147,15 @@ test("a layout chosen from the Layouts menu gets only its own markers, not those
   expect(errors).toEqual([]);
 });
 
+test("URL option ?scenario= plays a scenario of the layout; an unknown one is named in a message", async ({ page }) => {
+  const errors = await openApp(page, "/app/?scenario=football#disrupt");
+  await expect.poll(() => page.evaluate(() => window.__arail.world.scenarios.current?.id)).toBe("football");
+  await page.goto("/app/?scenario=nope");
+  await page.waitForFunction(() => window.__arail?.tracker.state.H);
+  await expect(page.locator("#toast")).toContainText("no scenario “nope”");
+  expect(errors).toEqual([]);
+});
+
 test("importing a file that is not a layout changes nothing", async ({ page }) => {
   const errors = await openApp(page, "/app/#build");
   const before = await page.evaluate(() => JSON.stringify(window.__arail.world.toJSON().objects));
