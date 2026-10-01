@@ -204,12 +204,15 @@ export class DisruptionManager {
     for (const d of this.active) {
       d.def.draw?.(view, d, world);
       for (const area of affectedAreas(d, world)) {
-        if (signed.has(area.id)) continue;
-        signed.add(area.id);
         const fx = this.effectsFor(area);
+        const lines = fx.messages.length ? fx.messages : [d.def.label];
+        // one label per stop, as one board: both sides of a bus stop say the same
+        const same = `${area.owner?.id ?? area.id}|${lines.join("\n")}`;
+        if (signed.has(area.id) || signed.has(same)) continue;
+        signed.add(area.id).add(same);
         const at = area.toLayout(area.L * 0.5, 0);
         const blink = Math.floor(view.time * 2) % 2 === 0;
-        view.label([at[0], at[1], view.m(9)], fx.messages.length ? fx.messages : [d.def.label], {
+        view.label([at[0], at[1], view.m(9)], lines, {
           size: 12, badge: "!", badgeColor: blink ? PALETTE.warning : shade(PALETTE.warning, 0.62), background: OVERLAY.dangerLabel, order: 5,
         });
       }
