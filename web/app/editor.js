@@ -630,13 +630,20 @@ export class Editor {
       return;
     }
     const cls = o.constructor;
+    const problemsOf = () => (typeof o.problems === "function" ? o.problems() : []);
+    const problems = problemsOf();
     const change = (key, value) => {
       o.set({ [key]: value });
       this.app.saveLayout();
       if (key === "name" || key === "text") this.renderObjects();
+      if (problemsOf().join("\n") !== problems.join("\n")) {
+        // e.g. a footpath chosen as a bus stop's street: the problems shown follow the change (the field keeps the focus)
+        const focused = document.activeElement?.id;
+        this.renderInspector();
+        if (focused) document.getElementById(focused)?.focus();
+      }
     };
     const geo = this._geometryFields(o);
-    const problems = typeof o.problems === "function" ? o.problems() : [];
     // the inspector is drawn anew after turning: the button keeps the focus (it can be pressed again)
     const rotateButton = (id, deg, title, symbol, words) => h("button", {
       class: "btn small", type: "button", id, title,

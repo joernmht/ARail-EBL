@@ -133,6 +133,22 @@ test("streets: a bus stop away from the streets says so in the inspector", async
   expect(errors).toEqual([]);
 });
 
+test("streets: a footpath chosen as a bus stop's street is named in the inspector at once", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-stop-altmarkt")));
+  const problems = page.locator(".section").filter({ hasText: "Selected: Bus stop" }).locator(".hint.error");
+  const street = page.locator("#obj-bus-stop-altmarkt-road");
+  await expect(problems).toHaveCount(0);
+  await street.focus();
+  await street.selectOption("road-feldweg");
+  await expect(problems).toHaveText(["Feldweg is a footpath: buses cannot drive there. Choose a street."]);
+  await expect(street).toBeFocused(); // the inspector drawn anew keeps the focus on the field
+  await street.selectOption(""); // the nearest street again
+  await expect(problems).toHaveCount(0);
+  await expect(street).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
 test("stops board: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
   const errors = await openApp(page, "/app/#simulate");
   await page.evaluate(() => {
