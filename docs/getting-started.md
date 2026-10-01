@@ -4,7 +4,7 @@ The app runs in any current browser (Chrome, Edge, Firefox, Safari) on phones, t
 
 The live camera needs a secure page: https (GitHub Pages) or `localhost`. Photos and videos work everywhere.
 
-![The app with the lab photo, trains at both platforms and the Simulate panel](assets/app-screenshot.jpg)
+![The app in the flyover: the example town on its table modules in front of the lab table at 17:01, with the Simulate panel (time of day and town)](assets/app-screenshot.jpg)
 
 ## Image sources
 

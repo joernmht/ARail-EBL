@@ -54,7 +54,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 
 | Guide | For |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | Using the app: sources, panels, keyboard shortcuts |
+| [Getting started](docs/getting-started.md) | Using the app: sources, the flyover, panels, keyboard shortcuts |
 | [Setting up a lab](docs/lab-setup.md) | Markers, printing, placement, cameras, the marker map |
 | [Lab session](docs/lab-session.md) | Stickers on the whole layout, one video, `arail-survey`: a fixed layout and an orthophoto |
 | [Day and night](docs/day-and-night.md) | The fast clock, lighting, demand over the day, the town simulation |
@@ -82,7 +82,7 @@ web/                  the website (published with GitHub Pages)
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files
-  media/              the lab photo and the orthophotos of the example layouts
+  media/              the images of the example layouts (lab photo, synthetic layout) and their orthophotos
   assets/             logos, icons and the website's images
   vendor/js-aruco2/   marker detection library (MIT)
 tools/                Python tools: control-system bridge, calibration, lab survey, synthetic test scenes
