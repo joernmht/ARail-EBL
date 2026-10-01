@@ -1,27 +1,27 @@
 # Setting up a lab
 
-This guide covers the physical side: markers, cameras, and the marker map that ties the camera image to your layout.
+This guide covers the physical side: markers, cameras, and the marker map that ties the camera image to your layout. To survey a whole layout in one visit (stickers everywhere, one video, a fixed layout and an orthophoto of the table for the flyover), follow the [lab-session checklist](lab-session.md).
 
 ## Markers
 
-ARail recognises square black-and-white markers of the ArUco and AprilTag families. Each has an ID; the app uses IDs 0–49 by default (setting `markers.codes` in the layout file).
+ARail recognises square black-and-white markers of the ArUco and AprilTag families. Each has an ID; the app uses IDs 0–49 by default (`markers.codes` in the layout file sets how many).
 
 | Marker type (app) | OpenCV name | Notes |
 | --- | --- | --- |
-| ArUco Original | `DICT_ARUCO_ORIGINAL` | used in the EBL; 5×5 bits, robust at small sizes |
+| ArUco Original | `DICT_ARUCO_ORIGINAL` | used in the EBL; 5×5 bits, 1024 IDs |
 | ArUco 4x4 … 7x7 | `DICT_4X4_*` … `DICT_7X7_*` | 4x4 is most robust when small, 7x7 has more IDs |
 | ArUco MIP 36h12 | `DICT_ARUCO_MIP_36h12` | good error correction |
 | AprilTag 36h11 | `DICT_APRILTAG_36h11` | common in robotics |
 
 The type is set per layout (Build → Layout → Marker type, or `markers.dictionary`). With "detect automatically" the app finds it within a few frames.
 
-Choosing a dictionary and the IDs:
+### Choosing a dictionary and the IDs
 
-- Use **one dictionary** for everything: the stickers you survey and the markers you track live with.
-- Use the IDs **0 … N−1**, with N just covering the printed stickers, and set `markers.codes` = N in the layout file. Fewer codes are further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
-- **4×4** markers have the largest cells for a given size: the most robust choice when markers are small in the image. ArUco Original (used in the EBL) has 5×5 bits but codes that lie close together.
-- After the survey, **lock the marker map** (Keep positions, or the `markers.locked` that `arail-survey` writes): live tracking then uses only the measured stickers, reads only the codes up to the highest of their IDs, ignores unknown and misread IDs, and drops markers whose position does not fit (moved stickers, misreads) as outliers. Stickers with IDs above the highest one in the map must then not lie on the layout.
-- Markers on vehicles (e.g. container wagons) are *moving markers* (Build → Marker map → Moving markers, `markers.moving`): never part of the map.
+- Use **one dictionary** for everything: the stickers you survey and the markers you track live with. A layout reads one dictionary, so markers of another type are not used.
+- Use the IDs **0 … N−1**, with N just covering the stickers you printed, and set `markers.codes` = N in the layout file (e.g. 55 for IDs 0–54; `arail-survey` reads it from the layout, or takes `--codes`). Fewer codes lie further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
+- **4×4** markers have the largest cells for a given size: the most robust choice when markers are small in the image. ArUco Original (used in the EBL) has 5×5 bits but codes that lie close together; 6×6 and 7×7 only pay off when you need many IDs.
+- After the survey, **lock the marker map** (Keep positions, or the `markers.locked` that `arail-survey` writes). This makes live tracking robust: it then uses only the measured stickers, reads only the codes up to the highest of their IDs (more bit errors corrected), ignores unknown and misread IDs, and drops markers whose position does not fit (moved stickers, misreads) as outliers. Stickers with IDs above the highest one in the map should then not lie on the layout.
+- Markers on vehicles (e.g. container wagons) are *moving markers* (Build → Marker map → Moving markers, `markers.moving`): never part of the map. Give them IDs below `markers.codes`, and do not place objects relative to them.
 
 ### Size
 
@@ -42,14 +42,15 @@ Use the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (or `
 ## Placing markers
 
 - Lay them **flat** on the layout. Any rotation is fine.
+- For a new layout, put the **origin marker** (usually ID 0) at a table corner, with its sides parallel to the table edges: the layout's x and y axes then follow the table, so the grid of the flyover is aligned with it.
 - Put **one marker at each end of every platform**, next to the platform's centre line: a platform object is defined "between" two markers. If the platform is offset from the line between its markers, set its sideways offset.
-- Add **more markers across the layout**, about every 40–60 cm, where the camera will look. Tracking needs at least one known marker in view; two or three make it steady. In the lab's test video, frames without any marker in view could not be registered, so coverage matters more than anything else.
+- Add **more markers across the layout**, about every 30–40 cm in both directions, at least wherever the camera will look. Tracking needs at least one known marker in view; two or three make it steady. In the lab's test video, frames without any marker in view could not be registered, so coverage matters more than anything else.
 - Keep them where trains do not cover them, and **not all on one line**: markers spread in both directions let ARail estimate the camera's focal length.
 - Use each ID once per layout.
 
 ## The marker map
 
-Each layout has a *layout frame*: millimetres on the layout, with its origin at the **origin marker** (`markers.origin`, default 0), the x axis pointing along the origin marker's printed "right" and y along its "up". The *marker map* stores where every marker lies in this frame (`markers.poses`: x, y in mm and rotation in degrees).
+Each layout has a *layout frame*: millimetres on the layout, with its origin at the **origin marker** (`markers.origin`, usually 0; without it, the lowest ID among the first markers seen), the x axis pointing along the origin marker's printed "right" and y along its "up". The *marker map* stores where every marker lies in this frame (`markers.poses`: x, y in mm and rotation in degrees).
 
 You do not need to measure it. When the app sees an unknown marker together with known ones, it computes the unknown marker's position from the images (after three frames of video, or at once in a photo) and refines it while you keep filming. In practice:
 
@@ -59,7 +60,7 @@ You do not need to measure it. When the app sees an unknown marker together with
 
 After moving markers, press **Measure again** (this unlocks the map). You can also type in measured positions in the layout file; they are used as they are.
 
-To survey a whole layout at once (stickers everywhere, one video, a fixed layout and an orthophoto of the table for the flyover), follow the [lab-session checklist](lab-session.md).
+To survey a whole layout at once (stickers everywhere, one video, a fixed layout and an orthophoto of the table for the flyover), follow the [lab-session checklist](lab-session.md): `arail-survey` measures all markers together, or **Build → Marker map → Survey a video** does it in the app.
 
 On the lab photo, the surveyed distances between the platform markers were 700.7 mm and 718.4 mm, matching the earlier measurements of the platforms (about 700 and 720 mm).
 

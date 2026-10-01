@@ -1,6 +1,6 @@
 # Disruptions and scenarios
 
-Disruptions change how vehicles run and how passengers behave. Start them in the **Disruptions** panel, from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed, a 10-minute delay lasts 5 real minutes.
+Disruptions change how vehicles run and how passengers behave. Start them in the **Disruptions** panel, from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
 
 ## Built-in disruptions
 
@@ -13,7 +13,9 @@ Disruptions change how vehicles run and how passengers behave. Start them in the
 | `crowd` | Crowd surge | any stop | Passenger demand multiplied (default 4×), e.g. after a football match. |
 | `signal-failure` | Signal failure | platforms (all by default) | Trains are held; strong mood penalty. |
 
-"Any stop" means platforms and bus terminals. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops.
+"Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards.
+
+At the stops of [bus lines](streets-and-buses.md), a *closure* makes the buses pass the stop, a *delay* holds them at the stop, and *cancellations* cancel departures from a terminus; while departures are suspended, a bus laying over at the terminus makes room by going to the depot.
 
 ## Effects
 

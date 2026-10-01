@@ -11,16 +11,16 @@ Two tools do the survey:
 | | `arail-survey` (Python, offline) | In the app: **Build → Marker map → Survey a video** |
 | --- | --- | --- |
 | Method | global adjustment of all markers and frames, robust against wrong detections | frame by frame, each marker averaged over the frames |
-| Output | layout file, JSON report, orthophoto, check image | marker map (then **Keep positions**, **Export layout**) |
+| Output | layout file (locked), JSON report, orthophoto, check image | marker map (then **Keep positions**, which locks it, and **Export layout**) |
 | Needs | Python with OpenCV (`pip install -e "tools[headless]"`) | a browser that can play the video (MP4/H.264 or WebM) |
 
 Use the app for a quick check in the lab; use `arail-survey` for the layout that goes into the repository.
 
 ## Before the visit
 
-- [ ] **Marker type and size.** ArUco Original, 30 mm black square, as on the EBL layout. Filming from more than about 1.4 m away needs 40 mm or more (see [Setting up a lab](lab-setup.md#size)).
-- [ ] **How many.** One marker every 30–40 cm in both directions over the whole table, plus one at each end of every platform and at the table corners. For a table of *L* × *W* metres that is about (*L*/0.35 + 1) × (*W*/0.35 + 1) markers, e.g. 3.5 × 1.4 m: 11 × 5 = 55. The app uses IDs 0–49 by default; for more, set `markers.codes` in the layout (100, 250 or 1000; ArUco Original has 1024 IDs) and pass `--codes` to `arail-survey`.
-- [ ] **Print the sticker sheets** on the [marker page](https://joernmht.github.io/ARail-EBL/markers/) (`web/markers/` locally): marker type, the IDs (e.g. `0-54`), size, white border at least 6 mm, cut lines on. Use **matte sticker paper** (full-sheet A4 labels; glossy paper reflects the lights). Print at 100 % ("actual size", not "fit to page").
+- [ ] **Marker type and size.** One dictionary for the survey and for live use (see [choosing a dictionary and the IDs](lab-setup.md#choosing-a-dictionary-and-the-ids)): ArUco Original as on the EBL layout, or ArUco 4x4 for the most robust detection of small markers; 30 mm black square. Filming from more than about 1.4 m away needs 40 mm or more (see [Setting up a lab](lab-setup.md#size)).
+- [ ] **How many.** One marker every 30–40 cm in both directions over the whole table, plus one at each end of every platform and at the table corners. For a table of *L* × *W* metres that is about (*L*/0.35 + 1) × (*W*/0.35 + 1) markers, e.g. 3.5 × 1.4 m: 11 × 5 = 55. Use the IDs 0 … N−1 and set `markers.codes` = N in the layout file (e.g. 55 for IDs 0–54; the default is 50). `arail-survey` takes it from `--layout`, or from `--codes`.
+- [ ] **Print the sticker sheets** on the [marker page](https://joernmht.github.io/ARail-EBL/markers/) (`web/markers/` locally): marker type, the IDs (e.g. `0-54`, nothing beyond N−1), size, white border at least 6 mm, cut lines on. Use **matte sticker paper** (full-sheet A4 labels; glossy paper reflects the lights). Print at 100 % ("actual size", not "fit to page").
 - [ ] **Check the 100 mm bar** on every sheet with a ruler. If it is off, note the real size of the black square and use it (`--size`, Build → Layout → Marker size) instead of reprinting.
 - [ ] **Every ID once.** Two stickers with the same ID break the survey (the report names IDs seen twice in one frame).
 - [ ] Bring: scissors or a cutter, a tape measure or folding rule, a sketch of where which ID goes, a phone with free storage and a charged battery, a stepladder for a few photos from above, a laptop with `arail-survey` installed (to check the result before leaving).
@@ -61,10 +61,10 @@ arail-survey lab.mp4 photos/*.jpg --layout web/layouts/ebl-lab.json \
 ```
 
 - Inputs: videos and photos, any number, glob patterns allowed. Every 2nd video frame is analysed (`--every`; use 3 or 4 for 60 fps).
-- `--layout`: the marker type, size and origin come from the layout, its known marker poses are kept, and the result is merged into it (objects, scenarios and everything else stay). Without `--layout` a new layout is written; the origin marker (`--origin`, default 0) defines the layout frame.
+- `--layout`: the marker type, size, number of codes and origin come from the layout, its known marker poses are kept, and the result is merged into it (objects, scenarios and everything else stay). Without `--layout` a new layout is written; the origin marker (`--origin`, default 0) defines the layout frame.
 - `--resurvey`: ignore the poses in `--layout` (after markers were re-stuck; the report names layout markers that were not seen again and the objects that use them); `--refine-fixed`: refine them too (as measurements of 2 mm / 0.5° next to the images).
 - The layout is written **locked** (`markers.locked`): the app then uses only the surveyed markers (see [Keeping positions](#keeping-positions)); `--unlocked` leaves it open.
-- `--moving 40,41` (or `markers.moving` in the layout): markers on vehicles, e.g. container wagons. They are left out of the adjustment and of the marker map.
+- `--moving 40,41` (or `markers.moving` in the layout): markers on vehicles, e.g. container wagons. They are left out of the adjustment and of the marker map, and `markers.codes` is raised to cover them. Objects of the layout must not be placed relative to them, and the origin cannot be one.
 - `--distance A B MM`: a measured distance between two marker centres. Without known poses it sets the scale; with known poses it is only checked.
 - `--ortho-bounds XMIN YMIN XMAX YMAX` (mm, `auto` for single sides) clips the orthophoto to the table: the floor beyond the table edge is not on the table plane. Read the edges off the grid of the check image. `--ortho-res` sets the resolution (1 mm per pixel; at most 2000 px, `--ortho-max`).
 - `--mask X0,Y0,X1,Y1` leaves an image region out of the orthophoto (fractions of the image, e.g. a timestamp). Static watermarks are found automatically.
@@ -91,7 +91,7 @@ The summary lists every marker: position, rotation, the number of frames it was 
 | Measured freely, the marker map is … % larger/smaller than the layout's | the marker size is wrong, or the lens distorts (use the main camera or a calibration) |
 | Only … % of the frames show two or more markers | add markers where the camera looks |
 
-Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers are within 2 mm and 0.5° over 0.7 m. The **check image** (`--check`) shows the orthophoto with a 100 mm grid, the markers (orange), the platforms (red) and the tracks (yellow) of the layout: the platform outlines must lie on the real platforms.
+Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers are within 2 mm and 0.5° over 0.7 m. The **check image** (`--check`) shows the orthophoto with a 100 mm grid, the markers (orange), the platforms (red), the tracks (yellow) and other objects (turquoise) of the layout: the platform outlines must lie on the real platforms.
 
 ## Importing the layout
 
@@ -103,14 +103,14 @@ Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers 
 ## In the flyover
 
 - Open the layout and switch to the **Flyover** (key `F`): the orthophoto lies on the table, with the grid aligned to the table if the origin marker was.
-- **Draw the physical table**: Build → *Table* → **Table module**, kind *real table (only drawn in the flyover)*, then tap two opposite corners of the table (read them off the orthophoto; snapping to the grid helps). Virtual extensions of the table are table modules of kind *virtual extension*.
+- **Draw the physical table**: Build → *Table* → **Table module**, then drag from one corner of the table to the opposite one, or tap both (read them off the orthophoto; snapping to the grid helps), and set *Kind* to *real table (only drawn in the flyover)*. From then on the flyover draws this table instead of its default one. Virtual extensions of the table are table modules of the kind *virtual extension*: they are drawn over the camera image too.
 - Place platforms between their markers, streets, buildings, … as usual.
 
 ## Keeping positions
 
 - The stickers stay where they are. As long as nobody moves them, the layout file is valid; the app starts tracking at once.
 - **Keep positions** locks the marker map (in the app: Build → Marker map; `arail-survey` writes `markers.locked`). Live mode then accepts only the measured sticker IDs: nothing is surveyed, unknown and misread IDs are ignored, a sticker whose position does not fit is dropped as an outlier, and the detector reads only the codes up to the highest ID (fewer codes: more bit errors corrected safely). The HUD says "Tracking · 5 markers · locked". **Unlock** opens the map again.
-- If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again** (this unlocks the map), film, then **Keep positions**. **Survey a video…** unlocks the map for its run and offers **Keep positions** at the end.
+- If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again** (this unlocks the map), film, then **Keep positions**. **Survey a video…** unlocks the map for its run and offers **Keep positions** at the end (if it measured nothing, the map is locked again).
 - After re-sticking many markers: `--resurvey`.
 - **Moving markers**: markers on vehicles (e.g. container wagons) are never part of the map. Enter their IDs in Build → Marker map → *Moving markers* (`markers.moving`, `arail-survey --moving`). Give them IDs within `markers.codes` (the app refuses others; `arail-survey` raises `markers.codes`) and do not stick them on the table. Objects cannot be placed relative to them.
 
@@ -124,9 +124,9 @@ arail-survey examples/media/ebl-lab-video.mp4 examples/media/ebl-lab-photo.jpg \
     --ortho web/media/ebl-lab-ortho.jpg --check check.jpg --ortho-bounds -300 -320 auto 700
 ```
 
-The near table edge is at y ≈ −320 mm; beyond y ≈ 700 mm the video shows the wall. Only 36 % of the frames show two or more of the five markers, so parts of the table could not be registered: exactly what the next lab session fixes. The video's watermark is found and left out. Measured freely, the video's marker map is about 1 % larger than the layout's poses (the lens of the video camera, most likely); the lab photo alone agrees with them within 5 mm.
+The near table edge is at y ≈ −320 mm; beyond y ≈ 700 mm the video shows the wall. Only 36 % of the frames show two or more of the five markers, so parts of the table could not be registered: exactly what the next lab session fixes. The video's watermark is found and left out. Measured freely, the video's marker map is about 1 % larger than the layout's poses (the lens of the video camera, most likely); the lab photo alone agrees with them within 5 mm. The output of this command is locked; the example layout in the repository is not, so the app still measures new stickers on it.
 
-`web/media/synthetic-ortho.jpg` comes from the synthetic test video (`npm run fixtures`):
+`web/media/synthetic-ortho.jpg` comes from the synthetic test video (`npm run fixtures`). The synthetic layout has no marker poses; the map the app measures from its single photo is up to 3 cm off, so the orthophoto lines up with the markers only after a video survey (**Survey a video…** with `tests/fixtures/synthetic-survey.webm`, then **Keep positions**):
 
 ```bash
 arail-survey tests/fixtures/synthetic-survey.webm --every 1 --layout web/layouts/synthetic-demo.json \

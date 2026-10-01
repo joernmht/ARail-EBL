@@ -173,7 +173,7 @@ export class Panels {
       ) : null,
       section("Speed",
         h("div", { class: "row" }, this.pauseBtn, this.speedSeg,
-          h("button", { class: "btn", type: "button", onclick: () => { w.simulations.forEach((s) => s.clear()); toast("All passengers removed."); } }, "Clear passengers")),
+          h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
         h("p", { class: "hint" }, "Speed is simulated time per real time. Space pauses."),
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
@@ -182,6 +182,14 @@ export class Panels {
     this.updateSimulateControls();
     this.updateClock();
     this.updateBoard();
+  }
+
+  /** "Clear passengers": every simulation removes what it simulates (the town and the cars start afresh). */
+  clearSimulations() {
+    const w = this.world, has = (type) => w.simulations.some((s) => s.constructor.type === type);
+    w.simulations.forEach((s) => s.clear());
+    const afresh = [has("town") && "the town", has("traffic") && "the cars"].filter(Boolean);
+    toast(afresh.length ? `All passengers removed; ${afresh.join(" and ")} ${afresh.length > 1 ? "start" : "starts"} afresh.` : "All passengers removed.");
   }
 
   /** Clock face and town figures (refreshed periodically while the Simulate panel is open). */
@@ -269,7 +277,9 @@ export class Panels {
     if (!def) return;
     draft.type = def.type;
     const areas = w.stopAreas().filter((a) => !def.targets || def.targets === "any" || a.kind === def.targets);
-    const targets = [["*", def.targets === "rail" ? "all platforms" : "all stops"], ...areas.map((a) => [a.owner.id, a.owner.name])];
+    // one entry per stop object: a bus stop on both sides of the street has two stop areas
+    const owners = new Map(areas.map((a) => [a.owner.id, a.owner.name]));
+    const targets = [["*", def.targets === "rail" ? "all platforms" : "all stops"], ...owners];
     if (!targets.some(([v]) => v === draft.target)) draft.target = "*";
     const params = {};
     for (const p of def.params || []) params[p.key] = draft.params[p.key] ?? p.default;

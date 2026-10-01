@@ -8,7 +8,7 @@ Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL):
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
 | `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
 | `arail-synthetic` | renders the synthetic test layout | `opencv` or `headless` |
-| `python -m arail_tools.fixtures` | generates the images for the JavaScript tests | `opencv` or `headless` |
+| `python -m arail_tools.fixtures` | generates the images and the short survey video for the tests | `opencv` or `headless` |
 
 ```bash
 pip install -e "tools[bridge]"                 # only the bridge
@@ -35,3 +35,5 @@ orthophoto for the flyover). The marker map is written locked (`markers.locked`:
 only these markers; `--unlocked` to skip), and markers on vehicles (`markers.moving`, `--moving
 40,41`) are left out of the map. `arail-survey --help` lists all options; the
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
+For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
+Survey a video.
