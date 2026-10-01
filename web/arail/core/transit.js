@@ -996,7 +996,8 @@ export class Transit {
     }
     if (bus.phase === "departing" && !bus._leaving) bus.phase = "driving";
     const left = d - move;
-    if (!bus._arrivingSent && this.meters(left) < ARRIVING_M) {
+    // (a closed stop is passed: not announced, and nobody sees the bus arriving there)
+    if (!bus._arrivingSent && this.meters(left) < ARRIVING_M && !fx(target).closed) {
       bus._arrivingSent = true;
       if (!bus._leaving) bus.phase = "arriving";
       this._emit("vehicle.arriving", bus, target.dock);
