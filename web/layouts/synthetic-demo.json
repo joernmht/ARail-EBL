@@ -44,6 +44,10 @@
     {"id": "delay", "name": "Delay on platform 1", "steps": [{"at": 0, "start": {"type": "delay", "target": "platform-1", "params": {"minutes": 3}}, "message": "Trains on platform 1 are delayed."}]}
   ],
   "view": {
-    "image": "../media/synthetic-layout.jpg"
+    "image": "../media/synthetic-layout.jpg",
+    "ortho": {
+      "image": "../media/synthetic-ortho.jpg",
+      "bounds_mm": [-130, -320, 670, 180]
+    }
   }
 }

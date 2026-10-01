@@ -37,7 +37,7 @@
     {"id": "track-g1", "type": "track", "track_id": "G1", "points": [[-150, 100.2], [1450, 143.2]]},
     {"id": "track-g2", "type": "track", "track_id": "G2", "points": [[-150, 43], [1450, 86.1]]},
     {"id": "track-g3", "type": "track", "track_id": "G3", "points": [[-150, -58], [1450, -14.9]]},
-    {"id": "table-lab", "type": "tabletop", "name": "EBL lab table", "kind": "physical", "position": [650, 340], "width_mm": 1600, "depth_mm": 1320},
+    {"id": "table-lab", "type": "tabletop", "name": "EBL lab table", "kind": "physical", "position": [785, 340], "width_mm": 2170, "depth_mm": 1320},
     {"id": "table-1", "type": "tabletop", "name": "Town module A1", "position": [250, -570], "width_mm": 800, "depth_mm": 500},
     {"id": "table-2", "type": "tabletop", "name": "Town module A2", "position": [1050, -570], "width_mm": 800, "depth_mm": 500},
     {"id": "table-3", "type": "tabletop", "name": "Town module B1", "position": [250, -1070], "width_mm": 800, "depth_mm": 500},
@@ -133,6 +133,10 @@
   ],
   "plugins": ["../plugins/windmill.js"],
   "view": {
-    "image": "../media/ebl-lab.jpg"
+    "image": "../media/ebl-lab.jpg",
+    "ortho": {
+      "image": "../media/ebl-lab-ortho.jpg",
+      "bounds_mm": [-300, -320.2, 1870.2, 700]
+    }
   }
 }
