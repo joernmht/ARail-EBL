@@ -197,7 +197,10 @@ class App {
     this.updateHud();
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
-    else if (t === "simulate") this.panels.updateBoard();
+    else if (t === "simulate") {
+      this.panels.updateClock();
+      this.panels.updateBoard();
+    }
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
@@ -333,8 +336,8 @@ class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles });
+    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour } = this.world.settings;
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour });
   }
 
   showLayoutName() {
@@ -594,6 +597,7 @@ class App {
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
     else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, none known yet`]);
     else chips.push(["bad", "No markers in view"]);
+    chips.push(["info clock", `${this.world.clock.label()}${this.world.night() > 0.5 ? " · night" : ""}`]);
     if (this.world.paused) chips.push(["info", "Paused"]);
     if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
     if (this.world.disruptions.active.length) chips.push(["bad", `${this.world.disruptions.active.length} disruption${this.world.disruptions.active.length > 1 ? "s" : ""}`]);

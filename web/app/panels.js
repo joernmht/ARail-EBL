@@ -1,8 +1,11 @@
 // Panels: View, Simulate, Disruptions, Control system.
-import { moodColor, dockStatus, MockFeed, WebSocketFeed } from "../arail/index.js";
+import { moodColor, dockStatus, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
-const SPEEDS = [1, 2, 5, 10];
+const SPEEDS = [1, 2, 5, 10, 30];
+/** Fast-clock ratios offered in the Simulate panel. */
+const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
+const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
 
 export class Panels {
   constructor(app) {
@@ -102,8 +105,36 @@ export class Panels {
     const demand = h("input", { type: "range", id: "demandRange", "aria-label": "Passenger demand", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
       oninput: (e) => { w.demand = 2 ** Number(e.target.value); demandOut.textContent = `× ${w.demand.toFixed(2)}`; } });
     const demandOut = h("output", { for: "demandRange", class: "mono" }, `× ${w.demand.toFixed(2)}`);
+    this.clockFace = h("div", { class: "clockface", "aria-live": "off" });
+    this.timeRange = h("input", { type: "range", id: "timeOfDay", min: 0, max: 1439, step: 15, value: Math.round(w.clock.minutes),
+      "aria-valuetext": w.clock.label(), oninput: (e) => { w.setTime(Number(e.target.value)); this.updateClock(); } });
+    this.townBox = h("div", { class: "town-stats" });
+    const app = this.app, s = w.settings;
+    const hasTown = w.simulations.some((x) => x.constructor.type === "town");
     mount(el,
-      section("Time",
+      section("Time of day",
+        this.clockFace,
+        h("label", { class: "field", for: "timeOfDay" }, h("span", {}, "Set the time"), this.timeRange),
+        h("div", { class: "row", role: "group", "aria-label": "Jump to a time of day" },
+          TIME_PRESETS.map(([label, t]) => h("button", { class: "btn small", type: "button", onclick: () => { w.setTime(t); this.updateClock(); } }, `${label} ${t}`))),
+        h("div", { class: "fields" },
+          h("label", { class: "field", for: "clockFactor" }, h("span", {}, "Fast clock"),
+            h("select", { id: "clockFactor", onchange: (e) => { w.clock.factor = Number(e.target.value); } },
+              [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => h("option", { value: f, selected: f === w.clock.factor }, f === 1 ? "1:1 (real time)" : `1:${f}`)))),
+          h("label", { class: "field check", for: "optLighting" },
+            h("input", { type: "checkbox", id: "optLighting", checked: s.lighting !== false, onchange: (e) => { s.lighting = e.target.checked; app.savePrefs(); } }), "Day and night lighting"),
+          h("label", { class: "field check", for: "optFreeze" },
+            h("input", { type: "checkbox", id: "optFreeze", checked: !!w.clock.frozen, onchange: (e) => { w.clock.frozen = e.target.checked; } }), "Stop the clock"),
+        ),
+        h("p", { class: "hint" }, "The clock runs faster than the trains and people (1:12 = one hour in five simulated minutes). Timetables, traffic and the town follow it: rush hours in the morning and evening, no trains and buses between 01:00 and 04:30."),
+      ),
+      hasTown ? section("Town",
+        this.townBox,
+        h("label", { class: "field", for: "peopleColour" }, h("span", {}, "Colour of people"),
+          h("select", { id: "peopleColour", onchange: (e) => { s.peopleColour = e.target.value; app.savePrefs(); } },
+            [["auto", "town: purpose of the trip; passengers: mood"], ["purpose", "purpose of the trip"], ["mood", "mood"]].map(([v, t]) => h("option", { value: v, selected: (s.peopleColour || "auto") === v }, t)))),
+      ) : null,
+      section("Speed",
         h("div", { class: "row" }, this.pauseBtn, this.speedSeg,
           h("button", { class: "btn", type: "button", onclick: () => { w.simulations.forEach((s) => s.clear()); toast("All passengers removed."); } }, "Clear passengers")),
         h("p", { class: "hint" }, "Speed is simulated time per real time. Space pauses."),
@@ -112,7 +143,36 @@ export class Panels {
       section("Stops", this.board, h("p", { class: "hint" }, "Keys 1–9 send a vehicle to the stop with that position in the list.")),
     );
     this.updateSimulateControls();
+    this.updateClock();
     this.updateBoard();
+  }
+
+  /** Clock face and town figures (refreshed periodically while the Simulate panel is open). */
+  updateClock() {
+    if (!this.clockFace) return;
+    const w = this.world, c = w.clock;
+    const d = c.daylight();
+    const phase = d > 0.97 ? "day" : d < 0.03 ? "night" : c.minutes < 12 * 60 ? "dawn" : "dusk";
+    morph(this.clockFace,
+      h("span", { class: "time mono" }, c.label()),
+      h("span", { class: `daytime ${phase}` }, `${phase} · day ${c.day + 1}${c.frozen ? " · clock stopped" : ""}`),
+    );
+    if (this.timeRange && document.activeElement !== this.timeRange) {
+      this.timeRange.value = String(Math.round(c.minutes));
+    }
+    this.timeRange?.setAttribute("aria-valuetext", c.label());
+    const town = w.simulations.find((x) => x.constructor.type === "town");
+    if (!town || !this.townBox) return;
+    const st = town.townStats();
+    const item = (label, n, colour = null) => h("li", {}, colour ? h("i", { class: "swatch", style: { background: colour } }) : null, h("span", {}, label), h("b", { class: "mono" }, String(n)));
+    morph(this.townBox,
+      h("p", { class: "hint" }, `${st.total} people (${town.config.people_per_100} per 100 residents). Where they are:`),
+      h("ul", { class: "legend-list" },
+        item("at home", st.home), item("at work", st.work), item("at school", st.school), item("shopping", st.shopping),
+        item("on the bus", st.riding), item("at stops", st.waiting), item("away (by train)", st.away)),
+      h("p", { class: "hint" }, `On their way (${st.walking}), coloured by where they are going:`),
+      h("ul", { class: "legend-list" }, Object.keys(PURPOSE_COLOURS).map((k) => item(PURPOSE_LABELS[k], st.byPurpose[k] || 0, PURPOSE_COLOURS[k]))),
+    );
   }
 
   updateSimulateControls() {
