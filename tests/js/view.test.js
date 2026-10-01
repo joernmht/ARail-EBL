@@ -205,19 +205,20 @@ test("plain drawings share a save/restore; every other drawing still starts from
   view.polygon(sq(20), { fill: "#00ff00", alpha: 0.5, order: 2 });
   view.ground(3, custom);
   view.line([[0, 0], [30, 0]], { stroke: "#123456", dash: [4, 2], order: 4 });
+  view.line([[0, 20], [30, 20]], { stroke: "#abcdef", order: 4.5 }); // right after the dashed line: no dash
   view.ground(5, custom);
   view.line([[0, 10], [30, 10]], { stroke: "#654321", order: 6 });
   view.render();
   const { saves, depth } = stats();
   assert.equal(depth, 0, "balanced");
-  assert.equal(saves, 5, "the first two polygons share one save/restore, the dashed line has its own");
+  assert.equal(saves, 6, "the first two polygons share one save/restore; the dashed line has its own, the line after it a new one");
   const base = { lineCap: "butt", lineJoin: "miter", lineWidth: 1, fillStyle: "#000000", globalAlpha: 0.8, dash: [] };
   assert.deepEqual(seen, [base, base], "custom drawings see the state from before");
   const fills = ops.filter((o) => o.op === "fill");
   assert.deepEqual(fills.map((o) => o.globalAlpha), [0.4, 0.4], "the opacity is set anew for each drawing");
   const strokes = ops.filter((o) => o.op === "stroke");
-  assert.deepEqual(strokes.map((o) => o.dash), [[], [4, 2], []]);
-  assert.deepEqual(strokes.map((o) => o.composite), ["source-over", "source-over", "source-over"]);
+  assert.deepEqual(strokes.map((o) => o.dash), [[], [4, 2], [], []]);
+  assert.deepEqual(strokes.map((o) => o.composite), ["source-over", "source-over", "source-over", "source-over"]);
   assert.equal(ctx.globalCompositeOperation, "source-over");
   assert.equal(ctx.lineCap, "butt");
 });

@@ -313,7 +313,7 @@ export class View {
     else this.ground(style.order ?? 0, draw);
   }
 
-  /** Polyline on the layout (ground layer). Width in CSS px, or `widthMM` in model mm. */
+  /** Polyline on the layout (ground layer); style as for `polygon` without the fill (`width` in CSS px). */
   line(points, style = {}) {
     const margin = this._margin(style);
     for (const pts of this._projectClipped(points, style.z || 0, false)) {

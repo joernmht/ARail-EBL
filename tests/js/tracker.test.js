@@ -254,12 +254,13 @@ test("the survey writes a settled marker's small refinements every few frames, a
   assert.ok(settled.every((k) => (k + 1) % W.every === 0), `then only every ${W.every} frames: ${settled}`);
   const e = map.get(7);
   assert.ok(Math.hypot(e.x - 220, e.y - 120) < 0.1 && Math.abs(toDeg(wrapAngle(e.theta)) - 40) < 0.05, `surveyed at ${e.x}, ${e.y}`);
+  // a single photo is written at once, also between the regular writes and when the estimate
+  // hardly changes (there may be no next frame)
+  while ((i + 1) % W.every === 0) frame(220);
+  frame(220, { still: true });
+  assert.equal(written.at(-1), true, "a still photo");
   // the marker is moved by 20 mm: written at once, also between the regular writes
-  assert.notEqual((i + 1) % W.every, 0);
+  while ((i + 1) % W.every === 0) frame(220);
   frame(240);
-  assert.equal(written.at(-1), true);
-  // a single photo is written at once
-  while ((i + 1) % W.every === 0) frame(240);
-  frame(240, { still: true });
-  assert.equal(written.at(-1), true);
+  assert.equal(written.at(-1), true, "moved by 20 mm");
 });
