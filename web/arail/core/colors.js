@@ -1,5 +1,6 @@
 /**
- * Colour helpers. Colours are CSS strings; internally [r, g, b] arrays (0-255).
+ * Colours and type of the corporate design (CD) of the Chair of Railway Operations, and colour
+ * helpers. Colours are CSS strings; internally [r, g, b] arrays (0-255).
  * @module arail/core/colors
  */
 
@@ -46,10 +47,11 @@ export function mix(a, b, t, alpha = 1) {
   return rgba([0, 1, 2].map((i) => A[i] + (B[i] - A[i]) * t), alpha);
 }
 
-const RED = [228, 58, 52], YELLOW = [242, 200, 40], GREEN = [52, 176, 74];
+// mood scale in CD colours: Rot 1 -> Gelb 1 -> Türkis 1
+const RED = [210, 15, 65], YELLOW = [255, 199, 0], GREEN = [10, 119, 127];
 
 /**
- * Colour for a satisfaction ("mood") value: 0 = unhappy (red) ... 1 = happy (green).
+ * Colour for a satisfaction ("mood") value: 0 = unhappy (Rot) ... 0.5 (Gelb) ... 1 = happy (Türkis).
  * @param {number} m mood 0..1
  * @param {number} [alpha=1]
  * @param {number} [k=1] brightness factor
@@ -76,6 +78,37 @@ export const CD = {
   white: "#FFFFFF",
 };
 
+/**
+ * Lighter variants of the CD colours for dark backgrounds: the app's dark mode, and lines and
+ * text over the camera image (from the chair's screen design, `skills/tud-mobile`).
+ */
+export const CD_LIGHT = {
+  tuerkis: "#36b8bf",
+  orange: "#f0922e",
+  rot: "#ff667e",
+};
+
+/** Typeface of the CD (Noto Sans) for text drawn on the canvas; the app loads it as a web font. */
+export const FONT = '"Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+/**
+ * Colours of the interface drawn over the layout: labels and signs, editor outlines, markers,
+ * control-system trains and disruptions. 60/30/10 as in the CD: Dunkelblau label boards, Türkis
+ * signs, Orange as the accent for what the user is working on, Rot for disruptions.
+ */
+export const OVERLAY = {
+  label: "rgba(0,20,80,0.9)", // background of labels: Dunkelblau (text stays legible over a white image)
+  labelText: "#ffffff",
+  status: CD.gelb, // status line of stop labels ("Next train in 20 s")
+  alert: CD_LIGHT.rot, // disruption messages on labels
+  sign: CD.tuerkis, // label badges (platform numbers)
+  selection: CD.orange, // selected object, placing preview, markers not in the map
+  tracked: CD_LIGHT.tuerkis, // markers in use, tracks, trains reported by the control system
+  trackedFill: "rgba(10,119,127,0.36)", // Türkis 1, fill of control-system trains
+  danger: CD.rot, // disruption areas
+  dangerLabel: "rgba(84,4,26,0.9)", // background of disruption labels: dark Rot
+};
+
 /** A neutral grey: 0 = black ... 1 = white (buildings are greyscale, like a white model). */
 export function grey(v) {
   const h = Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, "0");
@@ -92,14 +125,14 @@ export const PALETTE = {
   busBay: "#ffd400",
   glass: "#9fc9e0",
   steel: "#6c7a89",
-  train: "#5aa0cd",
+  train: CD.tuerkis, // virtual trains (drawn semi-transparent)
   trainWindow: "#23324a",
-  trainDoor: "#f0c828",
-  bus: "#e8b321",
+  trainDoor: CD.gelb,
+  bus: CD.gelb, // Dresden's buses are yellow
   busWindow: "#2a3548",
   litWindow: "#ffe2a0", // windows with the lights on (night)
-  warning: "#e5322d",
-  signBlue: "#1d4f9c",
+  warning: CD.rot,
+  signBlue: CD.tuerkis, // platform and label signs (the name is kept for plugins; Türkis in the CD)
   signText: "#ffffff",
   roof: "#9b4a3c",
   wall: "#e2d3b8",

@@ -7,6 +7,7 @@
  */
 import { pointInPolygon, pointSegment } from "./math.js";
 import { translatePoint } from "./anchors.js";
+import { OVERLAY } from "./colors.js";
 
 /**
  * Description of an editable parameter; the app builds its property forms from these.
@@ -165,7 +166,7 @@ export class LayoutObject {
   /** Highlight for the editor. */
   drawSelection(view) {
     const fp = this.footprint();
-    if (fp) view.polygon(fp, { stroke: "#00e5ff", width: 2.5, dash: [6, 4], order: 100, layer: "overlay" });
+    if (fp) view.polygon(fp, { stroke: OVERLAY.selection, width: 2.5, dash: [6, 4], order: 100, layer: "overlay" });
   }
 
   /** Entry for the layout file (parameters left at their default are omitted). */

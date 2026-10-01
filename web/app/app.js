@@ -577,10 +577,10 @@ class App {
       c.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
       ctx.closePath();
       ctx.lineWidth = 2 * px;
-      ctx.strokeStyle = used.has(Number(id)) ? "#00e5ff" : "#ff5cf0";
+      ctx.strokeStyle = used.has(Number(id)) ? ARail.OVERLAY.tracked : ARail.OVERLAY.selection;
       ctx.stroke();
       const cx = c.reduce((s, p) => s + p[0], 0) / 4, cy = c.reduce((s, p) => s + p[1], 0) / 4;
-      ctx.font = `700 ${13 * px}px Archivo, sans-serif`;
+      ctx.font = `700 ${13 * px}px ${ARail.FONT}`;
       ctx.fillStyle = ctx.strokeStyle;
       ctx.textAlign = "center";
       ctx.fillText(id, cx, cy - 12 * px);

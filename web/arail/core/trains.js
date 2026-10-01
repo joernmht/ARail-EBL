@@ -13,6 +13,7 @@
  * @module arail/core/trains
  */
 import { toRad } from "./math.js";
+import { OVERLAY } from "./colors.js";
 
 export const FEED_PROTOCOL = "arail-feed/1";
 
@@ -208,6 +209,7 @@ export class TrainRegistry {
   draw(view) {
     const style = this.world.settings.feedVehicles;
     if (!this.active || style === "none") return;
+    const outline = { fill: OVERLAY.trackedFill, stroke: OVERLAY.tracked, width: 2, order: 30 };
     for (const t of this.trains.values()) {
       if (!t.pos) continue;
       if (style === "solid" && t.dockId) continue; // drawn as a virtual train at its platform
@@ -217,20 +219,20 @@ export class TrainRegistry {
         const a = t.offset - (t.direction >= 0 ? lenMM : 0), b = a + lenMM;
         const pts = [];
         for (let k = 0; k <= 12; k++) pts.push(track.at(a + ((b - a) * k) / 12).point);
-        view.ribbon(pts, view.m(3.2), { fill: "rgba(0,229,255,0.22)", stroke: "rgba(0,229,255,0.85)", width: 1.5, order: 30 });
+        view.ribbon(pts, view.m(3.2), outline);
       } else if (t.heading != null) {
         // body outline behind the reported position (the train's front) along its heading
         const dx = Math.cos(t.heading), dy = Math.sin(t.heading);
         const back = [t.pos[0] - dx * lenMM, t.pos[1] - dy * lenMM];
-        view.ribbon([back, t.pos], view.m(3.2), { fill: "rgba(0,229,255,0.22)", stroke: "rgba(0,229,255,0.85)", width: 1.5, order: 30 });
+        view.ribbon([back, t.pos], view.m(3.2), outline);
       } else {
         const r = view.m(2.2);
         const ring = [];
         for (let k = 0; k < 16; k++) ring.push([t.pos[0] + r * Math.cos((k * Math.PI) / 8), t.pos[1] + r * Math.sin((k * Math.PI) / 8)]);
-        view.polygon(ring, { fill: "rgba(0,229,255,0.3)", stroke: "rgba(0,229,255,0.9)", width: 1.5, order: 30 });
+        view.polygon(ring, outline);
       }
       const standing = t.dockId ? " · at platform" : this._speed(t) < this.stopSpeed ? " · standing" : "";
-      view.label([t.pos[0], t.pos[1], view.m(6)], `${t.name}${standing}`, { size: 11, background: "rgba(0,70,90,0.88)", order: 4 });
+      view.label([t.pos[0], t.pos[1], view.m(6)], `${t.name}${standing}`, { size: 11, background: OVERLAY.label, order: 4 });
     }
   }
 }

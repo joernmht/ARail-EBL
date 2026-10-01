@@ -6,6 +6,7 @@
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
 import { polylineAt, polylineLengths } from "../core/math.js";
+import { OVERLAY, rgba } from "../core/colors.js";
 
 export class Track extends LayoutObject {
   static type = "track";
@@ -49,8 +50,8 @@ export class Track extends LayoutObject {
   draw(view) {
     if (!this.world.settings.showTracks) return;
     const g = this.geometry;
-    view.line(g.points, { stroke: "rgba(0,229,255,0.8)", width: 2, dash: [10, 6], order: 25 });
+    view.line(g.points, { stroke: rgba(OVERLAY.tracked, 0.85), width: 2, dash: [10, 6], order: 25 });
     const mid = polylineAt(g.points, g.total / 2, g.lengths).point;
-    view.label([mid[0], mid[1], 0], this.spec.track_id || this.name, { size: 10, background: "rgba(0,70,90,0.85)", order: 3 });
+    view.label([mid[0], mid[1], 0], this.spec.track_id || this.name, { size: 10, background: OVERLAY.label, order: 3 });
   }
 }

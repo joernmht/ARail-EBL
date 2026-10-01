@@ -1,5 +1,5 @@
 // Build mode: place, select, move and edit layout objects on the camera image.
-import { applyH, dist2, toDeg } from "../arail/index.js";
+import { applyH, dist2, FONT, OVERLAY, rgba, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 
 const CATEGORIES = ["Transport", "Scenery", "Infrastructure"];
@@ -251,11 +251,11 @@ export class Editor {
         if (!q) continue;
         ctx.beginPath();
         ctx.arc(q[0], q[1], 14 * px, 0, 2 * Math.PI);
-        ctx.strokeStyle = "rgba(242,169,59,0.95)";
+        ctx.strokeStyle = rgba(OVERLAY.selection, 0.95);
         ctx.lineWidth = 2 * px;
         ctx.stroke();
-        ctx.fillStyle = "#f2a93b";
-        ctx.font = `700 ${12 * px}px Archivo, sans-serif`;
+        ctx.fillStyle = OVERLAY.selection;
+        ctx.font = `700 ${12 * px}px ${FONT}`;
         ctx.fillText(String(id), q[0] + 16 * px, q[1] - 10 * px);
       }
     }
@@ -265,8 +265,8 @@ export class Editor {
       .map((e) => e && view.project(e.x, e.y, 0))
       .filter(Boolean);
     ctx.save();
-    ctx.strokeStyle = "#f2a93b";
-    ctx.fillStyle = "#f2a93b";
+    ctx.strokeStyle = OVERLAY.selection;
+    ctx.fillStyle = OVERLAY.selection;
     ctx.lineWidth = 2.5 * px;
     ctx.setLineDash([8 * px, 5 * px]);
     ctx.beginPath();

@@ -27,7 +27,7 @@
  *   messages  (strings) shown on signs and boards
  * @module arail/core/disruptions
  */
-import { PALETTE } from "./colors.js";
+import { OVERLAY, PALETTE, rgba, shade } from "./colors.js";
 
 const minutes = (key = "minutes", def = 10) => ({ key, label: "Duration", type: "number", unit: "min (simulated)", min: 1, max: 240, step: 1, default: def });
 const remaining = (d, world) => (d.until == null ? "" : ` (${Math.max(0, Math.ceil((d.until - world.time) / 60))} min left)`);
@@ -116,11 +116,11 @@ function appliesTo(d, area, world) {
 
 function drawHatch(view, area) {
   const h = area.W / 2;
-  view.polygon(area.outline(), { fill: "rgba(229,50,45,0.28)", stroke: "rgba(229,50,45,0.95)", width: 2, order: 20 });
-  const n = Math.max(2, Math.round(area.L / 3));
+  view.polygon(area.outline(), { fill: rgba(OVERLAY.danger, 0.28), stroke: rgba(OVERLAY.danger, 0.95), width: 2, order: 20 });
+  const n = Math.max(2, Math.round(area.L / 3)), hatch = { stroke: rgba(OVERLAY.danger, 0.7), width: 2, order: 21 };
   for (let i = 0; i < n; i++) {
     const s = (area.L * (i + 0.5)) / n;
-    view.line([area.toLayout(Math.max(0, s - h), -h), area.toLayout(Math.min(area.L, s + h), h)], { stroke: "rgba(229,50,45,0.7)", width: 2, order: 21 });
+    view.line([area.toLayout(Math.max(0, s - h), -h), area.toLayout(Math.min(area.L, s + h), h)], hatch);
   }
 }
 
@@ -210,7 +210,7 @@ export class DisruptionManager {
         const at = area.toLayout(area.L * 0.5, 0);
         const blink = Math.floor(view.time * 2) % 2 === 0;
         view.label([at[0], at[1], view.m(9)], fx.messages.length ? fx.messages : [d.def.label], {
-          size: 12, badge: "!", badgeColor: blink ? PALETTE.warning : "#9c1c19", background: "rgba(60,10,10,0.88)", order: 5,
+          size: 12, badge: "!", badgeColor: blink ? PALETTE.warning : shade(PALETTE.warning, 0.62), background: OVERLAY.dangerLabel, order: 5,
         });
       }
     }

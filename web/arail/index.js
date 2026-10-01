@@ -50,7 +50,7 @@ export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, 
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout, isLayout } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo } from "./core/anchors.js";
-export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD } from "./core/colors.js";
+export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation };
 export { drawTree } from "./objects/trees.js";
