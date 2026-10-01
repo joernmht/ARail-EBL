@@ -215,6 +215,35 @@ test("town: riders whose stop is taken off the line get off at the next stop", (
   assert.ok(riders.some((a) => a.inside === "office"), "walked on to work from the stop before");
 });
 
+test("the doors of a bus open towards the stop: on the right at a bus stop, on the left in a terminal bay", () => {
+  const w = world([
+    { id: "main", type: "road", points: [[-500, 0], [5000, 0]] },
+    { id: "t", type: "bus-terminal", name: "Station", position: [700, -150], bays: 2 },
+    { id: "e", type: "bus-stop", name: "East", position: [3000, -70], side: "both" },
+    { id: "l", type: "bus-line", number: "1", headway_s: 120, stops: ["t", "e"] },
+  ]);
+  const seen = new Set();
+  const both = () => [...seen].some((id) => id.startsWith("t:")) && [...seen].some((id) => id.startsWith("e:"));
+  w.speed = 1;
+  for (let i = 0; i < 6000 && !both(); i++) {
+    w.step(0.25);
+    const bus = w.transit.buses.find((b) => b.doorsOpen && !seen.has(b.dock.id));
+    if (!bus) continue;
+    const { view } = viewAt(bus._pose.front, 800);
+    const faces = [];
+    view.faces = (f) => faces.push(...f);
+    w.transit._drawBus(view, bus, w.transit.lines.get("l"));
+    // the face with the doors (dark decals down to the floor) looks towards the waiting area
+    const face = faces.find((f) => (f.side === "left" || f.side === "right") && (f.decals || []).some((d) => d.color === "#292929"));
+    assert.ok(face, `doors drawn at ${bus.dock.id}`);
+    const area = bus.dock.area, c = area.toLayout(area.L / 2, 0), mid = [(bus._pose.front[0] + bus._pose.rear[0]) / 2, (bus._pose.front[1] + bus._pose.rear[1]) / 2];
+    assert.ok(dot2(face.normal, [c[0] - mid[0], c[1] - mid[1]]) > 0, `doors of the bus at ${bus.dock.id} face the stop (${face.side})`);
+    seen.add(bus.dock.id);
+    assert.equal(face.side, bus.dock.id.startsWith("t:") ? "left" : "right");
+  }
+  assert.ok(both(), [...seen].join(", "));
+});
+
 /* ------------------------------------------------------------------ loop lines */
 
 test("loop lines: the buses go round clockwise or counter-clockwise (Ring ↻ / Ring ↺)", () => {

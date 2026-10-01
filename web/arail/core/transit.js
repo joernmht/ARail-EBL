@@ -1053,6 +1053,9 @@ export class Transit {
     const colours = { side: body, top: shade(body, 1.4), end: shade(body, 0.9), alpha: 0.95 };
     const z0 = m(0.3), z1 = m(3.1), len = this.meters(dist2(front, rear));
     const doors = bus.doorsOpen ? [len - 1.6, len - 6.4] : [];
+    // the doors open towards the stop: on the right at a bus stop, on the left in the bays of a
+    // terminal (its waiting area is on the left of the bus lane)
+    const doorSide = (bus.dock?.side ?? 1) < 0 ? "left" : "right";
     const faces = boxFaces(rear, front, m(2.55), z0, z1, colours, (f, P, L, hw) => {
       const out = [];
       if (f.side === "left" || f.side === "right") {
@@ -1060,7 +1063,7 @@ export class Transit {
         const a = (x) => (x / Math.max(len, 1e-6)) * L;
         out.push({ pts: [P(a(0.6), t, m(1.3)), P(a(len - 1.6), t, m(1.3)), P(a(len - 1.6), t, m(2.7)), P(a(0.6), t, m(2.7))], color: lit ? PALETTE.litWindow : PALETTE.busWindow, emissive: lit });
         out.push({ pts: [P(a(0.3), t, m(0.75)), P(a(len - 0.3), t, m(0.75)), P(a(len - 0.3), t, m(0.95)), P(a(0.3), t, m(0.95))], color: line.color });
-        if (f.side === "right") {
+        if (f.side === doorSide) {
           for (const d of doors) out.push({ pts: [P(a(d - 0.6), t, z0), P(a(d + 0.6), t, z0), P(a(d + 0.6), t, m(2.8)), P(a(d - 0.6), t, m(2.8))], color: grey(0.16) });
         }
       } else if (f.side === "front") {
