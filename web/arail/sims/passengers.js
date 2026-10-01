@@ -8,10 +8,18 @@
  *
  * Everything is in prototype metres and simulated seconds. The simulation only uses the
  * generic stop-area/dock/vehicle interfaces, so it works for new object types, too.
+ *
+ * Other simulations can hand their own people over at stops (the town simulation does):
+ * `enter()` puts an *agent* on a stop area to wait for a vehicle (optionally only a certain
+ * line), `alight()` lets agents get off a vehicle, and the events `passenger.boarded`,
+ * `passenger.exited` and `passenger.removed` tell the owner what happened to its agents.
  * @module arail/sims/passengers
  */
 import { Simulation } from "../core/simulation.js";
-import { moodColor } from "../core/colors.js";
+import { mix, moodColor } from "../core/colors.js";
+
+/** Colour of people who are not agents of another simulation, when people show their trip purpose. */
+export const NEUTRAL_PERSON = "#e3e3e3";
 
 class Person {
   constructor(rng, pos, target, state, mood, dock) {
@@ -30,6 +38,14 @@ class Person {
     this.phase = rng.uniform(0, 2 * Math.PI);
     /** ID of the dock whose vehicle this person wants to take (null = none). */
     this.dock = dock;
+    /** Agent of another simulation (e.g. a resident of the town) this person stands for, or null. */
+    this.agent = null;
+    /** Only board vehicles of this line (`vehicle.lineId`), or any (null). */
+    this.line = null;
+    /** Board a vehicle at any dock of the area (e.g. the next train on either side). */
+    this.anyDock = false;
+    /** The vehicle this person is boarding. */
+    this.vehicle = null;
   }
 }
 
@@ -83,7 +99,20 @@ export class PassengerSimulation extends Simulation {
   }
 
   clear() {
-    for (const c of this.crowds.values()) c.people = [];
+    for (const c of this.crowds.values()) {
+      this._dropped(c.people);
+      c.people = [];
+    }
+  }
+
+  /** Remove all agents (without events): their owner places them itself, e.g. after a clock jump. */
+  removeAgents() {
+    for (const c of this.crowds.values()) c.people = c.people.filter((p) => !p.agent);
+  }
+
+  /** Tell the owners of agents among `people` that they are gone. */
+  _dropped(people) {
+    for (const p of people) if (p.agent) this.world.events.emit("passenger.removed", { agent: p.agent, person: p });
   }
 
   _sync() {
@@ -95,7 +124,11 @@ export class PassengerSimulation extends Simulation {
       if (c) c.area = area;
       else this.crowds.set(area.id, new Crowd(area, this.rng));
     }
-    for (const id of [...this.crowds.keys()]) if (!seen.has(id)) this.crowds.delete(id);
+    for (const [id, c] of [...this.crowds]) {
+      if (seen.has(id)) continue;
+      this._dropped(c.people);
+      this.crowds.delete(id);
+    }
   }
 
   stats(areaId) {
@@ -108,6 +141,99 @@ export class PassengerSimulation extends Simulation {
       inPerMin: c.inTimes.length,
       outPerMin: c.outTimes.length,
     };
+  }
+
+  /* ---------------------------------------------------------------- hand-over of agents */
+
+  /**
+   * Put an agent of another simulation on a stop area: it walks in from the nearest entrance,
+   * waits and boards a matching vehicle. Agents are not limited by `max_per_area`.
+   * @param {string} areaId stop area
+   * @param {object} options
+   * @param {object} options.agent the owner's object for this person (returned in events)
+   * @param {string | null} [options.dockId] dock to wait at (default: any dock of the area, see anyDock)
+   * @param {string | null} [options.line] only board vehicles with this `lineId`
+   * @param {boolean} [options.anyDock] board at any dock of the area (default: true without dockId)
+   * @param {number[] | null} [options.at] layout point (mm) the person comes from
+   * @param {number} [options.mood]
+   * @returns {Person | null} null if the area does not exist
+   */
+  enter(areaId, { agent, dockId = null, line = null, anyDock = dockId == null, at = null, mood } = {}) {
+    this._sync();
+    const c = this.crowds.get(areaId);
+    if (!c) return null;
+    const a = c.area, rng = this.rng;
+    const dock = dockId && a.docks.some((d) => d.id === dockId) ? dockId : a.docks.length ? (anyDock ? null : a.docks[0].id) : null;
+    let start;
+    if (at) {
+      const [s, t] = a.fromLayout(at);
+      const e = a.access.reduce((best, x) => (Math.hypot(x.s - s, x.t - t) < Math.hypot(best.s - s, best.t - t) ? x : best), a.access[0]);
+      start = [e.s, e.t];
+    } else start = this._access(c);
+    const p = new Person(rng, start, [0, 0], "arriving", mood ?? rng.uniform(0.7, 0.95), dock);
+    p.agent = agent ?? null;
+    p.line = line;
+    p.anyDock = !!anyDock;
+    p.target = dock ? this._waitingSpot(c, dock) : [rng.uniform(0.25, 0.75) * a.L, rng.uniform(-0.25, 0.25) * a.W];
+    c.people.push(p);
+    c.inTimes.push(c.t);
+    return p;
+  }
+
+  /**
+   * Let agents get off a vehicle that stands at `dock` (doors open): they appear at the doors
+   * and walk to an exit; `passenger.exited` reports when they have left the stop area.
+   * @param {object} vehicle
+   * @param {object} dock
+   * @param {object[]} agents
+   * @returns {Person[]}
+   */
+  alight(vehicle, dock, agents) {
+    this._sync();
+    const c = this.crowds.get(dock.area.id);
+    if (!c || !agents.length) return [];
+    const doors = this._doors(vehicle);
+    const a = c.area, rng = this.rng, out = [];
+    for (const agent of agents) {
+      const s = (doors.length ? rng.pick(doors) : rng.uniform(0.2, 0.8) * a.L) + rng.uniform(-0.4, 0.4);
+      const p = new Person(rng, [s, dock.side * (a.W / 2 - 0.2)], [0, 0], "onboard", rng.uniform(0.7, 0.92), null);
+      p.agent = agent;
+      p.delay = rng.uniform(0, 4);
+      p.target = this._exit(c, p.pos);
+      c.people.push(p);
+      out.push(p);
+    }
+    return out;
+  }
+
+  /** A waiting person gives up and walks to the nearest exit (then `passenger.exited`). */
+  release(person) {
+    for (const c of this.crowds.values()) {
+      if (!c.people.includes(person)) continue;
+      person.state = "leaving";
+      person.vehicle = null;
+      person.target = this._exit(c, person.pos);
+      return true;
+    }
+    return false;
+  }
+
+  /** Does person `p` want the vehicle at `dock`? */
+  _wants(p, dock, vehicle) {
+    if (p.state !== "waiting" && p.state !== "arriving") return false;
+    if (p.dock !== dock.id && !(p.anyDock && p.dock == null)) return false;
+    if (p.line && vehicle?.lineId !== p.line) return false;
+    return true;
+  }
+
+  /** Door positions (s) of a vehicle standing at its dock. */
+  _doors(vehicle) {
+    return this.world.services.doors(vehicle);
+  }
+
+  /** The vehicle standing at (or coming to) a dock: timetable/feed services or bus lines. */
+  _vehicleAt(dockId) {
+    return this.world.services.docks.get(dockId)?.vehicle || this.world.transit?.vehicleAt?.(dockId) || null;
   }
 
   /* ---------------------------------------------------------------- places */
@@ -145,8 +271,10 @@ export class PassengerSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- events */
 
-  _board(p, dock, doors, delay) {
+  _board(p, dock, doors, delay, vehicle = null) {
     p.state = "boarding";
+    p.dock = dock.id;
+    p.vehicle = vehicle;
     p.delay = delay ?? this.rng.uniform(0.3, 6);
     p.target = this._doorSpot(dock, doors, p.pos[0]);
     p.mood = Math.min(1, p.mood + 0.15); // finally!
@@ -156,7 +284,7 @@ export class PassengerSimulation extends Simulation {
     this._sync();
     const c = this.crowds.get(dock.area.id);
     if (!c) return;
-    const doors = this.world.services.doors(vehicle);
+    const doors = this._doors(vehicle);
     if (!doors.length) return;
     const rng = this.rng, a = c.area;
     const fx = this.world.disruptions.effectsFor(a);
@@ -173,7 +301,8 @@ export class PassengerSimulation extends Simulation {
       c.people.push(p);
     }
     for (const p of c.people) {
-      if ((p.state === "waiting" || p.state === "arriving") && p.dock === dock.id && rng.chance(0.95)) this._board(p, dock, doors);
+      // agents always take their vehicle; a few other people wait for the next one
+      if (this._wants(p, dock, vehicle) && (p.agent || rng.chance(0.95))) this._board(p, dock, doors, undefined, vehicle);
     }
   }
 
@@ -184,6 +313,8 @@ export class PassengerSimulation extends Simulation {
       if (p.state === "boarding" && p.dock === dock.id) {
         // missed it
         p.state = "waiting";
+        p.vehicle = null;
+        if (p.anyDock) p.dock = null;
         p.target = p.pos.slice();
         p.mood = Math.max(0, p.mood - 0.35);
       } else if (p.state === "onboard") {
@@ -265,7 +396,6 @@ export class PassengerSimulation extends Simulation {
         }
       }
     }
-    const services = this.world.services;
     const gone = new Set();
     active.forEach((p, i) => {
       const density = Math.max(0, neighbours[i] - 2);
@@ -305,10 +435,15 @@ export class PassengerSimulation extends Simulation {
       // state changes
       if (p.state === "arriving") {
         if (dist < 0.4) {
-          const st = p.dock ? services.docks.get(p.dock) : null;
-          const v = st?.vehicle;
-          if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed")) this._board(p, st.dock, services.doors(v), 0);
-          else p.state = "waiting";
+          p.state = "waiting";
+          const docks = p.dock ? a.docks.filter((d) => d.id === p.dock) : p.anyDock ? a.docks : [];
+          for (const d of docks) {
+            const v = this._vehicleAt(d.id);
+            if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v)) {
+              this._board(p, d, this._doors(v), 0, v);
+              break;
+            }
+          }
         }
       } else if (p.state === "waiting") {
         p.wait += dt;
@@ -321,10 +456,12 @@ export class PassengerSimulation extends Simulation {
         else if (dist < 0.35) {
           gone.add(p);
           c.outTimes.push(c.t);
+          if (p.agent) this.world.events.emit("passenger.boarded", { area: a, dock: a.docks.find((d) => d.id === p.dock) || null, vehicle: p.vehicle, person: p, agent: p.agent });
         }
       } else if (p.state === "leaving" && dist < 0.5) {
         gone.add(p);
         c.outTimes.push(c.t);
+        if (p.agent) this.world.events.emit("passenger.exited", { area: a, person: p, agent: p.agent, pos: a.toLayout(p.pos[0], p.pos[1]) });
       }
       // mood
       if (p.state === "arriving" || p.state === "waiting") {
@@ -353,66 +490,22 @@ export class PassengerSimulation extends Simulation {
   }
 
   _drawPeople(view, a, people, trails) {
-    const P = (s, t, z = 0) => {
-      const [x, y] = a.toLayout(s, t);
-      const q = view.project(x, y, view.m(z));
-      return q;
-    };
+    // "auto": agents of other simulations by trip purpose, everybody else by mood
+    const mode = this.world.settings.peopleColour || "auto";
+    const [ux, uy] = a.dir, [nx, ny] = a.normal;
     for (const p of people) {
-      const [s, t] = p.pos;
-      const [x, y] = a.toLayout(s, t);
+      const purpose = mode === "purpose" || (mode === "auto" && !!p.agent?.colour);
+      const [x, y] = a.toLayout(p.pos[0], p.pos[1]);
       if (!view.inImage(x, y, 0)) continue;
-      const sp = Math.hypot(p.vel[0], p.vel[1]);
-      const [dx, dy] = sp > 0.15 ? [p.vel[0] / sp, p.vel[1] / sp] : [1, 0];
-      const qx = -dy, qy = dx;
-      const amp = 0.3 * Math.min(1, sp) * Math.sin(p.phase);
-      const h = p.height;
-      const foot = P(s, t), side = P(s + 0.3, t), top = P(s, t, h);
-      const hip = P(s, t, 0.5 * h), shoulder = P(s, t, 0.8 * h), head = P(s, t, 0.91 * h);
-      const fl = P(s + dx * amp + qx * 0.1, t + dy * amp + qy * 0.1), fr = P(s - dx * amp - qx * 0.1, t - dy * amp - qy * 0.1);
-      if (!foot || !side || !top || !hip || !shoulder || !head || !fl || !fr) continue;
-      const vertical = Math.hypot(top[0] - foot[0], top[1] - foot[1]) / h;
-      const ground = Math.hypot(side[0] - foot[0], side[1] - foot[1]) / 0.3;
-      const ref = Math.max(vertical, 0.5 * ground); // px per prototype metre
-      // shadow and trail on the ground
-      view.ground(7, (ctx) => {
-        ctx.globalAlpha *= 0.45;
-        ctx.fillStyle = "#141414";
-        const r = Math.hypot(side[0] - foot[0], side[1] - foot[1]);
-        ctx.beginPath();
-        ctx.ellipse(foot[0], foot[1], r, r * 0.45, 0, 0, 2 * Math.PI);
-        ctx.fill();
-      });
       if (trails && p.trail.length) {
         const pts = p.trail.concat([p.pos]).map((q) => a.toLayout(q[0], q[1]));
-        view.line(pts, { stroke: moodColor(p.mood, 1, 0.8), width: 2, alpha: 0.6, order: 8 });
+        view.line(pts, { stroke: purpose ? personColour(p) : moodColor(p.mood, 1, 0.8), width: 2, alpha: 0.6, order: 8 });
       }
-      const colour = view.dim(moodColor(p.mood), 0.5), legs = view.dim(moodColor(p.mood, 1, 0.55), 0.5);
-      view.solid(view.depth(x, y, 0), (ctx) => {
-        const body = Math.max(2, ref * 0.42), leg = Math.max(1, ref * 0.14), headR = Math.max(1.6, ref * 0.15);
-        ctx.lineCap = "round";
-        const line = (u, v, w, style) => {
-          ctx.beginPath();
-          ctx.moveTo(u[0], u[1]);
-          ctx.lineTo(v[0], v[1]);
-          ctx.lineWidth = w;
-          ctx.strokeStyle = style;
-          ctx.stroke();
-        };
-        for (const f of [fl, fr]) {
-          line(hip, f, leg + 2, "#191919");
-          line(hip, f, leg, legs);
-        }
-        line(hip, shoulder, body + 2, "#191919");
-        line(hip, shoulder, body, colour);
-        ctx.beginPath();
-        ctx.arc(head[0], head[1], headR + 1, 0, 2 * Math.PI);
-        ctx.fillStyle = "#191919";
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(head[0], head[1], headR, 0, 2 * Math.PI);
-        ctx.fillStyle = colour;
-        ctx.fill();
+      // velocity in the stop area's (s, t) frame -> direction on the layout
+      const [vs, vt] = p.vel;
+      drawPerson(view, [x, y], {
+        dir: [ux * vs + nx * vt, uy * vs + ny * vt], speed: Math.hypot(vs, vt), phase: p.phase, height: p.height,
+        colour: purpose ? personColour(p) : moodColor(p.mood), legs: purpose ? null : moodColor(p.mood, 1, 0.55),
       });
     }
   }
@@ -447,4 +540,77 @@ export function dockStatus(world, area) {
   if (states.every((st) => st.mode === "feed")) return "Waiting for the next train";
   const next = Math.min(...states.map((st) => st.timer)) / (world.speed || 1);
   return `Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`;
+}
+
+/** Colour of a person when people show their trip purpose: the agent's colour, else neutral. */
+function personColour(p) {
+  return p.agent?.colour || NEUTRAL_PERSON;
+}
+
+/**
+ * Draw one walking or standing person (stick figure with a shadow) at a layout point.
+ * Used by the passenger simulation and by other simulations with people (the town).
+ * @param {import("../core/view.js").View} view
+ * @param {number[]} at layout point (mm)
+ * @param {{dir?: number[], speed?: number, phase?: number, height?: number, colour: string, legs?: string | null}} o
+ *   dir: walking direction on the layout (any length), speed in m/s (legs swing when walking),
+ *   phase: step phase (radians), height in prototype metres
+ */
+export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, height = 1.75, colour, legs = null }) {
+  const [x, y] = at;
+  const m = view.m(1);
+  const dl = Math.hypot(dir[0], dir[1]);
+  const [dx, dy] = speed > 0.15 && dl > 1e-9 ? [dir[0] / dl, dir[1] / dl] : [1, 0];
+  const qx = -dy, qy = dx;
+  const amp = 0.3 * Math.min(1, speed) * Math.sin(phase);
+  const h = height;
+  const P = (ox, oy, z = 0) => view.project(x + ox * m, y + oy * m, z * m);
+  const foot = P(0, 0), side = P(0.3 * dx, 0.3 * dy), top = P(0, 0, h);
+  const hip = P(0, 0, 0.5 * h), shoulder = P(0, 0, 0.8 * h), head = P(0, 0, 0.91 * h);
+  const fl = P(dx * amp + qx * 0.1, dy * amp + qy * 0.1), fr = P(-dx * amp - qx * 0.1, -dy * amp - qy * 0.1);
+  if (!foot || !side || !top || !hip || !shoulder || !head || !fl || !fr) return;
+  const vertical = Math.hypot(top[0] - foot[0], top[1] - foot[1]) / h;
+  const ground = Math.hypot(side[0] - foot[0], side[1] - foot[1]) / 0.3;
+  const ref = Math.max(vertical, 0.5 * ground); // px per prototype metre
+  view.ground(7, (ctx) => {
+    ctx.globalAlpha *= 0.45 * (1 - 0.6 * view.darkness);
+    ctx.fillStyle = "#141414";
+    const r = Math.hypot(side[0] - foot[0], side[1] - foot[1]);
+    ctx.beginPath();
+    ctx.ellipse(foot[0], foot[1], r, r * 0.45, 0, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+  // people are under street and station lights: only half as dark at night
+  const body = view.dim(colour, 0.5), legColour = view.dim(legs || shadeLegs(colour), 0.5);
+  view.solid(view.depth(x, y, 0), (ctx) => {
+    const bw = Math.max(2, ref * 0.42), lw = Math.max(1, ref * 0.14), headR = Math.max(1.6, ref * 0.15);
+    ctx.lineCap = "round";
+    const line = (u, v, w, style) => {
+      ctx.beginPath();
+      ctx.moveTo(u[0], u[1]);
+      ctx.lineTo(v[0], v[1]);
+      ctx.lineWidth = w;
+      ctx.strokeStyle = style;
+      ctx.stroke();
+    };
+    for (const f of [fl, fr]) {
+      line(hip, f, lw + 2, "#191919");
+      line(hip, f, lw, legColour);
+    }
+    line(hip, shoulder, bw + 2, "#191919");
+    line(hip, shoulder, bw, body);
+    ctx.beginPath();
+    ctx.arc(head[0], head[1], headR + 1, 0, 2 * Math.PI);
+    ctx.fillStyle = "#191919";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(head[0], head[1], headR, 0, 2 * Math.PI);
+    ctx.fillStyle = body;
+    ctx.fill();
+  });
+}
+
+/** Legs a bit darker than the body. */
+function shadeLegs(colour) {
+  return mix(colour, "#000000", 0.45);
 }

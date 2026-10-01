@@ -54,7 +54,7 @@ export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD }
 export { TRAIN, BUS } from "./core/vehicles.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation };
 export { drawTree } from "./objects/trees.js";
-export { dockStatus } from "./sims/passengers.js";
+export { dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 

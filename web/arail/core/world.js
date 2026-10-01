@@ -45,7 +45,7 @@ export class World {
       showTracks: false, // draw track objects (normally hidden: the real track is there)
       feedVehicles: "outline", // how trains from the control system are drawn: outline | solid | none
       lighting: true, // day/night lighting from the clock
-      peopleColour: "purpose", // colour of people: "purpose" (where they are going) | "mood"
+      peopleColour: "auto", // colour of people: "auto" (town people by trip purpose, passengers by mood) | "purpose" | "mood"
     };
     /** Time of day (fast clock), see core/clock.js. */
     this.clock = new Clock();
