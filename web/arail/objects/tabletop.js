@@ -28,8 +28,12 @@ export const TABLE_SURFACES = {
 /** Thickness of the base plate (mm): the visible front edge. */
 export const TABLE_THICKNESS_MM = 18;
 
-/** Ground-layer orders: all edges first, then all tops (a top in front hides the edge of the module behind it). */
-const ORDER_EDGE = -110, ORDER_TOP = -100;
+/**
+ * Ground-layer orders: all edges first, then all tops (a top in front hides the edge of the module
+ * behind it). Real tables lie below the orthophoto of the table (order -90, drawn by the flyover),
+ * virtual extensions above it: a module placed over the photo hides it, as it would on the table.
+ */
+const ORDER = { physical: { edge: -110, top: -100 }, extension: { edge: -88, top: -86 } };
 
 export class Tabletop extends LayoutObject {
   static type = "tabletop";
@@ -85,7 +89,7 @@ export class Tabletop extends LayoutObject {
 
   draw(view) {
     if (this.physical && !view.virtual) return; // the real table is in the camera image
-    drawTable(view, this.geometry.footprint, { surface: this.spec.surface, alpha: view.virtual ? 1 : 0.94 });
+    drawTable(view, this.geometry.footprint, { surface: this.spec.surface, alpha: view.virtual ? 1 : 0.94, kind: this.spec.kind === "physical" ? "physical" : "extension" });
   }
 }
 
@@ -96,7 +100,8 @@ export class Tabletop extends LayoutObject {
  * @param {number[][]} footprint corners of the top (layout mm)
  * @param {{surface?: string, alpha?: number, thickness?: number}} [options]
  */
-export function drawTable(view, footprint, { surface = "grey", alpha = 1, thickness = TABLE_THICKNESS_MM } = {}) {
+export function drawTable(view, footprint, { surface = "grey", alpha = 1, thickness = TABLE_THICKNESS_MM, kind = "physical" } = {}) {
+  const { edge: ORDER_EDGE, top: ORDER_TOP } = ORDER[kind] || ORDER.physical;
   const s = TABLE_SURFACES[surface] || TABLE_SURFACES.grey;
   const n = footprint.length;
   const ccw = signedArea(footprint) > 0 ? 1 : -1;

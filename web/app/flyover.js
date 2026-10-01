@@ -557,7 +557,9 @@ export class Flyover {
       const img = new Image();
       const entry = (this.ortho = { url, img, ok: false, levels: null });
       img.onload = () => {
-        entry.levels = mipmaps(img);
+        // the parts of the photo no frame covered are a flat grey: transparent, so tables show
+        entry.img = clearUncovered(img);
+        entry.levels = mipmaps(entry.img);
         entry.ok = true;
       };
       img.onerror = () => {
@@ -788,6 +790,66 @@ export function drawGroundImage(ctx, view, img, bounds, levels = [img], toleranc
 }
 
 /** The image and copies of half, quarter, ... its size (down to about 64 px), for {@link drawGroundImage}. */
+/**
+ * The orthophoto with its uncovered surroundings made transparent: `arail-survey` fills what no
+ * frame showed with one flat grey. Flood-fills from the border over pixels close to the border's
+ * most common grey, so grey things inside the covered table stay. Returns a canvas (or the image
+ * itself when there is no such border).
+ */
+export function clearUncovered(img, tolerance = 10) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if (!(w > 0 && h > 0)) return img;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  let data;
+  try {
+    data = g.getImageData(0, 0, w, h);
+  } catch {
+    return img; // a cross-origin image cannot be read: draw it as it is
+  }
+  const px = data.data;
+  // the most common neutral grey on the border
+  const counts = new Map();
+  const border = [];
+  for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x);
+  for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
+  for (const i of border) {
+    const r = px[4 * i], gg = px[4 * i + 1], b = px[4 * i + 2];
+    if (Math.max(r, gg, b) - Math.min(r, gg, b) > 6) continue;
+    const k = Math.round((r + gg + b) / 12);
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  let best = null;
+  for (const [k, n] of counts) if (!best || n > best.n) best = { k, n };
+  if (!best || best.n < border.length * 0.05) return img;
+  const level = best.k * 4;
+  const empty = (i) => {
+    const r = px[4 * i], gg = px[4 * i + 1], b = px[4 * i + 2];
+    return Math.abs(r - level) <= tolerance && Math.abs(gg - level) <= tolerance && Math.abs(b - level) <= tolerance;
+  };
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (const i of border) if (!seen[i] && empty(i)) {
+    seen[i] = 1;
+    stack.push(i);
+  }
+  while (stack.length) {
+    const i = stack.pop();
+    px[4 * i + 3] = 0;
+    const x = i % w;
+    for (const j of [i - w, i + w, x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1]) {
+      if (j < 0 || j >= w * h || seen[j] || !empty(j)) continue;
+      seen[j] = 1;
+      stack.push(j);
+    }
+  }
+  g.putImageData(data, 0, 0);
+  return c;
+}
+
 export function mipmaps(img) {
   const out = [img];
   let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, prev = img;
