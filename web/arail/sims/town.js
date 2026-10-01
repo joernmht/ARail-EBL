@@ -138,6 +138,11 @@ export class TownSimulation extends Simulation {
     return this.world.simulations?.filter((s) => s.constructor.type === "town").length <= 1;
   }
 
+  /** Real people one agent stands for (in `world.occupancy`). */
+  _personWeight() {
+    return this._weight || 1 / this.scale;
+  }
+
   /** Visible people per real person. */
   get scale() {
     return Math.max(0.001, (+this.config.people_per_100 || 12) / 100);
@@ -224,6 +229,10 @@ export class TownSimulation extends Simulation {
     }
     for (const a of agents) a.speed = createRng(hash(a.id, "speed")).uniform(...WALK_SPEED);
     this.agents = agents;
+    // real people per agent (the cap makes it more than 100 / people_per_100)
+    const residents = b.residential.reduce((s, x) => s + x.cap.residents, 0);
+    const shown = agents.filter((a) => a.role !== "visitor").length;
+    this._weight = shown > 0 ? residents / shown : 1 / scale;
     this._placeAll();
     return true;
   }
@@ -298,7 +307,9 @@ export class TownSimulation extends Simulation {
     const now = clock.minutes;
     this.passengers?.removeAgents();
     for (const v of this.world.transit?.buses || []) if (Array.isArray(v.riders)) v.riders.length = 0;
+    // every building of the town is listed (0 = nobody in: dark windows at night)
     this.world.occupancy = new Map();
+    for (const list of Object.values(this.places || {})) for (const { o } of list) this.world.occupancy.set(o.id, 0);
     for (const a of this.agents) {
       a.planDay = -1;
       this._ensurePlan(a);
@@ -618,7 +629,7 @@ export class TownSimulation extends Simulation {
     // stay at least a little while (shopping takes some time even when the next plan step is due)
     a.stayUntil = this.world.time + (a.purpose === "shopping" ? 15 : 5) * 60 / Math.max(1e-6, this.world.clock.factor);
     const occ = this.world.occupancy || (this.world.occupancy = new Map());
-    occ.set(a.inside, (occ.get(a.inside) || 0) + 1 / this.scale);
+    occ.set(a.inside, (occ.get(a.inside) || 0) + this._personWeight());
   }
 
   _setAway(a) {
@@ -632,11 +643,7 @@ export class TownSimulation extends Simulation {
   _leave(a) {
     if (a.state === "inside" && a.inside) {
       const occ = this.world.occupancy;
-      if (occ) {
-        const v = (occ.get(a.inside) || 0) - 1 / this.scale;
-        if (v > 1e-6) occ.set(a.inside, v);
-        else occ.delete(a.inside);
-      }
+      if (occ) occ.set(a.inside, Math.max(0, (occ.get(a.inside) || 0) - this._personWeight()));
     }
     a.inside = null;
   }

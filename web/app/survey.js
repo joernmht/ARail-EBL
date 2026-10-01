@@ -128,7 +128,7 @@ export function markerPlotSvg(map, seen = new Map()) {
     const n = seen.get(p.id) || 0;
     const shade = n ? 0.35 + 0.65 * (n / max) : 0.15;
     return `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) rotate(${(-p.theta * 180) / Math.PI})">` +
-      `<rect x="${-r}" y="${-r}" width="${2 * r}" height="${2 * r}" fill="currentColor" fill-opacity="${shade.toFixed(2)}"${p.id === map.anchor ? ` stroke="var(--attention, #C85000)" stroke-width="${r * 0.35}"` : ""}/></g>` +
+      `<rect x="${-r}" y="${-r}" width="${2 * r}" height="${2 * r}" fill="currentColor" fill-opacity="${shade.toFixed(2)}"${p.id === map.anchor ? ` stroke="var(--warn, #C85000)" stroke-width="${r * 0.35}"` : ""}/></g>` +
       `<text x="${cx.toFixed(1)}" y="${(cy - r * 1.6).toFixed(1)}" font-size="${(r * 1.4).toFixed(1)}" text-anchor="middle" fill="currentColor">${p.id}</text>`;
   });
   return `<svg class="marker-plot" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Marker map seen from above: ${ids.length} markers">${items.join("")}</svg>`;

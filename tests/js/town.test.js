@@ -121,3 +121,35 @@ test("town: works without platforms, schools or shops", () => {
   runUntil(world, "12:00");
   assert.ok(t.agents.every((a) => a.inside !== "office"));
 });
+
+test("town: works with the built-in house types and lights their windows by occupancy", () => {
+  const registry = registerBuiltins(new Registry());
+  const world = new World({
+    registry, seed: 5,
+    layout: {
+      objects: [
+        { id: "wbs", type: "plattenbau", position: [0, 600], sections: 3 },
+        { id: "estate", type: "house-estate", points: [[-400, 900], [400, 900], [400, 1300], [-400, 1300]] },
+        { id: "office", type: "office", position: [900, 600] },
+        { id: "school", type: "school", position: [600, 1100] },
+        { id: "market", type: "supermarket", position: [700, 250] },
+        { id: "p1", type: "platform", from: [0, 0], to: [800, 0], width_mm: 60, sides: "both" },
+      ],
+      simulations: [{ type: "passengers", base_rate: 0 }, { type: "town" }],
+      clock: { start: "05:30", factor: 12 },
+    },
+  });
+  world.speed = 10;
+  runUntil(world, "10:00");
+  const t = town(world);
+  const homes = new Set(t.agents.filter((a) => a.home).map((a) => a.home.id));
+  assert.ok(homes.has("wbs") && homes.has("estate"), `homes ${[...homes]}`);
+  const s = t.townStats();
+  assert.ok(s.work > 0 && s.school > 0, JSON.stringify(s));
+  const office = world.getObject("office");
+  assert.ok(office.occupancy() > 0.05, `office occupancy ${office.occupancy()}`);
+  assert.ok(world.getObject("wbs").occupancy() < 0.9);
+  runUntil(world, "22:00");
+  assert.equal(office.occupancy(), 0, "office empty at night");
+  assert.ok(world.getObject("wbs").occupancy() > 0.5, `homes full at night ${world.getObject("wbs").occupancy()}`);
+});
