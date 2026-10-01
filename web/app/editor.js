@@ -147,12 +147,13 @@ export class Editor {
 
   /**
    * The point of an object that snaps to the grid when it is dragged: its own `snapPoint()`, else
-   * the first point drawn of a line, outline or segment (points placed on the grid stay on it;
-   * their centre is mostly between grid lines), else its anchor point.
+   * the first point drawn of a line, outline or segment, or the position of a point object (points
+   * placed on the grid stay on it; a centre is mostly between grid lines, and the point a bus stop
+   * shows on its street does not follow the pointer across the street), else its anchor point.
    */
   _snapAnchor(o) {
     if (o.snapPoint) return o.snapPoint();
-    const s = o.spec, first = Array.isArray(s.points) ? s.points[0] : s.from;
+    const s = o.spec, first = Array.isArray(s.points) ? s.points[0] : s.from ?? s.position;
     return (first != null && resolvePoint(this.world.map, first)) || o.anchorPoint();
   }
 

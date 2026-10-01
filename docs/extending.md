@@ -137,7 +137,7 @@ Optional methods the editor and the other parts look for:
 
 | Method | Used by |
 | --- | --- |
-| `snapPoint()` | the editor: the point that snaps to the grid while the object is dragged. Without it, the first point drawn (`points[0]` or `from`) snaps, else `anchorPoint()`. Table modules return a corner, so their edges stay on grid lines. |
+| `snapPoint()` | the editor: the point that snaps to the grid while the object is dragged. Without it, the first point drawn (`points[0]`, `from` or `position`) snaps, else `anchorPoint()`. Table modules return a corner, so their edges stay on grid lines. |
 | `duplicateOffset()` | the editor's **Duplicate**: where the copy goes (`[dx, dy]` mm; default 5 prototype metres in x and in y). Table modules put the copy right beside the original. |
 | `problems()` | the inspector: a list of texts shown in red (e.g. "Not next to a street") |
 | `roadInfo()` | the road network: the object is a street (`{points, width, sidewalk, speed, car, ...}`, see `objects/road.js`) |

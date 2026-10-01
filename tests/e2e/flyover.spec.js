@@ -400,6 +400,26 @@ test("dragging a line or an outline drawn on the grid keeps its points on the gr
   expect(errors).toEqual([]);
 });
 
+test("a bus stop dragged across its street follows the pointer (its position snaps, not the point on the street)", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await enterFlyover(page);
+  await setCamera(page, { target: [650, -760], distance: 1500, yaw_deg: 0, pitch_deg: 90 });
+  // Altmarkt on Schulstraße (x = 650): 60 mm towards the east, across the street, in small steps
+  const from = await screenPoint(page, 650, -760), to = await screenPoint(page, 710, -760);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.up();
+  const stop = await page.evaluate(() => {
+    const o = window.__arail.world.getObject("bus-stop-altmarkt");
+    return { position: o.spec.position, road: o.geometry.road };
+  });
+  expect(Math.abs(stop.position[0] - 710)).toBeLessThanOrEqual(25); // on the grid next to the pointer, not hundreds of mm beyond
+  expect(Math.abs(stop.position[1] + 760)).toBeLessThanOrEqual(25);
+  expect(stop.road).toBe("road-schulstrasse");
+  expect(errors).toEqual([]);
+});
+
 test("flyover keys: + and − zoom by the same step, also when + needs Shift", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" }); // camera moves are immediate
   const errors = await openApp(page);
