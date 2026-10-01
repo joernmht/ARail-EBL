@@ -25,6 +25,9 @@ const LIGHT = (() => {
 
 export const LAYER = { ground: 0, solid: 1, overlay: 2 };
 
+/** Flat things closer to the camera than this (mm) are cut off. */
+const NEAR_MM = 2;
+
 /** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
 const NIGHT_TINT = [0, 20, 80];
 
@@ -43,8 +46,11 @@ export class View {
    * @param {boolean} [options.virtual=false] true for a virtual camera (flyover): there is no camera
    *   image, so objects also draw what is real in the lab (platform surfaces, tracks, the table)
    * @param {boolean} [options.darken=true] darken the background (camera image) at night
+   * @param {{a1: number[], a2: number[], a3: number[], n: number[]}} [options.pose] the camera pose when it is
+   *   known (virtual camera, see core/flycam.js); otherwise it is recovered from H, assuming that the
+   *   layout origin is in front of the camera
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -56,9 +62,14 @@ export class View {
     this.night = night;
     this.virtual = virtual;
     this.darken = darken;
+    /**
+     * [xmin, ymin, xmax, ymax] (mm) of a photo of the real table drawn under everything else (the
+     * flyover's orthophoto): there the real lab is visible as in the camera view, see `showsReal`.
+     */
+    this.groundPhoto = null;
     /** Rectangles of labels drawn so far (labels avoid overlapping each other). */
     this.placed = [];
-    this.pose = poseFromHomography(H, camera.intrinsics);
+    this.pose = pose || poseFromHomography(H, camera.intrinsics);
     const { a1, a2, n } = this.pose;
     const l1 = Math.hypot(...a1), l2 = Math.hypot(...a2);
     this.ex = a1.map((v) => v / l1);
@@ -115,6 +126,17 @@ export class View {
     const vertical = Math.hypot(up[0] - p[0], up[1] - p[1]) / d;
     const ground = Math.max(Math.hypot(side[0] - p[0], side[1] - p[1]), Math.hypot(fwd[0] - p[0], fwd[1] - p[1])) / d;
     return Math.max(vertical, 0.5 * ground);
+  }
+
+  /**
+   * Is the real lab visible at these layout points (mm)? Then objects need not draw what is real
+   * there (platform surfaces, tracks). True over the camera image; for a virtual camera only
+   * where the photo of the table (`groundPhoto`) covers all of them.
+   */
+  showsReal(points) {
+    if (!this.virtual) return true;
+    const b = this.groundPhoto;
+    return !!b && points.every((p) => p[0] >= b[0] && p[0] <= b[2] && p[1] >= b[1] && p[1] <= b[3]);
   }
 
   /** Is the layout point inside the image (with a margin in px)? */
@@ -221,8 +243,7 @@ export class View {
    *   `emissive`: not darkened at night (lights); overlays are never darkened
    */
   polygon(points, style = {}) {
-    const z = style.z || 0;
-    const pts = this.projectAll(points.map((p) => [p[0], p[1], z]));
+    const pts = this._projectClipped(points, style.z || 0, true)[0];
     if (!pts) return;
     const draw = (ctx) => this._path(ctx, pts, true, style);
     if (style.layer === "overlay") this.overlay(draw, style.order ?? 0);
@@ -231,10 +252,53 @@ export class View {
 
   /** Polyline on the layout (ground layer). Width in CSS px, or `widthMM` in model mm. */
   line(points, style = {}) {
-    const z = style.z || 0;
-    const pts = this.projectAll(points.map((p) => [p[0], p[1], z]));
-    if (!pts) return;
-    this.ground(style.order ?? 1, (ctx) => this._path(ctx, pts, false, style));
+    for (const pts of this._projectClipped(points, style.z || 0, false)) {
+      this.ground(style.order ?? 1, (ctx) => this._path(ctx, pts, false, style));
+    }
+  }
+
+  /**
+   * Project a flat polygon or polyline at height z, cut off where it passes behind the camera
+   * (a virtual camera can be close to the layout and look along it).
+   * @returns {number[][][]} image polygons/polylines (one polygon; a polyline may fall into pieces)
+   */
+  _projectClipped(points, z, closed) {
+    const n = points.length;
+    const depth = points.map((p) => this.depth(p[0], p[1], z));
+    if (depth.every((d) => d >= NEAR_MM)) {
+      const out = this.projectAll(points.map((p) => [p[0], p[1], z]));
+      return out ? [out] : [];
+    }
+    const cut = (a, b, da, db) => {
+      const t = (NEAR_MM - da) / (db - da);
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    };
+    const pieces = [];
+    let cur = [];
+    if (closed) {
+      // Sutherland-Hodgman against the near plane
+      for (let i = 0; i < n; i++) {
+        const a = points[i], b = points[(i + 1) % n], da = depth[i], db = depth[(i + 1) % n];
+        if (da >= NEAR_MM) cur.push(a);
+        if ((da >= NEAR_MM) !== (db >= NEAR_MM)) cur.push(cut(a, b, da, db));
+      }
+      if (cur.length >= 3) pieces.push(cur);
+    } else {
+      for (let i = 0; i < n - 1; i++) {
+        const a = points[i], b = points[i + 1], da = depth[i], db = depth[i + 1];
+        if (da >= NEAR_MM) {
+          if (!cur.length) cur.push(a);
+          if (db >= NEAR_MM) cur.push(b);
+          else {
+            cur.push(cut(a, b, da, db));
+            pieces.push(cur);
+            cur = [];
+          }
+        } else if (db >= NEAR_MM) cur = [cut(a, b, da, db), b];
+      }
+      if (cur.length >= 2) pieces.push(cur);
+    }
+    return pieces.map((pc) => this.projectAll(pc.map((p) => [p[0], p[1], z]))).filter(Boolean);
   }
 
   /**

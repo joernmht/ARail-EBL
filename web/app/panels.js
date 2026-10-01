@@ -25,9 +25,11 @@ export class Panels {
       h("input", { type: "checkbox", id, checked: get(), onchange: (e) => { set(e.target.checked); app.savePrefs(); } }), label);
     this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
+    this.flyBox = h("div", { class: "section flyover-section" });
     mount(el,
       section("Tracking", this.viewInfo, h("p", { class: "hint" },
         "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
+      this.flyBox,
       section("Show",
         h("div", { class: "fields" },
           toggle("optLabels", "Signs and boards", () => s.labels, (v) => (s.labels = v)),
@@ -55,7 +57,40 @@ export class Panels {
         h("p", { class: "hint" }, "Saves the camera image with everything drawn on it as a WebM video."),
       ),
     );
+    this.renderFlyover();
     this.updateView();
+  }
+
+  /** View panel, Flyover: switch it on and off, move its camera, set the grid. */
+  renderFlyover() {
+    const box = this.flyBox;
+    if (!box?.isConnected) return;
+    const app = this.app, fly = app.flyover, d = app.display, g = app.world.layout.grid, on = fly.active;
+    const toggle = (id, label, get, set) => h("label", { class: "field check", for: id },
+      h("input", { type: "checkbox", id, checked: get(), onchange: (e) => set(e.target.checked) }), label);
+    const button = (cmd, label, text) => h("button", { class: "btn small", type: "button", "data-fly": cmd, "aria-label": label, title: label }, text);
+    const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
+    mount(box,
+      h("h2", {}, "Flyover"),
+      h("div", { class: "row" },
+        h("button", { class: "btn", type: "button", id: "btnFlyoverPanel", "aria-pressed": on ? "true" : "false", onclick: () => fly.toggle() }, "Flyover"),
+        h("span", { class: "hint" }, on ? "Virtual camera. Press F or the button to return to the camera image." : "Look at and edit the layout with a virtual camera (key F).")),
+      on ? h("div", { class: "row fly-buttons", role: "group", "aria-label": "Flyover camera" },
+        button("zoom-in", "Zoom in", "+"), button("zoom-out", "Zoom out", "−"),
+        button("rotate-left", "Rotate left", "↺"), button("rotate-right", "Rotate right", "↻"),
+        h("button", { class: "btn small", type: "button", "data-fly": "plan", "aria-pressed": fly.cam.isPlan ? "true" : "false", title: "Plan view: look straight down" }, "Plan view"),
+        button("fit", "Show the whole layout", "Fit")) : null,
+      h("div", { class: "fields" },
+        h("label", { class: "field", for: "gridSize" }, h("span", {}, "Grid spacing"),
+          h("select", { id: "gridSize", onchange: (e) => { g.size_mm = Number(e.target.value); app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); } },
+            sizes.map((v) => h("option", { value: v, selected: v === g.size_mm }, `${v} mm`)))),
+        toggle("optSnap", "Snap to the grid", () => g.snap, (v) => { g.snap = v; app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); }),
+        toggle("optGridCamera", "Grid in camera view", () => !!d.gridInCamera, (v) => { d.gridInCamera = v; app.savePrefs(); }),
+        toggle("optFlyMarkers", "Show markers", () => d.flyMarkers !== false, (v) => { d.flyMarkers = v; app.savePrefs(); }),
+      ),
+      h("p", { class: "hint" },
+        "Drag to turn the view; Shift-drag, right-drag or two fingers pan; scroll or pinch to zoom. In Build, placed and dragged objects snap to the grid (hold Alt for free placement), and Build → Table adds table modules to extend the tabletop."),
+    );
   }
 
   async _loadCalibration(e) {

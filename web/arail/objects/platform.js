@@ -9,6 +9,9 @@ import { StopArea } from "../core/stops.js";
 import { add2, len2, lerp2, perpLeft, scale2, sub2 } from "../core/math.js";
 import { FONT, PALETTE } from "../core/colors.js";
 
+/** Surface of a platform as drawn for a virtual camera: concrete, light edge stones, white safety line. */
+const CONCRETE = "#c9c6bd", EDGE_STONE = "#e8e6df", SAFETY_LINE = "#fbfbf8";
+
 export class Platform extends LayoutObject {
   static type = "platform";
   static label = "Rail platform";
@@ -90,6 +93,7 @@ export class Platform extends LayoutObject {
 
   draw(view) {
     const g = this.geometry;
+    if (!view.showsReal(g.corners)) this._drawSurface(view, g);
     view.polygon(g.corners, { stroke: "rgba(255,255,255,0.9)", width: 1.3, order: 10 });
     // yellow edge where a train is arriving or standing
     for (const st of this.world.services.forArea(this.id)) {
@@ -100,6 +104,22 @@ export class Platform extends LayoutObject {
     }
     if (this.spec.canopy) this._drawCanopy(view, g);
     this._drawSign(view, g);
+  }
+
+  /**
+   * The platform itself, for a virtual camera (flyover): in the camera view the real one is in
+   * the image. Light concrete with edge stones and a white safety line along the tracks.
+   */
+  _drawSurface(view, g) {
+    view.polygon(g.corners, { fill: CONCRETE, order: 9 });
+    const sides = this.spec.sides || "both";
+    const stone = Math.min(view.m(0.45), g.W * 0.12), line = Math.min(view.m(0.9), g.W * 0.22);
+    for (const side of [1, -1]) {
+      if (sides === "none" || (sides === "left" && side < 0) || (sides === "right" && side > 0)) continue;
+      const at = (t) => [add2(g.a, scale2(g.n, side * t)), add2(g.b, scale2(g.n, side * t))];
+      view.ribbon(at(g.W / 2 - stone / 2), stone, { fill: EDGE_STONE, order: 9.2 });
+      view.line(at(g.W / 2 - line), { stroke: SAFETY_LINE, width: 1, order: 9.3 });
+    }
   }
 
   _drawCanopy(view, g) {

@@ -30,6 +30,7 @@ World.draw(View): objects, vehicles, trains, simulations, disruption signs → s
 | `core/disruptions.js`, `core/scenarios.js` | disruption types and effects, scripted timelines |
 | `core/trains.js`, `feeds/*` | control-system feed: protocol parsing, arrival detection, WebSocket client, in-browser simulator |
 | `core/view.js` | projection, display list, primitives (polygons, prisms, faces, labels) |
+| `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, fit; grid lines |
 | `core/registry.js`, `core/events.js`, `core/layout.js` | extension points, event bus, layout files |
 | `sims/passengers.js` | the example passenger simulation |
 | `app/*` | the user interface (no framework): sources, panels, editor |

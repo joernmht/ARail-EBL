@@ -43,7 +43,7 @@ export const TRAIN = {
   },
   draw(view, v, place) {
     const area = v.dock.area;
-    const alpha = 0.62;
+    const alpha = view.virtual ? 0.92 : 0.62; // see-through over the camera image, nearly solid in the flyover
     const colors = { body: PALETTE.train, roof: shade(PALETTE.train, 0.78), end: shade(PALETTE.train, 0.9), alpha };
     const z0 = this.floor_m, z1 = this.height_m;
     const doors = v.doorsOpen ? this.doors(v.dock) : [];

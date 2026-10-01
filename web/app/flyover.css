@@ -1,0 +1,34 @@
+/* Flyover: the stage with a virtual camera (web/app/flyover.js). Uses the tokens of app.css
+   (corporate design of the Chair of Railway Operations): controls over the stage on the
+   Dunkelblau overlay, pressed toggles in Orange (the 10 % accent). */
+
+/* the canvas fills the stage; dragging turns or pans the view */
+.stage canvas.flyover { touch-action: none; cursor: grab; }
+.stage canvas.flyover.dragging { cursor: grabbing; }
+.stage canvas.flyover.editing { cursor: default; }
+.stage canvas.flyover.editing.dragging { cursor: grabbing; }
+.stage canvas.flyover:focus-visible { outline: 3px solid var(--overlay-ok); outline-offset: -3px; }
+
+/* camera buttons: a column at the right edge of the stage, like the controls of a map */
+.fly-nav {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; flex-wrap: wrap-reverse; gap: 6px; max-height: calc(100% - 110px); align-content: flex-start;
+}
+.fly-nav .btn {
+  width: 38px; height: 38px; padding: 0; border-radius: var(--radius);
+  background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22);
+}
+.fly-nav .btn:hover { border-color: var(--overlay-text); }
+.fly-nav .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
+.fly-nav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* zoom in/out and rotate left/right belong together */
+.fly-nav [data-fly="zoom-out"], .fly-nav [data-fly="rotate-right"] { margin-bottom: 6px; }
+
+/* View panel: the same buttons as text */
+.flyover-section .fly-buttons .btn { min-width: 2.4rem; }
+
+@media (max-width: 640px) {
+  .fly-nav { right: 6px; gap: 4px; }
+  .fly-nav .btn { width: 34px; height: 34px; }
+  .fly-nav [data-fly="zoom-out"], .fly-nav [data-fly="rotate-right"] { margin-bottom: 2px; }
+}

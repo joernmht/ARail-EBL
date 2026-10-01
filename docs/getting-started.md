@@ -20,6 +20,8 @@ The top bar chooses what the app looks at:
 
 Photos are the easiest way to start: detection runs once at full resolution, and objects can be placed precisely. **Freeze** (bottom right of the stage) keeps the current video frame for editing. **Full screen** is useful with a projector.
 
+**Flyover** (bottom right, or key F) replaces the camera image by a virtual camera that flies around the layout: the table, its photo from above (`view.ortho`, if the layout has one), a grid, the markers and everything virtual, by day and by night. Drag to turn the view, Shift-drag, right-drag or two fingers to pan, scroll or pinch to zoom; the buttons at the right zoom, rotate, switch to the plan view and show the whole layout. In Build, everything works as on the camera image, and placed or dragged objects snap to the grid (hold Alt for free placement); **Build → Table → Table module** extends the tabletop with virtual table modules: drag from one corner to the opposite one. Press F again to return to the camera image.
+
 ## What you see
 
 The chips at the top left show the tracking state: *Tracking · 5 markers* means the layout is registered using five markers; *holding position* means all markers are hidden for a moment and the last pose is kept (1.5 s).
@@ -52,6 +54,9 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 | Space | pause / resume the simulation |
 | 1 … 9 | send a vehicle to the stop with that position on the board |
 | M | marker outlines on/off |
+| F | flyover on/off |
+| ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (when the stage has focus) |
+| R, Shift+R | turn the selected object by 15° or 90° (Build panel) |
 | Delete | delete the selected object (Build panel) |
 | Esc | cancel placing, or deselect |
 | ← → | switch panels (when a panel tab has focus) |

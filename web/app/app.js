@@ -1,6 +1,7 @@
 // ARail app: camera/photo/video in, markers tracked, virtual layout and simulations drawn on top.
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
+import { drawGrid, Flyover } from "./flyover.js";
 import { Panels } from "./panels.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
@@ -30,7 +31,9 @@ class App {
     this.feed = null;
     this.feedUrl = params.get("feed") || storage.get("arail.feedUrl", "ws://localhost:8765/feed");
     this.activeTab = "view";
-    this.display = { markers: false, opacity: 1, ...storage.get("arail.display", {}) };
+    this.display = { markers: false, opacity: 1, gridInCamera: false, flyMarkers: true, ...storage.get("arail.display", {}) };
+    /** "camera": the camera image (or photo, video) with AR; "flyover": the virtual camera (see flyover.js). */
+    this.mode = "camera";
     this.layoutUrl = null;
     this.recorder = null;
     this._loadToken = 0;
@@ -52,6 +55,7 @@ class App {
         storage.remove("arail.calibration");
       }
     }
+    this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
     this._wireUi();
@@ -98,6 +102,7 @@ class App {
       const f = e.target.files && e.target.files[0];
       e.target.value = "";
       if (!f) return;
+      this.flyover.leave(); // show what was just chosen
       const url = URL.createObjectURL(f);
       if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
       else this.loadImage(url, f.name, url);
@@ -105,7 +110,10 @@ class App {
     for (const id of ["filePhoto", "fileVideo", "fileOpen"]) $(`#${id}`).addEventListener("change", onFile);
     if (navigator.mediaDevices?.getUserMedia && window.isSecureContext) {
       $("#btnLive").hidden = false;
-      $("#btnLive").addEventListener("click", () => this.startLive());
+      $("#btnLive").addEventListener("click", () => {
+        this.flyover.leave();
+        this.startLive();
+      });
     }
     const sel = $("#exampleSelect");
     mount(sel, h("option", { value: "" }, "Layouts…"), EXAMPLES.map((x) => h("option", { value: x.layout }, x.label)));
@@ -150,8 +158,17 @@ class App {
     if (tag === "input" || tag === "select" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
     // Space and Enter activate focused buttons and links; they are not shortcuts there
     if ((e.key === " " || e.key === "Enter") && e.target.closest?.("button, a, summary, label, [role=button], [role=tab]")) return;
+    if (this.flyover.key(e)) {
+      e.preventDefault();
+      return;
+    }
     const w = this.world;
-    if (e.key === " ") {
+    if (e.key === "f" || e.key === "F") {
+      this.flyover.toggle();
+      e.preventDefault();
+    } else if ((e.key === "r" || e.key === "R") && this.activeTab === "build" && this.editor.selected) {
+      if (this.editor.rotateSelected(e.shiftKey ? 90 : 15)) e.preventDefault();
+    } else if (e.key === " ") {
       w.paused = !w.paused;
       this.panels.updateSimulateControls();
       e.preventDefault();
@@ -275,6 +292,7 @@ class App {
       this.tracker = new ARail.PlaneTracker(this.world.map);
       this.applyDictionary();
       this.showLayoutName();
+      this.flyover.layoutChanged();
       this.renderPanel(this.activeTab);
       this.redetect();
     }
@@ -371,8 +389,11 @@ class App {
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
     this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl };
     if (old && old.el !== el) this._release(old);
-    this.canvas.width = this.source.w;
-    this.canvas.height = this.source.h;
+    // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
+    if (!this.flyover.active) {
+      this.canvas.width = this.source.w;
+      this.canvas.height = this.source.h;
+    }
     this.camera.setSize(this.source.w, this.source.h);
     this.tracker.reset();
     this.detections = {};
@@ -414,6 +435,10 @@ class App {
     v.onloadedmetadata = () => {
       if (token !== this._loadToken) return this._release({ el: v, kind: stream ? "live" : "video", objectUrl });
       this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl);
+      if (this.flyover.active && !stream) {
+        this.flyover.resumeVideoOnLeave(); // shown (and played) when leaving the flyover
+        return;
+      }
       v.play().catch(() => toast("The video cannot be played here. Take a photo instead."));
     };
     v.onerror = () => token === this._loadToken && toast("The video cannot be played here. Take a photo instead.");
@@ -459,7 +484,7 @@ class App {
   setFrozen(on) {
     this.frozen = on && !!this.source && this.source.kind !== "image";
     const btn = $("#btnFreeze");
-    btn.hidden = !this.source || this.source.kind === "image";
+    btn.hidden = !this.source || this.source.kind === "image" || this.flyover.active;
     btn.setAttribute("aria-pressed", this.frozen ? "true" : "false");
     if (this.source?.kind === "video") this.frozen ? this.source.el.pause() : this.source.el.play().catch(() => {});
     if (this.frozen && this.source) {
@@ -478,8 +503,10 @@ class App {
     el.hidden = false;
   }
 
-  /** Fit the canvas into the stage while keeping its aspect ratio. */
+  /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
   fitCanvas() {
+    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
+    if (this.flyover?.active) return this.flyover.resize();
     const wrap = $("#stageWrap");
     const W = this.canvas.width, H = this.canvas.height;
     const maxW = wrap.clientWidth;
@@ -488,7 +515,31 @@ class App {
     const k = Math.min(maxW / W, maxH / H);
     this.canvas.style.width = `${Math.floor(W * k)}px`;
     this.canvas.style.height = `${Math.floor(H * k)}px`;
-    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
+  }
+
+  /**
+   * The current camera pose: homography layout (mm) -> canvas (px) and its inverse. From the
+   * virtual camera in the flyover, else from the marker tracking (H is null while not tracked).
+   * @returns {{H: number[] | null, Hinv: number[] | null}}
+   */
+  pose() {
+    return this.flyover.active ? this.flyover.pose() : this.tracker.state;
+  }
+
+  /** Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover). */
+  eventToLayout(e) {
+    const c = this.canvas, r = c.getBoundingClientRect();
+    const u = ((e.clientX - r.left) * c.width) / r.width, v = ((e.clientY - r.top) * c.height) / r.height;
+    if (this.flyover.active) return this.flyover.groundPoint(u, v);
+    const Hinv = this.tracker.state.Hinv;
+    if (!Hinv) return null;
+    const p = ARail.applyH(Hinv, [u, v]);
+    return p.every(Number.isFinite) ? p : null;
+  }
+
+  /** Is the grid shown? Always in the flyover, in the camera view only if chosen (View panel). */
+  gridVisible() {
+    return this.flyover.active || !!this.display.gridInCamera;
   }
 
   /** Canvas pixels per CSS pixel (line widths and fonts). */
@@ -552,24 +603,43 @@ class App {
   frame(dt) {
     this.clock += dt;
     if (dt > 0) this.fps = 0.9 * this.fps + 0.1 / Math.max(dt, 1e-3);
-    if (this.source && this.source.kind !== "image" && !this.frozen) this._processVideo();
+    const fly = this.flyover.active;
+    if (!fly && this.source && this.source.kind !== "image" && !this.frozen) this._processVideo();
     if (this.feed?.tick) this.feed.tick(dt);
     this.world.step(dt);
+    if (fly) this.flyover.step(dt);
     this.render();
   }
 
   render() {
+    if (this.flyover.active) return this.flyover.render();
     const { ctx, source } = this;
     if (!source) return;
     ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
-    const H = this.tracker.state.H;
+    const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
       const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
+      if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
     }
     if (this.display.markers) this._drawMarkers(ctx);
+  }
+
+  /** Where the grid is drawn over the camera image: around the markers, objects and table modules. */
+  _cameraGridBounds() {
+    const b = ARail.defaultTableBounds(this.world, 200) || [-500, -300, 500, 300];
+    for (const o of this.world.objects) {
+      if (o.type !== "tabletop" || !o.geometry) continue;
+      for (const p of o.geometry.footprint) {
+        b[0] = Math.min(b[0], p[0] - 200);
+        b[1] = Math.min(b[1], p[1] - 200);
+        b[2] = Math.max(b[2], p[0] + 200);
+        b[3] = Math.max(b[3], p[1] + 200);
+      }
+    }
+    return b;
   }
 
   _drawMarkers(ctx) {
@@ -592,7 +662,11 @@ class App {
 
   updateHud() {
     const st = this.tracker.state, chips = [];
-    if (!this.source) chips.push(["warn", "No image yet"]);
+    if (this.flyover.active) {
+      const g = this.world.layout.grid;
+      chips.push(["ok", `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
+      chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
+    } else if (!this.source) chips.push(["warn", "No image yet"]);
     else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}`]);
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
     else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, none known yet`]);

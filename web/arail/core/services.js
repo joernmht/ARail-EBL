@@ -256,8 +256,9 @@ export class ServiceManager {
 
   draw(view) {
     // Trains from a control system are real: by default the train registry outlines them
-    // where they are; only with feedVehicles = "solid" is a virtual train drawn at the dock.
-    const style = this.world.settings.feedVehicles;
+    // where they are; only with feedVehicles = "solid" (or for a virtual camera, which shows no
+    // real trains) is a virtual train drawn at the dock.
+    const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
     for (const v of this.vehicles()) {
       if (v.source === "feed" && style !== "solid") continue;
       const p = this.placement(v);

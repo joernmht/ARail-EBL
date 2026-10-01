@@ -108,6 +108,7 @@ export class World {
       markers: { ...L.markers, poses: this.map.toJSON() },
       services: L.services,
       clock: this.clock.toJSON(),
+      grid: L.grid,
       simulations: this._simulationEntries.map((e) => (e.sim ? e.sim.toJSON() : e.cfg)),
       objects: this.objects.map((o) => o.toJSON()),
       scenarios: L.scenarios,

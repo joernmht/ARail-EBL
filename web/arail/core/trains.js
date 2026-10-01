@@ -13,7 +13,7 @@
  * @module arail/core/trains
  */
 import { toRad } from "./math.js";
-import { OVERLAY } from "./colors.js";
+import { OVERLAY, PALETTE, shade } from "./colors.js";
 
 export const FEED_PROTOCOL = "arail-feed/1";
 
@@ -207,9 +207,15 @@ export class TrainRegistry {
   }
 
   draw(view) {
-    const style = this.world.settings.feedVehicles;
+    // a virtual camera (flyover) shows no real trains: they are drawn as solid trains there
+    const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
     if (!this.active || style === "none") return;
     const outline = { fill: OVERLAY.trackedFill, stroke: OVERLAY.tracked, width: 2, order: 30 };
+    const body = (pts) => {
+      if (!view.virtual) return view.ribbon(pts, view.m(3.2), outline);
+      const left = offsetLine(pts, view.m(1.45)), right = offsetLine(pts, -view.m(1.45));
+      view.prism(left.concat(right.reverse()), view.m(0.4), view.m(3.9), { side: PALETTE.train, top: shade(PALETTE.train, 0.78) });
+    };
     for (const t of this.trains.values()) {
       if (!t.pos) continue;
       if (style === "solid" && t.dockId) continue; // drawn as a virtual train at its platform
@@ -219,12 +225,12 @@ export class TrainRegistry {
         const a = t.offset - (t.direction >= 0 ? lenMM : 0), b = a + lenMM;
         const pts = [];
         for (let k = 0; k <= 12; k++) pts.push(track.at(a + ((b - a) * k) / 12).point);
-        view.ribbon(pts, view.m(3.2), outline);
+        body(pts);
       } else if (t.heading != null) {
         // body outline behind the reported position (the train's front) along its heading
         const dx = Math.cos(t.heading), dy = Math.sin(t.heading);
         const back = [t.pos[0] - dx * lenMM, t.pos[1] - dy * lenMM];
-        view.ribbon([back, t.pos], view.m(3.2), outline);
+        body([back, t.pos]);
       } else {
         const r = view.m(2.2);
         const ring = [];
@@ -235,4 +241,13 @@ export class TrainRegistry {
       view.label([t.pos[0], t.pos[1], view.m(6)], `${t.name}${standing}`, { size: 11, background: OVERLAY.label, order: 4 });
     }
   }
+}
+
+/** A polyline shifted sideways by `d` (mm, positive = to the left). */
+function offsetLine(points, d) {
+  return points.map((p, i) => {
+    const a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+    return [p[0] - (dy / l) * d, p[1] + (dx / l) * d];
+  });
 }

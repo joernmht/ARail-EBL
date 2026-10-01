@@ -1,5 +1,5 @@
-// Build mode: place, select, move and edit layout objects on the camera image.
-import { applyH, dist2, FONT, OVERLAY, rgba, toDeg } from "../arail/index.js";
+// Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
+import { applyH, dist2, FONT, OVERLAY, pointSegment, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
@@ -9,11 +9,17 @@ const HINTS = {
   segment: "Tap the start and the end. Tap on a marker to anchor the end to it.",
   polygon: "Tap the corners one after the other, then press Finish.",
   polyline: "Tap the points along the line, then press Finish.",
+  rect: "Drag from one corner to the opposite one, or tap both corners.",
 };
+const PLACEMENT_HINTS = { point: "tap once", segment: "two ends", polygon: "outline", polyline: "line", rect: "two corners" };
 export const SCALES = [
   [87, "H0 (1:87)"], [120, "TT (1:120)"], [160, "N (1:160)"], [220, "Z (1:220)"], [64, "S (1:64)"],
   [45, "0 (1:45)"], [32, "1 (1:32)"], [22.5, "G (1:22.5)"],
 ];
+/** A rectangle dragged out by less than this (CSS px) is taken as a tap on its first corner. */
+const RECT_DRAG_PX = 8;
+/** An object starts to move when the pointer has moved this far (CSS px). */
+const DRAG_PX = 3;
 
 const round1 = (v) => Math.round(v * 10) / 10;
 
@@ -24,11 +30,14 @@ export class Editor {
     /** @type {{cls: any, points: Array<{xy?: number[], marker?: number}>, replace?: any} | null} */
     this.placing = null;
     this.drag = null;
-    const c = app.canvas;
-    c.addEventListener("pointerdown", (e) => this._down(e));
-    c.addEventListener("pointermove", (e) => this._move(e));
-    c.addEventListener("pointerup", (e) => this._up(e));
-    c.addEventListener("pointercancel", (e) => this._up(e));
+    /** Where the next point would go while placing (snapped), for the preview. */
+    this.hoverPoint = null;
+    // in the flyover, the flyover routes the pointer (navigation or editing, see flyover.js)
+    const c = app.canvas, mine = (fn) => (e) => app.mode !== "flyover" && fn(e);
+    c.addEventListener("pointerdown", mine((e) => this._down(e)));
+    c.addEventListener("pointermove", mine((e) => this._move(e)));
+    c.addEventListener("pointerup", mine((e) => this._up(e)));
+    c.addEventListener("pointercancel", mine((e) => this._up(e, true)));
   }
 
   get world() {
@@ -41,21 +50,17 @@ export class Editor {
 
   /* ---------------------------------------------------------------- canvas interaction */
 
-  /** Pointer event -> layout point (mm), or null while the layout is not tracked. */
+  /** Pointer event -> layout point (mm), or null where there is no layout (not tracked yet, the sky of the flyover). */
   toLayout(e) {
-    const Hinv = this.app.tracker.state.Hinv;
-    if (!Hinv) return null;
-    const c = this.app.canvas, r = c.getBoundingClientRect();
-    const u = ((e.clientX - r.left) * c.width) / r.width, v = ((e.clientY - r.top) * c.height) / r.height;
-    const p = applyH(Hinv, [u, v]);
-    return p.every(Number.isFinite) ? p : null;
+    return this.app.eventToLayout(e);
   }
 
   /** Image pixels per layout mm around a layout point. */
   pxPerMM(p) {
-    const H = this.app.tracker.state.H;
+    const H = this.app.pose().H;
+    if (!H) return 1;
     const a = applyH(H, p), b = applyH(H, [p[0] + 10, p[1]]), c = applyH(H, [p[0], p[1] + 10]);
-    return (dist2(a, b) + dist2(a, c)) / 20;
+    return (dist2(a, b) + dist2(a, c)) / 20 || 1e-6;
   }
 
   nearestMarker(p, radiusMM) {
@@ -67,13 +72,110 @@ export class Editor {
     return best ? best.id : null;
   }
 
+  /**
+   * The object at a layout point. Small objects win over large ones; background objects (table
+   * modules) only at their edges unless they are selected, so that dragging over a table pans.
+   */
   hitTest(p) {
     const tol = (10 * this.app.px()) / Math.max(1e-6, this.pxPerMM(p));
-    const objs = this.world.objects;
-    // small objects on top of large ones: test point-like objects first
-    const order = [...objs].reverse().sort((a, b) => (a.constructor.placement === "point" ? 0 : 1) - (b.constructor.placement === "point" ? 0 : 1));
-    for (const o of order) if (o.geometry && o.contains(p, tol)) return o;
+    const rank = (o) => (o.constructor.background ? 2 : o.constructor.placement === "point" ? 0 : 1);
+    const order = [...this.world.objects].reverse().sort((a, b) => rank(a) - rank(b));
+    for (const o of order) {
+      if (!o.geometry) continue;
+      if (o.constructor.background && o !== this.selected ? this._onEdge(o, p, 1.5 * tol) : o.contains(p, tol)) return o;
+    }
     return null;
+  }
+
+  _onEdge(o, p, tol) {
+    const fp = o.footprint();
+    return !!fp && fp.some((a, i) => pointSegment(p, a, fp[(i + 1) % fp.length]).distance <= tol);
+  }
+
+  /* ---------------------------------------------------------------- grid snapping */
+
+  /** Snapping is on while the grid is shown and enabled; Alt (Option) switches it off for one move. */
+  snapping(e) {
+    return !e?.altKey && this.world.layout.grid.snap !== false && this.app.gridVisible();
+  }
+
+  /** A layout point snapped to the grid (when snapping is on). */
+  snap(p, e) {
+    return this.snapping(e) ? snapToGrid(p, this.world.layout.grid.size_mm) : p;
+  }
+
+  /** Where a tap at p places the next point: on a marker (segment ends), on the grid, or at p. */
+  _placePoint(p, e) {
+    const marker = this.placing?.cls.placement === "segment" ? this.nearestMarker(p, 15) : null;
+    if (marker != null) return { marker };
+    const q = this.snap(p, e);
+    return { xy: [round1(q[0]), round1(q[1])] };
+  }
+
+  /* ---------------------------------------------------------------- pointer (also used by the flyover) */
+
+  /** Add a placing point at the layout point p (snapped). */
+  placeAt(p, e) {
+    if (!this.placing || !p) return;
+    this._addPoint(this._placePoint(p, e));
+  }
+
+  /** Preview of the next placing point (null: none). */
+  hover(p, e) {
+    this.hoverPoint = this.placing && p ? this._placePoint(p, e) : null;
+  }
+
+  /** Select the object at p and start dragging it; returns it, or null if there is nothing. */
+  grab(p, e) {
+    const hit = this.hitTest(p);
+    if (!hit) return null;
+    if (hit !== this.selected) this.select(hit);
+    this.drag = { start: p, anchor: this._snapAnchor(hit), last: p, moved: false };
+    this.app.canvas.classList.add("dragging");
+    return hit;
+  }
+
+  /** The point of an object that snaps to the grid when it is dragged. */
+  _snapAnchor(o) {
+    return o.snapPoint?.() ?? o.anchorPoint();
+  }
+
+  /** Drag the grabbed object so that it follows the pointer at p; its anchor snaps to the grid. */
+  dragTo(p, e) {
+    const d = this.drag, o = this.selected;
+    if (!d || !o || !p) return;
+    // a click that selects an object must not move it (nor snap it to the grid)
+    if (!d.moved && Math.hypot(p[0] - d.start[0], p[1] - d.start[1]) * this.pxPerMM(p) < DRAG_PX * this.app.px()) return;
+    let dx = p[0] - d.last[0], dy = p[1] - d.last[1];
+    if (this.snapping(e) && d.anchor) {
+      const cur = this._snapAnchor(o);
+      if (cur) {
+        const goal = this.snap([d.anchor[0] + p[0] - d.start[0], d.anchor[1] + p[1] - d.start[1]], e);
+        dx = goal[0] - cur[0];
+        dy = goal[1] - cur[1];
+      }
+    }
+    d.last = p;
+    if (Math.hypot(dx, dy) < 0.2) return;
+    o.translate(dx, dy);
+    d.moved = true;
+  }
+
+  /** Stop dragging (and save if something moved). */
+  endDrag() {
+    const d = this.drag;
+    this.drag = null;
+    this.app.canvas.classList.remove("dragging");
+    if (d?.moved) {
+      this.app.saveLayout();
+      this.renderInspector();
+    }
+  }
+
+  /** Drop whatever the pointer started (a second finger takes over in the flyover). */
+  cancelGesture() {
+    this.endDrag();
+    this.rectDrag = null;
   }
 
   _down(e) {
@@ -85,38 +187,41 @@ export class Editor {
     }
     e.preventDefault();
     if (this.placing) {
-      this._addPoint(p);
+      const rect = this.placing.cls.placement === "rect" && !this.placing.points.length;
+      this.placeAt(p, e);
+      // the opposite corner may follow by dragging
+      if (rect && this.placing) {
+        this.rectDrag = { x: e.clientX, y: e.clientY };
+        this.app.canvas.setPointerCapture?.(e.pointerId);
+      }
       return;
     }
-    const hit = this.hitTest(p);
-    this.select(hit);
-    if (hit) {
-      this.drag = { last: p, moved: false };
-      this.app.canvas.setPointerCapture?.(e.pointerId);
-      this.app.canvas.classList.add("dragging");
-    }
+    const hit = this.grab(p, e);
+    if (hit) this.app.canvas.setPointerCapture?.(e.pointerId);
+    else this.select(null);
   }
 
   _move(e) {
-    if (!this.drag || !this.selected) return;
-    const p = this.toLayout(e);
-    if (!p) return;
-    const dx = p[0] - this.drag.last[0], dy = p[1] - this.drag.last[1];
-    if (Math.hypot(dx, dy) < 0.2) return;
-    this.selected.translate(dx, dy);
-    this.drag.last = p;
-    this.drag.moved = true;
+    if (!this.active) return;
+    if (this.placing) {
+      this.hover(this.toLayout(e), e);
+      return;
+    }
+    if (this.drag) this.dragTo(this.toLayout(e), e);
   }
 
-  _up(e) {
+  _up(e, cancelled = false) {
+    if (this.rectDrag) {
+      const r = this.rectDrag;
+      this.rectDrag = null;
+      this.app.canvas.releasePointerCapture?.(e.pointerId);
+      const p = this.toLayout(e);
+      if (!cancelled && p && this.placing && Math.hypot(e.clientX - r.x, e.clientY - r.y) >= RECT_DRAG_PX) this.placeAt(p, e);
+      return;
+    }
     if (!this.drag) return;
     this.app.canvas.releasePointerCapture?.(e.pointerId);
-    this.app.canvas.classList.remove("dragging");
-    if (this.drag.moved) {
-      this.app.saveLayout();
-      this.renderInspector();
-    }
-    this.drag = null;
+    this.endDrag();
   }
 
   /* ---------------------------------------------------------------- placing */
@@ -125,6 +230,7 @@ export class Editor {
     const cls = this.world.registry.objects.get(type);
     if (!cls) return;
     this.placing = { cls, points: [], replace };
+    this.hoverPoint = null;
     if (!replace) this.select(null);
     this.renderPlacing();
     this.renderPalette();
@@ -132,6 +238,8 @@ export class Editor {
 
   cancel() {
     this.placing = null;
+    this.hoverPoint = null;
+    this.rectDrag = null;
     this.renderPlacing();
     this.renderPalette();
   }
@@ -141,6 +249,8 @@ export class Editor {
     this.surveyState?.survey.cancel();
     this.placing = null;
     this.drag = null;
+    this.rectDrag = null;
+    this.hoverPoint = null;
     this.app.canvas.classList.remove("dragging");
     this.renderPlacing();
     this.select(null);
@@ -151,12 +261,12 @@ export class Editor {
     return !!obj && this.world.objects.includes(obj);
   }
 
-  _addPoint(p) {
-    const { cls } = this.placing;
-    const marker = cls.placement === "segment" ? this.nearestMarker(p, 15) : null;
-    this.placing.points.push(marker != null ? { marker } : { xy: [round1(p[0]), round1(p[1])] });
-    const n = this.placing.points.length;
-    if (cls.placement === "point" || (cls.placement === "segment" && n === 2)) this.finish();
+  /** Add a placing point ({xy} or {marker}); point, segment and rect placements finish by themselves. */
+  _addPoint(q) {
+    const { cls, points } = this.placing;
+    points.push(q);
+    const n = points.length;
+    if (cls.placement === "point" || ((cls.placement === "segment" || cls.placement === "rect") && n === 2)) this.finish();
     else this.renderPlacing();
   }
 
@@ -189,12 +299,23 @@ export class Editor {
         geo.to = asSpec(points[1]);
         geo.between = undefined;
       }
+    } else if (cls.placement === "rect") {
+      if (points.length < 2) return toast("Tap the opposite corner.");
+      const [a, b] = points.map((q) => q.xy);
+      const w = round1(Math.abs(b[0] - a[0])), d = round1(Math.abs(b[1] - a[1]));
+      if (w < 5 || d < 5) {
+        points.pop();
+        this.renderPlacing();
+        return toast("That is too small: drag or tap to the opposite corner.");
+      }
+      Object.assign(geo, { position: [round1((a[0] + b[0]) / 2), round1((a[1] + b[1]) / 2)], width_mm: w, depth_mm: d, rotation_deg: 0 });
     } else {
       const min = cls.placement === "polygon" ? 3 : 2;
       if (points.length < min) return toast(`Tap at least ${min} points.`);
       geo.points = points.map((q) => q.xy);
     }
     this.placing = null;
+    this.hoverPoint = null;
     let obj;
     if (replace && !this._inWorld(replace)) {
       this.renderPlacing();
@@ -206,7 +327,7 @@ export class Editor {
       obj = replace;
     } else {
       const spec = { type: cls.type, ...Object.fromEntries(Object.entries(geo).filter(([, v]) => v !== undefined)) };
-      if (cls.params.some((p) => p.key === "rotation_deg") && geo.position) spec.rotation_deg = this._alignedRotation(geo.position);
+      if (cls.placement === "point" && this._rotatable(cls)) spec.rotation_deg = this._alignedRotation(geo.position);
       obj = this.world.addObject(spec);
       toast(`${cls.label} added. Drag it to move it, or change it on the right.`);
     }
@@ -220,6 +341,23 @@ export class Editor {
     this.selected = obj;
     this.renderObjects();
     this.renderInspector();
+  }
+
+  /** Can objects of this class be turned (do they have a `rotation_deg` parameter)? */
+  _rotatable(cls) {
+    return !!cls?.params?.some((p) => p.key === "rotation_deg");
+  }
+
+  /** Turn the selected object by `deg` degrees (positive = counter-clockwise seen from above). */
+  rotateSelected(deg) {
+    const o = this.selected;
+    if (!this._inWorld(o) || !this._rotatable(o.constructor)) return false;
+    let r = ((((+o.spec.rotation_deg || 0) + deg) % 360) + 360) % 360;
+    if (r > 180) r -= 360;
+    o.set({ rotation_deg: round1(r) });
+    this.app.saveLayout();
+    this.renderInspector();
+    return true;
   }
 
   deleteSelected() {
@@ -238,7 +376,9 @@ export class Editor {
     const spec = o.toJSON();
     delete spec.id;
     const copy = this.world.addObject(spec);
-    copy.translate(this.world.scale > 0 ? copy.mm(5) : 20, copy.mm(5));
+    // beside the original (table modules line up), or a little offset
+    const [dx, dy] = o.duplicateOffset?.() ?? [copy.mm(5), copy.mm(5)];
+    copy.translate(dx, dy);
     this.app.saveLayout();
     this.select(copy);
   }
@@ -261,24 +401,66 @@ export class Editor {
         ctx.fillText(String(id), q[0] + 16 * px, q[1] - 10 * px);
       }
     }
-    if (!this.placing?.points.length) return;
-    const pts = this.placing.points
-      .map((q) => (q.marker != null ? this.world.map.get(q.marker) : { x: q.xy[0], y: q.xy[1] }))
-      .map((e) => e && view.project(e.x, e.y, 0))
-      .filter(Boolean);
+    if (!this.placing) return;
+    const toXY = (q) => (q.marker != null ? this.world.map.get(q.marker) : { x: q.xy[0], y: q.xy[1] });
+    const project = (q) => {
+      const e = q && toXY(q);
+      return e ? view.project(e.x, e.y, 0) : null;
+    };
+    const { points, cls } = this.placing;
+    const hover = this.hoverPoint;
     ctx.save();
     ctx.strokeStyle = OVERLAY.selection;
     ctx.fillStyle = OVERLAY.selection;
     ctx.lineWidth = 2.5 * px;
     ctx.setLineDash([8 * px, 5 * px]);
-    ctx.beginPath();
-    pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])));
-    if (this.placing.cls.placement === "polygon" && pts.length > 2) ctx.closePath();
-    ctx.stroke();
-    for (const q of pts) {
+    if (cls.placement === "rect") {
+      // the rectangle from the first corner to the pointer, with its size
+      const a = points[0]?.xy, b = hover?.xy;
+      if (a && b) {
+        const corners = [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]].map((c) => view.project(c[0], c[1], 0));
+        if (corners.every(Boolean)) {
+          ctx.beginPath();
+          corners.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])));
+          ctx.closePath();
+          ctx.fillStyle = rgba(OVERLAY.selection, 0.14);
+          ctx.fill();
+          ctx.stroke();
+          const mid = view.project((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0);
+          if (mid) tag(ctx, mid, `${round1(Math.abs(b[0] - a[0]))} × ${round1(Math.abs(b[1] - a[1]))} mm`, px);
+        }
+      }
+    } else {
+      const pts = points.map(project).filter(Boolean);
+      const next = pts.length && cls.placement !== "point" ? project(hover) : null;
+      ctx.beginPath();
+      pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])));
+      if (next) ctx.lineTo(next[0], next[1]);
+      if (cls.placement === "polygon" && pts.length + (next ? 1 : 0) > 2) ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle = OVERLAY.selection;
+    for (const q of points.map(project).filter(Boolean)) {
       ctx.beginPath();
       ctx.arc(q[0], q[1], 5 * px, 0, 2 * Math.PI);
       ctx.fill();
+    }
+    // where a tap would put the next point (on the grid when snapping)
+    const h = project(hover);
+    if (h) {
+      const r = 7 * px;
+      ctx.lineWidth = 2 * px;
+      ctx.strokeStyle = OVERLAY.selection;
+      ctx.beginPath();
+      ctx.moveTo(h[0] - r, h[1]);
+      ctx.lineTo(h[0] + r, h[1]);
+      ctx.moveTo(h[0], h[1] - r);
+      ctx.lineTo(h[0], h[1] + r);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(h[0], h[1], 3 * px, 0, 2 * Math.PI);
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -323,7 +505,7 @@ export class Editor {
       groups[c].map((cls) => h("button", {
         type: "button", "aria-pressed": this.placing?.cls === cls && !this.placing.replace ? "true" : "false", title: cls.description,
         onclick: () => (this.placing?.cls === cls ? this.cancel() : this.startPlacing(cls.type)),
-      }, cls.label, h("small", {}, { point: "tap once", segment: "two ends", polygon: "outline", polyline: "line" }[cls.placement]))),
+      }, cls.label, h("small", {}, PLACEMENT_HINTS[cls.placement] || ""))),
     ]));
   }
 
@@ -335,9 +517,10 @@ export class Editor {
     }
     const { cls, points, replace } = this.placing;
     const multi = cls.placement === "polygon" || cls.placement === "polyline";
+    const grid = this.snapping() ? ` Points snap to the ${this.world.layout.grid.size_mm} mm grid (hold Alt for free placement).` : "";
     mount(bar,
       h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), HINTS[cls.placement],
-        points.length ? ` (${points.length} point${points.length > 1 ? "s" : ""})` : ""),
+        points.length ? ` (${points.length} point${points.length > 1 ? "s" : ""})` : "", grid),
       multi ? h("button", { class: "btn small primary", type: "button", onclick: () => this.finish() }, "Finish") : null,
       points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, "Undo point") : null,
       h("button", { class: "btn small", type: "button", onclick: () => this.cancel() }, "Cancel"),
@@ -375,6 +558,12 @@ export class Editor {
       cls.description ? h("p", { class: "hint" }, cls.description) : null,
       paramFields(cls.params, o.spec, change, { idPrefix: `obj-${o.id}`, world: this.world }),
       geo,
+      this._rotatable(cls) ? h("div", { class: "row", role: "group", "aria-label": "Rotate" },
+        h("button", { class: "btn small", type: "button", title: "Turn 90° counter-clockwise (Shift+R; R turns by 15°)", onclick: () => this.rotateSelected(90) },
+          h("span", { "aria-hidden": "true" }, "↺"), " 90°", h("span", { class: "visually-hidden" }, " counter-clockwise")),
+        h("button", { class: "btn small", type: "button", title: "Turn 90° clockwise", onclick: () => this.rotateSelected(-90) },
+          h("span", { "aria-hidden": "true" }, "↻"), " 90°", h("span", { class: "visually-hidden" }, " clockwise")),
+      ) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", onclick: () => this.startPlacing(o.type, o) }, "Redraw position"),
         h("button", { class: "btn small", type: "button", onclick: () => this.duplicateSelected() }, "Duplicate"),
@@ -538,6 +727,24 @@ export class Editor {
       if (this.surveyState === st) this.renderMarkers();
     }
   }
+}
+
+/** A small label (Dunkelblau board, white text) centred at an image point. */
+function tag(ctx, at, text, px) {
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.font = `700 ${12 * px}px ${FONT}`;
+  const w = ctx.measureText(text).width + 12 * px, hgt = 20 * px;
+  ctx.fillStyle = OVERLAY.label;
+  ctx.beginPath();
+  ctx.roundRect?.(at[0] - w / 2, at[1] - hgt / 2, w, hgt, 4 * px);
+  if (!ctx.roundRect) ctx.rect(at[0] - w / 2, at[1] - hgt / 2, w, hgt);
+  ctx.fill();
+  ctx.fillStyle = OVERLAY.labelText;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, at[0], at[1]);
+  ctx.restore();
 }
 
 function slug(s) {

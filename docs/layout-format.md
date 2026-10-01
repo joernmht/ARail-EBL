@@ -43,7 +43,26 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `objects` | `[]` | the virtual objects |
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
+| `grid` | `{"size_mm": 50, "snap": true}` | grid of the flyover and the editor, see below |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
+| `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
+
+## `grid`
+
+The flyover (View → Flyover, key F) shows a grid on the layout plane; placed points, the corners of table modules and dragged objects snap to it (hold Alt/Option to place freely). Over the camera image the grid is only shown when "Grid in camera view" is ticked.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `size_mm` | `50` | spacing of the grid lines; every tenth line is drawn stronger |
+| `snap` | `true` | snap to the grid while it is shown |
+
+## `view.ortho`
+
+```json
+"view": { "image": "../media/ebl-lab.jpg", "ortho": { "image": "../media/ebl-lab-ortho.jpg", "bounds_mm": [-200, -400, 1600, 600] } }
+```
+
+An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md)): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame. Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; where it covers platforms and tracks, their virtual surfaces are left out (the photo shows the real ones).
 
 ## `markers`
 
@@ -154,6 +173,19 @@ Geometry: `points` (polyline along the centre of a real track). Not drawn unless
 | --- | --- | --- |
 | `track_id` | `""` | name of the track in the control system |
 | `offset_start_mm` | `0` | the offset the control system reports at the first point |
+
+### `tabletop`: table module
+
+Geometry: `position` (centre). A rectangular base plate whose top is the layout plane, with an 18 mm edge. In the editor (Build → Table) drag from one corner to the opposite one, or tap both corners; in the flyover the corners snap to the grid. Duplicate puts the copy right beside the original.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `kind` | `"extension"` | `extension`: a virtual table module beside the real table, drawn over the camera image too (it covers the floor there) and in the flyover; `physical`: the outline of a real table of the lab, only drawn in the flyover |
+| `width_mm`, `depth_mm` | `1000`, `600` | size along its x and y axis |
+| `rotation_deg` | `0` | |
+| `surface` | `"grey"` | `grey` (light grey), `white`, `green` (model grass) |
+
+Without a `physical` table module, the flyover draws a light-grey default table around the markers, the objects (except those on table extensions) and the orthophoto, with a margin of 100 mm.
 
 ### `label`
 

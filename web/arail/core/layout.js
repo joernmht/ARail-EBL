@@ -22,6 +22,29 @@ export const DEFAULT_SERVICES = {
   approach_s: 6,
 };
 
+/** Grid of the flyover and the editor: spacing (mm) and whether placed and dragged things snap to it. */
+export const DEFAULT_GRID = { size_mm: 50, snap: true };
+
+/** Grid settings with defaults; invalid values are replaced by the defaults. */
+export function normalizeGrid(grid) {
+  const g = isObject(grid) ? grid : {};
+  const size = Number(g.size_mm);
+  return { ...g, size_mm: size > 0 && size <= 10000 ? size : DEFAULT_GRID.size_mm, snap: typeof g.snap === "boolean" ? g.snap : DEFAULT_GRID.snap };
+}
+
+/**
+ * The orthophoto of the table (`view.ortho`), or null if there is none or it is malformed:
+ * `{image: "<url relative to the layout>", bounds_mm: [xmin, ymin, xmax, ymax]}`. Image row 0 is at
+ * ymax, column 0 at xmin.
+ */
+export function orthoOf(layout) {
+  const o = layout?.view?.ortho;
+  if (!isObject(o) || typeof o.image !== "string" || !o.image) return null;
+  const b = Array.isArray(o.bounds_mm) ? o.bounds_mm.map(Number) : [];
+  if (b.length !== 4 || !b.every(Number.isFinite) || !(b[2] > b[0]) || !(b[3] > b[1])) return null;
+  return { ...o, bounds_mm: b };
+}
+
 /**
  * Fill in defaults and normalise a layout object (does not modify the input).
  * @param {object} json
@@ -48,6 +71,7 @@ export function normalizeLayout(json = {}) {
     },
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
     clock: { ...DEFAULT_CLOCK, ...(isObject(j.clock) ? j.clock : {}) },
+    grid: normalizeGrid(j.grid),
     simulations: list(j.simulations, typed) ?? [{ type: "passengers" }],
     objects: list(j.objects, typed) ?? [],
     scenarios: list(j.scenarios) ?? [],
@@ -98,6 +122,13 @@ export function validateLayout(json, registry) {
     if (!o.type) problems.push(`${where} has no type`);
     else if (registry && !registry.objects.has(o.type)) problems.push(`${where}: unknown type "${o.type}" (missing plugin?)`);
   });
+  if (json.grid != null) {
+    if (!isObject(json.grid)) problems.push('grid must be an object like {"size_mm": 50, "snap": true}');
+    else if (json.grid.size_mm != null && !(Number(json.grid.size_mm) > 0)) problems.push("grid.size_mm must be a positive number");
+  }
+  if (isObject(json.view) && json.view.ortho != null && !orthoOf(json)) {
+    problems.push('view.ortho must be {"image": "<url>", "bounds_mm": [xmin, ymin, xmax, ymax]} with xmin < xmax and ymin < ymax');
+  }
   (Array.isArray(json.scenarios) ? json.scenarios : []).forEach((s, i) => {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);
     if (!s.id) problems.push(`scenarios[${i}] has no id`);

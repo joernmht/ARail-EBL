@@ -28,6 +28,7 @@ import { Forest, Tree } from "./objects/trees.js";
 import { Area, Road } from "./objects/landscape.js";
 import { Track } from "./objects/track.js";
 import { Label } from "./objects/label.js";
+import { Tabletop } from "./objects/tabletop.js";
 import { PassengerSimulation } from "./sims/passengers.js";
 import { TownSimulation } from "./sims/town.js";
 
@@ -42,6 +43,7 @@ export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
 export { World } from "./core/world.js";
 export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
+export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
@@ -50,11 +52,12 @@ export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/di
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
-export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout, isLayout } from "./core/layout.js";
+export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
-export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation, TownSimulation };
+export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
+export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
 export {
@@ -68,7 +71,7 @@ export { MockFeed } from "./feeds/mock.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
-  for (const cls of [Platform, BusTerminal, Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Road, Track, Label]) {
+  for (const cls of [Platform, BusTerminal, Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Road, Track, Label, Tabletop]) {
     registry.registerObject(cls);
   }
   registry.registerSimulation(PassengerSimulation);

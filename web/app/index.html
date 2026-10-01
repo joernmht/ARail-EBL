@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Sans+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="flyover.css">
 </head>
 <body>
 <div class="app">
@@ -43,7 +44,16 @@
       <canvas id="stage" width="1280" height="720" role="img" aria-label="Camera image with augmented reality"></canvas>
       <div class="empty-stage" id="emptyStage" hidden></div>
       <div class="hud" id="hud"></div>
+      <div class="fly-nav" id="flyNav" role="group" aria-label="Flyover camera" hidden>
+        <button class="btn" type="button" data-fly="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+        <button class="btn" type="button" data-fly="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+        <button class="btn" type="button" data-fly="rotate-left" aria-label="Rotate left" title="Rotate left (Q)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 7.5A6 6 0 1 1 4.6 13"/><path d="M4.5 3.5v4.4h4.4"/></svg></button>
+        <button class="btn" type="button" data-fly="rotate-right" aria-label="Rotate right" title="Rotate right (E)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14.8 7.5A6 6 0 1 0 15.4 13"/><path d="M15.5 3.5v4.4h-4.4"/></svg></button>
+        <button class="btn" type="button" data-fly="plan" aria-label="Plan view" aria-pressed="false" title="Plan view: look straight down (Page Up and Page Down tilt)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="1"/><path d="M3.5 10h13M10 3.5v13"/></svg></button>
+        <button class="btn" type="button" data-fly="fit" aria-label="Show the whole layout" title="Show the whole layout (Home)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg></button>
+      </div>
       <div class="stage-tools">
+        <button class="btn" id="btnFlyover" type="button" aria-pressed="false" title="Look at and edit the layout with a virtual camera (F)">Flyover</button>
         <button class="btn" id="btnFreeze" type="button" aria-pressed="false" title="Keep the current frame (for editing)">Freeze</button>
         <button class="btn" id="btnFullscreen" type="button" title="Full screen">Full screen</button>
       </div>
