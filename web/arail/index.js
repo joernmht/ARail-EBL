@@ -28,6 +28,7 @@ import { Area, Road } from "./objects/landscape.js";
 import { Track } from "./objects/track.js";
 import { Label } from "./objects/label.js";
 import { PassengerSimulation } from "./sims/passengers.js";
+import { TownSimulation } from "./sims/town.js";
 
 export const VERSION = "0.1.0";
 
@@ -52,7 +53,8 @@ export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout, isLay
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
-export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation };
+export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation, TownSimulation };
+export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { drawTree } from "./objects/trees.js";
 export { dockStatus, drawPerson, NEUTRAL_PERSON } from "./sims/passengers.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
@@ -62,6 +64,7 @@ export { MockFeed } from "./feeds/mock.js";
 export function registerBuiltins(registry) {
   for (const cls of [Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label]) registry.registerObject(cls);
   registry.registerSimulation(PassengerSimulation);
+  registry.registerSimulation(TownSimulation);
   for (const def of BUILTIN_DISRUPTIONS) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);

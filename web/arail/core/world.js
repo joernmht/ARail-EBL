@@ -217,6 +217,13 @@ export class World {
     }
   }
 
+  /** Set the time of day ("HH:MM" or minutes); simulations re-place their people (`clock.set`). */
+  setTime(value) {
+    const minutes = this.clock.set(value);
+    this.events.emit("clock.set", { minutes });
+    return minutes;
+  }
+
   /** Darkness 0 (day) .. 1 (night) for drawing, 0 while the lighting is switched off. */
   night() {
     return this.settings.lighting === false ? 0 : this.clock.night();
