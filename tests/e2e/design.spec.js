@@ -72,3 +72,34 @@ for (const [scheme, expected] of Object.entries(MODES)) {
     });
   });
 }
+
+test.describe("layout of the app bar and the tabs", () => {
+  test.use({ viewport: { width: 1024, height: 768 } });
+
+  test("the chair logo does not push the bar onto a second row on a tablet, so the stage keeps its height", async ({ page }) => {
+    await openApp(page);
+    const bar = await page.locator("#bar").boundingBox();
+    expect(bar.height, "one row").toBeLessThan(80);
+    await expect(page.locator("#layoutName")).toBeVisible();
+    const name = await page.locator("#layoutName").evaluate((el) => ({ width: el.clientWidth, full: el.scrollWidth <= el.clientWidth }));
+    expect(name.full, `layout name shown in full (${name.width} px)`).toBe(true);
+    for (const id of ["#btnLive", "#exampleSelect"]) {
+      const box = await page.locator(id).boundingBox();
+      expect(box.y + box.height, `${id} in the first row`).toBeLessThan(bar.y + 70);
+    }
+    const stage = await page.locator("#stageWrap").boundingBox();
+    expect(stage.height).toBeGreaterThan(768 - 80);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);
+  });
+
+  test("selecting a tab does not shift the tabs", async ({ page }) => {
+    await openApp(page);
+    const boxes = () => page.locator(".tabs button").evaluateAll((tabs) => tabs.map((t) => Math.round(t.getBoundingClientRect().left * 4) / 4));
+    const before = await boxes();
+    for (const tab of ["#tab-build", "#tab-disrupt", "#tab-view"]) {
+      await page.locator(tab).click();
+      await expect(page.locator(tab)).toHaveAttribute("aria-selected", "true");
+      expect(await boxes(), tab).toEqual(before);
+    }
+  });
+});

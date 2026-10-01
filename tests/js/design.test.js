@@ -7,7 +7,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { Camera, CD, CD_LIGHT, createWorld, FONT, moodColor, OVERLAY, PALETTE, parseRgba, rgba, View } from "../../web/arail/index.js";
+import { BusTerminal, Camera, CD, CD_LIGHT, createWorld, FONT, moodColor, OVERLAY, PALETTE, parseRgba, rgba, View } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
 /* ---------------------------------------------------------------- WCAG contrast */
@@ -65,6 +65,8 @@ test("design: text on canvas labels stays legible over any camera image", () => 
     assert.ok(contrast(OVERLAY.labelText, rgba(OVERLAY.sign, 0.92), under) >= 4.5, `train line label over ${under}`);
   }
   assert.ok(contrast(OVERLAY.labelText, OVERLAY.sign) >= 4.5, "badge text on Türkis");
+  // the "H" badge of bus stop labels is 12 px text too (it was 4.41:1 with the old green #1f8a3b)
+  assert.ok(contrast(OVERLAY.labelText, OVERLAY.busStop) >= 4.5, `badge text on the bus stop green: ${contrast(OVERLAY.labelText, OVERLAY.busStop).toFixed(2)}`);
 });
 
 /** A canvas context that records what is drawn (enough for labels). */
@@ -74,6 +76,7 @@ function recordingContext(width = 1280, height = 720) {
     get(target, key) {
       if (key === "canvas") return { width, height };
       if (key === "measureText") return (s) => ({ width: 7 * String(s).length });
+      if (/^create\w*Gradient$/.test(key)) return () => ({ addColorStop() {} });
       if (key in target) return target[key];
       return (...args) => log.push({ call: key, args });
     },
@@ -113,6 +116,76 @@ test("design: labels are drawn in Noto Sans on Dunkelblau with Türkis badges; s
   world.getObject("platform-1").drawSelection({ polygon: (points, style) => styles.push(style) });
   assert.equal(styles.length, 1);
   assert.equal(styles[0].stroke, CD.orange);
+});
+
+// colours of the design before the CD (cyan / magenta / amber overlays, signage blue, blue trains, ...)
+const OLD_COLOURS = [
+  [0, 229, 255], [255, 92, 240], [242, 169, 59], [29, 79, 156], [15, 26, 43], [0, 70, 90], [229, 50, 45], [156, 28, 25],
+  [60, 10, 10], [90, 160, 205], [60, 115, 150], [80, 140, 180], [232, 179, 33], [243, 210, 122], [217, 164, 27], [255, 138, 128],
+];
+
+test("design: everything the world draws over the layout is in the CD (labels, signs, vehicles, tracks, feed trains, disruptions, selection)", (t) => {
+  const errors = [];
+  t.mock.method(console, "error", (...args) => errors.push(args));
+  // the 3D stop sign of the bus terminal (yellow disc, green "H") is a real-world sign, drawn by
+  // workstream A3's objects/signs.js; it is not part of this check
+  if (BusTerminal.prototype._stopSign) t.mock.method(BusTerminal.prototype, "_stopSign", () => {});
+  const world = createWorld(readJSON("web/layouts/ebl-lab.json"));
+  Object.assign(world.settings, { showTracks: true, lighting: false });
+  for (let i = 0; i < 90 * 10; i++) world.step(0.1); // passengers, virtual trains and buses at their stops
+  world.disruptions.start({ type: "closure", target: "platform-2" });
+
+  const { ctx, log } = recordingContext();
+  const styles = [], labels = [];
+  const record = (view) => {
+    for (const m of ["polygon", "line", "ribbon"]) {
+      const draw = view[m].bind(view);
+      view[m] = (...args) => (styles.push({ m, style: args[args.length - 1] }), draw(...args));
+    }
+    const label = view.label.bind(view);
+    view.label = (at, text, style = {}) => (labels.push(style), label(at, text, style));
+    return view;
+  };
+  world.draw(record(topView(ctx)), { selected: world.getObject("platform-1") });
+  // trains reported by the control system: on a track, with a heading, and with a position only
+  world.trains.apply({ type: "trains", trains: [
+    { id: "ICE 1", track: "G1", offset_mm: 600, length_mm: 300 },
+    { id: "RB 2", x_mm: 900, y_mm: -200, heading_deg: 10 },
+    { id: "S 3", x_mm: 300, y_mm: -250 },
+  ] });
+  world.draw(record(topView(ctx)));
+  assert.deepEqual(errors, []);
+
+  // no colour of the old design is left in anything drawn
+  const colours = log.filter((e) => e.set === "fillStyle" || e.set === "strokeStyle").map((e) => e.value).filter((v) => typeof v === "string");
+  assert.ok(colours.length > 100, `${colours.length} colours drawn`);
+  for (const c of colours) {
+    const v = parseRgba(c);
+    if (!v) continue;
+    const old = OLD_COLOURS.find((o) => o.every((x, i) => Math.round(v[i]) === x));
+    assert.equal(old, undefined, `colour of the old design: ${c}`);
+  }
+  const fonts = log.filter((e) => e.set === "font").map((e) => e.value);
+  assert.ok(fonts.length > 5 && fonts.every((f) => f.includes(FONT)), `fonts: ${[...new Set(fonts)].join(" | ")}`);
+
+  // the CD roles
+  const strokes = styles.map((s) => s.style.stroke);
+  assert.ok(styles.some((s) => s.style.layer === "overlay" && s.style.stroke === OVERLAY.selection), "selection: Orange 1");
+  assert.ok(strokes.includes(rgba(OVERLAY.tracked, 0.85)), "tracks: light Türkis");
+  assert.ok(styles.filter((s) => s.style.stroke === OVERLAY.tracked && s.style.fill === OVERLAY.trackedFill).length >= 3, "control-system trains: Türkis outlines (track, heading, position)");
+  assert.ok(styles.some((s) => s.m === "polygon" && s.style.fill === rgba(OVERLAY.danger, 0.28)), "closed platform: Rot 1 hatching");
+  const badges = new Set(labels.map((l) => l.badgeColor).filter(Boolean));
+  for (const c of [OVERLAY.sign, OVERLAY.busStop]) assert.ok(badges.has(c), `badge ${c} in ${[...badges].join(", ")}`);
+
+  // every label drawn is legible over a bright and over a dark camera image
+  for (const l of labels) {
+    const background = l.background || OVERLAY.label;
+    const texts = [...(l.colors || []).filter(Boolean), l.color || OVERLAY.labelText];
+    for (const under of ["#ffffff", "#000000"]) {
+      for (const text of texts) assert.ok(contrast(text, background, under) >= 4.5, `${text} on ${background} over ${under}: ${contrast(text, background, under).toFixed(2)}`);
+    }
+    if (l.badge && l.badgeColor) assert.ok(contrast(OVERLAY.labelText, l.badgeColor) >= 4.5, `badge text on ${l.badgeColor}: ${contrast(OVERLAY.labelText, l.badgeColor).toFixed(2)}`);
+  }
 });
 
 /* ---------------------------------------------------------------- app theme */
@@ -163,6 +236,9 @@ test("design: all text colour pairs of the theme have a contrast of at least 4.5
       const c = contrast(T[fg], T[bg], "#ffffff");
       assert.ok(c >= 4.5, `${mode}: ${fg} ${T[fg]} on ${bg} ${T[bg]}: ${c.toFixed(2)}`);
     }
+    // the bus stop number on the departure board: the German bus stop sign, large text (20.8 px bold: 3:1)
+    const stop = contrast(T["--stop-sign-text"], T["--stop-sign"]);
+    assert.ok(stop >= 3, `${mode}: bus stop sign ${stop.toFixed(2)}`);
     // tinted backgrounds of states: pressed palette button, current list entry, disruption
     const tints = [["--warn", 0.1], ["--accent", 0.1], ["--danger", 0.08]];
     for (const [tint, p] of tints) {

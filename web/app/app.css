@@ -37,6 +37,8 @@
   --board-warn: #f0922e;
   --sign: #0A777F; /* platform numbers, as the signs drawn on the layout */
   --sign-text: #ffffff;
+  --stop-sign: #f7d417; /* the German bus stop sign "H" (Zeichen 224): traffic green RAL 6024 on yellow */
+  --stop-sign-text: #008351;
   --overlay: rgba(0, 20, 80, .9); /* controls over the camera image (Dunkelblau) */
   --overlay-text: #eaf1ff;
   --overlay-ok: #36b8bf;
@@ -93,7 +95,9 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .brand { display: flex; align-items: baseline; color: inherit; text-decoration: none; font-weight: 700; font-size: 1.3rem; line-height: 1.2; }
 .brand .sign { background: var(--bar-primary); color: var(--bar-primary-text); padding: 0 5px; border-radius: 3px; margin-right: 1px; }
 .brand small { font-weight: 500; color: var(--bar-muted); letter-spacing: .1em; font-size: .72rem; margin-left: 7px; text-transform: uppercase; }
-.layout-name { color: var(--bar-muted); font-size: .9rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
+/* the layout name takes the free space of the first row and is shortened (…) down to 10ch rather than
+   wrapping the bar onto a second row (that would cost the stage height on tablets) */
+.layout-name { flex: 1000 1 0; color: var(--bar-muted); font-size: .9rem; min-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
 .bar .spacer { flex: 1; }
 .sources { display: flex; gap: 8px; flex-wrap: wrap; }
 .bar .btn { background: transparent; border-color: var(--bar-line); color: var(--bar-text); }
@@ -104,6 +108,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .bar select option { background: var(--surface); color: var(--text); }
 
 .bar .short { display: none; }
+@media (max-width: 1099px) {
+  /* the chair logo needs room: short labels keep the bar in one row on tablets (1024 px) */
+  .bar .long { display: none; }
+  .bar .short { display: inline; }
+}
 @media (max-width: 640px) {
   .bar { gap: 8px; padding-block: 8px 7px; }
   .bar .long { display: none; }
@@ -151,7 +160,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .tabs { display: flex; position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .tabs button { flex: 1 0 auto; border: 0; background: none; padding: 12px 8px 10px; font-weight: 500; font-size: .92rem; color: var(--text-2); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
 .tabs button:hover { color: var(--text); }
-.tabs button[aria-selected="true"] { color: var(--accent-ink); font-weight: 700; border-bottom-color: var(--accent); }
+.tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); } /* same weight: the tabs must not shift */
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
 .section { display: grid; gap: 8px; }
 .section > h2 { margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
@@ -207,7 +216,7 @@ input[type="range"] { width: 100%; }
 .board { background: var(--board); color: var(--board-text); border: 1px solid var(--board-line); border-radius: var(--radius); padding: 12px; display: grid; gap: 14px; }
 .board .stop { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
 .board .num { grid-row: span 4; background: var(--sign); color: var(--sign-text); font-weight: 700; font-size: 1.3rem; min-width: 2.4rem; height: 2.7rem; padding: 0 6px; display: grid; place-items: center; border-radius: 4px; align-self: start; }
-.board .num.bus { background: #f7d417; color: #1f8a3b; } /* the German bus stop sign: green H on yellow */
+.board .num.bus { background: var(--stop-sign); color: var(--stop-sign-text); } /* the German bus stop sign: green H on yellow */
 .board .title { font-weight: 500; font-size: 1rem; }
 .board .figures { display: flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; font-size: .86rem; }
 .board .status { font-size: .84rem; color: var(--board-muted); }

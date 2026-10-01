@@ -26,7 +26,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 The chips at the top left show the tracking state: *Tracking · 5 markers* means the layout is registered using five markers; *holding position* means all markers are hidden for a moment and the last pose is kept (1.5 s).
 
-Each stop has a sign with its number, the number of waiting people, their average mood (green = happy, red = annoyed) and the next event: "Next train in 12 s", "RE 1 boarding (Track 2)", "Signal failure (4 min left)".
+Each stop has a sign with its number, the number of waiting people, their average mood (turquoise = happy, yellow = so-so, red = annoyed) and the next event: "Next train in 12 s", "RE 1 boarding (Track 2)", "Signal failure (4 min left)".
 
 ## Panels
 

@@ -102,6 +102,7 @@ export const OVERLAY = {
   status: CD.gelb, // status line of stop labels ("Next train in 20 s")
   alert: CD_LIGHT.rot, // disruption messages on labels
   sign: CD.tuerkis, // label badges (platform numbers)
+  busStop: "#008351", // badge of bus stop labels: the green of the German bus stop sign "H" (traffic green RAL 6024)
   selection: CD.orange, // selected object, placing preview, markers not in the map
   tracked: CD_LIGHT.tuerkis, // markers in use, tracks, trains reported by the control system
   trackedFill: "rgba(10,119,127,0.36)", // Türkis 1, fill of control-system trains

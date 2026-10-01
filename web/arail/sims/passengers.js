@@ -521,7 +521,7 @@ export class PassengerSimulation extends Simulation {
     const badge = owner.spec.number || (a.kind === "bus" ? "H" : null);
     // the bus badge keeps the green of the German bus stop sign ("H"), platforms get CD Türkis
     view.label([at[0], at[1], view.m(4.5)], lines, {
-      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor: a.kind === "bus" ? "#1f8a3b" : OVERLAY.sign,
+      size: 12, anchor: "bottom", badge: badge || undefined, badgeColor: a.kind === "bus" ? OVERLAY.busStop : OVERLAY.sign,
       colors: [null, fx.messages.length ? OVERLAY.alert : OVERLAY.status], bar: mood, barColor: moodColor(mood), order: 1,
     });
   }
