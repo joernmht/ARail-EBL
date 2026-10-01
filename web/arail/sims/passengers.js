@@ -262,6 +262,9 @@ export class PassengerSimulation extends Simulation {
    * (`clock.demand`), while a control system may send its trains at any time.
    */
   _inService(a) {
+    // a stop of bus lines that no line in operation serves (yet, or any more): no bus comes
+    const lines = this.world.transit?.lines;
+    if (lines && a.docks.length && a.docks.every((d) => d.managed) && ![...lines.values()].some((l) => l.ok && l.visits.some((v) => v.areaId === a.id))) return false;
     if (this.world.clock.demand(a.kind === "bus" ? "bus" : "rail") > 0) return true;
     return this.world.services.forArea(a.id).some((st) => st.mode === "feed" || st.vehicle)
       || a.docks.some((d) => d.managed && this.world.transit?.vehicleAt?.(d.id));

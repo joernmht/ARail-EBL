@@ -57,6 +57,29 @@ test("timetable: a due vehicle waits during a hold and arrives late", () => {
   assert.ok(Math.abs(arrivals[0].delayMin - 100 / 60) < 0.1, `${arrivals[0].delayMin.toFixed(2)} min late`);
 });
 
+test("a dock taken away while a vehicle comes in: no vehicle.departed for a vehicle that never arrived", () => {
+  const world = createWorld(LAB, { seed: 4 });
+  const log = [];
+  for (const name of ["vehicle.arriving", "vehicle.arrived", "vehicle.departed"]) world.events.on(name, (e) => log.push(`${name} ${e.vehicle.id}`));
+  // the bus terminal's timetable bay gets a vehicle; then a bus line takes the bay over
+  const v = world.services.call("bus-terminal-1:bay3");
+  assert.ok(v && v.phase === "arriving");
+  world.addObject({ id: "line-3", type: "bus-line", stops: ["bus-terminal-1", "bus-stop-altmarkt"] });
+  world.step(0.05);
+  assert.ok(!world.services.docks.has("bus-terminal-1:bay3"), "the line serves the bay now");
+  assert.deepEqual(log.filter((e) => e.endsWith(` ${v.id}`)), [`vehicle.arriving ${v.id}`]);
+  // a vehicle standing at a dock that is taken away leaves (vehicle.departed)
+  const w2 = createWorld(LAB, { seed: 4 });
+  const left = [];
+  w2.events.on("vehicle.departed", (e) => left.push(e.vehicle));
+  const standing = w2.services.call("bus-terminal-1:bay3");
+  run(w2, 10);
+  assert.equal(standing.phase, "dwelling");
+  w2.removeObject("bus-terminal-1");
+  w2.step(0.05);
+  assert.ok(left.includes(standing));
+});
+
 test("disruptions: frequency 0 stops all vehicles", () => {
   const reg = registerBuiltins(new Registry());
   reg.registerDisruption({ type: "no-service", targets: "any", effects: () => ({ frequency: 0 }) });

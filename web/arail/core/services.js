@@ -84,7 +84,8 @@ export class ServiceManager {
     }
     for (const [id, st] of this.docks) {
       if (!seen.has(id)) {
-        if (st.vehicle) this._emit("vehicle.departed", st.vehicle);
+        // a vehicle still coming in never stood at the dock: it just does not come
+        if (st.vehicle && st.vehicle.phase !== "arriving") this._emit("vehicle.departed", st.vehicle);
         this.docks.delete(id);
       }
     }

@@ -115,6 +115,64 @@ test("at night, without buses or trains, nobody waits at the stops", () => {
   assert.ok(waiting("bus") + waiting("rail") > 3);
 });
 
+test("nobody waits at a bus stop that no bus line serves", () => {
+  const w = world([...STREET, { id: "l", type: "bus-line", number: "62", stops: ["a", "c"] }], { simulations: [{ type: "passengers", base_rate: 2 }] });
+  const pax = w.simulations[0];
+  const waiting = (stop) => [...pax.crowds.values()].filter((c) => c.area.owner.id === stop).reduce((s, c) => s + c.people.length, 0);
+  w.speed = 10;
+  for (let i = 0; i < 1000; i++) w.step(0.1);
+  assert.ok(waiting("a") > 3, `${waiting("a")} people at a stop of the line`);
+  assert.equal(waiting("b"), 0, "no bus ever comes to b");
+  // the line is taken away: the people go
+  w.removeObject("l");
+  for (let i = 0; i < 1000; i++) w.step(0.1);
+  assert.equal(waiting("a") + waiting("c"), 0);
+});
+
+test("a stop taken off the line while a bus closes its doors there: vehicle.departing once, then vehicle.departed", () => {
+  const w = world([...STREET, { id: "l", type: "bus-line", number: "62", headway_s: 120, stops: ["a", "b", "c"] }]);
+  const events = [];
+  for (const name of ["vehicle.arrived", "vehicle.departing", "vehicle.departed"]) w.events.on(name, (e) => events.push(`${e.vehicle.id} ${name} ${e.dock.id}`));
+  w.speed = 1;
+  const closing = () => w.transit.buses.find((b) => b.phase === "departing" && b.doorsLeft > 0 && b.dock?.id.startsWith("b:"));
+  for (let i = 0; i < 20000 && !closing(); i++) w.step(0.1);
+  const bus = closing();
+  assert.ok(bus, "a bus closes its doors at Centre");
+  const dock = bus.dock.id;
+  w.getObject("l").set({ stops: ["a", "c"] });
+  for (let i = 0; i < 100; i++) w.step(0.1);
+  const mine = events.filter((e) => e.startsWith(`${bus.id} `) && e.endsWith(` ${dock}`)).map((e) => e.split(" ")[1]);
+  assert.deepEqual(mine.slice(-3), ["vehicle.arrived", "vehicle.departing", "vehicle.departed"]);
+});
+
+test("buses on a part of the route that is taken away are not put on top of each other", () => {
+  const w = world([
+    { id: "main", type: "road", name: "Main street", points: [[0, 0], [4600, 0]] },
+    { id: "side", type: "road", name: "Side street", points: [[2000, 0], [2000, 2500]] },
+    { id: "a", type: "bus-stop", name: "West", position: [500, -70], side: "both" },
+    { id: "n", type: "bus-stop", name: "North", position: [2070, 2000], side: "both" },
+    { id: "c", type: "bus-stop", name: "East", position: [3100, -70], side: "both" },
+    { id: "l", type: "bus-line", number: "62", headway_s: 40, stops: ["a", "n", "c"] },
+  ]);
+  w.speed = 1;
+  w.step(0.1);
+  const onSide = w.transit.buses.filter((b) => b._pose.front[1] > 400);
+  assert.ok(onSide.length >= 3, `${onSide.length} buses in the side street`);
+  // the line does not go into the side street any more: its buses come back to the main street
+  w.getObject("l").set({ stops: ["a", "c"] });
+  for (let t = 0; t < 30; t += 0.1) {
+    w.step(0.1);
+    const B = w.transit.buses;
+    for (let i = 0; i < B.length; i++) {
+      for (let j = i + 1; j < B.length; j++) {
+        const p = B[i]._pose, q = B[j]._pose;
+        const d = Math.hypot(p.front[0] - q.front[0], p.front[1] - q.front[1]);
+        assert.ok(d > w.transit.mm(6) || dot2(p.dir, q.dir) < 0, `${B[i].id} and ${B[j].id} on one spot (${d.toFixed(1)} mm apart) ${t.toFixed(1)} s after the change`);
+      }
+    }
+  }
+});
+
 test("two vehicles on one spot do not wait for each other", () => {
   const u = { vehicle: { id: "u" }, front: [100, 0], rear: [100, 0], dir: [1, 0] };
   const v = { vehicle: { id: "v" }, front: [100, 0], rear: [100, 0], dir: [1, 0] };
@@ -124,6 +182,19 @@ test("two vehicles on one spot do not wait for each other", () => {
   const ahead = { ...v, front: [130, 0], rear: [101, 0] };
   assert.equal(gapAhead(u.vehicle, u.front, u.dir, [u, ahead], 200, 15), 1);
   assert.equal(gapAhead(ahead.vehicle, ahead.front, ahead.dir, [u, ahead], 200, 15), Infinity);
+});
+
+test("two vehicles side by side after a turn: only one of them waits", () => {
+  // from a gridlock of the lab example (H0, cars): one goes straight on to the west, the other turns
+  // left into the same lane; their fronts are level, each a little ahead along its own direction
+  const lane = (1.3 * 1000) / 87, look = 200;
+  const straight = { vehicle: { id: "car2763" }, front: [656, -381], rear: [706, -381], dir: [-1, 0] };
+  const d = [655 - 673, -384 + 416], l = Math.hypot(...d);
+  const turning = { vehicle: { id: "car2754" }, front: [655, -384], rear: [673, -416], dir: [d[0] / l, d[1] / l] };
+  const users = [straight, turning];
+  const gaps = [straight, turning].map((u) => gapAhead(u.vehicle, u.front, u.dir, users, look, lane));
+  assert.ok(gaps.some((g) => g > 0), `both wait for each other for good: gaps ${gaps}`);
+  assert.ok(gaps.some((g) => g === 0), "one of them gives way");
 });
 
 test("cars stay where they are when the streets or the scale change, and keep moving", () => {

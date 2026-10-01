@@ -89,6 +89,23 @@ test("layout JSON round trip keeps objects, markers and scenarios", () => {
   assert.equal(again.objects.length, world.objects.length);
 });
 
+test("the same seed gives the same simulation, also for a layout loaded again in the same program", () => {
+  // vehicles are numbered program-wide: the trains and buses of the second world have other ids
+  const people = (w) => w.simulations.find((s) => s.constructor.type === "town").agents.map((a) => `${a.id} ${a.state} ${a.inside} ${a.pos?.map((x) => x.toFixed(1))}`);
+  const trace = (w) => {
+    w.speed = 30;
+    const out = [];
+    for (let i = 0; i < 15; i++) {
+      run(w, 50, 0.1); // 10 clock minutes
+      out.push(people(w).join("\n"));
+    }
+    return out;
+  };
+  const a = trace(createWorld(LAB, { seed: 5 }));
+  const b = trace(createWorld(LAB, { seed: 5 }));
+  a.forEach((s, i) => assert.equal(b[i], s, `${(i + 1) * 10} clock minutes after 07:00`));
+});
+
 test("passengers arrive, trains come and people board and alight", () => {
   const world = createWorld(LAB, { seed: 7 });
   const events = {};

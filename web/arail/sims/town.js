@@ -313,6 +313,7 @@ export class TownSimulation extends Simulation {
     for (const a of this.agents) {
       a.planDay = -1;
       this._ensurePlan(a);
+      a.inside = null; // counted afresh in the new occupancy (leaving the old building must not subtract)
       a.trip = null;
       a.person = null;
       a.vehicle = null;
@@ -767,7 +768,8 @@ export class TownSimulation extends Simulation {
     if (!due.length) return;
     const pax = this.passengers;
     const n = Math.min(due.length, 14);
-    const rng = createRng(hash(this.world.seed, vehicle.id || "", this.world.time.toFixed(1)));
+    // by dock, not by vehicle: vehicle ids count on over all worlds (a layout loaded again), so the same seed would not give the same day
+    const rng = createRng(hash(this.world.seed, dock.id, this.world.time.toFixed(1)));
     const chosen = [];
     for (let i = 0; i < n; i++) chosen.push(due.splice(rng.int(due.length), 1)[0]);
     for (const a of chosen) {

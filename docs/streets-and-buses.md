@@ -70,6 +70,9 @@ on its signs).
   the nearest streets. Bays that no line uses keep the terminal's own timetable buses.
 - Disruptions work on line stops too: a *closure* makes buses pass the stop, a *delay* holds
   them at the stop, *cancellations* cancel departures from a terminus.
+- Passengers come to a bus stop only while a bus line in operation serves it: nobody waits at a
+  stop without a line (or whose lines have problems), and the people waiting there go when its
+  last line is taken away.
 
 ## Road traffic
 

@@ -41,6 +41,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Mistyped building sizes (e.g. a width of 1e6 m) froze the app; sizes now stay within the ranges of their parameters.
 - Overlapping roads were drawn darker where they overlap.
 - The hidden file inputs made the page much taller than the Build panel.
+- A dock taken away (its object removed, a bay given to a bus line) while a vehicle was still coming in reported `vehicle.departed` for a vehicle that never arrived.
 
 ## [0.1.0] – 2026-09-30
 

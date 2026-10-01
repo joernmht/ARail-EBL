@@ -106,6 +106,28 @@ test("town: setting the clock re-places everybody; runs are deterministic", () =
   assert.equal([...pax.crowds.values()].flatMap((c) => c.people).filter((p) => p.agent).length, 0);
 });
 
+test("town: the occupancy of a building is the people inside, also after the clock was set", () => {
+  const world = townWorld();
+  const t = town(world);
+  const check = (when) => {
+    const inside = new Map();
+    for (const a of t.agents) if (a.state === "inside") inside.set(a.inside, (inside.get(a.inside) || 0) + 1);
+    for (const id of ["home-1", "home-2", "office", "school", "shop"]) {
+      const want = (inside.get(id) || 0) * t._personWeight();
+      assert.ok(Math.abs(world.occupancy.get(id) - want) < 1e-6, `${when}: ${id} occupancy ${world.occupancy.get(id)}, people inside ${want}`);
+    }
+  };
+  runUntil(world, "09:30");
+  check("09:30");
+  // a jump re-places everybody: at home late in the evening, at work and school in the morning
+  world.setTime("22:00");
+  world.step(0.1);
+  check("set to 22:00");
+  world.setTime("10:00");
+  world.step(0.1);
+  check("set to 10:00");
+});
+
 test("town: works without platforms, schools or shops", () => {
   const world = townWorld({
     objects: [

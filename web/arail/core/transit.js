@@ -21,7 +21,7 @@
  * fills with the people on board).
  * @module arail/core/transit
  */
-import { clamp, createRng, cross2, dist2, dot2, polylineAt, polylineProject, sub2, unit2 } from "./math.js";
+import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, sub2, unit2 } from "./math.js";
 import { joinPaths } from "./network.js";
 import { CD, PALETTE, grey, mix, shade } from "./colors.js";
 
@@ -192,9 +192,10 @@ export function gapAhead(self, front, dir, users, lookMM, laneMM) {
     const d = sub2(o.rear, front);
     const along = dot2(d, dir);
     if (along < -laneMM && best > 0 && dot2(o.dir, dir) >= 0.3) {
-      // side by side in the lane (e.g. both turned into it at a junction): the one behind waits
+      // side by side in the lane (e.g. both turned into it at a junction): the one behind waits;
+      // "behind" along both directions, so that two vehicles in different directions do not both wait
       const f = sub2(o.front, front);
-      if (dot2(f, dir) > 0 && Math.abs(cross2(dir, f)) <= laneMM) best = 0;
+      if (dot2(f, [dir[0] + o.dir[0], dir[1] + o.dir[1]]) > 0 && Math.abs(cross2(dir, f)) <= laneMM) best = 0;
       continue;
     }
     if (along < -laneMM || along > lookMM || along >= best) continue;
@@ -354,7 +355,7 @@ export class Transit {
       if (o.constructor.type !== "bus-line" || !o.geometry) continue;
       this.lines.set(o.id, this._buildLine(o, net, old.get(o.id)));
     }
-    const keep = [];
+    const keep = [], moved = new Set();
     for (const bus of this.buses) {
       const line = this.lines.get(bus.lineId);
       if (!line?.ok) {
@@ -364,10 +365,25 @@ export class Transit {
       bus.line = line.label;
       bus.colour = line.color;
       const before = old.get(bus.lineId);
-      if (before?.signature !== line.signature) this._reattach(bus, line, before);
+      if (before?.signature !== line.signature) {
+        this._reattach(bus, line, before);
+        moved.add(bus);
+      }
       keep.push(bus);
     }
-    this.buses = keep;
+    // a bus put back where another one is already (both were on a part of the route that was taken
+    // away) would drive through it for good: it goes to the depot instead
+    const placed = keep.filter((b) => !moved.has(b));
+    this.buses = keep.filter((bus) => {
+      if (!moved.has(bus)) return true;
+      const me = this._pose(bus, this.lines.get(bus.lineId));
+      if (placed.some((o) => o._pose && onTop(me, o._pose, this.mm(1.5)))) {
+        this._drop(bus);
+        return false;
+      }
+      placed.push(bus);
+      return true;
+    });
     for (const line of this.lines.values()) if (line.ok && !old.get(line.id)?.ok) this._populate(line);
   }
 
@@ -663,7 +679,8 @@ export class Transit {
       bus.dock = visit.dock;
       return;
     }
-    if (atStop) this._emit("vehicle.departing", bus, atStop);
+    // (closing the doors, it has said vehicle.departing already)
+    if (atStop && bus.phase === "dwelling") this._emit("vehicle.departing", bus, atStop);
     if (bus._leaving || atStop) this._emit("vehicle.departed", bus, bus._leaving?.dock || atStop);
     bus._leaving = null;
     bus.s = front ? polylineProject(line.circuit.points, front, line.circuit.lengths).s : 0;
@@ -943,6 +960,9 @@ export class Transit {
     if (fx(target).closed && this.meters(this._ahead(line, bus.s, target.s)) < 25) {
       bus.next = (bus.next + 1) % V.length;
       target = V[bus.next];
+      // the next stop is announced (vehicle.arriving) when the bus gets near it
+      bus._arrivingSent = false;
+      if (bus.phase === "arriving") bus.phase = "driving";
     }
     const d = this._ahead(line, bus.s, target.s), dM = this.meters(d);
     const seg = Math.min(c.speeds.length - 1, Math.max(0, segmentIndex(c.lengths, bus.s)));
@@ -1097,6 +1117,11 @@ export class Transit {
       view.label([at[0], at[1], m(4.4)], text, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2 });
     }
   }
+}
+
+/** Do two road users ({front, rear, dir}) going the same way overlap (one's front within `tol` mm of the other's centre line)? */
+function onTop(a, b, tol) {
+  return dot2(a.dir, b.dir) > 0.5 && (pointSegment(a.front, b.rear, b.front).distance < tol || pointSegment(b.front, a.rear, a.front).distance < tol);
 }
 
 /** Index of the polyline segment containing arc length s. */

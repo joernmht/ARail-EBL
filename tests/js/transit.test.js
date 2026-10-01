@@ -163,6 +163,33 @@ test("a bus serves every stop in order: arriving, arrived (doors open), departin
   }
 });
 
+test("a closed stop is passed: the next stop still gets vehicle.arriving before vehicle.arrived", () => {
+  const w = world([...STREET, { id: "l", type: "bus-line", number: "62", headway_s: 120, stops: ["a", "b", "c"] }]);
+  const log = recordEvents(w);
+  w.disruptions.start({ type: "closure", target: "b", duration: null });
+  // a bus is "arriving" (also on the boards) only on its last 60 m before a stop
+  const line = () => w.transit.lines.get("l");
+  let far = null;
+  w.speed = 1;
+  for (let t = 0; t < 900; t += 0.1) {
+    w.step(0.1);
+    for (const bus of w.transit.buses) {
+      const m = w.transit.meters(w.transit._ahead(line(), bus.s, line().visits[bus.next].s));
+      if (bus.phase === "arriving" && m > 61) far ||= `${bus.id} arriving at ${line().visits[bus.next].dockId} from ${m.toFixed(0)} m`;
+    }
+  }
+  assert.equal(far, null);
+  const arrivals = log.filter((e) => e.name === "vehicle.arrived");
+  assert.ok(arrivals.length >= 4, `${arrivals.length} arrivals`);
+  assert.ok(!arrivals.some((e) => e.area.startsWith("b:")), "no stop at the closed stop");
+  for (const e of arrivals) {
+    // the last event of this bus before it arrived announced this stop
+    const before = log.slice(0, log.indexOf(e)).filter((x) => x.bus === e.bus && x.name !== "vehicle.departed");
+    const last = before[before.length - 1];
+    assert.ok(last && last.name === "vehicle.arriving" && last.dock === e.dock, `${e.bus} arrived at ${e.dock} after ${last?.name} ${last?.dock}`);
+  }
+});
+
 test("passengers board line buses at a stop (with a line filter) and the timetable leaves managed docks alone", () => {
   const w = world([...STREET, { id: "l", type: "bus-line", number: "62", headway_s: 120, stops: ["a", "b", "c"] },
     { id: "term", type: "bus-terminal", position: [1500, 1500], bays: 2 }]);
