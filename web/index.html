@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ARail-EBL</title>
-<meta name="description" content="Open-source augmented reality for model railway labs: platforms with passengers, bus terminals, scenery, disruptions and a control-system interface, in the browser.">
+<meta name="description" content="Open-source augmented reality for model railway labs: platforms with passengers, a small town with streets and bus lines through day and night, a flyover for building on a grid, disruptions and a control-system interface, in the browser.">
 <meta property="og:title" content="ARail-EBL">
-<meta property="og:description" content="Augmented reality for model railway labs, in the browser.">
+<meta property="og:description" content="Augmented reality for model railway labs, in the browser: trains, passengers, a town with buses, day and night.">
 <meta property="og:image" content="assets/ebl-lab-ar.jpg">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -109,6 +109,20 @@ section { padding-block: 64px; }
 .feature .sym svg { width: 26px; height: 26px; }
 .feature p { color: var(--ink-2); font-size: .96rem; }
 .feature code { font-family: var(--mono); font-size: .82em; }
+kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--ink); }
+
+/* the town: screenshots from the flyover and a day on the fast clock */
+.gallery { display: grid; gap: 16px; }
+@media (min-width: 820px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+.shot { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.shot img { width: 100%; height: auto; }
+.shot figcaption { padding: 12px 16px 16px; color: var(--ink-2); font-size: .94rem; }
+.shot figcaption b { color: var(--ink); }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.times { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.times li { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.times time { font-family: var(--mono); font-size: .85rem; font-weight: 600; color: var(--accent-text); }
+.times span, .day p { color: var(--ink-2); font-size: .94rem; }
 
 .pipeline { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
 .pipeline div { padding: 18px 18px 20px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
@@ -172,16 +186,16 @@ footer a { color: inherit; }
       <div>
         <p class="eyebrow">Open source · runs in the browser</p>
         <h1 id="intro">Augmented reality for <em>model railway labs</em></h1>
-        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers, bus terminals, houses and trees on it, simulates delays and closures, and shows the trains your control system reports.</p>
+        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers and a small town with streets and bus lines on it, runs the town through day and night, simulates delays and closures, and shows the trains your control system reports.</p>
         <div class="ctas">
           <a class="btn primary" href="app/">Open the app</a>
           <a class="btn ghost" href="markers/">Print markers</a>
           <a class="btn ghost" href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a>
         </div>
-        <p class="facts"><span>H0 · TT · N · any scale</span><span>ArUco &amp; AprilTag markers</span><span>No install, no calibration board</span></p>
+        <p class="facts"><span>H0 · TT · N · any scale</span><span>ArUco &amp; AprilTag markers</span><span>No install, no calibration board</span><span>Fast clock, day and night</span></p>
       </div>
       <figure class="compare" id="compare">
-        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: two platforms with waiting passengers and trains, a bus station with a bus, houses, trees and a field." width="1600" height="1205">
+        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, and a street with a zebra crossing on a virtual table module beyond the front edge of the table." width="1600" height="1205">
         <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
         <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
         <span class="divider" aria-hidden="true"></span>
@@ -202,22 +216,37 @@ footer a { color: inherit; }
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h18M5 13h14M8 13V7h8v6M6 17l-1 3M18 17l1 3"/></svg></div>
           <h3>Platforms with passengers</h3>
-          <p>Lay a platform between two markers. Passengers arrive, wait at the edge, board and alight through the doors. Their colour shows their mood, from green to red.</p>
+          <p>Lay a platform between two markers. Passengers arrive, wait where their train stops, board and alight through the doors. Their colour shows their mood, from Türkis to red.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V10l5-3v14M8 21V3h11v18M2 21h20"/><path d="M11.5 7h4M11.5 11h4M11.5 15h4"/></svg></div>
+          <h3>A small German town</h3>
+          <p>Plattenbau (WBS&nbsp;70, QP&nbsp;61, P2), Gründerzeit blocks, an estate of single-family houses, a school, a supermarket, offices and a workshop, in the greys of an architectural model. Trees, fields and water around them.</p>
         </article>
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M7 20v-3M17 20v-3"/></svg></div>
-          <h3>Bus terminals</h3>
-          <p>Bays along a bus lane, shelters and stop signs. Buses come on a timetable, or more often when a rail replacement service is running.</p>
+          <h3>Streets and bus lines</h3>
+          <p>Streets form a network with sidewalks, crossings and street lamps. Bus lines run along them from stop to stop, back and forth or round a ring (Ring&nbsp;↻, Ring&nbsp;↺), also from bus terminals; cars come and go at the edges.</p>
         </article>
         <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l6-5 6 5v9H3zM15 20h6v-7l-3-3"/><path d="M7 20v-4h4v4"/></svg></div>
-          <h3>Houses and landscape</h3>
-          <p>Buildings with floors and roofs, single trees and forests, fields, water and roads. Tap to place them, drag to move them.</p>
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></div>
+          <h3>Day and night</h3>
+          <p>A fast clock runs the town: residents walk, take the bus or the train to work, school and shopping, and come home. Rush hours in the morning and evening; at night windows and street lamps light up.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10l4 12H3z"/><path d="M12 7v12M5.3 13h13.4M9.5 7l-2 12M14.5 7l2 12"/></svg></div>
+          <h3>Flyover and table modules</h3>
+          <p>Press <kbd>F</kbd> to fly a virtual camera over the layout, without the camera image. Build on a snapping grid next to the orthophoto of the real table, and add virtual table modules beyond its edges.</p>
+        </article>
+        <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M8 8h3v3H8zM13 13h3v3h-3zM13 8h3M8 16h3"/></svg></div>
+          <h3>Markers, surveyed once</h3>
+          <p>Stick markers over the whole table and film it: <code>arail-survey</code> measures every marker and writes a fixed, locked layout with an orthophoto. Markers on wagons can be set as moving and stay out of the map.</p>
         </article>
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.5"/></svg></div>
           <h3>Disruptions and scenarios</h3>
-          <p>Delays, cancellations, closures, signal failures, crowd surges and replacement buses, started by hand or scripted as scenarios for teaching.</p>
+          <p>Delays, cancellations, closures, signal failures, crowd surges and replacement buses, at platforms and bus stops, started by hand or scripted as scenarios for teaching.</p>
         </article>
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 10h3l2-3 2 6 2-3h1"/></svg></div>
@@ -233,6 +262,42 @@ footer a { color: inherit; }
     </div>
   </section>
 
+  <section id="town" style="padding-top: 0">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>A town on the table</h2>
+        <p class="lead">The example layout extends the lab table with eight virtual table modules: a town with two ring bus lines, a station, fields and a wood. Seen here in the flyover, with the orthophoto of the real table behind it.</p>
+      </div>
+      <div class="gallery">
+        <figure class="shot">
+          <img src="assets/town-day.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="Flyover of the example layout by day: a grey town with Gründerzeit blocks, a WBS 70 Plattenbau, a school with a sports field, an office building, an estate of single-family houses, a supermarket, a workshop and fields on table modules in front of the lab table, which shows its orthophoto. Yellow buses stand at the stops.">
+          <figcaption><b>08:10, by day.</b> The town on its table modules in front of the real table. People walk to work and school; the buses of lines 62 and 85 serve the stops.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/town-night.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="The same view at 21:30: the town lies in dark blue; lit windows, street lamps and the lights of a bus glow.">
+          <figcaption><b>21:30, the same view at night.</b> Windows light up where people are at home; street lamps, buses and cars switch on their lights.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/bus-stop.jpg" width="1200" height="750" loading="lazy" decoding="async" alt="Close-up of a yellow bus of line 62 at the stop Schule: people stand at its doors, the board above the stop reads Schule, 35 people, 70 %, Bus 62 Ring counter-clockwise boarding, Bus 85 Ring clockwise in 2 min.">
+          <figcaption><b>Line 62 at the stop Schule.</b> People get off and on at the doors; the board shows the next bus of each line.</figcaption>
+        </figure>
+        <article class="day" aria-labelledby="day-title">
+          <h3 id="day-title">A day in the town</h3>
+          <ol class="times">
+            <li><time datetime="05:45">05:45</time><span>Commuters walk or take the bus to the station and leave by train.</span></li>
+            <li><time datetime="06:30">06:30</time><span>Rush hour: workers head for the offices, the workshop, the shops and the school; visitors arrive by train.</span></li>
+            <li><time datetime="07:00">07:00</time><span>Pupils go to school, the supermarket opens, seniors go shopping later in the morning.</span></li>
+            <li><time datetime="12:30">12:30</time><span>School is out for the first pupils.</span></li>
+            <li><time datetime="15:30">15:30</time><span>Work ends, some go shopping on the way home; from 16:00 the commuters come back by train.</span></li>
+            <li><time datetime="20:30">20:30</time><span>Sunset: lit windows, street lamps, head and tail lights.</span></li>
+            <li><time datetime="01:00">01:00</time><span>No trains and no buses until 04:30.</span></li>
+          </ol>
+          <p>The clock runs twelve times faster than the trains and people, and can be set and stopped in the Simulate panel. <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/day-and-night.md">Day and night</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/streets-and-buses.md">Streets and bus lines</a></p>
+        </article>
+      </div>
+    </div>
+  </section>
+
   <section id="how" style="padding-top: 0">
     <div class="wrap">
       <div class="section-head">
@@ -240,11 +305,11 @@ footer a { color: inherit; }
         <p class="lead">Printed square markers lie flat on the layout. From the camera image alone, without a calibration board, ARail works out where the layout plane is and draws on it.</p>
       </div>
       <div class="pipeline">
-        <div><b>Markers</b><span>ArUco or AprilTag codes, 30&nbsp;mm, anywhere on the layout, any rotation.</span></div>
-        <div><b>Marker map</b><span>Their positions are surveyed from the images and stored with the layout.</span></div>
-        <div><b>Camera pose</b><span>All visible markers give one stable view of the plane; the focal length is estimated too.</span></div>
-        <div><b>Virtual layout</b><span>Platforms, bus terminals and scenery from a JSON layout file.</span></div>
-        <div><b>Simulation</b><span>Trains, buses, passengers and disruptions, in prototype metres and seconds.</span></div>
+        <div><b>Markers</b><span>ArUco or AprilTag codes, 30&nbsp;mm, stuck anywhere on the layout, any rotation.</span></div>
+        <div><b>Marker map</b><span>Measured from the images as the camera moves, or surveyed once from a video and locked.</span></div>
+        <div><b>Camera pose</b><span>All visible markers give one stable view of the plane; the focal length is estimated too. The flyover uses a virtual camera instead.</span></div>
+        <div><b>Virtual layout</b><span>Platforms, a town, streets and bus lines from a JSON layout file, also on table modules beyond the real table.</span></div>
+        <div><b>Simulation</b><span>Trains, buses, cars, passengers and residents on a fast clock, in prototype metres and seconds.</span></div>
       </div>
     </div>
   </section>
@@ -253,14 +318,15 @@ footer a { color: inherit; }
     <div class="wrap split">
       <div class="section-head">
         <h2>Set up your lab</h2>
-        <p class="lead">The first four steps take an afternoon. The control system can follow later.</p>
+        <p class="lead">One visit to the lab gives a fixed layout; the <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">lab-session guide</a> has the checklist. The control system can follow later.</p>
       </div>
       <ol class="steps">
-        <li><span class="num">1</span><div><h3>Print markers</h3><p>Use the <a href="markers/">marker sheets</a> and check the 100&nbsp;mm bar with a ruler. The black square is the marker size.</p></div></li>
-        <li><span class="num">2</span><div><h3>Lay them out</h3><p>One marker at each end of every platform, more across the layout. Wherever the camera looks, one or two should be in view.</p></div></li>
-        <li><span class="num">3</span><div><h3>Open the app</h3><p>Take a photo, record a video or start the live camera. Unknown markers are measured automatically when they are seen next to known ones.</p></div></li>
-        <li><span class="num">4</span><div><h3>Build and export</h3><p>Add platforms, a bus terminal and scenery in the Build panel, then export the layout file and keep it in your fork.</p></div></li>
-        <li><span class="num">5</span><div><h3>Connect the control system</h3><p>Run <code>arail-bridge</code> next to it with an adapter for your system. The simulated control system shows the flow without one.</p></div></li>
+        <li><span class="num">1</span><div><h3>Print sticker sheets</h3><p>Print the <a href="markers/">marker sheets</a> on matte sticker paper and check the 100&nbsp;mm bar with a ruler. The black square is the marker size.</p></div></li>
+        <li><span class="num">2</span><div><h3>Stick them on</h3><p>Marker 0 at a table corner, aligned with the edges, then one every 30–40&nbsp;cm, at both ends of every platform and at the table corners.</p></div></li>
+        <li><span class="num">3</span><div><h3>Film the layout</h3><p>Slow passes along and across the table with the phone's main camera, tilted 40–60°, two or three markers always in view: two to five minutes of video.</p></div></li>
+        <li><span class="num">4</span><div><h3>Survey it</h3><p><code>arail-survey</code> measures every marker and writes a fixed, locked layout, a report and an orthophoto of the table. For a quick check in the lab: Build → Marker map → Survey a video.</p></div></li>
+        <li><span class="num">5</span><div><h3>Build in the flyover</h3><p>Press <kbd>F</kbd>: the orthophoto lies on the table. Add table modules beyond its edges, platforms, streets, bus lines and houses on the grid, then export the layout file and keep it in your fork.</p></div></li>
+        <li><span class="num">6</span><div><h3>Connect the control system</h3><p>Run <code>arail-bridge</code> next to it with an adapter for your system. The simulated control system shows the flow without one.</p></div></li>
       </ol>
     </div>
   </section>
@@ -300,7 +366,7 @@ footer a { color: inherit; }
   <section id="status" style="padding-top: 0">
     <div class="wrap">
       <div class="departures">
-        <header><h3>Departures · project status</h3><span>as of September 2026</span></header>
+        <header><h3>Departures · project status</h3><span>as of October 2026</span></header>
         <div class="table-wrap" tabindex="0" role="region" aria-label="Project status">
           <table>
             <thead><tr><th>Version</th><th>Destination</th><th>Status</th></tr></thead>
@@ -308,9 +374,14 @@ footer a { color: inherit; }
               <tr><td>0.1</td><td class="dest">Tracking without a calibration board<small>Marker map survey, focal length estimate, tested on the lab photo</small></td><td><span class="pill arrived">Arrived</span></td></tr>
               <tr><td>0.1</td><td class="dest">Platforms, bus terminals, scenery, editor<small>Layout files, plugins, passenger simulation</small></td><td><span class="pill arrived">Arrived</span></td></tr>
               <tr><td>0.1</td><td class="dest">Disruptions, scenarios, control-system bridge<small>Simulated, replayed and TCP JSON feeds</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">Live sessions in the EBL<small>Phones, webcams and a projector on the real layout</small></td><td><span class="pill boarding">Boarding</span></td></tr>
+              <tr><td>next</td><td class="dest">A town through day and night<small>German house types, fast clock, residents on foot, by bus and by train</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">Streets, bus lines and road traffic<small>Road network, bus stops, ring and back-and-forth lines, cars</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">Flyover and table modules<small>Virtual camera, snapping grid, orthophoto of the real table</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">A fixed layout from one video<small><code>arail-survey</code>: locked marker map, report and orthophoto; Survey a video in the app</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">The app in the chair's corporate design<small>Türkis, Noto Sans and the logo of the Chair of Railway Operations</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">Lab session and live sessions in the EBL<small>Stickers on the whole table, one video, a fixed layout; then phones, webcams and a projector</small></td><td><span class="pill boarding">Boarding</span></td></tr>
               <tr><td>next</td><td class="dest">Adapter for the EBL control system<small>Real train positions instead of the simulator</small></td><td><span class="pill planned">Scheduled</span></td></tr>
-              <tr><td>later</td><td class="dest">Occlusion by real trains, more vehicle types<small>Ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
+              <tr><td>later</td><td class="dest">Virtual loads on moving markers, occlusion by real trains<small>Moving markers are already kept out of the map and tracked; ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -322,6 +393,7 @@ footer a { color: inherit; }
 <footer>
   <div class="wrap">
     <p>ARail-EBL is open source under the MIT license. Marker detection uses <a href="https://github.com/damianofalcioni/js-aruco2">js-aruco2</a>; the tools use <a href="https://opencv.org">OpenCV</a>.</p>
+    <p>The app follows the corporate design of the Chair of Railway Operations at TU Dresden. The chair's logo is © TU Dresden and not covered by the MIT license (<a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
     <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a></p>
   </div>
 </footer>
