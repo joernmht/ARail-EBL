@@ -238,7 +238,7 @@ export class Panels {
         h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`), h("span", {}, `mood ${(s.mood * 100).toFixed(0)} %`), h("span", {}, `in ${s.inPerMin}/min · out ${s.outPerMin}/min`)),
         h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
-        h("div", { class: "calls" }, docks.map((st) => h("button", {
+        h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => h("button", {
           class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed",
           onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
         }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`))),

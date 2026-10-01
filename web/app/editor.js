@@ -1,5 +1,5 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
-import { applyH, dist2, FONT, OVERLAY, pointSegment, rgba, snapToGrid, toDeg } from "../arail/index.js";
+import { applyH, dist2, FONT, OVERLAY, pointSegment, polylineAt, polylineProject, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
@@ -10,8 +10,9 @@ const HINTS = {
   polygon: "Tap the corners one after the other, then press Finish.",
   polyline: "Tap the points along the line, then press Finish.",
   rect: "Drag from one corner to the opposite one, or tap both corners.",
+  stops: "Tap the stops in the order the buses serve them, then press Finish.",
 };
-const PLACEMENT_HINTS = { point: "tap once", segment: "two ends", polygon: "outline", polyline: "line", rect: "two corners" };
+const PLACEMENT_HINTS = { point: "tap once", segment: "two ends", polygon: "outline", polyline: "line", rect: "two corners", stops: "tap stops" };
 export const SCALES = [
   [87, "H0 (1:87)"], [120, "TT (1:120)"], [160, "N (1:160)"], [220, "Z (1:220)"], [64, "S (1:64)"],
   [45, "0 (1:45)"], [32, "1 (1:32)"], [22.5, "G (1:22.5)"],
@@ -106,8 +107,15 @@ export class Editor {
 
   /** Where a tap at p places the next point: on a marker (segment ends), on the grid, or at p. */
   _placePoint(p, e) {
-    const marker = this.placing?.cls.placement === "segment" ? this.nearestMarker(p, 15) : null;
+    const cls = this.placing?.cls;
+    if (cls?.placement === "stops") return { stopAt: p }; // bus lines pick stops, see _addStop
+    const marker = cls?.placement === "segment" ? this.nearestMarker(p, 15) : null;
     if (marker != null) return { marker };
+    // streets connect: snapping to street ends and centre lines wins over the grid
+    if (typeof cls?.prototype.roadInfo === "function" && !e?.altKey) {
+      const s = this._snapToStreets(p);
+      if (s !== p) return { xy: [round1(s[0]), round1(s[1])] };
+    }
     const q = this.snap(p, e);
     return { xy: [round1(q[0]), round1(q[1])] };
   }
@@ -261,13 +269,45 @@ export class Editor {
     return !!obj && this.world.objects.includes(obj);
   }
 
-  /** Add a placing point ({xy} or {marker}); point, segment and rect placements finish by themselves. */
+  /** Add a placing point ({xy}, {marker} or, for bus lines, {stopAt}); point, segment and rect placements finish by themselves. */
   _addPoint(q) {
     const { cls, points } = this.placing;
+    if (cls.placement === "stops") return this._addStop(q.stopAt);
     points.push(q);
     const n = points.length;
     if (cls.placement === "point" || ((cls.placement === "segment" || cls.placement === "rect") && n === 2)) this.finish();
     else this.renderPlacing();
+  }
+
+  /** Streets connect: a tap near the end or a corner of a street snaps to it, a tap on a street to its centre line. */
+  _snapToStreets(p) {
+    const tol = (12 * this.app.px()) / Math.max(1e-6, this.pxPerMM(p));
+    let best = null;
+    const near = (q) => {
+      const d = dist2(p, q);
+      if (d <= tol && (!best || d < best.d)) best = { d, q };
+    };
+    const streets = this.world.objects.filter((o) => typeof o.roadInfo === "function" && o.geometry);
+    for (const o of streets) for (const q of o.geometry.points || []) near(q);
+    for (const q of this.placing.points) if (q.xy) near(q.xy);
+    if (best) return best.q.slice();
+    for (const o of streets) {
+      const info = o.roadInfo();
+      const pr = info ? polylineProject(info.points, p) : null;
+      if (pr && pr.distance <= info.width / 2) return polylineAt(info.points, pr.s).point;
+    }
+    return p;
+  }
+
+  /** Placement "stops" (bus lines): only stops can be tapped, in order. */
+  _addStop(p) {
+    const types = this.placing.cls.stopTypes || ["bus-stop", "bus-terminal"];
+    const tol = (10 * this.app.px()) / Math.max(1e-6, this.pxPerMM(p));
+    const hit = this.world.objects.find((o) => types.includes(o.type) && o.geometry && o.contains(p, tol));
+    if (!hit) return toast("Tap a bus stop or a bus terminal.");
+    const points = this.placing.points;
+    if (points[points.length - 1]?.id !== hit.id) points.push({ id: hit.id });
+    this.renderPlacing();
   }
 
   /** Rotation (degrees) of the nearest platform, so new objects line up with the tracks. */
@@ -309,6 +349,9 @@ export class Editor {
         return toast("That is too small: drag or tap to the opposite corner.");
       }
       Object.assign(geo, { position: [round1((a[0] + b[0]) / 2), round1((a[1] + b[1]) / 2)], width_mm: w, depth_mm: d, rotation_deg: 0 });
+    } else if (cls.placement === "stops") {
+      if (points.length < 2) return toast("Tap at least two stops.");
+      geo.stops = points.map((q) => q.id);
     } else {
       const min = cls.placement === "polygon" ? 3 : 2;
       if (points.length < min) return toast(`Tap at least ${min} points.`);
@@ -329,7 +372,7 @@ export class Editor {
       const spec = { type: cls.type, ...Object.fromEntries(Object.entries(geo).filter(([, v]) => v !== undefined)) };
       if (cls.placement === "point" && this._rotatable(cls)) spec.rotation_deg = this._alignedRotation(geo.position);
       obj = this.world.addObject(spec);
-      toast(`${cls.label} added. Drag it to move it, or change it on the right.`);
+      toast(cls.placement === "stops" ? `${cls.label} added. Change it on the right.` : `${cls.label} added. Drag it to move it, or change it on the right.`);
     }
     this.app.saveLayout();
     this.renderPlacing();
@@ -402,7 +445,12 @@ export class Editor {
       }
     }
     if (!this.placing) return;
-    const toXY = (q) => (q.marker != null ? this.world.map.get(q.marker) : { x: q.xy[0], y: q.xy[1] });
+    if (this.placing.cls.placement === "stops") this._drawStopTargets(ctx, view);
+    const toXY = (q) => {
+      if (q.marker != null) return this.world.map.get(q.marker);
+      const xy = q.id ? this.world.getObject(q.id)?.anchorPoint() : q.xy;
+      return xy ? { x: xy[0], y: xy[1] } : null;
+    };
     const project = (q) => {
       const e = q && toXY(q);
       return e ? view.project(e.x, e.y, 0) : null;
@@ -465,6 +513,30 @@ export class Editor {
     ctx.restore();
   }
 
+  /** While picking the stops of a bus line: rings around the stops that can be tapped. */
+  _drawStopTargets(ctx, view) {
+    const types = this.placing.cls.stopTypes || ["bus-stop", "bus-terminal"];
+    const picked = this.placing.points.map((q) => q.id);
+    ctx.save();
+    ctx.lineWidth = 2 * view.px;
+    ctx.font = `700 ${12 * view.px}px ${FONT}`;
+    for (const o of this.world.objects) {
+      if (!types.includes(o.type) || !o.geometry) continue;
+      const c = o.anchorPoint(), q = c && view.project(c[0], c[1], 0);
+      if (!q) continue;
+      ctx.beginPath();
+      ctx.arc(q[0], q[1], 16 * view.px, 0, 2 * Math.PI);
+      ctx.strokeStyle = rgba(OVERLAY.selection, 0.95);
+      ctx.stroke();
+      const n = picked.indexOf(o.id);
+      if (n >= 0) {
+        ctx.fillStyle = OVERLAY.selection;
+        ctx.fillText(String(n + 1), q[0] + 18 * view.px, q[1] - 10 * view.px);
+      }
+    }
+    ctx.restore();
+  }
+
   /* ---------------------------------------------------------------- panel */
 
   render(container) {
@@ -516,13 +588,14 @@ export class Editor {
       return;
     }
     const { cls, points, replace } = this.placing;
-    const multi = cls.placement === "polygon" || cls.placement === "polyline";
-    const grid = this.snapping() ? ` Points snap to the ${this.world.layout.grid.size_mm} mm grid (hold Alt for free placement).` : "";
+    const multi = cls.placement === "polygon" || cls.placement === "polyline" || cls.placement === "stops";
+    const noun = cls.placement === "stops" ? "stop" : "point";
+    const grid = this.snapping() && cls.placement !== "stops" ? ` Points snap to the ${this.world.layout.grid.size_mm} mm grid (hold Alt for free placement).` : "";
     mount(bar,
       h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), HINTS[cls.placement],
-        points.length ? ` (${points.length} point${points.length > 1 ? "s" : ""})` : "", grid),
+        points.length ? ` (${points.length} ${noun}${points.length > 1 ? "s" : ""})` : "", grid),
       multi ? h("button", { class: "btn small primary", type: "button", onclick: () => this.finish() }, "Finish") : null,
-      points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, "Undo point") : null,
+      points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, `Undo ${noun}`) : null,
       h("button", { class: "btn small", type: "button", onclick: () => this.cancel() }, "Cancel"),
     );
     bar.hidden = false;
@@ -553,9 +626,11 @@ export class Editor {
       if (key === "name" || key === "text") this.renderObjects();
     };
     const geo = this._geometryFields(o);
+    const problems = typeof o.problems === "function" ? o.problems() : [];
     mount(this.el.inspector,
       h("h2", {}, `Selected: ${cls.label}`),
       cls.description ? h("p", { class: "hint" }, cls.description) : null,
+      problems.map((t) => h("p", { class: "hint error", role: "status" }, t)),
       paramFields(cls.params, o.spec, change, { idPrefix: `obj-${o.id}`, world: this.world }),
       geo,
       this._rotatable(cls) ? h("div", { class: "row", role: "group", "aria-label": "Rotate" },
@@ -565,7 +640,7 @@ export class Editor {
           h("span", { "aria-hidden": "true" }, "↻"), " 90°", h("span", { class: "visually-hidden" }, " clockwise")),
       ) : null,
       h("div", { class: "row" },
-        h("button", { class: "btn small", type: "button", onclick: () => this.startPlacing(o.type, o) }, "Redraw position"),
+        h("button", { class: "btn small", type: "button", onclick: () => this.startPlacing(o.type, o) }, cls.placement === "stops" ? "Pick the stops again" : "Redraw position"),
         h("button", { class: "btn small", type: "button", onclick: () => this.duplicateSelected() }, "Duplicate"),
         h("button", { class: "btn small danger", type: "button", onclick: () => this.deleteSelected() }, "Delete"),
         h("button", { class: "btn small", type: "button", onclick: () => this.select(null) }, "Done"),
@@ -604,6 +679,10 @@ export class Editor {
       return h("div", { class: "fields" }, sel(0), sel(1));
     }
     if (Array.isArray(s.points)) return h("p", { class: "hint" }, `${s.points.length} points. Use “Redraw position” to change the outline.`);
+    if (Array.isArray(s.stops)) {
+      const names = s.stops.map((id) => this.world.getObject(id)?.name || `${id} (missing)`);
+      return h("p", { class: "hint" }, `Stops: ${names.join(" → ")}.`);
+    }
     return null;
   }
 

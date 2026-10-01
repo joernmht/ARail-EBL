@@ -6,6 +6,8 @@
  *   world.draw(view);                   // queue and render all virtual content
  *
  * Tracking (camera, markers) is separate (see core/tracker.js); it shares `world.map`.
+ * Streets form a road network (`world.network()`, core/network.js); bus lines run on it
+ * (`world.transit`, core/transit.js).
  * @module arail/core/world
  */
 import { createRng } from "./math.js";
@@ -18,6 +20,8 @@ import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
 import { Clock } from "./clock.js";
+import { RoadNetwork } from "./network.js";
+import { Transit } from "./transit.js";
 
 export class World {
   /**
@@ -53,6 +57,10 @@ export class World {
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
     this.trains = new TrainRegistry(this);
+    /** Bus lines in operation (core/transit.js). */
+    this.transit = new Transit(this);
+    /** Incremented whenever an object is added, changed or removed (caches of derived data use it). */
+    this.objectsVersion = 0;
     this.load(layout);
   }
 
@@ -76,9 +84,12 @@ export class World {
     this.services.reset();
     this.disruptions.reset();
     this.trains.reset();
+    this.transit.reset();
     this._areas = null;
     this._syncedAreas = null;
+    this._network = null;
     for (const spec of layout.objects) this._create(spec);
+    this.objectsVersion++;
     for (const s of this.simulations || []) s.dispose?.();
     this.simulations = [];
     // settings of simulations whose plugin is missing are kept and saved unchanged
@@ -165,6 +176,7 @@ export class World {
 
   /** Called when an object's spec changed (by `LayoutObject.set`). */
   objectChanged(obj) {
+    this.objectsVersion++;
     this._areas = null;
     this._areasKey = null;
     this._syncStops();
@@ -193,6 +205,25 @@ export class World {
     return this.stopAreas().find((a) => a.id === id) || null;
   }
 
+  /**
+   * The road network of the streets, footpaths, building entrances, stops and bus lanes
+   * (core/network.js), cached until objects, the marker map or the scale change.
+   * @returns {RoadNetwork | null} null only while it is being built (for objects asked during the build)
+   */
+  network() {
+    const key = `${this.objectsVersion}:${this.map.version}:${this.scale}`;
+    if (this._network && this._networkKey === key) return this._network;
+    if (this._buildingNetwork) return null; // asked for while it is being built
+    this._buildingNetwork = true;
+    try {
+      this._network = new RoadNetwork(this);
+      this._networkKey = key;
+    } finally {
+      this._buildingNetwork = false;
+    }
+    return this._network;
+  }
+
   /* ---------------------------------------------------------------- simulation */
 
   /**
@@ -213,6 +244,7 @@ export class World {
       this.scenarios.step();
       this.disruptions.step();
       this.services.step(dt);
+      this.transit.step(dt);
       for (const o of this.objects) o.update(dt);
       for (const s of this.simulations) s.step(dt);
     }
@@ -236,6 +268,7 @@ export class World {
     this._syncStops();
     for (const o of this.objects) if (o.geometry) o.draw(view);
     this.services.draw(view);
+    this.transit.draw(view);
     this.trains.draw(view);
     for (const s of this.simulations) s.draw(view);
     this.disruptions.draw(view);

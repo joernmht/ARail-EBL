@@ -174,7 +174,8 @@ class App {
       e.preventDefault();
     } else if (/^[1-9]$/.test(e.key)) {
       const area = w.stopAreas()[Number(e.key) - 1];
-      if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free track right now.`);
+      if (area && area.docks.length && area.docks.every((d) => d.managed)) toast(`${area.owner.name} is served by its bus lines.`);
+      else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
       if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);

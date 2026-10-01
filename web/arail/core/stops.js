@@ -20,8 +20,10 @@
  * @property {"rail" | "bus" | string} kind vehicle kind that stops here
  * @property {string | null} track track name in the control system (rail docks)
  * @property {string} label e.g. "Track 3" or "Bay B"
- * @property {number} headway average time between vehicles (s)
+ * @property {number | null} headway average time between vehicles (s); null on docks served by bus lines
  * @property {number} dwell dwell time (s)
+ * @property {string | null} managed set (e.g. "line") when something other than the timetable
+ *   serves the dock: bus lines (core/transit.js); the timetable services skip such docks
  */
 
 export class StopArea {
@@ -60,8 +62,9 @@ export class StopArea {
       kind: d.kind || kind,
       track: d.track ?? null,
       label: d.label || "",
-      headway: d.headway ?? 70,
+      headway: d.managed && d.headway === null ? null : d.headway ?? 70,
       dwell: d.dwell ?? 24,
+      managed: d.managed ?? null,
     }));
     this.access = access || [
       { s: 0.3, t: 0, weight: 0.35 },

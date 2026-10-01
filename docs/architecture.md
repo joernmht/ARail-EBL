@@ -27,12 +27,15 @@ World.draw(View): objects, vehicles, trains, simulations, disruption signs → s
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `core/stops.js` | stop areas and docks, the common interface of stops |
 | `core/services.js`, `core/vehicles.js` | timetable, vehicle life cycle, drawing trains and buses |
+| `core/network.js`, `objects/road.js` | streets and the road network: junctions, places, routing, sidewalks and lanes |
+| `core/transit.js`, `objects/bus-stop.js`, `objects/bus-line.js` | bus lines: routes through the stops, dispatching, driving and stopping buses |
 | `core/disruptions.js`, `core/scenarios.js` | disruption types and effects, scripted timelines |
 | `core/trains.js`, `feeds/*` | control-system feed: protocol parsing, arrival detection, WebSocket client, in-browser simulator |
 | `core/view.js` | projection, display list, primitives (polygons, prisms, faces, labels) |
 | `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, fit; grid lines |
 | `core/registry.js`, `core/events.js`, `core/layout.js` | extension points, event bus, layout files |
 | `sims/passengers.js` | the example passenger simulation |
+| `sims/traffic.js` | cars on the road network |
 | `app/*` | the user interface (no framework): sources, panels, editor |
 
 ## Coordinate systems

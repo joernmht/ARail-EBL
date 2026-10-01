@@ -50,7 +50,7 @@ export default function register(arail) {
     static type = "kiosk";                 // used in layout files
     static label = "Kiosk";                // shown in the editor
     static category = "Scenery";           // palette group: Transport, Scenery, Infrastructure, ...
-    static placement = "point";            // point | segment | polygon | polyline
+    static placement = "point";            // point | segment | polygon | polyline | stops
     static description = "A small newspaper kiosk.";
     static params = [
       { key: "name", label: "Name", type: "text", default: "" },
@@ -165,6 +165,8 @@ Optional: `stats(areaId)` returns `{count, mood, inPerMin, outPerMin}` for the d
 | `world.disruptions` | `start(spec)`, `stop(id)`, `active`, `effectsFor(area)` |
 | `world.scenarios` | `play(id)`, `stop()` |
 | `world.trains` | trains reported by the control system |
+| `world.network()` | the road network of the streets: places, routes, sidewalks, lanes (see [Streets, bus lines and road traffic](streets-and-buses.md#for-plugins-and-simulations)) |
+| `world.transit` | bus lines in operation: `lines`, `connections(fromAreaId, toAreaId)`, `vehicleAt(dockId)`, `statusFor(dockId)`, `buses` |
 | `world.events` | the event bus: `on(name, fn)` returns an unsubscribe function |
 | `world.time`, `speed`, `paused`, `demand`, `scale`, `rng` | simulation state; use `world.rng` for reproducible randomness |
 | `world.settings` | display settings (`labels`, `trails`, `showTracks`, `feedVehicles`) |

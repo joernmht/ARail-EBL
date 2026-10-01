@@ -5,7 +5,8 @@
  * timetable (a vehicle every `headway` seconds, randomised); vehicles can also be called
  * manually or by scenarios. Disruptions change the behaviour through their effects
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
- * see `core/trains.js`.
+ * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
+ * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any.
  *
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
  * `vehicle.departing` (doors close) -> `vehicle.departed`; or `vehicle.cancelled`.
@@ -70,6 +71,7 @@ export class ServiceManager {
     const seen = new Set();
     for (const area of this.world.stopAreas()) {
       for (const dock of area.docks) {
+        if (dock.managed) continue; // served by bus lines (core/transit.js)
         seen.add(dock.id);
         const st = this.docks.get(dock.id);
         if (st) {
