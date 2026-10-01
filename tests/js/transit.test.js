@@ -75,6 +75,16 @@ test("bus stops: on both sides of the street, facing the direction of travel", (
   assert.equal(w2.getObject("s").problems().length, 0);
 });
 
+test("bus stops: a footpath chosen as the street is named as such, not as unplaced", () => {
+  const w = world([...STREET, { id: "path", type: "road", name: "Feldweg", kind: "path", points: [[0, 500], [4000, 500]] }]);
+  const stop = w.getObject("a");
+  stop.set({ road: "path" });
+  assert.equal(stop.geometry.ok, false, "buses do not drive on footpaths");
+  assert.deepEqual(stop.problems(), ["Feldweg is a footpath: buses cannot drive there. Choose a street."]);
+  stop.set({ road: "main" });
+  assert.deepEqual(stop.problems(), []);
+});
+
 test("bus lines: route through the stops in order, on the side of the direction of travel", () => {
   const w = world([...STREET, { id: "l", type: "bus-line", number: "62", stops: ["a", "b", "c"] }]);
   w.transit.sync();
