@@ -1,4 +1,5 @@
 // End-to-end tests of the app in a real browser (Chromium).
+import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
@@ -142,6 +143,29 @@ test("a layout chosen from the Layouts menu gets only its own markers, not those
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  expect(errors).toEqual([]);
+});
+
+test("a layout chosen from the Layouts menu while a video plays is not tracked in that video", async ({ page }) => {
+  const VIDEO = "tests/fixtures/synthetic-survey.webm";
+  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
+  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.locator("#fileVideo").setInputFiles(VIDEO);
+  await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
+  // the lab photo comes later: meanwhile the video of the synthetic layout (markers 0–7) is still shown
+  let sendPhoto;
+  await page.route("**/media/ebl-lab.jpg", async (route) => {
+    await new Promise((resolve) => (sendPhoto = resolve));
+    await route.continue();
+  });
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForTimeout(800); // many video frames
+  expect(await page.evaluate(() => ({ ids: window.__arail.world.map.ids(), tracked: !!window.__arail.tracker.state.H }))).toEqual({ ids: [0, 1, 2, 3, 4], tracked: false });
+  await expect.poll(() => typeof sendPhoto).toBe("function");
+  sendPhoto();
   await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
   expect(errors).toEqual([]);
