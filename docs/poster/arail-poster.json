@@ -14,11 +14,11 @@
   "columns": [
     {
       "heading": "Was zeigt ARail?",
-      "body": "ARail legt eine virtuelle Welt über die H0-Anlage des Labors: Bahnsteige mit Fahrgästen, eine Stadt mit Straßen und Buslinien, Tag und Nacht, Störungen und Szenarien für Übungen. Alles läuft im Browser, ohne Installation.\n\n- **Ausprobieren:** QR-Code scannen, *Live camera* wählen und die Kamera auf die Anlage richten.\n- Die schwarz-weißen **Marker** auf der Anlage verankern das Bild. Bitte nicht verschieben.\n- **F** öffnet den Überflug: die Anlage mit einer virtuellen Kamera ansehen und bauen."
+      "body": "ARail legt eine virtuelle Welt über die H0-Anlage des Labors: Bahnsteige mit Fahrgästen,\neine Stadt mit Straßen und Buslinien,\nTag und Nacht, Störungen und Szenarien für Übungen. Alles läuft im Browser, ohne Installation.\n\n- **Ausprobieren:** QR-Code scannen, *Live camera* wählen und die Kamera auf die Anlage richten.\n- Die schwarz-weißen **Marker** auf der Anlage verankern das Bild. Bitte nicht verschieben.\n- **F** öffnet den Überflug: die Anlage mit einer virtuellen Kamera ansehen und bauen."
     },
     {
       "heading": "What does ARail show?",
-      "body": "ARail lays a virtual world over the lab's H0 layout: platforms with passengers, a town with streets and bus lines, day and night, disruptions and scenarios for exercises. Everything runs in the browser, nothing to install.\n\n- **Try it:** scan the QR code, choose *Live camera* and point the camera at the layout.\n- The black-and-white **markers** on the layout anchor the image. Please do not move them.\n- **F** opens the flyover: look at and build the layout with a virtual camera."
+      "body": "ARail lays a virtual world over the lab's H0 layout: platforms with passengers,\na town with streets and bus lines,\nday and night, disruptions and scenarios for exercises. Everything runs in the browser, nothing to install.\n\n- **Try it:** scan the QR code, choose *Live camera* and point the camera at the layout.\n- The black-and-white **markers** on the layout anchor the image. Please do not move them.\n- **F** opens the flyover: look at and build the layout with a virtual camera."
     }
   ],
   "summary": {

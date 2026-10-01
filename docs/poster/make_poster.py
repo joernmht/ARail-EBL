@@ -87,13 +87,17 @@ def qr_svg(url: str, label: str) -> str:
             f'fill="#00008C" font-family="Noto Sans" font-weight="500">{label}</text></svg>')
 
 
-DE = """ARail legt eine virtuelle Welt über die H0-Anlage des Labors: Bahnsteige mit Fahrgästen, eine Stadt mit Straßen und Buslinien, Tag und Nacht, Störungen und Szenarien für Übungen. Alles läuft im Browser, ohne Installation.
+DE = """ARail legt eine virtuelle Welt über die H0-Anlage des Labors: Bahnsteige mit Fahrgästen,
+eine Stadt mit Straßen und Buslinien,
+Tag und Nacht, Störungen und Szenarien für Übungen. Alles läuft im Browser, ohne Installation.
 
 - **Ausprobieren:** QR-Code scannen, *Live camera* wählen und die Kamera auf die Anlage richten.
 - Die schwarz-weißen **Marker** auf der Anlage verankern das Bild. Bitte nicht verschieben.
 - **F** öffnet den Überflug: die Anlage mit einer virtuellen Kamera ansehen und bauen."""
 
-EN = """ARail lays a virtual world over the lab's H0 layout: platforms with passengers, a town with streets and bus lines, day and night, disruptions and scenarios for exercises. Everything runs in the browser, nothing to install.
+EN = """ARail lays a virtual world over the lab's H0 layout: platforms with passengers,
+a town with streets and bus lines,
+day and night, disruptions and scenarios for exercises. Everything runs in the browser, nothing to install.
 
 - **Try it:** scan the QR code, choose *Live camera* and point the camera at the layout.
 - The black-and-white **markers** on the layout anchor the image. Please do not move them.
