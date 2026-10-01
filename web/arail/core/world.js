@@ -72,7 +72,7 @@ export class World {
     this.layout = layout;
     this.scale = layout.scale;
     const m = layout.markers;
-    const markers = { size: m.size_mm, sizes: m.sizes_mm, poses: m.poses, origin: m.origin };
+    const markers = { size: m.size_mm, sizes: m.sizes_mm, poses: m.poses, origin: m.origin, locked: m.locked, moving: m.moving };
     // the map object stays the same, so trackers built on `world.map` keep working
     if (this.map) this.map.configure(markers);
     else this.map = new MarkerMap(markers);
@@ -111,12 +111,17 @@ export class World {
   /** Current layout (including edits and the surveyed marker map) as a layout file. */
   toJSON() {
     const L = this.layout;
+    // locked and moving as the map has them now; written only when set, to keep files tidy
+    const { locked, moving, poses, ...markers } = L.markers;
+    if (this.map.locked) markers.locked = true;
+    if (this.map.moving.size) markers.moving = [...this.map.moving].sort((a, b) => a - b);
+    markers.poses = this.map.toJSON();
     return {
       format: LAYOUT_FORMAT,
       name: L.name,
       description: L.description,
       scale: this.scale,
-      markers: { ...L.markers, poses: this.map.toJSON() },
+      markers,
       services: L.services,
       clock: this.clock.toJSON(),
       grid: L.grid,

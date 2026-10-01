@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DICTIONARIES, MarkerDetector, markerBits } from "../../web/arail/core/detector.js";
+import { acceptedBitErrors, DICTIONARIES, MarkerDetector, markerBits, orientedDistance } from "../../web/arail/core/detector.js";
 import { FIXTURE_HINT, fixtureImage, fixtureMeta, hasFixtures, loadAruco } from "./helpers.js";
 
 const skip = hasFixtures() ? false : FIXTURE_HINT;
@@ -60,4 +60,56 @@ test("markers are found on the real photo of the lab layout", { skip }, () => {
     const e = Math.max(...cv.map((c, k) => Math.hypot(found[id][k][0] - c[0], found[id][k][1] - c[1])));
     assert.ok(e < 2, `marker ${id}: corners ${e.toFixed(2)} px from OpenCV`);
   }
+});
+
+test("fewer codes (a locked map) correct more bit errors, but never accept chance matches more often", () => {
+  const { AR } = loadAruco();
+  const patterns = (bits, e) => {
+    let sum = 0, c = 1;
+    for (let k = 0; k <= e; k++) {
+      sum += c;
+      c = (c * (bits - k)) / (k + 1);
+    }
+    return sum;
+  };
+  for (const d of DICTIONARIES) {
+    const bits = AR.DICTIONARIES[d.name].nBits;
+    const at50 = acceptedBitErrors(AR, d.name, 50);
+    for (const codes of [1, 2, 5, 10, 49]) {
+      const e = acceptedBitErrors(AR, d.name, codes);
+      assert.ok(Number.isInteger(e) && e >= at50 && e < bits / 2, `${d.name}, ${codes} codes: ${e} bit errors`);
+      assert.ok(codes * patterns(bits, e) <= 50 * patterns(bits, at50), `${d.name}, ${codes} codes: chance matches`);
+    }
+  }
+  // a single code: other markers are not read as it (it used to accept any bit pattern)
+  const one = new MarkerDetector({ ...loadAruco(), dictionary: "ARUCO_4X4_1000", codes: 1 });
+  const corners = [[0, 0], [10, 0], [10, 10], [0, 10]];
+  for (let id = 1; id < 50; id++) assert.equal(one._match(one.selected, markerBits(one.AR, "ARUCO_4X4_1000", id), corners), null, `marker ${id}`);
+  assert.equal(one._match(one.selected, markerBits(one.AR, "ARUCO_4X4_1000", 0), corners)?.id, 0);
+  // codes are compared in all four orientations: a code turned by 90 degrees is 0 bits away
+  assert.equal(orientedDistance(["1000000000000000", "0001000000000000"]), 0);
+});
+
+test("a sticker misread as a known ID does not replace the real marker (fewest bit errors win)", () => {
+  const aruco = loadAruco();
+  const name = "ARUCO_4X4_1000";
+  // ID 499 is two bits from ID 0: with 5 codes (a locked map of markers 0-4) it is read as 0
+  assert.equal(orientedDistance([0, 499].map((id) => markerBits(aruco.AR, name, id).flat().join(""))), 2);
+  const W = 640, H = 320, cell = 20, data = new Uint8ClampedArray(W * H * 4).fill(255);
+  [499, 0].forEach((id, k) => {
+    const bits = markerBits(aruco.AR, name, id);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      const white = i > 0 && j > 0 && i < 5 && j < 5 && bits[i - 1][j - 1] === 1;
+      for (let y = 0; y < cell; y++) {
+        for (let x = 0; x < cell; x++) {
+          const p = ((60 + i * cell + y) * W + 60 + k * 300 + j * cell + x) * 4;
+          data.fill(white ? 255 : 0, p, p + 3);
+        }
+      }
+    }
+  });
+  const found = new MarkerDetector({ ...aruco, dictionary: name, codes: 5 }).detect({ width: W, height: H, data });
+  assert.deepEqual(Object.keys(found), ["0"]);
+  const cx = found[0].reduce((s, p) => s + p[0], 0) / 4;
+  assert.ok(Math.abs(cx - 420) < 2, `marker 0 found at x = ${cx.toFixed(1)} (the real one is at 420, the misread one at 120)`);
 });

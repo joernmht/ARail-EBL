@@ -7,7 +7,9 @@
  * - bits are read from the centre of each cell only (cell margins are ignored, as in OpenCV),
  *   which tolerates blur and foreshortening much better than counting whole cells,
  * - dictionaries are limited to their first N codes and only errors that can be corrected
- *   safely are accepted (fewer false detections),
+ *   safely are accepted (fewer false detections); with fewer codes than the default 50 (a locked
+ *   marker map uses only up to its highest ID) more bit errors are corrected, but never so many
+ *   that chance matches become more likely than with 50 codes,
  * - the dictionary can be detected automatically by voting over several frames,
  * - corner order (and thus marker orientation) matches OpenCV for every dictionary.
  *
@@ -190,6 +192,83 @@ function cellsToBits(cells, n) {
 
 /* ---------------------------------------------------------------- detector */
 
+/** Number of codes of the default configuration: fewer codes accept no more chance matches than these. */
+const REFERENCE_CODES = 50;
+
+/** Number of bit patterns within `errors` bit errors of one code of `bits` bits. */
+function patternsWithin(bits, errors) {
+  let sum = 0, c = 1;
+  for (let k = 0; k <= errors; k++) {
+    sum += c;
+    c = (c * (bits - k)) / (k + 1);
+  }
+  return sum;
+}
+
+/** js-aruco2 dictionary of the first `codes` codes of `full` (its tau = their minimum distance). */
+function firstCodes(AR, name, full, codes) {
+  const shortName = `${name}_FIRST${codes}`;
+  AR.DICTIONARIES[shortName] = { nBits: full.nBits, codeList: full.codeList.slice(0, codes) };
+  return new AR.Dictionary(shortName);
+}
+
+/** A square bit string (row by row) turned by 90 degrees. */
+function turned(bits) {
+  const n = Math.round(Math.sqrt(bits.length));
+  let out = "";
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) out += bits[(n - 1 - j) * n + i];
+  return out;
+}
+
+function hamming(a, b) {
+  let d = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+  return d;
+}
+
+/**
+ * Minimum distance of codes as the decoder sees them: between any two codes in all four
+ * orientations, and between each code and its own turned versions (else a turned marker could be
+ * read with a wrong orientation). js-aruco2's tau compares the codes only as they are.
+ * @param {string[]} codes bit strings
+ */
+export function orientedDistance(codes) {
+  let d = Infinity;
+  for (let i = 0; i < codes.length; i++) {
+    let t = codes[i];
+    for (let k = 1; k < 4; k++) d = Math.min(d, hamming(codes[i], (t = turned(t))));
+    for (let j = i + 1; j < codes.length; j++) {
+      t = codes[j];
+      for (let k = 0; k < 4; k++, t = turned(t)) d = Math.min(d, hamming(codes[i], t));
+    }
+  }
+  return d;
+}
+
+/**
+ * Bit errors to accept for the first `codes` codes of a dictionary: as many as the codes can
+ * correct unambiguously (less than half their minimum distance). For fewer codes than
+ * REFERENCE_CODES (a locked marker map), the codes are compared in all orientations, and only as
+ * many errors are accepted as keep chance matches (a random pattern close enough to one of the
+ * codes) as rare as with REFERENCE_CODES codes: a single code would otherwise accept anything.
+ * Stickers with IDs beyond `codes` must then not be on the layout: they might be read as one of
+ * the codes.
+ * @param {object} AR js-aruco2 namespace
+ * @param {string} name dictionary name
+ * @param {number} codes number of codes used (IDs 0 ... codes-1)
+ * @param {object} [dict] the js-aruco2 dictionary of these codes (made if not given)
+ */
+export function acceptedBitErrors(AR, name, codes, dict = null) {
+  const full = AR.DICTIONARIES[name];
+  dict ||= firstCodes(AR, name, full, codes);
+  const safe = (distance) => Math.min(full.nBits, Math.floor((distance - 1) / 2));
+  if (codes >= REFERENCE_CODES || full.codeList.length < REFERENCE_CODES) return safe(dict.tau);
+  const budget = REFERENCE_CODES * patternsWithin(full.nBits, safe(firstCodes(AR, name, full, REFERENCE_CODES).tau));
+  let e = safe(orientedDistance(dict.codeList));
+  while (e > 0 && codes * patternsWithin(full.nBits, e) > budget) e--;
+  return e;
+}
+
 export class MarkerDetector {
   /**
    * @param {object} [options]
@@ -208,10 +287,8 @@ export class MarkerDetector {
     for (const def of DICTIONARIES) {
       const full = AR.DICTIONARIES[def.name];
       if (!full) continue; // dictionary script not loaded
-      const shortName = `${def.name}_FIRST${codes}`;
-      AR.DICTIONARIES[shortName] = { nBits: full.nBits, codeList: full.codeList.slice(0, codes) };
-      const dict = new AR.Dictionary(shortName); // tau = minimum distance between the codes
-      dict.tau = Math.floor((dict.tau - 1) / 2) + 1; // accept only safely correctable bit errors
+      const dict = firstCodes(AR, def.name, full, codes);
+      dict.tau = acceptedBitErrors(AR, def.name, codes, dict) + 1; // find() accepts distances below tau
       this.dictionaries.push({ ...def, dict, cells: Math.round(Math.sqrt(full.nBits)) + 2 });
     }
     this.selected = null;
@@ -259,21 +336,24 @@ export class MarkerDetector {
     if (!best) return null;
     let c = det.rotate2(corners, 4 - rot);
     if (entry.quarterTurns) c = det.rotate2(c, entry.quarterTurns);
-    return { id: best.id, corners: c };
+    return { id: best.id, corners: c, distance: best.distance };
   }
 
+  /** Decode all candidates; per ID the one read with the fewest bit errors (a misread must not replace the real marker). */
   _decode(entry, candidates) {
-    const found = {};
+    const best = {};
     for (const k of candidates) {
       for (const attempt of k.attempts) {
         const bits = attempt.bits[entry.cells];
         const m = bits && this._match(entry, bits, attempt.corners);
         if (m) {
-          if (!found[m.id]) found[m.id] = m.corners;
+          if (!best[m.id] || m.distance < best[m.id].distance) best[m.id] = m;
           break;
         }
       }
     }
+    const found = {};
+    for (const id in best) found[id] = best[id].corners;
     return found;
   }
 

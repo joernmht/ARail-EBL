@@ -60,6 +60,26 @@ export function translatePoint(map, p, dx, dy) {
   return p;
 }
 
+/**
+ * Marker IDs an object spec is placed relative to: `{"marker": id}` points anywhere in the spec
+ * and `between: [idA, idB]` segments. Without these markers in the map the object cannot be placed.
+ * @param {object} spec object spec (as in layout files)
+ * @returns {number[]} sorted IDs
+ */
+export function markersUsed(spec) {
+  const out = new Set();
+  const isId = (v) => (typeof v === "number" || typeof v === "string") && /^\s*\d+\s*$/.test(String(v));
+  const visit = (v) => {
+    if (Array.isArray(v)) return v.forEach(visit);
+    if (!v || typeof v !== "object") return;
+    if (isId(v.marker)) out.add(Number(v.marker));
+    if (Array.isArray(v.between)) for (const m of v.between) if (isId(m)) out.add(Number(m));
+    for (const [k, x] of Object.entries(v)) if (k !== "between" && x && typeof x === "object") visit(x);
+  };
+  visit(spec);
+  return [...out].sort((a, b) => a - b);
+}
+
 /** Express a layout point relative to a marker (for objects that should follow it). */
 export function pointRelativeTo(map, markerId, xy) {
   const e = map.get(markerId);

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  createWorld, registry, validateLayout, loadPlugins, MockFeed, parseFeedMessage, LayoutObject, Registry, registerBuiltins, World,
+  createWorld, registry, validateLayout, loadPlugins, markersUsed, MockFeed, parseFeedMessage, LayoutObject, Registry, registerBuiltins, World,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -234,4 +234,46 @@ test("plugins can add object types with their own parameters", () => {
   // unknown types survive a round trip
   const w2 = createWorld({ ...LAB, objects: [...LAB.objects, { id: "x", type: "not-registered", foo: 1 }] });
   assert.deepEqual(w2.toJSON().objects.at(-1), { id: "x", type: "not-registered", foo: 1 });
+});
+
+test("a locked marker map and moving markers are kept in layout files (written only when set)", () => {
+  const world = createWorld({ markers: { codes: 50, poses: { 0: [0, 0, 0], 3: [120, 0, 0], 40: [5, 5, 0] }, locked: true, moving: [41, "40", 40, -1, "x"] } });
+  assert.equal(world.map.locked, true);
+  assert.deepEqual([...world.map.moving], [40, 41]);
+  assert.deepEqual(world.map.ids(), [0, 3], "the pose of moving marker 40 is ignored");
+  const m = world.toJSON().markers;
+  assert.equal(m.locked, true);
+  assert.deepEqual(m.moving, [40, 41]);
+  assert.deepEqual(Object.keys(m.poses), ["0", "3"]);
+  assert.deepEqual(Object.keys(m).slice(-3), ["locked", "moving", "poses"]);
+  // round trip, and unlocked without moving markers: the keys are left out
+  assert.deepEqual(createWorld(world.toJSON()).toJSON().markers, m);
+  world.map.unlock();
+  world.map.setMoving([]);
+  const tidy = world.toJSON().markers;
+  assert.ok(!("locked" in tidy) && !("moving" in tidy), JSON.stringify(tidy));
+  // problems are reported
+  const problems = validateLayout({ markers: { locked: "yes", moving: [40, "x"], poses: {} } });
+  assert.ok(problems.some((p) => p.startsWith("markers.locked")) && problems.some((p) => p.startsWith("markers.moving")), problems.join("; "));
+  assert.ok(validateLayout({ markers: { moving: [40], poses: { 40: [0, 0, 0] } } }).some((p) => p.includes("moving marker")));
+  assert.deepEqual(validateLayout({ markers: { locked: true, moving: [40, 41], poses: { 0: [0, 0, 0] } } }), []);
+});
+
+test("layout problems with moving markers: beyond the codes, the origin, objects placed relative to them", () => {
+  const objects = [
+    { id: "p", type: "platform", name: "Platform 1", between: [0, 1] },
+    { id: "h", type: "building", position: { marker: 41, offset: [10, 0] } },
+    { id: "t", type: "tree", position: [0, 0] },
+  ];
+  const problems = validateLayout({ markers: { codes: 42, origin: 0, moving: [0, 1, 41, 60], poses: { 2: [0, 0, 0] } }, objects }, registry);
+  const has = (s) => problems.some((p) => p.includes(s));
+  assert.ok(has("marker 60 is not detected, the layout uses the IDs 0 … 41"), problems.join("; "));
+  assert.ok(!has("marker 41 is not detected"), problems.join("; "));
+  assert.ok(has("markers.origin: marker 0 is a moving marker"), problems.join("; "));
+  assert.ok(has("objects[0] (Platform 1): placed relative to moving marker 0, 1"), problems.join("; "));
+  assert.ok(has("objects[1] (h): placed relative to moving marker 41"), problems.join("; "));
+  assert.ok(!has("objects[2]"), problems.join("; "));
+  assert.deepEqual(markersUsed({ between: ["3", 1], points: [[0, 0], { marker: 7, offset: [1, 2] }], to: { marker: "12" }, marker: "x" }), [1, 3, 7, 12]);
+  assert.ok(validateLayout({ markers: { locked: true, poses: {} } }).some((p) => p.startsWith("markers.locked: the locked marker map has no poses")));
+  assert.ok(validateLayout({ markers: { locked: true, moving: [3], poses: { 3: [0, 0, 0] } } }).some((p) => p.startsWith("markers.locked")), "only a moving marker");
 });

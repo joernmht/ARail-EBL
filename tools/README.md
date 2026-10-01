@@ -31,5 +31,7 @@ arail-survey lab.mp4 photos/*.jpg --layout web/layouts/ebl-lab.json -o ebl-lab.j
 
 The marker poses of `--layout` are kept (markers that moved are measured again), all other markers
 are surveyed, and the result is merged into the layout: `markers.poses` and `view.ortho` (the
-orthophoto for the flyover). `arail-survey --help` lists all options; the
+orthophoto for the flyover). The marker map is written locked (`markers.locked`: the app then uses
+only these markers; `--unlocked` to skip), and markers on vehicles (`markers.moving`, `--moving
+40,41`) are left out of the map. `arail-survey --help` lists all options; the
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.

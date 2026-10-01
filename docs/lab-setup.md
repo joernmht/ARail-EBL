@@ -15,6 +15,14 @@ ARail recognises square black-and-white markers of the ArUco and AprilTag famili
 
 The type is set per layout (Build → Layout → Marker type, or `markers.dictionary`). With "detect automatically" the app finds it within a few frames.
 
+Choosing a dictionary and the IDs:
+
+- Use **one dictionary** for everything: the stickers you survey and the markers you track live with.
+- Use the IDs **0 … N−1**, with N just covering the printed stickers, and set `markers.codes` = N in the layout file. Fewer codes are further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
+- **4×4** markers have the largest cells for a given size: the most robust choice when markers are small in the image. ArUco Original (used in the EBL) has 5×5 bits but codes that lie close together.
+- After the survey, **lock the marker map** (Keep positions, or the `markers.locked` that `arail-survey` writes): live tracking then uses only the measured stickers, reads only the codes up to the highest of their IDs, ignores unknown and misread IDs, and drops markers whose position does not fit (moved stickers, misreads) as outliers. Stickers with IDs above the highest one in the map must then not lie on the layout.
+- Markers on vehicles (e.g. container wagons) are *moving markers* (Build → Marker map → Moving markers, `markers.moving`): never part of the map.
+
 ### Size
 
 The marker size is the edge of the black square, without the white border. Markers should be at least about 20 pixels large in the image (in the direction where they appear shortest). As a rule of thumb for 1280×720 video from a phone or webcam:
@@ -47,9 +55,9 @@ You do not need to measure it. When the app sees an unknown marker together with
 
 1. Take a photo (or a slow video) that shows the origin marker and several others, looking from above at an angle.
 2. Continue with photos that overlap with already known markers until all markers appear in the marker map (Build → Marker map).
-3. Press **Keep positions**, then **Export layout**. The positions are now stored in the layout file and used from the start next time.
+3. Press **Keep positions**, then **Export layout**. The positions are now stored in the layout file and used from the start next time, and the map is locked: no other markers are surveyed (**Unlock** opens it again).
 
-After moving markers, press **Measure again**. You can also type in measured positions in the layout file; they are used as they are.
+After moving markers, press **Measure again** (this unlocks the map). You can also type in measured positions in the layout file; they are used as they are.
 
 To survey a whole layout at once (stickers everywhere, one video, a fixed layout and an orthophoto of the table for the flyover), follow the [lab-session checklist](lab-session.md).
 

@@ -110,3 +110,115 @@ test("a single photo is surveyed immediately", { skip }, () => {
   const d01 = Math.hypot(map.get(1).x, map.get(1).y);
   assert.ok(Math.abs(d01 - meta.platform_length_mm) < 0.04 * meta.platform_length_mm, `platform length ${d01.toFixed(1)} mm`);
 });
+
+/* ---------------------------------------------------------------- locked map, moving markers */
+
+/** Image corners of markers at layout poses (x, y, rotation_deg) under a homography (no image needed). */
+function detectionsAt(H, poses, size = 30) {
+  const out = {};
+  for (const [id, [x, y, deg]] of Object.entries(poses)) {
+    const th = (deg * Math.PI) / 180, h = size / 2;
+    out[id] = [[-h, h], [h, h], [h, -h], [-h, -h]].map(([u, v]) => applyH(H, [x + u * Math.cos(th) - v * Math.sin(th), y + u * Math.sin(th) + v * Math.cos(th)]));
+  }
+  return out;
+}
+
+// a camera looking obliquely at the layout: layout (mm) -> image (px)
+const VIEW_H = [0.9, 0.12, 420, 0.05, -0.55, 380, 0.00004, 0.0003, 1];
+const KNOWN = { 0: [0, 0, 0], 1: [400, 0, 0], 2: [0, 250, 15], 3: [400, 250, -10] };
+
+test("a locked marker map surveys nothing: unknown markers are ignored, fixed poses stay", () => {
+  const map = new MarkerMap({ size: 30, poses: KNOWN, origin: 0, locked: true });
+  const tracker = new PlaneTracker(map);
+  const camera = new Camera(1280, 720);
+  const scene = { ...KNOWN, 7: [220, 120, 40] }; // marker 7 is not in the map
+  const before = map.toJSON(), version = map.version;
+  for (let i = 0; i < 6; i++) {
+    const state = tracker.update(detectionsAt(VIEW_H, scene), i / 30, camera);
+    assert.deepEqual(state.used, [0, 1, 2, 3]);
+    assert.deepEqual(state.visible, [0, 1, 2, 3, 7]);
+  }
+  assert.deepEqual(map.ids(), [0, 1, 2, 3], "marker 7 is not added");
+  assert.deepEqual(map.toJSON(), before);
+  assert.equal(map.version, version, "nothing was refined");
+  // a misread or moved marker of the map is dropped from the pose as an outlier
+  const misread = { ...scene, 2: [60, 210, 15] };
+  const state = tracker.update(detectionsAt(VIEW_H, misread), 1, camera, { still: true });
+  assert.deepEqual(state.used, [0, 1, 3]);
+  // unlocked, marker 7 is surveyed again
+  map.unlock();
+  for (let i = 0; i < 4; i++) tracker.update(detectionsAt(VIEW_H, scene), 2 + i / 30, camera);
+  assert.ok(map.has(7));
+  const e = map.get(7);
+  assert.ok(Math.hypot(e.x - 220, e.y - 120) < 1, `marker 7 surveyed at ${e.x.toFixed(1)}, ${e.y.toFixed(1)}`);
+  // "Measure again" unlocks
+  map.lock();
+  tracker.resurvey();
+  assert.equal(map.locked, false);
+});
+
+test("moving markers are never part of the map; their detections are reported on the layout plane", () => {
+  const map = new MarkerMap({ size: 30, poses: { ...KNOWN, 40: [10, 10, 0] }, origin: 0, moving: [40, 41] });
+  assert.deepEqual(map.ids(), [0, 1, 2, 3], "a pose of a moving marker in the file is ignored");
+  const tracker = new PlaneTracker(map);
+  const camera = new Camera(1280, 720);
+  const scene = { ...KNOWN, 40: [250, -100, 45] };
+  let state;
+  for (let i = 0; i < 6; i++) state = tracker.update(detectionsAt(VIEW_H, scene), i / 30, camera);
+  assert.deepEqual(map.ids(), [0, 1, 2, 3], "moving marker 40 is not surveyed");
+  assert.deepEqual(state.used, [0, 1, 2, 3]);
+  assert.deepEqual(state.visible, [0, 1, 2, 3], "moving markers are reported separately");
+  const m = state.moving[40];
+  assert.ok(m && m.corners.length === 4);
+  assert.ok(Math.hypot(m.center[0] - 250, m.center[1] + 100) < 0.5, `centre ${m.center}`);
+  assert.ok(Math.abs(toDeg(wrapAngle(m.heading - Math.PI / 4))) < 0.5, `heading ${toDeg(m.heading)}`);
+  // without a pose, only the image corners
+  const lost = new PlaneTracker(new MarkerMap({ size: 30, moving: [40] }), { survey: false });
+  const s2 = lost.update(detectionsAt(VIEW_H, { 40: [0, 0, 0] }), 0, camera);
+  assert.equal(s2.H, null);
+  assert.deepEqual(s2.moving[40].center, null);
+  // making a map marker a moving one removes it from the map
+  assert.deepEqual(map.setMoving([1, 40]), [1]);
+  assert.deepEqual(map.ids(), [0, 2, 3]);
+  state = tracker.update(detectionsAt(VIEW_H, { ...KNOWN, 40: [250, -100, 45] }), 1, camera);
+  assert.deepEqual(state.used, [0, 2, 3]);
+  assert.deepEqual(Object.keys(state.moving).map(Number), [1, 40]);
+});
+
+test("a locked map needs only the detector codes up to its highest marker ID", () => {
+  const map = new MarkerMap({ size: 30, poses: { 0: [0, 0, 0], 4: [100, 0, 0] } });
+  assert.equal(map.detectionCodes(50), 50, "unlocked: all codes of the layout");
+  map.lock();
+  assert.equal(map.detectionCodes(50), 5);
+  assert.ok([...map.entries.values()].every((e) => e.fixed), "Keep positions fixes, too");
+  map.setMoving([40]);
+  assert.equal(map.detectionCodes(50), 41, "moving markers must be detected, too");
+  assert.equal(map.detectionCodes(30), 30, "never more than the layout's codes");
+  map.unlock();
+  assert.equal(map.detectionCodes(50), 50);
+  assert.equal(new MarkerMap({ locked: true }).detectionCodes(50), 50, "an empty locked map keeps all codes");
+});
+
+test("a marker made a moving one by mistake gets its pose back when it is no longer moving", () => {
+  const map = new MarkerMap({ size: 30, poses: { ...KNOWN, 41: [80, 90, 30] }, origin: 0, moving: [41] });
+  assert.deepEqual(map.ids(), [0, 1, 2, 3], "the pose of moving marker 41 in the file is not used");
+  map.lock();
+  // a typo: 1 instead of 41
+  assert.deepEqual(map.setMoving([1]), [1]);
+  assert.ok(!map.has(1) && map.has(41), "41 is back with the pose from the file");
+  assert.deepEqual(map.toJSON()[41], [80, 90, 30]);
+  assert.equal(map.get(41).fixed, true);
+  assert.deepEqual(map.setMoving([41]), [41]);
+  assert.deepEqual(map.toJSON()[1], [400, 0, 0], "marker 1 is back where it was, fixed");
+  assert.equal(map.get(1).fixed, true);
+  assert.deepEqual(map.ids(), [0, 1, 2, 3]);
+  // measured anew while it was moving: the new pose wins
+  map.setMoving([1, 41]);
+  map.set(1, { x: 5, y: 6, theta: 0 });
+  map.setMoving([41]);
+  assert.deepEqual(map.toJSON()[1], [5, 6, 0]);
+  // "Measure again" forgets the poses kept aside, too
+  map.clear(true);
+  map.setMoving([]);
+  assert.deepEqual(map.ids(), []);
+});

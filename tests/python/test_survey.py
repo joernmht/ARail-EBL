@@ -85,15 +85,15 @@ def test_refined_corners_are_unbiased(texture):
     assert len(error) == 4 * count, "the refinement loses no marker"
 
 
-def test_adjustment_with_exact_geometry_and_a_wrong_detection():
-    """Pure geometry: homographies of a moving camera, corners with 0.2 px noise and one wrong
-    detection, which is rejected."""
-    rng = np.random.default_rng(3)
+def exact_scene(seed=3, count=60, noise=0.2, markers=9):
+    """Pure geometry: marker 0 at the origin and random others, seen by a moving pinhole camera
+    (1280 x 720), corners with Gaussian noise (px). Returns (true poses, frames)."""
+    rng = np.random.default_rng(seed)
     poses = {0: np.zeros(3)}
-    for m in range(1, 9):
+    for m in range(1, markers):
         poses[m] = np.array([rng.uniform(-300, 900), rng.uniform(-300, 600), rng.uniform(-math.pi, math.pi)])
     frames = []
-    for k in range(60):
+    for k in range(count):
         target = np.array([rng.uniform(-200, 800), rng.uniform(-200, 500), 0.0])
         cam = target + np.array([rng.uniform(-300, 300), rng.uniform(-700, -400), rng.uniform(500, 800)])
         f = target - cam
@@ -107,8 +107,15 @@ def test_adjustment_with_exact_geometry_and_a_wrong_detection():
         for m, p in poses.items():
             c = sv.apply_h(H, sv.pose_apply(p, marker_corners_mm(30)))
             if c.min() > 0 and c[:, 0].max() < 1280 and c[:, 1].max() < 720:
-                found[m] = c + rng.normal(0, 0.2, c.shape)
+                found[m] = c + rng.normal(0, noise, c.shape)
         frames.append(sv.Frame(0, k, k / 30, (1280, 720), found))
+    return poses, frames
+
+
+def test_adjustment_with_exact_geometry_and_a_wrong_detection():
+    """Homographies of a moving camera, corners with 0.2 px noise and one wrong detection, which is
+    rejected."""
+    poses, frames = exact_scene()
     wrong = next(f for f in frames if len(f.markers) >= 4)
     m = sorted(wrong.markers)[1]
     wrong.markers[m] = wrong.markers[m] + [25.0, -10.0]
@@ -118,6 +125,29 @@ def test_adjustment_with_exact_geometry_and_a_wrong_detection():
         assert d < 1.0 and a < 0.3, f"marker {m}: {d:.2f} mm, {a:.2f} deg"
     assert res.rejected >= 1
     assert res.rms_px < 0.4
+
+
+@pytest.mark.parametrize("count, noise", [(20, 0.5), (60, 0.2)])
+def test_layout_poses_as_priors_weigh_like_independent_measurements(count, noise):
+    """--refine-fixed: a layout pose is a measurement of its own (2 mm, 0.5 deg). Combined with the
+    images it must give the precision-weighted mean of the image-only estimate and the prior, with
+    the combined covariance, whatever the pixel noise (the corner residuals are in px, the prior in
+    sigmas: unscaled, a 2 mm prior acted like 0.4 mm at 0.2 px noise)."""
+    _, frames = exact_scene(seed=5, count=count, noise=noise)
+    free, free_poses, _ = sv._adjust(copy.deepcopy(frames), {0: np.zeros(3)}, size_of)
+    C_free = free.covariance()[1]
+    sigma = np.array([2.0, 2.0, math.radians(0.5)])
+    prior = free_poses[1] + [1.5, -1.0, math.radians(0.3)]
+    adj, poses, _ = sv._adjust(copy.deepcopy(frames), {0: np.zeros(3), 1: prior}, size_of, priors={1: (prior, sigma)})
+    P = np.diag(1 / sigma**2)
+    expected = np.linalg.inv(np.linalg.inv(C_free) + P)
+    sd, sd_expected = np.sqrt(np.diag(adj.covariance()[1])), np.sqrt(np.diag(expected))
+    assert np.allclose(sd, sd_expected, rtol=0.05), (sd, sd_expected)
+    shift, shift_expected = poses[1] - free_poses[1], expected @ P @ (prior - free_poses[1])
+    assert np.hypot(*(shift - shift_expected)[:2]) < 0.05 * np.hypot(*shift_expected[:2]) + 0.01, (
+        shift,
+        shift_expected,
+    )
 
 
 def test_survey_of_the_synthetic_video(surveyed):
@@ -187,6 +217,7 @@ def test_disconnected_rare_and_unseen_markers_are_reported(video):
     assert res.unplaced[20].startswith("lies on marker 4: a misread ID") and 20 not in res.poses
     assert res.status[12] == "fixed" and res.stats[12]["frames"] == 0  # known, not seen: kept
     text = " ".join(res.warnings)
+    assert "kept as in the layout (not checked): 12." in text
     assert "Marker 9 could not be placed" in text and "Marker 10 could not be placed" in text
     assert sv._misreads({4: np.zeros(3), 20: np.array([3.0, 2, 0])}, {4: 40, 20: 1}, size_of) == {20: 4}
 
@@ -291,12 +322,19 @@ def test_lab_photo_agrees_with_the_layout_file():
     assert not any(s == "moved" for s in res.status.values())
 
 
-def test_command_line_end_to_end(tmp_path, texture, capsys):
+@pytest.fixture(scope="module")
+def stills(tmp_path_factory, texture):
+    """Six photos of the synthetic layout (a glob pattern for the command line)."""
+    folder = tmp_path_factory.mktemp("stills")
     for k in (0, 20, 40, 64, 100, 140):
-        cv2.imwrite(str(tmp_path / f"frame_{k:03d}.jpg"), syn.render(texture, k)[0], [cv2.IMWRITE_JPEG_QUALITY, 92])
+        cv2.imwrite(str(folder / f"frame_{k:03d}.jpg"), syn.render(texture, k)[0], [cv2.IMWRITE_JPEG_QUALITY, 92])
+    return str(folder / "frame_*.jpg")
+
+
+def test_command_line_end_to_end(tmp_path, stills, capsys):
     out, report, ortho, check = (tmp_path / n for n in ("layout.json", "report.json", "media/ortho.jpg", "check.jpg"))
     layout_in = os.path.join(ROOT, "web", "layouts", "synthetic-demo.json")
-    args = [str(tmp_path / "frame_*.jpg"), "--layout", layout_in, "-o", str(out), "--report", str(report)]
+    args = [stills, "--layout", layout_in, "-o", str(out), "--report", str(report)]
     args += ["--ortho", str(ortho), "--ortho-bounds", *map(str, BOARD), "--ortho-max", "400", "--check", str(check)]
     assert sv.main([*args, "-q"]) == 0
     printed = capsys.readouterr().out
@@ -310,6 +348,9 @@ def test_command_line_end_to_end(tmp_path, texture, capsys):
     assert layout["view"]["ortho"]["image"] == "media/ortho.jpg"
     assert layout["view"]["ortho"]["bounds_mm"] == BOARD
     assert layout["markers"]["dictionary"] == "ARUCO" and layout["markers"]["origin"] == 0
+    assert layout["markers"]["locked"] is True, "the app uses only the surveyed markers"
+    assert json.dumps(layout["markers"]["size_mm"]) == "30", "written as in the input layout"
+    assert "moving" not in layout["markers"]
     poses = layout["markers"]["poses"]
     assert sorted(poses, key=int) == [str(m) for m in range(8)]
     for m, (x, y, r) in poses.items():
@@ -324,6 +365,50 @@ def test_command_line_end_to_end(tmp_path, texture, capsys):
     img = cv2.imread(str(ortho))
     assert img is not None and max(img.shape[:2]) <= 400
     assert cv2.imread(str(check)) is not None
+
+
+def test_command_line_moving_markers_codes_and_resurvey(tmp_path, stills):
+    """Moving markers (on vehicles) stay out of the map; IDs above the codes are reported, not
+    silently dropped; markers lost in a --resurvey are named with the objects that use them;
+    --unlocked leaves the map unlocked."""
+    layout_in = tmp_path / "in.json"
+    markers = {
+        "codes": 5,
+        "moving": [5],
+        "origin": 0,
+        "poses": {"0": [0, 0, 0], "5": [630, 140, 0], "9": [100, 500, 0]},
+    }
+    objects = [{"id": "p", "name": "Platform 9", "type": "platform", "between": [0, 9]}]
+    layout_in.write_text(json.dumps({"format": "arail-layout/1", "markers": markers, "objects": objects}))
+    out, report = tmp_path / "out.json", tmp_path / "report.json"
+    assert (
+        sv.main([stills, "--layout", str(layout_in), "--resurvey", "-o", str(out), "--report", str(report), "-q"]) == 0
+    )
+    m = json.loads(out.read_text())["markers"]
+    assert sorted(m["poses"], key=int) == ["0", "1", "2", "3", "4"], "5 moves, 6 and 7 are above the codes, 9 unseen"
+    assert m["moving"] == [5] and m["locked"] is True
+    assert m["codes"] == 6, "the moving marker 5 is detected, too"
+    rep = json.loads(report.read_text())
+    assert set(rep["ignored_ids"]) == {"6", "7"} and rep["moving"]["5"] >= 5
+    text = " ".join(rep["warnings"])
+    assert "IDs above 5 were seen and ignored: 6" in text and "markers.codes" in text
+    assert "left out: 9 (objects placed relative to them: Platform 9)" in text
+    # unlocked; a pose for a marker that is a moving one now is dropped
+    layout_in.write_text(json.dumps({"format": "arail-layout/1", "markers": markers | {"codes": 50}, "objects": []}))
+    assert sv.main([stills, "--layout", str(layout_in), "--unlocked", "--moving", "5,7", "-o", str(out), "-q"]) == 0
+    m = json.loads(out.read_text())["markers"]
+    assert "locked" not in m and m["moving"] == [5, 7]
+    assert "5" not in m["poses"] and "7" not in m["poses"] and "9" in m["poses"], "kept: not seen, still known"
+    with pytest.raises(SystemExit, match="origin marker 0 is a moving marker"):
+        sv.main([stills, "--moving", "0", "-o", str(out), "-q"])
+    # objects placed relative to a moving marker could not be placed: refused (not silently dropped)
+    unmoved = {"format": "arail-layout/1", "markers": markers | {"moving": []}, "objects": objects}
+    layout_in.write_text(json.dumps(unmoved))
+    with pytest.raises(SystemExit, match="Marker 9 is a moving marker .* placed relative to it: Platform 9"):
+        sv.main([stills, "--layout", str(layout_in), "--moving", "9", "-o", str(out), "-q"])
+    with pytest.raises(SystemExit) as exc:
+        sv.main([stills, "--moving", "-1", "-o", str(out), "-q"])
+    assert exc.value.code == 2, "a negative marker ID is refused by the argument parser"
 
 
 def test_command_line_errors(tmp_path, texture):
@@ -346,3 +431,25 @@ def test_command_line_errors(tmp_path, texture):
     assert any(w.startswith("No orthophoto") for w in json.loads(report.read_text())["warnings"])
     with pytest.raises(SystemExit):
         sv.main([board, "--mask", "0.5,0,0.2,1"])  # x1 < x0
+    # unreadable or invalid files and settings: a message, no traceback
+    bad = tmp_path / "bad.json"
+    bad.write_text("{ not json")
+    poses = tmp_path / "poses.json"
+    poses.write_text(json.dumps({"format": "arail-layout/1", "markers": {"poses": {"0": [0, 0, 0], "x": [1, 2, 3]}}}))
+    cases = [
+        (["--layout", str(tmp_path / "missing.json")], "Cannot read the layout"),
+        (["--layout", str(bad)], "is not valid JSON"),
+        (["--layout", str(poses)], "markers.poses.x must be"),
+        (["--calibration", str(tmp_path / "missing.json")], "Cannot read the calibration"),
+        (["--dictionary", "DICT_NOPE"], "Unknown OpenCV dictionary"),
+        (["-o", os.path.join(board, "out.json")], "Cannot write"),
+    ]
+    for extra, message in cases:
+        with pytest.raises(SystemExit, match=message):
+            sv.main([board, "-o", str(tmp_path / "out.json"), *extra, "-q"])
+    with pytest.raises(SystemExit, match="is a folder"):
+        sv.main([str(tmp_path), "-q"])
+    for option in ("--ortho-max", "--ortho-res", "--every", "--codes", "--size"):
+        with pytest.raises(SystemExit) as exc:
+            sv.main([board, option, "0", "-q"])
+        assert exc.value.code == 2, f"{option} 0 is refused by the argument parser"

@@ -13,8 +13,12 @@ test("a video of the synthetic layout gives all markers; keeping them fixes the 
   await page.evaluate(() => localStorage.clear());
   await page.goto("/app/?layout=../layouts/synthetic-demo.json#build");
   await page.waitForFunction(() => window.__arail?.world.layout.name === "Synthetic test layout" && window.__arail.tracker.state.H);
-  await page.evaluate(() => window.__arail.tracker.resurvey()); // start from an empty marker map
+  await page.evaluate(() => {
+    window.__arail.tracker.resurvey(); // start from an empty marker map
+    window.__arail.world.map.lock(); // ... that is locked: the survey unlocks it for its run
+  });
   await page.locator("#surveyVideo").setInputFiles(VIDEO);
+  await expect(page.locator("#toast")).toContainText("unlocked for the survey");
   await expect(page.locator(".survey [role=status]")).toContainText("done", { timeout: 60_000 });
   const poses = await page.evaluate(() => window.__arail.world.toJSON().markers.poses);
   expect(Object.keys(poses).length).toBe(8);
@@ -25,5 +29,8 @@ test("a video of the synthetic layout gives all markers; keeping them fixes the 
   await expect(page.locator(".survey svg.marker-plot")).toBeVisible();
   await page.locator(".survey").getByRole("button", { name: "Keep positions" }).click();
   expect(await page.evaluate(() => [...window.__arail.world.map.entries.values()].every((e) => e.fixed))).toBe(true);
+  // fixed and locked: live tracking uses only these 8 markers (and 8 detector codes)
+  expect(await page.evaluate(() => window.__arail.world.map.locked)).toBe(true);
+  expect(await page.evaluate(() => window.__arail.detector.codes)).toBe(8);
   expect(errors).toEqual([]);
 });

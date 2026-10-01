@@ -71,9 +71,11 @@ An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](l
 | `dictionary` | `"ARUCO"` | marker type: `ARUCO` (ArUco Original), `ARUCO_4X4_1000`, `ARUCO_5X5_1000`, `ARUCO_6X6_1000`, `ARUCO_7X7_1000`, `ARUCO_MIP_36h12`, `APRILTAG_36h11`, or `auto` |
 | `size_mm` | `30` | edge of the black square |
 | `sizes_mm` | `{}` | sizes of individual markers, e.g. `{"7": 60}` |
-| `codes` | `50` | number of codes used: marker IDs `0 … codes-1`. More codes means fewer correctable bit errors. |
+| `codes` | `50` | number of codes used: marker IDs `0 … codes-1`. More codes means fewer correctable bit errors. With a locked map the app reads only the codes up to the highest ID in `poses` and `moving`. |
 | `origin` | `null` | marker that defines the layout frame while surveying; usually `0` |
-| `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`. Poses in the file are kept fixed; unknown markers are surveyed. |
+| `locked` | `false` | the marker map is complete (**Keep positions** in the app, or `arail-survey`): live tracking surveys nothing, markers that are not in `poses` are ignored, and misread or moved markers are dropped from the pose as outliers. Written only when `true`. |
+| `moving` | `[]` | IDs of markers on vehicles, e.g. `[40, 41]` for container wagons: never part of the map and never used for the pose, locked or not (a pose for such an ID is ignored). They must be below `codes`, and objects cannot be placed relative to them. The tracker reports where they are seen (`tracker.state.moving`: image corners, and the point on the layout plane and the heading). Written only when not empty. |
+| `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`. Poses in the file are kept fixed; unknown markers are surveyed (unless the map is locked). |
 
 ## `services`
 

@@ -50,7 +50,8 @@ export class VideoSurvey {
   }
 
   /**
-   * Run the survey. The world's marker map is extended and refined (fixed markers stay).
+   * Run the survey. The world's marker map is extended and refined (fixed markers stay; the map
+   * must not be locked, a locked map surveys nothing; moving markers are left out).
    * @returns {Promise<{frames: number, tracked: number, markers: number[], seen: Map<number, number>, duration: number, cancelled: boolean}>}
    */
   async run() {
@@ -92,7 +93,9 @@ export class VideoSurvey {
         const state = tracker.update(detections, t, camera);
         this.frames++;
         if (state.used.length) this.tracked++;
-        for (const id of Object.keys(detections).map(Number)) this.seen.set(id, (this.seen.get(id) || 0) + 1);
+        for (const id of Object.keys(detections).map(Number)) {
+          if (!this.world.map.moving.has(id)) this.seen.set(id, (this.seen.get(id) || 0) + 1); // moving markers are no part of the map
+        }
         this.onProgress({ frame: i + 1, total, time: t, duration, markers: this.world.map.ids().length, visible: state.visible, used: state.used });
         // let the page breathe (drawing, input) between frames
         if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0));

@@ -24,9 +24,11 @@ How it works:
    as watermarks and markers covered by a hand are left out), with a narrow blend at the seams.
    The frames' exposure is balanced first.
 
-Outputs: the layout with all marker poses (the app keeps poses from the file fixed), a JSON report,
-the orthophoto with its ``bounds_mm`` (``view.ortho`` in the layout), and a check image with the
-layout's markers, platforms and tracks drawn on the orthophoto.
+Outputs: the layout with all marker poses (the app keeps poses from the file fixed; the map is
+written locked, ``markers.locked``, so live tracking uses only these markers; markers on vehicles,
+``markers.moving``, are never part of it), a JSON report, the orthophoto with its ``bounds_mm``
+(``view.ortho`` in the layout), and a check image with the layout's markers, platforms and tracks
+drawn on the orthophoto.
 """
 
 from __future__ import annotations
@@ -83,6 +85,8 @@ def opencv_dictionary(name: str | None, codes: int = 50) -> str | None:
     if not name or name == "auto":
         return None
     if name.startswith("DICT_"):
+        if not hasattr(cv2.aruco, name):
+            raise SurveyError(f"Unknown OpenCV dictionary {name!r} (e.g. DICT_ARUCO_ORIGINAL, DICT_4X4_50)")
         return name
     base = APP_DICTIONARIES.get(name)
     if base is None:
@@ -240,6 +244,8 @@ def open_sources(paths: list[str]) -> list[Source]:
     for pattern in paths:
         matches = sorted(glob.glob(pattern)) or [pattern]
         for p in matches:
+            if os.path.isdir(p):
+                raise SurveyError(f"{p} is a folder: give the videos or photos in it (e.g. {os.path.join(p, '*.jpg')})")
             if not os.path.isfile(p):
                 raise SurveyError(f"Not found: {p}")
             if os.path.splitext(p)[1].lower() in IMAGE_EXTENSIONS:
@@ -290,13 +296,57 @@ def read_frames(source: Source, every: int = 1, wanted: set[int] | None = None):
     source.count = max(source.count, i)
 
 
+def read_json(path: str, what: str) -> dict:
+    """A JSON object from a file (SurveyError if it cannot be read or is not an object)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except OSError as exc:
+        raise SurveyError(f"Cannot read the {what} {path}: {exc.strerror or exc}") from exc
+    except ValueError as exc:
+        raise SurveyError(f"The {what} {path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise SurveyError(f"The {what} {path} is not a JSON object")
+    return data
+
+
 def load_calibration(path: str) -> dict:
     """Camera calibration of ``arail-calibrate`` (format arail-camera/1)."""
-    with open(path) as f:
-        data = json.load(f)
+    data = read_json(path, "calibration")
     if data.get("format") != "arail-camera/1":
         raise SurveyError(f"{path} is not a camera calibration of arail-calibrate")
     return data
+
+
+def load_layout(path: str) -> dict:
+    """A layout file (format arail-layout/1; like the app, a file without a format is accepted if it
+    has objects or markers). Its marker poses must be valid: they are written back."""
+    data = read_json(path, "layout")
+    if data.get("format", LAYOUT_FORMAT) != LAYOUT_FORMAT or not (
+        "format" in data or isinstance(data.get("objects"), list) or isinstance(data.get("markers"), dict)
+    ):
+        raise SurveyError(f'{path} is not an ARail layout file (expected "format": "{LAYOUT_FORMAT}")')
+    markers = data.get("markers") or {}
+    if not isinstance(markers, dict) or not isinstance(markers.get("poses") or {}, dict):
+        raise SurveyError(f'{path}: markers.poses must be an object like {{"0": [0, 0, 0]}}')
+    if not isinstance(markers.get("sizes_mm") or {}, dict):
+        raise SurveyError(f'{path}: markers.sizes_mm must be an object like {{"7": 60}}')
+    if not isinstance(markers.get("moving") or [], list):
+        raise SurveyError(f"{path}: markers.moving must be a list of marker IDs like [40, 41]")
+    for k, p in (markers.get("poses") or {}).items():
+        ok = str(k).isdigit() and isinstance(p, list) and 2 <= len(p)
+        try:
+            ok = ok and all(math.isfinite(float(v)) for v in p[:3])
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            raise SurveyError(f"{path}: markers.poses.{k} must be a marker ID with [x_mm, y_mm, rotation_deg]")
+    return data
+
+
+def moving_ids(markers: dict) -> set[int]:
+    """Marker IDs on vehicles (``markers.moving`` of a layout): never part of the marker map."""
+    return {int(v) for v in markers.get("moving") or [] if str(v).isdigit()}
 
 
 def calibration_for(cal: dict | None, size: tuple[int, int]):
@@ -382,11 +432,13 @@ def refine_corners(grey: np.ndarray, corners: np.ndarray, iterations: int = 2) -
 
 class SurveyDetector(MarkerDetector):
     """MarkerDetector with unbiased sub-pixel corners (:func:`refine_corners`); IDs seen twice in one
-    frame (two stickers with the same ID) are left out and counted."""
+    frame (two stickers with the same ID) are left out and counted, and so are IDs above ``max_id``
+    (stickers beyond the layout's number of codes, or misreads)."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.duplicates: Counter = Counter()
+        self.above_max: Counter = Counter()  # ID -> frames
 
     def detect(self, grey: np.ndarray) -> dict[int, np.ndarray]:
         if grey.ndim == 3:
@@ -399,11 +451,12 @@ class SurveyDetector(MarkerDetector):
 
     def _find(self, name, grey) -> dict[int, np.ndarray]:
         corners, ids, _ = self._detector(name).detectMarkers(grey)
-        found, twice = {}, set()
+        found, twice, above = {}, set(), set()
         if ids is not None:
             for c, i in zip(corners, ids.flatten(), strict=True):
                 i = int(i)
                 if i > self.max_id:
+                    above.add(i)
                     continue
                 if i in found:
                     twice.add(i)
@@ -412,6 +465,8 @@ class SurveyDetector(MarkerDetector):
             del found[i]
             if name == self.name:
                 self.duplicates[i] += 1
+        if name == self.name:
+            self.above_max.update(above)
         return found
 
 
@@ -501,7 +556,12 @@ class Adjustment:
 
     ``observations`` is a list of (frame index, marker id), grouped by frame; every frame needs at
     least two. Markers in ``free`` are estimated; the others keep their pose. ``priors`` maps
-    free markers to (pose, sigma) with sigma = (mm, mm, rad): soft constraints towards a pose."""
+    free markers to (pose, sigma) with sigma = (mm, mm, rad): soft constraints towards a pose.
+
+    The corner residuals are in image pixels, the priors in units of their sigma. For a proper
+    weighting, the prior terms are multiplied by the pixel noise variance (``prior_scale``, px^2),
+    which :meth:`solve` estimates from the residuals: otherwise a 2 mm prior would act like a
+    0.8 mm one at 0.4 px noise, and the covariance would be too optimistic."""
 
     def __init__(
         self,
@@ -570,6 +630,7 @@ class Adjustment:
                 self.priors[free_pos[m]] = (np.asarray(pose, float), np.asarray(sigma, float))
         self.iterations = 0
         self.delta = 1.5
+        self.prior_scale = 1.0  # px^2 per (prior deviation / sigma)^2, see the class docstring
 
     # -- model
 
@@ -595,11 +656,14 @@ class Adjustment:
         return r, (X, Xn, Yn, un, vn, ws, H, bool(np.all(w > 1e-9)))
 
     def _prior_terms(self, poses):
+        """Per prior: (free marker, gradient, information diagonal, whitened residual), all
+        weighted with ``prior_scale``."""
         out = []
+        ps = self.prior_scale
         for k, (p0, sigma) in self.priors.items():
             d = poses[self.free_local[k]] - p0
             d[2] = wrap_angle(d[2])
-            out.append((k, d / sigma**2, 1 / sigma**2, d / sigma))
+            out.append((k, ps * d / sigma**2, ps / sigma**2, math.sqrt(ps) * d / sigma))
         return out
 
     def cost(self, poses, Hn) -> float:
@@ -687,11 +751,29 @@ class Adjustment:
         return poses, Hn
 
     def solve(self, delta: float = 1.5, max_iter: int = 100) -> Adjustment:
-        """Levenberg-Marquardt with IRLS weights for the Huber loss (``delta`` in px)."""
+        """Levenberg-Marquardt with IRLS weights for the Huber loss (``delta`` in px). With priors,
+        the pixel noise is estimated from the residuals and the adjustment repeated with it."""
         self.delta = delta
+        self._levenberg_marquardt(max_iter)
+        if self.priors:
+            for _ in range(2):
+                self.prior_scale = float(np.clip(self.residual_variance(), 1e-4, 100.0))
+                self._levenberg_marquardt(max_iter)
+        return self
+
+    def residual_variance(self) -> float:
+        """Variance of the corner residuals (px^2 per coordinate, Huber-weighted) with the degrees of
+        freedom of the adjustment."""
+        r, _ = self._project(self.poses, self.Hn)
+        e = np.hypot(r[:, 0], r[:, 1])
+        wgt = np.where(e <= self.delta, 1.0, self.delta / np.maximum(e, 1e-12))
+        dof = max(1, 2 * len(r) - 8 * len(self.frame_ids) - 3 * len(self.free))
+        return float(np.sum(wgt * e * e)) / dof
+
+    def _levenberg_marquardt(self, max_iter: int) -> None:
         cost = self.cost(self.poses, self.Hn)
         lam = 1e-4
-        for it in range(max_iter):
+        for _ in range(max_iter):
             system = self._normal_equations()
             accepted = False
             for _ in range(14):
@@ -702,7 +784,7 @@ class Adjustment:
                     accepted = True
                     break
                 lam *= 6
-            self.iterations = it + 1
+            self.iterations += 1
             if not accepted:
                 break
             small = (np.abs(dm[:, :2]).max(initial=0) < 1e-4) and (np.abs(dm[:, 2]).max(initial=0) < 1e-7)
@@ -712,7 +794,6 @@ class Adjustment:
             if gain <= 1e-10 * cost or (small and gain <= 1e-6 * cost):
                 break
         self.final_cost = cost
-        return self
 
     # -- results
 
@@ -738,7 +819,7 @@ class Adjustment:
         """3x3 covariance (mm, mm, rad) of every free marker pose, scaled by the residual variance."""
         if not self.free:
             return {}
-        U, gf, W, V, gm, r, wgt = self._normal_equations()
+        U, _, W, V, *_ = self._normal_equations()
         Uinv = np.linalg.inv(U + 1e-12 * np.eye(8))
         Mf = len(self.free)
         Y = np.einsum("pji,pjk->pik", W, Uinv[self.of])
@@ -746,8 +827,7 @@ class Adjustment:
         np.add.at(S4, (self.ofree[self.pa], self.ofree[self.pb]), -np.einsum("qij,qjk->qik", Y[self.pa], W[self.pb]))
         S4[np.arange(Mf), np.arange(Mf)] += V
         S = S4.transpose(0, 2, 1, 3).reshape(3 * Mf, 3 * Mf)
-        dof = max(1, 2 * len(r) - 8 * len(self.frame_ids) - 3 * Mf)
-        s2 = float(np.sum(wgt * np.sum(r * r, 1))) / dof
+        s2 = self.residual_variance()
         try:
             C = np.linalg.inv(S) * s2
         except np.linalg.LinAlgError:
@@ -774,6 +854,8 @@ class SurveyResult:
     rejected: int
     iterations: int
     duplicates: dict[int, int] = field(default_factory=dict)
+    ignored: dict[int, int] = field(default_factory=dict)  # IDs above the codes: frames
+    moving: dict[int, int] = field(default_factory=dict)  # moving markers (on vehicles): frames
     layout_check: dict | None = None
     distances: dict | None = None  # check against measured distances (and the scale applied)
 
@@ -1032,6 +1114,9 @@ def survey(
             poses[m] = p
             status[m] = "origin" if m == origin else "fixed"
             stats[m] = {"detections": seen.get(m, 0), "frames": 0, "rms_px": None, "sigma_mm": 0.0, "sigma_deg": 0.0}
+    kept = [m for m in fixed if stats[m]["frames"] == 0]
+    if kept:
+        warnings.append(f"Not seen together with other markers, kept as in the layout (not checked): {_ids(kept)}.")
     distance_check = _apply_distances(distances, poses, stats, frames, scale=not fixed, warnings=warnings)
 
     unplaced = {m: f"lies on marker {a}: a misread ID ({seen[m]} of {seen[a]} detections)" for m, a in misread.items()}
@@ -1221,7 +1306,10 @@ def _warnings(frames, seen, poses, status, stats, unplaced, rejected, adj, warni
     if adj is not None and rejected:
         n = len(adj.observations) + len(rejected)
         if len(rejected) > 0.05 * n:
-            warnings.append(f"{len(rejected)} of {n} detections were rejected (blur, reflections or wrong detections).")
+            warnings.append(
+                f"{len(rejected)} of {n} detections were rejected (blur, reflections, wrong detections, or a lens that "
+                "distorts: use the main camera or --calibration)."
+            )
     with_two = sum(1 for f in frames if len(f.markers) >= 2)
     if frames and with_two < 0.5 * len(frames):
         warnings.append(
@@ -1661,8 +1749,12 @@ def layout_json(
     sizes_mm: dict,
     codes: int,
     ortho: dict | None = None,
+    *,
+    locked: bool = True,
+    moving=(),
 ) -> dict:
-    """The layout with all surveyed poses (merged into ``base``)."""
+    """The layout with all surveyed poses (merged into ``base``). ``locked``: the app then uses only
+    these markers (no survey in live mode); ``moving``: marker IDs on vehicles (``markers.moving``)."""
     out = (
         json.loads(json.dumps(base))
         if base
@@ -1677,12 +1769,20 @@ def layout_json(
     markers = dict(out.get("markers") or {})
     if dictionary:
         markers["dictionary"] = app_dictionary(dictionary)
-    markers["size_mm"] = size_mm
+    markers["size_mm"] = _tidy(size_mm)
     if sizes_mm:
-        markers["sizes_mm"] = {str(k): v for k, v in sorted(sizes_mm.items())}
-    markers["codes"] = max(int(markers.get("codes") or 0), codes, max(result.poses, default=-1) + 1)
+        markers["sizes_mm"] = {str(k): _tidy(v) for k, v in sorted(sizes_mm.items())}
+    moving = sorted({int(m) for m in moving})
+    highest = max([*result.poses, *moving], default=-1)
+    markers["codes"] = max(int(markers.get("codes") or 0), codes, highest + 1)
     if result.origin is not None:
         markers["origin"] = result.origin
+    for key in ("locked", "moving", "poses"):  # written in this order, after the other keys
+        markers.pop(key, None)
+    if locked:
+        markers["locked"] = True
+    if moving:
+        markers["moving"] = moving
     markers["poses"] = {str(m): result.pose_json(m) for m in sorted(result.poses)}
     out["markers"] = markers
     if ortho:
@@ -1690,6 +1790,11 @@ def layout_json(
         view["ortho"] = ortho
         out["view"] = view
     return out
+
+
+def _tidy(v: float):
+    """A whole number as int (30, not 30.0: layout files stay as people write them)."""
+    return int(v) if float(v).is_integer() else float(v)
 
 
 def report_json(result: SurveyResult, sources: list[Source], settings: dict, ortho: dict | None = None) -> dict:
@@ -1725,6 +1830,8 @@ def report_json(result: SurveyResult, sources: list[Source], settings: dict, ort
         },
         "not_placed": {str(m): why for m, why in result.unplaced.items()},
         "duplicates": {str(m): n for m, n in sorted(result.duplicates.items())},
+        "ignored_ids": {str(m): n for m, n in sorted(result.ignored.items())},
+        "moving": {str(m): n for m, n in sorted(result.moving.items())},
         "layout_check": result.layout_check,
         "distances": result.distances,
         "warnings": result.warnings,
@@ -1756,15 +1863,22 @@ def summary(result: SurveyResult) -> str:
 
 
 def _write_json(path: str, data: dict) -> None:
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+    except OSError as exc:
+        raise SurveyError(f"Cannot write {path}: {exc.strerror or exc}") from exc
 
 
 def _write_jpeg(path: str, img: np.ndarray, quality: int = 82) -> None:
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    if not cv2.imwrite(path, img, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_JPEG_OPTIMIZE, 1]):
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        ok = cv2.imwrite(path, img, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_JPEG_OPTIMIZE, 1])
+    except (OSError, cv2.error) as exc:
+        raise SurveyError(f"Cannot write {path}: {exc}") from exc
+    if not ok:
         raise SurveyError(f"Cannot write {path}")
 
 
@@ -1786,7 +1900,64 @@ def _sizes(v: str):
     out = {}
     for item in v.split(","):
         k, _, s = item.partition("=")
-        out[int(k)] = float(s)
+        out[int(k)] = _positive(float)(s)
+    return out
+
+
+def _ids_arg(v: str) -> list[int]:
+    ids = [x for x in v.replace(" ", "").split(",") if x]
+    if not all(x.isdigit() for x in ids):
+        raise argparse.ArgumentTypeError("expected marker IDs (0, 1, ...) separated by commas, e.g. 40,41")
+    return [int(x) for x in ids]
+
+
+def _positive(kind):
+    def parse(v: str):
+        x = kind(v)
+        if not x > 0 or not math.isfinite(x):
+            raise argparse.ArgumentTypeError(f"must be a positive number, not {v}")
+        return x
+
+    parse.__name__ = f"positive {kind.__name__}"
+    return parse
+
+
+def _layout_number(values: dict, key: str, default, kind, where: str = "markers"):
+    """``<where>.<key>`` of the layout as a positive number (default if missing)."""
+    v = values.get(key)
+    if v is None:
+        return default
+    try:
+        x = kind(v)
+    except (TypeError, ValueError):
+        x = None
+    if x is None or not x > 0 or not math.isfinite(x):
+        raise SurveyError(f"{where}.{key} of the layout must be a positive number, not {v!r}")
+    return x
+
+
+def _objects_using(layout: dict | None, ids) -> list[str]:
+    """IDs (names) of the layout's objects that are placed relative to one of the markers ``ids``."""
+    ids = set(ids)
+
+    def refs(v):
+        if isinstance(v, dict):
+            m = v.get("marker")
+            if isinstance(m, int | float | str) and str(m).lstrip("-").isdigit() and int(m) in ids:
+                return True
+            return any(refs(x) for x in v.values())
+        if isinstance(v, list):
+            return any(refs(x) for x in v)
+        return False
+
+    out = []
+    for o in (layout or {}).get("objects") or []:
+        if not isinstance(o, dict):
+            continue
+        between = o.get("between")
+        uses = isinstance(between, list) and any(str(m).isdigit() and int(m) in ids for m in between)
+        if uses or refs({k: v for k, v in o.items() if k != "between"}):
+            out.append(str(o.get("name") or o.get("id")))
     return out
 
 
@@ -1806,11 +1977,13 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument(
         "--dictionary", help="marker type: app name (ARUCO, ...), OpenCV name or auto (default: layout's or ARUCO)"
     )
-    ap.add_argument("--codes", type=int, help="marker IDs 0 ... codes-1 are used (default: layout's or 50)")
-    ap.add_argument("--size", type=float, help="edge of the black marker square in mm (default: layout's or 30)")
+    ap.add_argument("--codes", type=_positive(int), help="marker IDs 0 ... codes-1 are used (default: layout's or 50)")
+    ap.add_argument(
+        "--size", type=_positive(float), help="edge of the black marker square in mm (default: layout's or 30)"
+    )
     ap.add_argument("--sizes", type=_sizes, help="sizes of single markers, e.g. 7=60,8=60")
     ap.add_argument("--origin", type=int, help="marker that defines the layout frame (default: layout's or 0)")
-    ap.add_argument("--every", type=int, default=2, help="analyse every n-th video frame (default 2)")
+    ap.add_argument("--every", type=_positive(int), default=2, help="analyse every n-th video frame (default 2)")
     ap.add_argument("--calibration", help="camera calibration of arail-calibrate (wide-angle cameras)")
     ap.add_argument(
         "--distance",
@@ -1822,14 +1995,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="measured distance between the centres of markers A and B (tape measure): sets the scale "
         "(only checked when the layout has known poses)",
     )
-    ap.add_argument("--moved-mm", type=float, default=5.0, help="report known markers further off than this (mm)")
+    ap.add_argument(
+        "--moving",
+        type=_ids_arg,
+        help="IDs of markers on vehicles, e.g. 40,41 (added to the layout's markers.moving): never part of the map",
+    )
+    ap.add_argument(
+        "--unlocked",
+        action="store_true",
+        help="do not lock the marker map (by default the app then uses only the surveyed markers)",
+    )
+    ap.add_argument(
+        "--moved-mm", type=_positive(float), default=5.0, help="report known markers further off than this (mm)"
+    )
     ap.add_argument(
         "-o", "--output", default="survey-layout.json", help="layout file to write (default survey-layout.json)"
     )
     ap.add_argument("--report", help="write a JSON report")
     ap.add_argument("--ortho", help="write an orthophoto of the layout (JPEG)")
-    ap.add_argument("--ortho-res", type=float, default=1.0, help="orthophoto resolution in mm per pixel (default 1.0)")
-    ap.add_argument("--ortho-max", type=int, default=2000, help="longest side of the orthophoto in px (default 2000)")
+    ap.add_argument(
+        "--ortho-res", type=_positive(float), default=1.0, help="orthophoto resolution in mm per pixel (default 1.0)"
+    )
+    ap.add_argument(
+        "--ortho-max", type=_positive(int), default=2000, help="longest side of the orthophoto in px (default 2000)"
+    )
     ap.add_argument(
         "--ortho-bounds",
         nargs=4,
@@ -1838,7 +2027,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="orthophoto area in mm, 'auto' for single sides (e.g. the table edges: auto -320 auto auto)",
     )
     ap.add_argument(
-        "--ortho-coarsest", type=float, default=3.0, help="use image parts with at most this many mm per pixel"
+        "--ortho-coarsest",
+        type=_positive(float),
+        default=3.0,
+        help="use image parts with at most this many mm per pixel",
     )
     ap.add_argument(
         "--mask",
@@ -1865,29 +2057,50 @@ def main(argv=None) -> int:
 
 
 def run(args, log) -> int:
-    base = None
-    if args.layout:
-        with open(args.layout) as f:
-            base = json.load(f)
+    base = load_layout(args.layout) if args.layout else None
     lm = (base or {}).get("markers") or {}
-    codes = int(args.codes or lm.get("codes") or 50)
+    moving = moving_ids(lm) | set(args.moving or [])
+    codes = args.codes or _layout_number(lm, "codes", 50, int)
+    codes = max(codes, max(moving, default=-1) + 1)  # moving markers must be detected, too
     dictionary = opencv_dictionary(args.dictionary or lm.get("dictionary") or "ARUCO", codes)
-    size_mm = float(args.size or lm.get("size_mm") or 30)
-    sizes_mm = {int(k): float(v) for k, v in (lm.get("sizes_mm") or {}).items()}
+    size_mm = float(args.size or _layout_number(lm, "size_mm", 30.0, float))
+    sizes_mm = {}
+    for k in lm.get("sizes_mm") or {}:
+        if not str(k).isdigit():
+            raise SurveyError(f"markers.sizes_mm: {k!r} is not a marker ID")
+        sizes_mm[int(k)] = _layout_number(lm["sizes_mm"], k, size_mm, float, "markers.sizes_mm")
     sizes_mm.update(args.sizes or {})
     origin = args.origin if args.origin is not None else lm.get("origin")
+    if origin is not None and not str(origin).isdigit():
+        raise SurveyError(f"markers.origin of the layout must be a marker ID, not {origin!r}")
     origin = 0 if origin is None else int(origin)
+    if origin in moving:
+        raise SurveyError(f"The origin marker {origin} is a moving marker (markers.moving, --moving).")
+    for m in sorted(moving):
+        if users := _objects_using(base, [m]):
+            raise SurveyError(
+                f"Marker {m} is a moving marker (markers.moving, --moving), but objects of the layout are placed "
+                f"relative to it: {', '.join(users)}."
+            )
     fixed = {}
     if not args.resurvey:
         for k, p in (lm.get("poses") or {}).items():
-            fixed[int(k)] = np.array([float(p[0]), float(p[1]), math.radians(float(p[2]) if len(p) > 2 else 0.0)])
+            if int(k) not in moving:  # a marker that became a moving one: no longer part of the map
+                fixed[int(k)] = np.array([float(p[0]), float(p[1]), math.radians(float(p[2]) if len(p) > 2 else 0.0)])
     calibration = load_calibration(args.calibration) if args.calibration else None
 
     sources = open_sources(args.inputs)
     detector = SurveyDetector(dictionary, max_id=codes - 1)
     log(f"Detecting markers ({dictionary or 'automatic marker type'}, {size_mm:g} mm) in {len(sources)} input(s)")
-    frames = detect_frames(sources, detector, max(1, args.every), calibration, not args.no_overlay_detection, log)
+    frames = detect_frames(sources, detector, args.every, calibration, not args.no_overlay_detection, log)
     dictionary = detector.name or dictionary
+    # moving markers (on vehicles) are never part of the map: left out of the adjustment, and thus
+    # also of the orthophoto's masks for covered markers
+    moving_seen: Counter = Counter()
+    for f in frames:
+        for m in moving & set(f.markers):
+            del f.markers[m]
+            moving_seen[m] += 1
     log("Adjusting the marker map")
     result = survey(
         frames,
@@ -1900,11 +2113,27 @@ def run(args, log) -> int:
         distances=[(int(a), int(b), mm) for a, b, mm in args.distance],
     )
     result.duplicates = dict(detector.duplicates)
+    result.ignored = {m: n for m, n in sorted(detector.above_max.items()) if n >= MIN_SEEN}
+    result.moving = dict(sorted(moving_seen.items()))
     if detector.duplicates:
         result.warnings.append(
             "IDs seen twice in one frame (two stickers with the same ID, or misread markers?): "
             + ", ".join(f"{m} ({n} frames)" for m, n in sorted(detector.duplicates.items()))
         )
+    if result.ignored:
+        result.warnings.append(
+            f"Markers with IDs above {codes - 1} were seen and ignored: "
+            + ", ".join(f"{m} ({n} frames)" for m, n in result.ignored.items())
+            + ". If they are stickers of the layout, set markers.codes in the layout (or --codes) high enough."
+        )
+    if args.resurvey and base:
+        dropped = sorted(int(k) for k in lm.get("poses") or {} if int(k) not in result.poses and int(k) not in moving)
+        if dropped:
+            users = _objects_using(base, dropped)
+            result.warnings.append(
+                f"Markers of the layout not placed by the new survey, left out: {_ids(dropped)}"
+                + (f" (objects placed relative to them: {', '.join(users)})." if users else ".")
+            )
 
     ortho = ortho_info = None
     if args.ortho or args.check:
@@ -1932,7 +2161,9 @@ def run(args, log) -> int:
         if args.check:
             _write_jpeg(args.check, check_image(ortho, base, result, lambda m: sizes_mm.get(m, size_mm)), 85)
 
-    layout = layout_json(result, base, dictionary, size_mm, sizes_mm, codes, ortho_info)
+    layout = layout_json(
+        result, base, dictionary, size_mm, sizes_mm, codes, ortho_info, locked=not args.unlocked, moving=moving
+    )
     _write_json(args.output, layout)
     settings = {
         "dictionary": dictionary,
@@ -1944,6 +2175,8 @@ def run(args, log) -> int:
         "resurvey": args.resurvey,
         "refine_fixed": args.refine_fixed,
         "calibration": args.calibration,
+        "moving": sorted(moving),
+        "locked": not args.unlocked,
     }
     rep_ortho = None
     if ortho is not None:

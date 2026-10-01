@@ -7,6 +7,7 @@
  * @module arail/core/layout
  */
 
+import { markersUsed } from "./anchors.js";
 import { DEFAULT_CLOCK } from "./clock.js";
 
 export const LAYOUT_FORMAT = "arail-layout/1";
@@ -74,6 +75,10 @@ export function normalizeLayout(json = {}) {
       codes: Number(markers.codes) > 0 ? Number(markers.codes) : 50,
       origin: markers.origin ?? null,
       sizes_mm: isObject(markers.sizes_mm) ? markers.sizes_mm : {},
+      // complete map (after "Keep positions" or arail-survey): live tracking surveys nothing
+      locked: markers.locked === true,
+      // markers on vehicles (e.g. container wagons): never part of the map
+      moving: markerIds(markers.moving),
       poses,
     },
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
@@ -89,6 +94,16 @@ export function normalizeLayout(json = {}) {
 
 function isObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+/** A marker ID: a non-negative integer, or a string of digits. */
+function isMarkerId(v) {
+  return (typeof v === "number" && Number.isInteger(v) && v >= 0) || (typeof v === "string" && /^\s*\d+\s*$/.test(v));
+}
+
+/** Marker IDs of a list, as numbers, sorted and unique; anything else is left out. */
+export function markerIds(list) {
+  return [...new Set((Array.isArray(list) ? list : []).filter(isMarkerId).map(Number))].sort((a, b) => a - b);
 }
 
 function validPose(id, p) {
@@ -118,6 +133,21 @@ export function validateLayout(json, registry) {
     if (!/^\d+$/.test(id)) problems.push(`markers.poses: "${id}" is not a marker ID`);
     else if (!validPose(id, p)) problems.push(`markers.poses.${id} must be [x_mm, y_mm, rotation_deg]`);
   }
+  const markers = isObject(json.markers) ? json.markers : {};
+  if (markers.locked != null && typeof markers.locked !== "boolean") problems.push("markers.locked must be true or false");
+  const moving = new Set();
+  if (markers.moving != null) {
+    const ok = Array.isArray(markers.moving) && markers.moving.every(isMarkerId);
+    if (!ok) problems.push("markers.moving must be a list of marker IDs, e.g. [40, 41]");
+    else for (const id of markerIds(markers.moving)) moving.add(id);
+  }
+  const codes = Number(markers.codes) > 0 ? Number(markers.codes) : 50;
+  for (const id of moving) {
+    if (poses[id] != null) problems.push(`markers.poses.${id}: marker ${id} is a moving marker; its pose is ignored`);
+    if (id >= codes) problems.push(`markers.moving: marker ${id} is not detected, the layout uses the IDs 0 … ${codes - 1} (markers.codes)`);
+  }
+  if (markers.origin != null && moving.has(Number(markers.origin))) problems.push(`markers.origin: marker ${markers.origin} is a moving marker; it cannot define the layout frame`);
+  if (markers.locked === true && !Object.keys(poses).some((id) => !moving.has(Number(id)))) problems.push("markers.locked: the locked marker map has no poses, so no marker is used for tracking");
   const ids = new Set();
   if (json.objects != null && !Array.isArray(json.objects)) problems.push("objects must be a list");
   (Array.isArray(json.objects) ? json.objects : []).forEach((o, i) => {
@@ -128,6 +158,8 @@ export function validateLayout(json, registry) {
     ids.add(o.id);
     if (!o.type) problems.push(`${where} has no type`);
     else if (registry && !registry.objects.has(o.type)) problems.push(`${where}: unknown type "${o.type}" (missing plugin?)`);
+    const onMoving = markersUsed(o).filter((m) => moving.has(m));
+    if (onMoving.length) problems.push(`${where} (${o.name || o.id}): placed relative to moving marker ${onMoving.join(", ")}, so it cannot be placed`);
   });
   if (json.grid != null) {
     if (!isObject(json.grid)) problems.push('grid must be an object like {"size_mm": 50, "snap": true}');
