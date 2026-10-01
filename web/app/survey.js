@@ -82,6 +82,7 @@ export class VideoSurvey {
         const t = Math.min(duration - 1e-3, i * step);
         video.currentTime = t;
         await once(video, "seeked").catch(() => null);
+        if (this.cancelled) break; // e.g. another layout was loaded meanwhile: its marker map is not touched
         if (video.readyState < 2) continue;
         ctx.drawImage(video, 0, 0, w, h);
         let detections = {};

@@ -39,10 +39,10 @@ test("another layout loaded during a video survey is left alone by it", async ({
   test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/?layout=../layouts/synthetic-demo.json#build");
+  await page.goto("/app/#build");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.waitForFunction(() => window.__arail?.world.layout.name === "Synthetic test layout" && window.__arail.tracker.state.H);
+  await page.goto("/app/#build");
+  await page.waitForFunction(() => window.__arail?.world.layout.name === "EBL lab (example)" && window.__arail.tracker.state.H);
   // hold back one decoded frame of the survey (its "seeked" event) until the other layout is loaded
   await page.evaluate(() => {
     const add = HTMLMediaElement.prototype.addEventListener;
@@ -52,17 +52,27 @@ test("another layout loaded during a video survey is left alone by it", async ({
     };
   });
   await page.locator("#surveyVideo").setInputFiles(VIDEO);
-  await page.waitForFunction(() => window.__arail.editor.surveyState?.progress?.frame >= 8); // markers 5–7 measured several times
+  await page.waitForFunction(() => window.__arail.editor.surveyState?.progress?.frame >= 8);
   await page.evaluate(() => (window.__holdSeek = true));
   await page.waitForFunction(() => window.__releaseSeek);
-  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)" && window.__arail.world.objects.length > 10);
+  // the synthetic layout: an empty marker map, and its photo comes later
+  let sendPhoto;
+  await page.route("**/media/synthetic-layout.jpg", async (route) => {
+    await new Promise((resolve) => (sendPhoto = resolve));
+    await route.continue();
+  });
+  await page.selectOption("#exampleSelect", "../layouts/synthetic-demo.json");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout");
   await page.evaluate(() => window.__releaseSeek());
   await expect(page.locator("#toast")).toContainText("Survey cancelled");
   await page.waitForTimeout(600); // longer than the delay of saving a change
-  // the lab's marker map is the one of its file, and it was not saved as changed in this browser
-  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
+  // the frame held back was not measured into the new layout's marker map, which was not saved as changed in this browser
+  expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([]);
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("arail.layout:")))).toEqual([]);
   await expect(page.locator(".survey [role=status]")).toHaveCount(0); // no result of the other layout's survey
+  // the layout's own photo gives its markers
+  await expect.poll(() => typeof sendPhoto).toBe("function");
+  sendPhoto();
+  await page.waitForFunction(() => window.__arail.source?.name === "Synthetic test layout" && window.__arail.world.map.ids().length === 8);
   expect(errors).toEqual([]);
 });
