@@ -167,7 +167,7 @@ Geometry: `points` (polyline). Parameters: `kind` (`road`, `path`), `width_m` (7
 
 ### `track`
 
-Geometry: `points` (polyline along the centre of a real track). Not drawn unless "Tracks" is switched on in the View panel. Used to place trains reported as "track + offset" by the control system.
+Geometry: `points` (polyline along the centre of a real track). Over the camera image it is not drawn unless "Tracks" is switched on in the View panel (the real track is in the image); the flyover draws the track itself (ballast, sleepers, rails) unless the orthophoto shows it. Used to place trains reported as "track + offset" by the control system.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

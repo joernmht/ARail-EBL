@@ -236,7 +236,11 @@ test("layouts have a grid (with defaults) and an optional orthophoto", () => {
   assert.deepEqual(normalizeLayout({}).grid, { size_mm: 50, snap: true });
   assert.deepEqual(normalizeLayout({ grid: { size_mm: 25, snap: false } }).grid, { size_mm: 25, snap: false });
   assert.deepEqual(normalizeLayout({ grid: { size_mm: -3, snap: "yes" } }).grid, { size_mm: 50, snap: true });
-  assert.deepEqual(validateLayout({ grid: { size_mm: 0 } }), ["grid.size_mm must be a positive number"]);
+  assert.deepEqual(validateLayout({ grid: { size_mm: 0 } }), ["grid.size_mm must be a number above 0 and at most 10000 (mm)"]);
+  // what normalizeLayout replaces is reported, too
+  assert.equal(normalizeLayout({ grid: { size_mm: 20000 } }).grid.size_mm, 50);
+  assert.equal(validateLayout({ grid: { size_mm: 20000 } }).length, 1);
+  assert.deepEqual(validateLayout({ grid: { size_mm: "25" } }), []);
   assert.equal(validateLayout({ grid: 5 }).length, 1);
   const ortho = { image: "../media/ortho.jpg", bounds_mm: [-100, -200, 1500, 700] };
   assert.deepEqual(orthoOf({ view: { ortho } }), ortho);

@@ -25,11 +25,18 @@ export const DEFAULT_SERVICES = {
 /** Grid of the flyover and the editor: spacing (mm) and whether placed and dragged things snap to it. */
 export const DEFAULT_GRID = { size_mm: 50, snap: true };
 
+/** Largest grid spacing (mm). */
+const GRID_MAX_MM = 10000;
+
+const validGridSize = (v) => {
+  const size = Number(v);
+  return size > 0 && size <= GRID_MAX_MM;
+};
+
 /** Grid settings with defaults; invalid values are replaced by the defaults. */
 export function normalizeGrid(grid) {
   const g = isObject(grid) ? grid : {};
-  const size = Number(g.size_mm);
-  return { ...g, size_mm: size > 0 && size <= 10000 ? size : DEFAULT_GRID.size_mm, snap: typeof g.snap === "boolean" ? g.snap : DEFAULT_GRID.snap };
+  return { ...g, size_mm: validGridSize(g.size_mm) ? Number(g.size_mm) : DEFAULT_GRID.size_mm, snap: typeof g.snap === "boolean" ? g.snap : DEFAULT_GRID.snap };
 }
 
 /**
@@ -124,7 +131,7 @@ export function validateLayout(json, registry) {
   });
   if (json.grid != null) {
     if (!isObject(json.grid)) problems.push('grid must be an object like {"size_mm": 50, "snap": true}');
-    else if (json.grid.size_mm != null && !(Number(json.grid.size_mm) > 0)) problems.push("grid.size_mm must be a positive number");
+    else if (json.grid.size_mm != null && !validGridSize(json.grid.size_mm)) problems.push(`grid.size_mm must be a number above 0 and at most ${GRID_MAX_MM} (mm)`);
   }
   if (isObject(json.view) && json.view.ortho != null && !orthoOf(json)) {
     problems.push('view.ortho must be {"image": "<url>", "bounds_mm": [xmin, ymin, xmax, ymax]} with xmin < xmax and ymin < ymax');
