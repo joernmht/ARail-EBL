@@ -61,7 +61,7 @@ export class Flyover {
     if (this._resumeVideo) src.el.pause();
     c.classList.add("flyover");
     c.tabIndex = 0;
-    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt.");
+    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle.");
     c.hidden = false;
     // a message on the empty stage (no image yet) comes back when the flyover is left
     this._emptyShown = !$("#emptyStage").hidden;
@@ -85,6 +85,7 @@ export class Flyover {
     this.pointers.clear();
     this.anim = null;
     this.wheel = null;
+    this._keyAim = false;
     app.editor.cancelGesture();
     app.editor.hover(null);
     this._save(true);
@@ -138,6 +139,8 @@ export class Flyover {
     c.style.width = `${cssW}px`;
     c.style.height = `${cssH}px`;
     this.camera.setSize(w, h);
+    // the camera buttons wrap into two columns on short stages: the placing bar and messages keep clear of them
+    wrap.style.setProperty("--fly-nav-w", `${$("#flyNav").offsetWidth}px`);
   }
 
   /** A layout was loaded: its own camera and orthophoto. */
@@ -266,6 +269,18 @@ export class Flyover {
     const t = e.target, onStage = t === this.app.canvas || !!t.closest?.("#stageWrap");
     if (!onStage) return false;
     const c = this.app.canvas, W = c.width, H = c.height, s = e.shiftKey ? 3 : 1, d = 0.12 * Math.min(W, H) * s;
+    const ed = this.app.editor, placing = this.app.activeTab === "build" && !!ed.placing;
+    // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
+    if (e.key === "Enter") {
+      if (!placing || t !== c) return false;
+      this._keyAim = true;
+      if (this.anim) this.cam.set(this.anim.to); // where the last key move was going
+      this.anim = null;
+      const p = this.aimPoint();
+      if (p) ed.placeAt(p, e);
+      else toast("The middle of the view is not on the layout: tilt the view down (Page Down).");
+      return true;
+    }
     // zoom steps ignore Shift: on many keyboards "+" (or "_") needs it, and in and out must stay symmetric
     const ZOOM = 1.25;
     const ops = {
@@ -286,11 +301,22 @@ export class Flyover {
     const op = ops[e.key.length === 1 ? e.key.toLowerCase() : e.key] || ops[e.key];
     if (!op) return false;
     this.move(op, 160);
+    if (placing) this._keyAim = true;
     return true;
+  }
+
+  /** The layout point in the middle of the view (where a point is placed with Enter), or null above the horizon. */
+  aimPoint() {
+    const c = this.app.canvas;
+    return this.groundPoint(c.width / 2, c.height / 2);
   }
 
   /** Advance animations and wheel zooming (once per frame). */
   step(dt) {
+    // placing with the keyboard: the cross of the next point follows the middle of the view
+    const ed = this.app.editor;
+    if (this._keyAim && ed.placing && this.app.activeTab === "build") ed.hover(this.aimPoint());
+    else this._keyAim = false;
     if (this.anim) {
       const a = this.anim, t = (performance.now() - a.t0) / a.ms;
       this.cam.set(FlyCamera.between(a.from, a.to, t));
@@ -325,7 +351,11 @@ export class Flyover {
     c.addEventListener("pointermove", (e) => this.active && this._move(e));
     c.addEventListener("pointerup", (e) => this.active && this._up(e, false));
     c.addEventListener("pointercancel", (e) => this.active && this._up(e, true));
-    c.addEventListener("pointerleave", () => this.active && !this.pointers.size && this.app.editor.hover(null));
+    c.addEventListener("pointerleave", () => this.active && !this.pointers.size && !this._keyAim && this.app.editor.hover(null));
+    // reached with Tab while placing: the cross in the middle shows where Enter puts the point
+    c.addEventListener("focus", () => {
+      if (this.active && this.app.activeTab === "build" && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
+    });
     c.addEventListener("wheel", (e) => this.active && this._wheel(e), { passive: false });
     c.addEventListener("contextmenu", (e) => this.active && e.preventDefault());
     c.addEventListener("dblclick", (e) => {
@@ -384,7 +414,8 @@ export class Flyover {
     const p = this._point(e);
     const prev = this.pointers.get(e.pointerId);
     if (!prev) {
-      // hovering: where the next point would go
+      // hovering: where the next point would go (the mouse takes over from the keyboard)
+      this._keyAim = false;
       if (app.activeTab === "build" && ed.placing) ed.hover(this.groundPoint(p[0], p[1]), e);
       return;
     }

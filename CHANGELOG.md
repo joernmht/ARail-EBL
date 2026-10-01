@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - **Flyover**: look at and edit the layout with a virtual camera instead of the camera image (button, View panel or key F). Mouse, touch, keyboard and on-screen buttons orbit, pan, zoom, tilt and switch to a plan view; the camera is kept per layout. It shows the lab floor, the table, the orthophoto of the table, a grid, the marker stickers and everything virtual, by day and by night.
-- **Grid editing**: in the flyover (and over the camera image with "Grid in camera view") placed points, rectangle corners and dragged objects snap to a grid (`grid` in the layout; Alt for free placement). Inspector buttons ↺ 90° / ↻ 90° and the keys R / Shift+R turn objects.
+- **Grid editing**: in the flyover (and over the camera image with "Grid in camera view") placed points, rectangle corners and dragged objects snap to a grid (`grid` in the layout; Alt for free placement). Inspector buttons ↺ 90° / ↻ 90° and the keys R / Shift+R turn objects. In the flyover objects can be placed with the keyboard alone: the arrows move the view, Enter puts a point at the cross in the middle.
 - **Table modules** (`tabletop`, Build → Table): virtual extensions of the tabletop, drawn over the camera image too, or the outline of the real table for the flyover. Dragged out from corner to corner; Duplicate puts the copy right beside the original.
 - **Orthophoto** of the table (`view.ortho`), drawn in perspective on the table in the flyover.
 - **Streets** as a road network: street, residential street, main road and footpath, with sidewalks, junctions (end to end, T, X), zebra crossings and street lamps; street points snap to other streets in the editor.
@@ -41,6 +41,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - Mistyped building sizes (e.g. a width of 1e6 m) froze the app; sizes now stay within the ranges of their parameters.
 - Overlapping roads were drawn darker where they overlap.
 - The hidden file inputs made the page much taller than the Build panel.
+- Keyboard focus was invisible on the buttons that open files (Take photo, Record video, Open file, Load calibration, Import layout).
+- While placing, the placing bar covered the Freeze and Full screen buttons; it now sits above the stage buttons (and beside the flyover's camera buttons).
 
 ## [0.1.0] – 2026-09-30
 

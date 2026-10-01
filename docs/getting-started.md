@@ -43,7 +43,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 The keys work while the stage has the focus (click on it, or switch the flyover on with F); arrows pan, + and − zoom, and Shift makes arrows, Q/E and Page Up/Down take bigger steps. The buttons at the right of the stage zoom, rotate, switch to the **plan view** (straight down; press it again to tilt back) and show the whole layout.
 
-In Build, everything works as on the camera image, and placed points, the corners of table modules and dragged objects **snap to the grid** (hold Alt/Option to place freely). **Build → Table → Table module** extends the tabletop with virtual table modules: drag from one corner to the opposite one, or tap both corners. A table module of the kind *real table* draws the outline of the lab's real table; once there is one, the flyover no longer draws its own light-grey default table around the markers and objects.
+In Build, everything works as on the camera image, and placed points, the corners of table modules and dragged objects **snap to the grid** (hold Alt/Option to place freely). Placing also works with the keyboard: pick the type in the palette, go back to the stage (Shift+Tab), move the view with the arrow keys and press **Enter** to put a point at the cross in the middle of the view (for a bus line: to pick the stop under the cross). **Build → Table → Table module** extends the tabletop with virtual table modules: drag from one corner to the opposite one, or tap both corners. A table module of the kind *real table* draws the outline of the lab's real table; once there is one, the flyover no longer draws its own light-grey default table around the markers and objects.
 
 The View panel's **Flyover** section has the same switch and camera buttons, the grid spacing (10, 25, 50, 100 or 250 mm), **Snap to the grid**, **Grid in camera view** (shows the grid over the camera image too, and snapping to it there) and **Show markers**.
 
@@ -126,6 +126,7 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 | M | marker outlines on/off |
 | F | flyover on/off |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
+| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
 | Delete, Backspace | delete the selected object (Build panel) |
 | Alt (Option) | hold while placing or dragging: no snapping to the grid or to streets |

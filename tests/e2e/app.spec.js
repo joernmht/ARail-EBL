@@ -164,3 +164,19 @@ test("periodic panel updates keep keyboard focus on buttons", async ({ page }) =
   expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false); // Space pressed the button
   expect(errors).toEqual([]);
 });
+
+test("the time chip says night after sunset, also with the day and night lighting switched off", async ({ page }) => {
+  const errors = await openApp(page, "/app/#simulate");
+  const chip = page.locator("#hud .chip.clock");
+  await page.getByRole("button", { name: "Night 22:30" }).click();
+  await page.evaluate(() => window.__arail.updateHud());
+  await expect(chip).toContainText("· night");
+  await page.locator("#optLighting").uncheck(); // only the drawing stays bright
+  await page.evaluate(() => window.__arail.updateHud());
+  await expect(chip).toContainText("· night");
+  await expect(page.locator(".clockface")).toContainText("night");
+  await page.getByRole("button", { name: "Noon 12:00" }).click();
+  await page.evaluate(() => window.__arail.updateHud());
+  await expect(chip).not.toContainText("night");
+  expect(errors).toEqual([]);
+});

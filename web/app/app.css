@@ -77,6 +77,8 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* buttons that open files are labels of hidden file inputs: the label shows the input's focus */
+label.btn:has(+ input.visually-hidden:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
 input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 
 /* ------------------------------------------------------------------ frame */
@@ -86,11 +88,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   padding: 10px 16px 9px; padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: var(--bar); color: var(--bar-text); border-bottom: 3px solid var(--bar-rule);
 }
-.bar :focus-visible { outline-color: var(--bar-text); }
+.bar :focus-visible, .bar label.btn:has(+ input.visually-hidden:focus-visible) { outline-color: var(--bar-text); }
 .identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
 /* chair logo: the CD file's canvas (1014 × 321) has empty space right of the wordmark; show the
    left 800 units (room for wider fallback fonts than Arial) */
 .cro-logo { --h: 40px; display: block; height: var(--h); width: calc(var(--h) * 800 / 321); object-fit: cover; object-position: left center; flex: none; }
+/* high-contrast themes (forced colours) give the bar the system background, white in a light theme:
+   the white logo keeps a Türkis tile of its own */
+@media (forced-colors: active) {
+  .cro-logo { forced-color-adjust: none; background: #0A777F; border-radius: 3px; }
+}
 .identity .divider { width: 1px; align-self: stretch; margin-block: 3px; background: var(--bar-line); }
 .brand { display: flex; align-items: baseline; color: inherit; text-decoration: none; font-weight: 700; font-size: 1.3rem; line-height: 1.2; }
 .brand .sign { background: var(--bar-primary); color: var(--bar-primary-text); padding: 0 5px; border-radius: 3px; margin-right: 1px; }
@@ -150,9 +157,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .stage-tools .btn:hover { border-color: var(--overlay-text); }
 .stage-tools .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
 .toast { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); background: var(--board); color: var(--board-text); border-left: 5px solid var(--warn); padding: 10px 14px; border-radius: var(--radius); font-weight: 500; box-shadow: 0 6px 24px rgba(0, 6, 26, .4); }
-.placing { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--overlay); color: var(--overlay-text); border-left: 5px solid var(--warn); padding: 8px 10px; border-radius: var(--radius); font-size: .88rem; }
+/* the placing bar sits above the stage tools (Flyover, Full screen stay visible and can be pressed);
+   a message shown while placing goes to the top of the stage */
+.placing { position: absolute; left: 10px; right: 10px; bottom: calc(32px + 1rem); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--overlay); color: var(--overlay-text); border-left: 5px solid var(--warn); padding: 8px 10px; border-radius: var(--radius); font-size: .88rem; }
+.placing:not([hidden]) ~ .toast { bottom: auto; top: 48px; }
 .placing strong { font-weight: 700; }
 .placing .grow { flex: 1; min-width: 12ch; }
+/* on phones the text takes the whole width (the buttons go below it), and touch screens skip the keyboard hint */
+@media (max-width: 640px) { .placing .grow { flex-basis: 100%; } }
+@media (max-width: 640px), (pointer: coarse) { .placing .keys { display: none; } }
 .empty-stage { color: var(--board-muted); padding: 24px; text-align: center; max-width: 42ch; }
 
 /* ------------------------------------------------------------------ panel */

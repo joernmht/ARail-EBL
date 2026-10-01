@@ -1,6 +1,10 @@
 // The in-app video survey: a video of the whole layout -> a fixed marker map.
+import AxeBuilder from "@axe-core/playwright";
 import { existsSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+
+const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
+const axe = async (page) => (await new AxeBuilder({ page }).include("#panel-build").withTags(TAGS).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
 
 const VIDEO = "tests/fixtures/synthetic-survey.webm"; // made by `npm run fixtures` (WebM: test browsers lack H.264)
 
@@ -19,7 +23,11 @@ test("a video of the synthetic layout gives all markers; keeping them fixes the 
   });
   await page.locator("#surveyVideo").setInputFiles(VIDEO);
   await expect(page.locator("#toast")).toContainText("unlocked for the survey");
+  // while it runs: progress bar, status line and plot are accessible
+  await expect(page.locator(".survey progress")).toBeVisible();
+  expect(await axe(page), "survey running").toEqual([]);
   await expect(page.locator(".survey [role=status]")).toContainText("done", { timeout: 60_000 });
+  expect(await axe(page), "survey done").toEqual([]);
   const poses = await page.evaluate(() => window.__arail.world.toJSON().markers.poses);
   expect(Object.keys(poses).length).toBe(8);
   // positions agree with the truth (the survey's frame is the origin marker 0's)

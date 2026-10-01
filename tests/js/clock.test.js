@@ -42,6 +42,21 @@ test("clock: daylight, night and demand profiles", () => {
   assert.equal(c.demand("unknown"), 1);
 });
 
+test("clock: the demand table of docs/day-and-night.md", () => {
+  const at = (kind, h) => Math.round(profileAt(PROFILES[kind], h * 60) * 100) / 100;
+  for (const kind of ["rail", "bus"]) for (const h of [1, 2.5, 4.5]) assert.equal(at(kind, h), 0, `${kind} at ${h} h: no service`);
+  assert.equal(at("car", 3), 0.15);
+  assert.ok(at("passengers", 3) <= 0.05, "almost no random passengers at night");
+  for (const kind of ["rail", "bus"]) assert.equal(at(kind, 7.5), 1.5);
+  assert.equal(at("car", 7), 1.4);
+  assert.equal(at("passengers", 7.5), 1.6);
+  assert.deepEqual([at("rail", 12), at("bus", 12), at("car", 9), at("car", 16), at("passengers", 12)], [1, 1, 1, 1.2, 1]);
+  assert.deepEqual([at("rail", 17), at("bus", 17), at("car", 17), at("passengers", 17)], [1.4, 1.4, 1.5, 1.5]);
+  // 21:00 to midnight: trains 0.6 -> 0.4, buses 0.5 -> 0.3, cars 0.5 -> 0.15, random passengers 0.5 -> 0.3
+  assert.deepEqual([at("rail", 21), at("rail", 23.999), at("bus", 21), at("bus", 23.999)], [0.6, 0.4, 0.5, 0.3]);
+  assert.deepEqual([at("car", 21), at("car", 23.999), at("passengers", 21), at("passengers", 23.999)], [0.53, 0.15, 0.5, 0.3]);
+});
+
 test("clock: layouts carry their clock settings; no trains during the night break", () => {
   const world = createWorld({
     objects: [{ id: "p", type: "platform", from: [0, 0], to: [800, 0], sides: "both" }],

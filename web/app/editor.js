@@ -456,7 +456,7 @@ export class Editor {
     if (this.placing.cls.placement === "stops") this._drawStopTargets(ctx, view);
     const toXY = (q) => {
       if (q.marker != null) return this.world.map.get(q.marker);
-      const xy = q.id ? this.world.getObject(q.id)?.anchorPoint() : q.xy;
+      const xy = q.id ? this.world.getObject(q.id)?.anchorPoint() : q.xy || q.stopAt;
       return xy ? { x: xy[0], y: xy[1] } : null;
     };
     const project = (q) => {
@@ -599,9 +599,11 @@ export class Editor {
     const multi = cls.placement === "polygon" || cls.placement === "polyline" || cls.placement === "stops";
     const noun = cls.placement === "stops" ? "stop" : "point";
     const grid = this.snapping() && cls.placement !== "stops" ? ` Points snap to the ${this.world.layout.grid.size_mm} mm grid (hold Alt for free placement).` : "";
+    // in the flyover the keyboard places too (see Flyover.key)
+    const keys = this.app.mode === "flyover" ? ` Keyboard: the arrows on the stage move the view, Enter ${noun === "stop" ? "picks the stop" : "places a point"} at the cross in the middle.` : "";
     mount(bar,
       h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), HINTS[cls.placement],
-        points.length ? ` (${points.length} ${noun}${points.length > 1 ? "s" : ""})` : "", grid),
+        points.length ? ` (${points.length} ${noun}${points.length > 1 ? "s" : ""})` : "", grid, keys ? h("span", { class: "keys" }, keys) : null),
       multi ? h("button", { class: "btn small primary", type: "button", onclick: () => this.finish() }, "Finish") : null,
       points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, `Undo ${noun}`) : null,
       h("button", { class: "btn small", type: "button", onclick: () => this.cancel() }, "Cancel"),
