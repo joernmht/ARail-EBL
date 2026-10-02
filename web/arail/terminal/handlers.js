@@ -37,6 +37,12 @@ const STACKER_CARRY_M = 3.0, STACKER_LOAD_M = 1.5, STACKER_ABOVE_M = 0.3;
 /** Phases before the container is locked: the move can still be cancelled, the crane waits for the source. */
 const BEFORE_LOCK = new Set(["raise", "travel", "drive", "lower", "lock"]);
 
+/**
+ * How far (m) a handler may be from where its container is, or goes, when it lowers, locks or
+ * sets down; further away (a model wagon was pushed, an object was moved) it goes back and aims again.
+ */
+const ON_TARGET_M = 0.25;
+
 /** Eased values that are angles (they turn the shorter way round). */
 const ANGLES = new Set(["heading", "loadHeading"]);
 
@@ -140,7 +146,8 @@ class HandlerBase {
         return;
       }
       if (this._stalled) {
-        // the carrier may have moved meanwhile (a model wagon): plan the phase again from here
+        // the carrier may have moved meanwhile (a model wagon): plan the phase again from here (a
+        // handler that is no longer over its container goes back, see `_plan`)
         this._stalled = false;
         this._move.waiting = null;
         this._plan(this.phase, host);
@@ -235,6 +242,12 @@ export class CraneHandler extends HandlerBase {
     return this.object.fromLocal(this.s, this.t);
   }
 
+  /** Is the trolley away from above the container's place at `ref` (that it reaches)? */
+  _off(host, ref) {
+    const box = host._slotBox(ref, this.load);
+    return !!box && this.object.reaches(box.center) && dist2(box.center, this.point()) > host.mm(ON_TARGET_M);
+  }
+
   /** Crane-local [s, t] of a layout point, inside the ranges the trolley reaches. */
   _local(p) {
     const l = this.object.toLocal(p) || [this.s, this.t];
@@ -280,12 +293,14 @@ export class CraneHandler extends HandlerBase {
         break;
       }
       case "lower": {
+        if (this._off(host, m.from)) return this._plan("raise", host);
         const box = host._slotBox(m.from, c);
         const z = box ? box.z0 + box.height : this.z;
         this._set("lower", { z }, this._hoistTime(host, z, false));
         break;
       }
       case "lock":
+        if (this._off(host, m.from)) return this._plan("raise", host);
         this._set("lock", {}, CRANE.lock_s / this.speed);
         break;
       case "lift": {
@@ -300,6 +315,7 @@ export class CraneHandler extends HandlerBase {
         break;
       }
       case "set-down": {
+        if (this._off(host, m.to)) return this._plan("lift", host);
         const box = host._slotBox(m.to, c);
         const z = box ? box.z0 + box.height : this.z;
         this._set("set-down", { z }, this._hoistTime(host, z, true));
@@ -386,6 +402,14 @@ export class StackerHandler extends HandlerBase {
     return { x: box.center[0] + n[0] * d, y: box.center[1] + n[1] * d, heading: Math.atan2(-n[1] * side, -n[0] * side) };
   }
 
+  /** Is it away from where it stands to handle the container's place at `ref`? */
+  _off(host, ref) {
+    const box = host._slotBox(ref, this.load);
+    if (!box) return false;
+    const to = this._stand(host, box);
+    return dist2([to.x, to.y], [this.x, this.y]) > host.mm(ON_TARGET_M);
+  }
+
   /** Time (s) to drive in a straight line to (x, y). */
   _driveTime(host, x, y) {
     const k = this.speed;
@@ -430,6 +454,7 @@ export class StackerHandler extends HandlerBase {
       }
       case "lower":
       case "set-down": {
+        if (this._off(host, phase === "lower" ? m.from : m.to)) return this._plan("drive", host);
         const box = host._slotBox(phase === "lower" ? m.from : m.to, c);
         const lift = box ? box.z0 + box.height : this.lift;
         const facing = box ? this._stand(host, box).heading : this.heading;
@@ -437,6 +462,7 @@ export class StackerHandler extends HandlerBase {
         break;
       }
       case "lock":
+        if (this._off(host, m.from)) return this._plan("drive", host);
         this._set("lock", {}, REACH_STACKER.lock_s / this.speed);
         break;
       case "lift": {

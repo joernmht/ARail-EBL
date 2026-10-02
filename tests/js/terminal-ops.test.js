@@ -904,6 +904,88 @@ test("a container on a spreader whose move is cancelled stays in the terminal wh
   assert.deepEqual(r.at, r.m.to);
 });
 
+/**
+ * Record, each time a handler takes a container off or sets it down, how far (mm) its spreader (a
+ * crane) or its stand point (a reach stacker) is from where it should be for the slot.
+ */
+function aim(sim) {
+  const out = [];
+  for (const [name, ref] of [["_detach", "from"], ["_attach", "to"]]) {
+    const orig = sim[name].bind(sim);
+    sim[name] = (h) => {
+      const box = sim._slotBox(h._move[ref], h.load), stand = h.kind === "crane" ? null : h._stand(sim, box);
+      const [p, want] = stand ? [[h.x, h.y], [stand.x, stand.y]] : [h.point(), box.center];
+      out.push({ what: name.slice(1), handler: h.id, off: Math.hypot(p[0] - want[0], p[1] - want[1]) });
+      return orig(h);
+    };
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- model wagons pushed while handled */
+
+/** A model wagon (W3, sggrss80) for the test layout: `put(x, y)` shows its tags there for `frames` frames. */
+function modelWagon(world, sim) {
+  const type = CARRIER_TYPES.sggrss80;
+  let time = 0;
+  const frame = (x, y) => Object.fromEntries([0, 1, 2].map((slot) => [encodeTag(3, slot, 4), { center: [x + mm(type.bays_m[slot]), y], heading: 0, edge_mm: 20 }]));
+  return {
+    /** Show it at (x, y) for `frames` frames of 0.1 s, stepping the world by `dt` real seconds after each. */
+    put(x, y, frames = 1, dt = 0) {
+      for (let i = 0; i < frames; i++, time += 0.1) {
+        sim.observe(frame(x, y), time);
+        if (dt) world.step(dt);
+      }
+    },
+    /** Push it from x0 to x1 (frames while it moves, then while it stands again). */
+    push(x0, x1, y, dt = 0) {
+      for (let i = 1; i <= 6; i++) this.put(x0 + ((x1 - x0) * i) / 6, y, 1, dt);
+      this.put(x1, y, 13, dt);
+    },
+  };
+}
+
+test("a crane and a reach stacker follow a model wagon that was pushed while they handled it", () => {
+  const y = 228.7;
+  // a crane takes a container off W3; W3 is pushed 60 mm while the spreader is lowered onto it
+  let { world, sim, log } = setup();
+  let w = modelWagon(world, sim);
+  w.put(700, y, 15);
+  assert.equal(sim.request(ID(5), { carrier: "W3" }).error, undefined);
+  let m = sim.moves[0];
+  finish(world, sim, log, m);
+  m = sim.request(ID(5), { carrier: "yard-a" }).move;
+  runUntil(world, () => sim.handlers.get("crane-1").phase === "lower");
+  let shots = aim(sim);
+  w.push(700, 760, y, 0.01);
+  finish(world, sim, log, m);
+  assert.ok(shots.length === 2 && shots.every((s) => s.off < 0.01), JSON.stringify(shots));
+  // a crane sets a container down on W3; W3 is pushed while the crane carries (it never waits)
+  for (const phase of ["carry", "set-down"]) {
+    ({ world, sim, log } = setup());
+    w = modelWagon(world, sim);
+    w.put(700, y, 15);
+    m = sim.request(ID(5), { carrier: "W3" }).move;
+    runUntil(world, () => sim.handlers.get("crane-1").phase === phase);
+    shots = aim(sim);
+    w.push(700, 760, y, phase === "carry" ? 0 : 0.01);
+    finish(world, sim, log, m);
+    assert.ok(shots.length === 1 && shots[0].off < 0.01, `${phase}: ${JSON.stringify(shots)}`);
+    assert.ok(Math.abs(sim.boxes().find((b) => b.id === ID(5)).center[0] - sim.handlers.get("crane-1").point()[0]) < 1e-6);
+  }
+  // a reach stacker sets a container down on W3 (beyond the crane); W3 is pushed while it sets down
+  ({ world, sim, log } = setup());
+  w = modelWagon(world, sim);
+  w.put(1500, y, 15);
+  m = sim.request(ID(8), { carrier: "W3" }).move;
+  assert.equal(m.handler, "reach-stacker-1");
+  runUntil(world, () => sim.handlers.get("reach-stacker-1").phase === "set-down");
+  shots = aim(sim);
+  w.push(1500, 1560, y, 0.01);
+  finish(world, sim, log, m);
+  assert.ok(shots.length === 1 && shots[0].off < 0.01, JSON.stringify(shots));
+});
+
 /* ---------------------------------------------------------------- drawing */
 
 test("draw builds the scene in the camera view and the flyover without errors", () => {

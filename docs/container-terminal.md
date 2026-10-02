@@ -234,6 +234,8 @@ wagons are not found, get closer or print the largest tags that fit (23 mm in H0
   (at once in a photo). Cranes and reach stackers only lift from or set down on a standing or held
   wagon. A wagon within 8 mm and 15° of a `track` object is put on its centre line, so draw the
   real loading tracks as tracks.
+- **Pushed while it is handled**: a crane or reach stacker that is no longer above the wagon's spot
+  goes back up and aims again where the wagon stands now.
 - **Picked up and put down elsewhere** (more than 30 mm away): the wagon starts afresh at its new
   place instead of gliding there.
 - **Another image source** (a new photo, the live camera): all model wagons are lost until their
