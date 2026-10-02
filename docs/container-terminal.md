@@ -322,8 +322,9 @@ under them stay selectable. Then:
 Every place a move uses must lie within a crane's reach or be served by a reach stacker; otherwise
 the move is refused with *No crane or reach stacker can move it from … to …*. The infrastructure
 can be changed at any time: a moved or resized crane keeps what it is doing, a deleted crane or
-reach stacker takes its moves with it (they are cancelled), and the containers of a yard cell
-that disappears leave the terminal.
+reach stacker takes its moves with it (they are cancelled; a container on its spreader is put back
+where it came from, or else at its target or another free place), and the containers of a yard
+cell that disappears leave the terminal.
 
 ## Layout file
 

@@ -302,11 +302,12 @@ export class TerminalSimulation extends Simulation {
     }
     for (const [id, c] of [...this._yards]) {
       if (seen.has(id)) continue;
-      for (const m of this._pending.filter((m) => m.from.carrier === id || m.to.carrier === id)) this._cancelMove(m);
-      for (const box of this.inventory.on(id)) this._emit(EV.containerLeft, { container: box, visit: null, reason: "place removed" });
-      this.inventory.removeCarrier(id);
+      // the yard goes first, so that a container lifted from it is not put back there
+      const gone = this.inventory.removeCarrier(id);
       this._yards.delete(id);
       this._boxCache.delete(c.id);
+      for (const m of this._pending.filter((m) => m.from.carrier === id || m.to.carrier === id)) this._cancelMove(m);
+      for (const box of gone) this._emit(EV.containerLeft, { container: box, visit: null, reason: "place removed" });
     }
     // keep the yards in object order
     this._yards = new Map(objects.filter((o) => this._yards.has(o.id)).map((o) => [o.id, this._yards.get(o.id)]));
@@ -802,7 +803,11 @@ export class TerminalSimulation extends Simulation {
     this._emit(EV.moveCancelled, { move: m });
   }
 
-  /** Close a move: release its reservation and the container (which returns from a spreader). */
+  /**
+   * Close a move: release its reservation and the container. A container on a spreader is set down
+   * where it came from, else at the move's target, else in a free slot of the carrier it came from
+   * or of a yard; it leaves the terminal only if none of these takes it.
+   */
   _endMove(m, state, reason) {
     m.state = state;
     m.reason = reason;
@@ -813,7 +818,10 @@ export class TerminalSimulation extends Simulation {
     const c = this.inventory.get(m.container);
     if (c && c.move === m.id) c.move = null;
     if (c && c.handler != null && !c.at) {
-      if (this.inventory.attach(c.id, m.from)) {
+      const free = (id) => (this.carrier(id) ? this.inventory.freeSlots(c, id)[0] : null);
+      const places = [m.from, m.to, free(m.from.carrier), ...[...this._yards.keys()].map(free)];
+      const home = places.find((r) => r && this.carrier(r.carrier) && !this.inventory.canPlace(c, r));
+      if (!home || this.inventory.attach(c.id, home)) {
         this.inventory.remove(c.id);
         this._emit(EV.containerLeft, { container: c, visit: null, reason: "place removed" });
       }

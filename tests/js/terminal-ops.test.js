@@ -878,6 +878,32 @@ test("object edits: a removed yard drops its containers; a resized crane keeps i
   assert.deepEqual(sim.inventory.check(), []);
 });
 
+test("a container on a spreader whose move is cancelled stays in the terminal when its old place was taken", () => {
+  const carry = (box, to, then, remove) => {
+    const { world, sim, log } = setup();
+    const m = sim.request(box, to).move;
+    runUntil(world, () => sim.handlers.get("crane-1").phase === "carry");
+    const from = { ...m.from }, n = sim.inventory.containers.size - (remove === "yard-a" ? sim.inventory.on("yard-a").length : 0);
+    assert.equal(then(sim, from).error, undefined);
+    world.removeObject(remove);
+    world.step(0.01);
+    assert.equal(m.state, "cancelled");
+    assert.ok(!log.some((e) => e.name === "terminal.container.left" && e.p.container.id === box), `${box} stays`);
+    assert.equal(sim.inventory.containers.size, n);
+    assert.deepEqual(sim.inventory.check(), []);
+    return { at: sim.inventory.get(box).at, m };
+  };
+  // its old place is reserved by another move: it goes to its target
+  let r = carry(ID(1), { carrier: "yard-a" }, (sim, from) => sim.request(ID(3), from), "crane-1");
+  assert.deepEqual(r.at, r.m.to);
+  // the box it stood on has a move queued: it goes to its target
+  r = carry(ID(5), { carrier: "yard-a", bay: 9, row: 0 }, (sim) => sim.request(ID(4), { carrier: "K1/3" }), "crane-1");
+  assert.deepEqual(r.at, r.m.to);
+  // the yard it came from is deleted: it is not put back there (it goes to its target)
+  r = carry(ID(5), { carrier: "K1/3" }, () => ({}), "yard-a");
+  assert.deepEqual(r.at, r.m.to);
+});
+
 /* ---------------------------------------------------------------- drawing */
 
 test("draw builds the scene in the camera view and the flyover without errors", () => {
