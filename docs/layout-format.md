@@ -61,8 +61,9 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
+| `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [container terminal example](container-terminal.md#the-example) does) |
 
-The app writes `clock`, `grid` and all other sections when it exports a layout; `markers.locked` and `markers.moving` only when they are set.
+The app writes `clock`, `grid` and all other sections when it exports a layout; `markers.rolling`, `markers.locked` and `markers.moving` only when they are set.
 
 ## `markers`
 
@@ -73,9 +74,29 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 | `sizes_mm` | `{}` | sizes of individual markers, e.g. `{"7": 60}` |
 | `codes` | `50` | number of codes used: marker IDs `0 … codes-1`. Set it to the number of stickers you printed (IDs 0 … N−1, see [choosing a dictionary and the IDs](lab-setup.md#choosing-a-dictionary-and-the-ids)). Fewer codes mean more correctable bit errors. With a locked map the app reads only the codes up to the highest ID in `poses` and `moving`. |
 | `origin` | `null` | marker that defines the layout frame while surveying; usually `0` (`null`: the lowest ID among the first markers seen) |
+| `rolling` | | tags on model wagons, a marker family of their own, see [below](#markersrolling) |
 | `locked` | `false` | the marker map is complete (**Keep positions** in the app, or `arail-survey`): live tracking surveys nothing, markers that are not in `poses` are ignored, and misread or moved markers are dropped from the pose as outliers |
-| `moving` | `[]` | IDs of markers on vehicles, e.g. `[40, 41]` for container wagons: never part of the map and never used for the pose, locked or not (a pose for such an ID is ignored). They must be below `codes`, must not be the origin, and objects cannot be placed relative to them. The tracker reports where they are seen (`tracker.state.moving`, see [Extending](extending.md#tracking-moving-markers)). |
+| `moving` | `[]` | IDs of markers of the layout's type on vehicles, e.g. `[40, 41]` (the older way; model wagons of the container terminal carry tags of their own, see `rolling`): never part of the map and never used for the pose, locked or not (a pose for such an ID is ignored). They must be below `codes`, must not be the origin, and objects cannot be placed relative to them. The tracker reports where they are seen (`tracker.state.moving`, see [Extending](extending.md#tracking-moving-markers)). |
 | `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`. Poses in the file are kept fixed; unknown markers are surveyed (unless the map is locked). |
+
+### `markers.rolling`
+
+Rolling-stock markers: the tags on the deck cards of model wagons for the [container terminal](container-terminal.md#markers-on-rolling-stock). They are a marker family of their own, with IDs of their own: never part of the marker map, never used for the pose, and not affected by `codes`, `locked` or `moving`. Tag ID = (wagon number − 1) × `stride` + spot, with spot 0 at the wagon's A end.
+
+```json
+"rolling": { "dictionary": "APRILTAG_36h11", "codes": 64, "size_mm": 20, "height_mm": 15, "stride": 4, "max_bit_errors": 3 }
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `dictionary` | `"APRILTAG_36h11"` | marker type of the tags; it must differ from `markers.dictionary` (AprilTag 36h11 is the only type never misread as ArUco Original). The marker sheet page prints deck cards only in AprilTag 36h11, so with AprilTag 36h11 layout markers use another layout marker type (e.g. ArUco Original) |
+| `codes` | `64` | tag IDs `0 … codes − 1` (1–1000, and at most the IDs of the family: 587 for AprilTag 36h11, 250 for ArUco MIP 36h12; more are reported and count as all of them) |
+| `size_mm` | `20` | edge of the black square (5–100; at most 23 mm fit on an H0 deck card) |
+| `height_mm` | `15` | height of the tags above the layout plane, measured in the lab (0–200); the terminal's `rolling_stock[].height_mm` overrides it per wagon |
+| `stride` | `4` | IDs per wagon (1–8); at least the container spots of every wagon type used (3 for an Sgns, 4 for an Sggrss), so that every spot has a tag; the terminal's validation reports fewer |
+| `max_bit_errors` | `3` | most bit errors corrected in a tag (0–6) |
+
+Invalid values fall back to the defaults and are reported. With rolling-stock markers, set `markers.dictionary` to the layout's marker type, not `auto`.
 
 ## `services`
 
@@ -150,6 +171,11 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`track`](#track) | Track (Infrastructure) | `points` (polyline) |
 | [`label`](#label) | Label / sign (Infrastructure) | `position` |
 | [`tabletop`](#tabletop-table-module) | Table module (Table) | rectangle |
+| [`container-yard`](#container-yard-container-yard-block) | Container yard block (Terminal) | rectangle |
+| [`gantry-crane`](#gantry-crane) | Gantry crane (Terminal) | rectangle |
+| [`truck-lane`](#truck-lane) | Truck lane (Terminal) | `points` (polyline) |
+| [`quay`](#quay-quay-and-fairway) | Quay and fairway (Terminal) | `points` (polyline) |
+| [`reach-stacker`](#reach-stacker) | Reach stacker (Terminal) | `position` |
 
 ### `platform`: rail platform
 
@@ -292,6 +318,61 @@ Geometry: a rectangle, `position` (centre). A base plate whose top is the layout
 
 Without a `physical` table module, the flyover draws a light-grey default table around the markers, the objects (except those on table extensions) and the orthophoto, with a margin of 100 mm.
 
+### `container-yard`: container yard block
+
+The infrastructure of the [container terminal](container-terminal.md): it needs a `terminal` simulation (below), which reads these objects. Geometry: a rectangle, `position` (centre). Container stacks in a grid: bays of 6.9 m along the rectangle's width, rows of 2.9 m across it, as many as fit (Block A of the example, 952 × 134 mm in H0, has 12 bays and 4 rows).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `width_mm` | `476` | length along the bays (50–5000) |
+| `depth_mm` | `134` | depth across the rows (30–2000) |
+| `rotation_deg` | `0` | |
+| `tiers` | `3` | containers per stack at most (1–5) |
+
+Making a block smaller removes the containers in the cells that disappear.
+
+### `gantry-crane`
+
+A rail-mounted gantry crane. Geometry: a rectangle, `position` (centre): the area between its rails, which run along the width. It reaches its outreach beyond each rail, but not the last 8 m at the ends of the runway. Like table modules, it is picked at its edges unless selected.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `width_mm` | `1150` | runway length, along the rails (100–5000) |
+| `depth_mm` | `345` | span between the rails (100–1500) |
+| `rotation_deg` | `0` | |
+| `outreach_m` | `8` | how far it reaches beyond each rail (0–20) |
+| `lift_m` | `15` | lifting height (8–25) |
+| `speed` | `1` | speed factor of all its motions (0.25–5) |
+
+### `truck-lane`
+
+The lane of the trucks under the crane. Geometry: `points` (polyline in the driving direction; the first point is the entry). Trucks stop at evenly spaced positions (19 m apart) around its middle; they come and go on a passing lane beside it. Around the positions the lane should bend by at most 10° within a truck length (16.5 m), or trucks passing or turning in overlap there; the editor warns about sharper bends.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `positions` | `3` | truck positions (1–6) |
+| `passing_side` | `"left"` | side of the passing lane, `left` or `right`, seen in the driving direction |
+
+### `quay`: quay and fairway
+
+Geometry: `points` (polyline along the middle of the fairway; the first point is where the barges come from). Barges berth with the bow at the last point, beside the quay wall. Picked at its edges unless selected.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `berth_m` | `60` | length of the quay wall before the last point (20–200) |
+| `water_m` | `16` | width of the fairway (10–60) |
+| `quay_side` | `"right"` | side of the quay wall, `left` or `right`, seen in the sailing direction |
+
+### `reach-stacker`
+
+Geometry: `position`, its parking place. It moves containers where no crane reaches: between wagons, trucks and yard blocks, not barges.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | |
+| `tiers` | `3` | the highest tier it stacks to (1–4) |
+| `speed` | `1` | speed factor (0.25–5) |
+
 ### Objects from plugins
 
 Plugins add their own types (the example plugin [`windmill.js`](../web/plugins/windmill.js) adds `windmill`). If a layout contains a type that is not registered, the object is kept unchanged when the layout is saved, and the app reports the missing plugin.
@@ -305,6 +386,7 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140) | random passengers at all stops, their moods, boarding and alighting; it also handles the town's people at stops |
 | `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `commuters_out` (0.35 of the workers take the train), `commuters_in` (40 visitors by train per 100 local jobs), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train, see [Day and night](day-and-night.md#the-town-simulation) |
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
+| `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
 
 The town needs residential buildings and works best with the passenger simulation (for the stops), streets and bus lines. Plugins can add more simulations, e.g. `{"type": "road-traffic", "cars_per_km": 30, "speed_kmh": 40}` from the example plugin [`road-traffic.js`](../web/plugins/road-traffic.js). Settings of a simulation whose plugin is missing are kept when the layout is saved.
 
@@ -315,6 +397,8 @@ The app and `validateLayout()` report:
 - an unknown `format` and a scale that is not a positive number;
 - malformed marker poses, a `locked` that is not true or false, a `moving` that is not a list of marker IDs, moving markers at or above `codes`, a moving origin marker, poses given for moving markers, and a locked map without poses;
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
-- a malformed `grid` or `view.ortho`, and scenarios without an id or steps.
+- a malformed `grid` or `view.ortho`, and scenarios without an id or steps;
+- in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;
+- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal.
 
 The layout loads anyway, with unusable entries left out; the app logs the problems and shows the first one when a layout is imported. The tests check the example layouts, so a broken example layout fails CI.

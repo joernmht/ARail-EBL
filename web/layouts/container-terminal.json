@@ -1,0 +1,74 @@
+{
+  "format": "arail-layout/1",
+  "name": "Container terminal (virtual)",
+  "description": "A virtual intermodal terminal: a gantry crane over two loading tracks, a truck lane, a yard block and a barge berth; a reach stacker serves a second block. Opens in the flyover.",
+  "scale": 87,
+  "markers": {
+    "dictionary": "ARUCO", "size_mm": 30, "codes": 4, "origin": 0,
+    "rolling": { "dictionary": "APRILTAG_36h11", "codes": 64, "size_mm": 20, "height_mm": 15, "stride": 4, "max_bit_errors": 3 },
+    "locked": true,
+    "poses": { "0": [0, 0, 0], "1": [1500, 0, 0], "2": [1500, 820, 0], "3": [0, 820, 0] }
+  },
+  "clock": { "start": "08:00" },
+  "simulations": [
+    {
+      "type": "terminal",
+      "name": "KV terminal",
+      "default_wagon": "sgns60",
+      "rolling_stock": [
+        { "number": 1, "type": "sgns60" }, { "number": 2, "type": "sgns60" },
+        { "number": 3, "type": "sggrss80" }, { "number": 4, "type": "lgns40" }
+      ],
+      "trains": [
+        { "id": "KT41", "name": "KT 41 Hamburg", "track": "track-1", "direction": 1, "stop_mm": 1597, "start": "positioned", "wagons": ["sgns60", "sgns60", "sggrss80"] },
+        { "id": "KT52", "name": "KT 52 Duisburg", "track": "track-2", "direction": -1, "stop_mm": 1525, "start": "away", "wagons": ["sgns60", "sgns60", "lgns40"] }
+      ],
+      "barges": [ { "id": "BG1", "name": "MS Elbe 7", "quay": "quay-1", "length_m": 55, "tiers": 2, "start": "positioned" } ],
+      "trucks": { "lane": "lane-1" },
+      "containers": [
+        { "id": "ARLU 100001 9", "size": "40", "high": true, "at": { "carrier": "KT41/1", "bay": 0 } },
+        { "id": "ARLU 100002 4", "size": "20", "at": { "carrier": "KT41/1", "bay": 2 } },
+        { "id": "ARLU 100003 0", "size": "20", "at": { "carrier": "KT41/2", "bay": 0 } },
+        { "id": "ARLU 100004 5", "size": "40", "at": { "carrier": "KT41/2", "bay": 1 } },
+        { "id": "EBLU 300001 1", "size": "40", "at": { "carrier": "KT41/3", "bay": 0 } },
+        { "id": "EBLU 300002 7", "size": "20", "at": { "carrier": "KT41/3", "bay": 2 } },
+        { "id": "TUDU 200001 5", "size": "20", "at": { "carrier": "yard-a", "bay": 0, "row": 0, "tier": 0 } },
+        { "id": "TUDU 200002 0", "size": "20", "high": true, "at": { "carrier": "yard-a", "bay": 0, "row": 0, "tier": 1 } },
+        { "id": "DBCU 400001 9", "size": "40", "at": { "carrier": "yard-a", "bay": 2, "row": 1, "tier": 0 } },
+        { "id": "DBCU 400002 4", "size": "45", "high": true, "at": { "carrier": "yard-a", "bay": 4, "row": 2, "tier": 0 } },
+        { "id": "EBLU 300003 2", "size": "40", "at": { "carrier": "BG1", "bay": 0, "row": 1, "tier": 0 } },
+        { "id": "ARLU 100005 0", "size": "20", "at": { "carrier": "BG1", "bay": 2, "row": 0, "tier": 0 } },
+        { "id": "ARLU 100006 6", "size": "20", "at": { "carrier": "BG1", "bay": 2, "row": 0, "tier": 1 } }
+      ],
+      "fill": { "yard-a": 0.3, "yard-b": 0.25 }
+    }
+  ],
+  "objects": [
+    { "id": "table-terminal", "type": "tabletop", "name": "Terminal table", "kind": "physical", "position": [750, 415], "width_mm": 2000, "depth_mm": 930, "rotation_deg": 0, "surface": "grey" },
+    { "id": "table-fairway", "type": "tabletop", "name": "Fairway module", "kind": "physical", "position": [-325, 665], "width_mm": 150, "depth_mm": 230, "rotation_deg": 0, "surface": "grey" },
+    { "id": "track-1", "type": "track", "name": "Loading track 1", "track_id": "LG1", "points": [[-250, 228.7], [1750, 228.7]] },
+    { "id": "track-2", "type": "track", "name": "Loading track 2", "track_id": "LG2", "points": [[-250, 280.5], [1750, 280.5]] },
+    { "id": "lane-1", "type": "truck-lane", "name": "Truck lane", "points": [[-250, 332.2], [1750, 332.2]], "positions": 3, "passing_side": "left" },
+    { "id": "yard-a", "type": "container-yard", "name": "Block A", "position": [750, 467.8], "width_mm": 952, "depth_mm": 134, "rotation_deg": 0, "tiers": 3 },
+    { "id": "yard-b", "type": "container-yard", "name": "Block B", "position": [1560, 467.8], "width_mm": 318, "depth_mm": 134, "rotation_deg": 0, "tiers": 2 },
+    { "id": "crane-1", "type": "gantry-crane", "name": "Portal crane 1", "position": [750, 378.2], "width_mm": 1149.4, "depth_mm": 356.3, "rotation_deg": 0, "outreach_m": 11, "lift_m": 15 },
+    { "id": "quay-1", "type": "quay", "name": "Quay", "points": [[-400, 633.9], [1250, 633.9]], "berth_m": 60, "water_m": 16, "quay_side": "right" },
+    { "id": "reach-stacker-1", "type": "reach-stacker", "name": "Reach stacker", "position": [1560, 600], "rotation_deg": 180 }
+  ],
+  "scenarios": [
+    { "id": "morning-shift", "name": "Morning shift",
+      "description": "KT 52 arrives on loading track 2; trucks collect and deliver; the crane works train, barge and yard.",
+      "steps": [
+        { "at": 0, "set": { "speed": 10 } },
+        { "at": 0, "message": "Morning shift: KT 52 is due on loading track 2." },
+        { "at": 0, "emit": { "name": "terminal.request.call", "payload": { "visit": "KT52" } } },
+        { "at": 5, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "pickup" } } },
+        { "at": 6, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100002 4", "to": { "kind": "truck" } } } },
+        { "at": 8, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100001 9", "to": { "carrier": "yard-a" } } } },
+        { "at": 10, "emit": { "name": "terminal.request.move", "payload": { "container": "EBLU 300003 2", "to": { "carrier": "KT52/1" } } } },
+        { "at": 12, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "delivery", "size": "40" } } },
+        { "at": 400, "message": "The delivery truck's container can go to KT 52 or to the yard: choose it in the Terminal panel." }
+      ] }
+  ],
+  "view": { "start": "flyover" }
+}

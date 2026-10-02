@@ -6,10 +6,12 @@ import { pathToFileURL } from "node:url";
 
 import {
   createWorld, registry, validateLayout, loadPlugins, markersUsed, MockFeed, parseFeedMessage, LayoutObject, Registry, registerBuiltins, World,
+  terminalOf, DEFAULT_ROLLING,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
 const LAB = readJSON("web/layouts/ebl-lab.json");
+const TERMINAL = readJSON("web/layouts/container-terminal.json");
 // the example layout uses the windmill plugin, loaded like the app does; the road-traffic example
 // plugin (replaced in the example by the built-in traffic simulation) must keep loading, too
 const pluginErrors = await loadPlugins([...LAB.plugins, "../plugins/road-traffic.js"], pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
@@ -28,7 +30,7 @@ function run(world, seconds, dtReal = 0.05) {
 }
 
 test("example layouts are valid and load completely", () => {
-  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json"]) {
+  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json", "web/layouts/container-terminal.json"]) {
     const json = readJSON(file);
     assert.deepEqual(validateLayout(json, registry), [], file);
     const world = createWorld(json);
@@ -293,4 +295,63 @@ test("layout problems with moving markers: beyond the codes, the origin, objects
   assert.deepEqual(markersUsed({ between: ["3", 1], points: [[0, 0], { marker: 7, offset: [1, 2] }], to: { marker: "12" }, marker: "x" }), [1, 3, 7, 12]);
   assert.ok(validateLayout({ markers: { locked: true, poses: {} } }).some((p) => p.startsWith("markers.locked: the locked marker map has no poses")));
   assert.ok(validateLayout({ markers: { locked: true, moving: [3], poses: { 3: [0, 0, 0] } } }).some((p) => p.startsWith("markers.locked")), "only a moving marker");
+});
+
+test("the container terminal example: a terminal with its visits, round trips and table modules under everything", () => {
+  const world = createWorld(TERMINAL);
+  const sim = terminalOf(world);
+  assert.ok(sim, "the terminal simulation exists");
+  assert.equal(sim.name, "KV terminal");
+  assert.equal(terminalOf(createWorld(LAB)), null, "no terminal in the lab example");
+  assert.deepEqual(TERMINAL.view, { start: "flyover" });
+  for (const o of world.objects) assert.ok(o.geometry, `${o.id} has geometry`);
+  // the visits are where the layout puts them
+  const visit = (id) => sim.visits.get(id);
+  assert.deepEqual([...sim.visits.keys()], ["KT41", "KT52", "BG1"]);
+  assert.equal(visit("KT41").state, "positioned");
+  assert.equal(visit("KT52").state, "away");
+  assert.equal(visit("BG1").state, "positioned");
+  const mm = (m) => (m * 1000) / TERMINAL.scale;
+  // KT 41 runs from the track's first point (x = -250): its head stands at stop_mm 1597, x = 1347
+  const kt41 = visit("KT41");
+  assert.ok(Math.abs(kt41.loco.center[0] - (1347 - mm(19) / 2)) < 0.5, `locomotive at ${kt41.loco.center[0].toFixed(1)}`);
+  assert.ok(Math.abs(kt41.loco.center[1] - 228.7) < 0.01);
+  assert.ok(kt41.carriers.every((c) => c.present && c.available && c.pose));
+  assert.ok(visit("KT52").carriers.every((c) => !c.present && !c.pose));
+  // the barge berths with its bow at the end of the quay (x = 1250)
+  const barge = visit("BG1").carriers[0];
+  assert.ok(Math.abs(barge.pose.center[0] - (1250 - mm(55) / 2)) < 0.5, `barge at ${barge.pose.center[0].toFixed(1)}`);
+  assert.equal(sim.inventory.on("KT41/1").length, 2);
+  assert.deepEqual(sim.inventory.check(), []);
+  // round trips: the terminal entry and the rolling-stock markers are written as they were read
+  const json = JSON.parse(JSON.stringify(world.toJSON()));
+  assert.deepEqual(json.simulations, TERMINAL.simulations);
+  assert.deepEqual(json.markers.rolling, TERMINAL.markers.rolling);
+  assert.deepEqual(json.markers.rolling, { ...DEFAULT_ROLLING });
+  assert.deepEqual(json.objects, TERMINAL.objects);
+  const again = createWorld(json);
+  assert.deepEqual(again.toJSON().simulations, TERMINAL.simulations);
+  assert.equal(terminalOf(again).visits.get("BG1").state, "positioned");
+  // everything stands on the two table modules, which are real tables (no default table around them)
+  const tables = world.objects.filter((o) => o.type === "tabletop");
+  assert.deepEqual(tables.map((t) => [t.id, t.spec.kind]), [["table-terminal", "physical"], ["table-fairway", "physical"]]);
+  const onTable = ([x, y]) => tables.some((t) => {
+    const fp = t.footprint(), xs = fp.map((p) => p[0]), ys = fp.map((p) => p[1]);
+    return x >= Math.min(...xs) - 0.5 && x <= Math.max(...xs) + 0.5 && y >= Math.min(...ys) - 0.5 && y <= Math.max(...ys) + 0.5;
+  });
+  for (const o of world.objects.filter((x) => x.type !== "tabletop")) {
+    for (const p of o.footprint()) assert.ok(onTable(p), `${o.id}: ${p.map(Math.round)} is on a table module`);
+  }
+  for (const c of sim.carriers().filter((x) => x.present && x.pose)) {
+    for (const p of c.footprint(TERMINAL.scale)) assert.ok(onTable(p), `${c.id}: ${p.map(Math.round)} is on a table module`);
+  }
+  for (const id of world.map.ids()) for (const p of world.map.cornersInLayout(id)) assert.ok(onTable(p), `marker ${id} lies on the table`);
+  // the tracks, the truck lane and the fairway end at the table's edges
+  const edges = (t) => [Math.min(...t.footprint().map((p) => p[0])), Math.max(...t.footprint().map((p) => p[0]))];
+  const [left, right] = edges(world.getObject("table-terminal"));
+  for (const id of ["track-1", "track-2", "lane-1"]) {
+    const pts = world.getObject(id).geometry.points;
+    assert.deepEqual([pts[0][0], pts.at(-1)[0]], [left, right], id);
+  }
+  assert.equal(world.getObject("quay-1").geometry.points[0][0], edges(world.getObject("table-fairway"))[0]);
 });

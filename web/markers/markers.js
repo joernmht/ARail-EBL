@@ -1,9 +1,10 @@
-// Printable marker sheets (SVG in millimetres, so printing at 100 % gives exact sizes).
+// Printable marker sheets and deck cards for model wagons (SVG in millimetres, so printing at
+// 100 % gives exact sizes).
 import { DICTIONARIES, markerBits } from "../arail/core/detector.js";
+import { CARRIER_TYPES } from "../arail/terminal/model.js";
+import { DECK_DICTIONARY, DECK_SCALES, PAGE_MARGIN, PAPER, deckCards, deckSheets, fmt, markerSvg, parseWagons, scaleBarSvg } from "./deck-cards.js";
 
 const $ = (id) => document.getElementById(id);
-const PAPER = { a4: [210, 297], letter: [215.9, 279.4], a3: [297, 420] };
-const PAGE_MARGIN = 10; // mm
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function parseIds(text, max) {
@@ -21,21 +22,9 @@ function parseIds(text, max) {
   return [...out];
 }
 
-function fmt(v) {
-  return Number(v.toFixed(3));
-}
+const rolling = () => $("kind").value === "rolling";
 
-/** One marker (black square with white cells) at (x, y) with edge `size` mm. */
-function markerSvg(bits, x, y, size) {
-  const n = bits.length + 2, c = size / n;
-  let s = `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt(size)}" height="${fmt(size)}" fill="#000"/>`;
-  bits.forEach((row, i) => row.forEach((b, j) => {
-    if (b) s += `<rect x="${fmt(x + (j + 1) * c)}" y="${fmt(y + (i + 1) * c)}" width="${fmt(c + 0.01)}" height="${fmt(c + 0.01)}" fill="#fff"/>`;
-  }));
-  return s;
-}
-
-function build() {
+function buildMarkers() {
   const dict = $("dict").value;
   const def = DICTIONARIES.find((d) => d.name === dict);
   const size = Number($("size").value), margin = Number($("margin").value);
@@ -62,17 +51,31 @@ function build() {
       if (labels) body += `<text x="${fmt(cx + cellW / 2)}" y="${fmt(cy + 2 * margin + size + 4.2)}" font-family="Archivo, Arial, sans-serif" font-size="3.4" font-weight="700" text-anchor="middle" fill="#222">ID ${id}</text>`;
     });
     // 100 mm scale bar to verify the print scale, in the 14 mm kept free at the bottom
-    const by = H - PAGE_MARGIN - 9;
-    body += `<g font-family="Archivo, Arial, sans-serif" font-size="3" fill="#222">`;
-    body += `<rect x="${PAGE_MARGIN}" y="${by}" width="100" height="2" fill="#222"/>`;
-    for (let i = 0; i <= 10; i++) body += `<rect x="${fmt(PAGE_MARGIN + i * 10 - 0.15)}" y="${by - 2}" width="0.3" height="${i % 5 ? 2 : 3}" fill="#222"/>`;
-    body += `<text x="${PAGE_MARGIN + 104}" y="${by + 2}">100 mm: check with a ruler</text>`;
-    body += `<text x="${PAGE_MARGIN}" y="${by + 7}">${def.label}, ${size} mm · ARail-EBL marker sheet ${p + 1}/${Math.ceil(ids.length / perPage)}</text></g>`;
+    body += scaleBarSvg(H, `${def.label}, ${size} mm · ARail-EBL marker sheet ${p + 1}/${Math.ceil(ids.length / perPage)}`);
     bodies.push(body);
     pages.push(`<svg xmlns="${SVG_NS}" class="sheet" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" role="img" aria-label="Marker sheet ${p + 1}">${body}</svg>`);
   }
-  return { pages, bodies, W, H, count: ids.length, perPage };
+  const s = ids.length === 1 ? "" : "s";
+  return { pages, bodies, W, H, status: `${ids.length} marker${s} on ${pages.length} sheet${pages.length === 1 ? "" : "s"}.` };
 }
+
+/** Deck cards for model wagons: one card per wagon, a tag on each container spot. */
+function buildDeckCards() {
+  const cards = deckCards({
+    type: $("wagonType").value, numbers: parseWagons($("wagons").value),
+    stride: Number($("stride").value), size_mm: Number($("tagSize").value), scale: Number($("scale").value),
+  });
+  const { pages, count, sheets } = deckSheets(cards, {
+    paper: $("paper").value, labels: $("labels").checked, bitsOf: (id) => markerBits(window.AR, DECK_DICTIONARY, id),
+  });
+  const n = cards.length, k = pages.length;
+  return {
+    pages, bodies: sheets.map((s) => s.body), W: sheets[0].width_mm, H: sheets[0].height_mm,
+    status: `${n} card${n === 1 ? "" : "s"} with ${count} marker${count === 1 ? "" : "s"} on ${k} sheet${k === 1 ? "" : "s"}.`,
+  };
+}
+
+const build = () => (rolling() ? buildDeckCards() : buildMarkers());
 
 /** All sheets in one SVG file, one below the other (each at its exact size). */
 function combinedSvg({ bodies, W, H }) {
@@ -84,38 +87,70 @@ function combinedSvg({ bodies, W, H }) {
 function render() {
   const status = $("status");
   try {
-    const { pages, W, H, count } = build();
+    const { pages, W, H, status: text } = build();
     document.documentElement.style.setProperty("--sheet-w", `${W}mm`);
     document.documentElement.style.setProperty("--sheet-h", `${H}mm`);
     // paper size for printing, so that a sheet is not split when the printer's default paper differs
     $("pageSize").textContent = `@page { size: ${W}mm ${H}mm; margin: 0; }`;
     $("sheets").innerHTML = pages.join("");
     status.classList.remove("error");
-    status.textContent = `${count} marker${count === 1 ? "" : "s"} on ${pages.length} sheet${pages.length === 1 ? "" : "s"}.`;
+    status.textContent = text;
   } catch (err) {
     status.classList.add("error");
     status.textContent = err.message;
   }
 }
 
-function init() {
-  const sel = $("dict");
-  for (const d of DICTIONARIES) {
-    if (!window.AR?.DICTIONARIES[d.name]) continue;
+/** Show the settings of the chosen kind of sheet and keep it in the address (?kind=rolling). */
+function applyKind() {
+  const kind = rolling() ? "rolling" : "markers";
+  for (const el of document.querySelectorAll("[data-kind]")) el.hidden = el.dataset.kind !== kind;
+  const url = new URL(location.href);
+  if (kind === "rolling") url.searchParams.set("kind", kind);
+  else url.searchParams.delete("kind");
+  if (url.href !== location.href) history.replaceState(history.state, "", url);
+}
+
+function addOptions(select, options) {
+  for (const [value, label] of options) {
     const o = document.createElement("option");
-    o.value = d.name;
-    o.textContent = `${d.label} (OpenCV ${d.opencv})`;
-    sel.append(o);
+    o.value = value;
+    o.textContent = label;
+    select.append(o);
   }
-  sel.value = new URLSearchParams(location.search).get("dict") || "ARUCO";
-  for (const id of ["dict", "ids", "size", "margin", "paper", "labels", "cutlines"]) $(id).addEventListener("input", render);
+}
+
+function init() {
+  const params = new URLSearchParams(location.search);
+  const sel = $("dict");
+  addOptions(sel, DICTIONARIES.filter((d) => window.AR?.DICTIONARIES[d.name]).map((d) => [d.name, `${d.label} (OpenCV ${d.opencv})`]));
+  sel.value = params.get("dict") || "ARUCO";
+  // only wagons are model rolling stock (a truck chassis is not tracked by tags)
+  const wagonTypes = Object.entries(CARRIER_TYPES).filter(([, t]) => t.kind === "wagon");
+  addOptions($("wagonType"), wagonTypes.map(([key, t]) => [key, t.label]));
+  addOptions($("scale"), DECK_SCALES.map((s) => [String(s.scale), s.label]));
+  $("kind").value = params.get("kind") === "rolling" ? "rolling" : "markers";
+  // deck card settings from the address (the Terminal tab links here with the layout's values);
+  // a bad stride or tag size is shown as an error by render(), not corrected
+  const type = params.get("type"), scale = params.get("scale");
+  if (wagonTypes.some(([key]) => key === type)) $("wagonType").value = type;
+  if (DECK_SCALES.some((s) => String(s.scale) === scale)) $("scale").value = scale;
+  for (const [param, id] of [["wagons", "wagons"], ["stride", "stride"], ["size", "tagSize"]]) {
+    if (params.has(param)) $(id).value = params.get(param);
+  }
+  applyKind();
+  $("kind").addEventListener("input", applyKind);
+  const inputs = ["kind", "dict", "ids", "size", "margin", "paper", "labels", "cutlines", "wagons", "wagonType", "stride", "tagSize", "scale"];
+  for (const id of inputs) $(id).addEventListener("input", render);
   $("settings").addEventListener("submit", (e) => e.preventDefault());
   $("print").addEventListener("click", () => window.print());
   $("svg").addEventListener("click", () => {
     const blob = new Blob([combinedSvg(build())], { type: "image/svg+xml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `arail-markers-${$("dict").value.toLowerCase()}-${$("size").value}mm.svg`;
+    a.download = rolling()
+      ? `arail-deck-cards-${$("wagonType").value}-1-${$("scale").value}.svg`
+      : `arail-markers-${$("dict").value.toLowerCase()}-${$("size").value}mm.svg`;
     document.body.append(a);
     a.click();
     a.remove();

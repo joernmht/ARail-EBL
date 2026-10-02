@@ -186,7 +186,7 @@ footer a { color: inherit; }
       <div>
         <p class="eyebrow">Open source · runs in the browser</p>
         <h1 id="intro">Augmented reality for <em>model railway labs</em></h1>
-        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers and a small town with streets and bus lines on it, runs the town through day and night, simulates delays and closures, and shows the trains your control system reports.</p>
+        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, simulates delays and closures, and shows the trains your control system reports.</p>
         <div class="ctas">
           <a class="btn primary" href="app/">Open the app</a>
           <a class="btn ghost" href="markers/">Print markers</a>
@@ -229,6 +229,11 @@ footer a { color: inherit; }
           <p>Streets form a network with sidewalks, crossings and street lamps. Bus lines run along them from stop to stop, back and forth or round a ring (Ring&nbsp;↻, Ring&nbsp;↺), also from bus terminals; cars come and go at the edges.</p>
         </article>
         <article class="feature">
+          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h20M5 4v17M19 4v17M3 21h4M17 21h4M12 4v4"/><rect x="8" y="8" width="8" height="5" rx="0.5"/><path d="M10.7 8v5M13.3 8v5"/></svg></div>
+          <h3>Container terminal</h3>
+          <p>Container trains, trucks and barges, a gantry crane over the loading tracks and a reach stacker for the yard. Pick a container and its new place; the crane moves it. Model wagons on the real layout carry printed deck cards, so their containers ride on them.</p>
+        </article>
+        <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></div>
           <h3>Day and night</h3>
           <p>A fast clock runs the town: residents walk, take the bus or the train to work, school and shopping, and come home. Rush hours in the morning and evening; at night windows and street lamps light up.</p>
@@ -241,7 +246,7 @@ footer a { color: inherit; }
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M8 8h3v3H8zM13 13h3v3h-3zM13 8h3M8 16h3"/></svg></div>
           <h3>Markers, surveyed once</h3>
-          <p>Stick markers over the whole table and film it: <code>arail-survey</code> measures every marker and writes a fixed, locked layout with an orthophoto. Markers on wagons can be set as moving and stay out of the map.</p>
+          <p>Stick markers over the whole table and film it: <code>arail-survey</code> measures every marker and writes a fixed, locked layout with an orthophoto. Model wagons get small tags of their own family, which never mix with the map.</p>
         </article>
         <article class="feature">
           <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.5"/></svg></div>
@@ -308,7 +313,7 @@ footer a { color: inherit; }
         <div><b>Markers</b><span>ArUco or AprilTag codes, 30&nbsp;mm, stuck anywhere on the layout, any rotation.</span></div>
         <div><b>Marker map</b><span>Measured from the images as the camera moves, or surveyed once from a video and locked.</span></div>
         <div><b>Camera pose</b><span>All visible markers give one stable view of the plane; the focal length is estimated too. The flyover uses a virtual camera instead.</span></div>
-        <div><b>Virtual layout</b><span>Platforms, a town, streets and bus lines from a JSON layout file, also on table modules beyond the real table.</span></div>
+        <div><b>Virtual layout</b><span>Platforms, a town, streets, bus lines and a container terminal from a JSON layout file, also on table modules beyond the real table.</span></div>
         <div><b>Simulation</b><span>Trains, buses, cars, passengers and residents on a fast clock, in prototype metres and seconds.</span></div>
       </div>
     </div>
@@ -379,9 +384,10 @@ footer a { color: inherit; }
               <tr><td>next</td><td class="dest">Flyover and table modules<small>Virtual camera, snapping grid, orthophoto of the real table</small></td><td><span class="pill arrived">Arrived</span></td></tr>
               <tr><td>next</td><td class="dest">A fixed layout from one video<small><code>arail-survey</code>: locked marker map, report and orthophoto; Survey a video in the app</small></td><td><span class="pill arrived">Arrived</span></td></tr>
               <tr><td>next</td><td class="dest">The app in the chair's corporate design<small>Türkis, Noto Sans and the logo of the Chair of Railway Operations</small></td><td><span class="pill arrived">Arrived</span></td></tr>
+              <tr><td>next</td><td class="dest">Container terminal on rolling-stock markers<small>Trains, trucks, barges and a gantry crane; deck cards with AprilTag tags on model wagons</small></td><td><span class="pill arrived">Arrived</span></td></tr>
               <tr><td>next</td><td class="dest">Lab session and live sessions in the EBL<small>Stickers on the whole table, one video, a fixed layout; then phones, webcams and a projector</small></td><td><span class="pill boarding">Boarding</span></td></tr>
               <tr><td>next</td><td class="dest">Adapter for the EBL control system<small>Real train positions instead of the simulator</small></td><td><span class="pill planned">Scheduled</span></td></tr>
-              <tr><td>later</td><td class="dest">Virtual loads on moving markers, occlusion by real trains<small>Moving markers are already kept out of the map and tracked; ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
+              <tr><td>later</td><td class="dest">Occlusion by real trains<small>Virtual things hidden where a real train stands in front of them; ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
             </tbody>
           </table>
         </div>

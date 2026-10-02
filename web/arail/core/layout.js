@@ -9,6 +9,7 @@
 
 import { markersUsed } from "./anchors.js";
 import { DEFAULT_CLOCK } from "./clock.js";
+import { DICTIONARIES } from "./detector.js";
 
 export const LAYOUT_FORMAT = "arail-layout/1";
 
@@ -41,6 +42,55 @@ export function normalizeGrid(grid) {
 }
 
 /**
+ * Rolling-stock markers (`markers.rolling`): tags on the deck cards of model wagons, a marker family
+ * of their own (never part of the marker map). Tag ID = (wagon number − 1) · stride + slot.
+ */
+export const DEFAULT_ROLLING = Object.freeze({ dictionary: "APRILTAG_36h11", codes: 64, size_mm: 20, height_mm: 15, stride: 4, max_bit_errors: 3 });
+
+/** Valid ranges of the numeric `markers.rolling` settings (`integer`: whole numbers only) and the problem text. */
+const ROLLING_RANGES = {
+  codes: { min: 1, max: 1000, integer: true, text: "a whole number from 1 to 1000" },
+  size_mm: { min: 5, max: 100, text: "a number from 5 to 100 (mm)" },
+  height_mm: { min: 0, max: 200, text: "a number from 0 to 200 (mm)" },
+  stride: { min: 1, max: 8, integer: true, text: "a whole number from 1 to 8" },
+  max_bit_errors: { min: 0, max: 6, integer: true, text: "a whole number from 0 to 6" },
+};
+
+/** Number of IDs of the marker families with fewer than 1000 (the most `markers.rolling.codes` allows). */
+const FAMILY_IDS = { APRILTAG_36h11: 587, ARUCO_MIP_36h12: 250 };
+
+/** A numeric `markers.rolling` value as a number, or null if it is missing or out of range. */
+function rollingNumber(key, v) {
+  const r = ROLLING_RANGES[key];
+  if (v == null || v === "" || typeof v === "boolean") return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= r.min && n <= r.max && (!r.integer || Number.isInteger(n)) ? n : null;
+}
+
+/**
+ * A tag height above the layout (mm) as a number, or null if it is missing or not 0–200: the rule of
+ * `markers.rolling.height_mm`, also used for the terminal's `rolling_stock[].height_mm`.
+ */
+export const rollingHeightMM = (v) => rollingNumber("height_mm", v);
+
+const knownDictionary = (name) => typeof name === "string" && DICTIONARIES.some((d) => d.name === name);
+
+/**
+ * Normalized rolling-stock marker settings, or null when `r` is not an object. Invalid values ->
+ * defaults ({@link DEFAULT_ROLLING}); validateLayout reports them.
+ * @param {*} r the layout's `markers.rolling`
+ * @returns {{dictionary: string, codes: number, size_mm: number, height_mm: number, stride: number, max_bit_errors: number} | null}
+ */
+export function normalizeRollingMarkers(r) {
+  if (!isObject(r)) return null;
+  const out = { dictionary: knownDictionary(r.dictionary) ? r.dictionary : DEFAULT_ROLLING.dictionary };
+  for (const key of Object.keys(ROLLING_RANGES)) out[key] = rollingNumber(key, r[key]) ?? DEFAULT_ROLLING[key];
+  // more codes than the family has IDs count as all of its IDs (reported by the validation)
+  out.codes = Math.min(out.codes, FAMILY_IDS[out.dictionary] ?? Infinity);
+  return out;
+}
+
+/**
  * The orthophoto of the table (`view.ortho`), or null if there is none or it is malformed:
  * `{image: "<url relative to the layout>", bounds_mm: [xmin, ymin, xmax, ymax]}`. Image row 0 is at
  * ymax, column 0 at xmin.
@@ -64,6 +114,7 @@ export function normalizeLayout(json = {}) {
   const list = (v, ok = isObject) => (Array.isArray(v) ? v.filter(ok) : null);
   const typed = (o) => isObject(o) && typeof o.type === "string";
   const poses = Object.fromEntries(Object.entries(isObject(markers.poses) ? markers.poses : {}).filter(([id, p]) => validPose(id, p)));
+  const rolling = normalizeRollingMarkers(markers.rolling);
   return {
     format: LAYOUT_FORMAT,
     name: j.name || "Untitled layout",
@@ -75,6 +126,8 @@ export function normalizeLayout(json = {}) {
       codes: Number(markers.codes) > 0 ? Number(markers.codes) : 50,
       origin: markers.origin ?? null,
       sizes_mm: isObject(markers.sizes_mm) ? markers.sizes_mm : {},
+      // tags on model wagons (a marker family of their own, see DEFAULT_ROLLING)
+      ...(rolling ? { rolling } : {}),
       // complete map (after "Keep positions" or arail-survey): live tracking surveys nothing
       locked: markers.locked === true,
       // markers on vehicles (e.g. container wagons): never part of the map
@@ -148,6 +201,7 @@ export function validateLayout(json, registry) {
   }
   if (markers.origin != null && moving.has(Number(markers.origin))) problems.push(`markers.origin: marker ${markers.origin} is a moving marker; it cannot define the layout frame`);
   if (markers.locked === true && !Object.keys(poses).some((id) => !moving.has(Number(id)))) problems.push("markers.locked: the locked marker map has no poses, so no marker is used for tracking");
+  problems.push(...rollingProblems(markers));
   const ids = new Set();
   if (json.objects != null && !Array.isArray(json.objects)) problems.push("objects must be a list");
   (Array.isArray(json.objects) ? json.objects : []).forEach((o, i) => {
@@ -173,5 +227,44 @@ export function validateLayout(json, registry) {
     if (!s.id) problems.push(`scenarios[${i}] has no id`);
     if (!Array.isArray(s.steps)) problems.push(`scenarios[${i}].steps must be a list`);
   });
+  // settings of simulations: checked by the simulation class (`static validate(config, layout)`), if it has one
+  if (registry) {
+    const L = normalizeLayout(json);
+    (Array.isArray(json.simulations) ? json.simulations : []).forEach((s, i) => {
+      const Sim = isObject(s) && typeof s.type === "string" ? registry.simulations.get(s.type) : null;
+      if (typeof Sim?.validate !== "function") return;
+      try {
+        for (const m of Sim.validate(s, L) || []) problems.push(`simulations[${i}] (${s.type}): ${m}`);
+      } catch (err) {
+        problems.push(`simulations[${i}] (${s.type}): could not be checked (${err.message})`);
+      }
+    });
+  }
+  return problems;
+}
+
+/** Problems of `markers.rolling` (rolling-stock markers), given the layout's raw `markers`. */
+function rollingProblems(markers) {
+  if (markers.rolling == null) return [];
+  const r = markers.rolling;
+  if (!isObject(r)) return ['markers.rolling must be an object like {"dictionary": "APRILTAG_36h11", "size_mm": 20}'];
+  const problems = [];
+  const layoutDictionary = markers.dictionary ?? "ARUCO";
+  if (r.dictionary != null && !knownDictionary(r.dictionary)) problems.push(`markers.rolling.dictionary: unknown marker type "${r.dictionary}"`);
+  const dictionary = normalizeRollingMarkers(r).dictionary;
+  if (dictionary === layoutDictionary && layoutDictionary !== "auto") {
+    problems.push(`markers.rolling.dictionary: rolling-stock markers need their own marker type; "${dictionary}" is the layout's marker type`);
+  } else if (["ARUCO_4X4_1000", "ARUCO_MIP_36h12"].includes(dictionary) && ["ARUCO", "auto"].includes(layoutDictionary)) {
+    problems.push(`markers.rolling.dictionary: ${dictionary} is misread as ArUco Original and the other way round; use APRILTAG_36h11`);
+  }
+  if (layoutDictionary === "auto") problems.push('markers.dictionary: choose the layout\'s marker type (not "auto") when rolling-stock markers are used');
+  for (const [key, range] of Object.entries(ROLLING_RANGES)) {
+    if (r[key] != null && rollingNumber(key, r[key]) == null) problems.push(`markers.rolling.${key} must be ${range.text}`);
+  }
+  const ids = FAMILY_IDS[dictionary], codes = rollingNumber("codes", r.codes);
+  if (ids != null && codes > ids) {
+    const label = DICTIONARIES.find((d) => d.name === dictionary).label;
+    problems.push(`markers.rolling.codes must be at most ${ids}: ${label} has ${ids} IDs`);
+  }
   return problems;
 }

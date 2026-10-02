@@ -1,5 +1,5 @@
 // Panels: View, Simulate, Disruptions, Control system.
-import { moodColor, boardStatus, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, WebSocketFeed } from "../arail/index.js";
+import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -118,6 +118,7 @@ export class Panels {
       ["Marker map", `${map.ids().length} markers${map.locked ? " (locked)" : ""}`],
       ...(map.moving.size ? [["Moving markers", Object.keys(st.moving || {}).length ? `${Object.keys(st.moving).join(", ")} in view` : "none in view"]] : []),
       ["Marker type", app.detector?.dictionaryLabel ? `${app.detector.dictionaryLabel}${app.detector.autoDetecting ? " (detecting…)" : ""}` : "detecting…"],
+      ...this._rollingRows(),
       ["Reprojection error", st.used.length ? `${st.rms.toFixed(2)} px` : "–"],
       ["Frame rate", app.source && app.source.kind !== "image" ? `${app.fps.toFixed(0)} fps, detection at ${Math.round(app.procMax)} px` : "–"],
     ];
@@ -130,6 +131,25 @@ export class Panels {
       h("button", { class: "btn small", type: "button", disabled: cam.calibrated, onclick: step(1.05), "aria-label": "Longer focal length" }, "+"),
       h("button", { class: "btn small", type: "button", disabled: !cam.manualFocal, onclick: () => { cam.setManualFocal(null); this.updateView(); } }, "Automatic"),
     );
+  }
+
+  /** View panel rows of the rolling-stock tags (layouts with `markers.rolling`): tags in view, model wagons. */
+  _rollingRows() {
+    const app = this.app, r = app.world.layout.markers.rolling;
+    if (!r) return [];
+    const tags = Object.keys(app.rollingDetections || {}).map(Number).sort((a, b) => a - b).map((id) => {
+      const { number, slot } = decodeTag(id, r.stride);
+      return `W${number}·${slot}`;
+    });
+    const term = terminalOf(app.world);
+    const wagons = [...(term?.rolling?.wagons.values() || [])].sort((a, b) => a.number - b.number);
+    // wagons with a height of their own (rolling_stock[].height_mm)
+    const own = (term?.markerWagons() || []).map((c) => [c.number, term.tagHeight(encodeTag(c.number, 0, r.stride))])
+      .filter(([, z]) => z !== r.height_mm).map(([n, z]) => `; W${n} ${z} mm`).join("");
+    return [
+      ["Rolling-stock tags", `${tags.length ? `${tags.join(", ")} in view` : "none in view"} (lifted to ${r.height_mm} mm${own})`],
+      ["Model wagons", wagons.length ? wagons.map((w) => `W${w.number} ${w.state === "lost" ? "not visible" : w.state}`).join(", ") : "none seen"],
+    ];
   }
 
   /* ================================================================ Simulate */

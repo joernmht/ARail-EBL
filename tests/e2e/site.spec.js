@@ -1,4 +1,5 @@
 // The project page and the marker sheets.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("project page links to the app and the compare slider works", async ({ page }) => {
@@ -35,6 +36,97 @@ test("marker sheets have the exact paper size and validate the input", async ({ 
   await page.locator("#ids").fill("seven");
   await expect(page.locator("#status")).toHaveClass(/error/);
 });
+
+test("deck cards for model wagons have the exact spot pitch and validate the input", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?kind=rolling");
+  await expect(page.locator("#status")).toHaveText("6 cards with 18 markers on 1 sheet.");
+  await expect(page.locator("#rollingFields")).toBeVisible();
+  await expect(page.locator("#ids")).toBeHidden();
+  await expect(page.locator("#kind")).toHaveValue("rolling");
+  // the truck chassis is not model rolling stock
+  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80"]);
+  const sheet = page.locator("svg.sheet").first();
+  await expect(sheet).toHaveAttribute("width", "210mm");
+  const g = await sheet.evaluate((svg) => {
+    const num = (el, a) => Number(el.getAttribute(a));
+    const card = svg.querySelector('rect[stroke]');
+    const tags = [...svg.querySelectorAll('rect[fill="#000"]')].slice(0, 3);
+    const label = [...svg.querySelectorAll("text")].find((t) => t.textContent.startsWith("W1 "));
+    return {
+      card: { x: num(card, "x"), y: num(card, "y"), w: num(card, "width"), h: num(card, "height") },
+      tags: tags.map((t) => ({ x: num(t, "x"), y: num(t, "y"), size: num(t, "width") })),
+      label: { y: num(label, "y"), text: label.textContent },
+    };
+  });
+  // tags at the 6.1 m spot pitch of an Sgns in H0 (70.1 mm), inside the card; the label below it
+  expect(Math.abs(g.tags[0].x - g.tags[1].x - 70.1)).toBeLessThanOrEqual(0.1);
+  expect(Math.abs(g.tags[1].x - g.tags[2].x - 70.1)).toBeLessThanOrEqual(0.1);
+  expect(g.card.h).toBeCloseTo(28.0, 1);
+  for (const t of g.tags) {
+    expect(t.size).toBe(20);
+    expect(t.x).toBeGreaterThanOrEqual(g.card.x + 2.5 - 0.001);
+    expect(t.x + t.size).toBeLessThanOrEqual(g.card.x + g.card.w - 2.5 + 0.001);
+  }
+  expect(g.label.text).toBe("W1 · Sgns (60 ft) · IDs 0–2");
+  expect(g.label.y - 3.4).toBeGreaterThanOrEqual(g.card.y + g.card.h);
+  // an 80 ft wagon's card is longer than a portrait sheet is wide
+  await page.locator("#wagonType").selectOption("sggrss80");
+  await expect(page.locator("#status")).toHaveText("6 cards with 24 markers on 2 sheets.");
+  await expect(sheet).toHaveAttribute("width", "297mm");
+  await expect.poll(() => page.locator("#pageSize").evaluate((el) => el.textContent)).toContain("size: 297mm 210mm");
+  // bad input
+  await page.locator("#tagSize").fill("24");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await expect(page.locator("#status")).toHaveText("Tags of 24 mm do not fit on the deck (at most 23 mm)");
+  await page.locator("#tagSize").fill("20");
+  await page.locator("#wagons").fill("one");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await page.locator("#wagons").fill("146-147");
+  await expect(page.locator("#status")).toHaveText("Wagon 147 needs ID 587; AprilTag 36h11 has 587 IDs");
+  await page.locator("#wagons").fill("3");
+  await expect(page.locator("#status")).toHaveText("1 card with 4 markers on 1 sheet.");
+  await expect(page.locator("#status")).not.toHaveClass(/error/);
+  // back to the markers for the layout
+  await page.locator("#kind").selectOption("markers");
+  await expect(page.locator("#status")).toHaveText("8 markers on 1 sheet.");
+  await expect(page.locator("#rollingFields")).toBeHidden();
+  expect(new URL(page.url()).searchParams.get("kind")).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("deck card settings come from the address; bad values are shown, not corrected", async ({ page }) => {
+  await page.goto("/markers/?kind=rolling&type=lgns40&wagons=2,5&stride=3&size=10&scale=160");
+  await expect(page.locator("#wagonType")).toHaveValue("lgns40");
+  await expect(page.locator("#wagons")).toHaveValue("2,5");
+  await expect(page.locator("#stride")).toHaveValue("3");
+  await expect(page.locator("#tagSize")).toHaveValue("10");
+  await expect(page.locator("#scale")).toHaveValue("160");
+  await expect(page.locator("#status")).toHaveText("2 cards with 4 markers on 1 sheet.");
+  // unknown type and scale: the defaults; a bad stride: an error
+  await page.goto("/markers/?kind=rolling&type=chassis40&scale=99&stride=9");
+  await expect(page.locator("#wagonType")).toHaveValue("sgns60");
+  await expect(page.locator("#scale")).toHaveValue("87");
+  await expect(page.locator("#stride")).toHaveValue("9");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await expect(page.locator("#status")).toHaveText("IDs per wagon must be a whole number from 1 to 8");
+});
+
+for (const scheme of ["light", "dark"]) {
+  test(`deck card settings have no accessibility violations (${scheme} mode)`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/markers/?kind=rolling");
+    await expect(page.locator("#status")).toHaveText(/cards with/);
+    const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
+    const summary = async () => (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")})`);
+    expect(await summary()).toEqual([]);
+    // with an error message shown
+    await page.locator("#tagSize").fill("30");
+    await expect(page.locator("#status")).toHaveClass(/error/);
+    expect(await summary()).toEqual([]);
+  });
+}
 
 test("the 404 page links back to the site", async ({ page }) => {
   await page.goto("/404.html");
