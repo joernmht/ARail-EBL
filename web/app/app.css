@@ -311,7 +311,7 @@ details[open] summary { margin-bottom: 8px; }
 @container panel (max-width: 480px) {
   .term-jobs, .term-jobs tbody { display: block; }
   .term-jobs thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .term-jobs tr { display: grid; grid-template-columns: 2.6em minmax(0, 1fr) auto; column-gap: 8px; padding: 7px 10px 7px 8px; border-bottom: 1px solid var(--line); }
+  .term-jobs tr { display: grid; grid-template-columns: 2.6em minmax(9em, 1fr) minmax(0, auto); column-gap: 8px; padding: 7px 10px 7px 8px; border-bottom: 1px solid var(--line); }
   .term-jobs tr:last-child { border-bottom: 0; }
   .term-jobs td { border: 0; padding: 1px 0; min-width: 0; white-space: normal; }
   .term-jobs td:nth-child(1) { grid-row: 1 / span 3; padding-top: 2px; }

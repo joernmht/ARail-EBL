@@ -134,6 +134,35 @@ test("the deck card links print each wagon type with the layout's settings", asy
   expect(errors).toEqual([]);
 });
 
+test("crane jobs keep the container and the handler readable next to a long state", async ({ page }) => {
+  const errors = await openTerminal(page);
+  await page.evaluate(() => {
+    const sim = window.__arail.terminal.sim;
+    window.__arail.world.speed = 1; // KT 52 takes a while to arrive
+    sim.call("KT52");
+    // waiting for the train, and a failed move with a long reason
+    sim.request("ARLU 100001 9", sim.targets("ARLU 100001 9").ok.find((t) => t.carrier.startsWith("KT52/")).at);
+    const m = sim.request("ARLU 100003 0", { kind: "yard" }).move;
+    sim.cancel(m.id);
+    m.state = "failed"; // shown like a real failure
+    m.reason = "Blocked by move M4, which sets a container on top: wait for it";
+  });
+  await expect(page.locator(".term-jobs td.state.failed")).toContainText("failed: Blocked");
+  await expect(page.locator(".term-jobs td.state").first()).toContainText("waiting for KT 52 Duisburg");
+  const cells = await page.locator(".term-jobs tbody tr").evaluateAll((rows) => rows.map((tr) => {
+    const box = (td) => td.getBoundingClientRect(), [id, handler, state] = [tr.children[1], tr.children[3], tr.children[4]].map(box);
+    const text = document.createRange();
+    text.selectNodeContents(tr.children[1]);
+    return { id: id.width, idLines: text.getClientRects().length, handler: handler.width, clear: id.right <= state.left + 0.5 };
+  }));
+  for (const c of cells) {
+    expect(c.clear).toBe(true);
+    expect(c.idLines).toBe(1); // "ARLU 100001 9" on one line
+    expect(c.handler).toBeGreaterThan(100);
+  }
+  expect(errors).toEqual([]);
+});
+
 test("model wagon tags seen without a camera pose keep the wagon held", async ({ page }) => {
   const errors = await openTerminal(page);
   const states = await page.evaluate(() => {
