@@ -7,7 +7,8 @@ import test from "node:test";
 import { createWorld, registry, validateLayout, Camera, View } from "../../web/arail/index.js";
 import { TerminalSimulation, terminalOf } from "../../web/arail/terminal/operations.js";
 import { PathMover, trapezoid } from "../../web/arail/terminal/movers.js";
-import { CRANE } from "../../web/arail/terminal/handlers.js";
+import { CRANE, stackerReach } from "../../web/arail/terminal/handlers.js";
+import { drawReachStacker } from "../../web/arail/terminal/draw.js";
 import { TRUCK } from "../../web/arail/terminal/visits.js";
 import { createRng, toRad } from "../../web/arail/core/math.js";
 import { CARRIER_TYPES, makeBic } from "../../web/arail/terminal/model.js";
@@ -1020,6 +1021,43 @@ test("moves are given to another handler, or fail, when their crane no longer re
   assert.equal(finish(world, sim, log, toYard).carrier, "yard-a");
   assert.ok(shots.every((s) => s.handler === "reach-stacker-1" && s.off < 0.01), JSON.stringify(shots));
   assert.deepEqual(sim.inventory.check(), []);
+});
+
+test("a reach stacker's spreader is over the slot when it locks and releases, in the model and in the drawing", () => {
+  const { world, sim, log } = setup();
+  // a top view on the stacker that records the faces of the spreader and its load (queued last)
+  const ctx = new Proxy({ canvas: { width: 1280, height: 720 } }, { get: (o, k) => (k in o ? o[k] : () => ({ addColorStop() {} })), set: (o, k, v) => ((o[k] = v), true) });
+  const camera = new Camera(1280, 720), { fx, cx, cy } = camera.intrinsics, d = 1500;
+  const drawn = (h, load) => {
+    const view = new View({ ctx, camera, H: [fx, 0, cx * d - fx * h.x, 0, -fx, cy * d + fx * h.y, 0, 0, d], scale: 87 });
+    let parts = null;
+    view.faces = (f) => (parts = f);
+    drawReachStacker(view, { center: h.center, heading: h.heading, boom: h.boom, lift: h.lift, spreader_m: h.spreader_m, load });
+    // after the boom (a beam of six faces): the spreader, its head block and the load, symmetric about the spreader centre
+    const pts = parts.slice(6).flatMap((f) => f.pts);
+    return [0, 1].map((i) => (Math.min(...pts.map((p) => p[i])) + Math.max(...pts.map((p) => p[i]))) / 2);
+  };
+  const seen = [];
+  for (const [name, ref] of [["_detach", "from"], ["_attach", "to"]]) {
+    const orig = sim[name].bind(sim);
+    sim[name] = (h) => {
+      const slot = sim._slotBox(h._move[ref], h.load).center;
+      let box = name === "_attach" ? sim._loadBox(h) : null;
+      const reason = orig(h);
+      box ??= sim._loadBox(h);
+      const dist = (p) => Math.hypot(p[0] - slot[0], p[1] - slot[1]);
+      seen.push({ what: name, boom: h.boom, model: dist(box.center), drawn: dist(drawn(h, box)), stand: Math.hypot(h.x - slot[0], h.y - slot[1]) });
+      return reason;
+    };
+  }
+  finish(world, sim, log, sim.request(ID(8), { carrier: "yard-b", bay: 3, row: 3 }).move);
+  assert.deepEqual(seen.map((s) => s.what), ["_detach", "_attach"]);
+  for (const s of seen) {
+    assert.ok(Math.abs(s.boom - 1) < 1e-9, JSON.stringify(s));
+    assert.ok(s.model < 0.01 && s.drawn < 0.01, JSON.stringify(s));
+    assert.ok(Math.abs(s.stand - mm(stackerReach(1))) < 0.01, JSON.stringify(s));
+  }
+  assert.ok(stackerReach(0) - 2.438 / 2 > 4, "a carried box clears the body with the boom in");
 });
 
 test("a crane aims again where an edited object is now; after the lock it waits for a target out of its reach", () => {

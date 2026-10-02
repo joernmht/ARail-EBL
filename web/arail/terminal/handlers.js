@@ -16,7 +16,7 @@
  * @module arail/terminal/handlers
  */
 import { clamp, dist2, lerp, smoothstep, wrapAngle } from "../core/math.js";
-import { CONTAINER_SIZES } from "./model.js";
+import { CONTAINER_SIZES, CONTAINER_WIDTH_M } from "./model.js";
 import { trapezoid } from "./movers.js";
 
 /** Gantry cranes (prototype units: m, m/s, m/s², s). */
@@ -26,7 +26,18 @@ export const CRANE = Object.freeze({
 });
 
 /** Reach stackers (prototype units: m, m/s, m/s², s). */
-export const REACH_STACKER = Object.freeze({ v: 3.0, a: 0.6, boom_s: 2.5, hoist_v: 0.4, lock_s: 3, approach_m: 7, park_after_s: 20 });
+export const REACH_STACKER = Object.freeze({ v: 3.0, a: 0.6, boom_s: 2.5, hoist_v: 0.4, lock_s: 3, park_after_s: 20 });
+
+/**
+ * Distance (m) of a reach stacker's spreader centre ahead of its middle at `boom` 0 (in) … 1 (out):
+ * the boom tip 4 + 3·boom m ahead, plus half a container's width and 0.1 m, so that a carried box
+ * clears the body (its front is 4 m ahead). The model and the drawing both use it; the stacker
+ * stands `stackerReach(1)` from a box to handle it.
+ * @param {number} boom
+ */
+export function stackerReach(boom) {
+  return 4 + 3 * boom + CONTAINER_WIDTH_M / 2 + 0.1;
+}
 
 /**
  * Height (m) of a reach stacker's empty spreader while driving, of a carried box's bottom, and of
@@ -424,13 +435,13 @@ export class StackerHandler extends HandlerBase {
   }
 
   /**
-   * Where it stands to handle a box: `approach_m` from the box centre, perpendicular to the box,
-   * on the side it comes from; and the heading facing the box.
+   * Where it stands to handle a box: `stackerReach(1)` from the box centre (the spreader is over it
+   * with the boom out), perpendicular to the box, on the side it comes from; and the heading facing the box.
    */
   _stand(host, box) {
     const n = [-Math.sin(box.heading), Math.cos(box.heading)];
     const side = (this.x - box.center[0]) * n[0] + (this.y - box.center[1]) * n[1] < 0 ? -1 : 1;
-    const d = host.mm(REACH_STACKER.approach_m) * side;
+    const d = host.mm(stackerReach(1)) * side;
     return { x: box.center[0] + n[0] * d, y: box.center[1] + n[1] * d, heading: Math.atan2(-n[1] * side, -n[0] * side) };
   }
 

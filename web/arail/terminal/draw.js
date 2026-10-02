@@ -27,6 +27,7 @@ import { DEFAULT_ROLLING } from "../core/layout.js";
 import { OUTLINE, convexHull, hash01, hashString } from "../objects/building-kit.js";
 import { offsetPolyline } from "../objects/road.js";
 import { CAR_COLOURS } from "../sims/traffic.js";
+import { stackerReach } from "./handlers.js";
 import { BAY_M, CONTAINER_WIDTH_M, ROW_M } from "./model.js";
 
 /** Colours of containers without a colour of their own: muted, derived from the CD; never pure Orange or Rot. */
@@ -1075,13 +1076,13 @@ export function drawReachStacker(view, rs) {
   // boom from the back up to the spreader head, spreader across the boom's end, load below it
   const m1 = view.m(1);
   const boom = Math.min(1, Math.max(0, rs.boom ?? 0));
-  // the boom tip, 4 + 3·boom m ahead of the middle, plus half a container's width: the load clears the body
-  const head = 4 + 3 * boom + CONTAINER_WIDTH_M / 2 + 0.1;
+  // the spreader centre where the model has it (the load clears the body), the boom ending above it
+  const head = stackerReach(boom);
   const z = (rs.lift ?? view.m(3)) / m1, zTop = z + CRANE.spreaderHeight_m;
-  const parts = beamFaces(L.p(-3, 0.6, 3.2), L.p(head, 0.6, zTop + 0.9), view.m(0.8), view.m(0.8), { side: COL.boom, top: COL.boomTop });
+  const parts = beamFaces(L.p(-3, 0, 3.2), L.p(head, 0, zTop + 0.9), view.m(0.8), view.m(0.8), { side: COL.boom, top: COL.boomTop });
   const load = rs.load || null;
   const sp = Math.max(1, rs.spreader_m || load?.length / m1 || 6.058);
-  const S = new Local(view, L.xy(head, 0.6), (rs.heading || 0) + Math.PI / 2);
+  const S = new Local(view, L.xy(head, 0), (rs.heading || 0) + Math.PI / 2);
   const sw = CONTAINER_WIDTH_M / 2;
   parts.push(...cuboid(S, -sp / 2, sp / 2, -sw, sw, z, zTop, { side: C.spreader, top: COL.spreaderTop, end: COL.spreaderEnd, bottom: !load }));
   parts.push(...cuboid(S, -0.6, 0.6, -0.6, 0.6, zTop, zTop + 0.9, { side: C.reachStacker, top: COL.stackerTop }));

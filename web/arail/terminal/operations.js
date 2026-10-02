@@ -25,7 +25,7 @@ import {
 import { ContainerYard, GantryCrane, Quay, ReachStacker, TruckLane, yardGrid } from "./objects.js";
 import { RollingStock, decodeTag, encodeTag } from "./rolling.js";
 import { TERMINAL_EVENTS as EV, TERMINAL_REQUESTS as REQ } from "./types.js";
-import { CraneHandler, StackerHandler } from "./handlers.js";
+import { CraneHandler, StackerHandler, stackerReach } from "./handlers.js";
 import { BargeVisit, LOCO_M, TrainVisit, TruckVisit, departTruck, stepTrucks } from "./visits.js";
 import {
   colourFor, drawBarge, drawContainers, drawCrane, drawGhost, drawHighlights, drawLocomotive, drawReachStacker, drawTruck, drawWagon,
@@ -1217,7 +1217,7 @@ export class TerminalSimulation extends Simulation {
     if (!c || c.handler !== h.id) return null;
     const height = this.mm(c.height_m), base = { id: c.id, length: this.mm(c.length_m), width: this.mm(CONTAINER_WIDTH_M), height, size: c.size, high: c.high, colour: this._colour(c) };
     if (h.kind === "crane") return { ...base, center: h.point(), heading: h.loadHeading, z0: h.z - height };
-    const head = posePoint({ center: h.center, heading: h.heading }, 4 + 3 * h.boom, 0, this.world.scale);
+    const head = posePoint({ center: h.center, heading: h.heading }, stackerReach(h.boom), 0, this.world.scale);
     return { ...base, center: head, heading: h.heading + Math.PI / 2, z0: h.lift - height };
   }
 
