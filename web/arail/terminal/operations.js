@@ -15,6 +15,7 @@
  * own stream, so other simulations are not affected.
  * @module arail/terminal/operations
  */
+import { rollingHeightMM } from "../core/layout.js";
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, pointInPolygon } from "../core/math.js";
 import { hashString } from "../objects/building-kit.js";
@@ -1213,9 +1214,7 @@ export class TerminalSimulation extends Simulation {
     const r = this.rollingConfig();
     if (!r) return 0;
     const { number } = decodeTag(Number(tagId), r.stride);
-    const list = Array.isArray(this.config.rolling_stock) ? this.config.rolling_stock : [];
-    const own = list.find((w) => w && Number(w.number) === number)?.height_mm;
-    return own != null && Number.isFinite(Number(own)) ? Number(own) : r.height_mm;
+    return rollingHeightMM(this._stockEntry(number)?.height_mm) ?? r.height_mm;
   }
 
   /** The tracker of model wagons, (re)built for the current `markers.rolling`; null without it. */
@@ -1515,6 +1514,7 @@ function validateTerminal(cfg, layout) {
     }
     if (numbers.has(w.number)) out.push(`rolling_stock[${i}]: duplicate number ${w.number}`);
     if (w.type != null && !isWagonType(w.type)) out.push(`rolling_stock[${i}]: unknown type "${w.type}"`);
+    if (w.height_mm != null && rollingHeightMM(w.height_mm) == null) out.push(`rolling_stock[${i}]: height_mm must be a number from 0 to 200 (mm)`);
     const type = isWagonType(w.type) ? w.type : defWagon;
     numbers.set(w.number, type);
     if (rolling) {

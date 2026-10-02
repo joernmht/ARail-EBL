@@ -368,7 +368,7 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
 | --- | --- | --- |
 | `name` | `"Container terminal"` | shown in the Terminal tab |
 | `default_wagon` | `"sgns60"` | type of trains' wagons and of model wagons that are not listed: `sgns60`, `lgns40` or `sggrss80` |
-| `rolling_stock` | `[]` | model wagons: `number` (from 1), `type`, `name` (default `W<number>`), `height_mm` (default `markers.rolling.height_mm`) |
+| `rolling_stock` | `[]` | model wagons: `number` (from 1), `type`, `name` (default `W<number>`), `height_mm` (0–200, default `markers.rolling.height_mm`) |
 | `trains` | `[]` | `id`, `name`, `track` (id of a `track` object), `direction` (1: from the track's first point to its last, −1: the other way), `stop_mm` (the head's distance from the entry end; default: the wagons' middle at the track's middle), `start` (`"away"`, the default, or `"positioned"`: at its stop when the layout is loaded), `wagons` (types from the head; default three of `default_wagon`) |
 | `barges` | `[]` | `id`, `name`, `quay` (id of a `quay` object), `length_m` (25–110, default 55), `tiers` (1–3, default 2), `start` |
 | `trucks.lane` | the first truck lane | id of the `truck-lane` object |

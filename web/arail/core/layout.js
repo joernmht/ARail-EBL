@@ -64,6 +64,12 @@ function rollingNumber(key, v) {
   return Number.isFinite(n) && n >= r.min && n <= r.max && (!r.integer || Number.isInteger(n)) ? n : null;
 }
 
+/**
+ * A tag height above the layout (mm) as a number, or null if it is missing or not 0–200: the rule of
+ * `markers.rolling.height_mm`, also used for the terminal's `rolling_stock[].height_mm`.
+ */
+export const rollingHeightMM = (v) => rollingNumber("height_mm", v);
+
 const knownDictionary = (name) => typeof name === "string" && DICTIONARIES.some((d) => d.name === name);
 
 /**

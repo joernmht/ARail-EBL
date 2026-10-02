@@ -1,5 +1,5 @@
 // Panels: View, Simulate, Disruptions, Control system.
-import { moodColor, boardStatus, decodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -141,9 +141,13 @@ export class Panels {
       const { number, slot } = decodeTag(id, r.stride);
       return `W${number}·${slot}`;
     });
-    const wagons = [...(terminalOf(app.world)?.rolling?.wagons.values() || [])].sort((a, b) => a.number - b.number);
+    const term = terminalOf(app.world);
+    const wagons = [...(term?.rolling?.wagons.values() || [])].sort((a, b) => a.number - b.number);
+    // wagons with a height of their own (rolling_stock[].height_mm)
+    const own = (term?.markerWagons() || []).map((c) => [c.number, term.tagHeight(encodeTag(c.number, 0, r.stride))])
+      .filter(([, z]) => z !== r.height_mm).map(([n, z]) => `; W${n} ${z} mm`).join("");
     return [
-      ["Rolling-stock tags", `${tags.length ? `${tags.join(", ")} in view` : "none in view"} (lifted to ${r.height_mm} mm)`],
+      ["Rolling-stock tags", `${tags.length ? `${tags.join(", ")} in view` : "none in view"} (lifted to ${r.height_mm} mm${own})`],
       ["Model wagons", wagons.length ? wagons.map((w) => `W${w.number} ${w.state === "lost" ? "not visible" : w.state}`).join(", ") : "none seen"],
     ];
   }

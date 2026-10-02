@@ -1140,6 +1140,18 @@ test("draw builds the scene in the camera view and the flyover without errors", 
 
 /* ---------------------------------------------------------------- validation */
 
+test("rolling_stock heights: 0 to 200 mm, else markers.rolling.height_mm", () => {
+  const heights = ["abc", -5, "", 5000, true, 18, 0];
+  const json = layout({ rolling_stock: heights.map((height_mm, i) => ({ number: i + 4, height_mm })) });
+  const problems = validateLayout(json, registry);
+  assert.deepEqual(problems.filter((p) => p.includes("height_mm")).map((p) => p.replace(/^.*rolling_stock/, "rolling_stock")),
+    [0, 1, 2, 3, 4].map((i) => `rolling_stock[${i}]: height_mm must be a number from 0 to 200 (mm)`));
+  const sim = terminalOf(createWorld(json));
+  assert.deepEqual(heights.map((_, i) => sim.tagHeight(encodeTag(i + 4, 0, 4))), [15, 15, 15, 15, 15, 18, 0]);
+  // a number given as text is not a wagon number, so its height is not used either
+  assert.equal(terminalOf(createWorld(layout({ rolling_stock: [{ number: "4", height_mm: 18 }] }))).tagHeight(encodeTag(4, 0, 4)), 15);
+});
+
 test("validate reports every problem of a terminal entry", () => {
   assert.deepEqual(validateLayout(EXAMPLE, registry), []);
   assert.deepEqual(validateLayout(layout(), registry), []);
