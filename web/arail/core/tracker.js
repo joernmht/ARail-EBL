@@ -15,10 +15,13 @@
  * nothing is surveyed any more, markers that are not in the map are ignored, and misread or
  * moved markers are dropped from the pose as outliers. *Moving* markers (on vehicles, e.g.
  * container wagons) are never part of the map and never used for the pose; their detections
- * are reported in `state.moving`.
+ * are reported in `state.moving`. Rolling-stock tags (a marker family of their own, see
+ * `MarkerDetector.detectAll`) are lifted to their height above the layout by `liftMarkers`.
  * @module arail/core/tracker
  */
-import { focalFromHomography, markerCorners, markerHomography, relativeMarkerPose, spread } from "./geometry.js";
+import {
+  focalFromHomography, markerCorners, markerHomography, planeHomography, relativeMarkerPose, spread,
+} from "./geometry.js";
 import { markerIds } from "./layout.js";
 import {
   applyH, homography4, homographyLS, inv3, lerp2, meanAngle, poseApply, poseCompose, poseInverse,
@@ -213,6 +216,16 @@ export class MarkerMap {
  */
 
 /**
+ * A marker on a vehicle lifted to its plane above the layout (see {@link PlaneTracker#liftMarkers}).
+ * @typedef {object} LiftedMarker
+ * @property {number[][]} corners image corners (px; TL, TR, BR, BL; undistorted like the pose)
+ * @property {number[]} center position of the marker's centre in the layout frame (mm)
+ * @property {number} heading direction of the marker's x axis (from its left to its right edge) in the layout frame (rad)
+ * @property {number} edge_mm mean edge length of the marker on its plane (mm): about its size if the height is right
+ * @property {number} z height of the marker's plane above the layout (mm)
+ */
+
+/**
  * How the survey writes its estimates into the marker map. Every change of the map makes all
  * objects work out their geometry, the stop areas and the road network anew, which takes longer
  * than the rest of a frame's simulation. A marker seen in more than `settled` frames creeps by a
@@ -326,6 +339,45 @@ export class PlaneTracker {
         heading = Math.atan2(p[1][1] + p[2][1] - p[0][1] - p[3][1], p[1][0] + p[2][0] - p[0][0] - p[3][0]);
       }
       out[id] = { corners, center, heading };
+    }
+    return out;
+  }
+
+  /**
+   * Markers on vehicles (rolling-stock tags), lifted to the plane at their height above the layout:
+   * found with the plane homography K·[a1, a2, a3 + height·n] of the smoothed pose `H` and the
+   * camera's current intrinsics, so they match what a View draws. Projected onto the layout plane
+   * instead, a tag 15 mm high would appear more than 10 mm farther from the camera.
+   * @param {Object<number, number[][]>} detections tag ID -> image corners (px; TL, TR, BR, BL)
+   * @param {import("./camera.js").Camera} camera
+   * @param {number | ((id: number) => number)} height height of the tags above the layout (mm),
+   *   or a function of the tag ID; tags without a finite height are left out
+   * @returns {Object<number, LiftedMarker>} empty while there is no pose
+   */
+  liftMarkers(detections, camera, height) {
+    const out = {};
+    if (!this.H) return out;
+    const K = camera.intrinsics, inverses = new Map();
+    for (const [key, raw] of Object.entries(detections)) {
+      const id = Number(key);
+      const z = typeof height === "function" ? height(id) : height;
+      if (!Number.isFinite(z)) continue;
+      if (!inverses.has(z)) inverses.set(z, inv3(planeHomography(this.H, K, z)));
+      const Hinv = inverses.get(z);
+      if (!Hinv) continue;
+      const corners = camera.undistortPoints(raw);
+      const p = corners.map((c) => applyH(Hinv, c));
+      if (!p.every((q) => q.every(Number.isFinite))) continue;
+      let edge = 0;
+      for (let k = 0; k < 4; k++) edge += Math.hypot(p[(k + 1) % 4][0] - p[k][0], p[(k + 1) % 4][1] - p[k][1]) / 4;
+      out[id] = {
+        corners,
+        center: [(p[0][0] + p[1][0] + p[2][0] + p[3][0]) / 4, (p[0][1] + p[1][1] + p[2][1] + p[3][1]) / 4],
+        // the marker's x axis: from its left edge (TL, BL) to its right edge (TR, BR)
+        heading: Math.atan2(p[1][1] + p[2][1] - p[0][1] - p[3][1], p[1][0] + p[2][0] - p[0][0] - p[3][0]),
+        edge_mm: edge,
+        z,
+      };
     }
     return out;
   }
