@@ -498,8 +498,30 @@ test("check() reports every kind of inconsistency", () => {
   d.move = "M10";
   expect(s.inv, new RegExp(`move M9: its reserved place Y2 bay 1 row 1 tier 2 stands on ${d.id}, which is being moved \\(M10\\)`));
   s = fresh();
+  // a stored container on one that gets a move
+  s.a.move = "M11";
+  expect(s.inv, new RegExp(`${s.b.id} at Y bay 1 row 1 tier 2: stands on ${s.a.id}, which is being moved \\(M11\\)`));
+  s.b.move = "M11"; // both under the same move: consistent
+  assert.deepEqual(s.inv.check(), []);
+  s = fresh();
   s.inv.containers.set("other", s.c);
   expect(s.inv, /other: listed under a different id/);
+});
+
+test("snapshot: lower tiers first, so a container moved onto a later one loads again", () => {
+  const inv = makeInventory();
+  const a = put(inv, "20", { carrier: "Y", bay: 0, row: 0 });
+  const b = put(inv, "20", { carrier: "Y", bay: 1, row: 0 });
+  const c = put(inv, "20", { carrier: "Y", bay: 2, row: 0 });
+  assert.equal(inv.detach(a.id, "crane-1"), null);
+  assert.equal(inv.attach(a.id, { carrier: "Y", bay: 1, row: 0, tier: 1 }), null);
+  assert.deepEqual(inv.check(), []);
+  const snap = inv.snapshot();
+  assert.deepEqual(snap.map((e) => e.id), [b.id, c.id, a.id], "inventory order within each tier");
+  const again = makeInventory();
+  for (const e of JSON.parse(JSON.stringify(snap))) assert.equal(again.add(new Container(e), e.at), null, e.id);
+  assert.deepEqual(again.check(), []);
+  assert.deepEqual(again.snapshot(), snap);
 });
 
 test("snapshot: stored containers in inventory order, and back", () => {
@@ -786,7 +808,8 @@ test("the example layout: every configured container fits where it is placed", (
   for (const c of TERMINAL.containers) assert.equal(inv.add(new Container(c), c.at), null, c.id);
   assert.deepEqual(inv.check(), []);
   assert.equal(inv.snapshot().length, TERMINAL.containers.length);
-  assert.deepEqual(inv.snapshot().map((e) => e.id), TERMINAL.containers.map((c) => c.id));
+  const byTier = [...TERMINAL.containers].sort((a, b) => (a.at.tier ?? 0) - (b.at.tier ?? 0));
+  assert.deepEqual(inv.snapshot().map((e) => e.id), byTier.map((c) => c.id), "file order within each tier");
   assert.equal(inv.usedTeu("KT41/1"), 3);
   // the scenario's first moves are possible
   assert.equal(inv.canLift("ARLU 100002 4"), null);

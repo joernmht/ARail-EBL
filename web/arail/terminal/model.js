@@ -606,6 +606,8 @@ export class Inventory {
       }
       const support = this._supportProblem(at, c.bays, c);
       if (support) problems.push(`${id} at ${where(at)}: ${support}`);
+      const base = !support && at.tier > 0 ? this.at(at.carrier, at.row, at.bay, at.tier - 1) : null;
+      if (base && base.move != null && base.move !== c.move) problems.push(`${id} at ${where(at)}: stands on ${base.id}, which is being moved (${base.move})`);
     }
     for (const [carrierId, cells] of this._cells) {
       if (cells.size && !this.carriers.has(carrierId)) problems.push(`cells of an unknown carrier "${carrierId}"`);
@@ -647,7 +649,9 @@ export class Inventory {
   }
 
   /**
-   * Stored containers in inventory order, as layout file entries: `[{...container.toJSON(), at}]`.
+   * Stored containers as layout file entries: `[{...container.toJSON(), at}]`, lower tiers first and
+   * inventory order within each tier, so every entry follows the container it stands on and the
+   * snapshot adds back in file order.
    * @returns {object[]}
    */
   snapshot() {
@@ -657,7 +661,7 @@ export class Inventory {
       const at = slotOf(c.at);
       out.push({ ...c.toJSON(), at: { carrier: at.carrier, bay: at.bay, row: at.row, tier: at.tier } });
     }
-    return out;
+    return out.sort((a, b) => a.at.tier - b.at.tier); // Array.prototype.sort is stable
   }
 
   /* ---------------------------------------------------------------- internals */
