@@ -56,6 +56,9 @@ const ROLLING_RANGES = {
   max_bit_errors: { min: 0, max: 6, integer: true, text: "a whole number from 0 to 6" },
 };
 
+/** Number of IDs of the marker families with fewer than 1000 (the most `markers.rolling.codes` allows). */
+const FAMILY_IDS = { APRILTAG_36h11: 587, ARUCO_MIP_36h12: 250 };
+
 /** A numeric `markers.rolling` value as a number, or null if it is missing or out of range. */
 function rollingNumber(key, v) {
   const r = ROLLING_RANGES[key];
@@ -82,6 +85,8 @@ export function normalizeRollingMarkers(r) {
   if (!isObject(r)) return null;
   const out = { dictionary: knownDictionary(r.dictionary) ? r.dictionary : DEFAULT_ROLLING.dictionary };
   for (const key of Object.keys(ROLLING_RANGES)) out[key] = rollingNumber(key, r[key]) ?? DEFAULT_ROLLING[key];
+  // more codes than the family has IDs count as all of its IDs (reported by the validation)
+  out.codes = Math.min(out.codes, FAMILY_IDS[out.dictionary] ?? Infinity);
   return out;
 }
 
@@ -255,6 +260,11 @@ function rollingProblems(markers) {
   if (layoutDictionary === "auto") problems.push('markers.dictionary: choose the layout\'s marker type (not "auto") when rolling-stock markers are used');
   for (const [key, range] of Object.entries(ROLLING_RANGES)) {
     if (r[key] != null && rollingNumber(key, r[key]) == null) problems.push(`markers.rolling.${key} must be ${range.text}`);
+  }
+  const ids = FAMILY_IDS[dictionary], codes = rollingNumber("codes", r.codes);
+  if (ids != null && codes > ids) {
+    const label = DICTIONARIES.find((d) => d.name === dictionary).label;
+    problems.push(`markers.rolling.codes must be at most ${ids}: ${label} has ${ids} IDs`);
   }
   return problems;
 }

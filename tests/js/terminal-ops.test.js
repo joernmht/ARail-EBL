@@ -1279,6 +1279,22 @@ test("validate reports every problem of a terminal entry", () => {
   ];
   for (const e of expect) assert.ok(problems.some((p) => p.includes(e)), `missing: ${e}\n${problems.join("\n")}`);
   assert.ok(!problems.some((p) => p.startsWith("simulations[0] (terminal): only one")));
+  // a tag on every container spot: wagon types (listed or the default) with more spots than IDs per wagon
+  const narrow = layout({ rolling_stock: [{ number: 1, type: "lgns40" }, { number: 2, type: "sggrss80" }] });
+  narrow.markers.rolling.stride = 3;
+  assert.deepEqual(validateLayout(narrow, registry), ["simulations[0] (terminal): markers.rolling.stride is 3, but Sggrss (80 ft) has 4 container spots: use at least 4 IDs per wagon"]);
+  narrow.markers.rolling.stride = 2;
+  assert.deepEqual(validateLayout(narrow, registry), [
+    "simulations[0] (terminal): markers.rolling.stride is 2, but Sgns (60 ft) has 3 container spots: use at least 3 IDs per wagon",
+    "simulations[0] (terminal): markers.rolling.stride is 2, but Sggrss (80 ft) has 4 container spots: use at least 4 IDs per wagon",
+  ]);
+  // codes beyond the IDs of AprilTag 36h11: the wagons above W146 are reported
+  const many = layout({ rolling_stock: [{ number: 200, type: "lgns40" }] });
+  many.markers.rolling.codes = 1000;
+  assert.deepEqual(validateLayout(many, registry), [
+    "markers.rolling.codes must be at most 587: AprilTag 36h11 has 587 IDs",
+    "simulations[0] (terminal): rolling_stock[0]: wagon 200 needs tag IDs up to 797, but markers.rolling.codes is 587",
+  ]);
   // list shapes and missing rolling-stock markers
   const shapes = layout({ trains: {}, barges: 1, containers: "x", rolling_stock: {} });
   delete shapes.markers.rolling;

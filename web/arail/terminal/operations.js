@@ -1549,6 +1549,13 @@ function validateTerminal(cfg, layout) {
     }
   });
   if (stock.length && !rolling) out.push("rolling_stock: markers.rolling is missing, so model wagons cannot be seen");
+  // a tag on every container spot: wagon types with more spots than IDs per wagon cannot get deck cards
+  if (rolling) {
+    for (const type of new Set([defWagon, ...numbers.values()])) {
+      const spots = CARRIER_TYPES[type].bays_m.length;
+      if (spots > rolling.stride) out.push(`markers.rolling.stride is ${rolling.stride}, but ${CARRIER_TYPES[type].label} has ${spots} container spots: use at least ${spots} IDs per wagon`);
+    }
+  }
   const wagonCarrier = (id) => {
     const m = MODEL_WAGON.exec(String(id));
     if (m && !inv.carriers.has(id)) inv.addCarrier(new Carrier({ id, type: numbers.get(Number(m[1])) ?? defWagon }));

@@ -32,6 +32,10 @@ test("rolling-stock markers: defaults fill in, invalid values fall back to them"
     "every invalid value is replaced by its default",
   );
   assert.deepEqual(normalizeRollingMarkers({ codes: 1001, size_mm: "x", height_mm: 201, stride: 9, max_bit_errors: true }), ROLLING);
+  // more codes than the family has IDs: all of its IDs
+  assert.equal(normalizeRollingMarkers({ codes: 1000 }).codes, 587);
+  assert.equal(normalizeRollingMarkers({ dictionary: "ARUCO_MIP_36h12", codes: 300 }).codes, 250);
+  assert.equal(normalizeRollingMarkers({ dictionary: "ARUCO_5X5_1000", codes: 1000 }).codes, 1000);
   // in normalizeLayout: only when given, right after sizes_mm
   assert.ok(!("rolling" in normalizeLayout({}).markers));
   assert.ok(!("rolling" in normalizeLayout({ markers: { rolling: "yes" } }).markers));
@@ -92,7 +96,12 @@ test("rolling-stock markers: every problem is reported", () => {
   has(problems({ rolling: { height_mm: 201 } }), "markers.rolling.height_mm must be a number from 0 to 200 (mm)");
   has(problems({ rolling: { stride: 9 } }), "markers.rolling.stride must be a whole number from 1 to 8");
   has(problems({ rolling: { max_bit_errors: 7 } }), "markers.rolling.max_bit_errors must be a whole number from 0 to 6");
-  for (const [key, v] of [["codes", 1], ["codes", 1000], ["size_mm", 5], ["size_mm", 100], ["height_mm", 0], ["height_mm", 200], ["stride", 1], ["stride", 8], ["max_bit_errors", 0], ["max_bit_errors", 6]]) {
+  // codes: at most the IDs of the family
+  has(problems({ rolling: { codes: 588 } }), "markers.rolling.codes must be at most 587: AprilTag 36h11 has 587 IDs");
+  has(problems({ dictionary: "ARUCO_5X5_1000", rolling: { dictionary: "ARUCO_MIP_36h12", codes: 251 } }), "markers.rolling.codes must be at most 250: ArUco MIP 36h12 has 250 IDs");
+  assert.deepEqual(problems({ rolling: { codes: 587 } }), []);
+  assert.deepEqual(problems({ dictionary: "APRILTAG_36h11", rolling: { dictionary: "ARUCO_5X5_1000", codes: 1000 } }), []);
+  for (const [key, v] of [["codes", 1], ["size_mm", 5], ["size_mm", 100], ["height_mm", 0], ["height_mm", 200], ["stride", 1], ["stride", 8], ["max_bit_errors", 0], ["max_bit_errors", 6]]) {
     assert.deepEqual(problems({ rolling: { [key]: v } }), [], `${key} = ${v} is valid`);
   }
 });

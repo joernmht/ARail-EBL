@@ -131,7 +131,8 @@ still loads, but use AprilTag 36h11.
 
 Each wagon has a **number** (W1, W2, …) and one tag on every container spot. The spots are
 numbered from 0 at the **A end** of the wagon: spot 0 is the 20 ft position at the A end (bay 1
-in the panel). With `stride` IDs per wagon (4 by default, enough for every wagon type):
+in the panel). With `stride` IDs per wagon (4 by default, enough for every wagon type; it must be
+at least the spots of every wagon type you use, 4 for an Sggrss, or the validation reports it):
 
 ```
 tag ID = (wagon − 1) × stride + spot          wagon = floor(ID / stride) + 1, spot = ID mod stride
@@ -148,9 +149,9 @@ example's four model wagons:
 | W4 | Lgns (40 ft) | 2 | 12, 13 | 14, 15 |
 
 Tag 9 is wagon floor(9 / 4) + 1 = 3, spot 9 mod 4 = 1: the second spot of W3 from its A end. With
-64 codes there are wagons W1 to W16; AprilTag 36h11 has 587 IDs, enough for W146. The wagon's
-type comes from the terminal's `rolling_stock` list (`default_wagon` for numbers that are not
-listed), so a wagon keeps its IDs when you change its type.
+64 codes there are wagons W1 to W16; AprilTag 36h11 has 587 IDs (`codes` at most 587), enough
+for W146. The wagon's type comes from the terminal's `rolling_stock` list (`default_wagon` for
+numbers that are not listed), so a wagon keeps its IDs when you change its type.
 
 Every tag lies with its printed x axis (from its left edge to its right edge) pointing to the A
 end. **Any one visible tag gives the pose of the whole wagon**: its spot is known, so the wagon's
