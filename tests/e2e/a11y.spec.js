@@ -10,6 +10,8 @@ const PAGES = [
   ["app, Simulate panel", "/app/#simulate"],
   ["app, Disruptions panel", "/app/#disrupt"],
   ["app, Control panel", "/app/#control"],
+  ["app, Terminal panel", "/app/#terminal"],
+  ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["404 page", "/404.html"],
 ];
 
@@ -77,6 +79,39 @@ for (const [scheme, device, viewport] of STATES) {
     await page.getByRole("button", { name: "Night 22:30" }).click();
     await expect(page.locator("#panel-simulate .town-stats li").first()).toBeVisible();
     found.push(...(await violations(page, "Simulate panel with the town at night")));
+    expect(found).toEqual([]);
+  });
+}
+
+// The container terminal: its panel, a selected container with the Move form, a pick on the canvas
+// (the placing bar), the crane jobs and the inspectors of the terminal's object types.
+for (const [scheme, device, viewport] of STATES) {
+  test(`terminal states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const path = "/app/?layout=../layouts/container-terminal.json#terminal";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize(viewport);
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
+    const found = [];
+    found.push(...(await violations(page, "Terminal panel")));
+    await page.locator("#termList button", { hasText: "ARLU 100001 9" }).click();
+    await expect(page.locator("#termTarget")).toBeVisible();
+    found.push(...(await violations(page, "a container selected, the Move form")));
+    await page.getByRole("button", { name: "Pick on the layout" }).click();
+    await expect(page.locator("#placing")).toBeVisible();
+    found.push(...(await violations(page, "a pick on the canvas")));
+    await page.getByRole("button", { name: "To the yard" }).click();
+    await expect(page.locator(".term-jobs tbody tr")).toHaveCount(1);
+    found.push(...(await violations(page, "the crane jobs with a move")));
+    await page.locator("#tab-build").click();
+    for (const type of ["container-yard", "gantry-crane", "truck-lane", "quay", "reach-stacker"]) {
+      await page.evaluate((t) => window.__arail.editor.select(window.__arail.world.objects.find((o) => o.type === t)), type);
+      await expect(page.locator("#panel-build h2", { hasText: "Selected:" })).toBeVisible();
+      found.push(...(await violations(page, `inspector of ${type}`, "#panel-build")));
+    }
     expect(found).toEqual([]);
   });
 }

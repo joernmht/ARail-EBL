@@ -176,3 +176,40 @@ test("keyboard placing in the flyover: a bus line picks the stop under the cross
   expect(await page.evaluate(() => window.__arail.editor.placing.points.length)).toBe(1);
   expect(errors).toEqual([]);
 });
+
+test("keyboard only: the Terminal tab between Simulate and Disruptions; a container moved from the list", async ({ page }) => {
+  const path = "/app/?layout=../layouts/container-terminal.json#simulate";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
+  // the arrows: Simulate → Terminal → Disruptions and back
+  await page.locator("#tab-simulate").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#tab-terminal")).toBeFocused();
+  await expect(page.locator("#panel-terminal")).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#tab-disrupt")).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#tab-terminal")).toBeFocused();
+  // a container in the list, a place in "Move to", the Move button
+  const item = page.locator("#termList button", { hasText: "ARLU 100004 5" });
+  await tabTo(page, `#${await item.getAttribute("id")}`);
+  await page.keyboard.press("Enter");
+  await expect(item).toHaveAttribute("aria-current", "true");
+  await expect(item).toBeFocused(); // the list is refreshed in place: the focus stays
+  await tabTo(page, "#termTarget");
+  const before = await page.locator("#termTarget").inputValue();
+  await page.keyboard.press("ArrowDown"); // the next place
+  const chosen = await page.locator("#termTarget").inputValue();
+  expect(chosen).not.toBe(before);
+  await tabTo(page, "#termMove");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Move M1 queued");
+  const move = await page.evaluate(() => window.__arail.terminal.sim.moves[0]);
+  expect(move.container).toBe("ARLU 100004 5");
+  expect(`${move.to.carrier}|${move.to.bay}|${move.to.row}|${move.to.tier}`).toBe(chosen);
+  expect(errors).toEqual([]);
+});

@@ -57,11 +57,11 @@ export class Flyover {
     this.active = true;
     app.mode = "flyover";
     const src = app.source;
-    this._resumeVideo = src?.kind === "video" && !app.frozen && !src.el.paused;
+    this._resumeVideo = src?.kind === "video" && !app.frozen && !src.el.paused && !src.stale;
     if (this._resumeVideo) src.el.pause();
     c.classList.add("flyover");
     c.tabIndex = 0;
-    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle.");
+    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle.");
     c.hidden = false;
     // a message on the empty stage (no image yet) comes back when the flyover is left
     this._emptyShown = !$("#emptyStage").hidden;
@@ -71,7 +71,11 @@ export class Flyover {
     this.resize();
     this._restoreCamera();
     // switched on with the key F (nothing focused): the stage takes the keys; a focused button keeps the focus
-    if (!document.activeElement || document.activeElement === document.body) c.focus({ preventScroll: true });
+    if (!document.activeElement || document.activeElement === document.body) {
+      this._entering = true; // not a keyboard user's focus: no aim cross yet
+      c.focus({ preventScroll: true });
+      this._entering = false;
+    }
     this._modeChanged();
   }
 
@@ -94,13 +98,20 @@ export class Flyover {
     c.setAttribute("aria-label", "Camera image with augmented reality");
     $("#flyNav").hidden = true;
     const src = app.source;
-    if (src) {
+    if (src && !src.stale) {
       c.width = src.w;
       c.height = src.h;
       if (this._resumeVideo && src.kind === "video") src.el.play().catch(() => {});
     } else {
+      // no image of this layout (a virtual layout, or none yet): the message of the empty stage
       app.ctx.clearRect(0, 0, c.width, c.height);
-      if (this._emptyShown) $("#emptyStage").hidden = false;
+      if (!this._emptyShown) {
+        $("#emptyStage").textContent = app.world.layout.view?.start === "flyover"
+          ? "This layout is virtual: take a photo or start the camera to see it over the real layout."
+          : "No image yet: take a photo, start the camera or open a file.";
+        c.hidden = true;
+      }
+      $("#emptyStage").hidden = false;
     }
     this._resumeVideo = false;
     this._emptyShown = false;
@@ -120,6 +131,7 @@ export class Flyover {
     app.panels.renderFlyover?.();
     app.updateHud();
     if (app.activeTab === "build") app.editor.renderPlacing();
+    else if (app.activeTab === "terminal") app.terminal.renderPlacing();
   }
 
   /** Canvas size: the whole stage, at the device's resolution (at most MAX_WIDTH wide). */
@@ -270,6 +282,17 @@ export class Flyover {
     if (!onStage) return false;
     const c = this.app.canvas, W = c.width, H = c.height, s = e.shiftKey ? 3 : 1, d = 0.12 * Math.min(W, H) * s;
     const ed = this.app.editor, placing = this.app.activeTab === "build" && !!ed.placing;
+    const terminal = this.app.activeTab === "terminal";
+    // Terminal: Enter picks the container (or the place for it) at the cross in the middle
+    if (e.key === "Enter" && terminal) {
+      if (t !== c) return false;
+      if (e.repeat) return true;
+      this.app.terminal.keyAim = true;
+      if (this.anim) this.cam.set(this.anim.to);
+      this.anim = null;
+      this.app.terminal.pickAt([W / 2, H / 2], { keyboard: true });
+      return true;
+    }
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
     if (e.key === "Enter") {
       if (!placing || t !== c) return false;
@@ -303,6 +326,7 @@ export class Flyover {
     if (!op) return false;
     this.move(op, 160);
     if (placing) this._keyAim = true;
+    if (terminal) this.app.terminal.keyAim = true;
     return true;
   }
 
@@ -356,11 +380,13 @@ export class Flyover {
     // reached with Tab while placing: the cross in the middle shows where Enter puts the point
     c.addEventListener("focus", () => {
       if (this.active && this.app.activeTab === "build" && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
+      if (this.active && !this._entering && c.matches(":focus-visible")) this.app.terminal.keyAim = true;
     });
     c.addEventListener("wheel", (e) => this.active && this._wheel(e), { passive: false });
     c.addEventListener("contextmenu", (e) => this.active && e.preventDefault());
     c.addEventListener("dblclick", (e) => {
-      if (!this.active || this.app.activeTab === "build") return;
+      // Build and Terminal: taps select and pick there
+      if (!this.active || this.app.activeTab === "build" || this.app.activeTab === "terminal") return;
       const [x, y] = this._point(e), W = c.width, H = c.height;
       this.move((k) => k.zoomAt(2, x, y, W, H));
     });
@@ -385,6 +411,7 @@ export class Flyover {
     const p = this._point(e);
     this.pointers.set(e.pointerId, p);
     capture(c, e.pointerId, true);
+    app.terminal.keyAim = false; // the pointer takes over from the keyboard
     if (this.pointers.size === 2) {
       // a second finger: pan, pinch and twist; what the first finger started is dropped
       ed.cancelGesture();
@@ -393,7 +420,7 @@ export class Flyover {
     }
     if (this.pointers.size > 2) return;
     const panButton = e.button === 1 || e.button === 2 || e.shiftKey;
-    const build = app.activeTab === "build";
+    const build = app.activeTab === "build", terminal = app.activeTab === "terminal";
     if (build && e.button === 0 && !panButton) {
       const g = this.groundPoint(p[0], p[1]);
       if (ed.placing) {
@@ -406,7 +433,7 @@ export class Flyover {
         return;
       }
     }
-    this.gesture = { type: panButton || build ? "pan" : "orbit", start: p, moved: false, button: e.button, shift: e.shiftKey };
+    this.gesture = { type: panButton || build || terminal ? "pan" : "orbit", start: p, moved: false, button: e.button, shift: e.shiftKey };
     c.classList.add("dragging");
   }
 
@@ -481,6 +508,7 @@ export class Flyover {
       const q = this.groundPoint(p[0], p[1]);
       if (q) ed.placeAt(q, e);
     } else if (!g.moved && app.activeTab === "build" && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
+    else if (!g.moved && app.activeTab === "terminal" && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
   }
 
   /** Centre, spread and angle of the two fingers on the canvas. */
@@ -533,6 +561,8 @@ export class Flyover {
     if (app.display.flyMarkers !== false) this._drawMarkers(view);
     world.draw(view, { selected: app.activeTab === "build" ? app.editor.selected : null });
     app.editor.drawOverlay(ctx, view);
+    app.terminal.drawOverlay(ctx, view);
+    app.lastView = view;
   }
 
   /** Sky and floor of the lab, with the horizon where the camera's pitch puts it. */
