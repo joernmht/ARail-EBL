@@ -229,6 +229,10 @@ wagons are not found, get closer or print the largest tags that fit (23 mm in H0
   enough. A tag that disagrees with the others by more than 6 mm is dropped.
 - **All tags hidden** for a moment: the wagon is *held* where it was, for 4 s when it stood still
   (0.5 s when it was moving). A held wagon is still available: a crane goes on working on it.
+- **Layout markers hidden, tags in view** (a hand over the markers, the camera close to the
+  wagons): without a camera pose the tags give no position, but a wagon whose tags are still
+  read stays *held* where it was, however long. A wagon not seen before is not added until
+  the pose is back.
 - **Hidden for longer**: the wagon is *lost*. Over the camera image it is drawn as a dashed outline
   with faint containers and the label *W3 not visible*; moves to or from it wait. Its containers
   stay on it (they belong to W3, not to a position) and come back when it is seen again

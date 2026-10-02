@@ -130,6 +130,35 @@ test("the deck card links print each wagon type with the layout's settings", asy
   expect(errors).toEqual([]);
 });
 
+test("model wagon tags seen without a camera pose keep the wagon held", async ({ page }) => {
+  const errors = await openTerminal(page);
+  const states = await page.evaluate(() => {
+    const a = window.__arail, sim = a.terminal.sim, w1 = sim.carrier("W1");
+    const tags = (center) => Object.fromEntries([0, 1, 2].map((slot) => {
+      const x = center[0] + sim.mm(w1.type.bays_m[slot]);
+      return [slot, { center: [x, center[1]], heading: 0, edge_mm: 20 }];
+    }));
+    for (let t = 0; t <= 1.5; t += 0.1) sim.observe(tags([700, 300]), t);
+    const out = [sim.rolling.wagons.get(1).state];
+    // the layout markers are covered: no pose, but the tags are still read
+    a.tracker.H = null;
+    a.rollingDetections = { 0: [[0, 0], [10, 0], [10, 10], [0, 10]], 1: [[20, 0], [30, 0], [30, 10], [20, 10]] };
+    for (let t = 1.6; t <= 12; t += 0.1) {
+      a.clock = t;
+      a._observeRolling(false);
+    }
+    out.push(sim.rolling.wagons.get(1).state, w1.available);
+    // the tags gone as well: lost
+    a.rollingDetections = {};
+    a.clock = 20;
+    a._observeRolling(false);
+    out.push(sim.rolling.wagons.get(1).state);
+    return out;
+  });
+  expect(states).toEqual(["standing", "held", true, "lost"]);
+  expect(errors).toEqual([]);
+});
+
 test("a train is called; a container goes from train to train; unload and load", async ({ page }) => {
   const errors = await openTerminal(page);
   await setSpeed(page, 30);

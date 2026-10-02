@@ -691,11 +691,16 @@ class App {
     }
   }
 
-  /** Model wagons: the rolling-stock tags of this frame, lifted to their deck height, go to the terminal. */
+  /**
+   * Model wagons: the rolling-stock tags of this frame, lifted to their deck height, go to the
+   * terminal. Without a camera pose they go without a pose: they keep a known wagon held.
+   */
   _observeRolling(still) {
     const term = ARail.terminalOf(this.world);
     if (!term?.rollingConfig() || typeof this.tracker.liftMarkers !== "function") return;
-    term.observe(this.tracker.liftMarkers(this.rollingDetections, this.camera, (id) => term.tagHeight(id)), this.clock, { still });
+    const tags = this.tracker.liftMarkers(this.rollingDetections, this.camera, (id) => term.tagHeight(id));
+    if (!this.tracker.H) for (const id of Object.keys(this.rollingDetections)) tags[id] ??= { center: null, heading: null, edge_mm: null };
+    term.observe(tags, this.clock, { still });
   }
 
   /* ---------------------------------------------------------------- frame loop */
