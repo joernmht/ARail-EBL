@@ -505,8 +505,9 @@ export class TerminalSimulation extends Simulation {
     return { visit: v };
   }
 
-  /** Remove a visit and its carriers (with their containers). */
+  /** Remove a visit and its carriers (with their containers); moves from or to them are cancelled. */
   _removeVisit(v) {
+    this._cancelMovesOf(v);
     for (const c of v.carriers) {
       this.inventory.removeCarrier(c.id);
       this._boxCache.delete(c.id);
@@ -516,6 +517,12 @@ export class TerminalSimulation extends Simulation {
     else this._trucks = this._trucks.filter((x) => x !== v);
     this._rebuildVisits();
     this._changed();
+  }
+
+  /** Cancel the moves from or to the carriers of a visit. */
+  _cancelMovesOf(v) {
+    const ids = new Set(v.carriers.map((c) => c.id));
+    for (const m of this._pending.filter((m) => ids.has(m.from.carrier) || ids.has(m.to.carrier))) this._cancelMove(m);
   }
 
   /** Random containers on the carriers of a new visit (emits `container.added` for each). */
@@ -572,6 +579,7 @@ export class TerminalSimulation extends Simulation {
 
   /** A truck reached the end of the lane (or left from the gate): its containers leave, the visit is gone. */
   _truckGone(t) {
+    this._cancelMovesOf(t);
     for (const box of this.inventory.on(t.id)) this._emit(EV.containerLeft, { container: box, visit: t, reason: "truck" });
     t.state = "away";
     this._removeVisit(t);
@@ -666,7 +674,9 @@ export class TerminalSimulation extends Simulation {
     const reason = this.inventory.canLift(c);
     if (reason) return reason;
     const src = this.carrier(c.at.carrier);
-    return src?.present ? null : `${src?.label ?? c.at.carrier} is not here`;
+    if (!src?.present) return `${src?.label ?? c.at.carrier} is not here`;
+    const v = this._visitOf(src);
+    return v?.state === "departing" ? `${v.name} is leaving` : null;
   }
 
   /** Why nothing can be put on a carrier now (null = it can take containers). */
@@ -998,9 +1008,20 @@ export class TerminalSimulation extends Simulation {
     const { fill, ...out } = this.config;
     const trucks = new Set(this._trucks.map((t) => t.id));
     const list = this.inventory.snapshot().filter((e) => !trucks.has(e.at.carrier));
+    // a container on a spreader is saved where it goes; one going to a truck (never in files) where
+    // it came from, if that place is still free and holds it, else not at all
+    const back = new Set();
     for (const m of this._pending) {
       const c = this.inventory.get(m.container);
-      if (c && !c.at && c.handler != null) list.push({ ...c.toJSON(), at: { ...m.to } });
+      if (!c || c.at || c.handler == null) continue;
+      if (!trucks.has(m.to.carrier)) {
+        list.push({ ...c.toJSON(), at: { ...m.to } });
+        continue;
+      }
+      const keys = Array.from({ length: c.bays }, (_, k) => `${m.from.carrier}:${m.from.row}:${m.from.bay + k}:${m.from.tier}`);
+      if (trucks.has(m.from.carrier) || this.inventory.canPlace(c, m.from) || keys.some((k) => back.has(k))) continue;
+      for (const k of keys) back.add(k);
+      list.push({ ...c.toJSON(), at: { ...m.from } });
     }
     out.containers = list.sort((a, b) => a.at.tier - b.at.tier);
     const start = (v) => (v.state === "positioned" ? "positioned" : "away");

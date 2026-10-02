@@ -288,6 +288,8 @@ export class TruckVisit {
     this.a = 0;
     /** Arc length where it started to leave (null until it moves off). */
     this._leftAt = null;
+    /** The position it stands at while it waits to pull out (-1 if it had none). */
+    this._from = -1;
     /** Simulated seconds it has been ready to leave on its own. */
     this.ready_s = 0;
   }
@@ -335,9 +337,11 @@ export class TruckVisit {
 
 /**
  * Drive the trucks of a lane for `dt` seconds: let the first truck at the gate in when a position is
- * free and the entry is clear, move the others, keep them apart. Trucks in the passing lane never
- * pass the rear of a truck ahead in it (minus a gap); a truck turning in or out keeps sideways clear
- * of the trucks beside it, so their outlines never overlap.
+ * free and the entry is clear, move the others, keep them apart. Trucks on the move (coming in, or
+ * leaving once they started to pull out) keep their order: none gets closer than a gap to the rear
+ * of a moving truck ahead. A truck pulls out only when no moving truck is beside it or close behind
+ * or ahead; a moving truck keeps sideways clear of the standing trucks beside it, so the outlines
+ * never overlap.
  * @param {TruckVisit[]} trucks in arrival order
  * @param {import("./objects.js").TruckLane | null} lane
  * @param {number} dt
@@ -349,14 +353,19 @@ export function stepTrucks(trucks, lane, dt, host) {
   if (!g) return;
   const mm = (m) => host.mm(m), L = mm(TRUCK.length_m), P = Math.abs(g.passingOffset), side = Math.sign(g.passingOffset) || 1;
   const W = Math.min(P, mm(TRUCK.clear_m));
-  const inPassing = (t) => t.a > P - W + 1e-9;
+  // on the move: coming in, or leaving and pulled out (or sent away while it came in); the others
+  // stand at a position
+  const moves = (t) => t.state === "approaching" || (t.state === "departing" && (t._leftAt != null || t.a > 0));
   const on = trucks.filter((t) => t.onLane);
   for (const t of on) if (t.mover.points !== g.points) t.mover.setPath(g.points);
 
-  // the gate: the first waiting truck comes in when a position is free and nobody is near the entry
+  // the gate: the first waiting truck comes in when a position is free (a truck that has not pulled
+  // out yet still holds its own) and nobody is near the entry
   const next = trucks.find((t) => t.state === "waiting");
   if (next) {
-    const positions = lane.positions(), taken = new Set(on.filter((t) => t.state !== "departing").map((t) => t.position));
+    const positions = lane.positions(), taken = new Set();
+    for (const t of on) if (t.state !== "departing") taken.add(t.position);
+    else if (t._leftAt == null) taken.add(t._from);
     let free = -1;
     for (let i = positions.length - 1; i >= 0 && free < 0; i--) if (!taken.has(i)) free = i;
     const clear = !on.some((t) => t.state !== "positioned" && t.s - L < mm(TRUCK.entry_m));
@@ -378,20 +387,22 @@ export function stepTrucks(trucks, lane, dt, host) {
   const moving = on.filter((t) => t.state !== "positioned").sort((p, q) => q.s - p.s);
   for (const t of moving) {
     if (t.state === "departing" && t._leftAt == null) {
-      // pull out only with room in the passing lane, behind and beside it (a truck sent away while
-      // it was still coming in is out there already)
+      // pull out only when no truck on the move is beside it, closer than behind_m behind its rear
+      // or ahead_m ahead of its front (a truck sent away while it was still coming in is out there
+      // already)
       const lo = t.s - L - mm(TRUCK.behind_m), hi = t.s + mm(TRUCK.ahead_m);
-      if (!(t.a > 0) && on.some((o) => o !== t && inPassing(o) && o.s >= lo && o.s <= hi)) continue;
+      if (!(t.a > 0) && on.some((o) => o !== t && moves(o) && o.s >= lo && o.s - L <= hi)) continue;
       t._leftAt = t.s - mm(TRUCK.turn_m) * (t.a / P);
     }
     let limit = Infinity;
-    for (const o of on) if (o !== t && o.s > t.s && inPassing(o)) limit = Math.min(limit, o.s - L - mm(TRUCK.gap_m));
+    for (const o of on) if (o !== t && o.s > t.s && moves(o)) limit = Math.min(limit, o.s - L - mm(TRUCK.gap_m));
     const arrived = t.mover.step(dt, { limit });
-    // sideways: the passing lane while driving, turning in over the last turn_m, out over the first
+    // sideways: the passing lane while driving, turning in over the last turn_m, out over the first;
+    // clear of the standing trucks beside it (ramped over ramp_m before it comes alongside)
     const turn = mm(TRUCK.turn_m);
     let a = t.state === "approaching" ? P * clamp((t.mover.target - t.s) / turn, 0, 1) : P * clamp((t.s - t._leftAt) / turn, 0, 1);
     for (const o of on) {
-      if (o === t || inPassing(o)) continue;
+      if (o === t || moves(o)) continue;
       const gap = Math.max(o.s - L - t.s, t.s - L - o.s);
       const ramp = clamp(1 - gap / mm(TRUCK.ramp_m), 0, 1);
       if (ramp > 0) a = Math.max(a, Math.min(P, o.a + W) * ramp);
@@ -416,6 +427,7 @@ export function stepTrucks(trucks, lane, dt, host) {
  * off the end of the lane once the passing lane is clear.
  */
 export function departTruck(t, host) {
+  t._from = t.state === "positioned" ? t.position : -1;
   t.state = "departing";
   t.position = -1;
   t._leftAt = null;
