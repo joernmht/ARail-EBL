@@ -119,7 +119,7 @@ The container terminal (see [Container terminal](container-terminal.md)): trains
 - *New arrival*: call a train or a barge, or send a truck (pickup or delivery).
 - *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**.
 - *Crane jobs*: the moves with their state; queued moves can be cancelled.
-- *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and a link to print the cards.
+- *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and links to print their cards, one per wagon type.
 
 On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick.
 

@@ -126,9 +126,18 @@ function init() {
   addOptions(sel, DICTIONARIES.filter((d) => window.AR?.DICTIONARIES[d.name]).map((d) => [d.name, `${d.label} (OpenCV ${d.opencv})`]));
   sel.value = params.get("dict") || "ARUCO";
   // only wagons are model rolling stock (a truck chassis is not tracked by tags)
-  addOptions($("wagonType"), Object.entries(CARRIER_TYPES).filter(([, t]) => t.kind === "wagon").map(([key, t]) => [key, t.label]));
+  const wagonTypes = Object.entries(CARRIER_TYPES).filter(([, t]) => t.kind === "wagon");
+  addOptions($("wagonType"), wagonTypes.map(([key, t]) => [key, t.label]));
   addOptions($("scale"), DECK_SCALES.map((s) => [String(s.scale), s.label]));
   $("kind").value = params.get("kind") === "rolling" ? "rolling" : "markers";
+  // deck card settings from the address (the Terminal tab links here with the layout's values);
+  // a bad stride or tag size is shown as an error by render(), not corrected
+  const type = params.get("type"), scale = params.get("scale");
+  if (wagonTypes.some(([key]) => key === type)) $("wagonType").value = type;
+  if (DECK_SCALES.some((s) => String(s.scale) === scale)) $("scale").value = scale;
+  for (const [param, id] of [["wagons", "wagons"], ["stride", "stride"], ["size", "tagSize"]]) {
+    if (params.has(param)) $(id).value = params.get(param);
+  }
   applyKind();
   $("kind").addEventListener("input", applyKind);
   const inputs = ["kind", "dict", "ids", "size", "margin", "paper", "labels", "cutlines", "wagons", "wagonType", "stride", "tagSize", "scale"];

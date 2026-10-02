@@ -110,6 +110,26 @@ test("a move from the panel: a container from the train to the yard", async ({ p
   expect(errors).toEqual([]);
 });
 
+test("the deck card links print each wagon type with the layout's settings", async ({ page }) => {
+  const errors = await openTerminal(page);
+  // one link per type of the example's rolling stock: W1-W2 Sgns, W3 Sggrss, W4 Lgns
+  const links = page.locator("#panel-terminal a", { hasText: /^(Sgns|Sggrss|Lgns) W/ });
+  await expect(links).toHaveText(["Sgns W1–W2", "Sggrss W3", "Lgns W4"]);
+  const href = await links.nth(1).getAttribute("href");
+  const q = new URL(href, page.url()).searchParams;
+  expect(Object.fromEntries(q)).toEqual({ kind: "rolling", type: "sggrss80", wagons: "3", stride: "4", size: "20", scale: "87" });
+  // the marker page takes them over
+  await page.goto(new URL(href.replace("stride=4", "stride=5").replace("size=20", "size=14").replace("scale=87", "scale=120"), page.url()).href);
+  await expect(page.locator("#wagonType")).toHaveValue("sggrss80");
+  await expect(page.locator("#wagons")).toHaveValue("3");
+  await expect(page.locator("#stride")).toHaveValue("5");
+  await expect(page.locator("#tagSize")).toHaveValue("14");
+  await expect(page.locator("#scale")).toHaveValue("120");
+  await expect(page.locator("#status")).toHaveText("1 card with 4 markers on 1 sheet.");
+  await expect(page.locator("svg.sheet text", { hasText: /^W3 / })).toHaveText("W3 · Sggrss (80 ft) · IDs 10–13");
+  expect(errors).toEqual([]);
+});
+
 test("a train is called; a container goes from train to train; unload and load", async ({ page }) => {
   const errors = await openTerminal(page);
   await setSpeed(page, 30);

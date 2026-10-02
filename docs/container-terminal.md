@@ -169,7 +169,9 @@ Open the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/?kind=
 | Tag size | 20 mm | `markers.rolling.size_mm`, the black square |
 | Scale | H0 (1:87) | the scale of the wagons |
 
-For the example: W1–W2 as Sgns, W3 as Sggrss and W4 as Lgns, three prints. Then
+For the example: W1–W2 as Sgns, W3 as Sggrss and W4 as Lgns, three prints. The links under
+**Model wagons** in the Terminal tab open the page filled in, one link per wagon type of the
+`rolling_stock` list, with the layout's stride, tag size and scale. Then
 
 1. print at 100 % ("actual size") and check the 100 mm bar with a ruler;
 2. cut each card out along its grey outline. The arrow **A ▶** beside the card points to the A
@@ -289,7 +291,7 @@ without one it offers **Open the example terminal** and **Add a container termin
    state (*queued*, *waiting for …*, the crane's phase, *done*, *failed: …*). A move that has not
    locked its container yet can be cancelled.
 7. **Model wagons** (with `markers.rolling` only): each wagon with its type, the tags seen (*2/3*),
-   its state and its containers, and a link to print deck cards.
+   its state and its containers, and links to print the deck cards (one per wagon type).
 
 **On the stage.** In the Terminal tab a tap on a container chooses it, and its possible places are
 outlined; a tap on an outlined place (or on another container, or on a carrier) queues the move:

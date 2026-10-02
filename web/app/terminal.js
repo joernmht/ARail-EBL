@@ -33,6 +33,21 @@ const slotKey = (at) => `${at.carrier}|${at.bay}|${at.row ?? 0}|${at.tier ?? 0}`
 /** Element id of a container's button in the list. */
 const listId = (id) => `term-c-${String(id).replace(/\W+/g, "-")}`;
 
+/** `type` if it is a wagon type, else null. */
+const deckType = (type) => (typeof type === "string" && CARRIER_TYPES[type]?.kind === "wagon" ? type : null);
+
+/** Wagon numbers as ranges, e.g. [1, 2, 3, 5] -> "1-3,5" (with `prefix` "W": "W1–W3, W5"). */
+function numberList(numbers, prefix = "") {
+  const sorted = [...new Set(numbers)].sort((a, b) => a - b), parts = [];
+  for (let i = 0; i < sorted.length; i++) {
+    let j = i;
+    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j++;
+    parts.push(j > i ? `${prefix}${sorted[i]}${prefix ? "–" : "-"}${prefix}${sorted[j]}` : `${prefix}${sorted[i]}`);
+    i = j;
+  }
+  return parts.join(prefix ? ", " : ",");
+}
+
 export class TerminalPanel {
   /** @param {object} app the ARail app (app.js) */
   constructor(app) {
@@ -548,8 +563,6 @@ export class TerminalPanel {
 
   _wagons(sim) {
     const stride = sim.rollingConfig()?.stride ?? 4, wagons = sim.markerWagons();
-    const n = Math.max(1, ...wagons.map((c) => c.number));
-    const type = sim.config.default_wagon && CARRIER_TYPES[sim.config.default_wagon] ? sim.config.default_wagon : "sgns60";
     return [
       h("h2", {}, "Model wagons"),
       wagons.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-wagons" },
@@ -559,9 +572,39 @@ export class TerminalPanel {
           return h("tr", {}, h("td", {}, c.label), h("td", {}, c.type?.label ?? ""), h("td", {}, `${t ? t.tags.length : 0}/${Math.min(c.bays, stride)}`),
             h("td", {}, t?.state ?? "not seen"), h("td", {}, String(sim.inventory.on(c.id).length)));
         })))) : h("p", { class: "hint" }, "No model wagons seen yet. Show the camera a wagon with its deck card."),
-      h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ",
-        h("a", { href: `../markers/?kind=rolling&type=${type}&wagons=1-${n}`, target: "_blank", rel: "noopener" }, "Print deck cards"), "."),
+      h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ", ...this._deckLinks(sim)),
     ];
+  }
+
+  /**
+   * Links to the deck cards of the configured model wagons, one per wagon type (a print holds one
+   * type), with the layout's stride, tag size and scale.
+   */
+  _deckLinks(sim) {
+    const r = sim.rollingConfig(), def = deckType(sim.config.default_wagon) ?? "sgns60";
+    const stock = (Array.isArray(sim.config.rolling_stock) ? sim.config.rolling_stock : [])
+      .filter((w) => w && typeof w === "object" && Number.isInteger(w.number) && w.number >= 1);
+    const byType = new Map();
+    for (const w of stock) {
+      const type = deckType(w.type) ?? def;
+      byType.set(type, [...(byType.get(type) || []), w.number]);
+    }
+    // no rolling_stock: the wagons known so far, all of the default type
+    if (!byType.size) {
+      const known = sim.markerWagons().map((c) => c.number);
+      byType.set(def, known.length ? known : [1]);
+    }
+    const link = ([type, numbers], label) => {
+      const q = new URLSearchParams({ kind: "rolling", type, wagons: numberList(numbers), stride: r.stride, size: r.size_mm, scale: sim.world.scale });
+      return h("a", { href: `../markers/?${q}`, target: "_blank", rel: "noopener" }, label);
+    };
+    if (byType.size === 1) return [link([...byType][0], "Print deck cards"), "."];
+    const out = ["Print deck cards: "];
+    [...byType].forEach((entry, i) => {
+      if (i) out.push(" · ");
+      out.push(link(entry, `${CARRIER_TYPES[entry[0]].label.replace(/ \(.*\)$/, "")} ${numberList(entry[1], "W")}`));
+    });
+    return [...out, "."];
   }
 
   /* ---------------------------------------------------------------- canvas picking */

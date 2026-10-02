@@ -96,6 +96,23 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   expect(errors).toEqual([]);
 });
 
+test("deck card settings come from the address; bad values are shown, not corrected", async ({ page }) => {
+  await page.goto("/markers/?kind=rolling&type=lgns40&wagons=2,5&stride=3&size=10&scale=160");
+  await expect(page.locator("#wagonType")).toHaveValue("lgns40");
+  await expect(page.locator("#wagons")).toHaveValue("2,5");
+  await expect(page.locator("#stride")).toHaveValue("3");
+  await expect(page.locator("#tagSize")).toHaveValue("10");
+  await expect(page.locator("#scale")).toHaveValue("160");
+  await expect(page.locator("#status")).toHaveText("2 cards with 4 markers on 1 sheet.");
+  // unknown type and scale: the defaults; a bad stride: an error
+  await page.goto("/markers/?kind=rolling&type=chassis40&scale=99&stride=9");
+  await expect(page.locator("#wagonType")).toHaveValue("sgns60");
+  await expect(page.locator("#scale")).toHaveValue("87");
+  await expect(page.locator("#stride")).toHaveValue("9");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await expect(page.locator("#status")).toHaveText("IDs per wagon must be a whole number from 1 to 8");
+});
+
 for (const scheme of ["light", "dark"]) {
   test(`deck card settings have no accessibility violations (${scheme} mode)`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
