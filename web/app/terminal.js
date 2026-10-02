@@ -367,7 +367,7 @@ export class TerminalPanel {
             select("termLoad", "Load", "load", [["empty", "empty"], ["random", "random load"]]),
           ),
           h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termCallTrain", onclick: () => this._added(sim.addTrain({ track: d.track, wagons: Array(d.wagons).fill(d.wagonType), load: d.load })) }, "Call train")),
-        ] : h("p", { class: "hint" }, "No track on this layout: add one in Build → Transport."),
+        ] : h("p", { class: "hint" }, "No track on this layout: add one in Build → Infrastructure → Track."),
       ),
       h("div", { class: "term-form" },
         h("h3", {}, "Barge"),
