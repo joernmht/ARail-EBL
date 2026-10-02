@@ -194,6 +194,7 @@ export class TerminalPanel {
     ];
   }
 
+  /** Reset the terminal to its start state; a pick and the selection end. */
   resetTerminal() {
     const sim = this.sim;
     if (!sim) return;
@@ -205,6 +206,7 @@ export class TerminalPanel {
     toast("Terminal reset to its start state.");
   }
 
+  /** Save where the containers are now as the terminal's start state, in the layout stored in this browser. */
   saveStart() {
     const sim = this.sim;
     if (!sim) return;
@@ -229,14 +231,14 @@ export class TerminalPanel {
   _visitCard(sim, v) {
     const inv = sim.inventory;
     const used = v.carriers.reduce((n, c) => n + inv.usedTeu(c.id), 0), cap = v.carriers.reduce((n, c) => n + inv.capacityTeu(c.id), 0);
-    // a refused departure is shown until the visit leaves or has no moves left
+    // a refused departure is shown while forcing can help: until the visit leaves, has no moves left or a crane works on it
     let refused = this.refused?.visit === v.id ? this.refused.reason : null;
-    if (refused && (v.state === "away" || v.state === "departing" || !this._movesOn(sim, v, ["queued", "active"]))) refused = this.refused = null;
+    if (refused && (v.state === "away" || v.state === "departing" || !this._movesOn(sim, v, ["queued"]) || this._movesOn(sim, v, ["active"]))) refused = this.refused = null;
     const btn = (label, fn) => h("button", { class: "btn", type: "button", onclick: fn }, label);
     const calls = [];
     if (v.state === "away") calls.push(btn("Call", () => this._act(sim.call(v.id))));
     else if (v.state !== "departing") calls.push(btn("Depart", () => this.depart(v.id)));
-    if (refused && !this._movesOn(sim, v, ["active"])) calls.push(btn("Depart anyway", () => this.depart(v.id, true)));
+    if (refused) calls.push(btn("Depart anyway", () => this.depart(v.id, true)));
     if (v.kind !== "truck" && v.state === "positioned") {
       calls.push(btn("Unload to yard", () => this.bulk(sim.unload(v.id, { to: "yard" }))));
       calls.push(btn("Load from yard", () => this.bulk(sim.load(v.id, { from: "yard" }))));
@@ -272,13 +274,15 @@ export class TerminalPanel {
     return sim.moves.some((m) => states.includes(m.state) && (ids.has(m.from.carrier) || ids.has(m.to.carrier)));
   }
 
-  /** A visit leaves (with `force`, its queued moves are cancelled). */
+  /**
+   * A visit leaves (with `force`, its queued moves are cancelled). A refusal is toasted; its card keeps it
+   * (offering "Depart anyway") only when forcing can help, i.e. no crane works on the visit now.
+   */
   depart(visitId, force = false) {
-    const why = this.sim?.depart(visitId, { force });
-    if (why) {
-      this.refused = { visit: visitId, reason: why };
-      toast(why);
-    } else this.refused = null;
+    const sim = this.sim, why = sim?.depart(visitId, { force });
+    const v = why && sim.visits.get(visitId);
+    this.refused = v && !this._movesOn(sim, v, ["active"]) ? { visit: visitId, reason: why } : null;
+    if (why) toast(why);
     this.update();
   }
 

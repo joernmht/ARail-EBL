@@ -42,11 +42,12 @@ async function chooseInList(page, id) {
 /** Point the flyover camera straight down at a layout point (no animation). */
 async function lookDownAt(page, target, distance = 900) {
   await page.evaluate(([t, d]) => {
-    const f = window.__arail.flyover;
+    const a = window.__arail, f = a.flyover;
+    window.__lastView = a.lastView; // a frame with the new camera replaces app.lastView
     f.anim = null;
     f.cam.set({ target: t, distance: d, pitch: Math.PI / 2 });
   }, [target, distance]);
-  await page.waitForTimeout(100); // a frame with the new camera (app.lastView)
+  await page.waitForFunction(() => window.__arail.lastView && window.__arail.lastView !== window.__lastView);
 }
 
 /** Screen point (CSS px) of the top of a container's box, or of a target box, in the current view. */
@@ -127,11 +128,29 @@ test("a train is called; a container goes from train to train; unload and load",
   // bulk moves: the results are toasted
   await page.locator(".term-board .stop[data-id=BG1]").getByRole("button", { name: "Unload to yard" }).click();
   await expect(page.locator("#toast")).toContainText(/\d+ moves? queued/);
-  await page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Load from yard" }).click();
+  // paused, the moves stay queued (cranes start them in a simulation step)
+  const kt52 = page.locator(".term-board .stop[data-id=KT52]");
+  await page.evaluate(() => (window.__arail.world.paused = true));
+  await kt52.getByRole("button", { name: "Load from yard" }).click();
   await expect(page.locator("#toast")).toContainText(/\d+ moves? queued/);
   // a train with queued moves leaves only when forced
-  await page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Depart", exact: true }).click();
-  await expect(page.locator(".term-board .stop[data-id=KT52] .status")).toContainText(/still has \d+ moves?|A crane is working on/);
+  await kt52.getByRole("button", { name: "Depart", exact: true }).click();
+  await expect(kt52.locator(".status")).toContainText(/still has \d+ moves?/);
+  await expect(kt52.getByRole("button", { name: "Depart anyway" })).toBeVisible();
+  // once a crane works on it, forcing cannot help: the card shows where the train is again
+  await page.evaluate(() => (window.__arail.world.paused = false));
+  await page.waitForFunction(() => {
+    const a = window.__arail, busy = a.terminal.sim.moves.some((m) => m.state === "active" && m.to.carrier.startsWith("KT52/"));
+    if (busy) a.world.paused = true; // keep the crane at work
+    return busy;
+  }, null, { timeout: 60_000, polling: "raf" });
+  await expect(kt52.locator(".status")).toHaveText("at Loading track 2");
+  await expect(kt52.getByRole("button", { name: "Depart anyway" })).toHaveCount(0);
+  await kt52.getByRole("button", { name: "Depart", exact: true }).click();
+  await expect(page.locator("#toast")).toContainText("A crane is working on");
+  await expect(kt52.locator(".status")).toHaveText("at Loading track 2");
+  await expect(kt52.getByRole("button", { name: "Depart anyway" })).toHaveCount(0);
+  await page.evaluate(() => (window.__arail.world.paused = false));
   expect(await page.evaluate(() => window.__arail.terminal.sim.inventory.check())).toEqual([]);
   expect(errors).toEqual([]);
 });
