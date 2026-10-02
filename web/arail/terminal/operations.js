@@ -694,12 +694,15 @@ export class TerminalSimulation extends Simulation {
     if (to.kind != null) {
       const kind = to.kind === "train" ? "wagon" : String(to.kind);
       if (!KINDS[kind]) return { error: `Unknown kind "${to.kind}": use wagon, truck, barge or yard` };
+      // a free place that no handler serves: say so (rather than "no free place")
+      let free = null;
       for (const carrier of this.carriers()) {
         if (carrier.kind !== kind || exclude?.has(carrier.id) || this._placeProblem(carrier)) continue;
+        free ??= this.inventory.freeSlots(c, carrier.id)[0] ?? null;
         const slot = this._firstSlot(c, carrier);
         if (slot) return slot;
       }
-      return { error: `No free place for ${c.id} on a ${KINDS[kind]}` };
+      return { error: free ? this._noHandler(c, free) : `No free place for ${c.id} on a ${KINDS[kind]}` };
     }
     const carrier = this.carrier(to.carrier);
     if (!carrier) return { error: `Unknown place "${to.carrier}"` };

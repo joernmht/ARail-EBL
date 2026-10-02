@@ -247,7 +247,8 @@ test("requests are refused with a reason", () => {
   assert.equal(err("XXXU 000000 0", { carrier: "yard-a" }), 'Unknown container "XXXU 000000 0"');
   // no crane reaches Block B, and a reach stacker does not serve barges
   assert.match(err(ID(8), { carrier: "B1" }), /^No crane or reach stacker can move it from Block B · bay 1 · row 1 · tier 1 to Barge 1/);
-  assert.match(err(ID(8), { kind: "barge" }), /^No free place for .* on a barge$/);
+  assert.match(err(ID(8), { kind: "barge" }), /^No crane or reach stacker can move it from Block B · bay 1 · row 1 · tier 1 to Barge 1/);
+  assert.equal(err(ID(8), { kind: "truck" }), `No free place for ${ID(8)} on a truck`, "no truck is here");
   // occupied, reserved
   assert.equal(err(ID(1), { carrier: "yard-a", bay: 2, row: 1, tier: 0 }), `Occupied by ${ID(6)}`);
   assert.equal(sim.request(ID(1), at("yard-a", 7, 3, 0)).error, undefined);
