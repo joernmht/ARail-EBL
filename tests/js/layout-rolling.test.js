@@ -225,7 +225,7 @@ test("terminal types: registered with the built-ins, frozen parameters", () => {
   assert.equal(PHASE_LABELS["set-down"], "setting down");
 });
 
-test("the example terminal layout validates and loads with the placeholder terminal", () => {
+test("the example terminal layout validates, loads and runs", () => {
   assert.deepEqual(validateLayout(EXAMPLE, registry), []);
   const world = createWorld(EXAMPLE);
   assert.equal(world.objects.length, EXAMPLE.objects.length);
@@ -238,26 +238,19 @@ test("the example terminal layout validates and loads with the placeholder termi
   assert.deepEqual(world.toJSON().simulations, EXAMPLE.simulations, "the terminal entry is kept verbatim");
   assert.deepEqual(world.toJSON().view, { start: "flyover" });
 
-  // inert: refuses with a reason, never throws
-  const NOT = "The terminal is not implemented yet";
-  assert.deepEqual(term.request("ARLU 100001 9", { carrier: "yard-a" }), { error: NOT });
-  assert.deepEqual(term.addTrain({ track: "track-1" }), { error: NOT });
-  assert.deepEqual(term.sendTruck(), { error: NOT });
-  assert.equal(term.call("KT52"), NOT);
-  assert.equal(term.depart("KT41", { force: true }), NOT);
-  assert.equal(term.cancel("M1"), NOT);
-  assert.deepEqual(term.targets("ARLU 100001 9"), { ok: [], refused: [] });
-  assert.deepEqual(term.unload("KT41"), { moves: [], refused: [] });
-  assert.deepEqual(term.load("KT52", { from: "yard" }), { moves: [], refused: [] });
-  assert.deepEqual(term.carriers(), []);
-  assert.equal(term.inventory.canPlace(null, null), NOT);
+  // unknown things are refused with a reason, never with an exception
+  assert.match(term.request("XXXU 000000 0", { carrier: "yard-a" }).error, /Unknown container/);
+  assert.equal(typeof term.call("nobody"), "string");
+  assert.equal(term.carriers()[0].id, "KT41/1");
   assert.equal(term.tagHeight(9), 15);
-  term.saveStart();
+  // Simulate → Clear passengers calls clear() on every simulation: the terminal keeps its containers
   term.clear();
+  assert.ok(term.inventory.get("ARLU 100001 9")?.at);
   term.observe({}, 0);
   term.forgetObservations();
   for (let i = 0; i < 20; i++) world.step(0.1);
   world.scenarios.play("morning-shift");
   for (let i = 0; i < 20; i++) world.step(0.5);
-  assert.deepEqual(world.toJSON().simulations, EXAMPLE.simulations);
+  assert.deepEqual(term.inventory.check(), []);
+  assert.deepEqual(world.toJSON().simulations, EXAMPLE.simulations, "runtime moves are not saved");
 });
