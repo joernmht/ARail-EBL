@@ -127,6 +127,11 @@ For rolling stock on an ArUco Original layout, the validation reports the ArUco 
 families (they are misread as ArUco Original), and it reports the layout's own family. The layout
 still loads, but use AprilTag 36h11.
 
+The marker sheet page prints deck cards only in AprilTag 36h11. If your layout stickers are
+AprilTag 36h11 themselves, print the layout markers in another type for model wagons (ArUco
+Original, as in the EBL): the validation accepts another rolling-stock family in
+`markers.rolling.dictionary`, but its deck cards cannot be printed.
+
 ### One tag per container spot
 
 Each wagon has a **number** (W1, W2, …) and one tag on every container spot. The spots are

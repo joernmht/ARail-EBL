@@ -89,7 +89,7 @@ Rolling-stock markers: the tags on the deck cards of model wagons for the [conta
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `dictionary` | `"APRILTAG_36h11"` | marker type of the tags; it must differ from `markers.dictionary` (AprilTag 36h11 is the only type never misread as ArUco Original) |
+| `dictionary` | `"APRILTAG_36h11"` | marker type of the tags; it must differ from `markers.dictionary` (AprilTag 36h11 is the only type never misread as ArUco Original). The marker sheet page prints deck cards only in AprilTag 36h11, so with AprilTag 36h11 layout markers use another layout marker type (e.g. ArUco Original) |
 | `codes` | `64` | tag IDs `0 … codes − 1` (1–1000, and at most the IDs of the family: 587 for AprilTag 36h11, 250 for ArUco MIP 36h12; more are reported and count as all of them) |
 | `size_mm` | `20` | edge of the black square (5–100; at most 23 mm fit on an H0 deck card) |
 | `height_mm` | `15` | height of the tags above the layout plane, measured in the lab (0–200); the terminal's `rolling_stock[].height_mm` overrides it per wagon |
