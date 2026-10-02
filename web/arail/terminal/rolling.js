@@ -56,6 +56,30 @@ const MIN_SPAN_S = 0.25;
 /** Tags closer together than this along the wagon (mm², summed) give no heading of their own. */
 const MIN_SPREAD_MM2 = 1;
 
+/**
+ * Cumulative lengths and bounding box of a track polyline, cached by its points array (tracks are
+ * rebuilt, not changed in place, when the layout changes).
+ * @type {WeakMap<number[][], {n: number, cum: number[], box: number[]}>}
+ */
+const TRACK_CACHE = new WeakMap();
+
+/** Cached geometry of a track: cumulative lengths (its own when it has them) and [minX, minY, maxX, maxY]. */
+function trackGeometry(track) {
+  const pts = track.points;
+  let g = TRACK_CACHE.get(pts);
+  if (!g || g.n !== pts.length) {
+    const box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of pts) {
+      box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y);
+      box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y);
+    }
+    g = { n: pts.length, cum: polylineLengths(pts), box };
+    TRACK_CACHE.set(pts, g);
+  }
+  const cum = Array.isArray(track.lengths) && track.lengths.length === pts.length ? track.lengths : g.cum;
+  return { cum, box: g.box };
+}
+
 /** Model wagons from their tags (lifted to the deck plane), with smoothing and held/lost states. */
 export class RollingStock {
   /**
@@ -75,7 +99,7 @@ export class RollingStock {
     this.options = { ...ROLLING_DEFAULTS, ...options };
     /** @type {Map<number, TrackedWagon>} */
     this.wagons = new Map();
-    // per wagon number: smoothing state {center, heading, time, history, slowSince, before}
+    // per wagon number: smoothing state {center, heading, time, history, before}
     this._filters = new Map();
     // per wagon number: the slots ever seen (kept by reset())
     this._slotsSeen = new Map();
@@ -90,6 +114,8 @@ export class RollingStock {
    */
   observe(observations, time, { still = false } = {}) {
     const updated = new Set();
+    let tracks = null; // fetched once per frame, and only when a wagon is measured
+    const getTracks = () => (tracks ??= (this.tracks() || []).filter((t) => Array.isArray(t?.points) && t.points.length >= 2));
     for (const [number, tags] of this._group(observations)) {
       const fused = this._fuse(tags.filter((t) => t.placed), this._filters.get(number)?.center ?? null);
       let w = this.wagons.get(number);
@@ -104,7 +130,7 @@ export class RollingStock {
       for (const s of w.tags) seen.add(s);
       this._slotsSeen.set(number, seen);
       w.seen = seen.size;
-      if (fused) this._update(w, fused, time, still);
+      if (fused) this._update(w, fused, time, still, getTracks);
       else this._hold(w, time, true);
       updated.add(number);
     }
@@ -182,14 +208,19 @@ export class RollingStock {
     return { center: [c0[0] - a0 * Math.cos(heading), c0[1] - a0 * Math.sin(heading)], heading: wrapAngle(heading), slots: used.map((t) => t.slot) };
   }
 
-  /** A wagon was measured: smooth, estimate the speed, decide between moving and standing, snap. */
-  _update(w, measured, time, still) {
+  /**
+   * A wagon was measured: smooth, estimate the speed, decide between moving and standing, snap.
+   * Standing = the smoothed centre has moved less than `standing_mm_s` · `standing_s` over the last
+   * `standing_s`; a still image counts as standing for `standing_s` already.
+   * @param {() => object[]} getTracks the tracks of this frame
+   */
+  _update(w, measured, time, still, getTracks) {
     const o = this.options;
     let f = this._filters.get(w.number);
     const dt = f ? time - f.time : Infinity;
     const jump = !f || !(dt >= 0) || dist2(measured.center, f.center) > o.jump_mm || Math.abs(wrapAngle(measured.heading - f.heading)) > JUMP_RAD;
     if (jump) {
-      f = { center: measured.center, heading: measured.heading, time, history: [], slowSince: null, before: "moving" };
+      f = { center: measured.center, heading: measured.heading, time, history: [], before: "moving" };
       this._filters.set(w.number, f);
     } else {
       const a = still || !(o.tau_s > 0) ? 1 : 1 - Math.exp(-dt / o.tau_s);
@@ -197,24 +228,17 @@ export class RollingStock {
       f.heading = wrapAngle(f.heading + a * wrapAngle(measured.heading - f.heading));
       f.time = time;
     }
-    // speed over the last `standing_s` (at least MIN_SPAN_S) of smoothed positions
+    // speed over the last `standing_s` (at least MIN_SPAN_S) of smoothed positions; a still image
+    // stands for a wagon that has been here for `standing_s`
     const h = f.history, span = Math.max(o.standing_s, MIN_SPAN_S);
+    if (still) h.splice(0, h.length, { time: time - span, center: f.center });
     h.push({ time, center: f.center });
     while (h.length > 2 && h[1].time <= time - span) h.shift();
     const elapsed = time - h[0].time;
     w.speed = still || elapsed <= 0 ? 0 : dist2(f.center, h[0].center) / Math.max(elapsed, MIN_SPAN_S);
-    if (still) {
-      f.slowSince = time - o.standing_s;
-      w.state = "standing";
-    } else if (w.speed >= o.standing_mm_s) {
-      f.slowSince = null;
-      w.state = "moving";
-    } else {
-      if (f.slowSince == null) f.slowSince = time;
-      w.state = time - f.slowSince >= o.standing_s - 1e-9 ? "standing" : "moving";
-    }
+    w.state = elapsed >= o.standing_s - 1e-9 && w.speed < o.standing_mm_s ? "standing" : "moving";
     f.before = w.state;
-    const snapped = this._snap(f.center, f.heading);
+    const snapped = this._snap(f.center, f.heading, getTracks());
     w.center = snapped.center;
     w.heading = snapped.heading;
     w.lastSeen = time;
@@ -244,20 +268,26 @@ export class RollingStock {
 
   /**
    * Snap a pose onto the nearest track within `snap_mm` whose direction (either way round) is
-   * within `snap_deg` of the heading; beyond a track's ends the pose only moves sideways.
+   * within `snap_deg` of the heading. Up to `snap_mm` beyond a track's ends the pose only moves
+   * sideways; farther out it is not snapped.
+   * @param {number[]} center
+   * @param {number} heading
+   * @param {{points: number[][], lengths?: number[]}[]} tracks
    * @returns {{center: number[], heading: number}}
    */
-  _snap(center, heading) {
+  _snap(center, heading, tracks) {
     const o = this.options, maxAngle = (o.snap_deg * Math.PI) / 180;
+    // a pose that can snap lies within snap_mm of the track and of its ends' extensions
+    const margin = Math.SQRT2 * o.snap_mm;
     let best = null;
-    for (const track of this.tracks() || []) {
-      const pts = track?.points;
-      if (!Array.isArray(pts) || pts.length < 2) continue;
-      const cum = Array.isArray(track.lengths) && track.lengths.length === pts.length ? track.lengths : polylineLengths(pts);
+    for (const track of tracks) {
+      const pts = track.points, { cum, box } = trackGeometry(track);
+      if (center[0] < box[0] - margin || center[0] > box[2] + margin || center[1] < box[1] - margin || center[1] > box[3] + margin) continue;
       const { s } = polylineProject(pts, center, cum);
       const { point, dir } = polylineAt(pts, s, cum);
       const off = sub2(center, point), inside = s > 0 && s < cum[cum.length - 1];
-      const distance = inside ? Math.hypot(off[0], off[1]) : Math.abs(cross2(dir, off));
+      const sideways = !inside && Math.abs(dot2(dir, off)) <= o.snap_mm;
+      const distance = sideways ? Math.abs(cross2(dir, off)) : Math.hypot(off[0], off[1]);
       if (distance > o.snap_mm || (best && distance >= best.distance)) continue;
       const along = Math.atan2(dir[1], dir[0]), d = Math.abs(wrapAngle(heading - along));
       if (Math.min(d, Math.PI - d) > maxAngle) continue;

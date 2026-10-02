@@ -21,9 +21,9 @@ export const DECK_SCALES = [
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const FONT = 'font-family="Archivo, Arial, sans-serif"';
-const ARROW_W = 12; // room right of a card for the "A ▶" arrow (mm)
-const LABEL_H = 7; // band below a card for its label (mm)
-const GAP = 6; // between cards (mm)
+const ARROW_W_MM = 12; // room right of a card for the "A ▶" arrow (mm)
+const LABEL_H_MM = 7; // band below a card for its label (mm)
+const GAP_MM = 6; // between cards (mm)
 
 /** Round to 0.001 mm for the SVG text. */
 export function fmt(v) {
@@ -138,20 +138,20 @@ export function deckCards({ type, numbers, stride, size_mm, scale, margin_mm = 2
 export function deckSheets(cards, { paper = "a4", bitsOf, labels = true }) {
   if (!cards.length) return { pages: [], count: 0, sheets: [] };
   const [PW, PH] = Array.isArray(paper) ? paper : PAPER[paper] || PAPER.a4;
-  const blockW = Math.max(0, ...cards.map((c) => c.length_mm)) + ARROW_W;
-  const blockH = Math.max(0, ...cards.map((c) => c.width_mm)) + (labels ? LABEL_H : 0);
+  const blockW = Math.max(0, ...cards.map((c) => c.length_mm)) + ARROW_W_MM;
+  const blockH = Math.max(0, ...cards.map((c) => c.width_mm)) + (labels ? LABEL_H_MM : 0);
   const landscape = blockW > PW - 2 * PAGE_MARGIN;
   const [W, H] = landscape ? [PH, PW] : [PW, PH];
   const usableW = W - 2 * PAGE_MARGIN, usableH = H - 2 * PAGE_MARGIN - 14; // room for the scale bar
-  const cols = Math.floor((usableW + GAP) / (blockW + GAP)), rows = Math.floor((usableH + GAP) / (blockH + GAP));
+  const cols = Math.floor((usableW + GAP_MM) / (blockW + GAP_MM)), rows = Math.floor((usableH + GAP_MM) / (blockH + GAP_MM));
   if (cols < 1 || rows < 1) throw new Error("The cards are too large for this paper");
   const perPage = cols * rows, total = Math.ceil(cards.length / perPage);
-  const x0 = PAGE_MARGIN + (usableW - cols * blockW - (cols - 1) * GAP) / 2;
+  const x0 = PAGE_MARGIN + (usableW - cols * blockW - (cols - 1) * GAP_MM) / 2;
   const sheets = [];
   for (let p = 0; p < total; p++) {
     let body = `<rect width="${W}" height="${H}" fill="#fff"/>`;
     cards.slice(p * perPage, (p + 1) * perPage).forEach((card, k) => {
-      const x = x0 + (k % cols) * (blockW + GAP), y = PAGE_MARGIN + Math.floor(k / cols) * (blockH + GAP);
+      const x = x0 + (k % cols) * (blockW + GAP_MM), y = PAGE_MARGIN + Math.floor(k / cols) * (blockH + GAP_MM);
       const L = card.length_mm, w = card.width_mm, s = card.size_mm;
       body += `<rect x="${fmt(x)}" y="${fmt(y)}" width="${fmt(L)}" height="${fmt(w)}" fill="#fff" stroke="#8a8a8a" stroke-width="0.2"/>`;
       for (const tag of card.tags) body += markerSvg(bitsOf(tag.id), x + tag.x_mm - s / 2, y + tag.y_mm - s / 2, s);

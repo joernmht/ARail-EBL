@@ -161,6 +161,26 @@ test("states: standing after a second, moving, held through gaps, lost, still im
   photo.observe(tagsOf(C, 1), 10, { still: true });
   assert.equal(photo.wagons.get(3).state, "standing");
   assert.equal(photo.wagons.get(3).speed, 0);
+  // ... and stays standing when live frames of the same pose follow
+  run(photo, 10, 0.2, () => tagsOf(C, 1));
+  assert.equal(photo.wagons.get(3).state, "standing");
+});
+
+test("a wagon that stops is standing about standing_s later, whatever its speed", () => {
+  const C = [500, 300];
+  for (const v of [5, 20, 50, 100]) {
+    const rs = stock();
+    const stop = run(rs, 0, 2, (s) => tagsOf([C[0] + v * s, C[1]], 0));
+    const w = rs.wagons.get(3);
+    assert.equal(w.state, "moving", `${v} mm/s`);
+    let t = stop;
+    while (w.state !== "standing" && t < stop + 5) t = run(rs, t, 1 / FPS, () => tagsOf([C[0] + v * stop, C[1]], 0));
+    // the window must hold less than standing_mm_s · standing_s of travel: a slow wagon gets there
+    // sooner, a fast one once its smoothed pose has settled
+    const { standing_s, standing_mm_s, tau_s } = ROLLING_DEFAULTS, latency = t - stop;
+    const earliest = standing_s * (1 - standing_mm_s / v) - 1e-9, limit = standing_s + 3 * tau_s;
+    assert.ok(latency >= earliest && latency <= limit, `${v} mm/s: standing after ${latency.toFixed(2)} s`);
+  }
 });
 
 test("smoothing, jumps, tags without a pose and reset", () => {
@@ -227,4 +247,37 @@ test("snapping to the nearest track within 8 mm and 15°", () => {
   rs.reset();
   rs.observe(tagsOf([200, 124], 0), 4);
   assert.ok(Math.abs(rs.wagons.get(3).center[1] - 130) < 1e-6);
+  // just beyond a track's end (the second track ends at x = 400): moved sideways only
+  rs.reset();
+  rs.observe(tagsOf([405, 126], 0), 5);
+  w = rs.wagons.get(3);
+  assert.ok(Math.hypot(w.center[0] - 405, w.center[1] - 130) < 1e-6);
+  // far beyond a track's end, in line with it: not snapped
+  for (const c of [[-100, 106], [2000, 134]]) {
+    rs.reset();
+    rs.observe(tagsOf(c, 0), 6);
+    w = rs.wagons.get(3);
+    assert.ok(Math.hypot(w.center[0] - c[0], w.center[1] - c[1]) < 1e-6, `${c} not snapped`);
+  }
+});
+
+test("snapping many wagons to many long tracks fits in a frame", () => {
+  // 30 tracks of 200 points each (without lengths), 20 wagons
+  const tracks = [];
+  for (let k = 0; k < 30; k++) tracks.push({ points: Array.from({ length: 200 }, (_, i) => [i * 10, 100 + 60 * k + 0.001 * i * i]) });
+  let calls = 0;
+  const rs = stock({}, () => (calls++, tracks));
+  const frame = () => {
+    const out = {};
+    for (let n = 1; n <= 20; n++) Object.assign(out, tagsOf([100 * n, 100 + 60 * (n % 30) + 0.01 * n * n * 100 + 2], 0, { number: n }));
+    return out;
+  };
+  const obs = frame();
+  rs.observe(obs, 0);
+  assert.equal(calls, 1, "the tracks are fetched once per frame");
+  const t0 = performance.now();
+  for (let i = 1; i <= 30; i++) rs.observe(obs, i / FPS);
+  const perFrame = (performance.now() - t0) / 30;
+  assert.ok(perFrame < 8, `${perFrame.toFixed(2)} ms per frame`);
+  assert.equal(rs.wagons.size, 20);
 });
