@@ -89,6 +89,18 @@ export {
   drawGhost, pickBoxes,
   ROLLING_DEFAULTS, decodeTag, encodeTag, RollingStock, registerTerminal,
 } from "./terminal/index.js";
+// rail operations: fleet, maintenance (ECM), crews and penalties (named exports only, like the terminal)
+export {
+  OPS_DEFAULTS, DEFAULT_PROGRAM, DEFAULT_SOFT, DEFAULT_VEHICLE, DEFAULT_PARTIES, DEFAULT_CONTRACTS, PRESET_SETUPS, PRESET_STRESS,
+  autoNetwork, normalizeOps, validateOps, applySetup, setupsOf, stressOf, normalizeProgram, platformDocks,
+  tripTemplates, planRotations, planPieces, dayKind, lineProfile, emptyRunMin, emptyRunKm, deadheadMin,
+  Unit, UNIT_STATES, expectedFailures, wearInterval,
+  buildDuties, reserveDuties, makeStaff, contractMix, shiftOf, SHIFT_LABELS, WORK_RULES, commuteOf, shortName, pieceBounds,
+  CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
+  KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
+  normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
+  WEEKDAYS, WEEKDAY_LABELS,
+} from "./ops/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
