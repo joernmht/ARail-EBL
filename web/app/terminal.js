@@ -119,7 +119,8 @@ export class TerminalPanel {
     const e = this.el;
     mount(el, e.head, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
-    if (focused) document.getElementById(focused)?.focus();
+    // a control that is gone (e.g. "Add a container terminal") hands the focus to the panel's heading
+    if (focused) (document.getElementById(focused) || e.head.querySelector("h2"))?.focus();
   }
 
   /** Refresh the panel in place (every 400 ms while it is shown, and after every action). */
@@ -132,8 +133,11 @@ export class TerminalPanel {
       this.selected = this.stage = null;
       this.renderPlacing();
     }
-    // a control that is replaced (e.g. Move, once the move is queued) hands the focus on
+    // a control that is replaced (e.g. Move, once the move is queued) hands the focus on; one on an
+    // arrival card to its card (or the next one)
     const active = document.activeElement, inside = e.root.contains(active);
+    const card = inside ? active.closest(".stop[data-id]")?.dataset.id : null;
+    const cards = card ? [...e.arrivals.querySelectorAll(".stop[data-id]")].map((x) => x.dataset.id) : null;
     if (!sim) {
       this._show(e.head, this._noTerminal());
       for (const k of ["arrivals", "add", "containers", "move", "jobs", "wagons"]) this._show(e[k]);
@@ -148,10 +152,24 @@ export class TerminalPanel {
       this._show(e.jobs, this._jobs(sim));
       this._show(e.wagons, sim.rollingConfig() ? this._wagons(sim) : null);
     }
-    if (inside && !active.isConnected) {
+    if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
+    else if (inside && !active.isConnected) {
       const next = (active.id && document.getElementById(active.id)) || $("#termMoveCancel") || this._listButton(this.selected ?? this._previous) || $("#termFilter");
       next?.focus({ preventScroll: true });
     }
+  }
+
+  /**
+   * Focus the first button of an arrival card: of `id`, else of the next card (in the order `ids` had),
+   * else of the previous one, else the Arrivals heading (e.g. after Depart, while the card has no buttons).
+   */
+  _focusCard(ids, id) {
+    const at = ids.indexOf(id), box = this.el.arrivals;
+    for (const x of [id, ...ids.slice(at + 1), ...ids.slice(0, at).reverse()]) {
+      const b = box.querySelector(`.stop[data-id="${CSS.escape(x)}"] button`);
+      if (b) return b.focus();
+    }
+    box.querySelector("h2")?.focus();
   }
 
   /** The button of a container in the list (null if it is not listed). */
@@ -169,7 +187,7 @@ export class TerminalPanel {
   _noTerminal() {
     const app = this.app;
     return [
-      h("h2", {}, "Container terminal"),
+      h("h2", { tabindex: "-1" }, "Container terminal"),
       h("p", { class: "hint" }, "This layout has no container terminal."),
       h("div", { class: "row" },
         h("button", { class: "btn primary", type: "button", id: "termOpenExample", onclick: () => app.openExample("terminal") }, "Open the example terminal"),
@@ -198,7 +216,7 @@ export class TerminalPanel {
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [
-      h("h2", {}, sim.name),
+      h("h2", { tabindex: "-1" }, sim.name),
       h("p", { class: "term-status", id: "termStatus" }, [plural(open, "move"), ...busy].join(" · ")),
       h("div", { class: "row" },
         h("div", { class: "seg", role: "group", "aria-label": "Speed" },
@@ -236,7 +254,7 @@ export class TerminalPanel {
   _arrivals(sim) {
     const visits = [...sim.visits.values()];
     return [
-      h("h2", {}, "Arrivals"),
+      h("h2", { tabindex: "-1" }, "Arrivals"),
       visits.length
         ? h("div", { class: "board term-board", "aria-live": "off" }, visits.map((v) => this._visitCard(sim, v)))
         : h("p", { class: "hint" }, "No trains, barges or trucks yet. Call one below."),

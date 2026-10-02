@@ -213,3 +213,33 @@ test("keyboard only: the Terminal tab between Simulate and Disruptions; a contai
   expect(`${move.to.carrier}|${move.to.bay}|${move.to.row}|${move.to.tier}`).toBe(chosen);
   expect(errors).toEqual([]);
 });
+
+test("keyboard: after Depart the focus stays on the arrival cards; an added terminal focuses its heading", async ({ page }) => {
+  const path = "/app/?layout=../layouts/container-terminal.json#terminal";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
+  await page.evaluate(() => (window.__arail.world.paused = true));
+  // KT 41 leaves: its card has no buttons now, the next card's first one takes the focus
+  const depart = page.locator(".term-board .stop[data-id=KT41]").getByRole("button", { name: "Depart", exact: true });
+  await depart.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("departing");
+  await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
+  // the last card leaves: the previous card's first button
+  await page.locator(".term-board .stop[data-id=BG1]").getByRole("button", { name: "Depart", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
+  await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
+  // a terminal added to a layout without one: its heading has the focus
+  await page.goto("/app/?layout=../layouts/synthetic-demo.json#terminal");
+  await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
+  await page.locator("#termAdd").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
+  await expect(page.locator("#panel-terminal h2").first()).toBeFocused();
+  expect(errors).toEqual([]);
+});
