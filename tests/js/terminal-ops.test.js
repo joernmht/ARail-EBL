@@ -733,6 +733,28 @@ test("toJSON keeps the start state; saveStart makes the current state the start 
   assert.deepEqual(sim.config.containers.find((c) => c.id === ID(2)).at, from);
 });
 
+test("a container carried to a truck is saved where it came from, even when a queued move refers to that place", () => {
+  const cases = [
+    // the box it stood on has a queued move; another move reserved its old place
+    [ID(5), (sim) => sim.request(ID(4), { carrier: "K1/3" })],
+    [ID(6), (sim, from) => sim.request(ID(1), from)],
+  ];
+  for (const [box, queue] of cases) {
+    const { world, sim } = setup();
+    const t = truck(world, sim, { purpose: "pickup" });
+    const m = sim.request(box, { carrier: t.id }).move;
+    const from = { ...m.from };
+    runUntil(world, () => sim.handlers.get(m.handler).phase === "carry");
+    assert.equal(queue(sim, from).error, undefined);
+    const snap = sim.snapshot();
+    assert.deepEqual(snap.containers.find((c) => c.id === box)?.at, from, box);
+    assert.equal(snap.containers.length, sim.inventory.containers.size);
+    const again = terminalOf(createWorld({ ...layout(), simulations: [snap] }));
+    assert.equal(again.inventory.containers.size, snap.containers.length, "loads back with nothing skipped");
+    assert.deepEqual(again.inventory.check(), []);
+  }
+});
+
 test("reset restores the start state, including the fill", () => {
   const { world, sim, log } = setup({ fill: { "yard-a": 0.4, "yard-b": 0.5 } }, { seed: 7 });
   const start = structuredClone(sim.snapshot()), before = sim.inventory.snapshot();
