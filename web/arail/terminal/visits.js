@@ -336,13 +336,43 @@ export class TruckVisit {
   }
 }
 
+/** Corners (layout mm) of a truck's chassis at a pose. */
+function outline(t, pose, host) {
+  const type = t.carriers[0].type, k = host.mm(1), c = Math.cos(pose.heading), s = Math.sin(pose.heading), half = type.width_m / 2;
+  return [[type.rear_m, -half], [type.front_m, -half], [type.front_m, half], [type.rear_m, half]]
+    .map(([x, y]) => [pose.center[0] + k * (x * c - y * s), pose.center[1] + k * (x * s + y * c)]);
+}
+
+/** Do two convex polygons overlap (more than touching)? Separating axes along the edges of both. */
+function overlap(A, B) {
+  for (const P of [A, B]) {
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i], q = P[(i + 1) % P.length], n = [p[1] - q[1], q[0] - p[0]];
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const v of A) {
+        const d = v[0] * n[0] + v[1] * n[1];
+        a0 = Math.min(a0, d);
+        a1 = Math.max(a1, d);
+      }
+      for (const v of B) {
+        const d = v[0] * n[0] + v[1] * n[1];
+        b0 = Math.min(b0, d);
+        b1 = Math.max(b1, d);
+      }
+      if (a1 <= b0 + 1e-9 || b1 <= a0 + 1e-9) return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Drive the trucks of a lane for `dt` seconds: let the first truck at the gate in when a position is
  * free and the entry is clear, move the others, keep them apart. Trucks on the move (coming in, or
  * leaving once they started to pull out) keep their order: none gets closer than a gap to the rear
  * of a moving truck ahead. A truck pulls out only when no moving truck is beside it or close behind
- * or ahead; a moving truck keeps sideways clear of the standing trucks beside it, so the outlines
- * never overlap.
+ * or ahead; a moving truck keeps sideways clear of the standing trucks beside it (further out on a
+ * bend, as far as the passing lane goes), so the outlines never overlap on a lane that bends by at
+ * most 10° near its truck positions (`TruckLane.problems` warns about sharper bends).
  * @param {TruckVisit[]} trucks in arrival order
  * @param {import("./objects.js").TruckLane | null} lane
  * @param {number} dt
@@ -408,7 +438,19 @@ export function stepTrucks(trucks, lane, dt, host) {
       const ramp = clamp(1 - gap / mm(TRUCK.ramp_m), 0, 1);
       if (ramp > 0) a = Math.max(a, Math.min(P, o.a + W) * ramp);
     }
-    t.a = Math.min(P, a);
+    a = Math.min(P, a);
+    // on a bend the sideways distance alone does not keep them apart (each truck is a chord of the
+    // lane): further out while the outlines overlap, as far as the passing lane goes
+    const near = on.filter((o) => o !== t && !moves(o) && o.carriers[0].pose && Math.abs(o.s - t.s) < L + mm(TRUCK.ramp_m));
+    if (near.length) {
+      const others = near.map((o) => outline(o, o.carriers[0].pose, host));
+      const hits = (x) => {
+        const mine = outline(t, t._poseAt(t.s, side * x, host), host);
+        return others.some((o) => overlap(mine, o));
+      };
+      while (a < P && hits(a)) a = Math.min(P, a + mm(0.1));
+    }
+    t.a = a;
     if (t.state === "approaching" && arrived) {
       t.state = "positioned";
       t.a = 0;

@@ -311,7 +311,7 @@ The palette group **Terminal** has five types:
 | --- | --- | --- |
 | Container yard block | drag from corner to corner: the length runs along the bays (6.9 m each), the depth across the rows (2.9 m each) | Length (bays), Depth (rows), Rotation, Stack height (1–5) |
 | Gantry crane | drag over the area between its rails: the rails run along the rectangle's length | Runway length, Span, Rotation, Outreach (beyond each rail), Lifting height, Speed factor |
-| Truck lane | points in the driving direction, the first point is the entry, then **Finish** | Truck positions (1–6, evenly spaced around the middle), Passing lane (left or right, seen in the driving direction) |
+| Truck lane | points in the driving direction, the first point is the entry, then **Finish**; keep it straight around the truck positions (at most 10° of bend there, or passing trucks overlap) | Truck positions (1–6, evenly spaced around the middle), Passing lane (left or right, seen in the driving direction) |
 | Quay and fairway | points along the middle of the fairway, from where barges come to where the bow berths, then **Finish** | Berth length, Fairway width, Quay wall side (left or right, seen in the sailing direction) |
 | Reach stacker | one tap at its parking place | Rotation, Stacks up to (1–4), Speed factor |
 

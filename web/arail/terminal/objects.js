@@ -11,9 +11,9 @@
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint, resolvePoints } from "../core/anchors.js";
 import { rectFootprint } from "../core/view.js";
-import { clamp, dist2, polygonArea, polylineLengths, sub2, toRad, unit2 } from "../core/math.js";
+import { clamp, dist2, polygonArea, polylineLengths, sub2, toRad, unit2, wrapAngle } from "../core/math.js";
 import { offsetPolyline } from "../objects/road.js";
-import { BAY_M, ROW_M, yardType } from "./model.js";
+import { BAY_M, CARRIER_TYPES, ROW_M, yardType } from "./model.js";
 import { drawCraneRails, drawQuay, drawTruckLane, drawYardGround } from "./draw.js";
 
 const NAME = { key: "name", label: "Name", type: "text", default: "" };
@@ -27,6 +27,11 @@ const PORTAL_HALF_M = 8;
 const LANE_M = 3.5;
 /** Spacing of the truck positions (m) and their distance from the lane ends at least. */
 const TRUCK_PITCH_M = 19, TRUCK_END_M = 10;
+/**
+ * Largest bend (degrees) of a truck lane within one truck length where trucks stand and pass: trucks
+ * pass standing ones in a passing lane only 3.5 m over, so on sharper bends their outlines overlap.
+ */
+const TRUCK_BEND_DEG = 10;
 /** Distance of the quay wall from the fairway centre line (m): half the beam of a barge plus 0.5 m. */
 const QUAY_OFFSET_M = 5.25;
 /** Width of the quay wall (m). */
@@ -381,7 +386,32 @@ export class TruckLane extends LayoutObject {
     if (!this.world.objects.some((o) => o instanceof ReachStacker) && !craneReaches(this.world, this.positions().map((s) => this.at(s).point))) {
       out.push("No gantry crane reaches its truck positions and there is no reach stacker: trucks cannot be loaded.");
     }
+    const bend = this._bendDeg();
+    if (bend > TRUCK_BEND_DEG + 1e-6) {
+      out.push(`Bends by ${Math.round(bend)}° near its truck positions: trucks passing or turning in there may overlap. Keep it straighter there (at most ${TRUCK_BEND_DEG}°).`);
+    }
     return out;
+  }
+
+  /**
+   * Largest change of direction (degrees) between two segments at most one truck length apart, from
+   * one truck length before the rear of the first truck position to one after the front of the last.
+   */
+  _bendDeg() {
+    const g = this.geometry, ps = this.positions(), truck = CARRIER_TYPES.chassis40, L = this.mm(truck.length_m);
+    if (!g || !ps.length) return 0;
+    const from = ps[0] + this.mm(truck.rear_m) - L, to = ps[ps.length - 1] + this.mm(truck.front_m) + L;
+    const segs = [];
+    for (let k = 1; k < g.points.length; k++) {
+      if (g.lengths[k] <= from || g.lengths[k - 1] >= to || !(g.lengths[k] > g.lengths[k - 1])) continue;
+      const d = sub2(g.points[k], g.points[k - 1]);
+      segs.push({ start: g.lengths[k - 1], end: g.lengths[k], heading: Math.atan2(d[1], d[0]) });
+    }
+    let worst = 0;
+    for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length && segs[j].start - segs[i].end <= L; j++) worst = Math.max(worst, Math.abs(wrapAngle(segs[j].heading - segs[i].heading)));
+    }
+    return (worst * 180) / Math.PI;
   }
 
   draw(view) {

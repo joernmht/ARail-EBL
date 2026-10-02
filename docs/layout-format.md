@@ -346,7 +346,7 @@ A rail-mounted gantry crane. Geometry: a rectangle, `position` (centre): the are
 
 ### `truck-lane`
 
-The lane of the trucks under the crane. Geometry: `points` (polyline in the driving direction; the first point is the entry). Trucks stop at evenly spaced positions (19 m apart) around its middle; they come and go on a passing lane beside it.
+The lane of the trucks under the crane. Geometry: `points` (polyline in the driving direction; the first point is the entry). Trucks stop at evenly spaced positions (19 m apart) around its middle; they come and go on a passing lane beside it. Around the positions the lane should bend by at most 10° within a truck length (16.5 m), or trucks passing or turning in overlap there; the editor warns about sharper bends.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

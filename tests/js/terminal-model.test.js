@@ -660,13 +660,29 @@ test("truck lanes: positions around the middle, passing side and the lane's ribb
   assert.ok(near(lane.geometry.passingOffset, -mm87(3.5)));
   assert.ok(pointInPolygon([100, -mm87(5)], lane.geometry.footprint));
   assert.ok(nearPoint(lane.anchorPoint(), [400, 0]));
-  assert.deepEqual(lane.problems(), ["No gantry crane reaches its truck positions and there is no reach stacker: trucks cannot be loaded."]);
+  assert.deepEqual(lane.problems(), [
+    "No gantry crane reaches its truck positions and there is no reach stacker: trucks cannot be loaded.",
+    "Bends by 90° near its truck positions: trucks passing or turning in there may overlap. Keep it straighter there (at most 10°).",
+  ]);
   // too short: positions are squeezed between 10 m from both ends
   lane.set({ points: [[0, 0], [400, 0]], positions: 3 });
   assert.deepEqual(lane.positions().map((s) => +s.toFixed(3)), [+mm87(10).toFixed(3), 200, +(400 - mm87(10)).toFixed(3)]);
   world.addObject({ id: "rs", type: "reach-stacker", position: [0, 0] });
   assert.deepEqual(lane.problems(), [`Too short for 3 truck positions: make it at least ${Math.ceil(mm87(58))} mm long, or use fewer positions.`]);
   assert.equal(new TruckLane(world, { id: "z", type: "truck-lane", points: [[0, 0], [0, 0]] }).geometry, null, "one point is no lane");
+  // bent near its truck positions (at most 10° within a truck length), not far away from them
+  const bent = (deg, at = 500) => [[0, 0], [at, 0], [at + 1000 * Math.cos(toRad(deg)), 1000 * Math.sin(toRad(deg))]];
+  lane.set({ points: bent(10) });
+  assert.deepEqual(lane.problems(), []);
+  lane.set({ points: bent(-30) });
+  assert.deepEqual(lane.problems(), ["Bends by 30° near its truck positions: trucks passing or turning in there may overlap. Keep it straighter there (at most 10°)."]);
+  const twice = (gap) => [[0, 0], [500, 0], [500 + gap * Math.cos(toRad(6)), gap * Math.sin(toRad(6))]].concat([[500 + gap * Math.cos(toRad(6)) + 1000 * Math.cos(toRad(12)), gap * Math.sin(toRad(6)) + 1000 * Math.sin(toRad(12))]]);
+  lane.set({ points: twice(100) });
+  assert.match(lane.problems()[0] ?? "", /^Bends by 12° /, "two bends within a truck length add up");
+  lane.set({ points: twice(400) });
+  assert.deepEqual(lane.problems(), []);
+  lane.set({ points: bent(45, 2400) });
+  assert.deepEqual(lane.problems(), [], "far beyond the last position");
 });
 
 test("quays: water and wall on the quay side, berth at the last point", () => {

@@ -9,7 +9,7 @@ import { TerminalSimulation, terminalOf } from "../../web/arail/terminal/operati
 import { PathMover, trapezoid } from "../../web/arail/terminal/movers.js";
 import { CRANE } from "../../web/arail/terminal/handlers.js";
 import { TRUCK } from "../../web/arail/terminal/visits.js";
-import { createRng } from "../../web/arail/core/math.js";
+import { createRng, toRad } from "../../web/arail/core/math.js";
 import { CARRIER_TYPES, makeBic } from "../../web/arail/terminal/model.js";
 import { encodeTag } from "../../web/arail/terminal/rolling.js";
 import { readJSON } from "./helpers.js";
@@ -444,15 +444,22 @@ test("trucks queue at the gate, pass in the passing lane, never overlap and leav
   assert.deepEqual(sim.inventory.check(), []);
 });
 
-test("random trucks with random departures never overlap and never get stuck", () => {
+test("random trucks with random departures never overlap and never get stuck, also on a lane bent by up to 10°", () => {
   // the whole truck (cab and chassis, 2.55 m wide) around the loading centre of its pose
   const front = TRUCK.front_m, rear = TRUCK.front_m - TRUCK.length_m, half = 2.55 / 2;
   const outline = ({ center, heading }) => {
     const c = Math.cos(heading), s = Math.sin(heading);
     return [[front, half], [rear, half], [rear, -half], [front, -half]].map(([a, b]) => [center[0] + mm(c * a - s * b), center[1] + mm(s * a + c * b)]);
   };
-  for (const seed of [1, 4, 7, 9, 11, 15]) {
-    const world = createWorld(structuredClone(EXAMPLE), { seed });
+  // the example's straight lane, and bent by ±10° just after its middle truck position
+  const runs = [[0, 1], [0, 4], [0, 7], [0, 9], [0, 11], [0, 15], [10, 1], [10, 4], [-10, 7], [-10, 9]];
+  for (const [bend, seed] of runs) {
+    const json = structuredClone(EXAMPLE), lane = json.objects.find((o) => o.type === "truck-lane");
+    if (bend) {
+      const [[x0, y], [x1]] = lane.points, at = (x0 + x1) / 2 + 30, r = toRad(bend);
+      lane.points = [[x0, y], [at, y], [at + (x1 - at) * Math.cos(r), y + (x1 - at) * Math.sin(r)]];
+    }
+    const world = createWorld(json, { seed });
     world.speed = 2.5; // one sub-step per world step: every step is checked
     const sim = terminalOf(world), rng = createRng(seed * 77);
     const leave = seed % 2 ? 0.03 : 0.08;
@@ -460,7 +467,7 @@ test("random trucks with random departures never overlap and never get stuck", (
       const on = [...sim.visits.values()].filter((v) => v.kind === "truck" && v.carriers[0].pose && v.visible(sim));
       for (let i = 0; i < on.length; i++) {
         for (let j = i + 1; j < on.length; j++) {
-          assert.ok(!overlap(outline(on[i].carriers[0].pose), outline(on[j].carriers[0].pose)), `seed ${seed}: ${on[i].id} and ${on[j].id} overlap at ${world.time.toFixed(1)} s`);
+          assert.ok(!overlap(outline(on[i].carriers[0].pose), outline(on[j].carriers[0].pose)), `bend ${bend}°, seed ${seed}: ${on[i].id} and ${on[j].id} overlap at ${world.time.toFixed(1)} s`);
         }
       }
     };
@@ -479,7 +486,7 @@ test("random trucks with random departures never overlap and never get stuck", (
       check();
     }
     const moving = [...sim.visits.values()].filter((v) => v.kind === "truck" && (v.state === "approaching" || v.state === "departing"));
-    assert.deepEqual(moving.map((v) => v.id), [], `seed ${seed}: trucks stuck on the lane`);
+    assert.deepEqual(moving.map((v) => v.id), [], `bend ${bend}°, seed ${seed}: trucks stuck on the lane`);
     assert.deepEqual(sim.inventory.check(), []);
   }
 });
