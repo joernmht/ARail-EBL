@@ -636,12 +636,35 @@ test("terminal draw: ground: concrete yard, one batched path of cell lines, lane
   assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [2, 2.2, 2.3, 2.3, 2.3]);
   view.items = [];
   drawCraneRails(view, sc.crane);
-  assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [3, 3, 6, 6]);
+  assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [3, 3, 6, 6, 6, 6], "runways, rail heads and hairlines");
   view.items = [];
   drawQuay(view, sc.quay);
   assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [0.6, 3, 3.1]);
   // a beam between two points has four sides and two ends
   assert.equal(beamFaces([0, 0, 0], [10, 0, 5], 1, 1, { side: [1, 2, 3] }).length, 6);
+});
+
+test("terminal draw: close flyover cameras over the yard, the runway and the crane give thin strokes", () => {
+  const sc = exampleScene({ extras: true });
+  const crane = { ...sc.craneState, s: 288, t: 280.5 - sc.crane.center[1], z: 100 };
+  const cameras = [
+    ...[300, 290, 280, 270, 260].map((ty) => ({ target: [750, ty], distance: 200, yaw: 270, pitch: 20 })),
+    { target: [1560, 270], distance: 200, yaw: 270, pitch: 20 },
+    { target: [1050, 260], distance: 300, yaw: 300, pitch: 45 },
+    { target: [1038, -400], distance: 780, yaw: 270, pitch: 10 },
+    { target: [1038, 0], distance: 400, yaw: 270, pitch: 15 },
+    { target: [1038, 150], distance: 300, yaw: 270, pitch: 30 },
+  ];
+  for (const c of cameras) {
+    const { ctx, ops } = stateContext();
+    const view = flyView(ctx, new FlyCamera({ target: c.target, distance: c.distance, yaw: toRad(c.yaw), pitch: toRad(c.pitch) }));
+    for (const g of Object.values(sc.yards)) drawYardGround(view, g, { name: "A" });
+    drawCraneRails(view, sc.crane);
+    drawCrane(view, crane);
+    view.render();
+    const widest = Math.max(0, ...ops.filter((o) => o.op === "stroke").map((o) => o.lineWidth));
+    assert.ok(widest <= 3, `${JSON.stringify(c)}: a stroke of ${widest} px`);
+  }
 });
 
 test("terminal draw: the example at the fit-view camera stays within the drawing budget", () => {

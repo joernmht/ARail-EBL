@@ -24,7 +24,7 @@
 import { CD, OVERLAY, PALETTE, grey, mix, parseColor, rgba } from "../core/colors.js";
 import { inv3, polylineAt, polylineLengths } from "../core/math.js";
 import { DEFAULT_ROLLING } from "../core/layout.js";
-import { convexHull, hash01, hashString } from "../objects/building-kit.js";
+import { OUTLINE, convexHull, hash01, hashString } from "../objects/building-kit.js";
 import { offsetPolyline } from "../objects/road.js";
 import { CAR_COLOURS } from "../sims/traffic.js";
 import { BAY_M, CONTAINER_WIDTH_M, ROW_M } from "./model.js";
@@ -113,8 +113,6 @@ const CSS = {
   marking: "#ffffff",
   edge: grey(0.4),
 };
-/** Edge colour of the white model (as buildings: darkened at night by the view). */
-const OUTLINE = "rgba(70,70,70,0.38)";
 const HEADLIGHT = "#fff3d6";
 const FLOODLIGHT = "#ffe9b0";
 
@@ -229,18 +227,33 @@ export function beamFaces(p0, p1, width, height, { side, top = side, alpha = 1 }
  * Image scale (px per mm) at a layout point: the largest of the vertical scale and the scales
  * along x and y (unlike `View#pxPerMM`, which halves the ground scales, this is the size things
  * really have on the screen, also in the plan view). A point (partly) behind the camera counts
- * as close: full detail, the view culls what cannot be seen.
+ * as close (`behind`, default 1e3 px/mm): full detail, the view culls what cannot be seen.
  */
-function scaleAt(view, x, y, z = 0) {
+function scaleAt(view, x, y, z = 0, behind = 1e3) {
   const d = view.m(1);
   const p = view.project(x, y, z), up = view.project(x, y, z + d), a = view.project(x + d, y, z), b = view.project(x, y + d, z);
-  if (!p || !up || !a || !b) return 1e3;
+  if (!p || !up || !a || !b) return behind;
   return Math.max(Math.hypot(up[0] - p[0], up[1] - p[1]), Math.hypot(a[0] - p[0], a[1] - p[1]), Math.hypot(b[0] - p[0], b[1] - p[1])) / d;
 }
 
 /** On-screen length (CSS px) of `mm` millimetres at a point, from a precomputed px/mm. */
 function cssPx(view, k, mm) {
   return (k * mm) / (view.px || 1);
+}
+
+/**
+ * Stroke width (CSS px) of something `mm` wide at a layout point, kept within [lo, hi]: one
+ * width serves a whole batch of lines, so a point close to (or behind) the camera must not
+ * blow it up; behind the camera it is `lo`.
+ */
+function strokeWidth(view, p, mm, lo, hi) {
+  return Math.min(hi, Math.max(lo, cssPx(view, scaleAt(view, p[0], p[1], p[2] || 0, 0), mm)));
+}
+
+/** Highest top (mm) of a carrier's containers, at least `h` (mm): the height to cull with. */
+function topOf(boxes, h) {
+  for (const b of boxes || []) h = Math.max(h, b.z0 + b.height);
+  return h;
 }
 
 /** Is a disc of `r` mm (plus `h` mm upwards) around a ground point entirely outside the image? */
@@ -628,13 +641,13 @@ export function drawWagon(view, wagon, boxes) {
   const type = wagon.type;
   if (!type || !wagon.center) return;
   const len = type.length_m, hl = len / 2;
-  if (offScreen(view, wagon.center, view.m(hl + 0.5), view.m(4))) return;
   const L = new Local(view, wagon.center, wagon.heading || 0);
+  const [e0, e1] = extent(L, boxes, -hl - 0.6, hl + 0.6);
+  if (offScreen(view, wagon.center, view.m(Math.max(-e0, e1)), topOf(boxes, view.m(4)))) return;
   const alpha = wagon.alpha ?? 1;
   const deck = Number.isFinite(wagon.deck) ? wagon.deck / L.k : type.deck_m;
   const k = scaleAt(view, wagon.center[0], wagon.center[1], 0);
   const px = cssPx(view, k, view.m(len));
-  const [e0, e1] = extent(L, boxes, -hl - 0.6, hl + 0.6);
   const cells = new Cells(view, L, e0, e1, { single: px < CELL_PX });
   const frame = { side: C.wagonFrame, top: COL.frameTop, alpha };
   const end = hl - 0.35, top = Math.max(0.9, deck - 0.05);
@@ -748,11 +761,12 @@ export function drawTruck(view, truck, boxes) {
   const rear = truck.type?.rear_m ?? -6.8, front = truck.type?.front_m ?? 9.7;
   const L = new Local(view, truck.center, truck.heading || 0);
   const mid = L.xy((rear + front) / 2, 0);
-  if (offScreen(view, mid, view.m((front - rear) / 2 + 0.5), view.m(4))) return;
+  const [e0, e1] = extent(L, boxes, rear, front);
+  const c = (rear + front) / 2;
+  if (offScreen(view, mid, view.m(Math.max(c - e0, e1 - c) + 0.5), topOf(boxes, view.m(4)))) return;
   const alpha = truck.alpha ?? 1;
   const k = scaleAt(view, mid[0], mid[1], 0);
   const px = cssPx(view, k, view.m(front - rear));
-  const [e0, e1] = extent(L, boxes, rear, front);
   const cells = new Cells(view, L, e0, e1, { single: px < CELL_PX });
   if (px < 7) {
     cells.cuboid(rear, front, -1.25, 1.25, 0.3, 1.25, { side: C.chassis, alpha });
@@ -797,7 +811,8 @@ export function drawBarge(view, barge, boxesByBay = []) {
   const type = barge.type;
   if (!type || !barge.center) return;
   const len = type.length_m, hl = len / 2, hb = (type.width_m || 9.5) / 2, deck = type.deck_m ?? 1.4;
-  if (offScreen(view, barge.center, view.m(hl + 1), view.m(7))) return;
+  // up to the mast light and the name above the wheelhouse (9.5 m), or the top tier
+  if (offScreen(view, barge.center, view.m(hl + 1), topOf(boxesByBay.flat().filter(Boolean), view.m(9.5)))) return;
   const L = new Local(view, barge.center, barge.heading || 0);
   const alpha = barge.alpha ?? 1, lit = !!barge.lit;
   const k = scaleAt(view, barge.center[0], barge.center[1], 0);
@@ -898,7 +913,13 @@ export function drawCrane(view, crane) {
   const L = new Local(view, g.center, g.angle || 0);
   const reach = span / 2 + out + 1;
   const portal = L.xy(s, 0);
-  if (offScreen(view, portal, view.m(Math.max(reach, 9)), view.m(Hg + 4))) return;
+  // cull with the corners of the rotated footprint (sills, girders, the cab; at night the light
+  // pool) up to the trolley's roof
+  const corners = [], pool = view.darkness > 0.05 ? 18 : 0;
+  const ha = Math.max(CRANE.sill_m / 2, CRANE.legAlong_m + 1, CRANE.girderAlong_m + 3.0, pool), ht = Math.max(reach, pool);
+  for (const a of [s - ha, s + ha]) for (const tt of [-ht, ht]) for (const z of [0, Hg + 4]) corners.push(L.p(a, tt, z));
+  const cornerImg = view.projectAll(corners);
+  if (cornerImg && view.offImage(cornerImg)) return;
   const outline = { outline: OUTLINE };
   const leg = { side: C.craneLeg, top: COL.legTop };
   const k = scaleAt(view, portal[0], portal[1], 0);
@@ -1000,7 +1021,8 @@ export function drawCrane(view, crane) {
     }
   }
   if (img.length && !view.offImage(img)) {
-    const width = Math.max(0.6, cssPx(view, k, view.m(0.06)));
+    // the scale halfway down the ropes (not at the portal's foot, which can be much nearer)
+    const width = strokeWidth(view, S.p(0, 0, (zsTop + 0.5 + zt0) / 2), view.m(0.06), 0.6, 2.5);
     const draw = (ctx) => {
       ctx.beginPath();
       for (let i = 0; i < img.length; i += 2) {
@@ -1138,7 +1160,7 @@ export function drawYardGround(view, geometry, { name = "" } = {}) {
       const t = (-ht + (2 * ht * j) / rows) / m1;
       segs.push([L.xy(-ha / m1, t), L.xy(ha / m1, t)]);
     }
-    const width = Math.max(1, cssPx(view, k || 0, view.m(0.15)));
+    const width = strokeWidth(view, g.center, view.m(0.15), 1, 3);
     batchedLines(view, segs, CSS.yardLine, width, 4);
   }
   if (name && cssPx(view, k, g.width) >= 60) {
@@ -1180,10 +1202,10 @@ export function drawCraneRails(view, geometry) {
   if (!g?.railA || !g?.railB) return;
   for (const rail of [g.railA, g.railB]) {
     view.ribbon(rail, view.m(1.0), { fill: TERMINAL_COLOURS.concrete, order: 3 });
-    const mid = [(rail[0][0] + rail[1][0]) / 2, (rail[0][1] + rail[1][1]) / 2];
-    const k = view.pxPerMM(mid[0], mid[1], 0);
-    const width = Math.max(0.8 * view.px, k * view.m(0.072 * 1.6)) / view.px;
-    view.line(rail, { stroke: TERMINAL_COLOURS.rail, width, order: 6 });
+    // the rail head as a ribbon (right in perspective, clipped at the camera) and a hairline on
+    // it, so that it never vanishes in the distance
+    view.ribbon(rail, view.m(0.072 * 1.6), { fill: TERMINAL_COLOURS.rail, order: 6 });
+    view.line(rail, { stroke: TERMINAL_COLOURS.rail, width: 0.8, order: 6 });
   }
 }
 
