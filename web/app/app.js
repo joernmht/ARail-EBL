@@ -3,14 +3,18 @@ import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { drawGrid, Flyover } from "./flyover.js";
 import { Panels } from "./panels.js";
+import { TerminalPanel } from "./terminal.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
 const EXAMPLES = [
   { id: "lab", label: "Example: EBL lab photo", layout: "../layouts/ebl-lab.json" },
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
+  { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json" },
 ];
-const TABS = ["view", "build", "simulate", "disrupt", "control"];
+const TABS = ["view", "build", "simulate", "terminal", "disrupt", "control"];
+/** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
+const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
 class App {
   constructor() {
@@ -24,6 +28,10 @@ class App {
     this.detector = null;
     this.source = null;
     this.detections = {};
+    /** Rolling-stock tags of the last frame (image corners by tag ID; see MarkerDetector.detectAll). */
+    this.rollingDetections = {};
+    /** The View of the last frame drawn (null while the layout is not tracked): for picking on the canvas. */
+    this.lastView = null;
     this.procMax = 960;
     this.frozen = false;
     this.fps = 0;
@@ -58,6 +66,7 @@ class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
+    this.terminal = new TerminalPanel(this);
     this._wireUi();
     this._wireEvents();
     const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
@@ -127,8 +136,7 @@ class App {
       if (!sel.value) return;
       const url = sel.value;
       sel.value = "";
-      this.stopLive();
-      await this.loadLayoutFromUrl(url, { withImage: true });
+      await this.openLayout(url);
     });
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
@@ -157,6 +165,12 @@ class App {
     }
     ev.on("object.added", () => this.panels.renderNewDisruption());
     ev.on("object.removed", () => this.panels.renderNewDisruption());
+    // the container terminal
+    const T = ARail.TERMINAL_EVENTS;
+    ev.on(T.moveFailed, (e) => toast(`${e.move.id}: ${e.move.reason}`));
+    ev.on(T.visitArrived, (e) => toast(`${e.visit.name} arrived.`, 3000, { minor: true }));
+    ev.on(T.containerLeft, (e) => toast(e.reason === "truck" && e.visit ? `${e.container.id} left the terminal on ${e.visit.name}.` : `${e.container.id} left the terminal (${e.reason}).`, 3000, { minor: true }));
+    ev.on(T.wagonLost, (e) => toast(`${e.carrier.label} is out of view; its containers stay on it.`, 3000, { minor: true }));
   }
 
   _key(e) {
@@ -183,7 +197,9 @@ class App {
       if (area && area.docks.length && area.docks.every((d) => d.managed)) toast(`${area.owner.name} is served by its bus lines.`);
       else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
-      if (this.editor.placing) this.editor.cancel();
+      if (this.terminal.cancelPick()) return;
+      if (this.activeTab === "terminal" && this.terminal.selected) this.terminal.select(null);
+      else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
     } else if ((e.key === "Delete" || e.key === "Backspace") && this.activeTab === "build" && this.editor.selected) {
       this.editor.deleteSelected();
@@ -201,10 +217,22 @@ class App {
       $(`#tab-${t}`).tabIndex = t === name ? 0 : -1;
       $(`#panel-${t}`).hidden = t !== name;
     }
-    this.canvas.classList.toggle("editing", name === "build");
+    this._scrollTabIntoView($(`#tab-${name}`));
+    this.canvas.classList.toggle("editing", name === "build" || name === "terminal");
     if (name !== "build" && this.editor.placing) this.editor.cancel();
+    if (name !== "terminal") this.terminal.cancelPick();
+    this.terminal.syncHighlight();
     this.renderPanel(name);
     history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
+  }
+
+  /** On narrow screens the tabs scroll sideways: the selected one is kept in view (the page does not scroll). */
+  _scrollTabIntoView(tab) {
+    const bar = tab.parentElement;
+    if (bar.scrollWidth <= bar.clientWidth) return;
+    const left = tab.offsetLeft - bar.offsetLeft, right = left + tab.offsetWidth;
+    if (left < bar.scrollLeft) bar.scrollLeft = left - 16;
+    else if (right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth + 16;
   }
 
   renderPanel(name) {
@@ -212,6 +240,7 @@ class App {
     if (name === "view") this.panels.renderView(el);
     else if (name === "build") this.editor.render(el);
     else if (name === "simulate") this.panels.renderSimulate(el);
+    else if (name === "terminal") this.terminal.render(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
     else if (name === "control") this.panels.renderControl(el);
   }
@@ -225,6 +254,7 @@ class App {
       this.panels.updateClock();
       this.panels.updateBoard();
     }
+    else if (t === "terminal") this.terminal.update();
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
@@ -236,6 +266,18 @@ class App {
   }
 
   /* ---------------------------------------------------------------- layouts */
+
+  /** Open a layout from the list of layouts (or a panel) with its own image; the live camera stops. */
+  async openLayout(url) {
+    this.stopLive();
+    await this.loadLayoutFromUrl(url, { withImage: true });
+  }
+
+  /** Open one of the example layouts by its id (e.g. "terminal"). */
+  openExample(id) {
+    const x = EXAMPLES.find((e) => e.id === id);
+    return x ? this.openLayout(x.layout) : Promise.resolve();
+  }
 
   async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image" } = {}) {
     this.flushSave(); // pending edits belong to the current layout
@@ -256,6 +298,9 @@ class App {
     // the layout's own image follows: the photo or video shown until then belongs to the previous
     // layout, and markers detected in it must not be measured into this layout's marker map
     if (withImage && img && this.source) this.source.stale = true;
+    // a virtual layout opens in the flyover: the photo or video shown until then does not belong to it
+    const virtual = json.view?.start === "flyover";
+    if (virtual && this.source) this.source.stale = true;
     const edited = storage.get(this._layoutKey());
     let restored = false;
     if (edited) {
@@ -274,6 +319,14 @@ class App {
         toast(`The layout ${url} could not be loaded: ${err.message}`, 7000);
         await this._applyLayout({});
       }
+    }
+    if (virtual) {
+      this.flyover.enter();
+      this._autoFlyover = true;
+    } else if (withImage && img && this._autoFlyover) {
+      // back from a virtual layout to one with its own photo: the photo is shown
+      this._autoFlyover = false;
+      this.flyover.leave();
     }
     if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
   }
@@ -382,16 +435,20 @@ class App {
    */
   applyDictionary({ keepType = false } = {}) {
     if (!this.detector) return;
-    const { dictionary: d } = this.world.layout.markers;
+    const { dictionary: d, rolling: r } = this.world.layout.markers;
     const codes = this.world.map.detectionCodes(this.world.layout.markers.codes);
     const found = keepType && d === "auto" ? this.detector.selected?.name ?? null : null;
-    if (this.detector.codes !== codes) {
+    // rolling-stock tags (markers.rolling): a second marker family, read in the same pass
+    const rolling = r ? { dictionary: r.dictionary, codes: r.codes, maxBitErrors: r.max_bit_errors } : null;
+    if (this.detector.codes !== codes || JSON.stringify(this.detector.rollingOptions ?? null) !== JSON.stringify(rolling)) {
       try {
-        this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes });
+        this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes, rolling });
       } catch (err) {
         toast(`Marker detection could not be set up for ${codes} codes: ${err.message}`);
       }
     }
+    // the small tags need a sharper image
+    if (rolling) this.procMax = Math.max(this.procMax, PROC_RANGE_ROLLING[0]);
     try {
       this.detector.setDictionary(d === "auto" ? found : d);
     } catch {
@@ -416,6 +473,8 @@ class App {
     this.camera.setSize(this.source.w, this.source.h);
     this.tracker.reset();
     this.detections = {};
+    this.rollingDetections = {};
+    ARail.terminalOf(this.world)?.forgetObservations();
     if (this.world.layout.markers.dictionary === "auto") this.detector?.setDictionary(null);
     this.setFrozen(false);
     $("#emptyStage").hidden = true;
@@ -580,12 +639,13 @@ class App {
       this.proc.height = ph;
       this.pctx.drawImage(el, 0, 0, pw, ph);
       try {
-        this.detections = this.detector.detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
+        this._detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
       } catch (err) {
         toast(`The image cannot be analysed: ${err.message}`, 7000);
         return;
       }
       const st = this.tracker.update(this.detections, this.clock, this.camera, { still: true });
+      this._observeRolling(true);
       const n = Object.keys(this.detections).length;
       if (!n) toast("No markers found. Get closer, look from above at an angle, use good light, and check the marker type in Build → Layout.", 7000);
       else if (!st.H) toast(`${n} markers found, but none of them is in the marker map of this layout.`, 6000);
@@ -606,15 +666,36 @@ class App {
     this.pctx.drawImage(el, 0, 0, pw, ph);
     const t0 = performance.now();
     try {
-      this.detections = this.detector.detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
+      this._detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
     } catch (err) {
       if (!this._detectError) toast(`The video cannot be analysed: ${err.message}`, 7000);
       this._detectError = true;
       return;
     }
     const ms = performance.now() - t0;
-    this.procMax = ms > 45 ? Math.max(480, this.procMax * 0.9) : ms < 20 ? Math.min(1600, this.procMax * 1.05) : this.procMax;
+    const [lo, hi] = this.detector.rolling ? PROC_RANGE_ROLLING : PROC_RANGE;
+    this.procMax = ms > 45 ? Math.max(lo, this.procMax * 0.9) : ms < 20 ? Math.min(hi, this.procMax * 1.05) : this.procMax;
     this.tracker.update(this.detections, this.clock, this.camera);
+    this._observeRolling(false);
+  }
+
+  /** Find the markers in an image: the layout's markers and (with `detectAll`) the rolling-stock tags. */
+  _detect(imageData, scale) {
+    if (typeof this.detector.detectAll === "function") {
+      const found = this.detector.detectAll(imageData, scale);
+      this.detections = found.markers;
+      this.rollingDetections = found.rolling || {};
+    } else {
+      this.detections = this.detector.detect(imageData, scale);
+      this.rollingDetections = {};
+    }
+  }
+
+  /** Model wagons: the rolling-stock tags of this frame, lifted to their deck height, go to the terminal. */
+  _observeRolling(still) {
+    const term = ARail.terminalOf(this.world);
+    if (!term?.rollingConfig() || typeof this.tracker.liftMarkers !== "function") return;
+    term.observe(this.tracker.liftMarkers(this.rollingDetections, this.camera, (id) => term.tagHeight(id)), this.clock, { still });
   }
 
   /* ---------------------------------------------------------------- frame loop */
@@ -632,8 +713,9 @@ class App {
 
   render() {
     if (this.flyover.active) return this.flyover.render();
+    this.lastView = null;
     const { ctx, source } = this;
-    if (!source) return;
+    if (!source || source.stale) return;
     ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
     const { H } = this.pose();
     if (H) {
@@ -642,6 +724,8 @@ class App {
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
+      this.terminal.drawOverlay(ctx, view);
+      this.lastView = view;
     }
     if (this.display.markers) this._drawMarkers(ctx);
   }
@@ -677,6 +761,24 @@ class App {
       ctx.textAlign = "center";
       ctx.fillText(id, cx, cy - 12 * px);
     }
+    // rolling-stock tags: dashed, with wagon and slot (W3·1)
+    const stride = this.world.layout.markers.rolling?.stride ?? 4;
+    ctx.save();
+    ctx.setLineDash([5 * px, 4 * px]);
+    ctx.strokeStyle = ctx.fillStyle = ARail.OVERLAY.tracked;
+    ctx.lineWidth = 2 * px;
+    ctx.font = `700 ${12 * px}px ${ARail.FONT}`;
+    ctx.textAlign = "center";
+    for (const [id, c] of Object.entries(this.rollingDetections)) {
+      ctx.beginPath();
+      c.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
+      ctx.stroke();
+      const { number, slot } = ARail.decodeTag(Number(id), stride);
+      const cx = c.reduce((s, p) => s + p[0], 0) / 4, cy = c.reduce((s, p) => s + p[1], 0) / 4;
+      ctx.fillText(`W${number}·${slot}`, cx, cy - 10 * px);
+    }
+    ctx.restore();
   }
 
   updateHud() {
@@ -696,6 +798,11 @@ class App {
     if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
     if (this.world.disruptions.active.length) chips.push(["bad", `${this.world.disruptions.active.length} disruption${this.world.disruptions.active.length > 1 ? "s" : ""}`]);
     if (this.world.trains.active) chips.push(["ok", `Control system · ${this.world.trains.trains.size} trains`]);
+    const term = ARail.terminalOf(this.world);
+    if (term) {
+      const n = term.moves.filter((m) => m.state === "queued" || m.state === "active").length;
+      chips.push(["info", `Terminal · ${n} move${n === 1 ? "" : "s"}`]);
+    }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);
     morph($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));

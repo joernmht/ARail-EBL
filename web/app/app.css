@@ -169,11 +169,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .empty-stage { color: var(--board-muted); padding: 24px; text-align: center; max-width: 42ch; }
 
 /* ------------------------------------------------------------------ panel */
-.panel { position: relative; background: var(--surface); min-width: 0; }
+.panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; }
 .tabs { display: flex; position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .tabs button { flex: 1 0 auto; border: 0; background: none; padding: 12px 8px 10px; font-weight: 500; font-size: .92rem; color: var(--text-2); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
 .tabs button:hover { color: var(--text); }
 .tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); } /* same weight: the tabs must not shift */
+/* phones: the six tabs fit into 390 px (narrower screens scroll the tabs, the selected one is kept in view) */
+@media (max-width: 640px) { .tabs button { padding-inline: 5px; font-size: .85rem; } }
+@container panel (max-width: 480px) { .tabs button { padding-inline: 5px; font-size: .85rem; } }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
 .section { display: grid; gap: 8px; }
 .section > h2 { margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
@@ -278,6 +281,50 @@ details[open] summary { margin-bottom: 8px; }
 .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; border: 1px solid rgba(0, 0, 0, .35); }
 .town-stats { display: grid; gap: 8px; }
 .chip.clock { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* container terminal (Terminal panel); its placing bar keeps Cancel beside the text on phones too */
+@media (max-width: 640px) { .placing[data-owner="terminal"] .grow { flex-basis: 0; } }
+.term-status { margin: 0; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.board .num.term-icon { padding: 0; }
+.term-icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.board .meter > i.teu { background: var(--overlay-ok); }
+.term-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); }
+.term-form h3, .term-list h3 { margin: 0; font-size: .86rem; font-weight: 500; }
+.term-form .row .grow { flex: 1 1 150px; }
+/* the list keeps the Move form close: it scrolls on its own */
+.term-list { max-height: 340px; overflow-y: auto; padding-right: 2px; overscroll-behavior: contain; }
+.term-list h3 { margin: 10px 0 5px; }
+.term-list h3:first-child { margin-top: 0; }
+.term-list h3 .meta { color: var(--text-2); font-weight: 400; }
+.term-list .list button { padding-block: 6px; }
+.term-list .list .meta { font-family: inherit; text-align: right; }
+.term-move { padding: 12px; border: 1px solid var(--warn); border-left-width: 5px; border-radius: var(--radius); background: color-mix(in srgb, var(--warn) 6%, var(--surface)); }
+.term-move .hint.error:empty { margin-top: -8px; }
+.term-job { margin: 0; font-size: .9rem; font-weight: 500; color: var(--accent-ink); }
+.term-jobs td { vertical-align: top; }
+.term-jobs td.route { white-space: normal; min-width: 13em; }
+.term-jobs td.route span { display: block; }
+.term-jobs td.state { white-space: normal; min-width: 7em; }
+.term-wagons th, .term-wagons td { padding-inline: 5px; }
+.term-wagons td:nth-child(2) { white-space: normal; }
+/* in the narrow panel each crane job is a block of three lines: container and state, the route, the handler */
+@container panel (max-width: 480px) {
+  .term-jobs, .term-jobs tbody { display: block; }
+  .term-jobs thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .term-jobs tr { display: grid; grid-template-columns: 2.6em minmax(0, 1fr) auto; column-gap: 8px; padding: 7px 10px 7px 8px; border-bottom: 1px solid var(--line); }
+  .term-jobs tr:last-child { border-bottom: 0; }
+  .term-jobs td { border: 0; padding: 1px 0; min-width: 0; white-space: normal; }
+  .term-jobs td:nth-child(1) { grid-row: 1 / span 3; padding-top: 2px; }
+  .term-jobs td:nth-child(2) { grid-column: 2; grid-row: 1; font-weight: 500; }
+  .term-jobs td.route { grid-column: 2 / 4; grid-row: 2; min-width: 0; color: var(--text-2); }
+  .term-jobs td:nth-child(4) { grid-column: 2; grid-row: 3; color: var(--text-2); }
+  .term-jobs td:nth-child(4)::before { content: "by "; }
+  .term-jobs td.state { grid-column: 3; grid-row: 1; min-width: 0; text-align: right; }
+  .term-jobs td:nth-child(6) { grid-column: 3; grid-row: 3; text-align: right; }
+}
+.term-jobs td.state.active { color: var(--accent-ink); font-weight: 500; }
+.term-jobs td.state.failed { color: var(--danger); font-weight: 500; }
+.term-jobs tr[data-state="done"] td, .term-jobs tr[data-state="cancelled"] td { color: var(--text-2); }
 
 /* survey a video (Build panel, marker map) */
 .survey { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
