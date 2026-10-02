@@ -165,8 +165,9 @@ export class TrainVisit extends PathVisit {
     return LOCO_M + this.carriers.reduce((s, c) => s + (c.type?.length_m ?? 0), 0);
   }
 
-  /** Track polyline (layout mm) in its driving direction. */
+  /** Track polyline (layout mm) in its driving direction (the track may have moved: the stop poses are computed again). */
   setPath(points, host) {
+    this._home = null;
     super.setPath(points && this.direction === -1 ? points.slice().reverse() : points, host);
   }
 

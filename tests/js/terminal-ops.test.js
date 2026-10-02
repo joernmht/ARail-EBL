@@ -297,6 +297,20 @@ test("a move to an approaching train starts only after it arrived", () => {
   assert.deepEqual(order, ["visit.arriving", "move.queued", "visit.arrived", "move.started", "container.moved", "move.finished"]);
 });
 
+test("handlers for an approaching train are assigned for its stop on the track where the track is now", () => {
+  const { world, sim } = setup({ trains: [BASE.trains[0], { ...BASE.trains[1], start: "away" }] });
+  assert.equal(sim.call("K2"), null);
+  run(world, 3);
+  const v = sim.visits.get("K2");
+  assert.ok(sim.targets(ID(5)).ok.some((t) => t.carrier === "K2/1" && t.handler === "crane-1"));
+  // the track moves 2 m away from the crane, its length stays the same
+  const track = world.getObject("track-2");
+  track.set({ points: track.spec.points.map(([x, y]) => [x, y + 2000]) });
+  const ok = sim.targets(ID(5)).ok.filter((t) => t.carrier === "K2/1");
+  assert.ok(Math.abs(v.homePose(v.carriers[0], sim).center[1] - 2280.5) < 1e-6, "the stop on the moved track");
+  assert.ok(ok.length > 0 && ok.every((t) => t.handler === "reach-stacker-1"), "the crane no longer reaches it");
+});
+
 test("depart is refused while moves are queued or running; force cancels queued ones; a train called again brings its load", () => {
   const { world, sim, log } = setup();
   const a = sim.request(ID(1), { carrier: "yard-a" }).move;
