@@ -5,10 +5,11 @@
  * From these we derive
  * - the relative position of two markers on the same plane (see {@link relativeMarkerPose}),
  * - the focal length of the camera (see {@link focalFromHomography}),
- * - the camera pose of the plane (see {@link poseFromHomography}).
+ * - the camera pose of the plane (see {@link poseFromHomography}), the camera position
+ *   ({@link cameraCentre}) and the image of planes above the layout ({@link planeHomography}).
  * @module arail/core/geometry
  */
-import { applyH, cross3, dot3, homography4, len2 } from "./math.js";
+import { applyH, cross3, dot3, homography4, inv3, len2 } from "./math.js";
 
 /**
  * Marker corners in the marker frame (mm): top-left, top-right, bottom-right, bottom-left.
@@ -161,6 +162,40 @@ export function toCamera(pose, x, y, z = 0) {
     x * a1[0] + y * a2[0] + a3[0] + z * n[0],
     x * a1[1] + y * a2[1] + a3[1] + z * n[1],
     x * a1[2] + y * a2[2] + a3[2] + z * n[2],
+  ];
+}
+
+/**
+ * Position of the camera in the layout frame for a pose from {@link poseFromHomography}: the point
+ * with camera coordinates 0, C = −[a1 a2 n]⁻¹·a3.
+ * @param {{a1: number[], a2: number[], a3: number[], n: number[]}} pose
+ * @returns {number[] | null} [x, y, z] in layout mm (z above the plane), null for a degenerate pose
+ */
+export function cameraCentre(pose) {
+  const { a1, a2, a3, n } = pose;
+  const Minv = inv3([a1[0], a2[0], n[0], a1[1], a2[1], n[1], a1[2], a2[2], n[2]]);
+  if (!Minv) return null;
+  return [0, 1, 2].map((i) => -(Minv[i * 3] * a3[0] + Minv[i * 3 + 1] * a3[1] + Minv[i * 3 + 2] * a3[2]));
+}
+
+/**
+ * Homography of the plane at `height` mm above the layout plane (layout x, y in mm -> image px),
+ * e.g. for markers on wagons: K·[a1, a2, a3 + height·n] with the pose of `H`. Points are found on
+ * that plane with its inverse; the z = 0 homography would shift them away from the camera.
+ * Like {@link poseFromHomography}, it assumes that the layout origin is in front of the camera.
+ * @param {number[]} H homography layout plane (mm) -> image (px)
+ * @param {{fx: number, fy: number, cx: number, cy: number}} K intrinsics
+ * @param {number} height height of the plane above the layout (mm)
+ * @returns {number[]} 3x3 homography, row-major
+ */
+export function planeHomography(H, K, height) {
+  const { a1, a2, a3, n } = poseFromHomography(H, K);
+  const t = [a3[0] + height * n[0], a3[1] + height * n[1], a3[2] + height * n[2]];
+  const { fx, fy, cx, cy } = K;
+  return [
+    fx * a1[0] + cx * a1[2], fx * a2[0] + cx * a2[2], fx * t[0] + cx * t[2],
+    fy * a1[1] + cy * a1[2], fy * a2[1] + cy * a2[2], fy * t[1] + cy * t[2],
+    a1[2], a2[2], t[2],
   ];
 }
 
