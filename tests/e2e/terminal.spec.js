@@ -159,6 +159,21 @@ test("model wagon tags seen without a camera pose keep the wagon held", async ({
   expect(errors).toEqual([]);
 });
 
+test("Build does not take the rolling-stock marker type for the layout", async ({ page }) => {
+  const errors = await openTerminal(page);
+  await page.locator("#tab-build").click();
+  const select = page.locator("#layoutDictionary");
+  await expect(select).toHaveValue("ARUCO");
+  await select.selectOption("APRILTAG_36h11");
+  await expect(page.locator("#toast")).toContainText("AprilTag 36h11 is the marker type of the rolling-stock markers");
+  await expect(select).toHaveValue("ARUCO");
+  expect(await page.evaluate(() => window.__arail.world.layout.markers.dictionary)).toBe("ARUCO");
+  // another type is taken
+  await select.selectOption("ARUCO_MIP_36h12");
+  await expect.poll(() => page.evaluate(() => window.__arail.world.layout.markers.dictionary)).toBe("ARUCO_MIP_36h12");
+  expect(errors).toEqual([]);
+});
+
 test("a train is called; a container goes from train to train; unload and load", async ({ page }) => {
   const errors = await openTerminal(page);
   await setSpeed(page, 30);

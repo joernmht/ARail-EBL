@@ -733,7 +733,7 @@ export class Editor {
           h("input", { type: "number", id: "layoutMarkerSize", min: 5, max: 300, step: 0.5, value: w.map.size,
             onchange: (e) => { const v = Number(e.target.value); if (v > 0) { w.map.size = v; L.markers.size_mm = v; w.map.version++; this.app.tracker.reset(); this.app.redetect(); this.app.saveLayout(); } } })),
         h("label", { class: "field wide", for: "layoutDictionary" }, h("span", {}, "Marker type (dictionary)"),
-          h("select", { id: "layoutDictionary", onchange: (e) => { L.markers.dictionary = e.target.value; this.app.applyDictionary(); this.app.redetect(); this.app.saveLayout(); } },
+          h("select", { id: "layoutDictionary", onchange: (e) => this._setDictionary(e.target) },
             dicts.map(([v, t]) => h("option", { value: v, selected: v === (L.markers.dictionary || "auto") }, t)))),
       ),
       h("div", { class: "row" },
@@ -743,6 +743,21 @@ export class Editor {
       ),
       h("p", { class: "hint" }, "Changes are kept in this browser. Export the layout to share it or to add it to the repository."),
     );
+  }
+
+  /** The layout's marker type from the select; refused if the rolling-stock markers use it. */
+  _setDictionary(select) {
+    const L = this.world.layout, value = select.value;
+    if (L.markers.rolling && value === L.markers.rolling.dictionary) {
+      const label = select.selectedOptions[0]?.textContent ?? value;
+      select.value = L.markers.dictionary || "auto";
+      toast(`${label} is the marker type of the rolling-stock markers, and they need their own marker type. To use it for the layout, change markers.rolling.dictionary in the layout file.`, 8000);
+      return;
+    }
+    L.markers.dictionary = value;
+    this.app.applyDictionary();
+    this.app.redetect();
+    this.app.saveLayout();
   }
 
   renderMarkers() {
