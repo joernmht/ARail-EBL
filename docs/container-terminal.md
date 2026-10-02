@@ -26,7 +26,15 @@ objects that you place in Build; the loading tracks are ordinary `track` objects
 
 Everything stands on two table modules: the terminal table and a small module where the fairway
 leaves it. The example has no camera image; its four markers lie at the corners of a
-1500 × 820 mm area, so you can print them and look at the terminal over a real table too.
+1500 × 820 mm area, so you can print them and look at the terminal over a real table too:
+
+- Print **ArUco Original** markers with the IDs **0–3** at **30 mm** on the
+  [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (type `0-3` as Marker IDs).
+- Lay their centres on the corners of the area: **0** at one corner, **1** 1500 mm to its right,
+  **2** 820 mm above 1, **3** 820 mm above 0.
+- Lay all four the same way round, each with its printed "right" pointing from 0 to 1 and its
+  "up" from 0 to 3 (rotation 0° in the [layout frame](lab-setup.md#the-marker-map)). The map is
+  locked, so a marker that is turned or moved gives a wrong camera pose.
 
 ## What the terminal knows
 
