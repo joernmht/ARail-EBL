@@ -129,6 +129,7 @@ test("states: standing after a second, moving, held through gaps, lost, still im
   const x = C[0] + 8;
   t = run(rs, t, 0.4, () => ({}));
   assert.equal(w.state, "held");
+  assert.equal(w.stood, false, "held while it was moving");
   assert.deepEqual(w.tags, []);
   t = run(rs, t, 0.2, () => ({}));
   assert.equal(w.state, "lost");
@@ -138,6 +139,7 @@ test("states: standing after a second, moving, held through gaps, lost, still im
   assert.equal(w.state, "standing");
   t = run(rs, t, 2, () => ({}));
   assert.equal(w.state, "held");
+  assert.equal(w.stood, true, "held after it stood still");
   t = run(rs, t, 0.1, () => tagsOf([x, C[1]], 0));
   assert.equal(w.state, "standing", "still standing after the gap");
   t = run(rs, t, ROLLING_DEFAULTS.hold_s - 0.1, () => ({}));

@@ -228,7 +228,8 @@ wagons are not found, get closer or print the largest tags that fit (23 mm in H0
 - **Some tags hidden** (a hand, the crane's spreader, the edge of the picture): one visible tag is
   enough. A tag that disagrees with the others by more than 6 mm is dropped.
 - **All tags hidden** for a moment: the wagon is *held* where it was, for 4 s when it stood still
-  (0.5 s when it was moving). A held wagon is still available: a crane goes on working on it.
+  (0.5 s when it was moving). A held wagon that stood still is still available: a crane goes on
+  working on it. One that was moving is not: moves to or from it wait.
 - **Layout markers hidden, tags in view** (a hand over the markers, the camera close to the
   wagons): without a camera pose the tags give no position, but a wagon whose tags are still
   read stays *held* where it was, however long. A wagon not seen before is not added until
@@ -238,8 +239,8 @@ wagons are not found, get closer or print the largest tags that fit (23 mm in H0
   stay on it (they belong to W3, not to a position) and come back when it is seen again
   (events `terminal.wagon.lost` and `terminal.wagon.seen`).
 - **Standing and moving**: a wagon counts as *standing* when it moved less than 3 mm/s over 1 s
-  (at once in a photo). Cranes and reach stackers only lift from or set down on a standing or held
-  wagon. A wagon within 8 mm and 15° of a `track` object is put on its centre line, so draw the
+  (at once in a photo). Cranes and reach stackers only lift from or set down on a standing wagon, or a
+  held one that stood still. A wagon within 8 mm and 15° of a `track` object is put on its centre line, so draw the
   real loading tracks as tracks.
 - **Pushed while it is handled**: a crane or reach stacker that is no longer above the wagon's spot
   goes back up and aims again where the wagon stands now. A move to or from a wagon pushed out of

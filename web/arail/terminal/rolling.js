@@ -44,8 +44,9 @@ export function encodeTag(number, slot, stride) {
 /**
  * A tracked model wagon.
  * @typedef {{number: number, center: number[]|null, heading: number|null, state: "moving"|"standing"|"held"|"lost",
- *   speed: number, tags: number[], seen: number, lastSeen: number, firstSeen: number}} TrackedWagon
+ *   speed: number, tags: number[], seen: number, lastSeen: number, firstSeen: number, stood: boolean}} TrackedWagon
  *   tags: slots seen in the last frame; seen: number of different tags seen this session;
+ *   stood: it was standing when last measured (a held wagon that stood still, not one that moved);
  *   lastSeen, firstSeen: real seconds
  */
 
@@ -121,7 +122,7 @@ export class RollingStock {
       let w = this.wagons.get(number);
       if (!fused && !w) continue;
       if (!w) {
-        w = { number, center: null, heading: null, state: "moving", speed: 0, tags: [], seen: 0, lastSeen: time, firstSeen: time };
+        w = { number, center: null, heading: null, state: "moving", speed: 0, tags: [], seen: 0, lastSeen: time, firstSeen: time, stood: false };
         this.wagons.set(number, w);
       }
       const unplaced = tags.filter((t) => !t.placed).map((t) => t.slot);
@@ -144,6 +145,7 @@ export class RollingStock {
       w.state = "lost";
       w.speed = 0;
       w.tags = [];
+      w.stood = false;
     }
   }
 
@@ -238,6 +240,7 @@ export class RollingStock {
     w.speed = still || elapsed <= 0 ? 0 : dist2(f.center, h[0].center) / Math.max(elapsed, MIN_SPAN_S);
     w.state = elapsed >= o.standing_s - 1e-9 && w.speed < o.standing_mm_s ? "standing" : "moving";
     f.before = w.state;
+    w.stood = w.state === "standing";
     const snapped = this._snap(f.center, f.heading, getTracks());
     w.center = snapped.center;
     w.heading = snapped.heading;
@@ -259,6 +262,7 @@ export class RollingStock {
       if (!f || time - w.lastSeen > hold) {
         w.state = "lost";
         w.speed = 0;
+        w.stood = false;
         this._filters.delete(w.number);
         return;
       }

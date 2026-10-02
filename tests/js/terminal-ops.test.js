@@ -840,6 +840,34 @@ test("model wagons appear from their tags, take containers and keep them while l
   assert.equal(again.tagHeight(encodeTag(3, 0, 4)), 15);
 });
 
+test("a moving model wagon hidden for a moment is not available; a standing one is", () => {
+  const { world, sim } = setup();
+  const type = CARRIER_TYPES.sggrss80;
+  const frame = (x) => Object.fromEntries([0, 1, 2].map((slot) => [encodeTag(3, slot, 4), { center: [x + mm(type.bays_m[slot]), 228.7], heading: 0, edge_mm: 20 }]));
+  const w3 = sim.carrier("W3");
+  let time = 0;
+  for (; time < 2; time += 0.1) sim.observe(frame(700 + 20 * time), time);
+  assert.equal(w3.tracked, "moving");
+  const { move } = sim.request(ID(5), { carrier: "W3" });
+  world.step(0.01);
+  assert.equal(move.state, "queued");
+  assert.equal(move.waiting, "waiting for W3");
+  // its tags hidden for 0.3 s: held, but it may still be moving
+  for (let i = 0; i < 3; i++, time += 0.1) {
+    sim.observe({}, time);
+    world.step(0.01);
+    assert.equal(w3.tracked, "held");
+    assert.ok(w3.present && !w3.available);
+  }
+  assert.equal(move.state, "queued", "the move still waits");
+  // a standing wagon that is hidden stays available
+  for (const end = time + 1.5; time < end; time += 0.1) sim.observe(frame(800), time);
+  assert.equal(w3.tracked, "standing");
+  sim.observe({}, time + 1);
+  assert.equal(w3.tracked, "held");
+  assert.ok(w3.available);
+});
+
 test("rejected tags create no model wagon", () => {
   const { sim } = setup();
   const before = sim.markerWagons().map((c) => c.id);

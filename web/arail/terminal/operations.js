@@ -1263,7 +1263,8 @@ export class TerminalSimulation extends Simulation {
       const c = this._wagonCarrier(number), before = c.tracked ?? "lost";
       if (w.center && Number.isFinite(w.heading)) c.pose = { center: w.center, heading: w.heading };
       c.present = w.state !== "lost";
-      c.available = w.state === "standing" || w.state === "held";
+      // held counts only for a wagon that stood still: one hidden while moving may still be moving
+      c.available = w.state === "standing" || (w.state === "held" && w.stood);
       c.tracked = w.state;
       if (!events) continue;
       if (before === "lost" && w.state !== "lost") this._emit(EV.wagonSeen, { carrier: c });
