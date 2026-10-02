@@ -38,8 +38,8 @@ high). Their ids are owner codes with a serial number and a check digit, e.g. `A
 
 Every *carrier* has places in a grid: **bays** along it (one 20 ft position each, the container
 spots of a wagon), **rows** across it and **tiers** on top of each other. A 40 ft or 45 ft
-container takes two bays; its place is given by its first bay. The panel counts from 1 (*bay 1*);
-the layout file counts from 0. Bay 1 of a wagon is at its A end.
+container takes two bays; its place is given by its first bay. The panel counts from 1 and names
+both bays of a 40 or 45 ft container (*bay 1*, *bay 1–2*); the layout file counts from 0. Bay 1 of a wagon is at its A end.
 
 | Carrier | Bays × rows × tiers | Takes |
 | --- | --- | --- |
@@ -289,7 +289,7 @@ without one it offers **Open the example terminal** and **Add a container termin
 3. **New arrival.** Call a new train (loading track, wagon type, 1–6 wagons, empty or with random
    containers), a barge (quay), or send a truck (*pickup* or *delivery*, any size or 20, 40, 45 ft).
 4. **Choose a container.** The Containers list is grouped by carrier (filter: trains, model wagons,
-   barges, trucks, yards), e.g. *ARLU 100001 9 · 40 ft HC · bay 1-2*. Choose one; choosing it again
+   barges, trucks, yards), e.g. *ARLU 100001 9 · 40 ft HC · bay 1–2*. Choose one; choosing it again
    deselects it.
 5. **Choose where it goes.** **Move to** lists every free place a machine can serve, by carrier;
    carriers that cannot take it are listed with the reason (*Lgns (40 ft) takes no 45 ft
@@ -303,8 +303,8 @@ without one it offers **Open the example terminal** and **Add a container termin
 
 **On the stage.** In the Terminal tab a tap on a container chooses it, and its possible places are
 outlined; a tap on an outlined place (or on another container, or on a carrier) queues the move:
-*Move M4 queued: Portal crane 1, from KT 41 Hamburg · wagon 1 to Block A · bay 3 · row 1 ·
-tier 1*. Esc or **Cancel** stops the pick. This works over the camera image and in the flyover. In the flyover
+*Move M4 queued: Portal crane 1, from KT 41 Hamburg · wagon 1 · bay 1–2 to Block A · bay 3–4 ·
+row 1 · tier 1*. Esc or **Cancel** stops the pick. This works over the camera image and in the flyover. In the flyover
 a drag pans the view in this tab; with the keyboard, move the view so that the cross in the middle
 lies on a container and press **Enter**, then the same for the place. Over the camera image the
 empty spots of model wagons are outlined while the tab is open.

@@ -93,6 +93,9 @@ test("a move from the panel: a container from the train to the yard", async ({ p
   const errors = await openTerminal(page);
   await chooseInList(page, "ARLU 100001 9");
   await expect(page.locator("#termList button", { hasText: "ARLU 100001 9" })).toHaveAttribute("aria-current", "true");
+  // a 40 ft container: both of its bays, in the list and in the Move form
+  await expect(page.locator("#termList button", { hasText: "ARLU 100001 9" })).toContainText("bay 1–2");
+  await expect(page.locator(".term-move .hint").first()).toHaveText("40 ft high cube · KT 41 Hamburg · wagon 1 · bay 1–2");
   // a place in the yard, chosen in "Move to"
   const value = await page.evaluate(() => {
     const t = window.__arail.terminal.sim.targets("ARLU 100001 9").ok.find((x) => x.carrier === "yard-a");
@@ -100,8 +103,9 @@ test("a move from the panel: a container from the train to the yard", async ({ p
   });
   await page.locator("#termTarget").selectOption(value);
   await page.locator("#termMove").click();
-  await expect(page.locator("#toast")).toContainText("Move M1 queued: Portal crane 1");
+  await expect(page.locator("#toast")).toContainText("Move M1 queued: Portal crane 1, from KT 41 Hamburg · wagon 1 · bay 1–2 to Block A · bay");
   await expect(page.locator(".term-jobs tbody tr")).toHaveCount(1);
+  await expect(page.locator(".term-jobs td.route")).toContainText(/^KT 41 Hamburg · wagon 1 · bay 1–2→ Block A · bay \d+–\d+ · /);
   await setSpeed(page, 30);
   await page.waitForFunction(() => window.__arail.terminal.sim.inventory.get("ARLU 100001 9").at?.carrier === "yard-a", null, { timeout: 60_000 });
   await expect(page.locator(".term-jobs td.state")).toHaveText("done");

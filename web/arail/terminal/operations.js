@@ -410,15 +410,18 @@ export class TerminalSimulation extends Simulation {
   }
 
   /**
-   * A slot in words, e.g. "Block A · bay 4 · row 2 · tier 1", "KT 41 Hamburg · wagon 1 · bay 2", "Truck T3".
+   * A slot in words, e.g. "Block A · bay 4 · row 2 · tier 1", "KT 41 Hamburg · wagon 1 · bay 2", "Truck T3";
+   * for a container over two bays (`bays` 2: 40 and 45 ft) "KT 41 Hamburg · wagon 1 · bay 1–2".
    * @param {import("./types.js").SlotRef} ref
+   * @param {{bays?: number} | null} [container] bays the container takes (a Container has them; default 1)
    */
-  describe(ref) {
+  describe(ref, container = null) {
     if (!isObject(ref)) return "";
     const at = slotRef(ref), c = this.carrier(at.carrier);
-    if (!c) return `${at.carrier} · bay ${at.bay + 1}`;
+    const bay = container?.bays === 2 ? `bay ${at.bay + 1}–${at.bay + 2}` : `bay ${at.bay + 1}`;
+    if (!c) return `${at.carrier} · ${bay}`;
     if (c.kind === "truck") return c.label;
-    const parts = [c.label, `bay ${at.bay + 1}`];
+    const parts = [c.label, bay];
     if (c.rows > 1) parts.push(`row ${at.row + 1}`);
     if (c.tiers > 1) parts.push(`tier ${at.tier + 1}`);
     return parts.join(" · ");
@@ -665,7 +668,7 @@ export class TerminalSimulation extends Simulation {
       let first = null;
       for (const at of slots) {
         const handler = this._assign(c, at);
-        if (handler) ok.push({ at, carrier: carrier.id, kind: carrier.kind, label: this.describe(at), handler });
+        if (handler) ok.push({ at, carrier: carrier.id, kind: carrier.kind, label: this.describe(at, c), handler });
         else first ??= at;
       }
       if (!slots.length) refused.push({ carrier: carrier.id, label: carrier.label, reason: this._noSlot(c, carrier) });
@@ -780,7 +783,7 @@ export class TerminalSimulation extends Simulation {
   }
 
   _noHandler(c, ref) {
-    return `No crane or reach stacker can move it from ${this.describe(c.at)} to ${this.describe(ref)}`;
+    return `No crane or reach stacker can move it from ${this.describe(c.at, c)} to ${this.describe(ref, c)}`;
   }
 
   /**

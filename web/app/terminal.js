@@ -471,7 +471,7 @@ export class TerminalPanel {
     const c = sim.inventory.get(this.selected);
     if (!c) return null;
     const ok = targets?.ok || [], refused = targets?.refused || [];
-    const where = c.at ? sim.describe(c.at) : c.handler ? `on ${sim.handlers.get(c.handler)?.name ?? c.handler}` : "";
+    const where = c.at ? sim.describe(c.at, c) : c.handler ? `on ${sim.handlers.get(c.handler)?.name ?? c.handler}` : "";
     const lift = !ok.length && refused.length === 1 && refused[0].label === c.id ? refused[0].reason : null;
     if (!ok.some((t) => slotKey(t.at) === this.targetKey)) this.targetKey = ok[0] ? slotKey(ok[0].at) : null;
     const groups = new Map();
@@ -490,7 +490,7 @@ export class TerminalPanel {
       // on its way: what its crane or reach stacker is doing
       const hd = sim.handlers.get(job.handler), cancellable = job.state === "queued" || (hd?.move === job.id && hd.cancellable);
       return [...head,
-        h("p", { class: "term-job" }, `Move ${job.id} to ${sim.describe(job.to)} by ${hd?.name ?? job.handler}: ${this._jobState(job, hd)}`),
+        h("p", { class: "term-job" }, `Move ${job.id} to ${sim.describe(job.to, c)} by ${hd?.name ?? job.handler}: ${this._jobState(job, hd)}`),
         h("div", { class: "row" }, cancellable ? h("button", { class: "btn small", type: "button", id: "termJobCancel", onclick: () => this._act(sim.cancel(job.id)) }, `Cancel ${job.id}`) : null, done)];
     }
     const status = h("p", { class: "hint error", role: "status", id: "termMoveError" }, this.error || lift || "");
@@ -546,11 +546,11 @@ export class TerminalPanel {
       this.update();
       return false;
     }
-    const m = r.move;
+    const m = r.move, c = sim.inventory.get(m.container);
     this.error = "";
     this.stage = null;
     this.renderPlacing();
-    toast(`Move ${m.id} queued: ${sim.handlers.get(m.handler)?.name ?? m.handler}, from ${sim.describe(m.from)} to ${sim.describe(m.to)}`, 6000);
+    toast(`Move ${m.id} queued: ${sim.handlers.get(m.handler)?.name ?? m.handler}, from ${sim.describe(m.from, c)} to ${sim.describe(m.to, c)}`, 6000);
     this.update();
     return true;
   }
@@ -564,12 +564,12 @@ export class TerminalPanel {
       moves.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-jobs" },
         h("thead", {}, h("tr", {}, ["#", "Container", "From → To", "By", "State", h("span", { class: "visually-hidden" }, "Action")].map((t) => h("th", {}, t)))),
         h("tbody", {}, moves.map((m) => {
-          const hd = sim.handlers.get(m.handler);
+          const hd = sim.handlers.get(m.handler), c = sim.inventory.get(m.container);
           const cancellable = m.state === "queued" || (m.state === "active" && hd?.move === m.id && hd.cancellable);
           return h("tr", { "data-state": m.state },
             h("td", { class: "mono" }, m.id),
             h("td", {}, m.container),
-            h("td", { class: "route" }, h("span", {}, sim.describe(m.from)), h("span", {}, `→ ${sim.describe(m.to)}`)),
+            h("td", { class: "route" }, h("span", {}, sim.describe(m.from, c)), h("span", {}, `→ ${sim.describe(m.to, c)}`)),
             h("td", {}, hd?.name ?? m.handler),
             h("td", { class: `state ${m.state}` }, this._jobState(m, hd)),
             h("td", {}, cancellable ? h("button", { class: "btn small", type: "button", "aria-label": `Cancel ${m.id}`, onclick: () => this._act(sim.cancel(m.id)) }, "Cancel") : null),

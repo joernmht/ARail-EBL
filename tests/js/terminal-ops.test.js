@@ -188,6 +188,12 @@ test("the terminal builds carriers, visits and handlers from the layout", () => 
   assert.equal(sim.describe(at("yard-a", 3, 1, 0)), "Block A · bay 4 · row 2 · tier 1");
   assert.equal(sim.describe(at("K1/1", 1)), "K 1 · wagon 1 · bay 2");
   assert.equal(sim.describe(at("B1", 0, 2, 1)), "Barge 1 · bay 1 · row 3 · tier 2");
+  // a container over two bays: both of them
+  assert.equal(sim.describe(at("K1/1", 0), { bays: 2 }), "K 1 · wagon 1 · bay 1–2");
+  const forty = sim.inventory.get(ID(2));
+  assert.equal(sim.describe(forty.at, forty), "K 1 · wagon 2 · bay 1–2");
+  const yard = sim.targets(ID(2)).ok.filter((t) => t.kind === "yard");
+  assert.ok(yard.length && yard.every((t) => t.label.includes(` · bay ${t.at.bay + 1}–${t.at.bay + 2} · `)), "target labels name both bays");
   // boxes: positions on their carriers, z on top of each other
   const boxes = new Map(sim.boxes().map((b) => [b.id, b]));
   assert.equal(boxes.size, 9);
