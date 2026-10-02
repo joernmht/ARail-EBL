@@ -157,11 +157,11 @@ export class RollingStock {
     for (const [key, o] of Object.entries(observations || {})) {
       const id = Number(key);
       if (!Number.isInteger(id) || id < 0 || !o) continue;
+      const placed = Array.isArray(o.center) && Number.isFinite(o.center[0]) && Number.isFinite(o.center[1]) && Number.isFinite(o.heading);
+      if (placed && !(Math.abs(o.edge_mm - this.size_mm) <= gate * this.size_mm)) continue;
       const { number, slot } = decodeTag(id, this.stride);
       const along = this.slotAlongMM(number, slot);
       if (along == null || !Number.isFinite(along)) continue;
-      const placed = Array.isArray(o.center) && Number.isFinite(o.center[0]) && Number.isFinite(o.center[1]) && Number.isFinite(o.heading);
-      if (placed && !(Math.abs(o.edge_mm - this.size_mm) <= gate * this.size_mm)) continue;
       if (!out.has(number)) out.set(number, []);
       out.get(number).push({ slot, along, center: placed ? o.center : null, heading: placed ? o.heading : null, edge: o.edge_mm ?? null, placed });
     }

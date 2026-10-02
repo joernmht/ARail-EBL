@@ -840,6 +840,23 @@ test("model wagons appear from their tags, take containers and keep them while l
   assert.equal(again.tagHeight(encodeTag(3, 0, 4)), 15);
 });
 
+test("rejected tags create no model wagon", () => {
+  const { sim } = setup();
+  const before = sim.markerWagons().map((c) => c.id);
+  assert.deepEqual(before, ["W3"]);
+  sim.observe({
+    [encodeTag(5, 3, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 }, // slot 3: an Sgns has 3 spots
+    [encodeTag(6, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 40 }, // fails the size gate
+    [encodeTag(7, 0, 4)]: { center: null, heading: null, edge_mm: null }, // unknown and without a pose
+  }, 0);
+  assert.deepEqual(sim.markerWagons().map((c) => c.id), before);
+  assert.deepEqual([...sim.rolling.wagons.keys()], []);
+  // a tag that passes: W8 is created, as an Sgns
+  sim.observe({ [encodeTag(8, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 } }, 0.1);
+  assert.deepEqual(sim.markerWagons().map((c) => c.id), ["W3", "W8"]);
+  assert.equal(sim.carrier("W8").type.label, "Sgns (60 ft)");
+});
+
 /* ---------------------------------------------------------------- object edits */
 
 test("object edits: a removed yard drops its containers; a resized crane keeps its state", () => {

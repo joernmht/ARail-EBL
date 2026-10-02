@@ -248,13 +248,23 @@ export class TerminalSimulation extends Simulation {
     for (const v of [...this._trains, ...this._barges, ...this._trucks]) this.visits.set(v.id, v);
   }
 
+  /** The `rolling_stock` entry of model wagon `number`, or undefined. */
+  _stockEntry(number) {
+    return (Array.isArray(this.config.rolling_stock) ? this.config.rolling_stock : []).find((w) => isObject(w) && w.number === number);
+  }
+
+  /** The wagon type of model wagon `number`: its `rolling_stock` type, else `default_wagon`, else Sgns. */
+  _wagonType(number) {
+    const type = this._stockEntry(number)?.type;
+    return isWagonType(type) ? type : isWagonType(this.config.default_wagon) ? this.config.default_wagon : "sgns60";
+  }
+
   /** The carrier of model wagon `number` (created when first needed). */
   _wagonCarrier(number) {
     let c = this._wagons.get(number);
     if (c) return c;
-    const entry = (Array.isArray(this.config.rolling_stock) ? this.config.rolling_stock : []).find((w) => isObject(w) && w.number === number);
-    const type = isWagonType(entry?.type) ? entry.type : isWagonType(this.config.default_wagon) ? this.config.default_wagon : "sgns60";
-    c = new Carrier({ id: `W${number}`, type, label: entry?.name || `W${number}` });
+    const entry = this._stockEntry(number);
+    c = new Carrier({ id: `W${number}`, type: this._wagonType(number), label: entry?.name || `W${number}` });
     c.number = number;
     this._wagons = new Map([...this._wagons, [number, c]].sort((a, b) => a[0] - b[0]));
     this.inventory.addCarrier(c);
@@ -1215,8 +1225,9 @@ export class TerminalSimulation extends Simulation {
     if (!this.rolling || this.rolling.stride !== r.stride || this.rolling.size_mm !== r.size_mm) {
       this.rolling = new RollingStock({
         stride: r.stride, size_mm: r.size_mm,
+        // a lookup only: the carrier is created in _syncWagons, for wagons the tracker keeps
         slotAlongMM: (number, slot) => {
-          const along = this._wagonCarrier(number).type?.bays_m?.[slot];
+          const along = CARRIER_TYPES[this._wagonType(number)].bays_m[slot];
           return Number.isFinite(along) ? this.mm(along) : null;
         },
         tracks: () => this._tracks,
