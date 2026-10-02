@@ -106,7 +106,7 @@ export class Flyover {
       // no image of this layout (a virtual layout, or none yet): the message of the empty stage
       app.ctx.clearRect(0, 0, c.width, c.height);
       if (!this._emptyShown) {
-        $("#emptyStage").textContent = app.world.layout.view?.start === "flyover" || src
+        $("#emptyStage").textContent = app.world.layout.view?.start === "flyover"
           ? "This layout is virtual: take a photo or start the camera to see it over the real layout."
           : "No image yet: take a photo, start the camera or open a file.";
         c.hidden = true;

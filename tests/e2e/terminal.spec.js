@@ -312,15 +312,23 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
 test("on a phone the six tabs fit, or scroll with the selected tab in view", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  for (const tab of ["view", "build", "simulate", "terminal", "disrupt", "control"]) {
+  const tabs = () => page.evaluate(() => {
+    const bar = document.querySelector(".tabs").getBoundingClientRect(), sel = document.querySelector(".tabs [aria-selected=true]").getBoundingClientRect();
+    const all = [...document.querySelectorAll(".tabs button")].map((x) => x.getBoundingClientRect());
+    return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: sel.left >= bar.left - 0.5 && sel.right <= bar.right + 0.5 };
+  });
+  const names = ["view", "build", "simulate", "terminal", "disrupt", "control"];
+  // 390 px: all six fit
+  for (const tab of names) {
     await page.locator(`#tab-${tab}`).click();
-    const r = await page.evaluate((t) => {
-      const bar = document.querySelector(".tabs").getBoundingClientRect(), b = document.querySelector(`#tab-${t}`).getBoundingClientRect();
-      const all = [...document.querySelectorAll(".tabs button")].map((x) => x.getBoundingClientRect());
-      return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: b.left >= bar.left - 0.5 && b.right <= bar.right + 0.5 };
-    }, tab);
-    expect(r.fits || r.shown, `#tab-${tab}`).toBe(true);
+    expect((await tabs()).fits, `#tab-${tab} at 390 px`).toBe(true);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // narrower: the tabs scroll, the selected one is kept in view (selected as the arrow keys do, without the browser scrolling it)
+  await page.setViewportSize({ width: 300, height: 700 });
+  for (const tab of [...names, ...names.slice().reverse()]) {
+    await page.evaluate((t) => window.__arail.selectTab(t), tab);
+    expect((await tabs()).shown, `#tab-${tab} at 300 px`).toBe(true);
+  }
   expect(errors).toEqual([]);
 });

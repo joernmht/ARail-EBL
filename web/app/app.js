@@ -230,7 +230,7 @@ class App {
   _scrollTabIntoView(tab) {
     const bar = tab.parentElement;
     if (bar.scrollWidth <= bar.clientWidth) return;
-    const left = tab.offsetLeft - bar.offsetLeft, right = left + tab.offsetWidth;
+    const left = tab.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft, right = left + tab.offsetWidth;
     if (left < bar.scrollLeft) bar.scrollLeft = left - 16;
     else if (right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth + 16;
   }
