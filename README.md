@@ -1,6 +1,6 @@
 # ARail-EBL
 
-**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers and a small town with streets and bus lines on it, runs the town through day and night, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. It runs in the browser, needs no installation and no calibration board.
+**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. It runs in the browser, needs no installation and no calibration board.
 
 [**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
 
@@ -18,6 +18,7 @@ ARail-EBL started as a prototype for the railway operations laboratory (EBL) and
 | **A town, day and night** | German house types in the greys of an architectural model: Plattenbau (WBS 70, QP 61, P2), Gründerzeit blocks, single-family houses and estates, school, supermarket, office, workshop; trees, forests, fields, water, labels. A fast clock (1:12) drives the lighting, the timetables and the residents, who go to work, school and shopping on foot, by bus and by train; at night windows and street lamps light up. |
 | **Streets and buses** | Streets form a road network with sidewalks, crossings and street lamps. Bus stops, bus terminals and bus lines with several stops, back and forth or as a ring (*Ring ↻*, *Ring ↺*); road traffic. |
 | **Flyover and table modules** | A virtual camera (key `F`) to look at and edit the layout without the camera image: a snapping grid, the orthophoto of the real table, and virtual table modules that extend the tabletop. |
+| **Container terminal** | Container trains, trucks and barges at a terminal with a gantry crane, a reach stacker and yard blocks. Choose a container and its new place in the Terminal panel or on the stage; the crane does the move. Model wagons on the real layout carry printed deck cards with AprilTag tags (a marker family of their own), so their containers ride on them. |
 | **Lab survey** | Stickers all over the table, one video: `arail-survey` measures every marker and writes a fixed, locked layout, a report and an orthophoto of the table; in the app, *Build → Marker map → Survey a video* gives a quick check. Markers on vehicles can be set as moving; they stay out of the map. |
 | **Disruptions and scenarios** | Delays, cancellations, closures, signal failures, crowd surges, rail replacement buses; scripted scenarios for exercises. |
 | **Control-system interface** | A Python bridge forwards real train positions over WebSocket. When a real train stops at a platform, the virtual passengers board it. |
@@ -31,7 +32,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night.
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. **Layouts… → Example: container terminal** opens the terminal in the flyover.
 
 **On your own layout:**
 
@@ -55,10 +56,11 @@ Write an adapter for your system from the template; see [Control-system interfac
 | Guide | For |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Using the app: sources, the flyover, panels, keyboard shortcuts |
-| [Setting up a lab](docs/lab-setup.md) | Markers, printing, placement, cameras, the marker map |
+| [Setting up a lab](docs/lab-setup.md) | Markers (also on model wagons), printing, placement, cameras, the marker map |
 | [Lab session](docs/lab-session.md) | Stickers on the whole layout, one video, `arail-survey`: a fixed layout and an orthophoto |
 | [Day and night](docs/day-and-night.md) | The fast clock, lighting, demand over the day, the town simulation |
 | [Streets, bus lines and road traffic](docs/streets-and-buses.md) | The road network, bus stops, bus lines, cars |
+| [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
 | [Layout file format](docs/layout-format.md) | The JSON file that describes a layout and all built-in object types |
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
@@ -72,16 +74,18 @@ Write an adapter for your system from the template; see [Control-system interfac
 web/                  the website (published with GitHub Pages)
   index.html          project page
   app/                the AR app, with the flyover and the in-app video survey
-  markers/            printable marker sheets
+  markers/            printable marker sheets and deck cards for model wagons
   arail/              the framework (ES modules, no build step)
     core/             tracking, geometry, world, rendering, clock, road network, bus lines,
                       flyover camera, services, disruptions, scenarios
     objects/          built-in object types (platform, houses, streets, bus stops and lines,
                       table modules, trees, ...)
     sims/             simulations: passengers, town (day and night), road traffic
+    terminal/         the container terminal: containers and carriers, yard, cranes, trains, trucks,
+                      barges, model wagons from rolling-stock markers
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
-  layouts/            example layout files
+  layouts/            example layout files (the EBL lab, the synthetic layout, the container terminal)
   media/              the images of the example layouts (lab photo, synthetic layout) and their orthophotos
   assets/             logos, icons and the website's images
   vendor/js-aruco2/   marker detection library (MIT)
@@ -108,7 +112,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The original German prototype ("Bahnstei
 
 ## Status
 
-Version 0.1, with unreleased changes on `main` (see [CHANGELOG.md](CHANGELOG.md)): the town with its day and night routine, streets and bus lines, the flyover with table modules, the lab survey and the app in the chair's corporate design. Tested with a synthetic layout, a photo and a handheld video of the lab. Next: a lab session in the EBL (stickers on the whole table, one video, a fixed layout), live sessions with phones, webcams and a projector, and an adapter for the lab's control system. Known limits: markers smaller than about 20 px in the image are not found; the camera must always see at least one known marker; virtual objects are always drawn in front of real ones (no occlusion).
+Version 0.1, with unreleased changes on `main` (see [CHANGELOG.md](CHANGELOG.md)): the town with its day and night routine, streets and bus lines, the flyover with table modules, the lab survey, the container terminal with rolling-stock markers and the app in the chair's corporate design. Tested with a synthetic layout, a photo and a handheld video of the lab. Next: a lab session in the EBL (stickers on the whole table, one video, a fixed layout), live sessions with phones, webcams and a projector, and an adapter for the lab's control system. Known limits: markers smaller than about 20 px in the image are not found; the camera must always see at least one known marker; virtual objects are always drawn in front of real ones (no occlusion).
 
 ## License and credits
 

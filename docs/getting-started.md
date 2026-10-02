@@ -18,7 +18,7 @@ The top bar chooses what the app looks at:
 | **Take photo** | Opens the camera app of a phone; the photo is analysed once at high resolution. |
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
-| **Layouts…** | Loads an example layout (the EBL lab or the synthetic layout) together with its example image. |
+| **Layouts…** | Loads an example layout (the EBL lab, the synthetic layout or the container terminal) together with its example image. The container terminal has no image: it opens in the flyover. |
 
 Photos are the easiest way to start: detection runs once at full resolution, and objects can be placed precisely. The buttons at the bottom right of the stage:
 
@@ -34,9 +34,9 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 | Input | Mouse and keyboard | Touch |
 | --- | --- | --- |
-| Turn the view | drag (outside Build) | one finger (outside Build) |
-| Pan | Shift-drag, right-drag or middle-drag; in Build also a drag on empty space | two fingers |
-| Zoom | scroll wheel (at the pointer), double-click (outside Build) | pinch |
+| Turn the view | drag (outside Build and Terminal) | one finger (outside Build and Terminal) |
+| Pan | Shift-drag, right-drag or middle-drag; in Build also a drag on empty space; in Terminal any drag | two fingers |
+| Zoom | scroll wheel (at the pointer), double-click (outside Build and Terminal) | pinch |
 | Rotate | Q, E | twist two fingers |
 | Tilt | Page Up, Page Down | |
 | Show the whole layout | Home | |
@@ -68,7 +68,7 @@ People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot =
 
 ### View
 
-- *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate.
+- *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
 - *Flyover*: see above.
 - *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md).
@@ -78,7 +78,7 @@ People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot =
 
 The layout editor.
 
-- *Add to the layout*: the palette, in five groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
+- *Add to the layout*: the palette, in six groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
 
   | Group | Types | Placing |
   | --- | --- | --- |
@@ -87,6 +87,7 @@ The layout editor.
   | Scenery | Tree, Forest, Landscape area (and plugin types such as the Windmill) | tree: one tap; forest and area: the outline, then **Finish** |
   | Infrastructure | Track, Label / sign | track: points along the real track, then **Finish**; label: one tap |
   | Table | Table module | drag from one corner to the opposite one, or tap both corners |
+  | Terminal | Container yard block, Gantry crane, Truck lane, Quay and fairway, Reach stacker | yard and crane: drag from corner to corner; truck lane and quay: points along it, then **Finish**; reach stacker: one tap (see [Container terminal](container-terminal.md#building-a-terminal-in-build)) |
 
   While placing, the bar over the stage has **Finish**, **Undo point** and **Cancel**. A point of a street snaps onto the end or corner of another street or onto its centre line, so streets connect (see [Streets, bus lines and road traffic](streets-and-buses.md)). A new object that can be turned gets the direction of the nearest platform (if there is one).
 - *Objects*: tap a name or tap the object on the image to select it. Drag a selected object to move it. A platform anchored to markers moves sideways (its offset changes). Table modules are picked at their edges, so that a drag over a table pans the flyover.
@@ -109,6 +110,19 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
 - *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
 
+### Terminal
+
+The container terminal (see [Container terminal](container-terminal.md)): trains, trucks and barges, the containers on them and in the yard, and the moves of the cranes and reach stackers. **Layouts… → Example: container terminal** opens the example; on a layout without a terminal the panel offers it, or adds a terminal to the layout.
+
+- The terminal's state, the speed, **Reset terminal** and **Save as start state**.
+- *Arrivals*: every train, barge and truck with its state and load, **Call** and **Depart**; for a train or barge at the terminal also **Unload to yard** and **Load from yard**.
+- *New arrival*: call a train or a barge, or send a truck (pickup or delivery).
+- *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**.
+- *Crane jobs*: the moves with their state; queued moves can be cancelled.
+- *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and a link to print the cards.
+
+On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick.
+
 ### Disruptions
 
 Start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
@@ -126,11 +140,11 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 | M | marker outlines on/off |
 | F | flyover on/off |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
-| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view |
+| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
 | Delete, Backspace | delete the selected object (Build panel) |
 | Alt (Option) | hold while placing or dragging: no snapping to the grid or to streets |
-| Esc | cancel placing, or deselect |
+| Esc | cancel placing or a pick in the Terminal panel, or deselect |
 | ← → | switch panels (when a panel tab has focus) |
 
 ## URL options
@@ -145,7 +159,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/synthetic-demo.json&sce
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
 | `scenario=<id>` | play a scenario of the layout |
-| `#view`, `#build`, `#simulate`, `#disrupt`, `#control` | open a panel |
+| `#view`, `#build`, `#simulate`, `#terminal`, `#disrupt`, `#control` | open a panel, e.g. `app/?layout=../layouts/container-terminal.json#terminal` |
 
 ## Tips for good tracking
 

@@ -62,9 +62,34 @@ A scenario is a timeline stored in the layout file. It is played from the Disrup
 | `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`) |
 | `start` | `{"id": "sf", "type": "delay", "target": "platform-1", "params": {"minutes": 5}, "duration": 300}` | start a disruption; `duration` in seconds overrides the default |
 | `stop` | `"sf"` | stop a disruption by its `id` |
-| `emit` | `{"name": "myplugin.event", "payload": {}}` | a custom event for plugins |
+| `emit` | `{"name": "myplugin.event", "payload": {}}` | a custom event for plugins; `terminal.request.*` events drive the container terminal (below) |
 
 The example layout contains three scenarios: a signal failure at rush hour, a crowd after a football match with extra trains, and a platform closure. They are meant as starting points for exercises in teaching: for example, let students decide which disruption to start, and watch the effect on passengers.
+
+### Scenarios for the container terminal
+
+The [container terminal](container-terminal.md) listens to `emit` steps named `terminal.request.*`. The scenario *Morning shift* of the [terminal example](../web/layouts/container-terminal.json) calls a train, sends trucks and moves containers:
+
+```json
+{
+  "id": "morning-shift",
+  "name": "Morning shift",
+  "description": "KT 52 arrives on loading track 2; trucks collect and deliver; the crane works train, barge and yard.",
+  "steps": [
+    { "at": 0, "set": { "speed": 10 } },
+    { "at": 0, "message": "Morning shift: KT 52 is due on loading track 2." },
+    { "at": 0, "emit": { "name": "terminal.request.call", "payload": { "visit": "KT52" } } },
+    { "at": 5, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "pickup" } } },
+    { "at": 6, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100002 4", "to": { "kind": "truck" } } } },
+    { "at": 8, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100001 9", "to": { "carrier": "yard-a" } } } },
+    { "at": 10, "emit": { "name": "terminal.request.move", "payload": { "container": "EBLU 300003 2", "to": { "carrier": "KT52/1" } } } },
+    { "at": 12, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "delivery", "size": "40" } } },
+    { "at": 400, "message": "The delivery truck's container can go to KT 52 or to the yard: choose it in the Terminal panel." }
+  ]
+}
+```
+
+A move to a train that is still approaching waits until it has arrived. A request the terminal refuses appears as a message, e.g. *Terminal: KT 52 Duisburg is already here*. All requests and their payloads: [Container terminal](container-terminal.md#scenario-requests).
 
 ## From the control system
 

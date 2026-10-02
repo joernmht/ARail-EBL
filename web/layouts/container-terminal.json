@@ -44,6 +44,8 @@
     }
   ],
   "objects": [
+    { "id": "table-terminal", "type": "tabletop", "name": "Terminal table", "kind": "physical", "position": [750, 415], "width_mm": 2000, "depth_mm": 930, "rotation_deg": 0, "surface": "grey" },
+    { "id": "table-fairway", "type": "tabletop", "name": "Fairway module", "kind": "physical", "position": [-325, 665], "width_mm": 150, "depth_mm": 230, "rotation_deg": 0, "surface": "grey" },
     { "id": "track-1", "type": "track", "name": "Loading track 1", "track_id": "LG1", "points": [[-250, 228.7], [1750, 228.7]] },
     { "id": "track-2", "type": "track", "name": "Loading track 2", "track_id": "LG2", "points": [[-250, 280.5], [1750, 280.5]] },
     { "id": "lane-1", "type": "truck-lane", "name": "Truck lane", "points": [[-250, 332.2], [1750, 332.2]], "positions": 3, "passing_side": "left" },
