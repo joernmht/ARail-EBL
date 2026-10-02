@@ -458,3 +458,28 @@ test("on a phone the six tabs fit, or scroll with the selected tab in view", asy
   }
   expect(errors).toEqual([]);
 });
+
+test("on a phone, Pick on the layout and a Build palette button scroll the stage into view", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const errors = await openTerminal(page);
+  const barInView = () => page.evaluate(() => {
+    const r = document.querySelector("#placing").getBoundingClientRect();
+    return !document.querySelector("#placing").hidden && r.top >= 0 && r.bottom <= innerHeight;
+  });
+  await chooseInList(page, "ARLU 100003 0");
+  await page.locator("#termPick").scrollIntoViewIfNeeded();
+  expect(await barInView()).toBe(false);
+  await page.locator("#termPick").click();
+  await expect(page.locator("#termPick")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(barInView).toBe(true);
+  await expect(page.locator("#placing")).toContainText("Move ARLU 100003 0");
+  await page.locator("#placing").getByRole("button", { name: "Cancel" }).click();
+  // the Build palette places on the stage too
+  await page.locator("#tab-build").click();
+  const crane = page.locator("#panel-build button", { hasText: "Gantry crane" });
+  await crane.scrollIntoViewIfNeeded();
+  expect(await barInView()).toBe(false);
+  await crane.click();
+  await expect.poll(barInView).toBe(true);
+  expect(errors).toEqual([]);
+});

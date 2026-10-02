@@ -2,7 +2,7 @@
 // wagons) and picking containers and their targets on the canvas, in the camera view and the flyover.
 // Every canvas action is also in the panel: choose a container in the list and a place in "Move to".
 import { applyH, CARRIER_TYPES, FONT, OVERLAY, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
-import { $, h, morph, mount, toast } from "./ui.js";
+import { $, h, morph, mount, revealStage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
 /** A pointer that moves less than this (CSS px) between down and up taps (picks) rather than drags. */
@@ -649,12 +649,13 @@ export class TerminalPanel {
     sim.highlight = { selected, targets: picking ? (targets ?? sim.targets(selected)).ok : null, slots: here };
   }
 
-  /** Start picking the place for the selected container on the canvas. */
+  /** Start picking the place for the selected container on the canvas (the stage is scrolled into view). */
   startPick() {
     if (!this.sim || !this.selected) return;
     this.stage = "target";
     this.renderPlacing();
     this.update();
+    revealStage();
   }
 
   /**

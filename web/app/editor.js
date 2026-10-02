@@ -1,6 +1,6 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
 import { applyH, dist2, FONT, markersUsed, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
-import { $, download, h, morph, mount, paramFields, readFile, section, toast } from "./ui.js";
+import { $, download, h, morph, mount, paramFields, readFile, revealStage, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 
 const CATEGORIES = ["Transport", "Buildings", "Scenery", "Infrastructure", "Table"];
@@ -251,6 +251,7 @@ export class Editor {
     if (!replace) this.select(null);
     this.renderPlacing();
     this.renderPalette();
+    revealStage();
   }
 
   cancel() {

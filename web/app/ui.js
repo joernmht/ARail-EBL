@@ -87,6 +87,19 @@ export function toast(text, ms = 4500, { minor = false } = {}) {
   toastTimer = setTimeout(() => (el.hidden = true), ms);
 }
 
+/**
+ * Scroll the stage into view when its placing bar is out of view (on narrow screens the panel is
+ * below the stage): what to tap on the stage must be seen.
+ */
+export function revealStage() {
+  const stage = $("#stageWrap"), bar = $("#placing");
+  if (!stage || !bar || bar.hidden) return;
+  const r = bar.getBoundingClientRect();
+  if (r.top >= 0 && r.bottom <= innerHeight) return;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  stage.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+}
+
 /** Offer a text file for download (works on normal web pages). */
 export function download(filename, text, type = "application/json") {
   const url = URL.createObjectURL(new Blob([text], { type }));
