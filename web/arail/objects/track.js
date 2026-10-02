@@ -89,8 +89,13 @@ export class Track extends LayoutObject {
         ctx.fill();
       });
     }
-    const width = Math.max(0.8 * view.px, k * view.m(RAIL.head_m * 1.6)) / view.px;
-    for (const side of [1, -1]) view.line(offsetLine(g.points, (side * view.m(RAIL.gauge_m)) / 2), { stroke: RAIL.color, width, order: 6 });
+    // the rail heads as ribbons (right in perspective, also with the camera close to one end of
+    // the track) and a hairline on them, so that they never vanish in the distance
+    for (const side of [1, -1]) {
+      const rail = offsetLine(g.points, (side * view.m(RAIL.gauge_m)) / 2);
+      view.ribbon(rail, view.m(RAIL.head_m * 1.6), { fill: RAIL.color, order: 6 });
+      view.line(rail, { stroke: RAIL.color, width: 0.8, order: 6 });
+    }
   }
 }
 
