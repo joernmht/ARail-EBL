@@ -630,7 +630,10 @@ test("terminal draw: ground: concrete yard, one batched path of cell lines, lane
   assert.equal(labels.length, 1, "the block's name");
   view.items = [];
   drawYardLabels(view, g);
-  assert.equal(view.items.length, g.bays + g.rows, "bay and row numbers");
+  assert.equal(view.items.length, g.bays, "bay numbers; rows are closer than 20 px");
+  const near = topView(stateContext().ctx, { c: g.center, d: 1200 });
+  drawYardLabels(near, g);
+  assert.equal(near.items.length, g.bays + g.rows, "bay and row numbers");
   view.items = [];
   drawTruckLane(view, sc.lane, { positions: sc.positions });
   assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [2, 2.2, 2.3, 2.3, 2.3]);
@@ -642,6 +645,33 @@ test("terminal draw: ground: concrete yard, one batched path of cell lines, lane
   assert.deepEqual(view.items.map((it) => it.key).sort((a, b) => a - b), [0.6, 3, 3.1]);
   // a beam between two points has four sides and two ends
   assert.equal(beamFaces([0, 0, 0], [10, 0, 5], 1, 1, { side: [1, 2, 3] }).length, 6);
+});
+
+test("terminal draw: slot numbers move no other label and are left out where they would overlap one", () => {
+  const sc = exampleScene({ extras: true });
+  const texts = (cam, slots) => {
+    const { ctx, ops } = stateContext();
+    const view = flyView(ctx, cam);
+    queueScene(view, sc, { slots });
+    view.render();
+    return { view, texts: ops.filter((o) => o.op === "fillText").map((o) => ({ text: o.text, x: o.x, y: o.y })) };
+  };
+  const cams = [
+    ["fit", fitCamera()],
+    ["35°", new FlyCamera({ target: [750, 415], distance: 2000, yaw: toRad(90), pitch: toRad(35) })],
+    ["Block A", new FlyCamera({ target: [330, 470], distance: 700, yaw: toRad(90), pitch: toRad(70) })],
+  ];
+  for (const [name, cam] of cams) {
+    const without = texts(cam, false).texts, { view, texts: all } = texts(cam, true);
+    const named = all.filter((t) => !/^\d+$/.test(t.text));
+    assert.deepEqual(named, without, `${name}: the vehicle and block labels stay where they are`);
+    // every slot number is drawn at its anchor (none is moved up out of order)
+    const g = sc.yards["yard-a"], k = mm(1), ha = (g.bays * 6.9) / 2, ht = (g.rows * 2.9) / 2;
+    const rows = Array.from({ length: g.rows }, (_, j) => view.project(g.center[0] - (ha + 2.2) * k, g.center[1] + (-ht + 2.9 * (j + 0.5)) * k, 0));
+    const drawn = rows.map((p, j) => all.find((t) => t.text === String(j + 1) && Math.abs(t.y - (p[1] - 5)) < 0.5 && Math.abs(t.x - (p[0] - 3)) < 12));
+    if (name === "Block A") assert.ok(drawn.every(Boolean), `${name}: rows 1-${g.rows} at their places: ${JSON.stringify(all.filter((t) => /^\d$/.test(t.text)))}`);
+    else assert.ok(drawn.every((t) => !t), `${name}: no row numbers where rows are closer than 20 px`);
+  }
 });
 
 test("terminal draw: close flyover cameras over the yard, the runway and the crane give thin strokes", () => {

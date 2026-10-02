@@ -1170,7 +1170,9 @@ export function drawYardGround(view, geometry, { name = "" } = {}) {
 }
 
 /**
- * Bay and row numbers (1-based) of a yard block, where a bay is at least 20 px on the screen.
+ * Bay and row numbers (1-based) of a yard block, where a bay (for the row numbers: a row) is at
+ * least 20 px on the screen. They are placed after the other labels (but the selected container's)
+ * and left out where they would overlap one.
  * @param {import("../core/view.js").View} view
  * @param {{center: number[], angle: number, bays: number, rows: number}} geometry
  */
@@ -1180,7 +1182,7 @@ export function drawYardLabels(view, geometry) {
   const m1 = view.m(1), bays = g.bays || 1, rows = g.rows || 1;
   const L = new Local(view, g.center, g.angle || 0);
   const ha = (bays * BAY_M) / 2, ht = (rows * ROW_M) / 2;
-  const style = { size: 10, background: OVERLAY.label, padding: 3 };
+  const style = { size: 10, background: OVERLAY.label, padding: 3, order: 25, optional: true };
   for (let i = 0; i < bays; i++) {
     const a = -ha + BAY_M * (i + 0.5);
     const p = L.xy(a, -ht - 1.8);
@@ -1189,7 +1191,7 @@ export function drawYardLabels(view, geometry) {
   for (let j = 0; j < rows; j++) {
     const t = -ht + ROW_M * (j + 0.5);
     const p = L.xy(-ha - 2.2, t);
-    if (cssPx(view, scaleAt(view, p[0], p[1], 0), BAY_M * m1) >= 20) view.label([p[0], p[1], 0], String(j + 1), style);
+    if (cssPx(view, scaleAt(view, p[0], p[1], 0), ROW_M * m1) >= 20) view.label([p[0], p[1], 0], String(j + 1), style);
   }
 }
 

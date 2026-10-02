@@ -555,11 +555,14 @@ export class View {
   }
 
   /**
-   * Text label anchored at a layout point (overlay layer).
+   * Text label anchored at a layout point (overlay layer). Labels are placed in overlay order
+   * (`order`, default 0); one that would overlap a label placed before moves up, or with `optional`
+   * is left out.
    * @param {number[]} at [x, y, z] in mm
    * @param {string | string[]} text one or more lines
    * @param {{size?: number, color?: string, background?: string, anchor?: "center" | "bottom" | "left",
-   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string}} [style]
+   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string,
+   *   order?: number, optional?: boolean}} [style]
    */
   label(at, text, style = {}) {
     const p = this.project(at[0], at[1], at[2] || 0);
@@ -670,8 +673,9 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   else if (style.anchor === "right") x = p[0] - w - 6 * px;
   x = Math.max(2, Math.min(W - w - 2, x));
   y = Math.max(2, Math.min(H - h - 2, y));
-  // avoid labels drawn before: move up (or down at the top edge) until free
+  // avoid labels drawn before: move up (or down at the top edge) until free; an optional one is left out
   const hits = (yy) => placed.find((r) => x < r.x + r.w + 2 && x + w + 2 > r.x && yy < r.y + r.h + 2 && yy + h + 2 > r.y);
+  if (style.optional && hits(y)) return;
   for (let i = 0, r = hits(y); r && i < 8; i++, r = hits(y)) {
     const up = r.y - h - 3;
     y = up >= 2 ? up : r.y + r.h + 3;

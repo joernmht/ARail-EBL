@@ -341,3 +341,17 @@ test("dimmed colours are remembered per view and darkness, and stay right when t
   for (let i = 0; i < 10000; i++) view.dim(`rgb(${i % 256},${(i >> 8) % 256},7)`);
   assert.ok(view._dimmed.get(view.darkness).size <= 4097);
 });
+
+test("labels: an overlapping label moves up, an optional one is left out", () => {
+  const { ctx, ops } = stateContext();
+  const view = topView(ctx);
+  view.label([0, 0, 0], "optional", { optional: true, order: 1 });
+  view.label([0, 0, 0], "first");
+  view.label([0, 0, 0], "second");
+  view.label([100, 0, 0], "free", { optional: true, order: 1 });
+  view.render();
+  const at = Object.fromEntries(ops.filter((o) => o.op === "fillText").map((o) => [o.text, o.y]));
+  assert.deepEqual(Object.keys(at).sort(), ["first", "free", "second"], "the optional label over the others is left out");
+  assert.ok(at.second < at.first - 10, "the second one moves up");
+  assert.equal(at.free, at.first, "an optional label where it is free stays at its anchor");
+});
