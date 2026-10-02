@@ -67,7 +67,8 @@ serves wagons, trucks and yard blocks (not barges), stacks up to its *Stacks up 
 goes back to its parking place after 20 s without work.
 
 Each move is given to one machine when it is requested: a crane that reaches both places (the one
-with the fewest moves waiting), otherwise the reach stacker nearest to the container. A machine
+with the fewest moves waiting), otherwise the reach stacker nearest to the container; it is given
+to another one if that machine no longer reaches the places (see below). A machine
 does one move at a time. When it is free, it takes the oldest of its moves whose carriers are both
 there and stand still; the Crane jobs table says what the others wait for (*waiting for KT 52
 Duisburg · wagon 1*).
@@ -235,7 +236,10 @@ wagons are not found, get closer or print the largest tags that fit (23 mm in H0
   wagon. A wagon within 8 mm and 15° of a `track` object is put on its centre line, so draw the
   real loading tracks as tracks.
 - **Pushed while it is handled**: a crane or reach stacker that is no longer above the wagon's spot
-  goes back up and aims again where the wagon stands now.
+  goes back up and aims again where the wagon stands now. A move to or from a wagon pushed out of
+  the crane's reach goes to the reach stacker if it can do it, or waits (*waiting for W3 to come
+  within reach*); a crane already carrying a container to such a wagon holds it until the wagon is
+  back within reach.
 - **Picked up and put down elsewhere** (more than 30 mm away): the wagon starts afresh at its new
   place instead of gliding there.
 - **Another image source** (a new photo, the live camera): all model wagons are lost until their
@@ -323,10 +327,16 @@ under them stay selectable. Then:
 
 Every place a move uses must lie within a crane's reach or be served by a reach stacker; otherwise
 the move is refused with *No crane or reach stacker can move it from … to …*. The infrastructure
-can be changed at any time: a moved or resized crane keeps what it is doing, a deleted crane or
-reach stacker takes its moves with it (they are cancelled; a container on its spreader is put back
-where it came from, or else at its target or another free place), and the containers of a yard
-cell that disappears leave the terminal.
+can be changed at any time:
+
+- A moved or resized crane keeps what it is doing, and a crane or reach stacker aims again where a
+  moved yard block, track or quay is now.
+- A move whose crane no longer reaches its places goes to another crane or the reach stacker if
+  one can do it; otherwise it fails with the same reason. A crane that already carries the
+  container holds it until its target is back within reach.
+- A deleted crane or reach stacker takes its moves with it (they are cancelled; a container on its
+  spreader is put back where it came from, or else at its target or another free place).
+- The containers of a yard cell that disappears leave the terminal.
 
 ## Layout file
 

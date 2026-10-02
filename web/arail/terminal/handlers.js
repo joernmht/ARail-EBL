@@ -118,6 +118,19 @@ class HandlerBase {
     this._plan(this._first, host);
   }
 
+  /**
+   * The objects changed: if the container's place is no longer where the handler heads for or
+   * works at, plan the current phase again from where it is (at its next step).
+   */
+  replan(host) {
+    if (this._move && this._aimOff(host)) this._stalled = true;
+  }
+
+  /** Is the container's place more than ON_TARGET_M away from where the current phase aims? */
+  _aimOff(host) {
+    return false;
+  }
+
   /** Stop working on the move (cancelled before the lock, or failed); the handler stays where it is. */
   abort() {
     this._move = null;
@@ -130,7 +143,8 @@ class HandlerBase {
 
   /**
    * Advance by `dt` simulated seconds. The handler holds still (and the move says what it waits
-   * for) while the source is not available before the lock, or the target before setting down.
+   * for) while the source is not available before the lock, or the target before setting down, or
+   * while the target is out of its reach after the lock.
    */
   step(dt, host) {
     if (!this._move) {
@@ -141,13 +155,13 @@ class HandlerBase {
     for (let guard = 0; guard < 16 && this._move; guard++) {
       const wait = this._waitingFor(host);
       if (wait) {
-        this._move.waiting = `waiting for ${host._carrierLabel(wait)}`;
+        this._move.waiting = wait;
         this._stalled = true;
         return;
       }
       if (this._stalled) {
-        // the carrier may have moved meanwhile (a model wagon): plan the phase again from here (a
-        // handler that is no longer over its container goes back, see `_plan`)
+        // the carrier may have moved meanwhile (a model wagon, an edited object): plan the phase
+        // again from here (a handler that is no longer over its container goes back, see `_plan`)
         this._stalled = false;
         this._move.waiting = null;
         this._plan(this.phase, host);
@@ -162,14 +176,18 @@ class HandlerBase {
     }
   }
 
-  /** The carrier (id) the handler has to wait for in its phase, or null. */
+  /** What the handler has to wait for in its phase ("waiting for …"), or null. */
   _waitingFor(host) {
-    const m = this._move;
-    if (this._beforeLock()) {
-      return host._available(m.from.carrier) ? null : m.from.carrier;
-    }
-    if (this.phase === "set-down") return host._available(m.to.carrier) ? null : m.to.carrier;
+    const m = this._move, label = (id) => host._carrierLabel(id);
+    if (this._beforeLock()) return host._available(m.from.carrier) ? null : `waiting for ${label(m.from.carrier)}`;
+    if (this.phase === "set-down" && !host._available(m.to.carrier)) return `waiting for ${label(m.to.carrier)}`;
+    if ((this.phase === "carry" || this.phase === "set-down") && !this._reaches(host, m.to)) return `waiting for ${label(m.to.carrier)} to come within reach`;
     return null;
+  }
+
+  /** Can it reach the container's place at slot `ref` (true while the place is unknown)? */
+  _reaches(host, ref) {
+    return true;
   }
 
   /** Begin a phase: ease from the current values to `to` over `T` seconds. */
@@ -240,6 +258,20 @@ export class CraneHandler extends HandlerBase {
   /** Layout point (mm) of the trolley. */
   point() {
     return this.object.fromLocal(this.s, this.t);
+  }
+
+  _reaches(host, ref) {
+    const box = host._slotBox(ref, this.load);
+    return !box || this.object.reaches(box.center);
+  }
+
+  _aimOff(host) {
+    const box = host._slotBox(this._beforeLock() ? this._move.from : this._move.to, this.load);
+    const aim = this.phase === "travel" || this.phase === "carry" ? [this._to.s, this._to.t]
+      : this.phase === "lower" || this.phase === "lock" || this.phase === "set-down" ? [this.s, this.t] : null;
+    if (!box || !aim) return false;
+    const [s, t] = this._local(box.center);
+    return Math.hypot(s - aim[0], t - aim[1]) > host.mm(ON_TARGET_M);
   }
 
   /** Is the trolley away from above the container's place at `ref` (that it reaches)? */
@@ -400,6 +432,15 @@ export class StackerHandler extends HandlerBase {
     const side = (this.x - box.center[0]) * n[0] + (this.y - box.center[1]) * n[1] < 0 ? -1 : 1;
     const d = host.mm(REACH_STACKER.approach_m) * side;
     return { x: box.center[0] + n[0] * d, y: box.center[1] + n[1] * d, heading: Math.atan2(-n[1] * side, -n[0] * side) };
+  }
+
+  _aimOff(host) {
+    const box = host._slotBox(this._leg === "source" ? this._move.from : this._move.to, this.load);
+    const aim = this.phase === "drive" ? [this._to.x, this._to.y]
+      : this.phase === "lower" || this.phase === "lock" || this.phase === "set-down" ? [this.x, this.y] : null;
+    if (!box || !aim) return false;
+    const to = this._stand(host, box);
+    return Math.hypot(to.x - aim[0], to.y - aim[1]) > host.mm(ON_TARGET_M);
   }
 
   /** Is it away from where it stands to handle the container's place at `ref`? */

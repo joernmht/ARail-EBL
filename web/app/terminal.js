@@ -539,7 +539,7 @@ export class TerminalPanel {
 
   _jobState(m, hd) {
     if (m.state === "queued") return m.waiting || "queued";
-    if (m.state === "active") return (hd?.move === m.id && PHASE_LABELS[hd.phase]) || "active";
+    if (m.state === "active") return m.waiting || (hd?.move === m.id && PHASE_LABELS[hd.phase]) || "active";
     if (m.state === "failed") return `failed: ${m.reason}`;
     return m.state;
   }

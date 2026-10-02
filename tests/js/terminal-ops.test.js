@@ -922,6 +922,61 @@ function aim(sim) {
   return out;
 }
 
+test("moves are given to another handler, or fail, when their crane no longer reaches their places", () => {
+  const { world, sim, log } = setup();
+  const toBarge = sim.request(ID(1), { carrier: "B1" }).move, toYard = sim.request(ID(2), { carrier: "yard-a" }).move;
+  assert.deepEqual([toBarge.handler, toYard.handler], ["crane-1", "crane-1"]);
+  // the crane is narrowed so that it reaches neither track
+  world.getObject("crane-1").set({ depth_mm: 100, outreach_m: 0 });
+  world.step(0.01);
+  assert.equal(toBarge.state, "failed");
+  assert.match(toBarge.reason, /^No crane or reach stacker can move it from K 1 · wagon 1 · bay 1 to Barge 1/);
+  assert.deepEqual(names(log, (e) => e.p.move === toBarge), ["move.queued", "move.failed"]);
+  assert.equal(toYard.handler, "reach-stacker-1");
+  const shots = aim(sim);
+  assert.equal(finish(world, sim, log, toYard).carrier, "yard-a");
+  assert.ok(shots.every((s) => s.handler === "reach-stacker-1" && s.off < 0.01), JSON.stringify(shots));
+  assert.deepEqual(sim.inventory.check(), []);
+});
+
+test("a crane aims again where an edited object is now; after the lock it waits for a target out of its reach", () => {
+  // before the lock: the place moves out of reach, the move goes to the reach stacker and starts again
+  let { world, sim, log } = setup();
+  let m = sim.request(ID(1), { carrier: "yard-a", bay: 5, row: 0 }).move;
+  runUntil(world, () => sim.handlers.get("crane-1").phase === "travel");
+  world.getObject("track-1").set({ points: [[-250, 1228.7], [1750, 1228.7]] });
+  world.step(0.01);
+  assert.equal(m.handler, "reach-stacker-1");
+  assert.equal(sim.handlers.get("crane-1").busy, false);
+  let shots = aim(sim);
+  runUntil(world, () => m.state === "done");
+  assert.deepEqual(names(log, (e) => e.p.move === m), ["move.queued", "move.started", "move.started", "container.moved", "move.finished"]);
+  assert.ok(shots.every((s) => s.off < 0.01), JSON.stringify(shots));
+  // after the lock: the yard moves 100 mm (within reach) while the crane carries, then while it sets down
+  for (const phase of ["carry", "set-down"]) {
+    ({ world, sim, log } = setup());
+    m = sim.request(ID(1), { carrier: "yard-a", bay: 5, row: 0 }).move;
+    runUntil(world, () => sim.handlers.get("crane-1").phase === phase);
+    world.getObject("yard-a").set({ position: [850, 467.8] });
+    shots = aim(sim);
+    finish(world, sim, log, m);
+    assert.ok(shots.length === 1 && shots[0].off < 0.01, `${phase}: ${JSON.stringify(shots)}`);
+  }
+  // after the lock: the yard moves out of reach; the crane holds the container until it is back
+  ({ world, sim, log } = setup());
+  m = sim.request(ID(1), { carrier: "yard-a", bay: 5, row: 0 }).move;
+  runUntil(world, () => sim.handlers.get("crane-1").phase === "carry");
+  world.getObject("yard-a").set({ position: [750, 967.8] });
+  run(world, 60);
+  assert.equal(m.state, "active");
+  assert.equal(m.waiting, "waiting for Block A to come within reach");
+  assert.equal(sim.inventory.get(ID(1)).handler, "crane-1");
+  world.getObject("yard-a").set({ position: [750, 467.8] });
+  shots = aim(sim);
+  finish(world, sim, log, m);
+  assert.ok(shots.length === 1 && shots[0].off < 0.01, JSON.stringify(shots));
+});
+
 /* ---------------------------------------------------------------- model wagons pushed while handled */
 
 /** A model wagon (W3, sggrss80) for the test layout: `put(x, y)` shows its tags there for `frames` frames. */
@@ -984,6 +1039,18 @@ test("a crane and a reach stacker follow a model wagon that was pushed while the
   w.push(1500, 1560, y, 0.01);
   finish(world, sim, log, m);
   assert.ok(shots.length === 1 && shots[0].off < 0.01, JSON.stringify(shots));
+  // pushed out of the crane's reach before its move starts: the reach stacker takes the move
+  ({ world, sim, log } = setup());
+  w = modelWagon(world, sim);
+  w.put(700, y, 15);
+  const busy = sim.request(ID(1), { carrier: "yard-a" }).move;
+  m = sim.request(ID(5), { carrier: "W3" }).move;
+  assert.equal(m.handler, "crane-1");
+  w.push(700, 1500, y);
+  world.step(0.01);
+  assert.equal(m.handler, "reach-stacker-1");
+  finish(world, sim, log, busy);
+  finish(world, sim, log, m);
 });
 
 /* ---------------------------------------------------------------- drawing */

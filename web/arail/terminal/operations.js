@@ -9,9 +9,10 @@
  *
  * The infrastructure comes from the layout's objects (container yards, gantry cranes, reach
  * stackers, tracks, quays, truck lanes) and is read again whenever objects, the marker map or the
- * scale change. Every move is queued for one handler (assigned when it is requested) and starts
- * when the handler is free and both carriers are available; the terminal's random numbers (fill,
- * delivered containers) come from its own stream, so other simulations are not affected.
+ * scale change. Every move is queued for one handler (assigned when it is requested, and again
+ * when that handler no longer reaches its places) and starts when the handler is free and both
+ * carriers are available; the terminal's random numbers (fill, delivered containers) come from its
+ * own stream, so other simulations are not affected.
  * @module arail/terminal/operations
  */
 import { Simulation } from "../core/simulation.js";
@@ -43,6 +44,8 @@ const TRUCK_LEAVE_S = 3;
 const TOPS_M = { loco: 4.2, truck: 3.8, barge: 6.0 };
 /** Target kinds of `request(…, {kind})`, with the word for messages. */
 const KINDS = { wagon: "wagon", truck: "truck", barge: "barge", yard: "yard block" };
+/** Carrier kinds a reach stacker serves. */
+const GROUND = new Set(["wagon", "truck", "yard"]);
 /** Words for the end states of a move. */
 const ENDED = { done: "finished", failed: "failed", cancelled: "been cancelled" };
 
@@ -316,6 +319,10 @@ export class TerminalSimulation extends Simulation {
     this._tracks = objects.filter((o) => o.type === "track" && o.geometry).map((o) => ({ points: o.geometry.points, lengths: o.geometry.lengths }));
     for (const v of [...this._trains, ...this._barges]) v.setPath(this._pathOf(v), this);
     this._changed();
+
+    // moves whose handler no longer reaches their places; busy handlers aim again where things are now
+    for (const m of [...this._pending]) if (this._recheckable(m)) this._recheck(m);
+    for (const h of this.handlers.values()) h.replan(this);
   }
 
   /** The handler of an object, keeping the state of the old one. */
@@ -753,20 +760,58 @@ export class TerminalSimulation extends Simulation {
     if (!a || !b) return null;
     let best = null, bestLoad = Infinity;
     for (const h of this.handlers.values()) {
-      if (h.kind !== "crane" || !h.object.geometry || !h.object.reaches(a) || !h.object.reaches(b)) continue;
+      if (h.kind !== "crane" || !this._handles(h, src, dst, a, b, ref.tier)) continue;
       const load = this._pending.reduce((n, m) => n + (m.handler === h.id), 0);
       if (load < bestLoad) [best, bestLoad] = [h.id, load];
     }
     if (best) return best;
-    const ground = new Set(["wagon", "truck", "yard"]);
-    if (!ground.has(src.kind) || !ground.has(dst.kind)) return null;
     let bestDist = Infinity;
     for (const h of this.handlers.values()) {
-      if (h.kind !== "reach-stacker" || !h.object.geometry || !(ref.tier < h.tiers)) continue;
+      if (h.kind !== "reach-stacker" || !this._handles(h, src, dst, a, b, ref.tier)) continue;
       const d = dist2(h.center, a);
       if (d < bestDist - 1e-9) [best, bestDist] = [h.id, d];
     }
     return best;
+  }
+
+  /**
+   * Can handler `h` move a container from slot centre `a` on `src` to slot centre `b` (tier `tier`)
+   * on `dst`? A crane must reach both; a reach stacker serves wagons, trucks and yards up to its tiers.
+   */
+  _handles(h, src, dst, a, b, tier) {
+    if (!h.object.geometry) return false;
+    if (h.kind === "crane") return h.object.reaches(a) && h.object.reaches(b);
+    return GROUND.has(src.kind) && GROUND.has(dst.kind) && tier < h.tiers;
+  }
+
+  /** May a move still be given to another handler (queued, or active before the lock)? */
+  _recheckable(m) {
+    return m.state === "queued" || (m.state === "active" && !!this.handlers.get(m.handler)?.cancellable);
+  }
+
+  /**
+   * A move whose handler no longer serves it (a crane was moved or resized, a place was moved out
+   * of its reach) goes to a handler that serves it, starting again if it was active. If there is
+   * none, it waits while it involves a model wagon (which may be pushed back), else it fails. A
+   * place whose pose is unknown is left alone: the move waits for its carrier anyway.
+   */
+  _recheck(m) {
+    const c = this.inventory.get(m.container), h = this.handlers.get(m.handler);
+    const src = this.carrier(c?.at?.carrier), dst = this.carrier(m.to.carrier);
+    const a = this._slotPoint(src, c?.at, c?.size), b = this._slotPoint(dst, m.to, c?.size);
+    if (!a || !b || (h && this._handles(h, src, dst, a, b, m.to.tier))) return;
+    const next = this._assign(c, m.to);
+    const wagon = [src, dst].find((x) => x.number != null && this._wagons.get(x.number) === x);
+    if (m.state === "active") h.abort();
+    if (!next && !wagon) {
+      this._endMove(m, "failed", this._noHandler(c, m.to));
+      this._emit(EV.moveFailed, { move: m });
+      return;
+    }
+    m.state = "queued";
+    m.startedAt = null;
+    if (next) m.handler = next;
+    else m.waiting = `waiting for ${wagon.label} to come within reach`;
   }
 
   /** Layout point (mm) of a slot centre where its carrier will be handled (a coming train: at its stop). */
@@ -905,12 +950,17 @@ export class TerminalSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- handlers (host interface) */
 
-  /** Start queued moves on idle handlers; note what queued moves wait for (§5.4). */
+  /**
+   * Start queued moves on idle handlers; note what queued moves wait for (§5.4). A move whose
+   * carriers are both available is checked against its handler's reach first (a model wagon may
+   * have been pushed away).
+   */
   _dispatch() {
-    for (const m of this._pending) {
-      if (m.state !== "queued") continue;
+    for (const m of [...this._pending]) {
+      if (!this._recheckable(m)) continue;
       const wait = [m.from.carrier, m.to.carrier].find((id) => !this.carrier(id)?.available);
-      m.waiting = wait ? `waiting for ${this._carrierLabel(wait)}` : null;
+      if (m.state === "queued") m.waiting = wait ? `waiting for ${this._carrierLabel(wait)}` : null;
+      if (!wait) this._recheck(m);
     }
     for (const h of this.handlers.values()) {
       if (h.busy || !h.object.geometry) continue;
