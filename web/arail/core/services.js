@@ -6,7 +6,9 @@
  * manually or by scenarios. Disruptions change the behaviour through their effects
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
  * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
- * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any.
+ * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
+ * (`services.planner`, the operations simulation) can take over rail docks: they are in mode
+ * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
  *
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
  * `vehicle.departing` (doors close) -> `vehicle.departed`; or `vehicle.cancelled`.
@@ -46,6 +48,24 @@ export class ServiceManager {
     this.world = world;
     /** @type {Map<string, {dock: object, vehicle: Vehicle | null, timer: number, heldFor: number, mode: string, manual: object | null}>} */
     this.docks = new Map();
+    /**
+     * Something that runs the trains of some docks itself (the operations simulation), or null:
+     * `{claims(dock) -> boolean, statusLines?(area) -> string[]}`.
+     */
+    this.planner = null;
+  }
+
+  /** The mode of a dock while no control system is connected: "plan" where a planner runs the trains, else "timetable". */
+  baseMode(dock) {
+    return dock.kind === "rail" && this.planner?.claims?.(dock) ? "plan" : "timetable";
+  }
+
+  /** Apply the base modes again (after a planner came or went); docks under the control system keep it. */
+  refreshModes() {
+    for (const st of this.docks.values()) {
+      if (st.mode === "feed") continue;
+      st.mode = this.baseMode(st.dock);
+    }
   }
 
   reset() {
@@ -78,7 +98,8 @@ export class ServiceManager {
           st.dock = dock;
           if (st.vehicle) st.vehicle.dock = dock;
         } else {
-          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * dock.headway, heldFor: 0, mode: "timetable", manual: null });
+          const mode = dock.kind === "rail" && this.world.trains?.active ? "feed" : this.baseMode(dock);
+          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * dock.headway, heldFor: 0, mode, manual: null });
         }
       }
     }
@@ -115,7 +136,8 @@ export class ServiceManager {
   }
 
   /**
-   * Send a vehicle to a dock now.
+   * Send a vehicle to a dock now. Docks of the control system are never chosen, docks of a planner
+   * (mode "plan") only by the planner (`source: "plan"`).
    * @param {string} target dock ID, stop area ID or object ID (a free dock is chosen)
    * @param {{line?: string, source?: string, side?: number}} [options]
    * @returns {Vehicle | null}
@@ -125,7 +147,8 @@ export class ServiceManager {
       (st) => st.dock.id === target || st.dock.area.id === target || st.dock.area.owner?.id === target,
     );
     if (options.side) candidates = candidates.filter((st) => st.dock.side === options.side);
-    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed");
+    // docks of the control system and of a planner take no vehicles from others
+    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || options.source === "plan"));
     if (!free.length) return null;
     const st = this.rng.pick(free);
     return this._dispatch(st, { source: options.source || "manual", line: options.line });

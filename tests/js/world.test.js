@@ -30,7 +30,7 @@ function run(world, seconds, dtReal = 0.05) {
 }
 
 test("example layouts are valid and load completely", () => {
-  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json", "web/layouts/container-terminal.json"]) {
+  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json", "web/layouts/container-terminal.json", "web/layouts/ebl-operations.json"]) {
     const json = readJSON(file);
     assert.deepEqual(validateLayout(json, registry), [], file);
     const world = createWorld(json);

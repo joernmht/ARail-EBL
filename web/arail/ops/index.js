@@ -24,3 +24,23 @@ export {
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
   WEEKDAYS, WEEKDAY_LABELS,
 } from "./util.js";
+export { Depot } from "./depot.js";
+export { OperationsSimulation, opsOf, CREW_COLOURS } from "./simulation.js";
+export { OPS_DISRUPTIONS } from "./disruptions.js";
+
+import { Depot } from "./depot.js";
+import { OperationsSimulation } from "./simulation.js";
+import { OPS_DISRUPTIONS } from "./disruptions.js";
+
+/**
+ * Register the depot object (palette group Transport), the "operations" simulation and its
+ * disruption types.
+ * @param {import("../core/registry.js").Registry} registry
+ * @returns {import("../core/registry.js").Registry}
+ */
+export function registerOperations(registry) {
+  registry.registerObject(Depot);
+  registry.registerSimulation(OperationsSimulation);
+  for (const def of OPS_DISRUPTIONS) registry.registerDisruption(def);
+  return registry;
+}

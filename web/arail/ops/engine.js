@@ -935,7 +935,7 @@ export class OpsEngine {
     if (repeat) this.stat("repeatFailures", 1);
     this.incident({ type: "hard_failure", cause: u.failCause, ref: u.id });
     if (repeat) this.incident({ type: "repeat_failure", cause: "repeat", ref: u.id });
-    this.log(`${u.id} failed ${where} (${trip.lineName} ${hhmm(trip.dep)})${repeat ? ", again soon after the workshop" : ""}`, "failure");
+    this.log(`${u.id} failed ${where}${trip ? ` (${trip.lineName} ${hhmm(trip.dep)})` : ""}${repeat ? ", again soon after the workshop" : ""}`, "failure");
     this.emit("unit.failed", { unit: u, trip });
     for (const r of [u.rotation, u.queued]) if (r?.unit === u) r.unit = null;
     u.rotation = null;

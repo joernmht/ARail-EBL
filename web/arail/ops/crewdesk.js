@@ -207,8 +207,8 @@ export class CrewDesk {
     const minutes = p.commute.mode === "train" ? k.car_min : p.commute.minutes;
     plan.leaveAt = target - minutes + late;
     plan.arriveAt = target + late;
-    // live: a person living on the layout walks there and reports the arrival; a check in case they never arrive
-    if (e.live && p.home.kind === "layout") e.queue.push(duty.signOn + 120, "crew.noshow", { person: p.id, duty: duty.id }, 4);
+    // live: a person who walks on the layout reports the arrival; a check in case they never arrive
+    if (e.live && p.home.kind === "layout" && p.commute.mode === "walk") e.queue.push(duty.signOn + 120, "crew.noshow", { person: p.id, duty: duty.id }, 4);
     else e.queue.push(plan.arriveAt, "crew.arrive", { person: p.id, duty: duty.id }, 3);
   }
 
@@ -318,7 +318,7 @@ export class CrewDesk {
           duty.commute.arriveAt = earliest;
           duty.commute.leaveAt = now + CALL_MIN;
           duty.commute.trip = null;
-          if (!(e.live && p.home.kind === "layout")) e.queue.push(earliest, "crew.arrive", { person: p.id, duty: duty.id }, 3);
+          if (!(e.live && p.home.kind === "layout" && p.commute.mode === "walk")) e.queue.push(earliest, "crew.arrive", { person: p.id, duty: duty.id }, 3);
         }
         return true;
       }
@@ -347,7 +347,9 @@ export class CrewDesk {
     duty.state = "planned";
     duty.commute = { ...(reserve?.commute || {}), person: p.id };
     const at = duty.commute.arriveAt;
-    if (at != null && !(this.e.live && p.home.kind === "layout") && !duty.commute.trip) this.e.queue.push(Math.max(this.e.now, at), "crew.arrive", { person: p.id, duty: duty.id }, 3);
+    if (at != null && !(this.e.live && p.home.kind === "layout" && p.commute.mode === "walk") && !duty.commute.trip) {
+      this.e.queue.push(Math.max(this.e.now, at), "crew.arrive", { person: p.id, duty: duty.id }, 3);
+    }
   }
 
   /** Live: a person reached the crew base; which duty they came for. */
@@ -437,19 +439,30 @@ export class CrewDesk {
     if (!pi) return { person: null, ready: -Infinity, cause: null, substitute: false };
     const now = this.e.now;
     const first = pi.trips.indexOf(trip) === 0 || !pi.trips.slice(0, pi.trips.indexOf(trip)).some((t) => t.state === "done" || t.state === "running");
+    // somebody already called for this piece is on the way
+    const called = pi.pending ? this.people.get(pi.pending.person) : null;
+    if (called && called.present && !called.onTrip && called.reservedFor === pi) return { person: called, ready: pi.pending.ready, cause: null, substitute: true };
     const planned = pi.person ? this.people.get(pi.person) : null;
     if (planned && (!first || this._withinDuty(planned, pi, trip))) {
       const ready = this._readyFor(planned, pi, trip);
       if (ready <= Math.max(now, trip.dep)) return { person: planned, ready, cause: null, substitute: false };
-      // late: somebody else may be at the train earlier (only at the start of a piece)
-      const sub = first ? this._substitute(trip, pi, role) : null;
-      if (sub && sub.ready < ready) return { person: sub.p, ready: sub.ready, cause: null, substitute: true };
+      // late by more than a few minutes: somebody else may be at the train clearly earlier (only at the start of a piece)
+      const slack = this.model.dispatch.short_wait_min;
+      const sub = first && ready > trip.dep + slack ? this._substitute(trip, pi, role) : null;
+      if (sub && sub.ready < ready - 3) return this._call(pi, sub);
       const cause = planned.present && planned.today ? this._lateCause(planned) : "commute";
       return { person: Number.isFinite(ready) ? planned : null, ready, cause, substitute: false };
     }
     const sub = first ? this._substitute(trip, pi, role) : null;
-    if (sub) return { person: sub.p, ready: sub.ready, cause: null, substitute: true };
+    if (sub) return this._call(pi, sub);
     return { person: null, ready: Infinity, cause: planned ? "rest" : pi.duty.absentCause || "crew", substitute: false };
+  }
+
+  /** The dispatcher calls somebody for a piece: they set off now and are kept for it. */
+  _call(pi, sub) {
+    pi.pending = { person: sub.p.id, ready: sub.ready };
+    sub.p.reservedFor = pi;
+    return { person: sub.p, ready: sub.ready, cause: null, substitute: true };
   }
 
   /** Cause of a present person being late for their next piece: the delay of their previous train. */
@@ -471,6 +484,8 @@ export class CrewDesk {
     let best = null;
     for (const p of this.people.values()) {
       if (p.role !== role || !p.present || !p.today || p.onTrip || !p.lines.has(trip.line) || pi.person === p.id) continue;
+      // called for another piece that has not left yet
+      if (p.reservedFor && p.reservedFor !== pi && p.reservedFor.state === "planned") continue;
       const ready = this._readyFor(p, pi, trip, { called: true });
       if (ready > trip.dep + this.model.dispatch.wait_crew_min) continue;
       // free until this piece is done (and the way to the next one)
@@ -496,6 +511,11 @@ export class CrewDesk {
    */
   depart(trip, role, p, substitute) {
     const pi = trip.pieces[role];
+    if (pi.pending) {
+      const called = this.people.get(pi.pending.person);
+      if (called?.reservedFor === pi) called.reservedFor = null;
+      pi.pending = null;
+    }
     if (substitute && pi.person !== p.id) {
       const old = pi.person ? this.people.get(pi.person) : null;
       this._give(pi, p);
@@ -554,6 +574,11 @@ export class CrewDesk {
   pieceDropped(pi) {
     if (pi.state === "done" || pi.state === "cancelled") return;
     pi.state = "cancelled";
+    if (pi.pending) {
+      const called = this.people.get(pi.pending.person);
+      if (called?.reservedFor === pi) called.reservedFor = null;
+      pi.pending = null;
+    }
     const p = pi.person ? this.people.get(pi.person) : null;
     if (!p) return;
     p.work.delete(pi);

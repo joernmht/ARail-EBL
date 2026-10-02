@@ -16,7 +16,7 @@ import { CAUSE_LABELS } from "./contracts.js";
 import { DAY } from "./util.js";
 
 /**
- * Key figures: [key, label, unit, better] (better: "low" or "high", for highlighting); the values come
+ * Key figures: [key, label, unit, better] (better: "low" or "high", for highlighting; "" where neither is better); the values come
  * from `kpis()`.
  */
 export const KPIS = [
@@ -34,13 +34,13 @@ export const KPIS = [
   ["lateReleases", "Workshop jobs late", "", "low"],
   ["sickCalls", "Sick calls", "", "low"],
   ["dutiesUncovered", "Duties nobody could take", "", "low"],
-  ["coveredByReserve", "Taken over by stand-by", "", "high"],
+  ["coveredByReserve", "Taken over by stand-by", "", ""],
   ["coveredByCallIn", "Called in on a free day", "", "low"],
   ["lateSignOns", "Late to work", "", "low"],
   ["overtimeH", "Overtime (late trains)", "h", "low"],
   ["weekOvertimeH", "Hours above contracts", "h", "low"],
   ["restConflicts", "Rest time cut short", "", "low"],
-  ["drivers", "Drivers employed", "", "low"],
+  ["drivers", "Drivers employed", "", ""],
   ["penaltyAuthority", "Penalties to the authority", "€", "low"],
   ["crewCost", "Crew cost", "€", "low"],
   ["workshopCost", "Workshop cost", "€", "low"],

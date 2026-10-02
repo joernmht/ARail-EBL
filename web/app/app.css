@@ -174,9 +174,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .tabs button { flex: 1 0 auto; border: 0; background: none; padding: 12px 8px 10px; font-weight: 500; font-size: .92rem; color: var(--text-2); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
 .tabs button:hover { color: var(--text); }
 .tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); } /* same weight: the tabs must not shift */
-/* phones: the six tabs fit into 390 px (narrower screens scroll the tabs, the selected one is kept in view) */
-@media (max-width: 640px) { .tabs button { padding-inline: 5px; font-size: .85rem; } }
-@container panel (max-width: 480px) { .tabs button { padding-inline: 5px; font-size: .85rem; } }
+/* phones: the six tabs fit into 390 px (the Terminal or the Operations tab, as the layout has them; narrower
+   screens scroll the tabs, the selected one is kept in view) */
+@media (max-width: 640px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
+@container panel (max-width: 480px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
 .section { display: grid; gap: 8px; }
 .section > h2 { margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
@@ -325,6 +326,74 @@ details[open] summary { margin-bottom: 8px; }
 .term-jobs td.state.active { color: var(--accent-ink); font-weight: 500; }
 .term-jobs td.state.failed { color: var(--danger); font-weight: 500; }
 .term-jobs tr[data-state="done"] td, .term-jobs tr[data-state="cancelled"] td { color: var(--text-2); }
+
+/* rail operations (Operations panel): stat tiles, the log of the day, tables of the fleet, workshop and
+   crews, and the comparison (key figures, cancelled trains per day, net penalties per party) */
+.ops-body { display: grid; gap: 18px; }
+.ops-headline { justify-content: space-between; }
+.ops-status { margin: 0; font-size: .86rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* large screens: a wider panel for the tables and the comparison, while the Operations tab is shown */
+.ops-widen { display: none; }
+@media (min-width: 1000px) {
+  .ops-widen { display: inline-flex; }
+  .main.wide { grid-template-columns: minmax(0, 1fr) min(820px, 58vw); }
+}
+/* six views: three in a row in the narrow panel, all in one row where there is room */
+.ops-views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ops-views button { border-right: 1px solid var(--line); border-top: 1px solid var(--line); margin-top: -1px; padding-inline: 6px; }
+.ops-views button:nth-child(3n) { border-right: 0; }
+@container panel (min-width: 560px) {
+  .ops-views { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ops-views button:nth-child(3n) { border-right: 1px solid var(--line); }
+  .ops-views button:last-child { border-right: 0; }
+}
+.ops-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ops-tiles .tile { display: grid; align-content: start; gap: 1px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); min-width: 0; }
+.ops-tiles .label { font-size: .72rem; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: .05em; }
+.ops-tiles .value { font-size: 1.35rem; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.ops-tiles .note { font-size: .76rem; color: var(--text-2); }
+.ops-log { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; border-radius: 4px; }
+.ops-log ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: .84rem; }
+.ops-log li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding: 2px 0 2px 8px; border-left: 3px solid var(--line); }
+.ops-log time { font-family: var(--mono); font-size: .78rem; color: var(--text-2); padding-top: 1px; }
+.ops-log li.cancel, .ops-log li.failure { border-left-color: var(--danger); }
+.ops-log li.defect, .ops-log li.fleet, .ops-log li.crew { border-left-color: var(--warn); }
+.ops-log li.workshop { border-left-color: var(--accent); }
+.ops-table td { white-space: normal; min-width: 4em; }
+.ops-table td.num, .ops-table td.nowrap { white-space: nowrap; }
+.ops-table td.num { text-align: right; }
+.ops-table thead th:not(:first-child) { white-space: normal; }
+.ops-table tbody th { text-transform: none; letter-spacing: 0; font-size: .82rem; color: var(--text); background: none; }
+.ops-table tbody th.wrap { white-space: normal; min-width: 9em; }
+.ops-table th small, .ops-table td .sub { color: var(--text-2); font-weight: 400; }
+.ops-table td .sub { display: block; font-size: .76rem; }
+/* many setups: the table scrolls sideways, the key figures and parties stay in view */
+.ops-compare tbody th, .ops-compare thead th:first-child, .ops-net tbody th, .ops-net thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: inset -1px 0 0 var(--line); }
+.ops-compare thead th:first-child, .ops-net thead th:first-child { background: var(--surface-2); }
+.ops-compare tbody th { white-space: normal; min-width: 8.5em; }
+@container panel (min-width: 560px) { .ops-compare tbody th { width: 15em; } }
+.ops-compare thead th:not(:first-child), .ops-net thead th:not(:first-child) { min-width: 6.5em; text-align: right; }
+.ops-compare td strong { font-weight: 700; }
+.ops-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: var(--radius); }
+.ops-choices legend { padding: 0 4px; font-size: .8rem; color: var(--text-2); }
+.ops-progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.ops-progress > i { display: block; height: 100%; background: var(--accent); }
+.ops-results h3 { margin: 6px 0 0; font-size: .86rem; font-weight: 500; }
+.ops-sparks { display: grid; gap: 4px; }
+.spark-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, 150px) 2.6em; gap: 10px; align-items: center; font-size: .82rem; }
+.spark-row .name { line-height: 1.25; }
+.spark-row b { font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+.spark { display: block; width: 100%; height: 28px; overflow: visible; }
+.spark rect { fill: var(--accent); }
+.spark .base { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+/* net penalties: a bar around zero in each cell (pays to the left, receives to the right); the sign is in the number */
+.ops-net .dbar { position: relative; display: inline-block; width: 84px; height: 12px; margin-right: 8px; vertical-align: -1px; background: linear-gradient(var(--text-2), var(--text-2)) center / 1px 100% no-repeat; }
+.ops-net .dbar i { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; }
+.ops-net .dbar i.pays { background: var(--warn); }
+.ops-net .dbar i.gets { background: var(--accent); }
+@media (forced-colors: active) {
+  .ops-net .dbar i, .spark rect, .ops-progress > i { forced-color-adjust: none; background: CanvasText; fill: CanvasText; }
+}
 
 /* survey a video (Build panel, marker map) */
 .survey { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid var(--line); }

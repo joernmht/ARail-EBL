@@ -36,6 +36,7 @@ import { PassengerSimulation } from "./sims/passengers.js";
 import { TownSimulation } from "./sims/town.js";
 import { TrafficSimulation } from "./sims/traffic.js";
 import { registerTerminal } from "./terminal/index.js";
+import { registerOperations } from "./ops/index.js";
 
 export const VERSION = "0.1.0";
 
@@ -99,7 +100,7 @@ export {
   CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
   KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
-  WEEKDAYS, WEEKDAY_LABELS,
+  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, registerOperations,
 } from "./ops/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
@@ -119,6 +120,7 @@ export function registerBuiltins(registry) {
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);
   registerTerminal(registry);
+  registerOperations(registry);
   return registry;
 }
 
