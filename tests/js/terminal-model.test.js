@@ -214,13 +214,33 @@ test("canPlace: reserved cells are free only for the move that reserved them", (
   assert.deepEqual(inv.check(), []);
 });
 
+test("reserve: another move's cells are never taken over", () => {
+  const inv = makeInventory();
+  assert.equal(inv.reserve({ carrier: "Y", bay: 0, row: 0 }, "40", "M1"), null);
+  assert.equal(inv.reserve({ carrier: "Y", bay: 3, row: 0 }, "20", "M2"), null);
+  // M2 asks for a cell of M1: refused, M2 keeps its old reservation
+  assert.equal(inv.reserve({ carrier: "Y", bay: 1, row: 0 }, "20", "M2"), "Reserved for move M1");
+  assert.equal(inv.reservedBy("Y", 0, 1, 0), "M1");
+  assert.equal(inv.reservedBy("Y", 0, 3, 0), "M2");
+  inv.release("M2");
+  assert.equal(inv.reservedBy("Y", 0, 1, 0), "M1", "releasing M2 leaves M1's cells alone");
+  assert.equal(inv.reservedBy("Y", 0, 3, 0), null);
+  // a move may reserve over its own cells again
+  assert.equal(inv.reserve({ carrier: "Y", bay: 1, row: 0 }, "20", "M1"), null);
+  assert.equal(inv.reservedBy("Y", 0, 0, 0), null);
+  assert.equal(inv.reservedBy("Y", 0, 1, 0), "M1");
+  assert.equal(inv.reserve(null, "20", "M3"), "No place");
+  assert.equal(inv.reserve({ carrier: "Y", bay: 2, row: 0 }, "20", null), "No move");
+  assert.deepEqual(inv.check(), []);
+});
+
 test("canPlace: nothing is stacked on a container that is about to be moved", () => {
   const inv = makeInventory();
   const below = put(inv, "20", { carrier: "Y", bay: 0, row: 0 });
   below.move = "M7";
-  const reason = inv.canPlace(box("20"), { carrier: "Y", bay: 0, row: 0, tier: 1 });
-  assert.ok(reason.startsWith("Nothing to stand on"), reason);
-  assert.match(reason, /being moved \(M7\)/);
+  assert.equal(inv.canPlace(box("20"), { carrier: "Y", bay: 0, row: 0, tier: 1 }), "Nothing to stand on");
+  below.move = null;
+  assert.equal(inv.canPlace(box("20"), { carrier: "Y", bay: 0, row: 0, tier: 1 }), null);
 });
 
 /* ---------------------------------------------------------------- canLift, moves in flight */
@@ -282,6 +302,30 @@ test("detach and attach: a container on a handler fills no cell", () => {
   assert.deepEqual(inv.check(), []);
 });
 
+test("detach and attach: nothing leaves from under a reserved place", () => {
+  const inv = makeInventory();
+  const a = put(inv, "20", { carrier: "Y", bay: 0, row: 0 });
+  const above = { carrier: "Y", bay: 0, row: 0, tier: 1 };
+  assert.equal(inv.canPlace(box("20"), above), null);
+  inv.reserve(above, "20", "M2");
+  const before = inv.snapshot();
+  const blocked = "Blocked by move M2, which sets a container on top: wait for it";
+  assert.equal(inv.canLift(a), blocked);
+  assert.equal(inv.detach(a.id, "crane-1"), blocked);
+  assert.equal(inv.attach(a.id, { carrier: "Y", bay: 3, row: 1 }), blocked);
+  assert.deepEqual(a.at, { carrier: "Y", bay: 0, row: 0, tier: 0 });
+  assert.equal(a.handler, null);
+  assert.deepEqual(inv.snapshot(), before, "nothing changed");
+  assert.deepEqual(inv.check(), []);
+  // a 40 is blocked by a reservation over either of its bays
+  const forty = put(inv, "40", { carrier: "Y", bay: 2, row: 0 });
+  inv.reserve({ carrier: "Y", bay: 2, row: 0, tier: 1 }, "40", "M3");
+  assert.equal(inv.detach(forty.id, "rs"), "Blocked by move M3, which sets a container on top: wait for it");
+  inv.release("M2");
+  assert.equal(inv.detach(a.id, "crane-1"), null);
+  assert.deepEqual(inv.check(), []);
+});
+
 test("remove and removeCarrier: containers and reservations go with them", () => {
   const inv = makeInventory();
   const a = put(inv, "20", { carrier: "T", bay: 0 });
@@ -339,8 +383,19 @@ test("top, heightBelow and on: stacks with high cubes", () => {
 
 /* ---------------------------------------------------------------- consistency */
 
-test("check() stays empty through 300 random adds, lifts, set-downs, reservations and removals", () => {
-  const rng = createRng(17);
+test("check() stays empty through random adds, lifts, set-downs, reservations and removals", () => {
+  let totals = { placed: 0, lifted: 0, set: 0 };
+  for (let seed = 1; seed <= 50; seed++) {
+    const counts = randomOperations(seed, 120);
+    for (const k in totals) totals[k] += counts[k];
+  }
+  const { placed, lifted, set } = totals;
+  assert.ok(placed > 400 && lifted > 300 && set > 200, `placed ${placed}, lifted ${lifted}, set down ${set}`);
+});
+
+/** `steps` random inventory operations from `createRng(seed)`; check() must stay empty after each. */
+function randomOperations(seed, steps) {
+  const rng = createRng(seed);
   const inv = makeInventory();
   const ids = [...inv.carriers.keys()];
   const sizes = ["20", "20", "40", "45"];
@@ -349,7 +404,7 @@ test("check() stays empty through 300 random adds, lifts, set-downs, reservation
     return { carrier: c.id, bay: rng.int(c.bays + 1), row: rng.int(c.rows), tier: rng.int(c.tiers + 1) };
   };
   let moves = 0, placed = 0, lifted = 0, set = 0;
-  for (let i = 0; i < 300; i++) {
+  for (let i = 0; i < steps; i++) {
     const stored = [...inv.containers.values()].filter((c) => c.at), carried = [...inv.containers.values()].filter((c) => c.handler);
     const op = rng.int(5);
     if (op === 0 || !inv.containers.size) {
@@ -364,7 +419,7 @@ test("check() stays empty through 300 random adds, lifts, set-downs, reservation
       const free = inv.freeSlots(c, rng.pick(ids));
       if (!free.length) continue;
       const id = `M${++moves}`;
-      inv.reserve(rng.pick(free), c.size, id);
+      assert.equal(inv.reserve(rng.pick(free), c.size, id), null);
       c.move = id;
       assert.equal(inv.detach(c.id, "crane"), null);
       lifted++;
@@ -378,14 +433,15 @@ test("check() stays empty through 300 random adds, lifts, set-downs, reservation
       const c = rng.pick(stored);
       if (!inv.canLift(c)) inv.remove(c.id);
     } else if (op === 4 && stored.length) {
-      const c = rng.pick(stored), ref = randomRef();
+      const c = rng.pick(stored), ref = randomRef(), was = c.at;
       const reason = inv.attach(c.id, ref);
       if (reason === null) assert.deepEqual(c.at, { carrier: ref.carrier, bay: ref.bay, row: ref.row, tier: ref.tier });
+      else assert.equal(c.at, was, "a refused attach changes nothing");
     }
-    assert.deepEqual(inv.check(), [], `after operation ${i}`);
+    assert.deepEqual(inv.check(), [], `seed ${seed}, after operation ${i}`);
   }
-  assert.ok(placed > 20 && lifted > 15 && set > 10, `placed ${placed}, lifted ${lifted}, set down ${set}`);
-});
+  return { placed, lifted, set };
+}
 
 test("check() reports every kind of inconsistency", () => {
   const fresh = () => {
@@ -434,6 +490,13 @@ test("check() reports every kind of inconsistency", () => {
   expect(s.inv, /marked as reserved for move M8, which has no such reservation/);
   s.inv._reserved.get("Y").delete("0:1:3");
   expect(s.inv, /move M8: its reserved cell Y 0:1:3 is not marked/);
+  s = fresh();
+  // a place reserved on a container that gets a move afterwards
+  s.inv.carriers.set("Y2", new Carrier({ id: "Y2", type: yardType({ bays: 2, rows: 1, tiers: 2 }) }));
+  const d = put(s.inv, "20", { carrier: "Y2", bay: 0, row: 0 });
+  s.inv.reserve({ carrier: "Y2", bay: 0, row: 0, tier: 1 }, "20", "M9");
+  d.move = "M10";
+  expect(s.inv, new RegExp(`move M9: its reserved place Y2 bay 1 row 1 tier 2 stands on ${d.id}, which is being moved \\(M10\\)`));
   s = fresh();
   s.inv.containers.set("other", s.c);
   expect(s.inv, /other: listed under a different id/);

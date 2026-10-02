@@ -404,8 +404,9 @@ export class Inventory {
    * Can `container` be placed at `ref`? Checked as if it were lifted first (its own cells count as
    * free). The rules and their reasons, in this order: the place is known; it takes the size; the
    * bay, row and tier exist; the cells are free and not reserved by another move; a container
-   * above tier 0 stands on one container of the same span (which is not about to be moved); it is
-   * not where the container already is.
+   * above tier 0 stands on one container of the same span; it is not where the container already
+   * is. A container with a move counts as gone for rule 7 ("Nothing to stand on"): nothing is
+   * stacked on what is about to be lifted.
    * @param {Container | string} container the container or its id
    * @param {import("./types.js").SlotRef} ref
    * @returns {string | null} the reason, or null
@@ -434,7 +435,7 @@ export class Inventory {
       if (below.every((c) => !c)) return "Nothing to stand on";
       const first = below[0];
       if (!first || below.some((c) => c !== first) || first.at.bay !== bay || first.bays !== n) return `A ${box.size} ft container needs a ${n === 1 ? "20" : "40/45"} ft container below`;
-      if (first.move != null) return `Nothing to stand on: ${first.id} below is being moved (${first.move})`;
+      if (first.move != null) return "Nothing to stand on";
     }
     const cur = box.at;
     if (cur && cur.carrier === at.carrier && cur.bay === bay && (cur.row ?? 0) === row && (cur.tier ?? 0) === tier) return "Already there";
@@ -452,16 +453,7 @@ export class Inventory {
     if (!box) return container == null ? "No container" : `Unknown container "${container}"`;
     if (!box.at || this.get(box.id) !== box) return `${box.id} is not on a carrier`;
     if (box.move != null) return `${box.id} is already being moved (${box.move})`;
-    const { carrier, row, bay, tier } = box.at;
-    for (let k = 0; k < box.bays; k++) {
-      const above = this.at(carrier, row, bay + k, tier + 1);
-      if (above) return `Blocked by ${above.id} on top: move that first`;
-    }
-    for (let k = 0; k < box.bays; k++) {
-      const moveId = this.reservedBy(carrier, row, bay + k, tier + 1);
-      if (moveId != null) return `Blocked by move ${moveId}, which sets a container on top: wait for it`;
-    }
-    return null;
+    return this._blockedAbove(box);
   }
 
   /**
@@ -487,13 +479,20 @@ export class Inventory {
 
   /**
    * Reserve the cells of a slot for a move (a move holds one reservation; reserving again moves it).
+   * Callers check `canPlace` first; a cell reserved by another move is never taken over.
    * @param {import("./types.js").SlotRef} ref
    * @param {"20"|"40"|"45"} size size of the container that will be set down there
    * @param {string} moveId
+   * @returns {string | null} the reason if nothing was reserved (the move keeps its old reservation)
    */
   reserve(ref, size, moveId) {
     const at = slotOf(ref);
-    if (!at || moveId == null) return;
+    if (!at) return "No place";
+    if (moveId == null) return "No move";
+    for (let k = 0; k < baysOf(size); k++) {
+      const other = this.reservedBy(at.carrier, at.row, at.bay + k, at.tier);
+      if (other != null && other !== moveId) return `Reserved for move ${other}`;
+    }
     this.release(moveId);
     let cells = this._reserved.get(at.carrier);
     if (!cells) this._reserved.set(at.carrier, (cells = new Map()));
@@ -504,6 +503,7 @@ export class Inventory {
       keys.push(key);
     }
     this._reservations.set(moveId, { at, size: String(size), keys });
+    return null;
   }
 
   /** Release the reservation of a move (nothing happens if it has none). */
@@ -525,14 +525,15 @@ export class Inventory {
 
   /**
    * A handler takes a container off its carrier: its cells become free, `handler` is set.
-   * @returns {string | null} the reason if it is not stored or something stands on it
+   * @returns {string | null} the reason if it is not stored, or something stands or is reserved on it
+   *   (nothing changes then)
    */
   detach(containerId, handlerId) {
     const c = this.get(containerId);
     if (!c) return `Unknown container "${containerId}"`;
     if (!c.at) return `${c.id} is not on a carrier`;
-    const blocked = this._onTop(c);
-    if (blocked) return `Blocked by ${blocked.id} on top: move that first`;
+    const blocked = this._blockedAbove(c);
+    if (blocked) return blocked;
     this._vacate(c);
     c.at = null;
     c.handler = handlerId ?? null;
@@ -541,7 +542,8 @@ export class Inventory {
 
   /**
    * A handler sets a container down at `ref` (as `canPlace`; the reservation of its move stays
-   * until the move releases it). A stored container is moved there directly.
+   * until the move releases it). A stored container is moved there directly if nothing stands or
+   * is reserved on it.
    * @returns {string | null} the reason on failure (nothing changes then)
    */
   attach(containerId, ref) {
@@ -549,8 +551,8 @@ export class Inventory {
     if (!c) return `Unknown container "${containerId}"`;
     const reason = this.canPlace(c, ref);
     if (reason) return reason;
-    const blocked = c.at ? this._onTop(c) : null;
-    if (blocked) return `Blocked by ${blocked.id} on top: move that first`;
+    const blocked = c.at ? this._blockedAbove(c) : null;
+    if (blocked) return blocked;
     this._vacate(c);
     c.handler = null;
     this._occupy(c, slotOf(ref));
@@ -632,6 +634,8 @@ export class Inventory {
       const holder = r.keys.map((key) => this._cells.get(r.at.carrier)?.get(key)).find((id) => id != null);
       const support = holder == null ? this._supportProblem(r.at, baysOf(r.size), null) : null;
       if (support) problems.push(`move ${moveId}: its reserved place ${where(r.at)}: ${support}`);
+      const base = holder == null && !support && r.at.tier > 0 ? this.at(r.at.carrier, r.at.row, r.at.bay, r.at.tier - 1) : null;
+      if (base && base.move != null && base.move !== moveId) problems.push(`move ${moveId}: its reserved place ${where(r.at)} stands on ${base.id}, which is being moved (${base.move})`);
     }
     for (const [carrierId, cells] of this._reserved) {
       for (const [key, moveId] of cells) {
@@ -688,11 +692,19 @@ export class Inventory {
     return null;
   }
 
-  /** A container stored on top of `c`, or null. */
-  _onTop(c) {
+  /**
+   * Why the stored container `c` cannot leave its slot: a container stored on top of it, or a move
+   * that reserved a place on top of it (null = nothing above).
+   */
+  _blockedAbove(c) {
+    const { carrier, row, bay, tier } = slotOf(c.at);
     for (let k = 0; k < c.bays; k++) {
-      const above = this.at(c.at.carrier, c.at.row ?? 0, c.at.bay + k, (c.at.tier ?? 0) + 1);
-      if (above) return above;
+      const above = this.at(carrier, row, bay + k, tier + 1);
+      if (above) return `Blocked by ${above.id} on top: move that first`;
+    }
+    for (let k = 0; k < c.bays; k++) {
+      const moveId = this.reservedBy(carrier, row, bay + k, tier + 1);
+      if (moveId != null) return `Blocked by move ${moveId}, which sets a container on top: wait for it`;
     }
     return null;
   }
