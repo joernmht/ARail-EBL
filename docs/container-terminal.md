@@ -121,8 +121,9 @@ family of its own**, set in `markers.rolling` of the layout:
   in the choice. Still, set the layout's marker type explicitly when you use rolling-stock tags:
   the validation asks for it.
 
-The ArUco 4x4 and MIP 36h12 families are refused for rolling stock on an ArUco Original layout
-(they are misread as ArUco Original), and so is the layout's own family.
+For rolling stock on an ArUco Original layout, the validation reports the ArUco 4x4 and MIP 36h12
+families (they are misread as ArUco Original), and it reports the layout's own family. The layout
+still loads, but use AprilTag 36h11.
 
 ### One tag per container spot
 
@@ -205,6 +206,11 @@ from a low angle (about 30°), switch to the flyover (F) and look at the wagon. 
 its track. If it appears shifted away from where the camera stood, the height is too low; towards
 it, too high. The View panel shows the height the tags are lifted to.
 
+Do this check on a piece of track that has no `track` object yet, e.g. before you draw the loading
+tracks: a wagon within 8 mm of a `track` object is snapped onto it, and that hides an error of a
+few millimetres. Or look at the wagon from two opposite sides, again with no `track` object
+nearby: with the right height, it stands in the same place in both photos.
+
 ### Camera distance
 
 A 20 mm tag has cells of 2.5 mm, against 4.3 mm for a 30 mm ArUco Original marker. With 1280×720
@@ -240,8 +246,8 @@ wagons, with their deck card and tags.
 
 You can also put a tag only on spot 0 of each wagon: cut the deck card behind its first tag (or
 cover the others). No setting changes: the IDs stay the same (W1 = 0, W2 = 4, …), and the panel
-shows *1/3* tags for an Sgns. One tag gives the heading less precisely (the position of the far
-end of an Sgns moves by about 2.5 mm per degree), and a hand over that single tag hides the wagon.
+shows *1/3* tags for an Sgns. One tag gives the heading less precisely (the far container spot
+of an Sgns moves by about 2.5 mm per degree, the far end of the wagon by about 3 mm), and a hand over that single tag hides the wagon.
 One tag per spot is the better choice where wagons are handled often.
 
 ### Surveying with tagged wagons on the layout

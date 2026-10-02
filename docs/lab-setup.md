@@ -53,7 +53,7 @@ Use the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (or `
 
 Model wagons for the [container terminal](container-terminal.md#markers-on-rolling-stock) carry a **deck card**: a strip of paper as wide as a container, with one AprilTag 36h11 tag (20 mm) on each container spot, laid or glued on the spigots. Any one visible tag tells ARail which wagon it is and where it stands; its containers are virtual and drawn on it.
 
-- **IDs**: tag ID = (wagon − 1) × 4 + spot, with spot 0 at the wagon's A end. W1 (an Sgns with 3 spots) has the IDs 0, 1, 2; W2 has 4, 5, 6; an Sggrss as W3 has 8 to 11. They do not clash with the layout's marker IDs.
+- **IDs**: tag ID = (wagon − 1) × stride + spot (`markers.rolling.stride`, 4 by default), with spot 0 at the wagon's A end. W1 (an Sgns with 3 spots) has the IDs 0, 1, 2; W2 has 4, 5, 6; an Sggrss as W3 has 8 to 11. They do not clash with the layout's marker IDs.
 - **How many**: one tag per container spot, 3 per Sgns, 2 per Lgns, 4 per Sggrss. A tag on spot 0 alone works too, with a less precise heading.
 - **Printing**: the marker sheet page in the mode *Deck cards for model wagons* (`markers/?kind=rolling`): wagon numbers, wagon type, tag size and scale; print at 100 % and check the 100 mm bar.
 - **Height**: measure the height of the cards above the surface the layout markers lie on and enter it as `markers.rolling.height_mm` (about 15–18 mm in H0); an error of 1 mm moves the wagon by about 1 mm.

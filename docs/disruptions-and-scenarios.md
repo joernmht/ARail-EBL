@@ -74,13 +74,17 @@ The [container terminal](container-terminal.md) listens to `emit` steps named `t
 {
   "id": "morning-shift",
   "name": "Morning shift",
+  "description": "KT 52 arrives on loading track 2; trucks collect and deliver; the crane works train, barge and yard.",
   "steps": [
     { "at": 0, "set": { "speed": 10 } },
+    { "at": 0, "message": "Morning shift: KT 52 is due on loading track 2." },
     { "at": 0, "emit": { "name": "terminal.request.call", "payload": { "visit": "KT52" } } },
     { "at": 5, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "pickup" } } },
     { "at": 6, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100002 4", "to": { "kind": "truck" } } } },
+    { "at": 8, "emit": { "name": "terminal.request.move", "payload": { "container": "ARLU 100001 9", "to": { "carrier": "yard-a" } } } },
     { "at": 10, "emit": { "name": "terminal.request.move", "payload": { "container": "EBLU 300003 2", "to": { "carrier": "KT52/1" } } } },
-    { "at": 12, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "delivery", "size": "40" } } }
+    { "at": 12, "emit": { "name": "terminal.request.truck", "payload": { "purpose": "delivery", "size": "40" } } },
+    { "at": 400, "message": "The delivery truck's container can go to KT 52 or to the yard: choose it in the Terminal panel." }
   ]
 }
 ```
