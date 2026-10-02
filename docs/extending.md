@@ -258,6 +258,19 @@ arail.registry.registerSimulation(Pigeons);
 
 Optional: `stats(areaId)` returns `{count, mood, inPerMin, outPerMin}` for the departure board, `clear()` removes everything simulated (Simulate → Clear passengers), and `roadUsers()` returns the vehicles a simulation drives on the streets (`[{vehicle, front, rear, dir, approach}]`): line buses and the road traffic keep their distance to them and give way at junctions.
 
+### Checking the settings
+
+A simulation with settings beyond `params` (lists, references to objects) can check them: `validateLayout(json, registry)` calls `static validate(config, layout)` for every entry of the layout's `simulations` whose class has one. `config` is the entry as written in the file, `layout` the normalized layout. Return a list of problems in plain words; each one is reported with the prefix `simulations[<i>] (<type>): `. A `validate` that throws is reported as `could not be checked (<message>)`.
+
+```js
+static validate(config, layout) {
+  const ids = new Set(layout.objects.map((o) => o.id));
+  return (config.stops || []).filter((id) => !ids.has(id)).map((id) => `no stop "${id}"`);
+}
+```
+
+The app shows these problems like all others when a layout is imported; the tests check the example layouts with them.
+
 ### Handing people over at stops
 
 The passenger simulation can take care of the people of other simulations at stops, so that waiting, boarding and alighting look the same for everybody (the town simulation does this):
@@ -298,6 +311,7 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.events` | the event bus: `on(name, fn)` returns an unsubscribe function |
 | `world.time`, `speed`, `paused`, `demand`, `scale`, `rng` | simulation state; use `world.rng` (or `createRng(seed)`) for reproducible randomness, never `Math.random` |
 | `world.settings` | display settings: `labels`, `trails`, `showTracks`, `feedVehicles`, `lighting` (day/night lighting on), `peopleColour` (`auto`, `purpose`, `mood`) |
+| `terminalOf(world)` | the world's [container terminal](#the-container-terminal), or null (a function of the API) |
 
 ### Time of day
 
@@ -328,6 +342,13 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `object.added`, `object.changed`, `object.removed` | `{object}` |
 | `layout.loaded` | `{layout}` |
 | `feed.status`, `feed.trains` | `{status, error}`, `{trains}` |
+| `terminal.visit.arriving`, `arrived`, `departing`, `departed` | `{terminal, visit}` |
+| `terminal.move.queued`, `started`, `finished`, `failed`, `cancelled` | `{terminal, move}` |
+| `terminal.container.moved`, `added`, `left` | `{terminal, container, from, to, move}`, `{terminal, container, carrier}`, `{terminal, container, visit, reason}` |
+| `terminal.wagon.seen`, `terminal.wagon.lost` | `{terminal, carrier}` (model wagons) |
+| `terminal.reset` | `{terminal}` |
+
+The terminal also listens to `terminal.request.*` events (from scenario `emit` steps), see [Container terminal](container-terminal.md#scenario-requests). The names are exported as `TERMINAL_EVENTS` and `TERMINAL_REQUESTS`.
 
 Please prefix your own events with your plugin's name.
 
@@ -344,6 +365,49 @@ for (const [id, m] of Object.entries(state.moving)) {
 ```
 
 A marker on a vehicle lies above the layout plane, so `center` is shifted away from the camera by its height. `world.map.locked`, `lock()`, `unlock()`, `setMoving(ids)` and `detectionCodes(codes)` are the marker map's side of Keep positions and the Moving markers field.
+
+Moving markers are the older way. Model wagons of the [container terminal](container-terminal.md#markers-on-rolling-stock) carry **rolling-stock tags** instead: a marker family of their own (`markers.rolling`), read in the same pass as the layout's markers and lifted to their height above the layout:
+
+```js
+const detector = new MarkerDetector({ dictionary: "ARUCO", codes: 50, rolling: { dictionary: "APRILTAG_36h11", codes: 64, maxBitErrors: 3 } });
+const { markers, rolling } = detector.detectAll(imageData, scale);  // two ID ranges: ID -> image corners
+const state = tracker.update(markers, time, camera);
+const tags = tracker.liftMarkers(rolling, camera, (id) => terminal.tagHeight(id));
+// tags[id]: {corners, center: [x, y] (mm, on the plane at its height), heading (rad), edge_mm, z}
+terminal.observe(tags, time, { still });
+```
+
+- `detectAll` finds the candidate squares once. A square that reads as a code in both families keeps the reading with fewer bit errors relative to the code length (a tie goes to the layout marker); per family and ID the reading with the fewest bit errors is kept. Rolling-stock tags never correct more than `maxBitErrors` bit errors.
+- While the layout's dictionary is detected automatically (`dictionary: null` or `"auto"`), the rolling family is not a candidate, and the votes count only the reads that are left after the comparison with the rolling-stock reads: tags can never decide the layout's marker type. Without `rolling` (null, the default) detection and voting are exactly as before, and `detect()` returns what it always did (it is `detectAll(...).markers`).
+- Each key of the `rolling` option falls back to its own default: `codes` (64) and `maxBitErrors` (3) when they are missing or invalid, `dictionary` (`"APRILTAG_36h11"`) when it is missing (an unknown dictionary throws, as for the layout's markers). `detector.rolling` is the family's entry (or null; it is not in `detector.dictionaries`), `detector.rollingOptions` the option as given.
+- `liftMarkers(detections, camera, height)` finds each tag on the plane `height` mm above the layout (a number, or a function of the tag ID) with the homography K·[a₁, a₂, a₃ + h·n] of the smoothed pose, so the result matches what the `View` draws. It returns `{}` while there is no pose. `edge_mm` is the tag's edge on that plane: about `size_mm` when the height is right. The geometry is in `core/geometry.js`: `planeHomography(H, K, height)` and `cameraCentre(pose)`.
+- `RollingStock` (`terminal/rolling.js`) turns the lifted tags into wagons (`decodeTag(id, stride)` → `{number, slot}`, `encodeTag`), with the size check, outliers, smoothing, snapping to tracks and the states moving, standing, held and lost (`ROLLING_DEFAULTS`).
+
+## The container terminal
+
+The [container terminal](container-terminal.md) is a built-in simulation (`terminal/`), registered with the built-ins by `registerTerminal(registry)`; its public names are exported from `web/arail/index.js`. Plugins and scripts reach it with `terminalOf(world)`:
+
+```js
+const terminal = arail.terminalOf(world);
+const { ok, refused } = terminal.targets("ARLU 100001 9");      // where it can go now, and why not elsewhere
+const r = terminal.request("ARLU 100001 9", { carrier: "yard-a" });   // {move} or {error}
+world.events.on("terminal.move.finished", ({ move }) => console.log(move.id, terminal.describe(move.to)));
+```
+
+| Member | Purpose |
+| --- | --- |
+| `request(containerId, to)` | queue a move: `to` is a place `{carrier, bay, row?, tier?}`, `{carrier}` or `{kind}` (`wagon`, `truck`, `barge`, `yard`); returns `{move}` or `{error}` |
+| `targets(containerId)` | `{ok: [{at, carrier, kind, label, handler}], refused: [{carrier, label, reason}]}` |
+| `cancel(moveId)`, `call(visitId)`, `depart(visitId, {force})` | null when done, else the reason |
+| `addTrain({track, wagons, load})`, `addBarge({quay, length_m, load})`, `sendTruck({purpose, size})` | `{visit}` or `{error}` |
+| `unload(visitId, {to})`, `load(visitId, {from})` | queue all moves that can go: `{moves, refused}` |
+| `reset()`, `snapshot()`, `saveStart()` | back to the start state; the current state as a configuration; make it the start state |
+| `inventory` | the containers and carriers (`get(id)`, `on(carrierId)`, `canPlace`, `canLift`, `freeSlots`, `check()`) |
+| `visits`, `handlers`, `moves`, `carriers()`, `describe(ref)` | the state, read-only |
+| `observe(tags, time, {still})`, `tagHeight(id)`, `rollingConfig()`, `forgetObservations()` | model wagons from rolling-stock tags |
+| `boxes(view)`, `targetBoxes(id, view)`, `carrierAt(point, view)`, `highlight` | picking and highlighting for the app (`pickBoxes` in `terminal/draw.js`) |
+
+Runtime state never enters the object specs or the layout: `toJSON()` returns the configured start state. The terminal's random numbers (the yard fill, delivered containers) come from a stream of their own, so adding a terminal changes nothing in the other simulations. The five infrastructure types are ordinary objects in the palette group *Terminal*; none of them is a stop, a street or a bus lane.
 
 ## Disruption types
 

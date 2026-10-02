@@ -17,11 +17,11 @@ The type is set per layout (Build → Layout → Marker type, or `markers.dictio
 
 ### Choosing a dictionary and the IDs
 
-- Use **one dictionary** for everything: the stickers you survey and the markers you track live with. A layout reads one dictionary, so markers of another type are not used.
+- **One marker type for the layout, another for rolling stock.** All stickers on the layout (the ones you survey and the ones you track live with) are of one type: a layout reads one type for its marker map, so markers of another type are not used. Tags on model wagons for the [container terminal](container-terminal.md) are of another type, AprilTag 36h11, with IDs of their own (`markers.rolling`, see [below](#markers-on-model-wagons)). Set the layout's type explicitly then, not "detect automatically".
 - Use the IDs **0 … N−1**, with N just covering the stickers you printed, and set `markers.codes` = N in the layout file (e.g. 55 for IDs 0–54; `arail-survey` reads it from the layout, or takes `--codes`). Fewer codes lie further apart, so more misread bits can be corrected safely, and a misread marker cannot turn into an ID beyond N.
 - **4×4** markers have the largest cells for a given size: the most robust choice when markers are small in the image. ArUco Original (used in the EBL) has 5×5 bits but codes that lie close together; 6×6 and 7×7 only pay off when you need many IDs.
 - After the survey, **lock the marker map** (Keep positions, or the `markers.locked` that `arail-survey` writes). This makes live tracking robust: it then uses only the measured stickers, reads only the codes up to the highest of their IDs (more bit errors corrected), ignores unknown and misread IDs, and drops markers whose position does not fit (moved stickers, misreads) as outliers. Stickers with IDs above the highest one in the map should then not lie on the layout.
-- Markers on vehicles (e.g. container wagons) are *moving markers* (Build → Marker map → Moving markers, `markers.moving`): never part of the map. Give them IDs below `markers.codes`, and do not place objects relative to them.
+- Markers on vehicles can also be *moving markers* (Build → Marker map → Moving markers, `markers.moving`): markers of the layout's own type that are never part of the map. Give them IDs below `markers.codes`, and do not place objects relative to them. This is the older way: the tracker reports where such a marker is seen (View panel, `tracker.state.moving`), but no built-in simulation uses it. For model wagons use rolling-stock tags.
 
 ### Size
 
@@ -32,6 +32,7 @@ The marker size is the edge of the black square, without the white border. Marke
 | 30 mm | 1.4 m |
 | 40 mm | 1.8 m |
 | 60 mm | 2.8 m |
+| 20 mm AprilTag 36h11 (tags on model wagons) | 0.8 m |
 
 Photos are analysed at up to 2000 pixels, so they reach further. Markers of different sizes can be mixed: set the common size in `markers.size_mm` and exceptions in `markers.sizes_mm`, e.g. `{"7": 60}`.
 
@@ -47,6 +48,19 @@ Use the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (or `
 - Add **more markers across the layout**, about every 30–40 cm in both directions, at least wherever the camera will look. Tracking needs at least one known marker in view; two or three make it steady. In the lab's test video, frames without any marker in view could not be registered, so coverage matters more than anything else.
 - Keep them where trains do not cover them, and **not all on one line**: markers spread in both directions let ARail estimate the camera's focal length.
 - Use each ID once per layout.
+
+## Markers on model wagons
+
+Model wagons for the [container terminal](container-terminal.md#markers-on-rolling-stock) carry a **deck card**: a strip of paper as wide as a container, with one AprilTag 36h11 tag (20 mm) on each container spot, laid or glued on the spigots. Any one visible tag tells ARail which wagon it is and where it stands; its containers are virtual and drawn on it.
+
+- **IDs**: tag ID = (wagon − 1) × 4 + spot, with spot 0 at the wagon's A end. W1 (an Sgns with 3 spots) has the IDs 0, 1, 2; W2 has 4, 5, 6; an Sggrss as W3 has 8 to 11. They do not clash with the layout's marker IDs.
+- **How many**: one tag per container spot, 3 per Sgns, 2 per Lgns, 4 per Sggrss. A tag on spot 0 alone works too, with a less precise heading.
+- **Printing**: the marker sheet page in the mode *Deck cards for model wagons* (`markers/?kind=rolling`): wagon numbers, wagon type, tag size and scale; print at 100 % and check the 100 mm bar.
+- **Height**: measure the height of the cards above the surface the layout markers lie on and enter it as `markers.rolling.height_mm` (about 15–18 mm in H0); an error of 1 mm moves the wagon by about 1 mm.
+- **Distance**: 20 mm tags are read up to about 0.8 m from a 1280×720 camera. Keep the camera closer over the loading tracks than elsewhere.
+- **Surveying**: the tags never enter the marker map, but set the layout's marker type explicitly (not "detect automatically") before you survey, or take the tagged wagons off the layout.
+
+The [container terminal guide](container-terminal.md#markers-on-rolling-stock) explains the IDs, the cards, the height and what happens when a hand or the crane hides the tags.
 
 ## The marker map
 

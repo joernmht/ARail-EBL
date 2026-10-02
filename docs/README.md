@@ -5,9 +5,10 @@
 | Guide | What it covers |
 | --- | --- |
 | [Getting started](getting-started.md) | The app: image sources, the flyover, the panels, keyboard shortcuts and URL options |
-| [Setting up a lab](lab-setup.md) | Markers and dictionaries, printing, placement, cameras and the marker map |
+| [Setting up a lab](lab-setup.md) | Markers and dictionaries (also on model wagons), printing, placement, cameras and the marker map |
 | [Lab session](lab-session.md) | Stickers on the whole layout, one video and `arail-survey`: a fixed (locked) layout and an orthophoto of the table |
 | [Streets, bus lines and road traffic](streets-and-buses.md) | Streets as a road network, bus stops, bus lines with buses, cars |
+| [Container terminal](container-terminal.md) | Container trains, trucks and barges, gantry cranes and the yard; model wagons with deck cards (rolling-stock markers); the Terminal panel |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |

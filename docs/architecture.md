@@ -24,19 +24,30 @@ World.draw(View): objects → timetable vehicles → line buses → control-syst
 
 The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout plane), so placing, selecting and dragging are the same on the camera image and in the flyover.
 
+With rolling-stock markers (`markers.rolling`, model wagons of the [container terminal](container-terminal.md)) the camera mode reads a second marker family in the same pass:
+
+```
+camera frame ──> MarkerDetector.detectAll ──> markers ──> PlaneTracker.update ──> H (smoothed)
+                                         └──> rolling ──> PlaneTracker.liftMarkers(rolling, camera, height) ──> tags on the deck plane
+                                                                                                                    │
+                                         TerminalSimulation.observe(tags, time) ──> RollingStock ──> model wagons W1, W2, …
+```
+
+The tags are lifted with the smoothed pose of the same frame, after `update`, so the wagons and their containers match what the `View` draws. The flyover processes no video: the model wagons keep their last pose there.
+
 ## Modules
 
 | Module | Responsibility |
 | --- | --- |
 | `core/math.js` | vectors, 2D poses, linear solver, homographies (exact and normalised least squares), polygons, polylines, seeded RNG |
-| `core/geometry.js` | marker geometry without calibration: relative marker pose, focal length from a homography, camera pose of the plane |
+| `core/geometry.js` | marker geometry without calibration: relative marker pose, focal length from a homography, camera pose of the plane, the camera centre and the homography of a plane above the layout |
 | `core/camera.js` | pinhole camera with estimated, manual or calibrated intrinsics and OpenCV lens distortion |
-| `core/detector.js` | marker detection on top of js-aruco2: sub-pixel corners, centre-of-cell bit sampling, error correction per code count, dictionary voting |
-| `core/tracker.js` | `MarkerMap` (marker poses in the layout frame; locked and moving markers) and `PlaneTracker` (survey, pose, smoothing, hold, moving markers) |
+| `core/detector.js` | marker detection on top of js-aruco2: sub-pixel corners, centre-of-cell bit sampling, error correction per code count, dictionary voting; the rolling-stock family in the same pass (`detectAll`) |
+| `core/tracker.js` | `MarkerMap` (marker poses in the layout frame; locked and moving markers) and `PlaneTracker` (survey, pose, smoothing, hold, moving markers, rolling-stock tags lifted to their height) |
 | `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, twist, fit, plan view; grid lines and snapping |
 | `core/world.js` | the loaded layout: objects, simulations, services, bus lines, disruptions, scenarios, trains, the clock; `step` and `draw` |
 | `core/clock.js` | the fast clock: time of day, daylight, demand profiles over the day |
-| `core/layout.js`, `core/anchors.js` | layout files (defaults, validation, `grid`, `view.ortho`), marker-relative points |
+| `core/layout.js`, `core/anchors.js` | layout files (defaults, validation, `grid`, `view.ortho`, `markers.rolling`, the settings check of simulations), marker-relative points |
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `objects/building-kit.js`, `objects/houses.js`, `objects/building.js` | `BuildingBase` and `BuildingModel` (white-model look, lit windows, level of detail) and the house types |
 | `objects/tabletop.js` | table modules, the default table of the flyover |
@@ -52,10 +63,17 @@ The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a
 | `sims/passengers.js` | the passenger simulation at stops; hand-over of other simulations' people; boards |
 | `sims/town.js` | the town: residents' daily routines on foot, by bus and by train |
 | `sims/traffic.js` | cars on the road network |
+| `terminal/model.js` | the container terminal's rules: container sizes, check digits, carrier types (wagons, truck, yard block, barge), the inventory with its stacking rules and reservations |
+| `terminal/objects.js` | the infrastructure objects: container yard block, gantry crane, truck lane, quay, reach stacker |
+| `terminal/operations.js`, `terminal/handlers.js`, `terminal/visits.js`, `terminal/movers.js` | `TerminalSimulation`: requests, moves and their assignment, cranes and reach stackers, trains, trucks and barges on their paths, loading, the start state, validation, scenario requests |
+| `terminal/rolling.js` | model wagons from rolling-stock tags: tag IDs, fusion, smoothing, snapping, states |
+| `terminal/draw.js`, `terminal/types.js` | drawing containers, wagons, trucks, barges, cranes and the ground; picking boxes; event names and shared types |
 | `app/app.js`, `app/ui.js` | sources, frame loop, HUD, recording; small DOM helpers |
 | `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the View, Simulate, Disruptions and Control panels |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/survey.js` | Build → Marker map → Survey a video |
+| `app/terminal.js` | the Terminal panel and picking containers and places on the stage |
+| `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
 | `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py` |
 
 ## Coordinate systems
@@ -104,6 +122,8 @@ js-aruco2 finds candidate quadrilaterals (adaptive threshold, contours). ARail t
 
 Steps 1 and 3 make small and steeply viewed markers decodable. On the synthetic camera path, 301 of 302 visible markers are found (235 when nearby candidates are dropped as js-aruco2 does), without false detections; on the lab photo a marker of 28×37 px seen at a grazing angle is found; on the lab video the detector finds about as many markers as OpenCV. The corner order (and so the marker orientation) matches OpenCV for all dictionaries; js-aruco2's AprilTag codes are rotated by 180°, which ARail corrects.
 
+**Rolling-stock tags** (`markers.rolling`, option `rolling` of the detector) are read from the same candidates: the cells are sampled for both families' grid sizes, every candidate is decoded in both, and a candidate that reads in both keeps the reading with the smaller share of bit errors (on a tie, the layout marker). Tags correct at most `max_bit_errors` (3) bit errors. In automatic mode the rolling family is not a candidate for the layout's dictionary, and the votes count only the reads that are left after this comparison, so tags can never decide the layout's marker type. Without `rolling` everything, votes included, is as before. Lifted to their height (`PlaneTracker.liftMarkers`), tags whose edge is not within ±15 % of their size are ignored by the terminal.
+
 ## Simulation
 
 `World.step(dtReal)` first keeps the service docks in line with the stop areas and moves the trains of the control system (in real time, also while paused). Unless the simulation is paused, it then advances simulated time: `dt` = real time (at most 0.1 s per frame) × speed, in sub-steps of at most 0.25 s. Each sub-step runs, in this order:
@@ -121,6 +141,8 @@ Services, line buses and simulations communicate through **events** (`vehicle.*`
 The **passenger simulation** is a social-force crowd model per stop area: people are attracted to their target (entrance, waiting spot, door, exit) and repelled by neighbours closer than 0.6 m; local density slows them down and worsens their mood. It also takes the people of other simulations at stops (`enter`, `alight`) and reports what happens to them (`passenger.boarded`, `passenger.exited`).
 
 The **town simulation** makes daily plans for the residents of the residential buildings (work, school, shopping, home, the train), walks them over the sidewalks of the road network (`world.network()`), chooses bus connections (`world.transit.connections`), hands them to the passenger simulation at stops, puts them into the `riders` of line buses and counts the people in each building (`world.occupancy`). Setting the clock (`clock.set`) places everybody anew.
+
+The **container terminal** (`terminal/operations.js`) re-reads its infrastructure whenever objects, the marker map or the scale change, keeping the state of its cranes and reach stackers by object id. Each step it moves its trains, barges and trucks along their paths (one 1-D mover each), starts queued moves on free machines whose carriers are ready, and advances the machines through their phases with trapezoidal speed profiles. Its random numbers come from a stream of their own (`createRng(hash(seed + ":terminal"))`), so a terminal changes nothing in the other simulations. Runtime state stays out of object specs and out of the layout file.
 
 The **road network** is built lazily from the streets, building entrances, stop access points and bus lanes, and cached until objects (`world.objectsVersion`), the marker map or the scale change. The **transit** and the **traffic** simulation drive their vehicles along driving lines on the right lane, keep their distance to each other (`roadUsers()`) and give way at junctions.
 
@@ -143,7 +165,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/math.test.js` | linear algebra, homographies, poses, polygons, RNG, marker geometry, focal length, camera distortion |
 | `tests/js/detector.test.js` | js-aruco2 vs OpenCV (IDs, corner order, printable bits) for 7 dictionaries; markers on the real lab photo; error correction with fewer codes; best match per ID |
 | `tests/js/tracker.test.js` | survey from an empty map along a synthetic camera path with occlusions; accuracy thresholds above; locked maps, moving markers, detector codes; how often the survey writes into the map |
-| `tests/js/world.test.js` | example layouts (also the lab town), round trips, passengers, disruptions, scenarios, control-system feed, plugins, locked and moving markers in layout files |
+| `tests/js/world.test.js` | example layouts (also the lab town and the container terminal), round trips, passengers, disruptions, scenarios, control-system feed, plugins, locked and moving markers in layout files |
 | `tests/js/services.test.js` | timetable intervals and holds, frequency 0, missing plugins, docks during a survey, feed edge cases, WebSocket reconnects |
 | `tests/js/clock.test.js` | the fast clock, daylight, demand profiles, the night break of the timetable |
 | `tests/js/handover.test.js` | handing agents to the passenger simulation: waiting, line filter, alighting, removal |
@@ -155,13 +177,20 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/flycam.test.js` | the flyover camera (projection, pose, navigation, fit), the grid, table modules, drawing for a virtual camera |
 | `tests/js/design.test.js` | the corporate-design colours and font on the canvas, text contrast of the app's theme in light and dark mode |
 | `tests/js/view.test.js` | drawing without visible change: nothing queued outside the image, shared save/restores (a frame of the example town drawn both ways, operation by operation), night colours remembered per view, crowd forces |
+| `tests/js/layout-rolling.test.js` | `markers.rolling` in layout files: defaults, round trips, validation messages; the `static validate` hook of simulations; the terminal example |
+| `tests/js/rolling-markers.test.js` | both marker families in rasterised scenes: every ID in its own family, `detect()` unchanged without `rolling`, the bit-error cap, no vote for the rolling family; `cameraCentre`, `planeHomography`, `liftMarkers` within 1.5 mm |
+| `tests/js/terminal-model.test.js` | check digits, stacking rules of every carrier type, lifting, free places, reservations, the inventory under random operations; the geometry of the infrastructure objects |
+| `tests/js/terminal-ops.test.js` | moves between all kinds of carriers, refusals, waiting, departures, trucks (gate, leaving, never overlapping), crane phases and timing, cancelling, unload and load, scenario requests, determinism, isolation, round trips, reset, validation, model wagons, edits of the infrastructure |
+| `tests/js/terminal-draw.test.js` | drawing every terminal part by day and night, container colours, label contrast, culling, level of detail, picking, sort keys and the drawing budget of the example |
+| `tests/js/terminal-rolling.test.js`, `deck-cards.test.js` | model wagons from 1, 2 and 3 tags, the size check, outliers, states over time, snapping; deck-card geometry and SVG |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
 | `tests/python/test_bridge.py`, `test_calibration.py`, `test_synthetic.py` | bridge protocol, adapters and WebSocket server end to end; calibration; the synthetic scene |
 | `tests/e2e/app.spec.js` | the app: tracking the examples, building, disruptions, control system, robustness of the panels |
 | `tests/e2e/flyover.spec.js` | the flyover: drawing, navigation, table modules, snapping, the View panel, orthophoto, keyboard |
 | `tests/e2e/houses.spec.js`, `streets.spec.js` | placing house types and estates; streets, bus stops, bus lines and the Stops board |
 | `tests/e2e/marker-map.spec.js`, `survey.spec.js` | Keep positions, Unlock, moving markers; surveying a video in the app |
-| `tests/e2e/design.spec.js`, `a11y.spec.js`, `site.spec.js` | the corporate design and the blue website; accessibility (axe, light and dark mode; also placing, the inspectors of the new object types, a locked map, the town, a phone screen); the project page and marker sheets |
+| `tests/e2e/design.spec.js`, `a11y.spec.js`, `site.spec.js` | the corporate design and the blue website; accessibility (axe, light and dark mode; also placing, the inspectors of the new object types, a locked map, the town, a phone screen, the Terminal panel); the project page, marker sheets and deck cards |
+| `tests/e2e/terminal.spec.js` | the Terminal tab: the example in the flyover, moves from the panel and on the stage, trains, trucks, the start state, the scenario |
 | `tests/e2e/keyboard.spec.js` | keyboard only: switching panels, flying, placing an object in the flyover, setting the time; visible focus on the file buttons; stage buttons not hidden by the placing bar |
 
 The JavaScript tests use images and a short video generated by `python -m arail_tools.fixtures` (`npm run fixtures`: synthetic scene rendered with OpenCV, marker strips, the lab photo, `synthetic-survey.webm`). The browser tests start their own server; `ARAIL_PORT` chooses its port (default 8123).
