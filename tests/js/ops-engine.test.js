@@ -247,6 +247,11 @@ test("crews: sick calls are covered by stand-by and calls on free days; without 
   assert.ok(buffers.coveredByReserve >= base.coveredByReserve);
   assert.ok(buffers.drivers > base.drivers && lean.drivers < base.drivers);
   assert.ok(lean.cancelledPct >= buffers.cancelledPct, `${lean.cancelledPct} >= ${buffers.cancelledPct}`);
+  // a stress test meets the staff planned for normal times: the flu wave hires nobody, vacant positions cut the staff
+  const calm = runOne({}, { layout: LAB, days: 1, seed: 4 }).kpi;
+  assert.equal(base.drivers, calm.drivers, "the same drivers in a flu wave");
+  const short = runOne({}, { layout: LAB, stress: stress("shortage"), days: 1, seed: 4 }).kpi;
+  assert.equal(short.drivers, Math.round(calm.drivers * (1 - 0.12)), "12 % of the positions vacant");
 });
 
 test("crews: a bus strike makes people late to work, which delays and cancels trains", () => {

@@ -51,11 +51,16 @@ export class OpsEngine {
    * @param {boolean} [options.live] driven by the world: crews on the layout walk to work and report their arrival
    * @param {Array<{id: string, name?: string, walkM: number, weight?: number}>} [options.homes] buildings where crews can live
    * @param {{stationEffects?: Function, event?: Function}} [options.hooks]
+   * @param {object} [options.planned] the settings the staff was planned with, when `config` adds a stress
+   *   test to them: the number of people comes from these (sick and vacation rates, staffing), so that a
+   *   flu wave meets the staff sized for normal times; vacancies count from `config`
    */
-  constructor(config = {}, { layout = null, seed = 12345, live = false, homes = [], hooks = null } = {}) {
+  constructor(config = {}, { layout = null, seed = 12345, live = false, homes = [], hooks = null, planned = null } = {}) {
     this.config = config;
     this.model = normalizeOps(config, layout);
     const m = this.model;
+    /** Crew settings the staff is sized with. */
+    this.plannedCrew = planned ? normalizeOps(planned, layout).crew : m.crew;
     this.seed = m.seed ?? seed;
     this.live = live;
     this.hooks = hooks || {};
@@ -272,13 +277,15 @@ export class OpsEngine {
         }
       }
     }
+    // sized as planned (a stress test does not hire more people), from the contracts in force
+    const plan = this.plannedCrew;
     const k = m.crew.contracts, total = k.reduce((s, c) => s + c.share, 0) || 1;
     const hours = k.reduce((s, c) => s + (c.share / total) * c.hours_week, 0);
     const days = k.reduce((s, c) => s + (c.share / total) * Math.min(5, (c.hours_week / 38) * 5), 0);
-    const avail = Math.max(0.3, 1 - m.crew.vacation_rate - m.crew.sick_rate);
-    const size = (minutes, n) => Math.ceil(Math.max(minutes / 60 / hours, n / days) / avail * m.crew.staffing);
-    let drivers = m.crew.drivers ?? size(paid, duties);
-    let conductors = m.crew.conductors ?? (cDuties ? size(cPaid, cDuties) : 0);
+    const avail = Math.max(0.3, 1 - plan.vacation_rate - plan.sick_rate);
+    const size = (minutes, n) => Math.ceil(Math.max(minutes / 60 / hours, n / days) / avail * plan.staffing);
+    let drivers = plan.drivers ?? size(paid, duties);
+    let conductors = plan.conductors ?? (cDuties ? size(cPaid, cDuties) : 0);
     // vacant positions: fewer people for the same work
     drivers = Math.max(1, Math.round(drivers * (1 - m.crew.vacancies)));
     conductors = Math.round(conductors * (1 - m.crew.vacancies));

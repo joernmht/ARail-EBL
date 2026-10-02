@@ -117,7 +117,8 @@ export function weekOvertime(engine, from, to) {
  * @returns {{kpi: object, daily: object[], engine: OpsEngine}}
  */
 export function runOne(config, { layout = null, setup = null, stress = null, days = 28, seed = 1, homes = [] } = {}) {
-  const engine = new OpsEngine(applySetup(config, setup, stress), { layout, seed, homes });
+  // the staff is planned for the setup; the stress test meets it
+  const engine = new OpsEngine(applySetup(config, setup, stress), { layout, seed, homes, planned: stress?.patch ? applySetup(config, setup, null) : null });
   engine.runTo(engine.dayOffset * DAY);
   engine.measureFrom = engine.dayOffset;
   engine.scheduleStress(stress?.events || []);
