@@ -150,6 +150,25 @@ test("maxBitErrors caps the bit errors corrected in rolling-stock tags", () => {
   assert.throws(() => new MarkerDetector({ ...aruco, rolling: { dictionary: "NOPE" } }), /Unknown or unloaded dictionary: NOPE/);
 });
 
+test("missing, null or invalid rolling-stock options take their defaults one by one", () => {
+  const entry = (rolling) => new MarkerDetector({ ...aruco, rolling }).rolling;
+  const ref = entry({});
+  assert.equal(ref.name, "APRILTAG_36h11");
+  assert.equal(ref.dict.codeList.length, 64);
+  assert.equal(ref.dict.tau, 4);
+  for (const rolling of [{ dictionary: undefined, codes: undefined, maxBitErrors: undefined }, { dictionary: null, codes: null, maxBitErrors: null }, { codes: 0 }, { codes: -5 }, { codes: 2.5 }, { codes: "64" }]) {
+    const e = entry(rolling);
+    assert.equal(e.name, ref.name, JSON.stringify(rolling));
+    assert.equal(e.dict.codeList.length, 64, JSON.stringify(rolling));
+    assert.equal(e.dict.tau, ref.dict.tau, JSON.stringify(rolling));
+  }
+  // a given option is kept while the others take their defaults
+  const some = entry({ codes: 16, maxBitErrors: undefined });
+  assert.equal(some.dict.codeList.length, 16);
+  assert.equal(some.dict.tau, 4);
+  assert.equal(entry({ dictionary: "ARUCO_MIP_36h12", codes: null }).dict.codeList.length, 64);
+});
+
 test("in auto mode the rolling family never wins the vote, nor does a family that misreads its tags", () => {
   const { fly } = cameras();
   const det = new MarkerDetector({ ...aruco, dictionary: null, rolling: ROLLING });

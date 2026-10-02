@@ -285,8 +285,9 @@ export class MarkerDetector {
    * @param {{dictionary?: string, codes?: number, maxBitErrors?: number} | null} [options.rolling=null]
    *   rolling-stock tags, a second marker family read in the same pass (see {@link MarkerDetector#detectAll}):
    *   js-aruco2 dictionary name (default "APRILTAG_36h11"), number of codes (default 64, tag IDs
-   *   0..codes-1) and the most bit errors corrected (default 3). Null: layout markers only, exactly as
-   *   without this option.
+   *   0..codes-1) and the most bit errors corrected (default 3); a missing, null or invalid `codes` or
+   *   `maxBitErrors` and a missing or null `dictionary` take the default. Null: layout markers only,
+   *   exactly as without this option.
    * @param {object} [options.AR] js-aruco2 `AR` namespace (defaults to the global)
    * @param {object} [options.CV] js-aruco2 `CV` namespace (defaults to the global)
    */
@@ -310,7 +311,7 @@ export class MarkerDetector {
      * The rolling-stock family {name, label, dict, cells, quarterTurns}, or null. It is not one of
      * `dictionaries` and never takes part in the automatic choice of the layout's dictionary.
      */
-    this.rolling = rolling ? this._rollingEntry({ ...ROLLING_OPTIONS, ...rolling }) : null;
+    this.rolling = rolling ? this._rollingEntry(rolling) : null;
     this.selected = null;
     this.last = null;
     this.votes = {};
@@ -320,9 +321,12 @@ export class MarkerDetector {
   /**
    * Dictionary entry of the rolling-stock family. Its tags identify moving wagons, so at most
    * `maxBitErrors` bit errors are corrected, even where {@link acceptedBitErrors} would allow more.
+   * Each option falls back to its default on its own (see the constructor).
    */
-  _rollingEntry({ dictionary, codes, maxBitErrors }) {
+  _rollingEntry({ dictionary = null, codes = null, maxBitErrors = null }) {
     const { AR } = this;
+    dictionary ??= ROLLING_OPTIONS.dictionary;
+    if (!(Number.isInteger(codes) && codes > 0)) codes = ROLLING_OPTIONS.codes;
     const def = DICTIONARIES.find((d) => d.name === dictionary), full = AR.DICTIONARIES[dictionary];
     if (!def || !full) throw new Error(`Unknown or unloaded dictionary: ${dictionary}`);
     const dict = firstCodes(AR, def.name, full, codes);
