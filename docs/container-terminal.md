@@ -81,8 +81,9 @@ Duisburg · wagon 1*).
 | **Truck** | Comes to the gate, drives in on the passing lane, turns into the loading lane and stops at a free truck position. A *pickup* truck comes empty and leaves 3 s after it got a container; a *delivery* truck brings one (random size, or the size you choose) and leaves 3 s after it was emptied. When all positions are taken, trucks wait at the gate. A truck that leaves takes its container out of the terminal. |
 | **Barge** | Sails along the fairway and berths with its bow at the end of the quay; it leaves astern. |
 
-A train or barge with a crane working on it cannot leave. One with queued moves leaves only when
-you force it (**Depart anyway**), which cancels those moves.
+A train or barge with queued moves or a crane working on it leaves only when you force it
+(**Depart anyway**): that cancels the queued moves, and a visit a crane is working on leaves once
+the crane is done (*leaving once the crane is done*). No new moves to or from it are taken then.
 
 ## Markers on rolling stock
 
@@ -282,7 +283,9 @@ without one it offers **Open the example terminal** and **Add a container termin
    2*, *at Loading track 1*, *at the gate*, *at position 2*, *at the quay*, *departing*), how full it
    is (TEU used of its capacity) and **Call** or **Depart**. A train or barge at the terminal also
    has **Unload to yard** and **Load from yard**: they queue a move for every container that can go.
-   When a departure is refused because moves are waiting, **Depart anyway** cancels them.
+   When a departure is refused because moves are waiting or a crane is working on it, the card says
+   so (with the current number of moves) and offers **Depart anyway**: it cancels the waiting
+   moves, and the visit leaves at once or when the crane is done.
 3. **New arrival.** Call a new train (loading track, wagon type, 1–6 wagons, empty or with random
    containers), a barge (quay), or send a truck (*pickup* or *delivery*, any size or 20, 40, 45 ft).
 4. **Choose a container.** The Containers list is grouped by carrier (filter: trains, model wagons,
@@ -400,7 +403,7 @@ Scenarios drive the terminal with `emit` steps (see [Disruptions and scenarios](
 | Request | Payload | Does |
 | --- | --- | --- |
 | `terminal.request.call` | `{visit}` | calls a train or barge |
-| `terminal.request.depart` | `{visit, force?}` | sends a visit away; `force` cancels its queued moves |
+| `terminal.request.depart` | `{visit, force?}` | sends a visit away; `force` cancels its queued moves (one a crane is working on leaves when the move has ended) |
 | `terminal.request.move` | `{container, to}` | queues a move; `to` is a place `{carrier, bay, row?, tier?}` (no tier: on top of the stack), any free place of a carrier `{carrier}`, or of a kind `{kind}`: `wagon` (or `train`), `truck`, `barge`, `yard` |
 | `terminal.request.truck` | `{purpose?, size?}` | sends a truck: `pickup` (default) or `delivery`, size `"20"`, `"40"`, `"45"` |
 | `terminal.request.train` | `{track, wagons?, load?, name?}` | a new train on that track; `load` `"empty"` or `"random"` |

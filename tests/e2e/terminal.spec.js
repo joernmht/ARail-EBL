@@ -201,20 +201,30 @@ test("a train is called; a container goes from train to train; unload and load",
   await kt52.getByRole("button", { name: "Depart", exact: true }).click();
   await expect(kt52.locator(".status")).toContainText(/still has \d+ moves?/);
   await expect(kt52.getByRole("button", { name: "Depart anyway" })).toBeVisible();
-  // once a crane works on it, forcing cannot help: the card shows where the train is again
+  // once a crane works on it, the card says so, with the moves still waiting
   await page.evaluate(() => (window.__arail.world.paused = false));
   await page.waitForFunction(() => {
     const a = window.__arail, busy = a.terminal.sim.moves.some((m) => m.state === "active" && m.to.carrier.startsWith("KT52/"));
     if (busy) a.world.paused = true; // keep the crane at work
     return busy;
   }, null, { timeout: 60_000, polling: "raf" });
-  await expect(kt52.locator(".status")).toHaveText("at Loading track 2");
-  await expect(kt52.getByRole("button", { name: "Depart anyway" })).toHaveCount(0);
-  await kt52.getByRole("button", { name: "Depart", exact: true }).click();
-  await expect(page.locator("#toast")).toContainText("A crane is working on");
-  await expect(kt52.locator(".status")).toHaveText("at Loading track 2");
-  await expect(kt52.getByRole("button", { name: "Depart anyway" })).toHaveCount(0);
+  await expect(kt52.locator(".status")).toContainText(/^A crane is working on KT 52 Duisburg; \d+ more moves? waiting$/);
+  // the count follows the moves: one cancelled in Crane jobs
+  const waiting = () => page.evaluate(() => window.__arail.terminal.sim.moves.filter((m) => m.state === "queued" && m.to.carrier.startsWith("KT52/")).length);
+  const before = await waiting();
+  expect(before).toBeGreaterThan(1);
+  await page.locator(".term-jobs tr[data-state=queued]").last().getByRole("button", { name: /^Cancel/ }).click();
+  expect(await waiting()).toBe(before - 1);
+  await expect(kt52.locator(".status")).toContainText(before - 1 === 1 ? "1 more move waiting" : `${before - 1} more moves waiting`);
+  // Depart anyway: the waiting moves are cancelled; the train leaves once the crane is done
+  await kt52.getByRole("button", { name: "Depart anyway" }).click();
+  await expect(page.locator("#toast")).toContainText("leaves once the crane is done");
+  await expect(kt52.locator(".status")).toHaveText("leaving once the crane is done");
+  await expect(kt52.getByRole("button")).toHaveCount(0);
+  expect(await waiting()).toBe(0);
   await page.evaluate(() => (window.__arail.world.paused = false));
+  await page.waitForFunction(() => window.__arail.terminal.sim.visits.get("KT52").state !== "positioned", null, { timeout: 60_000 });
+  await expect(kt52.locator(".status")).toHaveText(/^(departing|away)$/);
   expect(await page.evaluate(() => window.__arail.terminal.sim.inventory.check())).toEqual([]);
   expect(errors).toEqual([]);
 });

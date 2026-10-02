@@ -398,7 +398,7 @@ world.events.on("terminal.move.finished", ({ move }) => console.log(move.id, ter
 | --- | --- |
 | `request(containerId, to)` | queue a move: `to` is a place `{carrier, bay, row?, tier?}`, `{carrier}` or `{kind}` (`wagon`, `truck`, `barge`, `yard`); returns `{move}` or `{error}` |
 | `targets(containerId)` | `{ok: [{at, carrier, kind, label, handler}], refused: [{carrier, label, reason}]}` |
-| `cancel(moveId)`, `call(visitId)`, `depart(visitId, {force})` | null when done, else the reason |
+| `cancel(moveId)`, `call(visitId)`, `depart(visitId, {force})` | null when done, else the reason (`force` cancels the visit's queued moves; while a crane works on it, it leaves once that move has ended: `visit.leaveWhenDone`) |
 | `addTrain({track, wagons, load})`, `addBarge({quay, length_m, load})`, `sendTruck({purpose, size})` | `{visit}` or `{error}` |
 | `unload(visitId, {to})`, `load(visitId, {from})` | queue all moves that can go: `{moves, refused}` |
 | `reset()`, `snapshot()`, `saveStart()` | back to the start state; the current state as a configuration; make it the start state |

@@ -51,6 +51,8 @@ class PathVisit {
     this.mover = null;
     /** Does its track or quay exist (with geometry)? */
     this.pathOk = false;
+    /** Sent away while a crane worked on it: it leaves once that move has ended. */
+    this.leaveWhenDone = false;
   }
 
   /** The path (layout mm) changed or vanished; keeps the position on it. */
@@ -293,6 +295,8 @@ export class TruckVisit {
     this._from = -1;
     /** Simulated seconds it has been ready to leave on its own. */
     this.ready_s = 0;
+    /** Sent away while a crane worked on it: it leaves once that move has ended. */
+    this.leaveWhenDone = false;
   }
 
   get s() {

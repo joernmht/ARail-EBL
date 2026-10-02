@@ -40,7 +40,7 @@
  * A train, barge or truck visiting the terminal (state `waiting` = a truck queued at the gate).
  * @typedef {{id: string, kind: "train"|"barge"|"truck", name: string,
  *   state: "away"|"waiting"|"approaching"|"positioned"|"departing", carriers: import("./model.js").Carrier[],
- *   where: string|null, purpose: "pickup"|"delivery"|null, runtime: boolean}} Visit
+ *   where: string|null, purpose: "pickup"|"delivery"|null, runtime: boolean, leaveWhenDone: boolean}} Visit
  */
 /** @typedef {{id: string, kind: "crane"|"reach-stacker", name: string, phase: string, move: string|null}} Handler */
 /** @typedef {{center: number[]|null, heading: number|null, edge_mm: number|null}} TagObservation  lifted to the deck plane */

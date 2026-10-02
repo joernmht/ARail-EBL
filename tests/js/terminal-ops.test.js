@@ -319,7 +319,7 @@ test("depart is refused while moves are queued or running; force cancels queued 
   assert.equal(sim.depart("K1"), "K 1 still has 2 moves");
   world.step(0.1);
   assert.equal(a.state, "active");
-  assert.equal(sim.depart("K1", { force: true }), "A crane is working on K 1");
+  assert.equal(sim.depart("K1"), "A crane is working on K 1");
   finish(world, sim, log, a);
   runUntil(world, () => b.state === "done");
   const c = sim.request(ID(7), { carrier: "K1/1", bay: 1 }).move;
@@ -340,6 +340,31 @@ test("depart is refused while moves are queued or running; force cancels queued 
   assert.deepEqual(sim.inventory.on("K1/3").map((x) => x.id), load);
   assert.ok(sim.carrier("K1/3").available);
   assert.equal(sim.call("nope"), 'Unknown visit "nope"');
+});
+
+test("depart forced while a crane works on a visit cancels its queued moves; it leaves once the crane is done", () => {
+  const { world, sim, log } = setup();
+  const a = sim.request(ID(1), { carrier: "yard-a" }).move;
+  const b = sim.request(ID(2), { carrier: "yard-a" }).move;
+  world.step(0.1);
+  assert.equal(a.state, "active");
+  assert.equal(sim.depart("K1", { force: true }), null);
+  assert.equal(b.state, "cancelled");
+  assert.equal(a.state, "active", "the crane's move goes on");
+  const v = sim.visits.get("K1");
+  assert.equal(v.state, "positioned");
+  assert.ok(v.leaveWhenDone);
+  assert.equal(sim.depart("K1"), "K 1 is already leaving");
+  // no new moves from or to it
+  assert.match(sim.request(ID(7), { carrier: "K1/1" }).error, /K 1 is leaving/);
+  assert.equal(sim.unload("K1", { to: "yard" }).moves.length, 0);
+  finish(world, sim, log, a);
+  world.step(0.1);
+  assert.equal(v.state, "departing");
+  assert.ok(!v.leaveWhenDone);
+  runUntil(world, () => v.state === "away");
+  assert.deepEqual(names(log, (e) => e.p.visit?.id === "K1"), ["visit.departing", "visit.departed"]);
+  assert.deepEqual(sim.inventory.check(), []);
 });
 
 test("visits whose track or quay is missing cannot be called", () => {

@@ -61,7 +61,7 @@ export class TerminalPanel {
     /** Key of the place chosen in "Move to". */
     this.targetKey = null;
     this.filter = "all";
-    /** A departure that was refused: {visit, reason} (its card offers "Depart anyway"). */
+    /** A departure that was refused: {visit} (its card says why and offers "Depart anyway"). */
     this.refused = null;
     /** Values of the New arrival forms. */
     this.draft = { track: "", wagonType: "sgns60", wagons: 3, load: "random", quay: "", purpose: "pickup", size: "" };
@@ -246,15 +246,16 @@ export class TerminalPanel {
   _visitCard(sim, v) {
     const inv = sim.inventory;
     const used = v.carriers.reduce((n, c) => n + inv.usedTeu(c.id), 0), cap = v.carriers.reduce((n, c) => n + inv.capacityTeu(c.id), 0);
-    // a refused departure is shown while forcing can help: until the visit leaves, has no moves left or a crane works on it
-    let refused = this.refused?.visit === v.id ? this.refused.reason : null;
-    if (refused && (v.state === "away" || v.state === "departing" || !this._movesOn(sim, v, ["queued"]) || this._movesOn(sim, v, ["active"]))) refused = this.refused = null;
+    // a refused departure is shown (with its current reason) until the visit leaves or has no moves left
+    const moves = this._movesOf(sim, v);
+    if (this.refused?.visit === v.id && (v.state === "away" || v.state === "departing" || v.leaveWhenDone || !moves.length)) this.refused = null;
+    const refused = this.refused?.visit === v.id ? this._refusal(v, moves) : null;
     const btn = (label, fn) => h("button", { class: "btn", type: "button", onclick: fn }, label);
     const calls = [];
     if (v.state === "away") calls.push(btn("Call", () => this._act(sim.call(v.id))));
-    else if (v.state !== "departing") calls.push(btn("Depart", () => this.depart(v.id)));
+    else if (v.state !== "departing" && !v.leaveWhenDone) calls.push(btn("Depart", () => this.depart(v.id)));
     if (refused) calls.push(btn("Depart anyway", () => this.depart(v.id, true)));
-    if (v.kind !== "truck" && v.state === "positioned") {
+    if (v.kind !== "truck" && v.state === "positioned" && !v.leaveWhenDone) {
       calls.push(btn("Unload to yard", () => this.bulk(sim.unload(v.id, { to: "yard" }))));
       calls.push(btn("Load from yard", () => this.bulk(sim.load(v.id, { from: "yard" }))));
     }
@@ -275,6 +276,7 @@ export class TerminalPanel {
 
   /** Where a visit is, in words ("at Loading track 1", "at the gate", "at position 2", …). */
   _stateText(v) {
+    if (v.leaveWhenDone) return "leaving once the crane is done";
     const where = this.world.getObject(v.where)?.name || v.where;
     if (v.kind === "truck") {
       return { waiting: "at the gate", approaching: `coming to position ${v.position + 1}`, positioned: `at position ${v.position + 1}`, departing: "leaving" }[v.state] || v.state;
@@ -283,21 +285,28 @@ export class TerminalPanel {
     return { away: "away", approaching: `approaching ${where}`, positioned: `at ${where}`, departing: "departing" }[v.state] || v.state;
   }
 
-  /** Has the visit moves in one of these states (e.g. active: a crane works on it now)? */
-  _movesOn(sim, v, states) {
+  /** The visit's queued and active moves. */
+  _movesOf(sim, v) {
     const ids = new Set(v.carriers.map((c) => c.id));
-    return sim.moves.some((m) => states.includes(m.state) && (ids.has(m.from.carrier) || ids.has(m.to.carrier)));
+    return sim.moves.filter((m) => (m.state === "queued" || m.state === "active") && (ids.has(m.from.carrier) || ids.has(m.to.carrier)));
+  }
+
+  /** Why a visit with these moves cannot leave now (as the simulation says it, with today's numbers). */
+  _refusal(v, moves) {
+    const waiting = moves.filter((m) => m.state === "queued").length;
+    if (waiting === moves.length) return `${v.name} still has ${plural(waiting, "move")}`;
+    return `A crane is working on ${v.name}${waiting ? `; ${plural(waiting, "more move")} waiting` : ""}`;
   }
 
   /**
-   * A visit leaves (with `force`, its queued moves are cancelled). A refusal is toasted; its card keeps it
-   * (offering "Depart anyway") only when forcing can help, i.e. no crane works on the visit now.
+   * A visit leaves (with `force`, its queued moves are cancelled and, while a crane works on it, it leaves
+   * once the crane is done). A refusal is toasted; its card keeps it, offering "Depart anyway".
    */
   depart(visitId, force = false) {
-    const sim = this.sim, why = sim?.depart(visitId, { force });
-    const v = why && sim.visits.get(visitId);
-    this.refused = v && !this._movesOn(sim, v, ["active"]) ? { visit: visitId, reason: why } : null;
+    const sim = this.sim, why = sim?.depart(visitId, { force }), v = sim?.visits.get(visitId);
+    this.refused = why && v ? { visit: visitId } : null;
     if (why) toast(why);
+    else if (v?.leaveWhenDone) toast(`${v.name} leaves once the crane is done; its waiting moves are cancelled.`, 6000);
     this.update();
   }
 

@@ -429,6 +429,17 @@ export class TerminalSimulation extends Simulation {
     return carrier && carrier.kind !== "yard" ? this.visits.get(carrier.owner) ?? null : null;
   }
 
+  /** The queued and active moves from or to a visit's carriers. */
+  _movesOfVisit(v) {
+    const ids = new Set(v.carriers.map((c) => c.id));
+    return this._pending.filter((m) => ids.has(m.from.carrier) || ids.has(m.to.carrier));
+  }
+
+  /** Is a visit leaving, or will it leave once the crane working on it is done? */
+  _leaving(v) {
+    return v?.state === "departing" || !!v?.leaveWhenDone;
+  }
+
   /* ---------------------------------------------------------------- visits */
 
   /**
@@ -452,20 +463,24 @@ export class TerminalSimulation extends Simulation {
   /**
    * Send a visit away.
    * @param {string} visitId
-   * @param {{force?: boolean}} [options] force: cancel its queued moves
-   * @returns {string | null} null = done; else the reason
+   * @param {{force?: boolean}} [options] force: cancel its queued moves; while a crane works on the
+   *   visit, it leaves once that move has ended (`leaveWhenDone`)
+   * @returns {string | null} null = done (or it leaves once the crane is done); else the reason
    */
   depart(visitId, { force = false } = {}) {
     this._syncInfra();
     const v = this.visits.get(visitId);
     if (!v) return `Unknown visit "${visitId}"`;
     if (v.state === "away") return `${v.name} is not here`;
-    if (v.state === "departing") return `${v.name} is already leaving`;
-    const ids = new Set(v.carriers.map((c) => c.id));
-    const moves = this._pending.filter((m) => ids.has(m.from.carrier) || ids.has(m.to.carrier));
-    if (moves.some((m) => m.state === "active")) return `A crane is working on ${v.name}`;
+    if (v.state === "departing" || v.leaveWhenDone) return `${v.name} is already leaving`;
+    const moves = this._movesOfVisit(v), active = moves.some((m) => m.state === "active");
+    if (active && !force) return `A crane is working on ${v.name}`;
     if (moves.length && !force) return `${v.name} still has ${moves.length} move${moves.length === 1 ? "" : "s"}`;
-    for (const m of moves) this._cancelMove(m);
+    for (const m of moves) if (m.state === "queued") this._cancelMove(m);
+    if (active) {
+      v.leaveWhenDone = true;
+      return null;
+    }
     if (v.kind !== "truck") v.depart(this);
     else if (v.state === "waiting") this._truckGone(v);
     else departTruck(v, this);
@@ -605,8 +620,16 @@ export class TerminalSimulation extends Simulation {
     this._visitEvent(EV.visitDeparted, t);
   }
 
-  /** Trucks that stand ready (loaded, or emptied) leave on their own after a few seconds. */
+  /**
+   * Visits sent away while a crane worked on them leave once it is done; trucks that stand ready
+   * (loaded, or emptied) leave on their own after a few seconds.
+   */
   _autoLeave(dt) {
+    for (const v of [...this.visits.values()]) {
+      if (!v.leaveWhenDone || this._movesOfVisit(v).length) continue;
+      v.leaveWhenDone = false;
+      this.depart(v.id);
+    }
     for (const t of this._trucks) {
       if (t.state !== "positioned") continue;
       const busy = this._pending.some((m) => m.from.carrier === t.id || m.to.carrier === t.id);
@@ -695,14 +718,14 @@ export class TerminalSimulation extends Simulation {
     const src = this.carrier(c.at.carrier);
     if (!src?.present) return `${src?.label ?? c.at.carrier} is not here`;
     const v = this._visitOf(src);
-    return v?.state === "departing" ? `${v.name} is leaving` : null;
+    return this._leaving(v) ? `${v.name} is leaving` : null;
   }
 
   /** Why nothing can be put on a carrier now (null = it can take containers). */
   _placeProblem(carrier) {
     if (!carrier) return "Unknown place";
     const v = this._visitOf(carrier);
-    if (v?.state === "departing") return `${v.name} is leaving`;
+    if (this._leaving(v)) return `${v.name} is leaving`;
     if (!carrier.present || v?.state === "away" || v?.state === "waiting") return `${carrier.label} is not here`;
     return null;
   }
@@ -955,7 +978,7 @@ export class TerminalSimulation extends Simulation {
   _visitProblem(v, id) {
     if (!v) return `Unknown visit "${id}"`;
     if (v.state === "away" || v.state === "waiting") return `${v.name} is not here`;
-    if (v.state === "departing") return `${v.name} is leaving`;
+    if (this._leaving(v)) return `${v.name} is leaving`;
     return null;
   }
 
