@@ -125,7 +125,8 @@ function init() {
   const sel = $("dict");
   addOptions(sel, DICTIONARIES.filter((d) => window.AR?.DICTIONARIES[d.name]).map((d) => [d.name, `${d.label} (OpenCV ${d.opencv})`]));
   sel.value = params.get("dict") || "ARUCO";
-  addOptions($("wagonType"), Object.entries(CARRIER_TYPES).map(([key, t]) => [key, t.label]));
+  // only wagons are model rolling stock (a truck chassis is not tracked by tags)
+  addOptions($("wagonType"), Object.entries(CARRIER_TYPES).filter(([, t]) => t.kind === "wagon").map(([key, t]) => [key, t.label]));
   addOptions($("scale"), DECK_SCALES.map((s) => [String(s.scale), s.label]));
   $("kind").value = params.get("kind") === "rolling" ? "rolling" : "markers";
   applyKind();

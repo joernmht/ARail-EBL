@@ -45,6 +45,8 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   await expect(page.locator("#rollingFields")).toBeVisible();
   await expect(page.locator("#ids")).toBeHidden();
   await expect(page.locator("#kind")).toHaveValue("rolling");
+  // the truck chassis is not model rolling stock
+  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80"]);
   const sheet = page.locator("svg.sheet").first();
   await expect(sheet).toHaveAttribute("width", "210mm");
   const g = await sheet.evaluate((svg) => {
