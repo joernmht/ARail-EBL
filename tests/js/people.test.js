@@ -10,11 +10,17 @@ test("people: names are two birds of one language, stable for a seed and key, un
   assert.equal(new Set(people.map((p) => p.name)).size, 400, "names are unique");
   for (const p of people) {
     const birds = LANGUAGES.find((l) => l.lang === p.lang).birds;
-    const [a, b] = p.name.split(" ");
+    const [a, ...rest] = p.name.split(" ");
+    const b = rest.pop();
     assert.ok(birds.includes(a) && birds.includes(b) && a !== b, p.name);
+    assert.ok(rest.length === 0 || (rest.length === 1 && rest[0] in LANGUAGES.find((l) => l.lang === p.lang).particles), p.name);
   }
   assert.ok(new Set(people.map((p) => p.lang)).size >= 8, "many languages");
   assert.ok(people.filter((p) => p.lang === "de").length > 200, "mostly German");
+  const big = new Population(2, "test");
+  for (let i = 0; i < 4000; i++) big.add(["p", i]);
+  const names = [...big].map((p) => p.name);
+  assert.ok(names.some((n) => / von /.test(n)) && names.some((n) => / van /.test(n)) && names.some((n) => / de /.test(n)), "von, van, de");
   const again = new Population(7, "test").add(["p", 3]);
   assert.equal(again.name, people[3].name, "same seed and key, same name");
   assert.equal(again.id, "p-3");

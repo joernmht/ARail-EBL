@@ -16,9 +16,12 @@
  */
 import { createRng, hashKey } from "./math.js";
 
-/** Bird names per language, with the weight (per cent) of the language. */
+/**
+ * Bird names per language, with the weight (per cent) of the language and the particles before
+ * some family names (per cent of the people: "Merel van Vink", "Amsel von Falke").
+ */
 export const LANGUAGES = [
-  { lang: "de", weight: 68, birds: [
+  { lang: "de", weight: 68, particles: { von: 4 }, birds: [
     "Amsel", "Drossel", "Fink", "Meise", "Specht", "Sperling", "Lerche", "Elster", "Rabe", "Krähe", "Taube", "Schwalbe",
     "Star", "Storch", "Reiher", "Kranich", "Eule", "Kauz", "Falke", "Bussard", "Habicht", "Adler", "Zeisig", "Stieglitz",
     "Gimpel", "Dohle", "Kiebitz", "Wachtel", "Pirol", "Wiedehopf", "Eisvogel", "Zaunkönig", "Ammer", "Schwan", "Möwe", "Kuckuck",
@@ -68,7 +71,7 @@ export const LANGUAGES = [
   { lang: "nds", weight: 1, birds: [
     "Adebar", "Lüünk", "Swaalk", "Kreih", "Uul", "Kiewitt", "Lewark", "Heister", "Duuv", "Spreen", "Haavk", "Kuckuck",
   ] },
-  { lang: "nl", weight: 1, birds: [
+  { lang: "nl", weight: 1, particles: { van: 25, de: 15 }, birds: [
     "Merel", "Mus", "Mees", "Specht", "Zwaluw", "Spreeuw", "Ekster", "Kraai", "Duif", "Uil", "Valk", "Arend", "Reiger",
     "Ooievaar", "Kievit", "Leeuwerik", "Vink", "Roodborst", "Meeuw",
   ] },
@@ -93,7 +96,17 @@ function languageOf(h) {
   return LANGUAGES[0];
 }
 
-/** "A. Fink" */
+/** The particle before the family name with its space ("van "), or "" (by the per cent of the language). */
+function particleOf(lang, h) {
+  let r = h % 100;
+  for (const [word, share] of Object.entries(lang.particles ?? {})) {
+    if (r < share) return `${word} `;
+    r -= share;
+  }
+  return "";
+}
+
+/** "A. Fink", "M. van Vink" */
 export const shortName = (name) => {
   const [first, ...rest] = String(name).split(" ");
   return rest.length ? `${first[0]}. ${rest.join(" ")}` : name;
@@ -147,7 +160,7 @@ export class Population {
     for (let i = 0; i < 50; i++) {
       const f = hashKey(...k, i, "f") % birds.length;
       const l = (f + 1 + (hashKey(...k, i, "l") % (birds.length - 1))) % birds.length;
-      name = `${birds[f]} ${birds[l]}`;
+      name = `${birds[f]} ${particleOf(lang, hashKey(...k, i, "p"))}${birds[l]}`;
       if (!this.names.has(name)) break;
     }
     return { name, lang: lang.lang };
