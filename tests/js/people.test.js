@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { LANGUAGES, OPS_DEFAULTS, Person, Population, createRng, makeStaff, normalizeOps, pickHome } from "../../web/arail/index.js";
 
-test("people: names are two birds of one language, stable for a seed and key, unique in a population", () => {
+test("people: names are two birds of one language (shown as S. Fink), stable for a seed and key, unique in a population", () => {
   assert.equal(LANGUAGES.reduce((s, l) => s + l.weight, 0), 100, "the weights are per cent");
   const pop = new Population(7, "test");
   for (let i = 0; i < 400; i++) pop.add(["p", i]);
@@ -10,10 +10,11 @@ test("people: names are two birds of one language, stable for a seed and key, un
   assert.equal(new Set(people.map((p) => p.name)).size, 400, "names are unique");
   for (const p of people) {
     const birds = LANGUAGES.find((l) => l.lang === p.lang).birds;
-    const [a, ...rest] = p.name.split(" ");
+    const rest = p.family.split(" ");
     const b = rest.pop();
-    assert.ok(birds.includes(a) && birds.includes(b) && a !== b, p.name);
-    assert.ok(rest.length === 0 || (rest.length === 1 && rest[0] in LANGUAGES.find((l) => l.lang === p.lang).particles), p.name);
+    assert.ok(birds.includes(p.given) && birds.includes(b) && p.given !== b, `${p.given} ${p.family}`);
+    assert.ok(rest.length === 0 || (rest.length === 1 && rest[0] in LANGUAGES.find((l) => l.lang === p.lang).particles), p.family);
+    assert.equal(p.name, `${p.given[0]}. ${p.family}`, "named by the initial and the family name");
   }
   assert.ok(new Set(people.map((p) => p.lang)).size >= 8, "many languages");
   assert.ok(people.filter((p) => p.lang === "de").length > 200, "mostly German");
