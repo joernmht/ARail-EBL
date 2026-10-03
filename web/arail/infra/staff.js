@@ -11,7 +11,7 @@
  */
 import { DISCIPLINE_IDS, DISCIPLINES } from "./catalog.js";
 import { DAY, clockMinutes } from "../ops/util.js";
-import { birdName } from "../ops/names.js";
+import { Person, Population } from "../core/people.js";
 
 /** Shift kinds and their clock times (minutes after midnight). */
 export const SHIFTS = {
@@ -29,9 +29,9 @@ export function weekdayOf(d, startYear) {
 }
 
 /** A person of the maintenance staff. */
-export class Person {
+export class StaffMember extends Person {
   constructor(spec) {
-    Object.assign(this, spec);
+    super(spec);
     /** Busy until (minutes) with `task`. */
     this.busyUntil = -Infinity;
     this.task = null;
@@ -48,34 +48,32 @@ export class Person {
 }
 
 /**
- * The staff for the settings: names are stable for a seed and position.
+ * The staff for the settings, made by the staff's population (see `core/people.js`): names are
+ * stable for a seed and position.
  * @param {object} model normalized settings
  * @param {number} seed
  */
 export function makePeople(model, seed) {
-  const people = [];
-  const used = new Set();
-  const name = (...key) => birdName(used, seed, ...key);
+  const pop = new Population(seed, "infra");
+  const add = (key, spec) => pop.add(key, spec, StaffMember);
   for (const d of DISCIPLINE_IDS) {
-    people.push(new Person({ id: `alv-${d}`, name: name("alv", d), discipline: d, role: "alv" }));
+    add(["alv", d], { id: `alv-${d}`, discipline: d, role: "alv" });
     const s = model.staff[d];
-    for (let i = 0; i < s.day; i++) people.push(new Person({ id: `${d}-day-${i + 1}`, name: name(d, "day", i), discipline: d, role: "day", index: i }));
-    for (let i = 0; i < s.emergency; i++) people.push(new Person({ id: `${d}-em-${i + 1}`, name: name(d, "em", i), discipline: d, role: "emergency", rota: i }));
+    for (let i = 0; i < s.day; i++) add([d, "day", i], { id: `${d}-day-${i + 1}`, discipline: d, role: "day", index: i });
+    for (let i = 0; i < s.emergency; i++) add([d, "em", i], { id: `${d}-em-${i + 1}`, discipline: d, role: "emergency", rota: i });
   }
-  for (let i = 0; i < model.staff.drone_pilots; i++) people.push(new Person({ id: `pilot-${i + 1}`, name: name("pilot", i), discipline: "drone", role: "pilot", index: i }));
-  return people;
+  for (let i = 0; i < model.staff.drone_pilots; i++) add(["pilot", i], { id: `pilot-${i + 1}`, discipline: "drone", role: "pilot", index: i });
+  return [...pop];
 }
 
 /** A new person (hired). */
 export function hirePerson(model, seed, people, discipline, role, t) {
   const same = people.filter((p) => p.discipline === discipline && p.role === role);
   const n = same.length + 1;
-  const used = new Set(people.map((p) => p.name));
-  const nm = birdName(used, seed, "hire", discipline, role, n);
   const base = discipline === "drone" ? "pilot" : `${discipline}-${role === "emergency" ? "em" : "day"}`;
   let k = n;
   while (people.some((q) => q.id === `${base}-${k}`)) k++;
-  const p = new Person({ id: `${base}-${k}`, name: nm, discipline, role, joined: t });
+  const p = new Population(seed, "infra", people).add(["hire", discipline, role, n], { id: `${base}-${k}`, discipline, role, joined: t }, StaffMember);
   if (role === "emergency") p.rota = Math.max(-1, ...same.map((q) => q.rota ?? -1)) + 1;
   else p.index = Math.max(-1, ...same.map((q) => q.index ?? -1)) + 1;
   return p;
@@ -84,10 +82,10 @@ export function hirePerson(model, seed, people, discipline, role, t) {
 /**
  * The shift of a person at time t: {on, kind, from, to} (absolute minutes) where `on` means at
  * work; `kind` "day", "early", "late", "night", "oncall" (at home, can be called) or "off".
- * @param {Person} p
+ * @param {StaffMember} p
  * @param {number} t minutes
  * @param {object} model
- * @param {Person[]} people all staff (for the on-call rotation)
+ * @param {StaffMember[]} people all staff (for the on-call rotation)
  */
 export function shiftOf(p, t, model, people) {
   const d = Math.floor(t / DAY), tod = t - d * DAY, wd = weekdayOf(d, model.start_year);

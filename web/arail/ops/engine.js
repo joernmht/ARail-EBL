@@ -22,7 +22,7 @@
 import { normalizeOps, OPS_DEFAULTS } from "./config.js";
 import { dayKind, deadheadMin, emptyRunKm, emptyRunMin, planPieces, planRotations, tripTemplates } from "./timetable.js";
 import { Unit, expectedFailures, wearInterval } from "./fleet.js";
-import { buildDuties, makeStaff, reserveDuties } from "./crew.js";
+import { buildDuties, crewPopulation, makeStaff, reserveDuties } from "./crew.js";
 import { CrewDesk } from "./crewdesk.js";
 import { Ledger } from "./contracts.js";
 import { DAY, EventQueue, addWork, dayOf, dayTime, hhmm, isOpen, lognormal, nextOpen, stream } from "./util.js";
@@ -292,9 +292,10 @@ export class OpsEngine {
     const lines = m.lines.map((l) => l.id);
     const outer = [];
     for (const l of m.lines) for (const s of l.route) if (!this.relief.has(s) && !outer.some((o) => o.station === s)) outer.push({ station: s, line: l.id });
+    const population = crewPopulation(this.seed);
     const people = [
-      ...makeStaff(m, drivers, { role: "driver", seed: this.seed, lines, homes, outer }),
-      ...makeStaff(m, conductors, { role: "conductor", seed: this.seed, lines, homes, outer }),
+      ...makeStaff(m, drivers, { role: "driver", seed: this.seed, lines, homes, outer, population }),
+      ...makeStaff(m, conductors, { role: "conductor", seed: this.seed, lines, homes, outer, population }),
     ];
     this.desk = new CrewDesk(this, people);
   }

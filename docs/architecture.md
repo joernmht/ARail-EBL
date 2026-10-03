@@ -47,6 +47,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, twist, fit, plan view; grid lines and snapping |
 | `core/world.js` | the loaded layout: objects, simulations, services, bus lines, disruptions, scenarios, trains, the clock; `step` and `draw` |
 | `core/clock.js` | the fast clock: time of day, daylight, demand profiles over the day |
+| `core/people.js` | the people of all simulations (town residents, crews, maintenance staff): `Person`, `Population` (ids, bird names in the languages of people living in Germany, random streams per person), homes (`pickHome`, `residentialBuildings`) |
 | `core/layout.js`, `core/anchors.js` | layout files (defaults, validation, `grid`, `view.ortho`, `markers.rolling`, the settings check of simulations), marker-relative points |
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `objects/building-kit.js`, `objects/houses.js`, `objects/building.js` | `BuildingBase` and `BuildingModel` (white-model look, lit windows, level of detail) and the house types |
@@ -68,7 +69,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `terminal/operations.js`, `terminal/handlers.js`, `terminal/visits.js`, `terminal/movers.js` | `TerminalSimulation`: requests, moves and their assignment, cranes and reach stackers, trains, trucks and barges on their paths, loading, the start state, validation, scenario requests |
 | `terminal/rolling.js` | model wagons from rolling-stock tags: tag IDs, fusion, smoothing, snapping, states |
 | `terminal/draw.js`, `terminal/types.js` | drawing containers, wagons, trucks, barges, cranes and the ground; picking boxes; event names and shared types |
-| `ops/config.js`, `ops/util.js`, `ops/names.js` | rail operations: defaults, the network from the platforms, presets of setups and stress tests, normalization and validation; working hours, the event queue, seeded random streams; bird names for the simulated people (crews and maintenance staff) |
+| `ops/config.js`, `ops/util.js` | rail operations: defaults, the network from the platforms, presets of setups and stress tests, normalization and validation; working hours, the event queue, seeded random streams |
 | `ops/timetable.js`, `ops/fleet.js`, `ops/crew.js` | trips and rotations; units, maintenance counters, wear and the failure model; duties (working-time rules), stand-by and the staff |
 | `ops/engine.js`, `ops/crewdesk.js`, `ops/contracts.js` | `OpsEngine`, the discrete-event simulation: dispatching, failures, the maintenance planning and the workshop (ECM functions 1–4), messages between parties; the roster, absences, the way to work and the dispatcher; the penalty ledger |
 | `ops/experiment.js` | key figures, runs of setups under stress tests (`runOne`, `runExperiment`), summaries, CSV |

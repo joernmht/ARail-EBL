@@ -164,7 +164,7 @@ test("town: works with the built-in house types and lights their windows by occu
   world.speed = 10;
   runUntil(world, "10:00");
   const t = town(world);
-  const homes = new Set(t.agents.filter((a) => a.home).map((a) => a.home.id));
+  const homes = new Set(t.agents.filter((a) => a.home?.kind === "layout").map((a) => a.home.building));
   assert.ok(homes.has("wbs") && homes.has("estate"), `homes ${[...homes]}`);
   const s = t.townStats();
   assert.ok(s.work > 0 && s.school > 0, JSON.stringify(s));

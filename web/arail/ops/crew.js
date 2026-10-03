@@ -10,8 +10,10 @@
  * minutes in total for more than 6 hours of work and 45 for more than 9; and at most `max_duty_h`.
  * @module arail/ops/crew
  */
-import { DAY, hashKey, stream } from "./util.js";
-import { birdName } from "./names.js";
+import { DAY, hashKey } from "./util.js";
+import { Population, pickHome } from "../core/people.js";
+
+export { shortName } from "../core/people.js";
 
 /** Longest work without a break (minutes), and the breaks needed for more work (ArbZG § 4). */
 export const WORK_RULES = { continuous: 360, breakMin: 15, after6: 30, after9: 45 };
@@ -175,48 +177,35 @@ export function contractMix(contracts, n) {
   return contracts.flatMap((k, i) => Array.from({ length: counts[i] }, () => k));
 }
 
+/** The population of the crews (its scope "person" keeps the random streams of the crews as they were). */
+export const crewPopulation = (seed) => new Population(seed, "person");
+
 /**
- * Staff of one role.
+ * Staff of one role, made by the crews' population (see `core/people.js`).
  * @param {object} model normalized settings
  * @param {number} count
  * @param {{role: string, seed: number, lines: string[], homes: Array<{id: string, name?: string, walkM: number, weight?: number}>,
- *   outer: Array<{station: string, line: string}>}} o homes: buildings on the layout (with the walk to the crew base);
- *   outer: stations beyond the layout where staff can live (and the line that brings them in)
- * @returns {object[]} people
+ *   outer: Array<{station: string, line: string}>, population?: Population}} o homes: buildings on the layout (with the
+ *   walk to the crew base); outer: stations beyond the layout where staff can live (and the line that brings them in);
+ *   population: shared by all roles (names unique over all of them)
+ * @returns {import("../core/people.js").Person[]} people
  */
-export function makeStaff(model, count, { role, seed, lines, homes = [], outer = [] }) {
+export function makeStaff(model, count, { role, seed, lines, homes = [], outer = [], population = crewPopulation(seed) }) {
   const c = model.crew;
   const contracts = contractMix(c.contracts, count);
   const people = [];
-  const used = new Set();
   for (let i = 0; i < count; i++) {
-    const rng = stream(seed, "person", role, i);
-    const name = birdName(used, seed, role, i);
+    const rng = population.rng([role, i]);
     // route knowledge: every line with probability route_knowledge, at least one
     const known = lines.filter((l) => rng.chance(c.route_knowledge));
     if (!known.length && lines.length) known.push(lines[hashKey(seed, role, i, "line") % lines.length]);
-    let home;
-    if (outer.length && rng.chance(c.off_layout_homes)) {
-      const o = outer[rng.int(outer.length)];
-      home = { kind: "station", station: o.station, line: o.line };
-    } else if (homes.length) {
-      const h = homes[rng.weighted(homes.map((x) => x.weight ?? 1))];
-      home = { kind: "layout", building: h.id, name: h.name ?? h.id, walkM: h.walkM };
-    } else {
-      home = { kind: "away", minutes: Math.max(5, Math.round(c.commute.car_min * rng.uniform(0.5, 1.3))) };
-    }
-    people.push({
-      id: `${role === "driver" ? "T" : "Z"}${String(i + 1).padStart(2, "0")}`, name, role, contract: contracts[i], lines: new Set(known), home,
-    });
+    const home = pickHome(rng, { homes, outer, outerShare: c.off_layout_homes, awayMinutes: c.commute.car_min });
+    people.push(population.add([role, i], {
+      id: `${role === "driver" ? "T" : "Z"}${String(i + 1).padStart(2, "0")}`, role, contract: contracts[i], lines: new Set(known), home,
+    }));
   }
   return people;
 }
-
-/** "A. Fink" */
-export const shortName = (name) => {
-  const [first, ...rest] = String(name).split(" ");
-  return rest.length ? `${first[0]}. ${rest.join(" ")}` : name;
-};
 
 /**
  * How a person gets to the crew base: "walk", "car" or "train", and the minutes it takes (by train:

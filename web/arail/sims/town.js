@@ -20,8 +20,9 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, moodColor } from "../core/colors.js";
-import { createRng, dist2, polylineAt, polylineLengths } from "../core/math.js";
+import { createRng, dist2, hashKey, polylineAt, polylineLengths } from "../core/math.js";
 import { DAY_MINUTES, formatTime, wrapMinutes } from "../core/clock.js";
+import { Person, Population, residentialBuildings } from "../core/people.js";
 import { drawPerson } from "./passengers.js";
 
 /** Colours of people by the purpose of their trip (corporate design colours). */
@@ -43,27 +44,18 @@ const BUS_SPEED = 25 / 3.6; // average speed of a bus incl. stops, for planning 
 const PATIENCE_MIN = 20; // clock minutes an agent waits for a bus or train
 const ACCESS_M = 300; // longest walk to a bus stop (prototype metres)
 
-/** Small string hash (FNV-1a) for per-agent random streams. */
-function hash(...parts) {
-  let h = 2166136261;
-  for (const c of parts.join("|")) {
-    h ^= c.charCodeAt(0);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
 /** Uniform time between two clock times (minutes). */
 const between = (rng, a, b) => rng.uniform(a, b);
 const hm = (h, m = 0) => h * 60 + m;
 
-class Agent {
-  constructor(id, role, home) {
-    this.id = id;
-    /** "worker" | "commuter" (works elsewhere, train) | "pupil" | "senior" | "visitor" (comes by train) */
-    this.role = role;
-    /** {id, entrance} of the home building; null for visitors. */
-    this.home = home;
+/**
+ * A person of the town. `role`: "worker" | "commuter" (works elsewhere, train) | "pupil" | "senior" |
+ * "visitor" (comes by train); `home`: a house on the layout ({kind: "layout", building, entrance}),
+ * for visitors a station beyond it.
+ */
+class Agent extends Person {
+  constructor(spec) {
+    super(spec);
     this.job = null;
     this.school = null;
     /** Today's plan: [{at: minutes, purpose, to: {kind: "building", id} | {kind: "home"} | {kind: "station"} | {kind: "shop"}}]. */
@@ -87,6 +79,11 @@ class Agent {
     this.vehicle = null;
     /** Visitors and commuters: earliest clock time to come (back) by train. */
     this.trainFrom = null;
+  }
+
+  /** The home building ({building, entrance}), null for people who live beyond the layout. */
+  get house() {
+    return this.home?.kind === "layout" ? this.home : null;
   }
 
   /** Colour of the person (by trip purpose). */
@@ -161,12 +158,11 @@ export class TownSimulation extends Simulation {
 
   /** Buildings with a capacity, by use. */
   _buildings() {
-    const out = { residential: [], work: [], school: [], shop: [] };
+    const out = { residential: residentialBuildings(this.world).map(({ o }) => ({ o, cap: o.capacity() || {} })), work: [], school: [], shop: [] };
     for (const o of this.world.objects) {
       if (!o.geometry || typeof o.capacity !== "function") continue;
       const cap = o.capacity() || {};
       const use = typeof o.use === "function" ? o.use() : o.constructor.use;
-      if (use === "residential" && cap.residents > 0) out.residential.push({ o, cap });
       if (cap.jobs > 0) out.work.push({ o, cap });
       if (use === "school" && cap.pupils > 0) out.school.push({ o, cap });
       if (use === "shop") out.shop.push({ o, cap });
@@ -193,7 +189,8 @@ export class TownSimulation extends Simulation {
     this._built = key;
     this.passengers?.removeAgents();
     this.places = b;
-    const rng = createRng(hash(this.world.seed, "town"));
+    const rng = createRng(hashKey(this.world.seed, "town"));
+    const people = new Population(this.world.seed, "town");
     const scale = this.scale, max = Math.max(0, Math.round(+this.config.max_people || 0));
     // residents: proportional to the residents of each building, fair when capped
     const wanted = b.residential.map(({ cap }) => Math.max(1, Math.round(cap.residents * scale)));
@@ -212,7 +209,8 @@ export class TownSimulation extends Simulation {
         if (role === "pupil" && !b.school.length) role = "senior";
         if (role === "worker" && hasPlatform && (rng.chance(+this.config.commuters_out || 0) || !jobs)) role = "commuter";
         if (role === "worker" && !jobs) role = "senior";
-        const a = new Agent(`${o.id}#${j}`, role, { id: o.id, entrance: rng.int(Math.max(1, entrances.length)) });
+        const home = { kind: "layout", building: o.id, entrance: rng.int(Math.max(1, entrances.length)) };
+        const a = people.add([o.id, j], { id: `${o.id}#${j}`, role, home }, Agent);
         if (role === "worker") a.job = this._pickWeighted(rng, workPlaces, (x) => x.cap.jobs);
         if (role === "pupil") a.school = this._pickWeighted(rng, b.school, (x) => x.cap.pupils);
         agents.push(a);
@@ -222,12 +220,12 @@ export class TownSimulation extends Simulation {
     if (hasPlatform && jobs > 0) {
       const n = Math.min(Math.max(0, max - agents.length), Math.round((jobs * (+this.config.commuters_in || 0)) / 100 * scale));
       for (let j = 0; j < n; j++) {
-        const a = new Agent(`visitor#${j}`, "visitor", null);
+        const a = people.add(["visitor", j], { id: `visitor#${j}`, role: "visitor", home: { kind: "station" } }, Agent);
         a.job = this._pickWeighted(rng, workPlaces, (x) => x.cap.jobs);
         agents.push(a);
       }
     }
-    for (const a of agents) a.speed = createRng(hash(a.id, "speed")).uniform(...WALK_SPEED);
+    for (const a of agents) a.speed = createRng(hashKey(a.id, "speed")).uniform(...WALK_SPEED);
     this.agents = agents;
     // real people per agent (the cap makes it more than 100 / people_per_100)
     const residents = b.residential.reduce((s, x) => s + x.cap.residents, 0);
@@ -246,7 +244,7 @@ export class TownSimulation extends Simulation {
   /* ================================================================ plans */
 
   _makePlan(a, day) {
-    const rng = createRng(hash(this.world.seed, a.id, day));
+    const rng = createRng(hashKey(this.world.seed, a.id, day));
     const plan = [];
     const shop = rng.chance(+this.config.shopping || 0);
     const home = { kind: "home" };
@@ -295,7 +293,7 @@ export class TownSimulation extends Simulation {
     const day = this.world.clock.day;
     if (a.planDay === day) return;
     // a new day: commuters still away came home late at night
-    if (a.planDay >= 0 && a.role === "commuter" && a.state === "away" && !a.trip) this._setInside(a, a.home?.id);
+    if (a.planDay >= 0 && a.role === "commuter" && a.state === "away" && !a.trip) this._setInside(a, a.house?.building);
     a.plan = this._makePlan(a, day);
     a.planDay = day;
     a.next = 0;
@@ -344,9 +342,9 @@ export class TownSimulation extends Simulation {
 
   /** Building id for a plan target ({kind: "home" | "building" | "shop"}). */
   _resolveBuilding(a, to, from = null) {
-    if (to.kind === "home") return a.home?.id ?? null;
+    if (to.kind === "home") return a.house?.building ?? null;
     if (to.kind === "building") return to.id;
-    if (to.kind === "shop") return this._nearestShop(from || this._buildingPos(a.home?.id) || [0, 0])?.id ?? a.home?.id ?? null;
+    if (to.kind === "shop") return this._nearestShop(from || this._buildingPos(a.house?.building) || [0, 0])?.id ?? a.house?.building ?? null;
     return null;
   }
 
@@ -439,8 +437,8 @@ export class TownSimulation extends Simulation {
   /** Start the trip of a plan step from where the agent is. */
   _startTrip(a, step) {
     a.purpose = step.purpose;
-    const from = a.inside ? this._buildingPos(a.inside, a.inside === a.home?.id ? a.home.entrance : 0) : a.pos;
-    const fromKey = a.inside ? `building:${a.inside}:${a.inside === a.home?.id ? a.home.entrance : 0}` : null;
+    const from = a.inside ? this._buildingPos(a.inside, a.inside === a.house?.building ? a.house.entrance : 0) : a.pos;
+    const fromKey = a.inside ? `building:${a.inside}:${a.inside === a.house?.building ? a.house.entrance : 0}` : null;
     if (!from) {
       // the building is gone: just be there
       this._arrive(a, step);
@@ -493,7 +491,7 @@ export class TownSimulation extends Simulation {
   _busChoice(a, from, fromKey, dest, destKey, walkM) {
     const transit = this.world.transit, pax = this.passengers;
     const shareBoost = a.role === "pupil" || a.role === "senior" ? 0.1 : 0;
-    const rng = createRng(hash(this.world.seed, a.id, this.world.clock.day, a.next, "mode"));
+    const rng = createRng(hashKey(this.world.seed, a.id, this.world.clock.day, a.next, "mode"));
     if (!transit || !pax || !(walkM > (+this.config.walk_max_m || 150)) || !rng.chance(Math.min(1, (+this.config.bus_share || 0) + shareBoost))) return null;
     return this._bestBus(from, dest, fromKey, destKey, walkM);
   }
@@ -642,15 +640,15 @@ export class TownSimulation extends Simulation {
     a.path = null;
     a.person = null;
     a.vehicle = null;
-    if (a.role === "visitor" || !a.home) this._setAway(a);
-    else if (teleport) this._setInside(a, a.home.id);
+    if (a.role === "visitor" || !a.house) this._setAway(a);
+    else if (teleport) this._setInside(a, a.house.building);
   }
 
   _setInside(a, id) {
     this._leave(a);
     a.state = "inside";
     a.inside = id && this.world.getObject(id) ? id : null;
-    if (!a.inside && a.home && this.world.getObject(a.home.id)) a.inside = a.home.id;
+    if (!a.inside && a.house && this.world.getObject(a.house.building)) a.inside = a.house.building;
     if (!a.inside) {
       a.state = "away";
       return;
@@ -718,9 +716,9 @@ export class TownSimulation extends Simulation {
       // gave up waiting (or the stop was closed): walk instead, or go home
       if (leg.train) {
         a.trip = null;
-        const home = a.home ? this._buildingPos(a.home.id, a.home.entrance) : null;
+        const home = a.house ? this._buildingPos(a.house.building, a.house.entrance) : null;
         if (!home) return this._setAway(a);
-        a.trip = { legs: [{ type: "walk", path: null, toBuilding: a.home.id }], leg: 0, purpose: "home", dest: a.home.id };
+        a.trip = { legs: [{ type: "walk", path: null, toBuilding: a.house.building }], leg: 0, purpose: "home", dest: a.house.building };
         a.purpose = "home";
         return this._beginLeg(a);
       }
@@ -769,14 +767,14 @@ export class TownSimulation extends Simulation {
     const pax = this.passengers;
     const n = Math.min(due.length, 14);
     // by dock, not by vehicle: vehicle ids count on over all worlds (a layout loaded again), so the same seed would not give the same day
-    const rng = createRng(hash(this.world.seed, dock.id, this.world.time.toFixed(1)));
+    const rng = createRng(hashKey(this.world.seed, dock.id, this.world.time.toFixed(1)));
     const chosen = [];
     for (let i = 0; i < n; i++) chosen.push(due.splice(rng.int(due.length), 1)[0]);
     for (const a of chosen) {
       const step = a.plan[a.next];
       a.next++;
       a.purpose = step.purpose;
-      let destId = step.to.kind === "home" ? a.home?.id : this._resolveBuilding(a, step.to);
+      let destId = step.to.kind === "home" ? a.house?.building : this._resolveBuilding(a, step.to);
       if (step.shop && this._open("shop")) {
         // shopping on the way home: the shop first, home after a short stay
         const shopId = this._nearestShop(this._accessPoint(dock.area))?.id;
@@ -923,7 +921,7 @@ export class TownSimulation extends Simulation {
       }
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
-        dir, speed: a.speed, phase: a.phase, height: 1.6 + (hash(a.id) % 30) / 100,
+        dir, speed: a.speed, phase: a.phase, height: 1.6 + (hashKey(a.id) % 30) / 100,
         colour: mode === "mood" ? moodColor(0.85) : a.colour,
       });
     }
@@ -949,7 +947,7 @@ export class TownSimulation extends Simulation {
     };
     for (const a of this.agents) {
       if (a.state === "inside") {
-        if (a.home && a.inside === a.home.id) out.home++;
+        if (a.house && a.inside === a.house.building) out.home++;
         else {
           const u = use(a.inside);
           if (u === "school" && a.role === "pupil") out.school++;

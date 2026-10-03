@@ -65,6 +65,7 @@ export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normali
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
+export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
 export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";
 export { BusStop, BusLine, TrafficSimulation };
@@ -110,7 +111,7 @@ export {
   ASSET_TYPES, TYPE_IDS, hazardFactor, repairCap, METHODS, MEASURES,
   ROLES, ROLE_IDS, DEFAULT_NETWORK, DEFAULT_PLACEMENT, INFRA_DEFAULTS, PRESET_SCENARIOS, normalizeInfra, applyScenario, scenariosOf, validateInfra,
   Network, utmToLonLat, utmZone, kmLabel, Asset, generateAssets, healthAtAge, healthAfter, wearRate, ifcGuid,
-  Person, makePeople, shiftOf as infraShiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS, Plant, PLANT_STAGES,
+  StaffMember, makePeople, shiftOf as infraShiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS, Plant, PLANT_STAGES,
   ProjectDesk, PROJECT_STAGES, PROCEDURES, QUALITY, SUPERVISION, annuityFactor, eur,
   InfraEngine, INFRA_ACTIONS, TASK_WORDS, YEAR, durationText, toGeoJSON, assetRecord,
   AssetObject, LinearAssetObject, Signal, Switch, Balise, LevelCrossing, GsmrMast, Lift, PassengerDisplay, Catenary, CableRoute, Interlocking,

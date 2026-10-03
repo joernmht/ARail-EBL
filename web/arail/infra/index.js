@@ -19,7 +19,7 @@ export {
 export { ROLES, ROLE_IDS, DEFAULT_NETWORK, DEFAULT_PLACEMENT, INFRA_DEFAULTS, PRESET_SCENARIOS, normalizeInfra, applyScenario, scenariosOf, validateInfra } from "./config.js";
 export { Network, utmToLonLat, utmZone, kmLabel } from "./network.js";
 export { Asset, generateAssets, healthAtAge, healthAfter, wearRate, ifcGuid } from "./assets.js";
-export { Person, makePeople, shiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS } from "./staff.js";
+export { StaffMember, makePeople, shiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS } from "./staff.js";
 export { Plant, STAGE_LABELS as PLANT_STAGES } from "./factory.js";
 export { ProjectDesk, STAGES as PROJECT_STAGES, PROCEDURES, QUALITY, SUPERVISION, annuityFactor, eur } from "./projects.js";
 export { InfraEngine, INFRA_ACTIONS, TASK_WORDS, YEAR, durationText } from "./engine.js";

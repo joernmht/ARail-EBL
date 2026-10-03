@@ -290,6 +290,8 @@ world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop 
 
 `enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `anyDock`, `at` (where the person comes from), `mood`. An agent with a `colour` property is drawn in that colour while people show trip purposes (Simulate → Town → Colour of people).
 
+To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
+
 To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge.
 
 ### World API
