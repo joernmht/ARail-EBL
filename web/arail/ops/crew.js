@@ -11,6 +11,7 @@
  * @module arail/ops/crew
  */
 import { DAY, hashKey, stream } from "./util.js";
+import { birdName } from "./names.js";
 
 /** Longest work without a break (minutes), and the breaks needed for more work (ArbZG § 4). */
 export const WORK_RULES = { continuous: 360, breakMin: 15, after6: 30, after9: 45 };
@@ -159,74 +160,6 @@ export function reserveDuties(model, role = "driver") {
 
 /* ---------------------------------------------------------------- staff */
 
-/**
- * Staff names are made of bird names, so nobody in the simulation is a real person. Each person gets
- * one language, and both parts of the name are birds in that language. The weights (per cent) are a
- * rough picture of the languages of the people living in Germany: German, the largest groups with an
- * immigration history (Mikrozensus) and two of the recognised national minorities (Danish, Sorbian).
- * Names in non-Latin scripts are transliterated.
- */
-const BIRDS = [
-  { lang: "de", weight: 72, names: [
-    "Amsel", "Drossel", "Fink", "Meise", "Specht", "Sperling", "Lerche", "Elster", "Rabe", "Krähe", "Taube", "Schwalbe",
-    "Star", "Storch", "Reiher", "Kranich", "Eule", "Kauz", "Falke", "Bussard", "Habicht", "Adler", "Zeisig", "Stieglitz",
-    "Gimpel", "Dohle", "Kiebitz", "Wachtel", "Pirol", "Wiedehopf", "Eisvogel", "Zaunkönig", "Ammer", "Schwan", "Möwe", "Kuckuck",
-  ] },
-  { lang: "tr", weight: 5, names: [
-    "Serçe", "Kartal", "Şahin", "Doğan", "Turna", "Leylek", "Bülbül", "Kumru", "Güvercin", "Karga", "Baykuş", "Saksağan",
-    "Kırlangıç", "Martı", "Toygar", "Atmaca",
-  ] },
-  { lang: "pl", weight: 4, names: [
-    "Wróbel", "Sikora", "Jaskółka", "Słowik", "Sokół", "Orzeł", "Żuraw", "Bocian", "Gołąb", "Kruk", "Sroka", "Sowa",
-    "Szczygieł", "Drozd", "Szpak", "Mewa", "Wrona", "Dzięcioł",
-  ] },
-  { lang: "ru", weight: 4, names: [
-    "Vorobey", "Sinitsa", "Lastochka", "Solovey", "Sokol", "Orel", "Zhuravl", "Aist", "Golub", "Voron", "Soroka", "Sova",
-    "Snegir", "Shchegol", "Drozd", "Skvorets", "Chaika", "Grach", "Filin",
-  ] },
-  { lang: "ar", weight: 3, names: [
-    "Asfour", "Bulbul", "Hamama", "Nasr", "Saqr", "Shahin", "Hudhud", "Ghurab", "Laqlaq", "Karawan", "Summan", "Nawras",
-    "Tawus", "Yamama",
-  ] },
-  { lang: "uk", weight: 2, names: [
-    "Horobets", "Synytsia", "Lastivka", "Solovei", "Sokil", "Orel", "Zhuravel", "Leleka", "Holub", "Voron", "Soroka", "Sova",
-    "Snihur", "Shchyhol", "Drizd", "Shpak", "Zozulia", "Diatel",
-  ] },
-  { lang: "bs-hr-sr", weight: 2, names: [
-    "Vrabac", "Sjenica", "Lastavica", "Slavuj", "Soko", "Orao", "Ždral", "Roda", "Golub", "Gavran", "Svraka", "Sova",
-    "Zeba", "Češljugar", "Drozd", "Čvorak", "Galeb", "Vrana",
-  ] },
-  { lang: "ro", weight: 2, names: [
-    "Vrabie", "Pițigoi", "Rândunică", "Privighetoare", "Șoim", "Vultur", "Cocor", "Barză", "Porumbel", "Corb", "Coțofană",
-    "Bufniță", "Sticlete", "Sturz", "Graur", "Pescăruș", "Cuc", "Mierlă",
-  ] },
-  { lang: "it", weight: 2, names: [
-    "Passero", "Rondine", "Usignolo", "Falco", "Aquila", "Cicogna", "Colombo", "Corvo", "Gazza", "Civetta", "Fringuello",
-    "Cardellino", "Tordo", "Storno", "Gabbiano", "Merlo", "Picchio", "Allodola", "Pettirosso",
-  ] },
-  { lang: "ku", weight: 1, names: ["Kew", "Bilbil", "Kotir", "Çivîk", "Qertel", "Şahîn", "Qijik", "Qaz"] },
-  { lang: "el", weight: 1, names: [
-    "Chelidoni", "Aidoni", "Geraki", "Aetos", "Pelargos", "Peristeri", "Korakas", "Koukouvagia", "Kotsyfas", "Glaros",
-    "Geranos", "Tsichla", "Psaroni", "Karderina",
-  ] },
-  { lang: "da", weight: 1, names: [
-    "Spurv", "Mejse", "Svale", "Nattergal", "Falk", "Ørn", "Trane", "Stork", "Due", "Ravn", "Skade", "Ugle", "Solsort",
-    "Stær", "Måge", "Krage", "Lærke", "Finke",
-  ] },
-  { lang: "hsb", weight: 1, names: ["Kruk", "Sowa", "Wróbl", "Hołb", "Žoraw", "Sroka", "Škórc", "Kós"] },
-];
-const BIRD_WEIGHT = BIRDS.reduce((s, b) => s + b.weight, 0);
-
-/** The bird names of a person's language (picked by weight from a hash). */
-function birdsOf(h) {
-  let r = h % BIRD_WEIGHT;
-  for (const b of BIRDS) {
-    if (r < b.weight) return b.names;
-    r -= b.weight;
-  }
-  return BIRDS[0].names;
-}
-
 /** Contracts for `n` people by their shares (largest remainder, in the order of the contracts). */
 export function contractMix(contracts, n) {
   const total = contracts.reduce((s, k) => s + k.share, 0) || 1;
@@ -258,15 +191,7 @@ export function makeStaff(model, count, { role, seed, lines, homes = [], outer =
   const used = new Set();
   for (let i = 0; i < count; i++) {
     const rng = stream(seed, "person", role, i);
-    const birds = birdsOf(hashKey(seed, role, i, "lang"));
-    let name;
-    for (let k = 0; k < 50; k++) {
-      const f = hashKey(seed, role, i, k, "f") % birds.length;
-      const l = (f + 1 + (hashKey(seed, role, i, k, "l") % (birds.length - 1))) % birds.length;
-      name = `${birds[f]} ${birds[l]}`;
-      if (!used.has(name)) break;
-    }
-    used.add(name);
+    const name = birdName(used, seed, role, i);
     // route knowledge: every line with probability route_knowledge, at least one
     const known = lines.filter((l) => rng.chance(c.route_knowledge));
     if (!known.length && lines.length) known.push(lines[hashKey(seed, role, i, "line") % lines.length]);

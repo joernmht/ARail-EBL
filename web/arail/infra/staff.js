@@ -10,16 +10,8 @@
  * @module arail/infra/staff
  */
 import { DISCIPLINE_IDS, DISCIPLINES } from "./catalog.js";
-import { DAY, clockMinutes, hashKey } from "../ops/util.js";
-
-const FIRST = [
-  "Anja", "Bernd", "Carsten", "Dana", "Erik", "Franziska", "Gerd", "Heiko", "Ines", "Jörg", "Karin", "Lars", "Maik", "Nadine", "Oliver",
-  "Peggy", "René", "Sandra", "Torsten", "Ulrike", "Volker", "Yvonne", "Silke", "Mirko", "Doreen", "Ronny", "Steffi", "Enrico", "Katja", "Marco",
-];
-const LAST = [
-  "Lehmann", "Seidel", "Hentschel", "Kühn", "Ullrich", "Pietsch", "Böhme", "Hering", "Schreiber", "Barth", "Kretzschmar", "Fiedler",
-  "Mehnert", "Lindner", "Pfeifer", "Rößler", "Thiele", "Ebert", "Großmann", "Haase", "Kunze", "Martin", "Voigt", "Winkler", "Ziegler",
-];
+import { DAY, clockMinutes } from "../ops/util.js";
+import { birdName } from "../ops/names.js";
 
 /** Shift kinds and their clock times (minutes after midnight). */
 export const SHIFTS = {
@@ -63,15 +55,7 @@ export class Person {
 export function makePeople(model, seed) {
   const people = [];
   const used = new Set();
-  const name = (...key) => {
-    for (let k = 0; ; k++) {
-      const n = `${FIRST[hashKey(seed, ...key, k, "f") % FIRST.length]} ${LAST[hashKey(seed, ...key, k, "l") % LAST.length]}`;
-      if (!used.has(n) || k > 40) {
-        used.add(n);
-        return n;
-      }
-    }
-  };
+  const name = (...key) => birdName(used, seed, ...key);
   for (const d of DISCIPLINE_IDS) {
     people.push(new Person({ id: `alv-${d}`, name: name("alv", d), discipline: d, role: "alv" }));
     const s = model.staff[d];
@@ -87,8 +71,7 @@ export function hirePerson(model, seed, people, discipline, role, t) {
   const same = people.filter((p) => p.discipline === discipline && p.role === role);
   const n = same.length + 1;
   const used = new Set(people.map((p) => p.name));
-  let nm = "";
-  for (let k = 0; k < 60 && (!nm || used.has(nm)); k++) nm = `${FIRST[hashKey(seed, "hire", discipline, role, n, k) % FIRST.length]} ${LAST[hashKey(seed, "hire", discipline, role, n, k, "l") % LAST.length]}`;
+  const nm = birdName(used, seed, "hire", discipline, role, n);
   const base = discipline === "drone" ? "pilot" : `${discipline}-${role === "emergency" ? "em" : "day"}`;
   let k = n;
   while (people.some((q) => q.id === `${base}-${k}`)) k++;
