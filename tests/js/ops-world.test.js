@@ -107,7 +107,7 @@ test("its trains stand at the platforms with their units and driver; the boards 
   assert.ok(all.length >= 3);
   for (const [line, info] of all) {
     assert.match(line, /^(RE 1|RB 33|S 2|S 8) (→ \w+ \d\d:\d\d|from \w+)$/, line);
-    assert.match(info[0], /^442 \d{3}( \+ 442 \d{3})*( · [A-Z]\. [\wäöüß-]+)?$/, info[0]);
+    assert.match(info[0], /^442 \d{3}( \+ 442 \d{3})*( · \p{Lu}\. [\p{L}-]+)?$/u, info[0]);
   }
   // the boards: the train at the platform, else the next departures of the operations
   for (const id of ["platform-1", "platform-2"]) {

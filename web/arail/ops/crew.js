@@ -159,17 +159,73 @@ export function reserveDuties(model, role = "driver") {
 
 /* ---------------------------------------------------------------- staff */
 
-const FIRST = [
-  "Anna", "Ben", "Clara", "David", "Elif", "Felix", "Greta", "Hannes", "Ida", "Jonas", "Katrin", "Lukas", "Marie", "Niklas", "Olga",
-  "Paul", "Rita", "Sven", "Tanja", "Uwe", "Vera", "Wolfgang", "Yasmin", "Zoran", "Birgit", "Emil", "Frieda", "Gustav", "Heike", "Jan",
-  "Lena", "Mehmet", "Nora", "Ole", "Petra", "Ronja", "Stefan", "Theo", "Ute", "Kerstin",
+/**
+ * Staff names are made of bird names, so nobody in the simulation is a real person. Each person gets
+ * one language, and both parts of the name are birds in that language. The weights (per cent) are a
+ * rough picture of the languages of the people living in Germany: German, the largest groups with an
+ * immigration history (Mikrozensus) and two of the recognised national minorities (Danish, Sorbian).
+ * Names in non-Latin scripts are transliterated.
+ */
+const BIRDS = [
+  { lang: "de", weight: 72, names: [
+    "Amsel", "Drossel", "Fink", "Meise", "Specht", "Sperling", "Lerche", "Elster", "Rabe", "Krähe", "Taube", "Schwalbe",
+    "Star", "Storch", "Reiher", "Kranich", "Eule", "Kauz", "Falke", "Bussard", "Habicht", "Adler", "Zeisig", "Stieglitz",
+    "Gimpel", "Dohle", "Kiebitz", "Wachtel", "Pirol", "Wiedehopf", "Eisvogel", "Zaunkönig", "Ammer", "Schwan", "Möwe", "Kuckuck",
+  ] },
+  { lang: "tr", weight: 5, names: [
+    "Serçe", "Kartal", "Şahin", "Doğan", "Turna", "Leylek", "Bülbül", "Kumru", "Güvercin", "Karga", "Baykuş", "Saksağan",
+    "Kırlangıç", "Martı", "Toygar", "Atmaca",
+  ] },
+  { lang: "pl", weight: 4, names: [
+    "Wróbel", "Sikora", "Jaskółka", "Słowik", "Sokół", "Orzeł", "Żuraw", "Bocian", "Gołąb", "Kruk", "Sroka", "Sowa",
+    "Szczygieł", "Drozd", "Szpak", "Mewa", "Wrona", "Dzięcioł",
+  ] },
+  { lang: "ru", weight: 4, names: [
+    "Vorobey", "Sinitsa", "Lastochka", "Solovey", "Sokol", "Orel", "Zhuravl", "Aist", "Golub", "Voron", "Soroka", "Sova",
+    "Snegir", "Shchegol", "Drozd", "Skvorets", "Chaika", "Grach", "Filin",
+  ] },
+  { lang: "ar", weight: 3, names: [
+    "Asfour", "Bulbul", "Hamama", "Nasr", "Saqr", "Shahin", "Hudhud", "Ghurab", "Laqlaq", "Karawan", "Summan", "Nawras",
+    "Tawus", "Yamama",
+  ] },
+  { lang: "uk", weight: 2, names: [
+    "Horobets", "Synytsia", "Lastivka", "Solovei", "Sokil", "Orel", "Zhuravel", "Leleka", "Holub", "Voron", "Soroka", "Sova",
+    "Snihur", "Shchyhol", "Drizd", "Shpak", "Zozulia", "Diatel",
+  ] },
+  { lang: "bs-hr-sr", weight: 2, names: [
+    "Vrabac", "Sjenica", "Lastavica", "Slavuj", "Soko", "Orao", "Ždral", "Roda", "Golub", "Gavran", "Svraka", "Sova",
+    "Zeba", "Češljugar", "Drozd", "Čvorak", "Galeb", "Vrana",
+  ] },
+  { lang: "ro", weight: 2, names: [
+    "Vrabie", "Pițigoi", "Rândunică", "Privighetoare", "Șoim", "Vultur", "Cocor", "Barză", "Porumbel", "Corb", "Coțofană",
+    "Bufniță", "Sticlete", "Sturz", "Graur", "Pescăruș", "Cuc", "Mierlă",
+  ] },
+  { lang: "it", weight: 2, names: [
+    "Passero", "Rondine", "Usignolo", "Falco", "Aquila", "Cicogna", "Colombo", "Corvo", "Gazza", "Civetta", "Fringuello",
+    "Cardellino", "Tordo", "Storno", "Gabbiano", "Merlo", "Picchio", "Allodola", "Pettirosso",
+  ] },
+  { lang: "ku", weight: 1, names: ["Kew", "Bilbil", "Kotir", "Çivîk", "Qertel", "Şahîn", "Qijik", "Qaz"] },
+  { lang: "el", weight: 1, names: [
+    "Chelidoni", "Aidoni", "Geraki", "Aetos", "Pelargos", "Peristeri", "Korakas", "Koukouvagia", "Kotsyfas", "Glaros",
+    "Geranos", "Tsichla", "Psaroni", "Karderina",
+  ] },
+  { lang: "da", weight: 1, names: [
+    "Spurv", "Mejse", "Svale", "Nattergal", "Falk", "Ørn", "Trane", "Stork", "Due", "Ravn", "Skade", "Ugle", "Solsort",
+    "Stær", "Måge", "Krage", "Lærke", "Finke",
+  ] },
+  { lang: "hsb", weight: 1, names: ["Kruk", "Sowa", "Wróbl", "Hołb", "Žoraw", "Sroka", "Škórc", "Kós"] },
 ];
-const LAST = [
-  "Weber", "Schulze", "Krause", "Lehmann", "Richter", "Wolf", "Neumann", "Schröder", "Hoffmann", "Fischer", "Wagner", "Becker",
-  "Hartmann", "Werner", "Zimmermann", "Braun", "Krüger", "Hofmann", "Lange", "Schmitt", "Kaiser", "Fuchs", "Peters", "Scholz",
-  "Möller", "Jung", "Hahn", "Vogel", "Friedrich", "Keller", "Günther", "Berger", "Winkler", "Roth", "Beck", "Lorenz", "Baumann",
-  "Franke", "Albrecht", "Simon",
-];
+const BIRD_WEIGHT = BIRDS.reduce((s, b) => s + b.weight, 0);
+
+/** The bird names of a person's language (picked by weight from a hash). */
+function birdsOf(h) {
+  let r = h % BIRD_WEIGHT;
+  for (const b of BIRDS) {
+    if (r < b.weight) return b.names;
+    r -= b.weight;
+  }
+  return BIRDS[0].names;
+}
 
 /** Contracts for `n` people by their shares (largest remainder, in the order of the contracts). */
 export function contractMix(contracts, n) {
@@ -202,9 +258,12 @@ export function makeStaff(model, count, { role, seed, lines, homes = [], outer =
   const used = new Set();
   for (let i = 0; i < count; i++) {
     const rng = stream(seed, "person", role, i);
+    const birds = birdsOf(hashKey(seed, role, i, "lang"));
     let name;
     for (let k = 0; k < 50; k++) {
-      name = `${FIRST[(hashKey(seed, role, i, k, "f") % FIRST.length)]} ${LAST[(hashKey(seed, role, i, k, "l") % LAST.length)]}`;
+      const f = hashKey(seed, role, i, k, "f") % birds.length;
+      const l = (f + 1 + (hashKey(seed, role, i, k, "l") % (birds.length - 1))) % birds.length;
+      name = `${birds[f]} ${birds[l]}`;
       if (!used.has(name)) break;
     }
     used.add(name);
@@ -228,7 +287,7 @@ export function makeStaff(model, count, { role, seed, lines, homes = [], outer =
   return people;
 }
 
-/** "A. Weber" */
+/** "A. Fink" */
 export const shortName = (name) => {
   const [first, ...rest] = String(name).split(" ");
   return rest.length ? `${first[0]}. ${rest.join(" ")}` : name;
