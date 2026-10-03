@@ -59,6 +59,7 @@ The chips at the top left of the stage show the state:
 | *Flyover · plan view*, *Grid 50 mm · snap* | in the flyover: the camera and the grid |
 | *07:32*, *22:30 · night* | the time of day of the fast clock, *· night* between sunset and sunrise (see [Day and night](day-and-night.md)) |
 | *Paused*, *5× time*, *1 disruption*, *Control system · 3 trains*, *Frozen frame*, *Recording* | simulation and recording state |
+| *Operations · 5 trains*, *· 1 unit failed* | [rail operations](operations.md): their trains on the way, failed units |
 
 Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop sign (platform number or "H"), the name, the number of people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events: *Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board.
 
@@ -108,11 +109,12 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 - *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), the colours of their trip purposes, and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
-- *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
+- *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations; a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
+- *Rail operations* (on layouts without them): **Open the example** and **Add to this layout**, see [Rail operations](operations.md).
 
 ### Terminal
 
-The container terminal (see [Container terminal](container-terminal.md)): trains, trucks and barges, the containers on them and in the yard, and the moves of the cranes and reach stackers. **Layouts… → Example: container terminal** opens the example; on a layout without a terminal the panel offers it, or adds a terminal to the layout.
+The container terminal (see [Container terminal](container-terminal.md)): trains, trucks and barges, the containers on them and in the yard, and the moves of the cranes and reach stackers. **Layouts… → Example: container terminal** opens the example; on a layout without a terminal the panel offers it, or adds a terminal to the layout. On a layout with rail operations and no terminal the Operations tab takes this tab's place.
 
 - The terminal's state, the speed, **Reset terminal** and **Save as start state**.
 - *Arrivals*: every train, barge and truck with its state and load, **Call** and **Depart**; for a train or barge at the terminal also **Unload to yard** and **Load from yard**.
@@ -122,6 +124,19 @@ The container terminal (see [Container terminal](container-terminal.md)): trains
 - *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and links to print their cards, one per wagon type.
 
 On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick.
+
+### Operations
+
+Shown instead of the Terminal tab when the layout has [rail operations](operations.md) (**Layouts… → Example: rail operations**): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
+
+- **Today**: key figures of the day, what happened, and short-term changes (a driver calls in sick, a unit breaks down or gets a defect).
+- **Fleet**: every unit, where it is, its next maintenance and its defects.
+- **Workshop**: who does which function of the entity in charge of maintenance (ECM), the workshop's tracks and jobs.
+- **Crews**: today's duties, their drivers and states; a driver calls in sick.
+- **Penalties**: per contract, the net per party and the largest causes.
+- **Compare**: setups under a stress test over days or weeks, with the key figures, cancelled trains per day, the penalties per party and a CSV file.
+
+**Wide panel** (large screens) makes the panel wider for the tables.
 
 ### Disruptions
 
@@ -136,7 +151,7 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 | Key | Action |
 | --- | --- |
 | Space | pause / resume the simulation |
-| 1 … 9 | send a vehicle to the stop with that position on the Stops board (stops served by bus lines say so) |
+| 1 … 9 | send a vehicle to the stop with that position on the Stops board (stops served by bus lines or by the rail operations say so) |
 | M | marker outlines on/off |
 | F | flyover on/off |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
@@ -159,7 +174,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/synthetic-demo.json&sce
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
 | `scenario=<id>` | play a scenario of the layout |
-| `#view`, `#build`, `#simulate`, `#terminal`, `#disrupt`, `#control` | open a panel, e.g. `app/?layout=../layouts/container-terminal.json#terminal` |
+| `#view`, `#build`, `#simulate`, `#terminal`, `#ops`, `#disrupt`, `#control` | open a panel, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal` and `#ops` where the layout has them) |
 
 ## Tips for good tracking
 

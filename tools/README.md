@@ -1,6 +1,7 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL):
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and one Node.js script,
+[`ops-compare.mjs`](#comparing-operations-setups)):
 
 | Command | What it does | Extra |
 | --- | --- | --- |
@@ -37,3 +38,18 @@ only these markers; `--unlocked` to skip), and markers on vehicles (`markers.mov
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
 For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
 Survey a video.
+
+## Comparing operations setups
+
+`ops-compare.mjs` (Node.js, no Python) runs the [rail operations](../docs/operations.md) of a layout
+for each setup under a stress test, as the app's **Operations → Compare** does, and prints the key
+figures and the net penalties per party:
+
+```bash
+node tools/ops-compare.mjs web/layouts/ebl-operations.json --days 28 --seeds 3 --stress flu
+node tools/ops-compare.mjs my-layout.json --setups integrated,distributed --csv results.csv
+node tools/ops-compare.mjs web/layouts/ebl-operations.json --list   # the setups and stress tests
+```
+
+Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
+`--setups ID,ID` (default: the layout's setups, else the presets), `--csv FILE`, `--json FILE`.

@@ -347,6 +347,9 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `terminal.container.moved`, `added`, `left` | `{terminal, container, from, to, move}`, `{terminal, container, carrier}`, `{terminal, container, visit, reason}` |
 | `terminal.wagon.seen`, `terminal.wagon.lost` | `{terminal, carrier}` (model wagons) |
 | `terminal.reset` | `{terminal}` |
+| `ops.trip.departed`, `arrived`, `cancelled`, `terminated` | `{simulation, trip, cause?, unit?}` (rail operations) |
+| `ops.unit.failed`, `defect`, `released`; `ops.job.planned`, `started`, `finished` | `{simulation, unit, trip?, kind?, job?}` |
+| `ops.crew.signon`, `signoff`, `sick`, `alighted`; `ops.penalty`; `ops.log`; `ops.day.end` | see [Rail operations](operations.md#events) |
 
 The terminal also listens to `terminal.request.*` events (from scenario `emit` steps), see [Container terminal](container-terminal.md#scenario-requests). The names are exported as `TERMINAL_EVENTS` and `TERMINAL_REQUESTS`.
 
@@ -409,6 +412,30 @@ world.events.on("terminal.move.finished", ({ move }) => console.log(move.id, ter
 
 Runtime state never enters the object specs or the layout: `toJSON()` returns the configured start state. The terminal's random numbers (the yard fill, delivered containers) come from a stream of their own, so adding a terminal changes nothing in the other simulations. The five infrastructure types are ordinary objects in the palette group *Terminal*; none of them is a stop, a street or a bus lane.
 
+## Rail operations
+
+The [rail operations](operations.md) are a built-in simulation (`ops/`), registered with the
+built-ins by `registerOperations(registry)` (the `depot` object, the `operations` simulation and its
+disruption types). Their engine (`OpsEngine`) knows nothing of the world and runs in Node.js:
+
+```js
+const ops = arail.opsOf(world);                 // the layout's operations, or null
+ops.inject({ type: "sick", count: 2, notice_min: 30 });   // also "failure", "unit_out", "staff_loss", "workshop_closed", "delay", "station_closed"
+const e = ops.engine;                           // units, desk.people, jobs, ledger, totals(), penalties()
+world.events.on("ops.trip.cancelled", ({ trip, cause }) => console.log(trip.lineName, arail.causeWord(cause)));
+
+// without a world: a setup under a stress test, 28 days
+const { kpi } = arail.runOne(config, { layout: arail.normalizeLayout(json), setup: arail.PRESET_SETUPS[2], stress: arail.PRESET_STRESS[1], days: 28 });
+```
+
+**Docks run by a planner.** The operations run the trains of their platforms themselves: they set
+`world.services.planner` to an object with `claims(dock)` (true for the docks it runs) and
+`statusLines(area)` (the lines of the boards). Those docks are in mode `"plan"`: the timetable sends
+nothing there, `services.call()` sends a vehicle only with `{source: "plan"}`, and a connected
+control system still takes over all rail docks (mode `"feed"`). `services.refreshModes()` applies
+the modes again when the planner's docks change. Vehicles may carry more label lines in `info`
+(the units, the driver, the delay).
+
 ## Disruption types
 
 A disruption type is a definition object. Its `effects` are what services and simulations react to (see [Disruptions and scenarios](disruptions-and-scenarios.md#effects)).
@@ -425,6 +452,11 @@ arail.registry.registerDisruption({
   // optional: appliesTo(area, d, world), draw(view, d, world), onStart(d, world), onStop(d, world)
 });
 ```
+
+Two more fields: `requires: "<simulation type>"` offers the type in the Disruptions panel only
+when the layout has that simulation, and `targets: "none"` is for disruptions without a place (the
+panel shows no *Where*; they are started with target `"*"`). The rail operations' types use both and
+act in `onStart`; a string they leave in `d.result` (*3 sick calls*) is shown when they start.
 
 ## Vehicle kinds
 
