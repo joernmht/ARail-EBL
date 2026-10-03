@@ -176,6 +176,7 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`truck-lane`](#truck-lane) | Truck lane (Terminal) | `points` (polyline) |
 | [`quay`](#quay-quay-and-fairway) | Quay and fairway (Terminal) | `points` (polyline) |
 | [`reach-stacker`](#reach-stacker) | Reach stacker (Terminal) | `position` |
+| [`depot`](#depot-depot-and-workshop) | Depot and workshop (Transport) | `position` |
 
 ### `platform`: rail platform
 
@@ -373,6 +374,22 @@ Geometry: `position`, its parking place. It moves containers where no crane reac
 | `tiers` | `3` | the highest tier it stacks to (1–4) |
 | `speed` | `1` | speed factor (0.25–5) |
 
+### `depot`: depot and workshop
+
+Geometry: `position` (centre). A maintenance depot (Betriebswerk): a glass workshop hall with its
+tracks and inspection pits, stabling tracks behind it and the crew room at the front, whose door
+(entrance 0) is where crews sign on. With [rail operations](operations.md) it shows the units in
+the workshop and on the stabling tracks (a unit outlined in Orange is being worked on, one outlined in Rot has failed)
+and a board with the state of the workshop; the operations name it in
+`maintenance.workshop.object`.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | direction of the tracks |
+| `length_m` | `64` | length of the hall and the tracks (30–250) |
+| `bays` | `2` | workshop tracks in the hall (1–6); the operations work on as many as `maintenance.workshop.bays` |
+| `stabling` | `3` | stabling tracks (0–10), two units each |
+
 ### Objects from plugins
 
 Plugins add their own types (the example plugin [`windmill.js`](../web/plugins/windmill.js) adds `windmill`). If a layout contains a type that is not registered, the object is kept unchanged when the layout is saved, and the app reports the missing plugin.
@@ -387,6 +404,7 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `commuters_out` (0.35 of the workers take the train), `commuters_in` (40 visitors by train per 100 local jobs), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train, see [Day and night](day-and-night.md#the-town-simulation) |
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
+| `operations` | `name`, `stations`, `lines` (default: from the platforms' `lines`), `fleet`, `maintenance`, `parties`, `ecm`, `contracts`, `crew`, `dispatch`, `costs`, `setups`, `stress` | rail operations: units with maintenance and failures, the four ECM functions, penalties between the parties, crews with duties and rosters; its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Rail operations](operations.md#layout-file) for the keys. One per layout. |
 
 The town needs residential buildings and works best with the passenger simulation (for the stops), streets and bus lines. Plugins can add more simulations, e.g. `{"type": "road-traffic", "cars_per_km": 30, "speed_kmh": 40}` from the example plugin [`road-traffic.js`](../web/plugins/road-traffic.js). Settings of a simulation whose plugin is missing are kept when the layout is saved.
 
@@ -399,6 +417,6 @@ The app and `validateLayout()` report:
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
 - a malformed `grid` or `view.ortho`, and scenarios without an id or steps;
 - in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;
-- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal.
+- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`).
 
 The layout loads anyway, with unusable entries left out; the app logs the problems and shows the first one when a layout is imported. The tests check the example layouts, so a broken example layout fails CI.

@@ -168,6 +168,7 @@ export class Panels {
     this.townBox = h("div", { class: "town-stats" });
     const app = this.app, s = w.settings;
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
+    const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
     mount(el,
       section("Time of day",
         this.clockFace,
@@ -198,6 +199,11 @@ export class Panels {
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
       section("Stops", this.board, h("p", { class: "hint" }, "Keys 1–9 send a vehicle to the stop with that position in the list.")),
+      hasOps ? null : section("Rail operations",
+        h("p", { class: "hint" }, "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups."),
+        h("div", { class: "row" },
+          h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.openExample("operations") }, "Open the example"),
+          h("button", { class: "btn", type: "button", id: "opsAdd", onclick: () => app.operations.addOperations() }, "Add to this layout"))),
     );
     this.updateSimulateControls();
     this.updateClock();
@@ -271,7 +277,8 @@ export class Panels {
         h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
         h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => h("button", {
-          class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed",
+          class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan",
+          title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : null,
           onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
         }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`))),
       );
@@ -293,7 +300,9 @@ export class Panels {
   renderNewDisruption() {
     if (!this.newDisruption) return;
     const w = this.world, reg = w.registry, draft = this.disruptionDraft;
-    const def = reg.disruptions.get(draft.type) || [...reg.disruptions.values()][0];
+    // disruptions of a simulation the layout does not have are not offered
+    const offered = [...reg.disruptions.values()].filter((d) => !d.requires || w.simulations.some((s) => s.constructor.type === d.requires));
+    const def = offered.find((d) => d.type === draft.type) || offered[0];
     if (!def) return;
     draft.type = def.type;
     const areas = w.stopAreas().filter((a) => !def.targets || def.targets === "any" || a.kind === def.targets);
@@ -308,8 +317,8 @@ export class Panels {
       h("div", { class: "fields" },
         h("label", { class: "field", for: "disType" }, h("span", {}, "Kind"),
           h("select", { id: "disType", onchange: (e) => { draft.type = e.target.value; draft.params = {}; this.renderNewDisruption(); } },
-            [...reg.disruptions.values()].map((d) => h("option", { value: d.type, selected: d.type === def.type }, d.label)))),
-        h("label", { class: "field", for: "disTarget" }, h("span", {}, "Where"),
+            offered.map((d) => h("option", { value: d.type, selected: d.type === def.type }, d.label)))),
+        def.targets === "none" ? null : h("label", { class: "field", for: "disTarget" }, h("span", {}, "Where"),
           h("select", { id: "disTarget", onchange: (e) => (draft.target = e.target.value) }, targets.map(([v, t]) => h("option", { value: v, selected: v === draft.target }, t)))),
       ),
       def.description ? h("p", { class: "hint" }, def.description) : null,
@@ -327,7 +336,7 @@ export class Panels {
         if (!bt) return toast("Add a bus terminal first (Build panel).");
         p.bus_terminal = bt.id;
       }
-      this.world.disruptions.start({ type: def.type, target: draft.target, params: p });
+      this.world.disruptions.start({ type: def.type, target: def.targets === "none" ? "*" : draft.target, params: p });
     } catch (err) {
       toast(err.message);
     }

@@ -147,13 +147,15 @@ export class TrainRegistry {
     this.trains.delete(id);
   }
 
-  /** Rail docks are feed-controlled while the feed is active. */
+  /** Rail docks are feed-controlled while the feed is active (else timetable or planner, see ServiceManager.baseMode). */
   _syncModes() {
-    const mode = this.active ? "feed" : "timetable";
-    for (const st of this.world.services.docks.values()) {
-      if (st.dock.kind === "rail" && st.mode !== mode) {
+    const services = this.world.services;
+    for (const st of services.docks.values()) {
+      if (st.dock.kind !== "rail") continue;
+      const mode = this.active ? "feed" : services.baseMode(st.dock);
+      if (st.mode !== mode) {
         st.mode = mode;
-        if (mode === "timetable" && st.vehicle?.source === "feed") this.world.services.feedDeparted(st.dock.id);
+        if (mode !== "feed" && st.vehicle?.source === "feed") services.feedDeparted(st.dock.id);
       }
     }
   }

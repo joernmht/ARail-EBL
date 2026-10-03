@@ -83,6 +83,46 @@ for (const [scheme, device, viewport] of STATES) {
   });
 }
 
+// Rail operations: every view of the Operations tab, the results of a comparison, the wide panel,
+// and the Simulate panel of a layout without rail operations.
+for (const [scheme, device, viewport] of STATES) {
+  test(`operations states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const path = "/app/?layout=../layouts/ebl-operations.json#ops";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize(viewport);
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__arail?.operations.sim?.engine, null, { timeout: 60_000 });
+    const found = [];
+    for (const view of ["today", "fleet", "workshop", "crews", "money"]) {
+      await page.locator(`#opsView-${view}`).click();
+      await expect(page.locator(`#opsView-${view}`)).toHaveAttribute("aria-pressed", "true");
+      found.push(...(await violations(page, `Operations panel, ${view}`, "#panel")));
+    }
+    await page.locator("#opsView-compare").click();
+    const boxes = page.locator(".ops-choices input[type=checkbox]");
+    for (let i = 3, n = await boxes.count(); i < n; i++) await boxes.nth(i).uncheck();
+    await page.locator("#opsDays").selectOption("7");
+    await page.locator("#opsSeeds").selectOption("1");
+    await page.locator("#opsRun").click();
+    await expect(page.locator(".ops-results")).toBeVisible({ timeout: 120_000 });
+    found.push(...(await violations(page, "Operations panel, comparison results", "#panel")));
+    if (device === "desktop") {
+      await page.locator("#opsWide").click();
+      found.push(...(await violations(page, "Operations panel, wide")));
+      await page.locator("#opsWide").click();
+    }
+    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.waitForFunction(() => !window.__arail.operations.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
+    await page.locator("#tab-simulate").click();
+    await expect(page.locator("#opsAdd")).toBeVisible();
+    found.push(...(await violations(page, "Simulate panel, rail operations offered", "#panel")));
+    expect(found).toEqual([]);
+  });
+}
+
 // The container terminal: its panel, a selected container with the Move form, a pick on the canvas
 // (the placing bar), the crane jobs and the inspectors of the terminal's object types.
 for (const [scheme, device, viewport] of STATES) {

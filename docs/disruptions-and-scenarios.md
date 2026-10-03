@@ -15,6 +15,23 @@ Disruptions change how vehicles run and how passengers behave. Start them in the
 
 "Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards.
 
+### Disruptions of the rail operations
+
+On layouts with [rail operations](operations.md) the panel also offers disruptions that act on
+them. They have no place on the layout (no *Where*), and the toast says what they did:
+
+| Type | Label | What happens |
+| --- | --- | --- |
+| `crew-sick` | Drivers call in sick | drivers whose duty has not begun call in sick (`count`, `notice_min`): the dispatcher looks for drivers on stand-by and asks people on a free day |
+| `unit-failure` | Unit failure | a unit of a train on its way breaks down or gets a defect (`kind`: `hard`, `soft`) |
+| `drivers-leave` | Drivers leave | drivers leave the company from tomorrow (`count`): a long-term shortage for the roster |
+| `workshop-closed` | Workshop closed | the workshop stops working for `hours` (a strike, a power cut) |
+| `units-damaged` | Units damaged | units are out of service for `days` (`count`), e.g. after a collision |
+
+The built-in disruptions at the platforms of the operations' station act on their trains: a
+*delay* or *signal failure* holds them, *cancellations*, a *closure* and a *replacement bus*
+cancel them.
+
 At the stops of [bus lines](streets-and-buses.md), a *closure* makes the buses pass the stop, a *delay* holds them at the stop, and *cancellations* cancel departures from a terminus; while departures are suspended, a bus laying over at the terminus makes room by going to the depot.
 
 ## Effects
@@ -59,7 +76,7 @@ A scenario is a timeline stored in the layout file. It is played from the Disrup
 | --- | --- | --- |
 | `set` | `{"demand": 1.5, "speed": 5}` | passenger demand and time-lapse speed |
 | `message` | `"Signal failure!"` | shown in the app (event `scenario.message`) |
-| `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`) |
+| `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`); not to tracks of the control system or of the rail operations |
 | `start` | `{"id": "sf", "type": "delay", "target": "platform-1", "params": {"minutes": 5}, "duration": 300}` | start a disruption; `duration` in seconds overrides the default |
 | `stop` | `"sf"` | stop a disruption by its `id` |
 | `emit` | `{"name": "myplugin.event", "payload": {}}` | a custom event for plugins; `terminal.request.*` events drive the container terminal (below) |
@@ -90,6 +107,28 @@ The [container terminal](container-terminal.md) listens to `emit` steps named `t
 ```
 
 A move to a train that is still approaching waits until it has arrived. A request the terminal refuses appears as a message, e.g. *Terminal: KT 52 Duisburg is already here*. All requests and their payloads: [Container terminal](container-terminal.md#scenario-requests).
+
+### Scenarios for the rail operations
+
+The [rail operations](operations.md) are driven by their own disruption types. The scenario
+*Drivers missing in the morning* of the [operations example](../web/layouts/ebl-operations.json):
+
+```json
+{
+  "id": "crew-shortage",
+  "name": "Drivers missing in the morning",
+  "steps": [
+    { "at": 0, "message": "Three drivers call in sick." },
+    { "at": 0, "start": { "id": "sick", "type": "crew-sick", "params": { "count": 3, "notice_min": 20 } } },
+    { "at": 90, "start": { "id": "breakdown", "type": "unit-failure", "params": { "kind": "hard" } }, "message": "A unit breaks down on the way." },
+    { "at": 180, "start": { "id": "meeting", "type": "workshop-closed", "params": { "hours": 4 } }, "message": "The workshop closes for a staff meeting." },
+    { "at": 400, "message": "See Operations → Today for what the dispatcher did." }
+  ]
+}
+```
+
+For longer stories (a flu wave over weeks, a staff shortage) use the stress tests of the
+operations' comparisons instead: [Comparing setups](operations.md#comparing-setups).
 
 ## From the control system
 

@@ -637,6 +637,11 @@ export function statusLines(world, area) {
   }
   if (lines.length) return lines;
   if (states.every((st) => st.mode === "feed")) return ["Waiting for the next train"];
+  // trains of a planner (the operations simulation): its next departures
+  if (states.some((st) => st.mode === "plan")) {
+    const planned = world.services.planner?.statusLines?.(area) || [];
+    if (planned.length || states.every((st) => st.mode !== "timetable")) return planned.length ? planned : ["No more trains today"];
+  }
   const next = Math.min(...states.map((st) => st.timer)) / (world.speed || 1);
   return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];
 }

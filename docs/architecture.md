@@ -68,11 +68,17 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `terminal/operations.js`, `terminal/handlers.js`, `terminal/visits.js`, `terminal/movers.js` | `TerminalSimulation`: requests, moves and their assignment, cranes and reach stackers, trains, trucks and barges on their paths, loading, the start state, validation, scenario requests |
 | `terminal/rolling.js` | model wagons from rolling-stock tags: tag IDs, fusion, smoothing, snapping, states |
 | `terminal/draw.js`, `terminal/types.js` | drawing containers, wagons, trucks, barges, cranes and the ground; picking boxes; event names and shared types |
+| `ops/config.js`, `ops/util.js` | rail operations: defaults, the network from the platforms, presets of setups and stress tests, normalization and validation; working hours, the event queue, seeded random streams |
+| `ops/timetable.js`, `ops/fleet.js`, `ops/crew.js` | trips and rotations; units, maintenance counters, wear and the failure model; duties (working-time rules), stand-by and the staff |
+| `ops/engine.js`, `ops/crewdesk.js`, `ops/contracts.js` | `OpsEngine`, the discrete-event simulation: dispatching, failures, the maintenance planning and the workshop (ECM functions 1–4), messages between parties; the roster, absences, the way to work and the dispatcher; the penalty ledger |
+| `ops/experiment.js` | key figures, runs of setups under stress tests (`runOne`, `runExperiment`), summaries, CSV |
+| `ops/simulation.js`, `ops/depot.js`, `ops/disruptions.js` | `OperationsSimulation`: the engine on the world's clock, trains at the platforms (docks in mode `plan`), boards, crews walking; the depot object; the disruption types |
 | `app/app.js`, `app/ui.js` | sources, frame loop, HUD, recording; small DOM helpers |
 | `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the View, Simulate, Disruptions and Control panels |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/survey.js` | Build → Marker map → Survey a video |
 | `app/terminal.js` | the Terminal panel and picking containers and places on the stage |
+| `app/operations.js` | the Operations panel: the day, fleet, workshop, crews, penalties; comparisons of setups in the page |
 | `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
 | `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py` |
 
@@ -144,6 +150,8 @@ The **town simulation** makes daily plans for the residents of the residential b
 
 The **container terminal** (`terminal/operations.js`) re-reads its infrastructure whenever objects, the marker map or the scale change, keeping the state of its cranes and reach stackers by object id. Each step it moves its trains, barges and trucks along their paths (one 1-D mover each), starts queued moves on free machines whose carriers are ready, and advances the machines through their phases with trapezoidal speed profiles. Its random numbers come from a stream of their own (`createRng(hash(seed + ":terminal"))`), so a terminal changes nothing in the other simulations. Runtime state stays out of object specs and out of the layout file.
 
+The **rail operations** (`ops/`) are a discrete-event simulation of their own (`OpsEngine`, minutes since day 0, a heap of events). `OperationsSimulation` runs the engine up to the world's clock in each step and shows what it does: its trains at the platforms (the services' docks of its stations are in mode `plan`; it calls its vehicles with `services.call(dock, {source: "plan"})` and lets them leave), the boards (`statusLines`), crews walking between their houses and the depot over the road network, and the depot's units. The engine is built anew when its stations, lines or settings change, and runs the days before the clock's time quietly; setting the clock back moves it on to the next day (it never runs backwards). Its random numbers are streams keyed by what they decide (a unit and a trip, a person and a day), so the same seed gives the same failures and sick spells in every setup of a comparison.
+
 The **road network** is built lazily from the streets, building entrances, stop access points and bus lanes, and cached until objects (`world.objectsVersion`), the marker map or the scale change. The **transit** and the **traffic** simulation drive their vehicles along driving lines on the right lane, keep their distance to each other (`roadUsers()`) and give way at junctions.
 
 ## Rendering
@@ -183,14 +191,17 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/terminal-ops.test.js` | moves between all kinds of carriers, refusals, waiting, departures, trucks (gate, leaving, never overlapping), crane phases and timing, cancelling, unload and load, scenario requests, determinism, isolation, round trips, reset, validation, model wagons, edits of the infrastructure |
 | `tests/js/terminal-draw.test.js` | drawing every terminal part by day and night, container colours, label contrast, culling, level of detail, picking, sort keys and the drawing budget of the example |
 | `tests/js/terminal-rolling.test.js`, `deck-cards.test.js` | model wagons from 1, 2 and 3 tags, the size check, outliers, states over time, snapping; deck-card geometry and SVG |
+| `tests/js/ops-engine.test.js` | rail operations without the world: settings and validation, timetable and rotations, duties and the working-time rules, four weeks of operation, determinism, the failure hazard, maintenance limits, distributed vs integrated ECM, the penalty ledger, staff sizing, sick calls and stand-by, rest time, the way to work, stress tests, comparisons and CSV |
+| `tests/js/ops-world.test.js` | rail operations in the world: the example, docks in mode `plan`, trains at the platforms with their labels, boards, crews walking, the depot drawing, the disruption types, closed platforms, the clock, one per layout |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
 | `tests/python/test_bridge.py`, `test_calibration.py`, `test_synthetic.py` | bridge protocol, adapters and WebSocket server end to end; calibration; the synthetic scene |
 | `tests/e2e/app.spec.js` | the app: tracking the examples, building, disruptions, control system, robustness of the panels |
 | `tests/e2e/flyover.spec.js` | the flyover: drawing, navigation, table modules, snapping, the View panel, orthophoto, keyboard |
 | `tests/e2e/houses.spec.js`, `streets.spec.js` | placing house types and estates; streets, bus stops, bus lines and the Stops board |
 | `tests/e2e/marker-map.spec.js`, `survey.spec.js` | Keep positions, Unlock, moving markers; surveying a video in the app |
-| `tests/e2e/design.spec.js`, `a11y.spec.js`, `site.spec.js` | the corporate design and the blue website; accessibility (axe, light and dark mode; also placing, the inspectors of the new object types, a locked map, the town, a phone screen, the Terminal panel); the project page, marker sheets and deck cards |
+| `tests/e2e/design.spec.js`, `a11y.spec.js`, `site.spec.js` | the corporate design and the blue website; accessibility (axe, light and dark mode; also placing, the inspectors of the new object types, a locked map, the town, a phone screen, the Terminal and Operations panels); the project page, marker sheets and deck cards |
 | `tests/e2e/terminal.spec.js` | the Terminal tab: the example in the flyover, moves from the panel and on the stage, trains, trucks, the start state, the scenario |
+| `tests/e2e/operations.spec.js` | the Operations tab: its views and short-term changes, trains at the platforms and boards, a comparison with CSV and the wide panel, adding operations to a layout, the tabs on a phone and with the keyboard, the disruption types |
 | `tests/e2e/keyboard.spec.js` | keyboard only: switching panels, flying, placing an object in the flyover, setting the time; visible focus on the file buttons; stage buttons not hidden by the placing bar |
 
 The JavaScript tests use images and a short video generated by `python -m arail_tools.fixtures` (`npm run fixtures`: synthetic scene rendered with OpenCV, marker strips, the lab photo, `synthetic-survey.webm`). The browser tests start their own server; `ARAIL_PORT` chooses its port (default 8123).
