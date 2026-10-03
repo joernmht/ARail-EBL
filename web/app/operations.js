@@ -59,11 +59,17 @@ export class OperationsPanel {
       morph(e.body);
       return;
     }
+    // another layout: its own setups, no result of the previous one
+    if (sim !== this._shown && !this.compare.running) {
+      Object.assign(this.compare, { setups: null, result: null, error: "", stress: "none" });
+      this._shown = sim;
+    }
     sim.step?.(0);
     morph(e.head, this._head(sim));
     const engine = sim.engine;
-    if (!engine) {
-      morph(e.body, h("p", { class: "hint" }, "Waiting for the platforms: the marker map does not place them yet."));
+    if (!sim.active || !engine) {
+      morph(e.body, h("p", { class: "hint" }, !sim.enabled ? "The rail operations of this layout are switched off (\"enabled\": false in the layout file)."
+        : !sim.active ? "Another rail operations entry of this layout runs the trains." : "Starting the rail operations…"));
       return;
     }
     const views = { today: this._today, fleet: this._fleet, workshop: this._workshop, crews: this._crews, money: this._money, compare: this._compare };
