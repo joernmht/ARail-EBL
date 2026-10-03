@@ -4,7 +4,9 @@
  * their names unique and stable for a seed.
  *
  * Names are made of bird names, so nobody in the simulation is a real person. Each person gets one
- * language, and both parts of the name are birds in that language. The weights (per cent) are a
+ * language, and both parts of the name are birds in that language. A person is named by the
+ * initial and the family name ("S. Fink", "M. van Kraai"); the full parts are kept as `given` and
+ * `family`. The weights (per cent) are a
  * rough picture of the languages of the people living in Germany: German, the largest groups with
  * an immigration history (Mikrozensus), Low German (Plattdeutsch) and two of the recognised
  * national minorities (Danish, Sorbian). Names in non-Latin scripts are transliterated.
@@ -18,7 +20,7 @@ import { createRng, hashKey } from "./math.js";
 
 /**
  * Bird names per language, with the weight (per cent) of the language and the particles before
- * some family names (per cent of the people: "Merel van Vink", "Amsel von Falke").
+ * some family names (per cent of the people: "M. van Vink", "A. von Falke").
  */
 export const LANGUAGES = [
   { lang: "de", weight: 68, particles: { von: 4 }, birds: [
@@ -114,10 +116,17 @@ export const shortName = (name) => {
 
 /** A person of a simulation; simulations extend it with what they need. */
 export class Person {
-  /** @param {{id: string, name: string, lang?: string, role?: string, home?: object|null}} spec and more fields */
-  constructor({ id, name, lang = null, role = null, home = null, ...more }) {
+  /**
+   * @param {{id: string, name: string, given?: string, family?: string, lang?: string, role?: string, home?: object|null}} spec
+   *   and more fields
+   */
+  constructor({ id, name, given = null, family = null, lang = null, role = null, home = null, ...more }) {
     this.id = id;
+    /** "S. Fink": the initial and the family name, as the simulations show it. */
     this.name = name;
+    /** The full given name ("Sperling") and family name with its particle ("van Kraai"). */
+    this.given = given;
+    this.family = family;
     /** Language of the name (code, e.g. "de"). */
     this.lang = lang;
     this.role = role;
@@ -152,18 +161,19 @@ export class Population {
     return rng;
   }
 
-  /** A free name for the key: {name, lang}, two different birds of one language. */
+  /** A free name for the key: {name, given, family, lang}, two different birds of one language. */
   name(key) {
     const k = [this.seed, this.scope, ...[key].flat()];
     const lang = languageOf(hashKey(...k, "lang")), birds = lang.birds;
-    let name;
+    let out;
     for (let i = 0; i < 50; i++) {
       const f = hashKey(...k, i, "f") % birds.length;
       const l = (f + 1 + (hashKey(...k, i, "l") % (birds.length - 1))) % birds.length;
-      name = `${birds[f]} ${particleOf(lang, hashKey(...k, i, "p"))}${birds[l]}`;
-      if (!this.names.has(name)) break;
+      const given = birds[f], family = `${particleOf(lang, hashKey(...k, i, "p"))}${birds[l]}`;
+      out = { name: `${given[0]}. ${family}`, given, family, lang: lang.lang };
+      if (!this.names.has(out.name)) break;
     }
-    return { name, lang: lang.lang };
+    return out;
   }
 
   /**
