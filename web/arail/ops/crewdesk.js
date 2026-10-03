@@ -276,9 +276,12 @@ export class CrewDesk {
 
   /**
    * Cover a whole duty: a person on stand-by whose stand-by covers it, else somebody on a free day.
+   * @param {object} duty
+   * @param {string} cause why its person is missing
+   * @param {{quiet?: boolean}} [options] quiet: nobody found is not counted (the caller keeps the duty's person)
    * @returns {boolean}
    */
-  cover(duty, cause) {
+  cover(duty, cause, { quiet = false } = {}) {
     const e = this.e, now = e.now;
     // stand-by (also somebody whose stand-by has not started yet)
     for (const p of this.people.values()) {
@@ -323,8 +326,23 @@ export class CrewDesk {
         return true;
       }
     }
+    if (quiet) return false;
     e.stat("dutiesUncovered", 1);
     e.log(`Nobody for ${duty.tpl.id} (${e.timeText(duty.signOn)}): its trains need drivers on the day`, "crew");
+    return false;
+  }
+
+  /**
+   * Give a person's planned duty to somebody else (stand-by, or a call on a free day); when nobody
+   * can take it, the person keeps it.
+   * @returns {boolean} whether somebody else took it
+   */
+  _swap(p, duty, cause) {
+    this._unassign(p, duty, duty.day);
+    duty.person = null;
+    duty.state = "open";
+    if (this.cover(duty, cause, { quiet: true })) return true;
+    this._assign(p, duty, duty.day);
     return false;
   }
 
@@ -623,12 +641,16 @@ export class CrewDesk {
       this.e.stat("longDuties", 1);
       this.e.log(`${p.name} worked ${(Math.round((t - start) / 6) / 10).toFixed(1)} h (${duty.tpl.id})`, "crew");
     }
-    // the next duty gets its rest?
+    // the next duty gets its rest? else the dispatcher gives it to somebody else, if anybody can take it
     const next = p.plan.get(duty.day + 1);
     if (next && next.signOn - t < p.contract.min_rest_h * 60) {
-      this.e.stat("restConflicts", 1);
-      this.e.log(`${p.name} cannot have the full rest before ${next.tpl.id} tomorrow`, "crew");
-      next.restConflict = true;
+      if (next.kind === "line" && next.state === "planned" && this._swap(p, next, "rest")) {
+        this.e.log(`${p.name} needs the full rest: ${next.tpl.id} tomorrow goes to somebody else`, "crew");
+      } else {
+        this.e.stat("restConflicts", 1);
+        this.e.log(`${p.name} cannot have the full rest before ${next.tpl.id} tomorrow`, "crew");
+        next.restConflict = true;
+      }
     }
     this.e.emit("crew.signoff", { person: p, duty });
   }

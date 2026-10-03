@@ -254,6 +254,24 @@ test("crews: sick calls are covered by stand-by and calls on free days; without 
   assert.equal(short.drivers, Math.round(calm.drivers * (1 - 0.12)), "12 % of the positions vacant");
 });
 
+test("crews: a driver kept late gets the full rest; the next duty goes to somebody else when somebody can take it", () => {
+  const e = engine({ dispatch: { delays: { p: 0.5, median_min: 20, max_min: 120 } } }, 2);
+  const handed = [];
+  e.on((name, x) => {
+    if (name === "log" && /needs the full rest/.test(x.text)) handed.push(x.text);
+  });
+  e.runTo((e.dayOffset + 14) * DAY);
+  assert.ok(handed.length >= 3, `${handed.length} duties handed over`);
+  assert.ok(e.totals().restConflicts < handed.length, "rest is cut short only when nobody can take over");
+  // the duties handed over are someone else's now, who had the rest
+  for (const duty of e.desk.duties.values()) {
+    if (!duty.person || duty.kind !== "line" || !(duty.state === "done" || duty.state === "planned")) continue;
+    const p = e.desk.people.get(duty.person);
+    const before = p.plan.get(duty.day - 1);
+    if (before?.end != null && !duty.restConflict) assert.ok(duty.signOn - before.end >= p.contract.min_rest_h * 60 - 0.5, `${p.name}: ${duty.tpl.id}`);
+  }
+});
+
 test("crews: a bus strike makes people late to work, which delays and cancels trains", () => {
   const calm = runOne({}, { layout: LAB, days: 10, seed: 8 }).kpi;
   const strike = runOne({}, { layout: LAB, stress: stress("bus-strike"), days: 10, seed: 8 }).kpi;
