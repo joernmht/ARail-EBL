@@ -350,6 +350,7 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `ops.trip.departed`, `arrived`, `cancelled`, `terminated` | `{simulation, trip, cause?, unit?}` (rail operations) |
 | `ops.unit.failed`, `defect`, `released`; `ops.job.planned`, `started`, `finished` | `{simulation, unit, trip?, kind?, job?}` |
 | `ops.crew.signon`, `signoff`, `sick`, `alighted`; `ops.penalty`; `ops.log`; `ops.day.end` | see [Rail operations](operations.md#events) |
+| `infra.fault`, `dispatch`, `fixed`, `inspected`, `decision`, `asset.renewed`, `asset.restricted`, `year`, `log` | see [Infrastructure](infrastructure.md#disruptions-and-events) |
 
 The terminal also listens to `terminal.request.*` events (from scenario `emit` steps), see [Container terminal](container-terminal.md#scenario-requests). The names are exported as `TERMINAL_EVENTS` and `TERMINAL_REQUESTS`.
 
@@ -435,6 +436,28 @@ nothing there, `services.call()` sends a vehicle only with `{source: "plan"}`, a
 control system still takes over all rail docks (mode `"feed"`). `services.refreshModes()` applies
 the modes again when the planner's docks change. Vehicles may carry more label lines in `info`
 (the units, the driver, the delay).
+
+## Infrastructure
+
+The [infrastructure](infrastructure.md) is a built-in simulation (`infra/`), registered with the
+built-ins by `registerInfrastructure(registry)` (its objects, the `infrastructure` simulation and its
+disruption types). Its engine (`InfraEngine`) knows nothing of the world and runs in Node.js; the
+world simulation gives it the assets on the layout and the driving times over the streets
+(`hooks.travel`). Everything players do goes through `engine.act(name, …)` and is recorded, so a game
+is saved as its actions and restored by running them again:
+
+```js
+const infra = arail.infraOf(world);             // the layout's infrastructure, or null
+infra.engine.act("propose", "renew", ["switch-w1"]);
+infra.runTo(infra.engine.now + 30 * 1440, { pause: true });   // stops at a decision of a student role
+world.events.on("infra.fault", ({ asset }) => console.log(asset.name, asset.t.effect.what));
+const saved = infra.save();                     // {format: "arail-infra-game/1", seed, scenario, actions, now}
+```
+
+New asset types are entries of the settings' `types` (with an IFC class, a service life, costs, a
+failure rate, its effect and its inspection), and an object type whose class names it in
+`ASSET_OBJECTS` makes it placeable; the asset objects draw their state with `drawAssetState(view,
+object, at)`.
 
 ## Disruption types
 

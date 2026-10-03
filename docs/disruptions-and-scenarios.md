@@ -15,6 +15,26 @@ Disruptions change how vehicles run and how passengers behave. Start them in the
 
 "Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards.
 
+### Disruptions of the infrastructure
+
+On layouts with [infrastructure](infrastructure.md) the panel also offers:
+
+| Type | Label | What happens |
+| --- | --- | --- |
+| `asset-fault` | Asset fault | an asset fails now (`asset`: its name or id; empty: one at the station on the layout by chance); how soon it is known depends on what it reports |
+| `cable-theft` | Cable theft | a signalling cable is cut: the signals of its section go dark |
+| `storm` | Storm damage | trees on the line damage `count` assets (overhead lines, signals, GSM-R masts, cable routes, track) |
+
+A fault at the station on the layout starts a disruption of its own on the platforms (trains pass at
+caution, or are held when the interlocking fails) until it is repaired. The scenario *Faults at the
+station* of the [infrastructure example](../web/layouts/ebl-infrastructure.json) makes exit signal N2
+fail, then the level crossing:
+
+```json
+{ "at": 0, "start": { "type": "asset-fault", "params": { "asset": "signal-n2" } }, "message": "Exit signal N2 has failed." },
+{ "at": 120, "start": { "type": "asset-fault", "params": { "asset": "crossing-1" } }, "message": "The level crossing has a fault." }
+```
+
 ### Disruptions of the rail operations
 
 On layouts with [rail operations](operations.md) the panel also offers disruptions that act on

@@ -9,6 +9,7 @@
 | [Lab session](lab-session.md) | Stickers on the whole layout, one video and `arail-survey`: a fixed (locked) layout and an orthophoto of the table |
 | [Streets, bus lines and road traffic](streets-and-buses.md) | Streets as a road network, bus stops, bus lines with buses, cars |
 | [Container terminal](container-terminal.md) | Container trains, trucks and barges, gantry cranes and the yard; model wagons with deck cards (rolling-stock markers); the Terminal panel |
+| [Infrastructure](infrastructure.md) | Railway assets with their condition, faults and what is known of them; maintenance staff in shifts, emergency vans and drones; renewals and upgrades through the HOAI phases with funding, approval and tenders; the roles of the game; the asset information model, the line map and GeoJSON |
 | [Rail operations](operations.md) | Units with maintenance and failures, the four ECM functions and the penalties between the parties, crews with duties, rosters and the way to work; comparing setups under stress tests; the Operations panel |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
