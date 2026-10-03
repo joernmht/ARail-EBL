@@ -123,6 +123,36 @@ for (const [scheme, device, viewport] of STATES) {
   });
 }
 
+// Infrastructure: every view of the Infrastructure tab with an asset's record, a decision and the
+// instructor's controls, and the Simulate panel of a layout without it.
+for (const [scheme, device, viewport] of STATES) {
+  test(`infrastructure states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const path = "/app/?layout=../layouts/ebl-infrastructure.json#infra";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize(viewport);
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__arail?.infra.sim?.engine, null, { timeout: 60_000 });
+    const found = [];
+    await page.locator("#infraRole").selectOption("instructor");
+    await page.locator("#infraNext").click();
+    for (const view of ["overview", "map", "assets", "decisions", "projects", "staff", "results"]) {
+      await page.locator(`#infraView-${view}`).click();
+      await expect(page.locator(`#infraView-${view}`)).toHaveAttribute("aria-pressed", "true");
+      if (view === "assets") await page.locator("#panel-infra .infra-assets tbody tr button.link").first().click();
+      found.push(...(await violations(page, `Infrastructure panel, ${view}`, "#panel")));
+    }
+    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.waitForFunction(() => !window.__arail.infra.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
+    await page.locator("#tab-simulate").click();
+    await expect(page.locator("#infraAdd")).toBeVisible();
+    found.push(...(await violations(page, "Simulate panel, infrastructure offered", "#panel")));
+    expect(found).toEqual([]);
+  });
+}
+
 // The container terminal: its panel, a selected container with the Move form, a pick on the canvas
 // (the placing bar), the crane jobs and the inspectors of the terminal's object types.
 for (const [scheme, device, viewport] of STATES) {

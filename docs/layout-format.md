@@ -177,6 +177,8 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`quay`](#quay-quay-and-fairway) | Quay and fairway (Terminal) | `points` (polyline) |
 | [`reach-stacker`](#reach-stacker) | Reach stacker (Terminal) | `position` |
 | [`depot`](#depot-depot-and-workshop) | Depot and workshop (Transport) | `position` |
+| [`signal`, `switch`, `balise`, `level-crossing`, `gsmr-mast`, `lift`, `passenger-display`, `interlocking`, `maintenance-base`, `crossing-plant`](infrastructure.md#objects) | Signal, Switch, Balise, Level crossing, GSM-R mast, Lift, Passenger display, Interlocking, Maintenance base, Level crossing plant (Infrastructure) | `position` |
+| [`catenary`, `cable-route`](infrastructure.md#objects) | Overhead line, Cable route (Infrastructure) | `points` (polyline) |
 
 ### `platform`: rail platform
 
@@ -301,6 +303,9 @@ Geometry: `points` (polyline along the centre of a real track). Over the camera 
 | --- | --- | --- |
 | `track_id` | `""` | name of the track in the control system |
 | `offset_start_mm` | `0` | the offset the control system reports at the first point |
+| `virtual` | `false` | not on the real layout (e.g. on a table module): drawn over the camera image too |
+
+With an [infrastructure simulation](infrastructure.md) a track is an asset (a track section of the station's line); `name` and `built` (year) are then used too.
 
 ### `label`
 
@@ -405,6 +410,7 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
 | `operations` | `name`, `stations`, `lines` (default: from the platforms' `lines`), `fleet`, `maintenance`, `parties`, `ecm`, `contracts`, `crew`, `dispatch`, `costs`, `setups`, `stress` | rail operations: units with maintenance and failures, the four ECM functions, penalties between the parties, crews with duties and rosters; its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Rail operations](operations.md#layout-file) for the keys. One per layout. |
+| `infrastructure` | `name`, `placement`, `lines`, `stations`, `assets`, `types`, `budgets`, `funding`, `staff`, `costs`, `hoai`, `procurement`, `contractors`, `factory`, `upgrades`, `roles`, `scenarios`, … | infrastructure asset management: the layout's station in an invented district, assets with their condition, maintenance staff, projects through the HOAI phases; see [Infrastructure](infrastructure.md#layout-file) for the keys. One per layout. |
 
 The town needs residential buildings and works best with the passenger simulation (for the stops), streets and bus lines. Plugins can add more simulations, e.g. `{"type": "road-traffic", "cars_per_km": 30, "speed_kmh": 40}` from the example plugin [`road-traffic.js`](../web/plugins/road-traffic.js). Settings of a simulation whose plugin is missing are kept when the layout is saved.
 
@@ -417,6 +423,6 @@ The app and `validateLayout()` report:
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
 - a malformed `grid` or `view.ortho`, and scenarios without an id or steps;
 - in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;
-- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`).
+- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`). The infrastructure reports unknown lines, stations, asset types, objects and roles (e.g. `simulations[4] (infrastructure): asset q: unknown type "teleporter"`).
 
 The layout loads anyway, with unusable entries left out; the app logs the problems and shows the first one when a layout is imported. The tests check the example layouts, so a broken example layout fails CI.

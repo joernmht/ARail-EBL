@@ -60,6 +60,7 @@ The chips at the top left of the stage show the state:
 | *07:32*, *22:30 · night* | the time of day of the fast clock, *· night* between sunset and sunrise (see [Day and night](day-and-night.md)) |
 | *Paused*, *5× time*, *1 disruption*, *Control system · 3 trains*, *Frozen frame*, *Recording* | simulation and recording state |
 | *Operations · 5 trains*, *· 1 unit failed* | [rail operations](operations.md): their trains on the way, failed units |
+| *Infrastructure · Fri 1 Jan 2027 · 1 fault · 2 out* | [infrastructure](infrastructure.md): the game's date, open faults, staff out at work |
 
 Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop sign (platform number or "H"), the name, the number of people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events: *Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board.
 
@@ -111,6 +112,7 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
 - *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations; a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
 - *Rail operations* (on layouts without them): **Open the example** and **Add to this layout**, see [Rail operations](operations.md).
+- *Infrastructure* (on layouts without it): **Open the example** and **Add to this layout**, see [Infrastructure](infrastructure.md).
 
 ### Terminal
 
@@ -124,6 +126,14 @@ The container terminal (see [Container terminal](container-terminal.md)): trains
 - *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and links to print their cards, one per wagon type.
 
 On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick.
+
+### Infrastructure
+
+Shown instead of the Terminal tab when the layout has an [infrastructure simulation](infrastructure.md) (**Layouts… → Example: infrastructure**): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
+
+- **Your role** (asset manager, ALV, maintenance dispatcher, planner, construction supervision, funding authority, instructor) decides what may be done; **Run to the next decision** and **Run to the year's end** run fast.
+- **Overview**, **Line map** (the network by km; GeoJSON for QGIS), **Assets** (the register with each asset's record and the inspection plan), **Decisions**, **Projects** (through the HOAI phases), **Staff** (shifts, on call, drone pilots, the level crossing plant), **Results** (per year, the score; saving and loading a game).
+- On the layout the assets are coloured by their known condition (or the last check), faults pulse, vans drive out from the maintenance base and drones fly.
 
 ### Operations
 

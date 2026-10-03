@@ -2,6 +2,7 @@
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { drawGrid, Flyover } from "./flyover.js";
+import { InfraPanel } from "./infra.js";
 import { OperationsPanel } from "./operations.js";
 import { Panels } from "./panels.js";
 import { TerminalPanel } from "./terminal.js";
@@ -13,10 +14,11 @@ const EXAMPLES = [
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
   { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json" },
   { id: "operations", label: "Example: rail operations", layout: "../layouts/ebl-operations.json" },
+  { id: "infrastructure", label: "Example: infrastructure", layout: "../layouts/ebl-infrastructure.json" },
 ];
-const TABS = ["view", "build", "simulate", "terminal", "ops", "disrupt", "control"];
-/** Tabs of a feature of the layout: the other one's tab when the layout does not have it, else View. */
-const FEATURE_TABS = { terminal: "ops", ops: "terminal" };
+const TABS = ["view", "build", "simulate", "terminal", "ops", "infra", "disrupt", "control"];
+/** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
+const FEATURE_TABS = { terminal: ["ops", "infra"], ops: ["infra", "terminal"], infra: ["ops", "terminal"] };
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
@@ -72,6 +74,7 @@ class App {
     this.panels = new Panels(this);
     this.terminal = new TerminalPanel(this);
     this.operations = new OperationsPanel(this);
+    this.infra = new InfraPanel(this);
     this._wireUi();
     this._wireEvents();
     const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
@@ -160,11 +163,16 @@ class App {
     ev.on("scenario.message", (e) => toast(e.text));
     ev.on("disruption.started", (e) => {
       const d = e.disruption;
+      // a simulation's own disruptions (the infrastructure's faults at the station) speak for themselves
+      if (d.def.hidden) return;
       // disruptions of the rail operations say what they did ("3 drivers call in sick: …")
       if (typeof d.result === "string") toast(`${d.def.label}: ${d.result}.`);
       else toast(`${d.def.label} started${d.target !== "*" ? ` at ${this.world.getObject(d.target)?.name || d.target}` : ""}.`);
     });
-    ev.on("disruption.ended", (e) => toast(`${e.disruption.def.label} ended.`));
+    ev.on("disruption.ended", (e) => !e.disruption.def.hidden && toast(`${e.disruption.def.label} ended.`));
+    // faults of the infrastructure: when they become known and when they are repaired
+    ev.on("infra.fault", (e) => toast(`Fault: ${e.asset.name} (${e.asset.t.effect.what}).`, 4000, { minor: true }));
+    ev.on("infra.fixed", (e) => toast(`Repaired: ${e.asset.name}.`, 3000, { minor: true }));
     ev.on("scenario.started", (e) => toast(`Scenario started: ${e.scenario.name || e.scenario.id}`));
     ev.on("feed.status", () => this.panels.updateControl());
     for (const name of ["disruption.started", "disruption.ended", "scenario.started", "scenario.ended"]) {
@@ -224,13 +232,14 @@ class App {
   }
 
   /**
-   * The tabs shown: the Operations tab when the layout has rail operations, the Terminal tab when it
-   * has a container terminal or no rail operations (so that six tabs fit on a phone).
+   * The tabs shown: the Operations tab when the layout has rail operations, the Infrastructure tab when
+   * it has an infrastructure simulation, the Terminal tab when it has a container terminal or neither of
+   * the others (so that six tabs fit on a phone).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const ops = has("operations"), terminal = has("terminal");
-    return TABS.filter((t) => (t === "ops" ? ops : t === "terminal" ? terminal || !ops : true));
+    const ops = has("operations"), infra = has("infrastructure"), terminal = has("terminal");
+    return TABS.filter((t) => (t === "ops" ? ops : t === "infra" ? infra : t === "terminal" ? terminal || (!ops && !infra) : true));
   }
 
   /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
@@ -238,8 +247,8 @@ class App {
     const shown = this.tabs();
     for (const t of TABS) $(`#tab-${t}`).hidden = !shown.includes(t);
     if (shown.includes(this.activeTab)) return false;
-    const next = FEATURE_TABS[this.activeTab];
-    this.selectTab(shown.includes(next) ? next : "view");
+    const next = (FEATURE_TABS[this.activeTab] || []).find((t) => shown.includes(t));
+    this.selectTab(next || "view");
     return true;
   }
 
@@ -256,6 +265,7 @@ class App {
     if (name !== "terminal") this.terminal.cancelPick();
     this.terminal.syncHighlight();
     this.operations.syncWidth();
+    if (name === "infra") this.infra.syncWidth();
     this.renderPanel(name);
     history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
   }
@@ -276,6 +286,7 @@ class App {
     else if (name === "simulate") this.panels.renderSimulate(el);
     else if (name === "terminal") this.terminal.render(el);
     else if (name === "ops") this.operations.render(el);
+    else if (name === "infra") this.infra.render(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
     else if (name === "control") this.panels.renderControl(el);
   }
@@ -291,6 +302,7 @@ class App {
     }
     else if (t === "terminal") this.terminal.update();
     else if (t === "ops") this.operations.update();
+    else if (t === "infra") this.infra.update();
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
@@ -848,6 +860,12 @@ class App {
     if (ops) {
       const n = ops.tripsRunning().size, failed = [...ops.units.values()].filter((u) => u.status === "failed").length;
       chips.push([failed ? "warn" : "info", `Operations · ${n} train${n === 1 ? "" : "s"}${failed ? ` · ${failed} unit${failed === 1 ? "" : "s"} failed` : ""}`]);
+    }
+    const infra = ARail.infraOf(this.world)?.engine;
+    if (infra) {
+      const faults = [...infra.faults.values()].filter((f) => f.knownAt <= infra.now).length;
+      const out = infra.people.filter((p) => ["driving", "repairing", "working", "flying"].includes(infra.activity(p).state)).length;
+      chips.push([faults ? "warn" : "info", `Infrastructure · ${infra.dateText()}${faults ? ` · ${faults} fault${faults === 1 ? "" : "s"}` : ""}${out ? ` · ${out} out` : ""}`]);
     }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);

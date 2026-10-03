@@ -403,6 +403,78 @@ details[open] summary { margin-bottom: 8px; }
 .survey .plot:empty { display: none; }
 .marker-plot { display: block; width: 100%; max-height: 220px; }
 
+/* infrastructure (Infrastructure panel): the role, run controls, grade chips, the line map (Streckenband),
+   the asset record, decisions, the HOAI phase bar and the legend of the state colours */
+.infra-role { display: grid; gap: 4px; }
+.infra-body h3 { margin: 0; font-size: .95rem; }
+.infra-body h3 .count { font-weight: 400; font-size: .8rem; color: var(--text-2); }
+.infra-run { gap: 8px; }
+.btn.warn { border-color: var(--warn); color: var(--warn); }
+.infra-views { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.infra-views button:nth-child(3n) { border-right: 1px solid var(--line); }
+.infra-views button:nth-child(4n) { border-right: 0; }
+@container panel (min-width: 560px) {
+  .infra-views { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .infra-views button:nth-child(4n) { border-right: 1px solid var(--line); }
+  .infra-views button:last-child { border-right: 0; }
+}
+.grade-chip { display: inline-block; min-width: 2.4em; padding: 1px 5px; border-radius: 4px; font-size: .78rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; vertical-align: 1px; }
+.grade-chip.fault { background: #001450; color: #ffffff; box-shadow: inset 0 0 0 2px var(--danger); }
+.infra-card h3 { margin: 0; font-size: 1rem; }
+.infra-card .row-label, .infra-card .row > span:first-child { font-size: .8rem; color: var(--text-2); min-width: 6.5em; }
+.infra-card .kv dd.mono { font-size: .78rem; }
+button.link { border: 0; padding: 0; background: none; color: var(--accent-ink); font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.ops-table tr.chosen th, .ops-table tr.chosen td { background: var(--surface-2); }
+.infra-assets small.sub { display: block; font-size: .74rem; color: var(--text-2); font-weight: 400; }
+.infra-assets td { min-width: 9em; }
+.num-input { width: 4.5em; text-align: right; }
+.btn.icon { min-width: 28px; padding-inline: 6px; }
+.count-num { display: inline-block; min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
+.infra-decision { border-left: 3px solid var(--warn); padding-left: 10px; }
+.infra-decision h3 { margin: 0; font-size: .95rem; }
+.infra-decision p { margin: 0; font-size: .86rem; }
+.infra-decision .btn small { font-weight: 400; opacity: .85; }
+.infra-body .sub { display: block; font-size: .76rem; color: var(--text-2); font-weight: 400; }
+.infra-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.infra-findings li { display: grid; gap: 3px; padding-left: 10px; border-left: 3px solid var(--line); font-size: .86rem; }
+.infra-done, .infra-upgrades { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: .84rem; }
+.infra-done time { font-family: var(--mono); font-size: .78rem; color: var(--text-2); }
+.infra-upgrades .hint { margin: 2px 0 4px; }
+.infra-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 12px; }
+.infra-log li.bad { border-left-color: var(--danger); }
+.infra-log li.warn { border-left-color: var(--warn); }
+.infra-log li.ok, .infra-log li.accent { border-left-color: var(--accent); }
+.phase-bar { display: inline-grid; grid-template-columns: repeat(9, 9px); gap: 2px; vertical-align: middle; margin-right: 6px; }
+.phase-bar i { display: block; height: 9px; border-radius: 2px; background: var(--line); }
+.phase-bar i.done { background: var(--accent); }
+.phase-bar i.now { background: var(--warn); }
+.phase-bar.stopped i { background: var(--line); }
+.infra-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: .8rem; color: var(--text-2); }
+.infra-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.infra-legend i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+.infra-legend i.fault { background: #001450; box-shadow: inset 0 0 0 2px var(--danger); }
+.infra-legend i.ring { border: 2px solid var(--text-2); background: none; }
+.infra-legend i.ring.dashed { border-style: dashed; }
+.infra-legend i.ring.dotted { border-style: dotted; }
+.line-map-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.line-map { display: block; width: 100%; min-width: 640px; height: auto; font-family: var(--font); }
+.line-map text { fill: var(--text-2); font-size: 10px; }
+.line-map .station-name { fill: var(--text); font-weight: 700; }
+.line-map .row-label { font-size: 9.5px; }
+.line-map .row-line { stroke: var(--line); stroke-width: 1; }
+.line-map .tick { stroke: var(--line); stroke-dasharray: 2 3; }
+.line-map .station { stroke: var(--text-2); stroke-width: 1; stroke-dasharray: 1 2; }
+.line-map .on-table { fill: none; stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.line-map .mark { stroke: var(--surface); stroke-width: .8; cursor: pointer; }
+.line-map .mark.stale { stroke: var(--text); stroke-dasharray: 2 1.5; }
+.line-map .mark.age { stroke: var(--text-2); stroke-dasharray: .8 1.2; opacity: .85; }
+.line-map .mark.fault { stroke: var(--danger); stroke-width: 2; }
+.line-map .mark.chosen { stroke: var(--warn); stroke-width: 2.4; }
+.line-map .mark:hover { stroke: var(--text); stroke-width: 1.6; }
+@media (forced-colors: active) {
+  .phase-bar i, .grade-chip, .infra-legend i { forced-color-adjust: none; }
+}
+
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,295 @@
+/**
+ * Settings of the infrastructure simulation (`{"type": "infrastructure", …}` in the layout's
+ * `simulations`): defaults, the invented network the layout's station belongs to, presets of
+ * scenarios, normalization and validation.
+ *
+ * Every key is optional: without `lines` and `stations` the layout's station is "Bahnhof" (km 21.2
+ * of line 6250 Altstadt – Bergheim, with the branch line 6251 to Waldau), and the assets of the
+ * network beyond the layout are generated from `generate`. Assets on the layout are its objects of
+ * the infrastructure types (signals, switches, level crossings, …), its tracks and its platforms.
+ * See docs/infrastructure.md for every setting.
+ * @module arail/infra/config
+ */
+import { deepMerge, isObject, num } from "../ops/util.js";
+import { ASSET_TYPES, DISCIPLINE_IDS, GENERATIONS, METHODS, TYPE_IDS } from "./catalog.js";
+
+/** Roles students can take; `computer` decides for the roles nobody plays. */
+export const ROLES = {
+  "asset-manager": { label: "Asset manager", de: "Anlagenmanagement", side: "im", does: "holds the budgets, approves proposals, staffs the maintenance, awards contracts" },
+  alv: { label: "ALV", de: "Anlagenverantwortliche/r", side: "im", does: "knows the assets of a discipline, plans inspections, proposes measures" },
+  dispatcher: { label: "Maintenance dispatcher", de: "Instandhaltungs- und Störungsdisposition", side: "im", does: "shift cover, emergency call-outs, drone flights" },
+  planner: { label: "Planner", de: "Planung (HOAI LPH 1–7)", side: "project", does: "plans projects, books possessions, applies for funding, prepares the tender" },
+  supervision: { label: "Construction supervision", de: "Bauoberleitung / Bauüberwachung (LPH 8)", side: "project", does: "supervises construction, accepts the works, checks the as-built data" },
+  authority: { label: "Funding authority", de: "Bund (BMV) und Eisenbahn-Bundesamt", side: "authority", does: "grants federal money, planning approval and commissioning" },
+};
+export const ROLE_IDS = Object.keys(ROLES);
+
+/** The invented network around the layout's station (line numbers, km and names are fictional). */
+export const DEFAULT_NETWORK = {
+  lines: [
+    {
+      id: "6250", name: "Altstadt – Bahnhof – Bergheim", km: [0, 30.4], tracks: 2, speed_kmh: 120, electrified: true, trains_per_day: 150,
+      // the alignment: km and the local position (m, east and north of the georeference) of points on it
+      path: [[0, -21300, -1500], [6, -15600, -2600], [12, -9900, -1200], [18, -3800, -400], [21.1, -700, 0], [21.6, 300, 0], [26, 4300, 1700], [30.4, 8500, 2800]],
+    },
+    {
+      id: "6251", name: "Bahnhof – Waldau", km: [0, 14.8], tracks: 1, speed_kmh: 80, electrified: false, trains_per_day: 40,
+      path: [[0, 0, 0], [0.8, 700, 380], [5, 3300, 3500], [10, 5200, 7900], [14.8, 7400, 12200]],
+    },
+  ],
+  stations: [
+    { id: "altstadt", name: "Altstadt", line: "6250", km: 0.4, tracks: 4, platforms: 3, lifts: 2, interlocking: { generation: "digital", built: 2023 } },
+    { id: "talsee", name: "Talsee", line: "6250", km: 9.6, tracks: 3, platforms: 2, lifts: 1, interlocking: { generation: "electronic", built: 2004 } },
+    { id: "bahnhof", name: "Bahnhof", line: "6250", km: 21.2, tracks: 3, platforms: 2, lifts: 0, on_layout: true, interlocking: { generation: "relay", built: 1979 } },
+    { id: "bergheim", name: "Bergheim", line: "6250", km: 30, tracks: 2, platforms: 2, lifts: 0, interlocking: { generation: "mechanical", built: 1928 } },
+    { id: "waldau", name: "Waldau", line: "6251", km: 14.6, tracks: 2, platforms: 1, lifts: 0, interlocking: { generation: "relay", built: 1968 } },
+  ],
+  /** Level crossings beyond the layout: km, the road and who builds and maintains it (EKrG). */
+  crossings: [
+    { line: "6250", km: 4.3, road: "K 9301", road_owner: "district" },
+    { line: "6250", km: 15.7, road: "Talstraße", road_owner: "municipal" },
+    { line: "6250", km: 26.4, road: "S 177", road_owner: "state" },
+    { line: "6251", km: 6.2, road: "Waldweg", road_owner: "municipal" },
+    { line: "6251", km: 11, road: "K 9310", road_owner: "district" },
+  ],
+  substations: [{ line: "6250", km: 9.2, name: "Unterwerk Talsee" }, { line: "6250", km: 24.1, name: "Unterwerk Bergheim" }],
+};
+
+/** Where the layout lies in the network: its station, the km at the layout's origin and the direction of x. */
+export const DEFAULT_PLACEMENT = { station: "bahnhof", line: "6250", km_at_origin: 21.1, direction: 1 };
+
+/** Defaults of every section. */
+export const INFRA_DEFAULTS = {
+  name: "Infrastructure district",
+  start_year: 2027,
+  years: 5,
+  seed: null,
+  /** The layout origin in a real coordinate reference system (invented place): ETRS89 / UTM zone 33N. */
+  georef: { epsg: 25833, easting: 409_700, northing: 5_651_200, rotation_deg: 0 },
+  placement: DEFAULT_PLACEMENT,
+  lines: null,
+  stations: null,
+  crossings: null,
+  substations: null,
+  /** Assets of the network beyond the layout, generated by rules (false: only those in `assets`). */
+  generate: { enabled: true, block_km: 3, section_km: 3, gsmr_km: 5, catenary_km: 5, cable_km: 3 },
+  /** More assets: `{id, type, line, km, name, built, generation, interlocking, length_km}`. */
+  assets: [],
+  /** Changes to the asset types (`{signal: {fail_per_y: 0.3}}`). */
+  types: {},
+  /** Money per year (euros). */
+  budgets: {
+    maintenance_eur: 4_400_000, // own money for operations and maintenance (staff, materials, repairs, inspections)
+    replacement_eur: 9_000_000, // federal money for replacement (LuFV III to 2026, its successor from 2027); lost at year end
+    own_eur: 3_000_000, // own money for investments (own shares, planning before funding)
+  },
+  /** Federal and partner funding. */
+  funding: {
+    federal_share: 1, // of the eligible costs of a funded upgrade (Bedarfsplan: the Bund pays the construction)
+    planning_share: 0.18, // the share of the construction costs the Bund pays for planning (a lump sum)
+    discount_rate: 0.017, // for the benefit-cost ratio
+    horizon_y: 30,
+    min_ratio: 1, // benefit-cost ratio (NKV) needed for federal money
+    // EKrG § 13: railway, road authority and Bund (federal railway) a third each; municipal roads: Bund 1/2, railway 1/3, Land 1/6
+    ekrg: { default: { railway: 1 / 3, road: 1 / 3, federal: 1 / 3 }, municipal: { railway: 1 / 3, road: 0, federal: 1 / 2, state: 1 / 6 } },
+    target_grade: 3.2, // quality target of the replacement agreement (mean grade value of the network)
+    target_penalty_eur: 400_000, // money withheld when the target is missed at year end
+  },
+  /** Maintenance staff: per discipline the technicians on day shift and the emergency team (Entstörer). */
+  staff: {
+    track: { day: 6, emergency: 0 },
+    signal: { day: 6, emergency: 5 },
+    electric: { day: 3, emergency: 0 },
+    station: { day: 2, emergency: 0 },
+    drone_pilots: 2,
+    hours_week: 39,
+    day_shift: { from: "07:00", to: "15:30" },
+    oncall: true, // outside the shifts one technician per discipline is on call (Rufbereitschaft)
+    oncall_alert_min: 30,
+    hire_days: 120, // from deciding to hire until the new person starts
+  },
+  /** Euros. */
+  costs: {
+    person_year_eur: 72_000, oncall_week_eur: 280, overtime_factor: 1.3, hour_eur: 44,
+    contractor_hour_eur: 115, contractor_callout_min: 150, materials_factor: 1,
+    drone_flight_eur: 120, train_eur_km: 70,
+    delay_eur_min: 1, // performance regime (Anreizsystem): network faults, per delay minute
+    construction_delay_eur_min: 16, // construction-caused delays of regional trains
+    cancel_min: 30, // a cancelled train counts as this many delay minutes
+  },
+  /** Trains: the hours they run (service day). */
+  trains: { from: "05:00", to: "24:00" },
+  /** Drones: flights only on days with flyable weather. */
+  drones: { flyable: 0.7, km_per_h: 30, setup_min: 20 },
+  /** Measurement train runs a year on every line (track geometry, overhead line, GSM-R coverage). */
+  measurement_runs: 2,
+  /** HOAI 2021 § 47 (Verkehrsanlagen): fee shares of phases 1–9 (%), the fee as a share of the construction costs. */
+  hoai: { shares: [2, 20, 25, 8, 15, 10, 4, 15, 1], fee_share: 0.14, bim_extra: 0.03 },
+  /** Procurement: EU thresholds from 1 January 2026 (sector contracting entities, SektVO). */
+  procurement: { eu_works_eur: 5_404_000, eu_services_eur: 432_000, direct_max_eur: 150_000, framework_extra: 0.08, open_min_days: 35 },
+  /** Contractors (played by the computer). */
+  contractors: [
+    { id: "gleisbau", name: "Gleisbau Elbtal GmbH", disciplines: ["track"], price: 1, quality: 0.75, capacity: 2, framework: true },
+    { id: "lst", name: "Signaltechnik Sachsen AG", disciplines: ["signal"], price: 1.08, quality: 0.85, capacity: 2, framework: true },
+    { id: "bahnbau", name: "Bahnbau Union", disciplines: ["track", "signal", "electric"], price: 0.92, quality: 0.6, capacity: 3 },
+    { id: "energie", name: "Fahrleitungsbau Ost", disciplines: ["electric"], price: 1.02, quality: 0.8, capacity: 2, framework: true },
+    { id: "hochbau", name: "Bauwerk Bahnhof GmbH", disciplines: ["station", "track"], price: 0.97, quality: 0.7, capacity: 2, framework: true },
+  ],
+  /** The plant that builds level crossing systems (barriers, lights, controller). */
+  factory: {
+    name: "BÜ-Werk Mittelsachsen", object: null, lines: 2,
+    weeks: { engineering: 6, production: 8, test: 2, delivery: 1 }, test_fail_p: 0.15, rework_weeks: 3, external_per_year: 6,
+  },
+  /** Upgrades that can be proposed: they change the infrastructure and need federal money. */
+  upgrades: [
+    {
+      id: "electrify-6251", name: "Electrify the branch line to Waldau", line: "6251", cost_eur: 28_000_000, benefit_eur_y: 1_350_000,
+      description: "Overhead line on 14.8 km, a substation feed and electric trains instead of diesel: faster, cheaper to run, quieter.",
+      adds: [{ type: "catenary", line: "6251", from_km: 0, to_km: 14.8 }],
+    },
+    {
+      id: "underpass-6250-15", name: "Replace the level crossing Talstraße by an underpass", line: "6250", km: 15.7, cost_eur: 9_000_000, benefit_eur_y: 500_000,
+      description: "An underpass instead of the level crossing (EKrG § 3): no more barrier waits, no risk at the crossing, no crossing to maintain.",
+      removes: [{ type: "level-crossing", line: "6250", km: 15.7 }], ekrg: true,
+    },
+  ],
+  /** Who plays which role: "student" (decisions wait for the role) or "computer" (decided at once by the default rule). */
+  roles: { "asset-manager": "student", alv: "student", dispatcher: "computer", planner: "student", supervision: "student", authority: "student" },
+  /** Days a decision waits for its role before the default is taken. */
+  decision_days: 14,
+  /** Weights of the yearly score (0–100). */
+  score: { condition: 30, reliability: 25, money: 15, rules: 15, information: 15 },
+};
+
+/** Ready-made scenarios: changes to the settings and events at given days. */
+export const PRESET_SCENARIOS = [
+  { id: "none", name: "Normal years", description: "No extra stress.", patch: {} },
+  {
+    id: "budget-cut", name: "Budget cut", description: "The maintenance budget is 15 % lower and the replacement money 25 % lower.",
+    patch: { budgets: { maintenance_eur: 6_375_000, replacement_eur: 6_750_000 } },
+  },
+  {
+    id: "storm", name: "Autumn storm", description: "A storm in October of the first year damages overhead lines, signals and GSM-R masts on line 6250.",
+    events: [{ day: 285, at: "03:10", type: "storm", line: "6250", count: 6 }],
+  },
+  {
+    id: "staff-shortage", name: "Staff shortage", description: "Two signalling technicians and one track technician leave in spring; new people are hard to find.",
+    events: [{ day: 90, at: "06:00", type: "staff_loss", discipline: "signal", count: 2 }, { day: 120, at: "06:00", type: "staff_loss", discipline: "track", count: 1 }],
+    patch: { staff: { hire_days: 240 } },
+  },
+  {
+    id: "cable-theft", name: "Cable theft", description: "Thieves cut signalling cables three times in the first winter.",
+    events: [{ day: 20, at: "02:30", type: "theft" }, { day: 41, at: "01:50", type: "theft" }, { day: 330, at: "03:20", type: "theft" }],
+  },
+];
+
+/* ---------------------------------------------------------------- normalization */
+
+const clamp01 = (v, d) => num(v, d, 0, 1);
+
+/**
+ * The full model of an `infrastructure` entry: every section with its defaults, the network (the
+ * default one unless the entry has lines and stations), the asset types with the entry's changes.
+ * @param {object} config the entry
+ * @param {object} [layout] the normalized layout (for the scale)
+ */
+export function normalizeInfra(config = {}, layout = null) {
+  const cfg = isObject(config) ? config : {};
+  const { type, enabled, setups, ...rest } = cfg;
+  const m = deepMerge(INFRA_DEFAULTS, rest);
+  m.scale = layout?.scale > 0 ? layout.scale : 87;
+  m.start_year = Math.round(num(m.start_year, 2027, 1950, 2200));
+  m.years = Math.round(num(m.years, 5, 1, 30));
+  const net = Array.isArray(cfg.lines) && Array.isArray(cfg.stations) ? cfg : DEFAULT_NETWORK;
+  m.lines = (net.lines || []).filter(isObject).map((l, i) => ({
+    id: String(l.id ?? `line-${i + 1}`), name: String(l.name ?? l.id ?? `Line ${i + 1}`),
+    km: Array.isArray(l.km) && l.km.length === 2 ? [num(l.km[0], 0), num(l.km[1], 10)] : [0, 10],
+    tracks: Math.round(num(l.tracks, 2, 1, 4)), speed_kmh: num(l.speed_kmh, 120, 20, 300), electrified: l.electrified !== false,
+    trains_per_day: num(l.trains_per_day, 80, 0, 1000), path: Array.isArray(l.path) ? l.path.filter((p) => Array.isArray(p) && p.length >= 3).map((p) => p.map(Number)) : [],
+  }));
+  m.stations = (net.stations || []).filter(isObject).map((s, i) => ({
+    id: String(s.id ?? `station-${i + 1}`), name: String(s.name ?? s.id ?? `Station ${i + 1}`), line: String(s.line ?? m.lines[0]?.id ?? ""),
+    km: num(s.km, 0), tracks: Math.round(num(s.tracks, 2, 1, 12)), platforms: Math.round(num(s.platforms, 1, 0, 12)), lifts: Math.round(num(s.lifts, 0, 0, 12)),
+    on_layout: !!s.on_layout,
+    interlocking: { generation: GENERATIONS[s.interlocking?.generation] ? s.interlocking.generation : "relay", built: Math.round(num(s.interlocking?.built, 1980, 1850, 2200)) },
+  }));
+  m.crossings = (cfg.crossings ?? net.crossings ?? DEFAULT_NETWORK.crossings).filter(isObject);
+  m.substations = (cfg.substations ?? net.substations ?? DEFAULT_NETWORK.substations).filter(isObject);
+  const p = isObject(cfg.placement) ? { ...DEFAULT_PLACEMENT, ...cfg.placement } : DEFAULT_PLACEMENT;
+  const layoutStation = m.stations.find((s) => s.id === p.station) || m.stations.find((s) => s.on_layout) || null;
+  m.placement = {
+    station: layoutStation?.id ?? null, line: String(p.line ?? layoutStation?.line ?? ""),
+    km_at_origin: num(p.km_at_origin, layoutStation ? layoutStation.km - 0.1 : 0), direction: num(p.direction, 1) < 0 ? -1 : 1,
+  };
+  for (const s of m.stations) s.on_layout = s.id === m.placement.station;
+  // the asset types with the layout's changes
+  m.types = {};
+  for (const id of TYPE_IDS) m.types[id] = deepMerge(ASSET_TYPES[id], isObject(cfg.types?.[id]) ? cfg.types[id] : {});
+  for (const id of TYPE_IDS) {
+    const t = m.types[id];
+    if (!METHODS[t.inspect?.method]) t.inspect = { ...ASSET_TYPES[id].inspect };
+    t.inspect.per_year = num(t.inspect.per_year, ASSET_TYPES[id].inspect.per_year, 0, 52);
+  }
+  m.roles = Object.fromEntries(ROLE_IDS.map((r) => [r, m.roles?.[r] === "computer" ? "computer" : "student"]));
+  for (const d of DISCIPLINE_IDS) {
+    const s = isObject(m.staff[d]) ? m.staff[d] : {};
+    m.staff[d] = { day: Math.round(num(s.day, 2, 0, 60)), emergency: Math.round(num(s.emergency, 0, 0, 30)) };
+  }
+  m.staff.drone_pilots = Math.round(num(m.staff.drone_pilots, 0, 0, 20));
+  m.drones.flyable = clamp01(m.drones.flyable, 0.7);
+  m.decision_days = num(m.decision_days, 14, 0, 365);
+  m.factory.lines = Math.round(num(m.factory.lines, 2, 1, 10));
+  m.measurement_runs = Math.round(num(m.measurement_runs, 2, 0, 12));
+  m.upgrades = (m.upgrades || []).filter(isObject).map((u, i) => ({ ...u, id: String(u.id ?? `upgrade-${i + 1}`), cost_eur: num(u.cost_eur, 1e6, 0), benefit_eur_y: num(u.benefit_eur_y, 0, 0) }));
+  return m;
+}
+
+/** A setup: the entry with a scenario's patch. */
+export function applyScenario(config, scenario) {
+  return scenario?.patch ? deepMerge(config, scenario.patch) : structuredClone(config);
+}
+
+/** The scenarios: the presets and the entry's own (`scenarios`). */
+export function scenariosOf(config) {
+  const own = Array.isArray(config?.scenarios) ? config.scenarios.filter((s) => isObject(s) && s.id) : [];
+  return [...PRESET_SCENARIOS.filter((p) => !own.some((s) => s.id === p.id)), ...own];
+}
+
+/* ---------------------------------------------------------------- validation */
+
+/**
+ * Problems of an infrastructure entry in plain words (validateLayout prefixes them).
+ * @param {object} cfg the entry as written in the file
+ * @param {object} layout the normalized layout
+ */
+export function validateInfra(cfg, layout) {
+  const out = [];
+  if (!isObject(cfg)) return ["the infrastructure settings must be an object"];
+  const m = normalizeInfra(cfg, layout);
+  const lines = new Set(m.lines.map((l) => l.id)), stations = new Set(m.stations.map((s) => s.id));
+  if (Array.isArray(cfg.lines) !== Array.isArray(cfg.stations)) out.push("give both lines and stations, or neither (then the example network is used)");
+  for (const s of m.stations) if (!lines.has(s.line)) out.push(`station ${s.id}: unknown line "${s.line}"`);
+  for (const l of m.lines) {
+    if (!(l.km[1] > l.km[0])) out.push(`line ${l.id}: its km must run upwards ("km": [from, to])`);
+    if (l.path.length < 2) out.push(`line ${l.id}: its path needs at least two points [km, east, north]`);
+  }
+  if (cfg.placement && !stations.has(cfg.placement.station)) out.push(`placement: unknown station "${cfg.placement.station}"`);
+  const objects = new Set((layout?.objects || []).map((o) => o.id));
+  for (const [i, a] of (Array.isArray(cfg.assets) ? cfg.assets : []).entries()) {
+    if (!isObject(a)) continue;
+    const where = `asset ${a.id ?? i + 1}`;
+    if (!ASSET_TYPES[a.type]) out.push(`${where}: unknown type "${a.type}" (one of ${TYPE_IDS.join(", ")})`);
+    if (a.object != null && !objects.has(a.object)) out.push(`${where}: no object "${a.object}" on the layout`);
+    else if (a.object == null && !lines.has(String(a.line))) out.push(`${where}: unknown line "${a.line}"`);
+  }
+  for (const [k, v] of Object.entries(isObject(cfg.types) ? cfg.types : {})) if (!ASSET_TYPES[k] || !isObject(v)) out.push(`types: unknown asset type "${k}"`);
+  for (const [k, v] of Object.entries(isObject(cfg.roles) ? cfg.roles : {})) {
+    if (!ROLES[k]) out.push(`roles: unknown role "${k}" (one of ${ROLE_IDS.join(", ")})`);
+    else if (v !== "student" && v !== "computer") out.push(`roles: ${k} must be "student" or "computer"`);
+  }
+  for (const [k, v] of Object.entries(isObject(cfg.staff) ? cfg.staff : {})) {
+    if (DISCIPLINE_IDS.includes(k) && !isObject(v)) out.push(`staff.${k} must be {"day": n, "emergency": n}`);
+  }
+  if (cfg.factory?.object != null && !objects.has(cfg.factory.object)) out.push(`factory: no object "${cfg.factory.object}" on the layout`);
+  return out;
+}

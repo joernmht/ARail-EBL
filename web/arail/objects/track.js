@@ -1,7 +1,7 @@
 /**
  * Track: the centre line of a real track on the layout. Not drawn over the camera image (the
- * real track is there) unless "Tracks" is switched on; used to place trains reported by the
- * control system as "track + offset". A virtual camera (flyover) draws the track itself:
+ * real track is there; a `virtual` track on a table module is) unless "Tracks" is switched on;
+ * used to place trains reported by the control system as "track + offset". A virtual camera (flyover) draws the track itself:
  * ballast, sleepers and rails.
  * @module arail/objects/track
  */
@@ -25,6 +25,7 @@ export class Track extends LayoutObject {
     { key: "name", label: "Name", type: "text", default: "" },
     { key: "track_id", label: "Track name in the control system", type: "text", default: "" },
     { key: "offset_start_mm", label: "Offset at the first point", type: "number", unit: "mm", step: 1, default: 0, help: "Position value the control system reports at the first point of the line." },
+    { key: "virtual", label: "Virtual track", type: "boolean", default: false, help: "Not on the real layout (e.g. on a table module): drawn over the camera image too." },
   ];
 
   computeGeometry() {
@@ -48,7 +49,7 @@ export class Track extends LayoutObject {
 
   draw(view) {
     const g = this.geometry;
-    if (!view.showsReal(g.points)) this._drawTrack(view, g);
+    if (this.spec.virtual || !view.showsReal(g.points)) this._drawTrack(view, g);
     if (!this.world.settings.showTracks) return;
     view.line(g.points, { stroke: rgba(OVERLAY.tracked, 0.85), width: 2, dash: [10, 6], order: 25 });
     const mid = polylineAt(g.points, g.total / 2, g.lengths).point;

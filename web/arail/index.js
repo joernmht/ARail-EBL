@@ -37,6 +37,7 @@ import { TownSimulation } from "./sims/town.js";
 import { TrafficSimulation } from "./sims/traffic.js";
 import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
+import { registerInfrastructure } from "./infra/index.js";
 
 export const VERSION = "0.1.0";
 
@@ -102,6 +103,20 @@ export {
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
   WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, registerOperations,
 } from "./ops/index.js";
+// infrastructure: assets, maintenance, projects (named exports only; names that the core or the
+// operations use too get an "infra" prefix)
+export {
+  GRADES, gradeValue, gradeOf, healthOf, gradeLabel, gradeColour, DISCIPLINES, DISCIPLINE_IDS, GENERATIONS, GENERATION_IDS, REPORTS,
+  ASSET_TYPES, TYPE_IDS, hazardFactor, repairCap, METHODS, MEASURES,
+  ROLES, ROLE_IDS, DEFAULT_NETWORK, DEFAULT_PLACEMENT, INFRA_DEFAULTS, PRESET_SCENARIOS, normalizeInfra, applyScenario, scenariosOf, validateInfra,
+  Network, utmToLonLat, utmZone, kmLabel, Asset, generateAssets, healthAtAge, healthAfter, wearRate, ifcGuid,
+  Person, makePeople, shiftOf as infraShiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS, Plant, PLANT_STAGES,
+  ProjectDesk, PROJECT_STAGES, PROCEDURES, QUALITY, SUPERVISION, annuityFactor, eur,
+  InfraEngine, INFRA_ACTIONS, TASK_WORDS, YEAR, durationText, toGeoJSON, assetRecord,
+  AssetObject, LinearAssetObject, Signal, Switch, Balise, LevelCrossing, GsmrMast, Lift, PassengerDisplay, Catenary, CableRoute, Interlocking,
+  MaintenanceBase, CrossingPlant, ASSET_OBJECTS, INFRA_OBJECTS, drawAssetState, drawLinearState,
+  InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, registerInfrastructure,
+} from "./infra/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
@@ -121,6 +136,7 @@ export function registerBuiltins(registry) {
   registry.registerVehicle(BUS);
   registerTerminal(registry);
   registerOperations(registry);
+  registerInfrastructure(registry);
   return registry;
 }
 

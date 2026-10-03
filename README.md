@@ -1,6 +1,6 @@
 # ARail-EBL
 
-**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, runs a railway undertaking with its fleet, workshop and crews, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. It runs in the browser, needs no installation and no calibration board.
+**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, runs a railway undertaking with its fleet, workshop and crews, lets students manage the railway's infrastructure as a game, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. It runs in the browser, needs no installation and no calibration board.
 
 [**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
 
@@ -20,6 +20,7 @@ ARail-EBL started as a prototype for the railway operations laboratory (EBL) and
 | **Flyover and table modules** | A virtual camera (key `F`) to look at and edit the layout without the camera image: a snapping grid, the orthophoto of the real table, and virtual table modules that extend the tabletop. |
 | **Container terminal** | Container trains, trucks and barges at a terminal with a gantry crane, a reach stacker and yard blocks. Choose a container and its new place in the Terminal panel or on the stage; the crane does the move. Model wagons on the real layout carry printed deck cards with AprilTag tags (a marker family of their own), so their containers ride on them. |
 | **Rail operations** | Units with maintenance cycles and failures that grow with age and wear, a depot workshop, and the four functions of the entity in charge of maintenance (ECM), each with a party of its own; penalties between the transport authority, the railway undertaking, the ECM and the workshop. Drivers with contracts, duties under the working-time rules and a roster, who live in the town and walk to the depot, or come in by train. Compare setups (integrated or distributed maintenance, crew buffers) under stress tests: a flu wave, a staff shortage, a heat wave. |
+| **Infrastructure** | The station on the layout as part of an invented district with two lines: track, switches, signals, balises, interlockings, level crossings, cables, GSM-R, overhead lines, platforms, lifts and displays, each with its condition (grades 1–6), faults and an age. How well a condition is known depends on the asset: a digital interlocking reports it live, a relay interlocking only shows faults, old signals must be inspected. Maintenance staff in shifts, emergency vans that drive through the town, drones; renewals and upgrades through the HOAI phases with federal funding (benefit-cost ratio), planning approval, tenders and a level crossing plant. Students play the asset manager, the ALVs, the dispatcher, the planner, the construction supervision and the funding authority, year by year with limited money and people. Assets are coloured on the photo by their condition and last check; a line map and GeoJSON for GIS. |
 | **Lab survey** | Stickers all over the table, one video: `arail-survey` measures every marker and writes a fixed, locked layout, a report and an orthophoto of the table; in the app, *Build → Marker map → Survey a video* gives a quick check. Markers on vehicles can be set as moving; they stay out of the map. |
 | **Disruptions and scenarios** | Delays, cancellations, closures, signal failures, crowd surges, rail replacement buses; scripted scenarios for exercises. |
 | **Control-system interface** | A Python bridge forwards real train positions over WebSocket. When a real train stops at a platform, the virtual passengers board it. |
@@ -33,7 +34,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. **Layouts… → Example: container terminal** opens the terminal in the flyover, **Layouts… → Example: rail operations** the lab with its fleet, depot and drivers (Operations tab).
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. **Layouts… → Example: container terminal** opens the terminal in the flyover, **Layouts… → Example: rail operations** the lab with its fleet, depot and drivers (Operations tab), **Layouts… → Example: infrastructure** the lab as a station of an infrastructure district (Infrastructure tab).
 
 **On your own layout:**
 
@@ -63,6 +64,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Streets, bus lines and road traffic](docs/streets-and-buses.md) | The road network, bus stops, bus lines, cars |
 | [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
 | [Rail operations](docs/operations.md) | Fleet, maintenance (ECM) and penalties, crews and rosters; comparing setups under stress tests |
+| [Infrastructure](docs/infrastructure.md) | Assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
 | [Layout file format](docs/layout-format.md) | The JSON file that describes a layout and all built-in object types |
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
@@ -87,10 +89,13 @@ web/                  the website (published with GitHub Pages)
                       barges, model wagons from rolling-stock markers
     ops/              rail operations: timetable and rotations, units and failures, maintenance (ECM),
                       contracts and penalties, crews and dispatching, comparisons, the depot
+    infra/            infrastructure: asset types and their condition, the network (km, georeference,
+                      GeoJSON), staff in shifts, faults and inspections, projects (HOAI, funding,
+                      procurement), the level crossing plant, the objects on the layout
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab, the synthetic layout, the container terminal,
-                      the EBL lab with rail operations)
+                      the EBL lab with rail operations, the EBL lab as an infrastructure district)
   media/              the images of the example layouts (lab photo, synthetic layout) and their orthophotos
   assets/             logos, icons and the website's images
   vendor/js-aruco2/   marker detection library (MIT)
@@ -118,7 +123,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The original German prototype ("Bahnstei
 
 ## Status
 
-Version 0.1, with unreleased changes on `main` (see [CHANGELOG.md](CHANGELOG.md)): the town with its day and night routine, streets and bus lines, the flyover with table modules, the lab survey, the container terminal with rolling-stock markers, rail operations with fleet maintenance and crews, and the app in the chair's corporate design. Tested with a synthetic layout, a photo and a handheld video of the lab. Next: a lab session in the EBL (stickers on the whole table, one video, a fixed layout), live sessions with phones, webcams and a projector, and an adapter for the lab's control system. Known limits: markers smaller than about 20 px in the image are not found; the camera must always see at least one known marker; virtual objects are always drawn in front of real ones (no occlusion).
+Version 0.1, with unreleased changes on `main` (see [CHANGELOG.md](CHANGELOG.md)): the town with its day and night routine, streets and bus lines, the flyover with table modules, the lab survey, the container terminal with rolling-stock markers, rail operations with fleet maintenance and crews, infrastructure asset management as a game for students, and the app in the chair's corporate design. Tested with a synthetic layout, a photo and a handheld video of the lab. Next: a lab session in the EBL (stickers on the whole table, one video, a fixed layout), live sessions with phones, webcams and a projector, and an adapter for the lab's control system. Known limits: markers smaller than about 20 px in the image are not found; the camera must always see at least one known marker; virtual objects are always drawn in front of real ones (no occlusion).
 
 ## License and credits
 

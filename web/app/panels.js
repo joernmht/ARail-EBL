@@ -169,6 +169,7 @@ export class Panels {
     const app = this.app, s = w.settings;
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
     const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
+    const hasInfra = w.simulations.some((x) => x.constructor.type === "infrastructure");
     mount(el,
       section("Time of day",
         this.clockFace,
@@ -204,6 +205,11 @@ export class Panels {
         h("div", { class: "row" },
           h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.openExample("operations") }, "Open the example"),
           h("button", { class: "btn", type: "button", id: "opsAdd", onclick: () => app.operations.addOperations() }, "Add to this layout"))),
+      hasInfra ? null : section("Infrastructure",
+        h("p", { class: "hint" }, "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab."),
+        h("div", { class: "row" },
+          h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.openExample("infrastructure") }, "Open the example"),
+          h("button", { class: "btn", type: "button", id: "infraAdd", onclick: () => app.infra.addInfrastructure() }, "Add to this layout"))),
     );
     this.updateSimulateControls();
     this.updateClock();
@@ -300,8 +306,8 @@ export class Panels {
   renderNewDisruption() {
     if (!this.newDisruption) return;
     const w = this.world, reg = w.registry, draft = this.disruptionDraft;
-    // disruptions of a simulation the layout does not have are not offered
-    const offered = [...reg.disruptions.values()].filter((d) => !d.requires || w.simulations.some((s) => s.constructor.type === d.requires));
+    // disruptions of a simulation the layout does not have are not offered, nor those a simulation starts itself (`hidden`)
+    const offered = [...reg.disruptions.values()].filter((d) => !d.hidden && (!d.requires || w.simulations.some((s) => s.constructor.type === d.requires)));
     const def = offered.find((d) => d.type === draft.type) || offered[0];
     if (!def) return;
     draft.type = def.type;
