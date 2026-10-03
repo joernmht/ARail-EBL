@@ -45,6 +45,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Crew names in rail operations are bird names (both parts, in one language), so no simulated person resembles a real one. The languages are weighted roughly by the people living in Germany: German, Turkish, Polish, Russian, Arabic, Ukrainian, Bosnian/Croatian/Serbian, Romanian, Italian, Kurdish, Greek, and the minority languages Danish and Upper Sorbian (non-Latin scripts transliterated).
 - `track` objects take `virtual`: a track on a table module, drawn over the camera image too.
 - The Terminal tab's place is taken by the Infrastructure tab on layouts with infrastructure and without a terminal (a layout with rail operations and infrastructure shows both tabs).
 
