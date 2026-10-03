@@ -688,15 +688,31 @@ export class Flyover {
     const st = this.app.editor.surveyState;
     const seen = new Set(st?.running ? st.progress?.visible || [] : []);
     for (const id of map.ids()) {
-      const e = map.get(id), s = map.sizeOf(id);
+      const e = map.get(id), s = map.sizeOf(id), z = e.z || 0; // markers surveyed in 3D: at their height
       const at = (dx, dy) => [e.x + dx * Math.cos(e.theta) - dy * Math.sin(e.theta), e.y + dx * Math.sin(e.theta) + dy * Math.cos(e.theta)];
       const sq = (h) => [at(-h, -h), at(h, -h), at(h, h), at(-h, h)];
-      view.polygon(sq(0.7 * s), { fill: "#ffffff", order: -70, stroke: seen.has(id) ? OVERLAY.tracked : null, width: 2.5 });
-      view.polygon(sq(0.5 * s), { fill: "#111111", order: -69.5 });
-      const p = view.project(e.x, e.y, 0), q = view.project(...at(0.5 * s, 0), 0);
+      let p, q, queue;
+      if (e.tilt > Math.PI / 180) {
+        // on a ramp, a wall or a desk: a sticker in space, sorted against buildings and other solids
+        const t = e.tilt, d = e.tiltDir, normal = [Math.sin(t) * Math.cos(d), Math.sin(t) * Math.sin(d), Math.cos(t)];
+        view.faces([{ pts: map.cornersInSpace(id, 1.4), normal, color: "#ffffff", flat: true, stroke: seen.has(id) ? OVERLAY.tracked : undefined,
+          decals: [{ pts: map.cornersInSpace(id, 1), color: "#111111" }] }], [e.x, e.y, z]);
+        const nc = view.normalToCamera(normal), cc = view.cam(e.x, e.y, z);
+        if (nc[0] * cc[0] + nc[1] * cc[1] + nc[2] * cc[2] >= 0) continue; // seen from behind: no label either
+        const c = map.cornersInSpace(id, 1); // the middle of its right edge
+        p = view.project(e.x, e.y, z);
+        q = view.project((c[1][0] + c[2][0]) / 2, (c[1][1] + c[2][1]) / 2, (c[1][2] + c[2][2]) / 2);
+        queue = (draw) => view.solid(view.depth(e.x, e.y, z), draw); // right after its sticker
+      } else {
+        view.polygon(sq(0.7 * s), { fill: "#ffffff", order: -70, stroke: seen.has(id) ? OVERLAY.tracked : null, width: 2.5, z });
+        view.polygon(sq(0.5 * s), { fill: "#111111", order: -69.5, z });
+        p = view.project(e.x, e.y, z);
+        q = view.project(...at(0.5 * s, 0), z);
+        queue = (draw) => view.ground(-69, draw);
+      }
       if (!p || !q) continue;
       const r = Math.hypot(q[0] - p[0], q[1] - p[1]);
-      view.ground(-69, (ctx) => {
+      queue((ctx) => {
         const px = view.px, size = Math.max(9 * px, Math.min(13 * px, r * 0.9));
         ctx.font = `700 ${size}px ${FONT}`;
         ctx.textAlign = "center";

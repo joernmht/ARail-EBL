@@ -7,8 +7,8 @@ Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and one Nod
 | --- | --- | --- |
 | `arail-bridge` | connects a control system to the ARail web app (WebSocket feed) | `bridge` |
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
-| `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
-| `arail-synthetic` | renders the synthetic test layout | `opencv` or `headless` |
+| `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table; with `--3d` also heights and tilts (levels, ramps, control desks) | `opencv` or `headless` |
+| `arail-synthetic` | renders the synthetic test layout (`--levels`: the scene with a raised level, a ramp and a wall marker) | `opencv` or `headless` |
 | `python -m arail_tools.fixtures` | generates the images and the short survey video for the tests | `opencv` or `headless` |
 
 ```bash
@@ -38,6 +38,12 @@ only these markers; `--unlocked` to skip), and markers on vehicles (`markers.mov
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
 For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
 Survey a video.
+
+Layouts with levels, ramps or bridges, and control desks, are not one plane: `--3d` measures every
+marker's height and tilt as well and gives every frame a camera (focal length and lens distortion
+estimated per input, or fixed with `--calibration`); `--height ID MM` checks heights measured with a
+ruler. The poses then have six numbers, `[x, y, rotation, z, tilt, tilt_dir]`; see
+[Levels, ramps and control desks](../docs/lab-session.md#levels-ramps-and-control-desks-the-3d-survey).
 
 ## Comparing operations setups
 

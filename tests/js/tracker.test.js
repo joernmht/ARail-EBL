@@ -4,6 +4,7 @@ import test from "node:test";
 import { Camera } from "../../web/arail/core/camera.js";
 import { MarkerDetector } from "../../web/arail/core/detector.js";
 import { applyH, toDeg, wrapAngle } from "../../web/arail/core/math.js";
+import { normalizeLayout, validateLayout } from "../../web/arail/core/layout.js";
 import { MarkerMap, PlaneTracker, SURVEY_WRITE } from "../../web/arail/core/tracker.js";
 import { FIXTURE_HINT, fixtureImage, fixtureMeta, hasFixtures, loadAruco, median } from "./helpers.js";
 
@@ -263,4 +264,46 @@ test("the survey writes a settled marker's small refinements every few frames, a
   while ((i + 1) % W.every === 0) frame(220);
   frame(240);
   assert.equal(written.at(-1), true, "moved by 20 mm");
+});
+
+/* ---------------------------------------------------------------- markers surveyed in 3D */
+
+test("markers surveyed in 3D keep their height and tilt; those off the layout plane are not used for the pose", () => {
+  const poses = { ...KNOWN, 8: [200, 120, 30, 62, 0.4, 15], 9: [300, 100, 0, 0.5, 0.3, 40], 13: [560, 180, 0, 25, 90, -90] };
+  const map = new MarkerMap({ size: 30, poses, origin: 0, locked: true });
+  assert.deepEqual(map.toJSON(), poses, "written back as read; 2D poses stay 2D");
+  assert.deepEqual(map.offPlane(), [8, 13], "a raised level and a wall");
+  assert.ok(map.onPlane(9), "0.5 mm and 0.3 degrees are on the plane");
+  // the wall sticker stands upright at y = 180 facing -y, its top edge 15 mm above its centre
+  const c = map.cornersInSpace(13);
+  assert.ok(c.every((p) => Math.abs(p[1] - 180) < 1e-9));
+  assert.deepEqual(c.map((p) => [Math.round(p[0]), Math.round(p[2])]), [[545, 40], [575, 40], [575, 10], [545, 10]]);
+  // marker 8 is seen where a marker 62 mm above the plane is seen: it must not pull the plane
+  const tracker = new PlaneTracker(map);
+  const camera = new Camera(1280, 720);
+  const det = detectionsAt(VIEW_H, { ...KNOWN, 9: [300, 100, 0], 8: [260, 170, 30] });
+  const state = tracker.update(det, 0, camera, { still: true });
+  assert.deepEqual(state.used, [0, 1, 2, 3, 9]);
+  assert.deepEqual(state.visible, [0, 1, 2, 3, 8, 9]);
+  // the height survives being a moving marker for a while
+  map.setMoving([8]);
+  assert.ok(!map.has(8));
+  map.setMoving([]);
+  assert.deepEqual(map.toJSON()[8], poses[8]);
+  // an unlocked map does not survey markers off the plane, nor measure others from them
+  map.unlock();
+  tracker.update(detectionsAt(VIEW_H, { 8: [200, 120, 30], 13: [600, 150, 0], 21: [250, 60, 0] }), 1, camera, { still: true });
+  assert.ok(!map.has(21), "only markers 8 and 13 in view: no reference on the plane");
+  assert.deepEqual(map.toJSON()[8], poses[8]);
+});
+
+test("layout files: marker poses in 2D or, from the 3D survey, with height and tilt", () => {
+  assert.deepEqual(validateLayout({ markers: { poses: { 0: [0, 0, 0], 8: [200, 120, 30, 62, 0.4, 15] } } }), []);
+  for (const pose of [[200, 120, 30, 62], [1, 2, 3, 4, 5, "x"]]) {
+    const problems = validateLayout({ markers: { poses: { 8: pose } } });
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /markers\.poses\.8 must be .*z_mm, tilt_deg, tilt_dir_deg/);
+  }
+  const poses = normalizeLayout({ markers: { poses: { 8: [200, 120, 30, 62, 0.4, 15], 9: [1, 2, 3, 4] } } }).markers.poses;
+  assert.deepEqual(poses, { 8: [200, 120, 30, 62, 0.4, 15] }, "unusable poses are left out");
 });

@@ -11,6 +11,11 @@
  * layout (mm) -> image (px). Many markers spread over the layout make this stable,
  * and hidden markers do not matter as long as some others are visible.
  *
+ * Markers surveyed in 3D (`arail-survey --3d`) carry a height and a tilt as well. Those off the
+ * layout plane (on a raised level, a ramp, a wall; see {@link PLANE_TOLERANCE}) are kept and
+ * written back to layout files, but not used for the pose yet: the pose here is a homography of
+ * the plane, and a marker above it would pull the plane towards itself.
+ *
  * A *locked* map is complete (e.g. after a survey of the whole layout and "Keep positions"):
  * nothing is surveyed any more, markers that are not in the map are ignored, and misread or
  * moved markers are dropped from the pose as outliers. *Moving* markers (on vehicles, e.g.
@@ -30,12 +35,16 @@ import {
 
 /* ================================================================ marker map */
 
+/** Markers surveyed in 3D are on the layout plane if their centre is within `mm` of it and they are tilted at most `deg`. */
+export const PLANE_TOLERANCE = { mm: 2, deg: 2 };
+
 export class MarkerMap {
   /**
    * @param {object} [options]
    * @param {number} [options.size=30] edge length of the black marker square in mm
    * @param {Object<string, number>} [options.sizes] per-marker sizes in mm (by ID)
-   * @param {Object<string, number[]>} [options.poses] known poses: ID -> [x_mm, y_mm, rotation_deg]
+   * @param {Object<string, number[]>} [options.poses] known poses: ID -> [x_mm, y_mm, rotation_deg], or from the 3D
+   *   survey [x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]
    * @param {number | null} [options.origin] marker that defines the layout frame when surveying
    * @param {boolean} [options.locked=false] the map is complete: no survey, other markers are ignored
    * @param {number[]} [options.moving] IDs of markers on vehicles (never part of the map)
@@ -53,7 +62,11 @@ export class MarkerMap {
     this.size = size;
     this.sizes = { ...sizes };
     this.origin = origin;
-    /** @type {Map<number, {x: number, y: number, theta: number, fixed: boolean}>} */
+    /**
+     * Poses; markers surveyed in 3D also have `z` (mm), `tilt` and `tiltDir` (rad): the marker is
+     * rotated by `theta` about its normal, then tilted by `tilt` so that its normal leans towards `tiltDir`.
+     * @type {Map<number, {x: number, y: number, theta: number, fixed: boolean, z?: number, tilt?: number, tiltDir?: number}>}
+     */
     this.entries = new Map();
     /** Marker the survey is anchored to (its pose never changes). */
     this.anchor = null;
@@ -67,6 +80,7 @@ export class MarkerMap {
     this.version++;
     for (const [id, p] of Object.entries(poses)) {
       const pose = { x: +p[0], y: +p[1], theta: wrapAngle(toRad(+p[2] || 0)), fixed: true };
+      if (p.length >= 6) Object.assign(pose, { z: +p[3], tilt: toRad(+p[4]), tiltDir: wrapAngle(toRad(+p[5])) });
       if (this.moving.has(Number(id))) this.parked.set(Number(id), pose); // a moving marker has no place in the map
       else this.set(Number(id), pose, true);
     }
@@ -86,8 +100,43 @@ export class MarkerMap {
   }
 
   set(id, pose, fixed = false) {
-    this.entries.set(id, { x: pose.x, y: pose.y, theta: wrapAngle(pose.theta), fixed });
+    const e = { x: pose.x, y: pose.y, theta: wrapAngle(pose.theta), fixed };
+    if (pose.z != null) Object.assign(e, { z: pose.z, tilt: pose.tilt || 0, tiltDir: pose.tiltDir || 0 });
+    this.entries.set(id, e);
     this.version++;
+  }
+
+  /**
+   * Whether marker `id` is in the map and lies on the layout plane: a 2D pose, or a 3D one within
+   * {@link PLANE_TOLERANCE}. Only these markers are used for the pose.
+   */
+  onPlane(id) {
+    const e = this.entries.get(id);
+    return !!e && (e.z == null || (Math.abs(e.z) <= PLANE_TOLERANCE.mm && toDeg(e.tilt) <= PLANE_TOLERANCE.deg));
+  }
+
+  /** IDs of the markers off the layout plane (surveyed in 3D on raised levels, ramps or walls). */
+  offPlane() {
+    return this.ids().filter((id) => !this.onPlane(id));
+  }
+
+  /**
+   * Marker corners (TL, TR, BR, BL) in space (layout mm, z up), with the height and tilt of a 3D pose.
+   * @param {number} id
+   * @param {number} [scale=1] share of the marker's size (e.g. 1.4 for the white margin)
+   * @returns {number[][]}
+   */
+  cornersInSpace(id, scale = 1) {
+    const e = this.entries.get(id);
+    const tilt = e.tilt || 0, dir = e.tiltDir || 0;
+    const k = [-Math.sin(dir), Math.cos(dir), 0], ct = Math.cos(tilt), st = Math.sin(tilt);
+    return markerCorners(this.sizeOf(id) * scale).map(([u, v]) => {
+      const p = [u * Math.cos(e.theta) - v * Math.sin(e.theta), u * Math.sin(e.theta) + v * Math.cos(e.theta), 0];
+      // tilt about the horizontal axis k (Rodrigues): p cos t + (k x p) sin t + k (k . p)(1 - cos t)
+      const kp = k[0] * p[0] + k[1] * p[1];
+      const cross = [k[1] * p[2] - k[2] * p[1], k[2] * p[0] - k[0] * p[2], k[0] * p[1] - k[1] * p[0]];
+      return [0, 1, 2].map((i) => p[i] * ct + cross[i] * st + k[i] * kp * (1 - ct) + [e.x, e.y, e.z || 0][i]);
+    });
   }
 
   delete(id) {
@@ -176,18 +225,24 @@ export class MarkerMap {
     const inv = poseInverse(ref);
     for (const [k, e] of this.entries) {
       const p = poseCompose(inv, e);
-      this.entries.set(k, { ...p, fixed: e.fixed });
+      const tilted = e.z != null ? { z: e.z, tilt: e.tilt, tiltDir: wrapAngle(e.tiltDir - ref.theta) } : {};
+      this.entries.set(k, { ...p, fixed: e.fixed, ...tilted });
     }
     this.anchor = id;
     this.version++;
   }
 
-  /** Poses as stored in layout files (`markers.poses`): ID -> [x_mm, y_mm, rotation_deg]. */
+  /**
+   * Poses as stored in layout files (`markers.poses`): ID -> [x_mm, y_mm, rotation_deg], or for markers
+   * surveyed in 3D [x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg] (rounded like arail-survey).
+   */
   toJSON() {
     const out = {};
+    const r = (v, n) => Math.round(v * n) / n + 0; // + 0: no -0 in the file
     for (const id of this.ids()) {
       const e = this.entries.get(id);
-      out[id] = [Math.round(e.x * 10) / 10, Math.round(e.y * 10) / 10, Math.round(toDeg(e.theta) * 100) / 100];
+      out[id] = [r(e.x, 10), r(e.y, 10), r(toDeg(e.theta), 100)];
+      if (e.z != null) out[id].push(r(e.z, 10), r(toDeg(e.tilt), 100), r(toDeg(e.tiltDir), 10));
     }
     return out;
   }
@@ -394,11 +449,11 @@ export class PlaneTracker {
       map.set(root, { x: 0, y: 0, theta: 0 });
       map.anchor = root;
     }
-    const known = ids.filter((id) => map.has(id));
+    const known = ids.filter((id) => map.onPlane(id)); // markers off the plane cannot serve as references
     if (!known.length) return;
     for (const id of ids) {
       const entry = map.get(id);
-      if (entry && (entry.fixed || id === map.anchor)) continue;
+      if (entry && (entry.fixed || id === map.anchor || !map.onPlane(id))) continue;
       const est = this._surveyEstimate(id, known.filter((k) => k !== id), markers);
       if (!est) continue;
       let a = this.acc.get(id);
@@ -464,9 +519,9 @@ export class PlaneTracker {
 
   /* ---------------------------------------------------------------- pose */
 
-  /** Least-squares homography from all visible known markers, dropping inconsistent ones. */
+  /** Least-squares homography from all visible known markers on the layout plane, dropping inconsistent ones. */
   _estimate(markers) {
-    let ids = Object.keys(markers).map(Number).filter((id) => this.map.has(id) && !this.map.moving.has(id));
+    let ids = Object.keys(markers).map(Number).filter((id) => this.map.onPlane(id) && !this.map.moving.has(id));
     while (ids.length) {
       const src = [], dst = [];
       for (const id of ids) {

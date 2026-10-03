@@ -14,7 +14,7 @@ Two tools do the survey:
 | Output | layout file (locked), JSON report, orthophoto, check image | marker map (then **Keep positions**, which locks it, and **Export layout**) |
 | Needs | Python with OpenCV (`pip install -e "tools[headless]"`) | a browser that can play the video (MP4/H.264 or WebM) |
 
-Use the app for a quick check in the lab; use `arail-survey` for the layout that goes into the repository.
+Use the app for a quick check in the lab; use `arail-survey` for the layout that goes into the repository. Both assume that all markers lie on one plane; for a layout with levels (embankments, bridges, a raised station, hills) or for a control desk, `arail-survey --3d` measures the height and tilt of every marker as well: see [Levels, ramps and control desks](#levels-ramps-and-control-desks-the-3d-survey).
 
 ## Before the visit
 
@@ -23,6 +23,7 @@ Use the app for a quick check in the lab; use `arail-survey` for the layout that
 - [ ] **Print the sticker sheets** on the [marker page](https://joernmht.github.io/ARail-EBL/markers/) (`web/markers/` locally): marker type, the IDs (e.g. `0-54`, nothing beyond N−1), size, white border at least 6 mm, cut lines on. Use **matte sticker paper** (full-sheet A4 labels; glossy paper reflects the lights). Print at 100 % ("actual size", not "fit to page").
 - [ ] **Check the 100 mm bar** on every sheet with a ruler. If it is off, note the real size of the black square and use it (`--size`, Build → Layout → Marker size) instead of reprinting.
 - [ ] **Every ID once.** Two stickers with the same ID break the survey (the report names IDs seen twice in one frame).
+- [ ] **Levels?** Raised parts or ramps on the table, or a control desk to survey: plan the [3D survey](#levels-ramps-and-control-desks-the-3d-survey) (markers on every level, films from many directions, a few heights measured with a ruler).
 - [ ] Bring: scissors or a cutter, a tape measure or folding rule, a sketch of where which ID goes, a phone with free storage and a charged battery, a stepladder for a few photos from above, a laptop with `arail-survey` installed (to check the result before leaving).
 
 ## Sticking the markers
@@ -113,6 +114,66 @@ Accuracy: on the synthetic test video (tests/python/test_survey.py) all markers 
 - If a sticker was moved or replaced: film that area again and run `arail-survey … --layout <the layout>`: moved markers are found and measured again (the report says so). In the app: **Build → Marker map → Measure again** (this unlocks the map), film, then **Keep positions**. **Survey a video…** unlocks the map for its run and offers **Keep positions** at the end (if it measured nothing, the map is locked again).
 - After re-sticking many markers: `--resurvey`.
 - **Moving markers**: markers on vehicles (e.g. container wagons) are never part of the map. Enter their IDs in Build → Marker map → *Moving markers* (`markers.moving`, `arail-survey --moving`). Give them IDs within `markers.codes` (the app refuses others; `arail-survey` raises `markers.codes`) and do not stick them on the table. Objects cannot be placed relative to them.
+
+## Levels, ramps and control desks: the 3D survey
+
+The survey above assumes that all markers lie on one plane. A layout with **levels** (a line on an embankment or a bridge, a raised station, a hill) and ramps between them breaks that assumption, and so does anything that is not flat at all, such as a **control desk** with a sloping panel: markers off the plane end up in the wrong place, or are rejected. `arail-survey --3d` measures the full pose of every marker (position with height, rotation and tilt) and gives every frame a camera of its own.
+
+### Sticking the markers
+
+- [ ] **Origin marker 0 on the base level** (the table), as above, and **at least three markers spread out on its level**: z = 0 is the plane the origin marker shares with them. One sticker alone would define the plane poorly (a tilt of 1° is 6 cm in height 3.5 m away).
+- [ ] **Markers on every level** as on the table (every 30–40 cm), **also on ramps** (they may lie tilted; slopes are measured) and on walls or desk fronts if you want them (upright is fine).
+- [ ] **Where levels meet** (bottom and top of a ramp, both sides of a step or a bridge abutment): every level must be seen in many frames together with markers of its neighbours, or it cannot be connected.
+- [ ] **Near the edges of levels**: the orthophoto takes the height of every point from the level the frames agree on; where the surface shows no texture, the level of the nearest marker decides.
+
+### Filming
+
+- [ ] **One camera setting for the whole film**: the 3D survey estimates the focal length and the lens distortion of every video (and of all photos of one size), so: the main camera (1×), no zoom, focus and exposure locked, and **video stabilisation off** if the phone lets you (it shifts the image from frame to frame). Photos and videos are different cameras (the video uses a crop of the sensor); both are fine, each gets its own.
+- [ ] **From many directions**: heights come from seeing markers from different sides. Besides the lawn-mower passes, **walk around raised parts** and film each level obliquely (40–60°) from at least two opposite sides; film the ground behind raised parts from the far side too.
+- [ ] Optional: a [calibration](calibration.md) of the camera in the same setting (`--calibration`) fixes the camera instead of estimating it; useful when the film shows the markers mostly from one direction.
+
+### Measuring by hand
+
+- [ ] **Heights**: with a ruler, the height of 2–3 markers on every raised level above the table (above z = 0, the plane of the origin marker): `--height ID MM` for each. They are compared with the survey, not used by it.
+- [ ] **A long distance** between two marker centres, as above (`--distance A B MM`, measured in space).
+
+### Processing
+
+```bash
+arail-survey lab.mp4 photos/*.jpg --3d --layout web/layouts/ebl-lab.json \
+    -o web/layouts/ebl-lab.json --report survey-report.json \
+    --ortho web/media/ebl-lab-ortho.jpg --check check.jpg \
+    --height 23 62 --height 31 62 --distance 0 37 2850
+```
+
+- `--3d` is implied when the layout already has 3D poses. All other options work as above; `--refine-fixed`, `--moving`, `--resurvey` too.
+- The layout gets six numbers per marker, `[x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]` (see [poses in 3D](layout-format.md#poses-in-3d)); 2D poses of an older survey count as flat at z = 0.
+- The summary names the camera of every input (focal length, how well it is determined, field of view, k1), lists z and tilt of every marker and its **level**, and the levels: horizontal ones with their height, inclined ones with their slope and direction (e.g. "inclined 2.9 degrees towards 180 degrees"). The report has them too (`cameras`, `levels`, `layout_plane`, `heights`).
+- Time: the adjustment takes about 30 s for a 3-minute video of a 3.5 m table, the orthophoto 10–30 s.
+
+| Warning | What to do |
+| --- | --- |
+| The focal length of the camera of … is poorly determined | film the markers from more directions and tilts, or give a `--calibration` |
+| The camera of … distorts strongly | the main camera (1×), not the wide-angle one, or a `--calibration` |
+| Fewer than three markers lie on one plane with the origin marker | put more markers on the origin marker's level, spread out |
+| Measured and surveyed heights differ | measured from the plane of the origin marker? a sticker not flat? |
+| Marker N could not be placed: its pose cannot be told from the K frames that show it | film it closer and from more directions: seen small or from one side only, a marker's two possible tilts look alike |
+
+The other warnings mean what they mean above. In the **check image**, markers off the layout plane have their height in the label (e.g. "23 +62"), and the outlines on every level must lie on the stickers; raised levels appear where they are seen from straight above.
+
+### In the app
+
+The app reads layouts surveyed in 3D, keeps the heights and tilts and writes them back when it exports the layout. **Build → Marker map** shows the height (column *Z*) and marks markers off the layout plane; the flyover draws the stickers at their height. **Live tracking uses only markers on the layout plane for now** (within 2 mm and 2°): keep markers of the base level in view. Objects are still placed on the plane, and the flyover draws the orthophoto on it.
+
+### Control desks
+
+Survey each control desk as a layout of its own: its own stickers with IDs of their own (e.g. 200–219 for desk A, 220–239 for desk B), one of them as the origin, and a film of the desk alone (other stickers out of view):
+
+```bash
+arail-survey desk-a.mp4 --3d --origin 200 --codes 220 -o desk-a.json --report desk-a-report.json
+```
+
+The desk's frame is then its own (z = 0 is the plane most of its markers share with the origin marker, e.g. its sloping panel), independent of the table's.
 
 ## The EBL example
 

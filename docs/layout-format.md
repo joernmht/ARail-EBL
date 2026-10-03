@@ -77,7 +77,22 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 | `rolling` | | tags on model wagons, a marker family of their own, see [below](#markersrolling) |
 | `locked` | `false` | the marker map is complete (**Keep positions** in the app, or `arail-survey`): live tracking surveys nothing, markers that are not in `poses` are ignored, and misread or moved markers are dropped from the pose as outliers |
 | `moving` | `[]` | IDs of markers of the layout's type on vehicles, e.g. `[40, 41]` (the older way; model wagons of the container terminal carry tags of their own, see `rolling`): never part of the map and never used for the pose, locked or not (a pose for such an ID is ignored). They must be below `codes`, must not be the origin, and objects cannot be placed relative to them. The tracker reports where they are seen (`tracker.state.moving`, see [Extending](extending.md#tracking-moving-markers)). |
-| `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`. Poses in the file are kept fixed; unknown markers are surveyed (unless the map is locked). |
+| `poses` | `{}` | known marker positions: `"id": [x_mm, y_mm, rotation_deg]`, or, from the [3D survey](lab-session.md#levels-ramps-and-control-desks-the-3d-survey), `"id": [x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]` (see [below](#poses-in-3d)). Poses in the file are kept fixed; unknown markers are surveyed (unless the map is locked). |
+
+### Poses in 3D
+
+`arail-survey --3d` measures the height and tilt of every marker as well, for layouts with levels, ramps or bridges, and for things that are not flat, such as control desks. Such a pose has six numbers: `[x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]`.
+
+- `x_mm`, `y_mm`, `z_mm`: the marker's centre; z is the height above the layout plane (the plane of the origin marker and the markers that share it), up towards the camera.
+- `rotation_deg`: the marker's rotation about its own normal, as in a 2D pose.
+- `tilt_deg`, `tilt_dir_deg`: then the marker is tilted by `tilt_deg` so that its normal leans towards the direction `tilt_dir_deg` (measured like rotations, counter-clockwise from the x axis). A flat marker has tilt 0 (and `tilt_dir_deg` 0), and its first three numbers mean what they mean in a 2D pose. A marker on a ramp rising along +x leans towards 180°; a sticker upright on a wall that faces −y has tilt 90 and `tilt_dir_deg` −90.
+
+```json
+"poses": { "0": [0, 0, 0, 0, 0.14, 153.9], "8": [501.7, 260.7, 0.06, 50.1, 0.11, -25.2],
+           "11": [199.6, 280.8, -0.01, 13.2, 9.54, 179.7], "13": [561.8, 180.5, -0.21, 25, 89.71, -90.1] }
+```
+
+The app keeps these poses and writes them back when it exports the layout. **Build → Marker map** shows their height (column *Z*), and the flyover draws the stickers at their height. Markers off the layout plane (more than 2 mm above or below it, or tilted more than 2°) are not used for live tracking yet: the camera must see markers on the plane. Objects are placed on the plane (z = 0) as before.
 
 ### `markers.rolling`
 
@@ -419,7 +434,7 @@ The town needs residential buildings and works best with the passenger simulatio
 The app and `validateLayout()` report:
 
 - an unknown `format` and a scale that is not a positive number;
-- malformed marker poses, a `locked` that is not true or false, a `moving` that is not a list of marker IDs, moving markers at or above `codes`, a moving origin marker, poses given for moving markers, and a locked map without poses;
+- malformed marker poses (neither `[x, y, rotation]` nor `[x, y, rotation, z, tilt, tilt_dir]`), a `locked` that is not true or false, a `moving` that is not a list of marker IDs, moving markers at or above `codes`, a moving origin marker, poses given for moving markers, and a locked map without poses;
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
 - a malformed `grid` or `view.ortho`, and scenarios without an id or steps;
 - in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;

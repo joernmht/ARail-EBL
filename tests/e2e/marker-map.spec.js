@@ -145,3 +145,29 @@ test("locking keeps a marker type that was detected automatically", async ({ pag
   expect(restarted).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("a layout surveyed in 3D: heights in the marker table; markers off the plane are kept, not used for tracking", async ({ page }) => {
+  const errors = await openBuild(page);
+  // the lab photo's markers lie on the plane; two more were surveyed in 3D: on a raised level and on a wall
+  await page.evaluate(async () => {
+    const a = window.__arail, json = a.world.toJSON();
+    json.markers.poses = { ...json.markers.poses, 20: [500, 300, 15, 62, 0.4, 20], 21: [600, 250, 0, 25, 90, -90] };
+    await a._applyLayout(json);
+  });
+  await page.waitForFunction(() => window.__arail.world.map.ids().length === 7 && window.__arail.tracker.state.H);
+  const table = page.locator("#panel-build table").filter({ hasText: "Rotation" });
+  await expect(table.locator("th")).toHaveText(["ID", "X", "Y", "Z", "Rotation", "Status"]);
+  await expect(table.locator("tr", { hasText: "62.0" })).toContainText("off the plane");
+  await expect(page.locator("#markerMapOffPlane")).toContainText("2 markers lie off the layout plane");
+  // written back with height and tilt
+  const poses = await page.evaluate(() => window.__arail.world.toJSON().markers.poses);
+  expect(poses[20]).toEqual([500, 300, 15, 62, 0.4, 20]);
+  expect(poses[21]).toEqual([600, 250, 0, 25, 90, -90]);
+  expect(poses[0]).toHaveLength(3);
+  expect(await page.evaluate(() => window.__arail.tracker.state.used)).toEqual([0, 1, 2, 3, 4]);
+  // the flyover draws them (at their height) without trouble
+  await page.locator("#btnFlyover").click();
+  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await page.evaluate(() => window.__arail.render());
+  expect(errors).toEqual([]);
+});

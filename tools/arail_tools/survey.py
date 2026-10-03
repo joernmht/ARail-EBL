@@ -29,6 +29,10 @@ written locked, ``markers.locked``, so live tracking uses only these markers; ma
 ``markers.moving``, are never part of it), a JSON report, the orthophoto with its ``bounds_mm``
 (``view.ortho`` in the layout), and a check image with the layout's markers, platforms and tracks
 drawn on the orthophoto.
+
+All of this assumes one plane. For layouts with levels, ramps or bridges, and for control desks,
+``--3d`` measures every marker's height and tilt and gives every frame a camera: see
+:mod:`arail_tools.survey3d`.
 """
 
 from __future__ import annotations
@@ -225,7 +229,9 @@ class Source:
 
 @dataclass
 class Frame:
-    """Markers seen in one frame; after the survey also the homography layout (mm) -> image (px)."""
+    """Markers seen in one frame; after the survey also the homography layout (mm) -> image (px). The
+    3D survey also sets the camera pose (``R``, ``t``: layout -> camera) and the frame's camera
+    (``group``, an index into ``SurveyResult.cameras``); its ``H`` is then that of the plane z = 0."""
 
     source: int
     index: int
@@ -236,6 +242,9 @@ class Frame:
     H: np.ndarray | None = None
     rms: float | None = None
     used: list[int] = field(default_factory=list)
+    R: np.ndarray | None = None
+    t: np.ndarray | None = None
+    group: int = -1
 
 
 def open_sources(paths: list[str]) -> list[Source]:
@@ -334,14 +343,22 @@ def load_layout(path: str) -> dict:
     if not isinstance(markers.get("moving") or [], list):
         raise SurveyError(f"{path}: markers.moving must be a list of marker IDs like [40, 41]")
     for k, p in (markers.get("poses") or {}).items():
-        ok = str(k).isdigit() and isinstance(p, list) and 2 <= len(p)
+        ok = str(k).isdigit() and isinstance(p, list) and (2 <= len(p) <= 3 or len(p) == 6)
         try:
-            ok = ok and all(math.isfinite(float(v)) for v in p[:3])
+            ok = ok and all(math.isfinite(float(v)) for v in p)
         except (TypeError, ValueError):
             ok = False
         if not ok:
-            raise SurveyError(f"{path}: markers.poses.{k} must be a marker ID with [x_mm, y_mm, rotation_deg]")
+            raise SurveyError(
+                f"{path}: markers.poses.{k} must be a marker ID with [x_mm, y_mm, rotation_deg] or, surveyed in 3D, "
+                "[x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]"
+            )
     return data
+
+
+def is_3d_pose(p) -> bool:
+    """A layout pose with height and tilt (``[x, y, rotation, z, tilt, tilt_dir]``)."""
+    return isinstance(p, list | tuple) and len(p) == 6
 
 
 def moving_ids(markers: dict) -> set[int]:
@@ -840,7 +857,9 @@ class Adjustment:
 
 @dataclass
 class SurveyResult:
-    """Outcome of :func:`survey`. Poses are (x_mm, y_mm, theta_rad) in the layout frame."""
+    """Outcome of :func:`survey` (or of :func:`arail_tools.survey3d.survey3d`). Poses are
+    (x_mm, y_mm, theta_rad) in the layout frame; the 3D survey also gives the full poses
+    (``poses3d``: id -> (R, t)), its cameras, the levels and the layout plane."""
 
     poses: dict[int, np.ndarray]
     status: dict[int, str]  # origin | fixed | surveyed | moved | refined
@@ -858,9 +877,29 @@ class SurveyResult:
     moving: dict[int, int] = field(default_factory=dict)  # moving markers (on vehicles): frames
     layout_check: dict | None = None
     distances: dict | None = None  # check against measured distances (and the scale applied)
+    mode: str = "2d"
+    poses3d: dict | None = None  # 3D: id -> (R, t), marker frame -> layout frame
+    cameras: list | None = None  # 3D: survey3d.Camera per input (frames refer to them by `group`)
+    levels: list | None = None  # 3D: horizontal and inclined planes with their markers
+    plane: dict | None = None  # 3D: the markers that define the layout plane
+    heights: dict | None = None  # 3D: check against measured heights
 
     def pose_json(self, m) -> list[float]:
-        """[x_mm, y_mm, rotation_deg], rounded like the app (0.1 mm, 0.01 deg)."""
+        """[x_mm, y_mm, rotation_deg], rounded like the app (0.1 mm, 0.01 deg); in 3D
+        [x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg] (see :func:`arail_tools.survey3d.pose6`)."""
+        if self.poses3d is not None and m in self.poses3d:
+            from .survey3d import pose6
+
+            x, y, th, z, tilt, direction = pose6(*self.poses3d[m])
+            tilt_deg = round(math.degrees(tilt), 2)
+            return [
+                round(x, 1),
+                round(y, 1),
+                round(math.degrees(float(wrap_angle(th))), 2),
+                round(z, 1),
+                tilt_deg,
+                round(math.degrees(direction), 1) if tilt_deg else 0.0,
+            ]
         x, y, th = self.poses[m]
         return [round(float(x), 1), round(float(y), 1), round(float(math.degrees(wrap_angle(th))), 2)]
 
@@ -1681,9 +1720,10 @@ def platform_outline(o: dict, poses) -> np.ndarray | None:
     return np.array([a - n * h, b - n * h, b + n * h, a + n * h])
 
 
-def check_image(ortho: Orthophoto, layout: dict | None, result: SurveyResult, size_of) -> np.ndarray:
+def check_image(ortho: Orthophoto, layout: dict | None, result: SurveyResult, size_of, markers=None) -> np.ndarray:
     """The orthophoto with a 100 mm grid, the markers (orange), platforms (red), tracks (yellow) and
-    the other objects of the layout: they must lie on their real counterparts."""
+    the other objects of the layout: they must lie on their real counterparts. ``markers`` (optional)
+    gives, per marker ID, the outline to draw (layout mm, 4 x 2) and its label."""
     img = ortho.image.copy()
     H, W = img.shape[:2]
     lw = max(1, round(min(W, H) / 700))
@@ -1729,10 +1769,10 @@ def check_image(ortho: Orthophoto, layout: dict | None, result: SurveyResult, si
                 q = ortho.to_px([p])[0]
                 cv2.drawMarker(img, (int(q[0]), int(q[1])), CHECK_OTHER, cv2.MARKER_CROSS, 6 * lw + 6, 2 * lw)
     for m, pose in poses.items():
-        corners = pose_apply(pose, marker_corners_mm(size_of(m)))
+        corners, text = markers(m) if markers else (pose_apply(pose, marker_corners_mm(size_of(m))), str(m))
         poly(corners, CHECK_MARKER)
         q = ortho.to_px(corners)
-        label(str(m), (q[:, 0].max() + 4 * lw, q[:, 1].min() + 4 * lw), (255, 255, 255))
+        label(text, (q[:, 0].max() + 4 * lw, q[:, 1].min() + 4 * lw), (255, 255, 255))
     legend = (
         "markers (orange)  platforms (red)  tracks (yellow)  other objects (turquoise)  grid 100 mm, axes black  "
         f"{ortho.mm_per_px:.2f} mm/px"
@@ -1799,6 +1839,14 @@ def _tidy(v: float):
 
 def report_json(result: SurveyResult, sources: list[Source], settings: dict, ortho: dict | None = None) -> dict:
     frames = result.frames
+    extra = {}
+    if result.mode == "3d":
+        extra = {
+            "cameras": [c.json(sources) for c in result.cameras or []],
+            "layout_plane": result.plane,
+            "levels": result.levels,
+            "heights": result.heights,
+        }
     return {
         "format": FORMAT,
         "created": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -1834,29 +1882,61 @@ def report_json(result: SurveyResult, sources: list[Source], settings: dict, ort
         "moving": {str(m): n for m, n in sorted(result.moving.items())},
         "layout_check": result.layout_check,
         "distances": result.distances,
+        **extra,
         "warnings": result.warnings,
         "ortho": ortho,
     }
 
 
-def summary(result: SurveyResult) -> str:
+def summary(result: SurveyResult, sources: list[Source] | None = None) -> str:
     """Human-readable table of the result."""
     lines = [
         f"{len(result.frames)} frames analysed, {sum(1 for f in result.frames if f.H is not None)} used; "
         f"{result.observations} marker observations, RMS {result.rms_px:.2f} px"
         + (f", {result.rejected} rejected" if result.rejected else ""),
-        "",
-        "   ID     x mm     y mm   rot deg  frames   rms px   +-mm  status",
     ]
-    for m in result.poses:
-        x, y, r = result.pose_json(m)
-        s = result.stats[m]
-        rms = f"{s['rms_px']:.2f}" if s["rms_px"] is not None else "-"
-        lines.append(
-            f"{m:5d} {x:8.1f} {y:8.1f} {r:9.2f} {s['frames']:7d} {rms:>8} {s['sigma_mm']:6.2f}  {result.status[m]}"
-        )
+    if result.mode == "3d":
+        for c in result.cameras or []:
+            names = ", ".join(os.path.basename(sources[s].path) for s in c.sources) if sources else "camera"
+            how = "calibrated" if c.fixed else f"+- {c.sigma_f:.1f} px" if c.sigma_f is not None else "estimated"
+            lines.append(
+                f"Camera of {names}: focal length {c.f:.1f} px ({how}, {c.fov_deg():.1f} degrees wide), k1 {c.k1:+.4f}"
+            )
+        lines += ["", "   ID     x mm     y mm     z mm   rot deg  tilt deg  frames   rms px   +-mm  level  status"]
+        for m in result.poses:
+            x, y, r, z, tilt, _ = result.pose_json(m)
+            s = result.stats[m]
+            rms = f"{s['rms_px']:.2f}" if s["rms_px"] is not None else "-"
+            level = s.get("level")
+            lines.append(
+                f"{m:5d} {x:8.1f} {y:8.1f} {z:8.1f} {r:9.2f} {tilt:9.2f} {s['frames']:7d} {rms:>8} "
+                f"{s['sigma_mm']:6.2f} {'-' if level is None else level:>6}  {result.status[m]}"
+            )
+    else:
+        lines += ["", "   ID     x mm     y mm   rot deg  frames   rms px   +-mm  status"]
+        for m in result.poses:
+            x, y, r = result.pose_json(m)
+            s = result.stats[m]
+            rms = f"{s['rms_px']:.2f}" if s["rms_px"] is not None else "-"
+            lines.append(
+                f"{m:5d} {x:8.1f} {y:8.1f} {r:9.2f} {s['frames']:7d} {rms:>8} {s['sigma_mm']:6.2f}  {result.status[m]}"
+            )
     for m, why in result.unplaced.items():
         lines.append(f"{m:5d}  not placed: {why}")
+    if result.mode == "3d" and result.levels:
+        lines += ["", "Levels:"]
+        for i, lv in enumerate(result.levels):
+            where = (
+                f"z {lv['z_mm']:.1f} mm (spread {lv['spread_mm']:.1f} mm)"
+                if "spread_mm" in lv
+                else f"inclined {lv['tilt_deg']:.1f} degrees towards {lv['tilt_dir_deg']:.0f} degrees, "
+                f"centres at z {lv['z_mm']:.1f} mm on average"
+            )
+            lines.append(f"  {i}: {where}: markers {_ids(lv['markers'])}")
+    if result.heights:
+        lines += ["", "Heights (measured / surveyed):"]
+        for r in result.heights["markers"]:
+            lines.append(f"  marker {r['marker']}: {r['measured_mm']:.1f} / {r['surveyed_mm']:.1f} mm")
     if result.warnings:
         lines += ["", "Warnings:"] + [f"  - {w}" for w in result.warnings]
     return "\n".join(lines)
@@ -1996,6 +2076,21 @@ def build_parser() -> argparse.ArgumentParser:
         "(only checked when the layout has known poses)",
     )
     ap.add_argument(
+        "--3d",
+        dest="three_d",
+        action="store_true",
+        help="survey heights and tilts too (levels, ramps, control desks); implied by a layout with 3D poses",
+    )
+    ap.add_argument(
+        "--height",
+        nargs=2,
+        type=float,
+        action="append",
+        default=[],
+        metavar=("ID", "MM"),
+        help="3D: measured height of a marker's centre above the plane of the origin marker (ruler), for checking",
+    )
+    ap.add_argument(
         "--moving",
         type=_ids_arg,
         help="IDs of markers on vehicles, e.g. 40,41 (added to the layout's markers.moving): never part of the map",
@@ -2082,11 +2177,23 @@ def run(args, log) -> int:
                 f"Marker {m} is a moving marker (markers.moving, --moving), but objects of the layout are placed "
                 f"relative to it: {', '.join(users)}."
             )
+    three_d = args.three_d or any(is_3d_pose(p) for p in (lm.get("poses") or {}).values())
+    if args.height and not three_d:
+        raise SurveyError("--height checks heights: it needs the 3D survey (--3d).")
     fixed = {}
     if not args.resurvey:
         for k, p in (lm.get("poses") or {}).items():
-            if int(k) not in moving:  # a marker that became a moving one: no longer part of the map
-                fixed[int(k)] = np.array([float(p[0]), float(p[1]), math.radians(float(p[2]) if len(p) > 2 else 0.0)])
+            if int(k) in moving:  # a marker that became a moving one: no longer part of the map
+                continue
+            v = [float(x) for x in p] + [0.0] * (3 - len(p))
+            if three_d:  # a 2D pose lies flat on the plane z = 0
+                from .survey3d import from_pose6
+
+                z, tilt, direction = v[3:6] if len(v) == 6 else (0.0, 0.0, 0.0)
+                rad = math.radians
+                fixed[int(k)] = from_pose6([v[0], v[1], rad(v[2]), z, rad(tilt), rad(direction)])
+            else:
+                fixed[int(k)] = np.array([v[0], v[1], math.radians(v[2])])
     calibration = load_calibration(args.calibration) if args.calibration else None
 
     sources = open_sources(args.inputs)
@@ -2101,17 +2208,37 @@ def run(args, log) -> int:
         for m in moving & set(f.markers):
             del f.markers[m]
             moving_seen[m] += 1
-    log("Adjusting the marker map")
-    result = survey(
-        frames,
-        size_mm,
-        sizes_mm,
-        fixed=fixed,
-        origin=origin,
-        refine_fixed=args.refine_fixed,
-        moved_mm=args.moved_mm,
-        distances=[(int(a), int(b), mm) for a, b, mm in args.distance],
-    )
+    distances = [(int(a), int(b), mm) for a, b, mm in args.distance]
+    if three_d:
+        from . import survey3d as s3
+
+        log("Adjusting the marker map in 3D (heights and tilts, a camera for every frame)")
+        result = s3.survey3d(
+            frames,
+            sources,
+            size_mm,
+            sizes_mm,
+            fixed=fixed,
+            origin=origin,
+            refine_fixed=args.refine_fixed,
+            moved_mm=args.moved_mm,
+            distances=distances,
+            heights=[(int(m), mm) for m, mm in args.height],
+            calibration=calibration,
+            log=log,
+        )
+    else:
+        log("Adjusting the marker map")
+        result = survey(
+            frames,
+            size_mm,
+            sizes_mm,
+            fixed=fixed,
+            origin=origin,
+            refine_fixed=args.refine_fixed,
+            moved_mm=args.moved_mm,
+            distances=distances,
+        )
     result.duplicates = dict(detector.duplicates)
     result.ignored = {m: n for m, n in sorted(detector.above_max.items()) if n >= MIN_SEEN}
     result.moving = dict(sorted(moving_seen.items()))
@@ -2138,8 +2265,11 @@ def run(args, log) -> int:
     ortho = ortho_info = None
     if args.ortho or args.check:
         log("Composing the orthophoto")
+        compose = orthophoto
+        if three_d:
+            from .survey3d import orthophoto3d as compose
         try:
-            ortho = orthophoto(
+            ortho = compose(
                 result,
                 sources,
                 bounds=args.ortho_bounds,
@@ -2159,7 +2289,10 @@ def run(args, log) -> int:
             rel = os.path.relpath(os.path.abspath(args.ortho), os.path.dirname(os.path.abspath(args.output)))
             ortho_info = ortho.json(rel.replace(os.sep, "/"))
         if args.check:
-            _write_jpeg(args.check, check_image(ortho, base, result, lambda m: sizes_mm.get(m, size_mm)), 85)
+            draw = check_image
+            if three_d:
+                from .survey3d import check_image3d as draw
+            _write_jpeg(args.check, draw(ortho, base, result, lambda m: sizes_mm.get(m, size_mm)), 85)
 
     layout = layout_json(
         result, base, dictionary, size_mm, sizes_mm, codes, ortho_info, locked=not args.unlocked, moving=moving
@@ -2177,6 +2310,7 @@ def run(args, log) -> int:
         "calibration": args.calibration,
         "moving": sorted(moving),
         "locked": not args.unlocked,
+        "mode": result.mode,
     }
     rep_ortho = None
     if ortho is not None:
@@ -2191,7 +2325,7 @@ def run(args, log) -> int:
     if args.report:
         _write_json(args.report, report_json(result, sources, settings, rep_ortho))
 
-    print(summary(result))
+    print(summary(result, sources))
     print(f"\nLayout: {args.output}" + (f"   report: {args.report}" if args.report else ""))
     if ortho is not None:
         W, H = ortho.image.shape[1], ortho.image.shape[0]

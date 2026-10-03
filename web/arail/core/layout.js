@@ -159,8 +159,9 @@ export function markerIds(list) {
   return [...new Set((Array.isArray(list) ? list : []).filter(isMarkerId).map(Number))].sort((a, b) => a - b);
 }
 
+/** A pose `[x_mm, y_mm, rotation_deg]` (2D), or `[x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]` from the 3D survey. */
 function validPose(id, p) {
-  return /^\d+$/.test(id) && Array.isArray(p) && p.length >= 2 && p.slice(0, 3).every((v) => Number.isFinite(Number(v)));
+  return /^\d+$/.test(id) && Array.isArray(p) && [2, 3, 6].includes(p.length) && p.every((v) => Number.isFinite(Number(v)));
 }
 
 /** True if `json` looks like a layout file (and not, say, a camera calibration). */
@@ -184,7 +185,7 @@ export function validateLayout(json, registry) {
   const poses = isObject(json.markers?.poses) ? json.markers.poses : {};
   for (const [id, p] of Object.entries(poses)) {
     if (!/^\d+$/.test(id)) problems.push(`markers.poses: "${id}" is not a marker ID`);
-    else if (!validPose(id, p)) problems.push(`markers.poses.${id} must be [x_mm, y_mm, rotation_deg]`);
+    else if (!validPose(id, p)) problems.push(`markers.poses.${id} must be [x_mm, y_mm, rotation_deg] or, surveyed in 3D, [x_mm, y_mm, rotation_deg, z_mm, tilt_deg, tilt_dir_deg]`);
   }
   const markers = isObject(json.markers) ? json.markers : {};
   if (markers.locked != null && typeof markers.locked !== "boolean") problems.push("markers.locked must be true or false");

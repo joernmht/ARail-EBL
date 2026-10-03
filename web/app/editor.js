@@ -764,10 +764,16 @@ export class Editor {
   renderMarkers() {
     if (!this.el) return;
     const map = this.world.map;
+    // markers surveyed in 3D (arail-survey --3d) have a height; those off the plane do not serve tracking yet
+    const has3d = map.ids().some((id) => map.get(id).z != null);
+    const off = new Set(map.offPlane());
     const rows = map.ids().map((id) => {
       const e = map.get(id);
-      return h("tr", {}, h("td", {}, id), h("td", {}, e.x.toFixed(1)), h("td", {}, e.y.toFixed(1)), h("td", {}, `${toDeg(e.theta).toFixed(1)}°`),
-        h("td", {}, id === map.anchor ? "origin" : e.fixed ? "fixed" : "surveyed"));
+      const status = id === map.anchor ? "origin" : e.fixed ? "fixed" : "surveyed";
+      return h("tr", {}, h("td", {}, id), h("td", {}, e.x.toFixed(1)), h("td", {}, e.y.toFixed(1)),
+        has3d ? h("td", {}, (e.z || 0).toFixed(1)) : null,
+        h("td", {}, `${toDeg(e.theta).toFixed(1)}°`),
+        h("td", {}, off.has(id) ? `${status}, off the plane` : status));
     });
     const n = map.ids().length;
     const surveying = !!this.surveyState?.running; // the video survey works on the map: no changes meanwhile
@@ -776,7 +782,8 @@ export class Editor {
       h("p", { class: "hint", id: "markerMapStatus" }, map.locked
         ? `Marker map locked: only these ${n} markers are used; new markers are ignored.`
         : "Positions of the markers on the layout (mm). Unknown markers are measured automatically when they are seen together with known ones. Keep positions fixes them and locks the map."),
-      rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
+      rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", ...(has3d ? ["Z"] : []), "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
+      off.size ? h("p", { class: "hint", id: "markerMapOffPlane" }, `${off.size === 1 ? "1 marker lies" : `${off.size} markers lie`} off the layout plane (raised levels, ramps, walls; surveyed in 3D). They are kept in the layout, but not used for tracking yet: keep markers on the plane in view.`) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", disabled: surveying, onclick: () => this.keepPositions() }, "Keep positions"),
         map.locked ? h("button", { class: "btn small", type: "button", id: "btnUnlockMap", disabled: surveying, onclick: () => this.unlockMap() }, "Unlock") : null,
