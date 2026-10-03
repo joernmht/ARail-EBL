@@ -7,7 +7,7 @@
  * `(startWeekday + day) % 7` the weekday (0 = Monday).
  * @module arail/ops/util
  */
-import { createRng } from "../core/math.js";
+import { createRng, hashKey } from "../core/math.js";
 import { formatTime } from "../core/clock.js";
 
 export const DAY = 1440;
@@ -170,15 +170,7 @@ export function hoursLabel(hours) {
 
 /* ---------------------------------------------------------------- random numbers */
 
-/** FNV-1a hash of the parts joined by "|". */
-export function hashKey(...parts) {
-  let h = 2166136261;
-  for (const c of parts.join("|")) {
-    h ^= c.charCodeAt(0);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+export { hashKey };
 
 /**
  * A random stream for one purpose and thing (e.g. ("fail", unitId, day, tripId)): the same keys

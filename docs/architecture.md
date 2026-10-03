@@ -47,6 +47,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, twist, fit, plan view; grid lines and snapping |
 | `core/world.js` | the loaded layout: objects, simulations, services, bus lines, disruptions, scenarios, trains, the clock; `step` and `draw` |
 | `core/clock.js` | the fast clock: time of day, daylight, demand profiles over the day |
+| `core/people.js` | the people of all simulations (town residents, crews, maintenance staff): `Person`, `Population` (ids, bird names in the languages of people living in Germany, random streams per person), homes (`pickHome`, `residentialBuildings`) |
 | `core/layout.js`, `core/anchors.js` | layout files (defaults, validation, `grid`, `view.ortho`, `markers.rolling`, the settings check of simulations), marker-relative points |
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `objects/building-kit.js`, `objects/houses.js`, `objects/building.js` | `BuildingBase` and `BuildingModel` (white-model look, lit windows, level of detail) and the house types |

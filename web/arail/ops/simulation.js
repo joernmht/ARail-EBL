@@ -19,7 +19,7 @@ import { polylineAt, polylineLengths } from "../core/math.js";
 import { drawPerson } from "../sims/passengers.js";
 import { OpsEngine, causeWord, jobWord } from "./engine.js";
 import { autoNetwork, normalizeOps, validateOps } from "./config.js";
-import { shortName } from "./crew.js";
+import { residentialBuildings, shortName } from "../core/people.js";
 import { DAY, durationLabel, hhmm } from "./util.js";
 
 /** Colours of crew members walking: a yellow high-visibility vest over dark blue trousers. */
@@ -422,13 +422,10 @@ export class OperationsSimulation extends Simulation {
   /** Residential buildings with the walk to the crew base (m). */
   _homes(base) {
     const out = [];
-    for (const o of this.world.objects) {
-      if (!o.geometry || typeof o.capacity !== "function" || typeof o.entrances !== "function") continue;
-      const use = typeof o.use === "function" ? o.use() : o.constructor.use;
-      const residents = o.capacity()?.residents || 0;
-      if (use !== "residential" || !(residents > 0) || !o.entrances().length) continue;
-      const path = this._path(o.entrances()[0].pos, `building:${o.id}:0`, base.pos, base.key);
-      out.push({ id: o.id, name: o.name, walkM: (path.length * this.world.scale) / 1000, weight: residents });
+    for (const { o, id, name, residents } of residentialBuildings(this.world)) {
+      if (typeof o.entrances !== "function" || !o.entrances().length) continue;
+      const path = this._path(o.entrances()[0].pos, `building:${id}:0`, base.pos, base.key);
+      out.push({ id, name, walkM: (path.length * this.world.scale) / 1000, weight: residents });
     }
     return out;
   }
