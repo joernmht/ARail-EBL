@@ -171,7 +171,7 @@ export const PRESET_STRESS = [
   { id: "none", name: "Normal operation", description: "No extra stress.", patch: {} },
   { id: "flu", name: "Flu wave", description: "14 % of the staff off sick, called in at short notice.", patch: { crew: { sick_rate: 0.14, sick_notice_min: 60 } } },
   { id: "shortage", name: "Long-term staff shortage", description: "12 % of the driver positions are vacant.", patch: { crew: { vacancies: 0.12 } } },
-  { id: "heat", name: "Heat wave", description: "More failures, above all air conditioning.", patch: { fleet: { failure_factor: 1.3, soft_factor: 2.5 } } },
+  { id: "heat", name: "Heat wave", description: "30 % more breakdowns and 2.5 times as many defects.", patch: { fleet: { failure_factor: 1.3, soft_factor: 2.5 } } },
   { id: "bus-strike", name: "Bus strike", description: "Staff get to work late more often.", patch: { crew: { commute: { late_p: 0.18, late_min: 25 } } } },
   { id: "workshop-slow", name: "Workshop short of staff", description: "Every job takes 50 % longer; parts take twice as long.", patch: { maintenance: { workshop: { speed: 1.5, parts_h: 20 } } } },
   {
@@ -479,6 +479,8 @@ export function stressOf(config) {
 /* ---------------------------------------------------------------- validation */
 
 const EVENT_TYPES = ["sick", "failure", "unit_out", "staff_loss", "workshop_closed", "station_closed", "delay"];
+/** Operations entries checked per layout (validateLayout checks them in order: all but the first are reported). */
+const CHECKED = new WeakMap();
 
 /**
  * Problems of an operations entry, in plain words (validateLayout prefixes them).
@@ -540,6 +542,12 @@ export function validateOps(cfg, layout) {
     if (w.object != null && objects.get(w.object)?.type !== "depot") problems.push(`maintenance.workshop.object: "${w.object}" is not a depot on the layout`);
   }
   if (cfg.crew?.base != null && !stationIds.has(cfg.crew.base)) problems.push(`crew.base: no station "${cfg.crew.base}"`);
+  // one per layout
+  if (layout && list(layout.simulations).filter((s) => isObject(s) && s.type === "operations").length > 1) {
+    const n = CHECKED.get(layout) ?? 0;
+    CHECKED.set(layout, n + 1);
+    if (n > 0) problems.push("only one rail operations entry per layout (the first one runs)");
+  }
   for (const key of ["setups", "stress"]) {
     list(cfg[key]).forEach((s, i) => {
       if (!isObject(s) || !s.id) return problems.push(`${key}[${i}] needs an id`);

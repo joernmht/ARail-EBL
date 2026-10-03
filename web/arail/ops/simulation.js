@@ -67,8 +67,14 @@ export class OperationsSimulation extends Simulation {
       world.events.on("object.changed", () => (this._dirty = true)),
     ];
     this._dirty = true;
-    world.services.planner = this;
+    // one operations simulation per layout: the first one runs, another one stays idle
+    if (!world.services.planner) world.services.planner = this;
     this._updatePlatforms();
+  }
+
+  /** Runs: enabled, and the layout's first operations simulation. */
+  get active() {
+    return this.enabled && this.world.services.planner === this;
   }
 
   get name() {
@@ -98,7 +104,7 @@ export class OperationsSimulation extends Simulation {
 
   /** ServiceManager planner: the rail docks of the stations on the layout are run by this simulation. */
   claims(dock) {
-    return this.enabled && this._platforms.has(dock.area.owner?.id);
+    return this.active && this._platforms.has(dock.area.owner?.id);
   }
 
   /* ---------------------------------------------------------------- the engine */
@@ -157,7 +163,7 @@ export class OperationsSimulation extends Simulation {
   }
 
   step(dt) {
-    if (!this.enabled) return;
+    if (!this.active) return;
     this._ensure();
     const e = this.engine;
     if (!e) return;
@@ -525,7 +531,7 @@ export class OperationsSimulation extends Simulation {
   /* ---------------------------------------------------------------- drawing */
 
   draw(view) {
-    if (!this.enabled || !this.engine) return;
+    if (!this.active || !this.engine) return;
     for (const w of this.walkers) {
       const at = polylineAt(w.path.points, w.s, w.path.lengths);
       if (!view.inImage(at.point[0], at.point[1], 0)) continue;

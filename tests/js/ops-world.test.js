@@ -250,3 +250,16 @@ test("only the operations send trains to its platforms: a manual call goes nowhe
   // the bus bay keeps taking manual calls
   assert.ok(world.services.call("bus-terminal-1"));
 });
+
+test("one operations simulation per layout: a second entry is reported and stays idle", () => {
+  const twice = structuredClone(OPS);
+  twice.simulations.push({ type: "operations", name: "Second" });
+  const problems = validateLayout(twice, registry);
+  assert.deepEqual(problems, [`simulations[${twice.simulations.length - 1}] (operations): only one rail operations entry per layout (the first one runs)`]);
+  const world = createWorld(twice);
+  const [first, second] = world.simulations.filter((s) => s.constructor.type === "operations");
+  assert.equal(world.services.planner, first);
+  assert.equal(opsOf(world), first);
+  frames(world, 2);
+  assert.ok(first.engine && !second.engine, "only the first one runs");
+});

@@ -12,7 +12,7 @@ const EXAMPLES = [
   { id: "lab", label: "Example: EBL lab photo", layout: "../layouts/ebl-lab.json" },
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
   { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json" },
-  { id: "operations", label: "Example: EBL lab with rail operations", layout: "../layouts/ebl-operations.json" },
+  { id: "operations", label: "Example: rail operations", layout: "../layouts/ebl-operations.json" },
 ];
 const TABS = ["view", "build", "simulate", "terminal", "ops", "disrupt", "control"];
 /** Tabs of a feature of the layout: the other one's tab when the layout does not have it, else View. */
