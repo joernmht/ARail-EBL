@@ -5,8 +5,8 @@
    white surfaces (60 %), Türkis #0A777F (30 %: app bar, primary buttons, selected tabs,
    signs), Orange 1 #C85000 as the accent (10 %: pressed toggles, placing, attention).
    Rot 1 #D20F41 marks disruptions, Dunkelblau #001450 the departure boards and labels.
-   Dark mode: a Dunkelblau field with lighter accents. Type: Noto Sans. The project website
-   keeps its own (blue) design. */
+   Dark mode: a Dunkelblau field with lighter accents. Type: Noto Sans. The project page and the
+   marker sheets use these tokens, the bar and the buttons too. */
 :root {
   --bg: #f3f7f8;
   --surface: #ffffff;

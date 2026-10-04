@@ -17,6 +17,36 @@ test("project page links to the app and the compare slider works", async ({ page
   expect(errors).toEqual([]);
 });
 
+test("project page hands over from the picture to the applications, each opening an example in the app", async ({ page, request }) => {
+  await page.goto("/");
+  // base, applications, next steps, in this order
+  const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
+  expect(order).toEqual(["base", "applications", "next"]);
+  const jumps = await page.getByRole("navigation", { name: "Applications" }).getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-disruptions"]);
+  for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
+  const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(examples).toHaveLength(5);
+  for (const href of examples) {
+    const layout = new URL(href, "http://x/app/").searchParams.get("layout");
+    expect((await request.get(new URL(layout, "http://localhost/app/").pathname)).ok(), layout).toBe(true);
+  }
+  // cooperation: the contact person by email
+  await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
+  const images = await page.locator(".app-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
+  for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
+});
+
+test("project page fits a phone: the picture first, no horizontal scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const pic = await page.locator("#compare").boundingBox();
+  const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+  expect(pic.y).toBeLessThan(title.y);
+  const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(width[0]).toBe(width[1]);
+});
+
 test("marker sheets have the exact paper size and validate the input", async ({ page }) => {
   await page.goto("/markers/");
   await expect(page.locator("#status")).toHaveText("8 markers on 1 sheet.");

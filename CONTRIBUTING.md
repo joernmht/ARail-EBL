@@ -45,7 +45,7 @@ Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`
 - **Python**: formatted and linted with ruff: `cd tools && ruff format . ../tests/python && ruff check . ../tests/python`.
 - **Units in names**: `_mm` for model millimetres, `_m` for prototype metres, `_s` for seconds, `_deg` for degrees.
 - **User-facing text** in English, plain and specific ("Train arriving", "No markers in view"), sentence case.
-- **Colours and type**: the app follows the corporate design of the Chair of Railway Operations. Use the tokens of `web/app/app.css` in the interface and `CD`, `OVERLAY`, `FONT` and `PALETTE` (`web/arail/core/colors.js`) on the canvas instead of new hard-coded colours; buildings stay greyscale. Text must keep a contrast of at least 4.5:1 in light and dark mode (the accessibility tests check it). The project website (`web/index.html`, `web/markers/`) keeps its own blue design.
+- **Colours and type**: the app follows the corporate design of the Chair of Railway Operations. Use the tokens of `web/app/app.css` in the interface and `CD`, `OVERLAY`, `FONT` and `PALETTE` (`web/arail/core/colors.js`) on the canvas instead of new hard-coded colours; buildings stay greyscale. Text must keep a contrast of at least 4.5:1 in light and dark mode (the accessibility tests check it). The project page (`web/index.html`) and the marker sheets (`web/markers/`) load `app.css` and use the same tokens.
 
 ## Adding things
 
