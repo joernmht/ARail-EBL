@@ -161,9 +161,11 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`platform`](#platform-rail-platform) | Rail platform (Transport) | segment |
 | [`bus-terminal`](#bus-terminal) | Bus terminal (Transport) | `position` |
 | [`road`](#road-street) | Street (Transport) | `points` (polyline) |
+| [`underpass`](#underpass-pedestrian-underpass) | Pedestrian underpass (Transport) | `points` (polyline) |
 | [`bus-stop`](#bus-stop) | Bus stop (Transport) | `position` |
 | [`bus-line`](#bus-line) | Bus line (Transport) | `stops` |
 | [`building`](#building) | Building (Buildings) | `position` |
+| [`station-building`](#station-building) | Station building (Buildings) | `position` |
 | [`plattenbau`, `altbau-block`, `house`, `house-estate`, `office`, `school`, `supermarket`, `factory`](#german-house-types) | Plattenbau, Altbau block, Single-family house, Single-family estate, Office building, School, Supermarket, Workshop / factory (Buildings) | `position`; the estate `points` (polygon) |
 | [`tree`](#tree) | Tree (Scenery) | `position` |
 | [`forest`](#forest) | Forest (Scenery) | `points` (polygon) |
@@ -228,6 +230,16 @@ A street (or footpath). Geometry: `points` (polyline). Streets whose ends meet, 
 | `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side) |
 | `crossings` | `true` | zebra crossings next to junctions |
 
+### `underpass`: pedestrian underpass
+
+A footpath under the tracks (Personentunnel). Geometry: `points` (polyline); start and end it on streets (on their centre lines, like a street that ends on another). People walk through it like on a footpath, out of sight; it is no junction (no zebra crossings where it meets a street), and stop access points of the platforms above it are connected to it. Drawn are only its stairs: a glass stair housing at the ends that have one, and a stairwell on every platform it passes under.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `width_m` | `4` | width of the tunnel |
+| `stairs` | `"both"` | stair housings `both`, at the `start`, at the `end`, or `none` (an end inside a building, e.g. a station hall) |
+| `stairs_m` | `8` | where a housing opens, measured from the end of the line (room for the street there); it reaches 7 m further in |
+
 ### `bus-stop`
 
 Geometry: `position`, projected onto the nearest street (or the street in `road`; not a footpath). A waiting area on the sidewalk where the buses of bus lines stop. Each side is a stop area with one dock: `<id>:right` (*Stop A*, an A on its sign) and `<id>:left` (*Stop B*); a stop on one side only has no letter. The bus lines serve the docks (`managed`: the timetable leaves them alone). A stop more than 15 m beyond the sidewalk of every street is outlined in red and reports the problem in the inspector.
@@ -267,6 +279,19 @@ Geometry: `position` (centre). A generic building. Like all buildings it looks l
 | `use` | `"residential"` | `residential`, `work`, `school`, `shop`, `other` |
 | `color`, `roof_color` | `#f2f2f2`, `#a6a6a6` | wall and roof colour (older layouts set their own) |
 | `windows` | `true` | |
+
+### `station-building`
+
+A station building of today (Empfangsgebäude): a glass hall in the middle under a cantilevered roof slab, two lower wings with shops on the ground floor and fins in front of the windows upstairs, solar panels on the wing roofs, a canopy along the street front and a clock pylon beside the right wing. Geometry: `position` (centre) and `rotation_deg` (`0`: the street front with the entrance faces −y, the tracks are on the +y side). Use: shop (shops and offices: jobs and shoppers); the hall is lit at night from 05:00 to 01:00.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `length_m` | `66` | along the tracks, hall and both wings (24–160) |
+| `depth_m` | `9` | 6–24; shallow enough for a strip between a street and the tracks |
+| `hall_m` | `18` | width of the glass hall |
+| `floors` | `2` | floors of the wings (1–4); the hall is at least 11 m high |
+| `canopy` | `true` | canopy along the street front of the wings |
+| `clock` | `true` | clock pylon |
 
 ### German house types
 

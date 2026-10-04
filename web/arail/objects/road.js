@@ -300,7 +300,7 @@ export class Road extends LayoutObject {
       const by = new Map();
       for (const id of n.edges) {
         const e = net.edges[id];
-        if (e.kind !== "road" && e.kind !== "path") continue;
+        if ((e.kind !== "road" && e.kind !== "path") || e.hidden) continue; // not an underpass
         by.set(e.road, (by.get(e.road) || 0) + 1);
       }
       return by;

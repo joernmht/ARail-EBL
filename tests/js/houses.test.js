@@ -9,7 +9,7 @@ import {
   BuildingBase, PLATTENBAU_SERIES, defaultOccupancy, lightWindows, hash01, polygonNormal,
 } from "../../web/arail/index.js";
 
-const TYPES = ["building", "plattenbau", "altbau-block", "house", "house-estate", "office", "school", "supermarket", "factory"];
+const TYPES = ["building", "plattenbau", "altbau-block", "house", "house-estate", "office", "school", "supermarket", "factory", "station-building"];
 const K = 1000 / 87; // model mm per prototype metre (H0)
 
 /** One object of each type, spread out on the layout. */
@@ -32,6 +32,7 @@ const ALL = [
   { id: "f1", type: "factory", position: [4300, 800] },
   { id: "b1", type: "building", position: [4300, 1500] },
   { id: "b2", type: "building", position: [4300, 1800], roof: "flat", use: "work", floors: 4 },
+  { id: "st1", type: "station-building", position: [5400, 0] },
 ];
 
 /** Homography of a pinhole camera at `eye` looking at `target` (layout mm). */

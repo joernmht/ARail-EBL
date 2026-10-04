@@ -14,7 +14,8 @@
  * - **bus terminals**: their bus lane as one-way `lane` edges, connected to the nearest streets.
  *
  * Objects take part through duck-typed methods, so plugins can add their own: `roadInfo()`
- * (streets, see objects/road.js), `entrances()` (buildings), `stopAreas()` (stops) and
+ * (streets, see objects/road.js; `hidden: true` for paths whose walkers are out of sight, like
+ * objects/underpass.js), `entrances()` (buildings), `stopAreas()` (stops) and
  * `busLane()` (bus lanes). Lengths are layout mm, speeds prototype m/s.
  *
  * Routes (`route`, `routeDirected`) are {@link Path}s. Without streets every query returns null,
@@ -91,7 +92,7 @@ function dedupe(points) {
 }
 
 /** Intersection of segments p1-p2 and q1-q2: {t, u, p} with t, u in [0, 1], or null. */
-function segmentIntersection(p1, p2, q1, q2) {
+export function segmentIntersection(p1, p2, q1, q2) {
   const r = sub2(p2, p1), s = sub2(q2, q1);
   const den = r[0] * s[1] - r[1] * s[0];
   if (Math.abs(den) < 1e-12) return null;
@@ -341,6 +342,7 @@ export class RoadNetwork {
       const attrs = {
         road: r.id, kind: info.car ? "road" : "path", car: !!info.car, bus: !!info.car, walk: info.walk !== false, oneway: false,
         speed: info.speed || 1.3, width: info.width, walkOffset: info.walkOffset || 0, laneOffset: info.laneOffset || 0,
+        hidden: !!info.hidden,
       };
       let last = null;
       for (const sp of r.splits) {
@@ -386,7 +388,7 @@ export class RoadNetwork {
       for (const id of n.edges) {
         const e = this.edges[id];
         const k = e.a === e.b ? 2 : 1;
-        if (e.kind === "road" || e.kind === "path") n.degree += k;
+        if ((e.kind === "road" || e.kind === "path") && !e.hidden) n.degree += k; // an underpass is no junction
         if (e.kind === "road" && e.car) n.carDegree += k;
       }
     }
@@ -679,13 +681,15 @@ export class RoadNetwork {
   /**
    * Point, direction and sidewalk offset at arc length `s` (mm) of a path. `walkOffset` (mm,
    * to the right of the walking direction) changes smoothly where the path changes from a
-   * street to a connector or footpath.
+   * street to a connector or footpath; `hidden` is true under ground (an underpass).
    * @param {Path} path
    * @param {number} s
    */
   pathAt(path, s) {
     const at = polylineAt(path.points, s, path.lengths);
-    return { point: at.point, dir: at.dir, walkOffset: this.offsetAt(path, s, "walkOffset") };
+    const E = path?.edges;
+    const hidden = E?.length ? !!E[edgeIndex(E, s)].edge.hidden : false;
+    return { point: at.point, dir: at.dir, walkOffset: this.offsetAt(path, s, "walkOffset"), hidden };
   }
 
   /** Lateral offset (`walkOffset` or `laneOffset` of the edges, mm) at arc length `s` of a path, blended at changes. */

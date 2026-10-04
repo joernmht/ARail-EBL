@@ -24,6 +24,8 @@ import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
 import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
+import { StationBuilding } from "./objects/station.js";
+import { Underpass } from "./objects/underpass.js";
 import { Forest, Tree } from "./objects/trees.js";
 import { Area } from "./objects/landscape.js";
 import { Road } from "./objects/road.js";
@@ -74,6 +76,7 @@ export { drawStopSign, STOP_SIGN } from "./objects/signs.js";
 export { CAR_COLOURS } from "./sims/traffic.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
+export { StationBuilding, Underpass };
 export {
   BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
   gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
@@ -124,8 +127,8 @@ export { MockFeed } from "./feeds/mock.js";
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
   for (const cls of [
-    Platform, BusTerminal, Road, BusStop, BusLine,
-    Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
+    Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
+    Building, StationBuilding, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
   ]) {
     registry.registerObject(cls);
   }
