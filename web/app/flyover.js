@@ -5,7 +5,7 @@
 // Navigation: mouse, touch, keyboard and on-screen buttons. In Build the editor works as in the
 // camera view, and placed or dragged things snap to the grid.
 import {
-  CD, CD_LIGHT, FONT, OVERLAY, Camera, FlyCamera, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, toRad,
+  CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, toRad,
 } from "../arail/index.js";
 import { $, storage, toast } from "./ui.js";
 
@@ -120,6 +120,50 @@ export class Flyover {
     this._modeChanged();
   }
 
+  /** Is the stage drawn in the simple view (flat layout, moving things as blocks)? */
+  get simple() {
+    return !!this.app.display.simple;
+  }
+
+  /**
+   * Switch the simple view on or off. Switching it on opens the flyover; seen from straight above
+   * (plan view) it is a map of the layout.
+   * @param {boolean} on
+   * @param {{plan?: boolean}} [options] plan: true looks straight down (map), false tilts the view (3D)
+   */
+  setSimple(on, { plan } = {}) {
+    const app = this.app;
+    app.display.simple = !!on;
+    app.savePrefs();
+    if (on && !this.active) this.enter();
+    if (on && plan != null && plan !== this.planTarget()) this.command("plan");
+    this._syncSimple();
+    app.updateHud();
+    app.panels.renderFlyover?.();
+  }
+
+  /** The Map and 2.5D buttons (`data-simple="map"` and `"3d"`): pressed for the view that is shown. */
+  _syncSimple() {
+    const on = this.simple && this.active, plan = this.planTarget();
+    for (const b of document.querySelectorAll("[data-simple]")) {
+      const pressed = on && (b.dataset.simple === "map" ? plan : !plan);
+      b.setAttribute("aria-pressed", pressed ? "true" : "false");
+    }
+    this.app.canvas.classList.toggle("simple", on);
+  }
+
+  /** Does the camera look straight down, or will it when its move ends? */
+  planTarget() {
+    return this.anim ? this.anim.to.pitch > PITCH_MAX - toRad(0.5) : this.cam.isPlan;
+  }
+
+  /** A Map or 2.5D button: that simple view, or back to the full flyover when it is shown already. */
+  simpleButton(which) {
+    const pressed = this.simple && this.active && (which === "map") === this.planTarget();
+    if (pressed) this.setSimple(false);
+    else this.setSimple(true, { plan: which === "map" });
+  }
+
   /** A video source loaded while in the flyover starts playing when the flyover is left. */
   resumeVideoOnLeave() {
     this._resumeVideo = true;
@@ -128,6 +172,7 @@ export class Flyover {
   _modeChanged() {
     const app = this.app;
     $("#btnFlyover").setAttribute("aria-pressed", this.active ? "true" : "false");
+    this._syncSimple();
     app.panels.renderFlyover?.();
     app.updateHud();
     if (app.activeTab === "build") app.editor.renderPlacing();
@@ -272,6 +317,7 @@ export class Flyover {
       fit: (k) => k.fit(this.sceneBounds(), W / H),
     };
     if (ops[name]) this.move(ops[name]);
+    if (name === "plan") this._syncSimple();
   }
 
   /** Keys while the stage (the canvas or its buttons) has the focus; returns true if the key was used. */
@@ -365,6 +411,7 @@ export class Flyover {
     if (this._planShown !== plan) {
       this._planShown = plan;
       for (const b of document.querySelectorAll("[data-fly=plan]")) b.setAttribute("aria-pressed", plan);
+      this._syncSimple();
     }
   }
 
@@ -391,6 +438,10 @@ export class Flyover {
       this.move((k) => k.zoomAt(2, x, y, W, H));
     });
     $("#btnFlyover").addEventListener("click", () => this.toggle());
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest?.("[data-simple]");
+      if (b) this.simpleButton(b.dataset.simple);
+    });
     document.addEventListener("click", (e) => {
       const b = e.target.closest?.("[data-fly]");
       if (b && this.active) this.command(b.dataset.fly);
@@ -548,15 +599,17 @@ export class Flyover {
     if (this.camera.width !== W || this.camera.height !== H) this.camera.setSize(W, H);
     const pose = this.pose();
     this.camera.setManualFocal(pose.focal);
-    const night = world.night();
+    // the simple view (core/simple.js): flat objects, plain blocks for what moves, always by day, no photo
+    const simple = this.simple;
+    const night = simple ? 0 : world.night();
     this._background(ctx, W, H, night);
-    const view = new View({
+    const view = new (simple ? SimpleView : View)({
       ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: app.px(), time: world.time,
       labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true,
     });
     const table = this._defaultTable(); // table modules draw themselves (world.draw)
     if (table) drawTable(view, table, { surface: "grey" });
-    this._drawOrtho(view, night);
+    if (!simple) this._drawOrtho(view, night);
     drawGrid(view, this._gridBounds(), world.layout.grid.size_mm);
     if (app.display.flyMarkers !== false) this._drawMarkers(view);
     world.draw(view, { selected: app.activeTab === "build" ? app.editor.selected : null });

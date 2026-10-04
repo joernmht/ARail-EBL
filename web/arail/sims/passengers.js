@@ -676,6 +676,12 @@ function personColour(p) {
 export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, height = 1.75, colour, legs = null }) {
   const [x, y] = at;
   const m = view.m(1);
+  if (view.simple) {
+    // the simple view (core/simple.js): a plain block
+    const r = 0.3 * m;
+    view.block([[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]], 0, height * m, colour);
+    return;
+  }
   const dl = Math.hypot(dir[0], dir[1]);
   const [dx, dy] = speed > 0.15 && dl > 1e-9 ? [dir[0] / dl, dir[1] / dl] : [1, 0];
   const qx = -dy, qy = dx;

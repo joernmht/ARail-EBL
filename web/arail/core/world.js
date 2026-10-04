@@ -24,6 +24,7 @@ import { TrainRegistry } from "./trains.js";
 import { Clock } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
+import { drawFlat } from "./simple.js";
 
 export class World {
   /**
@@ -317,12 +318,22 @@ export class World {
   draw(view, { selected = null } = {}) {
     if (view.night == null) view.night = this.night();
     this._syncStops();
-    for (const o of this.objects) if (o.geometry) o.draw(view);
+    if (view.simple) {
+      // the simple view (core/simple.js): objects flat, what moves as plain blocks
+      view.flat = true;
+      for (const o of this.objects) {
+        if (!o.geometry) continue;
+        if (typeof o.drawSimple === "function") o.drawSimple(view);
+        else drawFlat(view, o);
+      }
+      view.flat = false;
+    } else for (const o of this.objects) if (o.geometry) o.draw(view);
     this.services.draw(view);
     this.transit.draw(view);
     this.trains.draw(view);
     for (const s of this.simulations) s.draw(view);
     this.disruptions.draw(view);
+    if (view.simple) view.flat = true;
     if (selected && selected.geometry) selected.drawSelection(view);
     view.render();
   }

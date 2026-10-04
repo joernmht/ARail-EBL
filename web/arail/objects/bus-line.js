@@ -136,6 +136,11 @@ export class BusLine extends LayoutObject {
     });
   }
 
+  /** The simple view (core/simple.js): the route as it is. */
+  drawSimple(view) {
+    this.draw(view);
+  }
+
   drawSelection(view) {
     const line = this.info();
     if (line?.circuit) strokeRoute(view, line.circuit.points, { colour: rgba(OVERLAY.selection, 0.95), width: 5, dash: [8, 6], order: 100 });

@@ -27,6 +27,11 @@ export class Label extends LayoutObject {
     return c ? { center: c } : null;
   }
 
+  /** The simple view (core/simple.js): the sign or floating label as it is. */
+  drawSimple(view) {
+    this.draw(view);
+  }
+
   draw(view) {
     const c = this.geometry.center;
     const z = view.m(+this.spec.height_m || 0);

@@ -210,6 +210,10 @@ class App {
     if (e.key === "f" || e.key === "F") {
       this.flyover.toggle();
       e.preventDefault();
+    } else if (e.key === "s" || e.key === "S") {
+      // the simple view: Shift+S the map, S the 2.5D view (or back to the full flyover)
+      this.flyover.simpleButton(e.shiftKey ? "map" : "3d");
+      e.preventDefault();
     } else if ((e.key === "r" || e.key === "R") && this.activeTab === "build" && this.editor.selected) {
       if (this.editor.rotateSelected(e.shiftKey ? 90 : 15)) e.preventDefault();
     } else if (e.key === " ") {
@@ -889,7 +893,7 @@ class App {
     const st = this.tracker.state, chips = [];
     if (this.flyover.active) {
       const g = this.world.layout.grid;
-      chips.push(["ok", `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
+      chips.push(["ok", this.flyover.simple ? (this.flyover.cam.isPlan ? "Map" : "Simple 2.5D") : `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
       chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
     } else if (!this.source) chips.push(["warn", "No image yet"]);
     else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
