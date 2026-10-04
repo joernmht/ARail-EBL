@@ -625,6 +625,14 @@ export class Editor {
       : h("li", { class: "item" }, h("span", { class: "hint" }, "Nothing placed yet. Pick an object type above and tap on the layout.")));
   }
 
+  /** Which layer the selected object belongs to (only for layouts with layers). */
+  _layerNote(o) {
+    const layers = this.world.layers();
+    if (!layers.length) return null;
+    const id = this.world.layerOf(o.id), layer = layers.find((l) => l.id === id);
+    return h("p", { class: "hint" }, "Layer: ", h("b", {}, layer ? layer.name : "Base"));
+  }
+
   renderInspector() {
     if (!this.el) return;
     const o = this.selected;
@@ -658,6 +666,7 @@ export class Editor {
     mount(this.el.inspector,
       h("h2", {}, `Selected: ${cls.label}`),
       cls.description ? h("p", { class: "hint" }, cls.description) : null,
+      this._layerNote(o),
       problems.map((t) => h("p", { class: "hint error", role: "status" }, t)),
       paramFields(cls.params, o.spec, change, { idPrefix: `obj-${o.id}`, world: this.world }),
       geo,
@@ -737,6 +746,10 @@ export class Editor {
           h("select", { id: "layoutDictionary", onchange: (e) => this._setDictionary(e.target) },
             dicts.map(([v, t]) => h("option", { value: v, selected: v === (L.markers.dictionary || "auto") }, t)))),
       ),
+      w.layers().some((l) => l.enabled) ? h("label", { class: "field wide", for: "layoutActiveLayer" }, h("span", {}, "New objects go to"),
+        h("select", { id: "layoutActiveLayer", onchange: (e) => { w.activeLayer = e.target.value || null; } },
+          h("option", { value: "", selected: !w.activeLayer }, "Base (always on)"),
+          w.layers().filter((l) => l.enabled).map((l) => h("option", { value: l.id, selected: w.activeLayer === l.id }, `Layer ${l.name}`)))) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", onclick: () => download(`${slug(L.name)}.json`, JSON.stringify(w.toJSON(), null, 2) + "\n") }, "Export layout"),
         h("label", { class: "btn small", for: "layoutImport" }, "Import layout"), importInput,

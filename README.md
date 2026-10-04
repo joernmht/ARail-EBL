@@ -34,7 +34,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. **Layouts… → Example: container terminal** opens the terminal in the flyover, **Layouts… → Example: rail operations** the lab with its fleet, depot and drivers (Operations tab), **Layouts… → Example: infrastructure** the lab as a station of an infrastructure district (Infrastructure tab).
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. **Layouts… → Example: container terminal** opens the terminal in the flyover, and the layers of the lab example (**View → Layers**) add its fleet, depot and drivers (**Rail operations**, Operations tab) or make it a station of an infrastructure district (**Infrastructure**, Infrastructure tab).
 
 **On your own layout:**
 

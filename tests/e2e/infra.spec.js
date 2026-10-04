@@ -4,7 +4,7 @@
 // and the tabs on a phone.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/ebl-infrastructure.json#infra";
+const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
 
 function trackErrors(page) {
   const errors = [];

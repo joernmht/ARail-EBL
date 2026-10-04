@@ -44,9 +44,10 @@ a fraction of a second).
 
 ## The example
 
-**Layouts… → Example: infrastructure** (or `app/?layout=../layouts/ebl-infrastructure.json#infra`)
-opens [`web/layouts/ebl-infrastructure.json`](../web/layouts/ebl-infrastructure.json): the photo of
-the EBL lab as the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
+The layer **Infrastructure** of the lab example (View → Layers, or
+`app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
+[`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
+the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
 Bergheim** (30.4 km, double track, electrified, 150 trains a day), with the branch line **6251
 Bahnhof – Waldau** (14.8 km, single track, diesel, 40 trains a day). Five stations, about 190 assets.
 

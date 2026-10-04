@@ -59,11 +59,39 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `objects` | `[]` | the virtual objects |
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
+| `layers` | `[]` | parts of the layout that can be switched on and off, see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
 | `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [container terminal example](container-terminal.md#the-example) does) |
 
 The app writes `clock`, `grid` and all other sections when it exports a layout; `markers.rolling`, `markers.locked` and `markers.moving` only when they are set.
+
+## Layers
+
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. They are switched on and off in the app (**View → Layers**, or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the layers `operations` and `infrastructure`.
+
+```json
+"layers": [
+  {
+    "id": "infrastructure", "name": "Infrastructure", "description": "…", "enabled": false,
+    "objects": [
+      {"id": "track-g1", "built": 1994, "name": "Track 1 (G1)"},
+      {"id": "signal-n1", "type": "signal", "position": [775, 150], "…": "…"}
+    ],
+    "simulations": [{"type": "infrastructure", "…": "…"}],
+    "scenarios": [{"id": "infra-faults", "…": "…"}]
+  }
+]
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `id`, `name`, `description` | | the id (unique among the layers), shown in the app |
+| `enabled` | `false` | on when the layout is opened (unless the browser remembers another choice) |
+| `objects` | `[]` | objects the layer adds. An entry whose `id` is already there (in the base or an earlier layer) is a **patch**: its fields are merged into that object, e.g. the year a track was built |
+| `simulations`, `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
+
+The layers that are on are added in their order. Edits in the app go back where they came from: an object to its layer, a field a layer patched to that layer's patch, a new object to the layer chosen in **Build → Layout → New objects go to** (by default the base). Object ids are unique across all layers, also those that are off. `node tools/ops-compare.mjs` takes `--layers id,id` (by default it switches on the layers with rail operations).
 
 ## `markers`
 

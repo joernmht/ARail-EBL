@@ -9,15 +9,16 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  CREW_COLOURS, Camera, Depot, OPS_DISRUPTIONS, View, createWorld, loadPlugins, opsOf, parseColor, polylineAt, registry, statusLines, validateLayout,
+  CREW_COLOURS, Camera, Depot, composeLayout, OPS_DISRUPTIONS, View, createWorld, layoutPlugins, loadPlugins, opsOf, parseColor, polylineAt, registry, statusLines, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
 const DAY = 1440;
 
-const OPS = readJSON("web/layouts/ebl-operations.json");
 const LAB = readJSON("web/layouts/ebl-lab.json");
-const pluginErrors = await loadPlugins(OPS.plugins || [], pathToFileURL(join(ROOT, "web/layouts/ebl-operations.json")).href);
+// the lab example with its layer "Rail operations" on
+const OPS = withLayers(LAB, ["operations"]);
+const pluginErrors = await loadPlugins(layoutPlugins(OPS), pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
 
 /** Step the world by `n` frames of `dt` seconds (real time). */
 function frames(world, n, dt = 0.1, each = null) {
@@ -252,7 +253,7 @@ test("only the operations send trains to its platforms: a manual call goes nowhe
 });
 
 test("one operations simulation per layout: a second entry is reported and stays idle", () => {
-  const twice = structuredClone(OPS);
+  const twice = composeLayout(OPS).layout;
   twice.simulations.push({ type: "operations", name: "Second" });
   const problems = validateLayout(twice, registry);
   assert.deepEqual(problems, [`simulations[${twice.simulations.length - 1}] (operations): only one rail operations entry per layout (the first one runs)`]);

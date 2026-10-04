@@ -88,7 +88,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`operations states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/ebl-operations.json#ops";
+    const path = "/app/?layout=../layouts/ebl-lab.json&layers=operations#ops";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);
@@ -128,7 +128,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`infrastructure states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/ebl-infrastructure.json#infra";
+    const path = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);

@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL lab (example)",
-  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass.",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. Layers (View panel) add rail operations and the infrastructure game.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -148,5 +148,264 @@
       "image": "../media/ebl-lab-ortho.jpg",
       "bounds_mm": [-300, -320.2, 1870.2, 700]
     }
-  }
+  },
+  "layers": [
+    {
+      "id": "operations",
+      "name": "Rail operations",
+      "description": "A railway undertaking at work: units with maintenance and failures, a depot with its workshop on a table module, and drivers who live in the town and walk to the crew room. See the Operations tab.",
+      "enabled": false,
+      "objects": [
+        {"id": "table-depot", "type": "tabletop", "name": "Depot module", "position": [1800, -1020], "width_mm": 700, "depth_mm": 900},
+        {"id": "depot-1", "type": "depot", "name": "Depot", "position": [1810, -1020], "rotation_deg": -90, "length_m": 56, "bays": 2, "stabling": 2}
+      ],
+      "simulations": [
+        {
+          "type": "operations",
+          "name": "EBL regional network",
+          "start_weekday": "mon",
+          "stations": [
+            {"id": "hbf", "name": "Bahnhof", "platforms": ["platform-1", "platform-2"]},
+            {"id": "altstadt", "name": "Altstadt"},
+            {"id": "bergheim", "name": "Bergheim"},
+            {"id": "talsee", "name": "Talsee"},
+            {"id": "waldau", "name": "Waldau"}
+          ],
+          "lines": [
+            {
+              "id": "RE 1",
+              "route": ["hbf", "altstadt"],
+              "run_min": 47,
+              "km": 59,
+              "takt_min": 60,
+              "first": "05:15",
+              "last": "22:15",
+              "turn_min": 10,
+              "peak_units": 2,
+              "docks": {"hbf": ["platform-1:left", "platform-1:right"]}
+            },
+            {
+              "id": "RB 33",
+              "route": ["hbf", "bergheim"],
+              "run_min": 35,
+              "km": 34,
+              "takt_min": 60,
+              "first": "05:07",
+              "last": "23:07",
+              "turn_min": 8,
+              "docks": {"hbf": ["platform-1:right", "platform-1:left"]}
+            },
+            {
+              "id": "S 2",
+              "route": ["hbf", "talsee"],
+              "run_min": 25,
+              "km": 20,
+              "takt_min": 30,
+              "first": "04:54",
+              "last": "00:04",
+              "turn_min": 6,
+              "peak_units": 2,
+              "docks": {"hbf": ["platform-2:left", "platform-2:right"]}
+            },
+            {
+              "id": "S 8",
+              "route": ["hbf", "waldau"],
+              "run_min": 24,
+              "km": 19,
+              "takt_min": 30,
+              "first": "05:11",
+              "last": "00:11",
+              "turn_min": 6,
+              "peak_units": 2,
+              "docks": {"hbf": ["platform-2:right", "platform-2:left"]}
+            }
+          ],
+          "fleet": {"types": [{"id": "et442", "name": "ET 442 (electric multiple unit)", "seats": 200, "prefix": "442 ", "first_number": 101, "built": [2009, 2018]}], "reserve_share": 0.15},
+          "maintenance": {"workshop": {"name": "Depot workshop", "station": "hbf", "object": "depot-1", "bays": 2, "hours": "24/7"}},
+          "crew": {"base": "hbf", "reserve": [{"from": "04:15", "to": "12:15", "count": 1}, {"from": "12:00", "to": "20:00", "count": 1}]},
+          "setups": [
+            {
+              "id": "integrated",
+              "name": "Integrated ECM",
+              "description": "The railway undertaking plans and does its own maintenance in its depot, around the clock, with live mileage data.",
+              "patch": {"ecm": {"management": "ru", "development": "ru", "planning": "ru", "delivery": "ru", "data_latency_h": 0}}
+            },
+            {
+              "id": "distributed",
+              "name": "Distributed ECM",
+              "description": "An ECM company (office hours Mon-Fri) plans from daily mileage reports; an external workshop (Mon-Sat 06-22, 35 min away) does the work.",
+              "patch": {
+                "ecm": {"management": "ecm", "development": "ecm", "planning": "ecm", "delivery": "works", "data_latency_h": 24},
+                "maintenance": {"workshop": {"transfer_min": 35, "hours": {"days": "mon-sat", "from": "06:00", "to": "22:00"}, "parts_h": 20}}
+              }
+            },
+            {
+              "id": "full-service",
+              "name": "Manufacturer full service",
+              "description": "The manufacturer is ECM and runs the depot workshop (Mon-Sat 06-22).",
+              "patch": {"ecm": {"management": "ecm", "development": "ecm", "planning": "ecm", "delivery": "ecm"}, "maintenance": {"workshop": {"hours": {"days": "mon-sat", "from": "06:00", "to": "22:00"}}}}
+            },
+            {
+              "id": "week-35h",
+              "name": "35-hour week",
+              "description": "Full-time drivers work 35 instead of 38 hours a week; the staff stays the same.",
+              "patch": {
+                "crew": {
+                  "drivers": 52,
+                  "contracts": [
+                    {"id": "full", "name": "Full time 35 h", "share": 0.7, "hours_week": 35, "max_duty_h": 10, "min_rest_h": 11, "max_days_row": 6, "overtime_accept": 0.35, "max_overtime_h_week": 8},
+                    {"id": "part", "name": "Part time 25 h", "share": 0.3, "hours_week": 25, "max_duty_h": 8, "min_rest_h": 11, "max_days_row": 5, "overtime_accept": 0.25, "max_overtime_h_week": 6}
+                  ]
+                }
+              }
+            },
+            {
+              "id": "crew-buffers",
+              "name": "Generous crew buffers",
+              "description": "15 min to change trains, two drivers on stand-by in each shift, 10 % more staff.",
+              "patch": {
+                "crew": {
+                  "transfer_min": 15,
+                  "staffing": 1.15,
+                  "reserve": [{"from": "04:15", "to": "12:15", "count": 2}, {"from": "12:00", "to": "20:00", "count": 2}, {"from": "16:00", "to": "00:30", "count": 1}]
+                }
+              }
+            },
+            {
+              "id": "lean-crew",
+              "name": "Lean crew planning",
+              "description": "5 min to change trains, nobody on stand-by, staff sized exactly to the need.",
+              "patch": {"crew": {"transfer_min": 5, "staffing": 1, "reserve": []}}
+            }
+          ],
+          "stress": [
+            {
+              "id": "winter-morning",
+              "name": "Winter morning",
+              "description": "Frozen points hold the trains at the Bahnhof for 40 min in the morning peak; two units fail; three drivers are stuck in the snow.",
+              "patch": {"fleet": {"failure_factor": 1.3}, "crew": {"commute": {"late_p": 0.12, "late_min": 20}}},
+              "events": [
+                {"day": 0, "at": "06:40", "type": "delay", "station": "hbf", "minutes": 40},
+                {"day": 0, "at": "05:00", "type": "sick", "count": 3, "notice_min": 20},
+                {"day": 0, "at": "07:30", "type": "failure", "kind": "hard"},
+                {"day": 0, "at": "08:10", "type": "failure", "kind": "hard"}
+              ]
+            }
+          ]
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "crew-shortage",
+          "name": "Drivers missing in the morning",
+          "description": "Three drivers call in sick before the morning peak, a unit breaks down and the workshop closes for a staff meeting: watch the dispatcher in the Operations tab.",
+          "steps": [
+            {"at": 0, "message": "Three drivers call in sick."},
+            {"at": 0, "start": {"id": "sick", "type": "crew-sick", "params": {"count": 3, "notice_min": 20}}},
+            {"at": 90, "start": {"id": "breakdown", "type": "unit-failure", "params": {"kind": "hard"}}, "message": "A unit breaks down on the way."},
+            {"at": 180, "start": {"id": "meeting", "type": "workshop-closed", "params": {"hours": 4}}, "message": "The workshop closes for a staff meeting."},
+            {"at": 400, "message": "See Operations → Today for what the dispatcher did."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "description": "The station as part of an invented infrastructure district: signals, a switch, balises and displays on the table, a line module with a level crossing, the interlocking and a maintenance base. Students play the asset management roles in the Infrastructure tab.",
+      "enabled": false,
+      "objects": [
+        {"id": "platform-1", "built": 1978},
+        {"id": "platform-2", "built": 1996},
+        {"id": "track-g1", "name": "Track 1 (G1)", "built": 1994},
+        {"id": "track-g2", "name": "Track 2 (G2)", "built": 2003},
+        {"id": "track-g3", "name": "Track 3 (G3)", "built": 2009},
+        {"id": "table-line-w", "type": "tabletop", "name": "Line module W", "position": [-725, -100], "width_mm": 850, "depth_mm": 800, "surface": "green"},
+        {"id": "table-line-w2", "type": "tabletop", "name": "Line module W (corner)", "position": [-225, -410], "width_mm": 150, "depth_mm": 180},
+        {"id": "table-industry", "type": "tabletop", "name": "Industry module E1", "position": [1800, -1970], "width_mm": 700, "depth_mm": 800},
+        {"id": "track-w2", "type": "track", "name": "Line west, track 2", "track_id": "W2", "virtual": true, "built": 2012, "points": [[-1150, 15.9], [-150, 43]]},
+        {"id": "track-w3", "type": "track", "name": "Line west, track 3", "track_id": "W3", "virtual": true, "built": 1972, "points": [[-1150, -85], [-150, -58]]},
+        {"id": "road-bue", "type": "road", "name": "Am Bahnübergang", "kind": "residential", "points": [[-150, -410], [-700, -410], [-700, 290]]},
+        {"id": "road-werk", "type": "road", "name": "Werkstraße", "kind": "residential", "points": [[1380, -1700], [2100, -1700]]},
+        {"id": "interlocking-bf", "type": "interlocking", "name": "Interlocking Bf (relay, 1979)", "generation": "relay", "built": 1979, "position": [-460, 190]},
+        {
+          "id": "signal-n1",
+          "type": "signal",
+          "name": "Exit signal N1",
+          "real": true,
+          "built": 1979,
+          "interlocking": "interlocking-bf",
+          "position": [775, 150],
+          "side": "left"
+        },
+        {"id": "signal-n2", "type": "signal", "name": "Exit signal N2", "real": true, "built": 1979, "interlocking": "interlocking-bf", "position": [779, 95]},
+        {"id": "signal-n3", "type": "signal", "name": "Exit signal N3", "real": true, "built": 2008, "interlocking": "interlocking-bf", "position": [779, -8]},
+        {
+          "id": "switch-w1",
+          "type": "switch",
+          "name": "Switch W1",
+          "real": true,
+          "built": 2008,
+          "interlocking": "interlocking-bf",
+          "position": [1040, 262],
+          "rotation_deg": 180,
+          "hand": "left",
+          "length_m": 30
+        },
+        {"id": "balise-1", "type": "balise", "name": "Balise at N1", "real": true, "built": 2001, "position": [1221, 142], "rotation_deg": 1.5},
+        {"id": "balise-2", "type": "balise", "name": "Balise at N2", "real": true, "built": 2001, "position": [1248, 90], "rotation_deg": 1.5},
+        {"id": "display-1", "type": "passenger-display", "name": "Display platform 1", "real": true, "built": 2019, "position": [1281, 46], "rotation_deg": 90},
+        {"id": "display-2", "type": "passenger-display", "name": "Display platform 2", "real": true, "built": 2015, "position": [1281, 209], "rotation_deg": 90},
+        {"id": "lift-1", "type": "lift", "name": "Lift platform 1", "built": 2006, "position": [350, 9]},
+        {"id": "signal-a", "type": "signal", "name": "Entry signal A", "built": 1979, "interlocking": "interlocking-bf", "position": [-1000, -112]},
+        {
+          "id": "signal-f",
+          "type": "signal",
+          "name": "Entry signal F",
+          "built": 1979,
+          "interlocking": "interlocking-bf",
+          "position": [-420, 60],
+          "side": "left",
+          "rotation_deg": 180
+        },
+        {"id": "balise-a", "type": "balise", "name": "Balise at A", "built": 1997, "position": [-1010, -81], "rotation_deg": 1.5},
+        {
+          "id": "crossing-1",
+          "type": "level-crossing",
+          "name": "Level crossing Am Bahnübergang",
+          "built": 1987,
+          "interlocking": "interlocking-bf",
+          "position": [-700, -24],
+          "rotation_deg": 1.55,
+          "road_m": 6.5,
+          "road_owner": "municipal",
+          "span_m": 8.8
+        },
+        {"id": "gsmr-1", "type": "gsmr-mast", "name": "GSM-R site Bahnhof West", "built": 2009, "position": [-930, 200], "height_m": 30},
+        {"id": "catenary-w2", "type": "catenary", "name": "Overhead line west, track 2", "built": 1976, "points": [[-1150, 15.9], [-310, 38.6]], "side": "left"},
+        {"id": "cable-w", "type": "cable-route", "name": "Cable route west", "built": 1979, "points": [[-1150, -110], [-310, -88]]},
+        {"id": "maintenance-base-1", "type": "maintenance-base", "name": "Maintenance base Bahnhof", "position": [-930, -300], "rotation_deg": 90},
+        {"id": "crossing-plant-1", "type": "crossing-plant", "name": "BÜ-Werk Mittelsachsen", "position": [1800, -2010], "rotation_deg": 180}
+      ],
+      "simulations": [
+        {
+          "type": "infrastructure",
+          "name": "Infrastructure district Bahnhof",
+          "placement": {"station": "bahnhof", "line": "6250", "km_at_origin": 21.1, "direction": 1},
+          "factory": {"object": "crossing-plant-1"}
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "infra-faults",
+          "name": "Faults at the station",
+          "description": "An exit signal of the relay interlocking fails, then the level crossing: watch who reports them, the emergency van driving out and the trains held.",
+          "steps": [
+            {"at": 0, "start": {"type": "asset-fault", "params": {"asset": "signal-n2"}}, "message": "Exit signal N2 has failed."},
+            {"at": 120, "start": {"type": "asset-fault", "params": {"asset": "crossing-1"}}, "message": "The level crossing has a fault."}
+          ]
+        }
+      ]
+    }
+  ]
 }

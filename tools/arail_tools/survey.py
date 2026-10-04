@@ -1937,7 +1937,7 @@ def _layout_number(values: dict, key: str, default, kind, where: str = "markers"
 
 
 def _objects_using(layout: dict | None, ids) -> list[str]:
-    """IDs (names) of the layout's objects that are placed relative to one of the markers ``ids``."""
+    """IDs (names) of the objects (also of the layers) that are placed relative to one of the markers ``ids``."""
     ids = set(ids)
 
     def refs(v):
@@ -1950,8 +1950,13 @@ def _objects_using(layout: dict | None, ids) -> list[str]:
             return any(refs(x) for x in v)
         return False
 
+    # the objects of the base and of every layer (layers: see docs/layout-format.md)
+    objects = list((layout or {}).get("objects") or [])
+    for layer in (layout or {}).get("layers") or []:
+        if isinstance(layer, dict):
+            objects += layer.get("objects") or []
     out = []
-    for o in (layout or {}).get("objects") or []:
+    for o in objects:
         if not isinstance(o, dict):
             continue
         between = o.get("between")
