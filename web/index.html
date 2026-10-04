@@ -3,355 +3,442 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
 <title>ARail-EBL</title>
-<meta name="description" content="Open-source augmented reality for model railway labs: platforms with passengers, a small town with streets and bus lines through day and night, a flyover for building on a grid, disruptions and a control-system interface, in the browser.">
+<meta name="description" content="The railway operations lab gets augmented reality: a digital big sister of the model railway, on any phone. Passenger flows, a town with buses, a container terminal, rail operations with fleet and crews, infrastructure management and disruptions, in the browser.">
 <meta property="og:title" content="ARail-EBL">
-<meta property="og:description" content="Augmented reality for model railway labs, in the browser: trains, passengers, a town with buses, day and night.">
+<meta property="og:description" content="Augmented reality for railway labs, in the browser: from the walk to work to the freight train, the whole transport system on the model railway.">
 <meta property="og:image" content="https://joernmht.github.io/ARail-EBL/assets/ebl-lab-ar.jpg">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..900&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;800&family=Noto+Sans+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="app/app.css">
 <style>
-/* Layout: a station concourse. A departure-board band carries the headline and the
-   before/after demo; below it, signage panels explain the parts, and numbered platform
-   signs mark the real setup sequence. */
-:root {
-  --bg: #eef1f4;
-  --surface: #ffffff;
-  --ink: #16202b;
-  --ink-2: #566374;
-  --line: #d3dae2;
-  --accent: #1d4f9c;
-  --accent-text: #1d4f9c;
-  --accent-ink: #ffffff;
-  --board: #0f1a2b;
-  --board-2: #18263b;
-  --board-ink: #e8eef8;
-  --board-muted: #93a4bb;
-  --amber: #f2a93b;
-  --ok: #7ee29a;
-  --code-bg: #0f1a2b;
-  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
-  --body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
-    --accent: #2f5fae; --accent-text: #8fb3ef; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
-    --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0e131a; --surface: #161d27; --ink: #e6ebf1; --ink-2: #9aa6b4; --line: #2a3542;
-  --accent: #2f5fae; --accent-text: #8fb3ef; --accent-ink: #ffffff; --board: #0a111d; --board-2: #142036; --board-ink: #e8eef8; --board-muted: #93a4bb;
-  --amber: #f2a93b; --ok: #7ee29a; --code-bg: #0a111d;
-  color-scheme: dark;
-}
-* { box-sizing: border-box; }
+/* Project page in the app's design (tokens, bar, buttons and logo come from app/app.css).
+   Story: the picture first, then where to go from it: (1) the base, a digital big sister of the
+   lab; (2) the applications built on it, each a function prototype that opens in the app;
+   (3) the next steps, from a mirror of the layout to a sister that runs it. Numbered sections
+   wear the Türkis platform signs of the app. */
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--body); }
+html, body { height: auto; }
+body { font-size: 17px; line-height: 1.55; }
 img { max-width: 100%; display: block; }
-a { color: var(--accent-text); }
-:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
-.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+a { color: var(--accent-ink); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
 @media (min-width: 700px) { .wrap { padding-inline: 28px; } }
-h1, h2, h3 { font-family: var(--display); line-height: 1.05; text-wrap: balance; margin: 0; }
-h2 { font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 850; font-stretch: 70%; text-transform: uppercase; letter-spacing: .01em; }
-h3 { font-size: 1.2rem; font-weight: 800; font-stretch: 85%; }
+h1, h2, h3 { line-height: 1.15; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.7rem, 3.6vw, 2.4rem); font-weight: 800; letter-spacing: -.01em; }
+h3 { font-size: 1.15rem; font-weight: 700; }
 p { margin: 0; }
-.lead { font-size: 1.1rem; color: var(--ink-2); max-width: 62ch; }
+.lead { font-size: 1.08rem; color: var(--text-2); max-width: 64ch; }
 
-/* ---------------------------------------------------------------- top bar and hero */
-.board { background: var(--board); color: var(--board-ink); }
-.top { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding-block: 14px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
-.brand { display: flex; align-items: baseline; color: inherit; text-decoration: none; font-family: var(--display); font-weight: 850; font-stretch: 72%; font-size: 1.55rem; }
-.brand .sign { background: var(--accent); color: var(--accent-ink); padding: 0 6px; border-radius: 3px; margin-right: 1px; }
-.brand small { font-size: .74rem; letter-spacing: .12em; color: var(--board-muted); margin-left: 8px; font-weight: 700; }
-.top nav { margin-left: auto; display: flex; gap: 4px 18px; flex-wrap: wrap; }
-.top nav a { color: var(--board-ink); text-decoration: none; font-weight: 700; font-stretch: 87%; }
-.top nav a:hover { color: var(--amber); }
+/* ---------------------------------------------------------------- bar (as in the app) */
+.site-bar { position: sticky; top: 0; z-index: 5; }
+.site-nav { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+.site-nav a:not(.btn) { color: var(--bar-text); text-decoration: none; font-weight: 500; font-size: .92rem; padding: 7px 9px; border-radius: var(--radius); }
+.site-nav a:not(.btn):hover { background: var(--bar-hover); }
+@media (max-width: 860px) { .site-nav .opt { display: none; } }
+@media (max-width: 640px) { .site-nav { margin-left: auto; } .site-bar .cro-logo { --h: 30px; } }
+@media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
 
-.hero { display: grid; gap: 28px; padding-block: 28px 48px; }
-@media (min-width: 980px) { .hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; padding-block: 44px 64px; } }
-.eyebrow { font-family: var(--mono); font-size: .8rem; letter-spacing: .06em; color: var(--amber); text-transform: uppercase; }
-.hero h1 { font-size: clamp(2.6rem, 6.4vw, 4.6rem); font-weight: 900; font-stretch: 62%; text-transform: uppercase; letter-spacing: .005em; margin: 10px 0 16px; }
-.hero h1 em { font-style: normal; color: var(--amber); }
+/* ---------------------------------------------------------------- hero: the picture first */
+.hero { background: var(--board); color: var(--board-text); }
+.hero-grid { display: grid; gap: 22px; padding-block: 22px 30px; }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 36px; padding-block: 32px 40px; } }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.hero h1 { font-size: clamp(2rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: -.015em; margin: 10px 0 14px; }
+.hero h1 em { font-style: normal; color: var(--overlay-ok); }
 .hero .lead { color: var(--board-muted); }
-.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 6px; font-weight: 800; font-stretch: 87%; text-decoration: none; border: 1px solid transparent; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); }
-.btn.primary:hover { filter: brightness(1.12); }
-.btn.ghost { color: var(--board-ink); border-color: #2c3d57; background: var(--board-2); }
-.btn.ghost:hover { border-color: var(--amber); }
-.facts { display: flex; gap: 8px 18px; flex-wrap: wrap; margin-top: 22px; font-family: var(--mono); font-size: .78rem; color: var(--board-muted); }
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.btn.big { padding: 11px 18px; font-size: 1rem; font-weight: 700; }
+.hero .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
+.hero .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
+.hero .btn.ghost:hover { border-color: var(--board-text); }
+.hero :focus-visible { outline-color: #ffffff; }
+/* on phones the picture comes first */
+@media (max-width: 999px) { .hero-grid .compare { order: -1; } }
 
-.compare { position: relative; margin: 0; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0,0,0,.45); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
+.compare { position: relative; margin: 0; border-radius: var(--radius); overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .compare .before { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
-.compare .divider { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; margin-left: -1.5px; background: var(--amber); pointer-events: none; }
-.compare .divider::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--amber); color: #1b1305; font: 800 1rem/1 var(--body); padding: 8px 9px 9px; border-radius: 999px; white-space: nowrap; }
+.compare .divider { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; margin-left: -1.5px; background: var(--warn); pointer-events: none; }
+.compare .divider::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--warn); color: var(--warn-text); font: 700 1rem/1 var(--font); padding: 8px 9px 9px; border-radius: 999px; white-space: nowrap; }
 .compare input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
-.compare input:focus-visible + .divider { background: #fff; }
-.compare .tag { position: absolute; top: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: rgba(10,17,29,.8); color: #e8eef8; pointer-events: none; }
+.compare input:focus-visible + .divider { background: #ffffff; }
+.compare .tag { position: absolute; top: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: rgba(0, 20, 80, .85); color: #eaf1ff; pointer-events: none; }
 .compare .tag.l { left: 12px; }
-.compare .tag.r { right: 12px; background: var(--accent); }
-figcaption.note { margin-top: 10px; font-size: .85rem; color: var(--board-muted); }
+.compare .tag.r { right: 12px; background: #0A777F; color: #ffffff; }
+.hero figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
+
+/* the hand-over: one tap from the picture to an application */
+.jump { border-top: 1px solid var(--board-line); padding-block: 14px 18px; display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
+.jump > span { font-size: .85rem; color: var(--board-muted); margin-right: 4px; }
+.jump a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--board-2); color: var(--board-text); text-decoration: none; font-size: .9rem; font-weight: 500; border: 1px solid var(--board-line); }
+.jump a:hover { border-color: var(--board-text); }
+.jump a i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0A777F; color: #ffffff; font-size: .74rem; font-weight: 700; }
 
 /* ---------------------------------------------------------------- sections */
-section { padding-block: 64px; }
-.section-head { display: grid; gap: 12px; margin-bottom: 32px; }
-.features { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.feature { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 10px; align-content: start; }
-.feature .sym { width: 44px; height: 44px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
-.feature .sym svg { width: 26px; height: 26px; }
-.feature p { color: var(--ink-2); font-size: .96rem; }
-.feature code { font-family: var(--mono); font-size: .82em; }
-kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--ink); }
+.block { padding-block: 64px; scroll-margin-top: 64px; }
+.block + .block { padding-top: 8px; }
+.block-head { display: grid; gap: 12px; margin-bottom: 30px; }
+.step-label { display: flex; align-items: center; gap: 10px; font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
+/* a platform sign, as on the layout and in the app */
+.psign { display: inline-grid; place-items: center; min-width: 1.9rem; height: 2.1rem; padding-inline: 6px; border-radius: 3px; background: var(--sign); color: var(--sign-text); font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
 
-/* the town: screenshots from the flyover and a day on the fast clock */
-.gallery { display: grid; gap: 16px; }
-@media (min-width: 820px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
-.shot { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.claim { font-size: clamp(1.25rem, 2.6vw, 1.7rem); font-weight: 700; line-height: 1.3; max-width: 46ch; text-wrap: balance; }
+.claim em { font-style: normal; color: var(--accent-ink); }
+.intro { padding-block: 56px 8px; display: grid; gap: 16px; }
+
+/* (1) the base */
+.base { display: grid; gap: 28px; }
+@media (min-width: 980px) { .base { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); align-items: start; } }
+.pipe { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: pipe; }
+.pipe li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.pipe li::before { counter-increment: pipe; content: counter(pipe); grid-row: span 2; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid var(--accent-ink); color: var(--accent-ink); font-weight: 700; font-size: .9rem; }
+.pipe b { font-weight: 700; }
+.pipe span { color: var(--text-2); font-size: .95rem; }
+.shot { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .shot img { width: 100%; height: auto; }
-.shot figcaption { padding: 12px 16px 16px; color: var(--ink-2); font-size: .94rem; }
-.shot figcaption b { color: var(--ink); }
-.day { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 12px; align-content: start; }
-.times { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.times li { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr); gap: 12px; align-items: baseline; }
-.times time { font-family: var(--mono); font-size: .85rem; font-weight: 600; color: var(--accent-text); }
-.times span, .day p { color: var(--ink-2); font-size: .94rem; }
+.shot figcaption { padding: 12px 16px 14px; color: var(--text-2); font-size: .92rem; }
+.shot figcaption b { color: var(--text); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; margin-top: 14px; }
+.facts div { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
+.facts strong { font-size: 1.25rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.facts span { font-size: .84rem; color: var(--text-2); }
 
-.pipeline { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
-.pipeline div { padding: 18px 18px 20px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; }
-.pipeline div:last-child { border-right: 0; }
-.pipeline b { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
-.pipeline span { color: var(--ink-2); font-size: .92rem; }
-@media (max-width: 720px) { .pipeline div { border-right: 0; border-bottom: 1px solid var(--line); } .pipeline div:last-child { border-bottom: 0; } }
+/* (2) applications */
+.apps { display: grid; gap: 18px; }
+@media (min-width: 760px) { .apps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.app-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; scroll-margin-top: 80px; }
+.app-card .pic { position: relative; aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
+.app-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.app-card .pic .badge { position: absolute; left: 10px; top: 10px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; background: var(--overlay); color: var(--overlay-text); }
+.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--overlay-ok); }
+.app-card .body { padding: 16px 18px 18px; display: grid; gap: 10px; align-content: start; }
+.app-card .kicker { font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
+.app-card p { color: var(--text-2); font-size: .96rem; }
+.app-card .teach { font-size: .88rem; border-left: 3px solid var(--accent); padding-left: 10px; color: var(--text); }
+.app-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+.app-card .acts a:not(.btn) { font-size: .9rem; font-weight: 500; }
+.app-card.wide { grid-column: 1 / -1; }
+@media (min-width: 900px) {
+  .app-card.wide { grid-template-rows: none; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .app-card.wide .pic { aspect-ratio: auto; min-height: 100%; }
+  .app-card.wide .body { padding: 24px; align-content: center; }
+}
 
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.steps li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
-.steps .num { background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-weight: 900; font-stretch: 70%; font-size: 1.9rem; width: 3rem; height: 3.4rem; display: grid; place-items: center; border-radius: 3px; }
-.steps p { color: var(--ink-2); margin-top: 4px; }
-.split { display: grid; gap: 32px; }
+/* (3) next steps: three stages of the sister */
+.stages { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 10px; align-content: start; }
+.stage-card.now { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.stage-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.stage-card header span:first-child { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
+.stage-card p { color: var(--text-2); font-size: .95rem; }
+.flow { width: 100%; height: auto; max-height: 92px; color: var(--accent-ink); }
+.flow rect { fill: var(--surface-2); stroke: var(--line); }
+.flow text { fill: var(--text); font: 600 13px var(--font); }
+.flow .ar { stroke: currentColor; stroke-width: 2.4; fill: none; }
+.flow .ar-off { stroke: var(--line); stroke-width: 2; stroke-dasharray: 4 5; fill: none; }
+.pill { display: inline-block; padding: 3px 8px; border-radius: 3px; font: 700 .7rem/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.pill.arrived { background: var(--accent); color: var(--accent-text); }
+.pill.boarding { background: var(--warn); color: var(--warn-text); }
+.pill.planned { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
+.ideas { margin-top: 26px; display: grid; gap: 12px; }
+.ideas ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ideas li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: .92rem; }
+.ideas li b { color: var(--accent-ink); font-weight: 700; }
+
+/* bring it to your lab */
+.split { display: grid; gap: 28px; }
 @media (min-width: 980px) { .split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; } }
+.setup { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.setup li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.setup li > div { display: flex; align-items: center; gap: 10px; }
+.setup .psign { min-width: 1.6rem; height: 1.8rem; font-size: 1rem; }
+.setup p { color: var(--text-2); font-size: .92rem; }
+pre { margin: 0; background: var(--board); color: #dfe7f3; border-radius: var(--radius); padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
+pre code { font-size: inherit; }
+pre .c { color: #a0b4d8; }
+pre .k { color: #f0922e; }
+pre .s { color: #7fd6db; }
+details.dev { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+details.dev summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
+details.dev .dev-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
 
-pre { margin: 0; background: var(--code-bg); color: #dfe7f3; border-radius: 8px; padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
-pre .c { color: #7f91a8; }
-pre .k { color: #f2a93b; }
-pre .s { color: #7ee29a; }
+/* cooperation */
+.coop { background: var(--board); color: var(--board-text); border-radius: var(--radius); padding: 28px; display: grid; gap: 14px; }
+@media (min-width: 900px) { .coop { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 34px 38px; } }
+.coop h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
+.coop p { color: var(--board-muted); max-width: 62ch; margin-top: 8px; }
+.coop .ctas { margin-top: 0; }
+.coop .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
+.coop .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
+.coop :focus-visible { outline-color: #ffffff; }
 
-/* departure board */
-.departures { background: var(--board); color: var(--board-ink); border-radius: 8px; overflow: hidden; }
-.departures header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 18px; background: var(--board-2); flex-wrap: wrap; }
-.departures header h3 { text-transform: uppercase; letter-spacing: .04em; }
-.departures header span { font-family: var(--mono); font-size: .78rem; color: var(--board-muted); }
-.table-wrap { overflow-x: auto; }
-.departures table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; min-width: 560px; }
-.departures th { text-align: left; font: 700 .7rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--board-muted); padding: 12px 18px 8px; }
-.departures td { padding: 11px 18px; border-top: 1px solid #22324b; vertical-align: top; }
-.departures td:first-child { font-family: var(--mono); color: var(--amber); white-space: nowrap; }
-.departures td.dest { font-weight: 800; font-stretch: 87%; }
-.departures td.dest small { display: block; font-weight: 500; font-stretch: 100%; color: var(--board-muted); font-size: .84rem; margin-top: 2px; }
-.pill { display: inline-block; padding: 3px 8px; border-radius: 3px; font: 700 .72rem/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
-.pill.arrived { background: #1f5c34; color: var(--ok); }
-.pill.boarding { background: #5c4211; color: var(--amber); }
-.pill.planned { background: #22324b; color: var(--board-muted); }
+kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); }
 
-footer { padding-block: 40px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .9rem; }
+footer { padding-block: 36px 44px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; margin-top: 64px; }
 footer .wrap { display: grid; gap: 10px; }
 footer a { color: inherit; }
 
-.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--amber); color: #111; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: #ffffff; color: #001450; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
 .skip-link:focus { top: 12px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<div class="board">
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="./"><span class="sign">AR</span>ail <small>EBL</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="#base">Base</a>
+    <a class="opt" href="#applications">Applications</a>
+    <a class="opt" href="#next">Next steps</a>
+    <a class="opt" href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
+    <a class="btn primary" href="app/">App</a>
+  </nav>
+</header>
+
+<div class="hero">
   <div class="wrap">
-    <header class="top">
-      <a class="brand" href="./"><span class="sign">AR</span>ail <small>EBL</small></a>
-      <nav aria-label="Main">
-        <a href="app/">App</a>
-        <a href="markers/">Markers</a>
-        <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
-        <a href="https://github.com/joernmht/ARail-EBL">GitHub</a>
-      </nav>
-    </header>
-    <section class="hero" aria-labelledby="intro">
+    <section class="hero-grid" aria-labelledby="intro">
       <div>
-        <p class="eyebrow">Open source · runs in the browser</p>
-        <h1 id="intro">Augmented reality for <em>model railway labs</em></h1>
-        <p class="lead">Point a phone or a webcam at your layout. ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, simulates delays and closures, and shows the trains your control system reports.</p>
+        <p class="eyebrow">Railway operations lab · TU Dresden</p>
+        <h1 id="intro">The railway lab gets <em>augmented reality</em></h1>
+        <p class="lead">A digital big sister of the model railway, on any phone. Passengers on the platforms, a town with buses, a container terminal, drivers on their way to work, ageing infrastructure and a whole bouquet of disruptions, registered on the real layout.</p>
         <div class="ctas">
-          <a class="btn primary" href="app/">Open the app</a>
-          <a class="btn ghost" href="markers/">Print markers</a>
-          <a class="btn ghost" href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a>
+          <a class="btn primary big" href="app/">Open the app</a>
+          <a class="btn ghost big" href="#applications">See the applications</a>
         </div>
-        <p class="facts"><span>H0 · TT · N · any scale</span><span>ArUco &amp; AprilTag markers</span><span>No install, no calibration board</span><span>Fast clock, day and night</span></p>
       </div>
       <figure class="compare" id="compare">
-        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, and a street with a zebra crossing on a virtual table module beyond the front edge of the table." width="1600" height="1205">
+        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, and a street with a zebra crossing on a virtual table module beyond the front edge of the table." width="1600" height="1205" fetchpriority="high">
         <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
         <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
         <span class="divider" aria-hidden="true"></span>
         <span class="tag l">Photo</span><span class="tag r">ARail</span>
       </figure>
     </section>
+    <nav class="jump" aria-label="Applications">
+      <span>Jump to</span>
+      <a href="#app-town"><i>1</i>Passengers &amp; town</a>
+      <a href="#app-terminal"><i>2</i>Container terminal</a>
+      <a href="#app-operations"><i>3</i>Rail operations</a>
+      <a href="#app-infrastructure"><i>4</i>Infrastructure</a>
+      <a href="#app-disruptions"><i>5</i>Disruptions</a>
+    </nav>
   </div>
 </div>
 
 <main id="main">
-  <section id="features">
-    <div class="wrap">
-      <div class="section-head">
-        <h2>What goes on the layout</h2>
-        <p class="lead">Everything is placed on the real layout in model millimetres and scaled to the prototype, so a person on an H0 platform is 20&nbsp;mm tall.</p>
-      </div>
-      <div class="features">
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17h18M5 13h14M8 13V7h8v6M6 17l-1 3M18 17l1 3"/></svg></div>
-          <h3>Platforms with passengers</h3>
-          <p>Lay a platform between two markers. Passengers arrive, wait where their train stops, board and alight through the doors. Their colour shows their mood, from turquoise (happy) to red (annoyed).</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V10l5-3v14M8 21V3h11v18M2 21h20"/><path d="M11.5 7h4M11.5 11h4M11.5 15h4"/></svg></div>
-          <h3>A small German town</h3>
-          <p>Plattenbau (WBS&nbsp;70, QP&nbsp;61, P2), Gründerzeit blocks, an estate of single-family houses, a school, a supermarket, offices and a workshop, in the greys of an architectural model. Trees, fields and water around them.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="13" rx="2"/><path d="M4 11h16M7 20v-3M17 20v-3"/></svg></div>
-          <h3>Streets and bus lines</h3>
-          <p>Streets form a network with sidewalks, crossings and street lamps. Bus lines run along them from stop to stop, back and forth or round a ring (Ring&nbsp;↻, Ring&nbsp;↺), also from bus terminals; cars come and go at the edges.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h20M5 4v17M19 4v17M3 21h4M17 21h4M12 4v4"/><rect x="8" y="8" width="8" height="5" rx="0.5"/><path d="M10.7 8v5M13.3 8v5"/></svg></div>
-          <h3>Container terminal</h3>
-          <p>Container trains, trucks and barges, a gantry crane over the loading tracks and a reach stacker for the yard. Pick a container and its new place; the crane moves it. Model wagons on the real layout carry printed deck cards, so their containers ride on them.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></div>
-          <h3>Day and night</h3>
-          <p>A fast clock runs the town: residents walk, take the bus or the train to work, school and shopping, and come home. Rush hours in the morning and evening; at night windows and street lamps light up.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10l4 12H3z"/><path d="M12 7v12M5.3 13h13.4M9.5 7l-2 12M14.5 7l2 12"/></svg></div>
-          <h3>Flyover and table modules</h3>
-          <p>Press <kbd>F</kbd> to fly a virtual camera over the layout, without the camera image. Build on a snapping grid next to the orthophoto of the real table, and add virtual table modules beyond its edges.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M8 8h3v3H8zM13 13h3v3h-3zM13 8h3M8 16h3"/></svg></div>
-          <h3>Markers, surveyed once</h3>
-          <p>Stick markers over the whole table and film it: <code>arail-survey</code> measures every marker and writes a fixed, locked layout with an orthophoto. Model wagons get small tags of their own family, which never mix with the map.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.5"/></svg></div>
-          <h3>Disruptions and scenarios</h3>
-          <p>Delays, cancellations, closures and crowd surges at platforms and bus stops; signal failures and rail replacement buses. Started by hand or scripted as scenarios for teaching.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4M7 10h3l2-3 2 6 2-3h1"/></svg></div>
-          <h3>Your control system</h3>
-          <p>A small Python bridge forwards train positions over WebSocket. When a real train stops at a platform, the virtual passengers board it.</p>
-        </article>
-        <article class="feature">
-          <div class="sym" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13 5l-2 14"/></svg></div>
-          <h3>Your own objects and simulations</h3>
-          <p>Plugins add object types, simulations and disruption types in plain JavaScript modules. The editor builds their settings forms automatically.</p>
-        </article>
-      </div>
-    </div>
-  </section>
+  <div class="wrap intro">
+    <p class="claim">Not only interlocking and train operation, not only the railway as a whole: <em>the whole transport system</em>, from the walk to work to the driver of a freight train that passes on containers between modes.</p>
+    <p class="lead">Each course switches on the functions it needs and develops its own scenarios. Everything runs in the browser: no installation, no calibration board.</p>
+  </div>
 
-  <section id="town" style="padding-top: 0">
+  <!-- (1) the base -->
+  <section class="block" id="base" aria-labelledby="base-title">
     <div class="wrap">
-      <div class="section-head">
-        <h2>A town on the table</h2>
-        <p class="lead">The example layout extends the lab table with eight virtual table modules: a town with two ring bus lines, a station, fields and a wood. Seen here in the flyover, with the orthophoto of the real table behind it.</p>
+      <div class="block-head">
+        <p class="step-label"><span class="psign" aria-hidden="true">1</span>The base</p>
+        <h2 id="base-title">A digital big sister of the lab</h2>
+        <p class="lead">Digital twins are boring. We mapped the whole lab with ArUco markers and built a sister: an image of the layout that can be laid over it, with every phone, as a photo or a live picture, or projected. As a sister, she is technically independent of the layout.</p>
       </div>
-      <div class="gallery">
-        <figure class="shot">
-          <img src="assets/town-day.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="Flyover of the example layout by day: a grey town with Gründerzeit blocks, a WBS 70 Plattenbau, a school with a sports field, an office building, an estate of single-family houses, a supermarket, a workshop and fields on table modules in front of the lab table, which shows its orthophoto. Yellow buses stand at the stops.">
-          <figcaption><b>08:10, by day.</b> The town on its table modules in front of the real table. People walk to work and school; the buses of lines 62 and 85 serve the stops.</figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="assets/town-night.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="The same view at 21:30: the town lies in dark blue; lit windows, street lamps and the lights of a bus glow.">
-          <figcaption><b>21:30, the same view at night.</b> Windows light up where people are at home; street lamps, buses and cars switch on their lights.</figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="assets/bus-stop.jpg" width="1200" height="750" loading="lazy" decoding="async" alt="Close-up of a yellow bus of line 62 at the stop Schule: people stand at its doors, the board above the stop reads Schule, 35 people, 70 %, Bus 62 Ring counter-clockwise boarding, Bus 85 Ring clockwise in 2 min.">
-          <figcaption><b>Line 62 at the stop Schule.</b> People get off and on at the doors; the board shows the next bus of each line.</figcaption>
-        </figure>
-        <article class="day" aria-labelledby="day-title">
-          <h3 id="day-title">A day in the town</h3>
-          <ol class="times">
-            <li><time datetime="05:45">05:45</time><span>Commuters walk or take the bus to the station and leave by train.</span></li>
-            <li><time datetime="06:30">06:30</time><span>Rush hour: workers head for the offices, the workshop, the shops and the school; visitors arrive by train.</span></li>
-            <li><time datetime="07:00">07:00</time><span>Pupils go to school, the supermarket opens, seniors go shopping later in the morning.</span></li>
-            <li><time datetime="12:30">12:30</time><span>School is out for the first pupils.</span></li>
-            <li><time datetime="15:30">15:30</time><span>Work ends, some go shopping on the way home; from 16:00 the commuters come back by train.</span></li>
-            <li><time datetime="20:30">20:30</time><span>Sunset: lit windows, street lamps, head and tail lights.</span></li>
-            <li><time datetime="01:00">01:00</time><span>No trains and no buses until 04:30.</span></li>
+      <div class="base">
+        <div>
+          <ol class="pipe">
+            <li><b>Mark</b><span>Square ArUco or AprilTag stickers, 30&nbsp;mm, anywhere on the layout. Model wagons get small tags of their own.</span></li>
+            <li><b>Map</b><span>One video of the table: <code>arail-survey</code> measures every marker and writes a fixed layout and an orthophoto.</span></li>
+            <li><b>Register</b><span>From the camera image alone, all visible markers give the camera pose and its focal length. Fixed camera positions are the steadiest for now.</span></li>
+            <li><b>Mirror</b><span>Platforms, streets, houses, a terminal: a JSON layout in model millimetres, scaled to the prototype. A person on an H0 platform is 20&nbsp;mm tall.</span></li>
+            <li><b>Fly over</b><span>Press <kbd>F</kbd> for a virtual camera: build on a grid on the orthophoto and add virtual table modules beyond the real table.</span></li>
           </ol>
-          <p>The clock runs twelve times faster than the trains and people, and can be set and stopped in the Simulate panel. <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/day-and-night.md">Day and night</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/streets-and-buses.md">Streets and bus lines</a></p>
+          <div class="facts">
+            <div><strong>1110 px</strong><span>estimated focal length, 1111&nbsp;px from the photo's metadata</span></div>
+            <div><strong>700.7 mm</strong><span>platform 1 from the markers; measured about 700&nbsp;mm</span></div>
+            <div><strong>0 installs</strong><span>a browser on any phone, tablet or webcam</span></div>
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="assets/town-day.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="Flyover of the example layout by day: a grey town with Gründerzeit blocks, a Plattenbau, a school, offices, an estate of single-family houses, a supermarket, a workshop and fields on table modules in front of the lab table, which shows its orthophoto. Yellow buses stand at the stops.">
+          <figcaption><b>The sister in the flyover.</b> A town on eight virtual table modules in front of the real lab table, which shows its orthophoto.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- (2) applications -->
+  <section class="block" id="applications" aria-labelledby="apps-title">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="step-label"><span class="psign" aria-hidden="true">2</span>Applications</p>
+        <h2 id="apps-title">What runs on the sister today</h2>
+        <p class="lead">Five function prototypes, each one an example layout that opens in the app. Try them on the lab photo; they work the same on your own layout and on the live camera.</p>
+      </div>
+      <div class="apps">
+        <article class="app-card wide" id="app-town" aria-labelledby="t-town">
+          <div class="pic"><img src="assets/bus-stop.jpg" width="1200" height="750" loading="lazy" decoding="async" alt="A yellow bus of line 62 at the stop Schule: people stand at its doors; the board above the stop shows the next bus of each line."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">1 · Passenger flows, town and buses</p>
+            <h3 id="t-town">A town that goes to work</h3>
+            <p>Passengers wait where their train stops and board through the doors; their colour shows their mood. Around the station, residents of Plattenbau, Gründerzeit blocks and houses go to work, school and shopping on foot, by bus and by train, on a fast clock through day and night.</p>
+            <p class="teach">In teaching: station and public transport planning, intermodal trips, demand over the day.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#simulate">Open this example</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/day-and-night.md">Day and night</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/streets-and-buses.md">Streets and buses</a>
+            </div>
+          </div>
+        </article>
+        <article class="app-card" id="app-terminal" aria-labelledby="t-terminal">
+          <div class="pic"><img src="assets/app-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app with the container terminal in the flyover: a gantry crane over two loading tracks, yard blocks with containers, a barge at the quay; the Terminal panel lists the arriving trains and the barge."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">2 · Intermodal freight</p>
+            <h3 id="t-terminal">A working container terminal</h3>
+            <p>Container trains, trucks and barges, a gantry crane and a reach stacker. Pick a container and its new place, and the crane moves it. Model wagons with printed deck cards carry their containers on the real layout.</p>
+            <p class="teach">In teaching: freight transport, terminal operation, the hand-over between modes.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/container-terminal.json#terminal">Open this example</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/container-terminal.md">Guide</a>
+            </div>
+          </div>
+        </article>
+        <article class="app-card" id="app-operations" aria-labelledby="t-operations">
+          <div class="pic"><img src="assets/app-operations.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo with the Operations tab: trains at the platforms with their next departures; the panel shows trains run, punctuality, units available, crews on duty and penalties, and a log of what happened."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">3 · Rail operations</p>
+            <h3 id="t-operations">Fleet, workshop and crews</h3>
+            <p>Units that wear and fail, a workshop and the four functions of the entity in charge of maintenance; penalties down the chain of contracts. Drivers with rosters and working-time rules, who walk through the town to the depot.</p>
+            <p class="teach">In teaching: railway undertakings, maintenance (ECM), crew planning, stress tests such as a flu wave.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/ebl-operations.json#ops">Open this example</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/operations.md">Guide</a>
+            </div>
+          </div>
+        </article>
+        <article class="app-card" id="app-infrastructure" aria-labelledby="t-infra">
+          <div class="pic"><img src="assets/app-infrastructure.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo with the Infrastructure tab: tracks, switches and signals coloured by their condition; the panel shows the network grade, faults, delay minutes, budgets and staff."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">4 · Infrastructure</p>
+            <h3 id="t-infra">Asset management as a game</h3>
+            <p>Track, switches, signals, interlockings and level crossings, each with a condition, faults and an age. Students play asset manager, dispatcher, planner and funding authority: maintenance in shifts, renewals through the HOAI phases with BIM, funding and tenders, year by year with limited money and people.</p>
+            <p class="teach">In teaching: infrastructure management, project planning, the condition you know and the one you don't.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/ebl-infrastructure.json#infra">Open this example</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/infrastructure.md">Guide</a>
+            </div>
+          </div>
+        </article>
+        <article class="app-card" id="app-disruptions" aria-labelledby="t-disrupt">
+          <div class="pic"><img src="assets/app-disruptions.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo during the scenario Rush hour with a signal failure: crowded platforms, trains held; the Disruptions panel lists the scenarios."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">5 · Disruptions and scenarios</p>
+            <h3 id="t-disrupt">A bouquet of disruptions</h3>
+            <p>Delays, cancellations, closures, signal failures, crowd surges and rail replacement buses, started by hand or scripted as scenarios: rush hour with a signal failure, the crowd after the football match.</p>
+            <p class="teach">In teaching: dispatching, passenger information, exercises that can be repeated.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#disrupt">Open this example</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/disruptions-and-scenarios.md">Guide</a>
+            </div>
+          </div>
         </article>
       </div>
     </div>
   </section>
 
-  <section id="how" style="padding-top: 0">
+  <!-- (3) next steps -->
+  <section class="block" id="next" aria-labelledby="next-title">
     <div class="wrap">
-      <div class="section-head">
-        <h2>How it works</h2>
-        <p class="lead">Printed square markers lie flat on the layout. From the camera image alone, without a calibration board, ARail works out where the layout plane is and draws on it.</p>
+      <div class="block-head">
+        <p class="step-label"><span class="psign" aria-hidden="true">3</span>Next steps</p>
+        <h2 id="next-title">From a sister to a hybrid lab</h2>
+        <p class="lead">The first step is done. Next, the sister learns where the real trains are; later, she can run the layout herself.</p>
       </div>
-      <div class="pipeline">
-        <div><b>Markers</b><span>ArUco or AprilTag codes, 30&nbsp;mm, stuck anywhere on the layout, any rotation.</span></div>
-        <div><b>Marker map</b><span>Measured from the images as the camera moves, or surveyed once from a video and locked.</span></div>
-        <div><b>Camera pose</b><span>All visible markers give one stable view of the plane; the focal length is estimated too. The flyover uses a virtual camera instead.</span></div>
-        <div><b>Virtual layout</b><span>Platforms, a town, streets, bus lines and a container terminal from a JSON layout file, also on table modules beyond the real table.</span></div>
-        <div><b>Simulation</b><span>Trains, buses, cars, passengers and residents on a fast clock, in prototype metres and seconds.</span></div>
+      <div class="stages">
+        <article class="stage-card now" aria-labelledby="s1">
+          <header><span>Stage 1</span><span class="pill arrived">Arrived</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister side by side, not connected">
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar-off" d="M116 40h68"/>
+          </svg>
+          <h3 id="s1">The digital sister</h3>
+          <p>An image of the layout that can be laid over it, on any phone, live or projected. Technically independent of the layout: she simulates the lab next to it.</p>
+        </article>
+        <article class="stage-card" aria-labelledby="s2">
+          <header><span>Stage 2</span><span class="pill boarding">Next</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="The layout writes into the sister">
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar" d="M116 40h66" marker-end="url(#ah)"/>
+          </svg>
+          <h3 id="s2">The layout writes into the model</h3>
+          <p>Live positions from the lab's control system: physical trains in a virtual world. When a real train stops at a platform, the virtual passengers board it. The bridge runs with a simulator; the adapter for the EBL is next.</p>
+        </article>
+        <article class="stage-card" aria-labelledby="s3">
+          <header><span>Stage 3</span><span class="pill planned">Later</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister write into each other">
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar" d="M120 32h62" marker-end="url(#ah)"/>
+            <path class="ar" d="M180 50h-62" marker-end="url(#ah)"/>
+          </svg>
+          <h3 id="s3">The sister runs operations</h3>
+          <p>The sister takes over operations control and writes into the layout: disruptions hit the real trains too, flexibly and repeatably, for any exercise.</p>
+        </article>
+      </div>
+      <div class="ideas">
+        <h3>And then</h3>
+        <ul>
+          <li><b>Airports</b> as another mode</li>
+          <li><b>BIM models</b> of stations and buildings</li>
+          <li><b>Occlusion</b> by real trains</li>
+          <li><b>Projection</b> onto the table</li>
+          <li><b>Your scenarios</b> for your courses</li>
+          <li><b>Other labs</b> and model railway clubs</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <section id="setup" style="padding-top: 0">
+  <!-- bring it to your lab -->
+  <section class="block" id="setup" aria-labelledby="setup-title">
     <div class="wrap split">
-      <div class="section-head">
-        <h2>Set up your lab</h2>
-        <p class="lead">One visit to the lab gives a fixed layout; the <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">lab-session guide</a> has the checklist. The control system can follow later.</p>
+      <div class="block-head">
+        <h2 id="setup-title">Bring it to your lab</h2>
+        <p class="lead">One visit gives a fixed layout; the <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">lab-session guide</a> has the checklist. Any scale: H0, TT, N.</p>
+        <div class="ctas"><a class="btn primary" href="markers/">Print markers</a><a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/getting-started.md">Getting started</a></div>
       </div>
-      <ol class="steps">
-        <li><span class="num">1</span><div><h3>Print sticker sheets</h3><p>Print the <a href="markers/">marker sheets</a> on matte sticker paper and check the 100&nbsp;mm bar with a ruler. The black square is the marker size.</p></div></li>
-        <li><span class="num">2</span><div><h3>Stick them on</h3><p>Marker 0 at a table corner, aligned with the edges, then one every 30–40&nbsp;cm, at both ends of every platform and at the table corners.</p></div></li>
-        <li><span class="num">3</span><div><h3>Film the layout</h3><p>Slow passes along and across the table with the phone's main camera, tilted 40–60°, two or three markers always in view: two to five minutes of video.</p></div></li>
-        <li><span class="num">4</span><div><h3>Survey it</h3><p><code>arail-survey</code> measures every marker and writes a fixed, locked layout, a report and an orthophoto of the table. For a quick check in the lab: Build → Marker map → Survey a video.</p></div></li>
-        <li><span class="num">5</span><div><h3>Build in the flyover</h3><p>Press <kbd>F</kbd>: the orthophoto lies on the table. Add table modules beyond its edges, platforms, streets, bus lines and houses on the grid, then export the layout file and keep it in your fork.</p></div></li>
-        <li><span class="num">6</span><div><h3>Connect the control system</h3><p>Run <code>arail-bridge</code> next to it with an adapter for your system. The simulated control system shows the flow without one.</p></div></li>
-      </ol>
-    </div>
-  </section>
-
-  <section id="extend" style="padding-top: 0">
-    <div class="wrap split">
-      <div class="section-head">
-        <h2>Extend it</h2>
-        <p class="lead">No build step, no framework. A plugin is an ES module that registers what it adds; layouts load it by URL.</p>
-        <p><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/layout-format.md">Layout file format</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/control-system-interface.md">Control-system interface</a></p>
-      </div>
-      <pre tabindex="0" aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
+      <div>
+        <ol class="setup">
+          <li><div><span class="psign" aria-hidden="true">1</span><h3>Print</h3></div><p>The <a href="markers/">marker sheets</a> on matte sticker paper; check the 100&nbsp;mm bar with a ruler.</p></li>
+          <li><div><span class="psign" aria-hidden="true">2</span><h3>Stick</h3></div><p>Marker 0 at a table corner, then one every 30–40&nbsp;cm and at both ends of every platform.</p></li>
+          <li><div><span class="psign" aria-hidden="true">3</span><h3>Film</h3></div><p>Slow passes along and across the table, two or three markers always in view: two to five minutes.</p></li>
+          <li><div><span class="psign" aria-hidden="true">4</span><h3>Survey</h3></div><p><code>arail-survey</code> writes a locked layout, a report and an orthophoto.</p></li>
+          <li><div><span class="psign" aria-hidden="true">5</span><h3>Build</h3></div><p>In the flyover: table modules, platforms, streets, bus lines, houses; export the layout file.</p></li>
+          <li><div><span class="psign" aria-hidden="true">6</span><h3>Connect</h3></div><p><code>arail-bridge</code> with an adapter for your control system, or the built-in simulator.</p></li>
+        </ol>
+        <details class="dev">
+          <summary>For developers: plugins</summary>
+          <div class="dev-body">
+            <p>No build step, no framework. A plugin is an ES module that registers object types, simulations or disruption types; layouts load it by URL. <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/layout-format.md">Layout file format</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/control-system-interface.md">Control-system interface</a></p>
+            <pre tabindex="0" aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
 <span class="k">export default function</span> (arail) {
   <span class="k">class</span> Windmill <span class="k">extends</span> arail.LayoutObject {
     <span class="k">static</span> type = <span class="s">"windmill"</span>;
     <span class="k">static</span> label = <span class="s">"Windmill"</span>;
-    <span class="k">static</span> params = [{
-      key: <span class="s">"height_m"</span>, label: <span class="s">"Height"</span>,
-      type: <span class="s">"number"</span>, unit: <span class="s">"m"</span>, default: 18,
-    }];
+    <span class="k">static</span> params = [{ key: <span class="s">"height_m"</span>, label: <span class="s">"Height"</span>, type: <span class="s">"number"</span>, unit: <span class="s">"m"</span>, default: 18 }];
     computeGeometry() {
       <span class="k">const</span> c = arail.resolvePoint(<span class="k">this</span>.world.map, <span class="k">this</span>.spec.position);
       <span class="k">return</span> c && { center: c };
@@ -365,31 +452,22 @@ footer a { color: inherit; }
   }
   arail.registry.registerObject(Windmill);
 }</code></pre>
+          </div>
+        </details>
+      </div>
     </div>
   </section>
 
-  <section id="status" style="padding-top: 0">
+  <section class="block" id="cooperation" aria-labelledby="coop-title">
     <div class="wrap">
-      <div class="departures">
-        <header><h3>Departures · project status</h3><span>as of October 2026</span></header>
-        <div class="table-wrap" tabindex="0" role="region" aria-label="Project status">
-          <table>
-            <thead><tr><th>Version</th><th>Destination</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>0.1</td><td class="dest">Tracking without a calibration board<small>Marker map survey, focal length estimate, tested on the lab photo</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>0.1</td><td class="dest">Platforms, bus terminals, scenery, editor<small>Layout files, plugins, passenger simulation</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>0.1</td><td class="dest">Disruptions, scenarios, control-system bridge<small>Simulated, replayed and TCP JSON feeds</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">A town through day and night<small>German house types, fast clock, residents on foot, by bus and by train</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">Streets, bus lines and road traffic<small>Road network, bus stops, ring and back-and-forth lines, cars</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">Flyover and table modules<small>Virtual camera, snapping grid, orthophoto of the real table</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">A fixed layout from one video<small><code>arail-survey</code>: locked marker map, report and orthophoto; Survey a video in the app</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">The app in the chair's corporate design<small>Türkis, Noto Sans and the logo of the Chair of Railway Operations</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">Container terminal on rolling-stock markers<small>Trains, trucks, barges and a gantry crane; deck cards with AprilTag tags on model wagons</small></td><td><span class="pill arrived">Arrived</span></td></tr>
-              <tr><td>next</td><td class="dest">Lab session and live sessions in the EBL<small>Stickers on the whole table, one video, a fixed layout; then phones, webcams and a projector</small></td><td><span class="pill boarding">Boarding</span></td></tr>
-              <tr><td>next</td><td class="dest">Adapter for the EBL control system<small>Real train positions instead of the simulator</small></td><td><span class="pill planned">Scheduled</span></td></tr>
-              <tr><td>later</td><td class="dest">Occlusion by real trains<small>Virtual things hidden where a real train stands in front of them; ideas and contributions welcome</small></td><td><span class="pill planned">Scheduled</span></td></tr>
-            </tbody>
-          </table>
+      <div class="coop">
+        <div>
+          <h2 id="coop-title">Open for cooperation</h2>
+          <p>Railway labs, universities, model railway clubs and industry: bring your layout, your control system or your course. ARail-EBL is open source under the MIT license.</p>
+        </div>
+        <div class="ctas">
+          <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues">Get in touch</a>
+          <a class="btn ghost big" href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a>
         </div>
       </div>
     </div>
@@ -399,8 +477,8 @@ footer a { color: inherit; }
 <footer>
   <div class="wrap">
     <p>ARail-EBL is open source under the MIT license. Marker detection uses <a href="https://github.com/damianofalcioni/js-aruco2">js-aruco2</a>; the tools use <a href="https://opencv.org">OpenCV</a>.</p>
-    <p>The app follows the corporate design of the Chair of Railway Operations at TU Dresden. The chair's logo is © TU Dresden and not covered by the MIT license (<a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
-    <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a></p>
+    <p>The site and the app follow the corporate design of the Chair of Railway Operations at TU Dresden. The chair's logo is © TU Dresden and not covered by the MIT license (<a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
+    <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Documentation</a></p>
   </div>
 </footer>
 

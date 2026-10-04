@@ -1,5 +1,5 @@
 // The app wears the corporate design of the Chair of Railway Operations (Türkis, chair logo,
-// Noto Sans); the project website keeps its own blue design. The states that use the CD accent
+// Noto Sans), and so does the project page. The states that use the CD accent
 // colours (pressed toggles, placing, toasts, disruptions) are checked for contrast in both modes.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
@@ -41,10 +41,13 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       expect(await page.locator('meta[name="theme-color"]').count()).toBe(2);
     });
 
-    test("the project website stays blue", async ({ page }) => {
+    test("the project page wears the app's design: the same bar, logo, accent and font", async ({ page }) => {
       await page.goto("/");
       const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
-      expect(accent).toBe(scheme === "light" ? "#1d4f9c" : "#2f5fae");
+      expect(accent).toBe(scheme === "light" ? "#0A777F" : "#36b8bf");
+      expect(await style(page, ".site-bar", "backgroundColor")).toBe(expected.bar);
+      await expect(page.getByRole("img", { name: "TU Dresden, Chair of Railway Operations" })).toBeVisible();
+      expect(await style(page, "body", "fontFamily")).toMatch(/^"Noto Sans"/);
     });
 
     test("CD accent states keep text readable: placing, pressed toggles, toasts, disruptions", async ({ page }) => {
