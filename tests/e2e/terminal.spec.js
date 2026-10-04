@@ -227,7 +227,13 @@ test("a train is called; a container goes from train to train; unload and load",
   await expect(page.locator("#toast")).toContainText(/\d+ moves? queued/);
   // paused, the moves stay queued (cranes start them in a simulation step)
   const kt52 = page.locator(".term-board .stop[data-id=KT52]");
-  await page.evaluate(() => (window.__arail.world.paused = true));
+  // (the crane that put the container on KT52 is still finishing its move: wait until it is done)
+  await page.waitForFunction(() => {
+    const a = window.__arail, sim = a.terminal.sim, ids = new Set(sim.visits.get("KT52").carriers.map((c) => c.id));
+    const busy = sim.moves.some((m) => m.state === "active" && (ids.has(m.from.carrier) || ids.has(m.to.carrier)));
+    if (!busy) a.world.paused = true;
+    return !busy;
+  }, null, { timeout: 60_000, polling: "raf" });
   await kt52.getByRole("button", { name: "Load from yard" }).click();
   await expect(page.locator("#toast")).toContainText(/\d+ moves? queued/);
   // a train with queued moves leaves only when forced
