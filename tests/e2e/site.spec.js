@@ -31,6 +31,8 @@ test("project page hands over from the picture to the applications, each opening
     const layout = new URL(href, "http://x/app/").searchParams.get("layout");
     expect((await request.get(new URL(layout, "http://localhost/app/").pathname)).ok(), layout).toBe(true);
   }
+  // cooperation: the contact person by email
+  await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
   const images = await page.locator(".app-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
   for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
 });

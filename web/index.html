@@ -176,6 +176,8 @@ details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
 .coop h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
 .coop p { color: var(--board-muted); max-width: 62ch; margin-top: 8px; }
 .coop .ctas { margin-top: 0; }
+.coop .contact { color: var(--board-text); font-size: .95rem; }
+.coop .contact a { color: inherit; font-weight: 700; }
 .coop .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
 .coop .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
 .coop :focus-visible { outline-color: #ffffff; }
@@ -464,9 +466,10 @@ footer a { color: inherit; }
         <div>
           <h2 id="coop-title">Open for cooperation</h2>
           <p>Railway labs, universities, model railway clubs and industry: bring your layout, your control system or your course. ARail-EBL is open source under the MIT license.</p>
+          <p class="contact">Contact: Jörn Maurischat, <a href="mailto:joern.maurischat@tu-dresden.de">joern.maurischat@tu-dresden.de</a></p>
         </div>
         <div class="ctas">
-          <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues">Get in touch</a>
+          <a class="btn primary big" href="mailto:joern.maurischat@tu-dresden.de?subject=ARail-EBL%20cooperation">Get in touch</a>
           <a class="btn ghost big" href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a>
         </div>
       </div>
@@ -478,6 +481,7 @@ footer a { color: inherit; }
   <div class="wrap">
     <p>ARail-EBL is open source under the MIT license. Marker detection uses <a href="https://github.com/damianofalcioni/js-aruco2">js-aruco2</a>; the tools use <a href="https://opencv.org">OpenCV</a>.</p>
     <p>The site and the app follow the corporate design of the Chair of Railway Operations at TU Dresden. The chair's logo is © TU Dresden and not covered by the MIT license (<a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
+    <p>Contact: <a href="mailto:joern.maurischat@tu-dresden.de">joern.maurischat@tu-dresden.de</a></p>
     <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Documentation</a></p>
   </div>
 </footer>
