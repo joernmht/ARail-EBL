@@ -914,7 +914,9 @@ export class TownSimulation extends Simulation {
       let [x, y] = a.pos;
       // walk on the right-hand sidewalk of streets
       const dir = a.dir || [1, 0];
-      const off = this._sidewalkOffset(net, a);
+      const at = this._pathAt(net, a);
+      if (at?.hidden) continue; // in an underpass
+      const off = at?.walkOffset || 0;
       if (off) {
         x += dir[1] * off;
         y -= dir[0] * off;
@@ -927,15 +929,17 @@ export class TownSimulation extends Simulation {
     }
   }
 
-  /** Lateral offset (mm) of a walker from the path's centre line (sidewalks along streets). */
-  _sidewalkOffset(net, a) {
-    if (!net || !a.path?.route || typeof net.pathAt !== "function") return 0;
+  /**
+   * Where a walker is on its network route: {walkOffset} (mm, from the path's centre line:
+   * sidewalks along streets) and {hidden} (in an underpass); null off the network.
+   */
+  _pathAt(net, a) {
+    if (!net || !a.path?.route || typeof net.pathAt !== "function") return null;
     const r = a.path.route;
     // a.s counts from the agent's start point; the route starts after the first segment
     const s = a.s - (a.path.routeStart || 0);
-    if (s <= 0 || s >= r.length) return 0;
-    const at = net.pathAt(r, s);
-    return at?.walkOffset || 0;
+    if (s <= 0 || s >= r.length) return null;
+    return net.pathAt(r, s);
   }
 
   /** Counts for the panel: where people are and what they are doing. */

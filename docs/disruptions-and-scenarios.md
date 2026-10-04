@@ -27,7 +27,7 @@ On layouts with [infrastructure](infrastructure.md) the panel also offers:
 
 A fault at the station on the layout starts a disruption of its own on the platforms (trains pass at
 caution, or are held when the interlocking fails) until it is repaired. The scenario *Faults at the
-station* of the [infrastructure example](../web/layouts/ebl-infrastructure.json) makes exit signal N2
+station* of the lab example's layer [Infrastructure](infrastructure.md#the-example) makes exit signal N2
 fail, then the level crossing:
 
 ```json
@@ -131,7 +131,7 @@ A move to a train that is still approaching waits until it has arrived. A reques
 ### Scenarios for the rail operations
 
 The [rail operations](operations.md) are driven by their own disruption types. The scenario
-*Drivers missing in the morning* of the [operations example](../web/layouts/ebl-operations.json):
+*Drivers missing in the morning* of the lab example's layer [Rail operations](operations.md#the-example):
 
 ```json
 {

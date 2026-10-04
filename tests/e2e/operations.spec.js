@@ -3,7 +3,7 @@
 // operations to a layout from the Simulate panel, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/ebl-operations.json#ops";
+const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=operations#ops";
 
 /** Collect uncaught page errors and console errors (blocked web fonts and other resources are ignored). */
 function trackErrors(page) {
@@ -148,7 +148,7 @@ test("the Simulate panel adds rail operations to a layout; the Operations tab ta
 
 test("on a phone the six tabs fit; the arrow keys go from Simulate to Operations to Disruptions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-operations.json#simulate");
+  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#simulate");
   const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button")].filter((x) => !x.hidden).every((x) => {
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
@@ -171,7 +171,7 @@ test("on a phone the six tabs fit; the arrow keys go from Simulate to Operations
 });
 
 test("the disruptions of the operations are offered without a place, and act on the operations", async ({ page }) => {
-  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-operations.json#disrupt");
+  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
   const types = await page.locator("#disType option").allTextContents();
   expect(types).toEqual(expect.arrayContaining(["Drivers call in sick", "Unit failure", "Drivers leave", "Workshop closed", "Units damaged"]));
   // they have no place to choose

@@ -4,7 +4,7 @@
 // and the tabs on a phone.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/ebl-infrastructure.json#infra";
+const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
 
 function trackErrors(page) {
   const errors = [];
@@ -105,6 +105,9 @@ test("a fault on the layout: the van drives out, the station's trains are distur
   const errors = await openInfra(page);
   await page.locator("#infraFail").click();
   await expect(page.locator("#toast")).toContainText(/fails/);
+  // the button picks an asset by the clock; a fault of some of them (a track, a balise) is noticed by a
+  // driver only after a while: an exit signal's fault stops the next train within seconds
+  await page.evaluate(() => window.__arail.infra.sim.failAsset("signal-n2"));
   await expect.poll(() => page.evaluate(() => window.__arail.world.disruptions.active.some((d) => d.type === "infra-fault")), { timeout: 30_000 }).toBe(true);
   await expect.poll(() => page.evaluate(() => {
     const e = window.__arail.infra.sim.engine;

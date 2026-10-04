@@ -9,14 +9,15 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  Camera, INFRA_OBJECTS, View, createWorld, infraOf, loadPlugins, opsOf, registry, validateLayout,
+  Camera, INFRA_OBJECTS, View, composeLayout, createWorld, infraOf, layoutPlugins, loadPlugins, opsOf, registry, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
 const DAY = 1440;
-const INFRA = readJSON("web/layouts/ebl-infrastructure.json");
 const LAB = readJSON("web/layouts/ebl-lab.json");
-await loadPlugins(INFRA.plugins || [], pathToFileURL(join(ROOT, "web/layouts/ebl-infrastructure.json")).href);
+// the lab example with its layer "Infrastructure" on
+const INFRA = withLayers(LAB, ["infrastructure"]);
+await loadPlugins(layoutPlugins(INFRA), pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
 
 const frames = (world, n, dt = 0.1) => {
   for (let i = 0; i < n; i++) world.step(dt);
@@ -224,7 +225,8 @@ test("added to a layout without infrastructure objects: the platforms and tracks
 });
 
 test("with rail operations on the same layout: faults at the station's platforms hold the operations' trains", () => {
-  const json = structuredClone(readJSON("web/layouts/ebl-operations.json"));
+  // the lab example with rail operations, plus an infrastructure entry with the default settings
+  const json = composeLayout(withLayers(LAB, ["operations"])).layout;
   json.simulations.push({ type: "infrastructure" });
   const world = createWorld(json);
   world.step(0.1);

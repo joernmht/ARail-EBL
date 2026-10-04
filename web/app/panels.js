@@ -26,7 +26,14 @@ export class Panels {
     this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
     this.flyBox = h("div", { class: "section flyover-section" });
+    const layers = app.world.layers();
     mount(el,
+      layers.length ? section("Layers",
+        h("div", { class: "fields" }, layers.map((l) => h("label", { class: "field check wide layer", for: `layer-${l.id}` },
+          h("input", { type: "checkbox", id: `layer-${l.id}`, checked: l.enabled,
+            onchange: (e) => app.setLayers(e.target.checked ? [...app.layersOn(), l.id] : app.layersOn().filter((x) => x !== l.id)) }),
+          h("span", {}, l.name, l.description ? h("small", { class: "layer-description" }, l.description) : null)))),
+        h("p", { class: "hint" }, "Parts of this layout that can be switched on and off. The base (table, town, streets) is always there. Switching starts the simulations again; your changes are kept.")) : null,
       section("Tracking", this.viewInfo, h("p", { class: "hint" },
         "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
       this.flyBox,
@@ -170,6 +177,8 @@ export class Panels {
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
     const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
     const hasInfra = w.simulations.some((x) => x.constructor.type === "infrastructure");
+    /** A layer of this layout (off) that has a simulation of this type. */
+    const layerWith = (type) => w.layers().find((l) => !l.enabled && l.simulations.includes(type)) || null;
     mount(el,
       section("Time of day",
         this.clockFace,
@@ -203,12 +212,16 @@ export class Panels {
       hasOps ? null : section("Rail operations",
         h("p", { class: "hint" }, "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups."),
         h("div", { class: "row" },
-          h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.openExample("operations") }, "Open the example"),
+          layerWith("operations")
+            ? h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.setLayers([...app.layersOn(), layerWith("operations").id]) }, `Switch on the layer “${layerWith("operations").name}”`)
+            : h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.openExample("operations") }, "Open the example"),
           h("button", { class: "btn", type: "button", id: "opsAdd", onclick: () => app.operations.addOperations() }, "Add to this layout"))),
       hasInfra ? null : section("Infrastructure",
         h("p", { class: "hint" }, "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab."),
         h("div", { class: "row" },
-          h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.openExample("infrastructure") }, "Open the example"),
+          layerWith("infrastructure")
+            ? h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.setLayers([...app.layersOn(), layerWith("infrastructure").id]) }, `Switch on the layer “${layerWith("infrastructure").name}”`)
+            : h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.openExample("infrastructure") }, "Open the example"),
           h("button", { class: "btn", type: "button", id: "infraAdd", onclick: () => app.infra.addInfrastructure() }, "Add to this layout"))),
     );
     this.updateSimulateControls();

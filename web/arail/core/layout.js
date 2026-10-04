@@ -10,6 +10,7 @@
 import { markersUsed } from "./anchors.js";
 import { DEFAULT_CLOCK } from "./clock.js";
 import { DICTIONARIES } from "./detector.js";
+import { composeLayout, layerProblems } from "./layers.js";
 
 export const LAYOUT_FORMAT = "arail-layout/1";
 
@@ -177,8 +178,13 @@ export function isLayout(json) {
  * @returns {string[]} human-readable problems (empty if none)
  */
 export function validateLayout(json, registry) {
-  const problems = [];
   if (!isObject(json)) return ["Layout must be a JSON object"];
+  // the base with all layers on: objects, simulations and scenarios of every layer are checked
+  const problems = layerProblems(json);
+  if (json.layers != null) {
+    const all = Array.isArray(json.layers) ? json.layers.map((l) => (isObject(l) ? { ...l, enabled: true } : l)) : [];
+    json = composeLayout({ ...json, layers: all }).layout;
+  }
   if (json.format && json.format !== LAYOUT_FORMAT) problems.push(`Unknown format "${json.format}" (expected ${LAYOUT_FORMAT})`);
   if (json.scale != null && !(Number(json.scale) > 0)) problems.push("scale must be a positive number (87 for H0)");
   const poses = isObject(json.markers?.poses) ? json.markers.poses : {};

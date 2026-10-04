@@ -9,13 +9,16 @@ import { TerminalPanel } from "./terminal.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
+const LAB = "../layouts/ebl-lab.json";
 const EXAMPLES = [
-  { id: "lab", label: "Example: EBL lab photo", layout: "../layouts/ebl-lab.json" },
+  { id: "lab", label: "Example: EBL lab photo", layout: LAB },
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
   { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json" },
-  { id: "operations", label: "Example: rail operations", layout: "../layouts/ebl-operations.json" },
-  { id: "infrastructure", label: "Example: infrastructure", layout: "../layouts/ebl-infrastructure.json" },
 ];
+/** Examples that are a layer of another example: opened with that layer on. */
+const EXAMPLE_LAYERS = { operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" } };
+/** Former example files that are layers of the lab example now (old links keep working). */
+const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
 const TABS = ["view", "build", "simulate", "terminal", "ops", "infra", "disrupt", "control"];
 /** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
 const FEATURE_TABS = { terminal: ["ops", "infra"], ops: ["infra", "terminal"], infra: ["ops", "terminal"] };
@@ -79,7 +82,8 @@ class App {
     this._wireEvents();
     const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
     const image = params.get("image");
-    await this.loadLayoutFromUrl(layout, { withImage: !image && params.get("camera") !== "1" });
+    const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
+    await this.loadLayoutFromUrl(layout, { withImage: !image && params.get("camera") !== "1", layers });
     if (image) this.loadImage(new URL(image, location.href).href, "Image");
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
@@ -315,19 +319,52 @@ class App {
 
   /* ---------------------------------------------------------------- layouts */
 
-  /** Open a layout from the list of layouts (or a panel) with its own image; the live camera stops. */
-  async openLayout(url) {
+  /**
+   * Open a layout from the list of layouts (or a panel) with its own image; the live camera stops.
+   * @param {string[] | null} [layers] the layers to switch on (default: as last time, else as in the file)
+   */
+  async openLayout(url, layers = null) {
     this.stopLive();
-    await this.loadLayoutFromUrl(url, { withImage: true });
+    await this.loadLayoutFromUrl(url, { withImage: true, layers });
   }
 
-  /** Open one of the example layouts by its id (e.g. "terminal"). */
+  /** Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that layer on). */
   openExample(id) {
     const x = EXAMPLES.find((e) => e.id === id);
-    return x ? this.openLayout(x.layout) : Promise.resolve();
+    if (x) return this.openLayout(x.layout);
+    const l = EXAMPLE_LAYERS[id];
+    if (!l) return Promise.resolve();
+    // the layout is open already: switch the layer on
+    if (this.world.layers().some((y) => y.id === l.layer)) return this.setLayers([...this.layersOn(), l.layer]);
+    return this.openLayout(l.layout, [l.layer]);
   }
 
-  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image" } = {}) {
+  /** Ids of the layers that are on. */
+  layersOn() {
+    return this.world.layers().filter((l) => l.enabled).map((l) => l.id);
+  }
+
+  /** Switch the layout's layers: exactly these are on. Edits are kept; the simulations start again. */
+  async setLayers(ids) {
+    const json = ARail.withLayers(this.world.toJSON(), ids);
+    storage.set(this._layersKey(), [...ids]);
+    const edited = this._pendingSave != null || storage.get(this._layoutKey()) != null;
+    try {
+      await this._applyLayout(json);
+    } catch (err) {
+      toast(`The layers could not be switched: ${err.message}`, 7000);
+      return;
+    }
+    if (edited) this.saveLayout();
+  }
+
+  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image", layers = null } = {}) {
+    const legacy = Object.keys(LEGACY).find((f) => url.endsWith(f));
+    if (legacy) {
+      // a former example file: the lab example with that layer on
+      url = url.replace(legacy, "layouts/ebl-lab.json");
+      layers = layers || [LEGACY[legacy]];
+    }
     this.flushSave(); // pending edits belong to the current layout
     let json;
     try {
@@ -342,6 +379,10 @@ class App {
     this.layoutUrl = new URL(url, location.href).href;
     this.originalLayout = json;
     storage.set("arail.lastLayout", url);
+    // layers: as asked for, else as last time, else as the file has them
+    if (layers) storage.set(this._layersKey(), layers);
+    const chosen = layers || storage.get(this._layersKey()) || null;
+    const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, chosen) : j);
     const img = json.view?.image;
     // the layout's own image follows: the photo or video shown until then belongs to the previous
     // layout, and markers detected in it must not be measured into this layout's marker map
@@ -349,11 +390,13 @@ class App {
     // a virtual layout opens in the flyover: the photo or video shown until then does not belong to it
     const virtual = json.view?.start === "flyover";
     if (virtual && this.source) this.source.stale = true;
-    const edited = storage.get(this._layoutKey());
+    let edited = storage.get(this._layoutKey());
+    // changes saved before the layout had layers: they keep the file's layers
+    if (edited && edited.layers == null && Array.isArray(json.layers)) edited = { ...edited, layers: json.layers };
     let restored = false;
     if (edited) {
       try {
-        await this._applyLayout(edited);
+        await this._applyLayout(pick(edited));
         restored = true;
         toast("Your changes to this layout were restored. Use Build → Reset to original to discard them.");
       } catch (err) {
@@ -362,7 +405,7 @@ class App {
     }
     if (!restored) {
       try {
-        await this._applyLayout(json);
+        await this._applyLayout(pick(json));
       } catch (err) {
         toast(`The layout ${url} could not be loaded: ${err.message}`, 7000);
         await this._applyLayout({});
@@ -383,10 +426,16 @@ class App {
     return `arail.layout:${this.layoutUrl}`;
   }
 
+  /** Where the choice of layers of this layout is kept (it is no change of the layout). */
+  _layersKey() {
+    return `arail.layers:${this.layoutUrl}`;
+  }
+
   /** Load a layout into the world; on an error the previous layout stays loaded and the error is thrown. */
   async _applyLayout(json) {
-    if (json.plugins?.length) {
-      const errors = await ARail.loadPlugins(json.plugins, this.layoutUrl || location.href);
+    const plugins = ARail.layoutPlugins(json); // also those of layers that are off
+    if (plugins.length) {
+      const errors = await ARail.loadPlugins(plugins, this.layoutUrl || location.href);
       if (errors.length) toast(`Plugins could not be loaded: ${errors.join("; ")}`, 8000);
     }
     const problems = ARail.validateLayout(json, this.world.registry);
@@ -437,7 +486,8 @@ class App {
   async resetLayout() {
     this.cancelSave();
     storage.remove(this._layoutKey());
-    await this._applyLayout(this.originalLayout || {});
+    const on = this.layersOn();
+    await this._applyLayout(ARail.withLayers(this.originalLayout || {}, on));
     toast("Layout reset to the original file.");
   }
 
@@ -470,7 +520,8 @@ class App {
   }
 
   showLayoutName() {
-    $("#layoutName").textContent = this.world.layout.name;
+    const on = this.world.layers().filter((l) => l.enabled).map((l) => l.name);
+    $("#layoutName").textContent = [this.world.layout.name, ...on].join(" · ");
     document.title = `${this.world.layout.name} · ARail App`;
   }
 

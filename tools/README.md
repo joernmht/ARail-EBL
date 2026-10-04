@@ -46,9 +46,9 @@ for each setup under a stress test, as the app's **Operations → Compare** does
 figures and the net penalties per party:
 
 ```bash
-node tools/ops-compare.mjs web/layouts/ebl-operations.json --days 28 --seeds 3 --stress flu
+node tools/ops-compare.mjs web/layouts/ebl-lab.json --days 28 --seeds 3 --stress flu
 node tools/ops-compare.mjs my-layout.json --setups integrated,distributed --csv results.csv
-node tools/ops-compare.mjs web/layouts/ebl-operations.json --list   # the setups and stress tests
+node tools/ops-compare.mjs web/layouts/ebl-lab.json --list   # the setups and stress tests
 ```
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,

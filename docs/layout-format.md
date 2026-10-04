@@ -59,11 +59,39 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `objects` | `[]` | the virtual objects |
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
+| `layers` | `[]` | parts of the layout that can be switched on and off, see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
 | `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [container terminal example](container-terminal.md#the-example) does) |
 
 The app writes `clock`, `grid` and all other sections when it exports a layout; `markers.rolling`, `markers.locked` and `markers.moving` only when they are set.
+
+## Layers
+
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. They are switched on and off in the app (**View → Layers**, or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the layers `operations` and `infrastructure`.
+
+```json
+"layers": [
+  {
+    "id": "infrastructure", "name": "Infrastructure", "description": "…", "enabled": false,
+    "objects": [
+      {"id": "track-g1", "built": 1994, "name": "Track 1 (G1)"},
+      {"id": "signal-n1", "type": "signal", "position": [775, 150], "…": "…"}
+    ],
+    "simulations": [{"type": "infrastructure", "…": "…"}],
+    "scenarios": [{"id": "infra-faults", "…": "…"}]
+  }
+]
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `id`, `name`, `description` | | the id (unique among the layers), shown in the app |
+| `enabled` | `false` | on when the layout is opened (unless the browser remembers another choice) |
+| `objects` | `[]` | objects the layer adds. An entry whose `id` is already there (in the base or an earlier layer) is a **patch**: its fields are merged into that object, e.g. the year a track was built |
+| `simulations`, `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
+
+The layers that are on are added in their order. Edits in the app go back where they came from: an object to its layer, a field a layer patched to that layer's patch, a new object to the layer chosen in **Build → Layout → New objects go to** (by default the base). Object ids are unique across all layers, also those that are off. `node tools/ops-compare.mjs` takes `--layers id,id` (by default it switches on the layers with rail operations).
 
 ## `markers`
 
@@ -161,9 +189,11 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`platform`](#platform-rail-platform) | Rail platform (Transport) | segment |
 | [`bus-terminal`](#bus-terminal) | Bus terminal (Transport) | `position` |
 | [`road`](#road-street) | Street (Transport) | `points` (polyline) |
+| [`underpass`](#underpass-pedestrian-underpass) | Pedestrian underpass (Transport) | `points` (polyline) |
 | [`bus-stop`](#bus-stop) | Bus stop (Transport) | `position` |
 | [`bus-line`](#bus-line) | Bus line (Transport) | `stops` |
 | [`building`](#building) | Building (Buildings) | `position` |
+| [`station-building`](#station-building) | Station building (Buildings) | `position` |
 | [`plattenbau`, `altbau-block`, `house`, `house-estate`, `office`, `school`, `supermarket`, `factory`](#german-house-types) | Plattenbau, Altbau block, Single-family house, Single-family estate, Office building, School, Supermarket, Workshop / factory (Buildings) | `position`; the estate `points` (polygon) |
 | [`tree`](#tree) | Tree (Scenery) | `position` |
 | [`forest`](#forest) | Forest (Scenery) | `points` (polygon) |
@@ -228,6 +258,16 @@ A street (or footpath). Geometry: `points` (polyline). Streets whose ends meet, 
 | `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side) |
 | `crossings` | `true` | zebra crossings next to junctions |
 
+### `underpass`: pedestrian underpass
+
+A footpath under the tracks (Personentunnel). Geometry: `points` (polyline); start and end it on streets (on their centre lines, like a street that ends on another). People walk through it like on a footpath, out of sight; it is no junction (no zebra crossings where it meets a street), and stop access points of the platforms above it are connected to it. Drawn are only its stairs: a glass stair housing at the ends that have one, and a stairwell on every platform it passes under.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `width_m` | `4` | width of the tunnel |
+| `stairs` | `"both"` | stair housings `both`, at the `start`, at the `end`, or `none` (an end inside a building, e.g. a station hall) |
+| `stairs_m` | `8` | where a housing opens, measured from the end of the line (room for the street there); it reaches 7 m further in |
+
 ### `bus-stop`
 
 Geometry: `position`, projected onto the nearest street (or the street in `road`; not a footpath). A waiting area on the sidewalk where the buses of bus lines stop. Each side is a stop area with one dock: `<id>:right` (*Stop A*, an A on its sign) and `<id>:left` (*Stop B*); a stop on one side only has no letter. The bus lines serve the docks (`managed`: the timetable leaves them alone). A stop more than 15 m beyond the sidewalk of every street is outlined in red and reports the problem in the inspector.
@@ -267,6 +307,19 @@ Geometry: `position` (centre). A generic building. Like all buildings it looks l
 | `use` | `"residential"` | `residential`, `work`, `school`, `shop`, `other` |
 | `color`, `roof_color` | `#f2f2f2`, `#a6a6a6` | wall and roof colour (older layouts set their own) |
 | `windows` | `true` | |
+
+### `station-building`
+
+A station building of today (Empfangsgebäude): a glass hall in the middle under a cantilevered roof slab, two lower wings with shops on the ground floor and fins in front of the windows upstairs, solar panels on the wing roofs, a canopy along the street front and a clock pylon beside the right wing. Geometry: `position` (centre) and `rotation_deg` (`0`: the street front with the entrance faces −y, the tracks are on the +y side). Use: shop (shops and offices: jobs and shoppers); the hall is lit at night from 05:00 to 01:00.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `length_m` | `66` | along the tracks, hall and both wings (24–160) |
+| `depth_m` | `9` | 6–24; shallow enough for a strip between a street and the tracks |
+| `hall_m` | `18` | width of the glass hall |
+| `floors` | `2` | floors of the wings (1–4); the hall is at least 11 m high |
+| `canopy` | `true` | canopy along the street front of the wings |
+| `clock` | `true` | clock pylon |
 
 ### German house types
 

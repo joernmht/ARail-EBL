@@ -7,12 +7,14 @@
  *
  * Tracking (camera, markers) is separate (see core/tracker.js); it shares `world.map`.
  * Streets form a road network (`world.network()`, core/network.js); bus lines run on it
- * (`world.transit`, core/transit.js).
+ * (`world.transit`, core/transit.js). A layout's layers (core/layers.js) are merged in when it
+ * is loaded (the ones that are on) and split out again by `toJSON()`; `setLayers` switches them.
  * @module arail/core/world
  */
 import { createRng } from "./math.js";
 import { EventBus } from "./events.js";
 import { normalizeLayout, LAYOUT_FORMAT } from "./layout.js";
+import { composeLayout, decomposeLayout, withLayers } from "./layers.js";
 import { MarkerMap } from "./tracker.js";
 import { UnknownObject } from "./object.js";
 import { ServiceManager } from "./services.js";
@@ -66,9 +68,13 @@ export class World {
 
   /* ---------------------------------------------------------------- layout */
 
-  /** Load a layout (replaces all objects, simulations and scenarios). */
+  /** Load a layout (replaces all objects, simulations and scenarios), with the layers that are on. */
   load(json) {
-    const layout = normalizeLayout(json);
+    const composed = composeLayout(json);
+    this._composed = composed;
+    /** The layer new objects are added to (null: the base); one of the layers that are on. */
+    if (!composed.layers.some((l) => l.enabled && l.id === this.activeLayer)) this.activeLayer = null;
+    const layout = normalizeLayout(composed.layout);
     this.layout = layout;
     this.scale = layout.scale;
     const m = layout.markers;
@@ -108,8 +114,36 @@ export class World {
     this.events.emit("layout.loaded", { layout });
   }
 
-  /** Current layout (including edits and the surveyed marker map) as a layout file. */
+  /** Current layout (including edits and the surveyed marker map) as a layout file, with its layers. */
   toJSON() {
+    const flat = this._flatJSON();
+    if (!this._composed?.layers.length) return flat;
+    return decomposeLayout(flat, this._composed, {
+      newObjects: this.activeLayer,
+      simulationOrigin: this._simulationEntries.map((e, i) => this._composed.origin.simulations[i] ?? null),
+    });
+  }
+
+  /** The layers of the layout: [{id, name, description, enabled, simulations: types of its simulations}]. */
+  layers() {
+    return (this._composed?.layers || []).map(({ id, name, description, enabled, simulations }) => ({ id, name, description, enabled, simulations: simulations.map((x) => x.type) }));
+  }
+
+  /** The layer an object comes from (null: the base). */
+  layerOf(id) {
+    return this._composed?.origin.objects.get(id)?.layer ?? null;
+  }
+
+  /**
+   * Switch layers: exactly these are on afterwards. The layout is loaded again with them (edits
+   * are kept; the simulations start again).
+   * @param {Iterable<string>} ids
+   */
+  setLayers(ids) {
+    this.load(withLayers(this.toJSON(), ids));
+  }
+
+  _flatJSON() {
     const L = this.layout;
     // locked and moving as the map has them now; written only when set, to keep files tidy
     const { locked, moving, poses, ...markers } = L.markers;
@@ -153,17 +187,29 @@ export class World {
     return this.objects.find((o) => o.id === id) || null;
   }
 
-  /** A new object ID like "building-3". */
+  /** Ids of objects of the layers that are off (a new object must not take them). */
+  _offLayerIds() {
+    const c = this._composed;
+    if (!c?.layers.length) return new Set();
+    return new Set(c.layers.filter((l) => !l.enabled).flatMap((l) => l.objects.map((o) => o.id)).filter((id) => !c.origin.objects.has(id)));
+  }
+
+  /** A new object ID like "building-3" (not used by any layer, also not by those that are off). */
   newId(type) {
+    const taken = this._offLayerIds();
     let i = 1;
-    while (this.getObject(`${type}-${i}`)) i++;
+    while (this.getObject(`${type}-${i}`) || taken.has(`${type}-${i}`)) i++;
     return `${type}-${i}`;
   }
 
   /** Add an object from a spec ({type, ...}); returns the object. */
   addObject(spec) {
     if (!this.registry.objects.has(spec.type)) throw new Error(`Unknown object type: ${spec.type}`);
-    const s = { ...spec, id: spec.id && !this.getObject(spec.id) ? spec.id : this.newId(spec.type) };
+    const free = spec.id && !this.getObject(spec.id) && !this._offLayerIds().has(spec.id);
+    const s = { ...spec, id: free ? spec.id : this.newId(spec.type) };
+    // a new object belongs to the active layer; one that was removed and comes back (undo) to its own
+    const origins = this._composed?.origin.objects;
+    if (origins && !origins.has(s.id)) origins.set(s.id, { layer: this.activeLayer ?? null, base: null, patches: [] });
     const obj = this._create(s);
     this.objectChanged(obj);
     this.events.emit("object.added", { object: obj });

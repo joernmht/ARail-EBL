@@ -30,10 +30,9 @@ for comparisons over weeks (in the app's Compare view or with [`tools/ops-compar
 
 ## The example
 
-**Layouts… → Example: rail operations** (or
-`app/?layout=../layouts/ebl-operations.json#ops`) opens
-[`web/layouts/ebl-operations.json`](../web/layouts/ebl-operations.json): the EBL lab with its town,
-and on top of it
+The layer **Rail operations** of the lab example (View → Layers, Simulate → Rail operations →
+Switch on the layer, or `app/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
+[`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
 - the station **Bahnhof** with platforms 1 and 2, and four lines out to stations beyond the
   layout: **RE 1** to Altstadt (47 min, 59 km, hourly), **RB 33** to Bergheim (35 min, hourly),
@@ -272,9 +271,9 @@ presets; the stress tests are the presets and the layout's own `stress`.
 ### On the command line
 
 ```sh
-node tools/ops-compare.mjs web/layouts/ebl-operations.json --days 28 --seeds 3 --stress flu
+node tools/ops-compare.mjs web/layouts/ebl-lab.json --days 28 --seeds 3 --stress flu
 node tools/ops-compare.mjs my-layout.json --setups integrated,distributed --csv results.csv
-node tools/ops-compare.mjs web/layouts/ebl-operations.json --list
+node tools/ops-compare.mjs web/layouts/ebl-lab.json --list
 ```
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
@@ -306,7 +305,7 @@ app there are no houses to live in: the crews come to work by car or by train.
 ### Reading a result
 
 The example under the flu wave, 28 days, 3 runs per setup (`node tools/ops-compare.mjs
-web/layouts/ebl-operations.json --stress flu`), a selection:
+web/layouts/ebl-lab.json --stress flu`), a selection:
 
 | Key figure | Integrated ECM | Distributed ECM | Full service | Crew buffers | Lean crew |
 | --- | ---: | ---: | ---: | ---: | ---: |

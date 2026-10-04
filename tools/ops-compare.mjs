@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 // Compare setups of the operations simulation (fleet, maintenance, crews) on a layout, without the app.
 //
-//   node tools/ops-compare.mjs web/layouts/ebl-operations.json --days 28 --seeds 3 --stress flu
+//   node tools/ops-compare.mjs web/layouts/ebl-lab.json --days 28 --seeds 3 --stress flu
 //   node tools/ops-compare.mjs my-layout.json --setups integrated,distributed --csv results.csv
 //
 // Options: --days N (measured days per run, default 28), --seeds N (runs per setup, default 3),
 // --stress ID (a stress test: none, flu, shortage, heat, bus-strike, workshop-slow, bad-monday,
 // unit-damage, or one of the layout's), --setups ID,ID (default: the layout's setups, else the
-// presets), --csv FILE, --json FILE, --list (show the setups and stress tests).
+// presets), --layers ID,ID (the layout's layers to switch on; default: those that are on, or else the
+// ones with rail operations), --csv FILE, --json FILE, --list (show the setups and stress tests).
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { normalizeLayout } from "../web/arail/core/layout.js";
+import { composeLayout, layersOn, normalizeLayers, withLayers } from "../web/arail/core/layers.js";
 import { KPIS, runExperiment, setupsOf, stressOf, toCSV } from "../web/arail/ops/experiment.js";
 
 const args = process.argv.slice(2);
@@ -21,11 +23,21 @@ const opt = (name, fallback = null) => {
 };
 const file = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 if (!file || args.includes("--help")) {
-  console.log("Usage: node tools/ops-compare.mjs <layout.json> [--days 28] [--seeds 3] [--stress ID] [--setups ID,ID] [--csv FILE] [--json FILE] [--list]");
+  console.log("Usage: node tools/ops-compare.mjs <layout.json> [--days 28] [--seeds 3] [--stress ID] [--setups ID,ID] [--layers ID,ID] [--csv FILE] [--json FILE] [--list]");
   process.exit(file ? 0 : 1);
 }
 
-const layout = normalizeLayout(JSON.parse(readFileSync(resolve(file), "utf8")));
+let input = JSON.parse(readFileSync(resolve(file), "utf8"));
+const hasOps = (sims) => (sims || []).some((s) => s?.type === "operations");
+const layerIds = opt("layers")?.split(",").map((s) => s.trim()).filter(Boolean);
+if (layerIds) input = withLayers(input, layerIds);
+else if (!hasOps(input.simulations) && !layersOn(input).length) {
+  // e.g. the lab example: its rail operations are a layer
+  const ops = normalizeLayers(input.layers).filter((l) => hasOps(l.simulations)).map((l) => l.id);
+  if (ops.length) console.warn(`Switching on the layer${ops.length > 1 ? "s" : ""} ${ops.join(", ")}.`);
+  input = withLayers(input, ops);
+}
+const layout = normalizeLayout(composeLayout(input).layout);
 const entry = layout.simulations.find((s) => s.type === "operations");
 if (!entry) console.warn("The layout has no operations simulation; using the defaults (lines from the platforms).");
 const config = entry || {};

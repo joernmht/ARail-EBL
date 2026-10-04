@@ -129,7 +129,7 @@ On the stage, tap a container, then one of its outlined places. In the flyover a
 
 ### Infrastructure
 
-Shown instead of the Terminal tab when the layout has an [infrastructure simulation](infrastructure.md) (**Layouts… → Example: infrastructure**): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
+Shown instead of the Terminal tab when the layout has an [infrastructure simulation](infrastructure.md) (the lab example's layer **Infrastructure**, View → Layers): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
 
 - **Your role** (asset manager, ALV, maintenance dispatcher, planner, construction supervision, funding authority, instructor) decides what may be done; **Run to the next decision** and **Run to the year's end** run fast.
 - **Overview**, **Line map** (the network by km; GeoJSON for QGIS), **Assets** (the register with each asset's record and the inspection plan), **Decisions**, **Projects** (through the HOAI phases), **Staff** (shifts, on call, drone pilots, the level crossing plant), **Results** (per year, the score; saving and loading a game).
@@ -137,7 +137,7 @@ Shown instead of the Terminal tab when the layout has an [infrastructure simulat
 
 ### Operations
 
-Shown instead of the Terminal tab when the layout has [rail operations](operations.md) (**Layouts… → Example: rail operations**): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
+Shown instead of the Terminal tab when the layout has [rail operations](operations.md) (the lab example's layer **Rail operations**, View → Layers): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
 
 - **Today**: key figures of the day, what happened, and short-term changes (a driver calls in sick, a unit breaks down or gets a defect).
 - **Fleet**: every unit, where it is, its next maintenance and its defects.

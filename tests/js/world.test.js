@@ -30,7 +30,7 @@ function run(world, seconds, dtReal = 0.05) {
 }
 
 test("example layouts are valid and load completely", () => {
-  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json", "web/layouts/container-terminal.json", "web/layouts/ebl-operations.json"]) {
+  for (const file of ["web/layouts/ebl-lab.json", "web/layouts/synthetic-demo.json", "web/layouts/container-terminal.json"]) {
     const json = readJSON(file);
     assert.deepEqual(validateLayout(json, registry), [], file);
     const world = createWorld(json);
@@ -50,20 +50,30 @@ test("example layouts are valid and load completely", () => {
   assert.equal(world.services.docks.size, 2 + 2 + 1, "two tracks per platform, one bus bay");
 });
 
-test("the lab example: a town in front of the real table, with streets, bus lines and houses", () => {
+test("the lab example: a town around the real table, with streets, bus lines and houses", () => {
   const world = createWorld(LAB);
   const of = (type) => world.objects.filter((o) => o.type === type);
-  // the town stands on table modules in front of the real table's near edge (y < -320 mm)
+  // the town stands on table modules in front of the real table's near edge (y < -320 mm) and behind
+  // its far edge (y > 710 mm, where the wall is in the photo); on the real table only the station
+  // building, on the free strip between the front track (y ≈ -215 mm) and the near edge
   const physical = of("tabletop").filter((t) => t.spec.kind === "physical");
   assert.equal(physical.length, 1, "the real table, drawn in the flyover");
   assert.ok(of("tabletop").length >= 5, "table modules extend the tabletop");
-  const real = (o) => !["platform", "track", "tabletop"].includes(o.type);
+  const real = (o) => !["platform", "track", "tabletop", "underpass", "station-building"].includes(o.type);
   for (const o of world.objects.filter(real)) {
     const fp = o.footprint?.() || (o.anchorPoint?.() ? [o.anchorPoint()] : []);
-    for (const p of fp) assert.ok(p[1] < -320, `${o.id} is in front of the real table (${p.map(Math.round)})`);
+    const ys = fp.map((p) => p[1]);
+    assert.ok(Math.max(...ys) < -320 || Math.min(...ys) > 710, `${o.id} is in front of or behind the real table (y ${Math.round(Math.min(...ys))} .. ${Math.round(Math.max(...ys))})`);
   }
+  const [station] = of("station-building");
+  for (const p of station.footprint()) assert.ok(p[1] > -326 && p[1] < -240, `station between Bahnhofstraße and the front track (${p.map(Math.round)})`);
+  assert.ok(of("plattenbau").filter((o) => o.anchorPoint()[1] > 710).length >= 3, "Plattenbau behind the tracks");
   // German house types, greyscale
   for (const type of ["plattenbau", "altbau-block", "house-estate", "school", "supermarket", "office", "factory"]) assert.ok(of(type).length, type);
+  // the underpass links the streets in front of and behind the tracks: everybody can walk everywhere
+  const town = world.network();
+  const places = [...town.places.values()];
+  for (const p of places) assert.ok(town.route(places[0], p, { mode: "walk" }), "one network for walkers");
   // streets connected to the station: every building entrance and every stop has a way on foot
   const net = world.network();
   for (const a of world.stopAreas()) a.access.forEach((_, i) => assert.notEqual(net.place(`area:${a.id}:${i}`), null, `${a.id} access ${i}`));

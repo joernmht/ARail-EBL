@@ -24,6 +24,8 @@ import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
 import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
+import { StationBuilding } from "./objects/station.js";
+import { Underpass } from "./objects/underpass.js";
 import { Forest, Tree } from "./objects/trees.js";
 import { Area } from "./objects/landscape.js";
 import { Road } from "./objects/road.js";
@@ -61,6 +63,7 @@ export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/di
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
+export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, layoutPlugins, layerProblems } from "./core/layers.js";
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
@@ -74,6 +77,7 @@ export { drawStopSign, STOP_SIGN } from "./objects/signs.js";
 export { CAR_COLOURS } from "./sims/traffic.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
+export { StationBuilding, Underpass };
 export {
   BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
   gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
@@ -124,8 +128,8 @@ export { MockFeed } from "./feeds/mock.js";
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
   for (const cls of [
-    Platform, BusTerminal, Road, BusStop, BusLine,
-    Building, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
+    Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
+    Building, StationBuilding, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
   ]) {
     registry.registerObject(cls);
   }
