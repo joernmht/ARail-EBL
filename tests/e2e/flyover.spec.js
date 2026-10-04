@@ -360,7 +360,7 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
   await expect.poll(() => sample(163, 337)).toEqual([255, 0, 0]); // left half (x < 700), between grid lines, away from objects
   expect(await sample(1313, 337)).toEqual([0, 0, 255]); // right half, on the table (the example town is in front of it, y < -320)
   // row 0 of the image is at ymax: its bottom quarter (y < -150) lies at the front of the table
-  expect(await sample(-150, -160)).toEqual([0, 255, 0]); // (left of the station and the town, which hide the strip behind them)
+  expect(await sample(-175, -175)).toEqual([0, 255, 0]); // between grid lines, left of the station and the town (they hide the strip behind them)
   // at night the photo is darker, too
   await page.evaluate(() => window.__arail.world.setTime("23:30"));
   const night = await sample(163, 337);
