@@ -164,3 +164,42 @@ test("the 404 page links back to the site", async ({ page }) => {
   // GitHub Pages serves it for any missing address, so the links are absolute
   await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "/ARail-EBL/app/");
 });
+
+test("sticker sheets: one marker per sticker, measurements editable, guides not printed", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?paper=herma10109");
+  await expect(page.locator("#status")).toHaveText("8 markers on 8 stickers, 1 sheet (12 per sheet). Up to 40.5 mm fit on these stickers.");
+  await expect(page.locator("#stickerFields")).toBeVisible();
+  await expect(page.locator("#margin")).toBeHidden();
+  await expect(page.locator("#cutlines")).toBeHidden();
+  await expect(page.locator("svg.sheet").first()).toHaveAttribute("width", "210mm");
+  await page.locator("#size").fill("42");
+  await expect(page.locator("#status")).toHaveText("Markers of 42 mm do not fit on these stickers (at most 40.5 mm)");
+  await page.locator("#size").fill("30");
+  await page.locator("#start").fill("10");
+  await expect(page.locator("#status")).toHaveText(/8 markers on 8 stickers, 2 sheets, from sticker 10/);
+  // the sticker outlines are on screen only
+  await page.emulateMedia({ media: "print" });
+  expect(await page.locator("svg.sheet .guide").first().evaluate((g) => getComputedStyle(g).display)).toBe("none");
+  await page.emulateMedia({ media: "screen" });
+  // wagon tags on HERMA 4347; editing a measurement makes it another sheet
+  await page.goto("/markers/?kind=rolling&paper=herma4347");
+  await expect(page.locator("#status")).toHaveText(/^6 wagons: 18 tags on 18 stickers, 1 sheet \(27 per sheet\)\./);
+  await page.locator("#stLeft").fill("6.75");
+  await expect(page.locator("#paper")).toHaveValue("custom");
+  expect(new URL(page.url()).searchParams.get("paper")).toBe("custom");
+  await expect(page.locator("#status")).not.toHaveClass(/error/);
+  await page.locator("#paper").selectOption("a4");
+  await expect(page.locator("#status")).toHaveText("6 cards with 18 markers on 1 sheet.");
+  await expect(page.locator("#stickerFields")).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("sticker sheet settings have no accessibility violations", async ({ page }) => {
+  await page.goto("/markers/?kind=rolling&paper=herma4347");
+  await expect(page.locator("#status")).toHaveText(/tags on/);
+  const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
+  const violations = (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
+  expect(violations).toEqual([]);
+});

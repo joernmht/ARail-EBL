@@ -194,6 +194,15 @@ For the example: W1–W2 as Sgns, W3 as Sggrss and W4 as Lgns, three prints. The
 3. lay or glue the card on the container spigots, centred on the wagon, with the arrow's end at
    the wagon's A end. Mark the A end on the wagon, so the card goes back the same way round.
 
+**On stickers**: with a sticker sheet as the paper, e.g. HERMA 4347 (63.5 × 29.6 mm, 27 per A4,
+`?kind=rolling&paper=herma4347`), every container spot gets a sticker of its own: the tag in the
+sticker's centre, the wagon, spot and ID left of it (*W3 · Spot 1 · ID 9*), the arrow **A ▶**
+right of it. Stick each sticker centred on its spot, the arrow towards the wagon's A end. In H0 a
+sticker is about the size of a 20 ft container (69.6 × 28.0 mm); the 63.5 mm stickers fit the
+70.1 mm spot pitch, and their 29.6 mm overhang the 28.0 mm deck by 0.8 mm on each side (trim them
+or let them overhang). Tags up to 21 mm fit. Use a test print first; see
+[Sticker sheets](lab-setup.md#sticker-sheets).
+
 A card is as wide as a container (28.0 mm in H0), and its tags sit exactly at the spot centres
 (70.1 mm apart on an Sgns). Its length: 165 mm for an Sgns, 95 mm for an Lgns, 247 mm for an
 Sggrss (printed in landscape). Labels and the arrow stay outside the card, so the white margin

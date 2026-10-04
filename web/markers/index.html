@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ARail Marker Sheets</title>
-<meta name="description" content="Print ArUco and AprilTag markers at an exact size for ARail-EBL.">
+<meta name="description" content="Print ArUco and AprilTag markers at an exact size for ARail-EBL, on plain paper or on sticker sheets.">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +28,7 @@
     .page { display: block; max-width: none; padding: 0; margin: 0; }
     .sheets { display: block; }
     .sheet { box-shadow: none; border-radius: 0; break-after: page; width: var(--sheet-w); height: var(--sheet-h); }
+    .sheet .guide { display: none; }
   }
 </style>
 <style id="pageSize">@page { size: A4; margin: 0; }</style>
@@ -48,7 +49,7 @@
       <label class="field wide" for="ids" data-kind="markers"><span>Marker IDs</span><input type="text" id="ids" value="0-7" aria-describedby="idsHelp">
         <small class="help" id="idsHelp">For example <code>0-7</code> or <code>0, 1, 4-6</code>. The app uses IDs 0–49 by default.</small></label>
       <label class="field" for="size" data-kind="markers"><span>Size <small>(mm, black square)</small></span><input type="number" id="size" min="10" max="180" step="0.5" value="30"></label>
-      <label class="field" for="margin" data-kind="markers"><span>White border <small>(mm)</small></span><input type="number" id="margin" min="2" max="40" step="0.5" value="6"></label>
+      <label class="field" for="margin" data-kind="markers" data-paper="plain"><span>White border <small>(mm)</small></span><input type="number" id="margin" min="2" max="40" step="0.5" value="6"></label>
       <fieldset class="fields deck wide" id="rollingFields" data-kind="rolling" hidden>
         <legend>Deck cards</legend>
         <p class="help wide" id="deckHelp">One card per wagon with an AprilTag 36h11 tag on each container spot. Tag ID = (wagon − 1) × IDs per wagon + spot; spot 0 is at the A end.</p>
@@ -59,22 +60,49 @@
         <label class="field" for="tagSize"><span>Tag size <small>(mm, black square)</small></span><input type="number" id="tagSize" min="10" max="23" step="0.5" value="20"></label>
         <label class="field" for="scale"><span>Scale</span><select id="scale"></select></label>
       </fieldset>
-      <label class="field" for="paper"><span>Paper</span><select id="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a3">A3</option></select></label>
+      <label class="field wide" for="paper"><span>Paper</span><select id="paper">
+        <optgroup label="Plain paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a3">A3</option></optgroup>
+        <optgroup label="Sticker sheets (one marker per sticker)" id="stickerOptions"><option value="custom">Other sticker sheet (enter its measurements)</option></optgroup>
+      </select></label>
+      <fieldset class="fields deck wide" id="stickerFields" data-paper="stickers" hidden>
+        <legend>Sticker sheet</legend>
+        <p class="help wide" id="stickerHelp"></p>
+        <label class="field" for="stW"><span>Sticker width <small>(mm)</small></span><input type="number" id="stW" min="5" max="300" step="0.1" data-geo="width_mm"></label>
+        <label class="field" for="stH"><span>Sticker height <small>(mm)</small></span><input type="number" id="stH" min="5" max="300" step="0.1" data-geo="height_mm"></label>
+        <label class="field" for="stCols"><span>Columns</span><input type="number" id="stCols" min="1" max="30" step="1" data-geo="cols"></label>
+        <label class="field" for="stRows"><span>Rows</span><input type="number" id="stRows" min="1" max="30" step="1" data-geo="rows"></label>
+        <label class="field" for="stLeft"><span>Left margin <small>(mm, to the first sticker)</small></span><input type="number" id="stLeft" min="0" max="200" step="0.05" data-geo="left_mm"></label>
+        <label class="field" for="stTop"><span>Top margin <small>(mm, to the first sticker)</small></span><input type="number" id="stTop" min="0" max="300" step="0.05" data-geo="top_mm"></label>
+        <label class="field" for="stPx"><span>Pitch across <small>(mm, left edge to left edge)</small></span><input type="number" id="stPx" min="5" max="300" step="0.05" data-geo="pitch_x_mm"></label>
+        <label class="field" for="stPy"><span>Pitch down <small>(mm, top edge to top edge)</small></span><input type="number" id="stPy" min="5" max="300" step="0.05" data-geo="pitch_y_mm"></label>
+        <label class="field wide" for="start"><span>First free sticker</span><input type="number" id="start" min="1" step="1" value="1" aria-describedby="startHelp">
+          <small class="help" id="startHelp">To use a sheet that is already partly used: stickers are counted row by row from the top left, starting at 1.</small></label>
+        <label class="field" for="offX"><span>Printer correction → <small>(mm)</small></span><input type="number" id="offX" min="-5" max="5" step="0.1" value="0"></label>
+        <label class="field" for="offY"><span>Printer correction ↓ <small>(mm)</small></span><input type="number" id="offY" min="-5" max="5" step="0.1" value="0"></label>
+        <label class="field check wide" for="testPrint"><input type="checkbox" id="testPrint"> Test print on plain paper (sticker outlines and a 100 mm bar)</label>
+      </fieldset>
       <label class="field check" for="labels"><input type="checkbox" id="labels" checked> ID labels</label>
-      <label class="field check" for="cutlines" data-kind="markers"><input type="checkbox" id="cutlines" checked> Cut lines</label>
+      <label class="field check" for="cutlines" data-kind="markers" data-paper="plain"><input type="checkbox" id="cutlines" checked> Cut lines</label>
     </div>
     <div class="row">
       <button class="btn primary" type="button" id="print">Print</button>
       <button class="btn" type="button" id="svg">Download SVG</button>
     </div>
-    <ol class="steps" data-kind="rolling" hidden>
+    <ol class="steps" data-paper="stickers" hidden>
+      <li>Print one test page on plain paper (<em>Test print</em>), at 100 % (“actual size”, not “fit to page”). Hold it against a sticker sheet in front of a light: the outlines must cover the stickers. If not, correct the measurements or the printer correction.</li>
+      <li>Untick <em>Test print</em>, put the sticker sheet in the printer the right way up and print again at 100 %.</li>
+      <li data-kind="markers">Measure the black square with a ruler and enter it in the app (Build → Layout). Peel the stickers off and stick them flat on the layout; they may be rotated freely.</li>
+      <li data-kind="rolling">Each sticker carries one container spot's tag. Stick it centred on that spot of the wagon (between its spigots), the arrow <strong>A ▶</strong> towards the wagon's A end: spot 0 at the A end, then 1, 2, …</li>
+      <li data-kind="rolling">Measure the height of the stickers above the table and enter it as <code>height_mm</code> of <code>markers.rolling</code> in the layout.</li>
+    </ol>
+    <ol class="steps" data-kind="rolling" data-paper="plain" hidden>
       <li>Print at 100 % (“actual size”, not “fit to page”).</li>
       <li>Check the 100 mm bar on the sheet with a ruler.</li>
       <li>Cut each card out along its grey outline. The arrow beside it points to the A end (spot 0).</li>
       <li>Lay or glue the card on the container spigots, centred on the wagon, with that end at the wagon's A end. One visible tag is enough to find the wagon.</li>
       <li>Measure the height of the cards above the table and enter it as <code>height_mm</code> of <code>markers.rolling</code> in the layout.</li>
     </ol>
-    <ol class="steps" data-kind="markers">
+    <ol class="steps" data-kind="markers" data-paper="plain">
       <li>Print at 100 % (“actual size”, not “fit to page”).</li>
       <li>Check the 100 mm bar on the sheet with a ruler.</li>
       <li>Enter the measured size of the black square in the app (Build → Layout).</li>

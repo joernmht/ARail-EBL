@@ -86,7 +86,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `app/terminal.js` | the Terminal panel and picking containers and places on the stage |
 | `app/operations.js` | the Operations panel: the day, fleet, workshop, crews, penalties; comparisons of setups in the page |
 | `app/infra.js` | the Infrastructure panel: roles, running fast, overview, line map, assets and their records, decisions, projects, staff, results, saving games |
-| `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
+| `markers/markers.js`, `markers/deck-cards.js`, `markers/label-sheets.js` | the marker sheet page; deck cards for model wagons; markers and wagon tags on sticker sheets (geometry and SVG, testable in Node) |
 | `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py` |
 
 ## Coordinate systems
@@ -199,7 +199,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/terminal-model.test.js` | check digits, stacking rules of every carrier type, lifting, free places, reservations, the inventory under random operations; the geometry of the infrastructure objects |
 | `tests/js/terminal-ops.test.js` | moves between all kinds of carriers, refusals, waiting, departures, trucks (gate, leaving, never overlapping), crane phases and timing, cancelling, unload and load, scenario requests, determinism, isolation, round trips, reset, validation, model wagons, edits of the infrastructure |
 | `tests/js/terminal-draw.test.js` | drawing every terminal part by day and night, container colours, label contrast, culling, level of detail, picking, sort keys and the drawing budget of the example |
-| `tests/js/terminal-rolling.test.js`, `deck-cards.test.js` | model wagons from 1, 2 and 3 tags, the size check, outliers, states over time, snapping; deck-card geometry and SVG |
+| `tests/js/terminal-rolling.test.js`, `deck-cards.test.js`, `label-sheets.test.js` | model wagons from 1, 2 and 3 tags, the size check, outliers, states over time, snapping; deck-card geometry and SVG; sticker sheets |
 | `tests/js/ops-engine.test.js` | rail operations without the world: settings and validation, timetable and rotations, duties and the working-time rules, four weeks of operation, determinism, the failure hazard, maintenance limits, distributed vs integrated ECM, the penalty ledger, staff sizing, sick calls and stand-by, rest time, the way to work, stress tests, comparisons and CSV |
 | `tests/js/infra-engine.test.js` | infrastructure without the world: grades, the wear law, asset types and IFC classes, settings and validation, km and the georeference, what is known of an asset, the shifts, the generated network, faults and their report paths, contractors, inspection plans and the audit, a renewal through the HOAI phases, upgrades and the benefit-cost ratio, level crossings with the crossing agreement and the plant, decisions of student roles, determinism and replaying a game, GeoJSON |
 | `tests/js/infra-world.test.js` | infrastructure in the world: the example's assets on the layout, the clock, faults at the station holding the trains (also those of rail operations), the vans' routes, the disruption types, drawing, running fast, saving and restoring, adding it to a layout |

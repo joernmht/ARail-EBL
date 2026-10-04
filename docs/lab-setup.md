@@ -40,6 +40,24 @@ Photos are analysed at up to 2000 pixels, so they reach further. Markers of diff
 
 Use the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (or `web/markers/` locally). Choose the type, IDs, size and white border, then print at 100 % ("actual size"). Measure the 100 mm bar on the sheet; if it is off, correct the marker size in the app instead of reprinting. Matte paper avoids glare. Keep a white border of at least one marker cell around the black square (5–6 mm for 30 mm ArUco Original).
 
+### Sticker sheets
+
+Die-cut sticker sheets save the cutting: choose one under **Paper → Sticker sheets**, and every marker gets a sticker of its own, centred, with a white border of at least one cell and its ID below it.
+
+| Sheet | Sticker | Per A4 | For |
+| --- | --- | --- | --- |
+| HERMA 10109 (removable) | 60 × 60 mm | 12 (3 × 4) | layout markers, up to 40.5 mm ArUco Original |
+| HERMA 4347 (removable) | 63.5 × 29.6 mm | 27 (3 × 9) | wagon tags, one per container spot (see [below](#markers-on-model-wagons)) |
+| Other sticker sheet | your measurements | | |
+
+The page fills in the sheet's measurements: sticker size, columns and rows, the margins from the paper's top left corner to the first sticker and the pitch from one sticker to the next. HERMA 4347 comes from the gLabels template it shares with HERMA 4098; **HERMA 10109 is estimated** (the grid centred with 5 mm gaps). Before you print on stickers:
+
+1. tick **Test print** and print on plain paper at 100 %; hold the page against a sticker sheet in front of a light. The printed outlines must cover the stickers;
+2. if they do not, measure the sheet and correct the measurements (the paper then reads *Other sticker sheet*), or shift everything by the **printer correction** (up to ±5 mm);
+3. untick Test print and print on the sticker sheet. **First free sticker** skips stickers already used on a partly used sheet (counted row by row from the top left).
+
+The sticker outlines and the used stickers are shown on screen only; they are not printed. Measure the black square of the printed markers with a ruler and enter it in the app.
+
 ## Placing markers
 
 - Lay them **flat** on the layout. Any rotation is fine.
@@ -55,7 +73,7 @@ Model wagons for the [container terminal](container-terminal.md#markers-on-rolli
 
 - **IDs**: tag ID = (wagon − 1) × stride + spot (`markers.rolling.stride`, 4 by default), with spot 0 at the wagon's A end. W1 (an Sgns with 3 spots) has the IDs 0, 1, 2; W2 has 4, 5, 6; an Sggrss as W3 has 8 to 11. They do not clash with the layout's marker IDs.
 - **How many**: one tag per container spot, 3 per Sgns, 2 per Lgns, 4 per Sggrss. A tag on spot 0 alone works too, with a less precise heading.
-- **Printing**: the marker sheet page in the mode *Deck cards for model wagons* (`markers/?kind=rolling`): wagon numbers, wagon type, tag size and scale; print at 100 % and check the 100 mm bar.
+- **Printing**: the marker sheet page in the mode *Deck cards for model wagons* (`markers/?kind=rolling`): wagon numbers, wagon type, tag size and scale; print at 100 % and check the 100 mm bar. On a sticker sheet such as HERMA 4347 (`?kind=rolling&paper=herma4347`) each container spot gets a sticker of its own instead of a card per wagon.
 - **Height**: measure the height of the cards above the surface the layout markers lie on and enter it as `markers.rolling.height_mm` (about 15–18 mm in H0); an error of 1 mm moves the wagon by about 1 mm.
 - **Distance**: 20 mm tags are read up to about 0.8 m from a 1280×720 camera. Keep the camera closer over the loading tracks than elsewhere.
 - **Surveying**: the tags never enter the marker map, but set the layout's marker type explicitly (not "detect automatically") before you survey, or take the tagged wagons off the layout.
