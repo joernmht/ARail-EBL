@@ -12,6 +12,8 @@ const PAGES = [
   ["app, Control panel", "/app/#control"],
   ["app, Terminal panel", "/app/#terminal"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
+  ["sign for the layout", "/notice/"],
+  ["sign for the layout, English", "/notice/?lang=en&contact=S.%20Fink"],
   ["404 page", "/404.html"],
 ];
 

@@ -2,7 +2,7 @@
 
 **Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, runs a railway undertaking with its fleet, workshop and crews, lets students manage the railway's infrastructure as a game, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. It runs in the browser, needs no installation and no calibration board.
 
-[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
+[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Sign for the layout](https://joernmht.github.io/ARail-EBL/notice/) · [Documentation](docs/README.md)
 
 ![The EBL lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building and a street on a virtual table module, and Plattenbau behind the tracks](web/assets/ebl-lab-ar.jpg)
 

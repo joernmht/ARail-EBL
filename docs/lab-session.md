@@ -23,6 +23,7 @@ Use the app for a quick check in the lab; use `arail-survey` for the layout that
 - [ ] **Print the sticker sheets** on the [marker page](https://joernmht.github.io/ARail-EBL/markers/) (`web/markers/` locally): marker type, the IDs (e.g. `0-54`, nothing beyond N−1), size, white border at least 6 mm, cut lines on. Use **matte sticker paper** (full-sheet A4 labels; glossy paper reflects the lights). Print at 100 % ("actual size", not "fit to page").
 - [ ] **Check the 100 mm bar** on every sheet with a ruler. If it is off, note the real size of the black square and use it (`--size`, Build → Layout → Marker size) instead of reprinting.
 - [ ] **Every ID once.** Two stickers with the same ID break the survey (the report names IDs seen twice in one frame).
+- [ ] **Tell people first.** Stickers that appear on a layout overnight surprise and annoy the people who look after it, and someone who "tidies" one away breaks the marker map without anyone noticing. Ask whoever is responsible for the layout, and tell everyone who uses or cleans it what is coming, why, and whom to ask. Print the [sign for the layout](https://joernmht.github.io/ARail-EBL/notice/) (`web/notice/` locally; German or English, A4 or A3) with your contact and hang it next to the table: it says what the markers are, asks people not to move or re-stick them, says what the app does not do (no commands to the control system, no camera image leaves the device) and has a QR code to try the app. Removable label paper lets you promise that the stickers come off without residue.
 - [ ] Bring: scissors or a cutter, a tape measure or folding rule, a sketch of where which ID goes, a phone with free storage and a charged battery, a stepladder for a few photos from above, a laptop with `arail-survey` installed (to check the result before leaving).
 
 ## Sticking the markers
@@ -34,7 +35,7 @@ Use the app for a quick check in the lab; use `arail-survey` for the layout that
 - [ ] Not on the rails, not under bridges or catenary masts; between the tracks is fine. Trains must not cover them.
 - [ ] **Press them flat**: curled corners or bubbles show up as high residuals.
 - [ ] Optional, recommended: **measure one long distance** between two marker centres with the tape measure, e.g. from marker 0 to a marker at the far end (write down the IDs and the distance in mm). It checks the scale of the survey (`--distance`).
-- [ ] Leave the stickers on the layout. The marker map stays valid as long as nobody moves them.
+- [ ] Leave the stickers on the layout. The marker map stays valid as long as nobody moves them. Hang the sign next to the table.
 
 ## Filming
 

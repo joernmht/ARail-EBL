@@ -67,6 +67,38 @@ test("marker sheets have the exact paper size and validate the input", async ({ 
   await expect(page.locator("#status")).toHaveClass(/error/);
 });
 
+test("the sign for the layout fills in its fields, keeps them in the address and prints on one page", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/notice/");
+  const sheet = page.locator("#sheet");
+  await expect(sheet.getByRole("heading", { level: 2 })).toHaveText("Was sind die schwarz-weißen Quadrate?");
+  // without a contact the sign shows a reminder and the form says so
+  await expect(page.locator("#sContact")).toHaveClass(/missing/);
+  await expect(page.locator("#status")).toContainText("Enter a contact");
+  await page.locator("#contact").fill("S. Fink, Raum 101");
+  await page.locator("#until").fill("Ende des Semesters");
+  await page.locator("#removable").uncheck();
+  await expect(page.locator("#sContact")).toHaveText("S. Fink, Raum 101");
+  await expect(page.locator("#sUntil")).toHaveText("Die Marker bleiben bis Ende des Semesters.");
+  await expect(page.locator("#sRemovable")).toBeHidden();
+  await expect(page.locator("#sApproved")).toBeHidden();
+  await expect(page.locator("#status")).toHaveText("");
+  expect(new URL(page.url()).searchParams.get("contact")).toBe("S. Fink, Raum 101");
+  // the address restores the sign, in English and on A3
+  await page.goto("/notice/?lang=en&paper=a3&contact=S.%20Fink&removable=0");
+  await expect(sheet).toHaveAttribute("lang", "en");
+  await expect(sheet.getByRole("heading", { level: 2 })).toHaveText("What are the black-and-white squares?");
+  await expect(page.locator("#sRemovable")).toBeHidden();
+  expect(await page.locator("#pageSize").evaluate((el) => el.textContent)).toBe("@page { size: A3; margin: 0; }");
+  // everything fits on the sheet: nothing overflows its A4 box
+  await page.emulateMedia({ media: "print" });
+  await page.goto("/notice/?contact=S.%20Fink&until=Ende%20des%20Wintersemesters%202026%2F27&approved=der%20Leitung%20des%20Labors");
+  const fits = await sheet.evaluate((el) => el.scrollHeight <= el.clientHeight + 1);
+  expect(fits).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("deck cards for model wagons have the exact spot pitch and validate the input", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
