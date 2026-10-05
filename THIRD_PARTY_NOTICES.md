@@ -14,7 +14,7 @@ The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the head
 
 ### Logo of the Chair of Railway Operations
 
-The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg` is © TU Dresden. It is **not** covered by the MIT licence of this repository and may not be reused outside of this project without permission of TU Dresden. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
+The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg` is © TU Dresden. It is **not** covered by the CC BY-NC 4.0 license of this repository and may not be reused outside of this project without permission of TU Dresden. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
 
 ## Loaded at runtime
 
