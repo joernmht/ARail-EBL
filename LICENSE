@@ -25,9 +25,10 @@ Contact: Jörn Maurischat <joern.maurischat@tu-dresden.de>
 Exceptions
 ----------
 Third-party components keep their own licenses (see THIRD_PARTY_NOTICES.md),
-in particular web/vendor/js-aruco2/ (MIT, BSD-3-Clause, BSD-2-Clause). The logo
-of the Chair of Railway Operations is © TU Dresden and not covered by this
-license.
+in particular web/vendor/js-aruco2/ (MIT, BSD-3-Clause, BSD-2-Clause) and the
+fonts in web/assets/fonts/ (SIL Open Font License 1.1). The logo of the Chair of
+Railway Operations is used with the chair's permission and not covered by this
+license. The logo of TU Dresden is not used.
 
 ================================================================================
 

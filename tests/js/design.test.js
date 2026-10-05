@@ -263,3 +263,26 @@ test("design: the chair logo scales (viewBox) and has a white variant for the ap
   const html = readFileSync(join(ROOT, "web/app/index.html"), "utf8");
   assert.match(html, /<img class="cro-logo" src="\.\.\/assets\/cro-logo-white\.svg"[^>]*alt="[^"]*Chair of Railway Operations"/);
 });
+
+test("design: the web fonts are self-hosted (no request to Google) with their licences", () => {
+  const pages = { "web/index.html": "fonts-app.css", "web/app/index.html": "fonts-app.css", "web/markers/index.html": "fonts-markers.css", "web/404.html": null };
+  for (const [page, sheet] of Object.entries(pages)) {
+    const html = readFileSync(join(ROOT, page), "utf8");
+    assert.doesNotMatch(html, /fonts\.(googleapis|gstatic)\.com/, page);
+    if (sheet) assert.match(html, new RegExp(`<link rel="stylesheet" href="[./]*assets/fonts/${sheet.replace(".", "\\.")}">`), page);
+  }
+  const dir = join(ROOT, "web/assets/fonts");
+  for (const [sheet, families] of [["fonts-app.css", ["Noto Sans", "Noto Sans Mono"]], ["fonts-markers.css", ["Archivo", "JetBrains Mono"]]]) {
+    const css = readFileSync(join(dir, sheet), "utf8");
+    for (const family of families) assert.match(css, new RegExp(`font-family: '${family}';`), `${sheet}: ${family}`);
+    const urls = [...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]);
+    assert.ok(urls.length >= families.length * 2, sheet);
+    for (const url of urls) {
+      assert.match(url, /^[\w-]+\.woff2$/, `${sheet}: ${url}`);
+      assert.ok(readFileSync(join(dir, url)).length > 1000, url);
+    }
+  }
+  for (const name of ["NotoSans", "NotoSansMono", "Archivo", "JetBrainsMono"]) {
+    assert.match(readFileSync(join(dir, `OFL-${name}.txt`), "utf8"), /SIL OPEN FONT LICENSE Version 1\.1/, name);
+  }
+});

@@ -14,14 +14,16 @@ The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the head
 
 ### Logo of the Chair of Railway Operations
 
-The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg` is © TU Dresden. It is **not** covered by the CC BY-NC 4.0 license of this repository and may not be reused outside of this project without permission of TU Dresden. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
+The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, with the chair's arrow mark, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg`, is used with the chair's permission. It is **not** covered by the CC BY-NC 4.0 license of this repository and may not be reused outside of this project without permission of the chair. The logo of TU Dresden itself is not used. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`, `web/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
 
-## Loaded at runtime
+## Fonts (self-hosted)
+
+The fonts are served from `web/assets/fonts/`, not from Google's servers, so the pages send no visitor data to Google. `node tools/fetch-fonts.mjs` downloads them again (Latin and Latin Extended subsets, WOFF2).
 
 | Component | Used by | License |
 | --- | --- | --- |
-| [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) and [Noto Sans Mono](https://fonts.google.com/noto/specimen/Noto+Sans+Mono) via Google Fonts | the app (system fonts are used if unavailable) | SIL Open Font License 1.1 |
-| [Archivo](https://fonts.google.com/specimen/Archivo) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) via Google Fonts | the project website and marker sheets (system fonts are used if unavailable) | SIL Open Font License 1.1 |
+| [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) and [Noto Sans Mono](https://fonts.google.com/noto/specimen/Noto+Sans+Mono) | the app and the project page (system fonts are used if unavailable) | SIL Open Font License 1.1 (`OFL-NotoSans.txt`, `OFL-NotoSansMono.txt`) |
+| [Archivo](https://fonts.google.com/specimen/Archivo) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | the marker sheets (system fonts are used if unavailable) | SIL Open Font License 1.1 (`OFL-Archivo.txt`, `OFL-JetBrainsMono.txt`) |
 
 ## Python dependencies (installed with pip)
 
