@@ -1,9 +1,18 @@
 ARail-EBL
-Copyright 2026 The ARail-EBL contributors
+Copyright 2026 Jörn Maurischat and the ARail-EBL contributors
 
-Licensed under the Apache License, Version 2.0 (see LICENSE).
+Developed by Jörn Maurischat with the infrastructure of the Chair of Railway
+Operations (Professur für Bahnverkehr, öffentlicher Stadt- und
+Regionalverkehr), TU Dresden.
+https://github.com/joernmht/ARail-EBL
 
-This product includes third-party components under their own licences,
-including js-aruco2 (MIT) in web/vendor/js-aruco2/; see THIRD_PARTY_NOTICES.md.
-The logo of the Chair of Railway Operations is (c) TU Dresden and is not
-covered by the Apache License.
+Licensed under the Apache License, Version 2.0 (see LICENSE). Under section 4(d)
+of the license, redistributions and derivative works must keep this NOTICE,
+including the credit to Jörn Maurischat and TU Dresden.
+
+Third-party components keep their own licenses (see THIRD_PARTY_NOTICES.md):
+js-aruco2 in web/vendor/js-aruco2/ (MIT; dictionaries BSD-3-Clause and
+BSD-2-Clause) and the fonts in web/assets/fonts/ (SIL Open Font License 1.1).
+The logo of the Chair of Railway Operations (web/assets/cro-logo*.svg) is used
+with the chair's permission and is not covered by the Apache License; the logo
+of TU Dresden is not used.

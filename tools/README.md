@@ -1,7 +1,7 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and one Node.js script,
-[`ops-compare.mjs`](#comparing-operations-setups)):
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and two Node.js scripts,
+[`ops-compare.mjs`](#comparing-operations-setups) and [`fetch-fonts.mjs`](#updating-the-fonts)):
 
 | Command | What it does | Extra |
 | --- | --- | --- |
@@ -53,3 +53,13 @@ node tools/ops-compare.mjs web/layouts/ebl-lab.json --list   # the setups and st
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
 `--setups ID,ID` (default: the layout's setups, else the presets), `--csv FILE`, `--json FILE`.
+
+## Updating the fonts
+
+The pages load their fonts from `web/assets/fonts/`, never from Google. `fetch-fonts.mjs` (Node.js)
+downloads them once from Google Fonts with their licence texts and writes the stylesheets
+`fonts-app.css` and `fonts-markers.css`:
+
+```bash
+node tools/fetch-fonts.mjs
+```

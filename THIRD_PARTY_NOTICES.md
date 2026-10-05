@@ -10,18 +10,20 @@ ARail-EBL includes or uses the following third-party components.
 | ArUco 4x4–7x7 dictionaries (extracted from OpenCV by js-aruco2), Copyright (C) 2013, OpenCV Foundation | `web/vendor/js-aruco2/dictionaries/aruco_*` | BSD-3-Clause |
 | AprilTag 36h11 dictionary, Copyright (C) 2013-2016, The Regents of The University of Michigan | `web/vendor/js-aruco2/dictionaries/apriltag_36h11.js` | BSD-2-Clause |
 
-The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the headers of the dictionary files.
+The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the headers of the dictionary files. `LICENSE.txt` also contains the LGPL-3.0 text of AForge.NET, which covers js-aruco2's `posit1.js`, `posit2.js` and `svd.js`; these files are **not** included, so ARail-EBL contains no LGPL code.
 
 ### Logo of the Chair of Railway Operations
 
-The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg` is © TU Dresden. It is **not** covered by the MIT licence of this repository and may not be reused outside of this project without permission of TU Dresden. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
+The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffentlicher Stadt- und Regionalverkehr), TU Dresden, with the chair's arrow mark, in `web/assets/cro-logo.svg` and `web/assets/cro-logo-white.svg`, is used with the chair's permission. It is **not** covered by the Apache License 2.0 of this repository and may not be reused outside of this project without permission of the chair. The logo of TU Dresden itself is not used. If you fork ARail-EBL for another lab, remove the logo (`web/app/index.html`, `web/index.html`) or replace it with your own. The colours and typeface of the chair's corporate design (Türkis, Noto Sans) are used for the app's interface.
 
-## Loaded at runtime
+## Fonts (self-hosted)
+
+The fonts are served from `web/assets/fonts/`, not from Google's servers, so the pages send no visitor data to Google. `node tools/fetch-fonts.mjs` downloads them again (Latin and Latin Extended subsets, WOFF2).
 
 | Component | Used by | License |
 | --- | --- | --- |
-| [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) and [Noto Sans Mono](https://fonts.google.com/noto/specimen/Noto+Sans+Mono) via Google Fonts | the app (system fonts are used if unavailable) | SIL Open Font License 1.1 |
-| [Archivo](https://fonts.google.com/specimen/Archivo) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) via Google Fonts | the project website and marker sheets (system fonts are used if unavailable) | SIL Open Font License 1.1 |
+| [Noto Sans](https://fonts.google.com/noto/specimen/Noto+Sans) and [Noto Sans Mono](https://fonts.google.com/noto/specimen/Noto+Sans+Mono) | the app and the project page (system fonts are used if unavailable) | SIL Open Font License 1.1 (`OFL-NotoSans.txt`, `OFL-NotoSansMono.txt`) |
+| [Archivo](https://fonts.google.com/specimen/Archivo) and [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) | the marker sheets (system fonts are used if unavailable) | SIL Open Font License 1.1 (`OFL-Archivo.txt`, `OFL-JetBrainsMono.txt`) |
 
 ## Python dependencies (installed with pip)
 
@@ -37,3 +39,4 @@ The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffent
 | Component | Used by | License |
 | --- | --- | --- |
 | [Playwright](https://playwright.dev) | browser tests | Apache-2.0 |
+| [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) | accessibility tests | MPL-2.0 |

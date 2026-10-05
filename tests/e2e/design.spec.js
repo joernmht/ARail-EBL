@@ -113,6 +113,20 @@ test.describe("layout of the app bar and the tabs", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);
   });
 
+  test("the fonts come from our own server, not from Google", async ({ page }) => {
+    const foreign = [];
+    page.on("request", (req) => { if (/fonts\.(googleapis|gstatic)\.com/.test(req.url())) foreign.push(req.url()); });
+    for (const [path, families] of [["/", ["Noto Sans", "Noto Sans Mono"]], ["/app/", ["Noto Sans", "Noto Sans Mono"]], ["/markers/", ["Archivo", "JetBrains Mono"]]]) {
+      await page.goto(path);
+      const loaded = await page.evaluate(async (names) => {
+        await Promise.all(names.map((f) => document.fonts.load(`16px "${f}"`, "Bahnsteig Gleis 3 – Jörn")));
+        return names.map((f) => [...document.fonts].some((face) => face.family.replace(/"/g, "") === f && face.status === "loaded"));
+      }, families);
+      expect(loaded, path).toEqual(families.map(() => true));
+    }
+    expect(foreign).toEqual([]);
+  });
+
   test("selecting a tab does not shift the tabs", async ({ page }) => {
     await openApp(page);
     const boxes = () => page.locator(".tabs button").evaluateAll((tabs) => tabs.map((t) => Math.round(t.getBoundingClientRect().left * 4) / 4));
