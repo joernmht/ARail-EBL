@@ -58,7 +58,7 @@ Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`
 - One topic per pull request, with tests for new behaviour.
 - Update the documentation and `CHANGELOG.md` (section "Unreleased").
 - Describe how you tested it, ideally including a photo or video of a real layout for tracking and rendering changes.
-- By contributing, you agree that your contribution is licensed under the Apache License 2.0 of this project (section 5 of the [license](LICENSE)).
+- By contributing, you agree that your contribution is licensed under the PolyForm Noncommercial License 1.0.0 of this project, and you grant Jörn Maurischat and TU Dresden the right to also license it under commercial terms (see [LICENSE](LICENSE)).
 
 ## Code of conduct
 
