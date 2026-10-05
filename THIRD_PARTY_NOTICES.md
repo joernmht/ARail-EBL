@@ -10,7 +10,7 @@ ARail-EBL includes or uses the following third-party components.
 | ArUco 4x4–7x7 dictionaries (extracted from OpenCV by js-aruco2), Copyright (C) 2013, OpenCV Foundation | `web/vendor/js-aruco2/dictionaries/aruco_*` | BSD-3-Clause |
 | AprilTag 36h11 dictionary, Copyright (C) 2013-2016, The Regents of The University of Michigan | `web/vendor/js-aruco2/dictionaries/apriltag_36h11.js` | BSD-2-Clause |
 
-The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the headers of the dictionary files.
+The full license texts are in `web/vendor/js-aruco2/LICENSE.txt` and in the headers of the dictionary files. `LICENSE.txt` also contains the LGPL-3.0 text of AForge.NET, which covers js-aruco2's `posit1.js`, `posit2.js` and `svd.js`; these files are **not** included, so ARail-EBL contains no LGPL code.
 
 ### Logo of the Chair of Railway Operations
 
@@ -37,3 +37,4 @@ The logo of the Chair of Railway Operations (Professur für Bahnverkehr, öffent
 | Component | Used by | License |
 | --- | --- | --- |
 | [Playwright](https://playwright.dev) | browser tests | Apache-2.0 |
+| [@axe-core/playwright](https://github.com/dequelabs/axe-core-npm) | accessibility tests | MPL-2.0 |
