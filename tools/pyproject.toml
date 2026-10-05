@@ -7,7 +7,7 @@ name = "arail-tools"
 version = "0.1.0"
 description = "ARail-EBL tools: camera calibration, lab survey, control-system bridge and synthetic test scenes"
 readme = "README.md"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "ARail-EBL contributors" }]
 dependencies = ["numpy>=1.24"]
