@@ -58,7 +58,7 @@ Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`
 - One topic per pull request, with tests for new behaviour.
 - Update the documentation and `CHANGELOG.md` (section "Unreleased").
 - Describe how you tested it, ideally including a photo or video of a real layout for tracking and rendering changes.
-- By contributing, you agree that your contribution is licensed under the MIT license of this project.
+- By contributing, you agree that your contribution is licensed under the Apache License 2.0 of this project.
 
 ## Code of conduct
 

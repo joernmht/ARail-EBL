@@ -1,0 +1,9 @@
+ARail-EBL
+Copyright 2026 The ARail-EBL contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party components under their own licences,
+including js-aruco2 (MIT) in web/vendor/js-aruco2/; see THIRD_PARTY_NOTICES.md.
+The logo of the Chair of Railway Operations is (c) TU Dresden and is not
+covered by the Apache License.
