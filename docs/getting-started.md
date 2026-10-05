@@ -25,6 +25,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 | Button | What it does |
 | --- | --- |
 | **Flyover** | A virtual camera instead of the camera image (key F), see below. |
+| **Map**, **2.5D** | The simple view of the whole layout in the flyover: from straight above (Shift+S) or tilted (S), see below. Press the button again for the full flyover. |
 | **Freeze** | Keeps the current video frame for editing (videos and the live camera only). |
 | **Full screen** | The stage alone, e.g. for a projector. |
 
@@ -47,6 +48,12 @@ In Build, everything works as on the camera image, and placed points, the corner
 
 The View panel's **Flyover** section has the same switch and camera buttons, the grid spacing (10, 25, 50, 100 or 250 mm), **Snap to the grid**, **Grid in camera view** (shows the grid over the camera image too, and snapping to it there) and **Show markers**.
 
+### The simple view: Map and 2.5D
+
+For running operations quickly, **Map** and **2.5D** (buttons next to Flyover, the View panel, or the keys Shift+S and S) draw the flyover with little detail. Everything on the layout is flat: each object is its footprint in one colour per kind (tables, streets, platforms, tracks, buildings, trees, areas, yard blocks, …), bus lines show their route. Everything that moves is a plain block: trains, buses, cars, people, cranes, containers, wagons, trucks, barges and vans are the outline of each part, extruded from its lowest to its highest point, without windows, doors or wheels. There are no lights and no night, and the orthophoto is left out. Boards and signs stay.
+
+**Map** looks straight down: a map of the layout. **2.5D** tilts the view, so the moving things stand up from the flat layout. All camera controls work as in the flyover (the plan-view button switches between the two), and so do Build (placing, selecting, dragging, snapping) and picking in the Terminal panel. The choice is kept in the browser.
+
 ## What you see
 
 The chips at the top left of the stage show the state:
@@ -56,7 +63,7 @@ The chips at the top left of the stage show the state:
 | *Tracking · 5 markers* | the layout is registered using five markers; *· locked* when the marker map is locked |
 | *Markers hidden · holding position* | all markers are hidden for a moment; the last pose is kept for 1.5 s |
 | *Markers 7, 9 seen, none known yet* | markers are in view, but none is in the marker map yet (*none in the locked marker map* when it is locked) |
-| *Flyover · plan view*, *Grid 50 mm · snap* | in the flyover: the camera and the grid |
+| *Flyover · plan view*, *Grid 50 mm · snap* | in the flyover: the camera and the grid; *Map* or *Simple 2.5D* in the simple view |
 | *07:32*, *22:30 · night* | the time of day of the fast clock, *· night* between sunset and sunrise (see [Day and night](day-and-night.md)) |
 | *Paused*, *5× time*, *1 disruption*, *Control system · 3 trains*, *Frozen frame*, *Recording* | simulation and recording state |
 | *Operations · 5 trains*, *· 1 unit failed* | [rail operations](operations.md): their trains on the way, failed units |
@@ -164,6 +171,7 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 | 1 … 9 | send a vehicle to the stop with that position on the Stops board (stops served by bus lines or by the rail operations say so) |
 | M | marker outlines on/off |
 | F | flyover on/off |
+| S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
 | Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |

@@ -52,6 +52,7 @@ export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
 export { World } from "./core/world.js";
 export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
+export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
 export { Simulation } from "./core/simulation.js";

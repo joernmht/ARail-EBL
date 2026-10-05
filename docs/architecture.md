@@ -59,6 +59,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/disruptions.js`, `core/scenarios.js` | disruption types and effects, scripted timelines |
 | `core/trains.js`, `feeds/*` | control-system feed: protocol parsing, arrival detection, WebSocket client, in-browser simulator |
 | `core/view.js` | projection, display list, primitives (polygons, prisms, faces, labels, lights), day/night lighting |
+| `core/simple.js` | the simple view (Map, 2.5D): `SimpleView` draws objects as flat footprints and moving things as plain blocks |
 | `core/colors.js` | the corporate-design colours (`CD`, `CD_LIGHT`, `OVERLAY`, `FONT`), the palette of the built-in objects, colour helpers |
 | `core/registry.js`, `core/events.js`, `core/simulation.js` | extension points, event bus, base class of simulations |
 | `sims/passengers.js` | the passenger simulation at stops; hand-over of other simulations' people; boards |
