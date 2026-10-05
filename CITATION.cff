@@ -7,7 +7,7 @@ authors:
     family-names: Maurischat
 repository-code: "https://github.com/joernmht/ARail-EBL"
 url: "https://joernmht.github.io/ARail-EBL/"
-license: CC-BY-NC-4.0
+license: Apache-2.0
 version: 0.1.0
 keywords:
   - augmented reality

@@ -4,7 +4,7 @@
   "private": true,
   "description": "ARail-EBL: an augmented-reality framework for model railway laboratories",
   "type": "module",
-  "license": "CC-BY-NC-4.0",
+  "license": "Apache-2.0",
   "homepage": "https://joernmht.github.io/ARail-EBL/",
   "repository": {
     "type": "git",
