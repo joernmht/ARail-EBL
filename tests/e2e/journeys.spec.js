@@ -89,6 +89,16 @@ test("make travellers, choose their plans, follow them and compare the arrivals"
   await expect(page.locator(".traveller details").nth(1).locator(".journey-log")).toContainText("Off RE 1 at Platform 1");
   await page.waitForTimeout(500); // refreshed: it stays open
   await expect(page.locator(".traveller details").nth(1)).toHaveAttribute("open", "");
+  // a refresh between the click and its toggle event (which comes later) keeps them open
+  const kept = await page.evaluate(async () => {
+    const d = document.querySelectorAll(".traveller details")[2];
+    d.querySelector("summary").click(); // open now, the toggle event queued
+    window.__arail.journeys.update();
+    await new Promise((r) => setTimeout(r, 50));
+    window.__arail.journeys.update();
+    return [d.isConnected, d.open, window.__arail.journeys.open.has(d.closest(".traveller").dataset.id)];
+  });
+  expect(kept).toEqual([true, true, true]);
   // results and their CSV
   const rows = page.locator(".journey-results tbody tr");
   await expect(rows).toHaveCount(3);

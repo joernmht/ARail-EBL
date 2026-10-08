@@ -287,6 +287,10 @@ export class JourneysPanel {
 
   _traveller(sim, t) {
     const st = sim.status(t), chosen = sim.selected === t.id;
+    // its plan and log open or closed as shown now: a click opens them at once, but the toggle event that
+    // keeps this.open comes later, and a refresh before it must not close them again
+    const shown = this.el?.list.querySelector(`.traveller[data-id="${CSS.escape(t.id)}"] details`);
+    const open = shown ? shown.open : this.open.has(t.id);
     const expected = st.expected != null && t.state !== "arrived" && t.state !== "home" && Math.abs(st.expected - st.planned) >= 1 ? ` · expected ${hm(st.expected)}` : "";
     return h("li", { class: `traveller${chosen ? " chosen" : ""}`, "data-id": t.id, "aria-current": chosen ? "true" : null },
       h("span", { class: "traveller-badge", style: { background: t.colour, color: textOn(t.colour) }, "aria-hidden": "true" }, String(t.number)),
@@ -299,7 +303,7 @@ export class JourneysPanel {
           h("button", { class: "btn small", type: "button", "aria-label": `Show ${t.name}`, "aria-pressed": chosen ? "true" : "false", onclick: () => this.show(t) }, "Show"),
           h("button", { class: "btn small", type: "button", "aria-label": `Start ${t.name} again`, onclick: () => this.restart(t) }, "Start again"),
           h("button", { class: "btn small danger", type: "button", "aria-label": `Remove ${t.name}`, onclick: () => this.remove(t) }, "Remove")),
-        h("details", { open: this.open.has(t.id), ontoggle: (ev) => (ev.target.open ? this.open.add(t.id) : this.open.delete(t.id)) },
+        h("details", { open, ontoggle: (ev) => (ev.target.open ? this.open.add(t.id) : this.open.delete(t.id)) },
           h("summary", {}, "Plan and log"),
           legList(t.plan.legs.map((l) => shift(l, t.day * DAY)), t.at(t.leave)),
           t.log.length ? h("ul", { class: "journey-log" }, t.log.map((e) => h("li", {}, h("time", {}, hm(e.t)), h("span", {}, e.text))))

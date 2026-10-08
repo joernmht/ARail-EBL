@@ -94,6 +94,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Journeys: a traveller at a stop that sends people away without being closed (rail replacement bus) waited outside and went in again every few seconds; it now waits outside until the stop is served again.
 - View → Modules: the box of a module just switched keeps the keyboard focus (the panel is drawn anew).
+- Journeys: a traveller's *Plan and log*, opened just before the panel's refresh, closed again: the refresh came before the event that records it (seen on slow machines, e.g. in CI).
 - Another tab opens at its top: the panels share one scrolling column (on a phone, the page), and a tab chosen while the panel was scrolled down opened scrolled down too, with its first controls under the tabs.
 - docs/architecture.md: the layout frame comes from the lowest marker ID of the first frame; the focal length estimate's limits; the terminal's phase timing and random stream; the infrastructure's random streams; missing modules and tests.
 - Marker detection: with a single code (`markers.codes: 1`) any pattern was read as marker 0; for each ID the first matching candidate was taken instead of the one with the fewest bit errors.
