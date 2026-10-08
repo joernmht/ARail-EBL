@@ -1,5 +1,6 @@
 // Layers of a layout (core/layers.js, World.setLayers): merging the layers that are on, splitting
-// edits back into the base and the layers, the lab example's layers, and validation.
+// edits back into the base and the layers, exclusive layers and layers that are layouts of their own,
+// patches of simulations, the lab example's layers (the app's modules), and validation.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -7,7 +8,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  composeLayout, createWorld, decomposeLayout, infraOf, layersOn, layoutPlugins, loadPlugins, opsOf, registry, validateLayout, withLayers,
+  composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
+  toggleLayer, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -118,25 +120,111 @@ test("validation: layers are checked, with every layer on", () => {
   assert.ok(bad.some((p) => p.includes('unknown type "nope"')), "objects of a layer that is off are checked too");
 });
 
-test("the lab example: one layout with the layers rail operations and infrastructure", () => {
+test("exclusive layers and layers that are layouts of their own: switching on one switches the others off", () => {
+  const json = {
+    objects: [{ id: "h", type: "building", position: [0, 0] }],
+    layers: [
+      { id: "a", name: "A", objects: [{ id: "t1", type: "tree", position: [1, 1] }] },
+      { id: "b", name: "B" },
+      { id: "solo", name: "Solo", exclusive: true, objects: [{ id: "t2", type: "tree", position: [2, 2] }] },
+      { id: "other", name: "Other layout", layout: "other.json", objects: [{ id: "t3", type: "tree", position: [3, 3] }] },
+    ],
+  };
+  const layers = normalizeLayers(json.layers);
+  assert.deepEqual(layers.map((l) => [l.id, l.exclusive, l.layout]), [["a", false, null], ["b", false, null], ["solo", true, null], ["other", true, "other.json"]]);
+  assert.deepEqual(layers.find((l) => l.id === "other").objects, [], "a layout of its own adds nothing here");
+  assert.deepEqual(toggleLayer(layers, [], "a"), ["a"]);
+  assert.deepEqual(toggleLayer(layers, ["a"], "b"), ["a", "b"], "ordinary layers are combined");
+  assert.deepEqual(toggleLayer(layers, ["b", "a"], "a"), ["b"], "switched off again");
+  assert.deepEqual(toggleLayer(layers, ["a", "b"], "solo"), ["solo"], "an exclusive one switches the others off");
+  assert.deepEqual(toggleLayer(layers, ["solo"], "a"), ["a"], "and is switched off by another one");
+  assert.deepEqual(toggleLayer(layers, ["solo"], "other"), ["other"]);
+  assert.deepEqual(toggleLayer(layers, ["other"], "other"), []);
+  assert.deepEqual(toggleLayer(layers, ["a"], "nope"), ["a"]);
+  assert.deepEqual(layerChoice(layers, ["b", "x", "a"]), ["a", "b"], "known ids, in layer order");
+  assert.deepEqual(layerChoice(layers, ["a", "other", "solo"]), ["solo"], "only the first exclusive one");
+  // composed: a layout of its own adds nothing even when it is on; saved, it keeps its path
+  const { layout } = composeLayout(withLayers(json, ["other"]));
+  assert.deepEqual(layout.objects.map((o) => o.id), ["h"]);
+  const world = createWorld(withLayers(json, ["solo"]));
+  assert.deepEqual(world.layers().map((l) => [l.id, l.enabled, l.exclusive, l.layout]), [["a", false, false, null], ["b", false, false, null], ["solo", true, true, null], ["other", false, true, "other.json"]]);
+  const saved = world.toJSON().layers;
+  assert.deepEqual(saved[2], { id: "solo", name: "Solo", enabled: true, exclusive: true, objects: [{ id: "t2", type: "tree", position: [2, 2] }] });
+  assert.deepEqual(saved[3], { id: "other", name: "Other layout", enabled: false, layout: "other.json" });
+  assert.ok(validateLayout(json).includes("layers[3] is a layout of its own (layout): its objects, simulations, scenarios and plugins are not used"));
+  assert.ok(validateLayout({ layers: [{ id: "x", exclusive: "yes", layout: 3 }] }).includes("layers[0].exclusive must be true or false"));
+  assert.ok(validateLayout({ layers: [{ id: "x", layout: 3 }] }).includes("layers[0].layout must be the path of a layout file"));
+});
+
+test("simulation patches: a layer changes the settings of a simulation of the base, and edits go back where they came from", () => {
+  const json = {
+    simulations: [{ type: "passengers", base_rate: 0.4 }, { type: "town", people_per_100: 20 }],
+    layers: [
+      { id: "quiet", name: "Quiet", enabled: true, simulations: [{ type: "passengers", patch: true, others: false }, { type: "town", patch: true, enabled: false }, { type: "traffic" }] },
+      { id: "busy", name: "Busy", simulations: [{ type: "passengers", patch: true, base_rate: 2 }] },
+      { id: "none", name: "Nothing to patch", enabled: true, simulations: [{ type: "operations", patch: true, enabled: false }] },
+    ],
+  };
+  const { layout, origin } = composeLayout(json);
+  assert.deepEqual(layout.simulations, [{ type: "passengers", base_rate: 0.4, others: false }, { type: "town", people_per_100: 20, enabled: false }, { type: "traffic" }]);
+  assert.deepEqual([...origin.simulationPatches.keys()], [0, 1]);
+  const world = createWorld(json);
+  const [pax, town] = world.simulations;
+  assert.equal(pax.others, false, "no other passengers");
+  assert.equal(town.enabled, false, "the town is switched off");
+  assert.deepEqual(world.layers().map((l) => [l.id, l.simulations]), [["quiet", ["traffic"]], ["busy", []], ["none", []]], "patches are not simulations of the layer");
+  // an edit of a key the layer patched stays with the layer; other keys go to the base
+  pax.config.others = false;
+  pax.config.base_rate = 0.7;
+  const saved = world.toJSON();
+  assert.equal(saved.simulations[0].base_rate, 0.7);
+  assert.equal("others" in saved.simulations[0], false);
+  assert.equal("enabled" in saved.simulations[1], false);
+  assert.deepEqual(saved.layers[0].simulations.slice(0, 2), [{ type: "passengers", patch: true, others: false }, { type: "town", patch: true, enabled: false }]);
+  assert.equal(saved.layers[0].simulations[2].type, "traffic");
+  assert.deepEqual(saved.layers[1].simulations, [{ type: "passengers", patch: true, base_rate: 2 }], "a layer that is off keeps its patch");
+  // switched off: the base as it was
+  world.setLayers(["busy"]);
+  assert.equal(world.simulations[0].config.base_rate, 2, "the patch of the other layer");
+  assert.equal(world.simulations[0].others, true);
+  assert.equal(world.simulations[1].enabled, true);
+  // a later layer patching the same key wins; the earlier one keeps its value
+  const two = composeLayout({ simulations: [{ type: "passengers", base_rate: 1 }], layers: [
+    { id: "a", enabled: true, simulations: [{ type: "passengers", patch: true, base_rate: 2 }] },
+    { id: "b", enabled: true, simulations: [{ type: "passengers", patch: true, base_rate: 3 }] }] });
+  assert.equal(two.layout.simulations[0].base_rate, 3);
+  const back = decomposeLayout({ simulations: [{ type: "passengers", base_rate: 5 }] }, two);
+  assert.deepEqual([back.simulations[0].base_rate, back.layers[0].simulations[0].base_rate, back.layers[1].simulations[0].base_rate], [1, 2, 5]);
+  assert.ok(validateLayout({ layers: [{ id: "x", simulations: [{ patch: true }, { type: "town", patch: "yes" }] }] }).includes("layers[0].simulations[0] has no type"));
+});
+
+test("the lab example: one layout with the modules rail operations, infrastructure, journeys and the container terminal", () => {
   assert.deepEqual(validateLayout(LAB, registry), []);
-  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false]]);
+  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false], ["journeys", false], ["terminal", false]]);
+  assert.deepEqual(normalizeLayers(LAB.layers).filter((l) => l.exclusive).map((l) => [l.id, l.layout]), [["terminal", "container-terminal.json"]]);
   // the base is the same with any layers on: the station, the Plattenbau behind the tracks
-  for (const on of [[], ["operations"], ["infrastructure"], ["operations", "infrastructure"]]) {
+  for (const on of [[], ["operations"], ["infrastructure"], ["journeys"], ["operations", "infrastructure"], ["operations", "infrastructure", "journeys"], ["terminal"]]) {
     const world = createWorld(withLayers(LAB, on));
     for (const id of ["station-1", "underpass-1", "plattenbau-2", "table-back"]) assert.ok(world.getObject(id), `${id} with ${on}`);
     assert.equal(!!world.getObject("depot-1"), on.includes("operations"));
     assert.equal(!!world.getObject("interlocking-bf"), on.includes("infrastructure"));
     assert.equal(world.getObject("track-g1").spec.built, on.includes("infrastructure") ? 1994 : undefined);
+    // the journeys: the town's residents stay at home and no other passengers come
+    assert.equal(!!journeysOf(world), on.includes("journeys"));
+    assert.equal(world.simulations.find((s) => s.constructor.type === "town").enabled, !on.includes("journeys"));
+    assert.equal(world.simulations.find((s) => s.constructor.type === "passengers").others, !on.includes("journeys"));
     // saved, the layout is the file again (only which layers are on differs)
     const json = world.toJSON();
     assert.deepEqual(json.objects, LAB.objects);
     assert.deepEqual(json.layers.map((l) => l.objects), LAB.layers.map((l) => l.objects));
     assert.deepEqual(json.layers.map((l) => l.scenarios), LAB.layers.map((l) => l.scenarios));
+    assert.deepEqual(json.layers.find((l) => l.id === "terminal"), { ...LAB.layers.find((l) => l.id === "terminal"), enabled: on.includes("terminal") });
   }
-  // both at once: rail operations and the infrastructure game run together
-  const world = createWorld(withLayers(LAB, ["operations", "infrastructure"]));
+  // all at once: rail operations, the infrastructure game and the journeys run together
+  const world = createWorld(withLayers(LAB, ["operations", "infrastructure", "journeys"]));
   for (let i = 0; i < 5; i++) world.step(0.1);
   assert.ok(opsOf(world)?.engine && infraOf(world)?.engine);
+  assert.equal(world.services.planner, opsOf(world), "the rail operations run the trains");
+  assert.equal(journeysOf(world).rail().kind, "operations", "the journeys take their trains");
   assert.deepEqual(world.scenarios.scenarios.map((s) => s.id), ["signal-failure", "football", "closure", "crew-shortage", "infra-faults"]);
 });

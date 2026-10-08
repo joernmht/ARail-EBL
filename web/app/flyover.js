@@ -15,6 +15,8 @@ const MAX_WIDTH = 1920;
 const TAP_PX = 6;
 /** Duration of camera moves started by buttons and keys (ms). */
 const MOVE_MS = 420;
+/** Camera distance (mm) when it starts following something (a traveller): close enough to see a person. */
+const FOLLOW_MM = 1100;
 /** Orbit speed (radians per CSS px of pointer motion). */
 const ORBIT_RAD_PER_PX = 0.0075;
 /** Table drawn when a layout has nothing on it yet (mm). */
@@ -40,6 +42,8 @@ export class Flyover {
     this.anim = null;
     this.wheel = null;
     this.ortho = null;
+    /** Followed by the camera: () => layout point or null (a traveller of the journeys), or null. */
+    this.following = null;
     this._wire();
   }
 
@@ -89,6 +93,7 @@ export class Flyover {
     this.pointers.clear();
     this.anim = null;
     this.wheel = null;
+    this.following = null;
     this._keyAim = false;
     app.editor.cancelGesture();
     app.editor.hover(null);
@@ -300,8 +305,20 @@ export class Flyover {
     this.anim = { from: this.cam.state(), to, t0: performance.now(), ms };
   }
 
+  /**
+   * Keep a moving thing in the middle of the view: `where()` gives its layout point (null: the view
+   * stays where it is). Moving the view by hand ends it.
+   * @param {(() => number[] | null) | null} where
+   */
+  follow(where) {
+    this.following = where;
+    const p = where?.();
+    if (p) this.move((k) => k.set({ target: p, distance: Math.min(k.distance, FOLLOW_MM) }));
+  }
+
   /** On-screen buttons and keys. */
   command(name) {
+    if (name === "fit") this.following = null;
     const c = this.app.canvas, W = c.width, H = c.height;
     const ops = {
       "zoom-in": (k) => k.zoomAt(1.6, null, null, W, H),
@@ -370,6 +387,8 @@ export class Flyover {
     };
     const op = ops[e.key.length === 1 ? e.key.toLowerCase() : e.key] || ops[e.key];
     if (!op) return false;
+    // panning ends following; zooming and turning go on round it
+    if (e.key.startsWith("Arrow") || e.key === "Home") this.following = null;
     this.move(op, 160);
     if (placing) this._keyAim = true;
     if (terminal) this.app.terminal.keyAim = true;
@@ -394,6 +413,13 @@ export class Flyover {
       if (t >= 1) {
         this.anim = null;
         this._save();
+      }
+    }
+    if (this.following && !this.anim && !this.gesture) {
+      const p = this.following(), t = this.cam.target;
+      if (p) {
+        const k = 1 - Math.exp(-Math.max(dt, 1 / 120) / 0.35);
+        this.cam.set({ target: [t[0] + (p[0] - t[0]) * k, t[1] + (p[1] - t[1]) * k] });
       }
     }
     if (this.wheel) {
@@ -459,6 +485,7 @@ export class Flyover {
     if (document.activeElement !== c) c.focus({ preventScroll: true });
     e.preventDefault();
     this.anim = null;
+    this.following = null;
     const p = this._point(e);
     this.pointers.set(e.pointerId, p);
     capture(c, e.pointerId, true);
@@ -583,6 +610,7 @@ export class Flyover {
   _wheel(e) {
     e.preventDefault();
     this.anim = null;
+    this.following = null;
     const [x, y] = this._point(e);
     const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
     // a pinch on a trackpad arrives as a wheel event with ctrlKey

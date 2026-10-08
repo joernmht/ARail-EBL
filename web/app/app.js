@@ -3,6 +3,7 @@ import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { drawGrid, Flyover } from "./flyover.js";
 import { InfraPanel } from "./infra.js";
+import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
 import { Panels } from "./panels.js";
 import { TerminalPanel } from "./terminal.js";
@@ -10,18 +11,23 @@ import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
 const LAB = "../layouts/ebl-lab.json";
+/** Example layouts; `home`: the layout it is a module of (its View panel shows that layout's modules). */
 const EXAMPLES = [
   { id: "lab", label: "Example: EBL lab photo", layout: LAB },
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
-  { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json" },
+  { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json", home: LAB },
 ];
-/** Examples that are a layer of another example: opened with that layer on. */
-const EXAMPLE_LAYERS = { operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" } };
+/** Examples that are a module (layer) of another example: opened with that module on. */
+const EXAMPLE_LAYERS = {
+  operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" }, journeys: { layout: LAB, layer: "journeys" },
+};
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
-const TABS = ["view", "build", "simulate", "terminal", "ops", "infra", "disrupt", "control"];
+const TABS = ["view", "build", "simulate", "terminal", "ops", "infra", "journeys", "disrupt", "control"];
 /** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
-const FEATURE_TABS = { terminal: ["ops", "infra"], ops: ["infra", "terminal"], infra: ["ops", "terminal"] };
+const FEATURE_TABS = {
+  terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
+};
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
@@ -78,6 +84,7 @@ class App {
     this.terminal = new TerminalPanel(this);
     this.operations = new OperationsPanel(this);
     this.infra = new InfraPanel(this);
+    this.journeys = new JourneysPanel(this);
     this._wireUi();
     this._wireEvents();
     const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
@@ -177,6 +184,11 @@ class App {
     // faults of the infrastructure: when they become known and when they are repaired
     ev.on("infra.fault", (e) => toast(`Fault: ${e.asset.name} (${e.asset.t.effect.what}).`, 4000, { minor: true }));
     ev.on("infra.fixed", (e) => toast(`Repaired: ${e.asset.name}.`, 3000, { minor: true }));
+    // journeys: a traveller at its aim
+    ev.on("journeys.traveller.arrived", (e) => {
+      const late = e.delay >= 1 ? `, ${e.delay} min late` : e.delay <= -1 ? `, ${-e.delay} min early` : ", on time";
+      toast(`${e.traveller.name} arrived${late}.`, 3500, { minor: true });
+    });
     ev.on("scenario.started", (e) => toast(`Scenario started: ${e.scenario.name || e.scenario.id}`));
     ev.on("feed.status", () => this.panels.updateControl());
     for (const name of ["disruption.started", "disruption.ended", "scenario.started", "scenario.ended"]) {
@@ -241,13 +253,14 @@ class App {
 
   /**
    * The tabs shown: the Operations tab when the layout has rail operations, the Infrastructure tab when
-   * it has an infrastructure simulation, the Terminal tab when it has a container terminal or neither of
-   * the others (so that six tabs fit on a phone).
+   * it has an infrastructure simulation, the Journeys tab when it has journeys, the Terminal tab when it
+   * has a container terminal or none of the others (so that six tabs fit on a phone).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const ops = has("operations"), infra = has("infrastructure"), terminal = has("terminal");
-    return TABS.filter((t) => (t === "ops" ? ops : t === "infra" ? infra : t === "terminal" ? terminal || (!ops && !infra) : true));
+    const ops = has("operations"), infra = has("infrastructure"), journeys = has("journeys"), terminal = has("terminal");
+    const shown = { ops, infra, journeys, terminal: terminal || (!ops && !infra && !journeys) };
+    return TABS.filter((t) => shown[t] ?? true);
   }
 
   /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
@@ -274,6 +287,7 @@ class App {
     this.terminal.syncHighlight();
     this.operations.syncWidth();
     if (name === "infra") this.infra.syncWidth();
+    this.journeys.syncWidth();
     this.renderPanel(name);
     history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
   }
@@ -295,6 +309,7 @@ class App {
     else if (name === "terminal") this.terminal.render(el);
     else if (name === "ops") this.operations.render(el);
     else if (name === "infra") this.infra.render(el);
+    else if (name === "journeys") this.journeys.render(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
     else if (name === "control") this.panels.renderControl(el);
   }
@@ -311,6 +326,7 @@ class App {
     else if (t === "terminal") this.terminal.update();
     else if (t === "ops") this.operations.update();
     else if (t === "infra") this.infra.update();
+    else if (t === "journeys") this.journeys.update();
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
@@ -332,20 +348,61 @@ class App {
     await this.loadLayoutFromUrl(url, { withImage: true, layers });
   }
 
-  /** Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that layer on). */
+  /** Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that module on). */
   openExample(id) {
     const x = EXAMPLES.find((e) => e.id === id);
     if (x) return this.openLayout(x.layout);
     const l = EXAMPLE_LAYERS[id];
     if (!l) return Promise.resolve();
-    // the layout is open already: switch the layer on
-    if (this.world.layers().some((y) => y.id === l.layer)) return this.setLayers([...this.layersOn(), l.layer]);
+    // the layout is open already: switch the module on
+    if (this.world.layers().some((y) => y.id === l.layer)) return this.chooseModules([...this.layersOn(), l.layer]);
     return this.openLayout(l.layout, [l.layer]);
   }
 
-  /** Ids of the layers that are on. */
+  /** Ids of the layers (modules) that are on. */
   layersOn() {
     return this.world.layers().filter((l) => l.enabled).map((l) => l.id);
+  }
+
+  /**
+   * The modules shown in the View panel: the layers of this layout; in a layout that is a module of
+   * another one (a layout of its own, e.g. the container terminal), the modules of that one.
+   * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null}>}
+   */
+  modules() {
+    const own = this.world.layers(), home = this.moduleHome;
+    if (own.length || !home) return own;
+    return home.modules.map((m) => ({ ...m, enabled: m.id === home.module }));
+  }
+
+  /**
+   * Switch a module on or off (View panel). Rail operations, infrastructure and journeys are combined;
+   * an exclusive module switches the others off, and a module that is a layout of its own (the
+   * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
+   */
+  toggleModule(id) {
+    const home = this.moduleHome;
+    if (home && !this.world.layers().length) return this.openLayout(home.url, ARail.toggleLayer(home.modules, [home.module], id));
+    return this.chooseModules(ARail.toggleLayer(this.world.layers(), this.layersOn(), id));
+  }
+
+  /** Exactly these modules on (exclusive ones alone); a module that is a layout of its own opens it. */
+  chooseModules(ids) {
+    const layers = this.world.layers();
+    const on = ARail.layerChoice(layers, ids);
+    const own = layers.find((l) => l.layout && on.includes(l.id));
+    if (own) return this._openModuleLayout(own, { url: this.layoutUrl, name: this.world.layout.name, layers });
+    return this.setLayers(on);
+  }
+
+  /** Open the layout of a module; its home (the layout whose module it is) is remembered for the way back. */
+  _openModuleLayout(layer, home) {
+    const url = new URL(layer.layout, home.url).href;
+    // the home keeps nothing else on: the module was chosen alone
+    storage.set(`arail.layers:${home.url}`, []);
+    storage.set(`arail.moduleHome:${url}`, moduleHomeRecord(home, layer.id));
+    this.stopLive();
+    return this.loadLayoutFromUrl(url, { withImage: true });
   }
 
   /** Switch the layout's layers: exactly these are on. Edits are kept; the simulations start again. */
@@ -356,7 +413,7 @@ class App {
     try {
       await this._applyLayout(json);
     } catch (err) {
-      toast(`The layers could not be switched: ${err.message}`, 7000);
+      toast(`The modules could not be switched: ${err.message}`, 7000);
       return;
     }
     if (edited) this.saveLayout();
@@ -380,13 +437,23 @@ class App {
       toast(`Could not load the layout ${url}: ${err.message}`);
       json = {};
     }
-    this.layoutUrl = new URL(url, location.href).href;
+    const absolute = new URL(url, location.href).href;
+    // a module that is a layout of its own (asked for, or chosen last time): that layout, with this one as its home
+    const fileLayers = ARail.normalizeLayers(json.layers);
+    const wanted = ARail.layerChoice(fileLayers, layers || storage.get(`arail.layers:${absolute}`) || []);
+    const own = fileLayers.find((l) => l.layout && wanted.includes(l.id));
+    if (own) return this._openModuleLayout(own, { url: absolute, name: json.name || "Layout", layers: fileLayers });
+    // its modules that are layouts of their own know their home (for the way back)
+    for (const l of fileLayers) if (l.layout) storage.set(`arail.moduleHome:${new URL(l.layout, absolute).href}`, moduleHomeRecord({ url: absolute, name: json.name || "Layout", layers: fileLayers }, l.id));
+    this.layoutUrl = absolute;
     this.originalLayout = json;
     storage.set("arail.lastLayout", url);
+    this.moduleHome = await this._moduleHome(absolute);
     // layers: as asked for, else as last time, else as the file has them
     if (layers) storage.set(this._layersKey(), layers);
     const chosen = layers || storage.get(this._layersKey()) || null;
-    const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, chosen) : j);
+    // (an exclusive module alone)
+    const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, ARail.layerChoice(ARail.normalizeLayers(j.layers), chosen)) : j);
     const img = json.view?.image;
     // the layout's own image follows: the photo or video shown until then belongs to the previous
     // layout, and markers detected in it must not be measured into this layout's marker map
@@ -428,6 +495,30 @@ class App {
 
   _layoutKey() {
     return `arail.layout:${this.layoutUrl}`;
+  }
+
+  /**
+   * The home of a layout that is a module of another one ({url, name, module, modules}), or null: as
+   * remembered when it was opened as a module, else for an example its example home.
+   */
+  async _moduleHome(url) {
+    const saved = storage.get(`arail.moduleHome:${url}`);
+    if (saved?.url && Array.isArray(saved.modules)) return saved;
+    const x = EXAMPLES.find((e) => e.home && new URL(e.layout, location.href).href === url);
+    if (!x) return null;
+    try {
+      const homeUrl = new URL(x.home, location.href).href;
+      const res = await fetch(homeUrl, { cache: "no-cache" });
+      const json = res.ok ? await res.json() : null;
+      const layers = ARail.normalizeLayers(json?.layers);
+      const layer = layers.find((l) => l.layout && new URL(l.layout, homeUrl).href === url);
+      if (!layer) return null;
+      const home = moduleHomeRecord({ url: homeUrl, name: json.name || "Layout", layers }, layer.id);
+      storage.set(`arail.moduleHome:${url}`, home);
+      return home;
+    } catch {
+      return null;
+    }
   }
 
   /** Where the choice of layers of this layout is kept (it is no change of the layout). */
@@ -527,6 +618,15 @@ class App {
     const on = this.world.layers().filter((l) => l.enabled).map((l) => l.name);
     $("#layoutName").textContent = [this.world.layout.name, ...on].join(" · ");
     document.title = `${this.world.layout.name} · ARail App`;
+  }
+
+  /** Follow a traveller of the journeys with the flyover's camera (it opens the flyover). */
+  followTraveller(id) {
+    const sim = ARail.journeysOf(this.world);
+    if (!sim) return;
+    sim.selected = id;
+    if (!this.flyover.active) this.flyover.enter();
+    this.flyover.follow(() => sim.positionOf(id));
   }
 
   /**
@@ -922,6 +1022,11 @@ class App {
       const out = infra.people.filter((p) => ["driving", "repairing", "working", "flying"].includes(infra.activity(p).state)).length;
       chips.push([faults ? "warn" : "info", `Infrastructure · ${infra.dateText()}${faults ? ` · ${faults} fault${faults === 1 ? "" : "s"}` : ""}${out ? ` · ${out} out` : ""}`]);
     }
+    const journeys = ARail.journeysOf(this.world);
+    if (journeys?.travellers.length) {
+      const all = journeys.travellers, done = all.filter((t) => t.state === "arrived").length, going = all.filter((t) => t.state !== "home" && t.state !== "arrived").length;
+      chips.push(["info", `Journeys · ${going} travelling · ${done} of ${all.length} arrived`]);
+    }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);
     morph($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
@@ -958,6 +1063,16 @@ class App {
     setPressed(true);
     toast("Recording… press the button again to stop.");
   }
+}
+
+/** What is kept of the home of a module that is a layout of its own: its address, name and modules. */
+function moduleHomeRecord(home, module) {
+  const modules = home.layers.map(({ id, name, description, exclusive, layout, simulations }) => ({
+    id, name, description, exclusive, layout: layout ?? null,
+    // the types of the simulations the module adds (world.layers() has them already; a layout file's layers have the entries)
+    simulations: (simulations || []).map((s) => (typeof s === "string" ? s : s.patch === true ? null : s.type)).filter(Boolean),
+  }));
+  return { url: home.url, name: home.name, module, modules };
 }
 
 const app = new App();

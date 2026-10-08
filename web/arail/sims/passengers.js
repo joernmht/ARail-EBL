@@ -9,10 +9,12 @@
  * Everything is in prototype metres and simulated seconds. The simulation only uses the
  * generic stop-area/dock/vehicle interfaces, so it works for new object types, too.
  *
- * Other simulations can hand their own people over at stops (the town simulation does):
- * `enter()` puts an *agent* on a stop area to wait for a vehicle (optionally only a certain
- * line), `alight()` lets agents get off a vehicle, and the events `passenger.boarded`,
- * `passenger.exited` and `passenger.removed` tell the owner what happened to its agents.
+ * Other simulations can hand their own people over at stops (the town simulation and the
+ * journeys do): `enter()` puts an *agent* on a stop area to wait for a vehicle (optionally only a
+ * certain line, or the vehicles a function accepts), `alight()` lets agents get off a vehicle, and
+ * the events `passenger.boarded`, `passenger.exited` and `passenger.removed` tell the owner what
+ * happened to its agents. With `others: false` only such agents use the stops: nobody else comes to
+ * wait or gets off the vehicles.
  * @module arail/sims/passengers
  */
 import { Simulation } from "../core/simulation.js";
@@ -101,6 +103,8 @@ class Person {
     this.line = null;
     /** Board a vehicle at any dock of the area (e.g. the next train on either side). */
     this.anyDock = false;
+    /** Only board vehicles this function accepts (`(vehicle, dock) => boolean`), or any (null). */
+    this.accept = null;
     /** The vehicle this person is boarding. */
     this.vehicle = null;
   }
@@ -133,6 +137,10 @@ export class PassengerSimulation extends Simulation {
   static params = [
     { key: "base_rate", label: "Arrivals", type: "number", unit: "people/s per 25 m", min: 0, max: 5, step: 0.05, default: 0.5 },
     { key: "max_per_area", label: "Max. people per stop", type: "number", min: 10, max: 500, step: 10, default: 140 },
+    {
+      key: "others", label: "Other passengers", type: "boolean", default: true,
+      help: "People who are not residents of the town or travellers of the journeys: they come to the stops and get off the trains and buses.",
+    },
   ];
 
   constructor(world, config) {
@@ -162,9 +170,17 @@ export class PassengerSimulation extends Simulation {
     }
   }
 
-  /** Remove all agents (without events): their owner places them itself, e.g. after a clock jump. */
-  removeAgents() {
-    for (const c of this.crowds.values()) c.people = c.people.filter((p) => !p.agent);
+  /**
+   * Remove agents (without events): their owner places them itself, e.g. after a clock jump.
+   * @param {((agent: object) => boolean) | null} [which] only the agents it is true for (an owner's own), else all
+   */
+  removeAgents(which = null) {
+    for (const c of this.crowds.values()) c.people = c.people.filter((p) => !p.agent || (which && !which(p.agent)));
+  }
+
+  /** Do people other than agents come to the stops and get off the vehicles? */
+  get others() {
+    return this.config.others !== false;
   }
 
   /** Tell the owners of agents among `people` that they are gone. */
@@ -210,12 +226,13 @@ export class PassengerSimulation extends Simulation {
    * @param {object} options.agent the owner's object for this person (returned in events)
    * @param {string | null} [options.dockId] dock to wait at (default: any dock of the area, see anyDock)
    * @param {string | null} [options.line] only board vehicles with this `lineId`
+   * @param {((vehicle: object, dock: object) => boolean) | null} [options.accept] only board vehicles it accepts
    * @param {boolean} [options.anyDock] board at any dock of the area (default: true without dockId)
    * @param {number[] | null} [options.at] layout point (mm) the person comes from
    * @param {number} [options.mood]
    * @returns {Person | null} null if the area does not exist
    */
-  enter(areaId, { agent, dockId = null, line = null, anyDock = dockId == null, at = null, mood } = {}) {
+  enter(areaId, { agent, dockId = null, line = null, accept = null, anyDock = dockId == null, at = null, mood } = {}) {
     this._sync();
     const c = this.crowds.get(areaId);
     if (!c) return null;
@@ -230,10 +247,13 @@ export class PassengerSimulation extends Simulation {
     const p = new Person(rng, start, [0, 0], "arriving", mood ?? rng.uniform(0.7, 0.95), dock);
     p.agent = agent ?? null;
     p.line = line;
+    p.accept = typeof accept === "function" ? accept : null;
     p.anyDock = !!anyDock;
     p.target = dock ? this._waitingSpot(c, dock) : [rng.uniform(0.25, 0.75) * a.L, rng.uniform(-0.25, 0.25) * a.W];
     c.people.push(p);
     c.inTimes.push(c.t);
+    // its vehicle stands there already: straight to the doors
+    this._boardStanding(p, a);
     return p;
   }
 
@@ -281,6 +301,7 @@ export class PassengerSimulation extends Simulation {
     if (p.dock !== dock.id && !(p.anyDock && p.dock == null)) return false;
     if (p.line && vehicle?.lineId !== p.line) return false;
     if (vehicle?.outOfService) return false; // a bus on its way to the depot
+    if (p.accept && !p.accept(vehicle, dock)) return false;
     return true;
   }
 
@@ -342,6 +363,19 @@ export class PassengerSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- events */
 
+  /** Board a vehicle the person wants that stands at a dock of the area (doors open, not about to leave). */
+  _boardStanding(p, a) {
+    const docks = p.dock ? a.docks.filter((d) => d.id === p.dock) : p.anyDock ? a.docks : [];
+    for (const d of docks) {
+      const v = this._vehicleAt(d.id);
+      if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v)) {
+        this._board(p, d, this._doors(v), 0, v);
+        return true;
+      }
+    }
+    return false;
+  }
+
   _board(p, dock, doors, delay, vehicle = null) {
     p.state = "boarding";
     p.dock = dock.id;
@@ -362,7 +396,7 @@ export class PassengerSimulation extends Simulation {
     const len = dock.s1 - dock.s0;
     const bus = dock.kind === "bus";
     const tod = this.world.clock.demand("passengers");
-    const n = fx.closed ? 0 : rng.poisson(((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25)) * Math.min(1, 0.25 + tod));
+    const n = fx.closed || !this.others ? 0 : rng.poisson(((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25)) * Math.min(1, 0.25 + tod));
     const late = vehicle.delayMin > 0.5;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const s = rng.pick(doors) + rng.uniform(-0.4, 0.4);
@@ -415,7 +449,7 @@ export class PassengerSimulation extends Simulation {
     const disrupted = fx.hold || fx.cancel;
     // no service (the night): nobody comes to wait, and the people waiting go home after a while
     const service = this._inService(a);
-    const rate = fx.closed || !service ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
+    const rate = fx.closed || !service || !this.others ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const dock = a.docks.length ? rng.pick(a.docks).id : null;
@@ -491,14 +525,7 @@ export class PassengerSimulation extends Simulation {
       if (p.state === "arriving") {
         if (dist < 0.4) {
           p.state = "waiting";
-          const docks = p.dock ? a.docks.filter((d) => d.id === p.dock) : p.anyDock ? a.docks : [];
-          for (const d of docks) {
-            const v = this._vehicleAt(d.id);
-            if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v)) {
-              this._board(p, d, this._doors(v), 0, v);
-              break;
-            }
-          }
+          this._boardStanding(p, a);
         }
       } else if (p.state === "waiting") {
         p.wait += dt;

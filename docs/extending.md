@@ -275,22 +275,24 @@ The app shows these problems like all others when a layout is imported; the test
 
 ### Handing people over at stops
 
-The passenger simulation can take care of the people of other simulations at stops, so that waiting, boarding and alighting look the same for everybody (the town simulation does this):
+The passenger simulation can take care of the people of other simulations at stops, so that waiting, boarding and alighting look the same for everybody (the town simulation and the journeys do this):
 
 ```js
 const pax = world.simulations.find((s) => s.constructor.type === "passengers");
 // wait at a stop area, here only for the buses of one line at one dock
 const person = pax.enter(areaId, { agent: myAgent, dockId, line: "bus-line-62", at: [x, y] });
+// or for the vehicles a function accepts, at any dock of the area
+pax.enter(areaId, { agent: other, anyDock: true, accept: (vehicle, dock) => vehicle.line?.startsWith("S 8") });
 // let agents get off a vehicle standing at a dock
 pax.alight(vehicle, dock, [agentA, agentB]);
 pax.release(person);   // give up waiting and walk to the nearest exit
-pax.removeAgents();    // drop all agents silently (e.g. before placing everybody anew)
+pax.removeAgents((agent) => agent instanceof MyAgent);   // drop your agents silently (e.g. before placing them anew); without a function: all
 world.events.on("passenger.boarded", ({ agent, vehicle, dock, area }) => { /* on the vehicle now */ });
 world.events.on("passenger.exited", ({ agent, pos, area }) => { /* left the stop at pos (layout mm) */ });
 world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop deleted) */ });
 ```
 
-`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `anyDock`, `at` (where the person comes from), `mood`. An agent with a `colour` property is drawn in that colour while people show trip purposes (Simulate → Town → Colour of people).
+`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `accept` (board only vehicles this function accepts), `anyDock`, `at` (where the person comes from), `mood`. A vehicle the person wants that stands at the stop already is boarded at once. An agent with a `colour` property is drawn in that colour while people show trip purposes (Simulate → Town → Colour of people). With the setting `others: false` the passenger simulation only handles such agents: nobody else comes to wait or gets off the vehicles.
 
 To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
 
@@ -355,6 +357,7 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `ops.unit.failed`, `defect`, `released`; `ops.job.planned`, `started`, `finished` | `{simulation, unit, trip?, kind?, job?}` |
 | `ops.crew.signon`, `signoff`, `sick`, `alighted`; `ops.penalty`; `ops.log`; `ops.day.end` | see [Rail operations](operations.md#events) |
 | `infra.fault`, `dispatch`, `fixed`, `inspected`, `decision`, `asset.renewed`, `asset.restricted`, `year`, `log` | see [Infrastructure](infrastructure.md#disruptions-and-events) |
+| `journeys.traveller.added`, `journeys.traveller.arrived` | `{simulation, traveller}`; `arrived` also `delay` (clock minutes against the plan), see [Journeys](journeys.md#for-plugins-and-scripts) |
 
 The terminal also listens to `terminal.request.*` events (from scenario `emit` steps), see [Container terminal](container-terminal.md#scenario-requests). The names are exported as `TERMINAL_EVENTS` and `TERMINAL_REQUESTS`.
 
@@ -435,11 +438,31 @@ const { kpi } = arail.runOne(config, { layout: arail.normalizeLayout(json), setu
 
 **Docks run by a planner.** The operations run the trains of their platforms themselves: they set
 `world.services.planner` to an object with `claims(dock)` (true for the docks it runs) and
-`statusLines(area)` (the lines of the boards). Those docks are in mode `"plan"`: the timetable sends
+`statusLines(area)` (the lines of the boards). The [journeys](journeys.md#the-trains) do the same
+when there are no rail operations. `ops.tripsAt(dockId)` gives the trips of the train at a dock (the
+one it came with and the one it leaves with), `ops.engineOffset()` the minutes the engine's time is
+ahead of the world's. Those docks are in mode `"plan"`: the timetable sends
 nothing there, `services.call()` sends a vehicle only with `{source: "plan"}`, and a connected
 control system still takes over all rail docks (mode `"feed"`). `services.refreshModes()` applies
 the modes again when the planner's docks change. Vehicles may carry more label lines in `info`
 (the units, the driver, the delay).
+
+## Journeys
+
+The [journeys](journeys.md) are a built-in simulation (`journeys/`), registered with the built-ins
+by `registerJourneys(registry)`. Their planner and travellers also run in Node.js:
+
+```js
+const journeys = arail.journeysOf(world);       // the layout's journeys, or null
+const plans = journeys.plan({ from: { kind: "station", id: "altstadt" }, to: { kind: "building", id: "school-1" }, leave: "07:20" });
+const t = journeys.addTraveller({ name: "Ada", from: { kind: "station", id: "altstadt" }, to: { kind: "building", id: "school-1" }, plan: plans[0] });
+world.events.on("journeys.traveller.arrived", ({ traveller, delay }) => console.log(traveller.name, delay));
+```
+
+**Simulations patched by a layer.** A layer (a module of the app) can change the settings of a
+simulation of the base with `{"type": "…", "patch": true, …}` (see
+[Layers](layout-format.md#layers)); a simulation then finds them in `config` as usual. The built-in
+simulations take `enabled: false`; check `this.enabled` in `step` and `draw` to honour it.
 
 ## Infrastructure
 

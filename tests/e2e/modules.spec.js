@@ -1,0 +1,138 @@
+// Modules of a layout in the app (its layers): the lab example with its modules Rail operations,
+// Infrastructure, Journeys and Container terminal, switched by clicking their boxes in the View panel
+// and from the Simulate panel, kept per layout, old links to the former example files, new objects
+// in a module, and the container terminal: a layout of its own, chosen alone, and the way back.
+import { expect, test } from "@playwright/test";
+
+const LAB = "/app/?layout=../layouts/ebl-lab.json";
+
+function trackErrors(page) {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => {
+    if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errors.push(m.text());
+  });
+  return errors;
+}
+
+async function open(page, path) {
+  const errors = trackErrors(page);
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
+  return errors;
+}
+
+const on = (page) => page.evaluate(() => window.__arail.layersOn());
+const box = (page, name) => page.locator(".modules").getByRole("button", { name, exact: true });
+
+test("the View panel switches the modules of the lab example by clicking their boxes; the choice is kept", async ({ page }) => {
+  const errors = await open(page, `${LAB}#view`);
+  await expect(page.locator(".modules").getByRole("button")).toHaveCount(4);
+  const ops = box(page, "Rail operations"), infra = box(page, "Infrastructure");
+  await expect(ops).toHaveAttribute("aria-pressed", "false");
+  await expect(infra).toHaveAttribute("aria-pressed", "false");
+  await expect(ops).toHaveAccessibleDescription(/A railway undertaking at work/);
+  await expect(page.locator("#tab-ops")).toBeHidden();
+  await ops.click();
+  await page.waitForFunction(() => window.__arail.world.getObject("depot-1"));
+  await expect(page.locator("#tab-ops")).toBeVisible();
+  await expect(page.locator("#layoutName")).toContainText("Rail operations");
+  await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "true");
+  await expect(box(page, "Rail operations").locator(".module-state")).toHaveText("On");
+  // two at once
+  await box(page, "Infrastructure").click();
+  await page.waitForFunction(() => window.__arail.world.getObject("interlocking-bf"));
+  expect(await on(page)).toEqual(["operations", "infrastructure"]);
+  await expect(page.locator("#tab-infra")).toBeVisible();
+  // kept for this layout, without counting as a change of it
+  await page.reload();
+  await page.waitForFunction(() => window.__arail?.world?.getObject("depot-1"));
+  expect(await on(page)).toEqual(["operations", "infrastructure"]);
+  expect(await page.evaluate(() => localStorage.getItem(`arail.layout:${window.__arail.layoutUrl}`))).toBeNull();
+  await box(page, "Rail operations").click();
+  await page.waitForFunction(() => !window.__arail.world.getObject("depot-1"));
+  await expect(page.locator("#tab-ops")).toBeHidden();
+  await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "false");
+  // with the keyboard: Enter on a focused box
+  await box(page, "Journeys").focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.__arail.layersOn().includes("journeys"));
+  expect(await on(page)).toEqual(["infrastructure", "journeys"]);
+  await expect(page.locator("#tab-journeys")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("Simulate offers to switch on a module; old links open the lab with that module", async ({ page }) => {
+  const errors = await open(page, `${LAB}#simulate`);
+  await expect(page.locator("#opsOpenExample")).toHaveText("Switch on the module “Rail operations”");
+  await page.locator("#opsOpenExample").click();
+  await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
+  expect(await on(page)).toEqual(["operations"]);
+  await page.locator("#journeysOpenExample").click();
+  await page.waitForFunction(() => window.__arail.layersOn().includes("journeys"));
+  expect(await on(page)).toEqual(["operations", "journeys"]);
+  await page.goto("/app/?layout=../layouts/ebl-infrastructure.json#infra");
+  await page.waitForFunction(() => window.__arail?.world?.getObject("interlocking-bf"));
+  expect(await page.evaluate(() => window.__arail.layoutUrl)).toMatch(/layouts\/ebl-lab\.json$/);
+  expect(await on(page)).toEqual(["infrastructure"]);
+  expect(errors).toEqual([]);
+});
+
+test("Build: new objects go to the chosen module and stay with it", async ({ page }) => {
+  const errors = await open(page, `${LAB}&layers=operations#build`);
+  await page.selectOption("#layoutActiveLayer", "operations");
+  const id = await page.evaluate(() => window.__arail.world.addObject({ type: "tree", position: [1800, -600] }).id);
+  const json = await page.evaluate(() => window.__arail.world.toJSON());
+  expect(json.objects.some((o) => o.id === id)).toBe(false);
+  expect(json.layers.find((l) => l.id === "operations").objects.some((o) => o.id === id)).toBe(true);
+  await page.evaluate((id) => window.__arail.editor.select(window.__arail.world.getObject(id)), id);
+  await expect(page.locator("#panel-build")).toContainText("Module: Rail operations");
+  expect(errors).toEqual([]);
+});
+
+test("the container terminal is a module of its own: chosen alone, the lab's modules shown there, and back", async ({ page }) => {
+  const errors = await open(page, `${LAB}#view`);
+  const url = () => page.evaluate(() => window.__arail.layoutUrl.replace(/.*\/layouts\//, ""));
+  await box(page, "Rail operations").click();
+  await page.waitForFunction(() => window.__arail.world.getObject("depot-1"));
+  await expect(box(page, "Container terminal")).toHaveClass(/exclusive/);
+  await expect(box(page, "Container terminal").locator(".module-state")).toHaveText("Alone");
+  // chosen: the terminal's layout opens (in the flyover), the other modules are off
+  await box(page, "Container terminal").click();
+  await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail.layoutUrl) && window.__arail.terminal.sim);
+  await expect(page.locator("#tab-terminal")).toBeVisible();
+  await expect(page.locator("#tab-ops")).toBeHidden();
+  expect(await page.evaluate(() => window.__arail.mode)).toBe("flyover");
+  await page.locator("#tab-view").click();
+  await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
+  await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "false");
+  // another module: back to the lab with that one
+  await box(page, "Infrastructure").click();
+  await page.waitForFunction(() => /ebl-lab\.json$/.test(window.__arail.layoutUrl) && window.__arail.world.getObject("interlocking-bf"));
+  expect(await on(page)).toEqual(["infrastructure"]);
+  // the terminal again, kept over a reload; clicked once more: the lab without modules
+  await box(page, "Container terminal").click();
+  await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail.layoutUrl));
+  await page.goto("/app/#view");
+  await page.waitForFunction(() => window.__arail?.terminal?.sim);
+  expect(await url()).toBe("container-terminal.json");
+  await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
+  await box(page, "Container terminal").click();
+  await page.waitForFunction(() => /ebl-lab\.json$/.test(window.__arail.layoutUrl) && window.__arail.world.getObject("station-1"));
+  expect(await on(page)).toEqual([]);
+  await expect(page.locator(".modules [aria-pressed=true]")).toHaveCount(0);
+  // a link to the lab with the module, and a link straight to the terminal (in a new browser): its modules are the lab's
+  await page.goto(`${LAB}&layers=terminal#view`);
+  await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail?.layoutUrl || ""));
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/app/?layout=../layouts/container-terminal.json#view");
+  await page.waitForFunction(() => window.__arail?.terminal?.sim);
+  await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
+  // the lab from the list of layouts opens the lab, not the terminal again
+  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.waitForFunction(() => /ebl-lab\.json$/.test(window.__arail.layoutUrl) && window.__arail.world.getObject("station-1"));
+  expect(await url()).toBe("ebl-lab.json");
+  expect(errors).toEqual([]);
+});

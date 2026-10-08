@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL lab (example)",
-  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. Layers (View panel) add rail operations and the infrastructure game.",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. Modules (View panel) add rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -406,6 +406,42 @@
           ]
         }
       ]
+    },
+    {
+      "id": "journeys",
+      "name": "Journeys",
+      "description": "An exercise for the lab: every attendee makes one traveller with a start and an aim and chooses a travel plan with transfers (Journeys tab). The town's residents stay at home and no other passengers come; the trains run to the timetable.",
+      "enabled": false,
+      "simulations": [
+        {"type": "passengers", "patch": true, "others": false},
+        {"type": "town", "patch": true, "enabled": false},
+        {
+          "type": "journeys",
+          "name": "EBL regional network",
+          "transfer_min": 3,
+          "start_weekday": "mon",
+          "stations": [
+            {"id": "hbf", "name": "Bahnhof", "platforms": ["platform-1", "platform-2"]},
+            {"id": "altstadt", "name": "Altstadt"},
+            {"id": "bergheim", "name": "Bergheim"},
+            {"id": "talsee", "name": "Talsee"},
+            {"id": "waldau", "name": "Waldau"}
+          ],
+          "lines": [
+            {"id": "RE 1", "route": ["hbf", "altstadt"], "run_min": 47, "km": 59, "takt_min": 60, "first": "05:15", "last": "22:15", "turn_min": 10, "docks": {"hbf": ["platform-1:left", "platform-1:right"]}},
+            {"id": "RB 33", "route": ["hbf", "bergheim"], "run_min": 35, "km": 34, "takt_min": 60, "first": "05:07", "last": "23:07", "turn_min": 8, "docks": {"hbf": ["platform-1:right", "platform-1:left"]}},
+            {"id": "S 2", "route": ["hbf", "talsee"], "run_min": 25, "km": 20, "takt_min": 30, "first": "04:54", "last": "00:04", "turn_min": 6, "docks": {"hbf": ["platform-2:left", "platform-2:right"]}},
+            {"id": "S 8", "route": ["hbf", "waldau"], "run_min": 24, "km": 19, "takt_min": 30, "first": "05:11", "last": "00:11", "turn_min": 6, "docks": {"hbf": ["platform-2:right", "platform-2:left"]}}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "terminal",
+      "name": "Container terminal",
+      "description": "Container trains, trucks and barges at a terminal with a gantry crane and a reach stacker, on table modules of their own (flyover). A layout of its own: it is shown alone.",
+      "enabled": false,
+      "layout": "container-terminal.json"
     }
   ]
 }

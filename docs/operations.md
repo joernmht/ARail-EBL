@@ -30,8 +30,8 @@ for comparisons over weeks (in the app's Compare view or with [`tools/ops-compar
 
 ## The example
 
-The layer **Rail operations** of the lab example (View → Layers, Simulate → Rail operations →
-Switch on the layer, or `app/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
+The module **Rail operations** of the lab example (View → Modules, Simulate → Rail operations →
+Switch on the module, or `app/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
 - the station **Bahnhof** with platforms 1 and 2, and four lines out to stations beyond the

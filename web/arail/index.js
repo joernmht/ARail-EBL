@@ -40,6 +40,7 @@ import { TrafficSimulation } from "./sims/traffic.js";
 import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
+import { registerJourneys } from "./journeys/index.js";
 
 export const VERSION = "0.1.0";
 
@@ -64,7 +65,7 @@ export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/di
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
-export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, layoutPlugins, layerProblems } from "./core/layers.js";
+export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
@@ -123,6 +124,11 @@ export {
   MaintenanceBase, CrossingPlant, ASSET_OBJECTS, INFRA_OBJECTS, drawAssetState, drawLinearState,
   InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, registerInfrastructure,
 } from "./infra/index.js";
+// journeys: travellers with a start, an aim and a travel plan with transfers (named exports only)
+export {
+  TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
+  JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
+} from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
@@ -143,6 +149,7 @@ export function registerBuiltins(registry) {
   registerTerminal(registry);
   registerOperations(registry);
   registerInfrastructure(registry);
+  registerJourneys(registry);
   return registry;
 }
 

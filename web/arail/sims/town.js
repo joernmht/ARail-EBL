@@ -121,7 +121,7 @@ export class TownSimulation extends Simulation {
       on("passenger.exited", (e) => this._exited(e)),
       on("passenger.removed", (e) => this._removed(e)),
       on("vehicle.arrived", (e) => this._vehicleArrived(e)),
-      on("clock.set", () => this._placeAll()),
+      on("clock.set", () => this.enabled && this._placeAll()),
       on("layout.loaded", () => (this._built = null)),
     ];
   }
@@ -150,8 +150,14 @@ export class TownSimulation extends Simulation {
   }
 
   clear() {
-    this.passengers?.removeAgents();
+    this._removeAgents();
     this._built = null;
+  }
+
+  /** Take this town's people off the stops and buses (the agents of other simulations stay). */
+  _removeAgents() {
+    this.passengers?.removeAgents((agent) => agent instanceof Agent);
+    for (const v of this.world.transit?.buses || []) if (Array.isArray(v.riders)) v.riders = v.riders.filter((r) => !(r.agent instanceof Agent));
   }
 
   /* ================================================================ population */
@@ -187,7 +193,7 @@ export class TownSimulation extends Simulation {
     const key = this._populationKey(b);
     if (this._built === key) return false;
     this._built = key;
-    this.passengers?.removeAgents();
+    this._removeAgents();
     this.places = b;
     const rng = createRng(hashKey(this.world.seed, "town"));
     const people = new Population(this.world.seed, "town");
@@ -303,8 +309,7 @@ export class TownSimulation extends Simulation {
   _placeAll() {
     const clock = this.world.clock;
     const now = clock.minutes;
-    this.passengers?.removeAgents();
-    for (const v of this.world.transit?.buses || []) if (Array.isArray(v.riders)) v.riders.length = 0;
+    this._removeAgents();
     // every building of the town is listed (0 = nobody in: dark windows at night)
     this.world.occupancy = new Map();
     for (const list of Object.values(this.places || {})) for (const { o } of list) this.world.occupancy.set(o.id, 0);

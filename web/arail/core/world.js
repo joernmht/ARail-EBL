@@ -125,9 +125,14 @@ export class World {
     });
   }
 
-  /** The layers of the layout: [{id, name, description, enabled, simulations: types of its simulations}]. */
+  /**
+   * The layers of the layout: [{id, name, description, enabled, exclusive, layout, simulations: types of
+   * the simulations it adds}] (`layout`: the path of a layout of its own, relative to the layout file).
+   */
   layers() {
-    return (this._composed?.layers || []).map(({ id, name, description, enabled, simulations }) => ({ id, name, description, enabled, simulations: simulations.map((x) => x.type) }));
+    return (this._composed?.layers || []).map(({ id, name, description, enabled, exclusive, layout, simulations }) => ({
+      id, name, description, enabled, exclusive, layout, simulations: simulations.filter((x) => x.patch !== true).map((x) => x.type),
+    }));
   }
 
   /** The layer an object comes from (null: the base). */
