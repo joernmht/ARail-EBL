@@ -75,8 +75,8 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   await expect(page.locator("#rollingFields")).toBeVisible();
   await expect(page.locator("#ids")).toBeHidden();
   await expect(page.locator("#kind")).toHaveValue("rolling");
-  // the truck chassis is not model rolling stock
-  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80"]);
+  // the truck chassis is not model rolling stock; "all" (every ID per wagon) is for label sheets
+  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80", "all"]);
   const sheet = page.locator("svg.sheet").first();
   await expect(sheet).toHaveAttribute("width", "210mm");
   const g = await sheet.evaluate((svg) => {
@@ -123,6 +123,58 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   await expect(page.locator("#status")).toHaveText("8 markers on 1 sheet.");
   await expect(page.locator("#rollingFields")).toBeHidden();
   expect(new URL(page.url()).searchParams.get("kind")).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("label sheets: one tag per container spot on 63.5 × 29.6 mm labels, layout markers on 60 × 60 mm labels", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?kind=rolling&paper=labels63x30&type=all&wagons=1-25");
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of 63.5 × 29.6 mm labels; 8 labels left over.");
+  await expect(page.locator("#labelFields")).toBeVisible();
+  await expect(page.locator("#scale")).toBeHidden();
+  const first = await page.locator("svg.sheet").first().evaluate((svg) => {
+    const r = svg.querySelector('rect[fill="#000"]');
+    return ["x", "y", "width"].map((a) => Number(r.getAttribute(a)));
+  });
+  expect(first).toEqual([7.25 + 21.75, 15.3 + 4.8, 20]);
+  await page.locator("#skip").fill("26");
+  await expect(page.locator("#status")).toHaveText("100 tags on 5 sheets of 63.5 × 29.6 mm labels; 9 labels left over.");
+  await page.locator("#paper").selectOption("a4");
+  await expect(page.locator("#status")).toHaveText("“Every ID per wagon” is for label sheets: choose a wagon type for deck cards");
+  await page.goto("/markers/?paper=labels60x60&ids=0-99&size=40");
+  await expect(page.locator("#status")).toHaveText("100 markers on 9 sheets of 60 × 60 mm labels; 8 labels left over.");
+  await expect(page.locator("#cutlines")).toBeHidden();
+  await page.locator("#size").fill("50");
+  await expect(page.locator("#status")).toHaveText(/at most 43 mm/);
+  // the ready-made sets are links that fill in the form
+  await page.getByRole("link", { name: "Wagon tags, IDs 0–99" }).click();
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of 63.5 × 29.6 mm labels; 8 labels left over.");
+  await page.getByRole("link", { name: "60 × 60 mm", exact: true }).click();
+  await expect(page.locator("#outlines")).toBeChecked();
+  await expect(page.locator("#status")).toHaveText("12 markers on 1 sheet of 60 × 60 mm labels; 0 labels left over.");
+  // any other sheet from its measurements
+  await page.locator("#paper").selectOption("custom");
+  await expect(page.locator("#cw")).toBeVisible();
+  await page.locator("#cw").fill("70");
+  await page.locator("#ch").fill("37");
+  await page.locator("#crows").fill("8");
+  await page.locator("#cpx").fill("70");
+  await page.locator("#cpy").fill("37");
+  await page.locator("#cleft").fill("0");
+  await page.locator("#ctop").fill("0.5");
+  await expect(page.locator("#status")).toHaveText(/40 mm do not fit on 70 × 37 mm labels .*at most 25 mm/);
+  await page.locator("#size").fill("20");
+  await expect(page.locator("#status")).toHaveText("12 markers on 1 sheet of 70 × 37 mm labels; 12 labels left over.");
+  await page.locator("#crows").fill("9");
+  await expect(page.locator("#status")).toHaveText(/do not fit on A4/);
+  await page.locator("#crows").fill("8");
+  await page.locator("#paper").selectOption("labels60x60");
+  await expect(page.locator("#cw")).toBeHidden();
+  // the printer shift is kept for the next visit
+  await page.locator("#shiftX").fill("1.5");
+  await page.reload();
+  await expect(page.locator("#shiftX")).toHaveValue("1.5");
   expect(errors).toEqual([]);
 });
 

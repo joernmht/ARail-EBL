@@ -20,6 +20,8 @@
   fieldset.deck { margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
   fieldset.deck legend { padding: 0 4px; font-weight: 600; font-size: .85rem; color: var(--text); }
   fieldset.deck .help { margin: 0; font-size: .76rem; color: var(--text-2); }
+  ul.sets { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .85rem; }
+  ul.sets small { color: var(--text-2); }
   @media print {
     body { background: #fff; }
     .bar, .settings { display: none !important; }
@@ -55,24 +57,55 @@
         <label class="field wide" for="wagonType"><span>Wagon type</span><select id="wagonType"></select></label>
         <label class="field" for="stride"><span>IDs per wagon</span><input type="number" id="stride" min="1" max="8" step="1" value="4"></label>
         <label class="field" for="tagSize"><span>Tag size <small>(mm, black square)</small></span><input type="number" id="tagSize" min="10" max="23" step="0.5" value="20"></label>
-        <label class="field" for="scale"><span>Scale</span><select id="scale"></select></label>
+        <label class="field" for="scale" data-paper="plain"><span>Scale</span><select id="scale"></select></label>
       </fieldset>
-      <label class="field" for="paper"><span>Paper</span><select id="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a3">A3</option></select></label>
+      <label class="field wide" for="paper"><span>Paper</span><select id="paper"><optgroup label="Paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a3">A3</option></optgroup><optgroup label="A4 label sheets (one marker per label)" id="labelOptions"></optgroup></select></label>
+      <fieldset class="fields deck wide" id="labelFields" data-paper="labels" hidden>
+        <legend>Label sheet</legend>
+        <p class="help wide" id="labelHelp"></p>
+        <label class="field" for="cw" data-custom><span>Label width <small>(mm)</small></span><input type="number" id="cw" min="10" max="210" step="0.1" value="60"></label>
+        <label class="field" for="ch" data-custom><span>Label height <small>(mm)</small></span><input type="number" id="ch" min="10" max="297" step="0.1" value="60"></label>
+        <label class="field" for="ccols" data-custom><span>Labels across</span><input type="number" id="ccols" min="1" max="20" step="1" value="3"></label>
+        <label class="field" for="crows" data-custom><span>Labels down</span><input type="number" id="crows" min="1" max="40" step="1" value="4"></label>
+        <label class="field" for="cleft" data-custom><span>First label from left <small>(mm)</small></span><input type="number" id="cleft" min="0" max="200" step="0.1" value="7.5"></label>
+        <label class="field" for="ctop" data-custom><span>First label from top <small>(mm)</small></span><input type="number" id="ctop" min="0" max="290" step="0.1" value="17.25"></label>
+        <label class="field" for="cpx" data-custom><span>Pitch across <small>(mm, label + gap)</small></span><input type="number" id="cpx" min="10" max="210" step="0.1" value="67.5"></label>
+        <label class="field" for="cpy" data-custom><span>Pitch down <small>(mm, label + gap)</small></span><input type="number" id="cpy" min="10" max="297" step="0.1" value="67.5"></label>
+        <label class="field" for="skip"><span>Skip labels <small>(already used)</small></span><input type="number" id="skip" min="0" max="26" step="1" value="0"></label>
+        <label class="field check" for="outlines"><input type="checkbox" id="outlines"> Label outlines</label>
+        <label class="field" for="shiftX"><span>Shift right <small>(mm)</small></span><input type="number" id="shiftX" min="-10" max="10" step="0.1" value="0"></label>
+        <label class="field" for="shiftY"><span>Shift down <small>(mm)</small></span><input type="number" id="shiftY" min="-10" max="10" step="0.1" value="0"></label>
+      </fieldset>
       <label class="field check" for="labels"><input type="checkbox" id="labels" checked> ID labels</label>
-      <label class="field check" for="cutlines" data-kind="markers"><input type="checkbox" id="cutlines" checked> Cut lines</label>
+      <label class="field check" for="cutlines" data-kind="markers" data-paper="plain"><input type="checkbox" id="cutlines" checked> Cut lines</label>
     </div>
     <div class="row">
       <button class="btn primary" type="button" id="print">Print</button>
       <button class="btn" type="button" id="svg">Download SVG</button>
     </div>
-    <ol class="steps" data-kind="rolling" hidden>
+    <fieldset class="deck" id="sets">
+      <legend>Ready-made sets on label sheets</legend>
+      <ul class="sets">
+        <li><a href="?kind=rolling&amp;paper=labels63x30&amp;type=all&amp;wagons=1-25&amp;stride=4&amp;size=20">Wagon tags, IDs 0–99</a> <small>AprilTag 36h11, 20 mm, one per container spot · 63.5 × 29.6 mm labels (e.g. HERMA 4338), 4 sheets</small></li>
+        <li><a href="?paper=labels60x60&amp;dict=ARUCO&amp;ids=0-99&amp;size=40">Layout markers, IDs 0–99</a> <small>ArUco Original, 40 mm · 60 × 60 mm labels (e.g. HERMA 10109), 9 sheets</small></li>
+        <li>Test sheet with outlines, for plain paper: <a href="?kind=rolling&amp;paper=labels63x30&amp;type=all&amp;wagons=1-9&amp;stride=3&amp;size=20&amp;outlines=1">63.5 × 29.6 mm</a> · <a href="?paper=labels60x60&amp;dict=ARUCO&amp;ids=0-11&amp;size=40&amp;outlines=1">60 × 60 mm</a></li>
+      </ul>
+    </fieldset>
+    <ol class="steps" data-paper="labels" hidden>
+      <li>Other label sheets: choose <b>Custom label sheet</b> and enter its measurements (from the pack or measured with a ruler).</li>
+      <li>First print one sheet on plain paper with <b>Label outlines</b>, hold it against a label sheet in front of a light and correct with <b>Shift right / down</b> until the outlines match.</li>
+      <li>Print on the label sheets at 100 % (“actual size”, not “fit to page”), without the outlines; check the 50 mm bar.</li>
+      <li>Wagon tags: one label per 20 ft container spot (a 40 ft spot gets two), centred on the spot, with <b>A ▶</b> towards the wagon's A end. Spare labels (“Every ID per wagon”) are for wagons you add later.</li>
+      <li>Partly used sheet: set <b>Skip labels</b> to the number of labels already taken.</li>
+    </ol>
+    <ol class="steps" data-kind="rolling" data-paper="plain" hidden>
       <li>Print at 100 % (“actual size”, not “fit to page”).</li>
       <li>Check the 100 mm bar on the sheet with a ruler.</li>
       <li>Cut each card out along its grey outline. The arrow beside it points to the A end (spot 0).</li>
       <li>Lay or glue the card on the container spigots, centred on the wagon, with that end at the wagon's A end. One visible tag is enough to find the wagon.</li>
       <li>Measure the height of the cards above the table and enter it as <code>height_mm</code> of <code>markers.rolling</code> in the layout.</li>
     </ol>
-    <ol class="steps" data-kind="markers">
+    <ol class="steps" data-kind="markers" data-paper="plain">
       <li>Print at 100 % (“actual size”, not “fit to page”).</li>
       <li>Check the 100 mm bar on the sheet with a ruler.</li>
       <li>Enter the measured size of the black square in the app (Build → Layout).</li>
