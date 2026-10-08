@@ -147,6 +147,16 @@ test("label sheets: one tag per container spot on HERMA 4338, layout markers on 
   await expect(page.locator("#cutlines")).toBeHidden();
   await page.locator("#size").fill("50");
   await expect(page.locator("#status")).toHaveText(/at most 43 mm/);
+  // the ready-made sets are links that fill in the form
+  await page.getByRole("link", { name: "Wagon tags, IDs 0–99" }).click();
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of HERMA 4338 (63.5 × 29.6 mm, 27 per A4); 8 labels left over.");
+  await page.getByRole("link", { name: "HERMA 10109" }).click();
+  await expect(page.locator("#outlines")).toBeChecked();
+  await expect(page.locator("#status")).toHaveText("12 markers on 1 sheet of HERMA 10109 (60 × 60 mm, 12 per A4); 0 labels left over.");
+  // the printer shift is kept for the next visit
+  await page.locator("#shiftX").fill("1.5");
+  await page.reload();
+  await expect(page.locator("#shiftX")).toHaveValue("1.5");
   expect(errors).toEqual([]);
 });
 

@@ -219,7 +219,9 @@ note of the ones you have not used. Layout markers go one per label too, e.g. on
 
 The label positions are the nominal layout of the sheets. Print one sheet on plain paper with
 **Label outlines** first, hold it against a label sheet in front of a light and correct the
-printer with **Shift right / down**. **Skip labels** starts on a partly used sheet.
+printer with **Shift right / down** (kept in the browser for the next visit). **Skip labels**
+starts on a partly used sheet. Both sets of IDs 0–99 and the test sheets are linked on the page
+under **Ready-made sets on label sheets**.
 
 ### Measuring the height
 

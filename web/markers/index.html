@@ -20,6 +20,8 @@
   fieldset.deck { margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
   fieldset.deck legend { padding: 0 4px; font-weight: 600; font-size: .85rem; color: var(--text); }
   fieldset.deck .help { margin: 0; font-size: .76rem; color: var(--text-2); }
+  ul.sets { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .85rem; }
+  ul.sets small { color: var(--text-2); }
   @media print {
     body { background: #fff; }
     .bar, .settings { display: none !important; }
@@ -73,6 +75,14 @@
       <button class="btn primary" type="button" id="print">Print</button>
       <button class="btn" type="button" id="svg">Download SVG</button>
     </div>
+    <fieldset class="deck" id="sets">
+      <legend>Ready-made sets on label sheets</legend>
+      <ul class="sets">
+        <li><a href="?kind=rolling&amp;paper=herma4338&amp;type=all&amp;wagons=1-25&amp;stride=4&amp;size=20">Wagon tags, IDs 0–99</a> <small>AprilTag 36h11, 20 mm, one per container spot · HERMA 4338, 4 sheets</small></li>
+        <li><a href="?paper=herma10109&amp;dict=ARUCO&amp;ids=0-99&amp;size=40">Layout markers, IDs 0–99</a> <small>ArUco Original, 40 mm · HERMA 10109, 9 sheets</small></li>
+        <li>Test sheet with outlines, for plain paper: <a href="?kind=rolling&amp;paper=herma4338&amp;type=all&amp;wagons=1-9&amp;stride=3&amp;size=20&amp;outlines=1">HERMA 4338</a> · <a href="?paper=herma10109&amp;dict=ARUCO&amp;ids=0-11&amp;size=40&amp;outlines=1">HERMA 10109</a></li>
+      </ul>
+    </fieldset>
     <ol class="steps" data-paper="labels" hidden>
       <li>First print one sheet on plain paper with <b>Label outlines</b>, hold it against a label sheet in front of a light and correct with <b>Shift right / down</b> until the outlines match.</li>
       <li>Print on the label sheets at 100 % (“actual size”, not “fit to page”), without the outlines; check the 50 mm bar.</li>

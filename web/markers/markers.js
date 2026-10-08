@@ -179,6 +179,17 @@ function init() {
   for (const [param, id] of [["wagons", "wagons"], ["stride", "stride"], ["size", rolling() ? "tagSize" : "size"], ["ids", "ids"], ["skip", "skip"]]) {
     if (params.has(param)) $(id).value = params.get(param);
   }
+  if (params.get("outlines") === "1") $("outlines").checked = true;
+  // the printer shift belongs to the printer, not to a print: kept in this browser
+  for (const id of ["shiftX", "shiftY"]) {
+    try {
+      const v = localStorage.getItem(`arail-markers-${id}`);
+      if (v != null && Number.isFinite(Number(v))) $(id).value = v;
+    } catch { /* no storage: start at 0 */ }
+    $(id).addEventListener("input", () => {
+      try { localStorage.setItem(`arail-markers-${id}`, $(id).value); } catch { /* not kept */ }
+    });
+  }
   applyKind();
   for (const id of ["kind", "paper", "labels", "margin"]) $(id).addEventListener("input", applyKind);
   const inputs = ["kind", "dict", "ids", "size", "margin", "paper", "labels", "cutlines", "wagons", "wagonType", "stride", "tagSize", "scale", "skip", "outlines", "shiftX", "shiftY"];
