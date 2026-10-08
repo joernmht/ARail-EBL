@@ -98,12 +98,12 @@ export class OperationsPanel {
   _noOperations() {
     return [
       h("h2", { tabindex: "-1" }, "Rail operations"),
-      h("p", { class: "hint" }, "This layout has no rail operations. The Simulate tab adds them, or opens the example."),
+      h("p", { class: "hint" }, "This layout has no rail operations. Settings → Simulation adds them, or switches on the module of the lab example."),
     ];
   }
 
   /**
-   * "Add rail operations to this layout" (Simulate panel): an operations entry with the default
+   * "Add rail operations to this layout" (Settings → Simulation): an operations entry with the default
    * settings; the Operations tab opens.
    */
   async addOperations() {
@@ -116,7 +116,7 @@ export class OperationsPanel {
       return;
     }
     app.saveLayout();
-    app.selectTab("ops");
+    app.openTab("ops");
     toast(this.sim?.engine?.lines.size
       ? "Rail operations added: the trains at the platforms now follow their timetable. A depot (Build → Transport) shows the workshop."
       : "Rail operations added, but no platform names a line yet (Lines in Build).", 7000);
@@ -171,7 +171,7 @@ export class OperationsPanel {
           h("button", { class: "btn small", type: "button", id: "opsBreak", onclick: () => this._inject({ type: "failure", kind: "hard" }) }, "A unit breaks down"),
           h("button", { class: "btn small", type: "button", id: "opsDefect", onclick: () => this._inject({ type: "failure", kind: "soft" }) }, "A unit gets a defect"),
         ),
-        h("p", { class: "hint" }, "More in the Disruptions panel (drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
+        h("p", { class: "hint" }, "More in the Disruptions tab (module Disruptions: drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
       ),
     ];
   }

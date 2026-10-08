@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>Architecture · ARail-EBL</title>
+<meta name="description" content="The software architecture of ARail-EBL in UML: packages, the data flow, and for every model (passengers, town, buses, disruptions, the container terminal, rail operations, infrastructure, journeys, tracking) its classes and activities.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../app/app.css">
+<link rel="stylesheet" href="architecture.css">
+<script type="module" src="architecture.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../"><span class="sign">AR</span>ail <small>EBL</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="#packages">Packages</a>
+    <a class="opt" href="#dataflow">Data flow</a>
+    <a class="opt" href="#models">Models</a>
+    <a class="opt" href="#events">Events</a>
+    <a class="opt" href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
+    <a class="btn primary" href="../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="arch-hero">
+    <div class="wrap">
+      <p class="eyebrow">Software architecture</p>
+      <h1>How ARail-EBL is built</h1>
+      <p class="lead">The framework in the browser (<code>web/arail</code>), the app on top of it (<code>web/app</code>) and the Python tools, in UML: the packages, the data flow, and for every model its classes and what it does, step by step. Open a model to see its diagrams.</p>
+      <p class="lead small">This page is drawn from one file, <a href="https://github.com/joernmht/ARail-EBL/blob/main/web/architecture/model.js"><code>web/architecture/model.js</code></a>, and a test checks that file against the code (<a href="#sync">how</a>).</p>
+    </div>
+  </div>
+
+  <div class="wrap arch-main">
+    <nav class="arch-toc" aria-label="On this page">
+      <a href="#packages">Packages</a>
+      <a href="#dataflow">Data flow</a>
+      <a href="#models">Models</a>
+      <a href="#events">Events</a>
+      <a href="#registry">Extension points</a>
+      <a href="#notation">Notation</a>
+      <a href="#sync">Keeping it true</a>
+    </nav>
+
+    <section id="packages" aria-labelledby="packages-h">
+      <h2 id="packages-h">Packages and modules</h2>
+      <p class="intro" id="packages-intro"></p>
+      <div id="packages-body" class="arch-body"><p class="status">Drawing the diagram…</p></div>
+    </section>
+
+    <section id="dataflow" aria-labelledby="dataflow-h">
+      <h2 id="dataflow-h">Data flow</h2>
+      <p class="intro" id="dataflow-intro"></p>
+      <div id="dataflow-body" class="arch-body"><p class="status">Drawing the diagram…</p></div>
+    </section>
+
+    <section id="models" aria-labelledby="models-h">
+      <h2 id="models-h">Models</h2>
+      <p class="intro">Each model: what it does, its classes (class diagram), its behaviour (activity diagrams, also as steps in text), its settings, the events it sends and listens to, its rules and constants, and its source files. The code that does an action is written under it.</p>
+      <div class="row arch-actions">
+        <button class="btn small" type="button" id="openAll">Open all</button>
+        <button class="btn small" type="button" id="closeAll">Close all</button>
+      </div>
+      <div id="models-body"></div>
+    </section>
+
+    <section id="events" aria-labelledby="events-h">
+      <h2 id="events-h">Events</h2>
+      <p class="intro">The parts of the world talk over its event bus (<code>world.events</code>): who sends what. A plugin can listen to all of them.</p>
+      <div id="events-body"></div>
+    </section>
+
+    <section id="registry" aria-labelledby="registry-h">
+      <h2 id="registry-h">Extension points</h2>
+      <p class="intro">Everything a layout file names by its <code>type</code> comes from the registry (<code>web/arail/core/registry.js</code>): object types, simulations, disruptions and vehicles. Plugins add their own (see <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Extending ARail</a>).</p>
+      <div id="registry-body"></div>
+    </section>
+
+    <section id="notation" aria-labelledby="notation-h">
+      <h2 id="notation-h">Notation</h2>
+      <div id="notation-body"></div>
+    </section>
+
+    <section id="sync" aria-labelledby="sync-h">
+      <h2 id="sync-h">Keeping it true</h2>
+      <div class="prose">
+        <p>The diagrams are only useful while they match the code. So the page is data, and the data is tested: <code>tests/js/architecture.test.js</code> (part of <code>npm test</code>) fails when</p>
+        <ul>
+          <li>a source file of <code>web/arail</code>, <code>web/app</code>, <code>web/plugins</code>, <code>web/markers</code> or <code>tools/arail_tools</code> belongs to no package here, or a file named here does not exist;</li>
+          <li>a class, attribute or operation named here is not in its file, or an action of an activity names code that is not there;</li>
+          <li>an event is sent somewhere in the framework and not listed under <a href="#events">Events</a>, or one listed here is sent nowhere;</li>
+          <li>an object type, simulation, disruption or vehicle is registered and not listed under <a href="#registry">Extension points</a> (or the other way round), or a simulation's settings differ from its parameters here;</li>
+          <li>an activity has a step that cannot be reached, a step that leads nowhere, or a decision without guards.</li>
+        </ul>
+        <p>Whoever changes the code changes <code>web/architecture/model.js</code> in the same commit (see <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>). The prose of <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/architecture.md">docs/architecture.md</a> is cross-checked by hand at the same time.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>ARail-EBL is open source under the <a href="https://github.com/joernmht/ARail-EBL/blob/main/LICENSE">Apache License 2.0</a>. The diagrams are laid out with <a href="https://github.com/dagrejs/dagre">dagre</a> (MIT; <a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
+    <p><a href="../">Project page</a> · <a href="../app/">App</a> · <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Documentation</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The diagrams of this page are drawn with JavaScript. The same information is in <a href="https://github.com/joernmht/ARail-EBL/blob/main/web/architecture/model.js">web/architecture/model.js</a>.</p></noscript>
+</body>
+</html>

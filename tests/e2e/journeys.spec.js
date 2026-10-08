@@ -1,7 +1,7 @@
 // Journeys in the app: the lab example's module Journeys, a traveller made in the Journeys tab (start,
 // aim, departure, transfer time, the travel plans to choose from), the travellers following their
 // plans on the layout, "Show" following one in the flyover, the results and their CSV, the
-// travellers kept with the layout, and the module offered in the Simulate panel.
+// travellers kept with the layout, and the module offered in Settings → Simulation.
 import { expect, test } from "@playwright/test";
 
 const PATH = "/app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
@@ -112,23 +112,23 @@ test("make travellers, choose their plans, follow them and compare the arrivals"
   expect(errors).toEqual([]);
 });
 
-test("the generated people can come back; Simulate offers the module; journeys can be added to another layout", async ({ page }) => {
+test("the generated people can come back; Settings → Simulation offers the module; journeys can be added to another layout", async ({ page }) => {
   const errors = await open(page);
   await page.locator("#journeysCrowd").check();
   await page.waitForFunction(() => window.__arail.world.simulations.find((s) => s.constructor.type === "town").agents.length > 0);
   await page.locator("#journeysCrowd").uncheck();
   await page.waitForFunction(() => !window.__arail.world.simulations.find((s) => s.constructor.type === "town").enabled);
-  // the lab without the module: Simulate offers it
+  // the lab without the module: Settings → Simulation offers it
   await page.locator("#tab-view").click();
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.journeys.sim);
   await expect(page.locator("#tab-journeys")).toBeHidden();
-  await page.locator("#tab-simulate").click();
+  await page.locator("#tab-settings").click();
   await expect(page.locator("#journeysOpenExample")).toHaveText("Switch on the module “Journeys”");
   // another layout: added to it, with the lines named on its platforms
   await page.evaluate(() => window.__arail.openExample("synthetic"));
   await page.waitForFunction(() => /synthetic/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
-  await page.locator("#tab-simulate").click();
+  await page.locator("#tab-settings").click();
   await page.locator("#journeysAdd").click();
   await page.waitForFunction(() => window.__arail.journeys.sim);
   await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");

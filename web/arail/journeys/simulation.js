@@ -695,9 +695,17 @@ export class JourneysSimulation extends Simulation {
   }
 
   /** In front of a closed stop: in again when it opens. */
+  /** The stop area where the traveller's current leg begins (a bus stop, or a platform), or null. */
+  _legArea(t) {
+    const leg = t.current;
+    return (leg && this.world.getStopArea(leg.type === "bus" ? leg.fromArea : leg.area)) || null;
+  }
+
   _retry(t, now) {
-    const area = t.current && this.world.getStopArea(t.current.type === "bus" ? t.current.fromArea : t.current.area);
-    if (area && this.world.disruptions.effectsFor(area).closed) {
+    const area = this._legArea(t);
+    // still closed, or still sending people away (rail replacement): wait on
+    const fx = area ? this.world.disruptions.effectsFor(area) : null;
+    if (fx && (fx.closed || fx.leave)) {
       t.retryAt = this.world.time + RETRY_S;
       return;
     }
@@ -793,9 +801,11 @@ export class JourneysSimulation extends Simulation {
       return this._walkTo(t, { pos: t.pos, key: null }, to, "platform");
     }
     if (t.state === "waiting") {
-      // left the stop without getting on: it is closed
+      // left the stop without getting on: it is closed, or nothing runs from it (rail replacement)
+      const at = this._legArea(t);
+      const fx = at ? this.world.disruptions.effectsFor(at) : null;
       t.state = "outside";
-      t.note = "The stop is closed: waiting outside";
+      t.note = fx && !fx.closed && fx.leave ? "Nothing runs from this stop: waiting outside" : "The stop is closed: waiting outside";
       t.retryAt = this.world.time + RETRY_S;
       this._log(t, t.note, now);
     }

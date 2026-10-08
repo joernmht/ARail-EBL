@@ -244,6 +244,29 @@ test("editing offset X and then offset Y keeps both", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("another tab opens at its top, also when the panel was scrolled down; on a phone the page scrolls back to the tabs", async ({ page }) => {
+  const errors = await openApp(page, "/app/#build");
+  await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
+  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
+  await page.locator("#tab-view").click();
+  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
+  await expect(page.locator(".modules")).toBeInViewport();
+  // the same tab again (e.g. its panel drawn anew) stays where it is
+  await page.locator("#panel").evaluate((p) => (p.scrollTop = 300));
+  await page.evaluate(() => window.__arail.selectTab("view"));
+  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(300);
+  // a phone: the page scrolls, the tabs stick to the top
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("#tab-build").click();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const tabsTop = await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top);
+  expect(tabsTop).toBeLessThan(0);
+  await page.locator("#tab-view").click();
+  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBe(0);
+  await expect(page.locator(".modules")).toBeInViewport();
+  expect(errors).toEqual([]);
+});
+
 test("periodic panel updates keep keyboard focus on buttons", async ({ page }) => {
   const errors = await openApp(page, "/app/#view");
   await page.getByRole("button", { name: "Longer focal length" }).focus();

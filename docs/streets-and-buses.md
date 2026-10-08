@@ -26,7 +26,7 @@ All three are in **Build → Add to the layout → Transport**.
    cannot reach, no way along the streets) are listed in the inspector.
 
 The route of a line is drawn in its colour along the right lane of the streets, with a dot at
-each stop. The board over each stop and the **Simulate → Stops** board show the next bus, e.g.
+each stop. The board over each stop and the **Settings → Simulation → Stops** board show the next bus, e.g.
 *Bus 62 to Station in 6 min* (in clock minutes), *Bus 62 to Station boarding*, or *Bus 62
 arrives in 3 min (terminus)* on the side where buses only arrive. The buses of a *loop* go round
 a ring, which the signs show like the Berlin Ringbahn: *Bus 62 Ring ↻ in 4 min* (clockwise, seen
@@ -41,7 +41,7 @@ timetable buses stands in its bay). Seen from far away (the stop shorter
 than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a
 small badge with the stop sign and the number of people waiting; zoom in for the full board.
 Platforms and bus terminals are longer, so they keep their full boards unless they are tiny. The
-**Simulate → Stops** board lists both sides of such a stop as *Stop A* and *Stop B* (the letters
+**Settings → Simulation → Stops** board lists both sides of such a stop as *Stop A* and *Stop B* (the letters
 on its signs).
 
 ## How the buses run
@@ -77,7 +77,7 @@ on its signs).
 
 ## Road traffic
 
-Add the simulation to the layout (Simulate shows nothing to set; edit the layout file):
+Add the simulation to the layout (Settings shows nothing to set; edit the layout file):
 
 ```json
 "simulations": [{ "type": "passengers" }, { "type": "traffic", "cars_per_km": 20 }]

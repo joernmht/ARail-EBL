@@ -35,7 +35,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), change the simulation and the time of day (Simulate), move containers (Terminal), start disruptions and scenarios (Disruptions) and connect a control system (Control). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Simulate → Night 22:30** to see it at night. The modules of the lab example (**View → Modules**, boxes to click) add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**, Infrastructure tab) or turn it into an exercise with travellers the attendees plan (**Journeys**, Journeys tab); **Container terminal** opens the terminal on its own, in the flyover.
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), switch modules on and off (View → Modules), and set the simulation, the time of day and the control system (Settings). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Settings → Night 22:30** to see it at night. Each module that is on has its tab: the lab example's modules add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**), turn it into an exercise with travellers the attendees plan (**Journeys**), or open the container terminal on its own, in the flyover (**Container terminal**, Terminal tab); **Disruptions** (every layout) starts disruptions and scenarios.
 
 **On your own layout:**
 
@@ -46,7 +46,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 For a fixed layout of a whole table, follow the [lab-session guide](docs/lab-session.md): stickers all over the table, one video, `arail-survey`, then build in the flyover. See [Getting started](docs/getting-started.md) and [Setting up a lab](docs/lab-setup.md) for details. The live camera needs https (GitHub Pages) or `localhost`.
 
-**Connect a control system:** `pip install -e "tools[bridge]"` and run the bridge with the built-in simulator, then press **Connect** in the app's Control panel:
+**Connect a control system:** `pip install -e "tools[bridge]"` and run the bridge with the built-in simulator, then press **Connect** in the app's **Settings → Control system**:
 
 ```bash
 arail-bridge --adapter simulator --layout web/layouts/ebl-lab.json
@@ -71,7 +71,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
 | [Extending ARail](docs/extending.md) | Plugins: object types, simulations, disruptions, vehicles |
-| [Architecture](docs/architecture.md) | How tracking, the world and rendering fit together; the maths |
+| [Architecture](docs/architecture.md) | How tracking, the world and rendering fit together; the maths. In UML, with the classes and activities of every model: the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) |
 | [Camera calibration](docs/calibration.md) | Optional calibration for wide-angle webcams |
 
 ## Repository layout

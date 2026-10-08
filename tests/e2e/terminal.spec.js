@@ -365,27 +365,33 @@ test("Save as start state: the moved container stays where it is after a reload"
   expect(errors).toEqual([]);
 });
 
-test("a layout without a terminal: open the example or add a terminal", async ({ page }) => {
+test("a layout without a terminal has no Terminal tab: Settings → Simulation adds a terminal or switches on the module", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/app/#terminal");
   await page.evaluate(() => localStorage.clear());
   await page.goto("/app/#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
-  await expect(page.locator("#panel-terminal")).toContainText("This layout has no container terminal.");
-  // adding one: the panel of an (empty) terminal
-  await page.getByRole("button", { name: "Add a container terminal to this layout" }).click();
+  await expect(page.locator("#tab-terminal")).toBeHidden();
+  await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true");
+  // adding one: the Terminal tab with the panel of an (empty) terminal
+  await page.locator("#tab-settings").click();
+  await page.locator("#termAdd").click();
+  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
   await expect(page.locator("#hud")).toContainText("Terminal · 0 moves");
-  // the example from a layout without a terminal
+  // the layout as it came: the tab is gone; the lab's module opens the example terminal
   await page.evaluate(() => window.__arail.resetLayout());
-  await expect(page.getByRole("button", { name: "Open the example terminal" })).toBeVisible();
-  await page.getByRole("button", { name: "Open the example terminal" }).click();
+  await expect(page.locator("#tab-terminal")).toBeHidden();
+  await page.locator("#tab-settings").click();
+  await expect(page.locator("#termOpenExample")).toHaveText("Switch on the module “Container terminal”");
+  await page.locator("#termOpenExample").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover" && window.__arail.terminal.sim?.name === "KV terminal", null, { timeout: 30_000 });
-  // back to the lab photo: the flyover is left and the photo is shown again
+  await expect(page.locator("#tab-terminal")).toBeVisible();
+  // back to the lab photo: the flyover is left and the photo is shown again, without the Terminal tab
   await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
   await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.tracker.state.H && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#emptyStage")).toBeHidden();
-  await expect(page.locator("#panel-terminal")).toContainText("This layout has no container terminal.");
+  await expect(page.locator("#tab-terminal")).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -405,6 +411,7 @@ test("picking in the camera view: a yard block and a reach stacker added to the 
     await a._applyLayout(json);
   });
   await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.lastView && window.__arail.terminal.sim?.boxes(window.__arail.lastView).length, null, { timeout: 30_000 });
+  await page.locator("#tab-terminal").click(); // the tab is there now that the layout has a terminal
   // the topmost container of a stack, near the middle of the block
   const id = await page.evaluate(() => {
     const sim = window.__arail.terminal.sim, inv = sim.inventory;
@@ -424,6 +431,9 @@ test("picking in the camera view: a yard block and a reach stacker added to the 
 test("the morning shift scenario finishes its moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await openTerminal(page);
+  // the scenarios are in the Disruptions tab, there with its module
+  await page.locator("#tab-view").click();
+  await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await page.locator("#tab-disrupt").click();
   await page.locator(".scenario[data-id=morning-shift]").getByRole("button", { name: "Play" }).click();
   await page.waitForFunction(() => window.__arail.world.scenarios.elapsed > 0 && window.__arail.world.speed === 10);
@@ -441,16 +451,19 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the six tabs fit, or scroll with the selected tab in view", async ({ page }) => {
+test("on a phone the five tabs fit, or scroll with the selected tab in view", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
+  await page.locator("#tab-view").click();
+  await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   const tabs = () => page.evaluate(() => {
     const bar = document.querySelector(".tabs").getBoundingClientRect(), sel = document.querySelector(".tabs [aria-selected=true]").getBoundingClientRect();
-    const all = [...document.querySelectorAll(".tabs button")].map((x) => x.getBoundingClientRect());
+    const all = [...document.querySelectorAll(".tabs button:not([hidden])")].map((x) => x.getBoundingClientRect());
     return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: sel.left >= bar.left - 0.5 && sel.right <= bar.right + 0.5 };
   });
-  const names = ["view", "build", "simulate", "terminal", "disrupt", "control"];
-  // 390 px: all six fit
+  const names = ["view", "build", "terminal", "disrupt", "settings"];
+  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(names);
+  // 390 px: all five fit
   for (const tab of names) {
     await page.locator(`#tab-${tab}`).click();
     expect((await tabs()).fits, `#tab-${tab} at 390 px`).toBe(true);

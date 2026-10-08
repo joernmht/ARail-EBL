@@ -1,7 +1,7 @@
 // Infrastructure in the app: the Infrastructure tab of the example (its views, roles and decisions, the
 // line map and the GeoJSON, an asset's record and a proposal, running to the next decision and to the
-// year's end, saving), faults on the layout, adding infrastructure to a layout from the Simulate panel,
-// and the tabs on a phone.
+// year's end, saving), faults on the layout, adding infrastructure to a layout from Settings →
+// Simulation, and the tabs on a phone.
 import { expect, test } from "@playwright/test";
 
 const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
@@ -113,12 +113,19 @@ test("a fault on the layout: the van drives out, the station's trains are distur
     const e = window.__arail.infra.sim.engine;
     return e.people.some((p) => ["driving", "repairing"].includes(e.activity(p).state));
   }), { timeout: 30_000 }).toBe(true);
-  // the asset fault from the Disruptions panel
+  // the fault is listed in the Disruptions tab (module Disruptions); switching the module off leaves it on
+  await page.locator("#tab-view").click();
+  await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await page.locator("#tab-disrupt").click();
+  await expect(page.locator("#panel-disrupt .disruption", { hasText: "Infrastructure fault" }).first()).toBeVisible();
+  await page.locator("#tab-view").click();
+  await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
+  await expect(page.locator("#tab-disrupt")).toBeHidden();
+  expect(await page.evaluate(() => window.__arail.world.disruptions.active.some((d) => d.type === "infra-fault"))).toBe(true);
   expect(errors).toEqual([]);
 });
 
-test("adding infrastructure to a layout from the Simulate panel", async ({ page }) => {
+test("adding infrastructure to a layout from Settings → Simulation", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/app/?layout=../layouts/ebl-lab.json#simulate");
   await page.evaluate(() => localStorage.clear());

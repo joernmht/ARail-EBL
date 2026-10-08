@@ -86,7 +86,7 @@ export class JourneysPanel {
     this.update();
   }
 
-  /** "Add journeys to this layout" (Simulate panel): a journeys entry with the default settings. */
+  /** "Add journeys to this layout" (Settings → Simulation): a journeys entry with the default settings. */
   async addJourneys() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "journeys" }];
@@ -97,7 +97,7 @@ export class JourneysPanel {
       return;
     }
     app.saveLayout();
-    app.selectTab("journeys");
+    app.openTab("journeys");
     toast(this.sim?.rail().stations.some((s) => !s.on_layout)
       ? "Journeys added: make a traveller, choose its travel plan and follow it on the layout. The trains at the platforms now run to the timetable."
       : "Journeys added. No platform names a line yet (Lines in Build), so the travellers go on foot and by bus.", 7000);
@@ -117,7 +117,7 @@ export class JourneysPanel {
       this.renderForm();
     }
     if (!sim) {
-      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys. The Simulate tab adds them, or switches on the module of the lab example."));
+      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys. Settings → Simulation adds them, or switches on the module of the lab example."));
       morph(e.list);
       morph(e.results);
       return;
@@ -378,7 +378,7 @@ export class JourneysPanel {
     for (const t of sim.travellers) sim.restart(t.id);
     this.app.saveLayout();
     const first = Math.min(...sim.travellers.map((t) => t.leave));
-    toast(first < this.world.clock.minutes ? `All start again. Set the clock to ${hm(first - 5)} (Simulate) to watch them from their departure.` : "All start again.", 6000);
+    toast(first < this.world.clock.minutes ? `All start again. Set the clock to ${hm(first - 5)} (Settings → Simulation) to watch them from their departure.` : "All start again.", 6000);
     this.update();
   }
 

@@ -7,10 +7,10 @@ const PAGES = [
   ["marker sheets", "/markers/"],
   ["app, View panel", "/app/#view"],
   ["app, Build panel", "/app/#build"],
-  ["app, Simulate panel", "/app/#simulate"],
+  ["app, Settings: simulation", "/app/#simulate"],
   ["app, Disruptions panel", "/app/#disrupt"],
-  ["app, Control panel", "/app/#control"],
-  ["app, Terminal panel", "/app/#terminal"],
+  ["app, Settings: control system", "/app/#control"],
+  ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["404 page", "/404.html"],
 ];
@@ -21,7 +21,8 @@ for (const scheme of ["light", "dark"]) {
     for (const [name, path] of PAGES) {
       test(`${name} has no accessibility violations`, async ({ page }) => {
         await page.goto(path);
-        if (path.startsWith("/app/")) await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
+        // the app: tracking the layout's photo, or the flyover of a virtual layout (the container terminal)
+        if (path.startsWith("/app/")) await page.waitForFunction(() => window.__arail?.tracker.state.H || (window.__arail?.mode === "flyover" && window.__arail.world.objects.length), null, { timeout: 30_000 });
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
@@ -30,6 +31,13 @@ for (const scheme of ["light", "dark"]) {
       });
     }
   });
+}
+
+/** Settings → Simulation (the tab remembers its last view). */
+async function openSimulation(page) {
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
 }
 
 /** Violations on the page now, labelled with the state they were found in. */
@@ -75,16 +83,16 @@ for (const [scheme, device, viewport] of STATES) {
     found.push(...(await violations(page, "locked marker map with moving markers")));
     await page.locator("#tab-view").click();
     found.push(...(await violations(page, "View panel, locked map with moving markers")));
-    await page.locator("#tab-simulate").click();
+    await openSimulation(page);
     await page.getByRole("button", { name: "Night 22:30" }).click();
-    await expect(page.locator("#panel-simulate .town-stats li").first()).toBeVisible();
-    found.push(...(await violations(page, "Simulate panel with the town at night")));
+    await expect(page.locator("#panel-settings .town-stats li").first()).toBeVisible();
+    found.push(...(await violations(page, "Settings → Simulation with the town at night")));
     expect(found).toEqual([]);
   });
 }
 
 // Rail operations: every view of the Operations tab, the results of a comparison, the wide panel,
-// and the Simulate panel of a layout without rail operations.
+// and Settings → Simulation of a layout without rail operations.
 for (const [scheme, device, viewport] of STATES) {
   test(`operations states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -114,17 +122,17 @@ for (const [scheme, device, viewport] of STATES) {
       found.push(...(await violations(page, "Operations panel, wide")));
       await page.locator("#opsWide").click();
     }
-    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => !window.__arail.operations.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await page.locator("#tab-simulate").click();
+    await openSimulation(page);
     await expect(page.locator("#opsAdd")).toBeVisible();
-    found.push(...(await violations(page, "Simulate panel, rail operations offered", "#panel")));
+    found.push(...(await violations(page, "Settings → Simulation, rail operations offered", "#panel")));
     expect(found).toEqual([]);
   });
 }
 
 // Infrastructure: every view of the Infrastructure tab with an asset's record, a decision and the
-// instructor's controls, and the Simulate panel of a layout without it.
+// instructor's controls, and Settings → Simulation of a layout without it.
 for (const [scheme, device, viewport] of STATES) {
   test(`infrastructure states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -144,11 +152,11 @@ for (const [scheme, device, viewport] of STATES) {
       if (view === "assets") await page.locator("#panel-infra .infra-assets tbody tr button.link").first().click();
       found.push(...(await violations(page, `Infrastructure panel, ${view}`, "#panel")));
     }
-    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => !window.__arail.infra.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await page.locator("#tab-simulate").click();
+    await openSimulation(page);
     await expect(page.locator("#infraAdd")).toBeVisible();
-    found.push(...(await violations(page, "Simulate panel, infrastructure offered", "#panel")));
+    found.push(...(await violations(page, "Settings → Simulation, infrastructure offered", "#panel")));
     expect(found).toEqual([]);
   });
 }
@@ -188,7 +196,8 @@ for (const [scheme, device, viewport] of STATES) {
 
 // Journeys: the Journeys tab with travel plans found, travellers on their way (one followed, its plan
 // and log open), the results and the wide panel; the module boxes of the View panel (also in the
-// container terminal, a module of its own) and the Simulate panel offering the journeys.
+// container terminal, a module of its own), the Disruptions tab of its module and Settings →
+// Simulation offering the journeys.
 for (const [scheme, device, viewport] of STATES) {
   test(`journeys and modules states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -234,11 +243,22 @@ for (const [scheme, device, viewport] of STATES) {
     await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
     await page.locator("#tab-view").click();
     found.push(...(await violations(page, "View panel, modules in the container terminal", "#panel")));
-    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => /ebl-lab/.test(window.__arail.layoutUrl) && !window.__arail.journeys.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await page.locator("#tab-simulate").click();
+    await openSimulation(page);
     await expect(page.locator("#journeysAdd")).toBeVisible();
-    found.push(...(await violations(page, "Simulate panel, journeys offered", "#panel")));
+    found.push(...(await violations(page, "Settings → Simulation, journeys offered", "#panel")));
+    await page.locator("#tab-view").click();
+    await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
+    await expect(page.locator("#tab-disrupt")).toBeVisible();
+    found.push(...(await violations(page, "View panel, the module Disruptions on", "#panel")));
+    await page.locator("#tab-disrupt").click();
+    await page.selectOption("#disType", "delay");
+    await page.getByRole("button", { name: "Start: Delay" }).click();
+    await page.locator(".scenario").first().getByRole("button", { name: "Play" }).click();
+    await expect(page.locator(".scenario").first().getByRole("button", { name: "Stop" })).toBeVisible();
+    await expect(page.locator(".disruption").first()).toBeVisible();
+    found.push(...(await violations(page, "Disruptions panel, a disruption and a scenario", "#panel")));
     expect(found).toEqual([]);
   });
 }

@@ -1,6 +1,6 @@
 // Rail operations in the app: the Operations tab of the example (the day, the fleet, the workshop,
 // the crews, the penalties, a comparison of setups), its trains at the platforms, adding rail
-// operations to a layout from the Simulate panel, the tabs on a phone and with the keyboard.
+// operations to a layout from Settings → Simulation, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
 
 const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=operations#ops";
@@ -81,10 +81,10 @@ test("its trains stand at the platforms with their units and driver; the boards 
   });
   expect(label.label).toMatch(/^(RE|RB|S) \d/);
   expect(label.info.join(" ")).toMatch(/442 \d{3}/);
-  await page.locator("#tab-simulate").click();
-  await expect(page.locator("#panel-simulate .board")).toContainText(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
+  await page.locator("#tab-settings").click();
+  await expect(page.locator("#panel-settings .board")).toContainText(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
   // trains cannot be called to the platforms of the operations
-  const calls = await page.locator("#panel-simulate .board .calls .btn", { hasText: "Train →" }).evaluateAll((b) => b.map((x) => x.disabled));
+  const calls = await page.locator("#panel-settings .board .calls .btn", { hasText: "Train →" }).evaluateAll((b) => b.map((x) => x.disabled));
   expect(calls.length).toBeGreaterThan(0);
   expect(calls.every(Boolean)).toBe(true);
   expect(errors).toEqual([]);
@@ -120,17 +120,19 @@ test("a comparison of setups runs in the page and gives a table, the cancelled t
   expect(errors).toEqual([]);
 });
 
-test("the Simulate panel adds rail operations to a layout; the Operations tab takes the Terminal tab's place", async ({ page }) => {
+test("Settings → Simulation adds rail operations to a layout; a layout with a terminal shows the Terminal tab instead", async ({ page }) => {
   const errors = trackErrors(page);
   const path = "/app/?layout=../layouts/ebl-lab.json#simulate";
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.world.objects.length, null, { timeout: 30_000 });
+  await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#tab-ops")).toBeHidden();
-  await expect(page.locator("#tab-terminal")).toBeVisible();
+  await expect(page.locator("#tab-terminal")).toBeHidden(); // the lab has no terminal
   await page.locator("#opsAdd").click();
   await expect(page.locator("#tab-ops")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#panel-ops h2").first()).toBeFocused();
   await expect(page.locator("#tab-terminal")).toBeHidden();
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
   await expect(page.locator(".ops-tiles .tile")).toHaveCount(6);
@@ -146,20 +148,22 @@ test("the Simulate panel adds rail operations to a layout; the Operations tab ta
   expect(errors).toEqual([]);
 });
 
-test("on a phone the six tabs fit; the arrow keys go from Simulate to Operations to Disruptions", async ({ page }) => {
+test("on a phone the five tabs fit; the arrow keys go from Build to Operations to Disruptions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#simulate");
+  // a link to the Disruptions tab switches its module on
+  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
   const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button")].filter((x) => !x.hidden).every((x) => {
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
   }));
-  for (const tab of ["view", "build", "simulate", "ops", "disrupt", "control"]) {
+  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id))).toEqual(["tab-view", "tab-build", "tab-ops", "tab-disrupt", "tab-settings"]);
+  for (const tab of ["view", "build", "ops", "disrupt", "settings"]) {
     await page.locator(`#tab-${tab}`).click();
     expect(await fits(), `#tab-${tab} at 390 px`).toBe(true);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.locator("#tab-simulate").click();
-  await page.locator("#tab-simulate").focus();
+  await page.locator("#tab-build").click();
+  await page.locator("#tab-build").focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-ops")).toBeFocused();
   await expect(page.locator("#panel-ops")).toBeVisible();

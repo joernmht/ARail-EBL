@@ -1,6 +1,6 @@
 # Disruptions and scenarios
 
-Disruptions change how vehicles run and how passengers behave. Start them in the **Disruptions** panel, from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
+Disruptions change how vehicles run and how passengers behave. Start them in the **Disruptions** tab (switch on the module **Disruptions** in View → Modules; it is offered for every layout), from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
 
 ## Built-in disruptions
 
@@ -73,7 +73,7 @@ The services (trains and buses) and the passenger simulation only look at these 
 
 ## Scenarios
 
-A scenario is a timeline stored in the layout file. It is played from the Disruptions panel or with `?scenario=<id>` in the app URL.
+A scenario is a timeline stored in the layout file. It is played from the Disruptions tab or with `?scenario=<id>` in the app URL (which switches the module Disruptions on). Switching the module off stops the scenario and the disruptions started in the tab; those a simulation starts itself (the infrastructure's faults) go on.
 
 ```json
 {

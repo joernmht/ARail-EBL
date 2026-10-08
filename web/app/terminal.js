@@ -119,7 +119,7 @@ export class TerminalPanel {
     const e = this.el;
     mount(el, e.head, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
-    // a control that is gone (e.g. "Add a container terminal") hands the focus to the panel's heading
+    // a control that is not there any more hands the focus to the panel's heading
     if (focused) (document.getElementById(focused) || e.head.querySelector("h2"))?.focus();
   }
 
@@ -184,20 +184,16 @@ export class TerminalPanel {
     morph(box, parts);
   }
 
+  /** The panel without a terminal (its tab is only shown with one): where to get one. */
   _noTerminal() {
-    const app = this.app;
     return [
       h("h2", { tabindex: "-1" }, "Container terminal"),
-      h("p", { class: "hint" }, "This layout has no container terminal."),
-      h("div", { class: "row" },
-        h("button", { class: "btn primary", type: "button", id: "termOpenExample", onclick: () => app.openExample("terminal") }, "Open the example terminal"),
-        h("button", { class: "btn", type: "button", id: "termAdd", onclick: () => this.addTerminal() }, "Add a container terminal to this layout"),
-      ),
+      h("p", { class: "hint" }, "This layout has no container terminal. Settings → Simulation adds one, or switches on the module of the lab example."),
       h("p", { class: "hint" }, "A terminal works with the objects of the group Terminal in Build: container yard blocks, gantry cranes, reach stackers, truck lanes and quays, with ordinary tracks as loading tracks."),
     ];
   }
 
-  /** "Add a container terminal to this layout": a terminal entry with the default settings. */
+  /** "Add to this layout" (Settings → Simulation): a terminal entry with the default settings; the Terminal tab opens. */
   async addTerminal() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "terminal" }];
@@ -208,6 +204,7 @@ export class TerminalPanel {
       return;
     }
     app.saveLayout();
+    app.openTab("terminal");
     toast("Container terminal added. Build → Terminal has its yard blocks, cranes, truck lanes and quays.", 7000);
   }
 

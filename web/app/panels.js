@@ -1,9 +1,9 @@
-// Panels: View, Simulate, Disruptions, Control system.
+// Panels: View, Settings (simulation and control system), Disruptions.
 import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
-/** Fast-clock ratios offered in the Simulate panel. */
+/** Fast-clock ratios offered in Settings → Simulation. */
 const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
 const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
 /** Icons of the modules (by what they add): line drawings in the colour of the text. */
@@ -13,12 +13,17 @@ const MODULE_ICONS = {
   journeys: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="5.5" r="2.5"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16" stroke-dasharray="2.2 2.2"/></svg>',
   layout: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="10" rx="1"/><path d="M6.5 7v10M10 7v10M13.5 7v10M14 3.5h6.5V10M20.5 3.5 15 9"/></svg>',
   module: '<svg viewBox="0 0 24 24"><path d="M12 3 21 8l-9 5-9-5 9-5Z"/><path d="m3 12.5 9 5 9-5M3 16.5l9 5 9-5"/></svg>',
+  disruptions: '<svg viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19L12 3.5Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>',
 };
+/** The views of the Settings panel. */
+const SETTINGS_VIEWS = [["simulate", "Simulation"], ["control", "Control system"]];
 
 export class Panels {
   constructor(app) {
     this.app = app;
     this.disruptionDraft = { type: "delay", target: "*", params: {} };
+    /** The view of the Settings panel: "simulate" or "control". */
+    this.settingsView = SETTINGS_VIEWS.some(([v]) => v === storage.get("arail.settingsView")) ? storage.get("arail.settingsView") : "simulate";
   }
 
   get world() {
@@ -29,6 +34,8 @@ export class Panels {
 
   renderView(el) {
     const app = this.app, s = app.world.settings, d = app.display;
+    // a control that had the focus (e.g. the box of a module just switched) gets it back in the new panel
+    const focused = el.contains(document.activeElement) ? document.activeElement.id : null;
     const toggle = (id, label, get, set) => h("label", { class: "field check", for: id },
       h("input", { type: "checkbox", id, checked: get(), onchange: (e) => { set(e.target.checked); app.savePrefs(); } }), label);
     this.viewInfo = h("dl", { class: "kv" });
@@ -36,11 +43,11 @@ export class Panels {
     this.flyBox = h("div", { class: "section flyover-section" });
     const modules = app.modules();
     mount(el,
-      modules.length ? section("Modules",
+      section("Modules",
         h("div", { class: "modules", role: "group", "aria-label": "Modules" }, modules.map((m) => this._moduleBox(m))),
         h("p", { class: "hint" }, modules.some((m) => m.exclusive)
-          ? "Click a module to switch it on or off. The base (table, town, streets) is always there. Modules marked “alone” are not combined with others: choosing one switches the others off. Switching starts the simulations again; your changes are kept."
-          : "Click a module to switch it on or off. The base (table, town, streets) is always there. Switching starts the simulations again; your changes are kept.")) : null,
+          ? "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Modules marked “alone” are not combined with others: choosing one switches the others off. Switching a module of the layout starts the simulations again; your changes are kept."
+          : "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Switching a module of the layout starts the simulations again; your changes are kept.")),
       section("Tracking", this.viewInfo, h("p", { class: "hint" },
         "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
       this.flyBox,
@@ -73,6 +80,7 @@ export class Panels {
     );
     this.renderFlyover();
     this.updateView();
+    if (focused) document.getElementById(focused)?.focus();
   }
 
   /**
@@ -82,7 +90,7 @@ export class Panels {
   _moduleBox(m) {
     const id = `module-${m.id}`;
     const state = m.enabled ? "On" : m.exclusive ? "Alone" : "Off";
-    const icon = m.layout ? "layout" : ["operations", "infrastructure", "journeys"].find((t) => m.simulations?.includes(t)) ?? "module";
+    const icon = m.icon ?? (m.layout ? "layout" : ["operations", "infrastructure", "journeys"].find((t) => m.simulations?.includes(t)) ?? "module");
     const box = h("button", {
       type: "button", class: `module${m.exclusive ? " exclusive" : ""}`, id, "aria-pressed": m.enabled ? "true" : "false",
       "aria-labelledby": `${id}-name`, "aria-describedby": m.description ? `${id}-text` : null,
@@ -190,6 +198,40 @@ export class Panels {
     ];
   }
 
+  /* ================================================================ Settings */
+
+  /** The Settings panel: its views Simulation (time, town, speed, demand, stops, modules to add) and Control system. */
+  renderSettings(el) {
+    this.settingsBody = h("div", { class: "settings-body" });
+    mount(el,
+      h("div", { class: "section settings-head" },
+        h("div", { class: "seg settings-views", role: "group", "aria-label": "Settings" },
+          SETTINGS_VIEWS.map(([v, label]) => h("button", { type: "button", id: `settingsView-${v}`, "aria-pressed": this.settingsView === v ? "true" : "false", onclick: () => this.setSettingsView(v) }, label)))),
+      this.settingsBody,
+    );
+    // the other view's controls are gone: its live figures are not refreshed
+    this.board = this.clockFace = this.townBox = this.speedSeg = this.feedStatus = null;
+    if (this.settingsView === "control") this.renderControl(this.settingsBody);
+    else this.renderSimulate(this.settingsBody);
+  }
+
+  setSettingsView(v) {
+    this.settingsView = v;
+    storage.set("arail.settingsView", v);
+    if (this.app.activeTab === "settings") {
+      this.renderSettings(document.getElementById("panel-settings"));
+      document.getElementById(`settingsView-${v}`)?.focus(); // the button pressed is drawn anew: it keeps the focus
+    }
+    history.replaceState(null, "", `${location.pathname}${location.search}#${v}`);
+  }
+
+  /** Live figures of the Settings panel (every 400 ms while it is shown). */
+  updateSettings() {
+    if (this.settingsView === "control") return this.updateControl();
+    this.updateClock();
+    this.updateBoard();
+  }
+
   /* ================================================================ Simulate */
 
   renderSimulate(el) {
@@ -209,6 +251,7 @@ export class Panels {
     const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
     const hasInfra = w.simulations.some((x) => x.constructor.type === "infrastructure");
     const hasJourneys = w.simulations.some((x) => x.constructor.type === "journeys");
+    const hasTerminal = w.simulations.some((x) => x.constructor.type === "terminal");
     /** A module (layer) of this layout (off) that has a simulation of this type. */
     const layerWith = (type) => w.layers().find((l) => !l.enabled && l.simulations.includes(type)) || null;
     /** The button that switches on the module with a simulation of this type, or opens the example. */
@@ -262,6 +305,13 @@ export class Panels {
         h("div", { class: "row" },
           moduleButton("journeys", "journeysOpenExample", "journeys"),
           h("button", { class: "btn", type: "button", id: "journeysAdd", onclick: () => app.journeys.addJourneys() }, "Add to this layout"))),
+      hasTerminal ? null : section("Container terminal",
+        h("p", { class: "hint" }, "Container trains, trucks and barges, gantry cranes and reach stackers moving containers between them and the yard; model wagons with deck cards. It works with the objects of the group Terminal in Build. The Terminal tab moves the containers."),
+        h("div", { class: "row" },
+          app.moduleOpening("terminal")
+            ? h("button", { class: "btn", type: "button", id: "termOpenExample", onclick: () => app.chooseModules([app.moduleOpening("terminal").id]) }, `Switch on the module “${app.moduleOpening("terminal").name}”`)
+            : h("button", { class: "btn", type: "button", id: "termOpenExample", onclick: () => app.openExample("terminal") }, "Open the example terminal"),
+          h("button", { class: "btn", type: "button", id: "termAdd", onclick: () => app.terminal.addTerminal() }, "Add to this layout"))),
     );
     this.updateSimulateControls();
     this.updateClock();
@@ -276,7 +326,7 @@ export class Panels {
     toast(afresh.length ? `All passengers removed; ${afresh.join(" and ")} ${afresh.length > 1 ? "start" : "starts"} afresh.` : "All passengers removed.");
   }
 
-  /** Clock face and town figures (refreshed periodically while the Simulate panel is open). */
+  /** Clock face and town figures (refreshed periodically while Settings → Simulation is open). */
   updateClock() {
     if (!this.clockFace) return;
     const w = this.world, c = w.clock;

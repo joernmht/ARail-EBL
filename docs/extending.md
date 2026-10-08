@@ -258,7 +258,7 @@ class Pigeons extends arail.Simulation {
 arail.registry.registerSimulation(Pigeons);
 ```
 
-Optional: `stats(areaId)` returns `{count, mood, inPerMin, outPerMin}` for the departure board, `clear()` removes everything simulated (Simulate → Clear passengers), and `roadUsers()` returns the vehicles a simulation drives on the streets (`[{vehicle, front, rear, dir, approach}]`): line buses and the road traffic keep their distance to them and give way at junctions.
+Optional: `stats(areaId)` returns `{count, mood, inPerMin, outPerMin}` for the departure board, `clear()` removes everything simulated (Settings → Simulation → Clear passengers), and `roadUsers()` returns the vehicles a simulation drives on the streets (`[{vehicle, front, rear, dir, approach}]`): line buses and the road traffic keep their distance to them and give way at junctions.
 
 ### Checking the settings
 
@@ -292,7 +292,7 @@ world.events.on("passenger.exited", ({ agent, pos, area }) => { /* left the stop
 world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop deleted) */ });
 ```
 
-`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `accept` (board only vehicles this function accepts), `anyDock`, `at` (where the person comes from), `mood`. A vehicle the person wants that stands at the stop already is boarded at once. An agent with a `colour` property is drawn in that colour while people show trip purposes (Simulate → Town → Colour of people). With the setting `others: false` the passenger simulation only handles such agents: nobody else comes to wait or gets off the vehicles.
+`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `accept` (board only vehicles this function accepts), `anyDock`, `at` (where the person comes from), `mood`. A vehicle the person wants that stands at the stop already is boarded at once. An agent with a `colour` property is drawn in that colour while people show trip purposes (Settings → Simulation → Town → Colour of people). With the setting `others: false` the passenger simulation only handles such agents: nobody else comes to wait or gets off the vehicles.
 
 To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
 
@@ -503,7 +503,7 @@ arail.registry.registerDisruption({
 });
 ```
 
-Two more fields: `requires: "<simulation type>"` offers the type in the Disruptions panel only
+Two more fields: `requires: "<simulation type>"` offers the type in the Disruptions tab only
 when the layout has that simulation, and `targets: "none"` is for disruptions without a place (the
 panel shows no *Where*; they are started with target `"*"`). The rail operations' types use both and
 act in `onStart`; a string they leave in `d.result` (*3 sick calls*) is shown when they start.

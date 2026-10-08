@@ -68,7 +68,7 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 
 ## Layers
 
-One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below).
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below). Next to a layout's own modules the app offers its module **Disruptions** for every layout; it is not part of the file.
 
 ```json
 "layers": [
@@ -150,7 +150,7 @@ The built-in timetable of the platforms and bus terminals (used when no control 
 | `bus_dwell_s` | `20` | how long a bus stands at a bay; also the dwell time of line buses at bus stops (at least 8 s) |
 | `approach_s` | `6` | duration of the arrival and departure animations |
 
-The defaults are short so that something happens in a demo; the Simulate panel sets the speed (simulated time per real time). With `clock.profiles` these intervals are the off-peak values: trains and buses run more often in the rush hours and not at all between 01:00 and 04:30. Bus lines have their own interval (`headway_s` of the `bus-line`).
+The defaults are short so that something happens in a demo; Settings → Simulation sets the speed (simulated time per real time). With `clock.profiles` these intervals are the off-peak values: trains and buses run more often in the rush hours and not at all between 01:00 and 04:30. Bus lines have their own interval (`headway_s` of the `bus-line`).
 
 ## `clock`
 
