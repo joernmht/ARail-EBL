@@ -77,6 +77,7 @@ People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot =
 
 ### View
 
+- *Modules* (layouts with modules, such as the lab example): boxes to click, one per module of the layout. A module adds to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure** and **Journeys** can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers).
 - *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
 - *Flyover*: see above.
 - *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
@@ -118,8 +119,9 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
 - *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations; a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
-- *Rail operations* (on layouts without them): **Open the example** and **Add to this layout**, see [Rail operations](operations.md).
-- *Infrastructure* (on layouts without it): **Open the example** and **Add to this layout**, see [Infrastructure](infrastructure.md).
+- *Rail operations* (on layouts without them): **Switch on the module** (on the lab example) or **Open the example**, and **Add to this layout**, see [Rail operations](operations.md).
+- *Infrastructure* (on layouts without it): the same, see [Infrastructure](infrastructure.md).
+- *Journeys* (on layouts without them): the same, see [Journeys](journeys.md).
 
 ### Terminal
 
@@ -136,7 +138,7 @@ On the stage, tap a container, then one of its outlined places. In the flyover a
 
 ### Infrastructure
 
-Shown instead of the Terminal tab when the layout has an [infrastructure simulation](infrastructure.md) (the lab example's layer **Infrastructure**, View → Layers): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
+Shown instead of the Terminal tab when the layout has an [infrastructure simulation](infrastructure.md) (the lab example's module **Infrastructure**, View → Modules): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
 
 - **Your role** (asset manager, ALV, maintenance dispatcher, planner, construction supervision, funding authority, instructor) decides what may be done; **Run to the next decision** and **Run to the year's end** run fast.
 - **Overview**, **Line map** (the network by km; GeoJSON for QGIS), **Assets** (the register with each asset's record and the inspection plan), **Decisions**, **Projects** (through the HOAI phases), **Staff** (shifts, on call, drone pilots, the level crossing plant), **Results** (per year, the score; saving and loading a game).
@@ -144,7 +146,7 @@ Shown instead of the Terminal tab when the layout has an [infrastructure simulat
 
 ### Operations
 
-Shown instead of the Terminal tab when the layout has [rail operations](operations.md) (the lab example's layer **Rail operations**, View → Layers): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
+Shown instead of the Terminal tab when the layout has [rail operations](operations.md) (the lab example's module **Rail operations**, View → Modules): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
 
 - **Today**: key figures of the day, what happened, and short-term changes (a driver calls in sick, a unit breaks down or gets a defect).
 - **Fleet**: every unit, where it is, its next maintenance and its defects.
@@ -154,6 +156,17 @@ Shown instead of the Terminal tab when the layout has [rail operations](operatio
 - **Compare**: setups under a stress test over days or weeks, with the key figures, cancelled trains per day, the penalties per party and a CSV file.
 
 **Wide panel** (large screens) makes the panel wider for the tables.
+
+### Journeys
+
+Shown instead of the Terminal tab when the layout has [journeys](journeys.md) (the lab example's module **Journeys**, View → Modules): travellers made one by one, for an exercise.
+
+- **New traveller**: a name, where it starts and where it goes (a building or a station beyond the layout), when it leaves and its transfer time; **Find travel plans** lists plans with walks, buses and trains and the time for each change; **Choose** makes the traveller.
+- **Travellers**: what each one is doing, its planned and expected arrival, **Show** (the flyover's camera follows it), **Start again**, **Remove**, and its plan and log.
+- **Results**: planned and real arrivals, delays and missed trains; **Download results (CSV)**, **Start all again**, **Remove all**.
+- *Generated people too*: the town's residents and other passengers back on (the module switches them off).
+
+**Wide panel** (large screens) makes the panel wider for the results.
 
 ### Disruptions
 
@@ -192,7 +205,8 @@ Parameters can be combined, e.g. `app/?layout=../layouts/synthetic-demo.json&sce
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
 | `scenario=<id>` | play a scenario of the layout |
-| `#view`, `#build`, `#simulate`, `#terminal`, `#ops`, `#disrupt`, `#control` | open a panel, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal` and `#ops` where the layout has them) |
+| `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
+| `#view`, `#build`, `#simulate`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#control` | open a panel, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them) |
 
 ## Tips for good tracking
 

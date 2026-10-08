@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
 <title>ARail App</title>
-<meta name="description" content="Augmented reality for model railway labs: platforms with passengers, a town with streets and bus lines through day and night, rail operations with fleet maintenance and crews, disruptions, and a flyover with a virtual camera.">
+<meta name="description" content="Augmented reality for model railway labs: platforms with passengers, a town with streets and bus lines through day and night, rail operations with fleet maintenance and crews, journeys with transfers for exercises, disruptions, and a flyover with a virtual camera.">
 <link rel="icon" href="../assets/favicon-app.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/fonts/fonts-app.css">
 <link rel="stylesheet" href="app.css">
@@ -69,6 +69,7 @@
         <button role="tab" id="tab-terminal" aria-controls="panel-terminal" aria-selected="false">Terminal</button>
         <button role="tab" id="tab-ops" aria-controls="panel-ops" aria-selected="false" title="Rail operations: fleet, workshop, crews, penalties" hidden>Operations</button>
         <button role="tab" id="tab-infra" aria-controls="panel-infra" aria-selected="false" title="Infrastructure: assets, maintenance, projects" hidden>Infrastructure</button>
+        <button role="tab" id="tab-journeys" aria-controls="panel-journeys" aria-selected="false" title="Journeys: travellers with travel plans and transfers" hidden>Journeys</button>
         <button role="tab" id="tab-disrupt" aria-controls="panel-disrupt" aria-selected="false">Disruptions</button>
         <button role="tab" id="tab-control" aria-controls="panel-control" aria-selected="false" title="Connection to the control system">Control</button>
       </nav>
@@ -78,6 +79,7 @@
       <section class="tabpanel" role="tabpanel" id="panel-terminal" aria-labelledby="tab-terminal" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-ops" aria-labelledby="tab-ops" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-infra" aria-labelledby="tab-infra" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-journeys" aria-labelledby="tab-journeys" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-disrupt" aria-labelledby="tab-disrupt" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-control" aria-labelledby="tab-control" hidden></section>
     </aside>

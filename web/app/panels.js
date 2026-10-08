@@ -6,6 +6,14 @@ const SPEEDS = [1, 2, 5, 10, 30];
 /** Fast-clock ratios offered in the Simulate panel. */
 const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
 const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
+/** Icons of the modules (by what they add): line drawings in the colour of the text. */
+const MODULE_ICONS = {
+  operations: '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="3"/><path d="M6 10h12M9.5 13.5h.01M14.5 13.5h.01M8 21l2-4M16 21l-2-4"/></svg>',
+  infrastructure: '<svg viewBox="0 0 24 24"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><circle cx="12" cy="6.2" r="1.4"/><circle cx="12" cy="10.8" r="1.4"/><path d="M12 14.5V21M8 21h8"/></svg>',
+  journeys: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="5.5" r="2.5"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16" stroke-dasharray="2.2 2.2"/></svg>',
+  layout: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="10" rx="1"/><path d="M6.5 7v10M10 7v10M13.5 7v10M14 3.5h6.5V10M20.5 3.5 15 9"/></svg>',
+  module: '<svg viewBox="0 0 24 24"><path d="M12 3 21 8l-9 5-9-5 9-5Z"/><path d="m3 12.5 9 5 9-5M3 16.5l9 5 9-5"/></svg>',
+};
 
 export class Panels {
   constructor(app) {
@@ -26,14 +34,13 @@ export class Panels {
     this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
     this.flyBox = h("div", { class: "section flyover-section" });
-    const layers = app.world.layers();
+    const modules = app.modules();
     mount(el,
-      layers.length ? section("Layers",
-        h("div", { class: "fields" }, layers.map((l) => h("label", { class: "field check wide layer", for: `layer-${l.id}` },
-          h("input", { type: "checkbox", id: `layer-${l.id}`, checked: l.enabled,
-            onchange: (e) => app.setLayers(e.target.checked ? [...app.layersOn(), l.id] : app.layersOn().filter((x) => x !== l.id)) }),
-          h("span", {}, l.name, l.description ? h("small", { class: "layer-description" }, l.description) : null)))),
-        h("p", { class: "hint" }, "Parts of this layout that can be switched on and off. The base (table, town, streets) is always there. Switching starts the simulations again; your changes are kept.")) : null,
+      modules.length ? section("Modules",
+        h("div", { class: "modules", role: "group", "aria-label": "Modules" }, modules.map((m) => this._moduleBox(m))),
+        h("p", { class: "hint" }, modules.some((m) => m.exclusive)
+          ? "Click a module to switch it on or off. The base (table, town, streets) is always there. Modules marked “alone” are not combined with others: choosing one switches the others off. Switching starts the simulations again; your changes are kept."
+          : "Click a module to switch it on or off. The base (table, town, streets) is always there. Switching starts the simulations again; your changes are kept.")) : null,
       section("Tracking", this.viewInfo, h("p", { class: "hint" },
         "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
       this.flyBox,
@@ -66,6 +73,26 @@ export class Panels {
     );
     this.renderFlyover();
     this.updateView();
+  }
+
+  /**
+   * A module as a box to click (a toggle button): its name, whether it is on, and what it adds.
+   * Its accessible name is the module's name; the text describes it.
+   */
+  _moduleBox(m) {
+    const id = `module-${m.id}`;
+    const state = m.enabled ? "On" : m.exclusive ? "Alone" : "Off";
+    const icon = m.layout ? "layout" : ["operations", "infrastructure", "journeys"].find((t) => m.simulations?.includes(t)) ?? "module";
+    const box = h("button", {
+      type: "button", class: `module${m.exclusive ? " exclusive" : ""}`, id, "aria-pressed": m.enabled ? "true" : "false",
+      "aria-labelledby": `${id}-name`, "aria-describedby": m.description ? `${id}-text` : null,
+      onclick: () => this.app.toggleModule(m.id),
+    },
+    h("span", { class: "module-icon", "aria-hidden": "true" }),
+    h("span", { class: "module-head" }, h("span", { class: "module-name", id: `${id}-name` }, m.name), h("span", { class: "module-state", "aria-hidden": "true" }, state)),
+    m.description ? h("small", { class: "module-text", id: `${id}-text` }, m.description) : null);
+    box.firstChild.innerHTML = MODULE_ICONS[icon];
+    return box;
   }
 
   /** View panel, Flyover: switch it on and off, move its camera, set the grid. */
@@ -181,8 +208,15 @@ export class Panels {
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
     const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
     const hasInfra = w.simulations.some((x) => x.constructor.type === "infrastructure");
-    /** A layer of this layout (off) that has a simulation of this type. */
+    const hasJourneys = w.simulations.some((x) => x.constructor.type === "journeys");
+    /** A module (layer) of this layout (off) that has a simulation of this type. */
     const layerWith = (type) => w.layers().find((l) => !l.enabled && l.simulations.includes(type)) || null;
+    /** The button that switches on the module with a simulation of this type, or opens the example. */
+    const moduleButton = (type, id, example) => {
+      const l = layerWith(type);
+      return l ? h("button", { class: "btn", type: "button", id, onclick: () => app.chooseModules([...app.layersOn(), l.id]) }, `Switch on the module “${l.name}”`)
+        : h("button", { class: "btn", type: "button", id, onclick: () => app.openExample(example) }, "Open the example");
+    };
     mount(el,
       section("Time of day",
         this.clockFace,
@@ -216,17 +250,18 @@ export class Panels {
       hasOps ? null : section("Rail operations",
         h("p", { class: "hint" }, "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups."),
         h("div", { class: "row" },
-          layerWith("operations")
-            ? h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.setLayers([...app.layersOn(), layerWith("operations").id]) }, `Switch on the layer “${layerWith("operations").name}”`)
-            : h("button", { class: "btn", type: "button", id: "opsOpenExample", onclick: () => app.openExample("operations") }, "Open the example"),
+          moduleButton("operations", "opsOpenExample", "operations"),
           h("button", { class: "btn", type: "button", id: "opsAdd", onclick: () => app.operations.addOperations() }, "Add to this layout"))),
       hasInfra ? null : section("Infrastructure",
         h("p", { class: "hint" }, "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab."),
         h("div", { class: "row" },
-          layerWith("infrastructure")
-            ? h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.setLayers([...app.layersOn(), layerWith("infrastructure").id]) }, `Switch on the layer “${layerWith("infrastructure").name}”`)
-            : h("button", { class: "btn", type: "button", id: "infraOpenExample", onclick: () => app.openExample("infrastructure") }, "Open the example"),
+          moduleButton("infrastructure", "infraOpenExample", "infrastructure"),
           h("button", { class: "btn", type: "button", id: "infraAdd", onclick: () => app.infra.addInfrastructure() }, "Add to this layout"))),
+      hasJourneys ? null : section("Journeys",
+        h("p", { class: "hint" }, "An exercise: instead of a town full of generated people, every attendee makes one traveller with a start and an aim and chooses a travel plan with transfers, on foot, by bus and by train; then all follow their travellers on the layout. The Journeys tab makes the travellers and compares planned and real arrivals."),
+        h("div", { class: "row" },
+          moduleButton("journeys", "journeysOpenExample", "journeys"),
+          h("button", { class: "btn", type: "button", id: "journeysAdd", onclick: () => app.journeys.addJourneys() }, "Add to this layout"))),
     );
     this.updateSimulateControls();
     this.updateClock();

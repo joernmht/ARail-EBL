@@ -185,3 +185,60 @@ for (const [scheme, device, viewport] of STATES) {
     expect(found).toEqual([]);
   });
 }
+
+// Journeys: the Journeys tab with travel plans found, travellers on their way (one followed, its plan
+// and log open), the results and the wide panel; the module boxes of the View panel (also in the
+// container terminal, a module of its own) and the Simulate panel offering the journeys.
+for (const [scheme, device, viewport] of STATES) {
+  test(`journeys and modules states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
+    test.setTimeout(150_000);
+    const path = "/app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize(viewport);
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__arail?.journeys?.sim, null, { timeout: 30_000 });
+    const found = [];
+    found.push(...(await violations(page, "Journeys panel, no travellers", "#panel")));
+    await page.locator("#journeyFrom").selectOption("building:plattenbau-2");
+    await page.locator("#journeyTo").selectOption("station:waldau");
+    await page.locator("#journeyLeave").fill("07:20");
+    await page.locator("#journeyFind").click();
+    await expect(page.locator(".plan-list .plan").first()).toBeVisible();
+    found.push(...(await violations(page, "Journeys panel, travel plans", "#panel")));
+    await page.locator("#journeyChoose-0").click();
+    await page.locator("#journeyFrom").selectOption("station:altstadt");
+    await page.locator("#journeyTo").selectOption("building:school-1");
+    await page.locator("#journeyLeave").fill("07:05");
+    await page.locator("#journeyFind").click();
+    await page.locator("#journeyChoose-0").click();
+    await expect(page.locator(".traveller")).toHaveCount(2);
+    await page.evaluate(() => (window.__arail.world.speed = 30));
+    await page.waitForFunction(() => window.__arail.journeys.sim.travellers.some((t) => t.state === "waiting" || t.state === "train"), null, { timeout: 60_000 });
+    await page.locator(".traveller details summary").first().click();
+    await page.locator(".traveller").first().getByRole("button", { name: /^Show / }).click();
+    found.push(...(await violations(page, "Journeys panel, travellers on their way")));
+    await page.waitForFunction(() => window.__arail.journeys.sim.travellers.some((t) => t.state === "arrived"), null, { timeout: 90_000 });
+    await expect(page.locator(".journey-results")).toBeVisible();
+    found.push(...(await violations(page, "Journeys panel, results", "#panel")));
+    if (device === "desktop") {
+      await page.locator("#journeysWide").click();
+      found.push(...(await violations(page, "Journeys panel, wide", "#panel")));
+      await page.locator("#journeysWide").click();
+    }
+    await page.locator("#tab-view").click();
+    await expect(page.locator(".modules")).toBeVisible();
+    found.push(...(await violations(page, "View panel, modules", "#panel")));
+    await page.locator(".modules").getByRole("button", { name: "Container terminal", exact: true }).click();
+    await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
+    await page.locator("#tab-view").click();
+    found.push(...(await violations(page, "View panel, modules in the container terminal", "#panel")));
+    await page.evaluate(() => window.__arail.openExample("lab"));
+    await page.waitForFunction(() => /ebl-lab/.test(window.__arail.layoutUrl) && !window.__arail.journeys.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
+    await page.locator("#tab-simulate").click();
+    await expect(page.locator("#journeysAdd")).toBeVisible();
+    found.push(...(await violations(page, "Simulate panel, journeys offered", "#panel")));
+    expect(found).toEqual([]);
+  });
+}

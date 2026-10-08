@@ -625,12 +625,12 @@ export class Editor {
       : h("li", { class: "item" }, h("span", { class: "hint" }, "Nothing placed yet. Pick an object type above and tap on the layout.")));
   }
 
-  /** Which layer the selected object belongs to (only for layouts with layers). */
+  /** Which module (layer) the selected object belongs to (only for layouts with modules). */
   _layerNote(o) {
     const layers = this.world.layers();
     if (!layers.length) return null;
     const id = this.world.layerOf(o.id), layer = layers.find((l) => l.id === id);
-    return h("p", { class: "hint" }, "Layer: ", h("b", {}, layer ? layer.name : "Base"));
+    return h("p", { class: "hint" }, "Module: ", h("b", {}, layer ? layer.name : "Base"));
   }
 
   renderInspector() {
@@ -749,7 +749,7 @@ export class Editor {
       w.layers().some((l) => l.enabled) ? h("label", { class: "field wide", for: "layoutActiveLayer" }, h("span", {}, "New objects go to"),
         h("select", { id: "layoutActiveLayer", onchange: (e) => { w.activeLayer = e.target.value || null; } },
           h("option", { value: "", selected: !w.activeLayer }, "Base (always on)"),
-          w.layers().filter((l) => l.enabled).map((l) => h("option", { value: l.id, selected: w.activeLayer === l.id }, `Layer ${l.name}`)))) : null,
+          w.layers().filter((l) => l.enabled).map((l) => h("option", { value: l.id, selected: w.activeLayer === l.id }, `Module ${l.name}`)))) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", onclick: () => download(`${slug(L.name)}.json`, JSON.stringify(w.toJSON(), null, 2) + "\n") }, "Export layout"),
         h("label", { class: "btn small", for: "layoutImport" }, "Import layout"), importInput,

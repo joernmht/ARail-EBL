@@ -147,6 +147,31 @@ export class OperationsSimulation extends Simulation {
     return (this.engine.dayOffset + c.day + this._dayShift) * DAY + c.minutes;
   }
 
+  /**
+   * Minutes the engine's time is ahead of the world's (clock minutes since 00:00 of the world's day
+   * 0): engine time = world time + this (whole days). 0 before the engine is built.
+   */
+  engineOffset() {
+    return this.engine ? (this.engine.dayOffset + this._dayShift) * DAY : 0;
+  }
+
+  /**
+   * The trips of the train at a dock of the layout: the one it came with (`arrived`, null when it came
+   * out of the depot) and the one it waits to leave with (`next`); engine trips. Null when no train of
+   * the operations stands there.
+   * @param {string} dockId
+   * @returns {{arrived: object | null, next: object | null} | null}
+   */
+  tripsAt(dockId) {
+    const visit = dockId ? this.visits.get(dockId) : null;
+    const e = this.engine;
+    if (!visit || !e) return null;
+    const came = visit.trip ? e.trips.get(visit.trip) ?? null : null;
+    const next = visit.next ? e.trips.get(visit.next) ?? null : null;
+    // a train out of the depot came with nothing: its `trip` is the one it leaves with
+    return { arrived: came && came.id !== visit.next && this._onLayout(came.to) ? came : null, next };
+  }
+
   /** The world's clock was set: the engine runs on to that time (to tomorrow's if it was set back). */
   _clockJump() {
     if (!this.engine) return;

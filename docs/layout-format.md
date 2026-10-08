@@ -59,7 +59,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `objects` | `[]` | the virtual objects |
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
-| `layers` | `[]` | parts of the layout that can be switched on and off, see [Layers](#layers) |
+| `layers` | `[]` | parts of the layout that can be switched on and off (the app's modules), see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
 | `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [container terminal example](container-terminal.md#the-example) does) |
@@ -68,7 +68,7 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 
 ## Layers
 
-One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. They are switched on and off in the app (**View → Layers**, or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the layers `operations` and `infrastructure`.
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below).
 
 ```json
 "layers": [
@@ -80,18 +80,30 @@ One layout can carry several setups of the same lab: the base (the table, the to
     ],
     "simulations": [{"type": "infrastructure", "…": "…"}],
     "scenarios": [{"id": "infra-faults", "…": "…"}]
-  }
+  },
+  {
+    "id": "journeys", "name": "Journeys", "description": "…", "enabled": false,
+    "simulations": [
+      {"type": "passengers", "patch": true, "others": false},
+      {"type": "town", "patch": true, "enabled": false},
+      {"type": "journeys", "…": "…"}
+    ]
+  },
+  {"id": "terminal", "name": "Container terminal", "description": "…", "layout": "container-terminal.json"}
 ]
 ```
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `id`, `name`, `description` | | the id (unique among the layers), shown in the app |
+| `id`, `name`, `description` | | the id (unique among the layers), shown in the app; the description is the text of the module's box |
 | `enabled` | `false` | on when the layout is opened (unless the browser remembers another choice) |
 | `objects` | `[]` | objects the layer adds. An entry whose `id` is already there (in the base or an earlier layer) is a **patch**: its fields are merged into that object, e.g. the year a track was built |
-| `simulations`, `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
+| `simulations` | `[]` | added to those of the base. An entry with `"patch": true` is a **patch** of the simulation of its `type` that is already there (in the base or an earlier layer): its settings are merged into it, e.g. `{"type": "town", "patch": true, "enabled": false}` switches the town off while the layer is on. A patch of a simulation that is not there does nothing. |
+| `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
+| `exclusive` | `false` | the layer is not combined with others: switching it on switches the others off, and switching on another one switches it off (the app marks its box "alone") |
+| `layout` | | a **layout of its own** (a path relative to this file): the module opens that layout instead of adding to this one. It is always exclusive, and has no objects, simulations, scenarios or plugins of its own. In that layout, View → Modules shows the modules of this one, so that clicking any of them comes back. |
 
-The layers that are on are added in their order. Edits in the app go back where they came from: an object to its layer, a field a layer patched to that layer's patch, a new object to the layer chosen in **Build → Layout → New objects go to** (by default the base). Object ids are unique across all layers, also those that are off. `node tools/ops-compare.mjs` takes `--layers id,id` (by default it switches on the layers with rail operations).
+The layers that are on are added in their order. Edits in the app go back where they came from: an object to its layer, a field a layer patched to that layer's patch (of an object or a simulation), a new object to the layer chosen in **Build → Layout → New objects go to** (by default the base). Object ids are unique across all layers, also those that are off. `node tools/ops-compare.mjs` takes `--layers id,id` (by default it switches on the layers with rail operations).
 
 ## `markers`
 
@@ -458,12 +470,13 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 
 | Type | Settings (defaults) | |
 | --- | --- | --- |
-| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140) | random passengers at all stops, their moods, boarding and alighting; it also handles the town's people at stops |
+| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140), `others` (true) | random passengers at all stops, their moods, boarding and alighting; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
 | `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `commuters_out` (0.35 of the workers take the train), `commuters_in` (40 visitors by train per 100 local jobs), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train, see [Day and night](day-and-night.md#the-town-simulation) |
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
 | `operations` | `name`, `stations`, `lines` (default: from the platforms' `lines`), `fleet`, `maintenance`, `parties`, `ecm`, `contracts`, `crew`, `dispatch`, `costs`, `setups`, `stress` | rail operations: units with maintenance and failures, the four ECM functions, penalties between the parties, crews with duties and rosters; its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Rail operations](operations.md#layout-file) for the keys. One per layout. |
 | `infrastructure` | `name`, `placement`, `lines`, `stations`, `assets`, `types`, `budgets`, `funding`, `staff`, `costs`, `hoai`, `procurement`, `contractors`, `factory`, `upgrades`, `roles`, `scenarios`, … | infrastructure asset management: the layout's station in an invented district, assets with their condition, maintenance staff, projects through the HOAI phases; see [Infrastructure](infrastructure.md#layout-file) for the keys. One per layout. |
+| `journeys` | `transfer_min` (3), `stations`, `lines` (default: from the platforms' `lines`, as in the rail operations), `start_weekday` (`mon`), `travellers` | travellers made one by one in the app, each with a start, an aim and a chosen travel plan with transfers; without rail operations its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Journeys](journeys.md#layout-file) for the keys. One per layout. |
 
 The town needs residential buildings and works best with the passenger simulation (for the stops), streets and bus lines. Plugins can add more simulations, e.g. `{"type": "road-traffic", "cars_per_km": 30, "speed_kmh": 40}` from the example plugin [`road-traffic.js`](../web/plugins/road-traffic.js). Settings of a simulation whose plugin is missing are kept when the layout is saved.
 
@@ -476,6 +489,7 @@ The app and `validateLayout()` report:
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
 - a malformed `grid` or `view.ortho`, and scenarios without an id or steps;
 - in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;
-- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`). The infrastructure reports unknown lines, stations, asset types, objects and roles (e.g. `simulations[4] (infrastructure): asset q: unknown type "teleporter"`).
+- the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`). The infrastructure reports unknown lines, stations, asset types, objects and roles (e.g. `simulations[4] (infrastructure): asset q: unknown type "teleporter"`). The journeys report stations and platforms that do not exist, lines with unknown stations or malformed times, and travellers without an id, with a start or aim that is not a building or station, or without a plan (e.g. `simulations[3] (journeys): travellers[0] (Ada): to: no building "gone" on the layout`).
+- in `layers`: a value that is not a list, layers without an id or with the same id, objects without an id, simulations without a type, an `exclusive` or `patch` that is not true or false, a `layout` that is not a path, and a layout of its own with objects, simulations, scenarios or plugins.
 
 The layout loads anyway, with unusable entries left out; the app logs the problems and shows the first one when a layout is imported. The tests check the example layouts, so a broken example layout fails CI.

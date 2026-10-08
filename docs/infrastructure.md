@@ -44,7 +44,7 @@ a fraction of a second).
 
 ## The example
 
-The layer **Infrastructure** of the lab example (View → Layers, or
+The module **Infrastructure** of the lab example (View → Modules, or
 `app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
