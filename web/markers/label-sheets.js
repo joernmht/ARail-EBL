@@ -1,4 +1,4 @@
-// Self-adhesive label sheets (HERMA): one marker per label, at the label positions of the sheet.
+// Self-adhesive label sheets (A4, e.g. HERMA): one marker per label, at the label positions of the sheet.
 // Layout markers get one marker per label; for model wagons each label is one container spot (a
 // 40 ft spot covers two bays and so takes two labels). Pure functions (no DOM), like deck-cards.js.
 import { CARRIER_TYPES } from "../arail/terminal/model.js";
@@ -14,15 +14,18 @@ const FONT = 'font-family="Archivo, Arial, sans-serif"';
  * {@link labelSheets} corrects a printer that prints off-centre.
  */
 export const LABEL_SHEETS = Object.freeze({
-  herma10109: {
-    label: "HERMA 10109 (60 × 60 mm, 12 per A4)", paper: [210, 297],
+  labels60x60: {
+    label: "Labels 60 × 60 mm, 12 per A4 (e.g. HERMA 10109)", name: "60 × 60 mm labels", paper: [210, 297],
     w: 60, h: 60, cols: 3, rows: 4, left: 7.5, top: 17.25, pitchX: 67.5, pitchY: 67.5,
   },
-  herma4338: {
-    label: "HERMA 4338 (63.5 × 29.6 mm, 27 per A4)", paper: [210, 297],
+  labels63x30: {
+    label: "Labels 63.5 × 29.6 mm, 27 per A4 (e.g. HERMA 4338)", name: "63.5 × 29.6 mm labels", paper: [210, 297],
     w: 63.5, h: 29.6, cols: 3, rows: 9, left: 7.25, top: 15.3, pitchX: 66, pitchY: 29.6,
   },
 });
+
+/** Paper key of a label sheet measured by the user (see {@link customSheet}). */
+export const CUSTOM_SHEET = "custom";
 
 /** Narrowest white border between a marker and the edge of its label (mm). */
 export const LABEL_MIN_BORDER_MM = 2.5;
@@ -36,6 +39,24 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 /** The label sheet of a key, or null (a paper size like "a4" is not a label sheet). */
 export function labelSheet(key) {
   return Object.hasOwn(LABEL_SHEETS, key) ? LABEL_SHEETS[key] : null;
+}
+
+/**
+ * A label sheet of any make, from its measurements (mm, A4 portrait): label size, grid, top left
+ * corner of the first label and the pitch from label to label (label size plus gap).
+ * @param {{w: number, h: number, cols: number, rows: number, left: number, top: number, pitchX: number, pitchY: number}} m
+ */
+export function customSheet(m) {
+  const v = Object.fromEntries(["w", "h", "cols", "rows", "left", "top", "pitchX", "pitchY"].map((k) => [k, Number(m[k])]));
+  const paper = [210, 297];
+  if (!(v.w >= 10 && v.h >= 10)) throw new Error("Enter the label size (at least 10 × 10 mm)");
+  if (!(Number.isInteger(v.cols) && v.cols >= 1 && Number.isInteger(v.rows) && v.rows >= 1)) throw new Error("Enter the labels across and down as whole numbers");
+  if (!(v.left >= 0 && v.top >= 0)) throw new Error("Enter where the first label starts");
+  if ((v.cols > 1 && !(v.pitchX >= v.w)) || (v.rows > 1 && !(v.pitchY >= v.h))) throw new Error("The pitch is label size plus gap: at least the label size");
+  const right = v.left + (v.cols - 1) * (v.cols > 1 ? v.pitchX : 0) + v.w, bottom = v.top + (v.rows - 1) * (v.rows > 1 ? v.pitchY : 0) + v.h;
+  if (right > paper[0] + 0.05 || bottom > paper[1] + 0.05) throw new Error(`These labels do not fit on A4 (they reach ${fmt(right)} × ${fmt(bottom)} mm)`);
+  const name = `${fmt(v.w)} × ${fmt(v.h)} mm labels`;
+  return { label: `${name}, ${v.cols * v.rows} per A4`, name, paper, ...v };
 }
 
 /**
@@ -85,7 +106,7 @@ export function largestMarker(sheet, border, text) {
  * and, for wagon tags, an "A ▶" arrow right of it points to the A end (the tag's x axis).
  * @param {{id: number, lines?: string[], arrow?: boolean}[]} items one per label, in order
  * @param {object} options
- * @param {string} options.sheet key of {@link LABEL_SHEETS}
+ * @param {string | object} options.sheet key of {@link LABEL_SHEETS}, or a sheet from {@link customSheet}
  * @param {(id: number) => number[][]} options.bitsOf cells of a marker
  * @param {number} options.size_mm black square of the markers
  * @param {number} [options.border_mm] least white border around a marker
@@ -97,12 +118,12 @@ export function largestMarker(sheet, border, text) {
  * @returns {{pages: string[], sheets: {width_mm: number, height_mm: number, body: string}[], perSheet: number}}
  */
 export function labelSheets(items, { sheet: key, bitsOf, size_mm, border_mm = LABEL_MIN_BORDER_MM, labels = true, outlines = false, skip = 0, shift = [0, 0], caption = "" }) {
-  const sheet = labelSheet(key);
+  const sheet = typeof key === "object" ? key : labelSheet(key);
   if (!sheet) throw new Error(`Unknown label sheet “${key}”`);
   if (!(size_mm > 0)) throw new Error("Enter the marker size in millimetres");
   const border = Math.max(border_mm, LABEL_MIN_BORDER_MM);
   const max = largestMarker(sheet, border, labels);
-  if (size_mm > max + 1e-9) throw new Error(`Markers of ${size_mm} mm do not fit on ${sheet.label.replace(/ \(.*/, "")} labels with a ${border} mm border (at most ${Math.floor(max * 10) / 10} mm)`);
+  if (size_mm > max + 1e-9) throw new Error(`Markers of ${size_mm} mm do not fit on ${sheet.name} with a ${border} mm border (at most ${Math.floor(max * 10) / 10} mm)`);
   const perSheet = sheet.cols * sheet.rows;
   if (!(Number.isInteger(skip) && skip >= 0 && skip < perSheet)) throw new Error(`Skip 0 to ${perSheet - 1} labels`);
   const [W, H] = sheet.paper, [dx, dy] = shift.map((v) => Number(v) || 0);
