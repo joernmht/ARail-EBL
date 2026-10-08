@@ -159,6 +159,27 @@ test("a cancelled train: the traveller takes the next one of its line; a hold ma
   assert.ok(u.arrived - u.plannedArrival >= 5, `${hm(u.arrived)} for ${hm(u.plannedArrival)}`);
 });
 
+test("a stop that sends people away (rail replacement): the traveller waits outside once, then goes on", () => {
+  const { world, j } = lab();
+  const plan = j.plan({ from: B("plattenbau-2"), to: S("waldau"), leave: "07:20" })[0];
+  const t = j.addTraveller({ from: B("plattenbau-2"), to: S("waldau"), plan });
+  const terminal = world.objects.find((o) => o.type === "bus-terminal").id;
+  let started = false, wentOutside = 0, last = t.state;
+  runUntil(world, "09:00", () => {
+    // while it walks to the platform: it gets there while the stop sends people away
+    if (!started && world.clock.minutes >= at("07:25")) {
+      started = true;
+      assert.equal(t.state, "walking");
+      world.disruptions.start({ type: "replacement-bus", target: "platform-2", params: { minutes: 2, bus_terminal: terminal } });
+    }
+    if (t.state === "outside" && last !== "outside") wentOutside++;
+    last = t.state;
+  });
+  assert.equal(wentOutside, 1, `sent away once, not again and again: ${t.log.map((e) => e.text).join(" / ")}`);
+  assert.ok(t.log.some((e) => e.text === "Nothing runs from this stop: waiting outside"), t.log.map((e) => e.text).join(" / "));
+  assert.equal(t.state, "arrived", `${j.status(t).text}\n${t.log.map((e) => `${hm(e.t)} ${e.text}`).join("\n")}`);
+});
+
 test("travellers are kept in the layout; loaded again or with the clock set back, they start again", () => {
   const { world, j } = lab();
   const plan = j.plan({ from: S("bergheim"), to: B("school-1"), leave: "07:10" })[0];

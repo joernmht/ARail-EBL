@@ -306,8 +306,9 @@ film the survey video.
 
 ## The Terminal tab, step by step
 
-The **Terminal** tab (after Simulate; `#terminal` in the app URL) runs the terminal. On a layout
-without one it offers **Open the example terminal** and **Add a container terminal to this layout**.
+The **Terminal** tab (`#terminal` in the app URL) runs the terminal; it is shown when the layout has
+one. On a layout without one, **Settings → Simulation → Container terminal** offers **Open the example
+terminal** (on the lab example: **Switch on the module “Container terminal”**) and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), the speed (1×, 2×, 5×, 10×, 30×), **Reset terminal** (back to the start
@@ -362,7 +363,7 @@ Loading tracks are **Infrastructure → Track**, drawn along the real track (or 
 flyover). Cranes and quays are picked at their edges unless selected, so the yard and the tracks
 under them stay selectable. Then:
 
-1. Open the Terminal tab and press **Add a container terminal to this layout**.
+1. In **Settings → Simulation → Container terminal** press **Add to this layout**: the Terminal tab opens.
 2. Call trains (choose the loading track), barges and trucks with **New arrival**, and move
    containers into the yard.
 3. **Save as start state**, then **Export layout**. Fine-tune the result in the layout file (below):

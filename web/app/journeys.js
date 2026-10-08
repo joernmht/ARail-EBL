@@ -86,7 +86,7 @@ export class JourneysPanel {
     this.update();
   }
 
-  /** "Add journeys to this layout" (Simulate panel): a journeys entry with the default settings. */
+  /** "Add journeys to this layout" (Settings → Simulation): a journeys entry with the default settings. */
   async addJourneys() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "journeys" }];
@@ -97,7 +97,7 @@ export class JourneysPanel {
       return;
     }
     app.saveLayout();
-    app.selectTab("journeys");
+    app.openTab("journeys");
     toast(this.sim?.rail().stations.some((s) => !s.on_layout)
       ? "Journeys added: make a traveller, choose its travel plan and follow it on the layout. The trains at the platforms now run to the timetable."
       : "Journeys added. No platform names a line yet (Lines in Build), so the travellers go on foot and by bus.", 7000);
@@ -117,7 +117,7 @@ export class JourneysPanel {
       this.renderForm();
     }
     if (!sim) {
-      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys. The Simulate tab adds them, or switches on the module of the lab example."));
+      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys. Settings → Simulation adds them, or switches on the module of the lab example."));
       morph(e.list);
       morph(e.results);
       return;
@@ -287,6 +287,10 @@ export class JourneysPanel {
 
   _traveller(sim, t) {
     const st = sim.status(t), chosen = sim.selected === t.id;
+    // its plan and log open or closed as shown now: a click opens them at once, but the toggle event that
+    // keeps this.open comes later, and a refresh before it must not close them again
+    const shown = this.el?.list.querySelector(`.traveller[data-id="${CSS.escape(t.id)}"] details`);
+    const open = shown ? shown.open : this.open.has(t.id);
     const expected = st.expected != null && t.state !== "arrived" && t.state !== "home" && Math.abs(st.expected - st.planned) >= 1 ? ` · expected ${hm(st.expected)}` : "";
     return h("li", { class: `traveller${chosen ? " chosen" : ""}`, "data-id": t.id, "aria-current": chosen ? "true" : null },
       h("span", { class: "traveller-badge", style: { background: t.colour, color: textOn(t.colour) }, "aria-hidden": "true" }, String(t.number)),
@@ -299,7 +303,7 @@ export class JourneysPanel {
           h("button", { class: "btn small", type: "button", "aria-label": `Show ${t.name}`, "aria-pressed": chosen ? "true" : "false", onclick: () => this.show(t) }, "Show"),
           h("button", { class: "btn small", type: "button", "aria-label": `Start ${t.name} again`, onclick: () => this.restart(t) }, "Start again"),
           h("button", { class: "btn small danger", type: "button", "aria-label": `Remove ${t.name}`, onclick: () => this.remove(t) }, "Remove")),
-        h("details", { open: this.open.has(t.id), ontoggle: (ev) => (ev.target.open ? this.open.add(t.id) : this.open.delete(t.id)) },
+        h("details", { open, ontoggle: (ev) => (ev.target.open ? this.open.add(t.id) : this.open.delete(t.id)) },
           h("summary", {}, "Plan and log"),
           legList(t.plan.legs.map((l) => shift(l, t.day * DAY)), t.at(t.leave)),
           t.log.length ? h("ul", { class: "journey-log" }, t.log.map((e) => h("li", {}, h("time", {}, hm(e.t)), h("span", {}, e.text))))
@@ -378,7 +382,7 @@ export class JourneysPanel {
     for (const t of sim.travellers) sim.restart(t.id);
     this.app.saveLayout();
     const first = Math.min(...sim.travellers.map((t) => t.leave));
-    toast(first < this.world.clock.minutes ? `All start again. Set the clock to ${hm(first - 5)} (Simulate) to watch them from their departure.` : "All start again.", 6000);
+    toast(first < this.world.clock.minutes ? `All start again. Set the clock to ${hm(first - 5)} (Settings → Simulation) to watch them from their departure.` : "All start again.", 6000);
     this.update();
   }
 

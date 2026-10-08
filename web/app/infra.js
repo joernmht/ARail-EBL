@@ -103,7 +103,7 @@ export class InfraPanel {
     if (!e?.root.isConnected) return;
     const sim = this.sim;
     if (!sim) {
-      morph(e.head, h("h2", { tabindex: "-1" }, "Infrastructure"), h("p", { class: "hint" }, "This layout has no infrastructure simulation. The Simulate tab adds it, or opens the example."));
+      morph(e.head, h("h2", { tabindex: "-1" }, "Infrastructure"), h("p", { class: "hint" }, "This layout has no infrastructure simulation. Settings → Simulation adds it, or switches on the module of the lab example."));
       morph(e.body);
       return;
     }
@@ -171,7 +171,7 @@ export class InfraPanel {
     storage.set(this._key(), sim.save());
   }
 
-  /** "Add infrastructure to this layout" (Simulate panel). */
+  /** "Add infrastructure to this layout" (Settings → Simulation). */
   async addInfrastructure() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "infrastructure" }];
@@ -182,7 +182,7 @@ export class InfraPanel {
       return;
     }
     app.saveLayout();
-    app.selectTab("infra");
+    app.openTab("infra");
     toast("Infrastructure added: the platforms and tracks of the layout are now assets of the station Bahnhof. Build → Infrastructure adds signals, switches and level crossings.", 7000);
   }
 
@@ -264,7 +264,7 @@ export class InfraPanel {
           h("button", { class: "btn small", type: "button", id: "infraFail", onclick: () => this._say(sim.failAsset("")) }, "An asset at the station fails"),
           h("button", { class: "btn small", type: "button", id: "infraTheft", onclick: () => this._say(sim.inject({ type: "theft" })) }, "Cable theft"),
           h("button", { class: "btn small", type: "button", id: "infraStorm", onclick: () => this._say(sim.inject({ type: "storm", count: 4 })) }, "A storm")),
-        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in the Disruptions panel and in scenarios.")),
+        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in the Disruptions tab (module Disruptions) and in scenarios.")),
     ];
   }
 

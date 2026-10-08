@@ -93,7 +93,7 @@ The app decides from the positions when a train stands at a platform:
 
 While a feed is active (messages within the last 15 s), all platform tracks are controlled by it and the built-in timetable only serves bus bays. If the feed stops, the timetable takes over again.
 
-In the Control panel you can choose how real trains are drawn: as an **outline** at their reported position (default), as a **virtual train** at the platform, or not at all.
+In **Settings → Control system** you can choose how real trains are drawn: as an **outline** at their reported position (default), as a **virtual train** at the platform, or not at all.
 
 ## Mapping the control system to the layout
 

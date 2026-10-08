@@ -30,7 +30,7 @@ for comparisons over weeks (in the app's Compare view or with [`tools/ops-compar
 
 ## The example
 
-The module **Rail operations** of the lab example (View → Modules, Simulate → Rail operations →
+The module **Rail operations** of the lab example (View → Modules, or Settings → Simulation → Rail operations →
 Switch on the module, or `app/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
@@ -221,8 +221,7 @@ stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty 
 
 ## The Operations tab
 
-With rail operations on the layout, the app has an **Operations** tab (`#ops`) in the place of the
-Terminal tab. Its views:
+With rail operations on the layout, the app has an **Operations** tab (`#ops`). Its views:
 
 - **Today**: trains run and cancelled, punctuality, units available, crews on duty, penalties of
   the day; what happened (newest first); buttons for short-term changes (*A driver calls in sick*,
@@ -238,7 +237,7 @@ Terminal tab. Its views:
   and the largest causes.
 - **Compare**: [comparisons of setups](#comparing-setups).
 
-On large screens **Wide panel** makes the panel wider for the tables. The Simulate tab of a layout
+On large screens **Wide panel** makes the panel wider for the tables. Settings → Simulation of a layout
 without rail operations offers **Add to this layout** (the platforms' line names, *Lines* in Build,
 become the lines; a depot comes from Build → Transport) and **Open the example**.
 
@@ -429,7 +428,7 @@ stations, platforms, parties, vehicle types and depots in plain words.
 
 ## Disruptions and scenarios
 
-Five disruption types act on the operations; they are offered in the Disruptions panel only for
+Five disruption types act on the operations; they are offered in the Disruptions tab (module Disruptions) only for
 layouts with rail operations, and they have no place on the layout:
 
 | Type | Parameters | Does |

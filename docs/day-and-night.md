@@ -7,8 +7,8 @@ again, on foot, by bus and by train.
 
 ## The clock
 
-Movement (trains, buses, cars, people) runs in *simulated seconds*: the Speed buttons in the
-Simulate panel set how many simulated seconds pass per real second (1×–30×). The clock shows a
+Movement (trains, buses, cars, people) runs in *simulated seconds*: the Speed buttons in
+Settings → Simulation set how many simulated seconds pass per real second (1×–30×). The clock shows a
 time of day that runs `factor` times faster than the simulation, 12 by default: one clock hour
 per five simulated minutes. A walk of 150 m (about two simulated minutes) takes 25 clock minutes,
 and at 10× a whole day passes in twelve minutes.
@@ -23,7 +23,7 @@ and at 10× a whole day passes in twelve minutes.
 "clock": { "start": "06:30", "factor": 12, "profiles": true }
 ```
 
-In the app (**Simulate → Time of day**) you can set the time with the slider or the presets
+In the app (**Settings → Simulation → Time of day**) you can set the time with the slider or the presets
 (morning, noon, evening, night), choose another fast-clock ratio, switch the day/night lighting
 off and stop the clock. The time is shown at the top left of the stage (*07:32*, with *· night*
 between sunset and sunrise).
@@ -34,7 +34,7 @@ Sunrise is at 06:00 and sunset at 20:30, each with a twilight of about an hour a
 night the camera image and everything ARail draws get darker and bluer (towards the chair's
 Dunkelblau); lit windows, street lamps, head- and tail lights and the windows of trains and
 buses keep their brightness. Labels and the editor's markings are never darkened. Switch it off
-with **Day and night lighting** (Simulate panel) or `world.settings.lighting = false`.
+with **Day and night lighting** (Settings → Simulation) or `world.settings.lighting = false`.
 
 ### Demand over the day
 
@@ -103,7 +103,7 @@ when people are in (`world.occupancy`).
 People in the town are coloured by the purpose of their trip, in the chair's corporate-design
 colours: **to work** Türkis, **to school** Orange, **shopping** Gelb, **home** Brillantblau,
 **to the train** Rot. Other passengers at platforms and stops keep the mood colours (Türkis = happy,
-Gelb = so-so, Rot = annoyed). **Simulate → Town → Colour of people** switches between both, or
+Gelb = so-so, Rot = annoyed). **Settings → Simulation → Town → Colour of people** switches between both, or
 everybody by purpose or by mood. The Town section also counts who is at home, at work, at school,
 shopping, on the bus, at stops and away.
 

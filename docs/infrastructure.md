@@ -67,7 +67,7 @@ On table modules beside the table:
   *Werkstraße*).
 
 Beyond the layout the network is a **line map** in the Infrastructure tab. The scenario *Faults at
-the station* (Disruptions panel) makes signal N2 and the level crossing fail.
+the station* (Disruptions tab) makes signal N2 and the level crossing fail.
 
 ## The Infrastructure tab
 
@@ -109,7 +109,7 @@ Its views:
   scenario, and who plays which role.
 
 On large screens the tab opens with the **Wide panel**. The game is kept in the browser per layout
-and restored when the layout is opened again. The Simulate tab of a layout without infrastructure
+and restored when the layout is opened again. Settings → Simulation of a layout without infrastructure
 offers **Add to this layout** and **Open the example**.
 
 ### Roles
@@ -426,7 +426,7 @@ camera image too) and `platform` objects are assets as well.
 
 ## Disruptions and events
 
-Offered in the Disruptions panel for layouts with the infrastructure:
+Offered in the Disruptions tab (module Disruptions) for layouts with the infrastructure:
 
 | Type | Parameters | Does |
 | --- | --- | --- |

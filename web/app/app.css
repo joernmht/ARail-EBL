@@ -198,6 +198,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .seg button { border: 0; background: var(--surface); padding: 7px 11px; font-weight: 500; cursor: pointer; border-right: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .seg button:last-child { border-right: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+/* Settings: its two views side by side, the full width of the panel; the view's sections spaced as in a panel */
+.settings-views { display: flex; width: 100%; }
+.settings-views button { flex: 1; }
+.settings-body { display: grid; gap: 18px; }
 
 .field { display: grid; gap: 3px; font-size: .8rem; color: var(--text-2); min-width: 0; }
 .field > span small { color: var(--text-2); font-weight: 400; }

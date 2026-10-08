@@ -125,10 +125,11 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(Math.abs(pos[1] % 50)).toBe(0);
   expect(Math.hypot(pos[0] - aim[0], pos[1] - aim[1])).toBeLessThan(40);
   await expect(page.locator("#stage")).toBeFocused();
-  // the time of day: Simulate → slider and presets
+  // the time of day: Settings → Simulation, the slider and presets (the tabs of modules that are off are skipped)
   await tabTo(page, "#tab-build");
   await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-simulate")).toBeFocused();
+  await expect(page.locator("#tab-settings")).toBeFocused();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
   await tabTo(page, "#timeOfDay");
   const t0 = await a(() => window.__arail.world.clock.minutes);
   await page.keyboard.press("ArrowRight"); // one quarter of an hour on from the quarter the slider shows
@@ -136,7 +137,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(t1).toBeGreaterThan(t0 + 1);
   expect(t1).toBeLessThan(t0 + 23);
   expect(t1 % 15).toBeLessThan(2);
-  await tabTo(page, "#panel-simulate button:has-text('Night 22:30')");
+  await tabTo(page, "#panel-settings button:has-text('Night 22:30')");
   await page.keyboard.press("Enter");
   expect(await a(() => window.__arail.world.clock.label())).toMatch(/^22:3/);
   expect(errors).toEqual([]);
@@ -177,7 +178,7 @@ test("keyboard placing in the flyover: a bus line picks the stop under the cross
   expect(errors).toEqual([]);
 });
 
-test("keyboard only: the Terminal tab between Simulate and Disruptions; a container moved from the list", async ({ page }) => {
+test("keyboard only: the Terminal tab between Build and Settings; a container moved from the list", async ({ page }) => {
   const path = "/app/?layout=../layouts/container-terminal.json#simulate";
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -185,14 +186,14 @@ test("keyboard only: the Terminal tab between Simulate and Disruptions; a contai
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
-  // the arrows: Simulate → Terminal → Disruptions and back
-  await page.locator("#tab-simulate").focus();
-  await page.keyboard.press("ArrowRight");
+  // the arrows: Settings → Terminal → Build and back (the tabs of modules that are off are skipped)
+  await page.locator("#tab-settings").focus();
+  await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#tab-terminal")).toBeFocused();
   await expect(page.locator("#panel-terminal")).toBeVisible();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-disrupt")).toBeFocused();
   await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#tab-build")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-terminal")).toBeFocused();
   // a container in the list, a place in "Move to", the Move button
   const item = page.locator("#termList button", { hasText: "ARLU 100004 5" });
@@ -234,12 +235,23 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await page.keyboard.press("Enter");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
   await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
-  // a terminal added to a layout without one: its heading has the focus
+  // a terminal added to a layout without one (Settings → Simulation): the Terminal tab opens, its heading has the focus
   await page.goto("/app/?layout=../layouts/synthetic-demo.json#terminal");
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
+  await expect(page.locator("#tab-terminal")).toBeHidden();
+  await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
+  await page.locator("#tab-settings").click();
   await page.locator("#termAdd").focus();
   await page.keyboard.press("Enter");
+  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
   await expect(page.locator("#panel-terminal h2").first()).toBeFocused();
+  // the views of Settings with the keyboard: the button pressed keeps the focus
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-control").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#settingsView-control")).toBeFocused();
+  await expect(page.locator("#panel-settings")).toContainText("Control system");
   expect(errors).toEqual([]);
 });

@@ -16,14 +16,14 @@ module **Journeys** of the lab example.
 1. Open the lab example and switch on the module **Journeys** (View → Modules, or
    `app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
    home and no other passengers come; the trains run to the timetable.
-2. Set the time of day (Simulate → Time of day, e.g. 07:00) and pause (Space) while the travellers
+2. Set the time of day (Settings → Simulation → Time of day, e.g. 07:00) and pause (Space) while the travellers
    are made.
 3. Each attendee, in the **Journeys** tab: a name (or the one offered), **From** and **To** (a
    building of the town or a station beyond the layout), **Leaves at** and the **transfer time**,
    then **Find travel plans** and **Choose** one of them. The traveller gets a number and a colour.
 4. Resume. **Show** follows a traveller with the flyover's camera; its box says what it is doing
    ("Waiting for S 8 → Waldau 07:41 at Platform 2", "On RE 1 to Bahnhof, arrives 08:59").
-5. Disturb the operations: the Disruptions tab holds or cancels the trains at a platform; with the
+5. Disturb the operations: the Disruptions tab (switch on the module **Disruptions**) holds or cancels the trains at a platform; with the
    module **Rail operations** on as well, drivers call in sick and units fail.
 6. Talk about the **Results**: who arrived when, how late, how many trains were missed or cancelled;
    **Download results (CSV)** for the debriefing.

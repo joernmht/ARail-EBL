@@ -23,11 +23,28 @@ const EXAMPLE_LAYERS = {
 };
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
-const TABS = ["view", "build", "simulate", "terminal", "ops", "infra", "journeys", "disrupt", "control"];
+const TABS = ["view", "build", "terminal", "ops", "infra", "journeys", "disrupt", "settings"];
+/** Former tabs that are views of the Settings tab now (their links keep working): tab → [tab, view]. */
+const TAB_VIEWS = { simulate: ["settings", "simulate"], control: ["settings", "control"] };
 /** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
 const FEATURE_TABS = {
   terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
 };
+/**
+ * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
+ * on and off in the View panel like those, without loading the layout again. `tab`: the tab it shows;
+ * `on`: whether it is on for a layout nobody has switched it for.
+ */
+const APP_MODULES = [
+  {
+    id: "build", name: "Build", tab: "build", icon: "build", on: true,
+    description: "Place and edit the objects of the layout, its settings and its marker map; survey the markers from a video. Off, nobody changes the layout by mistake.",
+  },
+  {
+    id: "disruptions", name: "Disruptions", tab: "disrupt", icon: "disruptions", on: false,
+    description: "Delays, signal failures, cancellations, closures and replacement buses at the stops, and the scenarios of the layout: timelines of disruptions for an exercise.",
+  },
+];
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
@@ -57,6 +74,8 @@ class App {
     this.display = { markers: false, opacity: 1, gridInCamera: false, flyMarkers: true, ...storage.get("arail.display", {}) };
     /** "camera": the camera image (or photo, video) with AR; "flyover": the virtual camera (see flyover.js). */
     this.mode = "camera";
+    /** The app's modules that are on, per layout (see _appModulesKey); also kept in the browser. */
+    this.appModules = new Map();
     this.layoutUrl = null;
     this.recorder = null;
     this._loadToken = 0;
@@ -97,13 +116,17 @@ class App {
     else if (params.get("feed")) this.panels.connect();
     const scenario = params.get("scenario");
     if (scenario) {
+      this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
       setTimeout(() => {
         if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
-        else toast(`This layout has no scenario “${scenario}” (see the Disruptions panel).`, 7000);
+        else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
       }, 500);
     }
     const tab = location.hash.slice(1);
-    if (this.tabs().includes(tab)) this.selectTab(tab);
+    // a link to the tab of a module of the app (Build, Disruptions) switches it on
+    const linked = APP_MODULES.find((m) => m.tab === tab);
+    if (linked) this.setAppModule(linked.id, true);
+    if (this.tabs().includes(TAB_VIEWS[tab]?.[0] ?? tab)) this.selectTab(tab);
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -252,14 +275,18 @@ class App {
   }
 
   /**
-   * The tabs shown: the Operations tab when the layout has rail operations, the Infrastructure tab when
-   * it has an infrastructure simulation, the Journeys tab when it has journeys, the Terminal tab when it
-   * has a container terminal or none of the others (so that six tabs fit on a phone).
+   * The tabs shown: View and Settings always; the tab of a module when it is on: Build with the module
+   * Build (on unless switched off), Terminal when the layout has a container terminal, Operations with
+   * rail operations, Infrastructure with an infrastructure simulation, Journeys with journeys,
+   * Disruptions with the module Disruptions.
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const ops = has("operations"), infra = has("infrastructure"), journeys = has("journeys"), terminal = has("terminal");
-    const shown = { ops, infra, journeys, terminal: terminal || (!ops && !infra && !journeys) };
+    const shown = {
+      build: this.appModuleOn("build"),
+      terminal: has("terminal"), ops: has("operations"), infra: has("infrastructure"), journeys: has("journeys"),
+      disrupt: this.appModuleOn("disruptions"),
+    };
     return TABS.filter((t) => shown[t] ?? true);
   }
 
@@ -273,7 +300,15 @@ class App {
     return true;
   }
 
+  /** Show a tab (or a former tab that is a view of Settings now: "simulate", "control"). */
   selectTab(name) {
+    if (TAB_VIEWS[name]) {
+      this.panels.settingsView = TAB_VIEWS[name][1];
+      storage.set("arail.settingsView", TAB_VIEWS[name][1]);
+      name = TAB_VIEWS[name][0];
+    }
+    // another tab opens at its top: the panels share one scrolling column (on a phone, the page)
+    if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
     for (const t of TABS) {
       $(`#tab-${t}`).setAttribute("aria-selected", t === name ? "true" : "false");
@@ -289,7 +324,25 @@ class App {
     if (name === "infra") this.infra.syncWidth();
     this.journeys.syncWidth();
     this.renderPanel(name);
-    history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
+    // Settings is linked by its view (#simulate, #control), as the tabs were before
+    history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name}`);
+  }
+
+  /** Show a tab after an action elsewhere (e.g. a simulation added in Settings): its heading takes the keyboard focus. */
+  openTab(name) {
+    this.selectTab(name);
+    const head = $(`#panel-${name} h2`);
+    if (!head) return;
+    if (!head.hasAttribute("tabindex")) head.tabIndex = -1;
+    head.focus();
+  }
+
+  /** Scroll the panel column back to its top (on a phone: the page, as far as the tabs, if it is scrolled past them). */
+  _scrollPanelToTop() {
+    const panel = $("#panel");
+    panel.scrollTop = 0;
+    const top = panel.getBoundingClientRect().top;
+    if (top < 0) window.scrollBy(0, top);
   }
 
   /** On narrow screens the tabs scroll sideways: the selected one is kept in view (the page does not scroll). */
@@ -305,13 +358,12 @@ class App {
     const el = $(`#panel-${name}`);
     if (name === "view") this.panels.renderView(el);
     else if (name === "build") this.editor.render(el);
-    else if (name === "simulate") this.panels.renderSimulate(el);
+    else if (name === "settings") this.panels.renderSettings(el);
     else if (name === "terminal") this.terminal.render(el);
     else if (name === "ops") this.operations.render(el);
     else if (name === "infra") this.infra.render(el);
     else if (name === "journeys") this.journeys.render(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
-    else if (name === "control") this.panels.renderControl(el);
   }
 
   /** Periodic refresh of live figures in the visible panel. */
@@ -319,10 +371,7 @@ class App {
     this.updateHud();
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
-    else if (t === "simulate") {
-      this.panels.updateClock();
-      this.panels.updateBoard();
-    }
+    else if (t === "settings") this.panels.updateSettings();
     else if (t === "terminal") this.terminal.update();
     else if (t === "ops") this.operations.update();
     else if (t === "infra") this.infra.update();
@@ -330,8 +379,7 @@ class App {
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
-    } else if (t === "control") this.panels.updateControl();
-    else if (t === "build" && this._mapVersionShown !== this.world.map.ids().length) {
+    } else if (t === "build" && this._mapVersionShown !== this.world.map.ids().length) {
       this._mapVersionShown = this.world.map.ids().length;
       this.editor.renderMarkers();
     }
@@ -359,28 +407,83 @@ class App {
     return this.openLayout(l.layout, [l.layer]);
   }
 
+  /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
+  moduleOpening(exampleId) {
+    const x = EXAMPLES.find((e) => e.id === exampleId), id = EXAMPLE_LAYERS[exampleId]?.layer;
+    return this.world.layers().find((l) => !l.enabled && (l.id === id || (x && l.layout && new URL(l.layout, this.layoutUrl || location.href).href === new URL(x.layout, location.href).href))) || null;
+  }
+
   /** Ids of the layers (modules) that are on. */
   layersOn() {
     return this.world.layers().filter((l) => l.enabled).map((l) => l.id);
   }
 
   /**
-   * The modules shown in the View panel: the layers of this layout; in a layout that is a module of
-   * another one (a layout of its own, e.g. the container terminal), the modules of that one.
-   * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null}>}
+   * The modules shown in the View panel: the layers of this layout (in a layout that is a module of
+   * another one, a layout of its own like the container terminal: the modules of that one), then the
+   * app's modules (Build, Disruptions).
+   * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
    */
   modules() {
     const own = this.world.layers(), home = this.moduleHome;
-    if (own.length || !home) return own;
-    return home.modules.map((m) => ({ ...m, enabled: m.id === home.module }));
+    const layers = own.length || !home ? own : home.modules.map((m) => ({ ...m, enabled: m.id === home.module }));
+    return [...layers, ...APP_MODULES.map((m) => ({ ...m, enabled: this.appModuleOn(m.id), exclusive: false, layout: null, app: true }))];
+  }
+
+  /** Where the app's modules switched for a layout are kept: per layout, a module layout (the terminal) with its home. */
+  _appModulesKey() {
+    return `arail.appModules:${this.moduleHome?.url || this.layoutUrl}`;
+  }
+
+  /** The ids of the app's modules that are on for this layout: as switched (kept in the browser), else as by default. */
+  _appModulesOn() {
+    const key = this._appModulesKey();
+    if (!this.appModules.has(key)) {
+      const saved = storage.get(key, {});
+      const switched = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      this.appModules.set(key, APP_MODULES.filter((m) => (typeof switched[m.id] === "boolean" ? switched[m.id] : m.on)).map((m) => m.id));
+    }
+    return this.appModules.get(key);
+  }
+
+  /** Is this module of the app (e.g. "disruptions") on? */
+  appModuleOn(id) {
+    return this._appModulesOn().includes(id);
+  }
+
+  /**
+   * Switch a module of the app on or off. Disruptions off: the disruptions started from its panel and
+   * the scenario stop (those the simulations start themselves, e.g. faults of the infrastructure, go on).
+   * Build off: an object being placed is dropped, the selection cleared.
+   */
+  setAppModule(id, on) {
+    const m = APP_MODULES.find((x) => x.id === id);
+    if (!m || this.appModuleOn(id) === on) return;
+    const ids = this._appModulesOn().filter((x) => x !== id);
+    if (on) ids.push(id);
+    this.appModules.set(this._appModulesKey(), ids);
+    // only what differs from the defaults is kept
+    storage.set(this._appModulesKey(), Object.fromEntries(APP_MODULES.filter((x) => ids.includes(x.id) !== x.on).map((x) => [x.id, ids.includes(x.id)])));
+    if (id === "build" && !on) {
+      if (this.editor.placing) this.editor.cancel();
+      this.editor.selected = null;
+    }
+    if (id === "disruptions" && !on) {
+      const w = this.world;
+      if (w.scenarios.current) w.scenarios.stop();
+      for (const d of [...w.disruptions.active]) if (!d.def.hidden) w.disruptions.stop(d.id);
+    }
+    if (!this._syncTabs() && this.activeTab === "view") this.renderPanel("view");
   }
 
   /**
    * Switch a module on or off (View panel). Rail operations, infrastructure and journeys are combined;
    * an exclusive module switches the others off, and a module that is a layout of its own (the
    * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
+   * The app's modules (Build, Disruptions) go with every choice.
    */
   toggleModule(id) {
+    if (APP_MODULES.some((m) => m.id === id)) return this.setAppModule(id, !this.appModuleOn(id));
     const home = this.moduleHome;
     if (home && !this.world.layers().length) return this.openLayout(home.url, ARail.toggleLayer(home.modules, [home.module], id));
     return this.chooseModules(ARail.toggleLayer(this.world.layers(), this.layersOn(), id));

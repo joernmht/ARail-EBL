@@ -1,0 +1,144 @@
+/* The architecture page, in the design of the project page (tokens, bar, buttons and fonts come from
+   app/app.css). The UML diagrams are SVG drawn with the classes below: they follow light and dark
+   mode with the page. Lines and frames in Türkis, decisions in Orange (the accent), text in the
+   page's text colours; every text keeps a contrast of at least 4.5:1. */
+html { scroll-behavior: smooth; }
+html, body { height: auto; }
+body { font-size: 16px; line-height: 1.55; }
+a { color: var(--accent-ink); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
+h1, h2, h3, h4, h5 { line-height: 1.2; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+code { font-family: var(--mono); font-size: .92em; }
+.skip-link:focus { top: 12px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* the bar, as on the project page */
+.site-bar { position: sticky; top: 0; z-index: 5; }
+.site-nav { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+.site-nav a:not(.btn) { color: var(--bar-text); text-decoration: none; font-weight: 500; font-size: .92rem; padding: 7px 9px; border-radius: var(--radius); }
+.site-nav a:not(.btn):hover { background: var(--bar-hover); }
+@media (max-width: 860px) { .site-nav .opt { display: none; } }
+@media (max-width: 640px) { .site-nav { margin-left: auto; } .site-bar .cro-logo { --h: 30px; } }
+@media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
+
+/* ---------------------------------------------------------------- head and sections */
+.arch-hero { background: var(--board); color: var(--board-text); padding-block: 30px 34px; }
+.arch-hero .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.arch-hero h1 { font-size: clamp(1.9rem, 4.2vw, 2.8rem); font-weight: 800; letter-spacing: -.015em; margin: 8px 0 12px; }
+.arch-hero .lead { color: var(--board-muted); max-width: 72ch; font-size: 1.05rem; }
+.arch-hero .lead + .lead { margin-top: 10px; }
+.arch-hero .lead.small { font-size: .95rem; }
+.arch-hero a { color: var(--board-text); }
+.arch-hero code { color: var(--board-text); }
+.arch-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px; padding-block: 26px 56px; }
+/* grid items take the width of the page, not of a wide diagram or table inside them */
+.arch-main > section, .arch-main > section > *, .model-group, .model-group > *, details.model, .model-body, .model-body > *, .activity, .activity > *, .diagram-figure, .diagram-figure > *, .registry-group, .registry-group > *, .notation > * { min-width: 0; }
+.arch-toc { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.arch-toc a { text-decoration: none; font-weight: 500; font-size: .92rem; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); }
+.arch-toc a:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
+.arch-main > section { display: grid; gap: 14px; scroll-margin-top: 80px; }
+.arch-main h2 { font-size: clamp(1.45rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -.01em; }
+.arch-main h3 { font-size: 1.15rem; font-weight: 700; }
+.intro { color: var(--text-2); max-width: 80ch; }
+.prose { display: grid; gap: 10px; max-width: 80ch; }
+.prose ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.arch-actions { display: flex; gap: 8px; }
+.status.bad { color: var(--danger); }
+
+/* ---------------------------------------------------------------- the models */
+.model-group { display: grid; gap: 10px; margin-top: 18px; }
+.model-group:first-child { margin-top: 0; }
+details.model { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); scroll-margin-top: 80px; }
+details.model[open] { border-color: var(--accent-ink); }
+details.model > summary { cursor: pointer; padding: 12px 16px 12px 40px; display: grid; gap: 2px; position: relative; list-style: none; }
+details.model > summary::-webkit-details-marker { display: none; }
+details.model > summary::before { content: ""; position: absolute; left: 16px; top: 18px; width: 9px; height: 9px; border-right: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: rotate(-45deg); transition: transform .15s; }
+details.model[open] > summary::before { transform: rotate(45deg); top: 15px; }
+details.model > summary:hover .model-title { color: var(--accent-ink); }
+.model-title { font-weight: 700; font-size: 1.05rem; }
+.model-summary { color: var(--text-2); }
+.model-meta { font-size: .8rem; color: var(--text-2); font-family: var(--mono); }
+.model-body { display: grid; gap: 12px; padding: 4px 16px 18px; border-top: 1px solid var(--line); }
+.model-body h4 { font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); margin-top: 12px; }
+.model-body h5 { font-size: 1rem; font-weight: 700; }
+.model-desc { max-width: 85ch; }
+.activity { display: grid; gap: 8px; scroll-margin-top: 80px; }
+.activity + .activity { margin-top: 10px; }
+details.sub > summary { cursor: pointer; color: var(--accent-ink); font-weight: 500; width: fit-content; }
+details.sub[open] > summary { margin-bottom: 8px; }
+ol.steps { margin: 0; padding-left: 1.6em; max-width: 90ch; }
+ol.steps li + li { margin-top: 3px; }
+ul.rules, ul.files-list { margin: 0; padding-left: 1.2em; max-width: 90ch; }
+ul.rules li + li, ul.files-list li + li { margin-top: 4px; }
+/* long names of code (Class._method) break rather than widen the page */
+ol.steps, ul.rules, ul.files-list, .model-desc, .model-summary, .table-wrap td, .intro, .prose { overflow-wrap: anywhere; }
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.files a { overflow-wrap: anywhere; }
+.registry-group { display: grid; gap: 8px; }
+.registry-group h3 .count { font-weight: 500; color: var(--text-2); }
+.notation { display: grid; gap: 16px; }
+@media (min-width: 1000px) { .notation { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.table-wrap table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+.table-wrap th, .table-wrap td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+.table-wrap th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); background: var(--surface-2); }
+.table-wrap tr:last-child td { border-bottom: 0; }
+.classes-table td:nth-child(4), .classes-table td:nth-child(5) { min-width: 18ch; }
+
+/* ---------------------------------------------------------------- diagrams */
+.diagram-figure { margin: 0; display: grid; gap: 6px; }
+.diagram-tools { display: flex; justify-content: flex-end; }
+.diagram { overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 10px; }
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.diagram.full svg { max-width: none; }
+.diagram-figure figcaption { font-size: .85rem; color: var(--text-2); }
+
+.uml text { fill: var(--text); }
+.uml .t-body { font: 400 13px var(--font); }
+.uml .t-bold { font: 700 13px var(--font); }
+.uml .t-title { font: 700 14px var(--font); }
+.uml .t-small { font: 400 11px var(--font); }
+.uml .t-caps { font: 700 10px var(--font); letter-spacing: .06em; }
+.uml .t-mono { font: 400 11.5px var(--mono); }
+.uml .muted, .uml .ref, .uml .t-small { fill: var(--text-2); }
+.uml .lane, .uml .cluster-label { fill: var(--accent-ink); }
+.uml .shape { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 1.4; }
+.uml .divider { stroke: var(--accent-ink); stroke-width: 1; fill: none; }
+.uml .fill { fill: var(--surface); stroke: none; }
+.uml .edge-line { fill: none; stroke: var(--text-2); stroke-width: 1.4; }
+.uml .edge.dashed .edge-line { stroke-dasharray: 6 4; }
+.uml .deco-arrow { fill: none; stroke: var(--text-2); stroke-width: 1.4; stroke-linejoin: round; }
+.uml .deco-hollow { fill: var(--surface); stroke: var(--text-2); stroke-width: 1.4; }
+.uml .deco-filled { fill: var(--text-2); stroke: var(--text-2); stroke-width: 1.4; }
+.uml .edge-label rect { fill: var(--bg); stroke: none; }
+.uml .edge-label text { fill: var(--text-2); }
+/* clusters (groups of packages) */
+.uml .cluster-box { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 2 0; }
+.uml .cluster-tab { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.4; }
+/* packages and classes */
+.uml .package .shape { fill: var(--surface); }
+.uml .package .files { fill: var(--text); }
+.uml .class .head { fill: var(--surface-2); stroke: var(--accent-ink); stroke-width: 1.4; }
+.uml .class.module .shape, .uml .class.module .head { stroke-dasharray: 5 3; }
+.uml .external-class .shape { stroke: var(--text-2); stroke-dasharray: 4 3; fill: var(--bg); }
+/* activities */
+.uml .initial, .uml .final .dot, .uml .bar { fill: var(--text); stroke: none; }
+.uml .final .ring, .uml .flowfinal .ring { fill: var(--surface); stroke: var(--text); stroke-width: 1.6; }
+.uml .flowfinal .cross { stroke: var(--text); stroke-width: 1.6; }
+.uml .action .shape { fill: var(--surface-2); }
+.uml .decision .shape, .uml .diamond.shape { fill: var(--surface); stroke: var(--warn); stroke-width: 1.6; }
+.uml .send .shape, .uml .receive .shape { fill: var(--surface); stroke: var(--text); stroke-width: 1.4; }
+/* data flow */
+.uml .external .shape { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
+.uml .process .shape { fill: var(--surface-2); }
+.uml .store .shape { fill: none; stroke: var(--accent-ink); stroke-width: 1.6; }
+.uml .flow .edge-line { stroke: var(--accent-ink); }
+.uml .flow .deco-arrow { stroke: var(--accent-ink); }
+.uml .external-package .shape { stroke-dasharray: 5 3; fill: var(--bg); }
+.uml .utility .shape { fill: var(--surface-2); }
+.uml .link .edge-line { stroke: var(--accent-ink); }
+.uml .link .deco-arrow { stroke: var(--accent-ink); }
