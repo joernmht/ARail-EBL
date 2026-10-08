@@ -6,7 +6,7 @@ export const PAGES = [
   {
     id: "app", group: "pages", title: "The app",
     summary: "Sources (camera, photo, video, flyover), the frame loop, the HUD and the panels: View (with the modules), Build, the modules' tabs, Disruptions and Settings (simulation and control system).",
-    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. The tabs follow the modules: Terminal, Operations, Infrastructure and Journeys appear with their simulation, Disruptions with the app's module Disruptions; View, Build and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
+    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. The tabs follow the modules: Terminal, Operations, Infrastructure and Journeys appear with their simulation, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
     files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
     classes: [
       {
@@ -54,7 +54,7 @@ export const PAGES = [
     }],
     parameters: [
       { key: "?layout=, ?layers=", default: "the last layout, its last modules", meaning: "A layout and its modules (e.g. layers=journeys)." },
-      { key: "#tab", default: "view", meaning: "The tab: view, build, terminal, ops, infra, journeys, disrupt, settings (simulate, control: its views)." },
+      { key: "#tab", default: "view", meaning: "The tab: view, build, terminal, ops, infra, journeys, disrupt, settings (simulate, control: its views); #build and #disrupt switch their module on." },
       { key: "?image=, ?camera=1, ?scenario=", default: "", meaning: "A photo, the live camera, a scenario played (switches the module Disruptions on)." },
     ],
     events: {
@@ -65,7 +65,7 @@ export const PAGES = [
         { name: "journeys.traveller.arrived", does: "a toast" },
       ],
     },
-    rules: ["Edits are saved 300 ms after the last change, per layout.", "The app's module Disruptions is kept per layout; a module layout (the terminal) shares it with its home."],
+    rules: ["Edits are saved 300 ms after the last change, per layout.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
   },
   {
     id: "markers", group: "pages", title: "Marker sheets and deck cards",

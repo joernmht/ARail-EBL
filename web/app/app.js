@@ -32,11 +32,16 @@ const FEATURE_TABS = {
 };
 /**
  * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
- * on and off in the View panel like those, without loading the layout again. `tab`: the tab it shows.
+ * on and off in the View panel like those, without loading the layout again. `tab`: the tab it shows;
+ * `on`: whether it is on for a layout nobody has switched it for.
  */
 const APP_MODULES = [
   {
-    id: "disruptions", name: "Disruptions", tab: "disrupt", icon: "disruptions",
+    id: "build", name: "Build", tab: "build", icon: "build", on: true,
+    description: "Place and edit the objects of the layout, its settings and its marker map; survey the markers from a video. Off, nobody changes the layout by mistake.",
+  },
+  {
+    id: "disruptions", name: "Disruptions", tab: "disrupt", icon: "disruptions", on: false,
     description: "Delays, signal failures, cancellations, closures and replacement buses at the stops, and the scenarios of the layout: timelines of disruptions for an exercise.",
   },
 ];
@@ -118,8 +123,9 @@ class App {
       }, 500);
     }
     const tab = location.hash.slice(1);
-    // a link to the Disruptions tab switches its module on
-    if (tab === "disrupt") this.setAppModule("disruptions", true);
+    // a link to the tab of a module of the app (Build, Disruptions) switches it on
+    const linked = APP_MODULES.find((m) => m.tab === tab);
+    if (linked) this.setAppModule(linked.id, true);
     if (this.tabs().includes(TAB_VIEWS[tab]?.[0] ?? tab)) this.selectTab(tab);
     let last = performance.now(), failing = false;
     const loop = (t) => {
@@ -269,13 +275,15 @@ class App {
   }
 
   /**
-   * The tabs shown: View, Build and Settings always; the tab of a module when it is on: Terminal when
-   * the layout has a container terminal, Operations with rail operations, Infrastructure with an
-   * infrastructure simulation, Journeys with journeys, Disruptions with the module Disruptions.
+   * The tabs shown: View and Settings always; the tab of a module when it is on: Build with the module
+   * Build (on unless switched off), Terminal when the layout has a container terminal, Operations with
+   * rail operations, Infrastructure with an infrastructure simulation, Journeys with journeys,
+   * Disruptions with the module Disruptions.
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
     const shown = {
+      build: this.appModuleOn("build"),
       terminal: has("terminal"), ops: has("operations"), infra: has("infrastructure"), journeys: has("journeys"),
       disrupt: this.appModuleOn("disruptions"),
     };
@@ -413,7 +421,7 @@ class App {
   /**
    * The modules shown in the View panel: the layers of this layout (in a layout that is a module of
    * another one, a layout of its own like the container terminal: the modules of that one), then the
-   * app's modules (Disruptions).
+   * app's modules (Build, Disruptions).
    * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
    */
   modules() {
@@ -422,17 +430,18 @@ class App {
     return [...layers, ...APP_MODULES.map((m) => ({ ...m, enabled: this.appModuleOn(m.id), exclusive: false, layout: null, app: true }))];
   }
 
-  /** Where the app's modules that are on are kept: per layout, a module layout (the terminal) with its home. */
+  /** Where the app's modules switched for a layout are kept: per layout, a module layout (the terminal) with its home. */
   _appModulesKey() {
     return `arail.appModules:${this.moduleHome?.url || this.layoutUrl}`;
   }
 
-  /** The ids of the app's modules that are on for this layout (as kept in the browser, the first time). */
+  /** The ids of the app's modules that are on for this layout: as switched (kept in the browser), else as by default. */
   _appModulesOn() {
     const key = this._appModulesKey();
     if (!this.appModules.has(key)) {
-      const saved = storage.get(key, []);
-      this.appModules.set(key, Array.isArray(saved) ? saved.filter((id) => APP_MODULES.some((m) => m.id === id)) : []);
+      const saved = storage.get(key, {});
+      const switched = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      this.appModules.set(key, APP_MODULES.filter((m) => (typeof switched[m.id] === "boolean" ? switched[m.id] : m.on)).map((m) => m.id));
     }
     return this.appModules.get(key);
   }
@@ -445,6 +454,7 @@ class App {
   /**
    * Switch a module of the app on or off. Disruptions off: the disruptions started from its panel and
    * the scenario stop (those the simulations start themselves, e.g. faults of the infrastructure, go on).
+   * Build off: an object being placed is dropped, the selection cleared.
    */
   setAppModule(id, on) {
     const m = APP_MODULES.find((x) => x.id === id);
@@ -452,7 +462,12 @@ class App {
     const ids = this._appModulesOn().filter((x) => x !== id);
     if (on) ids.push(id);
     this.appModules.set(this._appModulesKey(), ids);
-    storage.set(this._appModulesKey(), ids);
+    // only what differs from the defaults is kept
+    storage.set(this._appModulesKey(), Object.fromEntries(APP_MODULES.filter((x) => ids.includes(x.id) !== x.on).map((x) => [x.id, ids.includes(x.id)])));
+    if (id === "build" && !on) {
+      if (this.editor.placing) this.editor.cancel();
+      this.editor.selected = null;
+    }
     if (id === "disruptions" && !on) {
       const w = this.world;
       if (w.scenarios.current) w.scenarios.stop();
@@ -465,7 +480,7 @@ class App {
    * Switch a module on or off (View panel). Rail operations, infrastructure and journeys are combined;
    * an exclusive module switches the others off, and a module that is a layout of its own (the
    * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
-   * The app's modules (Disruptions) go with every choice.
+   * The app's modules (Build, Disruptions) go with every choice.
    */
   toggleModule(id) {
     if (APP_MODULES.some((m) => m.id === id)) return this.setAppModule(id, !this.appModuleOn(id));

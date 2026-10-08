@@ -154,7 +154,7 @@ export const WORLD = [
       description: "View → Modules: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
       nodes: [
         ["s", "start"],
-        ["d0", "decision", "A module of the app (Disruptions)?"],
+        ["d0", "decision", "A module of the app (Build, Disruptions)?"],
         ["a0", "action", "Switch it; its tab shows or hides (nothing is loaded again)", "App.setAppModule"],
         ["d1", "decision", "The module on?"],
         ["a1", "action", "Switch it off", "toggleLayer"],

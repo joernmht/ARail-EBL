@@ -68,7 +68,7 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 
 ## Layers
 
-One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below). Next to a layout's own modules the app offers its module **Disruptions** for every layout; it is not part of the file.
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below). Next to a layout's own modules the app offers its modules **Build** (on until switched off) and **Disruptions** for every layout; they are not part of the file.
 
 ```json
 "layers": [

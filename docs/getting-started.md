@@ -79,7 +79,7 @@ The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, *
 
 ### View
 
-- *Modules*: boxes to click, one per module; each module that is on has its tab. The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure** and **Journeys** can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Disruptions** is a module of the app, offered for every layout: it shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
+- *Modules*: boxes to click, one per module; each module that is on has its tab. The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure** and **Journeys** can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
 - *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
 - *Flyover*: see above.
 - *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
@@ -88,7 +88,7 @@ The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, *
 
 ### Build
 
-The layout editor.
+The layout editor. Shown with the module **Build**, which is on until you switch it off (View → Modules; a link with `#build` switches it on).
 
 - *Add to the layout*: the palette, in six groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
 
@@ -213,7 +213,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/synthetic-demo.json&sce
 | `mock=1` | start the simulated control system |
 | `scenario=<id>` | play a scenario of the layout (switches the module Disruptions on) |
 | `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
-| `#view`, `#build`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#settings` | open a tab, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them; `#disrupt` switches the module Disruptions on) |
+| `#view`, `#build`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#settings` | open a tab, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them; `#build` and `#disrupt` switch the modules Build and Disruptions on) |
 | `#simulate`, `#control` | open Settings with its view Simulation or Control system |
 
 ## Tips for good tracking
