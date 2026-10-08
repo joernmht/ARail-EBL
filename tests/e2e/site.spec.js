@@ -75,8 +75,8 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   await expect(page.locator("#rollingFields")).toBeVisible();
   await expect(page.locator("#ids")).toBeHidden();
   await expect(page.locator("#kind")).toHaveValue("rolling");
-  // the truck chassis is not model rolling stock
-  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80"]);
+  // the truck chassis is not model rolling stock; "all" (every ID per wagon) is for label sheets
+  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80", "all"]);
   const sheet = page.locator("svg.sheet").first();
   await expect(sheet).toHaveAttribute("width", "210mm");
   const g = await sheet.evaluate((svg) => {
@@ -123,6 +123,30 @@ test("deck cards for model wagons have the exact spot pitch and validate the inp
   await expect(page.locator("#status")).toHaveText("8 markers on 1 sheet.");
   await expect(page.locator("#rollingFields")).toBeHidden();
   expect(new URL(page.url()).searchParams.get("kind")).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("label sheets: one tag per container spot on HERMA 4338, layout markers on HERMA 10109", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?kind=rolling&paper=herma4338&type=all&wagons=1-25");
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of HERMA 4338 (63.5 × 29.6 mm, 27 per A4); 8 labels left over.");
+  await expect(page.locator("#labelFields")).toBeVisible();
+  await expect(page.locator("#scale")).toBeHidden();
+  const first = await page.locator("svg.sheet").first().evaluate((svg) => {
+    const r = svg.querySelector('rect[fill="#000"]');
+    return ["x", "y", "width"].map((a) => Number(r.getAttribute(a)));
+  });
+  expect(first).toEqual([7.25 + 21.75, 15.3 + 4.8, 20]);
+  await page.locator("#skip").fill("26");
+  await expect(page.locator("#status")).toHaveText("100 tags on 5 sheets of HERMA 4338 (63.5 × 29.6 mm, 27 per A4); 9 labels left over.");
+  await page.locator("#paper").selectOption("a4");
+  await expect(page.locator("#status")).toHaveText("“Every ID per wagon” is for label sheets: choose a wagon type for deck cards");
+  await page.goto("/markers/?paper=herma10109&ids=0-99&size=40");
+  await expect(page.locator("#status")).toHaveText("100 markers on 9 sheets of HERMA 10109 (60 × 60 mm, 12 per A4); 8 labels left over.");
+  await expect(page.locator("#cutlines")).toBeHidden();
+  await page.locator("#size").fill("50");
+  await expect(page.locator("#status")).toHaveText(/at most 43 mm/);
   expect(errors).toEqual([]);
 });
 

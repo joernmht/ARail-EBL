@@ -206,6 +206,21 @@ tags, so the containers on model wagons are virtual.
 | TT (1:120) | 20.3 mm | 15 mm |
 | N (1:160) | 15.2 mm | 10 mm |
 
+### Tags on label sheets
+
+Instead of a card per wagon, the tags can go on self-adhesive labels, **one label per container
+spot**: choose **Paper → HERMA 4338 (63.5 × 29.6 mm, 27 per A4)**. A label is about the
+footprint of a 20 ft container in H0 (69.6 × 28.0 mm), so a 40 ft spot takes two labels. Stick
+each label centred on its spot with the **A ▶** arrow towards the wagon's A end; the text left
+of the tag says its ID, wagon and spot. Wagon type **Every ID per wagon** prints all `stride` IDs
+of each wagon, e.g. wagons `1-25` at stride 4 give a set of IDs 0–99 on four sheets, and you keep
+note of the ones you have not used. Layout markers go one per label too, e.g. on
+**HERMA 10109 (60 × 60 mm)** up to 43 mm with a 6 mm border.
+
+The label positions are the nominal layout of the sheets. Print one sheet on plain paper with
+**Label outlines** first, hold it against a label sheet in front of a light and correct the
+printer with **Shift right / down**. **Skip labels** starts on a partly used sheet.
+
 ### Measuring the height
 
 The tags are found on the plane at their height above the layout, not on the table: projected onto

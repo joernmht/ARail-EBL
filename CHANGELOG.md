@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- **Label sheets** on the marker page (Paper → HERMA 10109, 60 × 60 mm, or HERMA 4338, 63.5 × 29.6 mm): one marker per label. For model wagons each label is one container spot (a 40 ft spot takes two labels), with “Every ID per wagon” for a whole set of spare tags (e.g. IDs 0–99). Skip labels of a partly used sheet, label outlines for a test print, printer shift.
 - **Flyover**: look at and edit the layout with a virtual camera instead of the camera image (button, View panel or key F). Mouse, touch, keyboard and on-screen buttons orbit, pan, zoom, tilt and switch to a plan view; the camera is kept per layout. It shows the lab floor, the table, the orthophoto of the table, a grid, the marker stickers and everything virtual, by day and by night.
 - **Grid editing**: in the flyover (and over the camera image with "Grid in camera view") placed points, rectangle corners and dragged objects snap to a grid (`grid` in the layout; Alt for free placement). Inspector buttons ↺ 90° / ↻ 90° and the keys R / Shift+R turn objects. In the flyover objects can be placed with the keyboard alone: the arrows move the view, Enter puts a point at the cross in the middle.
 - **Table modules** (`tabletop`, Build → Table): virtual extensions of the tabletop, drawn over the camera image too, or the outline of the real table for the flyover. Dragged out from corner to corner; Duplicate puts the copy right beside the original.
