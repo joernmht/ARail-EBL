@@ -11,9 +11,30 @@ The terminal is a simulation (`{"type": "terminal"}` in the layout's `simulation
 infrastructure (yard blocks, cranes, the truck lane, the quay, reach stackers) consists of ordinary
 objects that you place in Build; the loading tracks are ordinary `track` objects.
 
-## The example
+## The examples
 
-**Layouts… → Example: container terminal** (or
+Three examples have a terminal:
+
+- **Example: terminal at the crane** (`app/?example=crane-terminal`): the lab's real terminal
+  tracks at the model gantry crane, in [`web/layouts/ebl-neustadt.json`](../web/layouts/ebl-neustadt.json)
+  (the layout of Bf Neustadt, see [Getting started](getting-started.md#the-examples)): a virtual
+  gantry crane over the three real loading tracks G 14 to G 16, a truck lane in front of them and
+  yard Block A behind them. KT 41 Hamburg stands on loading track 1; the scenario **Morning shift
+  at the terminal** brings KT 52 on loading track 3. The real container train on the middle track
+  is left alone.
+- **Example: hybrid container train** (`app/?example=container-train`): a real container train
+  of the lab whose wagons carry AprilTag labels, and a real model truck with a label on each of
+  its two trailers, in [`web/layouts/ebl-container-train.json`](../web/layouts/ebl-container-train.json).
+  ARail puts virtual containers on the labels, and a virtual crane moves containers between the
+  real wagons, the real truck, the virtual train KT 61 Rostock, road trucks, a yard block and the
+  barge MS Elbe 7 in a harbour on a virtual module below the table edge. The scenario **Loading the
+  real train** does that. How the labels sit on the wagons is described in
+  [Labels where they fit](#labels-where-they-fit).
+- **Example: container terminal (virtual)**, below: a terminal of its own, in the flyover.
+
+### The virtual terminal
+
+**Layouts… → Example: container terminal (virtual)** (or
 `app/?layout=../layouts/container-terminal.json#terminal`) opens
 [`web/layouts/container-terminal.json`](../web/layouts/container-terminal.json) in the flyover:
 
@@ -297,6 +318,41 @@ shows *1/3* tags for an Sgns. One tag gives the heading less precisely (the far 
 of an Sgns moves by about 2.5 mm per degree, the far end of the wagon by about 3 mm), and a hand over that single tag hides the wagon.
 One tag per spot is the better choice where wagons are handled often.
 
+### Labels where they fit
+
+Labels stuck by hand need not sit on the container spots. Three keys of a `rolling_stock` entry
+describe them, all along the wagon in layout mm from its centre, + towards the A end:
+
+| Key | Example | Meaning |
+| --- | --- | --- |
+| `tags_mm` | `[68, -68]` | where each tag sits: slot 0, 1, … (default: one tag on each container spot) |
+| `tags_deg` | `[0, 180]` | how each tag is turned: 0 = its x axis (the label's arrow) points to the A end, 180 = to the B end |
+| `spots_mm` | `[50, -50]` | where the container spots are (default: the wagon type's); such spots take 20 ft containers only |
+
+The example's container train is the lab's: Sgns wagons with a label at each end, on the two
+outer spots (136 mm apart), the middle spot bare, and each label's arrow pointing to its own end
+of the wagon; the truck has one label on each of its two trailers (100 mm apart), both arrows
+towards the cab:
+
+```json
+"rolling_stock": [
+  { "number": 1, "type": "lgns40", "name": "Truck with two trailers", "tags_mm": [50, -50], "spots_mm": [50, -50] },
+  { "number": 2, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180] }
+]
+```
+
+With `markers.rolling.stride` 2 the IDs go in pairs: 0 and 1 the truck (W1), 2 and 3 wagon W2, 4
+and 5 W3, and so on. Measure the positions on the model with a ruler, or in the app: a wagon whose
+tags disagree by more than 6 mm uses only one of them. The validation reports positions off the
+wagon, tags closer than their size, spots closer than a 20 ft container and more tags than
+`stride`.
+
+Leave white around every tag, at least one cell (2.5 mm for a 20 mm tag), better a whole
+millimetre more on the side towards the wagon's dark frame: seen at a flat angle, a narrow margin
+disappears in the picture, the black border of the tag merges with the frame, and the tag is not
+found. In the example's photos, the labels whose tag sits close to the wagon's near side are the
+ones that are missed.
+
 ### Surveying with tagged wagons on the layout
 
 The tags never enter the marker map. Still, set `markers.dictionary` to the layout's marker type
@@ -405,7 +461,7 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
 | --- | --- | --- |
 | `name` | `"Container terminal"` | shown in the Terminal tab |
 | `default_wagon` | `"sgns60"` | type of trains' wagons and of model wagons that are not listed: `sgns60`, `lgns40` or `sggrss80` |
-| `rolling_stock` | `[]` | model wagons: `number` (from 1), `type`, `name` (default `W<number>`), `height_mm` (0–200, default `markers.rolling.height_mm`) |
+| `rolling_stock` | `[]` | model wagons: `number` (from 1), `type`, `name` (default `W<number>`), `height_mm` (0–200, default `markers.rolling.height_mm`), `tags_mm`, `tags_deg` and `spots_mm` (see [Labels where they fit](#labels-where-they-fit)) |
 | `trains` | `[]` | `id`, `name`, `track` (id of a `track` object), `direction` (1: from the track's first point to its last, −1: the other way), `stop_mm` (the head's distance from the entry end; default: the wagons' middle at the track's middle), `start` (`"away"`, the default, or `"positioned"`: at its stop when the layout is loaded), `wagons` (types from the head; default three of `default_wagon`) |
 | `barges` | `[]` | `id`, `name`, `quay` (id of a `quay` object), `length_m` (25–110, default 55), `tiers` (1–3, default 2), `start` |
 | `trucks.lane` | the first truck lane | id of the `truck-lane` object |

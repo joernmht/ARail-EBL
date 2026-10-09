@@ -152,6 +152,7 @@ export const TRACKING = [
       "Survey weight 1/(d² + (5·size)²); pairs closer than 1.2 marker sizes are skipped; three frames before a marker is used in video, one in a photo.",
       "Pose: normalised least squares over all corners; while more than two markers: drop the worst if its error exceeds max(3 px, 0.2 × its edge).",
       "Smoothing: α = min(1, 0.25 + shift/12 px), off when the camera stands still; the pose is held 1.5 s without markers.",
+      "3D pose from the homography: the plane lies in front of the camera where most of a 3×3 grid of image points sees it; the layout origin may lie behind the camera (a long layout, filmed far from it).",
       "Focal length: ≥ 3 markers spread over ≥ 40 mm, plane tilted 15–80°, 0.25·W < f < 5·W; median of the latest 600 estimates.",
       "While surveying, a marker seen in more than 10 frames is written into the map every 8 frames, or at once when it moved by more than 0.25 mm or 0.03°.",
     ],

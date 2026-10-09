@@ -12,7 +12,7 @@ export const PAGES = [
       {
         name: "App", file: "web/app/app.js", kind: "class", role: "The page: source, tracking, world, panels.",
         attributes: ["world: World", "tracker: PlaneTracker", "detector: MarkerDetector", "camera: Camera", "source: object | null — camera, photo or video", "mode: string — camera or flyover", "activeTab: string", "layoutUrl: string | null", "moduleHome: object | null — the layout a module layout belongs to", "appModules: Map — the app's modules on, per layout (also kept in the browser)"],
-        operations: ["init()", "frame(dt)", "render()", "tabs() — the tabs shown", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "setAppModule(id, on)", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()"],
+        operations: ["init()", "frame(dt)", "render()", "tabs() — the tabs shown", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()"],
       },
       { name: "Panels", file: "web/app/panels.js", kind: "class", role: "The View, Settings and Disruptions panels.", attributes: ["settingsView: string — simulate or control"], operations: ["renderView(el)", "renderSettings(el)", "renderSimulate(el)", "setSettingsView(v)", "renderControl(el)", "renderDisruptions(el)", "_moduleBox(m)"] },
       { name: "Editor", file: "web/app/editor.js", kind: "class", role: "Build: placing, dragging, the inspector, the marker map.", operations: ["startPlacing(type)", "placeAt(p, e)", "select(obj)", "render(container)", "renderInspector()", "keepPositions()"] },
@@ -56,6 +56,7 @@ export const PAGES = [
       { key: "?layout=, ?layers=", default: "the last layout, its last modules", meaning: "A layout and its modules (e.g. layers=journeys)." },
       { key: "#tab", default: "view", meaning: "The tab: view, build, terminal, ops, infra, journeys, disrupt, settings (simulate, control: its views); #build and #disrupt switch their module on." },
       { key: "?image=, ?camera=1, ?scenario=", default: "", meaning: "A photo, the live camera, a scenario played (switches the module Disruptions on)." },
+      { key: "?example=", default: "", meaning: "An example of the Layouts menu with its own photo or clip and tab (e.g. example=crane-terminal: Bf Neustadt with the photo of the terminal)." },
     ],
     events: {
       listens: [

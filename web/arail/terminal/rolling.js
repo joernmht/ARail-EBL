@@ -89,13 +89,16 @@ export class RollingStock {
    * @param {number} [options.size_mm] tag size
    * @param {(number: number, slot: number) => number | null} [options.slotAlongMM] position of a slot along
    *   the wagon (mm from its centre, + to the A end); null = no such slot
+   * @param {(number: number, slot: number) => number} [options.slotTurn] how the tag of a slot is turned on
+   *   the wagon (radians, counterclockwise from the A end; π: its x axis points to the B end)
    * @param {() => {points: number[][], lengths: number[]}[]} [options.tracks] tracks for snapping
    * @param {object} [options.options] overrides of {@link ROLLING_DEFAULTS}
    */
-  constructor({ stride = 4, size_mm = 20, slotAlongMM = () => null, tracks = () => [], options = {} } = {}) {
+  constructor({ stride = 4, size_mm = 20, slotAlongMM = () => null, slotTurn = () => 0, tracks = () => [], options = {} } = {}) {
     this.stride = stride;
     this.size_mm = size_mm;
     this.slotAlongMM = slotAlongMM;
+    this.slotTurn = slotTurn;
     this.tracks = tracks;
     this.options = { ...ROLLING_DEFAULTS, ...options };
     /** @type {Map<number, TrackedWagon>} */
@@ -151,7 +154,7 @@ export class RollingStock {
 
   /**
    * Usable tags of one frame by wagon number: known slots only; a tag with a pose also has to
-   * pass the size gate.
+   * pass the size gate. Its heading becomes the wagon's (a tag stuck turned is turned back).
    * @returns {Map<number, {slot: number, along: number, center: number[]|null, heading: number|null, edge: number|null, placed: boolean}[]>}
    */
   _group(observations) {
@@ -165,7 +168,9 @@ export class RollingStock {
       const along = this.slotAlongMM(number, slot);
       if (along == null || !Number.isFinite(along)) continue;
       if (!out.has(number)) out.set(number, []);
-      out.get(number).push({ slot, along, center: placed ? o.center : null, heading: placed ? o.heading : null, edge: o.edge_mm ?? null, placed });
+      // the wagon's heading (towards its A end) from the tag's, for a tag stuck turned
+      const heading = placed ? wrapAngle(o.heading - (this.slotTurn(number, slot) || 0)) : null;
+      out.get(number).push({ slot, along, center: placed ? o.center : null, heading, edge: o.edge_mm ?? null, placed });
     }
     return out;
   }

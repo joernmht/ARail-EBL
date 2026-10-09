@@ -1,0 +1,89 @@
+{
+  "format": "arail-layout/1",
+  "name": "EBL hybrid container train (example)",
+  "description": "A real container train of the lab with AprilTag labels on its wagons, and a real truck with two tagged trailers: ARail puts virtual containers on them, and a virtual gantry crane moves containers between them, a virtual train, trucks, a yard block and a barge in a harbour on a virtual module below the table edge. The labels sit on the two end spots of each Sgns wagon, the one at the B end turned (tags_mm, tags_deg); the marker map comes from arail-survey (two videos) and is locked.",
+  "scale": 87,
+  "markers": {"dictionary": "ARUCO", "size_mm": 40, "codes": 250, "origin": 130, "rolling": {"dictionary": "APRILTAG_36h11", "codes": 64, "size_mm": 20, "height_mm": 15, "stride": 2, "max_bit_errors": 3}, "locked": true, "poses": {"127": [-510.1, -6.1, 1.22], "130": [0.0, 0.0, 0.0], "131": [625.2, 5.7, 0.64], "133": [572.4, 1009.7, 2.37]}},
+  "clock": {"start": "09:00"},
+  "simulations": [
+    {
+      "type": "terminal",
+      "name": "KV terminal G 52",
+      "default_wagon": "lgns40",
+      "rolling_stock": [
+        {"number": 1, "type": "lgns40", "name": "Truck with two trailers", "tags_mm": [50, -50], "spots_mm": [50, -50]},
+        {"number": 2, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 3, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 4, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 5, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 6, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 7, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 8, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 9, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 10, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 11, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]}
+      ],
+      "trains": [
+        {"id": "KT61", "name": "KT 61 Rostock", "track": "track-g53", "direction": 1, "stop_mm": 2080, "start": "away", "wagons": ["sgns60", "sgns60", "sgns60"]}
+      ],
+      "barges": [
+        {"id": "BG1", "name": "MS Elbe 7", "quay": "quay-1", "length_m": 55, "tiers": 2, "start": "positioned"}
+      ],
+      "trucks": {"lane": "lane-1"},
+      "containers": [
+        {"id": "EBLU 600001 5", "size": "20", "at": {"carrier": "W1", "bay": 0}},
+        {"id": "TUDU 600002 9", "size": "20", "at": {"carrier": "W8", "bay": 0}},
+        {"id": "ARLU 600003 2", "size": "20", "at": {"carrier": "W8", "bay": 2}},
+        {"id": "DBCU 600004 4", "size": "40", "high": true, "at": {"carrier": "W9", "bay": 0}},
+        {"id": "EBLU 600005 7", "size": "20", "at": {"carrier": "W9", "bay": 2}},
+        {"id": "TUDU 600006 0", "size": "20", "at": {"carrier": "W10", "bay": 2}},
+        {"id": "ARLU 600007 4", "size": "20", "at": {"carrier": "W11", "bay": 0}},
+        {"id": "EBLU 600008 3", "size": "20", "at": {"carrier": "W3", "bay": 0}},
+        {"id": "DBCU 600009 1", "size": "20", "at": {"carrier": "W4", "bay": 2}},
+        {"id": "TUDU 600010 0", "size": "20", "at": {"carrier": "W6", "bay": 0}},
+        {"id": "ARLU 600011 4", "size": "20", "at": {"carrier": "W6", "bay": 2}},
+        {"id": "EBLU 600012 3", "size": "20", "at": {"carrier": "W7", "bay": 2}},
+        {"id": "ARLU 600013 5", "size": "40", "at": {"carrier": "KT61/1", "bay": 0}},
+        {"id": "TUDU 600014 2", "size": "20", "at": {"carrier": "KT61/1", "bay": 2}},
+        {"id": "DBCU 600015 2", "size": "20", "at": {"carrier": "KT61/2", "bay": 0}},
+        {"id": "EBLU 600016 5", "size": "40", "high": true, "at": {"carrier": "KT61/2", "bay": 1}},
+        {"id": "TUDU 600017 9", "size": "40", "at": {"carrier": "KT61/3", "bay": 0}},
+        {"id": "DBCU 600018 9", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
+        {"id": "EBLU 600019 1", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},
+        {"id": "TUDU 600020 3", "size": "40", "at": {"carrier": "BG1", "bay": 0, "row": 0, "tier": 0}},
+        {"id": "ARLU 600021 7", "size": "20", "at": {"carrier": "BG1", "bay": 2, "row": 1, "tier": 0}},
+        {"id": "EBLU 600022 6", "size": "40", "at": {"carrier": "BG1", "bay": 3, "row": 2, "tier": 0}}
+      ],
+      "fill": {"yard-a": 0.2}
+    }
+  ],
+  "objects": [
+    {"id": "table-lab", "type": "tabletop", "name": "EBL table", "kind": "physical", "position": [180, 535], "width_mm": 2300, "depth_mm": 1130},
+    {"id": "track-g53", "type": "track", "name": "Loading track G 53", "track_id": "G53", "points": [[-950, 265], [1300, 272]]},
+    {"id": "track-g52", "type": "track", "name": "Track G 52 (the tagged train)", "track_id": "G52", "points": [[-900, 302], [1300, 335]]},
+    {"id": "lane-1", "type": "truck-lane", "name": "Truck lane", "points": [[-950, 155], [1300, 158]], "positions": 3, "passing_side": "right"},
+    {"id": "yard-a", "type": "container-yard", "name": "Block A", "position": [100, 58], "width_mm": 1190, "depth_mm": 67, "rotation_deg": 0, "tiers": 3},
+    {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 157], "width_mm": 2150, "depth_mm": 372, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
+    {"id": "table-harbour", "type": "tabletop", "name": "Harbour module", "position": [180, -265], "width_mm": 2300, "depth_mm": 470},
+    {"id": "quay-1", "type": "quay", "name": "Quay", "points": [[-1000, -130], [1150, -130]], "berth_m": 60, "water_m": 16, "quay_side": "left"}
+  ],
+  "scenarios": [
+    {
+      "id": "hybrid-shift",
+      "name": "Loading the real train",
+      "description": "The crane loads the free spots of the real wagons from KT 61, the barge and the yard, unloads the real truck and sends a container from the real train to a road truck.",
+      "steps": [
+        {"at": 0, "message": "KT 61 comes in on G 53; the crane loads the real container train."},
+        {"at": 0, "emit": {"name": "terminal.request.call", "payload": {"visit": "KT61"}}},
+        {"at": 1, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 600014 2", "to": {"carrier": "W10", "bay": 0}}}},
+        {"at": 2, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 600001 5", "to": {"carrier": "W11", "bay": 2}}}},
+        {"at": 3, "emit": {"name": "terminal.request.move", "payload": {"container": "DBCU 600015 2", "to": {"carrier": "W1", "bay": 1}}}},
+        {"at": 4, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "pickup"}}},
+        {"at": 5, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 600002 9", "to": {"kind": "truck"}}}},
+        {"at": 6, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 600019 1", "to": {"carrier": "W4", "bay": 0}}}},
+        {"at": 7, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 600021 7", "to": {"carrier": "W10", "bay": 2}}}}
+      ]
+    }
+  ],
+  "view": {"image": "../media/ebl-container-train.jpg", "ortho": {"image": "../media/ebl-container-train-ortho.jpg", "bounds_mm": [-950, -30, 1310, 1100]}}
+}

@@ -89,15 +89,22 @@ test("the flyover homography projects like a pinhole camera at the eye", () => {
   }
 });
 
-test("poseFromHomography recovers the flyover pose, and the explicit pose works with the origin behind the camera", () => {
+test("poseFromHomography recovers the flyover pose, also with the origin behind the camera", () => {
   const cam = new FlyCamera({ target: [300, 200], distance: 1800, yaw: toRad(70), pitch: toRad(40) });
   const { H: hom, focal, pose } = cam.homography(W, H);
   const recovered = poseFromHomography(hom, { fx: focal, fy: focal, cx: W / 2, cy: H / 2 });
   for (const k of ["a1", "a2", "a3", "n"]) for (let i = 0; i < 3; i++) close(recovered[k][i], pose[k][i], 1e-6, k);
-  // looking away from the origin, close to the table: the origin is behind the camera
+  // looking away from the origin, close to the table: the origin is behind the camera (a long
+  // layout filmed far from marker 0); the top of the image shows the sky
   const away = new FlyCamera({ target: [1400, 0], distance: 300, yaw: 0, pitch: toRad(15) });
   const { view } = flyView(away);
   assert.ok(view.depth(0, 0, 0) < 0, "origin behind the camera");
+  const seen = away.homography(W, H);
+  const fromH = poseFromHomography(seen.H, { fx: seen.focal, fy: seen.focal, cx: W / 2, cy: H / 2 });
+  for (const k of ["a1", "a2", "a3", "n"]) for (let i = 0; i < 3; i++) close(fromH[k][i], seen.pose[k][i], 1e-6, `${k} (origin behind)`);
+  // the same homography with the opposite sign gives the same pose
+  const flipped = poseFromHomography(seen.H.map((v) => -v), { fx: seen.focal, fy: seen.focal, cx: W / 2, cy: H / 2 });
+  for (const k of ["a1", "a2", "a3", "n"]) for (let i = 0; i < 3; i++) close(flipped[k][i], seen.pose[k][i], 1e-6, `${k} (-H)`);
   for (const p of [[1400, 0, 0], [1500, 30, 20], [1350, -40, 0]]) {
     const a = view.project(...p), b = away.project(p, W, H);
     close(a[0], b[0], 1e-6);

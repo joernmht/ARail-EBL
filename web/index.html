@@ -45,7 +45,7 @@ p { margin: 0; }
 /* ---------------------------------------------------------------- hero: the picture first */
 .hero { background: var(--board); color: var(--board-text); }
 .hero-grid { display: grid; gap: 22px; padding-block: 22px 30px; }
-@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 36px; padding-block: 32px 40px; } }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 390px); align-items: center; gap: 56px; padding-block: 32px 40px; } }
 .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
 .hero h1 { font-size: clamp(2rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: -.015em; margin: 10px 0 14px; }
 .hero h1 em { font-style: normal; color: var(--overlay-ok); }
@@ -56,8 +56,6 @@ p { margin: 0; }
 .hero .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
 .hero .btn.ghost:hover { border-color: var(--board-text); }
 .hero :focus-visible { outline-color: #ffffff; }
-/* on phones the picture comes first */
-@media (max-width: 999px) { .hero-grid .compare { order: -1; } }
 
 .compare { position: relative; margin: 0; border-radius: var(--radius); overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -69,7 +67,20 @@ p { margin: 0; }
 .compare .tag { position: absolute; top: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: rgba(0, 20, 80, .85); color: #eaf1ff; pointer-events: none; }
 .compare .tag.l { left: 12px; }
 .compare .tag.r { right: 12px; background: #0A777F; color: #ffffff; }
-.hero figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
+.compare-fig { margin: 0; }
+.compare-fig figcaption { padding: 12px 2px 0; color: var(--text-2); font-size: .92rem; }
+.compare-fig figcaption b { color: var(--text); }
+
+/* the hero video: a real train through a virtual town (portrait, from a phone) */
+.hero-video { margin: 0; justify-self: center; width: min(100%, 390px); }
+.hero-video .media { position: relative; }
+.hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 720 / 1280; max-height: min(78vh, 700px); object-fit: cover; border-radius: var(--radius); background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); }
+.hero-video .tag { position: absolute; top: 12px; left: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: #0A777F; color: #ffffff; pointer-events: none; }
+.hero-video .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
+.hero-video .pause svg { width: 16px; height: 16px; fill: currentColor; }
+.hero-video .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.hero-video figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
+@media (max-width: 999px) { .hero-grid .hero-video { order: -1; } }
 
 /* the hand-over: one tap from the picture to an application */
 .jump { border-top: 1px solid var(--board-line); padding-block: 14px 18px; display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
@@ -106,6 +117,16 @@ p { margin: 0; }
 .facts div { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
 .facts strong { font-size: 1.25rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 .facts span { font-size: .84rem; color: var(--text-2); }
+
+/* fresh from the lab: the examples of the lab table */
+.fresh { padding-block: 40px 8px; display: grid; gap: 18px; }
+.fresh-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.fresh-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.fresh-card .pic { aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
+.fresh-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.fresh-card .body { padding: 14px 16px 16px; display: grid; gap: 8px; align-content: start; }
+.fresh-card p { color: var(--text-2); font-size: .94rem; }
+.fresh-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
 
 /* (2) applications */
 .apps { display: grid; gap: 18px; }
@@ -216,18 +237,21 @@ footer a { color: inherit; }
       <div>
         <p class="eyebrow">Railway operations lab · TU Dresden</p>
         <h1 id="intro">The railway lab gets <em>augmented reality</em></h1>
-        <p class="lead">A digital big sister of the model railway, on any phone. Passengers on the platforms, a town with buses, a container terminal, drivers on their way to work, ageing infrastructure and a whole bouquet of disruptions, registered on the real layout.</p>
+        <p class="lead">A digital big sister of the model railway, on any phone. Real trains run through a virtual town; passengers on the platforms, buses, a container terminal that loads real wagons, drivers on their way to work, ageing infrastructure and a whole bouquet of disruptions, registered on the real layout.</p>
         <div class="ctas">
           <a class="btn primary big" href="app/">Open the app</a>
           <a class="btn ghost big" href="#applications">See the applications</a>
         </div>
       </div>
-      <figure class="compare" id="compare">
-        <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" fetchpriority="high">
-        <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
-        <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
-        <span class="divider" aria-hidden="true"></span>
-        <span class="tag l">Photo</span><span class="tag r">ARail</span>
+      <figure class="hero-video" id="heroVideo">
+        <div class="media">
+          <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="1280" aria-label="A real yellow container train runs along the curve of the lab table, between virtual houses, trees, streets and a bus of a town that ARail draws around it.">
+            <source src="media/ebl-city-train.mp4" type="video/mp4">
+          </video>
+          <span class="tag">Real train · virtual town</span>
+          <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+        </div>
+        <figcaption>A freight train of the lab on its way to the terminal, filmed with a phone: the town around it is ARail's, registered on the table from the markers.</figcaption>
       </figure>
     </section>
     <nav class="jump" aria-label="Applications">
@@ -246,6 +270,41 @@ footer a { color: inherit; }
     <p class="claim">Not only interlocking and train operation, not only the railway as a whole: <em>the whole transport system</em>, from the walk to work to the driver of a freight train that passes on containers between modes.</p>
     <p class="lead">Each course switches on the functions it needs and develops its own scenarios. Everything runs in the browser: no installation, no calibration board.</p>
   </div>
+
+  <!-- fresh from the lab -->
+  <section class="wrap fresh" id="lab" aria-labelledby="lab-title">
+    <div class="block-head">
+      <p class="step-label">New from the lab · 9 October 2026</p>
+      <h2 id="lab-title">Six metres of the lab table</h2>
+      <p class="lead">Stickers on the table, a few photos and clips, <code>arail-survey</code>: the station Bf Neustadt, the terminal at the crane and the curve in between, as one layout. And real container wagons that carry virtual containers.</p>
+    </div>
+    <div class="fresh-grid">
+      <article class="fresh-card" aria-labelledby="f-neustadt">
+        <div class="pic"><img src="assets/app-neustadt.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of Bf Neustadt: passengers on both platforms with their boards, a station building on a town module in front of the table."></div>
+        <div class="body">
+          <h3 id="f-neustadt">Bf Neustadt</h3>
+          <p>The station of the lab with its two platforms and passengers, the station building and the bus station on a town module in front of the table. Also as a clip, panning from the terminal to the station.</p>
+          <div class="acts"><a class="btn primary" href="app/?example=neustadt">Open Bf Neustadt</a><a href="app/?example=neustadt-video">Video</a></div>
+        </div>
+      </article>
+      <article class="fresh-card" aria-labelledby="f-terminal">
+        <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks: a virtual gantry crane over the three loading tracks, container trains, two trucks and a yard block; the Terminal panel lists the arrivals."></div>
+        <div class="body">
+          <h3 id="f-terminal">The terminal at the crane</h3>
+          <p>For the first time on the real layout: a gantry crane over the lab's three terminal tracks, a truck lane and a yard. The real container train on the middle track keeps its place.</p>
+          <div class="acts"><a class="btn primary" href="app/?example=crane-terminal">Open the terminal</a></div>
+        </div>
+      </article>
+      <article class="fresh-card" aria-labelledby="f-train">
+        <div class="pic"><img src="assets/app-container-train.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's container train: virtual containers on the real wagons and on a real model truck, a crane, a yard block and a road in front."></div>
+        <div class="body">
+          <h3 id="f-train">A hybrid container train</h3>
+          <p>Real wagons and a real truck with AprilTag labels carry virtual containers; the crane loads them from a virtual train, the yard and a barge in a harbour below the table edge.</p>
+          <div class="acts"><a class="btn primary" href="app/?example=container-train">Open the train</a><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/container-terminal.md#labels-where-they-fit">Labels on wagons</a></div>
+        </div>
+      </article>
+    </div>
+  </section>
 
   <!-- (1) the base -->
   <section class="block" id="base" aria-labelledby="base-title">
@@ -270,9 +329,15 @@ footer a { color: inherit; }
             <div><strong>0 installs</strong><span>a browser on any phone, tablet or webcam</span></div>
           </div>
         </div>
-        <figure class="shot">
-          <img src="assets/town-day.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="Flyover of the example layout by day: a grey town with Gründerzeit blocks, a Plattenbau, a school, offices, an estate of single-family houses, a supermarket, a workshop and fields on table modules in front of the lab table, which shows its orthophoto. Yellow buses stand at the stops.">
-          <figcaption><b>The sister in the flyover.</b> A town on eight virtual table modules in front of the real lab table, which shows its orthophoto.</figcaption>
+        <figure class="compare-fig">
+        <figure class="compare" id="compare">
+          <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" loading="lazy" decoding="async">
+          <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
+          <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
+          <span class="divider" aria-hidden="true"></span>
+          <span class="tag l">Photo</span><span class="tag r">ARail</span>
+        </figure>
+          <figcaption><b>Laid over the lab.</b> The photo of the lab table and the same photo in ARail: slide to compare.</figcaption>
         </figure>
       </div>
     </div>
@@ -302,14 +367,16 @@ footer a { color: inherit; }
           </div>
         </article>
         <article class="app-card" id="app-terminal" aria-labelledby="t-terminal">
-          <div class="pic"><img src="assets/app-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app with the container terminal in the flyover: a gantry crane over two loading tracks, yard blocks with containers, a barge at the quay; the Terminal panel lists the arriving trains and the barge."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks: a virtual gantry crane over the three loading tracks, container trains, two trucks and a yard block; the Terminal panel lists the arrivals."><span class="badge">Prototype</span></div>
           <div class="body">
             <p class="kicker">2 · Intermodal freight</p>
             <h3 id="t-terminal">A working container terminal</h3>
-            <p>Container trains, trucks and barges, a gantry crane and a reach stacker. Pick a container and its new place, and the crane moves it. Model wagons with printed deck cards carry their containers on the real layout.</p>
+            <p>Container trains, trucks and barges, a gantry crane and a reach stacker, on the lab's terminal tracks. Pick a container and its new place, and the crane moves it. Real wagons with AprilTag labels carry their virtual containers.</p>
             <p class="teach">In teaching: freight transport, terminal operation, the hand-over between modes.</p>
             <div class="acts">
-              <a class="btn primary" href="app/?layout=../layouts/container-terminal.json#terminal">Open this example</a>
+              <a class="btn primary" href="app/?example=crane-terminal">Open this example</a>
+              <a href="app/?example=container-train">Hybrid train</a>
+              <a href="app/?layout=../layouts/container-terminal.json#terminal">Virtual terminal</a>
               <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/container-terminal.md">Guide</a>
             </div>
           </div>
@@ -486,6 +553,23 @@ footer a { color: inherit; }
 </footer>
 
 <script>
+  // the hero video: a pause button, and no autoplay for people who prefer reduced motion
+  const clip = document.getElementById("heroClip"), pause = document.getElementById("heroPause");
+  const icons = { pause: '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>', play: '<path d="M4 2l10 6-10 6z"/>' };
+  const showState = () => {
+    const playing = !clip.paused;
+    pause.setAttribute("aria-pressed", playing ? "false" : "true");
+    pause.setAttribute("aria-label", playing ? "Pause the video" : "Play the video");
+    pause.querySelector("svg").innerHTML = playing ? icons.pause : icons.play;
+  };
+  pause.addEventListener("click", () => (clip.paused ? clip.play().catch(() => {}) : clip.pause()));
+  clip.addEventListener("play", showState);
+  clip.addEventListener("pause", showState);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    clip.removeAttribute("autoplay");
+    clip.pause();
+  }
+  showState();
   const fig = document.getElementById("compare");
   const range = document.getElementById("compareRange");
   const set = (v) => fig.style.setProperty("--pos", `${v}%`);

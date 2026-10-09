@@ -10,12 +10,21 @@ import { TerminalPanel } from "./terminal.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
-const LAB = "../layouts/ebl-lab.json";
-/** Example layouts; `home`: the layout it is a module of (its View panel shows that layout's modules). */
+const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
+/**
+ * Example layouts; `home`: the layout it is a module of (its View panel shows that layout's
+ * modules); `image` or `video`: opened with this photo or clip instead of the layout's own photo;
+ * `tab`: the tab shown.
+ */
 const EXAMPLES = [
   { id: "lab", label: "Example: EBL lab photo", layout: LAB },
+  { id: "neustadt", label: "Example: Bf Neustadt", layout: NEUSTADT },
+  { id: "neustadt-video", label: "Example: Bf Neustadt, video", layout: NEUSTADT, video: "../media/ebl-station-trains.mp4" },
+  { id: "city-train", label: "Example: train through the town, video", layout: NEUSTADT, video: "../media/ebl-curve-trains.mp4" },
+  { id: "crane-terminal", label: "Example: terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal" },
+  { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal" },
   { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
-  { id: "terminal", label: "Example: container terminal", layout: "../layouts/container-terminal.json", home: LAB },
+  { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
 ];
 /** Examples that are a module (layer) of another example: opened with that module on. */
 const EXAMPLE_LAYERS = {
@@ -106,11 +115,15 @@ class App {
     this.journeys = new JourneysPanel(this);
     this._wireUi();
     this._wireEvents();
-    const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
+    // ?example=: an example with its own photo or clip (a link from the project page)
+    const example = EXAMPLES.find((x) => x.id === params.get("example")) || null;
+    const layout = example?.layout || params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
     const image = params.get("image");
+    const media = !image && (example?.image || example?.video) ? example : null;
     const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
-    await this.loadLayoutFromUrl(layout, { withImage: !image && params.get("camera") !== "1", layers });
+    await this.loadLayoutFromUrl(layout, { withImage: !image && !media && params.get("camera") !== "1", layers });
     if (image) this.loadImage(new URL(image, location.href).href, "Image");
+    else if (media) this._loadExampleMedia(media);
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
@@ -122,7 +135,7 @@ class App {
         else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
       }, 500);
     }
-    const tab = location.hash.slice(1);
+    const tab = location.hash.slice(1) || example?.tab || "";
     // a link to the tab of a module of the app (Build, Disruptions) switches it on
     const linked = APP_MODULES.find((m) => m.tab === tab);
     if (linked) this.setAppModule(linked.id, true);
@@ -173,12 +186,12 @@ class App {
       });
     }
     const sel = $("#exampleSelect");
-    mount(sel, h("option", { value: "" }, "Layouts…"), EXAMPLES.map((x) => h("option", { value: x.layout }, x.label)));
+    mount(sel, h("option", { value: "" }, "Layouts…"), EXAMPLES.map((x) => h("option", { value: x.id }, x.label)));
     sel.addEventListener("change", async () => {
       if (!sel.value) return;
-      const url = sel.value;
+      const id = sel.value;
       sel.value = "";
-      await this.openLayout(url);
+      await this.openExample(id);
     });
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
@@ -396,15 +409,37 @@ class App {
     await this.loadLayoutFromUrl(url, { withImage: true, layers });
   }
 
-  /** Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that module on). */
-  openExample(id) {
+  /**
+   * Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that
+   * module on), with its own photo or clip if it has one, and its tab.
+   */
+  async openExample(id) {
     const x = EXAMPLES.find((e) => e.id === id);
-    if (x) return this.openLayout(x.layout);
+    if (x && (x.image || x.video)) {
+      this.stopLive();
+      // the photo or clip shown until now belongs to the previous layout
+      if (this.source) this.source.stale = true;
+      await this.loadLayoutFromUrl(x.layout, { withImage: false });
+      this._loadExampleMedia(x);
+    } else if (x) await this.openLayout(x.layout);
+    if (x?.tab && this.tabs().includes(x.tab)) this.selectTab(x.tab);
+    if (x) return;
     const l = EXAMPLE_LAYERS[id];
-    if (!l) return Promise.resolve();
+    if (!l) return;
     // the layout is open already: switch the module on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.chooseModules([...this.layersOn(), l.layer]);
     return this.openLayout(l.layout, [l.layer]);
+  }
+
+  /** The photo or clip of an example (shown over the camera image, not in the flyover). */
+  _loadExampleMedia(x) {
+    if (this._autoFlyover) {
+      this._autoFlyover = false;
+      this.flyover.leave();
+    }
+    const src = new URL(x.video || x.image, location.href).href;
+    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""));
+    else this.loadImage(src, x.label.replace(/^Example: /, ""));
   }
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
