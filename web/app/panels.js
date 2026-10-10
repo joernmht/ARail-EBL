@@ -1,5 +1,5 @@
 // Panels: View, Settings (simulation and control system), Disruptions.
-import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -64,7 +64,8 @@ export class Panels {
           h("input", { type: "range", id: "optOpacity", min: 0.2, max: 1, step: 0.05, value: d.opacity, oninput: (e) => { d.opacity = Number(e.target.value); app.savePrefs(); } })),
         h("label", { class: "field", for: "optTrackSystems" }, h("span", {}, "Colour the tracks by"),
           h("select", { id: "optTrackSystems", "aria-describedby": "optTrackSystems-help", onchange: (e) => { s.trackSystems = e.target.value; app.savePrefs(); this.renderView(el); } },
-            [["", "nothing"], ...SYSTEM_OVERLAYS].map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t))),
+            [["", "nothing"], ...SYSTEM_OVERLAYS, ...(app.world.compatibilityTrain ? [[COMPATIBILITY, `where ${app.world.compatibilityTrain.name} may run`]] : [])]
+              .map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t))),
           h("small", { class: "help", id: "optTrackSystems-help" }, "Track systems: each track (Build → Track) has its traction power, train protection, signals, radio, gauge, line category and country; the tracks are coloured over the camera image too.")),
         this._systemsLegend(),
       ),
@@ -97,8 +98,12 @@ export class Panels {
     const tracks = this.world.objects.filter((o) => o.type === "track");
     if (!tracks.length) return h("p", { class: "hint" }, "This layout has no tracks: add them in Build → Infrastructure → Track.");
     const seen = new Map();
+    const train = this.world.compatibilityTrain;
+    if (key === COMPATIBILITY && !train) return h("p", { class: "hint" }, "Tap a train and press “Show where it may run” on its card.");
     for (const t of tracks) {
-      const v = systemValue(key, sectionSystems(t.spec).values[key]);
+      const v = key === COMPATIBILITY
+        ? (checkSection(train.consist, t.spec).ok ? { label: `${train.name} may run`, colour: CD.tuerkis } : { label: `${train.name} may not run`, colour: CD.rot })
+        : systemValue(key, sectionSystems(t.spec).values[key]);
       seen.set(v.label, { v, n: (seen.get(v.label)?.n || 0) + 1 });
     }
     return h("ul", { class: "legend-list", "aria-label": "Colours of the tracks" },

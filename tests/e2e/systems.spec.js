@@ -62,3 +62,37 @@ test("the card of a track lists its systems; Build offers them per track", async
   expect(await page.evaluate(() => window.__arail.world.getObject("track-g3").spec.etcs)).toBe("l2");
   expect(errors).toEqual([]);
 });
+
+test("may this train run here: RE 1 at the Czech track G3; Show where it may run colours the tracks", async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => window.__arail.world.services.call("platform-1:right", { line: "RE 1" }));
+  await page.waitForFunction(() => window.__arail.world.services.vehicles().some((v) => v.line === "RE 1" && v.dock.track === "G3" && v.phase === "dwelling"), null, { timeout: 20_000 });
+  // its card, as a tap on it opens it
+  await page.evaluate(async () => {
+    const ARail = await import("/arail/index.js");
+    const app = window.__arail;
+    const hit = ARail.movingPickables(app.world, app.lastView).find((p) => p.kind === "train" && p.ref.line === "RE 1" && p.ref.dock.track === "G3");
+    app.inspector.show(hit);
+  });
+  const card = page.locator("#infoCard");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".info-status")).toContainText("may not run on this track");
+  await expect(card).toContainText("May it run here?");
+  await expect(card).toContainText("Track G1: yes");
+  await expect(card).toContainText(/Track G3: no · .*Not authorised in CZ/);
+  await card.getByRole("button", { name: "Show where it may run" }).click();
+  expect(await page.evaluate(() => window.__arail.world.settings.trackSystems)).toBe("compatibility");
+  // the View panel: the choice and its legend
+  await page.locator("#tab-view").click();
+  await expect(page.locator("#optTrackSystems")).toHaveValue("compatibility");
+  const legend = page.getByRole("list", { name: "Colours of the tracks" });
+  await expect(legend).toContainText("RE 1 may run");
+  await expect(legend).toContainText("RE 1 may not run");
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).include("#panel").include("#infoCard").analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  // not kept for the next session: it belongs to the train
+  await page.reload();
+  await page.waitForFunction(() => window.__arail?.lastView);
+  await expect(page.locator("#optTrackSystems")).toHaveValue("");
+  expect(errors).toEqual([]);
+});

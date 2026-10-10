@@ -12,6 +12,7 @@ import { resolvePoints } from "../core/anchors.js";
 import { polylineAt, polylineLengths } from "../core/math.js";
 import { OVERLAY, rgba } from "../core/colors.js";
 import { SYSTEM_PARAMS, drawSystemBand, drawSystemChange, systemRows, worldSystemChanges } from "../rail/systems.js";
+import { COMPATIBILITY, drawCompatibilityBand } from "../rail/compat.js";
 
 /** Prototype dimensions (m) and colours of the track drawn in the flyover. */
 const BED = { width_m: 4.2, color: "#8d8880" };
@@ -73,7 +74,8 @@ export class Track extends LayoutObject {
     if (this.spec.virtual || !view.showsReal(g.points)) this._drawTrack(view, g);
     // View → Track systems: the track coloured by one of its systems, and where it changes
     const shown = this.world.settings.trackSystems;
-    if (shown) {
+    if (shown === COMPATIBILITY) drawCompatibilityBand(view, this, this.world.compatibilityTrain?.consist);
+    else if (shown) {
       drawSystemBand(view, this, shown);
       for (const c of worldSystemChanges(this.world, shown)) if (c.a === this.id) drawSystemChange(view, c);
     }

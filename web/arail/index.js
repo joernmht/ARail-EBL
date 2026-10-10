@@ -136,7 +136,8 @@ export {
   POWER, PANTOGRAPH, TRAIN_CONTROL, ETCS, SIGNALLING, RADIO, GAUGE, AXLE_LOADS_T, METRE_LOADS_T, ROUTE_CLASS, LOADING_GAUGE, COUNTRIES,
   SYSTEMS, SYSTEM_OVERLAYS, SYSTEM_PARAMS, routeClassLimits, sectionSystems, systemValue, systemRows, systemChanges, worldSystemChanges,
   drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail,
-  BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, consistFor, consistProblems, trainCard,
+  BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard,
+  COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand,
 } from "./rail/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";

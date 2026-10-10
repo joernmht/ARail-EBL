@@ -753,7 +753,8 @@ class App {
   savePrefs() {
     storage.set("arail.display", this.display);
     const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems });
+    // where a train may run belongs to that train: not kept
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
   }
 
   showLayoutName() {

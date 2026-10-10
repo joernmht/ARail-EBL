@@ -98,8 +98,31 @@ Each type also says what it is equipped with: the traction power systems it runs
 
 The lab example's RE 1 (BR 146 and four double-deck coaches: 144 % in R), RB 33 (two BR 642) and S-Bahn (ET 442) have consists.
 
+## May this train run here?
+
+A train may run on a section only when its vehicles fit the section's systems ([#133](https://github.com/joernmht/ARail-EBL/issues/133)). Each vehicle type of the catalogue has a **capability profile**: the traction power it draws (`power`), its pantograph heads (`pantograph_mm`), its train protection (`train_control`) and ETCS level (`etcs`), its train radio (`radio`), its track gauge (`gauge_mm`, 1435 if not given) and the countries it is authorised in (`countries`). The check compares a train with a section, one system after another:
+
+| What | The train may run when |
+| --- | --- |
+| Traction power | a diesel vehicle hauls it, or an electric vehicle draws the section's power with pantograph heads of the section's width; an electric locomotive that cannot is hauled without power (a note) |
+| Train protection | the leading traction vehicle has the section's class B system (PZB is enough for PZB with LZB), or ETCS at the section's level or higher; a section with neither asks for nothing |
+| Train radio | a traction vehicle has the section's radio |
+| Track gauge | every vehicle runs on the section's gauge |
+| Line category | the heaviest axle load and metre load are within the category (EN 15528: C2 is 20 t per axle, D4 22.5 t) |
+| Authorisation | every vehicle is authorised in the section's country |
+
+**On the info card of a train**: *May it run here?* lists every track of the layout with *yes* or *no* and the reasons, e.g. *Track G3: no · 3 kV DC: no vehicle can draw this power (BR 146.2: 15 kV) · PZB needed; … · Not authorised in CZ: BR 146.2, DBpza*. When the train may not run on the track it stands on, the card says so in red.
+
+**On the table**: *Show where it may run* on the card colours the tracks by it (View → Colour the tracks by: *where RE 1 may run*): turquoise where the train may run, red where not, with the first reason on each track; the legend counts them. This choice is not kept for the next session, since it belongs to the train.
+
+In the lab example's module *Border station*, RE 1 may run on G1 and G2 and not on the Czech track G3; a train hauled by a BR 193 (Vectron MS, multi-system with ETCS) may run on all three.
+
+What the check leaves out for now: the loading gauge of the vehicles and their loads, the length of the train against the platforms and passing loops, gradients and the hauling capacity of the locomotives, and the speed that follows from the braking table ([#85](https://github.com/joernmht/ARail-EBL/issues/85)).
+
 ## For plugins
 
 `sectionSystems(spec)` gives the systems of a section (`{values, usual}`), `systemRows(spec)` the rows of its card, `systemValue(key, value)` the label, short text and colour of a value, `routeClassLimits("D4")` the axle and metre load of a line category, `systemChanges(tracks, key)` where neighbouring sections differ; the catalogues are `POWER`, `TRAIN_CONTROL`, `ETCS`, `SIGNALLING`, `RADIO`, `GAUGE`, `ROUTE_CLASS`, `LOADING_GAUGE`, `COUNTRIES` and `SYSTEMS` (`web/arail/rail/systems.js`).
 
 `new Consist({vehicles: [...]})` computes a train's figures (`length_m`, `mass_t`, `axles`, `brakePercentage`, `vmax`, `maxAxleLoad`, `maxMetreLoad`; `rail/vehicles.js`), `consistFor(world, {train, line, units})` finds the consist of a train the world shows, and `VEHICLE_TYPES` is the catalogue.
+
+`checkSection(consist, spec)` checks a train against a section (`{ok, problems: [{key, text}], notes}`, `key` naming the system), `checkTracks(consist, world)` against every track of a world, `compatibilitySection(consist, world)` makes the section of a card, `consistOfHit(world, hit)` finds the consist of a train pointed at (`rail/compat.js`, `rail/trains.js`). With `world.compatibilityTrain = {name, consist}` and `world.settings.trackSystems = "compatibility"` the tracks show where that train may run.

@@ -65,6 +65,11 @@ export class World {
     this.trains = new TrainRegistry(this);
     /** Bus lines in operation (core/transit.js). */
     this.transit = new Transit(this);
+    /**
+     * The train whose compatibility the tracks show (View → Colour the tracks by, rail/compat.js):
+     * `{name, consist}`, or null.
+     */
+    this.compatibilityTrain = null;
     /** Incremented whenever an object is added, changed or removed (caches of derived data use it). */
     this.objectsVersion = 0;
     this.load(layout);
@@ -87,6 +92,7 @@ export class World {
     if (this.map) this.map.configure(markers);
     else this.map = new MarkerMap(markers);
     this.objects = [];
+    this.compatibilityTrain = null;
     this.time = 0;
     this.demand = 1;
     this.clock.configure(layout.clock);

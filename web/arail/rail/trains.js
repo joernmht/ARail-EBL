@@ -7,6 +7,7 @@
  */
 import { Consist, VEHICLE_TYPES, consistRows } from "./vehicles.js";
 import { sectionSystems } from "./systems.js";
+import { checkSection, compatibilitySection } from "./compat.js";
 
 /** The vehicle types of a world: the catalogue and the layout's own (`vehicle_types`). */
 export function vehicleTypes(world) {
@@ -75,6 +76,25 @@ export function consistProblems(json) {
   return out;
 }
 
+/**
+ * The consist of a train that is pointed at (a vehicle at a platform, a train of the control
+ * system), or null.
+ * @param {import("../core/world.js").World} world
+ * @param {import("../core/pick.js").Pickable} hit
+ * @returns {Consist | null}
+ */
+export function consistOfHit(world, hit) {
+  if (hit?.kind !== "train") return null;
+  const r = hit.ref;
+  const ops = r?.ops ? world.simulations.find((s) => s.constructor.type === "operations")?.engine : null;
+  const trip = ops?.trips.get(r.ops.trip);
+  return consistFor(world, {
+    train: r?.trainId ?? (hit.key.startsWith("feed:") ? r.id : null),
+    line: trip?.lineName ?? r?.line ?? r?.name ?? null,
+    units: r?.ops?.units ? r.ops.units.map((id) => ({ type: ops?.units.get(id)?.type })) : null,
+  });
+}
+
 /** The track (object) a vehicle at a dock stands on: the one with the dock's track name. */
 function trackAt(world, dock) {
   if (!dock?.track) return null;
@@ -84,7 +104,8 @@ function trackAt(world, dock) {
 /**
  * Card provider (registry.registerCard): the train data of a train that is pointed at: its
  * consist with length, mass, axles, top speed, brake position and brake percentage (against the
- * one required on its track), axle and metre loads, and its vehicles as a strip.
+ * one required on its track), axle and metre loads, and its vehicles as a strip; for every track of
+ * the layout whether it may run there (rail/compat.js).
  * @param {import("../core/world.js").World} world
  * @param {import("../core/pick.js").Pickable} hit
  * @param {import("../core/pick.js").Card} card changed in place
@@ -92,14 +113,7 @@ function trackAt(world, dock) {
 export function trainCard(world, hit, card) {
   if (hit.kind !== "train") return;
   const r = hit.ref;
-  const ops = r?.ops ? world.simulations.find((s) => s.constructor.type === "operations")?.engine : null;
-  const trip = ops?.trips.get(r.ops.trip);
-  const who = {
-    train: r?.trainId ?? (hit.key.startsWith("feed:") ? r.id : null),
-    line: trip?.lineName ?? r?.line ?? r?.name ?? null,
-    units: r?.ops?.units ? r.ops.units.map((id) => ({ type: ops?.units.get(id)?.type })) : null,
-  };
-  const c = consistFor(world, who);
+  const c = consistOfHit(world, hit);
   if (!c) {
     card.sections.push({ title: "Train data", lines: ["No consist known: add one to the layout file (consists), by its line or train number."] });
     return;
@@ -119,4 +133,17 @@ export function trainCard(world, hit, card) {
   if (speed && c.vmax.kmh) rows.push(["Line speed here", `${speed} km/h${c.vmax.kmh < speed ? ` (the train ${c.vmax.kmh} km/h)` : ""}`]);
   card.sections.push({ title: "Train data", rows });
   card.strip = c.vehicles.map((v) => ({ label: v.t.label.split(" (")[0], kind: v.t.kind, length_m: v.t.length_m, isolated: v.isolated }));
+  // may it run on its track, and on the other tracks of the layout?
+  if (track) {
+    const here = checkSection(c, track.spec);
+    if (!here.ok) {
+      card.tone = "bad";
+      card.status = `${card.status ? `${card.status} · ` : ""}may not run on this track`;
+    }
+  }
+  const compat = compatibilitySection(c, world);
+  if (compat) {
+    card.sections.push(compat);
+    card.actions.push({ id: "compatibility", label: "Show where it may run" });
+  }
 }

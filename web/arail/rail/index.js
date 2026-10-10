@@ -15,7 +15,8 @@ export {
 } from "./systems.js";
 export { CHANGE_KINDS, SystemChange } from "./objects.js";
 export { BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows } from "./vehicles.js";
-export { vehicleTypes, consistFor, consistProblems, trainCard } from "./trains.js";
+export { vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard } from "./trains.js";
+export { COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand } from "./compat.js";
 
 /** Register the object types, the train data of the info cards and the check of the consists. */
 export function registerRail(registry) {

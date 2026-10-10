@@ -120,8 +120,8 @@ export const PACKAGES = [
   },
   {
     id: "rail", name: "rail", group: "framework", path: "web/arail/rail",
-    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures.",
-    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js"],
+    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures; whether a train may run on a section.",
+    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/compat.js"],
     uses: ["core-math", "core-world", "core-drawing"],
   },
   {

@@ -1,7 +1,7 @@
 // Hover and click on everything: a tooltip for what is under the pointer and an info card for what
 // was tapped, in the camera view and the flyover (the world's pick interface, core/pick.js).
-import { FONT, OVERLAY, projectedHull, PICK_TOLERANCE, rgba } from "../arail/index.js";
-import { $, h, morph, mount } from "./ui.js";
+import { COMPATIBILITY, consistOfHit, FONT, OVERLAY, projectedHull, PICK_TOLERANCE, rgba } from "../arail/index.js";
+import { $, h, morph, mount, toast } from "./ui.js";
 
 /** A pointer that moves less than this (CSS px) between down and up taps rather than drags. */
 const TAP_PX = 6;
@@ -206,10 +206,15 @@ export class Inspector {
     return card;
   }
 
-  /** An action of a card: "follow" (the flyover's camera follows it). */
+  /**
+   * An action of a card: "follow" (the flyover's camera follows it), "compatibility" (the tracks
+   * coloured by whether this train may run there, View → Colour the tracks by).
+   */
   act(id) {
     const key = this.open?.key;
-    if (!key || id !== "follow") return;
+    if (!key) return;
+    if (id === "compatibility") return this.showCompatibility(this.current() || this.open.hit);
+    if (id !== "follow") return;
     if (key.startsWith("traveller:")) return this.app.followTraveller(key.slice("traveller:".length));
     const app = this.app;
     if (!app.flyover.active) app.flyover.enter();
@@ -219,6 +224,16 @@ export class Inspector {
       const o = p.outline;
       return [o.reduce((s, q) => s + q[0], 0) / o.length, o.reduce((s, q) => s + q[1], 0) / o.length];
     });
+  }
+
+  /** Colour the tracks by whether a train may run there. */
+  showCompatibility(hit) {
+    const world = this.world, consist = consistOfHit(world, hit);
+    if (!consist) return;
+    world.compatibilityTrain = { name: world.card(hit).title, consist };
+    world.settings.trackSystems = COMPATIBILITY;
+    if (this.app.activeTab === "view") this.app.panels.renderView($("#panel-view"));
+    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (View → Colour the tracks by).`, 6000);
   }
 
   /* ---------------------------------------------------------------- highlight */
