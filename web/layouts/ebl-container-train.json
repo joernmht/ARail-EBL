@@ -31,7 +31,6 @@
       ],
       "trucks": {"lane": "lane-1"},
       "containers": [
-        {"id": "EBLU 600001 5", "size": "20", "at": {"carrier": "W1", "bay": 0}},
         {"id": "TUDU 600002 9", "size": "20", "at": {"carrier": "W8", "bay": 0}},
         {"id": "ARLU 600003 2", "size": "20", "at": {"carrier": "W8", "bay": 2}},
         {"id": "DBCU 600004 4", "size": "40", "high": true, "at": {"carrier": "W9", "bay": 0}},
@@ -74,12 +73,11 @@
     {
       "id": "hybrid-shift",
       "name": "Loading the real train",
-      "description": "The crane loads the free spots of the real wagons from KT 61, the barge and the yard, unloads the real truck and sends a container from the real train to a road truck.",
+      "description": "The crane loads the free spots of the real wagons from KT 61, the barge and the yard, loads the real truck and sends a container from the real train to a road truck.",
       "steps": [
         {"at": 0, "message": "KT 61 comes in on G 53; the crane loads the real container train."},
         {"at": 0, "emit": {"name": "terminal.request.call", "payload": {"visit": "KT61"}}},
         {"at": 1, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 600014 2", "to": {"carrier": "W10", "bay": 0}}}},
-        {"at": 2, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 600001 5", "to": {"carrier": "W11", "bay": 2}}}},
         {"at": 3, "emit": {"name": "terminal.request.move", "payload": {"container": "DBCU 600015 2", "to": {"carrier": "W1", "bay": 1}}}},
         {"at": 4, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "pickup"}}},
         {"at": 5, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 600002 9", "to": {"kind": "truck"}}}},
