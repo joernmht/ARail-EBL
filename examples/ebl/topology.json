@@ -1,0 +1,1980 @@
+{
+ "format": "ebl-topology/0.1",
+ "date": "2026-10-10",
+ "source": "own extraction from the lab software data (track strings, operating points, Stadtbahn tables) + photo signs/km tags of the 2026-10-09 survey; facts only, no copied files",
+ "units": "km = virtual line kilometre used by the lab software (not table metres); one lap of the hall ring ~ 11 km",
+ "operating_points": [
+  {
+   "id": "IN",
+   "name": "Neustadt",
+   "kind": "station",
+   "station_computer": 1,
+   "physical": true,
+   "neighbours": [
+    "IK",
+    "IWW"
+   ],
+   "placement": {
+    "groups": [
+     "S01",
+     "S02",
+     "S03",
+     "S04"
+    ],
+    "confidence": "high",
+    "evidence": "wall sign 'Bf Neustadt'; km tags 20.4-21.8"
+   }
+  },
+  {
+   "id": "IWW",
+   "name": "Neustadt Ost",
+   "kind": "crossover",
+   "station_computer": 3,
+   "physical": true,
+   "neighbours": [
+    "IN",
+    "IW"
+   ],
+   "placement": {
+    "groups": [
+     "S11",
+     "S12"
+    ],
+    "confidence": "medium",
+    "evidence": "NBS km 23.8-25.1 tags on S11/S12 (crossover W201-204 at km 24.8-25.0)"
+   }
+  },
+  {
+   "id": "IW",
+   "name": "Waldhof",
+   "kind": "station",
+   "station_computer": 3,
+   "physical": true,
+   "neighbours": [
+    "IWW",
+    "IA",
+    "IS",
+    "IT"
+   ],
+   "placement": {
+    "groups": [
+     "S10",
+     "S11",
+     "S12"
+    ],
+    "confidence": "high",
+    "evidence": "wall signs Bf Waldhof / Südseite (S10) / Nordseite (S12); km 34.6-36.3"
+   }
+  },
+  {
+   "id": "IA",
+   "name": "Adorf",
+   "kind": "station",
+   "station_computer": 5,
+   "physical": true,
+   "neighbours": [
+    "IKB",
+    "IW",
+    "IFB"
+   ],
+   "placement": {
+    "groups": [
+     "S06",
+     "S08",
+     "S07",
+     "S05"
+    ],
+    "confidence": "high",
+    "evidence": "frame label 'Adorf 5', 'Fdl Adorf'; km 26.2-27.5"
+   }
+  },
+  {
+   "id": "IFB",
+   "name": "Feldberg (Hp.)",
+   "kind": "halt+block",
+   "station_computer": 5,
+   "physical": true,
+   "neighbours": [
+    "IA",
+    "IGTH"
+   ],
+   "placement": {
+    "groups": [
+     "S14",
+     "S13"
+    ],
+    "confidence": "high",
+    "evidence": "table sign 'Bk Fe', board 'Servicewagen Feldberg'; km 31.2"
+   }
+  },
+  {
+   "id": "IZ",
+   "name": "Zellwald",
+   "kind": "station",
+   "station_computer": 7,
+   "physical": true,
+   "neighbours": [
+    "IE",
+    "IPM",
+    "IZO"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "ID",
+   "name": "Dornbach",
+   "kind": "station",
+   "station_computer": 8,
+   "physical": true,
+   "neighbours": [
+    "IGTH",
+    "IZO"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "IGTH",
+   "name": "Grüntal (Hp.)",
+   "kind": "halt+block",
+   "station_computer": 9,
+   "physical": true,
+   "neighbours": [
+    "ICDH",
+    "IFB",
+    "ID"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "(S)",
+   "name": "(Schattenbf.)",
+   "kind": "hidden_staging_yard",
+   "station_computer": 10,
+   "physical": true,
+   "neighbours": []
+  },
+  {
+   "id": "IMH",
+   "name": "Moorhof",
+   "kind": "halt",
+   "station_computer": 9,
+   "physical": true,
+   "neighbours": [
+    "ICDH"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "ISW",
+   "name": "Schwarzburg",
+   "kind": "station",
+   "station_computer": 9,
+   "physical": true,
+   "neighbours": [
+    "ICDH"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "ICDH",
+   "name": "Crottendorf (Hp.)",
+   "kind": "halt+block",
+   "station_computer": 9,
+   "physical": true,
+   "neighbours": [
+    "ISW",
+    "IGTH",
+    "IMH"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "IKB",
+   "name": "Klausenburg",
+   "kind": "block",
+   "station_computer": 5,
+   "physical": true,
+   "neighbours": [
+    "IPM",
+    "IA"
+   ],
+   "placement": {
+    "groups": [
+     "S14"
+    ],
+    "confidence": "high",
+    "evidence": "table sign 'Bk Kl' at the hairpin; km 18.9-19.5"
+   }
+  },
+  {
+   "id": "IZO",
+   "name": "Zellwald Ort",
+   "kind": "halt",
+   "station_computer": 8,
+   "physical": true,
+   "neighbours": [
+    "ID",
+    "IZ"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  },
+  {
+   "id": "IPM",
+   "name": "Papiermühle",
+   "kind": "halt+block",
+   "station_computer": 7,
+   "physical": true,
+   "neighbours": [
+    "IZ",
+    "IKB"
+   ],
+   "placement": {
+    "groups": [
+     "S09"
+    ],
+    "confidence": "medium",
+    "evidence": "wall sign 'Hp Papiermühle' + signal 5C2 at the corner; 'Bk Papiermühle' on S06"
+   }
+  },
+  {
+   "id": "IS",
+   "name": "Straßburg",
+   "kind": "virtual_line_end",
+   "station_computer": 10,
+   "physical": false,
+   "neighbours": [
+    "IW"
+   ]
+  },
+  {
+   "id": "IK",
+   "name": "Klotzsche",
+   "kind": "virtual_line_end",
+   "station_computer": 10,
+   "physical": false,
+   "neighbours": [
+    "IN"
+   ]
+  },
+  {
+   "id": "IE",
+   "name": "Eisenberg",
+   "kind": "virtual_line_end",
+   "station_computer": 10,
+   "physical": false,
+   "neighbours": [
+    "IZ"
+   ]
+  },
+  {
+   "id": "IT",
+   "name": "Talheim",
+   "kind": "virtual_line_end",
+   "station_computer": 10,
+   "physical": false,
+   "neighbours": [
+    "IW"
+   ]
+  },
+  {
+   "id": "DKTW",
+   "name": "Klotzsche West",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DKTO",
+   "name": "Klotzsche Ost",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DRAG",
+   "name": "Radeberg",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DAF",
+   "name": "Arnsdorf",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DBW",
+   "name": "Bischofswerda",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DSEN",
+   "name": "Seitschen",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DGRS",
+   "name": "Grenzstraße",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DFH",
+   "name": "Flughafen",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DGRD",
+   "name": "Großröhrsdorf",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DOKR",
+   "name": "Ottendorf-Okrilla",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DNKW",
+   "name": "Neukirch (Lausitz)",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "DDT",
+   "name": "Dürrröhrsdorf",
+   "kind": "simulated_in_BEST",
+   "station_computer": null,
+   "physical": false,
+   "neighbours": []
+  },
+  {
+   "id": "IDA",
+   "name": "Dornbach Awanst",
+   "kind": "siding",
+   "station_computer": null,
+   "physical": true,
+   "neighbours": [
+    "IGTH",
+    "ID"
+   ],
+   "placement": {
+    "groups": [],
+    "confidence": "none",
+    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+   }
+  }
+ ],
+ "lines": [
+  {
+   "id": "NBS",
+   "name": "Neubaustrecke (double track, strings 11/12)",
+   "ends": [
+    "Klotzsche (via BEST)",
+    "Straßburg"
+   ],
+   "sequence": [
+    [
+     "(S)",
+     12.15
+    ],
+    [
+     "swing_bridge_1",
+     18.35
+    ],
+    [
+     "IN",
+     20.46,
+     22.4
+    ],
+    [
+     "IWW",
+     24.82,
+     25.06
+    ],
+    [
+     "swing_bridge_1",
+     29.6
+    ],
+    [
+     "IW",
+     33.28,
+     36.58
+    ],
+    [
+     "(S)",
+     38.65
+    ]
+   ]
+  },
+  {
+   "id": "ABS",
+   "name": "Ausbaustrecke (double track, strings 21/22)",
+   "ends": [
+    "Eisenberg",
+    "Talheim"
+   ],
+   "sequence": [
+    [
+     "(S)",
+     2.74
+    ],
+    [
+     "swing_bridge_2",
+     5.45
+    ],
+    [
+     "IZ",
+     9.14,
+     10.85
+    ],
+    [
+     "IPM",
+     13.89,
+     14.74
+    ],
+    [
+     "swing_bridge_1",
+     17.88
+    ],
+    [
+     "IKB",
+     19.64
+    ],
+    [
+     "IA",
+     26.2,
+     27.97
+    ],
+    [
+     "swing_bridge_1",
+     29.35
+    ],
+    [
+     "IW",
+     33.93,
+     36.34
+    ],
+    [
+     "(S)",
+     38.59
+    ]
+   ]
+  },
+  {
+   "id": "NBL",
+   "name": "Nebenbahn Adorf-Zellwald (single track, string 31)",
+   "ends": [
+    "IA",
+    "IZ"
+   ],
+   "sequence": [
+    [
+     "IA",
+     28.8
+    ],
+    [
+     "swing_bridge_1",
+     29.4
+    ],
+    [
+     "IFB",
+     31.2,
+     31.44
+    ],
+    [
+     "IGTH",
+     37.07,
+     37.79
+    ],
+    [
+     "wheel_cleaning",
+     39.21
+    ],
+    [
+     "swing_bridge_2",
+     43.69
+    ],
+    [
+     "IDA",
+     42.6,
+     43.2
+    ],
+    [
+     "ID",
+     44.22,
+     45.79
+    ],
+    [
+     "IZO",
+     49.3,
+     49.5
+    ],
+    [
+     "swing_bridge_2",
+     51.7
+    ],
+    [
+     "IZ",
+     53.6
+    ]
+   ]
+  },
+  {
+   "id": "BR",
+   "name": "Branch Schwarzburg-Grüntal (strings 41/42)",
+   "ends": [
+    "(S) track 5",
+    "IGTH"
+   ],
+   "sequence": [
+    [
+     "(S)",
+     28.11
+    ],
+    [
+     "ISW",
+     28.75,
+     29.34
+    ],
+    [
+     "ICDH",
+     33.21,
+     33.84
+    ],
+    [
+     "IGTH",
+     37.12,
+     37.54
+    ]
+   ],
+   "spur": "string 42: Crottendorf -> Moorhof Hp (35.65-35.75) -> workshop signal (36.70)"
+  },
+  {
+   "id": "TEST",
+   "name": "Teststrecke / ETCS test track (double, strings 71/72, isolated)",
+   "km": [
+    0.0,
+    2.6
+   ],
+   "placement": {
+    "groups": [
+     "S06",
+     "S08",
+     "S07",
+     "S05"
+    ],
+    "evidence": "sign 'Teststrecke', 'ETCS-Test'; km 0.3-2.6"
+   }
+  }
+ ],
+ "stadtbahn": {
+  "note": "separate light rail on the UPPER narrow deck; own Selectrix bus; km from Stadtbahn/StDaten",
+  "stops": [
+   [
+    1,
+    "Pirna",
+    0.47,
+    [
+     "S01",
+     "S02"
+    ]
+   ],
+   [
+    2,
+    "Heidenau",
+    1.45,
+    [
+     "S03",
+     "S04"
+    ]
+   ],
+   [
+    3,
+    "Hauptbahnhof (+depot 50-53)",
+    2.46,
+    [
+     "S10"
+    ]
+   ],
+   [
+    4,
+    "Freiberger Straße",
+    3.33,
+    [
+     "S11"
+    ]
+   ],
+   [
+    5,
+    "Mitte",
+    4.2,
+    [
+     "S12"
+    ]
+   ],
+   [
+    6,
+    "Radebeul",
+    5.12,
+    [
+     "S12",
+     "S09"
+    ]
+   ],
+   [
+    7,
+    "Coswig",
+    6.01,
+    []
+   ],
+   [
+    8,
+    "Sörnewitz",
+    7.97,
+    []
+   ],
+   [
+    9,
+    "Meißen",
+    8.94,
+    []
+   ],
+   [
+    10,
+    "Triebischtal",
+    10.36,
+    []
+   ],
+   [
+    11,
+    "Freital",
+    5.12,
+    [
+     "S09?"
+    ]
+   ],
+   [
+    12,
+    "Tharandt",
+    6.01,
+    []
+   ]
+  ],
+  "routes": [
+   [
+    "Pirna",
+    "Heidenau",
+    "Hauptbahnhof",
+    "Freiberger Straße",
+    "Mitte",
+    "Radebeul",
+    "Coswig",
+    "Sörnewitz",
+    "Meißen",
+    "Triebischtal"
+   ],
+   [
+    "Mitte",
+    "Freital",
+    "Tharandt"
+   ]
+  ]
+ },
+ "swing_bridges": [
+  {
+   "id": 1,
+   "room": "07",
+   "group": "S15",
+   "crossings": "NBS x2, ABS x2, NBL x1"
+  },
+  {
+   "id": 2,
+   "room": "06",
+   "group": null,
+   "crossings": "ABS x1, NBL x2"
+  }
+ ],
+ "ring_order": [
+  "S15",
+  "inner-wall tables (no markers seen)",
+  "S14",
+  "S13",
+  "S01",
+  "S02",
+  "S03",
+  "S04",
+  "S10",
+  "S11",
+  "S12",
+  "S09",
+  "S06",
+  "S08",
+  "S07",
+  "S05",
+  "S15"
+ ],
+ "joints": [
+  {
+   "a": "S01",
+   "b": "S02",
+   "status": "linked, weak (rms 49 mm, mixed heights?)",
+   "refilm": [
+    "5",
+    "6",
+    "32",
+    "33",
+    "84",
+    "85"
+   ],
+   "seconds": 15
+  },
+  {
+   "a": "S02",
+   "b": "S03",
+   "status": "linked (8 mm)"
+  },
+  {
+   "a": "S03",
+   "b": "S04",
+   "status": "linked (1.5 mm)"
+  },
+  {
+   "a": "S04",
+   "b": "S10",
+   "status": "linked (5 mm)"
+  },
+  {
+   "a": "S10",
+   "b": "S11",
+   "status": "open",
+   "refilm": [
+    "92",
+    "93",
+    "94",
+    "163",
+    "164",
+    "111",
+    "112",
+    "113",
+    "102"
+   ],
+   "seconds": 25
+  },
+  {
+   "a": "S11",
+   "b": "S12",
+   "status": "linked (10 mm)"
+  },
+  {
+   "a": "S12",
+   "b": "S09",
+   "status": "open",
+   "refilm": [
+    "135",
+    "136",
+    "137",
+    "144",
+    "209",
+    "172",
+    "169",
+    "170",
+    "171"
+   ],
+   "seconds": 35
+  },
+  {
+   "a": "S09",
+   "b": "S06",
+   "status": "linked (6 mm)"
+  },
+  {
+   "a": "S06",
+   "b": "S08",
+   "status": "linked (3 mm)"
+  },
+  {
+   "a": "S08",
+   "b": "S07",
+   "status": "linked (1 mm)"
+  },
+  {
+   "a": "S07",
+   "b": "S05",
+   "status": "open",
+   "refilm": [
+    "47",
+    "48",
+    "67",
+    "1",
+    "66",
+    "45",
+    "46",
+    "64",
+    "65"
+   ],
+   "seconds": 20
+  },
+  {
+   "a": "S05",
+   "b": "S15",
+   "status": "open",
+   "refilm": [
+    "173",
+    "174",
+    "175",
+    "176",
+    "181",
+    "182",
+    "183",
+    "184",
+    "185"
+   ],
+   "seconds": 35
+  },
+  {
+   "a": "S15",
+   "b": "S14",
+   "status": "open; straight inner-wall tables between have no detected markers",
+   "refilm": [
+    "184",
+    "185",
+    "179?",
+    "180?",
+    "186-192?",
+    "162",
+    "195"
+   ],
+   "seconds": 50
+  },
+  {
+   "a": "S14",
+   "b": "S13",
+   "status": "open",
+   "refilm": [
+    "193",
+    "194",
+    "199",
+    "155",
+    "156",
+    "158",
+    "160",
+    "152",
+    "153",
+    "154"
+   ],
+   "seconds": 30
+  },
+  {
+   "a": "S13",
+   "b": "S01",
+   "status": "open",
+   "refilm": [
+    "152",
+    "153",
+    "154",
+    "214",
+    "0",
+    "2",
+    "3",
+    "37",
+    "38"
+   ],
+   "seconds": 20
+  }
+ ],
+ "room_06": {
+  "status": "not surveyed; planned for later",
+  "contains": [
+   "IZ",
+   "ID",
+   "IDA",
+   "IZO",
+   "IGTH?",
+   "ISW",
+   "ICDH",
+   "IMH",
+   "(S)",
+   "swing_bridge_2"
+  ]
+ },
+ "groups": {
+  "S01": "Neustadt east end (signal box, container crane); upper deck Pirna",
+  "S02": "Neustadt; upper deck Pirna",
+  "S03": "Neustadt (platforms); upper deck Heidenau",
+  "S04": "Neustadt west end; upper deck Heidenau",
+  "S10": "Waldhof south throat; upper deck Hauptbahnhof",
+  "S11": "Waldhof Pbf; upper deck Freiberger Straße",
+  "S12": "Waldhof north throat + Gbf; upper deck Mitte/Radebeul",
+  "S09": "room corner, ramps; Hp Papiermühle; lines leave towards room 06 / shadow yard",
+  "S06": "Adorf west throat + ABS/NBS lanes + test track",
+  "S08": "Adorf + boards 'von/nach Zellwald (Klausenburg)'",
+  "S07": "Adorf (Fdl, platforms) + Teststrecke",
+  "S05": "Adorf east end + test track, by the corridor partition",
+  "S15": "door with swing bridge 1 (km 29.4-29.75 on ABS/NBS/NBL)",
+  "S14": "hairpin by the pillar: Bk Klausenburg, Bk Feldberg",
+  "S13": "curve at the Neustadt end of the hall (NBS km 20.0-20.3)"
+ },
+ "km_tags_by_group": {
+  "S08": [
+   [
+    "15.0",
+    -260,
+    891
+   ],
+   [
+    "0.6",
+    -108,
+    619
+   ],
+   [
+    "26.6",
+    -558,
+    330
+   ],
+   [
+    "26.5",
+    -53,
+    338
+   ],
+   [
+    "0.6",
+    -112,
+    620
+   ],
+   [
+    "0.5",
+    397,
+    626
+   ],
+   [
+    "26.5",
+    -53,
+    338
+   ],
+   [
+    "26.4",
+    447,
+    348
+   ],
+   [
+    "26.6",
+    -558,
+    332
+   ],
+   [
+    "26.6",
+    -558,
+    131
+   ],
+   [
+    "26.5",
+    -53,
+    139
+   ],
+   [
+    "15.5",
+    -304,
+    -102
+   ],
+   [
+    "26.4",
+    449,
+    350
+   ],
+   [
+    "26.5",
+    -52,
+    140
+   ],
+   [
+    "26.4",
+    454,
+    152
+   ],
+   [
+    "15.4",
+    199,
+    -90
+   ],
+   [
+    "26.3",
+    956,
+    360
+   ],
+   [
+    "26.4",
+    456,
+    152
+   ],
+   [
+    "15.3",
+    702,
+    -82
+   ],
+   [
+    "15.4",
+    198,
+    -90
+   ],
+   [
+    "15.3",
+    702,
+    -82
+   ],
+   [
+    "0.6",
+    -115,
+    646
+   ]
+  ],
+  "S06": [
+   [
+    "26.3",
+    -1088,
+    343
+   ],
+   [
+    "26.2",
+    -586,
+    347
+   ],
+   [
+    "15.3",
+    -1339,
+    -97
+   ],
+   [
+    "26.2",
+    -592,
+    208
+   ],
+   [
+    "15.2",
+    -840,
+    -94
+   ],
+   [
+    "15.1",
+    -338,
+    -85
+   ],
+   [
+    "15.1",
+    -344,
+    -90
+   ],
+   [
+    "0.3",
+    -635,
+    647
+   ],
+   [
+    "0.3",
+    -634,
+    648
+   ],
+   [
+    "0.2",
+    -149,
+    650
+   ]
+  ],
+  "S07": [
+   [
+    "15.7",
+    360,
+    -122
+   ],
+   [
+    "15.6",
+    859,
+    -130
+   ],
+   [
+    "15.6",
+    860,
+    -128
+   ],
+   [
+    "27.0",
+    -900,
+    191
+   ],
+   [
+    "15.6",
+    -1475,
+    963
+   ],
+   [
+    "1.1",
+    -949,
+    618
+   ],
+   [
+    "15.5",
+    -695,
+    980
+   ],
+   [
+    "27.2",
+    -1911,
+    361
+   ],
+   [
+    "16.1",
+    -1671,
+    -87
+   ],
+   [
+    "1.2",
+    -1449,
+    629
+   ],
+   [
+    "27.0",
+    -896,
+    345
+   ],
+   [
+    "27.0",
+    -902,
+    199
+   ],
+   [
+    "16.0",
+    -1155,
+    -90
+   ],
+   [
+    "27.0",
+    -900,
+    345
+   ],
+   [
+    "26.9",
+    -403,
+    338
+   ],
+   [
+    "27.0",
+    -902,
+    199
+   ],
+   [
+    "16.1",
+    -1671,
+    -86
+   ],
+   [
+    "16.0",
+    -1159,
+    -90
+   ],
+   [
+    "15.9",
+    -665,
+    -97
+   ],
+   [
+    "15.3",
+    491,
+    659
+   ],
+   [
+    "26.9",
+    -418,
+    51
+   ],
+   [
+    "15.9",
+    -674,
+    -94
+   ],
+   [
+    "1.2",
+    -1446,
+    647
+   ],
+   [
+    "1.2",
+    -1457,
+    647
+   ],
+   [
+    "0.7",
+    1071,
+    606
+   ],
+   [
+    "0.7",
+    1073,
+    607
+   ],
+   [
+    "0.8",
+    551,
+    623
+   ]
+  ],
+  "S05": [
+   [
+    "16.5",
+    -750,
+    -118
+   ],
+   [
+    "27.5",
+    -492,
+    126
+   ],
+   [
+    "16.4",
+    -246,
+    -107
+   ],
+   [
+    "15.9",
+    -695,
+    648
+   ],
+   [
+    "27.8",
+    -2028,
+    123
+   ],
+   [
+    "1.7",
+    -1788,
+    -136
+   ],
+   [
+    "28.0",
+    -3016,
+    141
+   ],
+   [
+    "28.0",
+    -3016,
+    142
+   ],
+   [
+    "2.6",
+    -5561,
+    482
+   ],
+   [
+    "2.6",
+    -5560,
+    479
+   ],
+   [
+    "1.8",
+    -1591,
+    660
+   ],
+   [
+    "1.8",
+    -1591,
+    660
+   ]
+  ],
+  "S12": [
+   [
+    "4.9",
+    3395,
+    1821
+   ],
+   [
+    "4.8",
+    2906,
+    1835
+   ],
+   [
+    "25.1",
+    2912,
+    1447
+   ],
+   [
+    "SB 4.9",
+    3395,
+    1822
+   ],
+   [
+    "25.2",
+    3394,
+    1405
+   ],
+   [
+    "36.4",
+    2893,
+    973
+   ],
+   [
+    "36.5",
+    3306,
+    993
+   ],
+   [
+    "36.5",
+    3304,
+    767
+   ],
+   [
+    "36.6",
+    3667,
+    826
+   ],
+   [
+    "36.5",
+    3304,
+    767
+   ],
+   [
+    "36.2",
+    1748,
+    880
+   ],
+   [
+    "36.4",
+    2722,
+    888
+   ],
+   [
+    "36.2",
+    1748,
+    880
+   ],
+   [
+    "36.2",
+    1733,
+    572
+   ],
+   [
+    "36.3",
+    2254,
+    832
+   ],
+   [
+    "36.3",
+    2258,
+    589
+   ],
+   [
+    "36.3",
+    2259,
+    590
+   ],
+   [
+    "36.2",
+    1746,
+    881
+   ],
+   [
+    "36.2",
+    1745,
+    882
+   ],
+   [
+    "36.3",
+    2258,
+    833
+   ],
+   [
+    "36.2",
+    1732,
+    575
+   ],
+   [
+    "36.3",
+    2263,
+    589
+   ],
+   [
+    "36.3",
+    2266,
+    589
+   ],
+   [
+    "36.0",
+    709,
+    911
+   ],
+   [
+    "35.9",
+    266,
+    677
+   ],
+   [
+    "35.9",
+    298,
+    548
+   ],
+   [
+    "36.0",
+    684,
+    738
+   ],
+   [
+    "36.0",
+    665,
+    609
+   ],
+   [
+    "36.1",
+    988,
+    662
+   ],
+   [
+    "35.8",
+    -313,
+    241
+   ],
+   [
+    "35.8",
+    -303,
+    478
+   ],
+   [
+    "35.9",
+    176,
+    535
+   ],
+   [
+    "35.8",
+    -302,
+    478
+   ],
+   [
+    "35.9",
+    176,
+    535
+   ],
+   [
+    "36.0",
+    705,
+    532
+   ],
+   [
+    "35.7",
+    -762,
+    475
+   ],
+   [
+    "35.8",
+    -304,
+    478
+   ],
+   [
+    "35.8",
+    -285,
+    238
+   ],
+   [
+    "35.9",
+    176,
+    534
+   ],
+   [
+    "35.8",
+    -304,
+    478
+   ],
+   [
+    "35.8",
+    -285,
+    238
+   ],
+   [
+    "35.9",
+    190,
+    229
+   ],
+   [
+    "35.9",
+    175,
+    534
+   ],
+   [
+    "36.0",
+    701,
+    531
+   ],
+   [
+    "35.9",
+    190,
+    228
+   ],
+   [
+    "36.0",
+    707,
+    982
+   ],
+   [
+    "35.6",
+    -223,
+    943
+   ],
+   [
+    "35.8",
+    -207,
+    890
+   ],
+   [
+    "35.4",
+    -2351,
+    502
+   ],
+   [
+    "24.2",
+    -1519,
+    1171
+   ],
+   [
+    "3.5",
+    1625,
+    1879
+   ],
+   [
+    "4.2",
+    -345,
+    1608
+   ]
+  ],
+  "S11": [
+   [
+    "SB 3.6",
+    2528,
+    995
+   ],
+   [
+    "23.8",
+    1782,
+    638
+   ],
+   [
+    "SB 3.7",
+    3284,
+    878
+   ],
+   [
+    "23.9",
+    2622,
+    615
+   ],
+   [
+    "24.0",
+    3116,
+    602
+   ],
+   [
+    "SB 3.8",
+    3632,
+    813
+   ],
+   [
+    "24.0",
+    3116,
+    602
+   ],
+   [
+    "23.8",
+    2545,
+    441
+   ],
+   [
+    "35.2",
+    2469,
+    339
+   ],
+   [
+    "35.1",
+    1891,
+    291
+   ],
+   [
+    "35.3",
+    2867,
+    373
+   ],
+   [
+    "35.3",
+    2764,
+    -246
+   ],
+   [
+    "35.2",
+    2284,
+    -251
+   ],
+   [
+    "34.5",
+    -1512,
+    144
+   ],
+   [
+    "34.6",
+    -864,
+    53
+   ],
+   [
+    "34.7",
+    -281,
+    16
+   ]
+  ],
+  "S10": [
+   [
+    "34.5",
+    2161,
+    -1132
+   ],
+   [
+    "22.0",
+    -3886,
+    -423
+   ],
+   [
+    "23.0",
+    1204,
+    -268
+   ],
+   [
+    "23.0",
+    1203,
+    -268
+   ]
+  ],
+  "S04": [
+   [
+    "21.8",
+    679,
+    235
+   ]
+  ],
+  "S03": [
+   [
+    "SB 1.2",
+    -83,
+    948
+   ],
+   [
+    "21.1",
+    -2081,
+    207
+   ],
+   [
+    "21.2",
+    -1572,
+    365
+   ],
+   [
+    "21.2",
+    -1575,
+    212
+   ],
+   [
+    "32.6",
+    -1127,
+    669
+   ],
+   [
+    "32.8",
+    -110,
+    652
+   ],
+   [
+    "21.4",
+    -558,
+    370
+   ],
+   [
+    "21.4",
+    -557,
+    211
+   ],
+   [
+    "21.4",
+    -557,
+    369
+   ],
+   [
+    "21.4",
+    -558,
+    212
+   ],
+   [
+    "21.5",
+    -54,
+    368
+   ],
+   [
+    "21.5",
+    -52,
+    210
+   ],
+   [
+    "21.6",
+    462,
+    367
+   ],
+   [
+    "33.0",
+    924,
+    626
+   ],
+   [
+    "21.7",
+    969,
+    363
+   ],
+   [
+    "21.6",
+    460,
+    367
+   ],
+   [
+    "21.6",
+    462,
+    209
+   ],
+   [
+    "21.7",
+    970,
+    363
+   ],
+   [
+    "21.7",
+    973,
+    218
+   ],
+   [
+    "21.8",
+    1486,
+    240
+   ]
+  ],
+  "S01": [
+   [
+    "SB 0.6",
+    1062,
+    972
+   ],
+   [
+    "SB 0.5",
+    564,
+    895
+   ],
+   [
+    "0.5",
+    609,
+    1008
+   ],
+   [
+    "20.4",
+    -1327,
+    220
+   ],
+   [
+    "0.2",
+    -903,
+    1217
+   ],
+   [
+    "20.5",
+    -821,
+    350
+   ]
+  ],
+  "S02": [
+   [
+    "SB 0.7",
+    639,
+    80
+   ],
+   [
+    "0.5",
+    -361,
+    95
+   ],
+   [
+    "SB 0.6",
+    151,
+    84
+   ],
+   [
+    "20.9",
+    147,
+    -538
+   ]
+  ],
+  "S13": [
+   [
+    "20.3",
+    -826,
+    1245
+   ],
+   [
+    "20.3",
+    -739,
+    1119
+   ],
+   [
+    "31.5",
+    951,
+    -143
+   ],
+   [
+    "20.0",
+    233,
+    -81
+   ],
+   [
+    "20.0",
+    235,
+    -81
+   ],
+   [
+    "20.0",
+    234,
+    -81
+   ]
+  ],
+  "S14": [
+   [
+    "30.8",
+    1125,
+    447
+   ],
+   [
+    "30.8",
+    1126,
+    447
+   ],
+   [
+    "19.5",
+    1294,
+    940
+   ],
+   [
+    "30.6",
+    714,
+    1096
+   ],
+   [
+    "30.7",
+    421,
+    707
+   ],
+   [
+    "30.6",
+    714,
+    1093
+   ],
+   [
+    "30.4",
+    1310,
+    1907
+   ],
+   [
+    "30.5",
+    1013,
+    1509
+   ],
+   [
+    "30.8",
+    707,
+    1106
+   ],
+   [
+    "31.0",
+    -881,
+    -860
+   ],
+   [
+    "31.0",
+    -883,
+    -860
+   ],
+   [
+    "31.0",
+    -1107,
+    -546
+   ],
+   [
+    "31.2",
+    -1216,
+    -1000
+   ],
+   [
+    "31.1",
+    -949,
+    -1128
+   ],
+   [
+    "31.0",
+    -645,
+    -1152
+   ]
+  ],
+  "S09": [
+   [
+    "36.5",
+    203,
+    1431
+   ]
+  ]
+ }
+}
