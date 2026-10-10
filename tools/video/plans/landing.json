@@ -1,0 +1,16 @@
+{
+  "about": "The project page's video (web/media/ebl-city-train.mp4): the town at the curve, the hybrid terminal from two cameras, a bus stop; square, looping.",
+  "size": [720, 720],
+  "fps": 30,
+  "parts": [
+    { "frames": "build/video/town", "count": 300, "crop": [0, 140, 720, 860],
+      "bare": { "clip": "examples/media/ebl-curve-trains.mp4", "fade": [18, 45] } },
+    { "frames": "build/video/terminal-photo", "count": 110, "crop": [[420, 120, 1500, 1200], [560, 180, 1460, 1080]], "fade": 24 },
+    { "frames": "build/video/terminal-truck", "count": 222, "crop": [[280, 0, 1000, 720], [470, 60, 1070, 660]], "fade": 9 },
+    { "frames": "build/video/bus", "count": 240, "crop": [180, 19, 1080, 919], "fade": 24 }
+  ],
+  "loop": 24,
+  "out": "web/media/ebl-city-train.mp4",
+  "crf": 27,
+  "poster": { "frame": 150, "out": "web/media/ebl-city-train.jpg" }
+}

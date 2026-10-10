@@ -21,6 +21,7 @@
 import { Simulation } from "../core/simulation.js";
 import { CD, CD_LIGHT, mix, OVERLAY } from "../core/colors.js";
 import { hashKey, polylineAt } from "../core/math.js";
+import { hiddenAt } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { drawPerson } from "../sims/passengers.js";
 import { opsOf } from "../ops/simulation.js";
@@ -886,27 +887,17 @@ export class JourneysSimulation extends Simulation {
   draw(view) {
     if (!this.active) return;
     const labels = this.world.settings.labels !== false;
-    let net = null;
-    try {
-      net = this.world.network?.() || null;
-    } catch {
-      net = null;
-    }
     for (const t of this.travellers) {
       const chosen = this.selected === t.id;
       let at = null;
       let hidden = false;
       if (t.state === "walking" && t.pos) {
+        // the walk is on the sidewalks already (RoadNetwork.walkLine)
         at = t.pos.slice();
-        const pa = t.path?.route && net?.pathAt ? pathAt(net, t) : null;
-        // in the underpass: out of sight (the chosen traveller keeps its ring and name)
-        hidden = !!pa?.hidden;
+        const dir = t.dir || [1, 0];
+        // in the underpass or off stage: out of sight (the chosen traveller keeps its ring and name)
+        hidden = hiddenAt(t.path, t.s);
         if (hidden && !chosen) continue;
-        const off = pa?.walkOffset || 0, dir = t.dir || [1, 0];
-        if (off) {
-          at[0] += dir[1] * off;
-          at[1] -= dir[0] * off;
-        }
         if (!hidden && view.inImage(at[0], at[1], 0)) drawPerson(view, at, { dir, speed: WALK_MPS, phase: t.phase, height: 1.7 + (hashKey(t.id) % 20) / 100, colour: t.colour });
       } else at = this.positionOf(t.id);
       if (!at) continue;
@@ -917,7 +908,7 @@ export class JourneysSimulation extends Simulation {
       }
       if (chosen) view.polygon(circle(at, view.m(2.2)), { stroke: OVERLAY.selection, width: 3, order: 9 });
       if (!labels && !chosen) continue;
-      const text = t.state === "home" ? `${t.name} · ${hhmm(t.at(t.leave))}` : t.state === "arrived" ? `${t.name} · arrived` : hidden ? `${t.name} · underpass` : t.name;
+      const text = t.state === "home" ? `${t.name} · ${hhmm(t.at(t.leave))}` : t.state === "arrived" ? `${t.name} · arrived` : hidden ? `${t.name} · ${t.path?.offstage ? "out of sight" : "underpass"}` : t.name;
       view.label([at[0], at[1], view.m(t.state === "bus" ? 4.6 : 2.4)], text, {
         size: 11, padding: 4, anchor: "bottom", badge: String(t.number), badgeColor: t.colour, order: chosen ? 4 : 3, optional: t.state === "home" && !chosen,
       });
@@ -927,13 +918,6 @@ export class JourneysSimulation extends Simulation {
   toJSON() {
     return { ...this.config, travellers: this.travellers.map((t) => t.toJSON()) };
   }
-}
-
-/** Where a walker is on its network route (sidewalk offset, underpass), as in the town. */
-function pathAt(net, t) {
-  const r = t.path.route, s = t.s - (t.path.routeStart || 0);
-  if (s <= 0 || s >= r.length) return null;
-  return net.pathAt(r, s);
 }
 
 /** Index of the access point of a stop area nearest to a layout point. */

@@ -47,6 +47,11 @@ export class Track extends LayoutObject {
     return offsetLine(g.points, this.mm(1.5)).concat(offsetLine(g.points, -this.mm(1.5)).reverse());
   }
 
+  /** People do not cross a track on their own, only on streets and footpaths over it (core/network.js). */
+  walkBarrier() {
+    return this.geometry?.points || null;
+  }
+
   draw(view) {
     const g = this.geometry;
     if (this.spec.virtual || !view.showsReal(g.points)) this._drawTrack(view, g);

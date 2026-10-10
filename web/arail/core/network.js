@@ -7,19 +7,24 @@
  *   one (T junction: that street is split) and where streets cross (X junction: both are split);
  * - **edges** along the streets (`kind` "road", or "path" for footpaths);
  * - **places**: every building entrance and every access point of a stop area is connected to the
- *   nearest street or footpath (within 80 m) by a short footpath (`kind` "connector"); keys
- *   `"building:<objectId>:<i>"` and `"area:<areaId>:<i>"`;
+ *   nearest street or footpath (within 80 m) by a short footpath (`kind` "connector") that crosses
+ *   no track; keys `"building:<objectId>:<i>"` and `"area:<areaId>:<i>"`;
  * - **bus stops**: a node on the street where the front of a bus stopping at a bus dock is
  *   (`dock(dockId)`);
  * - **bus terminals**: their bus lane as one-way `lane` edges, connected to the nearest streets.
  *
  * Objects take part through duck-typed methods, so plugins can add their own: `roadInfo()`
  * (streets, see objects/road.js; `hidden: true` for paths whose walkers are out of sight, like
- * objects/underpass.js), `entrances()` (buildings), `stopAreas()` (stops) and
- * `busLane()` (bus lanes). Lengths are layout mm, speeds prototype m/s.
+ * objects/underpass.js), `entrances()` (buildings), `stopAreas()` (stops),
+ * `busLane()` (bus lanes) and `walkBarrier()` (a polyline people do not cross on their own:
+ * tracks, see objects/track.js; streets and footpaths over it are crossings). Lengths are layout
+ * mm, speeds prototype m/s.
  *
- * Routes (`route`, `routeDirected`) are {@link Path}s. Without streets every query returns null,
- * and callers walk or drive straight.
+ * Routes (`route`, `routeDirected`) are {@link Path}s. A walk (`walk`) follows the route on the
+ * sidewalks (`walkLine`): a street on the side of the place the walk comes from, crossing at right
+ * angles where the next place lies on the other side; a walk the streets do not connect is out of
+ * sight. Without streets every query returns null, and callers walk or drive straight (a straight
+ * walk that would cross a track is out of sight).
  * @module arail/core/network
  */
 import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylineProject, smoothstep, sub2, unit2 } from "./math.js";
@@ -102,6 +107,69 @@ export function segmentIntersection(p1, p2, q1, q2) {
   return { t, u, p: [p1[0] + r[0] * t, p1[1] + r[1] * t] };
 }
 
+/** Right-hand normal of the direction from a to b. */
+function rightNormal(a, b) {
+  const d = unit2(sub2(b, a));
+  return [d[1], -d[0]];
+}
+
+/** Which side of the line through a in the direction a -> b the point p is on: +1 right, -1 left, 0 on it. */
+function sideOf(p, a, b) {
+  const n = rightNormal(a, b), v = sub2(p, a);
+  const d = v[0] * n[0] + v[1] * n[1];
+  return Math.abs(d) < 1e-6 ? 0 : Math.sign(d);
+}
+
+/**
+ * A polyline moved sideways: segment k by `side` * off[k] to its right (mitred corners; where the
+ * offset changes or the turn is sharp, both offset points).
+ */
+function offsetLine(C, off, side) {
+  const N = [];
+  for (let k = 0; k + 1 < C.length; k++) N.push(rightNormal(C[k], C[k + 1]));
+  const at = (p, n, o) => [p[0] + n[0] * o, p[1] + n[1] * o];
+  const out = [at(C[0], N[0], side * off[0])];
+  for (let k = 1; k + 1 < C.length; k++) {
+    const a = N[k - 1], b = N[k], oa = side * off[k - 1], ob = side * off[k];
+    const c = 1 + a[0] * b[0] + a[1] * b[1];
+    if (Math.abs(oa - ob) < 1e-6 && c > 0.5) out.push([C[k][0] + ((a[0] + b[0]) * oa) / c, C[k][1] + ((a[1] + b[1]) * oa) / c]);
+    else out.push(at(C[k], a, oa), at(C[k], b, ob));
+  }
+  out.push(at(C[C.length - 1], N[N.length - 1], side * off[off.length - 1]));
+  return out;
+}
+
+/**
+ * A walk as a polyline with the stretches out of sight: {points, lengths, length, hidden}, `hidden`
+ * a list of [s0, s1] (arc length, mm).
+ */
+function walkOf(points, hiddenFlags) {
+  const lengths = polylineLengths(points), hidden = [];
+  for (let k = 1; k < points.length; k++) {
+    if (!hiddenFlags[k]) continue;
+    const last = hidden[hidden.length - 1];
+    if (last && Math.abs(last[1] - lengths[k - 1]) < 1e-9) last[1] = lengths[k];
+    else hidden.push([lengths[k - 1], lengths[k]]);
+  }
+  return { points, lengths, length: lengths[lengths.length - 1], hidden };
+}
+
+/**
+ * A straight walk from one point to another (no network, or no route): out of sight altogether
+ * when `hidden` (it would cross a track). {points, lengths, length, hidden, route: null, offstage}
+ */
+export function straightWalk(from, to, hidden = false) {
+  const points = [[from[0], from[1]]];
+  if (dist2(from, to) > 0.01) points.push([to[0], to[1]]);
+  else points.push([to[0] + 0.01, to[1]]);
+  return { ...walkOf(points, [false, hidden]), route: null, offstage: !!hidden };
+}
+
+/** Is a walker at arc length `s` of a walk out of sight (in an underpass, or off stage)? */
+export function hiddenAt(walk, s) {
+  return !!walk?.hidden?.some(([s0, s1]) => s >= s0 && s <= s1);
+}
+
 /** Binary min-heap of (id, key) pairs for Dijkstra. */
 class Heap {
   constructor() {
@@ -170,6 +238,8 @@ export class RoadNetwork {
     this.places = new Map();
     /** Dock id -> {node, dir, pose}: where buses stop (front of the bus). */
     this.docks = new Map();
+    /** Polylines people do not cross on their own (tracks), with their bounding boxes. @type {Array<{points: number[][], box: number[]}>} */
+    this.barriers = [];
     /** Changes only when what vehicles drive on changes (streets, bus stops, bus lanes), not with buildings. */
     this.carKey = "";
     this._trees = new Map();
@@ -190,6 +260,13 @@ export class RoadNetwork {
 
   _build() {
     const world = this.world, mm = (m) => this.mm(m);
+    for (const o of world.objects) {
+      if (typeof o.walkBarrier !== "function" || !o.geometry) continue;
+      const pts = dedupe(o.walkBarrier() || []);
+      if (pts.length < 2) continue;
+      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      this.barriers.push({ points: pts, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] });
+    }
     const roads = [];
     for (const o of world.objects) {
       if (typeof o.roadInfo !== "function" || !o.geometry) continue;
@@ -260,12 +337,14 @@ export class RoadNetwork {
         }
       }
     }
-    const nearest = (p, maxMM, ok) => {
+    const nearest = (p, maxMM, ok, clear = null) => {
       let best = null;
       for (const r of roads) {
         if (!ok(r)) continue;
         const pr = polylineProject(r.pts, p, r.cum);
-        if (pr.distance <= maxMM && (!best || pr.distance < best.distance)) best = { r, s: pr.s, distance: pr.distance };
+        if (pr.distance > maxMM || (best && pr.distance >= best.distance)) continue;
+        if (clear && !clear(polylineAt(r.pts, pr.s, r.cum).point)) continue;
+        best = { r, s: pr.s, distance: pr.distance };
       }
       return best;
     };
@@ -274,7 +353,8 @@ export class RoadNetwork {
     const places = [];
     const addPlace = (key, p) => {
       if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) return;
-      const n = nearest(p, mm(PLACE_MAX_M), walkable);
+      // the connector is a straight footpath: not over a track
+      const n = nearest(p, mm(PLACE_MAX_M), walkable, (q) => !this.crossesBarrier(p, q));
       if (n) places.push({ key, pos: [p[0], p[1]], split: split(n.r, n.s, 2) });
     };
     for (const o of world.objects) {
@@ -492,22 +572,124 @@ export class RoadNetwork {
   }
 
   /**
-   * The node nearest to a layout point that can be used in a mode, or null.
+   * The node nearest to a layout point that can be used in a mode, or null. For walking, only a
+   * node that can be reached in a straight line without crossing a track.
    * @param {number[]} p
    * @param {{mode?: "walk" | "car" | "bus"}} [options]
    */
   nearestNode(p, { mode = "walk" } = {}) {
     if (!p) return null;
-    let best = null, bd = Infinity;
-    for (const n of this.nodes) {
-      if (!n.edges.some((id) => this._usable(this.edges[id], mode))) continue;
-      const d = dist2(p, n.pos);
-      if (d < bd) {
-        bd = d;
-        best = n;
+    const usable = this.nodes.filter((n) => n.edges.some((id) => this._usable(this.edges[id], mode)));
+    if (mode !== "walk" || !this.barriers.length) {
+      let best = null, bd = Infinity;
+      for (const n of usable) {
+        const d = dist2(p, n.pos);
+        if (d < bd) {
+          bd = d;
+          best = n;
+        }
       }
+      return best;
     }
-    return best;
+    const byDistance = usable.map((n) => [dist2(p, n.pos), n]).sort((a, b) => a[0] - b[0]);
+    for (const [, n] of byDistance) if (!this.crossesBarrier(p, n.pos)) return n;
+    return null;
+  }
+
+  /** Does the straight line from a to b cross a barrier (a track)? */
+  crossesBarrier(a, b) {
+    const x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+    for (const { points, box } of this.barriers) {
+      if (box[0] > x1 || box[2] < x0 || box[1] > y1 || box[3] < y0) continue;
+      for (let k = 1; k < points.length; k++) if (segmentIntersection(a, b, points[k - 1], points[k])) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A walk between two layout points over the network (on the sidewalks, see `walkLine`), from and
+   * to a place when its key is given. Where the streets do not connect them, the walk is out of
+   * sight (people go round the back of the layout); without any streets it is straight, out of
+   * sight only if it would cross a track.
+   * @param {number[]} from
+   * @param {number[]} to
+   * @param {{fromKey?: string | null, toKey?: string | null}} [keys] place keys of the ends
+   * @returns {{points: number[][], lengths: number[], length: number, hidden: number[][], route: Path | null, offstage?: boolean}}
+   */
+  walk(from, to, { fromKey = null, toKey = null } = {}) {
+    const a = this.place(fromKey) ?? this.nearestNode(from, { mode: "walk" });
+    const b = this.place(toKey) ?? this.nearestNode(to, { mode: "walk" });
+    const route = a && b ? this.route(a, b, { mode: "walk" }) : null;
+    if (route) return { ...this.walkLine(route, from, to), route };
+    return straightWalk(from, to, !this.empty || this.crossesBarrier(from, to));
+  }
+
+  /**
+   * The line a pedestrian walks from `from` over a walking route to `to`: on the sidewalk of the
+   * streets, not on their centre line. A street is walked on the side of where the walk comes
+   * from (kept round corners); where the next place or footpath lies on the other side, the walk
+   * crosses at right angles at the end of the street. Connectors and footpaths join the
+   * sidewalk, not the middle of the street.
+   * @param {Path} path a walking route
+   * @param {number[]} from
+   * @param {number[]} to
+   * @returns {{points: number[][], lengths: number[], length: number, hidden: number[][]}}
+   *   `hidden`: stretches [s0, s1] (arc length, mm) out of sight (an underpass)
+   */
+  walkLine(path, from, to) {
+    const out = [], flags = [];
+    const push = (p, hidden = false) => {
+      if (out.length && dist2(out[out.length - 1], p) < 1e-6) return;
+      out.push([p[0], p[1]]);
+      flags.push(hidden);
+    };
+    const E = path?.edges || [];
+    const pts = (x) => (x.forward ? x.edge.points : [...x.edge.points].reverse());
+    const isStreet = (x) => (x.edge.walkOffset || 0) > 0;
+    push(from);
+    let i = 0, afterStreet = false;
+    while (i < E.length) {
+      if (!isStreet(E[i])) {
+        // footpath, connector or underpass: its own line; where it meets a street, the sidewalk takes over
+        const p = pts(E[i]), hidden = !!E[i].edge.hidden, toStreet = i + 1 < E.length && isStreet(E[i + 1]);
+        for (let k = afterStreet ? 1 : 0; k < p.length - (toStreet ? 1 : 0); k++) push(p[k], hidden);
+        afterStreet = false;
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < E.length && isStreet(E[j])) j++;
+      // the centre line of the streets walked in a row, and the sidewalk offset of each segment
+      const C = [], off = [];
+      for (let k = i; k < j; k++) {
+        const p = pts(E[k]);
+        if (!C.length) C.push(p[0]);
+        for (let m = 1; m < p.length; m++) {
+          if (dist2(p[m], C[C.length - 1]) < 1e-6) continue;
+          C.push(p[m]);
+          off.push(E[k].edge.walkOffset);
+        }
+      }
+      if (C.length >= 2) {
+        const n = C.length, prev = out[out.length - 1];
+        const next = j < E.length ? pts(E[j])[Math.min(1, E[j].edge.points.length - 1)] : to;
+        // the side of where the walk comes from, and of where it goes on to
+        const side = sideOf(prev, C[0], C[1]) || 1;
+        const end = sideOf(next, C[n - 2], C[n - 1]) || side;
+        const hidden = E.slice(i, j).every((x) => x.edge.hidden);
+        for (const p of offsetLine(C, off, side)) push(p, hidden);
+        if (end !== side) {
+          // across the street at its end, at right angles
+          const nr = rightNormal(C[n - 2], C[n - 1]), o = off[off.length - 1] * end;
+          push([C[n - 1][0] + nr[0] * o, C[n - 1][1] + nr[1] * o], hidden);
+        }
+      }
+      afterStreet = true;
+      i = j;
+    }
+    push(to);
+    if (out.length < 2) out.push([to[0] + 0.01, to[1]]), flags.push(false);
+    return walkOf(out, flags);
   }
 
   /** Dead ends of the streets: where cars enter and leave the layout. */

@@ -1,0 +1,16 @@
+{
+  "about": "The hybrid terminal, second camera: one frame of the clip beside the truck, frozen; the crane lifts the container off the wagon and sets it down on the truck's rear trailer.",
+  "page": "example=container-train",
+  "clip": "examples/media/ebl-terminal-truck.mp4",
+  "start": 230,
+  "frames": 222,
+  "proc_max": 1600,
+  "track": { "from": -45, "hold": 90 },
+  "keep_rolling": true,
+  "freeze": true,
+  "speed": 6.5,
+  "each": "if (term) term.highlight.slots = false;",
+  "setup": "for (const n of [1, 7, 8, 9]) { const c = term._wagonCarrier(n); if (c.pose) Object.assign(c, { present: true, available: true, tracked: 'standing' }); } for (const c of term.markerWagons()) if (!c.present) c.pose = null; app.world.events.emit('terminal.request.move', { container: 'TUDU 600002 9', to: { carrier: 'W1', bay: 1 } });",
+  "until": "h.phase === 'lower'",
+  "out": "build/video/terminal-truck"
+}

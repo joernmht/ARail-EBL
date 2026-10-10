@@ -110,14 +110,25 @@ See [Layout file format](layout-format.md#road-street) for the parameters of `ro
   map or the scale change. Nodes are at street corners and junctions; edges have `kind` ("road",
   "path", "connector", "lane"), `car`, `bus`, `walk`, `oneway`, `speed` (m/s), `width`,
   `walkOffset` and `laneOffset` (mm). Building entrances (`entrances()`) and stop access points
-  are connected to the nearest street within 80 m: `place("building:<id>:<i>")`,
-  `place("area:<areaId>:<i>")`. Further: `nearestNode(p, {mode})`, `route(a, b, {mode: "walk" |
-  "car" | "bus"})`, `distance(a, b, mode)`, `routeDirected(...)` (vehicles, with U-turn
-  penalties), `pathAt(path, s)` → `{point, dir, walkOffset}` (people walk on the right-hand
-  sidewalk), `drivingLine(path)` (the right lane), `boundaryNodes()` and `junctions()`. Without
+  are connected to the nearest street within 80 m whose connector crosses no track:
+  `place("building:<id>:<i>")`, `place("area:<areaId>:<i>")`. Further: `nearestNode(p, {mode})`
+  (for walking only a node reached in a straight line over no track), `route(a, b, {mode: "walk"
+  | "car" | "bus"})`, `distance(a, b, mode)`, `routeDirected(...)` (vehicles, with U-turn
+  penalties), `drivingLine(path)` (the right lane), `boundaryNodes()` and `junctions()`. Without
   streets the queries return null.
+- **Walks**: `walk(from, to, {fromKey, toKey})` → `{points, lengths, length, hidden, route}`, the
+  line a pedestrian walks (`walkLine(route, from, to)`): each street on the sidewalk on the side
+  the walk comes from (kept round corners), across at right angles at the end of a street where
+  the next place lies on the other side, footpaths and connectors joining the sidewalk, not the
+  middle of the street. `hidden` lists the stretches out of sight (`[s0, s1]` in mm, the
+  underpass); `hiddenAt(walk, s)` tells whether a walker is out of sight. People do not cross
+  tracks on their own (`crossesBarrier(a, b)`): only on streets and footpaths over them. Where the
+  streets do not connect start and goal, the whole walk is out of sight (`offstage`); without any
+  streets it is straight (`straightWalk`), out of sight only over a track. The town, the journeys
+  and the crews of the operations walk this way.
 - Objects take part through methods: `roadInfo()` (a street: points, width, sidewalk, speed,
-  offsets), `entrances()` (doors of a building), `stopAreas()` and `busLane()` (a lane for buses).
+  offsets), `entrances()` (doors of a building), `stopAreas()`, `busLane()` (a lane for buses) and
+  `walkBarrier()` (a polyline people do not cross on their own; tracks have it).
 - `world.transit` (`core/transit.js`): `lines` (id → `{id, label, color, ok, problems, visits,
   directions: [{dir, from, destination, loop, stops, route}], circuit, turns}`; a loop's
   `destination` is `"Ring ↻"` or `"Ring ↺"` by its turning number `turns`, see `ringName()` and

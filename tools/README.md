@@ -1,13 +1,16 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and two Node.js scripts,
-[`ops-compare.mjs`](#comparing-operations-setups) and [`fetch-fonts.mjs`](#updating-the-fonts)):
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and three Node.js scripts,
+[`ops-compare.mjs`](#comparing-operations-setups), [`fetch-fonts.mjs`](#updating-the-fonts) and
+[`video/render.mjs`](#videos)):
 
 | Command | What it does | Extra |
 | --- | --- | --- |
 | `arail-bridge` | connects a control system to the ARail web app (WebSocket feed) | `bridge` |
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
 | `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
+| `arail-stabilize` | steadier poses for a video of the app: the markers' poses joined with the picture's own motion | `opencv` or `headless` |
+| `arail-compose` | joins rendered shots into a video: crops, slow pushes, crossfades, a seamless loop; H.264 (ffmpeg) | `opencv` or `headless` |
 | `arail-synthetic` | renders the synthetic test scene of the tests (`npm run fixtures`) | `opencv` or `headless` |
 | `python -m arail_tools.fixtures` | generates the images and the short survey video for the tests | `opencv` or `headless` |
 
@@ -38,6 +41,22 @@ only these markers; `--unlocked` to skip), and markers on vehicles (`markers.mov
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
 For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
 Survey a video.
+
+## Videos
+
+`video/render.mjs` (Node.js with the dev dependencies: Playwright and Chromium) renders the app's
+augmented picture frame by frame after a plan: over a clip, a photo or in the flyover, at a fixed
+frame rate. `arail-stabilize` makes the poses of a clip steadier, `arail-compose` joins the shots
+into a video. The plans of the project page's videos are in `video/plans/`; `sh
+tools/video/page-videos.sh` makes them again (ffmpeg needed):
+
+```bash
+node tools/video/render.mjs tools/video/plans/bus.json --only 0,120   # a quick look at two frames
+arail-compose tools/video/plans/landing.json
+```
+
+The way from a clip to a video, the stabilization step by step and which steps could run live:
+[Videos of the lab](../docs/videos.md).
 
 ## Comparing operations setups
 
