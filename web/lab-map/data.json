@@ -1,0 +1,2193 @@
+{
+ "format": "arail-lab-map/1",
+ "date": "2026-10-09",
+ "frame": "hall frame in mm: x along the window wall towards Waldhof, y towards the windows",
+ "layers": {
+  "neustadt": {
+   "layout": "../layouts/ebl-neustadt.json",
+   "label": "Bf Neustadt"
+  },
+  "container": {
+   "layout": "../layouts/ebl-container-train.json",
+   "label": "Hybrid container train"
+  }
+ },
+ "groups": {
+  "S01": {
+   "pose": [
+    -4352.0,
+    18.0,
+    -4.9
+   ],
+   "name": "Neustadt",
+   "approx": false,
+   "ortho": {
+    "image": "ortho/S01.jpg",
+    "bounds_mm": [
+     -1826.0,
+     -302.8,
+     1759.6,
+     1302.8
+    ]
+   }
+  },
+  "S02": {
+   "pose": [
+    -3266.2,
+    899.6,
+    0.9
+   ],
+   "name": "Neustadt",
+   "approx": false,
+   "ortho": {
+    "image": "ortho/S02.jpg",
+    "bounds_mm": [
+     -832.1,
+     -1233.2,
+     2378.2,
+     307.6
+    ]
+   }
+  },
+  "S03": {
+   "pose": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "name": "Neustadt",
+   "approx": false,
+   "ortho": {
+    "image": "ortho/S03.jpg",
+    "bounds_mm": [
+     -3207.0,
+     -313.0,
+     1930.4,
+     1149.3
+    ]
+   }
+  },
+  "S04": {
+   "pose": [
+    811.8,
+    -4.5,
+    0.3
+   ],
+   "name": "Neustadt",
+   "approx": false,
+   "ortho": {
+    "image": "ortho/S04.jpg",
+    "bounds_mm": [
+     -1114.9,
+     -323.1,
+     2191.8,
+     1119.4
+    ]
+   }
+  },
+  "S05": {
+   "pose": [
+    10270.0,
+    -3480.0,
+    0.0
+   ],
+   "name": "Adorf east and test track",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S05.jpg",
+    "bounds_mm": [
+     -4956.2,
+     -323.6,
+     823.8,
+     1029.0
+    ]
+   }
+  },
+  "S06": {
+   "pose": [
+    16905.1,
+    -3614.8,
+    -2.6
+   ],
+   "name": "Adorf",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S06.jpg",
+    "bounds_mm": [
+     -1844.8,
+     -313.3,
+     1210.6,
+     1053.0
+    ]
+   }
+  },
+  "S07": {
+   "pose": [
+    13200.0,
+    -3500.0,
+    0.0
+   ],
+   "name": "Adorf and test track",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S07.jpg",
+    "bounds_mm": [
+     -2214.4,
+     -340.7,
+     1985.6,
+     1036.9
+    ]
+   }
+  },
+  "S08": {
+   "pose": [
+    14864.0,
+    -3540.2,
+    -2.4
+   ],
+   "name": "Adorf",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S08.jpg",
+    "bounds_mm": [
+     -1020.1,
+     -311.6,
+     1305.9,
+     1039.8
+    ]
+   }
+  },
+  "S09": {
+   "pose": [
+    18394.6,
+    -2652.5,
+    -44.0
+   ],
+   "name": "Corner by Hp Papiermühle",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S09.jpg",
+    "bounds_mm": [
+     -767.7,
+     -1686.3,
+     1374.7,
+     1507.3
+    ]
+   }
+  },
+  "S10": {
+   "pose": [
+    6389.8,
+    781.5,
+    0.2
+   ],
+   "name": "Waldhof south",
+   "approx": false,
+   "ortho": {
+    "image": "ortho/S10.jpg",
+    "bounds_mm": [
+     -4659.1,
+     -1087.9,
+     2423.1,
+     346.3
+    ]
+   }
+  },
+  "S11": {
+   "pose": [
+    9626.8,
+    -197.8,
+    -1.4
+   ],
+   "name": "Waldhof",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S11.jpg",
+    "bounds_mm": [
+     -1825.4,
+     -869.6,
+     4714.6,
+     1170.9
+    ]
+   }
+  },
+  "S12": {
+   "pose": [
+    15228.7,
+    -947.0,
+    -3.3
+   ],
+   "name": "Waldhof north and goods yard",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S12.jpg",
+    "bounds_mm": [
+     -2841.9,
+     -318.0,
+     3299.6,
+     2139.9
+    ]
+   }
+  },
+  "S13": {
+   "pose": [
+    -7900.0,
+    430.0,
+    0.0
+   ],
+   "name": "Curve at the Neustadt end",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S13.jpg",
+    "bounds_mm": [
+     -1111.1,
+     -682.5,
+     554.9,
+     1119.5
+    ]
+   }
+  },
+  "S14": {
+   "pose": [
+    -3300.0,
+    -2600.0,
+    0.0
+   ],
+   "name": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S14.jpg",
+    "bounds_mm": [
+     -300.0,
+     -300.8,
+     1508.3,
+     1879.2
+    ]
+   }
+  },
+  "S15": {
+   "pose": [
+    300.0,
+    -3700.0,
+    0.0
+   ],
+   "name": "Door and swing bridge",
+   "approx": true,
+   "ortho": {
+    "image": "ortho/S15.jpg",
+    "bounds_mm": [
+     -310.6,
+     -842.0,
+     324.1,
+     1348.1
+    ]
+   }
+  }
+ },
+ "photos": [
+  {
+   "id": "131720",
+   "time": "13:17:20",
+   "group": "S06",
+   "x": 15084,
+   "y": -2485,
+   "heading": 130,
+   "markers": 6,
+   "approx": true,
+   "place": "Adorf",
+   "km": [],
+   "image": "photos/131720.jpg"
+  },
+  {
+   "id": "131724",
+   "time": "13:17:24",
+   "group": "S07",
+   "x": 12955,
+   "y": -2063,
+   "heading": 128,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [],
+   "image": "photos/131724.jpg"
+  },
+  {
+   "id": "131729",
+   "time": "13:17:29",
+   "group": "S08",
+   "x": 16707,
+   "y": -2656,
+   "heading": 33,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf",
+   "km": [],
+   "image": "photos/131729.jpg"
+  },
+  {
+   "id": "131735",
+   "time": "13:17:35",
+   "group": "S06",
+   "x": 18146,
+   "y": -2358,
+   "heading": 44,
+   "markers": 7,
+   "approx": true,
+   "place": "Adorf",
+   "km": [],
+   "image": "photos/131735.jpg"
+  },
+  {
+   "id": "131740",
+   "time": "13:17:40",
+   "group": "S06",
+   "x": 17430,
+   "y": -2306,
+   "heading": 42,
+   "markers": 1,
+   "approx": true,
+   "place": "Adorf",
+   "km": [],
+   "image": "photos/131740.jpg"
+  },
+  {
+   "id": "131749",
+   "time": "13:17:49",
+   "group": "S08",
+   "x": 15086,
+   "y": -3198,
+   "heading": 93,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "0.5",
+    "0.6",
+    "15.0",
+    "15.3",
+    "15.4",
+    "15.5",
+    "26.3",
+    "26.4"
+   ],
+   "image": "photos/131749.jpg"
+  },
+  {
+   "id": "131754",
+   "time": "13:17:54",
+   "group": "S06",
+   "x": 16244,
+   "y": -3315,
+   "heading": 81,
+   "markers": 6,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "15.1",
+    "15.2",
+    "15.3",
+    "26.2",
+    "26.3"
+   ],
+   "image": "photos/131754.jpg"
+  },
+  {
+   "id": "131757",
+   "time": "13:17:57",
+   "group": "S06",
+   "x": 16892,
+   "y": -3193,
+   "heading": 53,
+   "markers": 7,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "15.1"
+   ],
+   "image": "photos/131757.jpg"
+  },
+  {
+   "id": "131801",
+   "time": "13:18:01",
+   "group": "S07",
+   "x": 13973,
+   "y": -3045,
+   "heading": 122,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "15.6",
+    "15.7"
+   ],
+   "image": "photos/131801.jpg"
+  },
+  {
+   "id": "131806",
+   "time": "13:18:06",
+   "group": "S07",
+   "x": 12801,
+   "y": -3206,
+   "heading": 62,
+   "markers": 7,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "27.0"
+   ],
+   "image": "photos/131806.jpg"
+  },
+  {
+   "id": "131811",
+   "time": "13:18:11",
+   "group": "S07",
+   "x": 11981,
+   "y": -2976,
+   "heading": 92,
+   "markers": 7,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "1.1",
+    "1.2",
+    "15.5",
+    "15.6",
+    "15.9",
+    "16.0",
+    "16.1",
+    "26.9"
+   ],
+   "image": "photos/131811.jpg"
+  },
+  {
+   "id": "131821",
+   "time": "13:18:21",
+   "group": "S07",
+   "x": 12306,
+   "y": -3538,
+   "heading": 56,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [],
+   "image": "photos/131821.jpg"
+  },
+  {
+   "id": "131825",
+   "time": "13:18:25",
+   "group": "S07",
+   "x": 13322,
+   "y": -2937,
+   "heading": 43,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [],
+   "image": "photos/131825.jpg"
+  },
+  {
+   "id": "131833",
+   "time": "13:18:33",
+   "group": "S07",
+   "x": 13190,
+   "y": -3234,
+   "heading": 9,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "15.3",
+    "15.9",
+    "26.9"
+   ],
+   "image": "photos/131833.jpg"
+  },
+  {
+   "id": "131839",
+   "time": "13:18:39",
+   "group": "S05",
+   "x": 9769,
+   "y": -3147,
+   "heading": 175,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [
+    "15.9",
+    "16.4",
+    "16.5",
+    "27.5"
+   ],
+   "image": "photos/131839.jpg"
+  },
+  {
+   "id": "131846",
+   "time": "13:18:46",
+   "group": "S05",
+   "x": 10442,
+   "y": -3234,
+   "heading": 90,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131846.jpg"
+  },
+  {
+   "id": "131852",
+   "time": "13:18:52",
+   "group": "S05",
+   "x": 9090,
+   "y": -3289,
+   "heading": 90,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131852.jpg"
+  },
+  {
+   "id": "131856",
+   "time": "13:18:56",
+   "group": "S05",
+   "x": 5347,
+   "y": -2181,
+   "heading": 136,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131856.jpg"
+  },
+  {
+   "id": "131900",
+   "time": "13:19:00",
+   "group": "S05",
+   "x": 7794,
+   "y": -1667,
+   "heading": 92,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131900.jpg"
+  },
+  {
+   "id": "131903",
+   "time": "13:19:03",
+   "group": "S05",
+   "x": 8093,
+   "y": -3001,
+   "heading": 86,
+   "markers": 10,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131903.jpg"
+  },
+  {
+   "id": "131908",
+   "time": "13:19:08",
+   "group": "S05",
+   "x": 8925,
+   "y": -3064,
+   "heading": 36,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [
+    "1.7",
+    "27.8"
+   ],
+   "image": "photos/131908.jpg"
+  },
+  {
+   "id": "131912",
+   "time": "13:19:12",
+   "group": "S05",
+   "x": 7267,
+   "y": -3131,
+   "heading": 138,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/131912.jpg"
+  },
+  {
+   "id": "131948",
+   "time": "13:19:48",
+   "group": "S05",
+   "x": 8449,
+   "y": -2051,
+   "heading": 59,
+   "markers": 5,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [
+    "28.0"
+   ],
+   "image": "photos/131948.jpg"
+  },
+  {
+   "id": "132007",
+   "time": "13:20:07",
+   "group": "S15",
+   "x": -259,
+   "y": -1720,
+   "heading": -178,
+   "markers": 2,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132007.jpg"
+  },
+  {
+   "id": "132011",
+   "time": "13:20:11",
+   "group": "S15",
+   "x": -1200,
+   "y": -1868,
+   "heading": -178,
+   "markers": 1,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132011.jpg"
+  },
+  {
+   "id": "132016",
+   "time": "13:20:16",
+   "group": "S15",
+   "x": -163,
+   "y": -2725,
+   "heading": 151,
+   "markers": 2,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132016.jpg"
+  },
+  {
+   "id": "132020",
+   "time": "13:20:20",
+   "group": "S15",
+   "x": 134,
+   "y": -3861,
+   "heading": -124,
+   "markers": 3,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132020.jpg"
+  },
+  {
+   "id": "132026",
+   "time": "13:20:26",
+   "group": "S15",
+   "x": -300,
+   "y": -3300,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132026.jpg"
+  },
+  {
+   "id": "132029",
+   "time": "13:20:29",
+   "group": "S05",
+   "x": 6770,
+   "y": -3080,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132029.jpg"
+  },
+  {
+   "id": "132035",
+   "time": "13:20:35",
+   "group": "S05",
+   "x": 5467,
+   "y": -2730,
+   "heading": -100,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132035.jpg"
+  },
+  {
+   "id": "132042",
+   "time": "13:20:42",
+   "group": "S05",
+   "x": 5159,
+   "y": -2995,
+   "heading": -31,
+   "markers": 1,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [
+    "2.6"
+   ],
+   "image": "photos/132042.jpg"
+  },
+  {
+   "id": "132049",
+   "time": "13:20:49",
+   "group": "S05",
+   "x": 7282,
+   "y": -2653,
+   "heading": -139,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132049.jpg"
+  },
+  {
+   "id": "132054",
+   "time": "13:20:54",
+   "group": "S05",
+   "x": 7792,
+   "y": -2727,
+   "heading": -31,
+   "markers": 1,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132054.jpg"
+  },
+  {
+   "id": "132101",
+   "time": "13:21:01",
+   "group": "S05",
+   "x": 8418,
+   "y": -2825,
+   "heading": -112,
+   "markers": 1,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [
+    "1.8"
+   ],
+   "image": "photos/132101.jpg"
+  },
+  {
+   "id": "132106",
+   "time": "13:21:06",
+   "group": "S05",
+   "x": 9294,
+   "y": -2680,
+   "heading": -48,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132106.jpg"
+  },
+  {
+   "id": "132112",
+   "time": "13:21:12",
+   "group": "S05",
+   "x": 10078,
+   "y": -2830,
+   "heading": -126,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf east and test track",
+   "km": [],
+   "image": "photos/132112.jpg"
+  },
+  {
+   "id": "132118",
+   "time": "13:21:18",
+   "group": "S07",
+   "x": 11417,
+   "y": -2777,
+   "heading": -120,
+   "markers": 1,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "1.2"
+   ],
+   "image": "photos/132118.jpg"
+  },
+  {
+   "id": "132124",
+   "time": "13:21:24",
+   "group": "S07",
+   "x": 12212,
+   "y": -2752,
+   "heading": -53,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "1.2"
+   ],
+   "image": "photos/132124.jpg"
+  },
+  {
+   "id": "132130",
+   "time": "13:21:30",
+   "group": "S07",
+   "x": 13942,
+   "y": -2795,
+   "heading": -107,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "0.7"
+   ],
+   "image": "photos/132130.jpg"
+  },
+  {
+   "id": "132137",
+   "time": "13:21:37",
+   "group": "S07",
+   "x": 13842,
+   "y": -2817,
+   "heading": -36,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf and test track",
+   "km": [
+    "0.8"
+   ],
+   "image": "photos/132137.jpg"
+  },
+  {
+   "id": "132154",
+   "time": "13:21:54",
+   "group": "S08",
+   "x": 15216,
+   "y": -3066,
+   "heading": -51,
+   "markers": 2,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "0.6"
+   ],
+   "image": "photos/132154.jpg"
+  },
+  {
+   "id": "132159",
+   "time": "13:21:59",
+   "group": "S06",
+   "x": 16297,
+   "y": -2933,
+   "heading": -114,
+   "markers": 3,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "0.3"
+   ],
+   "image": "photos/132159.jpg"
+  },
+  {
+   "id": "132204",
+   "time": "13:22:04",
+   "group": "S06",
+   "x": 16100,
+   "y": -3214,
+   "heading": -120,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf",
+   "km": [],
+   "image": "photos/132204.jpg"
+  },
+  {
+   "id": "132208",
+   "time": "13:22:08",
+   "group": "S06",
+   "x": 17338,
+   "y": -3096,
+   "heading": -42,
+   "markers": 4,
+   "approx": true,
+   "place": "Adorf",
+   "km": [
+    "0.2"
+   ],
+   "image": "photos/132208.jpg"
+  },
+  {
+   "id": "132217",
+   "time": "13:22:17",
+   "group": "S09",
+   "x": 18867,
+   "y": -2607,
+   "heading": -11,
+   "markers": 5,
+   "approx": true,
+   "place": "Corner by Hp Papiermühle",
+   "km": [],
+   "image": "photos/132217.jpg"
+  },
+  {
+   "id": "132220",
+   "time": "13:22:20",
+   "group": "S09",
+   "x": 18984,
+   "y": -2120,
+   "heading": 2,
+   "markers": 4,
+   "approx": true,
+   "place": "Corner by Hp Papiermühle",
+   "km": [],
+   "image": "photos/132220.jpg"
+  },
+  {
+   "id": "132225",
+   "time": "13:22:25",
+   "group": "S09",
+   "x": 19392,
+   "y": -1747,
+   "heading": -5,
+   "markers": 3,
+   "approx": true,
+   "place": "Corner by Hp Papiermühle",
+   "km": [],
+   "image": "photos/132225.jpg"
+  },
+  {
+   "id": "132235",
+   "time": "13:22:35",
+   "group": "S12",
+   "x": 18751,
+   "y": 0,
+   "heading": 74,
+   "markers": 1,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "4.8",
+    "4.9",
+    "25.1",
+    "25.2",
+    "36.4",
+    "36.5",
+    "36.6",
+    "SB 4.9"
+   ],
+   "image": "photos/132235.jpg"
+  },
+  {
+   "id": "132240",
+   "time": "13:22:40",
+   "group": "S12",
+   "x": 17346,
+   "y": -188,
+   "heading": 82,
+   "markers": 5,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "36.2",
+    "36.3",
+    "36.4"
+   ],
+   "image": "photos/132240.jpg"
+  },
+  {
+   "id": "132242",
+   "time": "13:22:42",
+   "group": "S12",
+   "x": 17307,
+   "y": -230,
+   "heading": 83,
+   "markers": 5,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "36.2",
+    "36.3"
+   ],
+   "image": "photos/132242.jpg"
+  },
+  {
+   "id": "132247",
+   "time": "13:22:47",
+   "group": "S12",
+   "x": 15874,
+   "y": -191,
+   "heading": 86,
+   "markers": 6,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.9",
+    "36.0",
+    "36.1"
+   ],
+   "image": "photos/132247.jpg"
+  },
+  {
+   "id": "132253",
+   "time": "13:22:53",
+   "group": "S12",
+   "x": 15178,
+   "y": -30,
+   "heading": 82,
+   "markers": 6,
+   "approx": true,
+   "layer": "container",
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.8"
+   ],
+   "image": "photos/132253.jpg"
+  },
+  {
+   "id": "132257",
+   "time": "13:22:57",
+   "group": "S12",
+   "x": 15162,
+   "y": -456,
+   "heading": 89,
+   "markers": 5,
+   "approx": true,
+   "layer": "container",
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.7",
+    "35.8",
+    "35.9",
+    "36.0"
+   ],
+   "image": "photos/132257.jpg"
+  },
+  {
+   "id": "132258",
+   "time": "13:22:58",
+   "group": "S12",
+   "x": 15343,
+   "y": 269,
+   "heading": 87,
+   "markers": 5,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.6",
+    "36.0"
+   ],
+   "image": "photos/132258.jpg"
+  },
+  {
+   "id": "132301",
+   "time": "13:23:01",
+   "group": "S12",
+   "x": 16245,
+   "y": -1196,
+   "heading": -53,
+   "markers": 6,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.8"
+   ],
+   "image": "photos/132301.jpg"
+  },
+  {
+   "id": "132323",
+   "time": "13:23:23",
+   "group": "S12",
+   "x": 13923,
+   "y": -294,
+   "heading": 25,
+   "markers": 8,
+   "approx": true,
+   "layer": "container",
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "35.4"
+   ],
+   "image": "photos/132323.jpg"
+  },
+  {
+   "id": "132329",
+   "time": "13:23:29",
+   "group": "S11",
+   "x": 12701,
+   "y": 188,
+   "heading": 55,
+   "markers": 6,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [
+    "SB 3.6"
+   ],
+   "image": "photos/132329.jpg"
+  },
+  {
+   "id": "132332",
+   "time": "13:23:32",
+   "group": "S11",
+   "x": 12468,
+   "y": 323,
+   "heading": 61,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [
+    "23.8",
+    "23.9",
+    "24.0",
+    "35.1",
+    "35.2",
+    "35.3",
+    "SB 3.7",
+    "SB 3.8"
+   ],
+   "image": "photos/132332.jpg"
+  },
+  {
+   "id": "132337",
+   "time": "13:23:37",
+   "group": "S11",
+   "x": 11677,
+   "y": -411,
+   "heading": 121,
+   "markers": 5,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [
+    "35.3"
+   ],
+   "image": "photos/132337.jpg"
+  },
+  {
+   "id": "132345",
+   "time": "13:23:45",
+   "group": "S11",
+   "x": 11450,
+   "y": -196,
+   "heading": 102,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [
+    "35.2"
+   ],
+   "image": "photos/132345.jpg"
+  },
+  {
+   "id": "132350",
+   "time": "13:23:50",
+   "group": "S11",
+   "x": 10057,
+   "y": -30,
+   "heading": 78,
+   "markers": 3,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [],
+   "image": "photos/132350.jpg"
+  },
+  {
+   "id": "132354",
+   "time": "13:23:54",
+   "group": "S11",
+   "x": 9122,
+   "y": 35,
+   "heading": 105,
+   "markers": 3,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [
+    "34.5",
+    "34.6",
+    "34.7"
+   ],
+   "image": "photos/132354.jpg"
+  },
+  {
+   "id": "132358",
+   "time": "13:23:58",
+   "group": "S11",
+   "x": 8786,
+   "y": -400,
+   "heading": 139,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [],
+   "image": "photos/132358.jpg"
+  },
+  {
+   "id": "132406",
+   "time": "13:24:06",
+   "group": "S10",
+   "x": 8158,
+   "y": 463,
+   "heading": 90,
+   "markers": 5,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [
+    "34.5"
+   ],
+   "image": "photos/132406.jpg"
+  },
+  {
+   "id": "132409",
+   "time": "13:24:09",
+   "group": "S10",
+   "x": 8318,
+   "y": -863,
+   "heading": 82,
+   "markers": 3,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132409.jpg"
+  },
+  {
+   "id": "132413",
+   "time": "13:24:13",
+   "group": "S10",
+   "x": 6745,
+   "y": -47,
+   "heading": 125,
+   "markers": 5,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132413.jpg"
+  },
+  {
+   "id": "132418",
+   "time": "13:24:18",
+   "group": "S10",
+   "x": 5716,
+   "y": 231,
+   "heading": 90,
+   "markers": 5,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132418.jpg"
+  },
+  {
+   "id": "132434",
+   "time": "13:24:34",
+   "group": "S10",
+   "x": 3509,
+   "y": 828,
+   "heading": 27,
+   "markers": 4,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [
+    "22.0"
+   ],
+   "image": "photos/132434.jpg"
+  },
+  {
+   "id": "132439",
+   "time": "13:24:39",
+   "group": "S04",
+   "x": 1835,
+   "y": 420,
+   "heading": 73,
+   "markers": 8,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [
+    "21.8"
+   ],
+   "image": "photos/132439.jpg"
+  },
+  {
+   "id": "132444",
+   "time": "13:24:44",
+   "group": "S03",
+   "x": 567,
+   "y": 477,
+   "heading": 140,
+   "markers": 9,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [],
+   "image": "photos/132444.jpg"
+  },
+  {
+   "id": "132501",
+   "time": "13:25:01",
+   "group": "S03",
+   "x": 355,
+   "y": 905,
+   "heading": 63,
+   "markers": 12,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [
+    "SB 1.2"
+   ],
+   "image": "photos/132501.jpg"
+  },
+  {
+   "id": "132504",
+   "time": "13:25:04",
+   "group": "S03",
+   "x": -1077,
+   "y": 995,
+   "heading": 102,
+   "markers": 10,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [],
+   "image": "photos/132504.jpg"
+  },
+  {
+   "id": "132510",
+   "time": "13:25:10",
+   "group": "S02",
+   "x": -2715,
+   "y": 1229,
+   "heading": 82,
+   "markers": 10,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [],
+   "image": "photos/132510.jpg"
+  },
+  {
+   "id": "132513",
+   "time": "13:25:13",
+   "group": "S01",
+   "x": -3933,
+   "y": 883,
+   "heading": 129,
+   "markers": 7,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "SB 0.6"
+   ],
+   "image": "photos/132513.jpg"
+  },
+  {
+   "id": "132517",
+   "time": "13:25:17",
+   "group": "S02",
+   "x": -2492,
+   "y": 306,
+   "heading": 37,
+   "markers": 8,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "SB 0.7"
+   ],
+   "image": "photos/132517.jpg"
+  },
+  {
+   "id": "132521",
+   "time": "13:25:21",
+   "group": "S03",
+   "x": -1508,
+   "y": 391,
+   "heading": 89,
+   "markers": 10,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [
+    "21.1",
+    "21.2"
+   ],
+   "image": "photos/132521.jpg"
+  },
+  {
+   "id": "132526",
+   "time": "13:25:26",
+   "group": "S03",
+   "x": -375,
+   "y": 408,
+   "heading": 91,
+   "markers": 9,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [
+    "21.4",
+    "21.5",
+    "32.6",
+    "32.8"
+   ],
+   "image": "photos/132526.jpg"
+  },
+  {
+   "id": "132530",
+   "time": "13:25:30",
+   "group": "S03",
+   "x": 855,
+   "y": 304,
+   "heading": 92,
+   "markers": 8,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [
+    "21.6",
+    "21.7",
+    "21.8",
+    "33.0"
+   ],
+   "image": "photos/132530.jpg"
+  },
+  {
+   "id": "132537",
+   "time": "13:25:37",
+   "group": "S01",
+   "x": -3965,
+   "y": 227,
+   "heading": 129,
+   "markers": 7,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "SB 0.5"
+   ],
+   "image": "photos/132537.jpg"
+  },
+  {
+   "id": "132540",
+   "time": "13:25:40",
+   "group": "S02",
+   "x": -3120,
+   "y": 490,
+   "heading": 86,
+   "markers": 9,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "0.5",
+    "20.9",
+    "SB 0.6"
+   ],
+   "image": "photos/132540.jpg"
+  },
+  {
+   "id": "132542",
+   "time": "13:25:42",
+   "group": "S01",
+   "x": -4347,
+   "y": 757,
+   "heading": 130,
+   "markers": 5,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "0.5"
+   ],
+   "image": "photos/132542.jpg"
+  },
+  {
+   "id": "132548",
+   "time": "13:25:48",
+   "group": "S01",
+   "x": -6022,
+   "y": 845,
+   "heading": 132,
+   "markers": 3,
+   "approx": false,
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [
+    "0.2",
+    "20.3",
+    "20.4",
+    "20.5"
+   ],
+   "image": "photos/132548.jpg"
+  },
+  {
+   "id": "132555",
+   "time": "13:25:55",
+   "group": "S13",
+   "x": -8912,
+   "y": 1388,
+   "heading": -138,
+   "markers": 1,
+   "approx": true,
+   "place": "Curve at the Neustadt end",
+   "km": [
+    "20.3"
+   ],
+   "image": "photos/132555.jpg"
+  },
+  {
+   "id": "132607",
+   "time": "13:26:07",
+   "group": "S14",
+   "x": -2520,
+   "y": -2195,
+   "heading": -75,
+   "markers": 3,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [
+    "19.5",
+    "30.6",
+    "30.7",
+    "30.8"
+   ],
+   "image": "photos/132607.jpg"
+  },
+  {
+   "id": "132610",
+   "time": "13:26:10",
+   "group": "S14",
+   "x": -2777,
+   "y": -2573,
+   "heading": -102,
+   "markers": 2,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [],
+   "image": "photos/132610.jpg"
+  },
+  {
+   "id": "132614",
+   "time": "13:26:14",
+   "group": "S14",
+   "x": -2223,
+   "y": -1155,
+   "heading": -42,
+   "markers": 2,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [
+    "30.4",
+    "30.5",
+    "30.8"
+   ],
+   "image": "photos/132614.jpg"
+  },
+  {
+   "id": "132618",
+   "time": "13:26:18",
+   "group": "S15",
+   "x": -900,
+   "y": -3400,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132618.jpg"
+  },
+  {
+   "id": "132622",
+   "time": "13:26:22",
+   "group": "S15",
+   "x": -1500,
+   "y": -3400,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [
+    "30.1"
+   ],
+   "image": "photos/132622.jpg"
+  },
+  {
+   "id": "132626",
+   "time": "13:26:26",
+   "group": "S15",
+   "x": -2100,
+   "y": -3400,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132626.jpg"
+  },
+  {
+   "id": "132631",
+   "time": "13:26:31",
+   "group": "S15",
+   "x": 300,
+   "y": -3100,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [
+    "29.7"
+   ],
+   "image": "photos/132631.jpg"
+  },
+  {
+   "id": "132637",
+   "time": "13:26:37",
+   "group": "S15",
+   "x": 341,
+   "y": -3520,
+   "heading": -147,
+   "markers": 4,
+   "approx": true,
+   "place": "Door and swing bridge",
+   "km": [],
+   "image": "photos/132637.jpg"
+  },
+  {
+   "id": "132701",
+   "time": "13:27:01",
+   "group": "S14",
+   "x": -3800,
+   "y": -3036,
+   "heading": 34,
+   "markers": 1,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [
+    "31.0"
+   ],
+   "image": "photos/132701.jpg"
+  },
+  {
+   "id": "132705",
+   "time": "13:27:05",
+   "group": "S14",
+   "x": -3458,
+   "y": -2849,
+   "heading": 43,
+   "markers": 1,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [],
+   "image": "photos/132705.jpg"
+  },
+  {
+   "id": "132711",
+   "time": "13:27:11",
+   "group": "S14",
+   "x": -4092,
+   "y": -3388,
+   "heading": 95,
+   "markers": 1,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [
+    "31.0",
+    "31.1",
+    "31.2"
+   ],
+   "image": "photos/132711.jpg"
+  },
+  {
+   "id": "132715",
+   "time": "13:27:15",
+   "group": "S14",
+   "x": -2900,
+   "y": -2200,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Hairpin: Bk Klausenburg, Bk Feldberg",
+   "km": [
+    "31.2"
+   ],
+   "image": "photos/132715.jpg"
+  },
+  {
+   "id": "132721",
+   "time": "13:27:21",
+   "group": "S13",
+   "x": -7251,
+   "y": 651,
+   "heading": 154,
+   "markers": 3,
+   "approx": true,
+   "place": "Curve at the Neustadt end",
+   "km": [
+    "31.5"
+   ],
+   "image": "photos/132721.jpg"
+  },
+  {
+   "id": "132724",
+   "time": "13:27:24",
+   "group": "S13",
+   "x": -7896,
+   "y": 977,
+   "heading": 154,
+   "markers": 3,
+   "approx": true,
+   "place": "Curve at the Neustadt end",
+   "km": [
+    "20.0"
+   ],
+   "image": "photos/132724.jpg"
+  },
+  {
+   "id": "132727",
+   "time": "13:27:27",
+   "group": "S13",
+   "x": -9130,
+   "y": 1129,
+   "heading": 161,
+   "markers": 3,
+   "approx": true,
+   "place": "Curve at the Neustadt end",
+   "km": [
+    "20.0"
+   ],
+   "image": "photos/132727.jpg"
+  },
+  {
+   "id": "132730",
+   "time": "13:27:30",
+   "group": "S01",
+   "x": -5481,
+   "y": 839,
+   "heading": 27,
+   "markers": 3,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [],
+   "image": "photos/132730.jpg"
+  },
+  {
+   "id": "132741",
+   "time": "13:27:41",
+   "group": "S13",
+   "x": -7300,
+   "y": 430,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Curve at the Neustadt end",
+   "km": [
+    "20.3"
+   ],
+   "image": "photos/132741.jpg"
+  },
+  {
+   "id": "132744",
+   "time": "13:27:44",
+   "group": "S01",
+   "x": -5081,
+   "y": 558,
+   "heading": -54,
+   "markers": 2,
+   "approx": false,
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [],
+   "image": "photos/132744.jpg"
+  },
+  {
+   "id": "132748",
+   "time": "13:27:48",
+   "group": "S01",
+   "x": -3863,
+   "y": 637,
+   "heading": -25,
+   "markers": 6,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [],
+   "image": "photos/132748.jpg"
+  },
+  {
+   "id": "132752",
+   "time": "13:27:52",
+   "group": "S02",
+   "x": -2765,
+   "y": 655,
+   "heading": -26,
+   "markers": 7,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Pirna",
+   "km": [],
+   "image": "photos/132752.jpg"
+  },
+  {
+   "id": "132758",
+   "time": "13:27:58",
+   "group": "S03",
+   "x": -1414,
+   "y": 435,
+   "heading": -31,
+   "markers": 10,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [],
+   "image": "photos/132758.jpg"
+  },
+  {
+   "id": "132803",
+   "time": "13:28:03",
+   "group": "S03",
+   "x": -111,
+   "y": 517,
+   "heading": -24,
+   "markers": 11,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [],
+   "image": "photos/132803.jpg"
+  },
+  {
+   "id": "132809",
+   "time": "13:28:09",
+   "group": "S04",
+   "x": 1344,
+   "y": 567,
+   "heading": -26,
+   "markers": 9,
+   "approx": false,
+   "layer": "neustadt",
+   "place": "Neustadt",
+   "upper": "Heidenau",
+   "km": [],
+   "image": "photos/132809.jpg"
+  },
+  {
+   "id": "132813",
+   "time": "13:28:13",
+   "group": "S10",
+   "x": 2412,
+   "y": 493,
+   "heading": -27,
+   "markers": 5,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132813.jpg"
+  },
+  {
+   "id": "132821",
+   "time": "13:28:21",
+   "group": "S10",
+   "x": 4186,
+   "y": 310,
+   "heading": -33,
+   "markers": 3,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132821.jpg"
+  },
+  {
+   "id": "132826",
+   "time": "13:28:26",
+   "group": "S10",
+   "x": 4551,
+   "y": -328,
+   "heading": -45,
+   "markers": 3,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132826.jpg"
+  },
+  {
+   "id": "132832",
+   "time": "13:28:32",
+   "group": "S10",
+   "x": 4805,
+   "y": 616,
+   "heading": -21,
+   "markers": 1,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132832.jpg"
+  },
+  {
+   "id": "132836",
+   "time": "13:28:36",
+   "group": "S10",
+   "x": 6722,
+   "y": 452,
+   "heading": -27,
+   "markers": 5,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [],
+   "image": "photos/132836.jpg"
+  },
+  {
+   "id": "132842",
+   "time": "13:28:42",
+   "group": "S10",
+   "x": 8365,
+   "y": 544,
+   "heading": -17,
+   "markers": 3,
+   "approx": false,
+   "place": "Waldhof south",
+   "upper": "Hauptbahnhof",
+   "km": [
+    "23.0"
+   ],
+   "image": "photos/132842.jpg"
+  },
+  {
+   "id": "132847",
+   "time": "13:28:47",
+   "group": "S11",
+   "x": 9761,
+   "y": 343,
+   "heading": -29,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [],
+   "image": "photos/132847.jpg"
+  },
+  {
+   "id": "132854",
+   "time": "13:28:54",
+   "group": "S11",
+   "x": 11112,
+   "y": 195,
+   "heading": -32,
+   "markers": 6,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [],
+   "image": "photos/132854.jpg"
+  },
+  {
+   "id": "132859",
+   "time": "13:28:59",
+   "group": "S11",
+   "x": 12536,
+   "y": 223,
+   "heading": -31,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof",
+   "upper": "Freiberger Straße",
+   "km": [],
+   "image": "photos/132859.jpg"
+  },
+  {
+   "id": "132905",
+   "time": "13:29:05",
+   "group": "S12",
+   "x": 14237,
+   "y": 81,
+   "heading": -40,
+   "markers": 2,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "24.2"
+   ],
+   "image": "photos/132905.jpg"
+  },
+  {
+   "id": "132909",
+   "time": "13:29:09",
+   "group": "S12",
+   "x": 15580,
+   "y": 102,
+   "heading": -23,
+   "markers": 4,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [],
+   "image": "photos/132909.jpg"
+  },
+  {
+   "id": "132915",
+   "time": "13:29:15",
+   "group": "S12",
+   "x": 17142,
+   "y": 386,
+   "heading": -36,
+   "markers": 2,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "3.5"
+   ],
+   "image": "photos/132915.jpg"
+  },
+  {
+   "id": "132935",
+   "time": "13:29:35",
+   "group": "S12",
+   "x": 18737,
+   "y": 74,
+   "heading": -27,
+   "markers": 2,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [],
+   "image": "photos/132935.jpg"
+  },
+  {
+   "id": "132945",
+   "time": "13:29:45",
+   "group": "S09",
+   "x": 18811,
+   "y": -2221,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Corner by Hp Papiermühle",
+   "km": [
+    "25.2"
+   ],
+   "image": "photos/132945.jpg"
+  },
+  {
+   "id": "132947",
+   "time": "13:29:47",
+   "group": "S09",
+   "x": 19650,
+   "y": -1812,
+   "heading": -72,
+   "markers": 1,
+   "approx": true,
+   "place": "Corner by Hp Papiermühle",
+   "km": [
+    "36.5"
+   ],
+   "image": "photos/132947.jpg"
+  },
+  {
+   "id": "132951",
+   "time": "13:29:51",
+   "group": "S12",
+   "x": 18393,
+   "y": 176,
+   "heading": -139,
+   "markers": 1,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [],
+   "image": "photos/132951.jpg"
+  },
+  {
+   "id": "141012",
+   "time": "14:10:12",
+   "group": "S12",
+   "x": 14611,
+   "y": -629,
+   "heading": 31,
+   "markers": 3,
+   "approx": true,
+   "layer": "container",
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [
+    "4.2"
+   ],
+   "image": "photos/141012.jpg"
+  },
+  {
+   "id": "141017",
+   "time": "14:10:17",
+   "group": "S12",
+   "x": 15888,
+   "y": -706,
+   "heading": 160,
+   "markers": 1,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [],
+   "image": "photos/141017.jpg"
+  },
+  {
+   "id": "141024",
+   "time": "14:10:24",
+   "group": "S12",
+   "x": 17460,
+   "y": -475,
+   "heading": null,
+   "markers": 0,
+   "approx": true,
+   "place": "Waldhof north and goods yard",
+   "upper": "Mitte, Radebeul",
+   "km": [],
+   "image": "photos/141024.jpg"
+  }
+ ]
+}

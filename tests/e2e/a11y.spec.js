@@ -12,6 +12,7 @@ const PAGES = [
   ["app, Settings: control system", "/app/#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
+  ["photo map", "/lab-map/"],
   ["404 page", "/404.html"],
 ];
 
