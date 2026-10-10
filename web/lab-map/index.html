@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EBL Photo Map</title>
+<meta name="description" content="Photos of the EBL layout on a map of the lab, each opening with its digital layer where ARail has one.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../app/app.css">
+<style>
+  .page { max-width: 1400px; margin: 0 auto; padding: 16px 16px 40px; display: grid; gap: 14px; }
+  .skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+  .skip-link:focus { top: 12px; }
+  .intro h1 { margin: 0 0 4px; font-size: 1.3rem; font-stretch: 80%; }
+  .intro p { margin: 0; color: var(--text-2); font-size: .9rem; max-width: 75ch; }
+  .mapbox { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  #map { display: block; width: 100%; height: 420px; touch-action: none; cursor: grab; background: var(--bg); }
+  #map.dragging { cursor: grabbing; }
+  .map-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+  .map-tools .btn { background: var(--surface); padding: 6px 10px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .82rem; color: var(--text-2); margin: 0; padding: 0; list-style: none; }
+  .legend .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -2px; margin-right: 5px; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--text-2); }
+  .legend .dot.plain { background: var(--text-2); }
+  .legend .dot.layer { background: var(--warn); }
+  .legend .box { display: inline-block; width: 18px; height: 10px; border: 1.5px dashed var(--text-2); vertical-align: -1px; margin-right: 5px; }
+  .group-outline { fill: none; stroke: var(--text-2); stroke-width: 18; }
+  .group-outline.approx { stroke-dasharray: 60 40; }
+  .labels { pointer-events: none; }
+  .group-label { fill: var(--text); font: 600 360px var(--font); paint-order: stroke; stroke: var(--bg); stroke-width: 80px; }
+  .upper-label { fill: var(--accent-ink); font: 500 280px var(--font); paint-order: stroke; stroke: var(--bg); stroke-width: 60px; }
+  .shot { cursor: pointer; }
+  .shot circle { fill: var(--text-2); stroke: var(--surface); stroke-width: 30; }
+  .shot.layer circle { fill: var(--warn); }
+  .shot path { fill: var(--text-2); }
+  .shot.layer path { fill: var(--warn); }
+  .shot:hover circle, .shot:focus-visible circle, .shot.current circle { stroke: var(--focus); stroke-width: 60; }
+  .shot:focus { outline: none; }
+  .lists { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .lists details { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; }
+  .lists summary { cursor: pointer; font-weight: 600; }
+  .lists ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .lists button { font: inherit; font-size: .82rem; padding: 3px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+  .lists button.layer { border-color: var(--warn); }
+  dialog.viewer { width: min(1100px, 96vw); max-height: 94vh; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+  dialog.viewer::backdrop { background: rgba(0, 6, 26, .7); }
+  .viewer figure { margin: 0; }
+  .viewer img { display: block; width: 100%; max-height: 70vh; object-fit: contain; background: var(--stage); }
+  .viewer figcaption { padding: 12px 14px; display: grid; gap: 6px; }
+  .viewer h2 { margin: 0; font-size: 1.05rem; }
+  .viewer .meta { margin: 0; color: var(--text-2); font-size: .86rem; }
+  .viewer .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .viewer .acts .spacer { flex: 1; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar" id="bar">
+  <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+  <span class="layout-name">Photo map</span>
+  <span class="spacer"></span>
+  <a class="btn" href="../app/">Open the app</a>
+</header>
+<main class="page" id="main">
+  <section class="intro" aria-labelledby="title">
+    <h1 id="title">Photos of the EBL on a map of the lab</h1>
+    <p>Every dot is a photo of the layout, taken on 9 October 2026, at the place on the table it looks at; the small arrow shows where the camera looked. Orange dots open with ARail's digital layer, the others as the photo. Drag to move the map; zoom with the buttons, the mouse wheel or two fingers.</p>
+  </section>
+  <div class="mapbox">
+    <svg id="map" role="group" aria-labelledby="mapTitle" aria-describedby="mapDesc"><title id="mapTitle">Map of the lab with the photos</title><desc id="mapDesc">The window side of the lab is at the top. The photos are also listed below the map, by place.</desc></svg>
+    <div class="map-tools">
+      <button class="btn" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+      <button class="btn" type="button" id="zoomOut" aria-label="Zoom out">−</button>
+      <button class="btn" type="button" id="zoomAll">Whole lab</button>
+    </div>
+  </div>
+  <ul class="legend">
+    <li><span class="dot layer" aria-hidden="true"></span>Opens with the digital layer</li>
+    <li><span class="dot plain" aria-hidden="true"></span>Photo only</li>
+    <li><span class="box" aria-hidden="true"></span>Place estimated: the survey has not linked this part yet</li>
+    <li>Window side at the top. Room 06 is not on the map yet.</li>
+  </ul>
+  <section aria-labelledby="listTitle">
+    <h2 id="listTitle" class="visually-hidden">Photos by place</h2>
+    <div class="lists" id="lists"></div>
+  </section>
+</main>
+<dialog class="viewer" id="viewer" aria-labelledby="viewerTitle">
+  <figure>
+    <img id="viewerImg" alt="">
+    <figcaption>
+      <h2 id="viewerTitle"></h2>
+      <p class="meta" id="viewerMeta"></p>
+      <div class="acts">
+        <a class="btn primary" id="viewerLayer" href="#">Open with the digital layer</a>
+        <span class="meta" id="viewerNoLayer">No digital layer for this part of the table yet.</span>
+        <a class="btn" id="viewerFull" href="#">Photo only</a>
+        <span class="spacer"></span>
+        <button class="btn" type="button" id="viewerPrev">Previous</button>
+        <button class="btn" type="button" id="viewerNext">Next</button>
+        <button class="btn" type="button" id="viewerClose">Close</button>
+      </div>
+    </figcaption>
+  </figure>
+</dialog>
+<script type="module" src="lab-map.js"></script>
+</body>
+</html>
