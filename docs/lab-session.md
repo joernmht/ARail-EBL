@@ -126,13 +126,6 @@ arail-survey examples/media/ebl-lab-video.mp4 examples/media/ebl-lab-photo.jpg \
 
 The near table edge is at y ≈ −320 mm; beyond y ≈ 700 mm the video shows the wall. Only 36 % of the frames show two or more of the five markers, so parts of the table could not be registered: exactly what the next lab session fixes. The video's watermark is found and left out. Measured freely, the video's marker map is about 1 % larger than the layout's poses (the lens of the video camera, most likely); the lab photo alone agrees with them within 5 mm. The output of this command is locked; the example layout in the repository is not, so the app still measures new stickers on it.
 
-`web/media/synthetic-ortho.jpg` comes from the synthetic test video (`npm run fixtures`). The synthetic layout has no marker poses; the map the app measures from its single photo is up to 3 cm off, so the orthophoto lines up with the markers only after a video survey (**Survey a video…** with `tests/fixtures/synthetic-survey.webm`, then **Keep positions**):
-
-```bash
-arail-survey tests/fixtures/synthetic-survey.webm --every 1 --layout web/layouts/synthetic-demo.json \
-    -o synthetic.json --ortho web/media/synthetic-ortho.jpg --ortho-bounds -130 -320 670 180
-```
-
 ## The examples of 9 October 2026
 
 The layouts `web/layouts/ebl-neustadt.json` (the station Bf Neustadt, the terminal at the crane and the curve next to it) and `web/layouts/ebl-container-train.json` (the hybrid container train) were surveyed from the photos and clips of that day in `examples/media` (40 mm ArUco Original stickers, IDs up to 214). The full lab was not filmed for this; these are maps of the parts the photos and clips show.

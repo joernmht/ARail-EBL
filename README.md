@@ -35,13 +35,13 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), switch modules on and off (View → Modules), and set the simulation, the time of day and the control system (Settings). **Layouts…** has more examples from the lab: Bf Neustadt with the container terminal at the lab's crane, a real train running through a virtual town (video), and the hybrid container train, real wagons with AprilTag labels that carry virtual containers (see [Getting started](docs/getting-started.md#the-examples)). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Settings → Night 22:30** to see it at night. Each module that is on has its tab: the lab example's modules add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**), turn it into an exercise with travellers the attendees plan (**Journeys**), or open the container terminal on its own, in the flyover (**Container terminal**, Terminal tab); **Disruptions** (every layout) starts disruptions and scenarios.
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), switch modules on and off (View → Modules), and set the simulation, the time of day and the control system (Settings). **Layouts…** has more examples from the lab: Bf Neustadt with the container terminal at the lab's crane (also as a video), and the hybrid container train, real wagons with AprilTag labels that carry virtual containers (see [Getting started](docs/getting-started.md#the-examples)). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Settings → Night 22:30** to see it at night. Each module that is on has its tab: the lab example's modules add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**), turn it into an exercise with travellers the attendees plan (**Journeys**), or open the container terminal on its own, in the flyover (**Container terminal**, Terminal tab); **Disruptions** (every layout) starts disruptions and scenarios.
 
 **On your own layout:**
 
 1. Print markers from the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (ArUco Original, 30 mm) and check the scale with a ruler.
 2. Put one marker at each end of every platform and more across the layout, flat and with their white border visible.
-3. Open the app, choose **Layouts… → Example: synthetic layout** as a starting point or import your own layout, then **Take photo** or **Live camera**. The markers are surveyed automatically.
+3. Open the app, import your own layout or start from an example (**Layouts…**), then **Take photo** or **Live camera**. Markers the layout does not know yet are surveyed automatically (Build → Marker map → **Measure again** starts with an empty map).
 4. In **Build**, add platforms (tap the two markers at its ends), streets, bus stops and lines, buildings and scenery, in the camera view or in the flyover on the grid. **Export layout** saves the result as a JSON file.
 
 For a fixed layout of a whole table, follow the [lab-session guide](docs/lab-session.md): stickers all over the table, one video, `arail-survey`, then build in the flyover. See [Getting started](docs/getting-started.md) and [Setting up a lab](docs/lab-setup.md) for details. The live camera needs https (GitHub Pages) or `localhost`.
@@ -100,8 +100,7 @@ web/                  the website (published with GitHub Pages)
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,
                       journeys and container terminal; Bf Neustadt with the terminal at the crane and the
-                      town at the curve; the hybrid container train; the synthetic layout; the container
-                      terminal)
+                      town at the curve; the hybrid container train; the container terminal)
   media/              the images and clips of the example layouts and their orthophotos, the project
                       page's video
   assets/             logos, icons and the website's images

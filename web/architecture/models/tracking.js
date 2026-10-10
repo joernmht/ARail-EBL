@@ -112,7 +112,7 @@ export const TRACKING = [
           ["a5", "action", "The control system's feed (simulated) and the world step", "World.step"],
           ["d2", "decision", "Flyover?"],
           ["a6", "action", "The virtual camera moves and draws", "Flyover.step"],
-          ["a7", "action", "The pose to a View; the world drawn over the image", "App.render"],
+          ["a7", "action", "The pose to a View; grey plates over the markers (setting coverMarkers), the world drawn over the image", "App.render"],
           ["m2", "merge"],
           ["e", "end"],
         ],

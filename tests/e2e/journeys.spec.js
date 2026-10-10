@@ -136,8 +136,8 @@ test("the generated people can come back; Settings → Simulation offers the mod
   await page.locator("#tab-settings").click();
   await expect(page.locator("#journeysOpenExample")).toHaveText("Switch on the module “Journeys”");
   // another layout: added to it, with the lines named on its platforms
-  await page.evaluate(() => window.__arail.openExample("synthetic"));
-  await page.waitForFunction(() => /synthetic/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
+  await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
   await page.locator("#tab-settings").click();
   await page.locator("#journeysAdd").click();
   await page.waitForFunction(() => window.__arail.journeys.sim);

@@ -385,6 +385,21 @@ test("visits whose track or quay is missing cannot be called", () => {
   assert.equal(r.error, 'No track "track-2"');
 });
 
+test("trains called without wagons differ in length (2 to 5) and fit their track", () => {
+  const lengths = new Set();
+  for (let seed = 1; seed <= 12; seed++) {
+    const { sim } = setup({ trains: [BASE.trains[0], { ...BASE.trains[1], start: "away" }], barges: [] }, { seed });
+    const n = sim.addTrain({ track: "track-2" }).visit.carriers.length;
+    assert.ok(n >= 2 && n <= 5, String(n));
+    lengths.add(n);
+  }
+  assert.ok(lengths.size >= 3, [...lengths].join());
+  // of the type asked for; on a short track only as many as fit beside the locomotive
+  const { sim } = setup({ trains: [BASE.trains[0]], barges: [] }, { objects: OBJECTS.map((o) => (o.id === "track-2" ? { ...o, points: [[-250, 280.5], [350, 280.5]] } : o)) });
+  const t = sim.addTrain({ track: "track-2", wagonType: "lgns40" }).visit;
+  assert.deepEqual(t.carriers.map((c) => c.type.label), ["Lgns (40 ft)"]);
+});
+
 test("trains and barges created at run time come in with random loads", () => {
   const { world, sim, log } = setup({ trains: [BASE.trains[0], { ...BASE.trains[1], start: "away" }], barges: [] });
   const t = sim.addTrain({ track: "track-2", wagons: ["sgns60", "lgns40"], load: "random" });
@@ -756,7 +771,10 @@ test("toJSON keeps the start state; saveStart makes the current state the start 
   assert.equal(snap.containers.find((c) => c.id === ID(1)).at.carrier, "yard-a");
   assert.equal(sim.visits.get("train-1").state, "positioned");
   assert.deepEqual(snap.trains.map((t) => [t.id, t.start]), [["K1", "positioned"], ["K2", "away"], ["train-1", "positioned"]]);
-  assert.deepEqual(snap.trains[2], { id: "train-1", name: "Train 1", track: "track-2", direction: 1, wagons: ["sgns60", "sgns60", "sgns60"], start: "positioned" });
+  // a train called without wagons: 2 to 5 of the default type (as many as fit), so trains differ in length
+  const wagons = snap.trains[2].wagons;
+  assert.ok(wagons.length >= 2 && wagons.length <= 5 && wagons.every((t) => t === "sgns60"), String(wagons));
+  assert.deepEqual(snap.trains[2], { id: "train-1", name: "Train 1", track: "track-2", direction: 1, wagons, start: "positioned" });
   // the saved state loads again as it was
   const again = terminalOf(createWorld(world.toJSON(), { seed: 4 }));
   assert.deepEqual(again.inventory.snapshot(), sim.inventory.snapshot().filter((c) => !c.at.carrier.startsWith("T")));
@@ -1283,6 +1301,58 @@ test("draw builds the scene in the camera view and the flyover without errors", 
   }
   assert.deepEqual(errors, []);
   sim.highlight = { selected: null, targets: null, slots: false };
+});
+
+test("spot covers: a grey placeholder on each container spot of a wagon seen, and on labels away from the spots; over the camera image only", () => {
+  // wagon 3 with one label on its middle spot and one at a place of its own
+  const { world, sim } = setup({ rolling_stock: [{ number: 3, tags_mm: [0, 40] }] });
+  sim.observe({ [encodeTag(3, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 } }, 0);
+  const ctx = new Proxy({ canvas: { width: 1280, height: 720 } }, { get: (o, k) => (k in o ? o[k] : () => ({ addColorStop() {} })), set: (o, k, v) => ((o[k] = v), true) });
+  const camera = new Camera(1280, 720);
+  const { fx, cx, cy } = camera.intrinsics, d = 3000;
+  const plates = (opts = {}) => {
+    const view = new View({ ctx, camera, H: [fx, 0, cx * d, 0, -fx, cy * d, 0, 0, d], scale: 87, ...opts }), out = [];
+    view.plate = (center, heading, length, width, style) => out.push({ center, heading, length, width, ...style });
+    world.draw(view);
+    return out;
+  };
+  const w = sim.carrier("W3"), seen = plates();
+  const along = (p) => (p.center[0] - w.pose.center[0]) * Math.cos(w.pose.heading) + (p.center[1] - w.pose.center[1]) * Math.sin(w.pose.heading);
+  const spots = Array.from({ length: w.bays }, (_, bay) => sim.mm(w.along(bay, "20")));
+  // the spots, numbered, then the label at 40 mm (the one at 0 lies on the middle spot)
+  assert.deepEqual(seen.map((p) => p.text), [...spots.map((_, i) => `W3·${i + 1}`), "W3"]);
+  assert.deepEqual(seen.map((p) => Math.round(along(p) * 1000) / 1000), [...spots, 40].map((a) => Math.round(a * 1000) / 1000));
+  for (const p of seen) {
+    assert.equal(p.z, sim._deckZ(w));
+    assert.equal(p.heading, w.pose.heading);
+    assert.ok(p.length > sim.mm(6.058) && p.width > sim.mm(2.438)); // as big as a 20 ft container, and a little more
+  }
+  assert.deepEqual(plates({ virtual: true }), []); // the flyover draws the wagon itself
+  world.settings.coverMarkers = false;
+  assert.deepEqual(plates(), []);
+});
+
+test("units of model wagons (rolling_stock[].unit): unloaded and loaded as a whole like a visit, with their wagons seen standing", () => {
+  const stock = [{ number: 3, type: "sggrss80", unit: "Model train" }, { number: 5, unit: "Model train" }, { number: 6 }];
+  const { world, sim } = setup({ rolling_stock: stock, containers: [...BASE.containers, { id: ID(10), size: "20", at: at("W3", 0) }, { id: ID(11), size: "20", at: at("W6", 0) }] });
+  // the configured wagons by unit, in the order of their numbers; without one: "Model wagons"
+  assert.deepEqual(sim.modelUnits().map((u) => [u.id, u.carriers.map((c) => c.id)]), [["Model train", ["W3", "W5"]], ["Model wagons", ["W6"]]]);
+  assert.deepEqual(sim.unload("Model train").refused.map((r) => r.reason), ["Model train: no wagon seen standing"]);
+  sim.observe({ [encodeTag(3, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 } }, 0, { still: true });
+  const out = sim.unload("Model train", { to: "yard" });
+  assert.deepEqual(out.moves.map((m) => m.container), [ID(10)]);
+  runUntil(world, () => out.moves.every((m) => m.state === "done"));
+  assert.equal(sim.inventory.get(ID(10)).at.carrier.startsWith("yard"), true);
+  // and back: the free spots of the unit's wagons seen are filled from the yard
+  const back = sim.load("Model train", { from: "yard" });
+  assert.ok(back.moves.length >= 1);
+  assert.ok(back.moves.every((m) => m.to.carrier === "W3"));
+  // a scenario asks the same with the unit's name
+  assert.deepEqual(sim._unload("Model wagons").refused.map((r) => r.reason), ["Model wagons: no wagon seen standing"]);
+  assert.deepEqual(sim.unload("Nobody").refused.map((r) => r.reason), ['Unknown visit "Nobody"']);
+  // names: 1 to 40 characters
+  const problems = validateLayout(layout({ rolling_stock: [{ number: 4, unit: "" }, { number: 5, unit: 7 }, { number: 6, unit: "x".repeat(41) }, { number: 7, unit: "Truck" }] }), registry);
+  assert.equal(problems.filter((p) => p.includes("unit must be")).length, 3);
 });
 
 /* ---------------------------------------------------------------- validation */

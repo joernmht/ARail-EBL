@@ -328,6 +328,7 @@ describe them, all along the wagon in layout mm from its centre, + towards the A
 | `tags_mm` | `[68, -68]` | where each tag sits: slot 0, 1, … (default: one tag on each container spot) |
 | `tags_deg` | `[0, 180]` | how each tag is turned: 0 = its x axis (the label's arrow) points to the A end, 180 = to the B end |
 | `spots_mm` | `[50, -50]` | where the container spots are (default: the wagon type's); such spots take 20 ft containers only |
+| `unit` | `"Truck"` | the model train or truck the wagon belongs to (1–40 characters): the Terminal tab unloads and loads a unit as a whole |
 
 The example's container train is the lab's: Sgns wagons with a label at each end, on the two
 outer spots (136 mm apart), the middle spot bare, and each label's arrow pointing to its own end
@@ -336,8 +337,8 @@ towards the cab:
 
 ```json
 "rolling_stock": [
-  { "number": 1, "type": "lgns40", "name": "Truck with two trailers", "tags_mm": [50, -50], "spots_mm": [50, -50] },
-  { "number": 2, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180] }
+  { "number": 1, "type": "lgns40", "name": "Truck with two trailers", "unit": "Truck", "tags_mm": [50, -50], "spots_mm": [50, -50] },
+  { "number": 2, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180] }
 ]
 ```
 
@@ -352,6 +353,13 @@ millimetre more on the side towards the wagon's dark frame: seen at a flat angle
 disappears in the picture, the black border of the tag merges with the frame, and the tag is not
 found. In the example's photos, the labels whose tag sits close to the wagon's near side are the
 ones that are missed.
+
+Over the camera image, every container spot of a wagon that is seen gets a grey placeholder,
+numbered by wagon and spot (W8·1, W8·2, W8·3), and a label away from the spots a plate with the
+wagon's number: as big as a 20 ft container, on the deck under the containers, so a free spot
+shows its plate instead of the white label, and a container set down on it hides it. The plates
+follow View → Show → *Cover the markers* (world setting `coverMarkers`), like the plates over the
+layout's markers. A wagon whose tags are not found gets no plates: its labels stay white.
 
 ### Surveying with tagged wagons on the layout
 
@@ -388,8 +396,13 @@ terminal** (on the lab example: **Switch on the module “Container terminal”*
 6. **Watch it.** Crane jobs lists the last moves: the container, from → to, the machine and the
    state (*queued*, *waiting for …*, the crane's phase, *done*, *failed: …*). A move that has not
    locked its container yet can be cancelled.
-7. **Model wagons** (with `markers.rolling` only): each wagon with its type, the tags seen (*2/3*),
-   its state and its containers, and links to print the deck cards (one per wagon type).
+7. **Model wagons** (with `markers.rolling` only): a card per unit, the real train and the real
+   truck (`rolling_stock[].unit`; wagons without one form the unit *Model wagons*), with its
+   wagons seen, how full it is and **Unload to yard** and **Load from yard**, like a train at the
+   terminal: they work on the unit's wagons that are seen standing. Then each wagon with its type,
+   the tags seen (*2/3*), its state and its containers, and links to print the deck cards (one per
+   wagon type). Scenarios unload and load a unit by its name (`terminal.request.unload` and
+   `terminal.request.load` with `"visit": "Truck"`).
 
 **On the stage.** In the Terminal tab a tap on a container chooses it, and its possible places are
 outlined; a tap on an outlined place (or on another container, or on a carrier) queues the move:

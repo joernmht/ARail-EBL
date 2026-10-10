@@ -6,7 +6,7 @@ import test from "node:test";
 
 import {
   Camera, FlyCamera, PITCH_MAX, PITCH_MIN, Tabletop, View, applyH, createWorld, defaultTableBounds, drawTable, gridLines,
-  hasPhysicalTable, normalizeLayout, orthoOf, poseFromHomography, snapToGrid, toRad, validateLayout, TABLE_SURFACES,
+  extendBelowOf, hasPhysicalTable, normalizeLayout, orthoOf, poseFromHomography, snapToGrid, toRad, validateLayout, TABLE_SURFACES,
 } from "../../web/arail/index.js";
 
 const W = 1280, H = 720;
@@ -256,11 +256,18 @@ test("layouts have a grid (with defaults) and an optional orthophoto", () => {
     assert.equal(orthoOf({ view: { ortho: bad } }), null);
     assert.equal(validateLayout({ view: { ortho: bad } }).length, 1);
   }
+  // the picture extended below the photo: a share of its height, 0 to 2
+  assert.equal(extendBelowOf({ view: { extend_below: 0.5 } }), 0.5);
+  assert.deepEqual(validateLayout({ view: { extend_below: 0.5 } }), []);
+  assert.deepEqual(validateLayout({ view: { extend_below: 0 } }), []);
+  for (const bad of [-0.2, 2.5, "0.5", null]) assert.equal(extendBelowOf({ view: { extend_below: bad } }), 0);
+  for (const bad of [-0.2, 2.5, "0.5"]) assert.equal(validateLayout({ view: { extend_below: bad } }).length, 1, String(bad));
   // the grid and the orthophoto are written back
-  const world = createWorld({ grid: { size_mm: 100, snap: false }, view: { ortho } });
+  const world = createWorld({ grid: { size_mm: 100, snap: false }, view: { ortho, extend_below: 0.5 } });
   const json = world.toJSON();
   assert.deepEqual(json.grid, { size_mm: 100, snap: false });
   assert.deepEqual(json.view.ortho, ortho);
+  assert.equal(json.view.extend_below, 0.5);
   assert.deepEqual(createWorld(JSON.parse(JSON.stringify(json))).toJSON(), json);
 });
 

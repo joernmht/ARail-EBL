@@ -1,7 +1,7 @@
 // ARail app: camera/photo/video in, markers tracked, virtual layout and simulations drawn on top.
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
-import { drawGrid, Flyover } from "./flyover.js";
+import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
@@ -17,13 +17,11 @@ const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json"
  * `tab`: the tab shown.
  */
 const EXAMPLES = [
-  { id: "lab", label: "Example: EBL lab photo", layout: LAB },
+  { id: "lab", label: "Example: Beta 0.1 (EBL lab photo)", layout: LAB },
   { id: "neustadt", label: "Example: Bf Neustadt", layout: NEUSTADT },
   { id: "neustadt-video", label: "Example: Bf Neustadt, video", layout: NEUSTADT, video: "../media/ebl-station-trains.mp4" },
-  { id: "city-train", label: "Example: train through the town, video", layout: NEUSTADT, video: "../media/ebl-curve-trains.mp4" },
   { id: "crane-terminal", label: "Example: terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal" },
   { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal" },
-  { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
   { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
 ];
 /** Examples that are a module (layer) of another example: opened with that module on. */
@@ -687,6 +685,7 @@ class App {
       this.showLayoutName();
       this.flyover.layoutChanged();
       if (!this._syncTabs()) this.renderPanel(this.activeTab);
+      this.sizeCanvas(); // view.extend_below of this layout
       this.redetect();
     }
     if (problems.length) console.warn("Layout problems:", problems);
@@ -748,8 +747,8 @@ class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour });
+    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers } = this.world.settings;
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers });
   }
 
   showLayoutName() {
@@ -807,10 +806,7 @@ class App {
     this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
-    if (!this.flyover.active) {
-      this.canvas.width = this.source.w;
-      this.canvas.height = this.source.h;
-    }
+    if (!this.flyover.active) this.sizeCanvas();
     this.camera.setSize(this.source.w, this.source.h);
     this.tracker.reset();
     this.detections = {};
@@ -920,6 +916,22 @@ class App {
     const el = $("#emptyStage");
     el.textContent = text;
     el.hidden = false;
+  }
+
+  /**
+   * The canvas for the source: the photo or video, and below it the share of its height that the
+   * layout extends the picture by (`view.extend_below`, not for the live camera). The camera stays
+   * the source's, so the virtual parts of the layout in front of the table are drawn below it.
+   */
+  sizeCanvas() {
+    const s = this.source;
+    if (!s || this.flyover.active) return;
+    const below = s.kind === "live" ? 0 : Math.round(s.h * ARail.extendBelowOf(this.world.layout));
+    if (this.canvas.width !== s.w || this.canvas.height !== s.h + below) {
+      this.canvas.width = s.w;
+      this.canvas.height = s.h + below;
+      this.fitCanvas();
+    }
   }
 
   /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
@@ -1062,18 +1074,38 @@ class App {
     this.lastView = null;
     const { ctx, source } = this;
     if (!source || source.stale) return;
+    if (this.canvas.height > source.h) {
+      // the picture extended below the source (view.extend_below): only virtual things there
+      ctx.fillStyle = SKY.floorNear; // the lab floor of the flyover
+      ctx.fillRect(0, source.h, this.canvas.width, this.canvas.height - source.h);
+    }
     ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
     const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
       const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
+      if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
       this.terminal.drawOverlay(ctx, view);
       this.lastView = view;
     }
     if (this.display.markers) this._drawMarkers(ctx);
+  }
+
+  /**
+   * Grey plates over the markers of the map, each with its number painted on it (View → Show →
+   * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
+   * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
+   * table, under the virtual objects.
+   */
+  _drawMarkerCovers(view) {
+    const map = this.world.map, fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
+    for (const id of map.ids()) {
+      const e = map.get(id), s = map.sizeOf(id);
+      if (e) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
+    }
   }
 
   /** Where the grid is drawn over the camera image: around the markers, objects and table modules. */

@@ -81,7 +81,7 @@ export const TERMINAL = [
       {
         name: "TerminalSimulation", file: "web/arail/terminal/operations.js", kind: "class", extends: "Simulation", role: "The terminal: its moves, machines and visits.",
         attributes: ["inventory: Inventory", "moves: object[] — {id, container, from, to, handler, state, reason, waiting}", "handlers: Map — machines by object id", "visits: Map — trains, barges, trucks", "rolling: RollingStock | null — model wagons", "highlight: object — what the panel shows on the stage"],
-        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts)", "load(visitId, opts)", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "tagCount(number) — the tags of a model wagon", "_tagAlongMM(number, slot)", "_tagTurn(number, slot)", "_wagonCarrierType(number) — with rolling_stock[].spots_mm", "step(dt)", "saveStart()"],
+        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts) — a visit or a unit of model wagons", "load(visitId, opts)", "modelUnits() — the model wagons by rolling_stock[].unit", "_group(id) — a visit or a unit, with why not now", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "tagCount(number) — the tags of a model wagon", "_tagAlongMM(number, slot)", "_tagTurn(number, slot)", "_wagonCarrierType(number) — with rolling_stock[].spots_mm", "_drawSpotCovers(view, c) — grey placeholders on the container spots and labels of a model wagon (setting coverMarkers)", "step(dt)", "saveStart()"],
       },
       {
         name: "HandlerBase", file: "web/arail/terminal/handlers.js", kind: "class", stereotype: "base class", role: "A machine: one move at a time, in eased phases.",
@@ -100,7 +100,7 @@ export const TERMINAL = [
       { name: "TruckVisit", file: "web/arail/terminal/visits.js", kind: "class", role: "A truck with a chassis: pickup or delivery.", attributes: ["purpose: string — pickup or delivery", "state: string — waiting, approaching, positioned, departing"] },
       { name: "PathMover", file: "web/arail/terminal/movers.js", kind: "class", role: "A deterministic 1-D mover: accelerate, cruise, brake.", attributes: ["s: number — position along the path", "v: number — speed"], operations: ["setTarget(s)", "arrived()", "step(dt, opts)"] },
       { name: "visits", file: "web/arail/terminal/visits.js", kind: "module", role: "The truck lane's traffic.", operations: ["stepTrucks(trucks, lane, dt, host)", "departTruck(t, host)"] },
-      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The Terminal tab: moves from the panel and on the stage.", operations: ["render(el)", "update()", "addTerminal()"] },
+      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The Terminal tab: moves from the panel and on the stage.", operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
     ],
     relations: [
       { from: "TerminalSimulation", to: "Inventory", kind: "composes", label: "inventory" },

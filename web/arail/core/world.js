@@ -53,6 +53,7 @@ export class World {
       feedVehicles: "outline", // how trains from the control system are drawn: outline | solid | none
       lighting: true, // day/night lighting from the clock
       peopleColour: "auto", // colour of people: "auto" (town people by trip purpose, passengers by mood) | "purpose" | "mood"
+      coverMarkers: true, // grey plates with their numbers over the markers and the labels of model wagons (camera view)
     };
     /** Time of day (fast clock), see core/clock.js. */
     this.clock = new Clock();

@@ -11,20 +11,20 @@
       "name": "KV terminal G 52",
       "default_wagon": "lgns40",
       "rolling_stock": [
-        {"number": 1, "type": "lgns40", "name": "Truck with two trailers", "tags_mm": [50, -50], "spots_mm": [50, -50]},
-        {"number": 2, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 3, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 4, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 5, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 6, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 7, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 8, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 9, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 10, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]},
-        {"number": 11, "type": "sgns60", "tags_mm": [68, -68], "tags_deg": [0, 180]}
+        {"number": 1, "type": "lgns40", "name": "Truck with two trailers", "unit": "Truck", "tags_mm": [50, -50], "spots_mm": [50, -50]},
+        {"number": 2, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 3, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 4, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 5, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 6, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 7, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 8, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 9, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 10, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]},
+        {"number": 11, "type": "sgns60", "unit": "Container train", "tags_mm": [68, -68], "tags_deg": [0, 180]}
       ],
       "trains": [
-        {"id": "KT61", "name": "KT 61 Rostock", "track": "track-g53", "direction": 1, "stop_mm": 2080, "start": "away", "wagons": ["sgns60", "sgns60", "sgns60"]}
+        {"id": "KT61", "name": "KT 61 Rostock", "track": "track-g53", "direction": 1, "stop_mm": 2080, "start": "away", "wagons": ["sgns60", "sgns60", "sggrss80", "sgns60", "lgns40"]}
       ],
       "barges": [
         {"id": "BG1", "name": "MS Elbe 7", "quay": "quay-1", "length_m": 55, "tiers": 2, "start": "positioned"}
@@ -48,11 +48,14 @@
         {"id": "DBCU 600015 2", "size": "20", "at": {"carrier": "KT61/2", "bay": 0}},
         {"id": "EBLU 600016 5", "size": "40", "high": true, "at": {"carrier": "KT61/2", "bay": 1}},
         {"id": "TUDU 600017 9", "size": "40", "at": {"carrier": "KT61/3", "bay": 0}},
-        {"id": "DBCU 600018 9", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
-        {"id": "EBLU 600019 1", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},
-        {"id": "TUDU 600020 3", "size": "40", "at": {"carrier": "BG1", "bay": 0, "row": 0, "tier": 0}},
-        {"id": "ARLU 600021 7", "size": "20", "at": {"carrier": "BG1", "bay": 2, "row": 1, "tier": 0}},
-        {"id": "EBLU 600022 6", "size": "40", "at": {"carrier": "BG1", "bay": 3, "row": 2, "tier": 0}}
+        {"id": "DBCU 600018 9", "size": "20", "at": {"carrier": "KT61/3", "bay": 3}},
+        {"id": "ARLU 600019 8", "size": "20", "at": {"carrier": "KT61/4", "bay": 2}},
+        {"id": "EBLU 600020 5", "size": "40", "at": {"carrier": "KT61/5", "bay": 0}},
+        {"id": "DBCU 600021 3", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
+        {"id": "EBLU 600022 6", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},
+        {"id": "TUDU 600023 0", "size": "40", "at": {"carrier": "BG1", "bay": 0, "row": 0, "tier": 0}},
+        {"id": "ARLU 600024 3", "size": "20", "at": {"carrier": "BG1", "bay": 2, "row": 1, "tier": 0}},
+        {"id": "EBLU 600025 2", "size": "40", "at": {"carrier": "BG1", "bay": 3, "row": 2, "tier": 0}}
       ],
       "fill": {"yard-a": 0.2}
     }
@@ -63,7 +66,7 @@
     {"id": "track-g52", "type": "track", "name": "Track G 52 (the tagged train)", "track_id": "G52", "points": [[-900, 302], [1300, 335]]},
     {"id": "lane-1", "type": "truck-lane", "name": "Truck lane", "points": [[-950, 155], [1300, 158]], "positions": 3, "passing_side": "right"},
     {"id": "yard-a", "type": "container-yard", "name": "Block A", "position": [100, 58], "width_mm": 1190, "depth_mm": 67, "rotation_deg": 0, "tiers": 3},
-    {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 157], "width_mm": 2150, "depth_mm": 372, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
+    {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 226], "width_mm": 2150, "depth_mm": 510, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
     {"id": "table-harbour", "type": "tabletop", "name": "Harbour module", "position": [180, -265], "width_mm": 2300, "depth_mm": 470},
     {"id": "quay-1", "type": "quay", "name": "Quay", "points": [[-1000, -130], [1150, -130]], "berth_m": 60, "water_m": 16, "quay_side": "left"}
   ],
@@ -80,10 +83,10 @@
         {"at": 3, "emit": {"name": "terminal.request.move", "payload": {"container": "DBCU 600015 2", "to": {"carrier": "W1", "bay": 1}}}},
         {"at": 4, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "pickup"}}},
         {"at": 5, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 600002 9", "to": {"kind": "truck"}}}},
-        {"at": 6, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 600019 1", "to": {"carrier": "W4", "bay": 0}}}},
-        {"at": 7, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 600021 7", "to": {"carrier": "W10", "bay": 2}}}}
+        {"at": 6, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 600022 6", "to": {"carrier": "W4", "bay": 0}}}},
+        {"at": 7, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 600024 3", "to": {"carrier": "W10", "bay": 2}}}}
       ]
     }
   ],
-  "view": {"image": "../media/ebl-container-train.jpg", "ortho": {"image": "../media/ebl-container-train-ortho.jpg", "bounds_mm": [-950, -30, 1310, 1100]}}
+  "view": {"image": "../media/ebl-container-train.jpg", "extend_below": 0.5, "ortho": {"image": "../media/ebl-container-train-ortho.jpg", "bounds_mm": [-950, -30, 1310, 1100]}}
 }

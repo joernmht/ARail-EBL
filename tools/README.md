@@ -8,7 +8,7 @@ Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and two Nod
 | `arail-bridge` | connects a control system to the ARail web app (WebSocket feed) | `bridge` |
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
 | `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
-| `arail-synthetic` | renders the synthetic test layout | `opencv` or `headless` |
+| `arail-synthetic` | renders the synthetic test scene of the tests (`npm run fixtures`) | `opencv` or `headless` |
 | `python -m arail_tools.fixtures` | generates the images and the short survey video for the tests | `opencv` or `headless` |
 
 ```bash

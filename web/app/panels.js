@@ -57,6 +57,7 @@ export class Panels {
           toggle("optLabels", "Signs and boards", () => s.labels, (v) => (s.labels = v)),
           toggle("optTrails", "Walking trails", () => s.trails, (v) => (s.trails = v)),
           toggle("optMarkers", "Marker outlines", () => d.markers, (v) => (d.markers = v)),
+          toggle("optCoverMarkers", "Cover the markers", () => s.coverMarkers, (v) => (s.coverMarkers = v)),
           toggle("optTracks", "Tracks", () => s.showTracks, (v) => (s.showTracks = v)),
         ),
         h("label", { class: "field", for: "optOpacity" }, h("span", {}, "Opacity of virtual objects"),

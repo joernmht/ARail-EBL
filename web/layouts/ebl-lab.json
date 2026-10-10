@@ -1,6 +1,6 @@
 {
   "format": "arail-layout/1",
-  "name": "EBL lab (example)",
+  "name": "EBL lab, Beta 0.1 (example)",
   "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. Modules (View panel) add rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
   "scale": 87,
   "markers": {

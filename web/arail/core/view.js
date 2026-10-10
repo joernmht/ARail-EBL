@@ -313,6 +313,39 @@ export class View {
     else this.ground(style.order ?? 0, draw);
   }
 
+  /**
+   * Flat plate on the layout (or at height z) with a text painted on it, e.g. a grey cover over a
+   * marker: a rectangle `length` × `width` (mm) around `center`, its length along `heading`. The
+   * text runs along the plate, turned half round where it would read from right to left.
+   * @param {number[]} center [x, y] in mm
+   * @param {number} heading radians
+   * @param {number} length mm
+   * @param {number} width mm
+   * @param {{z?: number, fill?: string, stroke?: string, text?: string, textColour?: string,
+   *   textSize?: number, order?: number}} [style] textSize: height of the text in mm (default 0.6 ×
+   *   the shorter side); order: ground order of the plate (the text comes right after it)
+   */
+  plate(center, heading, length, width, style = {}) {
+    const z = style.z || 0, c = Math.cos(heading), s = Math.sin(heading), l = length / 2, w = width / 2;
+    const at = (dx, dy) => [center[0] + dx * c - dy * s, center[1] + dx * s + dy * c];
+    const order = style.order ?? 0, corners = [at(-l, -w), at(l, -w), at(l, w), at(-l, w)];
+    this.polygon(corners, { z, fill: style.fill, stroke: style.stroke, width: 1, order });
+    if (!style.text) return;
+    const o = this.project(...at(0, 0), z), ax = this.project(...at(1, 0), z), ay = this.project(...at(0, -1), z);
+    const img = corners.map((p) => this.project(p[0], p[1], z));
+    if (!o || !ax || !ay || img.some((p) => !p) || this.offImage(img)) return;
+    const k = ax[0] < o[0] ? -1 : 1, size = style.textSize ?? 0.6 * Math.min(length, width), colour = style.textColour ?? "#fff";
+    this.ground(order + 0.01, (ctx) => {
+      // the plate's plane: its centre at the origin, 1 unit = 1 mm, the text's "up" across the plate
+      ctx.transform(k * (ax[0] - o[0]), k * (ax[1] - o[1]), k * (ay[0] - o[0]), k * (ay[1] - o[1]), o[0], o[1]);
+      ctx.font = `700 ${size}px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = this.dim(colour);
+      ctx.fillText(style.text, 0, 0.06 * size);
+    });
+  }
+
   /** Polyline on the layout (ground layer); style as for `polygon` without the fill (`width` in CSS px). */
   line(points, style = {}) {
     const margin = this._margin(style);

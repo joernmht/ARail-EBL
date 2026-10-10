@@ -174,8 +174,8 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
   await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail.layoutUrl) && window.__arail.terminal.sim);
   await expect(page.locator("#tab-disrupt")).toBeVisible();
   // another layout has its own choice
-  await page.evaluate(() => window.__arail.openExample("synthetic"));
-  await page.waitForFunction(() => /synthetic/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
+  await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
   await expect(page.locator("#tab-disrupt")).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -249,8 +249,8 @@ test("Build is a module, on until switched off: off, its tab goes and placing st
   await expect(page.locator("#tab-build")).toBeHidden();
   expect(await page.evaluate(() => localStorage.getItem(`arail.layout:${window.__arail.layoutUrl}`))).toBeNull();
   // another layout has its own choice
-  await page.evaluate(() => window.__arail.openExample("synthetic"));
-  await page.waitForFunction(() => /synthetic/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
+  await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
   await expect(page.locator("#tab-build")).toBeVisible();
   // a link to the Build tab switches it on again
   await page.goto("about:blank");

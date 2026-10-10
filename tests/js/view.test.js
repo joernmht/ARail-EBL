@@ -191,6 +191,30 @@ test("lights and trees outside the image are not queued", () => {
 
 /* ---------------------------------------------------------------- one save/restore for runs of plain drawings */
 
+test("plates: a flat plate and its text, which reads from left to right whichever way the plate points", () => {
+  const calls = [];
+  const ctx = new Proxy({ canvas: { width: W, height: H } }, {
+    get: (o, k) => (k in o ? o[k] : (...a) => calls.push([k, ...a])),
+    set: (o, k, v) => ((o[k] = v), true),
+  });
+  for (const heading of [0, Math.PI / 2, Math.PI, -2.5]) {
+    calls.length = 0;
+    const view = topView(ctx);
+    view.plate([0, 0], heading, 70, 30, { fill: "#9e9e9e", text: "W8", order: 40 });
+    assert.deepEqual(view.items.map((it) => [it.layer, it.key]), [[0, 40], [0, 40.01]]);
+    view.render();
+    const [, a, b] = calls.find((c) => c[0] === "transform");
+    // the text's x axis: along the plate, never to the left
+    assert.ok(a > -1e-9, `heading ${heading}: the text reads from left to right`);
+    assert.ok(Math.abs(a * -Math.sin(heading) - b * Math.cos(heading)) < 1e-9 * Math.hypot(a, b) + 1e-12); // (image y points down)
+    assert.deepEqual(calls.filter((c) => c[0] === "fillText").map((c) => c[1]), ["W8"]);
+  }
+  // outside the image: nothing
+  const view = topView(ctx);
+  view.plate([xAt(view, -500), 0], 0, 70, 30, { fill: "#9e9e9e", text: "7" });
+  assert.equal(view.items.length, 0);
+});
+
 test("plain drawings share a save/restore; every other drawing still starts from the state before", () => {
   const { ctx, ops, stats } = stateContext();
   const view = topView(ctx, { opacity: 0.8 });

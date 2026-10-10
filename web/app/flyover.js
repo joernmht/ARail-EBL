@@ -23,7 +23,7 @@ const ORBIT_RAD_PER_PX = 0.0075;
 const EMPTY_TABLE = [-500, -300, 500, 300];
 
 /** Background of the flyover by day: sky above the horizon, the lab floor below. */
-const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", floorNear: "#9ba5aa" };
+export const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", floorNear: "#9ba5aa" };
 /** ... and its night colours (the view darkens both further). */
 const SKY_NIGHT = { top: "#020a24", horizon: "#16284f", floorFar: "#1b2438", floorNear: "#0b1122" };
 
@@ -106,6 +106,7 @@ export class Flyover {
     if (src && !src.stale) {
       c.width = src.w;
       c.height = src.h;
+      app.sizeCanvas();
       if (this._resumeVideo && src.kind === "video") src.el.play().catch(() => {});
     } else {
       // no image of this layout (a virtual layout, or none yet): the message of the empty stage

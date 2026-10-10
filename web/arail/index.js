@@ -66,7 +66,7 @@ export { ScenarioPlayer } from "./core/scenarios.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
-export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
+export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";

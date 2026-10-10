@@ -7,7 +7,7 @@ A shortened version of the EBL example ([`web/layouts/ebl-lab.json`](../web/layo
 ```json
 {
   "format": "arail-layout/1",
-  "name": "EBL lab (example)",
+  "name": "EBL lab, Beta 0.1 (example)",
   "description": "Two platforms of the railway operations lab ...",
   "scale": 87,
   "markers": { "dictionary": "ARUCO", "size_mm": 30, "codes": 50, "origin": 0,
@@ -180,6 +180,17 @@ The flyover (View → Flyover, key F) shows a grid on the layout plane; placed p
 ```
 
 An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md)): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame (xmin < xmax, ymin < ymax). Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; its uncovered (light grey) border is left out. Where it covers platforms and tracks, their virtual surfaces are left out too (the photo shows the real ones). Table modules of the kind `extension` lie above the photo, real tables (`physical`) below it.
+
+## `view.extend_below`
+
+```json
+"view": { "image": "../media/ebl-container-train.jpg", "extend_below": 0.5 }
+```
+
+The picture goes on below the photo or video by this share of its height (above 0, at most 2; not
+for the live camera): room for the virtual parts of a layout in front of the table, such as the
+harbour on a module of the hybrid container train example. The camera stays the photo's, so
+everything lines up; below the photo only virtual things are drawn, on the grey of the lab floor.
 
 ## Positions
 

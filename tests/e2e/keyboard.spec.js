@@ -236,7 +236,7 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
   await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
   // a terminal added to a layout without one (Settings → Simulation): the Terminal tab opens, its heading has the focus
-  await page.goto("/app/?layout=../layouts/synthetic-demo.json#terminal");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
   await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
