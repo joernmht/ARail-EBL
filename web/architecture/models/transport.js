@@ -33,7 +33,7 @@ export const TRANSPORT = [
       {
         name: "ServiceManager", file: "web/arail/core/services.js", kind: "class", role: "world.services: the docks and their vehicles.",
         attributes: ["docks: Map — dock id → {dock, vehicle, timer, heldFor, mode}", "planner: object | null — rail operations or journeys: claims(dock), statusLines(area)"],
-        operations: ["sync() — docks in line with the stop areas", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)"],
+        operations: ["sync() — docks in line with the stop areas", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)", "pickables(view) — the vehicles at the docks", "card(hit) — line, stop, doors, delay"],
       },
       {
         name: "Vehicle", file: "web/arail/core/services.js", kind: "class", role: "A train or bus at one dock.",
@@ -95,7 +95,7 @@ export const TRANSPORT = [
       {
         name: "PassengerSimulation", file: "web/arail/sims/passengers.js", kind: "class", extends: "Simulation", role: "The crowds of all stop areas.",
         attributes: ["crowds: Map — Crowd per stop area", "others: boolean — generated passengers (off: only those handed over)"],
-        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents)", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)"],
+        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents)", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting and the next vehicles at a stop"],
       },
       { name: "Crowd", file: "web/arail/sims/passengers.js", kind: "class", role: "The people of one stop area.", attributes: ["area: StopArea", "people: Person[]"], operations: ["wave() — demand 0.3 … 1 over 180 s"] },
       {
@@ -184,7 +184,7 @@ export const TRANSPORT = [
       {
         name: "TownSimulation", file: "web/arail/sims/town.js", kind: "class", extends: "Simulation", role: "The town.",
         attributes: ["agents: Agent[]", "places: object — buildings by use"],
-        operations: ["step(dt)", "_build()", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()"],
+        operations: ["step(dt)", "_build()", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
       },
       {
         name: "Agent", file: "web/arail/sims/town.js", kind: "class", extends: "Person", role: "A resident or visitor.",
@@ -306,7 +306,7 @@ export const TRANSPORT = [
       {
         name: "Transit", file: "web/arail/core/transit.js", kind: "class", role: "world.transit: the bus lines and their buses.",
         attributes: ["lines: Map — circuit, visits, headway, speed, problems", "buses: LineBus[]"],
-        operations: ["sync()", "step(dt)", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)"],
+        operations: ["sync()", "step(dt)", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses", "card(hit) — destination, next stop, people on board"],
       },
       {
         name: "LineBus", file: "web/arail/core/transit.js", kind: "class", role: "A bus of a line (looks like a Vehicle to the passengers).",
@@ -372,7 +372,7 @@ export const TRANSPORT = [
     classes: [{
       name: "TrafficSimulation", file: "web/arail/sims/traffic.js", kind: "class", extends: "Simulation", role: "Cars on the road network.",
       attributes: ["cars: object[] — {path, dest, s, v, waited}"],
-      operations: ["step(dt)", "targetCount(net)", "roadUsers() — positions for the buses", "_enter(net)", "_route(net, from, to)", "_car(net, route, dest, s0)", "_drive(car, dt, users, net)"],
+      operations: ["step(dt)", "targetCount(net)", "roadUsers() — positions for the buses", "_enter(net)", "_route(net, from, to)", "_car(net, route, dest, s0)", "_drive(car, dt, users, net)", "pickables(view) — the cars", "card(hit)"],
     }],
     relations: [
       { from: "TrafficSimulation", to: "RoadNetwork", kind: "uses", label: "routes" },

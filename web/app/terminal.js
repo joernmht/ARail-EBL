@@ -1,7 +1,8 @@
 // Terminal panel: the container terminal of the layout (its visits, containers, crane jobs and model
 // wagons) and picking containers and their targets on the canvas, in the camera view and the flyover.
 // Every canvas action is also in the panel: choose a container in the list and a place in "Move to".
-import { applyH, CARRIER_TYPES, FONT, OVERLAY, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
+import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
+import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -778,33 +779,6 @@ export class TerminalPanel {
   drawOverlay(ctx, view) {
     const app = this.app, c = app.canvas;
     if (app.activeTab !== "terminal" || !app.flyover.active || document.activeElement !== c || !this.keyAim) return;
-    const px = view.px, x = c.width / 2, y = c.height / 2, r = 11 * px;
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.lineCap = "round";
-    for (const [colour, w] of [["rgba(255,255,255,0.9)", 5], [OVERLAY.selection, 2.5]]) {
-      ctx.strokeStyle = colour;
-      ctx.lineWidth = w * px;
-      ctx.beginPath();
-      ctx.moveTo(x - r, y);
-      ctx.lineTo(x - 4 * px, y);
-      ctx.moveTo(x + 4 * px, y);
-      ctx.lineTo(x + r, y);
-      ctx.moveTo(x, y - r);
-      ctx.lineTo(x, y - 4 * px);
-      ctx.moveTo(x, y + 4 * px);
-      ctx.lineTo(x, y + r);
-      ctx.stroke();
-    }
-    ctx.font = `700 ${11 * px}px ${FONT}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    const text = this.stage === "target" ? "Enter: move here" : "Enter: pick";
-    const w = ctx.measureText(text).width + 10 * px;
-    ctx.fillStyle = OVERLAY.label;
-    ctx.fillRect(x - w / 2, y + r + 5 * px, w, 17 * px);
-    ctx.fillStyle = OVERLAY.labelText;
-    ctx.fillText(text, x, y + r + 8 * px);
-    ctx.restore();
+    aimCross(ctx, view, this.stage === "target" ? "Enter: move here" : "Enter: pick");
   }
 }

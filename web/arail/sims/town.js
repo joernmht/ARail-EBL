@@ -20,7 +20,7 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, moodColor } from "../core/colors.js";
-import { createRng, dist2, hashKey, polylineAt } from "../core/math.js";
+import { createRng, dist2, hashKey, polylineAt, rectAround } from "../core/math.js";
 import { DAY_MINUTES, formatTime, wrapMinutes } from "../core/clock.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
@@ -36,6 +36,9 @@ export const PURPOSE_COLOURS = {
 };
 
 export const PURPOSE_LABELS = { work: "to work", school: "to school", shopping: "shopping", home: "home", train: "to the train" };
+
+/** The roles of the town's people, in words. */
+export const ROLE_LABELS = { worker: "works in the town", commuter: "commuter, works elsewhere", pupil: "pupil", senior: "senior", visitor: "visitor, comes by train" };
 
 /** Opening hours (minutes) of the destinations. */
 const OPEN = { shop: [7 * 60, 21 * 60], school: [7 * 60 + 30, 15 * 60 + 30] };
@@ -909,6 +912,57 @@ export class TownSimulation extends Simulation {
         colour: mode === "mood" ? moodColor(0.85) : a.colour,
       });
     }
+  }
+
+  /* ================================================================ pointing at people */
+
+  /** The people walking in the town as pickables (core/pick.js); those at the stops are the passengers'. */
+  pickables(view) {
+    if (!this.enabled) return [];
+    const out = [];
+    for (const a of this.agents) {
+      if (a.state !== "walking" || !a.pos || hiddenAt(a.path, a.s)) continue;
+      out.push({ key: `resident:${a.id}`, kind: "person", label: a.name, outline: rectAround(a.pos, view.m(0.7), view.m(0.7)), z0: 0, z1: view.m(1.8), owner: this, ref: a });
+    }
+    return out;
+  }
+
+  card(hit) {
+    return { ...this.describeAgent(hit.ref), actions: [{ id: "follow", label: "Follow" }] };
+  }
+
+  /**
+   * The card of a person of the town: where it lives and works, what it is doing, its plan for today.
+   * @returns {import("../core/pick.js").Card | null} null for agents of other simulations
+   */
+  describeAgent(a) {
+    if (!this.agents.includes(a)) return null;
+    const name = (id) => (id ? this.world.getObject(id)?.name ?? id : null);
+    const home = a.house ? name(a.house.building) : a.home?.kind === "station" ? `beyond the layout (by train)` : "away (by car)";
+    const dest = a.trip?.station ? "the train" : name(a.trip?.dest);
+    const doing = {
+      inside: `In ${name(a.inside) ?? "a building"}`,
+      walking: `Walking ${PURPOSE_LABELS[a.purpose] ?? ""}${dest && a.purpose !== "train" ? ` (${dest})` : ""}`.trim(),
+      stop: `At a stop ${PURPOSE_LABELS[a.purpose] ?? ""}`.trim(),
+      riding: `On bus ${a.vehicle?.line ?? ""}`.trim(),
+      away: "Away from the layout",
+    }[a.state] || a.state;
+    const rows = [["Lives", home]];
+    if (a.job) rows.push(["Works at", name(a.job)]);
+    if (a.school) rows.push(["School", name(a.school)]);
+    const today = (a.plan || []).map((step, i) => {
+      const to = step.to.kind === "building" ? ` (${name(step.to.id)})` : step.to.kind === "shop" ? " (the nearest shop)" : "";
+      return `${i < a.next ? "✓ " : ""}${formatTime(step.at)} ${PURPOSE_LABELS[step.purpose] ?? step.purpose}${to}`;
+    });
+    const related = [a.house?.building, a.trip?.dest].filter((id) => id && this.world.getObject(id));
+    return {
+      title: a.name,
+      subtitle: `Town · ${ROLE_LABELS[a.role] ?? a.role}`,
+      status: doing,
+      rows,
+      sections: today.length ? [{ title: "Today", lines: today }] : [],
+      related,
+    };
   }
 
   /** Counts for the panel: where people are and what they are doing. */

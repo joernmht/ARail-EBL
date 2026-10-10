@@ -261,6 +261,18 @@ export class Road extends LayoutObject {
     return g ? polylineAt(g.points, g.length / 2, g.lengths).point : null;
   }
 
+  /** The card: the kind of street, its length and speed limit. */
+  card() {
+    const card = super.card();
+    const g = this.geometry;
+    if (!g) return card;
+    card.rows.push(["Kind", ROAD_KINDS[g.kind]?.label ?? g.kind]);
+    card.rows.push(["Length", `${Math.round(this.meters(g.length))} m`]);
+    card.rows.push(["Width", `${Math.round(this.meters(g.width) * 10) / 10} m${g.sidewalk > 0 ? `, sidewalks ${Math.round(this.meters(g.sidewalk) * 10) / 10} m` : ""}`]);
+    if (g.car) card.rows.push(["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
+    return card;
+  }
+
   /**
    * What the road network needs to know (see core/network.js).
    * @returns {{points: number[][], kind: string, car: boolean, walk: boolean, width: number, sidewalk: number,

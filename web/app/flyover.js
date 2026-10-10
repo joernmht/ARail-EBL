@@ -65,7 +65,7 @@ export class Flyover {
     if (this._resumeVideo) src.el.pause();
     c.classList.add("flyover");
     c.tabIndex = 0;
-    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle.");
+    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle; elsewhere Enter shows the info card of what is in the middle.");
     c.hidden = false;
     // a message on the empty stage (no image yet) comes back when the flyover is left
     this._emptyShown = !$("#emptyStage").hidden;
@@ -357,6 +357,14 @@ export class Flyover {
       this.app.terminal.pickAt([W / 2, H / 2], { keyboard: true });
       return true;
     }
+    // the info card of what is at the cross in the middle (outside Build and Terminal)
+    if (e.key === "Enter" && !placing && this.app.activeTab !== "build" && t === c) {
+      if (e.repeat) return true;
+      if (this.anim) this.cam.set(this.anim.to);
+      this.anim = null;
+      this.app.inspector.inspectCentre();
+      return true;
+    }
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
     if (e.key === "Enter") {
       if (!placing || t !== c) return false;
@@ -393,6 +401,7 @@ export class Flyover {
     this.move(op, 160);
     if (placing) this._keyAim = true;
     if (terminal) this.app.terminal.keyAim = true;
+    this.app.inspector.keyAim = true;
     return true;
   }
 
@@ -451,6 +460,7 @@ export class Flyover {
     c.addEventListener("pointerup", (e) => this.active && this._up(e, false));
     c.addEventListener("pointercancel", (e) => this.active && this._up(e, true));
     c.addEventListener("pointerleave", () => this.active && !this.pointers.size && !this._keyAim && this.app.editor.hover(null));
+    c.addEventListener("pointerdown", () => this.active && this.app.inspector.clearHover());
     // reached with Tab while placing: the cross in the middle shows where Enter puts the point
     c.addEventListener("focus", () => {
       if (this.active && this.app.activeTab === "build" && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
@@ -521,9 +531,10 @@ export class Flyover {
     const p = this._point(e);
     const prev = this.pointers.get(e.pointerId);
     if (!prev) {
-      // hovering: where the next point would go (the mouse takes over from the keyboard)
+      // hovering: where the next point would go (the mouse takes over from the keyboard), the tooltip
       this._keyAim = false;
       if (app.activeTab === "build" && ed.placing) ed.hover(this.groundPoint(p[0], p[1]), e);
+      if (e.pointerType === "mouse") app.inspector.hoverAt(p);
       return;
     }
     this.pointers.set(e.pointerId, p);
@@ -588,6 +599,7 @@ export class Flyover {
       if (q) ed.placeAt(q, e);
     } else if (!g.moved && app.activeTab === "build" && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
     else if (!g.moved && app.activeTab === "terminal" && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
+    else if (!g.moved && g.button === 0 && !g.shift) app.inspector.tapAt(p, { touch: e.pointerType !== "mouse" }); // the info card
   }
 
   /** Centre, spread and angle of the two fingers on the canvas. */
@@ -645,6 +657,7 @@ export class Flyover {
     app.editor.drawOverlay(ctx, view);
     app.terminal.drawOverlay(ctx, view);
     app.lastView = view;
+    app.inspector.drawOverlay(ctx, view);
   }
 
   /** Sky and floor of the lab, with the horizon where the camera's pitch puts it. */

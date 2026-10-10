@@ -154,6 +154,30 @@ export class LayoutObject {
     if (Object.keys(patch).length) this.set(patch);
   }
 
+  /**
+   * Height (layout mm) up to which the object is pointed at in the image (walls, masts, roofs; see
+   * core/pick.js). 0: on the ground only.
+   */
+  pickHeight() {
+    return 0;
+  }
+
+  /**
+   * What the info card says about the object (see core/pick.js): its name, its type and what
+   * its parameters say. Types add what they know (a building its residents, a platform its
+   * tracks); simulations add what they know about it (`describeObject`), e.g. the next trains.
+   * @returns {import("./pick.js").Card}
+   */
+  card() {
+    const cls = /** @type {typeof LayoutObject} */ (this.constructor);
+    const rows = [];
+    const layers = this.world.layers?.() || [];
+    // the module (layer) it comes from, when it is not the base
+    const layer = layers.length ? layers.find((l) => l.id === this.world.layerOf(this.id)) : null;
+    if (layer) rows.push(["Module", layer.name]);
+    return { title: this.spec.name || cls.label, subtitle: this.spec.name ? cls.label : this.id, rows, text: cls.description || "" };
+  }
+
   /** Stop areas (passenger waiting areas with vehicle docks) of this object. */
   stopAreas() {
     return [];

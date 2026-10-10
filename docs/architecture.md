@@ -24,7 +24,7 @@ World.draw(View): objects → timetable vehicles → line buses → control-syst
    → sorted display list → canvas
 ```
 
-The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout plane), so placing, selecting and dragging are the same on the camera image and in the flyover.
+The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout plane), so placing, selecting and dragging are the same on the camera image and in the flyover. Tooltips and info cards (`app/inspect.js`) use the view of the last frame drawn: `World.pick` projects the box of every person and vehicle and finds what is at the pixel, else a layout object (`core/pick.js`).
 
 With rolling-stock markers (`markers.rolling`, model wagons of the [container terminal](container-terminal.md)) the camera mode reads a second marker family in the same pass:
 
@@ -65,6 +65,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/simple.js` | the simple view (Map, 2.5D): `SimpleView` draws objects as flat footprints and moving things as plain blocks |
 | `core/colors.js` | the corporate-design colours (`CD`, `CD_LIGHT`, `OVERLAY`, `FONT`), the palette of the built-in objects, colour helpers |
 | `core/registry.js`, `core/events.js`, `core/simulation.js` | extension points, event bus, base class of simulations |
+| `core/pick.js` | pointing at things: what is under an image pixel (what moves, from the managers' and simulations' `pickables`, found in its projected box; else a layout object, also on the walls of tall ones) and its info card (`card`) |
 | `sims/passengers.js` | the passenger simulation at stops; hand-over of other simulations' people; boards |
 | `sims/town.js` | the town: residents' daily routines on foot, by bus and by train |
 | `sims/traffic.js` | cars on the road network |
@@ -88,6 +89,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `journeys/simulation.js` | `JourneysSimulation`: travellers following their plans through the passenger hand-over, missed and cancelled trains, the log and the results, validation |
 | `app/app.js`, `app/ui.js` | sources, frame loop, HUD, recording; small DOM helpers |
 | `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the View (with the modules), Settings (simulation, control system) and Disruptions panels |
+| `app/inspect.js` | hover and click: the tooltip of what the mouse points at, the info card of what was tapped, their outlines on the stage, Enter at the flyover's cross |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/survey.js` | Build → Marker map → Survey a video |
 | `app/terminal.js` | the Terminal panel and picking containers and places on the stage |
@@ -222,6 +224,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/simple.test.js`, `station.test.js` | the simple view (convex hulls, flat objects, blocks); the station building and the underpass by day and night |
 | `tests/js/label-sheets.test.js` | label sheets on A4: one tag per container spot, centring, skipping and shifting, custom sheets |
 | `tests/js/architecture.test.js` | the architecture page against the code: every file in a package and a model, the packages' dependencies are the imports, classes, attributes and operations with their parameters, the code named in activities and their structure, the event catalog, the registry, the settings of the simulations, the data flow |
+| `tests/js/pick.test.js` | pointing at things: people, trains, buses and cars of the lab example found where they are seen, small objects before large ones, buildings on their walls, table modules at their edges, every card with a title and what the simulations add, keys that follow, the terminal's containers |
 | `tests/js/layers.test.js` | layers (modules): composing and splitting layouts, simulation patches, exclusive layers and layouts of their own, switching modules, validation, the modules of the lab example |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
 | `tests/python/test_bridge.py`, `test_calibration.py`, `test_synthetic.py` | bridge protocol, adapters and WebSocket server end to end; calibration; the synthetic scene |
@@ -237,6 +240,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/e2e/journeys.spec.js`, `modules.spec.js` | the Journeys tab: making travellers, choosing a plan, following a traveller, the results, adding journeys to another layout; the modules in the View panel: switching them, new objects in the chosen module, the terminal opening alone and back, the module links |
 | `tests/e2e/simple.spec.js` | Map and 2.5D: the simple view from above and tilted, Build in the map |
 | `tests/e2e/architecture.spec.js` | the architecture page: every diagram drawn without errors, the drop-downs, links to models, a phone, accessibility in light and dark mode |
+| `tests/e2e/inspect.spec.js` | hover and click: the tooltip, the card of a train and a building, Escape, Build keeping its taps, the flyover's stop card, Enter at the cross, accessibility of the tooltip and the card |
 | `tests/e2e/keyboard.spec.js` | keyboard only: switching panels, flying, placing an object in the flyover, setting the time; visible focus on the file buttons; stage buttons not hidden by the placing bar |
 
 The JavaScript tests use images and a short video generated by `python -m arail_tools.fixtures` (`npm run fixtures`: synthetic scene rendered with OpenCV, marker strips, the lab photo, `synthetic-survey.webm`). The browser tests start their own server; `ARAIL_PORT` chooses its port (default 8123).

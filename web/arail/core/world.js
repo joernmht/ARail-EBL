@@ -25,6 +25,7 @@ import { Clock } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { drawFlat } from "./simple.js";
+import { cardOf, findPickable, pickAt } from "./pick.js";
 
 export class World {
   /**
@@ -306,6 +307,37 @@ export class World {
       for (const o of this.objects) o.update(dt);
       for (const s of this.simulations) s.step(dt);
     }
+  }
+
+  /* ---------------------------------------------------------------- pointing at things */
+
+  /**
+   * What is at an image pixel of a view (core/pick.js): a person, vehicle or other thing that moves
+   * (the nearest), else a layout object, else null.
+   * @param {import("./view.js").View} view the view of the frame drawn last
+   * @param {number[]} pixel [u, v] image px
+   * @param {{tolerance?: number, ground?: number[] | null}} [options] tolerance in CSS px
+   * @returns {import("./pick.js").Pickable | null}
+   */
+  pick(view, pixel, options = {}) {
+    return pickAt(this, view, pixel, options);
+  }
+
+  /**
+   * The info card of a pickable: its owner's description, and for a layout object what the
+   * simulations know about it.
+   * @param {import("./pick.js").Pickable} hit
+   * @returns {import("./pick.js").Card}
+   */
+  card(hit) {
+    const card = cardOf(hit);
+    if (hit.kind === "object") for (const s of this.simulations) if (s.enabled !== false) s.describeObject?.(hit.ref, card);
+    return card;
+  }
+
+  /** The pickable with this key now (things move on), or null when it is gone. */
+  findPickable(view, key) {
+    return findPickable(this, view, key);
   }
 
   /** Set the time of day ("HH:MM" or minutes); simulations re-place their people (`clock.set`). */

@@ -48,8 +48,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations, the step, the clock, layers, people, the registry and the event bus.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/clock.js", "web/arail/core/people.js"],
+    summary: "The loaded layout: objects, simulations, the step, the clock, layers, people, the registry, the event bus and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/pick.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -131,8 +131,8 @@ export const PACKAGES = [
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
-    summary: "The app: sources, frame loop, HUD, the panels (Build, View, the modules' tabs, Disruptions, Settings), the flyover.",
-    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
+    summary: "The app: sources, frame loop, HUD, the panels (Build, View, the modules' tabs, Disruptions, Settings), the flyover, tooltips and info cards.",
+    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {

@@ -56,6 +56,7 @@ export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
+export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, projectedHull } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";

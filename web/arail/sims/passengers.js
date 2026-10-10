@@ -19,6 +19,7 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { mix, moodColor, OVERLAY } from "../core/colors.js";
+import { rectAround } from "../core/math.js";
 
 /** Colour of people who are not agents of another simulation, when people show their trip purpose. */
 export const NEUTRAL_PERSON = "#e3e3e3";
@@ -79,6 +80,9 @@ export function crowdForces(people) {
   }
   return { neighbours, push };
 }
+
+/** Ids of the people at the stops, given when they are first pointed at (core/pick.js). */
+let nextPersonUid = 1;
 
 class Person {
   constructor(rng, pos, target, state, mood, dock) {
@@ -553,6 +557,68 @@ export class PassengerSimulation extends Simulation {
       p.mood = Math.min(1, Math.max(0, p.mood));
     });
     if (gone.size) c.people = c.people.filter((p) => !gone.has(p));
+  }
+
+  /* ---------------------------------------------------------------- pointing at people and stops */
+
+  /** The people at the stops as pickables (core/pick.js). */
+  pickables(view) {
+    if (!this.enabled) return [];
+    const out = [];
+    for (const c of this.crowds.values()) {
+      const a = c.area;
+      if (!a.owner?.geometry) continue;
+      for (const p of c.visible()) {
+        p.uid ??= nextPersonUid++;
+        const at = a.toLayout(p.pos[0], p.pos[1]);
+        out.push({ key: `passenger:${p.uid}`, kind: "person", label: p.agent?.name || "Passenger", outline: rectAround(at, view.m(0.7), view.m(0.7)), z0: 0, z1: view.m(p.height), owner: this, ref: { person: p, area: a } });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The card of a person at a stop: a person of another simulation (a resident, a traveller) as
+   * that one describes it (`describeAgent`), and what it does here: waiting, for what, how long,
+   * its mood.
+   */
+  card(hit) {
+    const { person: p, area } = hit.ref;
+    let base = null;
+    if (p.agent) for (const s of this.world.simulations) if (s !== this && s.enabled !== false && (base = s.describeAgent?.(p.agent))) break;
+    const owner = area.owner, dock = p.dock ? area.docks.find((d) => d.id === p.dock) : null;
+    const card = { title: hit.label, subtitle: `Passenger · ${owner?.name ?? "stop"}`, ...base };
+    card.rows = [...(base?.rows || [])];
+    const doing = { arriving: "Walking onto the stop", waiting: "Waiting", boarding: "Boarding", onboard: "Getting off", leaving: "Leaving the stop" }[p.state] || p.state;
+    card.status = base ? `${doing} · ${owner?.name ?? "stop"}` : doing;
+    const line = p.line ? this.world.transit?.lines?.get?.(p.line) : null;
+    const noun = area.kind === "bus" ? "bus" : "train";
+    const wants = line ? `Bus ${line.label}` : p.line || (dock ? `the ${noun}${dock.label ? ` at ${dock.label}` : ""}` : p.state === "waiting" || p.state === "arriving" ? `the next ${noun}` : null);
+    if (wants) card.rows.push(["Waiting for", wants]);
+    if (p.state === "waiting") card.rows.push(["Waited", `${Math.round((p.wait * this.world.clock.factor) / 60)} min`]);
+    card.rows.push(["Mood", `${Math.round(p.mood * 100)} %`]);
+    card.tone = p.mood < 0.35 ? "bad" : p.mood < 0.6 ? "warn" : "ok";
+    card.related = [...(base?.related || []), ...(owner?.id ? [owner.id] : [])];
+    return card;
+  }
+
+  /** At a stop: the people waiting, their mood and the next vehicles. */
+  describeObject(o, card) {
+    const areas = this.world.stopAreas().filter((a) => a.owner === o);
+    if (!areas.length) return;
+    let count = 0, mood = 0;
+    for (const a of areas) {
+      for (const p of this.crowds.get(a.id)?.visible() || []) {
+        count++;
+        mood += p.mood;
+      }
+    }
+    card.rows.push(["Waiting", count ? `${count} ${count === 1 ? "person" : "people"} · mood ${Math.round((mood / count) * 100)} %` : "nobody"]);
+    const next = boardStatus(this.world, areas, 4);
+    if (next.length) {
+      card.status ||= next[0];
+      card.sections = [...(card.sections || []), { title: "Next", lines: next }];
+    }
   }
 
   /* ---------------------------------------------------------------- drawing */

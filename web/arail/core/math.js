@@ -287,6 +287,30 @@ export function pointInPolygon(p, poly) {
   return inside;
 }
 
+/**
+ * A rectangle on the layout (mm) around a point: e.g. the outline of a person or a car.
+ * @param {number[]} c centre
+ * @param {number} length along `dir` (mm)
+ * @param {number} width across (mm)
+ * @param {number[]} [dir] unit direction
+ */
+export function rectAround(c, length, width, dir = [1, 0]) {
+  const l = length / 2, w = width / 2, n = [-dir[1], dir[0]];
+  return [[-l, -w], [l, -w], [l, w], [-l, w]].map(([a, b]) => [c[0] + dir[0] * a + n[0] * b, c[1] + dir[1] * a + n[1] * b]);
+}
+
+/**
+ * A rectangle between a vehicle's rear and front (layout mm), `width` mm wide.
+ * @param {number[]} rear
+ * @param {number[]} front
+ * @param {number} width
+ */
+export function rectBetween(rear, front, width) {
+  const dx = front[0] - rear[0], dy = front[1] - rear[1], l = Math.hypot(dx, dy) || 1;
+  const dir = [dx / l, dy / l];
+  return rectAround([(rear[0] + front[0]) / 2, (rear[1] + front[1]) / 2], l, width, dir);
+}
+
 /** True if the (closed) quadrilateral/polygon is strictly convex. */
 export function isConvex(poly) {
   let sign = 0;

@@ -35,6 +35,16 @@ export class Track extends LayoutObject {
     return { points: pts, lengths, total: lengths[lengths.length - 1] };
   }
 
+  /** The card: its name in the control system and its length. */
+  card() {
+    const card = super.card();
+    const g = this.geometry;
+    card.rows.push(["Track in the control system", this.spec.track_id || "–"]);
+    if (g) card.rows.push(["Length", `${Math.round(this.meters(g.total))} m (${Math.round(g.total)} mm on the model)`]);
+    card.rows.push(["Real", this.spec.virtual ? "no, virtual" : "yes, a track of the layout"]);
+    return card;
+  }
+
   /** Layout point and direction at a control-system offset (mm). */
   at(offsetMM) {
     const g = this.geometry;

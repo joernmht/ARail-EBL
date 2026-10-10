@@ -12,7 +12,7 @@
  * - track only (occupancy): `track` matching a platform's `track_left`/`track_right`.
  * @module arail/core/trains
  */
-import { toRad } from "./math.js";
+import { rectAround, rectBetween, toRad } from "./math.js";
 import { OVERLAY, PALETTE, shade } from "./colors.js";
 
 export const FEED_PROTOCOL = "arail-feed/1";
@@ -206,6 +206,52 @@ export class TrainRegistry {
         t.dockId = null;
       }
     }
+  }
+
+  /** The outline (layout mm) of a train where it is drawn, or null. */
+  _outline(t, widthMM) {
+    if (!t.pos) return null;
+    const lenMM = t.length ?? 250;
+    if (t.path?.track.geometry && t.offset != null) {
+      const a = t.offset - (t.direction >= 0 ? lenMM : 0);
+      return rectBetween(t.path.track.at(a).point, t.path.track.at(a + lenMM).point, widthMM);
+    }
+    if (t.heading != null) return rectBetween([t.pos[0] - Math.cos(t.heading) * lenMM, t.pos[1] - Math.sin(t.heading) * lenMM], t.pos, widthMM);
+    return rectAround(t.pos, widthMM * 1.5, widthMM * 1.5);
+  }
+
+  /** The trains of the control system as pickables (core/pick.js), as long as they are drawn. */
+  pickables(view) {
+    const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
+    if (!this.active || style === "none") return [];
+    const out = [];
+    for (const t of this.trains.values()) {
+      if (style === "solid" && t.dockId) continue; // the services' vehicle at the platform stands for it
+      const outline = this._outline(t, view.m(3.2));
+      if (outline) out.push({ key: `feed:${t.id}`, kind: "train", label: t.name, outline, z0: 0, z1: view.m(3.9), owner: this, ref: t });
+    }
+    return out;
+  }
+
+  /** The card of a train of the control system: where it is reported, its speed, its platform. */
+  card(hit) {
+    const t = hit.ref, scale = this.world.scale;
+    const speed = this._speed(t), kmh = (speed * scale * 3.6) / 1000;
+    const dock = t.dockId ? this.world.services.docks.get(t.dockId)?.dock : null;
+    const where = t.track != null ? `track ${t.track}${t.offset != null ? ` at ${Math.round(t.offset)} mm` : ""}` : t.pos ? `x ${Math.round(t.pos[0])}, y ${Math.round(t.pos[1])} mm` : "–";
+    return {
+      title: t.name,
+      subtitle: `Train of the control system${this.source ? ` (${this.source})` : ""}`,
+      status: dock ? `At ${dock.area.owner?.name ?? "the platform"}${dock.label ? `, ${dock.label}` : ""}` : speed < this.stopSpeed ? "Standing" : "Running",
+      rows: [
+        ["Train", t.id],
+        ["Reported at", where],
+        ["Speed", `${Math.round(speed)} mm/s on the model · ${Math.round(kmh)} km/h in the prototype`],
+        ["Length", `${Math.round(t.length ?? 250)} mm`],
+        ["Last report", `${Math.max(0, this.clock - t.updated).toFixed(1)} s ago`],
+      ],
+      related: dock?.area.owner ? [dock.area.owner.id] : t.path?.track ? [t.path.track.id] : [],
+    };
   }
 
   draw(view) {

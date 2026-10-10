@@ -11,7 +11,7 @@ export const JOURNEYS = [{
     {
       name: "JourneysSimulation", file: "web/arail/journeys/simulation.js", kind: "class", extends: "Simulation", role: "The travellers; as the services' planner it also runs the trains.",
       attributes: ["travellers: Traveller[]", "planner: Planner", "selected: string | null — followed in the panel", "active: boolean — the layout's first journeys", "runsTrains: boolean — the services' planner"],
-      operations: ["rail() — the operations' trips if they run, else its timetable", "plan(opts) — travel plans", "addTraveller(opts)", "status(t) — what it is doing, planned and expected arrival", "results()", "step(dt)", "claims(dock)", "statusLines(area) — boards", "_stepTraveller(t, now, dt)", "_boarded(e)", "_exited(e)", "_nextTrain(t, leg, after)"],
+      operations: ["rail() — the operations' trips if they run, else its timetable", "plan(opts) — travel plans", "addTraveller(opts)", "status(t) — what it is doing, planned and expected arrival", "results()", "step(dt)", "claims(dock)", "statusLines(area) — boards", "_stepTraveller(t, now, dt)", "_boarded(e)", "_exited(e)", "_nextTrain(t, leg, after)", "pickables(view) — travellers walking and at their start", "describeAgent(t) — status, plan, arrival"],
     },
     {
       name: "Traveller", file: "web/arail/journeys/simulation.js", kind: "class", extends: "Person", role: "One traveller and its progress.",

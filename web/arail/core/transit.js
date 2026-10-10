@@ -21,7 +21,7 @@
  * fills with the people on board).
  * @module arail/core/transit
  */
-import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, sub2, unit2 } from "./math.js";
+import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
 import { joinPaths } from "./network.js";
 import { CD, PALETTE, grey, mix, shade } from "./colors.js";
 
@@ -1056,6 +1056,46 @@ export class Transit {
     if (!bus._arrivingSent) this._emit("vehicle.arriving", bus, v.dock);
     bus._arrivingSent = false;
     this._emit("vehicle.arrived", bus, v.dock);
+  }
+
+  /* ---------------------------------------------------------------- pointing at buses */
+
+  /** The buses on the road as pickables (core/pick.js). */
+  pickables(view) {
+    const out = [];
+    for (const bus of this.buses) {
+      const line = this.lines.get(bus.lineId);
+      if (!line?.ok) continue;
+      const { front, rear } = this._pose(bus, line);
+      out.push({ key: `bus:${bus.id}`, kind: "bus", label: `Bus ${bus.line}`, outline: rectBetween(rear, front, this.mm(2.55)), z0: this.mm(0.3), z1: this.mm(3.1), owner: this, ref: bus });
+    }
+    return out;
+  }
+
+  /** The card of a line bus: where it goes, its next stop, the people on board, its delay. */
+  card(hit) {
+    const bus = hit.ref, line = this.lines.get(bus.lineId);
+    const next = line?.visits[bus.next];
+    const atStop = bus.phase === "dwelling" || bus.phase === "arriving";
+    const doing = bus.outOfService ? "Not in service"
+      : bus.waiting ? `Waiting at ${next?.name ?? "the terminus"}`
+        : atStop ? `${bus.phase === "arriving" ? "Arriving at" : "At"} ${next?.name ?? "a stop"}`
+          : next ? `Next stop: ${next.name}` : "Driving";
+    const delay = Math.round(bus.delayMin || 0);
+    return {
+      title: `Bus ${bus.line}`,
+      subtitle: `Line bus${bus.destination && !bus.outOfService ? ` · ${towards(bus.destination, line?.mode === "loop")}` : ""}`,
+      status: doing,
+      tone: delay >= 5 ? "bad" : delay >= 1 ? "warn" : "ok",
+      rows: [
+        ["Line", line?.name || bus.line],
+        ["People on board", bus.riders.length],
+        ["Speed", `${Math.round(bus.v * 3.6)} km/h`],
+        ["Delay", delay >= 1 ? `+${delay} min` : "on time"],
+      ],
+      sections: line ? [{ title: "Stops", lines: line.visits.map((v) => v.name).filter((n, i, a) => a.indexOf(n) === i) }] : [],
+      related: line ? [line.id] : [],
+    };
   }
 
   /* ---------------------------------------------------------------- drawing */

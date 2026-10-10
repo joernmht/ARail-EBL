@@ -20,7 +20,7 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, CD_LIGHT, mix, OVERLAY } from "../core/colors.js";
-import { hashKey, polylineAt } from "../core/math.js";
+import { hashKey, polylineAt, rectAround } from "../core/math.js";
 import { hiddenAt } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { drawPerson } from "../sims/passengers.js";
@@ -880,6 +880,48 @@ export class JourneysSimulation extends Simulation {
       this._takeOff(t);
       t.reset(day);
     }
+  }
+
+  /* ---------------------------------------------------------------- pointing at travellers */
+
+  /**
+   * The travellers walking and those at their start as pickables (core/pick.js); at a stop they are
+   * the passenger simulation's people, on a bus or a train they are out of sight.
+   */
+  pickables(view) {
+    if (!this.active) return [];
+    const out = [];
+    for (const t of this.travellers) {
+      let at = null;
+      if (t.state === "walking" && t.pos && !hiddenAt(t.path, t.s)) at = t.pos;
+      else if (t.state === "home" || (t.state === "arrived" && this.selected === t.id)) at = this.positionOf(t.id);
+      if (at) out.push({ key: `traveller:${t.id}`, kind: "person", label: t.name, outline: rectAround(at, view.m(0.9), view.m(0.9)), z0: 0, z1: view.m(1.8), owner: this, ref: t });
+    }
+    return out;
+  }
+
+  card(hit) {
+    return this.describeAgent(hit.ref);
+  }
+
+  /** The card of a traveller: what it does, its plan, when it arrives. */
+  describeAgent(t) {
+    if (!this.travellers.includes(t)) return null;
+    const st = this.status(t);
+    const legs = (t.plan.legs || []).map((leg) => leg.type === "walk"
+      ? `${hhmm(t.at(leg.dep))} walk to ${leg.toName} (${leg.min} min)`
+      : `${hhmm(t.at(leg.dep))} ${leg.name} ${leg.fromName} → ${leg.toName}`);
+    const rows = [["Leaves", hhmm(t.at(t.leave))], ["Planned arrival", hhmm(st.planned)]];
+    if (st.expected != null && st.expected !== st.planned) rows.push(["Expected arrival", hhmm(st.expected)]);
+    return {
+      title: t.name,
+      subtitle: `Traveller ${t.number} · journeys`,
+      status: st.text,
+      tone: st.tone,
+      rows,
+      sections: legs.length ? [{ title: "Travel plan", lines: legs }] : [],
+      actions: [{ id: "follow", label: "Follow" }],
+    };
   }
 
   /* ---------------------------------------------------------------- drawing */

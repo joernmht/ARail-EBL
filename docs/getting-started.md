@@ -86,6 +86,16 @@ Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop
 
 People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot = annoyed. People of the [town simulation](day-and-night.md#colours) are coloured by the purpose of their trip. Buildings look like a white architectural model in greys; at night their windows light up when people are inside.
 
+### Pointing at things
+
+Everything on the stage can be pointed at, over the camera image and in the flyover: people, trains, buses, cars, the staff's vans and drones, containers and wagons, buildings, stops, streets, tracks, signals and the other assets.
+
+- **Hover** with the mouse: a tooltip names it, says what it is and what it is doing (*S. Fink · Town · commuter · Walking to the train*, *RE 1 · Train · timetable · Boarding · Platform 1, Track 2*).
+- **Tap or click** it (outside Build and Terminal, where taps select and pick): the **info card** opens at the top left of the stage. It says more, from every part that knows something about it, and stays up to date: a building its use, floors, the people it holds and how many are inside now; a stop the people waiting, their mood, its bus lines and the next departures; a train its stop, doors and delay (with rail operations its trip, units and driver); a person where it lives and works, what it is waiting for, its mood and its plan for today; an asset of the infrastructure its condition as it is known, its age and its interlocking. What it relates to is outlined too (the stop of a train, the interlocking of a signal, the bus lines of a stop). **Follow** lets the flyover's camera follow a person.
+- **Keyboard**: in the flyover, move the view so that the cross in the middle is on it and press **Enter**; the card is read out to screen readers and the arrow keys go on moving the view. **Esc** closes the card.
+
+In Build the tooltip shows too, and a tap selects the object for editing as before.
+
 ## Panels
 
 The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure**, **Journeys**, **Disruptions**) and **Settings**.
@@ -206,11 +216,11 @@ Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` 
 | F | flyover on/off |
 | S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
-| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross |
+| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross; elsewhere: the info card of what is at the cross |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
 | Delete, Backspace | delete the selected object (Build panel) |
 | Alt (Option) | hold while placing or dragging: no snapping to the grid or to streets |
-| Esc | cancel placing or a pick in the Terminal panel, or deselect |
+| Esc | cancel placing or a pick in the Terminal panel, close the info card, or deselect |
 | ← → | switch panels (when a panel tab has focus) |
 
 ## URL options

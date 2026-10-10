@@ -33,6 +33,15 @@ export class BusTerminal extends LayoutObject {
     { key: "shelter", label: "Shelters", type: "boolean", default: true },
   ];
 
+  /** The card: the bus lines that stop here. */
+  card() {
+    const card = super.card();
+    const lines = linesServing(this.world, this.id).map((id) => this.world.getObject(id)).filter(Boolean);
+    card.rows.push(["Bus lines", lines.length ? lines.map((o) => o.lineLabel?.() ?? o.name).join(", ") : "none"]);
+    card.related = lines.map((o) => o.id);
+    return card;
+  }
+
   computeGeometry() {
     const c = resolvePoint(this.world.map, this.spec.position);
     if (!c) return null;

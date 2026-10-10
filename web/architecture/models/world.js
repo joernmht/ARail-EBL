@@ -13,12 +13,12 @@ export const WORLD = [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
         attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
-        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)"],
+        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations add", "findPickable(view, key) — the same thing now"],
       },
       {
         name: "Simulation", file: "web/arail/core/simulation.js", kind: "class", stereotype: "base class", role: "Base of all simulations: one per entry of the layout's simulations.",
         attributes: ["type: string — static, the key in the registry", "params: object[] — static, its settings", "world: World", "config: object — defaults and the entry", "enabled: boolean"],
-        operations: ["step(dt)", "draw(view)", "stats(areaId)", "clear()", "dispose()", "toJSON()"],
+        operations: ["step(dt)", "draw(view)", "stats(areaId)", "pickables(view) — its people and vehicles that can be pointed at", "card(hit) — the info card of one of them", "describeObject(object, card) — adds what it knows to an object's card", "describeAgent(agent) — the card of its person shown by another simulation", "describeVehicle(vehicle, card) — adds to the card of a vehicle at a stop", "clear()", "dispose()", "toJSON()"],
       },
       {
         name: "Registry", file: "web/arail/core/registry.js", kind: "class", role: "Extension points by type name.",
@@ -231,12 +231,12 @@ export const WORLD = [
       {
         name: "LayoutObject", file: "web/arail/core/object.js", kind: "class", stereotype: "base class", role: "Base of all objects.",
         attributes: ["type: string — static, the key in the registry", "params: object[] — static, the inspector's fields", "spec: object — as in the layout file", "id: string", "world: World"],
-        operations: ["defaults() — static", "computeGeometry()", "set(patch)", "footprint()", "contains(p, toleranceMM)", "translate(dx, dy)", "stopAreas()", "update(dt)", "draw(view)", "toJSON()"],
+        operations: ["defaults() — static", "computeGeometry()", "set(patch)", "footprint()", "contains(p, toleranceMM)", "pickHeight() — pointed at up to this height (0: on the ground)", "card() — its info card", "translate(dx, dy)", "stopAreas()", "update(dt)", "draw(view)", "toJSON()"],
       },
       { name: "UnknownObject", file: "web/arail/core/object.js", kind: "class", extends: "LayoutObject", role: "A type nobody registered: kept as it is." },
       {
         name: "BuildingBase", file: "web/arail/objects/building-kit.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Base of the buildings: use, capacity, entrances, lit windows.",
-        operations: ["capacity()", "entrances()", "occupancy()", "litShare(darkness)", "model()"],
+        operations: ["capacity()", "entrances()", "occupancy()", "litShare(darkness)", "model()", "pickHeight() — its roof", "card() — use, floors, people it holds and inside now"],
       },
       {
         name: "BuildingModel", file: "web/arail/objects/building-kit.js", kind: "class", role: "A white model in prototype metres: boxes, windows, entrances; level of detail.",
@@ -244,7 +244,7 @@ export const WORLD = [
       },
       { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges.", operations: ["stopAreas()"] },
       { name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street or footpath of the road network.", operations: ["roadInfo()"] },
-      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own.", operations: ["at(offsetMM)", "walkBarrier()"] },
+      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own.", operations: ["at(offsetMM)", "walkBarrier()", "card() — its name in the control system and length"] },
       { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()"] },
       { name: "House", file: "web/arail/objects/houses.js", kind: "class", extends: "BuildingBase", role: "One of the house types (also Plattenbau, office, school …)." },
     ],
@@ -345,5 +345,51 @@ export const WORLD = [
       edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "yes"], ["d1", "a3", "no"], ["a2", "m1"], ["a3", "m1"], ["m1", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "d2"], ["d2", "a7", "yes"], ["d2", "m2", "no"], ["a7", "m2"], ["m2", "a8"], ["a8", "e"]],
     }],
     rules: ["Layers: ground 0, solids 1, overlays 2; solids sorted far first.", "Night: colour × (1 − 0.62 n) + Dunkelblau × 0.3 n; emissive colours and overlays are not darkened.", "Nothing is queued that lies entirely outside the image; plain drawings share one save/restore."],
+  },
+  {
+    id: "pick", group: "world", title: "Pointing at things",
+    summary: "What is under a pixel of the stage, and an info card about it: people, vehicles, containers, buildings, stops, assets, in the camera view and the flyover.",
+    description: "Everything the world draws can be pointed at. Layout objects are found on the ground (their footprint, with a tolerance) and, when tall, on their walls and roof (pickHeight). What moves is offered by whoever draws it: the managers of the world (the timetable's vehicles, the line buses, the control system's trains) and the simulations list their pickables, each with its outline on the layout and its height. Picking works in image pixels: the outline's box is projected, so a bus or a building is found where it is seen. The nearest thing that moves wins over the objects. Who offers a pickable gives its card (card(hit)): a title, what it is, a status line, rows, lists, related objects and actions; simulations add to the cards of objects (the people waiting at a stop, the condition of an asset, the trip of a train). The app shows the card's top as a tooltip and the whole card on a tap (app/inspect.js).",
+    files: ["web/arail/core/pick.js"],
+    classes: [
+      {
+        name: "pick", file: "web/arail/core/pick.js", kind: "module", role: "Pointing at things; cards are data.",
+        attributes: ["PICK_TOLERANCE — CSS px around outlines: mouse 4, touch 12"],
+        operations: ["pickAt(world, view, pixel, options) — the nearest thing that moves, else an object", "pickObject(world, view, pixel, ground, tol) — small objects before large ones, tables at their edges", "movingPickables(world, view) — of the managers and simulations", "objectPickable(o)", "projectedHull(view, p) — the image outline of its box", "groundPoint(view, pixel)", "findPickable(world, view, key)", "cardOf(hit) — the owner's card with every field"],
+      },
+    ],
+    relations: [
+      { from: "World", to: "pick", kind: "depends", label: "pick, card" },
+      { from: "pick", to: "LayoutObject", kind: "uses", label: "footprint, card" },
+      { from: "pick", to: "Simulation", kind: "uses", label: "pickables, card" },
+      { from: "pick", to: "ServiceManager", kind: "uses", label: "pickables" },
+      { from: "pick", to: "Transit", kind: "uses", label: "pickables" },
+      { from: "pick", to: "TrainRegistry", kind: "uses", label: "pickables" },
+    ],
+    activities: [{
+      id: "pick", name: "World.pick: what is at a pixel",
+      description: "The app asks with the view of the last frame drawn (Inspector.pickAt): on every mouse move for the tooltip, on a tap for the card.",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "The pickables of the managers and the simulations", "movingPickables"],
+        ["a2", "action", "Each one's box projected; the pixel inside or within the tolerance?", "projectedHull"],
+        ["d1", "decision", "One or more there?"],
+        ["a3", "action", "The one with the pixel inside, the nearest to the camera", "pickAt"],
+        ["a4", "action", "The layout point at the pixel", "groundPoint"],
+        ["a5", "action", "Objects there on the ground, tall ones also on their walls and roof", "pickObject"],
+        ["d2", "decision", "Any?"],
+        ["a6", "action", "Small objects before long and large ones; the smallest", "pickObject"],
+        ["a7", "action", "Its card: the owner's, and what the simulations add to an object's", "World.card"],
+        ["e1", "end"],
+        ["e2", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "a3", "yes"], ["d1", "a4", "no"], ["a3", "a7"], ["a4", "a5"], ["a5", "d2"], ["d2", "a6", "yes"], ["d2", "e2", "no"], ["a6", "a7"], ["a7", "e1"]],
+    }],
+    rules: [
+      "Over the camera image the real tables are not picked (they are the table itself); table modules only at their edges, as in the editor.",
+      "People at a stop are the passenger simulation's; a resident or a traveller among them is described by its own simulation (describeAgent).",
+      "A pickable's key stays the same while it exists, so an open card follows it (findPickable).",
+      "Cards are English data; the app shows them.",
+    ],
   },
 ];

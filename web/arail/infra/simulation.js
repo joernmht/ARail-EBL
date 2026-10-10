@@ -19,14 +19,14 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, OVERLAY, grey, rgba, shade } from "../core/colors.js";
-import { polylineAt, polylineLengths } from "../core/math.js";
+import { polylineAt, polylineLengths, rectAround } from "../core/math.js";
 import { drawPerson } from "../sims/passengers.js";
 import { boxFaces } from "../core/transit.js";
 import { InfraEngine, YEAR } from "./engine.js";
 import { applyScenario, normalizeInfra, scenariosOf, validateInfra } from "./config.js";
 import { ASSET_OBJECTS } from "./objects.js";
 import { Network } from "./network.js";
-import { gradeColour } from "./catalog.js";
+import { DISCIPLINES, GENERATIONS, gradeColour, gradeLabel } from "./catalog.js";
 import { STAGE_LABELS } from "./factory.js";
 import { DAY } from "../ops/util.js";
 
@@ -426,44 +426,127 @@ export class InfrastructureSimulation extends Simulation {
     }
   }
 
-  /** A van on its way (or parked at the asset, with its technician at work). */
-  _drawVan(view, a, act, t, p) {
+  /**
+   * Where a van is (layout mm) and which way it faces: on its way, or parked at the asset with its
+   * technician at work (`staff`); null while it is beyond the layout.
+   * @returns {{at: number[], dir: number[], staff: number[] | null} | null}
+   */
+  _vanPose(a, act, t) {
     const path = this._pathTo(a);
-    if (!path) return;
+    if (!path) return null;
     if (act.state === "driving") {
       const k = act.t1 > act.t0 ? Math.min(1, Math.max(0, (t - act.t0) / (act.t1 - act.t0))) : 1;
       // the drive on the layout takes its share of the time; beyond the layout the van is out of sight
       const share = a.on_layout ? 1 : Math.min(1, ((path.length * this.world.scale) / 1000 / (DRIVE_KMH / 3.6) / 60) / Math.max(1, act.t1 - act.t0));
       let s = act.phase === "back" ? (a.on_layout ? 1 - k : (k - (1 - share)) / share) : k / share;
-      if (s < 0 || s > 1) return;
+      if (s < 0 || s > 1) return null;
       if (act.phase === "back" && !a.on_layout) s = 1 - s;
       const at = polylineAt(path.points, s * path.length, path.lengths);
-      drawVan(view, at.point, act.phase === "back" ? [-at.dir[0], -at.dir[1]] : at.dir, p.role === "emergency");
-      return;
+      return { at: at.point, dir: act.phase === "back" ? [-at.dir[0], -at.dir[1]] : at.dir, staff: null };
     }
-    if (!a.on_layout) return;
-    const end = polylineAt(path.points, path.length, path.lengths);
-    drawVan(view, path.park, end.dir, p.role === "emergency");
-    if (path.end) drawPerson(view, path.end, { dir: [1, 0], height: 1.8, colour: STAFF_COLOURS.body, legs: STAFF_COLOURS.legs, phase: t * 3, speed: 0.4 });
+    if (!a.on_layout) return null;
+    return { at: path.park, dir: polylineAt(path.points, path.length, path.lengths).dir, staff: path.end ?? null };
   }
 
-  /** A drone flying from the base's pad to the asset and over it. */
-  _drawDrone(view, base, a, act, t) {
+  /** A van on its way (or parked at the asset, with its technician at work). */
+  _drawVan(view, a, act, t, p) {
+    const pose = this._vanPose(a, act, t);
+    if (!pose) return;
+    drawVan(view, pose.at, pose.dir, p.role === "emergency");
+    if (pose.staff) drawPerson(view, pose.staff, { dir: [1, 0], height: 1.8, colour: STAFF_COLOURS.body, legs: STAFF_COLOURS.legs, phase: t * 3, speed: 0.4 });
+  }
+
+  /**
+   * Where a drone is: flying from the base's pad to the asset and circling over it (layout mm and
+   * height), or null; `target`: what it looks at.
+   * @returns {{at: number[], z: number, target: number[] | null} | null}
+   */
+  _dronePose(base, a, act, t) {
     const pad = base.slots?.()?.pad;
-    if (!pad) return;
+    if (!pad) return null;
+    const mm = (m) => (m * 1000) / this.world.scale;
     const target = a.on_layout ? this.world.getObject(a.object)?.anchorPoint?.() : null;
     const dir = this._layoutDir(a);
-    const far = target ?? [pad[0] + dir[0] * view.m(400), pad[1] + dir[1] * view.m(400)];
+    const far = target ?? [pad[0] + dir[0] * mm(400), pad[1] + dir[1] * mm(400)];
     let pos;
     const k = act.t1 > act.t0 ? Math.min(1, Math.max(0, (t - act.t0) / (act.t1 - act.t0))) : 1;
     if (act.phase === "out") pos = [pad[0] + (far[0] - pad[0]) * k, pad[1] + (far[1] - pad[1]) * k];
     else if (act.phase === "back") pos = [far[0] + (pad[0] - far[0]) * k, far[1] + (pad[1] - far[1]) * k];
     else if (target) {
       const ang = t * 0.6;
-      pos = [target[0] + view.m(12) * Math.cos(ang), target[1] + view.m(12) * Math.sin(ang)];
-    } else return;
-    const z = view.m(act.phase === "work" ? 25 : 35 * Math.sin(Math.PI * Math.min(1, k)) + 2);
-    drawDrone(view, pos, z, t, act.phase === "work" ? target : null);
+      pos = [target[0] + mm(12) * Math.cos(ang), target[1] + mm(12) * Math.sin(ang)];
+    } else return null;
+    const z = mm(act.phase === "work" ? 25 : 35 * Math.sin(Math.PI * Math.min(1, k)) + 2);
+    return { at: pos, z, target: act.phase === "work" ? target : null };
+  }
+
+  /** A drone flying from the base's pad to the asset and over it. */
+  _drawDrone(view, base, a, act, t) {
+    const pose = this._dronePose(base, a, act, t);
+    if (pose) drawDrone(view, pose.at, pose.z, t, pose.target);
+  }
+
+  /* ---------------------------------------------------------------- pointing at vans, drones and assets */
+
+  /** The staff out with their vans and drones as pickables (core/pick.js). */
+  pickables(view) {
+    if (!this.active || !this.engine) return [];
+    const e = this.engine, t = e.now, base = this._baseObject(), out = [];
+    if (!base) return out;
+    for (const p of e.people) {
+      if (p.role === "alv") continue;
+      const act = e.activity(p, t);
+      if (!act.asset || !["driving", "repairing", "working", "flying"].includes(act.state)) continue;
+      const a = e.assets.get(act.asset);
+      if (!a) continue;
+      if (act.drone) {
+        const pose = this._dronePose(base, a, act, t);
+        if (pose) out.push({ key: `staff:${p.id}`, kind: "drone", label: "Drone", outline: rectAround(pose.at, view.m(2.5), view.m(2.5)), z0: pose.z - view.m(0.6), z1: pose.z + view.m(0.6), owner: this, ref: p });
+        continue;
+      }
+      const pose = this._vanPose(a, act, t);
+      if (!pose) continue;
+      out.push({ key: `staff:${p.id}`, kind: "van", label: p.name, outline: rectAround(pose.at, view.m(5.5), view.m(2.1), pose.dir), z0: 0, z1: view.m(2.6), owner: this, ref: p });
+    }
+    return out;
+  }
+
+  /** The card of a member of the maintenance staff out on a job (with a van or a drone). */
+  card(hit) {
+    const p = hit.ref, e = this.engine, act = e.activity(p, e.now);
+    const role = { day: "day shift", emergency: "emergency team", pilot: "drone pilot" }[p.role] || p.role;
+    return {
+      title: hit.kind === "drone" ? `Drone of ${p.name}` : p.name,
+      subtitle: `Maintenance staff · ${DISCIPLINES[p.discipline]?.label ?? p.discipline} · ${role}`,
+      status: act.text ? act.text[0].toUpperCase() + act.text.slice(1) : act.state,
+      tone: p.role === "emergency" ? "warn" : "",
+      rows: [["Discipline", DISCIPLINES[p.discipline]?.label ?? p.discipline ?? "–"]],
+      related: [e.assets.get(act.asset)?.object].filter((id) => id && this.world.getObject(id)),
+    };
+  }
+
+  /**
+   * An asset of the layout: what is known of its condition (and its true condition while the true
+   * state is shown, for the instructor), its age, a fault.
+   */
+  describeObject(o, card) {
+    if (!this.active || !this.engine) return;
+    const e = this.engine, a = e.assets.get(o.id);
+    if (!a || a.removed) return;
+    const k = e.known(a);
+    const months = k.t == null ? null : Math.max(0, Math.round((e.now - k.t) / (30.4 * DAY)));
+    const how = k.live >= 0.5 ? `live, ${Math.round(k.live * 100)} % reported` : k.source === "age" || k.source === "unknown" ? "estimated from its age" : months == null ? "never checked" : months < 1 ? "checked this month" : `checked ${months} months ago`;
+    const grade = Math.min(6, Math.max(1, Math.floor(k.value)));
+    card.rows.push(["Asset", `${a.t.label}${a.t.de ? ` (${a.t.de})` : ""}`]);
+    card.rows.push(["Condition", `${gradeLabel(grade)} · ${how}`]);
+    if (this.display.mode === "true") card.rows.push(["True condition", gradeLabel(a.fault ? 6 : Math.min(6, Math.floor(1 + 4.99 * (1 - a.h))))]);
+    card.rows.push(["Age", `${Math.round(a.age(e.now, e.startYear))} years (built ${Math.round(a.built)})`]);
+    if (a.type === "interlocking" && GENERATIONS[a.generation]) card.rows.push(["Generation", GENERATIONS[a.generation].label]);
+    const fault = this.display.mode === "true" ? !!a.fault : k.fault;
+    if (fault) {
+      card.status = `Fault: ${a.t.effect.what}`;
+      card.tone = "bad";
+    } else card.status ||= `Grade ${grade} · ${how}`;
   }
 
   /** The base shows its vans in the yard (those not out) and the drones on the pad. */

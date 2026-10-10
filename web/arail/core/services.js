@@ -280,6 +280,53 @@ export class ServiceManager {
     return def ? def.doors(v.dock) : [];
   }
 
+  /**
+   * The vehicles at the docks as pickables (core/pick.js), where they are drawn: the trains of the
+   * control system only when they are drawn as virtual trains.
+   * @param {import("./view.js").View} view
+   */
+  pickables(view) {
+    const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
+    const out = [];
+    for (const v of this.vehicles()) {
+      if (v.source === "feed" && style !== "solid") continue;
+      const p = this.placement(v);
+      if (!p) continue;
+      const a = v.dock.area;
+      const outline = [a.toLayout(p.s0, p.t0), a.toLayout(p.s1, p.t0), a.toLayout(p.s1, p.t1), a.toLayout(p.s0, p.t1)];
+      out.push({ key: `vehicle:${v.id}`, kind: v.kind === "bus" ? "bus" : "train", label: v.line || p.def.label || v.kind, outline, z0: view.m(p.def.floor_m ?? 0), z1: view.m(p.def.height_m ?? 3), owner: this, ref: v });
+    }
+    return out;
+  }
+
+  /**
+   * The card of a vehicle at a dock: its line, where it stands, what it does, its delay; the
+   * simulations add what they know (`describeVehicle`: the trip and units of the rail operations).
+   * @param {import("./pick.js").Pickable} hit
+   * @returns {import("./pick.js").Card}
+   */
+  card(hit) {
+    const v = hit.ref, dock = v.dock, area = dock.area;
+    const def = this.world.registry.vehicles.get(v.kind);
+    const noun = def?.label || (v.kind === "bus" ? "Bus" : "Train");
+    const source = { timetable: "timetable", manual: "called by hand", feed: "control system", plan: "planned" }[v.source] || v.source;
+    const doing = { arriving: "Arriving", dwelling: v.source === "feed" ? "Standing at the platform" : "Boarding", departing: "Departing" }[v.phase] || v.phase;
+    const delay = Math.round(v.delayMin || 0);
+    const where = [area.owner?.name, dock.label].filter(Boolean).join(", ");
+    const card = {
+      title: !v.line ? noun : v.kind === "bus" && !/^bus\b/i.test(v.line) ? `Bus ${v.line}` : v.line,
+      subtitle: `${noun} · ${source}`,
+      status: `${doing}${where ? ` · ${where}` : ""}`,
+      tone: delay >= 5 ? "bad" : delay >= 1 ? "warn" : "ok",
+      rows: [["Stop", where || "–"], ["Doors", v.doorsOpen ? "open" : "closed"], ["Delay", delay >= 1 ? `+${delay} min` : "on time"]],
+      sections: [],
+      related: area.owner?.id ? [area.owner.id] : [],
+    };
+    if (v.trainId) card.rows.push(["Train of the control system", v.trainId]);
+    for (const s of this.world.simulations) if (s.enabled !== false) s.describeVehicle?.(v, card);
+    return card;
+  }
+
   draw(view) {
     // Trains from a control system are real: by default the train registry outlines them
     // where they are; only with feedVehicles = "solid" (or for a virtual camera, which shows no

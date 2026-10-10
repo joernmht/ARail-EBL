@@ -144,6 +144,8 @@ Optional methods the editor and the other parts look for:
 | `entrances()` | the road network and the town: doors `[{pos: [x, y], dir: [ux, uy]}]` |
 | `busLane()` | the road network: a one-way lane for buses (`{points, width}`, see `objects/bus-terminal.js`) |
 | `walkBarrier()` | the road network: a polyline people do not cross on their own, only on streets and footpaths over it (tracks have it, see `objects/track.js`) |
+| `card()` | the info card when someone points at the object (core/pick.js): `{title, subtitle, status, tone, rows: [[label, value]], sections: [{title, lines}], text, related: [ids], actions}`. Start from `super.card()` (name, type, description, module) and add rows; keep the texts plain English |
+| `pickHeight()` | how high (layout mm) the object is pointed at in the image: tall objects are found on their walls and roof, not only on the ground (buildings return their height, signals their mast) |
 
 Geometry helpers from the API: `resolvePoint`, `resolvePoints`, `resolveSegment` (they understand `[x, y]` and marker-relative points), `translatePoint`, `pointRelativeTo`, `markersUsed(spec)` (the markers an object is placed relative to), plus the maths in `core/math.js` (vectors, polygons, polylines, poses, random numbers) and `snapToGrid`.
 
@@ -261,6 +263,20 @@ arail.registry.registerSimulation(Pigeons);
 
 Optional: `stats(areaId)` returns `{count, mood, inPerMin, outPerMin}` for the departure board, `clear()` removes everything simulated (Settings → Simulation → Clear passengers), and `roadUsers()` returns the vehicles a simulation drives on the streets (`[{vehicle, front, rear, dir, approach}]`): line buses and the road traffic keep their distance to them and give way at junctions.
 
+### Pointing at what a simulation draws
+
+The app's tooltips and info cards (Getting started, *Pointing at things*) ask every simulation what it draws:
+
+| Method | Returns |
+| --- | --- |
+| `pickables(view)` | the things that can be pointed at: `[{key, kind, label, outline, z0, z1, owner: this, ref}]`. `key` stays the same while the thing exists (an open card follows it), `kind` is e.g. `"person"`, `"bus"`, `"van"`, `outline` its footprint on the layout (mm; `rectAround(at, length, width, dir)` and `rectBetween(rear, front, width)` from the maths help), `z0`/`z1` its bottom and top (mm), `ref` whatever you need to describe it |
+| `card(hit)` | the info card of one of them (the format of `LayoutObject.card()`); `actions: [{id: "follow", label: "Follow"}]` lets the flyover follow it |
+| `describeObject(object, card)` | adds what the simulation knows about a layout object to its card (the passengers add the people waiting at a stop, the infrastructure the condition of an asset) |
+| `describeAgent(agent)` | the card of one of its people that another simulation shows: residents and travellers wait at stops as people of the passenger simulation, which asks their owner (null for agents that are not yours) |
+| `describeVehicle(vehicle, card)` | adds to the card of a vehicle at a stop (the rail operations add the trip, units and driver of their trains) |
+
+`world.pick(view, [u, v])` finds what is at an image pixel (the nearest thing that moves, else a layout object), `world.card(hit)` gives its card, `world.findPickable(view, key)` the same thing a moment later.
+
 ### Checking the settings
 
 A simulation with settings beyond `params` (lists, references to objects) can check them: `validateLayout(json, registry)` calls `static validate(config, layout)` for every entry of the layout's `simulations` whose class has one. `config` is the entry as written in the file, `layout` the normalized layout. Return a list of problems in plain words; each one is reported with the prefix `simulations[<i>] (<type>): `. A `validate` that throws is reported as `could not be checked (<message>)`.
@@ -318,6 +334,7 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.events` | the event bus: `on(name, fn)` returns an unsubscribe function |
 | `world.time`, `speed`, `paused`, `demand`, `scale`, `rng` | simulation state; use `world.rng` (or `createRng(seed)`) for reproducible randomness, never `Math.random` |
 | `world.settings` | display settings: `labels`, `trails`, `showTracks`, `feedVehicles`, `lighting` (day/night lighting on), `peopleColour` (`auto`, `purpose`, `mood`) |
+| `world.pick(view, pixel)`, `card(hit)`, `findPickable(view, key)` | what is at an image pixel, its info card, the same thing a moment later (see [Pointing at what a simulation draws](#pointing-at-what-a-simulation-draws)) |
 | `terminalOf(world)` | the world's [container terminal](#the-container-terminal), or null (a function of the API) |
 
 ### Time of day

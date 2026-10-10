@@ -7,7 +7,7 @@ export const PAGES = [
     id: "app", group: "pages", title: "The app",
     summary: "Sources (camera, photo, video, flyover), the frame loop, the HUD and the panels: View (with the modules), Build, the modules' tabs, Disruptions and Settings (simulation and control system).",
     description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. The tabs follow the modules: Terminal, Operations, Infrastructure and Journeys appear with their simulation, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
-    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
+    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
     classes: [
       {
         name: "App", file: "web/app/app.js", kind: "class", role: "The page: source, tracking, world, panels.",
@@ -17,6 +17,11 @@ export const PAGES = [
       { name: "Panels", file: "web/app/panels.js", kind: "class", role: "The View, Settings and Disruptions panels.", attributes: ["settingsView: string — simulate or control"], operations: ["renderView(el)", "renderSettings(el)", "renderSimulate(el)", "setSettingsView(v)", "renderControl(el)", "renderDisruptions(el)", "_moduleBox(m)"] },
       { name: "Editor", file: "web/app/editor.js", kind: "class", role: "Build: placing, dragging, the inspector, the marker map.", operations: ["startPlacing(type)", "placeAt(p, e)", "select(obj)", "render(container)", "renderInspector()", "keepPositions()"] },
       { name: "OperationsPanel", file: "web/app/operations.js", kind: "class", role: "The Operations tab.", operations: ["render(el)", "update()", "addOperations()"] },
+      {
+        name: "Inspector", file: "web/app/inspect.js", kind: "class", role: "Hover and click: the tooltip of what the mouse points at, the info card of what was tapped, their outlines on the stage.",
+        attributes: ["hover: object | null — the pickable under the mouse", "open: object | null — the card shown: its key and pickable", "keyAim: boolean — the cross in the middle of the flyover (keyboard)"],
+        operations: ["hoverAt(pixel)", "tapAt(pixel, opts) — outside Build and Terminal", "inspectCentre() — Enter on the flyover", "show(hit)", "close()", "update() — every 400 ms", "drawOverlay(ctx, view)", "act(id) — follow"],
+      },
       { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children)", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
     ],
     relations: [
@@ -29,6 +34,8 @@ export const PAGES = [
       { from: "App", to: "OperationsPanel", kind: "composes", label: "operations" },
       { from: "App", to: "InfraPanel", kind: "composes", label: "infra" },
       { from: "App", to: "JourneysPanel", kind: "composes", label: "journeys" },
+      { from: "App", to: "Inspector", kind: "composes", label: "inspector" },
+      { from: "Inspector", to: "World", kind: "uses", label: "pick, card" },
       { from: "Panels", to: "ui", kind: "depends" },
     ],
     activities: [{
@@ -66,7 +73,7 @@ export const PAGES = [
         { name: "journeys.traveller.arrived", does: "a toast" },
       ],
     },
-    rules: ["Edits are saved 300 ms after the last change, per layout.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
+    rules: ["Edits are saved 300 ms after the last change, per layout.", "Taps on the stage open the info card of what is there, except in Build (they select) and in Terminal (they pick containers); the tooltip follows the mouse in every tab.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
   },
   {
     id: "markers", group: "pages", title: "Marker sheets and deck cards",

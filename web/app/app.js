@@ -1,6 +1,7 @@
 // ARail app: camera/photo/video in, markers tracked, virtual layout and simulations drawn on top.
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
+import { Inspector } from "./inspect.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
@@ -111,6 +112,7 @@ class App {
     this.operations = new OperationsPanel(this);
     this.infra = new InfraPanel(this);
     this.journeys = new JourneysPanel(this);
+    this.inspector = new Inspector(this);
     this._wireUi();
     this._wireEvents();
     // ?example=: an example with its own photo or clip (a link from the project page)
@@ -273,6 +275,7 @@ class App {
       else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
       if (this.terminal.cancelPick()) return;
+      if (this.inspector.close()) return;
       if (this.activeTab === "terminal" && this.terminal.selected) this.terminal.select(null);
       else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
@@ -380,6 +383,7 @@ class App {
   /** Periodic refresh of live figures in the visible panel. */
   refreshPanels() {
     this.updateHud();
+    this.inspector.update();
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
     else if (t === "settings") this.panels.updateSettings();
@@ -672,6 +676,7 @@ class App {
     const problems = ARail.validateLayout(json, this.world.registry);
     const settings = { ...this.world.settings, ...storage.get("arail.settings", {}) };
     this.editor.reset();
+    this.inspector?.reset();
     const previous = this.world.toJSON();
     try {
       this.world.load(json);
@@ -1090,6 +1095,7 @@ class App {
       this.editor.drawOverlay(ctx, view);
       this.terminal.drawOverlay(ctx, view);
       this.lastView = view;
+      this.inspector.drawOverlay(ctx, view);
     }
     if (this.display.markers) this._drawMarkers(ctx);
   }

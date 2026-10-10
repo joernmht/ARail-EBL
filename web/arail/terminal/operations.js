@@ -29,7 +29,7 @@ import { TERMINAL_EVENTS as EV, TERMINAL_REQUESTS as REQ } from "./types.js";
 import { CraneHandler, StackerHandler, stackerReach } from "./handlers.js";
 import { BargeVisit, LOCO_M, TrainVisit, TruckVisit, departTruck, stepTrucks } from "./visits.js";
 import {
-  colourFor, drawBarge, drawContainers, drawCrane, drawGhost, drawHighlights, drawLocomotive, drawReachStacker, drawTruck, drawWagon,
+  boxCorners, colourFor, drawBarge, drawContainers, drawCrane, drawGhost, drawHighlights, drawLocomotive, drawReachStacker, drawTruck, drawWagon,
   drawYardLabels, drawYardStacks,
 } from "./draw.js";
 
@@ -1247,6 +1247,52 @@ export class TerminalSimulation extends Simulation {
     const out = [];
     for (const c of this.carriers()) if (c.present && c.pose) out.push(...this._carrierBoxes(c));
     return out;
+  }
+
+  /**
+   * The containers on present carriers and the wagons, trucks and barges as pickables
+   * (core/pick.js); the yard blocks are layout objects.
+   */
+  pickables(view) {
+    const out = [];
+    for (const b of this.boxes(view)) {
+      out.push({ key: `container:${b.id}`, kind: "container", label: b.id, outline: boxCorners(b).slice(0, 4).map((p) => [p[0], p[1]]), z0: b.z0, z1: b.z0 + b.height, owner: this, ref: b.id });
+    }
+    for (const c of this.carriers()) {
+      if (c.kind === "yard" || !c.present || !c.pose) continue;
+      const fp = c.footprint(this.world.scale);
+      if (fp) out.push({ key: `carrier:${c.id}`, kind: c.kind || "carrier", label: c.label, outline: fp, z0: 0, z1: view.m(c.type?.deck_m ?? 1.2), owner: this, ref: c.id });
+    }
+    return out;
+  }
+
+  /** The card of a container (where it is, its move) or of a wagon, truck or barge (its visit, its load). */
+  card(hit) {
+    if (hit.kind === "container") {
+      const c = this.inventory.get(hit.ref);
+      if (!c) return { title: hit.label, status: "Left the terminal" };
+      const at = c.at ? this.carrier(c.at.carrier) : null;
+      const move = c.move ? this.moves.find((m) => m.id === c.move) : null;
+      const rows = [["Size", `${c.size} ft${c.high ? " high cube" : ""}`]];
+      if (c.at) rows.push(["On", this.describe(c.at, c)]);
+      if (move) rows.push(["Move", `${move.id} · ${move.state}${move.to ? ` to ${this.describe(move.to, c)}` : ""}`]);
+      if (c.label) rows.push(["Label", c.label]);
+      return {
+        title: c.id, subtitle: `Container · ${c.teu} TEU`,
+        status: c.handler ? "Being moved" : move ? `Move ${move.state}` : at ? `On ${at.label}` : "",
+        rows,
+      };
+    }
+    const c = this.carrier(hit.ref);
+    if (!c) return { title: hit.label, status: "Gone" };
+    const visit = this._visitOf(c), load = this.inventory.on(c.id);
+    return {
+      title: c.label,
+      subtitle: `${{ wagon: "Wagon", truck: "Truck", barge: "Barge" }[c.kind] ?? "Carrier"}${visit ? ` · ${visit.name}` : ""}`,
+      status: visit ? { away: "Away", approaching: "Arriving", positioned: "Ready for loading", departing: "Departing" }[visit.state] ?? visit.state : c.available ? "Ready for loading" : "",
+      rows: [["Load", load.length ? `${load.length} container${load.length === 1 ? "" : "s"} · ${load.reduce((s, x) => s + x.teu, 0)} TEU` : "empty"]],
+      sections: load.length ? [{ title: "Containers", lines: load.map((x) => `${x.id} · ${x.size} ft`) }] : [],
+    };
   }
 
   /**

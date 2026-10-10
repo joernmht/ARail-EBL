@@ -14,7 +14,7 @@
  * @module arail/sims/traffic
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, dot2, pointSegment, polylineAt, polylineProject, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "../core/math.js";
 import { CD, grey, mix, shade } from "../core/colors.js";
 import { APPROACH_M, boxFaces, gapAhead, JUNCTION_WAIT_S, mustYield, RoadUsers } from "../core/transit.js";
 import { joinPaths } from "../core/network.js";
@@ -313,6 +313,29 @@ export class TrafficSimulation extends Simulation {
       Object.assign(car, { path: next.path, junctions: next.junctions, dest: next.dest, destPos: next.destPos, s: 0, net });
     }
     return false;
+  }
+
+  /* ---------------------------------------------------------------- pointing at cars */
+
+  /** The cars as pickables (core/pick.js). */
+  pickables(view) {
+    if (!this.enabled) return [];
+    return this.cars.map((car) => {
+      const { front, rear } = this._pose(car);
+      return { key: `car:${car.id}`, kind: "car", label: "Car", outline: rectBetween(rear, front, this.mm(WIDTH_M)), z0: 0, z1: this.mm(1.45), owner: this, ref: car };
+    });
+  }
+
+  /** The card of a car: driving or waiting, its speed. */
+  card(hit) {
+    const car = hit.ref, kmh = Math.round(car.v * 3.6);
+    return {
+      title: "Car",
+      subtitle: "Road traffic",
+      status: kmh >= 2 ? `Driving at ${kmh} km/h` : car.waited > 0 ? "Waiting at a junction" : "Standing",
+      rows: [["Speed", `${kmh} km/h`]],
+      text: "Cars come in where streets end at the edge of the layout, drive through the town and leave again.",
+    };
   }
 
   /* ---------------------------------------------------------------- drawing */
