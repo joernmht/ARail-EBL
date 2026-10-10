@@ -55,8 +55,8 @@
       "name": "KV terminal Neustadt",
       "default_wagon": "sgns60",
       "trains": [
-        {"id": "KT41", "name": "KT 41 Hamburg", "track": "track-g16", "direction": -1, "stop_mm": 3740, "start": "positioned", "wagons": ["sgns60", "sgns60", "sgns60"]},
-        {"id": "KT52", "name": "KT 52 Duisburg", "track": "track-g14", "direction": -1, "stop_mm": 3755, "start": "away", "wagons": ["sgns60", "lgns40", "sgns60"]}
+        {"id": "KT41", "name": "KT 41 Hamburg", "track": "track-g16", "direction": -1, "stop_mm": 3740, "start": "positioned", "wagons": ["sgns60", "sgns60", "sgns60", "sggrss80", "sgns60"]},
+        {"id": "KT52", "name": "KT 52 Duisburg", "track": "track-g14", "direction": -1, "stop_mm": 3755, "start": "away", "wagons": ["sgns60", "lgns40"]}
       ],
       "trucks": {"lane": "lane-1"},
       "containers": [
@@ -66,6 +66,9 @@
         {"id": "ARLU 100004 5", "size": "40", "at": {"carrier": "KT41/2", "bay": 1}},
         {"id": "EBLU 300001 1", "size": "40", "at": {"carrier": "KT41/3", "bay": 0}},
         {"id": "EBLU 300002 7", "size": "20", "at": {"carrier": "KT41/3", "bay": 2}},
+        {"id": "EBLU 300004 8", "size": "20", "at": {"carrier": "KT41/4", "bay": 0}},
+        {"id": "DBCU 400002 4", "size": "40", "at": {"carrier": "KT41/4", "bay": 2}},
+        {"id": "TUDU 200003 6", "size": "20", "high": true, "at": {"carrier": "KT41/5", "bay": 1}},
         {"id": "EBLU 300003 2", "size": "40", "at": {"carrier": "KT52/1", "bay": 0}},
         {"id": "TUDU 200001 5", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
         {"id": "TUDU 200002 0", "size": "20", "high": true, "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},

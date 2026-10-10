@@ -24,13 +24,11 @@ The top bar chooses what the app looks at:
 
 | Layouts… | Layout | Image | What it shows |
 | --- | --- | --- | --- |
-| **Example: EBL lab photo** | `ebl-lab.json` | the lab photo | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal |
+| **Example: Beta 0.1 (EBL lab photo)** | `ebl-lab.json` | the lab photo of 30 September 2026, the first example | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal |
 | **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the bigger example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table |
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
-| **Example: train through the town, video** | `ebl-neustadt.json` | a clip of the curve next to the terminal | a real freight train running through a virtual town (the video on the project page) |
 | **Example: terminal at the crane** | `ebl-neustadt.json` | a photo of the terminal tracks | the container terminal on the real terminal tracks (Terminal tab) |
-| **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers; a crane, a yard and a harbour below the table edge (Terminal tab) |
-| **Example: synthetic layout** | `synthetic-demo.json` | a computer-generated board | the survey of an unknown layout from one photo |
+| **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); the Terminal tab loads and unloads the real train and truck (Terminal tab) |
 | **Example: container terminal (virtual)** | `container-terminal.json` | none (flyover) | a terminal of its own, also a module of the lab example |
 
 The clips play in a loop; in browsers that cannot play MP4 (H.264) use **Open file** with your own video. The original photos and clips are in [`examples/media`](../examples/media) (see [examples/README.md](../examples/README.md)): open them with **Open file** over any of these layouts. The layouts of Bf Neustadt and the hybrid train come from `arail-survey` (see [Lab session](lab-session.md#the-examples-of-9-october-2026)); their marker maps are locked.
@@ -217,12 +215,12 @@ Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` 
 
 ## URL options
 
-Parameters can be combined, e.g. `app/?layout=../layouts/synthetic-demo.json&scenario=delay#disrupt`.
+Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=closure#disrupt`.
 
 | Parameter | Effect |
 | --- | --- |
 | `layout=<url>` | load a layout file (relative to the app); without it the app opens the last layout, or the EBL example |
-| `example=<id>` | open an example of the Layouts menu with its photo or clip and tab: `lab`, `neustadt`, `neustadt-video`, `city-train`, `crane-terminal`, `container-train`, `synthetic`, `terminal` |
+| `example=<id>` | open an example of the Layouts menu with its photo or clip and tab: `lab`, `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal` |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |

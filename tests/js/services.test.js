@@ -114,10 +114,10 @@ test("loading a layout resets demand and keeps the marker map object", () => {
   tracker.acc.set(3, { n: 5 });
   world.scenarios.play("signal-failure");
   assert.equal(world.demand, 1.5);
-  world.load(readJSON("web/layouts/synthetic-demo.json"));
+  world.load({ ...LAB, name: "Not surveyed yet", markers: { ...LAB.markers, poses: {} } });
   assert.equal(world.demand, 1);
   assert.equal(world.map, map, "trackers built on world.map keep working");
-  assert.equal(map.ids().length, 0, "the synthetic example has no known marker poses");
+  assert.equal(map.ids().length, 0, "a layout without known marker poses");
   tracker.update({}, 0, null);
   assert.equal(tracker.acc.size, 0, "the tracker starts its survey afresh");
 });

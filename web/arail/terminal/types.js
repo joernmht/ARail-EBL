@@ -18,9 +18,9 @@
  * - `terminal.request.depart`: `{visit, force?}`
  * - `terminal.request.move`: `{container, to}`
  * - `terminal.request.truck`: `{purpose?, size?}`
- * - `terminal.request.train`: `{track, wagons?, load?}`
+ * - `terminal.request.train`: `{track, wagons?, load?}` (without wagons: 2 to 5 of the default type)
  * - `terminal.request.barge`: `{quay, load?}`
- * - `terminal.request.unload`: `{visit, to?}`
+ * - `terminal.request.unload`: `{visit, to?}` (visit: also the name of a unit of model wagons)
  * - `terminal.request.load`: `{visit, from?}`
  * - `terminal.request.reset`: `{}`
  * @module arail/terminal/types

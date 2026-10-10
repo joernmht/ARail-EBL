@@ -1,6 +1,7 @@
 // End-to-end tests of the app in a real browser (Chromium).
-import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { SCENE, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -89,21 +90,22 @@ test("control: the simulated control system reports trains", async ({ page }) =>
   expect(errors).toEqual([]);
 });
 
-test("the synthetic example is surveyed from scratch", async ({ page }) => {
-  const errors = await openApp(page);
-  await page.selectOption("#exampleSelect", "synthetic");
-  await expect(page.locator("#layoutName")).toHaveText("Synthetic test layout");
+test("a layout without a marker map is surveyed from its photo", async ({ page }) => {
+  // the lab example as before it was surveyed: no marker known, the map open
+  const lab = JSON.parse(readFileSync("web/layouts/ebl-lab.json", "utf8"));
+  await page.route("**/layouts/lab-unsurveyed.json", (route) => route.fulfill({ json: { ...lab, name: "EBL lab, not surveyed", markers: { ...lab.markers, poses: {}, locked: false } } }));
+  const errors = await openApp(page, "/app/?layout=../layouts/lab-unsurveyed.json");
+  await expect(page.locator("#layoutName")).toHaveText("EBL lab, not surveyed");
   await page.waitForFunction(() => {
     const a = window.__arail;
-    return a.world.layout.name === "Synthetic test layout" && a.tracker.state.H && a.world.map.ids().length >= 6;
+    return a.tracker.state.H && [0, 1, 2, 3, 4].every((id) => a.world.map.has(id));
   });
-  // all objects are placed: the platforms, the bus station, two houses and two trees relative to
-  // the surveyed markers, the town on the table module by coordinates
+  // every object is placed
   const [placed, total] = await page.evaluate(() => {
     const objects = window.__arail.world.objects;
     return [objects.filter((o) => o.geometry).length, objects.length];
   });
-  expect(total).toBe(18);
+  expect(total).toBeGreaterThan(20);
   expect(placed).toBe(total);
   expect(errors).toEqual([]);
 });
@@ -130,21 +132,22 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
 
 test("switching layouts while placing an object keeps the app running", async ({ page }) => {
   const errors = await openApp(page, "/app/#build");
-  await page.selectOption("#exampleSelect", "synthetic");
+  await page.selectOption("#exampleSelect", "neustadt");
   await page.waitForFunction(() => {
     const a = window.__arail;
-    return a.world.layout.name === "Synthetic test layout" && a.tracker.state.H && a.world.map.has(7);
+    return a.world.layout.name === "EBL Bf Neustadt and terminal (example)" && a.tracker.state.used.length >= 6;
   });
   await page.getByRole("button", { name: /^Rail platform/ }).click();
+  // a point at a marker seen in the photo
   const marker = await page.evaluate(() => {
-    const e = window.__arail.world.map.get(7);
+    const e = window.__arail.world.map.get(window.__arail.tracker.state.used[0]);
     return [e.x, e.y];
   });
   const p = await screenPoint(page, marker[0], marker[1]);
   await page.mouse.click(p.x, p.y);
   await expect.poll(() => page.evaluate(() => window.__arail.editor.placing?.points.length)).toBe(1);
   await page.selectOption("#exampleSelect", "lab");
-  await page.waitForFunction(() => window.__arail.world.layout.name !== "Synthetic test layout" && window.__arail.tracker.state.H);
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   await expect(page.locator("#placing")).toBeHidden();
   const t0 = await page.evaluate(() => window.__arail.clock);
   await expect.poll(() => page.evaluate(() => window.__arail.clock)).toBeGreaterThan(t0 + 0.2); // frames still run
@@ -152,41 +155,41 @@ test("switching layouts while placing an object keeps the app running", async ({
 });
 
 test("a layout chosen from the Layouts menu gets only its own markers, not those of the previous photo", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout" && window.__arail.world.map.ids().length === 8);
-  // the lab photo arrives late: meanwhile the synthetic photo (markers 0–7) is still the source
+  const errors = await openApp(page, "/app/?example=neustadt#build");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL Bf Neustadt and terminal (example)" && window.__arail.tracker.state.used.length >= 6);
+  // the lab photo arrives late: meanwhile the photo of Bf Neustadt (markers 10 to 30) is still the source
   await page.route("**/media/ebl-lab.jpg", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue();
   });
   await page.selectOption("#exampleSelect", "lab");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)");
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
-  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
   expect(errors).toEqual([]);
 });
 
 test("a layout chosen from the Layouts menu while a video plays is not tracked in that video", async ({ page }) => {
-  const VIDEO = "tests/fixtures/synthetic-survey.webm";
-  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
-  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.locator("#fileVideo").setInputFiles(VIDEO);
+  test.skip(!hasScene(), "run `npm run fixtures` first");
+  await routeScene(page);
+  const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
+  await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
   await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
-  // the lab photo comes later: meanwhile the video of the synthetic layout (markers 0–7) is still shown
+  // the lab photo comes later: meanwhile the video of the test scene (markers 0–7) is still shown
   let sendPhoto;
   await page.route("**/media/ebl-lab.jpg", async (route) => {
     await new Promise((resolve) => (sendPhoto = resolve));
     await route.continue();
   });
   await page.selectOption("#exampleSelect", "lab");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab (example)");
+  await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)");
   await page.waitForTimeout(800); // many video frames
   expect(await page.evaluate(() => ({ ids: window.__arail.world.map.ids(), tracked: !!window.__arail.tracker.state.H }))).toEqual({ ids: [0, 1, 2, 3, 4], tracked: false });
   await expect.poll(() => typeof sendPhoto).toBe("function");
   sendPhoto();
-  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  await page.waitForFunction(() => window.__arail.source?.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
   expect(errors).toEqual([]);
 });
@@ -253,14 +256,16 @@ test("importing a file that is not a layout changes nothing", async ({ page }) =
 });
 
 test("editing offset X and then offset Y keeps both", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.waitForFunction(() => window.__arail.world.getObject("bus-terminal-1")?.geometry);
-  await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-terminal-1")));
-  await page.locator("#geo-bus-terminal-1-dx").fill("250");
-  await page.locator("#geo-bus-terminal-1-dx").press("Enter");
-  await page.locator("#geo-bus-terminal-1-dy").fill("20");
-  await page.locator("#geo-bus-terminal-1-dy").press("Enter");
-  await expect.poll(() => page.evaluate(() => window.__arail.world.getObject("bus-terminal-1").spec.position.offset)).toEqual([250, 20]);
+  const errors = await openApp(page, "/app/#build");
+  // a bus station placed relative to marker 1
+  await page.evaluate(() => window.__arail.world.addObject({ id: "bus-terminal-m", type: "bus-terminal", name: "Bus station", position: { marker: 1, offset: [100, -50] }, rotation_deg: 0, bays: 2 }));
+  await page.waitForFunction(() => window.__arail.world.getObject("bus-terminal-m")?.geometry);
+  await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-terminal-m")));
+  await page.locator("#geo-bus-terminal-m-dx").fill("250");
+  await page.locator("#geo-bus-terminal-m-dx").press("Enter");
+  await page.locator("#geo-bus-terminal-m-dy").fill("20");
+  await page.locator("#geo-bus-terminal-m-dy").press("Enter");
+  await expect.poll(() => page.evaluate(() => window.__arail.world.getObject("bus-terminal-m").spec.position.offset)).toEqual([250, 20]);
   expect(errors).toEqual([]);
 });
 

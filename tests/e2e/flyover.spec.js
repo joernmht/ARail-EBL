@@ -1,8 +1,8 @@
 // The flyover: a virtual camera instead of the camera image, grid editing with snapping and
 // table modules that extend the tabletop.
 import AxeBuilder from "@axe-core/playwright";
-import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { SCENE, SCENE_NAME, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -369,13 +369,13 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
 });
 
 test("the video survey works in the flyover: markers appear on the table", async ({ page }) => {
-  const VIDEO = "tests/fixtures/synthetic-survey.webm";
-  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
-  const errors = await openApp(page, "/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout" && window.__arail.tracker.state.H);
+  test.skip(!hasScene(), "run `npm run fixtures` first");
+  await routeScene(page);
+  const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
+  await page.waitForFunction((name) => window.__arail.world.layout.name === name && window.__arail.tracker.state.H, SCENE_NAME);
   await page.evaluate(() => window.__arail.tracker.resurvey());
   await enterFlyover(page);
-  await page.locator("#surveyVideo").setInputFiles(VIDEO);
+  await page.locator("#surveyVideo").setInputFiles(SCENE_VIDEO);
   await expect(page.locator(".survey [role=status]")).toContainText("done", { timeout: 60_000 });
   expect(await page.evaluate(() => window.__arail.world.map.ids().length)).toBe(8);
   expect(await page.evaluate(() => window.__arail.mode)).toBe("flyover");

@@ -333,8 +333,16 @@ def stills(tmp_path_factory, texture):
 
 def test_command_line_end_to_end(tmp_path, stills, capsys):
     out, report, ortho, check = (tmp_path / n for n in ("layout.json", "report.json", "media/ortho.jpg", "check.jpg"))
-    layout_in = os.path.join(ROOT, "web", "layouts", "synthetic-demo.json")
-    args = [stills, "--layout", layout_in, "-o", str(out), "--report", str(report)]
+    # a layout of the scene: its objects, scenarios and photo pass through, its markers are measured
+    layout_in = tmp_path / "scene.json"
+    layout_in.write_text(json.dumps({
+        "format": "arail-layout/1", "name": "Test scene", "scale": 87,
+        "markers": {"dictionary": "ARUCO", "size_mm": 30, "codes": 50, "origin": 0, "poses": {}},
+        "objects": [{"id": "tree-1", "type": "tree", "position": [100, 50]}, {"id": "tree-2", "type": "tree", "position": {"marker": 6, "offset": [40, -60]}}],
+        "scenarios": [{"id": "rush", "name": "Rush hour", "steps": [{"at": 0, "message": "Rush hour"}]}],
+        "view": {"image": "scene.jpg"},
+    }))
+    args = [stills, "--layout", str(layout_in), "-o", str(out), "--report", str(report)]
     args += ["--ortho", str(ortho), "--ortho-bounds", *map(str, BOARD), "--ortho-max", "400", "--check", str(check)]
     assert sv.main([*args, "-q"]) == 0
     printed = capsys.readouterr().out

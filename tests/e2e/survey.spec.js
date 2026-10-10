@@ -1,22 +1,24 @@
 // The in-app video survey: a video of the whole layout -> a fixed marker map.
 import AxeBuilder from "@axe-core/playwright";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { SCENE, SCENE_NAME, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 const axe = async (page) => (await new AxeBuilder({ page }).include("#panel-build").withTags(TAGS).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
 
-const VIDEO = "tests/fixtures/synthetic-survey.webm"; // made by `npm run fixtures` (WebM: test browsers lack H.264)
+const VIDEO = SCENE_VIDEO; // made by `npm run fixtures`
 
-test("a video of the synthetic layout gives all markers; keeping them fixes the layout", async ({ page }) => {
-  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
+test("a video of the test scene gives all markers; keeping them fixes the layout", async ({ page }) => {
+  test.skip(!hasScene(), "run `npm run fixtures` first");
   const truth = JSON.parse(readFileSync("tests/fixtures/meta.json", "utf8")).true_poses;
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/?layout=../layouts/synthetic-demo.json#build");
+  await routeScene(page);
+  await page.goto(`/app/?layout=${SCENE}#build`);
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/?layout=../layouts/synthetic-demo.json#build");
-  await page.waitForFunction(() => window.__arail?.world.layout.name === "Synthetic test layout" && window.__arail.tracker.state.H);
+  await page.goto(`/app/?layout=${SCENE}#build`);
+  await page.waitForFunction((name) => window.__arail?.world.layout.name === name && window.__arail.tracker.state.H, SCENE_NAME);
   await page.evaluate(() => {
     window.__arail.tracker.resurvey(); // start from an empty marker map
     window.__arail.world.map.lock(); // ... that is locked: the survey unlocks it for its run
@@ -44,13 +46,13 @@ test("a video of the synthetic layout gives all markers; keeping them fixes the 
 });
 
 test("another layout loaded during a video survey is left alone by it", async ({ page }) => {
-  test.skip(!existsSync(VIDEO), "run `npm run fixtures` first");
+  test.skip(!hasScene(), "run `npm run fixtures` first");
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/app/#build");
   await page.evaluate(() => localStorage.clear());
   await page.goto("/app/#build");
-  await page.waitForFunction(() => window.__arail?.world.layout.name === "EBL lab (example)" && window.__arail.tracker.state.H);
+  await page.waitForFunction(() => window.__arail?.world.layout.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   // hold back one decoded frame of the survey (its "seeked" event) until the other layout is loaded
   await page.evaluate(() => {
     const add = HTMLMediaElement.prototype.addEventListener;
@@ -63,14 +65,15 @@ test("another layout loaded during a video survey is left alone by it", async ({
   await page.waitForFunction(() => window.__arail.editor.surveyState?.progress?.frame >= 8);
   await page.evaluate(() => (window.__holdSeek = true));
   await page.waitForFunction(() => window.__releaseSeek);
-  // the synthetic layout: an empty marker map, and its photo comes later
+  // the test scene: an empty marker map, and its photo comes later
+  await routeScene(page);
   let sendPhoto;
-  await page.route("**/media/synthetic-layout.jpg", async (route) => {
+  await page.route("**/layouts/test-scene.jpg", async (route) => {
     await new Promise((resolve) => (sendPhoto = resolve));
-    await route.continue();
+    await route.fallback();
   });
-  await page.selectOption("#exampleSelect", "synthetic");
-  await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout");
+  await page.evaluate((url) => window.__arail.loadLayoutFromUrl(url), SCENE);
+  await page.waitForFunction((name) => window.__arail.world.layout.name === name, SCENE_NAME);
   await page.evaluate(() => window.__releaseSeek());
   await expect(page.locator("#toast")).toContainText("Survey cancelled");
   await page.waitForTimeout(600); // longer than the delay of saving a change
@@ -81,6 +84,6 @@ test("another layout loaded during a video survey is left alone by it", async ({
   // the layout's own photo gives its markers
   await expect.poll(() => typeof sendPhoto).toBe("function");
   sendPhoto();
-  await page.waitForFunction(() => window.__arail.source?.name === "Synthetic test layout" && window.__arail.world.map.ids().length === 8);
+  await page.waitForFunction((name) => window.__arail.source?.name === name && window.__arail.world.map.ids().length === 8, SCENE_NAME);
   expect(errors).toEqual([]);
 });

@@ -73,6 +73,10 @@ function stockCarrierType(entry, type, scale) {
 }
 /** Carrier ids reserved for model wagons and trucks. */
 const RESERVED_ID = /^[WT]\d+$/;
+/** The unit of model wagons without `rolling_stock[].unit`. */
+export const MODEL_UNIT = "Model wagons";
+/** The name of a unit of model wagons (`rolling_stock[].unit`): 1 to 40 characters, else null. */
+const unitName = (v) => (typeof v === "string" && v.trim() && v.trim().length <= 40 ? v.trim() : null);
 const MODEL_WAGON = /^W([1-9]\d*)$/;
 /** Number of bays a container size covers. */
 const baysOf = (size) => CONTAINER_SIZES[String(size)]?.bays ?? 1;
@@ -463,6 +467,33 @@ export class TerminalSimulation extends Simulation {
   }
 
   /**
+   * The model wagons by unit (`rolling_stock[].unit`, e.g. "Container train" or "Truck"; wagons
+   * without one form the unit "Model wagons"), in the order of their numbers: what is unloaded and
+   * loaded as a whole, like a visit (`unload`, `load` and the scenario requests take its name).
+   * @returns {{id: string, name: string, carriers: import("./model.js").Carrier[]}[]}
+   */
+  modelUnits() {
+    const units = new Map();
+    for (const c of [...this._wagons.values()].sort((a, b) => a.number - b.number)) {
+      const name = unitName(this._stockEntry(c.number)?.unit) ?? MODEL_UNIT;
+      if (!units.has(name)) units.set(name, { id: name, name, carriers: [] });
+      units.get(name).carriers.push(c);
+    }
+    return [...units.values()];
+  }
+
+  /**
+   * What `unload` and `load` work on: a visit, or else a unit of model wagons with those of its
+   * wagons that are seen standing; `problem` says why it cannot be done now (null = it can).
+   */
+  _group(id) {
+    const v = this.visits.get(id);
+    if (v || !this.modelUnits().some((u) => u.id === id)) return { name: v?.name ?? String(id), carriers: v?.carriers ?? [], problem: this._visitProblem(v, id) };
+    const u = this.modelUnits().find((x) => x.id === id), carriers = u.carriers.filter((c) => c.available);
+    return { name: u.name, carriers, problem: carriers.length ? null : `${u.name}: no wagon seen standing` };
+  }
+
+  /**
    * A slot in words, e.g. "Block A · bay 4 · row 2 · tier 1", "KT 41 Hamburg · wagon 1 · bay 2", "Truck T3";
    * for a container over two bays (`bays` 2: 40 and 45 ft) "KT 41 Hamburg · wagon 1 · bay 1–2".
    * @param {import("./types.js").SlotRef} ref
@@ -544,20 +575,30 @@ export class TerminalSimulation extends Simulation {
   }
 
   /**
-   * Create a train (and call it).
-   * @param {{track?: string, wagons?: string[], load?: "empty"|"random", name?: string|null}} [options]
+   * Create a train (and call it). Without `wagons` it gets 2 to 5 wagons of `wagonType` (default:
+   * the terminal's `default_wagon`), as many as fit on the track: trains differ in length.
+   * @param {{track?: string, wagons?: string[] | null, wagonType?: string, load?: "empty"|"random", name?: string|null}} [options]
    * @returns {{visit: import("./types.js").Visit} | {error: string}}
    */
-  addTrain({ track, wagons = ["sgns60", "sgns60", "sgns60"], load = "empty", name = null } = {}) {
+  addTrain({ track, wagons = null, wagonType = null, load = "empty", name = null } = {}) {
     this._syncInfra();
     const o = track != null ? this.world.getObject(track) : this.world.objects.find((x) => x.type === "track" && x.geometry);
     if (!o || o.type !== "track") return { error: track != null ? `No track "${track}"` : "No track" };
+    if (wagons == null) wagons = this._randomWagons(o, wagonType);
     if (!Array.isArray(wagons) || !wagons.length) return { error: "A train needs at least one wagon" };
     const bad = wagons.find((t) => !isWagonType(t));
     if (bad !== undefined) return { error: `Unknown wagon type "${bad}"` };
     const n = this._nextNumber("train", "train-");
     const v = new TrainVisit({ id: `train-${n}`, name: name || `Train ${n}`, track: o.id, wagons, runtime: true });
     return this._callNew(v, load);
+  }
+
+  /** 2 to 5 wagons of a type (default: `default_wagon`), at most as many as fit on the track with the locomotive. */
+  _randomWagons(track, wagonType = null) {
+    const type = isWagonType(wagonType) ? wagonType : isWagonType(this.config.default_wagon) ? this.config.default_wagon : "sgns60";
+    const lengths = track.geometry?.lengths, room = lengths?.length ? lengths[lengths.length - 1] - this.mm(LOCO_M + 5) : Infinity;
+    const fit = Math.max(1, Math.floor(room / this.mm(CARRIER_TYPES[type].length_m + 1)));
+    return Array(Math.min(fit, 2 + this.rng.int(4))).fill(type);
   }
 
   /**
@@ -966,8 +1007,9 @@ export class TerminalSimulation extends Simulation {
 
   /**
    * Queue moves for every container of a visit that can be lifted now, to free slots on carriers
-   * of kind `to`; containers that cannot be lifted are listed in `refused`.
-   * @param {string} visitId
+   * of kind `to`; containers that cannot be lifted are listed in `refused`. A unit of model wagons
+   * (`modelUnits`) works like a visit, with its wagons that are seen standing.
+   * @param {string} visitId a visit, or the name of a unit of model wagons
    * @param {{to?: "yard"|"truck"|"wagon"|"barge"}} [options]
    * @returns {{moves: import("./types.js").Move[], refused: import("./types.js").Refusal[]}}
    */
@@ -977,8 +1019,8 @@ export class TerminalSimulation extends Simulation {
 
   _unload(visitId, { to = "yard", source = "user" } = {}) {
     this._syncInfra();
-    const v = this.visits.get(visitId), why = this._visitProblem(v, visitId);
-    if (why) return { moves: [], refused: [{ carrier: visitId, label: v?.name ?? String(visitId), reason: why }] };
+    const v = this._group(visitId);
+    if (v.problem) return { moves: [], refused: [{ carrier: visitId, label: v.name, reason: v.problem }] };
     const own = new Set(v.carriers.map((c) => c.id));
     const boxes = v.carriers.flatMap((c) => this.inventory.on(c.id));
     boxes.sort((p, q) => q.at.tier - p.at.tier || p.at.bay - q.at.bay || p.at.row - q.at.row);
@@ -993,8 +1035,9 @@ export class TerminalSimulation extends Simulation {
   }
 
   /**
-   * Fill a visit's free slots with containers from carriers of kind `from`.
-   * @param {string} visitId
+   * Fill a visit's free slots (or those of a unit of model wagons) with containers from carriers
+   * of kind `from`.
+   * @param {string} visitId a visit, or the name of a unit of model wagons
    * @param {{from?: "yard"|"truck"|"wagon"|"barge"}} [options]
    * @returns {{moves: import("./types.js").Move[], refused: import("./types.js").Refusal[]}}
    */
@@ -1004,8 +1047,8 @@ export class TerminalSimulation extends Simulation {
 
   _load(visitId, { from = "yard", source = "user" } = {}) {
     this._syncInfra();
-    const v = this.visits.get(visitId), why = this._visitProblem(v, visitId);
-    if (why) return { moves: [], refused: [{ carrier: visitId, label: v?.name ?? String(visitId), reason: why }] };
+    const v = this._group(visitId);
+    if (v.problem) return { moves: [], refused: [{ carrier: visitId, label: v.name, reason: v.problem }] };
     const kind = from === "train" ? "wagon" : from;
     const own = new Set(v.carriers.map((c) => c.id));
     const order = new Map(this.carriers().map((c, i) => [c.id, i]));
@@ -1449,25 +1492,33 @@ export class TerminalSimulation extends Simulation {
         drawGhost(view, c.footprint(this.world.scale), this._deckZ(c), `${c.id} not visible`);
         drawContainers(view, boxes, ref, { alpha: 0.35 });
       }
-      if (!flyover && c.present && this.world.settings.coverMarkers !== false) this._drawLabelCovers(view, c);
+      if (!flyover && c.present && this.world.settings.coverMarkers !== false) this._drawSpotCovers(view, c);
     }
     // 7. highlights
     this._drawHighlights(view, flyover);
   }
 
   /**
-   * Grey plates over the labels of a model wagon in the camera image (world setting `coverMarkers`),
-   * with the wagon's number: as big as a 20 ft container, on the deck under the containers, so a
-   * free spot shows a grey plate instead of the white label.
+   * Grey placeholders on a model wagon in the camera image (world setting `coverMarkers`): a plate
+   * as big as a 20 ft container on each container spot, numbered like "W8·2", and one with the
+   * wagon's number on each label away from the spots. They lie on the deck under the containers,
+   * so a free spot shows its plate instead of the white label, and a container set down hides it.
    */
-  _drawLabelCovers(view, c) {
+  _drawSpotCovers(view, c) {
     const length = 1.04 * this.mm(CONTAINER_SIZES["20"].length_m), width = 1.1 * this.mm(CONTAINER_WIDTH_M);
-    const z = this._deckZ(c), h = c.pose.heading || 0;
+    const z = this._deckZ(c), h = c.pose.heading || 0, cos = Math.cos(h), sin = Math.sin(h);
+    const style = { z, fill: grey(0.62), stroke: grey(0.5), textColour: grey(0.93), order: 40 };
+    const at = (along) => [c.pose.center[0] + along * cos, c.pose.center[1] + along * sin];
+    const spots = [];
+    for (let bay = 0; bay < c.bays; bay++) {
+      const along = this.mm(c.along(bay, "20"));
+      if (!Number.isFinite(along)) continue;
+      spots.push(along);
+      view.plate(at(along), h, length, width, { ...style, text: `${c.id}·${bay + 1}`, textSize: 0.45 * width });
+    }
     for (let slot = 0; slot < this.tagCount(c.number); slot++) {
       const along = this._tagAlongMM(c.number, slot);
-      if (!Number.isFinite(along)) continue;
-      const center = [c.pose.center[0] + along * Math.cos(h), c.pose.center[1] + along * Math.sin(h)];
-      view.plate(center, h, length, width, { z, fill: grey(0.62), stroke: grey(0.5), text: c.id, textColour: grey(0.93), order: 40 });
+      if (Number.isFinite(along) && !spots.some((a) => Math.abs(a - along) < 0.25 * length)) view.plate(at(along), h, length, width, { ...style, text: c.id });
     }
   }
 
@@ -1609,6 +1660,7 @@ function validateTerminal(cfg, layout) {
     if (numbers.has(w.number)) out.push(`rolling_stock[${i}]: duplicate number ${w.number}`);
     if (w.type != null && !isWagonType(w.type)) out.push(`rolling_stock[${i}]: unknown type "${w.type}"`);
     if (w.height_mm != null && rollingHeightMM(w.height_mm) == null) out.push(`rolling_stock[${i}]: height_mm must be a number from 0 to 200 (mm)`);
+    if (w.unit != null && !unitName(w.unit)) out.push(`rolling_stock[${i}]: unit must be a name of 1 to 40 characters (the wagons of a model train or truck)`);
     const type = isWagonType(w.type) ? w.type : defWagon;
     numbers.set(w.number, stockCarrierType(w, type, scale));
     const at = tagPositions(w), half = (CARRIER_TYPES[type].length_m * 1000) / scale / 2;

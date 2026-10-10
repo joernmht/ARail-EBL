@@ -104,6 +104,19 @@ export function orthoOf(layout) {
   return { ...o, bounds_mm: b };
 }
 
+/** Largest `view.extend_below`: the picture at most this many photo heights taller. */
+export const EXTEND_BELOW_MAX = 2;
+
+/**
+ * How far the picture extends below the photo or video (`view.extend_below`), as a share of its
+ * height: room for virtual parts of the layout in front of the table, e.g. a harbour on a module.
+ * 0 when it is not set or malformed.
+ */
+export function extendBelowOf(layout) {
+  const v = layout?.view?.extend_below;
+  return typeof v === "number" && v > 0 && v <= EXTEND_BELOW_MAX ? v : 0;
+}
+
 /**
  * Fill in defaults and normalise a layout object (does not modify the input).
  * @param {object} json
@@ -227,6 +240,9 @@ export function validateLayout(json, registry) {
   }
   if (isObject(json.view) && json.view.ortho != null && !orthoOf(json)) {
     problems.push('view.ortho must be {"image": "<url>", "bounds_mm": [xmin, ymin, xmax, ymax]} with xmin < xmax and ymin < ymax');
+  }
+  if (isObject(json.view) && json.view.extend_below != null && json.view.extend_below !== 0 && !extendBelowOf(json)) {
+    problems.push(`view.extend_below must be a number from 0 to ${EXTEND_BELOW_MAX} (a share of the photo's height)`);
   }
   (Array.isArray(json.scenarios) ? json.scenarios : []).forEach((s, i) => {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);

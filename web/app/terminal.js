@@ -64,7 +64,7 @@ export class TerminalPanel {
     /** A departure that was refused: {visit} (its card says why and offers "Depart anyway"). */
     this.refused = null;
     /** Values of the New arrival forms. */
-    this.draft = { track: "", wagonType: "sgns60", wagons: 3, load: "random", quay: "", purpose: "pickup", size: "" };
+    this.draft = { track: "", wagonType: "sgns60", wagons: "random", load: "random", quay: "", purpose: "pickup", size: "" };
     /** The cross in the middle of the flyover shows where Enter picks (after keys on the stage). */
     this.keyAim = false;
     this._sim = null;
@@ -349,7 +349,7 @@ export class TerminalPanel {
     if (!tracks.some((o) => o.id === d.track)) d.track = tracks[0]?.id ?? "";
     if (!quays.some((o) => o.id === d.quay)) d.quay = quays[0]?.id ?? "";
     const select = (id, label, key, options) => h("label", { class: "field", for: id }, h("span", {}, label),
-      h("select", { id, onchange: (e) => { d[key] = key === "wagons" ? Number(e.target.value) : e.target.value; } },
+      h("select", { id, onchange: (e) => { d[key] = key === "wagons" && e.target.value !== "random" ? Number(e.target.value) : e.target.value; } },
         options.map(([v, t]) => h("option", { value: v, selected: String(d[key]) === String(v) }, t))));
     const wagonTypes = Object.entries(CARRIER_TYPES).filter(([, t]) => t.kind === "wagon").map(([k, t]) => [k, t.label]);
     return [
@@ -360,10 +360,10 @@ export class TerminalPanel {
           h("div", { class: "fields" },
             select("termTrack", "Track", "track", tracks.map((o) => [o.id, o.name])),
             select("termWagonType", "Wagons", "wagonType", wagonTypes),
-            select("termWagonCount", "Number of wagons", "wagons", [1, 2, 3, 4, 5, 6].map((n) => [n, String(n)])),
+            select("termWagonCount", "Number of wagons", "wagons", [["random", "2–5, as it comes"], ...[1, 2, 3, 4, 5, 6].map((n) => [n, String(n)])]),
             select("termLoad", "Load", "load", [["empty", "empty"], ["random", "random load"]]),
           ),
-          h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termCallTrain", onclick: () => this._added(sim.addTrain({ track: d.track, wagons: Array(d.wagons).fill(d.wagonType), load: d.load })) }, "Call train")),
+          h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termCallTrain", onclick: () => this._added(sim.addTrain({ track: d.track, wagons: d.wagons === "random" ? null : Array(d.wagons).fill(d.wagonType), wagonType: d.wagonType, load: d.load })) }, "Call train")),
         ] : h("p", { class: "hint" }, "No track on this layout: add one in Build → Infrastructure → Track."),
       ),
       h("div", { class: "term-form" },
@@ -586,9 +586,11 @@ export class TerminalPanel {
   /* ---------------------------------------------------------------- model wagons */
 
   _wagons(sim) {
-    const wagons = sim.markerWagons();
+    const wagons = sim.markerWagons(), units = sim.modelUnits();
     return [
       h("h2", {}, "Model wagons"),
+      // the real train and the real truck: unloaded and loaded as a whole, like a visit
+      units.length ? h("div", { class: "board term-board", "aria-live": "off" }, units.map((u) => this._unitCard(sim, u))) : null,
       wagons.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-wagons" },
         h("thead", {}, h("tr", {}, ["Wagon", "Type", "Tags seen", "State", "Containers"].map((t) => h("th", {}, t)))),
         h("tbody", {}, wagons.map((c) => {
@@ -598,6 +600,25 @@ export class TerminalPanel {
         })))) : h("p", { class: "hint" }, "No model wagons seen yet. Show the camera a wagon with its deck card."),
       h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ", ...this._deckLinks(sim)),
     ];
+  }
+
+  /** A unit of model wagons (rolling_stock[].unit): its wagons seen, its TEU, Unload to yard and Load from yard. */
+  _unitCard(sim, u) {
+    const inv = sim.inventory, seen = u.carriers.filter((c) => c.available);
+    const used = u.carriers.reduce((n, c) => n + inv.usedTeu(c.id), 0), cap = u.carriers.reduce((n, c) => n + inv.capacityTeu(c.id), 0);
+    const btn = (label, fn) => h("button", { class: "btn", type: "button", disabled: !seen.length, onclick: fn }, label);
+    const icon = h("div", { class: "num term-icon train" });
+    icon.innerHTML = ICONS.train || "";
+    return h("div", { class: "stop", "data-id": `unit:${u.id}` },
+      icon,
+      h("div", { class: "title" }, u.name),
+      h("div", { class: "figures" }, h("span", {}, `${seen.length} of ${plural(u.carriers.length, "wagon")} seen`), h("span", {}, `${used} of ${cap} TEU`)),
+      h("div", { class: "meter" }, h("i", { class: "teu", style: { width: `${cap ? Math.round((100 * used) / cap) : 0}%` } })),
+      h("div", { class: "status" }, seen.length ? "standing on the layout" : "show the camera its deck cards"),
+      h("div", { class: "calls" },
+        btn("Unload to yard", () => this.bulk(sim.unload(u.id, { to: "yard" }))),
+        btn("Load from yard", () => this.bulk(sim.load(u.id, { from: "yard" })))),
+    );
   }
 
   /**
