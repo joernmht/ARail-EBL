@@ -4,7 +4,7 @@
   "fps": 30,
   "parts": [
     { "frames": "build/video/terminal-photo", "count": 110, "crop": [[0, 225, 1600, 1125], [240, 300, 1520, 1020]],
-      "bare": { "image": "web/media/ebl-container-train.jpg", "hold": 36, "fade": [12, 36] } },
+      "bare": { "image": "web/media/ebl-container-train.jpg", "fill": "#9ba5aa", "hold": 36, "fade": [12, 36] } },
     { "frames": "build/video/terminal-truck", "count": 222, "crop": [[0, 0, 1280, 720], [200, 100, 1160, 640]], "fade": 9 }
   ],
   "out": "web/media/ebl-terminal-unloading.mp4",

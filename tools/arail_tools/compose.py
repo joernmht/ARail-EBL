@@ -21,8 +21,8 @@ A plan (JSON) lists the shots, each a directory of frames from ``node tools/vide
   moves from one to the other over the shot (eased);
 - ``fade``: frames over which the shot fades in from the one before (the two overlap);
 - ``bare``: the picture without the augmentation (``image``, or ``clip`` from ``start``) pasted over
-  the frame's top left; the shot fades in over it in the frames ``fade`` [from, to] of the shot,
-  after ``hold`` frames of the first frame held;
+  the frame's top left (around it the frame, or the colour ``fill``); the shot fades in over it in
+  the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
 - ``loop``: the last frames fade into the first, so the video loops without a seam.
 
 Paths are relative to the repository.
@@ -95,7 +95,8 @@ class Part:
         return os.path.join(self.dir, f"f{k:04d}.jpg")
 
     def _bare(self, k: int, frame: np.ndarray) -> np.ndarray:
-        """The frame with the bare picture pasted over its top left (scaled to its width for a clip)."""
+        """The bare picture over the frame's top left (scaled to its width for a clip); around it the
+        frame, or the colour `fill` ("#rrggbb")."""
         import cv2
 
         if self._image is not None:
@@ -117,6 +118,9 @@ class Part:
             h = round(pic.shape[0] * frame.shape[1] / pic.shape[1])
             pic = cv2.resize(pic, (frame.shape[1], h), interpolation=cv2.INTER_AREA)
         out = frame.copy()
+        fill = self.bare.get("fill")
+        if fill:
+            out[:] = [int(fill[i : i + 2], 16) for i in (5, 3, 1)]  # BGR
         h, w = min(pic.shape[0], out.shape[0]), min(pic.shape[1], out.shape[1])
         out[:h, :w] = pic[:h, :w]
         return out
@@ -219,7 +223,7 @@ def main(argv=None) -> int:
         import cv2
 
         img = cv2.imread(os.path.join(frames_dir, f"f{int(poster['frame']):04d}.jpg"))
-        cv2.imwrite(os.path.join(ROOT, poster["out"]), img, [cv2.IMWRITE_JPEG_QUALITY, int(poster.get("quality", 86))])
+        cv2.imwrite(os.path.join(ROOT, poster["out"]), img, [cv2.IMWRITE_JPEG_QUALITY, int(poster.get("quality", 82))])
         print(f"written {poster['out']}")
     return 0
 

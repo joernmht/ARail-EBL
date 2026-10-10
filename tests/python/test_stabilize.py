@@ -206,6 +206,11 @@ def test_compose_puts_the_bare_picture_first(tmp_path, monkeypatch):
     assert cp.compose(plan, str(out), log=lambda *_: None) == 14
     f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
     assert f(0)[25, 80, 0] > 180, "the bare photo"
+    plan["parts"][0]["bare"]["fill"] = "#00ff00"
+    small = np.full((40, 200, 3), (200, 0, 0), np.uint8)  # a photo that covers the top only
+    cv2.imwrite(str(tmp_path / "photo.jpg"), small)
+    cp.compose(plan, str(out), log=lambda *_: None)
+    assert f(0)[45, 80, 1] > 180 and f(0)[5, 80, 0] > 180, "around the photo the fill colour"
     assert f(8)[25, 80, 2] > 180, "then the shot"
     with pytest.raises(OSError, match="missing"):
         cp.Part({"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1]}, (10, 10))
