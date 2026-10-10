@@ -15,6 +15,7 @@
  * own stream, so other simulations are not affected.
  * @module arail/terminal/operations
  */
+import { grey } from "../core/colors.js";
 import { rollingHeightMM } from "../core/layout.js";
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, pointInPolygon, toRad } from "../core/math.js";
@@ -1448,9 +1449,26 @@ export class TerminalSimulation extends Simulation {
         drawGhost(view, c.footprint(this.world.scale), this._deckZ(c), `${c.id} not visible`);
         drawContainers(view, boxes, ref, { alpha: 0.35 });
       }
+      if (!flyover && c.present && this.world.settings.coverMarkers !== false) this._drawLabelCovers(view, c);
     }
     // 7. highlights
     this._drawHighlights(view, flyover);
+  }
+
+  /**
+   * Grey plates over the labels of a model wagon in the camera image (world setting `coverMarkers`),
+   * with the wagon's number: as big as a 20 ft container, on the deck under the containers, so a
+   * free spot shows a grey plate instead of the white label.
+   */
+  _drawLabelCovers(view, c) {
+    const length = 1.04 * this.mm(CONTAINER_SIZES["20"].length_m), width = 1.1 * this.mm(CONTAINER_WIDTH_M);
+    const z = this._deckZ(c), h = c.pose.heading || 0;
+    for (let slot = 0; slot < this.tagCount(c.number); slot++) {
+      const along = this._tagAlongMM(c.number, slot);
+      if (!Number.isFinite(along)) continue;
+      const center = [c.pose.center[0] + along * Math.cos(h), c.pose.center[1] + along * Math.sin(h)];
+      view.plate(center, h, length, width, { z, fill: grey(0.62), stroke: grey(0.5), text: c.id, textColour: grey(0.93), order: 40 });
+    }
   }
 
   /** Yard stacks (draw boxes, bottom to top) of a yard carrier. */

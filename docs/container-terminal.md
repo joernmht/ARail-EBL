@@ -353,6 +353,12 @@ disappears in the picture, the black border of the tag merges with the frame, an
 found. In the example's photos, the labels whose tag sits close to the wagon's near side are the
 ones that are missed.
 
+Over the camera image, a grey plate with the wagon's number (W1, W2, …) covers each label of a
+wagon that is seen: as big as a 20 ft container, on the deck under the containers, so a free spot
+shows the plate instead of the white label, and a container set down on it hides it. The plates
+follow View → Show → *Cover the markers* (world setting `coverMarkers`), like the plates over the
+layout's markers. A wagon whose tags are not found gets no plate: its labels stay white.
+
 ### Surveying with tagged wagons on the layout
 
 The tags never enter the marker map. Still, set `markers.dictionary` to the layout's marker type

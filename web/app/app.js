@@ -748,8 +748,8 @@ class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour });
+    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers } = this.world.settings;
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers });
   }
 
   showLayoutName() {
@@ -1068,12 +1068,27 @@ class App {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
       const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
+      if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
       this.terminal.drawOverlay(ctx, view);
       this.lastView = view;
     }
     if (this.display.markers) this._drawMarkers(ctx);
+  }
+
+  /**
+   * Grey plates over the markers of the map, each with its number painted on it (View → Show →
+   * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
+   * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
+   * table, under the virtual objects.
+   */
+  _drawMarkerCovers(view) {
+    const map = this.world.map, fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
+    for (const id of map.ids()) {
+      const e = map.get(id), s = map.sizeOf(id);
+      if (e) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
+    }
   }
 
   /** Where the grid is drawn over the camera image: around the markers, objects and table modules. */

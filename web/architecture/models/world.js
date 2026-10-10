@@ -104,7 +104,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, trails, tracks, lighting …", meaning: "What is drawn (View panel), kept in the browser." },
+      { key: "settings", default: "labels, trails, tracks, lighting, coverMarkers …", meaning: "What is drawn (View panel), kept in the browser; coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default)." },
     ],
     events: {
       emits: [
@@ -314,7 +314,7 @@ export const WORLD = [
       {
         name: "View", file: "web/arail/core/view.js", kind: "class", role: "Projection and display list of one frame.",
         attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list"],
-        operations: ["project(x, y, z)", "add(layer, key, draw)", "polygon(points, style)", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style)", "dim(colour, amount)", "render()"],
+        operations: ["project(x, y, z)", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style)", "dim(colour, amount)", "render()"],
       },
       { name: "SimpleView", file: "web/arail/core/simple.js", kind: "class", extends: "View", role: "Map and 2.5D: flat footprints, plain blocks, always day.", operations: ["block(footprint, z0, z1, colour)"] },
       { name: "colors", file: "web/arail/core/colors.js", kind: "module", role: "The corporate-design colours.", attributes: ["CD — the colours of the corporate design", "OVERLAY — colours over the camera image", "FONT"], operations: ["mix(a, b, t, alpha)", "shade(c, factor, alpha)", "moodColor(m, alpha, k)"] },

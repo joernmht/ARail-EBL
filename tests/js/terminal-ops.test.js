@@ -1285,6 +1285,35 @@ test("draw builds the scene in the camera view and the flyover without errors", 
   sim.highlight = { selected: null, targets: null, slots: false };
 });
 
+test("label covers: a grey plate with the wagon's number on each label of a wagon seen, over the camera image only", () => {
+  const { world, sim } = setup();
+  sim.observe({ [encodeTag(3, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 } }, 0);
+  const ctx = new Proxy({ canvas: { width: 1280, height: 720 } }, { get: (o, k) => (k in o ? o[k] : () => ({ addColorStop() {} })), set: (o, k, v) => ((o[k] = v), true) });
+  const camera = new Camera(1280, 720);
+  const { fx, cx, cy } = camera.intrinsics, d = 3000;
+  const plates = (opts = {}) => {
+    const view = new View({ ctx, camera, H: [fx, 0, cx * d, 0, -fx, cy * d, 0, 0, d], scale: 87, ...opts }), out = [];
+    view.plate = (center, heading, length, width, style) => out.push({ center, heading, length, width, ...style });
+    world.draw(view);
+    return out;
+  };
+  const w = sim.carrier("W3"), seen = plates();
+  assert.equal(seen.length, sim.tagCount(3));
+  for (const [slot, p] of seen.entries()) {
+    assert.equal(p.text, "W3");
+    assert.equal(p.z, sim._deckZ(w));
+    assert.equal(p.heading, w.pose.heading);
+    // on the label: its place along the wagon; as big as a 20 ft container (and a little more)
+    const along = sim._tagAlongMM(3, slot);
+    assert.ok(Math.abs(p.center[0] - (w.pose.center[0] + along * Math.cos(w.pose.heading))) < 1e-9);
+    assert.ok(Math.abs(p.center[1] - (w.pose.center[1] + along * Math.sin(w.pose.heading))) < 1e-9);
+    assert.ok(p.length > sim.mm(6.058) && p.width > sim.mm(2.438));
+  }
+  assert.deepEqual(plates({ virtual: true }), []); // the flyover draws the wagon itself
+  world.settings.coverMarkers = false;
+  assert.deepEqual(plates(), []);
+});
+
 /* ---------------------------------------------------------------- validation */
 
 test("rolling_stock heights: 0 to 200 mm, else markers.rolling.height_mm", () => {

@@ -63,7 +63,7 @@
     {"id": "track-g52", "type": "track", "name": "Track G 52 (the tagged train)", "track_id": "G52", "points": [[-900, 302], [1300, 335]]},
     {"id": "lane-1", "type": "truck-lane", "name": "Truck lane", "points": [[-950, 155], [1300, 158]], "positions": 3, "passing_side": "right"},
     {"id": "yard-a", "type": "container-yard", "name": "Block A", "position": [100, 58], "width_mm": 1190, "depth_mm": 67, "rotation_deg": 0, "tiers": 3},
-    {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 157], "width_mm": 2150, "depth_mm": 372, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
+    {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 167], "width_mm": 2150, "depth_mm": 392, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
     {"id": "table-harbour", "type": "tabletop", "name": "Harbour module", "position": [180, -265], "width_mm": 2300, "depth_mm": 470},
     {"id": "quay-1", "type": "quay", "name": "Quay", "points": [[-1000, -130], [1150, -130]], "berth_m": 60, "water_m": 16, "quay_side": "left"}
   ],

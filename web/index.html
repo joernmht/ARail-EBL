@@ -76,9 +76,9 @@ p { margin: 0; }
 .hero-video .media { position: relative; }
 .hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 720 / 1280; max-height: min(78vh, 700px); object-fit: cover; border-radius: var(--radius); background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); }
 .hero-video .tag { position: absolute; top: 12px; left: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: #0A777F; color: #ffffff; pointer-events: none; }
-.hero-video .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
-.hero-video .pause svg { width: 16px; height: 16px; fill: currentColor; }
-.hero-video .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.hero-video .pause, .pic.clip .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
+.hero-video .pause svg, .pic.clip .pause svg { width: 16px; height: 16px; fill: currentColor; }
+.hero-video .pause:focus-visible, .pic.clip .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
 .hero-video figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
 @media (max-width: 999px) { .hero-grid .hero-video { order: -1; } }
 
@@ -124,6 +124,8 @@ p { margin: 0; }
 .fresh-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
 .fresh-card .pic { aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
 .fresh-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.fresh-card .pic.clip { position: relative; }
+.fresh-card .pic video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .fresh-card .body { padding: 14px 16px 16px; display: grid; gap: 8px; align-content: start; }
 .fresh-card p { color: var(--text-2); font-size: .94rem; }
 .fresh-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
@@ -245,13 +247,13 @@ footer a { color: inherit; }
       </div>
       <figure class="hero-video" id="heroVideo">
         <div class="media">
-          <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="1280" aria-label="A real yellow container train runs along the curve of the lab table, between virtual houses, trees, streets and a bus of a town that ARail draws around it.">
+          <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="1280" aria-label="A real yellow container train runs along the curve of the lab table, between virtual old buildings, Plattenbau, trees, streets and a bus of a town that ARail draws around it, under a virtual sky.">
             <source src="media/ebl-city-train.mp4" type="video/mp4">
           </video>
           <span class="tag">Real train · virtual town</span>
           <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
         </div>
-        <figcaption>A freight train of the lab on its way to the terminal, filmed with a phone: the town around it is ARail's, registered on the table from the markers.</figcaption>
+        <figcaption>A freight train of the lab on its way to the terminal, filmed with a phone: the town around it is ARail's, registered on the table from the markers, which it covers with grey plates. The sky is added for this video.</figcaption>
       </figure>
     </section>
     <nav class="jump" aria-label="Applications">
@@ -288,7 +290,7 @@ footer a { color: inherit; }
         </div>
       </article>
       <article class="fresh-card" aria-labelledby="f-terminal">
-        <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks: a virtual gantry crane over the three loading tracks, container trains, two trucks and a yard block; the Terminal panel lists the arrivals."></div>
+        <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks, the markers under grey plates with their numbers: a virtual gantry crane over the three loading tracks unloads a container train into the yard block; the Terminal panel lists the arrivals."></div>
         <div class="body">
           <h3 id="f-terminal">The terminal at the crane</h3>
           <p>For the first time on the real layout: a gantry crane over the lab's three terminal tracks, a truck lane and a yard. The real container train on the middle track keeps its place.</p>
@@ -296,10 +298,15 @@ footer a { color: inherit; }
         </div>
       </article>
       <article class="fresh-card" aria-labelledby="f-train">
-        <div class="pic"><img src="assets/app-container-train.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's container train: virtual containers on the real wagons and on a real model truck, a crane, a yard block and a road in front."></div>
+        <div class="pic clip">
+          <video id="terminalClip" muted loop playsinline preload="none" poster="media/ebl-terminal-unloading.jpg" width="1280" height="720" aria-label="A photo of the lab's container train comes alive: a virtual gantry crane lifts a container off a real wagon and sets it down on the trailer of a real model truck. Grey plates with the wagon numbers cover the white labels.">
+            <source src="media/ebl-terminal-unloading.mp4" type="video/mp4">
+          </video>
+          <button class="pause" id="terminalPause" type="button" aria-pressed="true" aria-label="Play the terminal video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z"/></svg></button>
+        </div>
         <div class="body">
           <h3 id="f-train">A hybrid container train</h3>
-          <p>Real wagons and a real truck with AprilTag labels carry virtual containers; the crane loads them from a virtual train, the yard and a barge in a harbour below the table edge.</p>
+          <p>Real wagons and a real truck with AprilTag labels carry virtual containers; grey plates cover the labels where no container stands. In the clip, made from one photo, the crane unloads a real wagon onto the real truck.</p>
           <div class="acts"><a class="btn primary" href="app/?example=container-train">Open the train</a><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/container-terminal.md#labels-where-they-fit">Labels on wagons</a></div>
         </div>
       </article>
@@ -367,7 +374,7 @@ footer a { color: inherit; }
           </div>
         </article>
         <article class="app-card" id="app-terminal" aria-labelledby="t-terminal">
-          <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks: a virtual gantry crane over the three loading tracks, container trains, two trucks and a yard block; the Terminal panel lists the arrivals."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks, the markers under grey plates with their numbers: a virtual gantry crane over the three loading tracks unloads a container train into the yard block; the Terminal panel lists the arrivals."><span class="badge">Prototype</span></div>
           <div class="body">
             <p class="kicker">2 · Intermodal freight</p>
             <h3 id="t-terminal">A working container terminal</h3>
@@ -553,23 +560,37 @@ footer a { color: inherit; }
 </footer>
 
 <script>
-  // the hero video: a pause button, and no autoplay for people who prefer reduced motion
-  const clip = document.getElementById("heroClip"), pause = document.getElementById("heroPause");
+  // the videos: a pause button each, and no autoplay for people who prefer reduced motion; the
+  // terminal video plays while it is in view (and is only loaded then)
   const icons = { pause: '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>', play: '<path d="M4 2l10 6-10 6z"/>' };
-  const showState = () => {
-    const playing = !clip.paused;
-    pause.setAttribute("aria-pressed", playing ? "false" : "true");
-    pause.setAttribute("aria-label", playing ? "Pause the video" : "Play the video");
-    pause.querySelector("svg").innerHTML = playing ? icons.pause : icons.play;
-  };
-  pause.addEventListener("click", () => (clip.paused ? clip.play().catch(() => {}) : clip.pause()));
-  clip.addEventListener("play", showState);
-  clip.addEventListener("pause", showState);
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    clip.removeAttribute("autoplay");
-    clip.pause();
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  for (const [clipId, buttonId, name] of [["heroClip", "heroPause", "the video"], ["terminalClip", "terminalPause", "the terminal video"]]) {
+    const clip = document.getElementById(clipId), pause = document.getElementById(buttonId);
+    const showState = () => {
+      const playing = !clip.paused;
+      pause.setAttribute("aria-pressed", playing ? "false" : "true");
+      pause.setAttribute("aria-label", `${playing ? "Pause" : "Play"} ${name}`);
+      pause.querySelector("svg").innerHTML = playing ? icons.pause : icons.play;
+    };
+    pause.addEventListener("click", () => {
+      clip.dataset.user = clip.paused ? "play" : "pause";
+      if (clip.paused) clip.play().catch(() => {});
+      else clip.pause();
+    });
+    clip.addEventListener("play", showState);
+    clip.addEventListener("pause", showState);
+    if (still) {
+      clip.removeAttribute("autoplay");
+      clip.pause();
+    } else if (!clip.autoplay && "IntersectionObserver" in window) {
+      new IntersectionObserver(([e]) => {
+        if (clip.dataset.user === "pause") return;
+        if (e.isIntersecting) clip.play().catch(() => {});
+        else clip.pause();
+      }, { threshold: 0.3 }).observe(clip);
+    }
+    showState();
   }
-  showState();
   const fig = document.getElementById("compare");
   const range = document.getElementById("compareRange");
   const set = (v) => fig.style.setProperty("--pos", `${v}%`);
