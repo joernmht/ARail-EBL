@@ -1,7 +1,7 @@
 // End-to-end tests of the app in a real browser (Chromium).
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { SCENE, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
+import { SCENE, SCENE_VIDEO, atPath, hasScene, routeScene } from "./scene.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -93,7 +93,7 @@ test("control: the simulated control system reports trains", async ({ page }) =>
 test("a layout without a marker map is surveyed from its photo", async ({ page }) => {
   // the lab example as before it was surveyed: no marker known, the map open
   const lab = JSON.parse(readFileSync("web/layouts/ebl-lab.json", "utf8"));
-  await page.route("**/layouts/lab-unsurveyed.json", (route) => route.fulfill({ json: { ...lab, name: "EBL lab, not surveyed", markers: { ...lab.markers, poses: {}, locked: false } } }));
+  await page.route(atPath("/layouts/lab-unsurveyed.json"), (route) => route.fulfill({ json: { ...lab, name: "EBL lab, not surveyed", markers: { ...lab.markers, poses: {}, locked: false } } }));
   const errors = await openApp(page, "/app/?layout=../layouts/lab-unsurveyed.json");
   await expect(page.locator("#layoutName")).toHaveText("EBL lab, not surveyed");
   await page.waitForFunction(() => {

@@ -2,7 +2,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { SCENE, SCENE_NAME, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
+import { SCENE, SCENE_NAME, SCENE_VIDEO, atPath, hasScene, routeScene } from "./scene.js";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 const axe = async (page) => (await new AxeBuilder({ page }).include("#panel-build").withTags(TAGS).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
@@ -68,7 +68,7 @@ test("another layout loaded during a video survey is left alone by it", async ({
   // the test scene: an empty marker map, and its photo comes later
   await routeScene(page);
   let sendPhoto;
-  await page.route("**/layouts/test-scene.jpg", async (route) => {
+  await page.route(atPath("/layouts/test-scene.jpg"), async (route) => {
     await new Promise((resolve) => (sendPhoto = resolve));
     await route.fallback();
   });
