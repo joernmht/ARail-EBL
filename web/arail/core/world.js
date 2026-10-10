@@ -172,6 +172,8 @@ export class World {
       objects: this.objects.map((o) => o.toJSON()),
       scenarios: L.scenarios,
       plugins: L.plugins,
+      ...(L.consists?.length ? { consists: L.consists } : {}),
+      ...(L.vehicle_types && Object.keys(L.vehicle_types).length ? { vehicle_types: L.vehicle_types } : {}),
       ...(L.view ? { view: L.view } : {}),
     };
   }
@@ -325,14 +327,15 @@ export class World {
   }
 
   /**
-   * The info card of a pickable: its owner's description, and for a layout object what the
-   * simulations know about it.
+   * The info card of a pickable: its owner's description, for a layout object what the simulations
+   * know about it, and what the card providers of the registry add (the train data of a train).
    * @param {import("./pick.js").Pickable} hit
    * @returns {import("./pick.js").Card}
    */
   card(hit) {
     const card = cardOf(hit);
     if (hit.kind === "object") for (const s of this.simulations) if (s.enabled !== false) s.describeObject?.(hit.ref, card);
+    for (const add of this.registry.cards?.values() || []) add(this, hit, card);
     return card;
   }
 

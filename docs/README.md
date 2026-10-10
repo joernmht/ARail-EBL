@@ -12,7 +12,7 @@
 | [Infrastructure](infrastructure.md) | Railway assets with their condition, faults and what is known of them; maintenance staff in shifts, emergency vans and drones; renewals and upgrades through the HOAI phases with funding, approval and tenders; the roles of the game; the asset information model, the line map and GeoJSON |
 | [Rail operations](operations.md) | Units with maintenance and failures, the four ECM functions and the penalties between the parties, crews with duties, rosters and the way to work; comparing setups under stress tests; the Operations panel |
 | [Journeys](journeys.md) | An exercise: every attendee makes a traveller with a start and an aim and chooses a travel plan with transfers (walks, buses, trains); the travellers on the layout, missed connections and the results; the Journeys panel |
-| [Railway systems](rail-systems.md) | What each track section is equipped with (traction power, train protection, ETCS, signals, radio, gauge, line category, country); colouring the tracks by a system; where systems change (borders, separation sections) |
+| [Railway systems and trains](rail-systems.md) | What each track section is equipped with (traction power, train protection, ETCS, signals, radio, gauge, line category, country); colouring the tracks by a system; where systems change (borders, separation sections); vehicles, consists and the train data (brake percentage, axle loads) |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |

@@ -50,8 +50,14 @@ test("the camera view: a tooltip on hover, the card on a click, Escape closes it
   await page.mouse.click(train.x, train.y);
   const card = page.locator("#infoCard");
   await expect(card).toBeVisible();
-  await expect(card.locator("dl")).toContainText("Stop");
-  await expect(card.locator("dl")).toContainText("Delay");
+  await expect(card.locator("dl").first()).toContainText("Stop");
+  await expect(card.locator("dl").first()).toContainText("Delay");
+  // its train data (the lab example's consists of RE 1 and RB 33)
+  await expect(card).toContainText("Train data");
+  await expect(card).toContainText("Brake percentage");
+  await expect(card.getByRole("list", { name: "Vehicles in order" }).locator("li").first()).toBeVisible();
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).include("#infoCard").analyze();
+  expect(axe.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   await expect(page.locator("#tooltip")).toBeHidden(); // no tooltip over its own card
   await expect(page.locator("#infoLive")).not.toBeEmpty(); // said to screen readers
   // the card follows the live state
@@ -64,7 +70,7 @@ test("the camera view: a tooltip on hover, the card on a click, Escape closes it
   if (house) {
     await page.mouse.click(house.x, house.y);
     await expect(card).toContainText("Station building");
-    await expect(card.locator("dl")).toContainText("Occupancy");
+    await expect(card.locator("dl").first()).toContainText("Occupancy");
     await card.getByRole("button", { name: "Close the info card" }).click();
     await expect(card).toBeHidden();
   }

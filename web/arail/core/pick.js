@@ -39,7 +39,10 @@ import { convexHull } from "./simple.js";
  * @property {string} [status] one line about now ("4 min late", "Waiting for RE 1")
  * @property {"" | "ok" | "warn" | "bad"} [tone] of the status
  * @property {Array<[string, string | number]>} [rows] label and value
- * @property {Array<{title: string, lines: string[]}>} [sections] lists (next departures, …)
+ * @property {Array<{title: string, lines?: string[], rows?: Array<[string, string | number]>}>} [sections] lists
+ *   (next departures, …) and groups of rows (the train data)
+ * @property {Array<{label: string, kind: string, length_m: number, isolated?: boolean}>} [strip] the vehicles of a
+ *   train in order (its consist)
  * @property {string} [text] a description
  * @property {string[]} [related] ids of layout objects shown with it (the interlocking of a signal)
  * @property {Array<{id: string, label: string}>} [actions] what the app may do with it ("follow")

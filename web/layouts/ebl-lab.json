@@ -107,6 +107,11 @@
     {"id": "bus-line-62", "type": "bus-line", "name": "Line 62", "number": "62", "color": "#0A777F", "headway_s": 100, "mode": "loop", "stops": ["bus-terminal-1", "bus-stop-altmarkt", "bus-stop-schule", "bus-stop-siedlung"]},
     {"id": "bus-line-85", "type": "bus-line", "name": "Line 85", "number": "85", "color": "#C85000", "headway_s": 100, "mode": "loop", "stops": ["bus-terminal-1", "bus-stop-siedlung", "bus-stop-schule", "bus-stop-altmarkt"]}
   ],
+  "consists": [
+    { "id": "re1", "name": "RE 1 (locomotive and double-deck coaches)", "lines": ["RE 1"], "vehicles": [{ "type": "br146" }, { "type": "dbpza", "count": 4 }] },
+    { "id": "rb33", "name": "RB 33 (two diesel railcars)", "lines": ["RB 33"], "vehicles": [{ "type": "br642", "count": 2 }] },
+    { "id": "s-bahn", "name": "S-Bahn (Talent 2)", "lines": ["S 2", "S 8"], "vehicles": [{ "type": "et442" }] }
+  ],
   "scenarios": [
     {
       "id": "signal-failure",

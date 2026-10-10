@@ -30,6 +30,7 @@ export class Track extends LayoutObject {
     { key: "offset_start_mm", label: "Offset at the first point", type: "number", unit: "mm", step: 1, default: 0, help: "Position value the control system reports at the first point of the line." },
     { key: "virtual", label: "Virtual track", type: "boolean", default: false, help: "Not on the real layout (e.g. on a table module): drawn over the camera image too." },
     ...SYSTEM_PARAMS,
+    { key: "min_brake_percentage", label: "Required brake percentage", type: "number", unit: "%", min: 0, max: 250, step: 1, help: "Mindestbremshundertstel: the brake percentage trains need here (from the line's braking table). Empty: not known." },
   ];
 
   computeGeometry() {

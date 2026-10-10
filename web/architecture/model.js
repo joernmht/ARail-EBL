@@ -120,8 +120,8 @@ export const PACKAGES = [
   },
   {
     id: "rail", name: "rail", group: "framework", path: "web/arail/rail",
-    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change.",
-    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js"],
+    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures.",
+    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js"],
     uses: ["core-math", "core-world", "core-drawing"],
   },
   {
@@ -259,7 +259,7 @@ export const MODEL_GROUPS = [
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
-  { id: "rail", name: "Railway systems", intro: "What the track sections are equipped with, and where a system changes." },
+  { id: "rail", name: "Railway systems and trains", intro: "What the track sections are equipped with, where a system changes, and the vehicles and consists of the trains." },
   { id: "control", name: "The control system" },
   { id: "pages", name: "The app and the pages" },
   { id: "tools", name: "Tools" },

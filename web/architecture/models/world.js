@@ -13,7 +13,7 @@ export const WORLD = [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
         attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
-        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations add", "findPickable(view, key) — the same thing now"],
+        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
       },
       {
         name: "Simulation", file: "web/arail/core/simulation.js", kind: "class", stereotype: "base class", role: "Base of all simulations: one per entry of the layout's simulations.",
@@ -22,8 +22,8 @@ export const WORLD = [
       },
       {
         name: "Registry", file: "web/arail/core/registry.js", kind: "class", role: "Extension points by type name.",
-        attributes: ["objects: Map — object classes", "simulations: Map — simulation classes", "disruptions: Map — disruption definitions", "vehicles: Map — how vehicles are drawn"],
-        operations: ["registerObject(cls)", "registerSimulation(cls)", "registerDisruption(def)", "registerVehicle(def)"],
+        attributes: ["objects: Map — object classes", "simulations: Map — simulation classes", "disruptions: Map — disruption definitions", "vehicles: Map — how vehicles are drawn", "cards: Map — card providers", "checks: Map — layout checks"],
+        operations: ["registerObject(cls)", "registerSimulation(cls)", "registerDisruption(def)", "registerVehicle(def)", "registerCard(name, fn) — adds to info cards", "registerCheck(name, fn) — checks layout files"],
       },
       {
         name: "EventBus", file: "web/arail/core/events.js", kind: "class", role: "Publish and subscribe; \"*\" hears every event; errors of handlers are caught.",

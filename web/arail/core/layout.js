@@ -155,6 +155,9 @@ export function normalizeLayout(json = {}) {
     objects: list(j.objects, typed) ?? [],
     scenarios: list(j.scenarios) ?? [],
     plugins: list(j.plugins, (u) => typeof u === "string") ?? [],
+    // the trains' vehicles (rail/trains.js) and vehicle types of the layout's own
+    consists: list(j.consists) ?? [],
+    vehicle_types: isObject(j.vehicle_types) ? j.vehicle_types : {},
     ...(isObject(j.view) ? { view: j.view } : {}),
   };
 }
@@ -261,6 +264,14 @@ export function validateLayout(json, registry) {
         problems.push(`simulations[${i}] (${s.type}): could not be checked (${err.message})`);
       }
     });
+    // the checks of the registry (e.g. the consists of the trains, rail/trains.js)
+    for (const [name, check] of registry.checks || []) {
+      try {
+        problems.push(...(check(json) || []));
+      } catch (err) {
+        problems.push(`${name}: could not be checked (${err.message})`);
+      }
+    }
   }
   return problems;
 }

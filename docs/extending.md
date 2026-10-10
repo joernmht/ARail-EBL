@@ -540,6 +540,21 @@ arail.registry.registerVehicle({
 
 See `core/vehicles.js` for the built-in train and bus. Line buses (`core/transit.js`) use the bus's `extent` and `doors`, so passengers board them like any other bus.
 
+## Info cards and layout checks
+
+Two more extension points of the registry, for parts that are not a simulation:
+
+```js
+// add to the info card of what is pointed at (Getting started, Pointing at things)
+arail.registry.registerCard("my-data", (world, hit, card) => {
+  if (hit.kind === "train") card.sections.push({ title: "My data", rows: [["Owner", "my lab"]] });
+});
+// find problems in layout files (shown with those of validateLayout)
+arail.registry.registerCheck("my-check", (json) => (json.my_key && !Array.isArray(json.my_key) ? ["my_key must be a list"] : []));
+```
+
+The train data of the cards (`rail/trains.js`, `trainCard`) and the check of the consists (`consistProblems`) are registered this way.
+
 ## Testing plugins
 
 The framework runs in Node.js too (without the camera), so plugins can be tested with `node --test`. See [`tests/js/world.test.js`](../tests/js/world.test.js): it loads the example plugins, creates a world from a layout, runs the simulation for a few simulated minutes and checks the results. [`tests/js/houses.test.js`](../tests/js/houses.test.js) draws buildings through a fake canvas.

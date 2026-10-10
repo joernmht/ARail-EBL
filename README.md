@@ -68,7 +68,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Journeys](docs/journeys.md) | An exercise: travellers with a start, an aim and a travel plan with transfers, made by the attendees; missed connections and the results |
 | [Infrastructure](docs/infrastructure.md) | Assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
 | [Layout file format](docs/layout-format.md) | The JSON file that describes a layout, its modules (layers) and all built-in object types |
-| [Railway systems](docs/rail-systems.md) | Traction power, train protection, signals, radio, gauge and line category of every track; colouring the tracks by them; borders and system changes |
+| [Railway systems and trains](docs/rail-systems.md) | Traction power, train protection, signals, radio, gauge and line category of every track; colouring the tracks by them; borders and system changes; vehicles, consists, brake percentage and axle loads of trains |
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
 | [Extending ARail](docs/extending.md) | Plugins: object types, simulations, disruptions, vehicles |
@@ -98,7 +98,7 @@ web/                  the website (published with GitHub Pages)
     journeys/         journeys: the timetable and the trains at the platforms, the planner of travel
                       plans with transfers, the travellers
     rail/             railway systems of the track sections (power, train protection, signals, radio,
-                      gauge, line category, country) and where they change
+                      gauge, line category, country) and where they change; vehicles and consists
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,

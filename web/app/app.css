@@ -190,6 +190,15 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .info-section ul { margin: 0; padding-left: 1.1em; display: grid; gap: 1px; }
 .info-text { margin: 0; color: var(--board-muted); font-size: .8rem; }
 .info-card .row .btn { background: var(--board-2); color: var(--board-text); border-color: var(--board-line); }
+/* the consist of a train: its vehicles in order, as long as they are */
+.consist-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+.consist-strip li { flex-basis: 0; min-width: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 4px; font-size: .7rem; border-radius: 3px; background: var(--board-2); color: var(--board-text); border-top: 4px solid var(--board-line); }
+.consist-strip li span { overflow: hidden; text-overflow: ellipsis; }
+.consist-strip .kind-locomotive, .consist-strip .kind-railcar { border-top-color: var(--overlay-ok); }
+.consist-strip .kind-multiple-unit { border-top-color: var(--overlay-ok); }
+.consist-strip .kind-coach { border-top-color: var(--board-muted); }
+.consist-strip .kind-wagon { border-top-color: var(--board-warn); }
+.consist-strip .isolated { outline: 2px dashed var(--overlay-bad); outline-offset: -2px; }
 
 /* ------------------------------------------------------------------ panel */
 .panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; }

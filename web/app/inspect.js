@@ -195,7 +195,10 @@ export class Inspector {
         h("button", { class: "btn small", type: "button", id: "infoCardClose", "aria-label": "Close the info card", title: "Close (Esc)", onclick: () => this.close() }, "×")),
       card.status || gone ? h("p", { class: `info-status ${card.tone || ""}` }, gone ? `${card.status ? `${card.status} · ` : ""}out of view` : card.status) : null,
       card.rows.length ? h("dl", { class: "info-rows" }, card.rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))])) : null,
-      card.sections.map((s) => h("div", { class: "info-section" }, h("h3", {}, s.title), h("ul", {}, s.lines.map((l) => h("li", {}, l))))),
+      card.strip?.length ? consistStrip(card.strip) : null,
+      card.sections.map((s) => h("div", { class: "info-section" }, h("h3", {}, s.title),
+        s.rows?.length ? h("dl", { class: "info-rows" }, s.rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))])) : null,
+        s.lines?.length ? h("ul", {}, s.lines.map((l) => h("li", {}, l))) : null)),
       card.text ? h("p", { class: "info-text" }, card.text) : null,
       card.actions.length ? h("div", { class: "row" }, card.actions.map((a) => h("button", { class: "btn small", type: "button", onclick: () => this.act(a.id) }, a.label))) : null,
     );
@@ -244,6 +247,17 @@ export class Inspector {
     ctx.restore();
     if (this.keyAim && this.clicks && this.app.flyover.active && document.activeElement === this.app.canvas) aimCross(ctx, view, "Enter: info");
   }
+}
+
+/**
+ * The vehicles of a train in order as a strip: each one as long as it is, coloured by its kind
+ * (locomotive, multiple unit, coach, wagon); isolated brakes marked.
+ */
+function consistStrip(strip) {
+  const total = strip.reduce((s, v) => s + v.length_m, 0) || 1;
+  return h("ol", { class: "consist-strip", "aria-label": "Vehicles in order" }, strip.map((v) => h("li", {
+    class: `kind-${v.kind}${v.isolated ? " isolated" : ""}`, style: { flexGrow: String(v.length_m / total) }, title: `${v.label}, ${Math.round(v.length_m)} m${v.isolated ? ", brakes isolated" : ""}`,
+  }, h("span", {}, v.label), v.isolated ? h("span", { class: "visually-hidden" }, ", brakes isolated") : null)));
 }
 
 /** An outline in image px: the ground footprint of what lies flat, the hull of the projected box of what is tall. */

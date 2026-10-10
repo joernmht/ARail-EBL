@@ -1,4 +1,4 @@
-# Railway systems
+# Railway systems and trains
 
 Every track of a layout is a **section** with its railway systems: the traction power, the train protection, ETCS, the lineside signals, the train radio, the gauge, the line category, the loading gauge, the line speed, its country and its infrastructure manager. They matter wherever trains cross from one system to another: at a border, at a system separation section, where ETCS starts. ARail shows them on the real table and in the flyover. This is the groundwork for cross-border operations in the lab ([#131](https://github.com/joernmht/ARail-EBL/issues/131)).
 
@@ -55,6 +55,51 @@ All of them have GSM-R, standard gauge and line category D4; no ETCS unless a tr
 
 A module can turn a section into another country with a patch (`{"id": "track-g3", "country": "CZ"}`), as the lab example's *Border station* does. Values of `system-change`: `kind` = `power`, `train_control`, `border` or `im`.
 
+## Vehicles and trains
+
+ARail knows trains as technical objects too: what they are made of, how heavy they are and how well they brake ([#82](https://github.com/joernmht/ARail-EBL/issues/82)).
+
+**The catalogue** (`VEHICLE_TYPES`, typical values, rounded, for teaching; a real vehicle's are on its data plate):
+
+| Type | Kind | Length | Mass | Axles | Top speed | Brake weights |
+| --- | --- | --- | --- | --- | --- | --- |
+| `br146` BR 146.2 (TRAXX P160 AC2) | locomotive | 18.9 m | 85 t | 4 | 160 km/h | G 64, P 105, R 105 t |
+| `br185` BR 185.2 (TRAXX F140 AC2) | locomotive | 18.9 m | 85 t | 4 | 140 km/h | G 64, P 100, R 100 t |
+| `br193` BR 193 (Vectron MS) | locomotive | 19 m | 90 t | 4 | 200 km/h | G 70, P 115, R 135 t |
+| `cd380` ČD 380 (Škoda 109E) | locomotive | 20.8 m | 87 t | 4 | 200 km/h | G 65, P 110, R 130 t |
+| `eu07` EU07 (PKP) | locomotive | 15.9 m | 80 t | 4 | 125 km/h | G 52, P 80 t |
+| `br218` BR 218 (diesel) | locomotive | 16.4 m | 79 t | 4 | 140 km/h | G 55, P 85, R 85 t |
+| `et442` ET 442 Talent 2 (4 cars) | multiple unit | 66 m | 135 t | 10 | 160 km/h | R 190, R+Mg 230 t |
+| `br642` BR 642 Desiro Classic | railcar (diesel) | 41.7 m | 69 t | 6 | 120 km/h | R 95, R+Mg 115 t |
+| `dbpza` DBpza (double-deck coach) | coach | 26.8 m | 49 t | 4 | 160 km/h | P 55, R 75 t |
+| `bpmz` Bpmz (open coach) | coach | 26.4 m | 47 t | 4 | 200 km/h | P 52, R 74, R+Mg 96 t |
+| `sgns`, `eanos`, `habbins`, `zacns` | freight wagons | 15.5–23.3 m | 20–28 t empty, 90 t loaded | 4 | 100–120 km/h | empty = tare, loaded 58 t (load-dependent brake) |
+
+Each type also says what it is equipped with: the traction power systems it runs on, its pantograph heads, its train protection systems, ETCS, radio and the countries it is authorised for.
+
+**Consists.** A layout's `consists` give the vehicles of its trains, by line (`"lines": ["RE 1"]`, which also matches the trains of the rail operations, *RE 1 → Altstadt 07:15*) or by train number of the control system (`"trains": ["ICE 70"]`):
+
+```json
+"consists": [
+  { "id": "re1", "lines": ["RE 1"], "vehicles": [{ "type": "br146" }, { "type": "dbpza", "count": 4 }] },
+  { "id": "freight", "trains": ["GC 61"], "brake_position": "G",
+    "vehicles": [{ "type": "br185" }, { "type": "sgns", "count": 20, "loaded": 0.8, "isolated": 1 }] }
+]
+```
+
+`count` repeats a vehicle; `loaded` is the share of a wagon's load (`true` = full); `isolated` cuts out the brakes (`true`, or how many of the `count`). Without a consist, a train of the rail operations is made of its units when their fleet type is in the catalogue (`et442`). `vehicle_types` adds types of the layout's own.
+
+**The figures of a train**, on its info card (tap the train): its vehicles as a strip, length, mass, axles, the top speed (the lowest of its vehicles, and which one limits it), the brake position and the **brake percentage** (Bremshundertstel), the highest axle load and metre load.
+
+- Brake percentage = the sum of the brake weights in the train's brake position / the train's mass × 100. A vehicle without a weight for that position brakes with the nearest slower one it has (a coach in a train braked in G with its P weight), else the nearest faster one; isolated brakes count 0. A wagon's mass and brake weight go from empty to loaded with its load (a load-dependent brake), so an empty freight train brakes better per tonne than a full one.
+- Brake position: as the consist says, else G for a freight train (only locomotives and wagons), else R when a vehicle has an R weight, else P.
+- Axle load = mass / axles, metre load = mass / length over buffers, as EN 15528 defines them for the line categories.
+- A track's `min_brake_percentage` (Build → Track: *Required brake percentage*, the Mindestbremshundertstel of the line's braking table) is compared with the train standing on it: *76 % · met*, or a warning that the permitted speed is lower. The speed that follows from the braking table, braking distances and train control curves are the next steps ([#85](https://github.com/joernmht/ARail-EBL/issues/85)).
+
+The lab example's RE 1 (BR 146 and four double-deck coaches: 144 % in R), RB 33 (two BR 642) and S-Bahn (ET 442) have consists.
+
 ## For plugins
 
 `sectionSystems(spec)` gives the systems of a section (`{values, usual}`), `systemRows(spec)` the rows of its card, `systemValue(key, value)` the label, short text and colour of a value, `routeClassLimits("D4")` the axle and metre load of a line category, `systemChanges(tracks, key)` where neighbouring sections differ; the catalogues are `POWER`, `TRAIN_CONTROL`, `ETCS`, `SIGNALLING`, `RADIO`, `GAUGE`, `ROUTE_CLASS`, `LOADING_GAUGE`, `COUNTRIES` and `SYSTEMS` (`web/arail/rail/systems.js`).
+
+`new Consist({vehicles: [...]})` computes a train's figures (`length_m`, `mass_t`, `axles`, `brakePercentage`, `vmax`, `maxAxleLoad`, `maxMetreLoad`; `rail/vehicles.js`), `consistFor(world, {train, line, units})` finds the consist of a train the world shows, and `VEHICLE_TYPES` is the catalogue.

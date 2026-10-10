@@ -7,7 +7,7 @@ export const RAIL = [
     id: "systems", group: "rail", title: "Railway systems of the sections",
     summary: "Every track is a section with its traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, line speed, country and infrastructure manager; View → Colour the tracks by shows one of them on the table.",
     description: "The systems are parameters of the track object; a value left empty is the one usual in the section's country (COUNTRIES: typical values, simplified). Their names follow the parameters of the EU Register of Infrastructure (RINF). sectionSystems resolves a section's values, systemChanges finds where neighbouring sections meet end to end with a different value. With the world setting trackSystems a track draws a band in the colour of its value and the changes it starts; the info card of a track lists all its systems. The system change object marks where a system changes (a separation section, a train control transition, a border, the boundary between infrastructure managers) and says what happens there.",
-    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js"],
+    files: ["web/arail/rail/systems.js", "web/arail/rail/objects.js"],
     classes: [
       {
         name: "systems", file: "web/arail/rail/systems.js", kind: "module", role: "The catalogues and the systems of a section.",
@@ -19,12 +19,10 @@ export const RAIL = [
         attributes: ["kind: string — power, train_control, border, im"],
         operations: ["nearTracks() — the sections beside it", "card() — what happens there, the systems on both sides", "draw(view)"],
       },
-      { name: "rail", file: "web/arail/rail/index.js", kind: "module", role: "The package's API.", operations: ["registerRail(registry)"] },
     ],
     relations: [
       { from: "Track", to: "systems", kind: "depends", label: "params, band" },
       { from: "SystemChange", to: "systems", kind: "depends", label: "card" },
-      { from: "rail", to: "SystemChange", kind: "creates", label: "registers" },
     ],
     activities: [{
       id: "band", name: "A track coloured by a system",
@@ -52,6 +50,65 @@ export const RAIL = [
       "A section's value is its own if set, else the one usual in its country; the country defaults to Germany.",
       "Two sections meet when ends of their tracks are within 25 mm; a change is a system whose values differ.",
       "Line categories (EN 15528): A 16 t, B 18 t, C 20 t, D 22.5 t, E 25 t per axle; 1 5 t, 2 6.4 t, 3 7.2 t, 4 8 t, 5 8.8 t, 6 10 t per metre.",
+    ],
+  },
+  {
+    id: "trains", group: "rail", title: "Vehicles and trains",
+    summary: "A catalogue of vehicles (locomotives, multiple units, coaches, freight wagons) with length, masses, axles, brake weights and what they are equipped with; the consist of a train with its length, mass, top speed, brake percentage, axle and metre loads; the train data on the info card of a train.",
+    description: "The layout file's consists give the vehicles of trains by line or train number (vehicle_types adds types of its own). consistFor finds the consist of a train the world shows: a vehicle at a platform (its line; with rail operations its trip's line and its units), a train of the control system (its number). The card provider trainCard, registered with registerRail, adds the train data to the card of every train that is pointed at: the consist as a strip and the figures, the brake percentage against the one its track requires (track.min_brake_percentage). consistProblems, a check of the registry, names unknown vehicle types in a layout file.",
+    files: ["web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/index.js"],
+    classes: [
+      {
+        name: "Consist", file: "web/arail/rail/vehicles.js", kind: "class", role: "The vehicles of a train in order, with the train's figures.",
+        attributes: ["vehicles: object[] — type, catalogue entry, load share, brakes isolated", "brakePosition: string — G, P, R or R+Mg", "length_m", "mass_t", "axles", "brakeWeight_t", "brakePercentage — brake weights / mass × 100", "vmax — the lowest top speed and its vehicle", "maxAxleLoad", "maxMetreLoad", "summary — e.g. BR 146.2 + 4 × DBpza"],
+        operations: ["static massOf(v)", "static brakeWeightOf(v, position) — its own, else the nearest slower, else faster position; load-dependent; 0 when isolated"],
+      },
+      {
+        name: "vehicles", file: "web/arail/rail/vehicles.js", kind: "module", role: "The catalogue.",
+        attributes: ["VEHICLE_TYPES — typical values, rounded", "BRAKE_POSITIONS", "VEHICLE_KINDS"],
+        operations: ["consistRows(c) — the rows of a card"],
+      },
+      {
+        name: "trains", file: "web/arail/rail/trains.js", kind: "module", role: "The consists of the world's trains and their card.",
+        operations: ["vehicleTypes(world) — the catalogue and the layout's own", "consistFor(world, who) — by train number, line or units", "trainCard(world, hit, card) — card provider", "consistProblems(json) — layout check"],
+      },
+      { name: "rail", file: "web/arail/rail/index.js", kind: "module", role: "The package's API.", operations: ["registerRail(registry) — the system change object, the train data card, the check of the consists"] },
+    ],
+    relations: [
+      { from: "trains", to: "Consist", kind: "creates", label: "consistFor" },
+      { from: "Consist", to: "vehicles", kind: "depends", label: "VEHICLE_TYPES" },
+      { from: "rail", to: "trains", kind: "depends", label: "registers" },
+      { from: "rail", to: "SystemChange", kind: "creates", label: "registers" },
+    ],
+    activities: [{
+      id: "train-card", name: "The train data of a train pointed at",
+      description: "World.card runs the card providers of the registry; trainCard adds to the card of a train.",
+      nodes: [
+        ["s", "start"],
+        ["d1", "decision", "A train?"],
+        ["a1", "action", "Its number, its line (with rail operations the trip's), its units", "trainCard"],
+        ["a2", "action", "The layout's consist for its number or line, else its units", "consistFor"],
+        ["d2", "decision", "A consist?"],
+        ["a3", "action", "Say that none is known", "trainCard"],
+        ["a4", "action", "Length, mass, axles, top speed, brake position and percentage, axle and metre loads", "consistRows"],
+        ["d3", "decision", "Its track requires a brake percentage?"],
+        ["a5", "action", "Met or not (then the card warns)", "trainCard"],
+        ["m1", "merge"],
+        ["a6", "action", "The vehicles as a strip", "trainCard"],
+        ["e", "end"],
+      ],
+      edges: [["s", "d1"], ["d1", "a1", "yes"], ["d1", "e", "no"], ["a1", "a2"], ["a2", "d2"], ["d2", "a3", "no"], ["d2", "a4", "yes"], ["a3", "e"], ["a4", "d3"], ["d3", "a5", "yes"], ["d3", "m1", "no"], ["a5", "m1"], ["m1", "a6"], ["a6", "e"]],
+    }],
+    parameters: [
+      { key: "consists[]", default: "[]", meaning: "{id, name, lines, trains, vehicles: [{type, count, loaded, isolated}], brake_position}: the vehicles of trains by line or train number." },
+      { key: "vehicle_types", default: "{}", meaning: "Vehicle types of the layout's own, as in the catalogue." },
+      { key: "track.min_brake_percentage", default: "not known", meaning: "The brake percentage trains need on the section (Mindestbremshundertstel)." },
+    ],
+    rules: [
+      "Brake percentage = sum of the brake weights in the train's brake position / train mass × 100 (isolated brakes count 0).",
+      "The brake position: as given, else G for freight trains (only locomotives and wagons), else R when a vehicle has an R brake weight, else P.",
+      "A wagon's brake weight and mass go from empty to loaded with its load (a load-dependent brake).",
+      "Axle load = mass / axles; metre load = mass / length over buffers (EN 15528).",
     ],
   },
 ];
