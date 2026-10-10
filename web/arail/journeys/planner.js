@@ -16,7 +16,7 @@
  * each way (the same modes and lines) at most two departures are offered.
  * @module arail/journeys/planner
  */
-import { dist2, polylineLengths } from "../core/math.js";
+import { straightWalk } from "../core/network.js";
 import { PROFILES, profileAt } from "../core/clock.js";
 import { towards } from "../core/transit.js";
 import { DAY } from "../ops/util.js";
@@ -40,8 +40,9 @@ const STOP_LOSS_S = 12;
 const BUS_PACE = 0.55;
 
 /**
- * A walking path between two places on the layout ({pos, key}), over the road network when it
- * connects them: {points, lengths, length (mm), route, routeStart}.
+ * A walking path between two places on the layout ({pos, key}), over the road network on the
+ * sidewalks when it connects them, else straight (out of sight where it would cross a track):
+ * {points, lengths, length (mm), hidden, route}, see `RoadNetwork.walk`.
  * @param {object} world
  * @param {{pos: number[], key?: string | null}} from
  * @param {{pos: number[], key?: string | null}} to
@@ -53,18 +54,8 @@ export function walkPath(world, from, to) {
   } catch {
     net = null;
   }
-  let route = null;
-  if (net) {
-    const a = net.place?.(from.key) ?? net.nearestNode?.(from.pos, { mode: "walk" });
-    const b = net.place?.(to.key) ?? net.nearestNode?.(to.pos, { mode: "walk" });
-    if (a != null && b != null) route = net.route?.(a, b, { mode: "walk" }) || null;
-  }
-  const raw = route ? [from.pos, ...route.points, to.pos] : [from.pos, to.pos];
-  const points = [raw[0]];
-  for (const p of raw.slice(1)) if (dist2(p, points[points.length - 1]) > 0.01) points.push(p);
-  if (points.length < 2) points.push(to.pos.slice());
-  const lengths = polylineLengths(points);
-  return { points, lengths, length: lengths[lengths.length - 1], route, routeStart: route?.points.length ? dist2(from.pos, route.points[0]) : 0 };
+  if (net && typeof net.walk === "function") return net.walk(from.pos, to.pos, { fromKey: from.key ?? null, toKey: to.key ?? null });
+  return straightWalk(from.pos, to.pos);
 }
 
 /** Where a place reference ({kind: "building", id, entrance} or {kind: "area", id, access}) is on the layout now: {pos, key}, or null. */

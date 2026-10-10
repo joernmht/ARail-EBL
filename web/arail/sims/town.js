@@ -20,8 +20,9 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD, moodColor } from "../core/colors.js";
-import { createRng, dist2, hashKey, polylineAt, polylineLengths } from "../core/math.js";
+import { createRng, dist2, hashKey, polylineAt } from "../core/math.js";
 import { DAY_MINUTES, formatTime, wrapMinutes } from "../core/clock.js";
+import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
 import { drawPerson } from "./passengers.js";
 
@@ -379,32 +380,16 @@ export class TownSimulation extends Simulation {
     }
   }
 
-  /** Network node of a building entrance or a stop area access point, else the nearest node. */
-  _node(net, key, pos) {
-    if (!net) return null;
-    return net.place?.(key) ?? net.nearestNode?.(pos, { mode: "walk" }) ?? null;
-  }
-
   /**
-   * A walking path between two layout points (mm), over the network when possible.
-   * @returns {{points: number[][], lengths: number[], length: number, net: object | null, route: object | null}}
+   * A walking path between two layout points (mm): over the network on the sidewalks when it
+   * connects them, else straight (out of sight where it would cross a track), see
+   * `RoadNetwork.walk`.
+   * @returns {{points: number[][], lengths: number[], length: number, hidden: number[][], route: object | null}}
    */
   _walkPath(from, to, fromKey = null, toKey = null) {
     const net = this._network();
-    let route = null;
-    if (net) {
-      const a = this._node(net, fromKey, from), b = this._node(net, toKey, to);
-      if (a != null && b != null) route = net.route?.(a, b, { mode: "walk" }) || null;
-    }
-    const points = route ? [from, ...route.points, to] : [from, to];
-    // drop zero-length steps
-    const clean = [points[0]];
-    for (const p of points.slice(1)) if (dist2(p, clean[clean.length - 1]) > 0.01) clean.push(p);
-    if (clean.length < 2) clean.push(to);
-    const lengths = polylineLengths(clean);
-    // where the network route starts on this path (for the sidewalk offset)
-    const routeStart = route && route.points.length ? dist2(from, route.points[0]) : 0;
-    return { points: clean, lengths, length: lengths[lengths.length - 1], route, routeStart };
+    if (net && typeof net.walk === "function") return net.walk(from, to, { fromKey, toKey });
+    return straightWalk(from, to);
   }
 
   _metres(mm) {
@@ -913,38 +898,17 @@ export class TownSimulation extends Simulation {
   draw(view) {
     if (!this.enabled) return;
     const mode = this.world.settings.peopleColour || "auto";
-    const net = this._network();
     for (const a of this.agents) {
       if (a.state !== "walking" || !a.pos) continue;
-      let [x, y] = a.pos;
-      // walk on the right-hand sidewalk of streets
-      const dir = a.dir || [1, 0];
-      const at = this._pathAt(net, a);
-      if (at?.hidden) continue; // in an underpass
-      const off = at?.walkOffset || 0;
-      if (off) {
-        x += dir[1] * off;
-        y -= dir[0] * off;
-      }
+      // the walk is on the sidewalks already (RoadNetwork.walkLine)
+      const [x, y] = a.pos, dir = a.dir || [1, 0];
+      if (hiddenAt(a.path, a.s)) continue; // in an underpass, or off stage
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
         dir, speed: a.speed, phase: a.phase, height: 1.6 + (hashKey(a.id) % 30) / 100,
         colour: mode === "mood" ? moodColor(0.85) : a.colour,
       });
     }
-  }
-
-  /**
-   * Where a walker is on its network route: {walkOffset} (mm, from the path's centre line:
-   * sidewalks along streets) and {hidden} (in an underpass); null off the network.
-   */
-  _pathAt(net, a) {
-    if (!net || !a.path?.route || typeof net.pathAt !== "function") return null;
-    const r = a.path.route;
-    // a.s counts from the agent's start point; the route starts after the first segment
-    const s = a.s - (a.path.routeStart || 0);
-    if (s <= 0 || s >= r.length) return null;
-    return net.pathAt(r, s);
   }
 
   /** Counts for the panel: where people are and what they are doing. */

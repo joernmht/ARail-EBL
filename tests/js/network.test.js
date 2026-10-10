@@ -1,10 +1,11 @@
 // The road network (core/network.js) and streets (objects/road.js): junctions (end to end, T, X),
 // routing for people and vehicles, places connected to the streets, bus lanes of terminals,
-// sidewalk offsets, drawing, and road traffic (sims/traffic.js).
+// sidewalk offsets, walks on the sidewalks and around tracks, drawing, and road traffic
+// (sims/traffic.js).
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Camera, createWorld, dot2, LayoutObject, Registry, registerBuiltins, rectFootprint, resolvePoint, View, World } from "../../web/arail/index.js";
+import { Camera, createWorld, dot2, hiddenAt, LayoutObject, polylineAt, Registry, registerBuiltins, rectFootprint, resolvePoint, straightWalk, View, World } from "../../web/arail/index.js";
 
 const K = 1000 / 87; // model mm per prototype metre (H0)
 
@@ -194,6 +195,103 @@ test("network: building entrances and stop access points are connected to the ne
   // nearest node by mode
   assert.ok(net.nearestNode([300, 170], { mode: "walk" }) === home);
   assert.notEqual(net.nearestNode([300, 170], { mode: "car" }), home);
+});
+
+test("network: people walk on the sidewalks and cross a street at right angles", () => {
+  const registry = registerBuiltins(new Registry());
+  registry.registerObject(Box);
+  const w = new World({
+    registry,
+    layout: {
+      objects: [
+        { id: "s", type: "road", points: [[0, 0], [3000, 0]] },
+        { id: "home", type: "test-box", position: [300, 200] },
+        { id: "work", type: "test-box", position: [2600, -200] },
+        { id: "shop", type: "test-box", position: [2000, 200] },
+      ],
+      simulations: [],
+    },
+  });
+  const net = w.network(), half = w.getObject("s").roadInfo().width / 2, side = (3.5 + 1.25) * K;
+  const door = (id) => w.getObject(id).entrances()[0].pos;
+  const walk = (a, b) => net.walk(door(a), door(b), { fromKey: `building:${a}:0`, toKey: `building:${b}:0` });
+  /** Samples of a walk: point and direction every 5 mm. */
+  const samples = (wk) => {
+    const out = [];
+    for (let s = 0; s <= wk.length; s += 5) out.push(polylineAt(wk.points, s, wk.lengths));
+    return out;
+  };
+  // to the other side of the street: along the sidewalk on the home side, across at right angles
+  const across = walk("home", "work");
+  assert.ok(across.route, "over the network");
+  assert.deepEqual(across.hidden, []);
+  assert.deepEqual(across.points[0], door("home"));
+  assert.deepEqual(across.points[across.points.length - 1], door("work"));
+  let onStreet = 0;
+  for (const { point, dir } of samples(across)) {
+    if (Math.abs(point[1]) >= half - 1e-6) continue;
+    onStreet++;
+    assert.ok(Math.abs(dir[0]) < 1e-6, `on the carriageway only to cross it, at right angles (at ${point.map(Math.round)})`);
+  }
+  assert.ok(onStreet > 0 && onStreet * 5 <= 2 * half + 10, "one crossing");
+  const along = samples(across).filter(({ dir }) => Math.abs(dir[1]) < 1e-6);
+  assert.ok(along.length && along.every(({ point }) => Math.abs(point[1] - side) < 1e-6), "along the street in the middle of the sidewalk on the home side");
+  // on the same side: never on the carriageway
+  const same = walk("home", "shop");
+  assert.ok(samples(same).every(({ point }) => point[1] >= half), "stays on its side");
+  // the routes underneath are unchanged: the connector, the street, the connector
+  assert.ok(Math.abs(across.route.length - (160 + 2300 + 240)) < 1);
+});
+
+test("network: people do not cross tracks on their own; where streets do not connect, a walk is out of sight", () => {
+  const registry = registerBuiltins(new Registry());
+  registry.registerObject(Box);
+  const objects = [
+    { id: "s", type: "road", points: [[0, 0], [3000, 0]] },
+    { id: "g1", type: "track", virtual: true, points: [[0, 400], [3000, 400]] },
+    { id: "near", type: "test-box", position: [500, 200] },
+    { id: "beyond", type: "test-box", position: [1500, 700] },
+  ];
+  const make = (extra = []) => new World({ registry, layout: { objects: [...objects, ...extra], simulations: [] } });
+  const w = make(), net = w.network();
+  const beyond = w.getObject("beyond").entrances()[0].pos, near = w.getObject("near").entrances()[0].pos;
+  assert.ok(net.place("building:near:0"));
+  assert.equal(net.place("building:beyond:0"), null, "within 80 m of the street, but behind the track");
+  assert.equal(net.crossesBarrier(beyond, [1500, 0]), true);
+  assert.equal(net.crossesBarrier(near, [500, 0]), false);
+  assert.equal(net.nearestNode(beyond, { mode: "walk" }), null, "no node to walk to without crossing the track");
+  assert.ok(net.nearestNode(beyond, { mode: "car" }), "vehicles are not limited by it");
+  const cut = net.walk(beyond, near, { fromKey: "building:beyond:0", toKey: "building:near:0" });
+  assert.equal(cut.route, null);
+  assert.equal(cut.offstage, true);
+  assert.ok(hiddenAt(cut, 0) && hiddenAt(cut, cut.length / 2) && hiddenAt(cut, cut.length), "out of sight all the way");
+  // a footpath over the track (a crossing): now the place is connected, and the walk is in sight
+  const w2 = make([{ id: "crossing", type: "road", kind: "path", points: [[1500, 0], [1500, 800]] }]), net2 = w2.network();
+  assert.ok(net2.place("building:beyond:0"));
+  const walk = net2.walk(beyond, near, { fromKey: "building:beyond:0", toKey: "building:near:0" });
+  assert.ok(walk.route && !walk.offstage && walk.hidden.length === 0);
+  // two streets that do not meet: a walk between them is out of sight, not straight across
+  const w3 = new World({
+    registry,
+    layout: {
+      objects: [
+        { id: "a", type: "road", points: [[0, 0], [1000, 0]] },
+        { id: "b", type: "road", points: [[0, 1500], [1000, 1500]] },
+        { id: "x", type: "test-box", position: [500, 200] },
+        { id: "y", type: "test-box", position: [500, 1300] },
+      ],
+      simulations: [],
+    },
+  });
+  const x = w3.getObject("x").entrances()[0].pos, y = w3.getObject("y").entrances()[0].pos;
+  const apart = w3.network().walk(x, y, { fromKey: "building:x:0", toKey: "building:y:0" });
+  assert.equal(apart.route, null);
+  assert.ok(apart.offstage && hiddenAt(apart, apart.length / 2));
+  // without any streets people walk straight, out of sight only over a track
+  const open = straightWalk([0, 0], [100, 0]);
+  assert.deepEqual(open.points, [[0, 0], [100, 0]]);
+  assert.equal(hiddenAt(open, 50), false);
+  assert.equal(hiddenAt(straightWalk([0, 0], [100, 0], true), 50), true);
 });
 
 test("network: without streets every query returns null; the network is rebuilt when objects change", () => {

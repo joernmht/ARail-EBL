@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-  CREW_COLOURS, Camera, Depot, composeLayout, OPS_DISRUPTIONS, View, createWorld, layoutPlugins, loadPlugins, opsOf, parseColor, polylineAt, registry, statusLines, validateLayout, withLayers,
+  CREW_COLOURS, Camera, Depot, composeLayout, hiddenAt, OPS_DISRUPTIONS, View, createWorld, layoutPlugins, loadPlugins, opsOf, parseColor, polylineAt, registry, statusLines, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -128,11 +128,11 @@ test("crews who live in the town walk to the depot and sign on there", () => {
   world.events.on("ops.crew.signon", (p) => signOns.push(p.person));
   let walkers = 0, drawn = null;
   frames(world, framesFor(world, 45), 0.1, () => {
-    if (sim.walkers.length > walkers) {
-      walkers = sim.walkers.length;
-      // draw the walkers: people in yellow vests
+    walkers = Math.max(walkers, sim.walkers.length);
+    // draw the walkers once one is in sight (not in the underpass): people in yellow vests
+    const w = drawn ? null : sim.walkers.find((x) => !hiddenAt(x.path, x.s));
+    if (w) {
       const { ctx, log } = recordingContext();
-      const w = sim.walkers[0];
       const view = topView(ctx, polylineAt(w.path.points, w.s, w.path.lengths).point);
       sim.draw(view);
       view.render();

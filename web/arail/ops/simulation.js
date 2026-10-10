@@ -15,7 +15,8 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD } from "../core/colors.js";
-import { polylineAt, polylineLengths } from "../core/math.js";
+import { polylineAt } from "../core/math.js";
+import { hiddenAt, straightWalk } from "../core/network.js";
 import { drawPerson } from "../sims/passengers.js";
 import { OpsEngine, causeWord, jobWord } from "./engine.js";
 import { autoNetwork, normalizeOps, validateOps } from "./config.js";
@@ -455,21 +456,14 @@ export class OperationsSimulation extends Simulation {
     return out;
   }
 
-  /** A walking path between two layout points, over the road network when possible. */
+  /**
+   * A walking path between two layout points: over the road network on the sidewalks when it
+   * connects them, else straight (out of sight where it would cross a track), see `RoadNetwork.walk`.
+   */
   _path(from, fromKey, to, toKey) {
     const net = this._net();
-    let points = [from, to];
-    if (net) {
-      const a = net.place?.(fromKey) ?? net.nearestNode?.(from, { mode: "walk" });
-      const b = net.place?.(toKey) ?? net.nearestNode?.(to, { mode: "walk" });
-      const route = a != null && b != null ? net.route?.(a, b, { mode: "walk" }) : null;
-      if (route?.points?.length) points = [from, ...route.points, to];
-    }
-    const clean = [points[0]];
-    for (const p of points.slice(1)) if (Math.hypot(p[0] - clean[clean.length - 1][0], p[1] - clean[clean.length - 1][1]) > 0.1) clean.push(p);
-    if (clean.length < 2) clean.push(to.slice());
-    const lengths = polylineLengths(clean);
-    return { points: clean, lengths, length: lengths[lengths.length - 1] };
+    if (net && typeof net.walk === "function") return net.walk(from, to, { fromKey, toKey });
+    return straightWalk(from, to);
   }
 
   /** Clock minutes a walk of `mm` takes on the layout (people walk at their real speed; the clock is faster). */
@@ -555,6 +549,7 @@ export class OperationsSimulation extends Simulation {
   draw(view) {
     if (!this.active || !this.engine) return;
     for (const w of this.walkers) {
+      if (hiddenAt(w.path, w.s)) continue; // in an underpass, or off stage
       const at = polylineAt(w.path.points, w.s, w.path.lengths);
       if (!view.inImage(at.point[0], at.point[1], 0)) continue;
       drawPerson(view, at.point, { dir: at.dir, speed: w.speed, phase: w.phase, height: 1.75, colour: CREW_COLOURS.body, legs: CREW_COLOURS.legs });

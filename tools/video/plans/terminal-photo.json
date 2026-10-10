@@ -1,0 +1,11 @@
+{
+  "about": "The hybrid terminal, first camera: the example's photo; the crane sets off to the real wagon.",
+  "page": "example=container-train",
+  "frames": 110,
+  "proc_max": 1600,
+  "speed": 6,
+  "each": "if (term) term.highlight.slots = false;",
+  "setup": "for (const c of term.markerWagons()) if (!c.present) c.pose = null; app.world.events.emit('terminal.request.move', { container: 'TUDU 600002 9', to: { carrier: 'W1', bay: 1 } });",
+  "until": "h.phase === 'travel'",
+  "out": "build/video/terminal-photo"
+}

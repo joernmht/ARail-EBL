@@ -103,7 +103,7 @@ export const PACKAGES = [
     id: "ops", name: "ops", group: "framework", path: "web/arail/ops",
     summary: "Rail operations: a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
     files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js"],
-    uses: ["core-math", "core-world", "core-drawing", "objects", "sims"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims"],
   },
   {
     id: "infra", name: "infra", group: "framework", path: "web/arail/infra",
@@ -170,6 +170,12 @@ export const PACKAGES = [
     summary: "arail-survey (marker map and orthophoto from a video), arail-calibrate, synthetic scenes and the test fixtures.",
     files: ["tools/arail_tools/__init__.py", "tools/arail_tools/aruco.py", "tools/arail_tools/survey.py", "tools/arail_tools/calibrate.py", "tools/arail_tools/synthetic.py", "tools/arail_tools/fixtures.py"],
     uses: [], links: [["core-world", "layout and calibration files"]],
+  },
+  {
+    id: "video-tools", name: "video tools", group: "tools", path: "tools/video",
+    summary: "Videos of the app: rendering frame by frame after a plan (render.mjs, in a browser), steadier poses (arail-stabilize) and joining the shots (arail-compose).",
+    files: ["tools/video/render.mjs", "tools/video/sky.js", "tools/arail_tools/stabilize.py", "tools/arail_tools/compose.py"],
+    uses: [], links: [["core-world", "the app and its layouts, in a browser"]],
   },
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",

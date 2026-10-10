@@ -1,0 +1,10 @@
+{
+  "about": "The town at the curve, pass 1: the raw pose of every frame of the clip, for arail-stabilize.",
+  "page": "layout=../layouts/ebl-neustadt.json",
+  "clip": "examples/media/ebl-curve-trains.mp4",
+  "frames": 300,
+  "viewport": [1500, 1500],
+  "warm_s": 30,
+  "record": "build/video/town-raw.json",
+  "images": false
+}

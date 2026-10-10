@@ -1,0 +1,11 @@
+{
+  "about": "The town at the curve, pass 2: every frame with its stabilized pose, under the video's sky.",
+  "page": "layout=../layouts/ebl-neustadt.json",
+  "clip": "examples/media/ebl-curve-trains.mp4",
+  "frames": 300,
+  "viewport": [1500, 1500],
+  "warm_s": 30,
+  "inject": ["tools/video/sky.js"],
+  "poses": "build/video/town-poses.json",
+  "out": "build/video/town"
+}

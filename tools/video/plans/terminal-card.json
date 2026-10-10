@@ -1,0 +1,13 @@
+{
+  "about": "The video of the project page's terminal card (web/media/ebl-terminal-unloading.mp4): the bare photo comes alive, then the second camera beside the truck.",
+  "size": [1280, 720],
+  "fps": 30,
+  "parts": [
+    { "frames": "build/video/terminal-photo", "count": 110, "crop": [[0, 225, 1600, 1125], [240, 300, 1520, 1020]],
+      "bare": { "image": "web/media/ebl-container-train.jpg", "hold": 36, "fade": [12, 36] } },
+    { "frames": "build/video/terminal-truck", "count": 222, "crop": [[0, 0, 1280, 720], [200, 100, 1160, 640]], "fade": 9 }
+  ],
+  "out": "web/media/ebl-terminal-unloading.mp4",
+  "crf": 26,
+  "poster": { "frame": 110, "out": "web/media/ebl-terminal-unloading.jpg" }
+}

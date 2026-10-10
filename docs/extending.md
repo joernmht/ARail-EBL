@@ -143,6 +143,7 @@ Optional methods the editor and the other parts look for:
 | `roadInfo()` | the road network: the object is a street (`{points, width, sidewalk, speed, car, ...}`, see `objects/road.js`) |
 | `entrances()` | the road network and the town: doors `[{pos: [x, y], dir: [ux, uy]}]` |
 | `busLane()` | the road network: a one-way lane for buses (`{points, width}`, see `objects/bus-terminal.js`) |
+| `walkBarrier()` | the road network: a polyline people do not cross on their own, only on streets and footpaths over it (tracks have it, see `objects/track.js`) |
 
 Geometry helpers from the API: `resolvePoint`, `resolvePoints`, `resolveSegment` (they understand `[x, y]` and marker-relative points), `translatePoint`, `pointRelativeTo`, `markersUsed(spec)` (the markers an object is placed relative to), plus the maths in `core/math.js` (vectors, polygons, polylines, poses, random numbers) and `snapToGrid`.
 

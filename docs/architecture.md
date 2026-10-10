@@ -57,7 +57,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `objects/tabletop.js` | table modules, the default table of the flyover |
 | `core/stops.js` | stop areas and docks, the common interface of stops |
 | `core/services.js`, `core/vehicles.js` | timetable, vehicle life cycle, drawing trains and buses |
-| `core/network.js`, `objects/road.js` | streets and the road network: junctions, places, routing, sidewalks and lanes |
+| `core/network.js`, `objects/road.js` | streets and the road network: junctions, places, routing, walks on the sidewalks around tracks, lanes |
 | `core/transit.js`, `objects/bus-stop.js`, `objects/bus-line.js`, `objects/signs.js` | bus lines: routes through the stops, dispatching, driving and stopping buses, stop signs |
 | `core/disruptions.js`, `core/scenarios.js` | disruption types and effects, scripted timelines |
 | `core/trains.js`, `feeds/*` | control-system feed: protocol parsing, arrival detection, WebSocket client, in-browser simulator |
@@ -97,7 +97,8 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `index.js` | the framework's API: `registerBuiltins` (the core types, then those of the terminal, the operations, the infrastructure and the journeys), the default `registry`, `createWorld`, `loadPlugins` |
 | `architecture/` | this architecture as data (`model.js`, `models/*.js`) and its UML diagrams (`uml.js`, laid out with dagre) on the architecture page |
 | `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
-| `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py` |
+| `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py`, `stabilize.py` and `compose.py` (videos, see [Videos of the lab](videos.md)) |
+| `tools/video/` | `render.mjs` (the app rendered frame by frame after a plan, in Chromium), `sky.js` (the town video's sky), the plans of the project page's videos |
 
 ## Coordinate systems
 
@@ -200,7 +201,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/handover.test.js` | handing agents to the passenger simulation: waiting, line filter, alighting, removal |
 | `tests/js/town.test.js` | the town's daily routine, lit homes in the evening, setting the clock, reproducible runs, layouts without platforms, schools or shops |
 | `tests/js/houses.test.js` | house types and the building kit: geometry, capacity, entrances, estate plots, JSON round trips, drawing by day and night |
-| `tests/js/network.test.js` | road network: junctions (end to end, T, X), routing, places, bus lanes, sidewalk offsets, drawing, road traffic |
+| `tests/js/network.test.js` | road network: junctions (end to end, T, X), routing, places, bus lanes, sidewalk offsets, walks on the sidewalks and around tracks, drawing, road traffic |
 | `tests/js/transit.test.js` | bus stops and lines: stop geometry, routing, a bus serving every stop, boarding, managed docks, status texts, town people riding |
 | `tests/js/lines.test.js` | bus lines over a day: lay-overs, bus counts, cars after edits, riders whose stop disappears, ring lines, boards and badges, commuters by bus, door side |
 | `tests/js/flycam.test.js` | the flyover camera (projection, pose, navigation, fit), the grid, table modules, drawing for a virtual camera |
@@ -224,6 +225,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/layers.test.js` | layers (modules): composing and splitting layouts, simulation patches, exclusive layers and layouts of their own, switching modules, validation, the modules of the lab example |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
 | `tests/python/test_bridge.py`, `test_calibration.py`, `test_synthetic.py` | bridge protocol, adapters and WebSocket server end to end; calibration; the synthetic scene |
+| `tests/python/test_stabilize.py` | videos: the picture's motion from a synthetic clip, the joined poses closer to the truth and slipping far less, markers that disagree, the command line; composing shots with crossfades, the bare picture and the loop, encoding |
 | `tests/e2e/app.spec.js` | the app: tracking the examples, building, disruptions, control system, robustness of the panels |
 | `tests/e2e/flyover.spec.js` | the flyover: drawing, navigation, table modules, snapping, the View panel, orthophoto, keyboard |
 | `tests/e2e/houses.spec.js`, `streets.spec.js` | placing house types and estates; streets, bus stops, bus lines and the Stops board |
