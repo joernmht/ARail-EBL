@@ -6,13 +6,14 @@ import {
   stressOf, toCSV,
 } from "../arail/index.js";
 import { download, h, morph, mount, storage, toast } from "./ui.js";
+import { i18n } from "./i18n.js";
 
 const VIEWS = [["today", "Today"], ["fleet", "Fleet"], ["workshop", "Workshop"], ["crews", "Crews"], ["money", "Penalties"], ["compare", "Compare"]];
 const DAY = 1440;
 /** Key figures shown as percentages or minutes (two decimals in the table). */
 const FINE = new Set(["cancelledPct", "punctualPct", "shortPct", "kmLostPct", "availabilityPct", "workshopPct", "avgDelay"]);
-const euro = (v) => `${Math.round(v).toLocaleString("en")} €`;
-const signedEuro = (v) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(Math.round(v)).toLocaleString("en")} €`;
+const euro = (v) => i18n.euros(v);
+const signedEuro = (v) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${i18n.euros(Math.abs(v))}`;
 const pct = (a, b) => (b > 0 ? `${((100 * a) / b).toFixed(1)} %` : "–");
 const hhmm = (t) => {
   const m = ((Math.floor(t) % DAY) + DAY) % DAY;
@@ -202,7 +203,7 @@ export class OperationsPanel {
       const due = u.mostDue(u.type.program, e.now);
       if (!due) return "–";
       const km = Math.max(0, Math.round(u.kmLeft(u.type.program, e.now))), days = Math.max(0, u.daysLeft(u.type.program, e.now));
-      return `${due.level.name}: ${Number.isFinite(km) ? `${km.toLocaleString("en")} km` : ""}${Number.isFinite(days) ? `${Number.isFinite(km) ? " / " : ""}${days.toFixed(0)} d` : ""}`;
+      return `${due.level.name}: ${Number.isFinite(km) ? `${i18n.number(km)} km` : ""}${Number.isFinite(days) ? `${Number.isFinite(km) ? " / " : ""}${days.toFixed(0)} d` : ""}`;
     };
     const selected = this.unitChoice && e.units.has(this.unitChoice) ? this.unitChoice : units[0]?.id;
     return [
@@ -424,7 +425,7 @@ export class OperationsPanel {
       if (!better || vals.every((v) => v === vals[0])) return -1;
       return vals.indexOf(better === "low" ? Math.min(...vals) : Math.max(...vals));
     };
-    const fmt = (key, v) => (FINE.has(key) ? v.toFixed(key === "avgDelay" ? 2 : 1) : Math.round(v).toLocaleString("en"));
+    const fmt = (key, v) => (FINE.has(key) ? v.toFixed(key === "avgDelay" ? 2 : 1) : i18n.number(Math.round(v)));
     const parties = [...new Set(rows.flatMap((r) => Object.keys(r.parties)))];
     const max = Math.max(1, ...rows.flatMap((r) => Object.values(r.parties).map((p) => Math.abs(p.net))));
     const sparkMax = Math.max(1, ...rows.flatMap((r) => r.daily.map((d) => d.cancelled)));

@@ -1,6 +1,7 @@
 /**
  * Registry of extension points: object types, simulations, disruption types, vehicle renderers,
- * what info cards add (card providers) and checks of layout files. The built-ins are registered in
+ * what info cards add (card providers), checks of layout files and texts in other languages. The
+ * built-ins are registered in
  * `arail/index.js`; plugins add their own.
  * @module arail/core/registry
  */
@@ -18,6 +19,8 @@ export class Registry {
     this.cards = new Map();
     /** @type {Map<string, Function>} layout checks by name: `(json)` returns problems of a layout file (texts) */
     this.checks = new Map();
+    /** @type {Map<string, object>} texts in other languages by language: English text → translation (arail/i18n) */
+    this.texts = new Map();
   }
 
   /** Register a LayoutObject subclass (its static `type` is the key). */
@@ -66,6 +69,18 @@ export class Registry {
     if (typeof fn !== "function") throw new Error("A layout check is a function");
     this.checks.set(name, fn);
     return fn;
+  }
+
+  /**
+   * Register texts in another language (arail/i18n): `{"English text": "Übersetzung"}`, with
+   * `{name}` placeholders and plural forms `{one, other}`. Later entries replace earlier ones.
+   * @param {string} lang e.g. "de"
+   * @param {Record<string, string | {one?: string, other?: string}>} entries
+   */
+  registerTexts(lang, entries) {
+    if (!lang || typeof entries !== "object") throw new Error("Texts need a language and entries");
+    this.texts.set(lang, { ...(this.texts.get(lang) || {}), ...entries });
+    return entries;
   }
 
   /**

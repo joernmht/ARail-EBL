@@ -9,6 +9,7 @@ import {
   SUPERVISION, YEAR, assetRecord, durationText, eur, gradeColour, infraOf, kmLabel, roleLabel, scenariosOf, toGeoJSON,
 } from "../arail/index.js";
 import { download, h, morph, mount, readFile, storage, toast } from "./ui.js";
+import { i18n } from "./i18n.js";
 
 const VIEWS = [["overview", "Overview"], ["map", "Line map"], ["assets", "Assets"], ["decisions", "Decisions"], ["projects", "Projects"], ["staff", "Staff"], ["results", "Results"]];
 const ROLE_CHOICES = [...ROLE_IDS, "instructor"];
@@ -241,7 +242,7 @@ export class InfraPanel {
     const tiles = [
       ["Network grade", known.toFixed(2), `known; target ${e.model.funding.target_grade.toFixed(1)} or better`],
       ["Open faults", `${faults.length}`, faults.length ? faults.map((f) => e.assets.get(f.asset)?.name).slice(0, 2).join(", ") : "none known"],
-      ["Delay minutes", cur.delayMin.toLocaleString("en"), `this year · ${eur(cur.perfEur)} performance regime`],
+      ["Delay minutes", i18n.number(cur.delayMin), `this year · ${eur(cur.perfEur)} performance regime`],
       ["Maintenance money", eur(e.balance.maintenance), `of ${eur(e.budget.maintenance)} this year`],
       ["Replacement money", eur(e.balance.replacement), `of ${eur(e.budget.replacement)}; unspent goes back`],
       ["Staff out", `${out} of ${people.length}`, `${cur.callouts} call-outs this year`],
@@ -641,8 +642,8 @@ export class InfraPanel {
       ["Network grade (true)", (y) => y.grade?.toFixed(2) ?? "–", showTrue],
       ["Network grade (known)", (y) => y.knownGrade?.toFixed(2) ?? "–", true],
       ["Faults", (y) => y.faults, true],
-      ["Delay minutes", (y) => y.delayMin?.toLocaleString("en"), true],
-      ["… by construction", (y) => (y.constructionDelayMin ?? 0).toLocaleString("en"), true],
+      ["Delay minutes", (y) => (y.delayMin == null ? undefined : i18n.number(y.delayMin)), true],
+      ["… by construction", (y) => i18n.number(y.constructionDelayMin ?? 0), true],
       ["Speed restrictions", (y) => y.laSections, true],
       ["Performance regime", (y) => eur(y.perfEur), true],
       ["Station equipment out (h)", (y) => y.stationHours, true],

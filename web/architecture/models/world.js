@@ -23,7 +23,7 @@ export const WORLD = [
       {
         name: "Registry", file: "web/arail/core/registry.js", kind: "class", role: "Extension points by type name.",
         attributes: ["objects: Map — object classes", "simulations: Map — simulation classes", "disruptions: Map — disruption definitions", "vehicles: Map — how vehicles are drawn", "cards: Map — card providers", "checks: Map — layout checks"],
-        operations: ["registerObject(cls)", "registerSimulation(cls)", "registerDisruption(def)", "registerVehicle(def)", "registerCard(name, fn) — adds to info cards", "registerCheck(name, fn) — checks layout files"],
+        operations: ["registerObject(cls)", "registerSimulation(cls)", "registerDisruption(def)", "registerVehicle(def)", "registerCard(name, fn) — adds to info cards", "registerCheck(name, fn) — checks layout files", "registerTexts(lang, entries) — texts in other languages"],
       },
       {
         name: "EventBus", file: "web/arail/core/events.js", kind: "class", role: "Publish and subscribe; \"*\" hears every event; errors of handlers are caught.",
@@ -314,7 +314,7 @@ export const WORLD = [
     classes: [
       {
         name: "View", file: "web/arail/core/view.js", kind: "class", role: "Projection and display list of one frame.",
-        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list"],
+        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown"],
         operations: ["project(x, y, z)", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style)", "dim(colour, amount)", "render()"],
       },
       { name: "SimpleView", file: "web/arail/core/simple.js", kind: "class", extends: "View", role: "Map and 2.5D: flat footprints, plain blocks, always day.", operations: ["block(footprint, z0, z1, colour)"] },

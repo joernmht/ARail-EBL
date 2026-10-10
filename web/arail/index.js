@@ -42,6 +42,8 @@ import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
 import { registerJourneys } from "./journeys/index.js";
 import { registerRail } from "./rail/index.js";
+import { EN as TEXTS_EN } from "./i18n/en.js";
+import { DE as TEXTS_DE } from "./i18n/de.js";
 
 export const VERSION = "0.1.0";
 
@@ -139,10 +141,11 @@ export {
   BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard,
   COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand,
 } from "./rail/index.js";
+export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
-/** Register all built-in object types, simulations, disruptions and vehicles. */
+/** Register all built-in object types, simulations, disruptions, vehicles, card providers, checks and texts. */
 export function registerBuiltins(registry) {
   for (const cls of [
     Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
@@ -161,6 +164,8 @@ export function registerBuiltins(registry) {
   registerInfrastructure(registry);
   registerJourneys(registry);
   registerRail(registry);
+  registry.registerTexts("en", TEXTS_EN);
+  registry.registerTexts("de", TEXTS_DE);
   return registry;
 }
 

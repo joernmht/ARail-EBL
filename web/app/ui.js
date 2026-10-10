@@ -1,13 +1,17 @@
 // Small DOM helpers for the app (no framework).
+import { TEXT_ATTRIBUTES, tr } from "./i18n.js";
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
 /**
  * Create an element: h("button", {class: "btn", onclick: fn}, "Label", child, ...).
- * Attributes with null/false are skipped; `true` sets an empty attribute.
+ * Attributes with null/false are skipped; `true` sets an empty attribute. Its texts and the
+ * attributes people read or hear (aria-label, title, alt, placeholder) are shown in the language
+ * chosen (i18n.js), unless it has `translate: "no"` (names, what people typed).
  */
 export function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
+  const translate = attrs?.translate !== "no";
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
@@ -19,11 +23,11 @@ export function h(tag, attrs = {}, ...children) {
     else if (k === "value") el.value = v;
     else if (k === "checked") el.checked = !!v;
     else if (v === true) el.setAttribute(k, "");
-    else el.setAttribute(k, String(v));
+    else el.setAttribute(k, translate && TEXT_ATTRIBUTES.includes(k) ? tr(String(v)) : String(v));
   }
   for (const c of children.flat(Infinity)) {
     if (c == null || c === false) continue;
-    el.append(c instanceof Node ? c : String(c));
+    el.append(c instanceof Node ? c : translate ? tr(String(c)) : String(c));
   }
   return el;
 }
@@ -81,7 +85,7 @@ let toastTimer = null;
 export function toast(text, ms = 4500, { minor = false } = {}) {
   const el = $("#toast");
   if (!el || (minor && !el.hidden)) return;
-  el.textContent = text;
+  el.textContent = tr(text);
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (el.hidden = true), ms);

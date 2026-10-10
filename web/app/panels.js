@@ -1,6 +1,7 @@
 // Panels: View, Settings (simulation and control system), Disruptions.
-import { CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
+import { tr } from "./i18n.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
 /** Fast-clock ratios offered in Settings → Simulation. */
@@ -84,6 +85,12 @@ export class Panels {
           h("button", { class: "btn small", type: "button", id: "btnRecord", "aria-pressed": app.recorder ? "true" : "false", onclick: () => app.toggleRecording() }, "Record video of the stage"),
         ),
         h("p", { class: "hint" }, "Saves the camera image with everything drawn on it as a WebM video."),
+      ),
+      section("Language",
+        h("label", { class: "field", for: "optLanguage" }, h("span", {}, "Language of the app"),
+          h("select", { id: "optLanguage", "aria-describedby": "optLanguage-help", onchange: (e) => app.changeLanguage(e.target.value) },
+            Object.entries(UI_LANGUAGES).map(([v, name]) => h("option", { value: v, lang: v, translate: "no", selected: app.language === v }, name))),
+          h("small", { class: "help", id: "optLanguage-help" }, "Kept on this device; a link can choose it with ?lang=de. What is not translated yet stays English.")),
       ),
     );
     this.renderFlyover();
@@ -384,7 +391,7 @@ export class Panels {
   updateSimulateControls() {
     if (!this.speedSeg) return;
     const w = this.world;
-    this.pauseBtn.textContent = w.paused ? "Resume" : "Pause";
+    this.pauseBtn.textContent = tr(w.paused ? "Resume" : "Pause");
     this.pauseBtn.setAttribute("aria-pressed", w.paused ? "true" : "false");
     morph(this.speedSeg, SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.updateSimulateControls(); } }, `${s}×`)));
   }

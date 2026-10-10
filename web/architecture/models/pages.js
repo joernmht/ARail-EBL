@@ -12,7 +12,7 @@ export const PAGES = [
       {
         name: "App", file: "web/app/app.js", kind: "class", role: "The page: source, tracking, world, panels.",
         attributes: ["world: World", "tracker: PlaneTracker", "detector: MarkerDetector", "camera: Camera", "source: object | null — camera, photo or video", "mode: string — camera or flyover", "activeTab: string", "layoutUrl: string | null", "moduleHome: object | null — the layout a module layout belongs to", "appModules: Map — the app's modules on, per layout (also kept in the browser)"],
-        operations: ["init()", "frame(dt)", "render()", "tabs() — the tabs shown", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()"],
+        operations: ["init()", "frame(dt)", "render()", "tabs() — the tabs shown", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()", "changeLanguage(lang) — View → Language"],
       },
       { name: "Panels", file: "web/app/panels.js", kind: "class", role: "The View, Settings and Disruptions panels.", attributes: ["settingsView: string — simulate or control"], operations: ["renderView(el)", "renderSettings(el)", "renderSimulate(el)", "setSettingsView(v)", "renderControl(el)", "renderDisruptions(el)", "_moduleBox(m)"] },
       { name: "Editor", file: "web/app/editor.js", kind: "class", role: "Build: placing, dragging, the inspector, the marker map.", operations: ["startPlacing(type)", "placeAt(p, e)", "select(obj)", "render(container)", "renderInspector()", "keepPositions()"] },
@@ -22,7 +22,7 @@ export const PAGES = [
         attributes: ["hover: object | null — the pickable under the mouse", "open: object | null — the card shown: its key and pickable", "keyAim: boolean — the cross in the middle of the flyover (keyboard)"],
         operations: ["hoverAt(pixel)", "tapAt(pixel, opts) — outside Build and Terminal", "inspectCentre() — Enter on the flyover", "show(hit)", "close()", "update() — every 400 ms", "drawOverlay(ctx, view)", "act(id) — follow"],
       },
-      { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children)", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
+      { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children) — its texts in the language chosen, unless translate: \"no\"", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
     ],
     relations: [
       { from: "App", to: "World", kind: "composes", label: "world" },
@@ -74,6 +74,58 @@ export const PAGES = [
       ],
     },
     rules: ["Edits are saved 300 ms after the last change, per layout.", "Taps on the stage open the info card of what is there, except in Build (they select) and in Terminal (they pick containers); the tooltip follows the mouse in every tab.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
+  },
+  {
+    id: "i18n", group: "pages", title: "Texts in other languages",
+    summary: "The app in English or German: a translator without a build step whose keys are the English texts, the framework's and the app's German texts, the choice of the language.",
+    description: "The framework stays English: its cards, labels and settings are English texts. The app translates what it shows: h() (ui.js) the texts and the attributes people read or hear (aria-label, title, alt, placeholder) of the elements it makes, the View the labels on the canvas, translateDocument the page's own markup. A text is found as a whole, else by the pattern of an entry with placeholders (\"{n} min late\"; its variable parts are translated in turn and numbers get the language's decimal sign), else part by part between \" · \"; what has no translation stays English and is noted (Translator.missing). The language comes from ?lang=, else the choice in View → Language (kept on the device), else the browser. Plugins bring their texts with registry.registerTexts.",
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js"],
+    classes: [
+      {
+        name: "Translator", file: "web/arail/i18n/index.js", kind: "class", role: "Translates texts into one language at a time.",
+        attributes: ["lang: string — the language shown", "catalogues: Map — the entries by language", "patterns: Map — the entries with placeholders by language, the most specific first", "missing: Set — texts asked for without a translation"],
+        operations: ["add(lang, entries) — later entries replace earlier ones", "setLanguage(lang)", "has(text, lang)", "t(text, params) — an entry with its parameters; n chooses the plural form", "translate(text) — a finished English text", "number(x, options)", "euros(x)", "date(date, options)"],
+      },
+      { name: "i18n", file: "web/arail/i18n/index.js", kind: "module", role: "The languages and the placeholders of a text.", attributes: ["UI_LANGUAGES — each by its own name"], operations: ["placeholders(text)"] },
+      { name: "texts", file: "web/arail/i18n/de.js", kind: "module", role: "The framework's texts in German (and the English singulars in en.js), registered by registerBuiltins.", attributes: ["DE — English text → German"] },
+      {
+        name: "language", file: "web/app/i18n.js", kind: "module", role: "The app's translator and the choice of the language.",
+        attributes: ["i18n — the app's Translator", "tr — a finished text in the language shown", "TEXT_ATTRIBUTES"],
+        operations: ["addTexts(reg) — the registry's texts, then the app's (web/app/lang/de.js)", "chooseLanguage() — ?lang=, the device's choice, the browser's", "translateDocument(roots) — the page's own markup", "setLanguage(lang, { keep })"],
+      },
+    ],
+    relations: [
+      { from: "language", to: "Translator", kind: "creates", label: "i18n" },
+      { from: "Translator", to: "texts", kind: "depends", label: "catalogues" },
+    ],
+    activities: [{
+      id: "translate", name: "A finished text in the language shown (Translator.translate)",
+      nodes: [
+        ["s", "start"],
+        ["d1", "decision", "English, or no letters?"],
+        ["d2", "decision", "Translated before?"],
+        ["a1", "action", "The cached translation", "Translator.translate"],
+        ["d3", "decision", "The text as a whole in the catalogue?"],
+        ["a2", "action", "Its translation", "Translator._translate"],
+        ["d4", "decision", "An entry whose fixed parts it has (the most specific first)?"],
+        ["a3", "action", "Its translation, the variable parts translated in turn, numbers with the decimal sign", "Translator._translate"],
+        ["d5", "decision", "Parts between \" · \"?"],
+        ["a4", "action", "Each part on its own", "Translator._translate"],
+        ["a5", "action", "Stays English, noted as missing", "Translator.translate"],
+        ["m1", "merge"],
+        ["e", "end"],
+      ],
+      edges: [["s", "d1"], ["d1", "m1", "yes"], ["d1", "d2", "no"], ["d2", "a1", "yes"], ["d2", "d3", "no"], ["a1", "m1"], ["d3", "a2", "yes"], ["d3", "d4", "no"], ["a2", "m1"], ["d4", "a3", "yes"], ["d4", "d5", "no"], ["a3", "m1"], ["d5", "a4", "yes"], ["d5", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "e"]],
+    }],
+    parameters: [
+      { key: "?lang=", default: "the device's choice, else the browser's language", meaning: "The language of the app: en or de (e.g. for a projector); a choice in View → Language is kept on the device." },
+      { key: "translate: \"no\"", default: "", meaning: "An element of h() whose texts are names or what people typed: not translated." },
+    ],
+    rules: [
+      "The English text is the key: code stays readable, and a text without a translation stays English.",
+      "{n}, {id} and {time} stand for one word or number, other placeholders for any text up to \" · \".",
+      "A translation keeps the placeholders of its English text (checked by tests/js/i18n.test.js).",
+    ],
   },
   {
     id: "markers", group: "pages", title: "Marker sheets and deck cards",

@@ -2,6 +2,7 @@
 // was tapped, in the camera view and the flyover (the world's pick interface, core/pick.js).
 import { COMPATIBILITY, consistOfHit, FONT, OVERLAY, projectedHull, PICK_TOLERANCE, rgba } from "../arail/index.js";
 import { $, h, morph, mount, toast } from "./ui.js";
+import { tr } from "./i18n.js";
 
 /** A pointer that moves less than this (CSS px) between down and up taps rather than drags. */
 const TAP_PX = 6;
@@ -131,7 +132,7 @@ export class Inspector {
     if (hit) this.show(hit);
     else {
       this.close();
-      this.announce("Nothing at the cross. Move the view with the arrow keys.");
+      this.announce(tr("Nothing at the cross. Move the view with the arrow keys."));
     }
     return !!hit;
   }
@@ -141,7 +142,7 @@ export class Inspector {
     this.open = { key: hit.key, hit };
     this.tip.hidden = true;
     const card = this.render();
-    if (card) this.announce(`${card.title}${card.subtitle ? `, ${card.subtitle}` : ""}${card.status ? `. ${card.status}` : ""}`);
+    if (card) this.announce(`${tr(card.title)}${card.subtitle ? `, ${tr(card.subtitle)}` : ""}${card.status ? `. ${tr(card.status)}` : ""}`);
   }
 
   /** Close the card; returns true if one was open. */

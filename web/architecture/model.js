@@ -131,15 +131,21 @@ export const PACKAGES = [
     uses: [], links: [["core-transport", "trains.apply(message)"]],
   },
   {
+    id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
+    summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/en.js"],
+    uses: [],
+  },
+  {
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail", "i18n"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
-    summary: "The app: sources, frame loop, HUD, the panels (Build, View, the modules' tabs, Disruptions, Settings), the flyover, tooltips and info cards.",
-    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
+    summary: "The app: sources, frame loop, HUD, the panels (Build, View, the modules' tabs, Disruptions, Settings), the flyover, tooltips and info cards, in the language chosen.",
+    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js", "web/app/i18n.js", "web/app/lang/de.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {

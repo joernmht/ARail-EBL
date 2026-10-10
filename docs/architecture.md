@@ -68,6 +68,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/simple.js` | the simple view (Map, 2.5D): `SimpleView` draws objects as flat footprints and moving things as plain blocks |
 | `core/colors.js` | the corporate-design colours (`CD`, `CD_LIGHT`, `OVERLAY`, `FONT`), the palette of the built-in objects, colour helpers |
 | `core/registry.js`, `core/events.js`, `core/simulation.js` | extension points, event bus, base class of simulations |
+| `i18n/` | texts in other languages: the `Translator` (the English text is the key, patterns with placeholders, plural forms, number and date formats) and the framework's German texts; the app's language and its own texts in `app/i18n.js` and `app/lang/de.js` ([Languages](languages.md)) |
 | `core/pick.js` | pointing at things: what is under an image pixel (what moves, from the managers' and simulations' `pickables`, found in its projected box; else a layout object, also on the walls of tall ones) and its info card (`card`) |
 | `sims/passengers.js` | the passenger simulation at stops; hand-over of other simulations' people; boards |
 | `sims/town.js` | the town: residents' daily routines on foot, by bus and by train |
@@ -230,6 +231,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/pick.test.js` | pointing at things: people, trains, buses and cars of the lab example found where they are seen, small objects before large ones, buildings on their walls, table modules at their edges, every card with a title and what the simulations add, keys that follow, the terminal's containers |
 | `tests/js/systems.test.js` | railway systems: the values usual in a country and set per track, line categories, where systems change, the tracks coloured over the camera image, the system change board, the lab's module Border station |
 | `tests/js/consist.test.js` | vehicles and trains: the catalogue, a passenger and a freight train's figures, brake positions, load-dependent and isolated brakes, the layout's consists and own vehicle types, their check, the train data on the card of a lab train against the brake percentage its track requires |
+| `tests/js/i18n.test.js` | texts in other languages: the translator (exact texts, patterns, one-word placeholders, plurals, the parts between ·, formats), plugins' texts, the catalogues (placeholders kept, no text twice), every text the app asks for by name and the page's markup in German, the framework's cards in German |
 | `tests/js/compat.test.js` | may this train run here: German, multi-system and diesel trains on German, Czech and other sections, pantograph heads, ETCS only, radio, gauge, line categories, the card of RE 1 at the Czech track G3 of the border station and the tracks coloured by it |
 | `tests/js/layers.test.js` | layers (modules): composing and splitting layouts, simulation patches, exclusive layers and layouts of their own, switching modules, validation, the modules of the lab example |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
@@ -247,6 +249,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/e2e/simple.spec.js` | Map and 2.5D: the simple view from above and tilted, Build in the map |
 | `tests/e2e/architecture.spec.js` | the architecture page: every diagram drawn without errors, the drop-downs, links to models, a phone, accessibility in light and dark mode |
 | `tests/e2e/inspect.spec.js` | hover and click: the tooltip, the card of a train and a building, Escape, Build keeping its taps, the flyover's stop card, Enter at the cross, accessibility of the tooltip and the card |
+| `tests/e2e/i18n.spec.js` | the app in German (?lang=de): the frame, View, Settings, Build and a train's card, with nothing English left but names, codes and numbers, accessible; View → Language switches without reloading and is kept, ?lang= for one link |
 | `tests/e2e/systems.spec.js` | View → Colour the tracks by with its legend (kept, accessible), the card of a track with its systems, the systems as fields in Build; the card of RE 1 at the Czech track G3 and *Show where it may run* |
 | `tests/e2e/keyboard.spec.js` | keyboard only: switching panels, flying, placing an object in the flyover, setting the time; visible focus on the file buttons; stage buttons not hidden by the placing bar |
 

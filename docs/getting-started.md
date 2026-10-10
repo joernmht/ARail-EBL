@@ -108,6 +108,7 @@ The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, *
 - *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, and **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend; see [Railway systems](rail-systems.md).
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md).
 - *Record*: records the stage as a WebM video.
+- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, View, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
 
 ### Build
 
@@ -235,6 +236,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `camera=1` | start the live camera |
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
+| `lang=de`, `lang=en` | the app in German or English for this link (e.g. the projector), without changing the choice of the device |
 | `scenario=<id>` | play a scenario of the layout (switches the module Disruptions on) |
 | `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
 | `#view`, `#build`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#settings` | open a tab, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them; `#build` and `#disrupt` switch the modules Build and Disruptions on) |
