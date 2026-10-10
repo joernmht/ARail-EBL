@@ -388,7 +388,7 @@ test("a layout without a terminal has no Terminal tab: Settings → Simulation a
   await page.waitForFunction(() => window.__arail.mode === "flyover" && window.__arail.terminal.sim?.name === "KV terminal", null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeVisible();
   // back to the lab photo: the flyover is left and the photo is shown again, without the Terminal tab
-  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.selectOption("#exampleSelect", "lab");
   await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.tracker.state.H && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#emptyStage")).toBeHidden();
   await expect(page.locator("#tab-terminal")).toBeHidden();

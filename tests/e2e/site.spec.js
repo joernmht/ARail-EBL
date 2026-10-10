@@ -10,8 +10,15 @@ test("project page links to the app and the compare slider works", async ({ page
   await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "app/");
   await page.locator("#compareRange").fill("20");
   await expect.poll(() => page.locator("#compare").evaluate((el) => el.style.getPropertyValue("--pos"))).toBe("20%");
-  const images = await page.locator("#compare img").evaluateAll((imgs) => imgs.map((i) => i.naturalWidth));
-  expect(images).toEqual([1600, 1600]);
+  await page.locator("#compare").scrollIntoViewIfNeeded();
+  await expect.poll(() => page.locator("#compare img").evaluateAll((imgs) => imgs.map((i) => i.naturalWidth))).toEqual([1600, 1600]);
+  // the video at the top: a real train through a virtual town, with its poster and a pause button
+  const video = page.locator("#heroClip");
+  await expect(video).toHaveAttribute("poster", "media/ebl-city-train.jpg");
+  for (const src of ["media/ebl-city-train.jpg", await page.locator("#heroClip source").getAttribute("src")]) {
+    expect((await page.request.get(`/${src}`)).ok(), src).toBe(true);
+  }
+  await expect(page.getByRole("button", { name: /^(Pause|Play) the video$/ })).toBeVisible();
   const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(width[0]).toBe(width[1]); // no horizontal scrolling
   expect(errors).toEqual([]);
@@ -27,20 +34,29 @@ test("project page hands over from the picture to the applications, each opening
   for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(examples).toHaveLength(5);
-  for (const href of examples) {
-    const layout = new URL(href, "http://x/app/").searchParams.get("layout");
+  // and the examples of the lab table
+  const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
+  const app = await (await request.get("/app/app.js")).text();
+  for (const href of [...examples, ...fresh]) {
+    const params = new URL(href, "http://x/").searchParams;
+    if (params.has("example")) {
+      expect(app, href).toContain(`id: "${params.get("example")}"`);
+      continue;
+    }
+    const layout = params.get("layout");
     expect((await request.get(new URL(layout, "http://localhost/app/").pathname)).ok(), layout).toBe(true);
   }
   // cooperation: the contact person by email
   await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
-  const images = await page.locator(".app-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
+  const images = await page.locator(".app-card img, .fresh-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
   for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
 });
 
-test("project page fits a phone: the picture first, no horizontal scrolling", async ({ page }) => {
+test("project page fits a phone: the video first, no horizontal scrolling", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  const pic = await page.locator("#compare").boundingBox();
+  const pic = await page.locator("#heroVideo").boundingBox();
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   expect(pic.y).toBeLessThan(title.y);
   const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);

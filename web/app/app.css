@@ -107,6 +107,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .layout-name { flex: 1000 1 0; color: var(--bar-muted); font-size: .9rem; min-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
 .bar .spacer { flex: 1; }
 .sources { display: flex; gap: 8px; flex-wrap: wrap; }
+/* closed, the list reads "Layouts…": as narrow as that, whatever the names of the examples */
+.sources select { max-width: 11rem; }
 .bar .btn { background: transparent; border-color: var(--bar-line); color: var(--bar-text); }
 .bar .btn:hover { background: var(--bar-hover); border-color: var(--bar-text); }
 .bar .btn.primary { background: var(--bar-primary); border-color: var(--bar-primary); color: var(--bar-primary-text); }

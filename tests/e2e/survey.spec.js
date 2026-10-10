@@ -69,7 +69,7 @@ test("another layout loaded during a video survey is left alone by it", async ({
     await new Promise((resolve) => (sendPhoto = resolve));
     await route.continue();
   });
-  await page.selectOption("#exampleSelect", "../layouts/synthetic-demo.json");
+  await page.selectOption("#exampleSelect", "synthetic");
   await page.waitForFunction(() => window.__arail.world.layout.name === "Synthetic test layout");
   await page.evaluate(() => window.__releaseSeek());
   await expect(page.locator("#toast")).toContainText("Survey cancelled");

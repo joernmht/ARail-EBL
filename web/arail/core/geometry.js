@@ -129,10 +129,34 @@ export function spread(points) {
 }
 
 /**
+ * Which side of the camera the plane is on where the image shows it: +1 if most of a 3×3 grid of
+ * image points (corners, edge middles and the principal point) see points of the plane with a
+ * positive third homogeneous coordinate, −1 if most see a negative one. The plane point seen at
+ * pixel q is H⁻¹·q; its depth is λ / w with w its third coordinate, so a pose with sign(λ) equal to
+ * this vote has the plane in front of the camera below its horizon. Most of a picture of the layout
+ * lies below the horizon, while the layout origin may be anywhere (also behind the camera).
+ * @param {number[]} H homography plane -> image
+ * @param {number} cx principal point (px)
+ * @param {number} cy principal point (px)
+ * @returns {number} +1, −1, or 0 for a degenerate homography
+ */
+function planeSide(H, cx, cy) {
+  const Hi = inv3(H);
+  if (!Hi) return 0;
+  let votes = 0;
+  for (const v of [0, cy, 2 * cy]) {
+    for (const u of [0, cx, 2 * cx]) votes += Math.sign(Hi[6] * u + Hi[7] * v + Hi[8]);
+  }
+  return Math.sign(votes);
+}
+
+/**
  * Camera pose of a plane from its homography (plane mm -> px) and the intrinsics.
  *
  * A point (x, y, z) on/above the plane (mm, z up) has camera coordinates
  *   X = x * a1 + y * a2 + a3 + z * n.
+ * The plane lies in front of the camera where most of the image shows it (see `planeSide`); the
+ * layout origin may lie behind the camera, e.g. on a long layout seen from far away from marker 0.
  * @param {number[]} H homography plane -> image
  * @param {{fx: number, fy: number, cx: number, cy: number}} K intrinsics
  * @returns {{a1: number[], a2: number[], a3: number[], n: number[]}}
@@ -146,7 +170,8 @@ export function poseFromHomography(H, K) {
   ];
   const m1 = [M[0], M[3], M[6]], m2 = [M[1], M[4], M[7]], m3 = [M[2], M[5], M[8]];
   let lambda = 2 / (Math.hypot(...m1) + Math.hypot(...m2));
-  if (M[8] * lambda < 0) lambda = -lambda; // plane origin in front of the camera
+  const side = planeSide(H, cx, cy) || Math.sign(M[8]); // degenerate: the plane origin in front
+  if (side * lambda < 0) lambda = -lambda;
   const a1 = m1.map((v) => v * lambda), a2 = m2.map((v) => v * lambda), a3 = m3.map((v) => v * lambda);
   let n = cross3(a1, a2);
   const nn = Math.hypot(...n) || 1;
@@ -182,7 +207,8 @@ export function cameraCentre(pose) {
  * Homography of the plane at `height` mm above the layout plane (layout x, y in mm -> image px),
  * e.g. for markers on wagons: K·[a1, a2, a3 + height·n] with the pose of `H`. Points are found on
  * that plane with its inverse; the z = 0 homography would shift them away from the camera.
- * Like {@link poseFromHomography}, it assumes that the layout origin is in front of the camera.
+ * It uses the pose of {@link poseFromHomography}, so the plane lies in front of the camera where
+ * the image shows it.
  * @param {number[]} H homography layout plane (mm) -> image (px)
  * @param {{fx: number, fy: number, cx: number, cy: number}} K intrinsics
  * @param {number} height height of the plane above the layout (mm)

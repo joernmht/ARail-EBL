@@ -81,7 +81,7 @@ export const TERMINAL = [
       {
         name: "TerminalSimulation", file: "web/arail/terminal/operations.js", kind: "class", extends: "Simulation", role: "The terminal: its moves, machines and visits.",
         attributes: ["inventory: Inventory", "moves: object[] — {id, container, from, to, handler, state, reason, waiting}", "handlers: Map — machines by object id", "visits: Map — trains, barges, trucks", "rolling: RollingStock | null — model wagons", "highlight: object — what the panel shows on the stage"],
-        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts)", "load(visitId, opts)", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "step(dt)", "saveStart()"],
+        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts)", "load(visitId, opts)", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "tagCount(number) — the tags of a model wagon", "_tagAlongMM(number, slot)", "_tagTurn(number, slot)", "_wagonCarrierType(number) — with rolling_stock[].spots_mm", "step(dt)", "saveStart()"],
       },
       {
         name: "HandlerBase", file: "web/arail/terminal/handlers.js", kind: "class", stereotype: "base class", role: "A machine: one move at a time, in eased phases.",
@@ -220,7 +220,7 @@ export const TERMINAL = [
     classes: [
       {
         name: "RollingStock", file: "web/arail/terminal/rolling.js", kind: "class", role: "Tracks model wagons from their tags.",
-        attributes: ["wagons: Map — number → {center, heading, state, speed, tags, lastSeen}", "stride: number — tags per wagon"],
+        attributes: ["wagons: Map — number → {center, heading, state, speed, tags, lastSeen}", "stride: number — tags per wagon", "slotAlongMM: function — where a slot's tag sits along its wagon", "slotTurn: function — how a slot's tag is turned on its wagon"],
         operations: ["observe(observations, time, opts)", "reset()", "_group(observations)", "_fuse(tags, previous)", "_update(w, measured, time, still, getTracks)", "_hold(w, time, visible)", "_snap(center, heading, tracks)"],
       },
       { name: "rolling", file: "web/arail/terminal/rolling.js", kind: "module", role: "Tag IDs.", attributes: ["ROLLING_DEFAULTS — hold 4 s, smoothing 0.15 s, snap 8 mm"], operations: ["decodeTag(id, stride)", "encodeTag(number, slot, stride)"] },
@@ -233,7 +233,7 @@ export const TERMINAL = [
       id: "observe", name: "Model wagons from one frame's tags",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Decode the tags; those of the wrong size dropped", "RollingStock._group"],
+        ["a1", "action", "Decode the tags; those of the wrong size dropped; turned tags turned back", "RollingStock._group"],
         ["m1", "merge"],
         ["a2", "action", "Fuse the tags of a wagon into a pose", "RollingStock._fuse"],
         ["d1", "decision", "A pose?"],
@@ -252,6 +252,7 @@ export const TERMINAL = [
     parameters: [{ key: "markers.rolling", default: "APRILTAG_36h11, 64 codes, 20 mm, 15 mm high, stride 4, 3 bit errors", meaning: "The tags of the model wagons and how they are read." }],
     rules: [
       "Tag ID = (wagon number − 1) × stride + slot; slot 0 at the A end.",
+      "A tag sits on container spot `slot`, or where rolling_stock[].tags_mm puts it, turned by tags_deg (180°: its x axis points to the B end); spots_mm moves a wagon's container spots (20 ft only), e.g. for a model truck with two trailers.",
       "A wagon's centre from each tag; tags more than 6 mm from the median are dropped; with two tags or more the heading is a least-squares line.",
       "A jump of more than 30 mm or 45° starts the wagon anew; else smoothing 1 − e^(−dt/0.15 s); standing: under 3 mm/s for 1 s.",
       "A carrier is present unless its wagon is lost; available while it stands (or is held and stood).",

@@ -132,3 +132,28 @@ The near table edge is at y ≈ −320 mm; beyond y ≈ 700 mm the video shows t
 arail-survey tests/fixtures/synthetic-survey.webm --every 1 --layout web/layouts/synthetic-demo.json \
     -o synthetic.json --ortho web/media/synthetic-ortho.jpg --ortho-bounds -130 -320 670 180
 ```
+
+## The examples of 9 October 2026
+
+The layouts `web/layouts/ebl-neustadt.json` (the station Bf Neustadt, the terminal at the crane and the curve next to it) and `web/layouts/ebl-container-train.json` (the hybrid container train) were surveyed from the photos and clips of that day in `examples/media` (40 mm ArUco Original stickers, IDs up to 214). The full lab was not filmed for this; these are maps of the parts the photos and clips show.
+
+```bash
+# the station, the terminal and the curve: three photos and two clips, origin marker 5 (at the crane)
+arail-survey examples/media/ebl-terminal-crane.jpg examples/media/ebl-terminal-tracks.jpg \
+    examples/media/ebl-station-neustadt.jpg examples/media/ebl-station-trains.mp4 \
+    --dictionary ARUCO --size 40 --codes 250 --origin 5 --every 1 \
+    --moving 84,85,86,147,148,149,150,203,214 -o neustadt.json --report report.json
+# the curve clip on its own (it meets the rest only at marker 5), and the orthophoto with all poses fixed
+arail-survey examples/media/ebl-curve-trains.mp4 --dictionary ARUCO --size 40 --codes 250 --origin 2 --every 1 --moving 214 -o curve.json
+arail-survey <the photos and both clips> --layout combined.json --every 1 \
+    --ortho web/media/ebl-neustadt-ortho.jpg --ortho-bounds -2400 -100 3750 700
+# the hybrid container train: the two clips of the tagged train, origin marker 130
+arail-survey examples/media/ebl-terminal-wagons.mp4 examples/media/ebl-terminal-truck.mp4 \
+    --dictionary ARUCO --size 40 --codes 250 --origin 130 --every 1 -o train.json \
+    --ortho web/media/ebl-container-train-ortho.jpg
+```
+
+- **One plane.** `arail-survey` measures markers on one plane. The back strip of the EBL table (markers 84–86 and 147–150) lies higher than the front, and markers 203 and 214 hang on the wall: they were left out with `--moving` and are not in the layouts (whose maps are locked, so the app ignores them). Taken in, they bend the map: with them, every detection of the combined survey was rejected.
+- **Photos and clips disagree a little.** Surveyed together with the curve clip, the far end of the station moved by up to 40 mm; the map of the photos and the station clip fits the photos better (0.55 px against 1.49 px), so it was kept, and the curve's markers 0, 2, 3 and 37 were added through marker 5, which both surveys place alike. Marker 38 was read once, rotated by 32°: a misread, left out.
+- **The uncertainty grows with the distance from marker 5** (about ±10 mm at Bf Neustadt), because the photos and clips see only a few markers at a time; the survey of the whole lab, with many markers in every picture, replaces these maps.
+- **The tagged train** shows only one layout marker (130 or 131) in most frames, and none at times. A single far marker gives a shaky pose, and its focal length cannot be estimated, so virtual objects lean in those frames. Film it with three or four markers in view around the train, and a little closer: the tags need about 20 px.

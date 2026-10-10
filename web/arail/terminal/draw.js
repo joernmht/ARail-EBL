@@ -633,9 +633,10 @@ export function drawYardStacks(view, stacks, { alpha = 1 } = {}) {
  * buffers, cross members, bogies): the containers are the load that is seen.
  * @param {import("../core/view.js").View} view
  * @param {{type: object, center: number[], heading: number, deck?: number, alpha?: number,
- *   tags?: {slot: number, id: number}[] | null, tag_mm?: number}} wagon `deck`: height (layout mm)
- *   the containers stand at (default: the type's `deck_m`); `tags`: the deck card of a model wagon
- *   is drawn with these tags (flyover); `tag_mm`: tag size (default 20 mm)
+ *   tags?: {slot: number, id: number, at_m?: number}[] | null, tag_mm?: number}} wagon `deck`: height
+ *   (layout mm) the containers stand at (default: the type's `deck_m`); `tags`: the deck card of a
+ *   model wagon is drawn with these tags (flyover), each at `at_m` along the wagon (m from its centre,
+ *   default: the centre of spot `slot`); `tag_mm`: tag size (default 20 mm)
  * @param {import("./types.js").DrawBox[]} boxes
  */
 export function drawWagon(view, wagon, boxes) {
@@ -686,15 +687,18 @@ export function drawWagon(view, wagon, boxes) {
 /** The deck card of a model wagon with its tags (flyover only): a white card on the deck. */
 function deckCard(view, cells, type, deck, wagon, k, alpha) {
   const L = cells.L, bays = type.bays_m || [0];
+  const along = (tag) => (Number.isFinite(tag.at_m) ? tag.at_m : bays[tag.slot]);
+  const placed = wagon.tags.filter((tag) => along(tag) != null);
+  const ends = [...bays, ...placed.map(along)];
   const size = (wagon.tag_mm ?? DEFAULT_ROLLING.size_mm) / L.k, margin = 2.5 / L.k;
-  const a1 = Math.max(...bays) + size / 2 + margin, a0 = Math.min(...bays) - size / 2 - margin, w = CONTAINER_WIDTH_M / 2;
+  const a1 = Math.max(...ends) + size / 2 + margin, a0 = Math.min(...ends) - size / 2 - margin, w = CONTAINER_WIDTH_M / 2;
   const z = deck + 0.01;
-  const tags = cssPx(view, k, size * L.k) >= 6 ? wagon.tags.filter((tag) => bays[tag.slot] != null) : [];
+  const tags = cssPx(view, k, size * L.k) >= 6 ? placed : [];
   const sq = (a, h) => [L.p(a - h, -h, z), L.p(a + h, -h, z), L.p(a + h, h, z), L.p(a - h, h, z)];
   for (const [i, p0, p1] of cells.pieces(a0, a1)) {
     const decals = [];
     for (const tag of tags) {
-      const a = bays[tag.slot];
+      const a = along(tag);
       if (a >= p0 && a < p1) decals.push({ pts: sq(a, size / 2), color: COL.tag, alpha }, { pts: sq(a, size / 4), color: COL.tagInner, alpha });
     }
     const ov = alpha >= 1 ? OVERLAP_M : 0, q0 = p0 > a0 ? p0 - ov : p0, q1 = p1 < a1 ? p1 + ov : p1;

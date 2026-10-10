@@ -17,7 +17,7 @@
  */
 import { rollingHeightMM } from "../core/layout.js";
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, pointInPolygon } from "../core/math.js";
+import { createRng, dist2, pointInPolygon, toRad } from "../core/math.js";
 import { hashString } from "../objects/building-kit.js";
 import {
   CARRIER_TYPES, CONTAINER_SIZES, CONTAINER_WIDTH_M, Carrier, Container, Inventory, bargeType, bicProblem, makeBic, yardType,
@@ -52,6 +52,24 @@ const ENDED = { done: "finished", failed: "failed", cancelled: "been cancelled" 
 
 const isObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const isWagonType = (t) => typeof t === "string" && CARRIER_TYPES[t]?.kind === "wagon";
+/** A non-empty list of numbers, else null (`tags_mm`, `tags_deg`, `spots_mm` of a `rolling_stock` entry). */
+const numberList = (v) => (Array.isArray(v) && v.length && v.every(Number.isFinite) ? v : null);
+/** The `tags_mm` of a `rolling_stock` entry when it is a non-empty list of numbers, else null. */
+const tagPositions = (entry) => numberList(entry?.tags_mm);
+/**
+ * Carrier type of a model wagon: its wagon type, with its container spots where `spots_mm` puts
+ * them (layout mm from the centre, + towards the A end; e.g. a model truck with two trailers),
+ * which then take 20 ft containers only.
+ * @param {object | undefined} entry `rolling_stock` entry
+ * @param {string} type wagon type key
+ * @param {number} scale layout scale
+ * @returns {string | object} the type key, or a type object
+ */
+function stockCarrierType(entry, type, scale) {
+  const spots = numberList(entry?.spots_mm);
+  if (!spots) return type;
+  return { ...CARRIER_TYPES[type], bays_m: spots.map((a) => (a * scale) / 1000), sizes: ["20"], pairs: [] };
+}
 /** Carrier ids reserved for model wagons and trucks. */
 const RESERVED_ID = /^[WT]\d+$/;
 const MODEL_WAGON = /^W([1-9]\d*)$/;
@@ -260,12 +278,46 @@ export class TerminalSimulation extends Simulation {
     return isWagonType(type) ? type : isWagonType(this.config.default_wagon) ? this.config.default_wagon : "sgns60";
   }
 
+  /** The carrier type of model wagon `number`: its wagon type, or one with the spots of `rolling_stock[].spots_mm`. */
+  _wagonCarrierType(number) {
+    const t = stockCarrierType(this._stockEntry(number), this._wagonType(number), this.world.scale);
+    return typeof t === "string" ? CARRIER_TYPES[t] : t;
+  }
+
+  /**
+   * Number of tags on model wagon `number`: its `rolling_stock[].tags_mm`, else one per container
+   * spot (at most `markers.rolling.stride`).
+   */
+  tagCount(number) {
+    const at = tagPositions(this._stockEntry(number)), stride = this.rollingConfig()?.stride ?? 4;
+    return Math.min(at ? at.length : this._wagonCarrierType(number).bays_m.length, stride);
+  }
+
+  /**
+   * Where tag `slot` of model wagon `number` sits along the wagon (layout mm from its centre, +
+   * towards the A end): `rolling_stock[].tags_mm[slot]`, else the centre of container spot `slot`;
+   * null for a slot the wagon does not have.
+   */
+  _tagAlongMM(number, slot) {
+    if (!(slot >= 0 && slot < this.tagCount(number))) return null;
+    const at = tagPositions(this._stockEntry(number));
+    if (at) return at[slot];
+    const along = this._wagonCarrierType(number).bays_m[slot];
+    return Number.isFinite(along) ? this.mm(along) : null;
+  }
+
+  /** How tag `slot` of model wagon `number` is turned on it (radians): `rolling_stock[].tags_deg[slot]`, else 0. */
+  _tagTurn(number, slot) {
+    const deg = numberList(this._stockEntry(number)?.tags_deg)?.[slot];
+    return Number.isFinite(deg) ? toRad(deg) : 0;
+  }
+
   /** The carrier of model wagon `number` (created when first needed). */
   _wagonCarrier(number) {
     let c = this._wagons.get(number);
     if (c) return c;
     const entry = this._stockEntry(number);
-    c = new Carrier({ id: `W${number}`, type: this._wagonType(number), label: entry?.name || `W${number}` });
+    c = new Carrier({ id: `W${number}`, type: this._wagonCarrierType(number), label: entry?.name || `W${number}` });
     c.number = number;
     this._wagons = new Map([...this._wagons, [number, c]].sort((a, b) => a[0] - b[0]));
     this.inventory.addCarrier(c);
@@ -1251,10 +1303,8 @@ export class TerminalSimulation extends Simulation {
       this.rolling = new RollingStock({
         stride: r.stride, size_mm: r.size_mm,
         // a lookup only: the carrier is created in _syncWagons, for wagons the tracker keeps
-        slotAlongMM: (number, slot) => {
-          const along = CARRIER_TYPES[this._wagonType(number)].bays_m[slot];
-          return Number.isFinite(along) ? this.mm(along) : null;
-        },
+        slotAlongMM: (number, slot) => this._tagAlongMM(number, slot),
+        slotTurn: (number, slot) => this._tagTurn(number, slot),
         tracks: () => this._tracks,
       });
     }
@@ -1390,7 +1440,7 @@ export class TerminalSimulation extends Simulation {
       if (!c.pose) continue;
       const boxes = this._carrierBoxes(c), ref = [c.pose.center[0], c.pose.center[1], 0];
       if (flyover) {
-        const tags = Array.from({ length: Math.min(c.bays, stride) }, (_, slot) => ({ slot, id: encodeTag(c.number, slot, stride) }));
+        const tags = Array.from({ length: this.tagCount(c.number) }, (_, slot) => ({ slot, id: encodeTag(c.number, slot, stride), at_m: this._tagAlongMM(c.number, slot) / this.mm(1) }));
         drawWagon(view, { type: c.type, center: c.pose.center, heading: c.pose.heading, deck: this._deckZ(c), alpha: 1, tags }, boxes);
       } else if (c.present) {
         drawContainers(view, boxes, ref, { alpha: 0.92 });
@@ -1532,7 +1582,7 @@ function validateTerminal(cfg, layout) {
   for (const o of objects.values()) if (o.type === "container-yard") inv.addCarrier(new Carrier({ id: o.id, type: yardSpecType(o, scale) }));
 
   // rolling stock (model wagons)
-  const rolling = layout?.markers?.rolling ?? null, numbers = new Map();
+  const rolling = layout?.markers?.rolling ?? null, numbers = new Map(), withPositions = new Set();
   stock.forEach((w, i) => {
     if (!isObject(w) || !Number.isInteger(w.number) || w.number < 1) {
       out.push(`rolling_stock[${i}]: number must be a whole number ≥ 1`);
@@ -1542,18 +1592,42 @@ function validateTerminal(cfg, layout) {
     if (w.type != null && !isWagonType(w.type)) out.push(`rolling_stock[${i}]: unknown type "${w.type}"`);
     if (w.height_mm != null && rollingHeightMM(w.height_mm) == null) out.push(`rolling_stock[${i}]: height_mm must be a number from 0 to 200 (mm)`);
     const type = isWagonType(w.type) ? w.type : defWagon;
-    numbers.set(w.number, type);
+    numbers.set(w.number, stockCarrierType(w, type, scale));
+    const at = tagPositions(w), half = (CARRIER_TYPES[type].length_m * 1000) / scale / 2;
+    if (w.spots_mm != null) {
+      // container spots where they are (e.g. the two trailers of a model truck): 20 ft each
+      const spots = numberList(w.spots_mm), pitch = (6.1 * 1000) / scale;
+      if (!spots || spots.length > 4) out.push(`rolling_stock[${i}]: spots_mm must be a list of 1 to 4 numbers (mm from the wagon's centre, + towards the A end)`);
+      else if (spots.some((a) => Math.abs(a) > half)) out.push(`rolling_stock[${i}]: spots_mm must lie on the wagon, within ${Math.round(half)} mm of its centre`);
+      else if (spots.some((a, k) => spots.some((b, l) => l > k && Math.abs(a - b) < pitch - 0.5))) out.push(`rolling_stock[${i}]: the spots in spots_mm overlap: a 20 ft spot is ${Math.round(pitch)} mm long`);
+    }
+    if (w.tags_deg != null) {
+      const turns = numberList(w.tags_deg);
+      if (!turns || turns.some((d) => Math.abs(d) > 360)) out.push(`rolling_stock[${i}]: tags_deg must be a list of numbers from -360 to 360 (how each tag is turned; 180: its arrow points to the B end)`);
+    }
+    if (w.tags_mm != null) {
+      // tags stuck where they fit (not one per spot): positions along the wagon, from its centre
+      const size = rolling?.size_mm ?? 20;
+      if (!at) out.push(`rolling_stock[${i}]: tags_mm must be a list of numbers (mm from the wagon's centre, + towards the A end)`);
+      else if (rolling && at.length > rolling.stride) out.push(`rolling_stock[${i}]: ${at.length} tags in tags_mm, but markers.rolling.stride is ${rolling.stride}`);
+      else if (at.some((a) => Math.abs(a) > half)) out.push(`rolling_stock[${i}]: tags_mm must lie on the wagon, within ${Math.round(half)} mm of its centre`);
+      else if (at.some((a, k) => at.some((b, l) => l > k && Math.abs(a - b) < size))) out.push(`rolling_stock[${i}]: the tags in tags_mm overlap: keep them at least ${size} mm apart`);
+    }
+    if (at) withPositions.add(w.number);
     if (rolling) {
-      const max = encodeTag(w.number, Math.min(CARRIER_TYPES[type].bays_m.length, rolling.stride) - 1, rolling.stride);
+      const spots = numberList(w.spots_mm)?.length ?? CARRIER_TYPES[type].bays_m.length;
+      const count = Math.min(at ? at.length : spots, rolling.stride);
+      const max = encodeTag(w.number, count - 1, rolling.stride);
       if (max >= rolling.codes) out.push(`rolling_stock[${i}]: wagon ${w.number} needs tag IDs up to ${max}, but markers.rolling.codes is ${rolling.codes}`);
     }
   });
   if (stock.length && !rolling) out.push("rolling_stock: markers.rolling is missing, so model wagons cannot be seen");
-  // a tag on every container spot: wagon types with more spots than IDs per wagon cannot get deck cards
+  // a tag on every container spot (wagons without tags_mm): wagon types with more spots than IDs
+  // per wagon cannot get deck cards
   if (rolling) {
-    for (const type of new Set([defWagon, ...numbers.values()])) {
-      const spots = CARRIER_TYPES[type].bays_m.length;
-      if (spots > rolling.stride) out.push(`markers.rolling.stride is ${rolling.stride}, but ${CARRIER_TYPES[type].label} has ${spots} container spots: use at least ${spots} IDs per wagon`);
+    for (const type of new Set([defWagon, ...[...numbers].filter(([n]) => !withPositions.has(n)).map(([, t]) => t)])) {
+      const t = typeof type === "string" ? CARRIER_TYPES[type] : type, spots = t.bays_m.length;
+      if (spots > rolling.stride) out.push(`markers.rolling.stride is ${rolling.stride}, but ${t.label} has ${spots} container spots: use at least ${spots} IDs per wagon`);
     }
   }
   const wagonCarrier = (id) => {

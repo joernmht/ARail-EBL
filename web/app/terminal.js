@@ -586,14 +586,14 @@ export class TerminalPanel {
   /* ---------------------------------------------------------------- model wagons */
 
   _wagons(sim) {
-    const stride = sim.rollingConfig()?.stride ?? 4, wagons = sim.markerWagons();
+    const wagons = sim.markerWagons();
     return [
       h("h2", {}, "Model wagons"),
       wagons.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-wagons" },
         h("thead", {}, h("tr", {}, ["Wagon", "Type", "Tags seen", "State", "Containers"].map((t) => h("th", {}, t)))),
         h("tbody", {}, wagons.map((c) => {
           const t = sim.rolling?.wagons.get(c.number);
-          return h("tr", {}, h("td", {}, c.label), h("td", {}, c.type?.label ?? ""), h("td", {}, `${t ? t.tags.length : 0}/${Math.min(c.bays, stride)}`),
+          return h("tr", {}, h("td", {}, c.label), h("td", {}, c.type?.label ?? ""), h("td", {}, `${t ? t.tags.length : 0}/${sim.tagCount(c.number)}`),
             h("td", {}, t?.state ?? "not seen"), h("td", {}, String(sim.inventory.on(c.id).length)));
         })))) : h("p", { class: "hint" }, "No model wagons seen yet. Show the camera a wagon with its deck card."),
       h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ", ...this._deckLinks(sim)),

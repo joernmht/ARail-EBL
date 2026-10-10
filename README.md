@@ -35,7 +35,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 ## Quick start
 
-**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), switch modules on and off (View → Modules), and set the simulation, the time of day and the control system (Settings). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Settings → Night 22:30** to see it at night. Each module that is on has its tab: the lab example's modules add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**), turn it into an exercise with travellers the attendees plan (**Journeys**), or open the container terminal on its own, in the flyover (**Container terminal**, Terminal tab); **Disruptions** (every layout) starts disruptions and scenarios.
+**Try it:** open the [app](https://joernmht.github.io/ARail-EBL/app/). It starts with a photo of the lab layout. Use the tabs on the right to add objects (Build), switch modules on and off (View → Modules), and set the simulation, the time of day and the control system (Settings). **Layouts…** has more examples from the lab: Bf Neustadt with the container terminal at the lab's crane, a real train running through a virtual town (video), and the hybrid container train, real wagons with AprilTag labels that carry virtual containers (see [Getting started](docs/getting-started.md#the-examples)). Press **F** (or **Flyover**) to fly over the layout and the example town with a virtual camera, and **Settings → Night 22:30** to see it at night. Each module that is on has its tab: the lab example's modules add its fleet, depot and drivers (**Rail operations**, Operations tab), make it a station of an infrastructure district (**Infrastructure**), turn it into an exercise with travellers the attendees plan (**Journeys**), or open the container terminal on its own, in the flyover (**Container terminal**, Terminal tab); **Disruptions** (every layout) starts disruptions and scenarios.
 
 **On your own layout:**
 
@@ -99,8 +99,11 @@ web/                  the website (published with GitHub Pages)
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,
-                      journeys and container terminal; the synthetic layout; the container terminal)
-  media/              the images of the example layouts (lab photo, synthetic layout) and their orthophotos
+                      journeys and container terminal; Bf Neustadt with the terminal at the crane and the
+                      town at the curve; the hybrid container train; the synthetic layout; the container
+                      terminal)
+  media/              the images and clips of the example layouts and their orthophotos, the project
+                      page's video
   assets/             logos, icons and the website's images
   vendor/js-aruco2/   marker detection library (MIT)
 tools/                Python tools: control-system bridge, calibration, lab survey, synthetic test scenes;

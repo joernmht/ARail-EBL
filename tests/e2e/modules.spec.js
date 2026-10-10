@@ -132,7 +132,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   await page.waitForFunction(() => window.__arail?.terminal?.sim);
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
   // the lab from the list of layouts opens the lab, not the terminal again
-  await page.selectOption("#exampleSelect", "../layouts/ebl-lab.json");
+  await page.selectOption("#exampleSelect", "lab");
   await page.waitForFunction(() => /ebl-lab\.json$/.test(window.__arail.layoutUrl) && window.__arail.world.getObject("station-1"));
   expect(await url()).toBe("ebl-lab.json");
   expect(errors).toEqual([]);

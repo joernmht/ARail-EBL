@@ -62,7 +62,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `layers` | `[]` | parts of the layout that can be switched on and off (the app's modules), see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
-| `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [container terminal example](container-terminal.md#the-example) does) |
+| `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [virtual container terminal](container-terminal.md#the-virtual-terminal) does) |
 
 The app writes `clock`, `grid` and all other sections when it exports a layout; `markers.rolling`, `markers.locked` and `markers.moving` only when they are set.
 

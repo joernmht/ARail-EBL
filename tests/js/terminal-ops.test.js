@@ -917,6 +917,84 @@ test("rejected tags create no model wagon", () => {
   assert.equal(sim.carrier("W8").type.label, "Sgns (60 ft)");
 });
 
+test("tags_mm: tags stuck on the end spots only give the pose; the second tag is the far end", () => {
+  const end = mm(CARRIER_TYPES.sgns60.bays_m[0]); // 70.1 mm: the outer spots of an Sgns
+  const { sim } = setup({ rolling_stock: [{ number: 3, type: "sggrss80" }, { number: 5, type: "sgns60", tags_mm: [end, -end] }] });
+  assert.equal(sim.tagCount(5), 2);
+  assert.equal(sim.tagCount(3), 4, "one per spot without tags_mm");
+  const heading = toRad(30), u = [Math.cos(heading), Math.sin(heading)]; // not snapped to track-1 (more than 15°)
+  const tag = (center, a) => ({ center: [center[0] + a * u[0], center[1] + a * u[1]], heading, edge_mm: 20 });
+  const frame = (c) => ({ [encodeTag(5, 0, 4)]: tag(c, end), [encodeTag(5, 1, 4)]: tag(c, -end) });
+  for (let time = 0; time < 1.3; time += 0.1) sim.observe(frame([700, 228.7]), time);
+  const w5 = sim.rolling.wagons.get(5);
+  assert.deepEqual(w5.tags, [0, 1], "both tags fit");
+  assert.ok(Math.hypot(w5.center[0] - 700, w5.center[1] - 228.7) < 0.01, `centre ${w5.center}`);
+  assert.ok(Math.abs(w5.heading - heading) < 1e-6);
+  assert.ok(sim.carrier("W5").available);
+  // each tag alone gives the same centre
+  for (const slot of [0, 1]) {
+    const { sim: one } = setup({ rolling_stock: [{ number: 5, type: "sgns60", tags_mm: [end, -end] }] });
+    one.observe({ [encodeTag(5, slot, 4)]: frame([700, 228.7])[encodeTag(5, slot, 4)] }, 0);
+    const w = one.rolling.wagons.get(5);
+    assert.ok(Math.hypot(w.center[0] - 700, w.center[1] - 228.7) < 0.01, `from slot ${slot}: ${w.center}`);
+  }
+  // a slot beyond tags_mm is not a tag of this wagon
+  const { sim: other } = setup({ rolling_stock: [{ number: 5, type: "sgns60", tags_mm: [end, -end] }] });
+  other.observe({ [encodeTag(5, 2, 4)]: tag([700, 228.7], 0) }, 0);
+  assert.ok(!other.rolling.wagons.has(5));
+  // validation
+  const problems = (entry) => validateLayout(layout({ rolling_stock: [entry] }), registry).filter((p) => p.includes("tags_mm"));
+  assert.deepEqual(problems({ number: 5, type: "sgns60", tags_mm: [end, -end] }), []);
+  assert.match(problems({ number: 5, tags_mm: "both ends" })[0], /tags_mm must be a list of numbers/);
+  assert.match(problems({ number: 5, tags_mm: [] })[0], /tags_mm must be a list of numbers/);
+  assert.match(problems({ number: 5, tags_mm: [100, 50, 0, -50, -100] })[0], /5 tags in tags_mm, but markers.rolling.stride is 4/);
+  assert.match(problems({ number: 5, type: "lgns40", tags_mm: [100, -50] })[0], /within 80 mm of its centre/);
+  assert.match(problems({ number: 5, tags_mm: [10, 0] })[0], /overlap: keep them at least 20 mm apart/);
+  // an Sggrss with two tags needs IDs only for those
+  assert.deepEqual(validateLayout(layout({ rolling_stock: [{ number: 16, type: "sggrss80", tags_mm: [100, -100] }] }), registry).filter((p) => p.includes("codes")), []);
+});
+
+test("tags_deg: a tag stuck turned gives the same pose; spots_mm: the two trailers of a model truck", () => {
+  const end = 68;
+  const { sim } = setup({
+    rolling_stock: [
+      { number: 5, type: "sgns60", tags_mm: [end, -end], tags_deg: [0, 180] },
+      { number: 1, type: "lgns40", name: "Truck", tags_mm: [50, -50], spots_mm: [50, -50] },
+    ],
+  });
+  const heading = toRad(30), u = [Math.cos(heading), Math.sin(heading)];
+  const at = (c, a) => [c[0] + a * u[0], c[1] + a * u[1]];
+  // the label at the B end is turned: its x axis (its arrow) points to the B end
+  const tags = (c) => ({
+    [encodeTag(5, 0, 4)]: { center: at(c, end), heading, edge_mm: 20 },
+    [encodeTag(5, 1, 4)]: { center: at(c, -end), heading: heading + Math.PI, edge_mm: 20 },
+  });
+  for (let time = 0; time < 1.3; time += 0.1) sim.observe(tags([700, 100]), time);
+  const w5 = sim.rolling.wagons.get(5);
+  assert.deepEqual(w5.tags, [0, 1], "both tags agree");
+  assert.ok(Math.hypot(w5.center[0] - 700, w5.center[1] - 100) < 0.01, `centre ${w5.center}`);
+  assert.ok(Math.abs(w5.heading - heading) < 1e-6, "the heading of the A end");
+  const { sim: alone } = setup({ rolling_stock: [{ number: 5, type: "sgns60", tags_mm: [end, -end], tags_deg: [0, 180] }] });
+  alone.observe({ [encodeTag(5, 1, 4)]: tags([700, 100])[encodeTag(5, 1, 4)] }, 0);
+  const w = alone.rolling.wagons.get(5);
+  assert.ok(Math.hypot(w.center[0] - 700, w.center[1] - 100) < 0.01, `the turned tag alone: ${w.center}`);
+  assert.ok(Math.abs(w.heading - heading) < 1e-6);
+  // the truck: two 20 ft spots 100 mm apart, on its trailers
+  const truck = sim.carrier("W1");
+  assert.equal(truck.label, "Truck");
+  assert.deepEqual(truck.type.bays_m.map((m) => Math.round(mm(m) * 10) / 10), [50, -50]);
+  assert.ok(truck.allows("20") && !truck.allows("40"), "20 ft only");
+  assert.equal(sim.tagCount(1), 2);
+  // validation
+  const problems = (entry) => validateLayout(layout({ rolling_stock: [entry] }), registry).filter((p) => /tags_deg|spots_mm/.test(p));
+  assert.deepEqual(problems({ number: 1, type: "lgns40", spots_mm: [50, -50], tags_deg: [0, 0] }), []);
+  assert.match(problems({ number: 1, tags_deg: "turned" })[0], /tags_deg must be a list of numbers/);
+  assert.match(problems({ number: 1, tags_deg: [0, 400] })[0], /tags_deg must be a list of numbers from -360 to 360/);
+  assert.match(problems({ number: 1, type: "lgns40", spots_mm: [10, -10] })[0], /the spots in spots_mm overlap/);
+  assert.match(problems({ number: 1, type: "lgns40", spots_mm: [200] })[0], /spots_mm must lie on the wagon/);
+  assert.match(problems({ number: 1, spots_mm: [] })[0], /spots_mm must be a list of 1 to 4 numbers/);
+});
+
 /* ---------------------------------------------------------------- object edits */
 
 test("object edits: a removed yard drops its containers; a resized crane keeps its state", () => {
