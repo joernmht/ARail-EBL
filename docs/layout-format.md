@@ -222,6 +222,7 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`forest`](#forest) | Forest (Scenery) | `points` (polygon) |
 | [`area`](#area) | Landscape area (Scenery) | `points` (polygon) |
 | [`track`](#track) | Track (Infrastructure) | `points` (polyline) |
+| [`system-change`](rail-systems.md#in-the-layout-file) | System change (Infrastructure) | `position` |
 | [`label`](#label) | Label / sign (Infrastructure) | `position` |
 | [`tabletop`](#tabletop-table-module) | Table module (Table) | rectangle |
 | [`container-yard`](#container-yard-container-yard-block) | Container yard block (Terminal) | rectangle |
@@ -380,6 +381,10 @@ Geometry: `points` (polyline along the centre of a real track). Over the camera 
 | `track_id` | `""` | name of the track in the control system |
 | `offset_start_mm` | `0` | the offset the control system reports at the first point |
 | `virtual` | `false` | not on the real layout (e.g. on a table module): drawn over the camera image too |
+| `country` | `"DE"` | the country of the section: its usual systems fill those left empty |
+| `power`, `pantograph_mm`, `train_control`, `etcs`, `signalling`, `radio`, `gauge_mm`, `route_class`, `loading_gauge` | `""` (as usual in the country) | the section's railway systems, see [Railway systems](rail-systems.md) |
+| `im` | `""` | infrastructure manager (empty: the country's main one) |
+| `max_speed_kmh` | not known | line speed |
 
 With an [infrastructure simulation](infrastructure.md) a track is an asset (a track section of the station's line); `name` and `built` (year) are then used too.
 

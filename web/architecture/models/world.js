@@ -104,7 +104,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, trails, tracks, lighting, coverMarkers …", meaning: "What is drawn (View panel), kept in the browser; coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default)." },
+      { key: "settings", default: "labels, trails, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (View panel), kept in the browser; coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
     ],
     events: {
       emits: [
@@ -244,7 +244,7 @@ export const WORLD = [
       },
       { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges.", operations: ["stopAreas()"] },
       { name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street or footpath of the road network.", operations: ["roadInfo()"] },
-      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own.", operations: ["at(offsetMM)", "walkBarrier()", "card() — its name in the control system and length"] },
+      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own; a section with its railway systems.", operations: ["at(offsetMM)", "walkBarrier()", "card() — also its systems", "draw(view) — the track, a band by its system (View → Colour the tracks by)"] },
       { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()"] },
       { name: "House", file: "web/arail/objects/houses.js", kind: "class", extends: "BuildingBase", role: "One of the house types (also Plattenbau, office, school …)." },
     ],

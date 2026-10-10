@@ -437,6 +437,16 @@
       ]
     },
     {
+      "id": "border",
+      "name": "Border station",
+      "description": "The station as a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 are German (15 kV 16.7 Hz, PZB, Ks signals, DB InfraGO). View → Colour the tracks by shows the systems; tap a track or the border board for its card.",
+      "enabled": false,
+      "objects": [
+        { "id": "track-g3", "country": "CZ" },
+        { "id": "border-g3", "type": "system-change", "name": "Border DE | CZ", "kind": "border", "position": [1400, -45], "rotation_deg": 1.5 }
+      ]
+    },
+    {
       "id": "terminal",
       "name": "Container terminal",
       "description": "Container trains, trucks and barges at a terminal with a gantry crane and a reach stacker, on table modules of their own (flyover). A layout of its own: it is shown alone.",

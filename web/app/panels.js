@@ -1,5 +1,5 @@
 // Panels: View, Settings (simulation and control system), Disruptions.
-import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -62,6 +62,11 @@ export class Panels {
         ),
         h("label", { class: "field", for: "optOpacity" }, h("span", {}, "Opacity of virtual objects"),
           h("input", { type: "range", id: "optOpacity", min: 0.2, max: 1, step: 0.05, value: d.opacity, oninput: (e) => { d.opacity = Number(e.target.value); app.savePrefs(); } })),
+        h("label", { class: "field", for: "optTrackSystems" }, h("span", {}, "Colour the tracks by"),
+          h("select", { id: "optTrackSystems", "aria-describedby": "optTrackSystems-help", onchange: (e) => { s.trackSystems = e.target.value; app.savePrefs(); this.renderView(el); } },
+            [["", "nothing"], ...SYSTEM_OVERLAYS].map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t))),
+          h("small", { class: "help", id: "optTrackSystems-help" }, "Track systems: each track (Build → Track) has its traction power, train protection, signals, radio, gauge, line category and country; the tracks are coloured over the camera image too.")),
+        this._systemsLegend(),
       ),
       section("Camera",
         h("p", { class: "hint" }, "The focal length is estimated from the markers. If people or buildings lean, adjust it by hand."),
@@ -83,6 +88,21 @@ export class Panels {
     this.renderFlyover();
     this.updateView();
     if (focused) document.getElementById(focused)?.focus();
+  }
+
+  /** The legend of View → Colour the tracks by: each value on the layout's tracks, with its colour and how many tracks have it. */
+  _systemsLegend() {
+    const key = this.world.settings.trackSystems;
+    if (!key) return null;
+    const tracks = this.world.objects.filter((o) => o.type === "track");
+    if (!tracks.length) return h("p", { class: "hint" }, "This layout has no tracks: add them in Build → Infrastructure → Track.");
+    const seen = new Map();
+    for (const t of tracks) {
+      const v = systemValue(key, sectionSystems(t.spec).values[key]);
+      seen.set(v.label, { v, n: (seen.get(v.label)?.n || 0) + 1 });
+    }
+    return h("ul", { class: "legend-list", "aria-label": "Colours of the tracks" },
+      [...seen.values()].map(({ v, n }) => h("li", {}, h("span", { class: "swatch", style: { background: v.colour }, "aria-hidden": "true" }), v.label, h("b", {}, `${n} track${n === 1 ? "" : "s"}`))));
   }
 
   /**

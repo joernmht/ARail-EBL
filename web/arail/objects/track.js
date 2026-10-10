@@ -2,13 +2,16 @@
  * Track: the centre line of a real track on the layout. Not drawn over the camera image (the
  * real track is there; a `virtual` track on a table module is) unless "Tracks" is switched on;
  * used to place trains reported by the control system as "track + offset". A virtual camera (flyover) draws the track itself:
- * ballast, sleepers and rails.
+ * ballast, sleepers and rails. A track is a section with its railway systems (traction power, train
+ * control, signals, radio, gauge, line category, country; see rail/systems.js): View → Track
+ * systems colours the tracks by one of them, over the camera image too.
  * @module arail/objects/track
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
 import { polylineAt, polylineLengths } from "../core/math.js";
 import { OVERLAY, rgba } from "../core/colors.js";
+import { SYSTEM_PARAMS, drawSystemBand, drawSystemChange, systemRows, worldSystemChanges } from "../rail/systems.js";
 
 /** Prototype dimensions (m) and colours of the track drawn in the flyover. */
 const BED = { width_m: 4.2, color: "#8d8880" };
@@ -26,6 +29,7 @@ export class Track extends LayoutObject {
     { key: "track_id", label: "Track name in the control system", type: "text", default: "" },
     { key: "offset_start_mm", label: "Offset at the first point", type: "number", unit: "mm", step: 1, default: 0, help: "Position value the control system reports at the first point of the line." },
     { key: "virtual", label: "Virtual track", type: "boolean", default: false, help: "Not on the real layout (e.g. on a table module): drawn over the camera image too." },
+    ...SYSTEM_PARAMS,
   ];
 
   computeGeometry() {
@@ -42,6 +46,7 @@ export class Track extends LayoutObject {
     card.rows.push(["Track in the control system", this.spec.track_id || "–"]);
     if (g) card.rows.push(["Length", `${Math.round(this.meters(g.total))} m (${Math.round(g.total)} mm on the model)`]);
     card.rows.push(["Real", this.spec.virtual ? "no, virtual" : "yes, a track of the layout"]);
+    card.sections = [...(card.sections || []), { title: "Systems", lines: systemRows(this.spec).map(([k, v]) => `${k}: ${v}`) }];
     return card;
   }
 
@@ -65,6 +70,12 @@ export class Track extends LayoutObject {
   draw(view) {
     const g = this.geometry;
     if (this.spec.virtual || !view.showsReal(g.points)) this._drawTrack(view, g);
+    // View → Track systems: the track coloured by one of its systems, and where it changes
+    const shown = this.world.settings.trackSystems;
+    if (shown) {
+      drawSystemBand(view, this, shown);
+      for (const c of worldSystemChanges(this.world, shown)) if (c.a === this.id) drawSystemChange(view, c);
+    }
     if (!this.world.settings.showTracks) return;
     view.line(g.points, { stroke: rgba(OVERLAY.tracked, 0.85), width: 2, dash: [10, 6], order: 25 });
     const mid = polylineAt(g.points, g.total / 2, g.lengths).point;

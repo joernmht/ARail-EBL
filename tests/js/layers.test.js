@@ -198,17 +198,18 @@ test("simulation patches: a layer changes the settings of a simulation of the ba
   assert.ok(validateLayout({ layers: [{ id: "x", simulations: [{ patch: true }, { type: "town", patch: "yes" }] }] }).includes("layers[0].simulations[0] has no type"));
 });
 
-test("the lab example: one layout with the modules rail operations, infrastructure, journeys and the container terminal", () => {
+test("the lab example: one layout with the modules rail operations, infrastructure, journeys, border station and the container terminal", () => {
   assert.deepEqual(validateLayout(LAB, registry), []);
-  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false], ["journeys", false], ["terminal", false]]);
+  assert.deepEqual(LAB.layers.map((l) => [l.id, l.enabled]), [["operations", false], ["infrastructure", false], ["journeys", false], ["border", false], ["terminal", false]]);
   assert.deepEqual(normalizeLayers(LAB.layers).filter((l) => l.exclusive).map((l) => [l.id, l.layout]), [["terminal", "container-terminal.json"]]);
   // the base is the same with any layers on: the station, the Plattenbau behind the tracks
-  for (const on of [[], ["operations"], ["infrastructure"], ["journeys"], ["operations", "infrastructure"], ["operations", "infrastructure", "journeys"], ["terminal"]]) {
+  for (const on of [[], ["operations"], ["infrastructure"], ["journeys"], ["border"], ["operations", "infrastructure"], ["operations", "infrastructure", "journeys", "border"], ["terminal"]]) {
     const world = createWorld(withLayers(LAB, on));
     for (const id of ["station-1", "underpass-1", "plattenbau-2", "table-back"]) assert.ok(world.getObject(id), `${id} with ${on}`);
     assert.equal(!!world.getObject("depot-1"), on.includes("operations"));
     assert.equal(!!world.getObject("interlocking-bf"), on.includes("infrastructure"));
     assert.equal(world.getObject("track-g1").spec.built, on.includes("infrastructure") ? 1994 : undefined);
+    assert.equal(world.getObject("track-g3").spec.country, on.includes("border") ? "CZ" : "DE");
     // the journeys: the town's residents stay at home and no other passengers come
     assert.equal(!!journeysOf(world), on.includes("journeys"));
     assert.equal(world.simulations.find((s) => s.constructor.type === "town").enabled, !on.includes("journeys"));

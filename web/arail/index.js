@@ -41,6 +41,7 @@ import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
 import { registerJourneys } from "./journeys/index.js";
+import { registerRail } from "./rail/index.js";
 
 export const VERSION = "0.1.0";
 
@@ -130,6 +131,12 @@ export {
   TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
   JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
 } from "./journeys/index.js";
+// railway systems of the track sections (named exports only)
+export {
+  POWER, PANTOGRAPH, TRAIN_CONTROL, ETCS, SIGNALLING, RADIO, GAUGE, AXLE_LOADS_T, METRE_LOADS_T, ROUTE_CLASS, LOADING_GAUGE, COUNTRIES,
+  SYSTEMS, SYSTEM_OVERLAYS, SYSTEM_PARAMS, routeClassLimits, sectionSystems, systemValue, systemRows, systemChanges, worldSystemChanges,
+  drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail,
+} from "./rail/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
@@ -151,6 +158,7 @@ export function registerBuiltins(registry) {
   registerOperations(registry);
   registerInfrastructure(registry);
   registerJourneys(registry);
+  registerRail(registry);
   return registry;
 }
 

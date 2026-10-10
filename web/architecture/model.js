@@ -22,6 +22,7 @@ import { INFRA } from "./models/infra.js";
 import { JOURNEYS } from "./models/journeys.js";
 import { OPERATIONS } from "./models/operations.js";
 import { PAGES } from "./models/pages.js";
+import { RAIL } from "./models/rail.js";
 import { TERMINAL } from "./models/terminal.js";
 import { TOOLS } from "./models/tools.js";
 import { TRACKING } from "./models/tracking.js";
@@ -85,7 +86,7 @@ export const PACKAGES = [
     id: "objects", name: "objects", group: "framework", path: "web/arail/objects",
     summary: "The built-in object types: platforms, tracks, stations, streets, bus stops and lines, houses, trees, tables.",
     files: ["web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/signs.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "sims", name: "sims", group: "framework", path: "web/arail/sims",
@@ -118,6 +119,12 @@ export const PACKAGES = [
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "ops", "sims"],
   },
   {
+    id: "rail", name: "rail", group: "framework", path: "web/arail/rail",
+    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change.",
+    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js"],
+    uses: ["core-math", "core-world", "core-drawing"],
+  },
+  {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
     summary: "Train positions of a control system: the WebSocket client of the bridge, a simulated control system.",
     files: ["web/arail/feeds/websocket.js", "web/arail/feeds/mock.js"],
@@ -127,7 +134,7 @@ export const PACKAGES = [
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
@@ -144,7 +151,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -252,12 +259,13 @@ export const MODEL_GROUPS = [
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
+  { id: "rail", name: "Railway systems", intro: "What the track sections are equipped with, and where a system changes." },
   { id: "control", name: "The control system" },
   { id: "pages", name: "The app and the pages" },
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...CONTROL, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...CONTROL, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
@@ -405,6 +413,7 @@ export const REGISTRY = {
     obj("passenger-display", "PassengerDisplay", "web/arail/infra/objects.js", "infra-world"),
     obj("maintenance-base", "MaintenanceBase", "web/arail/infra/objects.js", "infra-world"),
     obj("crossing-plant", "CrossingPlant", "web/arail/infra/objects.js", "infra-world"),
+    obj("system-change", "SystemChange", "web/arail/rail/objects.js", "systems"),
     { ...obj("windmill", "Windmill", "web/plugins/windmill.js", "plugins"), plugin: true },
   ],
   disruptions: [
