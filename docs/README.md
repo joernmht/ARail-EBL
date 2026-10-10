@@ -15,6 +15,7 @@
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |
+| [Videos of the lab](videos.md) | How the project page's videos are rendered frame by frame; stabilizing an AR clip in several steps (marker poses, the picture's own motion, least squares); which steps could run live |
 
 **Building on ARail**
 
