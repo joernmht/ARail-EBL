@@ -120,8 +120,8 @@ export const PACKAGES = [
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
-    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score) and the signaller's game of Bf Neustadt.",
-    files: ["web/arail/game/core.js", "web/arail/game/signaller.js"],
+    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score), the role catalogue's checks and career graph, and the signaller's game of Bf Neustadt.",
+    files: ["web/arail/game/core.js", "web/arail/game/roles.js", "web/arail/game/signaller.js"],
     uses: ["core-math"],
   },
   {
@@ -145,7 +145,7 @@ export const PACKAGES = [
   {
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: the app's shell with the games and exercises in the modules' tabs (infrastructure asset management, rail operations, journeys, the full terminal).",
-    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js"],
+    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/roles/roles.js"],
     uses: ["app", "api"], links: [["vendor", "script tags"]],
   },
   {
@@ -192,9 +192,9 @@ export const PACKAGES = [
   },
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",
-    summary: "The development server, fetching the fonts, comparing operations setups on the command line.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs"],
-    uses: ["core-world", "ops"],
+    summary: "The development server, fetching the fonts, comparing operations setups on the command line, writing the role catalogue's guide.",
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs"],
+    uses: ["core-world", "ops", "games"],
   },
 ];
 
@@ -265,7 +265,7 @@ export const MODEL_GROUPS = [
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
-  { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the game core they share, and the first of them, the signaller." },
+  { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the role catalogue, the game core the games share, and the first of them, the signaller." },
   { id: "control", name: "The control system" },
   { id: "pages", name: "The app and the pages" },
   { id: "tools", name: "Tools" },

@@ -13,6 +13,7 @@
 | [Rail operations](operations.md) | On the game page: Units with maintenance and failures, the four ECM functions and the penalties between the parties, crews with duties, rosters and the way to work; comparing setups under stress tests; the Operations panel |
 | [Journeys](journeys.md) | On the game page, an exercise: every attendee makes a traveller with a start and an aim and chooses a travel plan with transfers (walks, buses, trains); the travellers on the layout, missed connections and the results; the Journeys panel |
 | [Games](games.md) | A game for every role of the railway system: the role catalogue, what each mini game has, the game core, the career mode and the railway undertaking's simulator, the big game; the first role game, the signaller of Bf Neustadt (routes in a relay interlocking, a failed signal, the substitute signal, a closure for the repair team) |
+| [Roles of the railway](roles.md) | The role catalogue: the roles of the German railway system from the politician to the cleaning staff, each with its decisions, means, limits, personal risks, career and a mini game (written from `web/game/roles/roles.json`) |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |

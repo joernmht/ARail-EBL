@@ -237,7 +237,7 @@ class Train {
 export class SignallerGame extends Game {
   static id = "signaller";
   static title = "Signaller at Bf Neustadt";
-  static role = "signaller-relay-interlocking";
+  static role = "signaller-relay";
   static kind = "both";
   static description = "Set the routes of a morning half hour in a relay interlocking: regional trains with their connections at the island platform, an intercity overtaking a freight train, and a signal that fails.";
 

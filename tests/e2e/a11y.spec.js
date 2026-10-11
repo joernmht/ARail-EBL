@@ -14,6 +14,7 @@ const PAGES = [
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["game page, View panel", "/game/#view"],
   ["signaller's game", "/game/signaller/"],
+  ["role catalogue", "/game/roles/#role-signaller-relay"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["404 page", "/404.html"],

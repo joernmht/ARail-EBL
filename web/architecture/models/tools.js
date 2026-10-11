@@ -126,9 +126,11 @@ export const TOOLS = [
   },
   {
     id: "node-tools", group: "tools", title: "Node tools",
-    summary: "The development server, fetching the fonts, and comparing operations setups on the command line.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs"],
-    classes: [],
-    rules: ["serve.mjs serves web/ (the tests start it on port 8123).", "ops-compare.mjs runs the setups of a layout's rail operations under stress tests (runExperiment) and writes CSV."],
+    summary: "The development server, fetching the fonts, comparing operations setups on the command line, and writing the role catalogue's guide.",
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs"],
+    classes: [
+      { name: "roles-md", file: "tools/roles-md.mjs", kind: "module", role: "Writes docs/roles.md from web/game/roles/roles.json (or checks it with --check).", operations: ["rolesMarkdown(cat) — the guide: overview, families, every role"] },
+    ],
+    rules: ["serve.mjs serves web/ (the tests start it on port 8123).", "ops-compare.mjs runs the setups of a layout's rail operations under stress tests (runExperiment) and writes CSV.", "roles-md.mjs refuses a catalogue that validateRoles finds faults in; tests/js/roles.test.js checks that docs/roles.md is its output."],
   },
 ];

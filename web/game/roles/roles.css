@@ -1,0 +1,36 @@
+/* The role catalogue: the families as filter buttons, the filters, the career finder and the roles as
+   cards with their details. */
+.game-hero .lead.small { font-size: .92rem; }
+.roles-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 18px 10px; }
+@media (min-width: 1000px) {
+  .roles-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .roles-overview, .roles-layout > section[aria-labelledby="listTitle"] { grid-column: 1 / -1; }
+}
+.roles-layout > * { min-width: 0; }
+
+.roles-families { display: flex; flex-wrap: wrap; gap: 8px; }
+.roles-families .btn { flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-width: 150px; }
+.roles-families .btn .n { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.roles-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.roles-fields input, .roles-fields select { width: 100%; }
+
+.roles-path { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; }
+.roles-path:empty { display: none; }
+
+.roles-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.role-card { scroll-margin-top: 80px; }
+.role-card h3 { font-size: 1.05rem; }
+.role-card .de { color: var(--text-2); font-size: .9rem; }
+.role-card .org { color: var(--text-2); font-size: .88rem; }
+.role-card .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.role-card .game { border-left: 3px solid var(--accent); padding-left: 10px; }
+.role-card .game strong { display: block; }
+.role-card:target { outline: 3px solid var(--warn); outline-offset: 2px; }
+.role-card details > summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); }
+.role-card details[open] > summary { margin-bottom: 8px; }
+.role-card dl { margin: 0; display: grid; gap: 8px; }
+.role-card dt { font-weight: 700; font-size: .88rem; }
+.role-card dd { margin: 2px 0 0; font-size: .9rem; }
+.role-card dd ul { margin: 0; padding-left: 1.2em; }
+.role-card .links { display: flex; flex-wrap: wrap; gap: 4px 10px; }

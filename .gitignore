@@ -38,3 +38,6 @@ out/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Git worktrees of agent sessions
+.claude/worktrees/

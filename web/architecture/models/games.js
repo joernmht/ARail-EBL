@@ -37,6 +37,19 @@ export const GAMES = [
     ],
   },
   {
+    id: "role-catalogue", group: "games", title: "The role catalogue",
+    summary: "The roles of the German railway system, from the politician to the cleaning staff, in families, with what a game of each needs: setting, decisions and effects, means, limits, personal risks, career, measures, rhythm, the roles it works with, and a mini game.",
+    description: "The data is web/game/roles/roles.json (format arail-roles/1), loaded where it is needed: the roles page, the guide docs/roles.md written by tools/roles-md.mjs, the tests, later the career mode. A role's career names where one comes from and can move on to; together they make the career graph, over which the career mode finds a way from one role to another.",
+    files: ["web/arail/game/roles.js"],
+    classes: [{
+      name: "roles", file: "web/arail/game/roles.js", kind: "module", role: "Checks a catalogue and reads it as a career graph.",
+      attributes: ["ROLE_SETTINGS — operational, field, office, mixed", "GAME_EFFORTS — small, medium, large"],
+      operations: ["validateRoles(cat) — ids, families, settings, every field, careers and interactions naming roles of the catalogue", "careerGraph(cat) — the steps from role to role, from both sides of the careers", "careerPath(cat, from, to) — the shortest career (breadth first)", "roleCounts(cat) — per family, setting, kind of game, effort"],
+    }],
+    relations: [],
+    rules: ["A role's id is kebab-case and unique; its family is one of the catalogue's; its game is knowledge, simulation or both, of small, medium or large effort.", "The career graph has a step a → b where a names b in its career's `to`, or b names a in its `from`."],
+  },
+  {
     id: "signaller-game", group: "games", title: "The signaller's game",
     summary: "The signaller (Fahrdienstleiter) of Bf Neustadt in a relay interlocking: routes from a start signal to a destination for a morning half hour, a failed exit signal with the substitute signal, the fault report and the track closure for the repair team.",
     description: "The station of the lab survey and the maintenance story, as a track diagram: platform tracks G1–G3, the double-track line from Bergheim to Talsee, entry signals A and F, exit signals N1–N3 and P2, P3, points W1–W6. The interlocking refuses a route whose sections are occupied, locked by another route or closed; it moves the points, locks the route and clears the signal; the train takes the route when it may pass; the sections are released behind its tail, and a point with its section. Trains brake for a signal at stop, from its distant signal at caution until they see it clear, for the speed of the route and at their platform. At 08:13 (normal level) exit signal N2 fails: its route can be set but the signal stays at stop. Simplified from the German rules for signallers (Ril 408).",
@@ -116,5 +129,15 @@ export const GAMES = [
     relations: [
       { from: "SignallerPage", to: "SignallerGame", kind: "uses", label: "game" },
     ],
+  },
+  {
+    id: "roles-page", group: "games", title: "The roles page",
+    summary: "The role catalogue as a page (game/roles/): the families as filters, a search, every role as a card with its details, links between roles, the shortest career from one role to another (careerPath of the catalogue's module).",
+    files: ["web/game/roles/roles.js"],
+    classes: [{
+      name: "RolesPage", file: "web/game/roles/roles.js", kind: "class", role: "Shows the catalogue loaded from roles.json.",
+      operations: ["filters()", "pickFamily(id)", "shown() — the roles the filters let through", "render()", "link(id)", "card(r)", "show(id) — a role opened and scrolled to", "career() — the career finder"],
+    }],
+    relations: [],
   },
 ];
