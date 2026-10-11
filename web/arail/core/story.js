@@ -25,13 +25,42 @@
  * (`settle(j)`); then the step itself is begun. The world then runs as usual while the step's
  * animation runs.
  *
+ * A story that draws a train of its own at a platform holds that track with a "story-train"
+ * disruption in its scene (`{id: "rb", type: "story-train", target: "platform-2:right", params:
+ * {text: "…"}}`): no timetable train comes there, and the platform shows the story's message.
+ *
  * Steps can be retold in the layout (`"steps": [{"id": "fault", "title": "…", "text": "…"}]`, by id).
  * @module arail/core/story
  */
 import { Simulation } from "./simulation.js";
+import { dockOf } from "./disruptions.js";
 
 /** Seconds (simulated) between two steps while the story plays by itself. */
 export const STORY_PAUSE_S = 6;
+
+/**
+ * The disruption types of stories (registered with the built-ins). "story-train": a story's own
+ * train at one track of a platform (its dock): no timetable train comes to that track, one standing
+ * or coming in there is taken away at once, and the platform shows the story's message (`text`),
+ * with a warning sign only while there is one.
+ */
+export const STORY_DISRUPTIONS = [
+  {
+    type: "story-train",
+    label: "A story's train",
+    description: "A train of a story stands at one track of a platform, or is due there: no other train comes to that track; the platform shows the story's message.",
+    targets: "track",
+    hidden: true,
+    quiet: true,
+    params: [],
+    duration: () => null,
+    appliesTo: (area, d) => area.kind === "rail" && !!dockOf(area, d.target),
+    effects: (d) => ({ closed: true, messages: d.params.text ? [String(d.params.text)] : [] }),
+    onStart(d, world) {
+      world.services.free(d.target);
+    },
+  },
+];
 
 export class Story extends Simulation {
   static type = "story";

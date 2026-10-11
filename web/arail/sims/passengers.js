@@ -449,14 +449,30 @@ export class PassengerSimulation extends Simulation {
     const disrupted = fx.hold || fx.cancel;
     // no service (the night): nobody comes to wait, and the people waiting go home after a while
     const service = this._inService(a);
-    const rate = fx.closed || !service || !this.others ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
+    // the tracks of a platform closed on their own (a track closure, a story's train): nobody comes to
+    // wait there; those waiting go over to another track, or leave when none is open
+    const open = a.docks.filter((d) => !world.disruptions.effectsFor(a, d).closed);
+    const shut = !fx.closed && open.length < a.docks.length;
+    const rate = fx.closed || !service || !this.others || (a.docks.length && !open.length) ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
-      const dock = a.docks.length ? rng.pick(a.docks).id : null;
+      const dock = open.length ? rng.pick(open).id : null;
       const p = new Person(rng, this._access(c), [0, 0], "arriving", rng.uniform(0.62, 0.95) - (disrupted ? 0.3 : 0), dock);
       p.target = this._waitingSpot(c, dock);
       c.people.push(p);
       c.inTimes.push(c.t);
+    }
+    if (shut) {
+      for (const p of c.people) {
+        if ((p.state !== "waiting" && p.state !== "arriving") || p.dock == null || open.some((d) => d.id === p.dock)) continue;
+        if (open.length) {
+          p.dock = rng.pick(open).id;
+          p.target = this._waitingSpot(c, p.dock);
+        } else if (rng.chance(0.25 * dt)) {
+          p.state = "leaving";
+          p.target = this._exit(c, p.pos);
+        }
+      }
     }
     // give up and leave (closures, replacement services; the night, except agents: their owners decide)
     if (fx.leave || !service) {

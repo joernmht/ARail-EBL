@@ -33,7 +33,7 @@ export const TRANSPORT = [
       {
         name: "ServiceManager", file: "web/arail/core/services.js", kind: "class", role: "world.services: the docks and their vehicles.",
         attributes: ["docks: Map — dock id → {dock, vehicle, timer, heldFor, mode}", "planner: object | null — rail operations or journeys: claims(dock), statusLines(area)"],
-        operations: ["sync() — docks in line with the stop areas", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)"],
+        operations: ["sync() — docks in line with the stop areas", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "free(dockId) — the vehicle at a dock taken away at once (a story's train takes the track)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)"],
       },
       {
         name: "Vehicle", file: "web/arail/core/services.js", kind: "class", role: "A train or bus at one dock.",
@@ -84,6 +84,7 @@ export const TRANSPORT = [
       "The first vehicle after 0.15–0.6 × the headway, then every 0.7–1.3 × the headway (× the demand of the hour).",
       "A planner's vehicle stays until the planner lets it go (dwellLeft = ∞, then 0).",
       "Mode feed while the control system sends trains; closed ends a dwell (not a real train's), hold does not.",
+      "call skips closed docks (a track closure, a story's train) unless a planner calls; free takes a vehicle away without its leaving (one coming in never arrived).",
     ],
   },
   {
@@ -173,6 +174,7 @@ export const TRANSPORT = [
       "Walking: v = unit(target − pos) × speed × min(1, dist/0.8) / (1 + 0.12 × density) + push; standing: 0.6 (target − pos) + 0.7 push; velocity eased (4/s).",
       "Mood per s while waiting: −(0.002 + 0.005 × density + 0.006 after 60 s) plus the disruptions' mood; boarding +0.02; leaving +0.008 − 0.004 × density.",
       "Arrivals: Poisson(base_rate × demand × disruption demand × wave × L/25 × the hour's demand × dt); none while closed, out of service, or without others.",
+      "A track of the stop closed on its own (dock closed): newcomers wait at the other tracks; those waiting for it go over to another one, or leave (0.25/s) when every track is closed.",
       "A standing vehicle is boarded while it has more than 6 s to go (a real train always).",
     ],
   },

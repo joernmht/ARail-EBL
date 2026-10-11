@@ -17,8 +17,8 @@ const OFFICE = { depth: 9, length: 22, floors: 2 };
 const BAY = 6.5, STABLE = 5, HALL_H = 8, UNIT = { width: 2.9, height: 3.9, floor: 0.4 };
 const RAIL = "#5b5f64", BALLAST = "#8d8880", PIT = "#3c3f44";
 
-/** The depot's operations simulation (if the layout has one). */
-const opsSim = (world) => world.simulations?.find((s) => s.constructor.type === "operations") ?? null;
+/** What shows the depot's units and board: the rail operations, or the operations story (the first that runs). */
+const depotSim = (world) => world.simulations?.find((s) => s.active && typeof s.depotState === "function") ?? null;
 
 export class Depot extends BuildingBase {
   static type = "depot";
@@ -125,7 +125,7 @@ export class Depot extends BuildingBase {
 
   draw(view) {
     const g = this.geometry;
-    const sim = opsSim(this.world);
+    const sim = depotSim(this.world);
     const state = sim?.depotState?.(this) ?? null;
     // the units in the hall are drawn before it (seen through its glass), the others on their own
     if (state) this._drawUnits(view, g, state);
