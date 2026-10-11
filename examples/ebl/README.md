@@ -65,7 +65,7 @@ station lies in front of the other lap:
 
 | Lap | km | Route |
 | --- | --- | --- |
-| 0 | 13.9–17.9 | from the right end (Papiermühle) along the corridor side to the door |
+| 0 | 13.4–17.9 | in from room 06 at the upper right, down the right end (Papiermühle 13.9), along the corridor side to the door |
 | 1 | 17.9–29.4 | door → left end (Klausenburg 19.6) → **Neustadt** → behind Waldhof (Neustadt Ost) → right end → **Adorf** → door |
 | 2 | 29.4–37.2 | door → left end (Feldberg 31.2) → behind Neustadt → **Waldhof** → upper right: out to room 06 and the shadow yard |
 
