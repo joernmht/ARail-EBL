@@ -231,9 +231,9 @@ export class Story extends Simulation {
   }
 
   /**
-   * Where to look in the current step, for a virtual camera: `{at: [x, y], distance, pitch_deg}`
-   * (layout mm; the tilt optional), or null. Subclasses say it; it may move during the step (a vehicle
-   * on its way).
+   * Where to look in the current step, for a virtual camera: `{at: [x, y], distance, pitch_deg, yaw_deg}`
+   * (layout mm; the tilt and the direction seen from above optional), or null. Subclasses say it; it
+   * may move during the step (a vehicle on its way).
    */
   view() {
     return null;

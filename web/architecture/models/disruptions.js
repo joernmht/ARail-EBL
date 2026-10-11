@@ -121,7 +121,7 @@ export const DISRUPTIONS = [
   {
     id: "stories", group: "disruptions", title: "Stories to click through",
     summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's module tabs show them with Back, Next, Play and Start again (Operations: the operations story; Infrastructure: the maintenance story).",
-    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look. The maintenance story of the infrastructure is the first one.",
+    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure and the operations story are scripted stories.",
     files: ["web/arail/core/story.js"],
     classes: [
       {

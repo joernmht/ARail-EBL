@@ -1,8 +1,9 @@
 // Story panel: a story of the layout (arail/core/story.js) as steps to click through, the panel of a
-// module's tab (Infrastructure: the maintenance story). The current step with its text and how far its
-// animation has run; Back, Next, Play and Start again; the list of all steps to jump to. A presenter's
-// clicker (Page Down, Page Up) goes on and back while the tab is shown. In the flyover the camera
-// follows the story (the story's `view()`: the van on its way, the signal, the works).
+// module's tab (Operations: the operations story; Infrastructure: the maintenance story). The current
+// step with its text and how far its animation has run; Back, Next, Play and Start again; the list of
+// all steps to jump to. A presenter's clicker (Page Down, Page Up) goes on and back while the tab is
+// shown. In the flyover the camera follows the story (the story's `view()`: the spare unit on its way,
+// the van, the signal, the works), from the side the story says, if it says one.
 import { storyOf } from "../arail/index.js";
 import { h, morph, mount, storage } from "./ui.js";
 
@@ -105,7 +106,8 @@ export class StoryPanel {
     if (!v?.at) return;
     const fly = this.app.flyover;
     fly.follow(() => (this.story === story ? story.view()?.at ?? null : null));
-    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: v.pitch_deg ? (v.pitch_deg * Math.PI) / 180 : undefined }));
+    const rad = (deg) => (Number.isFinite(deg) ? (deg * Math.PI) / 180 : undefined);
+    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: rad(v.pitch_deg), yaw: rad(v.yaw_deg) }));
   }
 
   /** Let the flyover's camera follow the story or not; on, it opens the flyover. */

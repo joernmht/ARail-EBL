@@ -12,9 +12,11 @@ Disruptions change how vehicles run and how passengers behave. Start them in the
 | `replacement-bus` | Rail replacement bus | platform | Trains at the platform are cancelled, passengers leave; at the chosen bus terminal buses run 2.5× as often with more passengers. |
 | `crowd` | Crowd surge | any stop | Passenger demand multiplied (default 4×), e.g. after a football match. |
 | `signal-failure` | Signal failure | platforms (all by default) | Trains are held; strong mood penalty. |
-| `track-closure` | Track closure | one track of a platform (`target`: its dock, e.g. `platform-2:left`) | No train stops at that track; the platform's other track runs as usual. The platform shows *Track G2 closed*; a red band with crosses lies along the track. The maintenance story starts it for its repair and its renewal. |
+| `track-closure` | Track closure | one track of a platform (`target`: its dock, e.g. `platform-2:left`) | No train stops at that track; the platform's other track runs as usual. The platform shows *Track G2 closed*; a red band with crosses lies along the track. The people waiting for that track go over to the other one. The maintenance story starts it for its repair and its renewal. |
 
-"Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards.
+"Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards. A closed track takes no train from the keys 1–9 or the Stops board either.
+
+Stories hold the tracks of their own trains with `story-train` (not offered in the tab): no timetable train comes to that track, one standing there is taken away at once, and the platform shows the story's message (`params.text`); without a message it puts up no warning sign and does not count in the HUD. The [operations story](operations.md#the-operations-story) holds tracks G2 and G3 for RB 31 and its spare unit.
 
 ### Disruptions of the infrastructure
 

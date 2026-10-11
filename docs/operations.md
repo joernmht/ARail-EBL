@@ -1,5 +1,80 @@
 # Rail operations: fleet, maintenance and crews
 
+The rail operations come in two forms:
+
+- **In the app, an operations story to click through** (the module *Operations* of Bf Neustadt):
+  a regional train breaks down at the platform, the operations control sends the spare unit from
+  the depot, the passengers change trains, and the broken unit goes to the workshop. See
+  [The operations story](#the-operations-story).
+- **On the game page** (`game/`), a railway undertaking as a game with its fleet, workshop and
+  crews. The rest of this guide describes it.
+
+## The operations story
+
+`app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops` opens Bf Neustadt (the layout of
+the lab survey of 9 October 2026) with its module **Operations**: the depot *Betriebswerk Neustadt*
+(a glass workshop hall with two tracks, two stabling tracks and the crew room) on a table module
+behind the right end of the table, with its lead tracks. The **Operations** tab tells the story of a
+railway undertaking (EVU) whose train breaks down, in ten steps:
+
+| Step | What happens on the layout |
+| --- | --- |
+| 1. RB 31 to Talsee boards at track G3 | The two-car electric multiple unit 442 101 stands at the front end of platform 2; passengers walk to its doors and board. The display beside it: *07:42 RB 31 Talsee*, *On time*. |
+| 2. 442 101 reports a fault | At 07:41 the traction converter (Stromrichter) fails: no traction power, the train cannot leave. The unit's label turns red; the display and the platform's board say *delayed, fault on the train*. |
+| 3. The driver calls the operations control | By train radio (GSM-R) to the operations control (Transportleitung), then a reset: the pantograph goes down, the lights go out, the unit starts again and the pantograph rises. The fault is back; the dispatcher takes the unit out of service and orders the spare unit 442 108. |
+| 4. The passengers get off and wait | They leave the train and wait across the platform, at track G2; waiting, they turn from Türkis to Gelb. The display: *Now from track G2, about +25 min*. |
+| 5. The spare unit leaves the depot | In the depot a stand-by driver (Reservelokführer) walks to 442 108 on its stabling track; the pantograph rises, the lights come on, and at 07:57 it leaves along the lead track. |
+| 6. 442 108 comes in at track G2 | It runs in along track G2 and stops at 08:03 across the platform from the broken unit; its doors open. |
+| 7. Passengers change trains; RB 31 leaves late | The passengers cross the platform and board; at 08:07 RB 31 leaves for Talsee, 25 minutes late. The display shows the next train, 08:42. |
+| 8. 442 101 runs empty to the workshop | With the faulty converter isolated the unit has half of its traction and may run empty at reduced speed: the driver changes ends (the head and tail lights change over), the unit runs along the platform, off the table and into the depot's workshop. Track G3 is free again. |
+| 9. In the workshop: diagnosis and repair | Two fitters (in orange) read the fault memory: a burnt-out power module (IGBT) of the converter, exchanged in about 6 hours (the old module comes out, a new one goes in). What the breakdown cost: RB 31 and its trip back more than 5 minutes late, 2 × 40 € = 80 € to the transport authority; without the spare both trips would have been cancelled, 44 train-km × 12 € = 528 €. |
+| 10. Back to normal service | The next morning 442 101 runs RB 31 again, on time; 442 108 waits in the depot as the spare unit. |
+
+**Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
+**Start again**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
+time it is shown. **Camera follows** opens the flyover and looks at a slant along the platform (from
+straight in front, the train at track G3 would hide the passengers), then goes with the spare unit
+out of the depot and in at track G2, and with the broken unit to the workshop. Over the photo of the
+station (the camera view) the trains and people are drawn on the real table; the depot is beside it.
+
+The story draws its own trains, passengers, staff and the platform's display. It holds the tracks of
+its trains with a *story-train* disruption (see [Disruptions](disruptions-and-scenarios.md)): no
+timetable train comes to tracks G2 and G3 while the story's units stand there or are due (one
+standing there when the story begins is taken away at once), and the platform's board shows the
+story's messages, e.g. *RB 31 Talsee 07:42: delayed, fault on the train*. The people of the
+passenger simulation who wait for those tracks go elsewhere; the trains of platform 1 run as usual.
+The depot's board says where the spare unit is and what the workshop does.
+
+The story is the simulation `ops-story` in the layer's `simulations`:
+
+```json
+{"type": "ops-story", "name": "A breakdown at Bf Neustadt", "track": "track-g3", "spare_track": "track-g2", "depot": "depot-neustadt",
+ "line": "RB 31", "destination": "Talsee", "departure": "07:42", "unit": "442 101", "spare": "442 108", "km": 22}
+```
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `track` | `track-g3` | The platform track where the train breaks down (a `track` object whose `track_id` is a track of a platform). |
+| `spare_track` | `track-g2` | Where the spare unit comes in; best the other track of the same platform, so that the passengers only cross it. |
+| `depot` | `depot-neustadt` | The depot (a `depot` object): the spare unit waits on its first stabling track, the broken unit is repaired on its first workshop track. |
+| `line`, `destination` | `RB 31`, `Talsee` | The train. |
+| `departure` | `07:42` | Its departure; the other times follow from it: the fault 1 minute before, the spare leaves the depot 15 minutes after, stands at the platform at +21 and leaves at +25. |
+| `unit`, `spare` | `442 101`, `442 108` | The numbers of the unit that breaks down and of the spare unit. |
+| `km` | `22` | The length of the line: the train-km of the penalty for the cancelled trips (there and back). |
+| `steps` | | The steps retold: `[{"id": "fault", "title": "…", "text": "…"}]` over the built-in ones (ids `normal`, `fault`, `call`, `alight`, `spare`, `arrive`, `change`, `empty`, `workshop`, `back`). |
+
+The story's trains come in from the end of the platform tracks nearer to the depot, stop 3 m before
+the platform's front end and go on to the other end; in the depot they run from the lead track
+beyond its gate (36 m, to the edge of the table module). The penalties are those of the default
+transport contract of the game below (`late_trip` 40 €, `cancelled_km` 12 €, `late_threshold_min`
+5; see [Contracts and penalties](#contracts-and-penalties)); the story does not run the operations
+engine. The line, the units, the times and the depot are invented for the story.
+
+## The operations game
+
+The rest of this guide describes the game of the game page
+(`game/?layout=../layouts/ebl-lab.json&layers=operations#ops`).
+
 ARail can run a **railway undertaking** on the layout's station: its trains run to a timetable
 out to stations beyond the layout and back, with real **units** that wear, fail and go to the
 **workshop**, and real **people** who drive them. You can watch a day on the layout, change things
@@ -7,8 +82,8 @@ at short notice (a driver calls in sick, a unit breaks down), and **compare setu
 tests: who does the maintenance and how the roles are split, how many drivers are on stand-by,
 how much time the duties leave to change trains.
 
-The rail operations and their **Operations** tab are on the **game page** (`game/`); the app keeps
-to stories to click through (see [Getting started](getting-started.md#the-game-page)).
+The rail operations and their **Operations** tab are on the **game page** (`game/`); the app tells
+the operations story (see [Getting started](getting-started.md#the-game-page)).
 
 What is simulated:
 

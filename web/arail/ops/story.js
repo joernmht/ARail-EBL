@@ -445,31 +445,43 @@ export class OpsStory extends Story {
   /* ---------------------------------------------------------------- the camera */
 
   /**
-   * Where to look in the current step (the app's flyover follows it): `{at, distance, pitch_deg}`
-   * (layout mm): the train at its platform, the people on the platform, the spare unit on its way,
-   * the broken unit on its way to the workshop and in it.
+   * Where to look in the current step (the app's flyover follows it): `{at, distance, pitch_deg,
+   * yaw_deg}` (layout mm): the train at its platform, the people on the platform, the spare unit on its
+   * way, the broken unit on its way to the workshop and in it. Always from the same side, at a slant
+   * along the tracks: from straight in front the train at the near track would hide the platform.
    */
   view() {
-    const sc = this.scene, a = this.dock(), b = this.spareDock();
+    const sc = this.scene, a = this.dock();
     if (!sc || !a) return null;
-    const step = sc.step, train = this.trainAt(), spare = this.spareAt();
+    const step = sc.step, train = this.trainAt(), spare = this.spareAt(), yaw = this._yaw();
     const mid = (u) => this._unitMid(u), platform = this._platformPoint();
-    // high above the platform: the trains beside it would hide the people
-    if (step === "normal" || step === "back") return { at: platform, distance: 780, pitch_deg: 66 };
-    if (step === "fault" || step === "call") return { at: this._cab(train) ?? platform, distance: 700, pitch_deg: 58 };
-    if (step === "alight") return { at: platform, distance: 720, pitch_deg: 64 };
+    const look = (at, distance, pitch_deg) => ({ at, distance, pitch_deg, yaw_deg: yaw });
+    if (step === "normal" || step === "back" || step === "alight") return look(platform, 800, 52);
+    if (step === "fault" || step === "call") return look(this._cab(train) ?? platform, 700, 50);
     if (step === "spare") {
       const w = this.walkerAt();
-      return { at: sc.k < 0.5 && w ? w.at : mid(spare) ?? this._gate(), distance: 1050, pitch_deg: 60 };
+      return look(sc.k < 0.5 && w ? w.at : mid(spare) ?? this._gate(), 1150, 58);
     }
-    if (step === "arrive") return { at: spare && sc.k < 0.82 ? this._cab(spare) ?? platform : platform, distance: 1000, pitch_deg: 50 };
-    if (step === "change") return { at: spare && sc.k >= 0.62 ? this._cab(spare) ?? platform : platform, distance: 740, pitch_deg: 64 };
+    // the spare comes in beside the platform's canopy: from high above, the canopy hides none of it
+    if (step === "arrive") return look(spare && sc.k < 0.82 ? this._cab(spare) ?? platform : platform, 950, 72);
+    if (step === "change") return look(spare && sc.k >= 0.62 ? this._cab(spare) ?? platform : platform, 800, 52);
     if (step === "empty") {
-      if (train?.place === "workshop") return { at: train.move > 0.08 ? this._cab(train) ?? this._gate() : this._gate(), distance: 1050, pitch_deg: 62 };
-      return { at: train && sc.k >= 0.25 ? this._cab(train) ?? platform : platform, distance: 1000, pitch_deg: 52 };
+      if (train?.place === "workshop") return look(train.move > 0.08 ? this._cab(train) ?? this._gate() : this._gate(), 1000, 60);
+      return look(train && sc.k >= 0.25 ? this._cab(train) ?? platform : platform, 950, 50);
     }
-    if (step === "workshop") return { at: mid(train) ?? this._gate(), distance: 760, pitch_deg: 70 };
-    return b ? { at: platform, distance: 1000, pitch_deg: 52 } : null;
+    return look(mid(train) ?? this._gate() ?? platform, 900, 64);
+  }
+
+  /**
+   * The direction the camera looks in (degrees seen from above, 0 = along +x): from the train's track
+   * across the platform, turned 30° along the tracks towards where the trains come from, so that it
+   * sees their cabs and the platform between them.
+   */
+  _yaw() {
+    const a = this.dock(), area = a.area, D = this.heading(), g = a.track.geometry;
+    const u = polylineAt(g.points, g.total / 2, g.lengths).dir, n = area.normal;
+    const across = a.dock.side < 0 ? n : [-n[0], -n[1]], c = Math.cos(Math.PI / 6), s = Math.sin(Math.PI / 6);
+    return Math.round((Math.atan2(across[1] * c - u[1] * D * s, across[0] * c - u[0] * D * s) * 180) / Math.PI);
   }
 
   /** The middle of the platform beside the train (layout mm). */
