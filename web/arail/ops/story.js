@@ -627,7 +627,8 @@ export function drawUnit(view, u, { label = null, ref = null } = {}) {
     if (hi - lo < 0.5 * m) continue;
     const fc = dir > 0 ? hi : lo, rc = dir > 0 ? lo : hi;
     const A = polylineAt(line.points, rc, line.lengths).point, B = polylineAt(line.points, fc, line.lengths).point;
-    if (!view.inImage((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, 0, 160)) continue;
+    // a car is long: one whose middle is off the picture may still reach into it
+    if (!view.inImage((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, 0, 400)) continue;
     const len = Math.hypot(B[0] - A[0], B[1] - A[1]) / m;
     const ax = [(B[0] - A[0]) / (len * m || 1), (B[1] - A[1]) / (len * m || 1)];
     // the platform's side (doors open there), seen along the car
@@ -661,7 +662,7 @@ export function drawUnit(view, u, { label = null, ref = null } = {}) {
     }
     const midPt = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
     view.faces(faces, ref || [midPt[0], midPt[1], 2 * mz]);
-    // the pantograph on the second car as built (the first one when it runs the other way round), near its inner end
+    // the pantograph on the same car whichever way the unit runs (the second from its end 1), near the coupling
     if ((u.flip ? EMU.cars - 1 - c : c) === EMU.cars - 1) drawPantograph(view, A, ax, m, mz, u.pantograph ?? 0, c === 0 ? 4 : len - 4, ref);
     // head and tail lights
     if (u.powered) {
@@ -672,7 +673,7 @@ export function drawUnit(view, u, { label = null, ref = null } = {}) {
           view.glow(p, 0.45 * m, colour, 0.9);
         }
       };
-      if (cabFront) end(len + 0.05, "#ffffff");
+      if (cabFront) end(len + 0.05, CD.white);
       if (cabBack) end(-0.05, CD.rot);
     }
     if (c === 0 || !top) top = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
