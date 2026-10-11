@@ -12,6 +12,7 @@ const PAGES = [
   ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
+  ["app, Journeys: the journeys story", "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys"],
   ["game page, View panel", "/game/#view"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],

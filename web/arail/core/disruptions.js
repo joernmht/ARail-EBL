@@ -15,6 +15,8 @@
  *     appliesTo(area, d, world) -> bool,    // optional; default: target is "*" or the area's object
  *     effects(d, area, world) -> Effects,   // how the disruption changes services and passengers
  *     draw(view, d, world),                 // optional extra drawing (default: warning sign)
+ *     hidden: true,                         // optional: started by a simulation or story itself, not
+ *                                           // offered in the app; without messages it has no sign
  *   }
  *
  * Effects (all optional) are merged over all active disruptions of a stop area:
@@ -250,6 +252,8 @@ export class DisruptionManager {
       d.def.draw?.(view, d, world);
       for (const area of affectedAreas(d, world)) {
         const fx = this.effectsFor(area);
+        // a simulation's own disruption that says nothing has no sign (a bus bay kept free for a story's bus)
+        if (!fx.messages.length && d.def.hidden) continue;
         const lines = fx.messages.length ? fx.messages : [d.def.label];
         // one label per stop, as one board: both sides of a bus stop say the same
         const same = `${area.owner?.id ?? area.id}|${lines.join("\n")}`;

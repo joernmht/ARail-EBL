@@ -125,10 +125,11 @@ export {
   MaintenanceBase, CrossingPlant, ASSET_OBJECTS, INFRA_OBJECTS, drawAssetState, drawLinearState,
   InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, MaintenanceStory, registerInfrastructure,
 } from "./infra/index.js";
-// journeys: travellers with a start, an aim and a travel plan with transfers (named exports only)
+// journeys: travellers with a start, an aim and a travel plan with transfers; the journeys story (named exports only)
 export {
   TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
   JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
+  JourneyStory, JOURNEY_PLAN, JOURNEY_DISRUPTIONS, journeyTimes, refundShare,
 } from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";

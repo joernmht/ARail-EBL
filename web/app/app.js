@@ -293,8 +293,8 @@ export class App {
   /**
    * The tabs shown: View and Settings always; Build and Disruptions with the app's modules of those
    * names (Build on unless switched off); the tab of a module when the layout has the simulation the
-   * page shows it for (the app: Infrastructure with the maintenance story; the game page: with the
-   * infrastructure game).
+   * page shows it for (the app: Infrastructure with the maintenance story, Journeys with the journeys
+   * story; the game page: with the infrastructure game, the journeys exercise).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);

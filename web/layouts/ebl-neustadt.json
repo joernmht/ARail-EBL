@@ -334,6 +334,15 @@
           ]
         }
       ]
+    },
+    {
+      "id": "journeys",
+      "name": "Journeys",
+      "description": "A traveller's view of the station. The Journeys tab tells Ada's journey to click through: she walks from her flat on Bahnhofstraße to platform 1, her RB 31 to Talsee is late and her connection to Altstadt lost, her app finds a bus from the bus station; her journey in numbers and her rights as a passenger.",
+      "enabled": false,
+      "simulations": [
+        {"type": "journeys-story", "name": "Ada's journey", "traveller": "Ada", "home": "plattenbau-1", "track": "track-g1", "bus_terminal": "bus-terminal-1", "delay_min": 20}
+      ]
     }
   ],
   "view": {

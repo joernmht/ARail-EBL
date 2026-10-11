@@ -1,8 +1,9 @@
 // Story panel: a story of the layout (arail/core/story.js) as steps to click through, the panel of a
-// module's tab (Infrastructure: the maintenance story). The current step with its text and how far its
-// animation has run; Back, Next, Play and Start again; the list of all steps to jump to. A presenter's
-// clicker (Page Down, Page Up) goes on and back while the tab is shown. In the flyover the camera
-// follows the story (the story's `view()`: the van on its way, the signal, the works).
+// module's tab (Infrastructure: the maintenance story; Journeys: a traveller's journey). The current
+// step with its text and how far its animation has run; Back, Next, Play and Start again; the list of
+// all steps to jump to. A presenter's clicker (Page Down, Page Up) goes on and back while the tab is
+// shown. In the flyover the camera follows the story (the story's `view()`: the van on its way, the
+// signal, the works; the traveller, her bus, her train).
 import { storyOf } from "../arail/index.js";
 import { h, morph, mount, storage } from "./ui.js";
 

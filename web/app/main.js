@@ -1,6 +1,7 @@
 // The ARail app: an interactive presentation of the lab. Its modules' tabs are stories to click
-// through on the layout of the lab survey (Bf Neustadt): the maintenance of the infrastructure; the
-// terminal moves its containers one by one. The games and exercises are on the game page (../game/).
+// through on the layout of the lab survey (Bf Neustadt): the maintenance of the infrastructure, a
+// traveller's journey; the terminal moves its containers one by one. The games and exercises are on
+// the game page (../game/).
 import { App } from "./app.js";
 import { StoryPanel } from "./story.js";
 import { TerminalPanel } from "./terminal.js";
@@ -17,8 +18,13 @@ const PAGE = {
       empty: "This layout has no maintenance story. Settings → Simulation switches on the module Infrastructure of Bf Neustadt.",
       hint: "The station Bf Neustadt with its signals, the interlocking and a maintenance base, and a maintenance story to click through in the Infrastructure tab: a signal fails, its track is closed, the repair team drives out and exchanges the old signal; a worn track is renewed with a construction train.",
     }),
+    journeys: (app) => new StoryPanel(app, {
+      tab: "journeys", type: "journeys-story", title: "Journeys",
+      empty: "This layout has no journeys story. Settings → Simulation switches on the module Journeys of Bf Neustadt.",
+      hint: "A traveller's journey to click through on Bf Neustadt in the Journeys tab: Ada's train is late, her connection is lost, her app finds a bus from the bus station; her journey in numbers and her rights as a passenger.",
+    }),
   },
-  shows: { terminal: "terminal", infra: "maintenance-story" },
+  shows: { terminal: "terminal", infra: "maintenance-story", journeys: "journeys-story" },
   examples: [
     { id: "neustadt", label: "Example: Bf Neustadt", layout: NEUSTADT },
     { id: "neustadt-video", label: "Example: Bf Neustadt, video", layout: NEUSTADT, video: "../media/ebl-station-trains.mp4" },
@@ -27,7 +33,7 @@ const PAGE = {
     { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
     { id: "lab", label: "Example: Beta 0.1 (EBL lab photo, older)", layout: LAB },
   ],
-  exampleLayers: { infrastructure: { layout: NEUSTADT, layer: "infrastructure" } },
+  exampleLayers: { infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
 };
 
 new App(PAGE).init();
