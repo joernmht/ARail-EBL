@@ -187,6 +187,13 @@ test("the disruptions of the operations act on its engine and are only offered w
   assert.ok(sim.engine.logs.some((l) => /^Workshop closed until/.test(l.text)));
   const fail = world.disruptions.start({ type: "unit-failure", params: { kind: "hard" } });
   assert.match(fail.result, /^(442 \d{3} failed|no train running)$/);
+  // a unit standing in the depot fails once: a second failure is refused, nothing is counted twice
+  const idle = [...sim.engine.units.values()].find((u) => !u.trip && u.status === "ready");
+  const failures = () => sim.engine.daily.get(sim.engine.today)?.hardFailures ?? 0;
+  const before = failures();
+  assert.equal(sim.failUnit(idle.id), true);
+  assert.equal(sim.failUnit(idle.id), false);
+  assert.equal(failures(), before + 1);
   // the disruptions do not change the stops
   const area = world.stopAreas().find((a) => a.id === "platform-1");
   assert.deepEqual(world.disruptions.effectsFor(area).messages ?? [], []);

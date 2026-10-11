@@ -78,6 +78,10 @@ test("settings: defaults, the example network, validation in plain words", () =>
   assert.ok(validateInfra({ lines: [] }, {}).some((p) => p.includes("both lines and stations")));
   assert.ok(scenariosOf({}).some((s) => s.id === "storm"));
   assert.ok(scenariosOf({ scenarios: [{ id: "mine", name: "Mine" }] }).some((s) => s.id === "mine"));
+  // the budget cut: 15 % less for maintenance, 25 % less for replacement
+  const cut = scenariosOf({}).find((s) => s.id === "budget-cut").patch.budgets, b = INFRA_DEFAULTS.budgets;
+  assert.equal(cut.maintenance_eur, Math.round(b.maintenance_eur * 0.85));
+  assert.equal(cut.replacement_eur, Math.round(b.replacement_eur * 0.75));
 });
 
 test("the network: km along the lines, the layout at its station, a georeference and WGS 84", () => {
