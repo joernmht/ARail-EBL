@@ -22,9 +22,11 @@
   fieldset.deck .help { margin: 0; font-size: .76rem; color: var(--text-2); }
   ul.sets { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .85rem; }
   ul.sets small { color: var(--text-2); }
+  .site-foot { max-width: 1240px; margin: 0 auto; padding: 0 16px 32px; color: var(--text-2); font-size: .85rem; }
+  .site-foot a { color: inherit; }
   @media print {
     body { background: #fff; }
-    .bar, .settings { display: none !important; }
+    .bar, .settings, .site-foot { display: none !important; }
     .page { display: block; max-width: none; padding: 0; margin: 0; }
     .sheets { display: block; }
     .sheet { box-shadow: none; border-radius: 0; break-after: page; width: var(--sheet-w); height: var(--sheet-h); }
@@ -116,6 +118,7 @@
   </form>
   <section class="sheets" id="sheets" aria-label="Preview of the sheets"></section>
 </main>
+<footer class="site-foot"><p><a href="../impressum/" lang="de">Impressum</a> (legal notice) · <a href="../datenschutz/" lang="de">Datenschutz</a> (privacy)</p></footer>
 <script src="../vendor/js-aruco2/cv.js"></script>
 <script src="../vendor/js-aruco2/aruco.js"></script>
 <script src="../vendor/js-aruco2/dictionaries/aruco_4x4_1000.js"></script>
