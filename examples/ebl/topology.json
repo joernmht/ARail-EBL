@@ -1,7 +1,7 @@
 {
- "format": "ebl-topology/0.1",
- "date": "2026-10-10",
- "source": "own extraction from the lab software data (track strings, operating points, Stadtbahn tables) + photo signs/km tags of the 2026-10-09 survey; facts only, no copied files",
+ "format": "ebl-topology/0.2",
+ "date": "2026-10-11",
+ "source": "own extraction from the lab software data (track strings, operating points, Stadtbahn tables, signal boxes) + photo signs/km tags/track labels of the 2026-10-09 survey + information from the lab; facts only, no copied files",
  "units": "km = virtual line kilometre used by the lab software (not table metres); one lap of the hall ring ~ 11 km",
  "operating_points": [
   {
@@ -23,6 +23,11 @@
     ],
     "confidence": "high",
     "evidence": "wall sign 'Bf Neustadt'; km tags 20.4-21.8"
+   },
+   "interlocking": {
+    "box": "ESTW IN",
+    "type": "estw",
+    "note": "ESTW hardware with Ks lamps on Selectrix; alternatively BEST IN (external ESTW of the BEST simulation)"
    }
   },
   {
@@ -42,6 +47,11 @@
     ],
     "confidence": "medium",
     "evidence": "NBS km 23.8-25.1 tags on S11/S12 (crossover W201-204 at km 24.8-25.0)"
+   },
+   "interlocking": {
+    "box": "BEST IN",
+    "type": "estw",
+    "note": "crossovers W201-W204 set by the BEST simulation"
    }
   },
   {
@@ -64,6 +74,11 @@
     ],
     "confidence": "high",
     "evidence": "wall signs Bf Waldhof / Südseite (S10) / Nordseite (S12); km 34.6-36.3"
+   },
+   "interlocking": {
+    "box": "ESTW IW",
+    "type": "estw",
+    "note": "Thales ESTW, telegrams"
    }
   },
   {
@@ -86,6 +101,11 @@
     ],
     "confidence": "high",
     "evidence": "frame label 'Adorf 5', 'Fdl Adorf'; km 26.2-27.5"
+   },
+   "interlocking": {
+    "box": "GsIISp IA",
+    "type": "relay_spurplan",
+    "note": "GS II Sp, software signal box (telegrams)"
    }
   },
   {
@@ -104,7 +124,12 @@
      "S13"
     ],
     "confidence": "high",
-    "evidence": "table sign 'Bk Fe', board 'Servicewagen Feldberg'; km 31.2"
+    "evidence": "table sign 'Bk Fe', board 'Servicewagen Feldberg'; km 31.2; on the left side of the ring (information from the lab)"
+   },
+   "interlocking": {
+    "box": "mech.IFB",
+    "type": "mechanical",
+    "note": "lever frame in the lab, Selectrix"
    }
   },
   {
@@ -121,7 +146,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "el.mech.IZ",
+    "type": "electromechanical",
+    "note": "Selectrix; relay block"
    }
   },
   {
@@ -137,7 +167,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "mech. ID",
+    "type": "mechanical",
+    "note": "lever frame in the lab, Selectrix"
    }
   },
   {
@@ -154,7 +189,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "mech.IGT",
+    "type": "mechanical",
+    "note": "lever frame in the lab, Selectrix"
    }
   },
   {
@@ -163,7 +203,12 @@
    "kind": "hidden_staging_yard",
    "station_computer": 10,
    "physical": true,
-   "neighbours": []
+   "neighbours": [],
+   "interlocking": {
+    "box": "station computer",
+    "type": "station_computer",
+    "note": "internal route logic of the station computer (BfR)"
+   }
   },
   {
    "id": "IMH",
@@ -177,7 +222,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "mech. IMH",
+    "type": "mechanical",
+    "note": "assumed: no signal box in the data"
    }
   },
   {
@@ -192,7 +242,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "GsII ISW",
+    "type": "relay",
+    "note": "GS II without Spurplan, software signal box"
    }
   },
   {
@@ -209,7 +264,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "GsII ICD",
+    "type": "relay",
+    "note": "GS II without Spurplan, software signal box"
    }
   },
   {
@@ -227,7 +287,12 @@
      "S14"
     ],
     "confidence": "high",
-    "evidence": "table sign 'Bk Kl' at the hairpin; km 18.9-19.5"
+    "evidence": "table sign 'Bk Kl' at the left end of the ring; km 18.9-19.5"
+   },
+   "interlocking": {
+    "box": "GsII IKB",
+    "type": "relay",
+    "note": "GS II without Spurplan; one desk with Papiermühle (IPMB)"
    }
   },
   {
@@ -243,7 +308,7 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
    }
   },
   {
@@ -262,6 +327,11 @@
     ],
     "confidence": "medium",
     "evidence": "wall sign 'Hp Papiermühle' + signal 5C2 at the corner; 'Bk Papiermühle' on S06"
+   },
+   "interlocking": {
+    "box": "GsII IKB",
+    "type": "relay",
+    "note": "block post Papiermühle is the second name of the Klausenburg box (IPMB)"
    }
   },
   {
@@ -413,7 +483,12 @@
    "placement": {
     "groups": [],
     "confidence": "none",
-    "evidence": "room 06 (beyond the S09 corner / swing bridge 2): not surveyed yet; survey planned, not scheduled"
+    "evidence": "room 06, right of the hall; the lines leave the ring at its upper right (information from the lab); not surveyed yet"
+   },
+   "interlocking": {
+    "box": "mech. IDA",
+    "type": "mechanical",
+    "note": "assumed: no signal box in the data"
    }
   }
  ],
@@ -544,13 +619,13 @@
      39.21
     ],
     [
-     "swing_bridge_2",
-     43.69
-    ],
-    [
      "IDA",
      42.6,
      43.2
+    ],
+    [
+     "swing_bridge_2",
+     43.69
     ],
     [
      "ID",
@@ -766,6 +841,190 @@
   "S05",
   "S15"
  ],
+ "laps": {
+  "note": "the line kilometres grow clockwise round the ring (seen from above with the windows at the top); the main lines go round the hall about twice, so two laps share each side",
+  "table_mm_per_km": 5070,
+  "lap_km": {
+   "NBS": 11.25,
+   "ABS": 11.475
+  },
+  "evidence": "swing bridge 1 at the door is crossed by the NBS at km 18.35 and 29.6, by the ABS at 17.875 and 29.35, by the branch line at 29.4; 0.1 km = 507 mm measured at Bf Neustadt",
+  "list": [
+   {
+    "lap": 0,
+    "km": [
+     13.4,
+     17.9
+    ],
+    "route": "in from room 06 at the upper right of the ring, down the right end past Papiermühle (13.9), along the corridor side to the door"
+   },
+   {
+    "lap": 1,
+    "km": [
+     17.9,
+     29.4
+    ],
+    "route": "door -> left end (Klausenburg 19.64) -> curve S13 -> Neustadt (20.5-22.4) -> behind Waldhof (Neustadt Ost 24.8-25.1) -> right end -> Adorf (26.2-28.0) -> door"
+   },
+   {
+    "lap": 2,
+    "km": [
+     29.4,
+     37.2
+    ],
+    "route": "door -> left end (Feldberg 31.2) -> curve S13 -> behind Neustadt -> Waldhof (33.5-36.6) -> upper right: out to room 06 and the shadow yard"
+   }
+  ]
+ },
+ "side_by_side": [
+  {
+   "place": "Bf Neustadt (S03)",
+   "front_to_back": [
+    "Strecke 16",
+    "Strecke 15",
+    "Strecke 14",
+    "platform tracks",
+    "siding",
+    "NBS second lap (Strecke 11/12, km 32.6-33.0, block signals 3Q11/3Q12)",
+    "light rail"
+   ],
+   "evidence": "photo 132526: labels Strecke 14/15/16 with G14/G15/G16, signal 3Q12 at the km 32.8 tag"
+  },
+  {
+   "place": "Waldhof Pbf (S11)",
+   "front_to_back": [
+    "G5 = Strecke 24",
+    "G4 = Strecke 13",
+    "G3 = Strecke 12",
+    "G2 = Strecke 11",
+    "G1 = Strecke 10",
+    "NBS first lap (km 23.8-24.0), partly under the light-rail deck",
+    "light rail"
+   ],
+   "evidence": "photo 132332: labels G1-G5 with Strecke 10/11/12/13/24, exit signals N1-N5 (3N1-3N5 at km 35.25-35.32), switches 60 (Strecke 13, km 35.30) and 61 (Strecke 24, km 35.36)"
+  },
+  {
+   "place": "Adorf (S05-S08), seen from the corridor",
+   "front_to_back": [
+    "double track at km 15.x",
+    "Adorf (km 26.x)",
+    "test track (raised deck)",
+    "second line at km 15.0-15.9 (highest deck)"
+   ],
+   "evidence": "photos 131749, 131811; km tags of S05-S08"
+  },
+  {
+   "place": "curve at the Neustadt end (S13)",
+   "front_to_back": [
+    "two decks, one for each lap (km 20.0-20.3 and 31.5)",
+    "light rail above"
+   ],
+   "evidence": "photo 132724; km tags of S13"
+  }
+ ],
+ "alignments": [
+  {
+   "what": "test track along Adorf",
+   "rule": "ABS km = test track km + 25.9",
+   "accuracy_km": 0.05,
+   "evidence": "km tags of both lines side by side on S06, S08, S07 and S05"
+  },
+  {
+   "what": "light rail along the window side",
+   "rule": "hall x (mm) = -6300 + 5100 * light-rail km",
+   "evidence": "light-rail tags 0.2-4.9 on S01-S03, S11, S12; Pirna above the east end of Neustadt, Heidenau above its west end, Hauptbahnhof above Waldhof south, Freiberger Straße above Waldhof Pbf, Mitte above Waldhof north"
+  }
+ ],
+ "track_labels": {
+  "note": "tracks on the tables carry their track string number ('Strecke 24') and their track number in the station ('G5'); signals and switches their names ('N1', '60'); km tags stand every 0.1 km. These are the keys of the lab software: a train position is a track string and a kilometre, so (Strecke, km) ties the table to the digital twin",
+  "strings": [
+   {
+    "strings": "1-8",
+    "what": "shadow yard tracks 1-8"
+   },
+   {
+    "strings": "9, 10, 13-16",
+    "what": "station tracks of Neustadt (9, 10, 13-16; 14-16 are the terminal tracks at the front), of Waldhof (10, 13) and of the shadow yard"
+   },
+   {
+    "strings": "11, 12",
+    "what": "NBS, the two tracks"
+   },
+   {
+    "strings": "21, 22",
+    "what": "ABS, the two tracks"
+   },
+   {
+    "strings": "23-28",
+    "what": "station tracks of Zellwald (km 8.7-11), Adorf (km 26-28) and Waldhof (km 33.5-36.6)"
+   },
+   {
+    "strings": "31",
+    "what": "branch line Adorf - Feldberg - Grüntal - Dornbach - Zellwald"
+   },
+   {
+    "strings": "32-35",
+    "what": "Dornbach and the sawmill siding"
+   },
+   {
+    "strings": "41, 42",
+    "what": "Schwarzburg - Crottendorf - Grüntal, and Crottendorf - Moorhof"
+   },
+   {
+    "strings": "50-59",
+    "what": "Waldhof goods yard"
+   },
+   {
+    "strings": "71, 72",
+    "what": "test track"
+   }
+  ]
+ },
+ "tag_findings": [
+  {
+   "groups": [
+    "S13",
+    "S14",
+    "S09"
+   ],
+   "finding": "the tags of these groups do not agree with each other or with their neighbours; their places are estimated"
+  },
+  {
+   "groups": [
+    "S05",
+    "S06",
+    "S07",
+    "S08"
+   ],
+   "finding": "two lines carry km 15.x on the corridor side: one in front (km 15.1-16.5) and one on the highest deck (km 15.0-15.9, about 0.4 km out of phase); which of NBS and ABS each is is not known"
+  },
+  {
+   "groups": [
+    "S05"
+   ],
+   "finding": "tag '1.7' lies 0.8 m off the other test-track tags"
+  },
+  {
+   "groups": [
+    "S12"
+   ],
+   "finding": "light-rail tag '3.5' lies 5 m off the light-rail line (probably 4.5)"
+  },
+  {
+   "groups": [
+    "S01",
+    "S02",
+    "S12"
+   ],
+   "finding": "small kilometres without 'SB' (0.2, 0.5, 3.5-4.9) are light-rail tags"
+  }
+ ],
+ "open_questions": [
+  "where the ABS runs at Bf Neustadt: nothing runs in front of Strecke 16; a separate deck branches off at the east end (photo 132744)",
+  "which line runs on the highest deck behind the test track (km 15.0-15.9)",
+  "the heights of the decks (lower table, raised decks, light-rail deck)",
+  "room 06: the stations and the shadow yard (not surveyed)"
+ ],
  "joints": [
   {
    "a": "S01",
@@ -948,7 +1207,8 @@
    "IMH",
    "(S)",
    "swing_bridge_2"
-  ]
+  ],
+  "position": "right of the hall; the lines leave the ring at its upper right, past Waldhof north (information from the lab)"
  },
  "groups": {
   "S01": "Neustadt east end (signal box, container crane); upper deck Pirna",
@@ -958,13 +1218,13 @@
   "S10": "Waldhof south throat; upper deck Hauptbahnhof",
   "S11": "Waldhof Pbf; upper deck Freiberger Straße",
   "S12": "Waldhof north throat + Gbf; upper deck Mitte/Radebeul",
-  "S09": "room corner, ramps; Hp Papiermühle; lines leave towards room 06 / shadow yard",
+  "S09": "right end of the ring: Hp Papiermühle, ramps; at the upper right the lines leave for room 06 and the shadow yard",
   "S06": "Adorf west throat + ABS/NBS lanes + test track",
   "S08": "Adorf + boards 'von/nach Zellwald (Klausenburg)'",
   "S07": "Adorf (Fdl, platforms) + Teststrecke",
   "S05": "Adorf east end + test track, by the corridor partition",
   "S15": "door with swing bridge 1 (km 29.4-29.75 on ABS/NBS/NBL)",
-  "S14": "hairpin by the pillar: Bk Klausenburg, Bk Feldberg",
+  "S14": "left end of the ring: Bk Klausenburg, Bk Feldberg",
   "S13": "curve at the Neustadt end of the hall (NBS km 20.0-20.3)"
  },
  "km_tags_by_group": {
