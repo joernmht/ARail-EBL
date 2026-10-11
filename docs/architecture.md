@@ -8,32 +8,27 @@ The whole architecture is also drawn in UML on the **[architecture page](https:/
 
 The app has two modes. Over the **camera image** the markers in each frame give the camera pose; in the **flyover** a virtual camera gives it, and no video is processed.
 
-```
-camera mode:                                           flyover mode:
-camera frame ──> MarkerDetector ──> marker corners     FlyCamera (orbit: target, distance, yaw, pitch)
-                                        │                    │
-     MarkerMap <──> PlaneTracker ──> H layout→image          └──> H = K [r1 r2 t] and the pose
-                                        │                                │
-                                        └───────────> app.pose() <───────┘
-                                                          │
-World.step(dt): docks, control-system trains (also paused) │ clock → scenarios → disruptions → services → transit → objects → simulations
-                                                          │
-View (camera, H; night from the clock; virtual in the flyover)
-   flyover only: sky and floor, default table, orthophoto, grid, marker stickers
-World.draw(View): objects → timetable vehicles → line buses → control-system trains → simulations → disruptions
-   → sorted display list → canvas
-```
+<!-- cro-diagram: architecture-01 -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture-01-dark.svg">
+  <img alt="Data flow per frame: flowchart" src="diagrams/architecture-01-light.svg">
+</picture>
+
+<sub>Diagram source: [architecture-01.mmd](diagrams/architecture-01.mmd)</sub>
+<!-- /cro-diagram -->
 
 The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout plane), so placing, selecting and dragging are the same on the camera image and in the flyover.
 
 With rolling-stock markers (`markers.rolling`, model wagons of the [container terminal](container-terminal.md)) the camera mode reads a second marker family in the same pass:
 
-```
-camera frame ──> MarkerDetector.detectAll ──> markers ──> PlaneTracker.update ──> H (smoothed)
-                                         └──> rolling ──> PlaneTracker.liftMarkers(rolling, camera, height) ──> tags on the deck plane
-                                                                                                                    │
-                                         TerminalSimulation.observe(tags, time) ──> RollingStock ──> model wagons W1, W2, …
-```
+<!-- cro-diagram: architecture-02 -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture-02-dark.svg">
+  <img alt="Data flow per frame: flowchart" src="diagrams/architecture-02-light.svg">
+</picture>
+
+<sub>Diagram source: [architecture-02.mmd](diagrams/architecture-02.mmd)</sub>
+<!-- /cro-diagram -->
 
 The tags are lifted with the smoothed pose of the same frame, after `update`, so the wagons and their containers match what the `View` draws. The flyover processes no video: the model wagons keep their last pose there.
 

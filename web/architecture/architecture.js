@@ -62,7 +62,7 @@ function renderPackages() {
   $("#packages-intro").textContent = "The framework is a set of ES modules without a build step; the app, the marker pages and the plugins use it, and the Python tools talk to it over files and WebSocket messages. Each box is a package with its modules; a dashed arrow means «uses» (it imports modules of the other package).";
   const spec = { groups: GROUPS, packages: PACKAGES };
   const framework = figure(() => packageDiagram(spec, "Packages of the framework", { only: ["framework"] }),
-    "The framework (web/arail). Not drawn: the arrows to core · math and core · drawing, which nearly every package uses, and those of index.js, which imports every package.", "Package diagram of the framework");
+    "The framework (web/arail). Not drawn: the arrows to core · math and core · drawing, which nearly every package uses, and those of index.js (filled: the hub), which imports every package.", "Package diagram of the framework");
   const around = figure(() => packageDiagram(spec, "Pages, plugins and tools", { only: ["pages", "tools", "vendor"] }),
     "The pages, plugins and tools around the framework (one box here); arrows with a label: scripts loaded by a page, messages, files.", "Package diagram of the pages, plugins and tools");
   mount($("#packages-body"), framework, around,

@@ -2,11 +2,14 @@
 
 Without a control system, ARail runs its own timetable: virtual trains drive in and out of the platforms. With a control system connected, the **real model trains** drive the simulation: when a train stops at a platform, the virtual passengers alight and board it, and when it leaves, the ones who did not make it are annoyed.
 
-```
-control system ──(its own protocol)──> adapter ─┐
-                                                ├─ arail-bridge ──WebSocket (arail-feed/1)──> ARail app(s)
-          recorded feed / simulator ────────────┘
-```
+<!-- cro-diagram: control-system-interface-01 -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/control-system-interface-01-dark.svg">
+  <img alt="Control-system interface: flowchart" src="diagrams/control-system-interface-01-light.svg">
+</picture>
+
+<sub>Diagram source: [control-system-interface-01.mmd](diagrams/control-system-interface-01.mmd)</sub>
+<!-- /cro-diagram -->
 
 The **bridge** (`tools/arail_tools/bridge`, Python) runs next to the control system. An **adapter** inside it reads train positions from the control system; the bridge sends them as JSON messages to every connected app. Only train positions (and optionally disruptions) flow, and only from the control system to the apps: the bridge never sends commands to the control system.
 

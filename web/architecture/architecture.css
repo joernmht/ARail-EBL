@@ -1,7 +1,9 @@
 /* The architecture page, in the design of the project page (tokens, bar, buttons and fonts come from
    app/app.css). The UML diagrams are SVG drawn with the classes below: they follow light and dark
-   mode with the page. Lines and frames in Türkis, decisions in Orange (the accent), text in the
-   page's text colours; every text keeps a contrast of at least 4.5:1. */
+   mode with the page. They follow the chair's diagram rules (tud_cro_chaircd, skills/tud-uml/reference/
+   rules.md): lines and frames in Türkis, decisions in Orange (the accent), text in Dunkelblau (light) or
+   the page's light text (dark), names in Noto Sans Medium, the hub in Dunkelblau; every text keeps a
+   contrast of at least 4.5:1. */
 html { scroll-behavior: smooth; }
 html, body { height: auto; }
 body { font-size: 16px; line-height: 1.55; }
@@ -97,12 +99,16 @@ ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .diagram.full svg { max-width: none; }
 .diagram-figure figcaption { font-size: .85rem; color: var(--text-2); }
 
+/* the ink of diagrams is Dunkelblau; dark mode keeps the page's light text */
+.uml { --text: #001450; --hub: #001450; --hub-text: #ffffff; --hub-muted: #a0b4d8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .uml { --text: #eaf1ff; --hub: #eaf1ff; --hub-text: #001450; --hub-muted: #2a4a92; } }
+:root[data-theme="dark"] .uml { --text: #eaf1ff; --hub: #eaf1ff; --hub-text: #001450; --hub-muted: #2a4a92; }
 .uml text { fill: var(--text); }
 .uml .t-body { font: 400 13px var(--font); }
-.uml .t-bold { font: 700 13px var(--font); }
-.uml .t-title { font: 700 14px var(--font); }
+.uml .t-bold { font: 500 13px var(--font); }
+.uml .t-title { font: 500 14px var(--font); }
 .uml .t-small { font: 400 11px var(--font); }
-.uml .t-caps { font: 700 10px var(--font); letter-spacing: .06em; }
+.uml .t-caps { font: 500 11px var(--font); letter-spacing: .06em; }
 .uml .t-mono { font: 400 11.5px var(--mono); }
 .uml .muted, .uml .ref, .uml .t-small { fill: var(--text-2); }
 .uml .lane, .uml .cluster-label { fill: var(--accent-ink); }
@@ -140,5 +146,9 @@ ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .uml .flow .deco-arrow { stroke: var(--accent-ink); }
 .uml .external-package .shape { stroke-dasharray: 5 3; fill: var(--bg); }
 .uml .utility .shape { fill: var(--surface-2); }
+/* the hub: the one package everything goes through */
+.uml .package.hub .shape { fill: var(--hub); stroke: var(--hub); }
+.uml .package.hub text { fill: var(--hub-text); }
+.uml .package.hub .muted { fill: var(--hub-muted); }
 .uml .link .edge-line { stroke: var(--accent-ink); }
 .uml .link .deco-arrow { stroke: var(--accent-ink); }

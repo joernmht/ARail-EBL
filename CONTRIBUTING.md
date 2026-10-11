@@ -59,6 +59,8 @@ The [architecture page](web/architecture/) shows the whole software in UML: pack
 
 When you change the code, change the models in the same commit, and read the activity diagrams, rules and prose of what you changed (`docs/architecture.md` and the guide of that area): the test checks names, not meaning.
 
+The diagrams of the guides in `docs/` are Mermaid, drawn in the chair's design by the `tud-uml` skill of [tud_cro_chaircd](https://github.com/joernmht/tud_cro_chaircd) (`skills/tud-uml`, its rules in `reference/rules.md`). Edit the source in `docs/diagrams/*.mmd`, or write a new ```` ```mermaid ```` block, and render again: `node <tud_cro_chaircd>/skills/tud-uml/scripts/render.mjs docs/<guide>.md --rewrite --prefix <guide>`.
+
 ## Pull requests
 
 - One topic per pull request, with tests for new behaviour.
