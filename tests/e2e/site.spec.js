@@ -232,3 +232,29 @@ test("the 404 page links back to the site", async ({ page }) => {
   // GitHub Pages serves it for any missing address, so the links are absolute
   await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "/ARail-EBL/app/");
 });
+
+test("every page links to the Impressum and the Datenschutzerklärung, which give the operator", async ({ page, request }) => {
+  for (const path of ["/", "/markers/", "/lab-map/", "/architecture/", "/404.html", "/impressum/", "/datenschutz/"]) {
+    await page.goto(path);
+    for (const [name, target] of [[/^Impressum$/, "impressum/"], [/^Datenschutz/, "datenschutz/"]]) {
+      const link = page.getByRole("link", { name });
+      if (path.startsWith(`/${target}`)) continue;
+      await expect(link, `${path}: ${name}`).toHaveCount(1);
+      const href = new URL(await link.getAttribute("href"), page.url()).pathname.replace(/^\/ARail-EBL/, "");
+      expect(href, `${path}: ${name}`).toBe(`/${target}`);
+      expect((await request.get(href)).ok(), href).toBe(true);
+    }
+  }
+  // the project page's own footer is the way there from the app (the brand links to it)
+  await page.goto("/app/");
+  await expect(page.locator("#bar .brand")).toHaveAttribute("href", "../");
+  for (const path of ["/impressum/", "/datenschutz/"]) {
+    await page.goto(path);
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(page.locator("main address")).toContainText("Jörn Maurischat");
+    await expect(page.locator("main address")).toContainText("01062 Dresden");
+    await expect(page.locator("main").getByRole("link", { name: "joern.maurischat@tu-dresden.de" })).toHaveAttribute("href", "mailto:joern.maurischat@tu-dresden.de");
+    const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    expect(width[0]).toBe(width[1]);
+  }
+});

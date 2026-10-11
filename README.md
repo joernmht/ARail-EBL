@@ -81,6 +81,7 @@ web/                  the website (published with GitHub Pages)
   index.html          project page
   app/                the AR app, with the flyover and the in-app video survey
   markers/            printable marker sheets and deck cards for model wagons
+  impressum/, datenschutz/  legal notice and privacy policy (German)
   arail/              the framework (ES modules, no build step)
     core/             tracking, geometry, world, rendering, clock, road network, bus lines,
                       flyover camera, services, disruptions, scenarios

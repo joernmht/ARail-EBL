@@ -14,6 +14,8 @@ const PAGES = [
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["404 page", "/404.html"],
+  ["Impressum", "/impressum/"],
+  ["Datenschutzerklärung", "/datenschutz/"],
 ];
 
 for (const scheme of ["light", "dark"]) {
