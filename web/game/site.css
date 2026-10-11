@@ -1,0 +1,54 @@
+/* The game's own pages (the role games and the role catalogue), in the design of the project page:
+   tokens, the bar, buttons and fonts come from app/app.css; here the page frame (bar, head, footer)
+   and the parts the pages share (cards, tables, the score). Text keeps a contrast of at least 4.5:1
+   in light and dark mode. */
+html, body { height: auto; }
+body { font-size: 16px; line-height: 1.55; background: var(--bg); color: var(--text); }
+a { color: var(--accent-ink); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
+h1, h2, h3, h4 { line-height: 1.2; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+.skip-link:focus { top: 12px; }
+
+/* the bar, as on the project page */
+.site-bar { position: sticky; top: 0; z-index: 5; }
+.site-nav { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+.site-nav a:not(.btn) { color: var(--bar-text); text-decoration: none; font-weight: 500; font-size: .92rem; padding: 7px 9px; border-radius: var(--radius); }
+.site-nav a:not(.btn):hover { background: var(--bar-hover); }
+.site-nav a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 860px) { .site-nav .opt { display: none; } }
+@media (max-width: 640px) { .site-nav { margin-left: auto; } .site-bar .cro-logo { --h: 30px; } }
+@media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
+
+/* the head of a page */
+.game-hero { background: var(--board); color: var(--board-text); padding-block: 26px 28px; }
+.game-hero .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.game-hero h1 { font-size: clamp(1.7rem, 3.8vw, 2.5rem); font-weight: 800; letter-spacing: -.015em; margin: 6px 0 10px; }
+.game-hero .lead { color: var(--board-muted); max-width: 80ch; }
+.game-hero .lead + .lead { margin-top: 8px; }
+.game-hero a { color: var(--board-text); }
+
+/* cards and small tables */
+.game-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.game-card > h2 { font-size: 1.05rem; margin-bottom: 8px; }
+.game-card > * + * { margin-top: 8px; }
+.game-table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.game-table th, .game-table td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.game-table th { color: var(--text-2); font-weight: 600; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: .78rem; font-weight: 600; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
+.tag.bad { border-color: var(--danger); color: var(--danger); }
+.tag.warn { border-color: var(--warn); color: var(--text); }
+.tag.ok { border-color: var(--accent); color: var(--accent-ink); }
+
+/* the score: one bar per objective */
+.score-total { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.score-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.score-parts li { display: grid; grid-template-columns: minmax(9em, auto) 1fr; gap: 2px 10px; align-items: center; font-size: .88rem; }
+.score-parts .meter { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.score-parts .meter i { display: block; height: 100%; background: var(--accent); }
+.score-parts .note { grid-column: 2; color: var(--text-2); font-size: .8rem; }
+
+.site-foot { border-top: 1px solid var(--line); margin-top: 40px; padding-block: 22px 30px; color: var(--text-2); font-size: .9rem; }
+.site-foot p + p { margin-top: 6px; }

@@ -1,8 +1,8 @@
 # ARail-EBL
 
-**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, tells the maintenance of the railway's infrastructure as a story to click through, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. The app is an interactive presentation; its games and exercises (asset management of the infrastructure, a railway undertaking with its fleet, workshop and crews, journeys with transfers that the attendees plan themselves) are on the game page beside it. It runs in the browser, needs no installation and no calibration board.
+**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets and bus lines and a container terminal on it, runs the town through day and night, tells the maintenance of the railway's infrastructure as a story to click through, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. The app is an interactive presentation; its games and exercises (asset management of the infrastructure, a railway undertaking with its fleet, workshop and crews, journeys with transfers that the attendees plan themselves) are on the game page beside it, with the first of the role games: the signaller of Bf Neustadt in a relay interlocking. It runs in the browser, needs no installation and no calibration board.
 
-[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
+[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Signaller game](https://joernmht.github.io/ARail-EBL/game/signaller/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
 
 ![The EBL lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building and a street on a virtual table module, and Plattenbau behind the tracks](web/assets/ebl-lab-ar.jpg)
 
@@ -64,6 +64,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Day and night](docs/day-and-night.md) | The fast clock, lighting, demand over the day, the town simulation |
 | [Streets, bus lines and road traffic](docs/streets-and-buses.md) | The road network, bus stops, bus lines, cars |
 | [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
+| [Games](docs/games.md) | A game for every role of the railway system, the game core, the career mode and the big game; the signaller of Bf Neustadt |
 | [Rail operations](docs/operations.md) | On the game page: fleet, maintenance (ECM) and penalties, crews and rosters; comparing setups under stress tests |
 | [Journeys](docs/journeys.md) | On the game page, an exercise: travellers with a start, an aim and a travel plan with transfers, made by the attendees; missed connections and the results |
 | [Infrastructure](docs/infrastructure.md) | The maintenance story of the app (a signal exchanged, a track renewed, step by step); on the game page, asset management: assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
@@ -81,7 +82,8 @@ web/                  the website (published with GitHub Pages)
   index.html          project page
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey; its shell is the game page's too
-  game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal)
+  game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);
+                      signaller/ the signaller's role game
   markers/            printable marker sheets and deck cards for model wagons
   impressum/, datenschutz/  legal notice and privacy policy (German)
   arail/              the framework (ES modules, no build step)
@@ -99,6 +101,7 @@ web/                  the website (published with GitHub Pages)
                       procurement), the level crossing plant, the objects on the layout
     journeys/         journeys: the timetable and the trains at the platforms, the planner of travel
                       plans with transfers, the travellers
+    game/             the role games: the game core, the signaller's game
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,

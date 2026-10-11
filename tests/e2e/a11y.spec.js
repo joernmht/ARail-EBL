@@ -13,6 +13,7 @@ const PAGES = [
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["game page, View panel", "/game/#view"],
+  ["signaller's game", "/game/signaller/"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["404 page", "/404.html"],

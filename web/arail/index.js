@@ -132,6 +132,11 @@ export {
 } from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
+// the role games: the game core and the signaller's game (no world; named exports only)
+export { Game, GAME_KINDS } from "./game/core.js";
+export {
+  SignallerGame, STATION, TIMETABLE, CONNECTIONS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf,
+} from "./game/signaller.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {

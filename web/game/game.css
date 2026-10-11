@@ -70,3 +70,8 @@
 @media (forced-colors: active) {
   .phase-bar i, .grade-chip, .infra-legend i { forced-color-adjust: none; }
 }
+
+/* the link to the role games in the bar (wide screens; on phones they are linked from the project page) */
+.bar .game-link { background: transparent; border-color: var(--bar-line); color: var(--bar-text); }
+.bar .game-link:hover { background: var(--bar-hover); }
+@media (max-width: 1000px) { .bar .game-link { display: none; } }

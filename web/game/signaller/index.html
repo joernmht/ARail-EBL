@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>Signaller at Bf Neustadt · ARail Game</title>
+<meta name="description" content="A role game of ARail-EBL: the signaller (Fahrdienstleiter) of Bf Neustadt sets the routes of a morning half hour in a relay interlocking, keeps the connections, and handles a failed signal with the substitute signal, the fault report and a track closure for the repair team.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="signaller.css">
+<script type="module" src="signaller.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../roles/">Roles</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="game-hero">
+    <div class="wrap">
+      <p class="eyebrow">Role game · signaller (Fahrdienstleiter)</p>
+      <h1>Signaller at Bf Neustadt</h1>
+      <p class="lead">Half an hour of a morning at Bf Neustadt, worked from a relay interlocking with a track diagram panel. Set the routes from a start signal to a destination: the interlocking moves the points, locks the route and clears the signal. Keep the trains on time and the connections at platform 2; let the intercity pass the freight train. At some point a signal fails.</p>
+      <p class="lead">Simplified for teaching, after the German rules for signallers (Ril 408); the station is that of the lab and of the app's maintenance story.</p>
+    </div>
+  </div>
+
+  <div class="wrap sig-layout">
+    <div class="sig-main">
+      <section class="sig-desk-wrap" aria-labelledby="deskTitle">
+        <div class="sig-controls row">
+          <h2 id="deskTitle" class="visually-hidden">The panel</h2>
+          <p class="sig-clock" aria-live="off"><span class="visually-hidden">Time: </span><time id="clock">08:00:00</time></p>
+          <div class="seg" role="group" aria-label="Speed" id="speed"></div>
+          <label class="field sig-level" for="level"><span>Level</span><select id="level"></select></label>
+          <button class="btn" type="button" id="newGame">New game</button>
+        </div>
+        <div class="sig-desk" id="deskScroll" tabindex="0" role="region" aria-label="Track diagram panel of Bf Neustadt (scrolls sideways on small screens)">
+          <svg id="desk" viewBox="0 0 1180 250" role="group" aria-label="Track diagram" aria-describedby="deskDesc"><desc id="deskDesc">Track diagram of Bf Neustadt: the line from Bergheim on the left, the platform tracks G1, G2 and G3, the line to Talsee on the right; signals, points and trains. The panel's buttons are also below.</desc></svg>
+        </div>
+        <p class="hint" id="deskHint">Choose a start signal on the panel or in Routes, then its destination.</p>
+        <ul class="sig-legend" aria-label="Legend">
+          <li><i class="lg free"></i>free</li>
+          <li><i class="lg route"></i>route locked</li>
+          <li><i class="lg occ"></i>occupied</li>
+          <li><i class="lg closed"></i>track closed</li>
+          <li><i class="lamp stop"></i>stop</li>
+          <li><i class="lamp proceed"></i>proceed</li>
+          <li><i class="lamp zs1"></i>substitute signal Zs 1</li>
+        </ul>
+      </section>
+
+      <section class="game-card sig-trains" id="trains" aria-labelledby="trainsTitle"><h2 id="trainsTitle">Trains</h2></section>
+      <section class="game-card sig-log" id="log" aria-labelledby="logTitle"><h2 id="logTitle">Messages</h2></section>
+    </div>
+
+    <div class="sig-side">
+      <section class="game-card sig-decisions" id="decisions" aria-labelledby="decisionsTitle" aria-live="polite">
+        <h2 id="decisionsTitle">Decisions</h2>
+      </section>
+      <section class="game-card" id="routes" aria-labelledby="routesTitle"><h2 id="routesTitle">Routes</h2></section>
+      <section class="game-card" id="signals" aria-labelledby="signalsTitle"><h2 id="signalsTitle">Signals and tracks</h2></section>
+      <section class="game-card" id="score" aria-labelledby="scoreTitle"><h2 id="scoreTitle">Score</h2></section>
+    </div>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>A prototype of the role games of ARail-EBL: each role of the railway system as a game of its own, joined in one big game (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>, <a href="../roles/">the roles</a>).</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The game runs with JavaScript.</p></noscript>
+</body>
+</html>

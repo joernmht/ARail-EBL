@@ -18,6 +18,7 @@
 
 import { CONTROL } from "./models/control.js";
 import { DISRUPTIONS } from "./models/disruptions.js";
+import { GAMES } from "./models/games.js";
 import { INFRA } from "./models/infra.js";
 import { JOURNEYS } from "./models/journeys.js";
 import { OPERATIONS } from "./models/operations.js";
@@ -118,6 +119,12 @@ export const PACKAGES = [
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "ops", "sims"],
   },
   {
+    id: "games", name: "game", group: "framework", path: "web/arail/game",
+    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score) and the signaller's game of Bf Neustadt.",
+    files: ["web/arail/game/core.js", "web/arail/game/signaller.js"],
+    uses: ["core-math"],
+  },
+  {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
     summary: "Train positions of a control system: the WebSocket client of the bridge, a simulated control system.",
     files: ["web/arail/feeds/websocket.js", "web/arail/feeds/mock.js"],
@@ -127,7 +134,7 @@ export const PACKAGES = [
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "games", "feeds"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
@@ -138,7 +145,7 @@ export const PACKAGES = [
   {
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: the app's shell with the games and exercises in the modules' tabs (infrastructure asset management, rail operations, journeys, the full terminal).",
-    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js"],
+    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js"],
     uses: ["app", "api"], links: [["vendor", "script tags"]],
   },
   {
@@ -150,7 +157,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -258,12 +265,13 @@ export const MODEL_GROUPS = [
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
+  { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the game core they share, and the first of them, the signaller." },
   { id: "control", name: "The control system" },
   { id: "pages", name: "The app and the pages" },
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...CONTROL, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...GAMES, ...CONTROL, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
