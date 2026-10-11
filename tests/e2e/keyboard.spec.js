@@ -4,7 +4,7 @@
 // Focus Not Obscured).
 import { expect, test } from "@playwright/test";
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(path);
@@ -40,7 +40,7 @@ const hiddenStageButtons = (page) => page.evaluate(() => {
 });
 
 test("the buttons that open files show the keyboard focus", async ({ page }) => {
-  await openApp(page, "/app/#view");
+  await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   const outline = (id) => page.locator(`label[for="${id}"]`).evaluate((el) => getComputedStyle(el).outlineStyle);
   // header: Take photo, Record video, Open file (labels of hidden file inputs)
   await page.locator(".brand").focus();
@@ -67,7 +67,7 @@ test("the buttons that open files show the keyboard focus", async ({ page }) => 
 for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tablet", { width: 1024, height: 768 }], ["phone", { width: 390, height: 844 }]]) {
   test(`the placing bar leaves the stage buttons free (${name})`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    const errors = await openApp(page, "/app/#build");
+    const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
     await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
     await expect(page.locator("#placing")).toBeVisible();
     await page.locator("#stageWrap").scrollIntoViewIfNeeded();
@@ -88,7 +88,7 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tab
 
 test("keyboard only: switch panels, fly the virtual camera, place a tree on the grid, set the time", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const errors = await openApp(page, "/app/#view");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   const a = (fn) => page.evaluate(fn);
   // F switches the flyover on and gives the stage the keyboard
   await page.locator("#panel-view .hint").first().click();
@@ -144,7 +144,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
 });
 
 test("keyboard placing in the flyover: a bus line picks the stop under the cross; a held Enter places one point", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.keyboard.press("f");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await page.locator(".palette").getByRole("button", { name: /^Bus line/ }).click();
@@ -216,7 +216,7 @@ test("keyboard only: the Terminal tab between Build and Settings; a container mo
 });
 
 test("keyboard: after Depart the focus stays on the arrival cards; an added terminal focuses its heading", async ({ page }) => {
-  const path = "/app/?layout=../layouts/container-terminal.json#terminal";
+  const path = "/game/?layout=../layouts/container-terminal.json#terminal";
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(path);
@@ -236,7 +236,7 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
   await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
   // a terminal added to a layout without one (Settings → Simulation): the Terminal tab opens, its heading has the focus
-  await page.goto("/app/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
   await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there

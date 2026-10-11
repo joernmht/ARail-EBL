@@ -5,12 +5,14 @@ import { expect, test } from "@playwright/test";
 const PAGES = [
   ["project page", "/"],
   ["marker sheets", "/markers/"],
-  ["app, View panel", "/app/#view"],
-  ["app, Build panel", "/app/#build"],
-  ["app, Settings: simulation", "/app/#simulate"],
-  ["app, Disruptions panel", "/app/#disrupt"],
-  ["app, Settings: control system", "/app/#control"],
+  ["app, View panel", "/app/?layout=../layouts/ebl-lab.json#view"],
+  ["app, Build panel", "/app/?layout=../layouts/ebl-lab.json#build"],
+  ["app, Settings: simulation", "/app/?layout=../layouts/ebl-lab.json#simulate"],
+  ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
+  ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
+  ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
+  ["game page, View panel", "/game/#view"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["404 page", "/404.html"],
@@ -24,8 +26,8 @@ for (const scheme of ["light", "dark"]) {
     for (const [name, path] of PAGES) {
       test(`${name} has no accessibility violations`, async ({ page }) => {
         await page.goto(path);
-        // the app: tracking the layout's photo, or the flyover of a virtual layout (the container terminal)
-        if (path.startsWith("/app/")) await page.waitForFunction(() => window.__arail?.tracker.state.H || (window.__arail?.mode === "flyover" && window.__arail.world.objects.length), null, { timeout: 30_000 });
+        // the app and the game page: tracking the layout's photo, or the flyover of a virtual layout (the container terminal)
+        if (/^\/(app|game)\/\?layout=..\/layouts\/ebl-|^\/game\/#/.test(path)) await page.waitForFunction(() => window.__arail?.tracker.state.H || (window.__arail?.mode === "flyover" && window.__arail.world.objects.length), null, { timeout: 30_000 });
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
@@ -59,9 +61,9 @@ for (const [scheme, device, viewport] of STATES) {
     test.setTimeout(150_000);
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
-    await page.goto("/app/#build");
+    await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
     await page.evaluate(() => localStorage.clear());
-    await page.goto("/app/#build");
+    await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
     await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
     const found = [];
     await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
@@ -99,7 +101,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`operations states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/ebl-lab.json&layers=operations#ops";
+    const path = "/game/?layout=../layouts/ebl-lab.json&layers=operations#ops";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);
@@ -139,7 +141,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`infrastructure states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
+    const path = "/game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);
@@ -169,7 +171,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`terminal states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/container-terminal.json#terminal";
+    const path = "/game/?layout=../layouts/container-terminal.json#terminal";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);
@@ -204,7 +206,7 @@ for (const [scheme, device, viewport] of STATES) {
 for (const [scheme, device, viewport] of STATES) {
   test(`journeys and modules states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
-    const path = "/app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
+    const path = "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);

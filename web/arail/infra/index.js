@@ -3,10 +3,12 @@
  * balises, interlockings, level crossings, cables, GSM-R, overhead lines, substations, platforms,
  * lifts, displays) with their condition, failures and what is known of them; the maintenance staff
  * in shifts with emergency vans and drones; renewals and upgrades through the HOAI phases with
- * funding, approval, procurement and a level crossing plant; roles for students.
+ * funding, approval, procurement and a level crossing plant; roles for students. The app shows the
+ * maintenance story (story.js), a walkthrough to click through; the asset management game runs
+ * without the app (its engine in Node, its simulation on a layout).
  *
  *   import { registerInfrastructure } from "./infra/index.js";
- *   registerInfrastructure(registry);   // the objects, the "infrastructure" simulation, its disruptions
+ *   registerInfrastructure(registry);   // the objects, the "infrastructure" simulation, the maintenance story, the disruptions
  *
  * `arail/index.js` registers it with the built-ins. The engine also runs without a world (Node.js):
  * `new InfraEngine(config, {seed})`.
@@ -30,19 +32,22 @@ export {
 } from "./objects.js";
 export { InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone } from "./simulation.js";
 export { INFRA_DISRUPTIONS } from "./disruptions.js";
+export { MaintenanceStory } from "./story.js";
 
 import { INFRA_OBJECTS } from "./objects.js";
 import { InfrastructureSimulation } from "./simulation.js";
 import { INFRA_DISRUPTIONS } from "./disruptions.js";
+import { MaintenanceStory } from "./story.js";
 
 /**
  * Register the infrastructure objects (palette group Infrastructure), the "infrastructure"
- * simulation and its disruption types.
+ * simulation, the "maintenance-story" and their disruption types.
  * @param {import("../core/registry.js").Registry} registry
  */
 export function registerInfrastructure(registry) {
   for (const cls of INFRA_OBJECTS) registry.registerObject(cls);
   registry.registerSimulation(InfrastructureSimulation);
+  registry.registerSimulation(MaintenanceStory);
   for (const def of INFRA_DISRUPTIONS) registry.registerDisruption(def);
   return registry;
 }

@@ -9,12 +9,14 @@ platform makes it late, a cancelled one makes it wait for the next of its line, 
 with a few minutes of delay. At the end the results compare the planned and the real arrivals.
 
 The journeys are a simulation (`{"type": "journeys"}` in the layout's `simulations`), offered as the
-module **Journeys** of the lab example.
+module **Journeys** of the lab example. The exercise and its **Journeys** tab are on the **game page**
+(`game/`); the app keeps to stories to click through (see
+[Getting started](getting-started.md#the-game-page)).
 
 ## Running the exercise
 
-1. Open the lab example and switch on the module **Journeys** (View → Modules, or
-   `app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
+1. Open the lab example on the game page and switch on the module **Journeys** (View → Modules, or
+   `game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
    home and no other passengers come; the trains run to the timetable.
 2. Set the time of day (Settings → Simulation → Time of day, e.g. 07:00) and pause (Space) while the travellers
    are made.

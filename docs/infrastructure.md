@@ -1,5 +1,66 @@
 # Infrastructure: assets, maintenance and renewals
 
+The infrastructure comes in two forms:
+
+- **In the app, a maintenance story to click through** (the module *Infrastructure* of Bf Neustadt):
+  a signal fails, its track is closed, the repair team drives out, repairs the signal and exchanges it;
+  a worn track is renewed with a construction train. See [The maintenance story](#the-maintenance-story).
+- **On the game page** (`game/`), **asset management as a game** over budget years, with roles,
+  decisions and projects. The rest of this guide describes it.
+
+## The maintenance story
+
+`app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra` opens Bf Neustadt (the layout
+of the lab survey of 9 October 2026) with its module **Infrastructure**: the exit signals N1–N3 of the
+electronic interlocking at the masts on the platforms, the displays, the interlocking building
+(ESTW Neustadt) and a maintenance base on a table module at the end of Bahnhofstraße. The
+**Infrastructure** tab tells the story in twelve steps:
+
+| Step | What happens on the layout |
+| --- | --- |
+| 1. The station in normal service | Trains at both platforms; every asset's ring in the colour of its condition by its age (grade 1 Türkis … 5 Rot). Exit signal N2 dates from 1993. |
+| 2. Exit signal N2 fails | Its ring pulses red; the electronic interlocking reports the fault; trains leave track G2 on a written order (a message at platform 2). |
+| 3. The signaller closes track G2 | No train stops at track G2 (a *track closure*); track G3 of the same platform runs as usual. |
+| 4. The repair team drives out | The emergency van leaves the maintenance base and drives over Bahnhofstraße to the station. |
+| 5. The team repairs the signal | A technician walks over (through the underpass), both work at the signal: it works again, but it is old. |
+| 6. …and exchanges the old signal | The old signal head comes off, a new one goes on: grade 1. |
+| 7. Track G2 reopens | The van drives back; trains stop at track G2 again. |
+| 8. A planned renewal: track G3 is closed | Track G3 (1984) is worn out; it is closed, the trains of platform 2 use track G2. |
+| 9. The construction train arrives | A yellow construction train comes in from the far end of the track, the road-rail excavator ahead; the site is fenced off. |
+| 10. The old track comes out | The excavator takes out the old track section by section (bare ballast behind it). |
+| 11. The new track goes in | New sleepers and rails behind the excavator, then a tamping machine. |
+| 12. Acceptance: track G3 reopens | The supervision accepts the works; the train leaves, the track reopens: grade 1. |
+
+**Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
+**Start again**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
+time it is shown, so a presenter can go back and forth. **Camera follows** opens the flyover and keeps
+its camera where the story happens: the van on its way, the signal from above, the works on track G3.
+Over the photo of the station (the camera view) the story is drawn on the real table, but the van and
+the base are beside it.
+
+The story is the simulation `maintenance-story` in the layer's `simulations`:
+
+```json
+{"type": "maintenance-story", "name": "Maintenance at Bf Neustadt", "signal": "signal-n2", "renewal": "track-g3", "year": 2026}
+```
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `signal` | `signal-n2` | The signal that fails: an exit signal at a platform track (the track nearest to it is closed for the repair). |
+| `renewal` | `track-g3` | The track that is renewed (closed at its platform, if it has one). |
+| `year` | `2026` | The year of the story: the age of the assets, and so their condition. |
+| `steps` | | The steps retold: `[{"id": "fault", "title": "…", "text": "…"}]` over the built-in ones (ids `normal`, `fault`, `close`, `drive`, `repair`, `exchange`, `reopen`, `possession`, `arrive`, `remove`, `build`, `done`). |
+
+The signal names in the layout (N1–N3) and their years are invented for the story, as are the base and
+the interlocking building. The repair van needs streets from the maintenance base to the station; the
+construction train needs a track of at least about 60 m. The track closure is a disruption of its own
+(see [Disruptions](disruptions-and-scenarios.md)); the layer's scenario *Track G2 closed* starts one.
+
+## The asset management game
+
+The rest of this guide describes the game of the game page
+(`game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`).
+
 ARail can make the layout's station part of an **infrastructure district**: the railway's assets
 (track, switches, signals, balises, interlockings, level crossings, cable routes, GSM-R sites,
 overhead lines, substations, platforms, lifts and passenger displays) with their **condition**, their
@@ -44,8 +105,8 @@ a fraction of a second).
 
 ## The example
 
-The module **Infrastructure** of the lab example (View → Modules, or
-`app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
+The module **Infrastructure** of the lab example Beta 0.1 on the game page (View → Modules, or
+`game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
 Bergheim** (30.4 km, double track, electrified, 150 trains a day), with the branch line **6251
@@ -69,9 +130,9 @@ On table modules beside the table:
 Beyond the layout the network is a **line map** in the Infrastructure tab. The scenario *Faults at
 the station* (Disruptions tab) makes signal N2 and the level crossing fail.
 
-## The Infrastructure tab
+## The Infrastructure tab of the game page
 
-With an infrastructure simulation on the layout, the app has an **Infrastructure** tab (`#infra`).
+With an infrastructure simulation on the layout, the game page has an **Infrastructure** tab (`#infra`).
 At the top: the date, **Your role**, and the run controls:
 
 - **Run to the next decision** runs fast until a decision of a role played by students comes up, or

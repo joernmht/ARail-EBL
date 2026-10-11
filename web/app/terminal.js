@@ -1,6 +1,7 @@
-// Terminal panel: the container terminal of the layout (its visits, containers, crane jobs and model
-// wagons) and picking containers and their targets on the canvas, in the camera view and the flyover.
-// Every canvas action is also in the panel: choose a container in the list and a place in "Move to".
+// Terminal panel: the container terminal of the layout (its containers and model wagons; on the game
+// page also its visits, new arrivals and crane jobs) and picking containers and their targets on the
+// canvas, in the camera view and the flyover. Every canvas action is also in the panel: choose a
+// container in the list and a place in "Move to". The app keeps it to moving containers one by one.
 import { applyH, CARRIER_TYPES, FONT, OVERLAY, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
 
@@ -49,9 +50,15 @@ function numberList(numbers, prefix = "") {
 }
 
 export class TerminalPanel {
-  /** @param {object} app the ARail app (app.js) */
-  constructor(app) {
+  /**
+   * @param {object} app the ARail app (app.js)
+   * @param {{full?: boolean}} [options] full: with the visits (call, depart, unload, load), new arrivals,
+   *   the crane jobs and the speed (the game page); else the containers, their moves and the model
+   *   wagons only (the app)
+   */
+  constructor(app, { full = false } = {}) {
     this.app = app;
+    this.full = full;
     /** Id of the selected container, or null. */
     this.selected = null;
     /** null, or "target" while the place for the selected container is picked on the canvas. */
@@ -145,11 +152,11 @@ export class TerminalPanel {
       const targets = this.selected ? sim.targets(this.selected) : null;
       this.syncHighlight(targets);
       this._show(e.head, this._head(sim));
-      this._show(e.arrivals, this._arrivals(sim));
-      this._show(e.add, this._newArrival(sim));
+      this._show(e.arrivals, this.full ? this._arrivals(sim) : null);
+      this._show(e.add, this.full ? this._newArrival(sim) : null);
       this._show(e.containers, this._containers(sim));
       this._show(e.move, this.selected ? this._move(sim, targets) : null);
-      this._show(e.jobs, this._jobs(sim));
+      this._show(e.jobs, this.full ? this._jobs(sim) : null);
       this._show(e.wagons, sim.rollingConfig() ? this._wagons(sim) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
@@ -215,9 +222,10 @@ export class TerminalPanel {
     return [
       h("h2", { tabindex: "-1" }, sim.name),
       h("p", { class: "term-status", id: "termStatus" }, [plural(open, "move"), ...busy].join(" · ")),
+      this.full ? null : h("p", { class: "hint" }, "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it."),
       h("div", { class: "row" },
-        h("div", { class: "seg", role: "group", "aria-label": "Speed" },
-          SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.app.panels.updateSimulateControls(); this.update(); } }, `${s}×`))),
+        this.full ? h("div", { class: "seg", role: "group", "aria-label": "Speed" },
+          SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.app.panels.updateSimulateControls(); this.update(); } }, `${s}×`))) : null,
         h("button", { class: "btn small", type: "button", id: "termReset", onclick: () => this.resetTerminal() }, "Reset terminal"),
         h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state"),
       ),
@@ -590,7 +598,7 @@ export class TerminalPanel {
     return [
       h("h2", {}, "Model wagons"),
       // the real train and the real truck: unloaded and loaded as a whole, like a visit
-      units.length ? h("div", { class: "board term-board", "aria-live": "off" }, units.map((u) => this._unitCard(sim, u))) : null,
+      units.length && this.full ? h("div", { class: "board term-board", "aria-live": "off" }, units.map((u) => this._unitCard(sim, u))) : null,
       wagons.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-wagons" },
         h("thead", {}, h("tr", {}, ["Wagon", "Type", "Tags seen", "State", "Containers"].map((t) => h("th", {}, t)))),
         h("tbody", {}, wagons.map((c) => {

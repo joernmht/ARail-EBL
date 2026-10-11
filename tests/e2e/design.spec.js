@@ -4,7 +4,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
@@ -51,7 +51,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
     });
 
     test("CD accent states keep text readable: placing, pressed toggles, toasts, disruptions", async ({ page }) => {
-      await openApp(page, "/app/#build");
+      await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
       await page.getByRole("button", { name: /^Building/ }).click();
       await expect(page.locator("#placing")).toBeVisible();
       await expect(page.getByRole("button", { name: /^Building/ })).toHaveAttribute("aria-pressed", "true");
@@ -82,7 +82,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
 for (const scheme of ["light", "dark"]) {
   test(`the white chair logo stays visible in a high-contrast theme (forced colours, ${scheme})`, async ({ page }) => {
     await page.emulateMedia({ forcedColors: "active", colorScheme: scheme });
-    await page.goto("/app/#view");
+    await page.goto("/app/?layout=../layouts/ebl-lab.json#view");
     await page.waitForFunction(() => window.__arail?.world);
     // the bar takes the system's background (white in a light theme); the logo (an image) stays white
     const backdrop = await page.locator(".cro-logo").evaluate((img) => {
@@ -119,7 +119,7 @@ test.describe("layout of the app bar and the tabs", () => {
   test("the fonts come from our own server, not from Google", async ({ page }) => {
     const foreign = [];
     page.on("request", (req) => { if (/fonts\.(googleapis|gstatic)\.com/.test(req.url())) foreign.push(req.url()); });
-    for (const [path, families] of [["/", ["Noto Sans", "Noto Sans Mono"]], ["/app/", ["Noto Sans", "Noto Sans Mono"]], ["/markers/", ["Archivo", "JetBrains Mono"]]]) {
+    for (const [path, families] of [["/", ["Noto Sans", "Noto Sans Mono"]], ["/app/?layout=../layouts/ebl-lab.json", ["Noto Sans", "Noto Sans Mono"]], ["/markers/", ["Archivo", "JetBrains Mono"]]]) {
       await page.goto(path);
       const loaded = await page.evaluate(async (names) => {
         await Promise.all(names.map((f) => document.fonts.load(`16px "${f}"`, "Bahnsteig Gleis 3 – Jörn")));

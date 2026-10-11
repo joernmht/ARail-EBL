@@ -37,15 +37,17 @@ test("project page hands over from the picture to the applications, each opening
   // and the examples of the lab table
   const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
-  const app = await (await request.get("/app/app.js")).text();
-  for (const href of [...examples, ...fresh]) {
-    const params = new URL(href, "http://x/").searchParams;
+  // the examples of the app (app/main.js) and of the game page (game/main.js)
+  const pages = { app: await (await request.get("/app/main.js")).text(), game: await (await request.get("/game/main.js")).text() };
+  const links = [...examples, ...fresh, ...(await page.locator(".app-card .acts a[href^='app/'], .app-card .acts a[href^='game/']").evaluateAll((as) => as.map((a) => a.getAttribute("href"))))];
+  for (const href of links) {
+    const page = href.split("/")[0], params = new URL(href, "http://x/").searchParams;
     if (params.has("example")) {
-      expect(app, href).toContain(`id: "${params.get("example")}"`);
+      expect(pages[page], href).toContain(`id: "${params.get("example")}"`);
       continue;
     }
     const layout = params.get("layout");
-    expect((await request.get(new URL(layout, "http://localhost/app/").pathname)).ok(), layout).toBe(true);
+    expect((await request.get(new URL(layout, `http://localhost/${page}/`).pathname)).ok(), layout).toBe(true);
   }
   // cooperation: the contact person by email
   await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
@@ -246,7 +248,7 @@ test("every page links to the Impressum and the Datenschutzerklärung, which giv
     }
   }
   // the project page's own footer is the way there from the app (the brand links to it)
-  await page.goto("/app/");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json");
   await expect(page.locator("#bar .brand")).toHaveAttribute("href", "../");
   for (const path of ["/impressum/", "/datenschutz/"]) {
     await page.goto(path);

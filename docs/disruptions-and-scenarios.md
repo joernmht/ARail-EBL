@@ -12,6 +12,7 @@ Disruptions change how vehicles run and how passengers behave. Start them in the
 | `replacement-bus` | Rail replacement bus | platform | Trains at the platform are cancelled, passengers leave; at the chosen bus terminal buses run 2.5× as often with more passengers. |
 | `crowd` | Crowd surge | any stop | Passenger demand multiplied (default 4×), e.g. after a football match. |
 | `signal-failure` | Signal failure | platforms (all by default) | Trains are held; strong mood penalty. |
+| `track-closure` | Track closure | one track of a platform (`target`: its dock, e.g. `platform-2:left`) | No train stops at that track; the platform's other track runs as usual. The platform shows *Track G2 closed*; a red band with crosses lies along the track. The maintenance story starts it for its repair and its renewal. |
 
 "Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards.
 

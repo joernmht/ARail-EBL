@@ -10,7 +10,7 @@ function trackErrors(page) {
   return errors;
 }
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = trackErrors(page);
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
@@ -36,7 +36,7 @@ async function tap(page, x, y) {
 }
 
 test("streets: draw a street, place bus stops and a bus line; a bus serves the stops", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate(() => {
     const w = window.__arail.world;
     w.simulations = w.simulations.filter((s) => s.constructor.type !== "road-traffic");
@@ -125,7 +125,7 @@ test("streets: draw a street, place bus stops and a bus line; a bus serves the s
 });
 
 test("streets: a bus stop away from the streets says so in the inspector", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator(".palette").getByRole("button", { name: /^Bus stop/ }).click();
   await tap(page, 900, 350);
   await page.waitForFunction(() => window.__arail.editor.selected?.type === "bus-stop");
@@ -134,7 +134,7 @@ test("streets: a bus stop away from the streets says so in the inspector", async
 });
 
 test("streets: a footpath chosen as a bus stop's street is named in the inspector at once", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-stop-altmarkt")));
   const problems = page.locator(".section").filter({ hasText: "Selected: Bus stop" }).locator(".hint.error");
   const street = page.locator("#obj-bus-stop-altmarkt-road");
@@ -150,7 +150,7 @@ test("streets: a footpath chosen as a bus stop's street is named in the inspecto
 });
 
 test("stops board: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
-  const errors = await openApp(page, "/app/#simulate");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#simulate");
   await page.evaluate(() => {
     const w = window.__arail.world;
     w.setTime("10:00");

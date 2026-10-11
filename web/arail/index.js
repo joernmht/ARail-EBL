@@ -61,8 +61,9 @@ export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
 export { RoadNetwork, dockPose, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
 export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
-export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/disruptions.js";
+export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
+export { Story, storyOf, STORY_PAUSE_S } from "./core/story.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
@@ -122,7 +123,7 @@ export {
   InfraEngine, INFRA_ACTIONS, TASK_WORDS, YEAR, durationText, toGeoJSON, assetRecord,
   AssetObject, LinearAssetObject, Signal, Switch, Balise, LevelCrossing, GsmrMast, Lift, PassengerDisplay, Catenary, CableRoute, Interlocking,
   MaintenanceBase, CrossingPlant, ASSET_OBJECTS, INFRA_OBJECTS, drawAssetState, drawLinearState,
-  InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, registerInfrastructure,
+  InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, MaintenanceStory, registerInfrastructure,
 } from "./infra/index.js";
 // journeys: travellers with a start, an aim and a travel plan with transfers (named exports only)
 export {

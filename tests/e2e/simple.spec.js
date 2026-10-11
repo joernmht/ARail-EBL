@@ -4,9 +4,9 @@ import { expect, test } from "@playwright/test";
 async function openApp(page) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   return errors;
 }

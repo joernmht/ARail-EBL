@@ -1,11 +1,11 @@
-// Modules of a layout in the app (its layers): the lab example with its modules Rail operations,
+// Modules of a layout on the game page (its layers; the app has the same shell): the lab example with its modules Rail operations,
 // Infrastructure, Journeys and Container terminal, switched by clicking their boxes in the View panel
 // and from Settings → Simulation, kept per layout, old links to the former example files, new objects
 // in a module, and the container terminal: a layout of its own, chosen alone, and the way back. The
 // app's modules Build and Disruptions, and the Settings tab with its views Simulation and Control system.
 import { expect, test } from "@playwright/test";
 
-const LAB = "/app/?layout=../layouts/ebl-lab.json";
+const LAB = "/game/?layout=../layouts/ebl-lab.json";
 
 function trackErrors(page) {
   const errors = [];
@@ -74,7 +74,7 @@ test("Settings → Simulation offers to switch on a module; old links open the l
   await page.locator("#journeysOpenExample").click();
   await page.waitForFunction(() => window.__arail.layersOn().includes("journeys"));
   expect(await on(page)).toEqual(["operations", "journeys"]);
-  await page.goto("/app/?layout=../layouts/ebl-infrastructure.json#infra");
+  await page.goto("/game/?layout=../layouts/ebl-infrastructure.json#infra");
   await page.waitForFunction(() => window.__arail?.world?.getObject("interlocking-bf"));
   expect(await page.evaluate(() => window.__arail.layoutUrl)).toMatch(/layouts\/ebl-lab\.json$/);
   expect(await on(page)).toEqual(["infrastructure"]);
@@ -116,7 +116,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   // the terminal again, kept over a reload; clicked once more: the lab without modules
   await box(page, "Container terminal").click();
   await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail.layoutUrl));
-  await page.goto("/app/#view");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#view");
   await page.waitForFunction(() => window.__arail?.terminal?.sim);
   expect(await url()).toBe("container-terminal.json");
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
@@ -128,7 +128,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   await page.goto(`${LAB}&layers=terminal#view`);
   await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail?.layoutUrl || ""));
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/?layout=../layouts/container-terminal.json#view");
+  await page.goto("/game/?layout=../layouts/container-terminal.json#view");
   await page.waitForFunction(() => window.__arail?.terminal?.sim);
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
   // the lab from the list of layouts opens the lab, not the terminal again

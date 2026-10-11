@@ -49,9 +49,9 @@ test("another layout loaded during a video survey is left alone by it", async ({
   test.skip(!hasScene(), "run `npm run fixtures` first");
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/#build");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/#build");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
   await page.waitForFunction(() => window.__arail?.world.layout.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   // hold back one decoded frame of the survey (its "seeked" event) until the other layout is loaded
   await page.evaluate(() => {

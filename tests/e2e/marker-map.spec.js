@@ -6,9 +6,9 @@ import { expect, test } from "@playwright/test";
 async function openBuild(page) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/#build");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/#build");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
   await page.waitForFunction(() => window.__arail?.tracker.state.H && window.__arail.world.map.ids().length === 5, null, { timeout: 30_000 });
   return errors;
 }

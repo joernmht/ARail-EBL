@@ -298,6 +298,44 @@
       ]
     }
   ],
+  "layers": [
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "description": "The station's infrastructure: the exit signals N1–N3 of the electronic interlocking, the displays on the platforms, the interlocking building and a maintenance base on a table module at the end of Bahnhofstraße. The Infrastructure tab tells a maintenance story to click through: signal N2 fails, is repaired and exchanged; track G3 is renewed.",
+      "enabled": false,
+      "objects": [
+        {"id": "platform-1", "built": 2004},
+        {"id": "platform-2", "built": 1998},
+        {"id": "track-g1", "built": 2004},
+        {"id": "track-g2", "built": 2004},
+        {"id": "track-g3", "built": 1984},
+        {"id": "table-stuetzpunkt", "type": "tabletop", "name": "Table module Stützpunkt", "position": [4850, -320], "width_mm": 1000, "depth_mm": 520},
+        {"id": "road-stuetzpunkt", "type": "road", "name": "Am Stützpunkt", "kind": "residential", "points": [[4340, -232], [5300, -232]]},
+        {"id": "interlocking-in", "type": "interlocking", "name": "ESTW Neustadt (electronic, 2004)", "generation": "electronic", "built": 2004, "position": [5180, -440], "rotation_deg": 180},
+        {"id": "signal-n1", "type": "signal", "name": "Exit signal N1", "real": true, "built": 2004, "interlocking": "interlocking-in", "position": [2529, 419], "rotation_deg": 180},
+        {"id": "signal-n2", "type": "signal", "name": "Exit signal N2", "real": true, "built": 1993, "interlocking": "interlocking-in", "position": [2521, 358], "rotation_deg": 180},
+        {"id": "signal-n3", "type": "signal", "name": "Exit signal N3", "real": true, "built": 2004, "interlocking": "interlocking-in", "position": [2529, 253], "rotation_deg": 180},
+        {"id": "display-1", "type": "passenger-display", "name": "Display platform 1", "real": true, "built": 2016, "position": [3044, 458], "rotation_deg": 90},
+        {"id": "display-2", "type": "passenger-display", "name": "Display platform 2", "real": true, "built": 2011, "position": [3022, 285], "rotation_deg": 90},
+        {"id": "gsmr-neustadt", "type": "gsmr-mast", "name": "GSM-R site Neustadt", "built": 2009, "position": [5230, -130], "height_m": 30},
+        {"id": "maintenance-base-1", "type": "maintenance-base", "name": "Maintenance base Neustadt", "position": [4780, -418], "rotation_deg": 180}
+      ],
+      "simulations": [
+        {"type": "maintenance-story", "name": "Maintenance at Bf Neustadt", "signal": "signal-n2", "renewal": "track-g3", "year": 2026}
+      ],
+      "scenarios": [
+        {
+          "id": "track-closed",
+          "name": "Track G2 closed",
+          "description": "Track G2 at platform 2 is closed for half an hour, as for a repair: no train stops there, track G3 runs as usual.",
+          "steps": [
+            {"at": 0, "start": {"id": "g2-closed", "type": "track-closure", "target": "platform-2:left", "params": {"minutes": 30}}, "message": "Track G2 is closed."}
+          ]
+        }
+      ]
+    }
+  ],
   "view": {
     "image": "../media/ebl-neustadt.jpg",
     "ortho": {"image": "../media/ebl-neustadt-ortho.jpg", "bounds_mm": [-2400, -70, 3750, 650]}

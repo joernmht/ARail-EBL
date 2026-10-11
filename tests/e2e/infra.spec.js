@@ -4,7 +4,7 @@
 // Simulation, and the tabs on a phone.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
+const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
 
 function trackErrors(page) {
   const errors = [];
@@ -127,9 +127,9 @@ test("a fault on the layout: the van drives out, the station's trains are distur
 
 test("adding infrastructure to a layout from Settings → Simulation", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/app/?layout=../layouts/ebl-lab.json#simulate");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#simulate");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/?layout=../layouts/ebl-lab.json#simulate");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#simulate");
   await page.waitForFunction(() => window.__arail?.world.objects.length, null, { timeout: 30_000 });
   await expect(page.locator("#tab-infra")).toBeHidden();
   await page.locator("#infraAdd").click();

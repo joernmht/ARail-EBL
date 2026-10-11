@@ -262,7 +262,7 @@ export const OPERATIONS = [
   {
     id: "ops-world", group: "operations", title: "Rail operations on the layout",
     summary: "The engine on the world's clock: its trains at the platforms (docks in mode plan), the boards, crews walking to the depot, the depot's units, the Operations tab.",
-    files: ["web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/index.js", "web/app/operations.js"],
+    files: ["web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/index.js", "web/game/operations.js"],
     classes: [
       {
         name: "OperationsSimulation", file: "web/arail/ops/simulation.js", kind: "class", extends: "Simulation", role: "The engine in the world; the services' planner of its platforms.",

@@ -20,8 +20,8 @@ import { CD, OVERLAY, grey, rgba, shade } from "../core/colors.js";
 import { BuildingBase, Frame, TONES, axes, capacityFor, gableRoof } from "../objects/building-kit.js";
 import { GENERATIONS } from "./catalog.js";
 
-/** The layout's infrastructure simulation (if it has one). */
-const infraSim = (world) => world.simulations?.find((s) => s.constructor.type === "infrastructure") ?? null;
+/** What tells the assets' state: the layout's infrastructure simulation, or its maintenance story (story.js). */
+const infraSim = (world) => world.simulations?.find((s) => s.active && typeof s.assetView === "function") ?? null;
 
 const STEEL = "#7d858f", DARK = "#2b2f36", CONCRETE = "#b9b5ac", RED = "#d20f41", WHITE = "#f4f4f2", YELLOW = "#ffc700";
 
@@ -129,7 +129,7 @@ export class AssetObject extends LayoutObject {
 
   drawModel(view, g) {}
 
-  /** The asset's state as the infrastructure simulation knows it (or null). */
+  /** The asset's state as the infrastructure simulation (or the maintenance story) shows it, or null. */
   state() {
     return infraSim(this.world)?.assetView?.(this.id) ?? null;
   }
@@ -151,7 +151,7 @@ export class Signal extends AssetObject {
       ...box(frame, -0.18, -0.32, 0.18, 0.32, 4.2, 5.7, { side: DARK, top: DARK }),
     ];
     solid(view, frame, faces, 0, 0, 2);
-    const lamp = st?.fault ? CD.rot : st ? "#3ed37a" : "#3ed37a";
+    const lamp = st?.fault ? CD.rot : "#3ed37a";
     const p = frame.at(-0.2, 0, 5.2);
     view.glow(p, this.mm(0.8), lamp, 0.9);
     const q = [frame.at(-0.19, -0.12, 5.05), frame.at(-0.19, 0.12, 5.05), frame.at(-0.19, 0.12, 5.35), frame.at(-0.19, -0.12, 5.35)];

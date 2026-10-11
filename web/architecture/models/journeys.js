@@ -6,7 +6,7 @@ export const JOURNEYS = [{
   id: "journeys", group: "journeys", title: "Journeys: travellers with travel plans",
   summary: "Hand-made travellers, each with a start, an aim and a chosen plan (walks, buses, trains with a change), follow it through the passenger simulation; their trains come from the journeys' timetable or from the rail operations.",
   description: "The planner works in clock minutes: walks over the sidewalks, bus connections of the bus lines (direct or with one change), trains of the timetable direct or with one change at the station, keeping the transfer time. A traveller waits at the stop as a passenger that only takes its line (or its train), rides in the bus's riders or on the train, and beyond the layout along the timetable. A missed or cancelled train: the next one of the same line. Without rail operations the journeys run the trains at the platforms themselves (TimetableRail as the services' planner); with them, OperationsRail reads the operations' trips.",
-  files: ["web/arail/journeys/index.js", "web/arail/journeys/rail.js", "web/arail/journeys/planner.js", "web/arail/journeys/simulation.js", "web/app/journeys.js"],
+  files: ["web/arail/journeys/index.js", "web/arail/journeys/rail.js", "web/arail/journeys/planner.js", "web/arail/journeys/simulation.js", "web/game/journeys.js"],
   classes: [
     {
       name: "JourneysSimulation", file: "web/arail/journeys/simulation.js", kind: "class", extends: "Simulation", role: "The travellers; as the services' planner it also runs the trains.",
@@ -29,7 +29,7 @@ export const JOURNEYS = [{
     },
     { name: "OperationsRail", file: "web/arail/journeys/rail.js", kind: "class", role: "The rail operations' trips, read as the journeys' trips.", operations: ["trips(day)", "tripOf(vehicle)", "expected(trip, station, kind)"] },
     { name: "journeys", file: "web/arail/journeys/index.js", kind: "module", role: "Registration.", operations: ["journeysOf(world)", "registerJourneys(registry)"] },
-    { name: "JourneysPanel", file: "web/app/journeys.js", kind: "class", role: "The Journeys tab: make a traveller, choose a plan, follow it, results.", operations: ["render(el)", "update()", "addJourneys()"] },
+    { name: "JourneysPanel", file: "web/game/journeys.js", kind: "class", role: "The game page's Journeys tab: make a traveller, choose a plan, follow it, results.", operations: ["render(el)", "update()", "addJourneys()"] },
   ],
   relations: [
     { from: "JourneysSimulation", to: "Traveller", kind: "composes", label: "travellers *" },

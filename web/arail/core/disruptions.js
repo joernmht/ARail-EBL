@@ -8,7 +8,8 @@
  *     type: "delay",                        // unique name
  *     label: "Delay",                       // for the app
  *     description: "...",
- *     targets: "rail" | "bus" | "any",      // which stop areas it can target
+ *     targets: "rail" | "bus" | "any" | "track",  // which stop areas it can target ("track": one
+ *                                           // track of a platform, its dock id, e.g. "platform-1:left")
  *     params: [ParamSpec],                  // editable parameters (like object params)
  *     duration(params) -> seconds | null,   // default duration (null = until stopped)
  *     appliesTo(area, d, world) -> bool,    // optional; default: target is "*" or the area's object
@@ -25,6 +26,8 @@
  *   frequency (factor)  vehicle frequency (> 1 = more often)
  *   mood      (per s)   extra change of passenger mood per second (negative = worse)
  *   messages  (strings) shown on signs and boards
+ * A disruption whose target is one track of a stop (a dock) acts on the vehicles at that track
+ * only; the stop shows its messages.
  * @module arail/core/disruptions
  */
 import { OVERLAY, PALETTE, rgba, shade } from "./colors.js";
@@ -101,7 +104,25 @@ export const BUILTIN_DISRUPTIONS = [
     appliesTo: (area, d) => area.kind === "rail" && (d.target === "*" || area.owner?.id === d.target),
     effects: (d, area, world) => ({ hold: true, mood: -0.025, messages: [`Signal failure${remaining(d, world)}`] }),
   },
+  {
+    type: "track-closure",
+    label: "Track closure",
+    description: "One track at a platform is closed, for a fault or for construction work: no train stops there; the platform's other track runs as usual.",
+    targets: "track",
+    params: [minutes("minutes", 30)],
+    duration: (p) => p.minutes * 60,
+    appliesTo: (area, d) => area.kind === "rail" && !!dockOf(area, d.target),
+    effects: (d, area, world) => ({ closed: true, messages: [`${dockOf(area, d.target)?.label ?? "Track"} closed${remaining(d, world)}`] }),
+    draw(view, d, world) {
+      for (const area of affectedAreas(d, world)) drawClosedTrack(view, area, dockOf(area, d.target));
+    },
+  },
 ];
+
+/** The dock (track) of a stop area with this id, or null. */
+export function dockOf(area, id) {
+  return area?.docks?.find((k) => k.id === id) ?? null;
+}
 
 /** Stop areas affected by a disruption. */
 export function affectedAreas(d, world) {
@@ -112,6 +133,21 @@ function appliesTo(d, area, world) {
   if (d.def.appliesTo) return d.def.appliesTo(area, d, world);
   if (d.def.targets && d.def.targets !== "any" && area.kind !== d.def.targets) return false;
   return d.target === "*" || area.owner?.id === d.target || area.id === d.target;
+}
+
+/** A closed track beside a platform: a red band along it with cross strokes. */
+function drawClosedTrack(view, area, dock) {
+  if (!dock) return;
+  const t = (dock.side ?? 1) * (area.W / 2 + 1.75);
+  const n = Math.max(2, Math.round(area.L / 6));
+  view.ribbon([area.toLayout(0, t), area.toLayout(area.L, t)], view.m(3.2), { fill: rgba(OVERLAY.danger, 0.3), order: 20 });
+  const hatch = { stroke: rgba(OVERLAY.danger, 0.85), width: 2, order: 21 };
+  view.line([area.toLayout(0, t), area.toLayout(area.L, t)], { ...hatch, width: 2.4 });
+  for (let i = 0; i < n; i++) {
+    const s = (area.L * (i + 0.5)) / n;
+    view.line([area.toLayout(s - 1.2, t - 1.4), area.toLayout(s + 1.2, t + 1.4)], hatch);
+    view.line([area.toLayout(s - 1.2, t + 1.4), area.toLayout(s + 1.2, t - 1.4)], hatch);
+  }
 }
 
 function drawHatch(view, area) {
@@ -176,25 +212,34 @@ export class DisruptionManager {
     this._cache.clear();
   }
 
-  /** Merged effects of all active disruptions on a stop area (cached per step). */
-  effectsFor(area) {
-    let fx = this._cache.get(area.id);
+  /**
+   * Merged effects of all active disruptions on a stop area (cached per step). A disruption of one
+   * track of the stop (its target is one of the area's docks, e.g. "platform-1:left") acts on that
+   * track only (`dock`); the stop as a whole only shows its messages.
+   * @param {import("./stops.js").StopArea} area
+   * @param {object|null} [dock] one of the area's docks (the vehicles at it), or null for the stop
+   */
+  effectsFor(area, dock = null) {
+    const key = dock ? `${area.id}|${dock.id}` : area.id;
+    let fx = this._cache.get(key);
     if (fx) return fx;
     fx = { closed: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, mood: 0, messages: [], disruptions: [] };
     for (const d of this.active) {
       if (!appliesTo(d, area, this.world)) continue;
       const e = d.def.effects ? d.def.effects(d, area, this.world) || {} : {};
-      fx.closed ||= !!e.closed;
-      fx.hold ||= !!e.hold;
-      fx.cancel ||= !!e.cancel;
-      fx.leave ||= !!e.leave;
-      if (e.demand != null) fx.demand *= e.demand;
-      if (e.frequency != null) fx.frequency *= e.frequency;
-      if (e.mood) fx.mood += e.mood;
+      if (!dockOf(area, d.target) || dock?.id === d.target) {
+        fx.closed ||= !!e.closed;
+        fx.hold ||= !!e.hold;
+        fx.cancel ||= !!e.cancel;
+        fx.leave ||= !!e.leave;
+        if (e.demand != null) fx.demand *= e.demand;
+        if (e.frequency != null) fx.frequency *= e.frequency;
+        if (e.mood) fx.mood += e.mood;
+      }
       if (e.messages) fx.messages.push(...e.messages);
       fx.disruptions.push(d);
     }
-    this._cache.set(area.id, fx);
+    this._cache.set(key, fx);
     return fx;
   }
 

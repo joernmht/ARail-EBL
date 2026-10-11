@@ -1,36 +1,29 @@
-// ARail app: camera/photo/video in, markers tracked, virtual layout and simulations drawn on top.
+// ARail's pages with a stage: camera/photo/video in, markers tracked, virtual layout and simulations
+// drawn on top, and the panels. The app (main.js) shows the modules as stories to click through; the
+// game page (../game/main.js) has the games and exercises in the same tabs. A page says which panels
+// its tabs have, which simulation shows each module tab, and its examples (see `Page`).
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
-import { InfraPanel } from "./infra.js";
-import { JourneysPanel } from "./journeys.js";
-import { OperationsPanel } from "./operations.js";
 import { Panels } from "./panels.js";
-import { TerminalPanel } from "./terminal.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
-const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
 /**
- * Example layouts; `home`: the layout it is a module of (its View panel shows that layout's
- * modules); `image` or `video`: opened with this photo or clip instead of the layout's own photo;
- * `tab`: the tab shown.
+ * A page with a stage (the app, the game page):
+ * - `id`: "app" or "game" (the game page keeps what it remembers in the browser apart);
+ * - `panels`: the panel of each module tab (`terminal`, `ops`, `infra`, `journeys`, …), made for the
+ *   app: `(app) => panel` with `render(el)`, `update()` and optionally `syncWidth()`, `key(e)`;
+ * - `shows`: the simulation type that shows each module tab (the tab is there while the layout has it);
+ * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, home?}` (`home`: the layout
+ *   it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the tab shown), the
+ *   first one opened when nothing else was;
+ * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on.
+ * @typedef {{id: string, panels: Object<string, (app: App) => object>, shows: Object<string, string>,
+ *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>}} Page
  */
-const EXAMPLES = [
-  { id: "lab", label: "Example: Beta 0.1 (EBL lab photo)", layout: LAB },
-  { id: "neustadt", label: "Example: Bf Neustadt", layout: NEUSTADT },
-  { id: "neustadt-video", label: "Example: Bf Neustadt, video", layout: NEUSTADT, video: "../media/ebl-station-trains.mp4" },
-  { id: "crane-terminal", label: "Example: terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal" },
-  { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal" },
-  { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
-];
-/** Examples that are a module (layer) of another example: opened with that module on. */
-const EXAMPLE_LAYERS = {
-  operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" }, journeys: { layout: LAB, layer: "journeys" },
-};
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
-const TABS = ["view", "build", "terminal", "ops", "infra", "journeys", "disrupt", "settings"];
 /** Former tabs that are views of the Settings tab now (their links keep working): tab → [tab, view]. */
 const TAB_VIEWS = { simulate: ["settings", "simulate"], control: ["settings", "control"] };
 /** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
@@ -55,8 +48,14 @@ const APP_MODULES = [
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
-class App {
-  constructor() {
+export class App {
+  /** @param {Page} page */
+  constructor(page) {
+    this.page = page;
+    /** The tabs of the page, in their order (View, Build, the modules' tabs, Disruptions, Settings). */
+    this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
+    /** The panels of the module tabs, by tab. */
+    this.tabPanels = {};
     this.canvas = $("#stage");
     this.ctx = this.canvas.getContext("2d");
     this.proc = document.createElement("canvas");
@@ -107,15 +106,17 @@ class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
-    this.terminal = new TerminalPanel(this);
-    this.operations = new OperationsPanel(this);
-    this.infra = new InfraPanel(this);
-    this.journeys = new JourneysPanel(this);
+    for (const [tab, make] of Object.entries(this.page.panels)) this.tabPanels[tab] = make(this);
+    /** The panels by their module: the terminal's picking, the journeys' following and Settings use them. */
+    this.terminal = this.tabPanels.terminal ?? null;
+    this.operations = this.tabPanels.ops ?? null;
+    this.infra = this.tabPanels.infra ?? null;
+    this.journeys = this.tabPanels.journeys ?? null;
     this._wireUi();
     this._wireEvents();
     // ?example=: an example with its own photo or clip (a link from the project page)
-    const example = EXAMPLES.find((x) => x.id === params.get("example")) || null;
-    const layout = example?.layout || params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
+    const example = this.page.examples.find((x) => x.id === params.get("example")) || null;
+    const layout = example?.layout || params.get("layout") || storage.get(this.key("lastLayout")) || this.page.examples[0].layout;
     const image = params.get("image");
     const media = !image && (example?.image || example?.video) ? example : null;
     const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
@@ -158,7 +159,7 @@ class App {
 
   _wireUi() {
     // tabs
-    for (const name of TABS) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
+    for (const name of this.tabNames) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
     $(".tabs").addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       const tabs = this.tabs(), i = tabs.indexOf(this.activeTab) + (e.key === "ArrowRight" ? 1 : -1);
@@ -184,7 +185,7 @@ class App {
       });
     }
     const sel = $("#exampleSelect");
-    mount(sel, h("option", { value: "" }, "Layouts…"), EXAMPLES.map((x) => h("option", { value: x.id }, x.label)));
+    mount(sel, h("option", { value: "" }, "Layouts…"), this.page.examples.map((x) => h("option", { value: x.id }, x.label)));
     sel.addEventListener("change", async () => {
       if (!sel.value) return;
       const id = sel.value;
@@ -208,16 +209,15 @@ class App {
     ev.on("scenario.message", (e) => toast(e.text));
     ev.on("disruption.started", (e) => {
       const d = e.disruption;
-      // a simulation's own disruptions (the infrastructure's faults at the station) speak for themselves
-      if (d.def.hidden) return;
+      // a simulation's own disruptions (the infrastructure's faults at the station) and a story's speak for themselves
+      if (d.def.hidden || d.id.startsWith("story:")) return;
       // disruptions of the rail operations say what they did ("3 drivers call in sick: …")
       if (typeof d.result === "string") toast(`${d.def.label}: ${d.result}.`);
-      else toast(`${d.def.label} started${d.target !== "*" ? ` at ${this.world.getObject(d.target)?.name || d.target}` : ""}.`);
+      else toast(`${d.def.label} started${d.target !== "*" ? ` at ${this.world.getObject(d.target)?.name || this._trackName(d.target) || d.target}` : ""}.`);
     });
-    ev.on("disruption.ended", (e) => !e.disruption.def.hidden && toast(`${e.disruption.def.label} ended.`));
-    // faults of the infrastructure: when they become known and when they are repaired
-    ev.on("infra.fault", (e) => toast(`Fault: ${e.asset.name} (${e.asset.t.effect.what}).`, 4000, { minor: true }));
-    ev.on("infra.fixed", (e) => toast(`Repaired: ${e.asset.name}.`, 3000, { minor: true }));
+    ev.on("disruption.ended", (e) => !e.disruption.def.hidden && !e.disruption.id.startsWith("story:") && toast(`${e.disruption.def.label} ended.`));
+    // a story went on (Play, a clicker, a scenario): its tab shows the new step at once
+    ev.on("story.step", () => this.storyPanel()?.stepped());
     // journeys: a traveller at its aim
     ev.on("journeys.traveller.arrived", (e) => {
       const late = e.delay >= 1 ? `, ${e.delay} min late` : e.delay <= -1 ? `, ${-e.delay} min early` : ", on time";
@@ -248,6 +248,11 @@ class App {
     if (tag === "input" || tag === "select" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
     // Space and Enter activate focused buttons and links; they are not shortcuts there
     if ((e.key === " " || e.key === "Enter") && e.target.closest?.("button, a, summary, label, [role=button], [role=tab]")) return;
+    // a presenter's clicker (Page Down, Page Up) goes through the story of the tab shown
+    if (this.storyPanel()?.key(e)) {
+      e.preventDefault();
+      return;
+    }
     if (this.flyover.key(e)) {
       e.preventDefault();
       return;
@@ -272,8 +277,8 @@ class App {
       else if (area && area.docks.length && area.docks.every((d) => w.services.docks.get(d.id)?.mode === "plan")) toast(`${area.owner.name}: its trains run to the timetable of the rail operations.`);
       else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
-      if (this.terminal.cancelPick()) return;
-      if (this.activeTab === "terminal" && this.terminal.selected) this.terminal.select(null);
+      if (this.terminal?.cancelPick()) return;
+      if (this.activeTab === "terminal" && this.terminal?.selected) this.terminal.select(null);
       else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
     } else if ((e.key === "Delete" || e.key === "Backspace") && this.activeTab === "build" && this.editor.selected) {
@@ -286,25 +291,28 @@ class App {
   }
 
   /**
-   * The tabs shown: View and Settings always; the tab of a module when it is on: Build with the module
-   * Build (on unless switched off), Terminal when the layout has a container terminal, Operations with
-   * rail operations, Infrastructure with an infrastructure simulation, Journeys with journeys,
-   * Disruptions with the module Disruptions.
+   * The tabs shown: View and Settings always; Build and Disruptions with the app's modules of those
+   * names (Build on unless switched off); the tab of a module when the layout has the simulation the
+   * page shows it for (the app: Infrastructure with the maintenance story; the game page: with the
+   * infrastructure game).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const shown = {
-      build: this.appModuleOn("build"),
-      terminal: has("terminal"), ops: has("operations"), infra: has("infrastructure"), journeys: has("journeys"),
-      disrupt: this.appModuleOn("disruptions"),
-    };
-    return TABS.filter((t) => shown[t] ?? true);
+    const shown = { view: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
+    // a module tab without a panel on this page is not shown
+    for (const [tab, type] of Object.entries(this.page.shows)) shown[tab] = !!this.tabPanels[tab] && has(type);
+    return this.tabNames.filter((t) => shown[t]);
+  }
+
+  /** The key of something the page remembers in the browser ("lastLayout": the app's "arail.lastLayout", the game page's "arail.game.lastLayout"). */
+  key(name) {
+    return this.page.id === "app" ? `arail.${name}` : `arail.${this.page.id}.${name}`;
   }
 
   /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
   _syncTabs() {
     const shown = this.tabs();
-    for (const t of TABS) $(`#tab-${t}`).hidden = !shown.includes(t);
+    for (const t of this.tabNames) $(`#tab-${t}`).hidden = !shown.includes(t);
     if (shown.includes(this.activeTab)) return false;
     const next = (FEATURE_TABS[this.activeTab] || []).find((t) => shown.includes(t));
     this.selectTab(next || "view");
@@ -321,7 +329,7 @@ class App {
     // another tab opens at its top: the panels share one scrolling column (on a phone, the page)
     if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
-    for (const t of TABS) {
+    for (const t of this.tabNames) {
       $(`#tab-${t}`).setAttribute("aria-selected", t === name ? "true" : "false");
       $(`#tab-${t}`).tabIndex = t === name ? 0 : -1;
       $(`#panel-${t}`).hidden = t !== name;
@@ -329,11 +337,11 @@ class App {
     this._scrollTabIntoView($(`#tab-${name}`));
     this.canvas.classList.toggle("editing", name === "build" || name === "terminal");
     if (name !== "build" && this.editor.placing) this.editor.cancel();
-    if (name !== "terminal") this.terminal.cancelPick();
-    this.terminal.syncHighlight();
-    this.operations.syncWidth();
-    if (name === "infra") this.infra.syncWidth();
-    this.journeys.syncWidth();
+    if (name !== "terminal") this.terminal?.cancelPick();
+    this.terminal?.syncHighlight();
+    // a wide panel (the tables of a game) only while its tab is shown
+    document.querySelector(".main")?.classList.remove("wide");
+    this.tabPanels[name]?.syncWidth?.();
     this.renderPanel(name);
     // Settings is linked by its view (#simulate, #control), as the tabs were before
     history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name}`);
@@ -365,16 +373,25 @@ class App {
     else if (right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth + 16;
   }
 
+  /** "Platform 1, Track G2" for the id of a platform's track (a dock), or null. */
+  _trackName(id) {
+    for (const a of this.world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;
+    return null;
+  }
+
+  /** The panel of the module tab shown when it tells a story (the app's Infrastructure, …), or null. */
+  storyPanel() {
+    const p = this.tabPanels[this.activeTab];
+    return typeof p?.stepped === "function" ? p : null;
+  }
+
   renderPanel(name) {
     const el = $(`#panel-${name}`);
     if (name === "view") this.panels.renderView(el);
     else if (name === "build") this.editor.render(el);
     else if (name === "settings") this.panels.renderSettings(el);
-    else if (name === "terminal") this.terminal.render(el);
-    else if (name === "ops") this.operations.render(el);
-    else if (name === "infra") this.infra.render(el);
-    else if (name === "journeys") this.journeys.render(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
+    else this.tabPanels[name]?.render(el);
   }
 
   /** Periodic refresh of live figures in the visible panel. */
@@ -383,10 +400,7 @@ class App {
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
     else if (t === "settings") this.panels.updateSettings();
-    else if (t === "terminal") this.terminal.update();
-    else if (t === "ops") this.operations.update();
-    else if (t === "infra") this.infra.update();
-    else if (t === "journeys") this.journeys.update();
+    else if (this.tabPanels[t]) this.tabPanels[t].update();
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
@@ -412,7 +426,7 @@ class App {
    * module on), with its own photo or clip if it has one, and its tab.
    */
   async openExample(id) {
-    const x = EXAMPLES.find((e) => e.id === id);
+    const x = this.page.examples.find((e) => e.id === id);
     if (x && (x.image || x.video)) {
       this.stopLive();
       // the photo or clip shown until now belongs to the previous layout
@@ -422,7 +436,7 @@ class App {
     } else if (x) await this.openLayout(x.layout);
     if (x?.tab && this.tabs().includes(x.tab)) this.selectTab(x.tab);
     if (x) return;
-    const l = EXAMPLE_LAYERS[id];
+    const l = this.page.exampleLayers[id];
     if (!l) return;
     // the layout is open already: switch the module on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.chooseModules([...this.layersOn(), l.layer]);
@@ -442,7 +456,7 @@ class App {
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
   moduleOpening(exampleId) {
-    const x = EXAMPLES.find((e) => e.id === exampleId), id = EXAMPLE_LAYERS[exampleId]?.layer;
+    const x = this.page.examples.find((e) => e.id === exampleId), id = this.page.exampleLayers[exampleId]?.layer;
     return this.world.layers().find((l) => !l.enabled && (l.id === id || (x && l.layout && new URL(l.layout, this.layoutUrl || location.href).href === new URL(x.layout, location.href).href))) || null;
   }
 
@@ -583,7 +597,7 @@ class App {
     for (const l of fileLayers) if (l.layout) storage.set(`arail.moduleHome:${new URL(l.layout, absolute).href}`, moduleHomeRecord({ url: absolute, name: json.name || "Layout", layers: fileLayers }, l.id));
     this.layoutUrl = absolute;
     this.originalLayout = json;
-    storage.set("arail.lastLayout", url);
+    storage.set(this.key("lastLayout"), url);
     this.moduleHome = await this._moduleHome(absolute);
     // layers: as asked for, else as last time, else as the file has them
     if (layers) storage.set(this._layersKey(), layers);
@@ -640,7 +654,7 @@ class App {
   async _moduleHome(url) {
     const saved = storage.get(`arail.moduleHome:${url}`);
     if (saved?.url && Array.isArray(saved.modules)) return saved;
-    const x = EXAMPLES.find((e) => e.home && new URL(e.layout, location.href).href === url);
+    const x = this.page.examples.find((e) => e.home && new URL(e.layout, location.href).href === url);
     if (!x) return null;
     try {
       const homeUrl = new URL(x.home, location.href).href;
@@ -1088,7 +1102,7 @@ class App {
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
-      this.terminal.drawOverlay(ctx, view);
+      this.terminal?.drawOverlay(ctx, view);
       this.lastView = view;
     }
     if (this.display.markers) this._drawMarkers(ctx);
@@ -1186,11 +1200,9 @@ class App {
       const n = ops.tripsRunning().size, failed = [...ops.units.values()].filter((u) => u.status === "failed").length;
       chips.push([failed ? "warn" : "info", `Operations · ${n} train${n === 1 ? "" : "s"}${failed ? ` · ${failed} unit${failed === 1 ? "" : "s"} failed` : ""}`]);
     }
-    const infra = ARail.infraOf(this.world)?.engine;
-    if (infra) {
-      const faults = [...infra.faults.values()].filter((f) => f.knownAt <= infra.now).length;
-      const out = infra.people.filter((p) => ["driving", "repairing", "working", "flying"].includes(infra.activity(p).state)).length;
-      chips.push([faults ? "warn" : "info", `Infrastructure · ${infra.dateText()}${faults ? ` · ${faults} fault${faults === 1 ? "" : "s"}` : ""}${out ? ` · ${out} out` : ""}`]);
+    for (const story of this.world.simulations.filter((x) => x instanceof ARail.Story && x.active)) {
+      const st = story.state();
+      if (st.count) chips.push(["info", `${story.name} · step ${st.index + 1} of ${st.count}${st.playing ? " · playing" : ""}`]);
     }
     const journeys = ARail.journeysOf(this.world);
     if (journeys?.travellers.length) {
@@ -1245,5 +1257,3 @@ function moduleHomeRecord(home, module) {
   return { url: home.url, name: home.name, module, modules };
 }
 
-const app = new App();
-app.init();

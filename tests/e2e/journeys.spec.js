@@ -4,7 +4,7 @@
 // travellers kept with the layout, and the module offered in Settings → Simulation.
 import { expect, test } from "@playwright/test";
 
-const PATH = "/app/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
+const PATH = "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
 
 function trackErrors(page) {
   const errors = [];

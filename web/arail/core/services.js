@@ -201,7 +201,7 @@ export class ServiceManager {
   step(dt) {
     const effects = this.world.disruptions;
     for (const st of this.docks.values()) {
-      const fx = effects.effectsFor(st.dock.area);
+      const fx = effects.effectsFor(st.dock.area, st.dock);
       if (st.vehicle) this._advance(st, st.vehicle, dt, fx);
       if (st.mode !== "timetable") continue;
       // The timetable runs on while a vehicle is at the dock: the headway is the time between

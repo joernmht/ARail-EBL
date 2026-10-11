@@ -48,8 +48,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations, the step, the clock, layers, people, the registry and the event bus.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/clock.js", "web/arail/core/people.js"],
+    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people, the registry and the event bus.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -107,9 +107,9 @@ export const PACKAGES = [
   },
   {
     id: "infra", name: "infra", group: "framework", path: "web/arail/infra",
-    summary: "Infrastructure asset management over years: assets, faults, staff, inspections, projects through the HOAI phases.",
-    files: ["web/arail/infra/index.js", "web/arail/infra/catalog.js", "web/arail/infra/config.js", "web/arail/infra/network.js", "web/arail/infra/assets.js", "web/arail/infra/staff.js", "web/arail/infra/engine.js", "web/arail/infra/projects.js", "web/arail/infra/factory.js", "web/arail/infra/export.js", "web/arail/infra/simulation.js", "web/arail/infra/objects.js", "web/arail/infra/disruptions.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "ops", "sims"],
+    summary: "Infrastructure: the maintenance story to click through; the asset management game over years (assets, faults, staff, inspections, projects through the HOAI phases).",
+    files: ["web/arail/infra/index.js", "web/arail/infra/catalog.js", "web/arail/infra/config.js", "web/arail/infra/network.js", "web/arail/infra/assets.js", "web/arail/infra/staff.js", "web/arail/infra/engine.js", "web/arail/infra/projects.js", "web/arail/infra/factory.js", "web/arail/infra/export.js", "web/arail/infra/simulation.js", "web/arail/infra/objects.js", "web/arail/infra/disruptions.js", "web/arail/infra/story.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-disruptions", "core-drawing", "objects", "ops", "sims"],
   },
   {
     id: "journeys", name: "journeys", group: "framework", path: "web/arail/journeys",
@@ -131,9 +131,15 @@ export const PACKAGES = [
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
-    summary: "The app: sources, frame loop, HUD, the panels (Build, View, the modules' tabs, Disruptions, Settings), the flyover.",
-    files: ["web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/operations.js", "web/app/infra.js", "web/app/journeys.js"],
+    summary: "The app, an interactive presentation: sources, frame loop, HUD, the panels (Build, View, the modules' tabs with their stories, Disruptions, Settings), the flyover; its shell is the game page's too.",
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
+  },
+  {
+    id: "game", name: "game", group: "pages", path: "web/game",
+    summary: "The game page: the app's shell with the games and exercises in the modules' tabs (infrastructure asset management, rail operations, journeys, the full terminal).",
+    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js"],
+    uses: ["app", "api"], links: [["vendor", "script tags"]],
   },
   {
     id: "markers", name: "markers", group: "pages", path: "web/markers",
@@ -247,7 +253,7 @@ export const MODEL_GROUPS = [
   { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
   { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets, bus lines and cars." },
-  { id: "disruptions", name: "Disruptions and scenarios", intro: "What can go wrong, and timelines of it for exercises (the module Disruptions)." },
+  { id: "disruptions", name: "Disruptions, scenarios and stories", intro: "What can go wrong, timelines of it for exercises (the module Disruptions), and stories to click through (the app's module tabs)." },
   { id: "terminal", name: "Module: container terminal" },
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
@@ -278,6 +284,8 @@ export const EVENTS = [
   { name: "disruption.ended", from: ["web/arail/core/disruptions.js"], payload: "disruption", meaning: "A disruption expired or was stopped." },
   { name: "scenario.started", from: ["web/arail/core/scenarios.js"], payload: "scenario", meaning: "A scenario is played." },
   { name: "scenario.ended", from: ["web/arail/core/scenarios.js"], payload: "scenario", meaning: "A scenario ended." },
+  { name: "story.step", from: ["web/arail/core/story.js"], payload: "story, index, step", meaning: "A story went to a step (Next, Back, a jump, Play)." },
+  { name: "story.play", from: ["web/arail/core/story.js"], payload: "story, playing", meaning: "A story goes on by itself, or stops." },
   { name: "scenario.message", from: ["web/arail/core/scenarios.js", "web/arail/terminal/operations.js"], payload: "scenario, text", meaning: "A message for the stage (also a refused terminal request)." },
   { name: "vehicle.arriving", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "A train or bus comes in." },
   { name: "vehicle.arrived", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "It stands at its dock: doors open." },
@@ -361,6 +369,7 @@ export const REGISTRY = {
     { type: "terminal", class: "TerminalSimulation", file: "web/arail/terminal/operations.js", model: "terminal-operations" },
     { type: "operations", class: "OperationsSimulation", file: "web/arail/ops/simulation.js", model: "ops-world" },
     { type: "infrastructure", class: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", model: "infra-world" },
+    { type: "maintenance-story", class: "MaintenanceStory", file: "web/arail/infra/story.js", model: "infra-story" },
     { type: "journeys", class: "JourneysSimulation", file: "web/arail/journeys/simulation.js", model: "journeys" },
     { type: "road-traffic", class: "RoadTraffic", file: "web/plugins/road-traffic.js", model: "plugins", plugin: true },
   ],
@@ -414,6 +423,7 @@ export const REGISTRY = {
     dis("replacement-bus", "Rail replacement bus", "web/arail/core/disruptions.js", ["bus_terminal", "minutes"], "Trains cancelled; buses run more often from a bus terminal."),
     dis("crowd", "Crowd surge", "web/arail/core/disruptions.js", ["factor", "minutes"], "Many more passengers come."),
     dis("signal-failure", "Signal failure", "web/arail/core/disruptions.js", ["minutes"], "Trains held at the platforms."),
+    dis("track-closure", "Track closure", "web/arail/core/disruptions.js", ["minutes"], "One track of a platform closed: no train stops there; the other track runs."),
     dis("crew-sick", "Drivers call in sick", "web/arail/ops/disruptions.js", ["count", "notice_min"], "Sick calls to the operations' crew desk."),
     dis("unit-failure", "Unit failure", "web/arail/ops/disruptions.js", ["kind"], "A unit of a running train fails (hard or soft)."),
     dis("drivers-leave", "Drivers leave", "web/arail/ops/disruptions.js", ["count"], "Drivers leave the company."),

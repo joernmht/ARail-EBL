@@ -18,6 +18,13 @@ const MODULE_ICONS = {
 };
 /** The views of the Settings panel. */
 const SETTINGS_VIEWS = [["simulate", "Simulation"], ["control", "Control system"]];
+/** The icon of a module by the simulations of its layer. */
+const SIM_ICONS = { operations: "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys" };
+/** "Platform 1, Track G2" for the id of a platform's track (a dock, "platform-1:left"), or null. */
+const trackName = (world, id) => {
+  for (const a of world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;
+  return null;
+};
 
 export class Panels {
   constructor(app) {
@@ -92,7 +99,7 @@ export class Panels {
   _moduleBox(m) {
     const id = `module-${m.id}`;
     const state = m.enabled ? "On" : m.exclusive ? "Alone" : "Off";
-    const icon = m.icon ?? (m.layout ? "layout" : ["operations", "infrastructure", "journeys"].find((t) => m.simulations?.includes(t)) ?? "module");
+    const icon = m.icon ?? (m.layout ? "layout" : Object.entries(SIM_ICONS).find(([t]) => m.simulations?.includes(t))?.[1] ?? "module");
     const box = h("button", {
       type: "button", class: `module${m.exclusive ? " exclusive" : ""}`, id, "aria-pressed": m.enabled ? "true" : "false",
       "aria-labelledby": `${id}-name`, "aria-describedby": m.description ? `${id}-text` : null,
@@ -250,9 +257,6 @@ export class Panels {
     this.townBox = h("div", { class: "town-stats" });
     const app = this.app, s = w.settings;
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
-    const hasOps = w.simulations.some((x) => x.constructor.type === "operations");
-    const hasInfra = w.simulations.some((x) => x.constructor.type === "infrastructure");
-    const hasJourneys = w.simulations.some((x) => x.constructor.type === "journeys");
     const hasTerminal = w.simulations.some((x) => x.constructor.type === "terminal");
     /** A module (layer) of this layout (off) that has a simulation of this type. */
     const layerWith = (type) => w.layers().find((l) => !l.enabled && l.simulations.includes(type)) || null;
@@ -261,6 +265,20 @@ export class Panels {
       const l = layerWith(type);
       return l ? h("button", { class: "btn", type: "button", id, onclick: () => app.chooseModules([...app.layersOn(), l.id]) }, `Switch on the module “${l.name}”`)
         : h("button", { class: "btn", type: "button", id, onclick: () => app.openExample(example) }, "Open the example");
+    };
+    /**
+     * A module of the page's tab (rail operations, infrastructure, journeys) that this layout does not
+     * have: what its panel says of it (`settingsHint`), switching on the module or opening the example,
+     * and adding it to the layout where its panel can (the game page).
+     */
+    const moduleSection = (tab, title, openId, example, add, addId) => {
+      const panel = app.tabPanels[tab], type = app.page.shows[tab];
+      if (!panel || !type || w.simulations.some((x) => x.constructor.type === type)) return null;
+      return section(title,
+        h("p", { class: "hint" }, panel.settingsHint ?? ""),
+        h("div", { class: "row" },
+          moduleButton(type, openId, example),
+          typeof panel[add] === "function" ? h("button", { class: "btn", type: "button", id: addId, onclick: () => panel[add]() }, "Add to this layout") : null));
     };
     mount(el,
       section("Time of day",
@@ -292,21 +310,9 @@ export class Panels {
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
       section("Stops", this.board, h("p", { class: "hint" }, "Keys 1–9 send a vehicle to the stop with that position in the list.")),
-      hasOps ? null : section("Rail operations",
-        h("p", { class: "hint" }, "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups."),
-        h("div", { class: "row" },
-          moduleButton("operations", "opsOpenExample", "operations"),
-          h("button", { class: "btn", type: "button", id: "opsAdd", onclick: () => app.operations.addOperations() }, "Add to this layout"))),
-      hasInfra ? null : section("Infrastructure",
-        h("p", { class: "hint" }, "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab."),
-        h("div", { class: "row" },
-          moduleButton("infrastructure", "infraOpenExample", "infrastructure"),
-          h("button", { class: "btn", type: "button", id: "infraAdd", onclick: () => app.infra.addInfrastructure() }, "Add to this layout"))),
-      hasJourneys ? null : section("Journeys",
-        h("p", { class: "hint" }, "An exercise: instead of a town full of generated people, every attendee makes one traveller with a start and an aim and chooses a travel plan with transfers, on foot, by bus and by train; then all follow their travellers on the layout. The Journeys tab makes the travellers and compares planned and real arrivals."),
-        h("div", { class: "row" },
-          moduleButton("journeys", "journeysOpenExample", "journeys"),
-          h("button", { class: "btn", type: "button", id: "journeysAdd", onclick: () => app.journeys.addJourneys() }, "Add to this layout"))),
+      moduleSection("ops", "Rail operations", "opsOpenExample", "operations", "addOperations", "opsAdd"),
+      moduleSection("infra", "Infrastructure", "infraOpenExample", "infrastructure", "addInfrastructure", "infraAdd"),
+      moduleSection("journeys", "Journeys", "journeysOpenExample", "journeys", "addJourneys", "journeysAdd"),
       hasTerminal ? null : section("Container terminal",
         h("p", { class: "hint" }, "Container trains, trucks and barges, gantry cranes and reach stackers moving containers between them and the yard; model wagons with deck cards. It works with the objects of the group Terminal in Build. The Terminal tab moves the containers."),
         h("div", { class: "row" },
@@ -410,16 +416,19 @@ export class Panels {
   renderNewDisruption() {
     if (!this.newDisruption) return;
     const w = this.world, reg = w.registry, draft = this.disruptionDraft;
-    // disruptions of a simulation the layout does not have are not offered, nor those a simulation starts itself (`hidden`)
-    const offered = [...reg.disruptions.values()].filter((d) => !d.hidden && (!d.requires || w.simulations.some((s) => s.constructor.type === d.requires)));
+    // disruptions of a simulation the layout does not have are not offered, nor those a simulation starts itself (`hidden`),
+    // nor closures of a platform's track on a layout without platforms
+    const tracks = w.stopAreas().some((a) => a.kind === "rail" && a.docks.length);
+    const offered = [...reg.disruptions.values()].filter((d) => !d.hidden && (!d.requires || w.simulations.some((s) => s.constructor.type === d.requires)) && (d.targets !== "track" || tracks));
     const def = offered.find((d) => d.type === draft.type) || offered[0];
     if (!def) return;
     draft.type = def.type;
-    const areas = w.stopAreas().filter((a) => !def.targets || def.targets === "any" || a.kind === def.targets);
-    // one entry per stop object: a bus stop on both sides of the street has two stop areas
-    const owners = new Map(areas.map((a) => [a.owner.id, a.owner.name]));
-    const targets = [["*", def.targets === "rail" ? "all platforms" : "all stops"], ...owners];
-    if (!targets.some(([v]) => v === draft.target)) draft.target = "*";
+    // "track": one track of a platform (its dock); else one entry per stop object (a bus stop on both sides of the street has two stop areas)
+    const targets = def.targets === "track"
+      ? w.stopAreas().filter((a) => a.kind === "rail").flatMap((a) => a.docks.map((k) => [k.id, `${a.owner.name}, ${k.label}`]))
+      : [["*", def.targets === "rail" ? "all platforms" : "all stops"],
+        ...new Map(w.stopAreas().filter((a) => !def.targets || def.targets === "any" || a.kind === def.targets).map((a) => [a.owner.id, a.owner.name]))];
+    if (!targets.some(([v]) => v === draft.target)) draft.target = targets[0][0];
     const params = {};
     for (const p of def.params || []) params[p.key] = draft.params[p.key] ?? p.default;
     mount(this.newDisruption,
@@ -459,7 +468,7 @@ export class Panels {
     morph(this.activeList,
       h("h2", {}, "Active ", h("span", { class: "count" }, act.length ? `(${act.length})` : "")),
       act.length ? act.map((d) => {
-        const target = d.target === "*" ? "everywhere" : w.getObject(d.target)?.name || d.target;
+        const target = d.target === "*" ? "everywhere" : w.getObject(d.target)?.name || trackName(w, d.target) || d.target;
         const left = d.until == null ? "until stopped" : `${Math.max(0, Math.ceil((d.until - w.time) / 60))} min left (simulated)`;
         return h("div", { class: "disruption", "data-id": d.id }, h("strong", {}, `${d.def.label} · ${target}`), h("small", {}, left),
           h("button", { class: "btn small", type: "button", onclick: () => w.disruptions.stop(d.id) }, "Stop"));

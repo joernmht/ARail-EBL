@@ -7,6 +7,9 @@ at short notice (a driver calls in sick, a unit breaks down), and **compare setu
 tests: who does the maintenance and how the roles are split, how many drivers are on stand-by,
 how much time the duties leave to change trains.
 
+The rail operations and their **Operations** tab are on the **game page** (`game/`); the app keeps
+to stories to click through (see [Getting started](getting-started.md#the-game-page)).
+
 What is simulated:
 
 - **Rolling stock** with maintenance cycles (inspections by kilometres and days) and random
@@ -26,12 +29,12 @@ What is simulated:
 
 The operations are a simulation (`{"type": "operations"}` in the layout's `simulations`). Their
 engine knows nothing of the layout's geometry: it also runs without the app, as fast as it can,
-for comparisons over weeks (in the app's Compare view or with [`tools/ops-compare.mjs`](#on-the-command-line)).
+for comparisons over weeks (in the game page's Compare view or with [`tools/ops-compare.mjs`](#on-the-command-line)).
 
 ## The example
 
-The module **Rail operations** of the lab example (View → Modules, or Settings → Simulation → Rail operations →
-Switch on the module, or `app/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
+The module **Rail operations** of the lab example on the game page (View → Modules, or Settings → Simulation →
+Rail operations → Switch on the module, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
 - the station **Bahnhof** with platforms 1 and 2, and four lines out to stations beyond the
@@ -221,7 +224,7 @@ stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty 
 
 ## The Operations tab
 
-With rail operations on the layout, the app has an **Operations** tab (`#ops`). Its views:
+With rail operations on the layout, the game page has an **Operations** tab (`#ops`). Its views:
 
 - **Today**: trains run and cancelled, punctuality, units available, crews on duty, penalties of
   the day; what happened (newest first); buttons for short-term changes (*A driver calls in sick*,
