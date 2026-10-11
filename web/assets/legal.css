@@ -1,0 +1,14 @@
+/* The legal notice (impressum/) and the privacy policy (datenschutz/): text pages with the tokens of app.css. */
+.legal { max-width: 75ch; margin: 0 auto; padding: 24px 16px 48px; font-size: 1rem; line-height: 1.6; }
+.legal h1 { margin: 0 0 4px; font-size: 1.6rem; font-stretch: 80%; }
+.legal h2 { margin: 32px 0 6px; font-size: 1.15rem; }
+.legal h3 { margin: 20px 0 4px; font-size: 1rem; }
+.legal p, .legal ul, .legal address { margin: 0 0 10px; }
+.legal address { font-style: normal; }
+.legal .lead { color: var(--text-2); }
+.legal .summary { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 16px 0; }
+.legal .summary h2 { margin-top: 0; }
+.legal a { color: var(--accent-ink); }
+.legal footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; }
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+.skip-link:focus { top: 12px; }

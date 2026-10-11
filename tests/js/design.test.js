@@ -265,7 +265,7 @@ test("design: the chair logo scales (viewBox) and has a white variant for the ap
 });
 
 test("design: the web fonts are self-hosted (no request to Google) with their licences", () => {
-  const pages = { "web/index.html": "fonts-app.css", "web/app/index.html": "fonts-app.css", "web/markers/index.html": "fonts-markers.css", "web/404.html": null };
+  const pages = { "web/index.html": "fonts-app.css", "web/app/index.html": "fonts-app.css", "web/markers/index.html": "fonts-markers.css", "web/404.html": null, "web/impressum/index.html": "fonts-app.css", "web/datenschutz/index.html": "fonts-app.css" };
   for (const [page, sheet] of Object.entries(pages)) {
     const html = readFileSync(join(ROOT, page), "utf8");
     assert.doesNotMatch(html, /fonts\.(googleapis|gstatic)\.com/, page);
