@@ -10,8 +10,64 @@ with a few minutes of delay. At the end the results compare the planned and the 
 
 The journeys are a simulation (`{"type": "journeys"}` in the layout's `simulations`), offered as the
 module **Journeys** of the lab example. The exercise and its **Journeys** tab are on the **game page**
-(`game/`); the app keeps to stories to click through (see
+(`game/`); the app's **Journeys** tab tells a traveller's story to click through instead,
+[the journeys story](#the-journeys-story) on Bf Neustadt (see
 [Getting started](getting-started.md#the-game-page)).
+
+## The journeys story
+
+`app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys` opens Bf Neustadt (the layout of
+the lab survey of 9 October 2026) with its module **Journeys**. The **Journeys** tab tells a
+traveller's view of the station in eleven steps. Ada, a student, has an exam in Altstadt at 09:30;
+her plan is RB 31 (Bergheim – Neustadt – Talsee) at 07:42 from platform 1 and, in Talsee, the RE 3
+at 08:10 to Altstadt, there at 08:46.
+
+| Step | What happens on the layout |
+| --- | --- |
+| 1. Ada sets off | Ada (taller than everybody, in Brillantblau, in an Orange ring with her name) leaves her flat in the WBS 70 on Bahnhofstraße at 07:30 and walks along the sidewalk to the station. |
+| 2. The departure board | She stops at the station's entrance: the departure board (Abfahrtstafel) shows RB 31 to Talsee at 07:42, platform 1; her phone shows her plan. |
+| 3. On platform 1 | She walks through the underpass (out of sight, her name goes along) to platform 1 and waits beside its display (Zugzielanzeiger): RB 31 Talsee 07:42, on time. Her track G1 is kept free for her train. |
+| 4. RB 31 is 20 minutes late | At 07:38 the display changes and the platform shows the delay (a level crossing fault near Bergheim); RB 31 will leave at 08:02. |
+| 5. The connection in Talsee is lost | Her app: RB 31 reaches Talsee at 08:24, the RE 3 leaves at 08:10; the next one is in Altstadt at 09:46, 60 minutes late, after the start of her exam. |
+| 6. Her app finds a bus | The express bus 270 (PlusBus) from the bus station Neustadt Bf at 07:48, in Altstadt at 08:58; her ticket of the transport association is valid on it. The way to the bus is drawn on the layout. |
+| 7. To the bus station | Back through the underpass and along Bahnhofstraße to bay B of the bus station. |
+| 8. Bus 270 leaves with Ada | The bus comes up Marktstraße and along Bahnhofstraße into the bus station, stops at bay B, Ada and the other travellers get on, and it leaves the way it came. |
+| 9. Meanwhile: RB 31 comes in | At 08:02, 20 minutes late, RB 31 stops at track G1: the people waiting there get on, others get off. Whoever changes in Talsee now waits there an hour. |
+| 10. Ada in Altstadt: her journey in numbers | Her whole way on the layout (walked dashed, by bus solid) and a card: planned 07:42 → 08:46, real 07:48 → 08:58 by bus (12 minutes late), had she waited 08:02 → 09:46 (60 minutes late). |
+| 11. Her rights as a passenger | The card of the passenger rights (Fahrgastrechte): what counts is the delay at the destination, a missed connection included; from 20 minutes another train, from 60 minutes 25 % of the fare back, from 120 minutes 50 %; had she waited, 25 %. The transport association's mobility guarantee (Mobilitätsgarantie): from 20 minutes a taxi, up to 30 €. |
+
+**Back**, **Next**, a step from the list, **Play** and **Start again**; a presenter's clicker works too
+(Page Down, Page Up). Every step looks the same each time it is shown. **Camera follows** opens the
+flyover and keeps its camera with Ada, her bus and the late train, and shows her whole way at the
+end. Each step sets the clock to its time when the clock is more than five minutes away (07:30 when
+she leaves, 08:00 when the late train comes in, 08:58 at the end), so the clock of the page and the
+times of the story agree.
+
+While the story keeps a track or a bay for its own train or bus, the timetable's trains and buses
+keep off it (a hidden disruption *kept-free*; the platform shows its message, the bay says
+nothing). When the story's train or bus stops and leaves, it tells the world as the timetable's
+vehicles do, so the passengers waiting there get on and others get off.
+
+The story is the simulation `journeys-story` in the layer's `simulations`:
+
+```json
+{"type": "journeys-story", "name": "Ada's journey", "traveller": "Ada", "home": "plattenbau-1", "track": "track-g1", "bus_terminal": "bus-terminal-1", "delay_min": 20}
+```
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `traveller` | `Ada` | Her name. |
+| `home` | `plattenbau-1` | The building she leaves from (one with an entrance; else the layout's first). |
+| `track` | `track-g1` | The track of her train at a platform; she waits on that platform, the track is kept free for her train. |
+| `bus_terminal` | `bus-terminal-1` | The bus station; her bus stops at its last bay. |
+| `bus_street` | `road-marktstrasse` | The bus comes in and leaves by the end of this street at the edge of the layout (else by the ends nearest to the bus lane). |
+| `delay_min` | `20` | The delay of her train, 10 to 90 minutes: the times of the texts, the RE she would wait for and the refund follow it (from 64 minutes she would be 120 minutes late: 50 %). |
+| `steps` | | The steps retold: `[{"id": "late", "title": "…", "text": "…"}]` over the built-in ones (ids `home`, `board`, `platform`, `late`, `connection`, `alternative`, `walk`, `bus`, `train`, `arrive`, `rights`). |
+
+The lines, the times, Talsee, Bergheim and Altstadt and the bus are invented; the rules of the
+passenger rights are those of the EU regulation 2021/782 as Germany applies them, simplified (no
+minimum amount, no exceptions for force majeure). A mobility guarantee is offered by many German
+transport associations, each with its own conditions; the story's is an example.
 
 ## Running the exercise
 
@@ -137,7 +193,7 @@ name of their line (the feed's `line`, e.g. "S 8").
 Without `stations` and `lines`, the network is made from the platforms' line names, as in the rail
 operations: every line named on a platform runs out to a station beyond the layout and back.
 
-## The Journeys tab
+## The Journeys tab of the game page
 
 - **New traveller**: name, from, to, leaves at, transfer time; **Find travel plans** lists the plans
   with their legs (walks, buses with their headway, trains with their platform and arrival, the time

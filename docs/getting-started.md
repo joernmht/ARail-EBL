@@ -26,7 +26,7 @@ The top bar chooses what the app looks at:
 
 | Layouts… | Layout | Image | What it shows |
 | --- | --- | --- | --- |
-| **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the module infrastructure with its maintenance story |
+| **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the modules infrastructure with its maintenance story and journeys with a traveller's story |
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
 | **Example: terminal at the crane** | `ebl-neustadt.json` | a photo of the terminal tracks | the container terminal on the real terminal tracks (Terminal tab) |
 | **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); the Terminal tab loads and unloads the real train and truck (Terminal tab) |
@@ -90,7 +90,7 @@ People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot =
 
 ## Panels
 
-The tabs: **View**, **Build**, a tab for each module that is on (in the app **Terminal** and **Infrastructure**, on the game page also **Operations** and **Journeys**; **Disruptions**) and **Settings**.
+The tabs: **View**, **Build**, a tab for each module that is on (in the app **Terminal**, **Infrastructure** and **Journeys**, on the game page also **Operations**; **Disruptions**) and **Settings**.
 
 ### View
 
@@ -140,7 +140,7 @@ Two views: **Simulation** and **Control system**. The tab opens the view chosen 
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
 - *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations; a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
-- *Infrastructure* (on layouts without the maintenance story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Infrastructure](infrastructure.md#the-maintenance-story). On the game page: the infrastructure game, *Rail operations* and *Journeys* the same way, with **Add to this layout** (its tab opens, the focus on its heading).
+- *Infrastructure* (on layouts without the maintenance story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Infrastructure](infrastructure.md#the-maintenance-story). *Journeys* (without the journeys story) the same way, see [Journeys](journeys.md#the-journeys-story). On the game page: the infrastructure game, *Rail operations* and the journeys exercise the same way, with **Add to this layout** (its tab opens, the focus on its heading).
 - *Container terminal* (on layouts without one): **Switch on the module** (on the lab example) or **Open the example terminal**, and **Add to this layout**, see [Container terminal](container-terminal.md).
 
 **Control system**
@@ -164,6 +164,14 @@ Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastr
 - The current step: its title, what happens, and how far its animation has run.
 - **Back**, **Next**, **Play** (step after step, with a pause between them), **Start again**, and the list of all steps to jump to; a presenter's clicker works too (Page Down, Page Up).
 - **Camera follows**: the flyover's camera goes where the story happens (the van on its way, the signal from above, the works).
+
+### Journeys
+
+Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
+
+- The same controls as the Infrastructure tab: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
+- **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way.
+- Each step sets the clock to its time (07:30 when she leaves home, 08:00 when the late train comes in), when the clock is more than five minutes away.
 
 ### Disruptions
 
@@ -212,7 +220,7 @@ Shown when the layout has [rail operations](operations.md) (the lab example's mo
 
 **Wide panel** (large screens) makes the panel wider for the tables.
 
-### Journeys
+### Journeys (exercise)
 
 Shown when the layout has [journeys](journeys.md) (the lab example's module **Journeys**): travellers made one by one, for an exercise.
 

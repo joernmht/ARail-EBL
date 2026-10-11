@@ -30,10 +30,15 @@ test("project page hands over from the picture to the applications, each opening
   const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
   expect(order).toEqual(["base", "applications", "next"]);
   const jumps = await page.getByRole("navigation", { name: "Applications" }).getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-disruptions"]);
+  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-journeys", "#app-disruptions"]);
   for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(examples).toHaveLength(5);
+  expect(examples).toHaveLength(6);
+  // the cards of the stories: the story in the app, the game on the game page
+  for (const [card, layer, tab] of [["#app-infrastructure", "infrastructure", "infra"], ["#app-journeys", "journeys", "journeys"]]) {
+    await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+  }
   // and the examples of the lab table
   const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
