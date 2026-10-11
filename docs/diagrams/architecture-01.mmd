@@ -1,0 +1,17 @@
+flowchart TB
+    subgraph CAM["Camera mode"]
+        direction LR
+        FRAME["camera frame"] --> DET["MarkerDetector"]
+        DET -- "marker corners" --> PT["PlaneTracker"]
+        MAP[("MarkerMap")] <--> PT
+    end
+    subgraph FLY["Flyover mode"]
+        FC["FlyCamera<br/>orbit: target, distance, yaw, pitch"]
+    end
+    PT -- "H layout→image" --> POSE("app.pose()")
+    FC -- "H = K [r1 r2 t] and the pose" --> POSE
+    POSE --> STEP["World.step(dt)<br/>docks, control-system trains (also paused)<br/>clock → scenarios → disruptions → services → transit → objects → simulations"]:::system
+    STEP --> VIEW["View<br/>camera, H; night from the clock; virtual in the flyover"]
+    FLYONLY["flyover only: sky and floor, default table,<br/>orthophoto, grid, marker stickers"]:::muted -.-> VIEW
+    VIEW --> DRAW["World.draw(View)<br/>objects → timetable vehicles → line buses →<br/>control-system trains → simulations → disruptions"]:::system
+    DRAW -- "sorted display list" --> CANVAS["canvas"]

@@ -12,6 +12,9 @@
  * association (arrow) and «create» dependencies (dashed); activities with initial and final nodes,
  * actions, decisions and merges with guards, forks and joins, send-signal and accept-event actions
  * (the events of the world's event bus).
+ *
+ * Design: the chair's diagram rules (tud_cro_chaircd, skills/tud-uml/reference/rules.md): names in Noto Sans
+ * Medium, group titles in 11 px capitals, ink in Dunkelblau, the hub package filled in Dunkelblau.
  * @module architecture/uml
  */
 import dagre from "../vendor/dagre/dagre.esm.js";
@@ -23,10 +26,10 @@ const MONO = '"Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas,
 /** Text styles: canvas font for measuring, line height, and the CSS class that draws it the same way. */
 const TEXT = {
   body: { font: `400 13px ${SANS}`, line: 17, cls: "t-body" },
-  bold: { font: `700 13px ${SANS}`, line: 17, cls: "t-bold" },
-  title: { font: `700 14px ${SANS}`, line: 18, cls: "t-title" },
+  bold: { font: `500 13px ${SANS}`, line: 17, cls: "t-bold" },
+  title: { font: `500 14px ${SANS}`, line: 18, cls: "t-title" },
   small: { font: `400 11px ${SANS}`, line: 14, cls: "t-small" },
-  caps: { font: `700 10px ${SANS}`, line: 13, cls: "t-caps" },
+  caps: { font: `500 11px ${SANS}`, line: 14, cls: "t-caps" },
   mono: { font: `400 11.5px ${MONO}`, line: 15, cls: "t-mono" },
 };
 
@@ -288,7 +291,7 @@ export function packageDiagram(spec, title = "Package diagram", { only = null } 
       id: p.id, width: Math.ceil(w), height: Math.ceil(h), cluster: only && only.length === 1 ? null : p.group,
       draw: (x, y, n) => {
         const tab = Math.min(n.width - 20, measure(p.name, TEXT.title) + 24);
-        return el("g", { class: `node package${p.external ? " external-package" : ""}${p.utility ? " utility" : ""}` },
+        return el("g", { class: `node package${p.external ? " external-package" : ""}${p.utility ? " utility" : ""}${p.hub ? " hub" : ""}` },
           el("path", { class: "shape", d: `M${r1(x)},${r1(y + 16)} v-16 h${r1(tab)} v16 h${r1(n.width - tab)} v${r1(n.height - 16)} h${r1(-n.width)} z` }),
           text([p.name], TEXT.title, r1(x + 12), r1(y + 20), "start"),
           text(summary, TEXT.small, r1(x + 12), r1(y + 20 + TEXT.title.line + 6), "start", "muted"),
