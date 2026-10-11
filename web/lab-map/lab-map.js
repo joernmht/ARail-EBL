@@ -37,7 +37,7 @@ const byPlace = new Map();
 for (const p of photos) (byPlace.get(p.place) || byPlace.set(p.place, []).get(p.place)).push(p);
 const mean = (ps, k) => ps.reduce((s, p) => s + p[k], 0) / ps.length;
 // labels that would cover each other: moved (mm, SVG y down)
-const SHIFT = { "Door and swing bridge": [600, 2600], "Hairpin: Bk Klausenburg, Bk Feldberg": [-1200, 0], "Curve at the Neustadt end": [0, -500] };
+const SHIFT = { "Door and swing bridge": [600, 2600], "Left end: Bk Klausenburg, Bk Feldberg": [1700, 0], "Curve at the Neustadt end": [0, -500] };
 for (const [place, ps] of byPlace) {
   const [dx, dy] = SHIFT[place] || [0, 0];
   const t = el("text", { class: "group-label", x: mean(ps, "x") + dx, y: -mean(ps, "y") - 700 + dy, "text-anchor": "middle" }, labels);
