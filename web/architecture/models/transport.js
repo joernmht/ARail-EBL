@@ -75,7 +75,7 @@ export const TRANSPORT = [
       emits: [
         { name: "vehicle.arriving", payload: "vehicle, dock, area", when: "dispatched" },
         { name: "vehicle.arrived", payload: "vehicle, dock, area", when: "standing, doors open" },
-        { name: "vehicle.departing", payload: "vehicle, dock, area", when: "dwell over" },
+        { name: "vehicle.departing", payload: "vehicle, dock, area", when: "dwell over (or taken away while standing, free)" },
         { name: "vehicle.departed", payload: "vehicle, dock, area", when: "gone" },
         { name: "vehicle.cancelled", payload: "vehicle, dock, area", when: "a cancelled service was due" },
       ],
@@ -84,7 +84,7 @@ export const TRANSPORT = [
       "The first vehicle after 0.15–0.6 × the headway, then every 0.7–1.3 × the headway (× the demand of the hour).",
       "A planner's vehicle stays until the planner lets it go (dwellLeft = ∞, then 0).",
       "Mode feed while the control system sends trains; closed ends a dwell (not a real train's), hold does not.",
-      "call skips closed docks (a track closure, a story's train) unless a planner calls; free takes a vehicle away without its leaving (one coming in never arrived).",
+      "call skips closed docks (a track closure, a story's train) unless a planner calls; free takes a vehicle away at once: one standing sends vehicle.departing (those on the way to its doors missed it) and vehicle.departed; one coming in never arrived.",
     ],
   },
   {
@@ -175,6 +175,7 @@ export const TRANSPORT = [
       "Mood per s while waiting: −(0.002 + 0.005 × density + 0.006 after 60 s) plus the disruptions' mood; boarding +0.02; leaving +0.008 − 0.004 × density.",
       "Arrivals: Poisson(base_rate × demand × disruption demand × wave × L/25 × the hour's demand × dt); none while closed, out of service, or without others.",
       "A track of the stop closed on its own (dock closed): newcomers wait at the other tracks; those waiting for it go over to another one, or leave (0.25/s) when every track is closed.",
+      "The board's next train (statusLines): the soonest timer of the tracks that are open; none while every track is closed.",
       "A standing vehicle is boarded while it has more than 6 s to go (a real train always).",
     ],
   },

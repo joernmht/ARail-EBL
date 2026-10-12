@@ -338,8 +338,9 @@
     {
       "id": "operations",
       "name": "Operations",
-      "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. The Operations tab tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop.",
+      "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. The Operations tab tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop. Its story takes over platform 2: the module is shown alone.",
       "enabled": false,
+      "exclusive": true,
       "objects": [
         {"id": "table-bw", "type": "tabletop", "name": "Table module Betriebswerk", "position": [4800, 935], "width_mm": 1600, "depth_mm": 540},
         {"id": "depot-neustadt", "type": "depot", "name": "Betriebswerk Neustadt", "position": [4900, 935], "rotation_deg": 180, "length_m": 80, "bays": 2, "stabling": 2},

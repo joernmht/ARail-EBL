@@ -263,7 +263,7 @@ export class Panels {
     /** The button that switches on the module with a simulation of this type, or opens the example. */
     const moduleButton = (type, id, example) => {
       const l = layerWith(type);
-      return l ? h("button", { class: "btn", type: "button", id, onclick: () => app.chooseModules([...app.layersOn(), l.id]) }, `Switch on the module “${l.name}”`)
+      return l ? h("button", { class: "btn", type: "button", id, onclick: () => app.switchOnModule(l.id) }, `Switch on the module “${l.name}”`)
         : h("button", { class: "btn", type: "button", id, onclick: () => app.openExample(example) }, "Open the example");
     };
     /**
@@ -392,11 +392,15 @@ export class Panels {
         h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`), h("span", {}, `mood ${(s.mood * 100).toFixed(0)} %`), h("span", {}, `in ${s.inPerMin}/min · out ${s.outPerMin}/min`)),
         h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
-        h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => h("button", {
-          class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan",
-          title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : null,
-          onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
-        }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`))),
+        h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => {
+          // a closed track (a track closure, a story's train) takes no train
+          const closed = w.disruptions.effectsFor(a, st.dock).closed;
+          return h("button", {
+            class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || closed,
+            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : closed ? "This track is closed" : null,
+            onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
+          }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`);
+        })),
       );
     }));
   }

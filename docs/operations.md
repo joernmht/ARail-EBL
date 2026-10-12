@@ -23,11 +23,11 @@ railway undertaking (EVU) whose train breaks down, in ten steps:
 | 2. 442 101 reports a fault | At 07:41 the traction converter (Stromrichter) fails: no traction power, the train cannot leave. The unit's label turns red; the display and the platform's board say *delayed, fault on the train*. |
 | 3. The driver calls the operations control | By train radio (GSM-R) to the operations control (Transportleitung), then a reset: the pantograph goes down, the lights go out, the unit starts again and the pantograph rises. The fault is back; the dispatcher takes the unit out of service and orders the spare unit 442 108. |
 | 4. The passengers get off and wait | They leave the train and wait across the platform, at track G2; waiting, they turn from Türkis to Gelb. The display: *Now from track G2, about +25 min*. |
-| 5. The spare unit leaves the depot | In the depot a stand-by driver (Reservelokführer) walks to 442 108 on its stabling track; the pantograph rises, the lights come on, and at 07:57 it leaves along the lead track. |
+| 5. The spare unit leaves the depot | In the depot a stand-by driver (Reservelokführer) walks to 442 108 on its stabling track and gets into its cab; the pantograph rises, the lights come on, and at 07:57 it leaves along the lead track, empty, for track G2. |
 | 6. 442 108 comes in at track G2 | It runs in along track G2 and stops at 08:03 across the platform from the broken unit; its doors open. |
 | 7. Passengers change trains; RB 31 leaves late | The passengers cross the platform and board; at 08:07 RB 31 leaves for Talsee, 25 minutes late. The display shows the next train, 08:42. |
 | 8. 442 101 runs empty to the workshop | With the faulty converter isolated the unit has half of its traction and may run empty at reduced speed: the driver changes ends (the head and tail lights change over), the unit runs along the platform, off the table and into the depot's workshop. Track G3 is free again. |
-| 9. In the workshop: diagnosis and repair | Two fitters (in orange) read the fault memory: a burnt-out power module (IGBT) of the converter, exchanged in about 6 hours (the old module comes out, a new one goes in). What the breakdown cost: RB 31 and its trip back more than 5 minutes late, 2 × 40 € = 80 € to the transport authority; without the spare both trips would have been cancelled, 44 train-km × 12 € = 528 €. |
+| 9. In the workshop: diagnosis and repair | Two fitters (in orange) read the fault memory: a burnt-out power module (IGBT) of the converter, exchanged in about 6 hours: the old module (dark grey) is lifted off the roof of the rear car, a new one (Dunkelblau) put on. What the breakdown cost: RB 31 and its trip back more than 5 minutes late, 2 × 40 € = 80 € to the transport authority; without the spare both trips would have been cancelled, 44 train-km × 12 € = 528 €. |
 | 10. Back to normal service | The next morning 442 101 runs RB 31 again, on time; 442 108 waits in the depot as the spare unit. |
 
 **Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
@@ -43,7 +43,10 @@ timetable train comes to tracks G2 and G3 while the story's units stand there or
 standing there when the story begins is taken away at once), and the platform's board shows the
 story's messages, e.g. *RB 31 Talsee 07:42: delayed, fault on the train*. The people of the
 passenger simulation who wait for those tracks go elsewhere; the trains of platform 1 run as usual.
-The depot's board says where the spare unit is and what the workshop does.
+The depot's board says where the spare unit is and what the workshop does. Since the story takes
+over platform 2, the module is marked *alone* (`"exclusive": true`): switching it on switches the
+module Infrastructure off, whose maintenance story closes and renews the same tracks, and the other
+way round.
 
 The story is the simulation `ops-story` in the layer's `simulations`:
 

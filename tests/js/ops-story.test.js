@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  Camera, DEFAULT_CONTRACTS, OpsStory, STORY_DISRUPTIONS, View, createWorld, registry, storyOf, validateLayout, withLayers,
+  Camera, DEFAULT_CONTRACTS, OpsStory, STORY_DISRUPTIONS, View, createWorld, normalizeLayers, registry, statusLines, storyOf, toggleLayer, validateLayout,
+  withLayers,
 } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
@@ -84,7 +85,26 @@ test("a story's train holds its track: no timetable train comes, one there is ta
   assert.ok(labelsAt(world, area.toLayout(10, 0)).includes("RB 31 Talsee 07:42: delayed"));
 });
 
-test("the people waiting for a held track go over to the other one, or leave when both are held", () => {
+test("a train taken away for a story's train: the people on their way to its doors missed it and wait at the other track", () => {
+  const world = createWorld(NEUSTADT, { seed: 3 });
+  const area = world.getStopArea("platform-2");
+  const sim = world.simulations.find((s) => s.constructor.type === "passengers");
+  const boarding = (id) => (sim.crowds.get(area.id)?.people ?? []).filter((p) => p.state === "boarding" && p.dock === id);
+  let dock = null;
+  for (let i = 0; i < 6000 && !dock; i++) {
+    world.step(0.1);
+    dock = area.docks.find((d) => world.services.docks.get(d.id).vehicle?.phase === "dwelling" && boarding(d.id).length >= 2) ?? null;
+  }
+  assert.ok(dock, "people boarding a train at platform 2");
+  const people = boarding(dock.id);
+  world.disruptions.start({ id: "story:test:rb", type: "story-train", target: dock.id, duration: null });
+  assert.equal(world.services.docks.get(dock.id).vehicle, null);
+  assert.deepEqual(boarding(dock.id), [], "nobody boards a train taken away");
+  frames(world, 2);
+  for (const p of people) assert.ok(p.state !== "boarding" && p.dock !== dock.id, `${p.state} for ${p.dock}`);
+});
+
+test("the people waiting for a held track go over to the other one, or leave when both are held; the board shows no next train then", () => {
   const world = createWorld(NEUSTADT, { seed: 3 });
   frames(world, 600);
   const area = world.getStopArea("platform-2"), [g2, g3] = area.docks;
@@ -98,12 +118,20 @@ test("the people waiting for a held track go over to the other one, or leave whe
   world.disruptions.start({ id: "b", type: "story-train", target: g2.id, duration: null });
   frames(world, 600);
   assert.equal(crowd.people.filter((p) => p.state === "waiting" || p.state === "arriving").length, 0, "nobody waits at a platform whose tracks are both held");
+  // a held track's timer has run out: no "Next train in 0 s" on the board, nor any next train
+  assert.deepEqual(statusLines(world, area), []);
+  world.disruptions.stop("b");
+  assert.match(statusLines(world, area)[0], /^Next train in \d+ s$/);
 });
 
 /* ---------------------------------------------------------------- the operations story */
 
 test("the operations story of Bf Neustadt: its steps name the layout's tracks, units, depot and the penalties", () => {
   assert.deepEqual(validateLayout(OPS, registry), []);
+  // the module alone: its story takes over platform 2, where the maintenance story closes and renews tracks
+  const layers = normalizeLayers(NEUSTADT.layers);
+  assert.deepEqual(toggleLayer(layers, ["infrastructure"], "operations"), ["operations"]);
+  assert.deepEqual(toggleLayer(layers, ["operations"], "infrastructure"), ["infrastructure"]);
   const world = createWorld(OPS);
   const s = storyOf(world, "ops-story");
   assert.ok(s instanceof OpsStory);
@@ -187,9 +215,14 @@ test("the operations story step by step: the tracks held, the units, the passeng
   go("spare", 0);
   assert.ok(s.spareAt().line === s.depotLines().stable && !s.spareAt().powered);
   assert.ok(s.walkerAt().speed > 0);
+  // he is in the cab before the pantograph rises, and does not stay behind when the unit leaves
+  for (let k = 0; k <= 1; k += 0.02) {
+    go("spare", k);
+    if (s.spareAt().pantograph > 0) assert.equal(s.walkerAt(), null, `in the cab at ${k.toFixed(2)}`);
+  }
   go("spare", 1);
   assert.ok(s.spareAt().head < 0, "gone beyond the module's edge");
-  assert.equal(s.walkerAt().speed, 0);
+  assert.equal(s.walkerAt(), null);
   // 6. in at G2 from the depot's end, braking to its stop opposite the broken unit
   go("arrive", 0.3);
   const coming = s.spareAt();

@@ -160,7 +160,8 @@ export class ServiceManager {
 
   /**
    * Take the vehicle at a dock away at once (a story's own train takes the track): one still coming
-   * in just does not come, one standing or leaving is gone. Trains of the control system stay.
+   * in just does not come, one standing or leaving is gone (the people on their way to its doors
+   * missed it). Trains of the control system stay.
    * @param {string} dockId
    * @returns {boolean} whether a vehicle was taken away
    */
@@ -168,6 +169,10 @@ export class ServiceManager {
     const st = this.docks.get(dockId), v = st?.vehicle;
     if (!v || v.source === "feed") return false;
     st.vehicle = null;
+    if (v.phase === "dwelling") {
+      v.phase = "departing";
+      this._emit("vehicle.departing", v);
+    }
     if (v.phase !== "arriving") this._emit("vehicle.departed", v);
     return true;
   }

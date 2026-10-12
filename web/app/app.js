@@ -85,6 +85,8 @@ export class App {
     this.layoutUrl = null;
     this.recorder = null;
     this._loadToken = 0;
+    /** Where the HUD's chips lie over the canvas (canvas px, measured with the HUD): the stage's labels keep clear of them. */
+    this.hudRects = [];
   }
 
   /* ---------------------------------------------------------------- start */
@@ -439,7 +441,7 @@ export class App {
     const l = this.page.exampleLayers[id];
     if (!l) return;
     // the layout is open already: switch the module on
-    if (this.world.layers().some((y) => y.id === l.layer)) return this.chooseModules([...this.layersOn(), l.layer]);
+    if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
     return this.openLayout(l.layout, [l.layer]);
   }
 
@@ -534,6 +536,12 @@ export class App {
     const home = this.moduleHome;
     if (home && !this.world.layers().length) return this.openLayout(home.url, ARail.toggleLayer(home.modules, [home.module], id));
     return this.chooseModules(ARail.toggleLayer(this.world.layers(), this.layersOn(), id));
+  }
+
+  /** Switch a module of the layout on (Settings, an example), with the others that go with it: an exclusive one alone, or without the exclusive ones. */
+  switchOnModule(id) {
+    const on = this.layersOn();
+    return this.chooseModules(on.includes(id) ? on : ARail.toggleLayer(this.world.layers(), on, id));
   }
 
   /** Exactly these modules on (exclusive ones alone); a module that is a layout of its own opens it. */
@@ -1098,6 +1106,7 @@ export class App {
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
       const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
+      view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
@@ -1213,7 +1222,11 @@ export class App {
     }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);
-    morph($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
+    const hud = $("#hud");
+    morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
+    // a label pulled in at the top edge of the picture (a depot's board out of view) goes below the chips
+    const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
+    this.hudRects = [...hud.children].map((el) => el.getBoundingClientRect()).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 
   /* ---------------------------------------------------------------- recording */

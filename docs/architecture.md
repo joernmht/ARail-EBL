@@ -84,7 +84,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `journeys/rail.js` | the journeys' trains: the timetable of the stations and lines (with `ops/`' `normalizeOps` and `tripTemplates`) and its trains at the platforms (planner of the services, docks in mode `plan`), or the trips of the rail operations when they run |
 | `journeys/planner.js` | travel plans with transfers: walks over the sidewalks, bus connections of the transit, trains with one change; the times in clock minutes |
 | `journeys/simulation.js` | `JourneysSimulation`: travellers following their plans through the passenger hand-over, missed and cancelled trains, the log and the results, validation |
-| `app/app.js`, `app/ui.js` | the shell of the app and the game page (`App` with a page's panels): sources, frame loop, HUD, recording; small DOM helpers |
+| `app/app.js`, `app/ui.js` | the shell of the app and the game page (`App` with a page's panels): sources, frame loop, HUD (the stage's labels keep clear of its chips), recording; small DOM helpers |
 | `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the View (with the modules), Settings (simulation, control system) and Disruptions panels |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/survey.js` | Build → Marker map → Survey a video |

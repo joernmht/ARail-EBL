@@ -356,7 +356,9 @@ export const OPERATIONS = [
     rules: [
       "Times after the departure: the fault 1 min before, the spare leaves the depot at +15, stands at the platform at +21, the train leaves at +25 (25 min late).",
       "Penalties of the default transport contract: 40 € for each train more than 5 min late (the trip and the trip back); a cancelled train costs 12 € per train-km (2 × km).",
-      "A unit: two cars of 21 m, 0.6 m apart, 2.9 m wide and 3.95 m high; it stops 3 m before the platform's front end; the passengers walk at 1.3 m/s, the stand-by driver at 2 m/s.",
+      "A unit: two cars of 21 m, 0.6 m apart, 2.9 m wide and 3.95 m high; it stops 3 m before the platform's front end; the passengers walk at 1.3 m/s.",
+      "Step 5: the stand-by driver walks at 2 m/s (faster on a longer way) and is in the spare unit's cab by 42 % of the step; then its pantograph rises (45–55 %), its lights come on (50 %) and it leaves (from 60 %).",
+      "Step 9: the faulty converter, 8 m from the unit's rear end, is lifted off the roof and a new one put on; the camera looks at it, the fitters stand on the side it sees.",
     ],
   },
 ];

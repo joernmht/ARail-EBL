@@ -38,6 +38,13 @@ test("Settings switches on the module Operations of Bf Neustadt; its tab tells t
   await expect(page.locator("#panel-ops .story-count")).toHaveText("Step 1 of 10");
   // the depot on its table module came with the module
   expect(await page.evaluate(() => ["table-bw", "depot-neustadt"].map((id) => !!window.__arail.world.getObject(id)))).toEqual([true, true]);
+  // the module is alone: Infrastructure, switched on from Settings, takes its place (both stories use platform 2)
+  await page.locator("#tab-settings").click();
+  await page.locator("#infraOpenExample").click();
+  await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["infrastructure"]);
+  await expect(page.locator("#tab-ops")).toBeHidden();
+  expect(await page.evaluate(() => window.__arail.world.disruptions.active.filter((d) => d.type === "story-train").length)).toBe(0);
   expect(errors).toEqual([]);
 });
 

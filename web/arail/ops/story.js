@@ -42,6 +42,8 @@ const AT = { fault: -1, out: 15, in: 21, leave: 25 };
 const REPAIR_H = 6, TAKT_MIN = 60;
 /** The story's passengers, their walking speed (m/s) and the stand-by driver's (in a hurry). */
 const PASSENGERS = 14, WALK_MPS = 1.3, HURRY_MPS = 2;
+/** Share of step 5 by which the stand-by driver is in the spare unit's cab (he walks faster on a longer way); then the pantograph rises. */
+const IN_CAB = 0.42;
 /** Metres of the lead track beyond the depot's gate end, along which its units come and go (to the edge of Bf Neustadt's table module). */
 const LEAD_M = 36;
 /** Mood of the passengers in each step (0 annoyed … 1 happy). */
@@ -227,9 +229,10 @@ export class OpsStory extends Story {
     }
     if (step === "workshop") Object.assign(train, { place: "workshop", move: 1, pantograph: 0, powered: false, repair: k });
     scene.train = train;
-    // the spare unit: stabled, out of the depot, in at the other track, boarding, away; back in the depot
+    // the spare unit: stabled, out of the depot (once the stand-by driver is in its cab), in at the
+    // other track, boarding, away; back in the depot
     const spare = { place: "stabled", pantograph: 0, powered: false, doors: 0, move: 0 };
-    if (step === "spare") Object.assign(spare, { pantograph: part(k, 0.36, 0.48), powered: k >= 0.44, place: k < 0.52 ? "stabled" : "leaving", move: part(k, 0.52, 1) });
+    if (step === "spare") Object.assign(spare, { pantograph: part(k, 0.45, 0.55), powered: k >= 0.5, place: k < 0.6 ? "stabled" : "leaving", move: part(k, 0.6, 1) });
     if (step === "arrive") Object.assign(spare, { place: "arriving", pantograph: 1, powered: true, move: part(k, 0.08, 0.82), doors: part(k, 0.86, 0.94) });
     if (step === "change") Object.assign(spare, { place: k < 0.62 ? "track" : "departing", pantograph: 1, powered: true, doors: 1 - part(k, 0.52, 0.58), move: part(k, 0.62, 1) });
     if (step === "empty" || step === "workshop") spare.place = null;
@@ -237,7 +240,7 @@ export class OpsStory extends Story {
     // the passengers (on board while not drawn), the stand-by driver in the depot, the fitters
     scene.mood = MOOD[step] ?? 0.9;
     if (step === "arrive") scene.mood = MOOD.arrive + 0.25 * part(k, 0.6, 1);
-    scene.walker = step === "spare" ? { t: k * scene.seconds } : null;
+    scene.walker = step === "spare" ? { t: k * scene.seconds, seconds: scene.seconds } : null;
     scene.fitters = step === "workshop" || (step === "empty" && k >= 0.9);
     // the platform's display and the message of the platform (its board): on time, delayed, the other track
     const elsewhere = b ? `now from ${b.dock.track ? `track ${b.dock.track}` : "the other track"}, ${delay}` : delay;
@@ -413,15 +416,20 @@ export class OpsStory extends Story {
     return out;
   }
 
-  /** The stand-by driver in the depot (step 5): from the workshop's gate to the spare unit's cab, `{at, dir, speed}`, or null. */
+  /**
+   * The stand-by driver in the depot (step 5): from the workshop's gate to the spare unit's cab,
+   * `{at, dir, speed}`; null once he is in the cab (by `IN_CAB` of the step).
+   */
   walkerAt() {
     const w = this.scene?.walker, dl = this.depotLines(), depot = this.depot();
     if (!w || !dl || !depot) return null;
     const p = dl.plan, x = dl.gateX, sd = dl.side, yBay = p.bayY[p.bayY.length - 1], yWay = dl.stableY - 2.2;
     const path = [[x + sd * 0.5, yBay], [x + sd * 1.5, yBay], [x + sd * 1.5, yWay], [x - sd * 5, yWay]].map(([lx, ly]) => depot.at(lx, ly));
     const lengths = polylineLengths(path), total = lengths[lengths.length - 1];
-    const s = Math.min(total, HURRY_MPS * w.t * dl.m), at = polylineAt(path, s, lengths);
-    return { at: at.point, dir: at.dir, speed: s < total ? HURRY_MPS : 0 };
+    const speed = Math.max(HURRY_MPS, total / dl.m / Math.max(1e-6, IN_CAB * w.seconds)), s = speed * w.t * dl.m;
+    if (s >= total) return null;
+    const at = polylineAt(path, s, lengths);
+    return { at: at.point, dir: at.dir, speed };
   }
 
   /* ---------------------------------------------------------------- the depot */
@@ -460,7 +468,7 @@ export class OpsStory extends Story {
     if (step === "fault" || step === "call") return look(this._cab(train) ?? platform, 700, 50);
     if (step === "spare") {
       const w = this.walkerAt();
-      return look(sc.k < 0.5 && w ? w.at : mid(spare) ?? this._gate(), 1150, 58);
+      return look(w ? w.at : mid(spare) ?? this._gate(), 950, 58);
     }
     // the spare comes in beside the platform's canopy: from high above, the canopy hides none of it
     if (step === "arrive") return look(spare && sc.k < 0.82 ? this._cab(spare) ?? platform : platform, 950, 72);
@@ -469,7 +477,17 @@ export class OpsStory extends Story {
       if (train?.place === "workshop") return look(train.move > 0.08 ? this._cab(train) ?? this._gate() : this._gate(), 1000, 60);
       return look(train && sc.k >= 0.25 ? this._cab(train) ?? platform : platform, 950, 50);
     }
-    return look(mid(train) ?? this._gate() ?? platform, 900, 64);
+    // the repair: close to the converter on the roof and the fitters beside the unit
+    return look(this._converter(train)?.point ?? this._gate() ?? platform, 650, 52);
+  }
+
+  /**
+   * Where the faulty traction converter is on the roof of the broken unit in the workshop: 8 m from its
+   * rear end, on the car without the unit's label (`{point, dir}` of `polylineAt`), or null.
+   */
+  _converter(train) {
+    if (!train?.line || !this._unitMid(train)) return null;
+    return polylineAt(train.line.points, Math.max(0, train.head - train.dir * (EMU_M - 8) * train.line.m), train.line.lengths);
   }
 
   /**
@@ -529,8 +547,10 @@ export class OpsStory extends Story {
       drawUnit(view, train, { label, ref: train.inHall ? this._hallRef(view) : null });
     }
     if (spare) {
-      const label = spare.place === "stabled" ? { lines: [c.spare, sc.step === "spare" && spare.powered ? "Starting up" : "Spare unit"], danger: false } : { lines: [`${c.line} ${c.destination}`, c.spare], danger: false };
-      drawUnit(view, spare, { label });
+      // stabled, on its way to the station (empty, to take over the train), then the train
+      const b = this.spareDock(), lines = spare.place === "stabled" ? [c.spare, sc.step === "spare" && spare.powered ? "Starting up" : "Spare unit"]
+        : spare.place === "leaving" ? [c.spare, `To ${b ? `track ${b.dock.track}` : "the station"} for ${c.line}`] : [`${c.line} ${c.destination}`, c.spare];
+      drawUnit(view, spare, { label: { lines, danger: false } });
     }
     if (sc.radio && train) this._drawRadio(view, sc, train);
     if (sc.step === "workshop" && train) this._drawRepair(view, train, sc.k);
@@ -564,8 +584,9 @@ export class OpsStory extends Story {
 
   /** The repair in the workshop: the converter's power module lifted off the roof and a new one put on (step 9). */
   _drawRepair(view, train, k) {
-    if (!this._unitMid(train)) return;
-    const m = view.m(1), u = polylineAt(train.line.points, Math.max(0, train.head - train.dir * 8 * train.line.m), train.line.lengths);
+    const u = this._converter(train);
+    if (!u) return;
+    const m = view.m(1);
     const lift = k < 0.5 ? part(k, 0.1, 0.4) : 1 - part(k, 0.6, 0.9);
     const z = (EMU.roof_m + 0.1 + 2.4 * lift) * m, p = u.point, d = u.dir;
     // the old module dark grey, the new one Dunkelblau
@@ -573,12 +594,14 @@ export class OpsStory extends Story {
     view.faces(boxFaces([p[0] - d[0] * 1.1 * m, p[1] - d[1] * 1.1 * m], [p[0] + d[0] * 1.1 * m, p[1] + d[1] * 1.1 * m], 1.6 * m, z, z + 0.6 * m, { side: colour, top: shade(colour, 1.2) }), [p[0], p[1], z]);
   }
 
-  /** Two fitters beside the unit in the workshop track. */
+  /** Two fitters beside the unit in the workshop track, below the converter and further along; on the side the camera sees. */
   _drawFitters(view, train, t) {
     const m = train.line.m;
-    for (const [i, off, side] of [[0, 9, 1], [1, 27, -1]]) {
+    for (const [i, off] of [[0, EMU_M - 8], [1, EMU_M - 24]]) {
       const a = polylineAt(train.line.points, Math.max(0, train.head - train.dir * off * m), train.line.lengths);
       const q = [-a.dir[1], a.dir[0]], sway = Math.sin(t * 0.6 + i * 2) * 1.5 * m;
+      const near = (sd) => view.depth(a.point[0] + q[0] * sd * m, a.point[1] + q[1] * sd * m, 0);
+      const side = near(1) <= near(-1) ? 1 : -1;
       const p = [a.point[0] + q[0] * side * 2.3 * m + a.dir[0] * sway, a.point[1] + q[1] * side * 2.3 * m + a.dir[1] * sway];
       drawPerson(view, p, { dir: [a.dir[0] * Math.cos(t * 0.6 + i * 2), a.dir[1] * Math.cos(t * 0.6 + i * 2)], speed: 0.5, phase: t * 4 + i, height: 1.78, colour: FITTER_COLOURS.body, legs: FITTER_COLOURS.legs });
     }

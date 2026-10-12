@@ -662,7 +662,7 @@ export function dockStatus(world, area) {
  * Status texts for the docks of an area, the most important first: a timetable vehicle at a dock
  * ("RE 1 boarding", "Bus 305 arriving"), the next bus of each bus line that stops here (asked from
  * `world.transit`; the bays of a bus terminal can serve several lines), else the next vehicle of
- * the timetable ("Next train in 25 s").
+ * the timetable at the tracks that are open ("Next train in 25 s"; none when every track is closed).
  * @returns {string[]}
  */
 export function statusLines(world, area) {
@@ -685,7 +685,10 @@ export function statusLines(world, area) {
     const planned = world.services.planner?.statusLines?.(area) || [];
     if (planned.length || states.every((st) => st.mode !== "timetable")) return planned.length ? planned : ["No more trains today"];
   }
-  const next = Math.min(...states.map((st) => st.timer)) / (world.speed || 1);
+  // a closed track (a track closure, a story's train) has no next train: its timer has run out
+  const open = states.filter((st) => !world.disruptions.effectsFor(area, st.dock).closed);
+  if (!open.length) return [];
+  const next = Math.min(...open.map((st) => st.timer)) / (world.speed || 1);
   return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];
 }
 

@@ -139,7 +139,7 @@ Two views: **Simulation** and **Control system**. The tab opens the view chosen 
 - *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), the colours of their trip purposes, and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
-- *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations; a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
+- *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
 - *Rail operations* (on layouts without the operations story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Rail operations](operations.md#the-operations-story).
 - *Infrastructure* (on layouts without the maintenance story): the same, see [Infrastructure](infrastructure.md#the-maintenance-story). On the game page: the infrastructure game, *Rail operations* and *Journeys* the same way, with **Add to this layout** (its tab opens, the focus on its heading).
 - *Container terminal* (on layouts without one): **Switch on the module** (on the lab example) or **Open the example terminal**, and **Add to this layout**, see [Container terminal](container-terminal.md).
@@ -164,6 +164,7 @@ Shown when the layout has the operations story (Bf Neustadt's module **Operation
 
 - The same controls as the Infrastructure tab (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera looks at a slant along the platform, so that the train at the near track does not hide the passengers, and goes with the spare unit and the broken unit to the depot and back.
+- The module is marked *alone* in View → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
 
 ### Infrastructure
 
