@@ -25,9 +25,11 @@
  * (`settle(j)`); then the step itself is begun. The world then runs as usual while the step's
  * animation runs.
  *
- * A story that draws a train of its own at a platform holds that track with a "story-train"
+ * A story that draws a train or bus of its own at a stop holds that track or bay with a "story-train"
  * disruption in its scene (`{id: "rb", type: "story-train", target: "platform-2:right", params:
- * {text: "…"}}`): no timetable train comes there, and the platform shows the story's message.
+ * {text: "…", waiting: false}}`): no timetable vehicle comes there, and the stop shows the story's
+ * message. Without `waiting` the passengers waiting for that track go to another one (the story's
+ * train will not take them); with it they keep waiting for the story's own vehicle.
  *
  * Steps can be retold in the layout (`"steps": [{"id": "fault", "title": "…", "text": "…"}]`, by id).
  * @module arail/core/story
@@ -40,22 +42,27 @@ export const STORY_PAUSE_S = 6;
 
 /**
  * The disruption types of stories (registered with the built-ins). "story-train": a story's own
- * train at one track of a platform (its dock): no timetable train comes to that track, one standing
- * or coming in there is taken away at once, and the platform shows the story's message (`text`),
- * with a warning sign only while there is one.
+ * train or bus at one track of a platform or one bay of a bus station (its dock): no timetable
+ * vehicle comes there, one standing or coming in there is taken away at once, and the stop shows the
+ * story's message (`text`), with a warning sign only while there is one. `waiting`: the passengers
+ * keep waiting there for the story's own vehicle (the dock is `reserved`); without it the dock is
+ * `closed` and they go to another track.
  */
 export const STORY_DISRUPTIONS = [
   {
     type: "story-train",
-    label: "A story's train",
-    description: "A train of a story stands at one track of a platform, or is due there: no other train comes to that track; the platform shows the story's message.",
+    label: "A story's vehicle",
+    description: "A train or bus of a story stands at one track or bay, or is due there: no other vehicle comes to it; the stop shows the story's message.",
     targets: "track",
     hidden: true,
     quiet: true,
-    params: [],
+    params: [
+      { key: "text", label: "Message", type: "text", default: "" },
+      { key: "waiting", label: "Passengers wait for it", type: "boolean", default: false },
+    ],
     duration: () => null,
-    appliesTo: (area, d) => area.kind === "rail" && !!dockOf(area, d.target),
-    effects: (d) => ({ closed: true, messages: d.params.text ? [String(d.params.text)] : [] }),
+    appliesTo: (area, d) => !!dockOf(area, d.target),
+    effects: (d) => ({ [d.params.waiting ? "reserved" : "closed"]: true, messages: d.params.text ? [String(d.params.text)] : [] }),
     onStart(d, world) {
       world.services.free(d.target);
     },

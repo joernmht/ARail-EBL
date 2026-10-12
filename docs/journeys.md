@@ -47,9 +47,9 @@ the times of the story agree; the cards at the end never set it back.
 
 While the story keeps a track or a bay for its own train or bus, the timetable's trains and buses
 keep off it: track G1 from step 3 to step 9, both bays of the bus station in steps 7 and 8 (her bus
-drives through bay A to bay B). It does so with a disruption of its own, *kept-free*, hidden in the
-Disruptions tab and quiet: the platform shows its message, a bay says nothing, and the top bar counts
-it only while it has a message. When the story's train or bus stops and leaves, it tells the world as
+drives through bay A to bay B). It does so with the stories' disruption *story-train* (with the
+passengers waiting for the story's train and bus), hidden in the Disruptions tab and quiet: the
+platform shows its message, a bay says nothing, and the top bar counts it only while it has a message. When the story's train or bus stops and leaves, it tells the world as
 the timetable's vehicles do, so the passengers waiting there get on and others get off; going to
 another step while it stands at its dock lets it leave, so nobody is left walking to its doors.
 

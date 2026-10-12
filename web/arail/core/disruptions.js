@@ -232,12 +232,13 @@ export class DisruptionManager {
     const key = dock ? `${area.id}|${dock.id}` : area.id;
     let fx = this._cache.get(key);
     if (fx) return fx;
-    fx = { closed: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, mood: 0, messages: [], disruptions: [] };
+    fx = { closed: false, reserved: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, mood: 0, messages: [], disruptions: [] };
     for (const d of this.active) {
       if (!appliesTo(d, area, this.world)) continue;
       const e = d.def.effects ? d.def.effects(d, area, this.world) || {} : {};
       if (!dockOf(area, d.target) || dock?.id === d.target) {
         fx.closed ||= !!e.closed;
+        fx.reserved ||= !!e.reserved;
         fx.hold ||= !!e.hold;
         fx.cancel ||= !!e.cancel;
         fx.leave ||= !!e.leave;

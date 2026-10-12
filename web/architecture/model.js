@@ -116,7 +116,7 @@ export const PACKAGES = [
     id: "journeys", name: "journeys", group: "framework", path: "web/arail/journeys",
     summary: "Journeys: the journeys story to click through (a traveller's view); travellers made by hand with travel plans and transfers, the journeys' timetable trains.",
     files: ["web/arail/journeys/index.js", "web/arail/journeys/rail.js", "web/arail/journeys/planner.js", "web/arail/journeys/simulation.js", "web/arail/journeys/story.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-disruptions", "core-drawing", "ops", "sims"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "ops", "sims"],
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
@@ -434,7 +434,7 @@ export const REGISTRY = {
     dis("crowd", "Crowd surge", "web/arail/core/disruptions.js", ["factor", "minutes"], "Many more passengers come."),
     dis("signal-failure", "Signal failure", "web/arail/core/disruptions.js", ["minutes"], "Trains held at the platforms."),
     dis("track-closure", "Track closure", "web/arail/core/disruptions.js", ["minutes"], "One track of a platform closed: no train stops there; the other track runs."),
-    { ...dis("story-train", "A story's train", "web/arail/core/story.js", [], "A story's own train holds one track of a platform: no timetable train comes there; the platform shows the story's message (started by stories, hidden in the tab)."), model: "stories" },
+    { ...dis("story-train", "A story's vehicle", "web/arail/core/story.js", ["text", "waiting"], "A story's own train or bus holds one track or bay: no timetable vehicle comes there; the stop shows the story's message, a sign only with one (quiet); with waiting, the passengers keep waiting for the story's vehicle (started by stories, hidden in the tab)."), model: "stories" },
     dis("crew-sick", "Drivers call in sick", "web/arail/ops/disruptions.js", ["count", "notice_min"], "Sick calls to the operations' crew desk."),
     dis("unit-failure", "Unit failure", "web/arail/ops/disruptions.js", ["kind"], "A unit of a running train fails (hard or soft)."),
     dis("drivers-leave", "Drivers leave", "web/arail/ops/disruptions.js", ["count"], "Drivers leave the company."),
@@ -444,7 +444,6 @@ export const REGISTRY = {
     dis("cable-theft", "Cable theft", "web/arail/infra/disruptions.js", [], "A cable is stolen: its signals fail."),
     dis("storm", "Storm damage", "web/arail/infra/disruptions.js", ["count"], "Assets damaged by a storm fail."),
     dis("infra-fault", "Infrastructure fault", "web/arail/infra/disruptions.js", [], "A fault at the station (started by the infrastructure itself, hidden in the tab)."),
-    { ...dis("kept-free", "Kept free", "web/arail/journeys/story.js", ["text"], "A platform track or bus bay kept for a story's own train or bus (started by the journeys story, hidden in the tab); the stop shows its message, a sign only with one (quiet)."), model: "journeys-story" },
   ],
   vehicles: [
     { type: "train", label: "TRAIN: a multiple unit with doors", file: "web/arail/core/vehicles.js", model: "services" },

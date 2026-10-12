@@ -68,7 +68,8 @@ export const DISRUPTIONS = [
       "Bus lines: no departure while cancelled; a held bus stays; closed stops are passed.",
       "Passengers: arrivals × demand (none while closed); −0.3 mood for newcomers while held or cancelled; leave: people walk out.",
       "The Disruptions tab offers the types that are not hidden and whose simulation the layout has; the module Disruptions shows the tab.",
-      "A quiet type (the journeys story's kept-free track or bay) puts up a warning sign and counts in the top bar only while it has a message.",
+      "A quiet type (a story's train or bus holding its track or bay, story-train) puts up a warning sign and counts in the top bar only while it has a message.",
+      "story-train closes its dock (the passengers go to another track) or, with waiting, reserves it (they wait for the story's own vehicle); either way the timetable sends nothing there and one standing there is taken away at once.",
     ],
   },
   {

@@ -685,8 +685,12 @@ export function statusLines(world, area) {
     const planned = world.services.planner?.statusLines?.(area) || [];
     if (planned.length || states.every((st) => st.mode !== "timetable")) return planned.length ? planned : ["No more trains today"];
   }
-  // a closed track (a track closure, a story's train) has no next train: its timer has run out
-  const open = states.filter((st) => !world.disruptions.effectsFor(area, st.dock).closed);
+  // a closed track (a track closure, a story's train) and one kept for a story's own train have no
+  // next train of the timetable: its timer has run out
+  const open = states.filter((st) => {
+    const fx = world.disruptions.effectsFor(area, st.dock);
+    return !fx.closed && !fx.reserved;
+  });
   if (!open.length) return [];
   const next = Math.min(...open.map((st) => st.timer)) / (world.speed || 1);
   return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];

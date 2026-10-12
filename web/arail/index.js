@@ -130,7 +130,7 @@ export {
 export {
   TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
   JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
-  JourneyStory, JOURNEY_PLAN, JOURNEY_DISRUPTIONS, journeyTimes, refundShare,
+  JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare,
 } from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";

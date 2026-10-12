@@ -510,8 +510,8 @@ panel shows no *Where*; they are started with target `"*"`). The rail operations
 act in `onStart`; a string they leave in `d.result` (*3 sick calls*) is shown when they start.
 `hidden: true` marks a type that a simulation or story starts itself: it is not offered in the
 Disruptions tab and starts and ends without a toast. `quiet: true` puts up its warning sign and
-counts in the top bar only while it has a message (the journeys story's `kept-free`, which keeps a
-bus bay free for its bus without a word). `targets: "track"` is
+counts in the top bar only while it has a message (a story's `story-train`, which keeps a bus bay
+for the story's bus without a word). `targets: "track"` is
 for one dock of a stop (a platform's track, `platform-1:right`; a bus bay, `bus-terminal-1:bay2`):
 its effects then act on the vehicles at that dock only, and the stop shows its messages.
 

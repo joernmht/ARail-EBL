@@ -393,11 +393,11 @@ export class Panels {
         h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
         h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => {
-          // a closed track (a track closure, a story's train) takes no train
-          const closed = w.disruptions.effectsFor(a, st.dock).closed;
+          // a closed track (a track closure, a story's train) takes no train, nor one kept for a story's own
+          const fxd = w.disruptions.effectsFor(a, st.dock), closed = fxd.closed || fxd.reserved;
           return h("button", {
             class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || closed,
-            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : closed ? "This track is closed" : null,
+            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : fxd.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : null,
             onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
           }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`);
         })),

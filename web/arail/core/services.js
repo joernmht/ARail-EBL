@@ -16,6 +16,9 @@
  */
 import { smoothstep } from "./math.js";
 
+/** Whether the timetable keeps off a dock: closed (a track closure), or kept for a story's own vehicle. */
+const kept = (fx) => fx.closed || fx.reserved;
+
 let nextVehicleId = 1;
 
 export class Vehicle {
@@ -152,7 +155,7 @@ export class ServiceManager {
     // but a planner's (its trains leave again at once)
     const planned = options.source === "plan";
     const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || planned)
-      && (planned || !this.world.disruptions.effectsFor(st.dock.area, st.dock).closed));
+      && (planned || !kept(this.world.disruptions.effectsFor(st.dock.area, st.dock))));
     if (!free.length) return null;
     const st = this.rng.pick(free);
     return this._dispatch(st, { source: options.source || "manual", line: options.line });
@@ -243,7 +246,7 @@ export class ServiceManager {
         st.heldFor = 0;
         continue;
       }
-      if (st.vehicle || fx.closed || fx.hold) {
+      if (st.vehicle || kept(fx) || fx.hold) {
         st.heldFor += dt;
         continue;
       }
@@ -263,7 +266,7 @@ export class ServiceManager {
       }
     } else if (v.phase === "dwelling") {
       v.dwellLeft -= dt;
-      if (v.dwellLeft <= 0 || (fx.closed && v.source !== "feed")) {
+      if (v.dwellLeft <= 0 || (kept(fx) && v.source !== "feed")) {
         v.phase = "departing";
         v.progress = 0;
         this._emit("vehicle.departing", v);

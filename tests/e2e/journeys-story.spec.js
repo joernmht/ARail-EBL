@@ -57,7 +57,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   await expect(title(page)).toHaveText("The departure board");
   await page.locator("#journeysStoryNext").click();
   await expect(title(page)).toHaveText("On platform 1");
-  expect(await storyDisruptions(page)).toEqual(["kept-free@platform-1:right"]);
+  expect(await storyDisruptions(page)).toEqual(["story-train@platform-1:right"]);
   // a track kept free without a word is no disruption to speak of: the top bar counts none
   await expect(page.locator("#hud")).not.toContainText("disruption");
   // the train is late: the platform shows it; the story's disruptions are no toasts
@@ -77,7 +77,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   await step(page, "Bus 270 leaves with Ada").click();
   await expect(title(page)).toHaveText("Bus 270 leaves with Ada");
   await expect(step(page, "Bus 270 leaves with Ada")).toHaveAttribute("aria-current", "step");
-  expect(await storyDisruptions(page)).toEqual(["kept-free@bus-terminal-1:bay1", "kept-free@bus-terminal-1:bay2", "kept-free@platform-1:right"]);
+  expect(await storyDisruptions(page)).toEqual(["story-train@bus-terminal-1:bay1", "story-train@bus-terminal-1:bay2", "story-train@platform-1:right"]);
   await expect(page.locator("#hud")).toContainText("1 disruption");
   // a presenter's clicker: Page Down and Page Up
   await page.keyboard.press("PageDown");

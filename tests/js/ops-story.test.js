@@ -285,7 +285,8 @@ test("while the story plays, no timetable train ever stands where its trains are
   }
   assert.ok(s.finished, "played to the end");
   assert.ok(seen > 400, String(seen));
-  // after the story the platform's tracks run again
+  // the module off: the platform's tracks run again
+  s.enabled = false;
   s.clear();
   frames(world, 1200);
   assert.ok([g2, g3].some((k) => world.services.docks.get(k.id).vehicle), "timetable trains at platform 2 again");

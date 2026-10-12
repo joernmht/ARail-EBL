@@ -14,10 +14,10 @@
 export { TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine } from "./rail.js";
 export { Planner, WALK_MPS, walkPath, placePoint, areaName } from "./planner.js";
 export { JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys } from "./simulation.js";
-export { JourneyStory, JOURNEY_PLAN, JOURNEY_DISRUPTIONS, journeyTimes, refundShare } from "./story.js";
+export { JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare } from "./story.js";
 
 import { JourneysSimulation } from "./simulation.js";
-import { JOURNEY_DISRUPTIONS, JourneyStory } from "./story.js";
+import { JourneyStory } from "./story.js";
 
 /** The layout's journeys simulation, or null. */
 export function journeysOf(world) {
@@ -25,12 +25,12 @@ export function journeysOf(world) {
 }
 
 /**
- * Register the "journeys" simulation, the "journeys-story" and its disruption type ("kept-free").
+ * Register the "journeys" simulation and the "journeys-story" (its vehicles hold their docks with the
+ * core's "story-train").
  * @param {import("../core/registry.js").Registry} registry
  */
 export function registerJourneys(registry) {
   registry.registerSimulation(JourneysSimulation);
   registry.registerSimulation(JourneyStory);
-  for (const def of JOURNEY_DISRUPTIONS) registry.registerDisruption(def);
   return registry;
 }

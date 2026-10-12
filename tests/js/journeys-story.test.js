@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  Camera, CD, JOURNEY_DISRUPTIONS, JOURNEY_PLAN, JourneyStory, OVERLAY, View, createWorld, formatTime, journeyTimes, parseRgba, refundShare, registry,
+  Camera, CD, JOURNEY_PLAN, JourneyStory, OVERLAY, View, createWorld, formatTime, journeyTimes, parseRgba, refundShare, registry,
   storyOf, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
@@ -174,8 +174,9 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.deepEqual(s.state().focus, ["station-1"]);
   // on the platform: her track is kept for her train (no train in front of her), without a word
   s.goTo(at("platform"));
-  assert.deepEqual(kept(world), ["kept-free@platform-1:right: "]);
-  assert.equal(world.disruptions.effectsFor(area, dock).closed, true);
+  assert.deepEqual(kept(world), ["story-train@platform-1:right: "]);
+  // kept for her train, not closed: the people on the platform wait for it
+  assert.deepEqual([world.disruptions.effectsFor(area, dock).reserved, world.disruptions.effectsFor(area, dock).closed], [true, false]);
   assert.deepEqual(world.disruptions.effectsFor(area).messages, [], "nothing to say yet");
   assert.equal(world.disruptions.effectsFor(area).closed, false, "the platform stays open");
   frames(world, 30); // 6 of 12 s: in the underpass
@@ -193,9 +194,9 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.equal(s.scene.route, "plan");
   // to the bus station: its last bay is kept for her bus, and bay A, which her bus drives through, silently
   s.goTo(at("walk"));
-  assert.deepEqual(kept(world), ["kept-free@bus-terminal-1:bay1: ", "kept-free@bus-terminal-1:bay2: ", "kept-free@platform-1:right: RB 31 to Talsee about 20 min late"]);
-  assert.equal(world.disruptions.effectsFor(bus, bayB).closed, true);
-  assert.equal(world.disruptions.effectsFor(bus, bayA).closed, true);
+  assert.deepEqual(kept(world), ["story-train@bus-terminal-1:bay1: ", "story-train@bus-terminal-1:bay2: ", "story-train@platform-1:right: RB 31 to Talsee about 20 min late"]);
+  assert.equal(world.disruptions.effectsFor(bus, bayB).reserved, true);
+  assert.equal(world.disruptions.effectsFor(bus, bayA).reserved, true);
   assert.equal(world.disruptions.effectsFor(bus).closed, false, "the bus station stays open");
   assert.deepEqual(world.disruptions.effectsFor(bus).messages, []);
   s.skip();
@@ -237,9 +238,8 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   s.restart();
   assert.deepEqual(kept(world), []);
   assert.equal(s.index, 0);
-  assert.equal(registry.disruptions.get("kept-free").hidden, true, "not offered in the Disruptions tab");
-  assert.equal(registry.disruptions.get("kept-free").quiet, true, "a sign only with a message");
-  assert.deepEqual(JOURNEY_DISRUPTIONS.map((d) => d.type), ["kept-free"]);
+  assert.equal(registry.disruptions.get("story-train").hidden, true, "not offered in the Disruptions tab");
+  assert.equal(registry.disruptions.get("story-train").quiet, true, "a sign only with a message");
 });
 
 test("Back and a jump show the same as playing through: the scene, Ada, the bus, the train, the camera, what is kept free", () => {

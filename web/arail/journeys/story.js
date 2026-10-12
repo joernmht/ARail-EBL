@@ -12,8 +12,9 @@
  *
  * Everything is scripted (core/story.js): the picture is a function of the step and of how far its
  * animation has run, so Back, Next and a jump to a step always show the same. The late train's
- * platform track and the bus station's bays are kept free for the story's own train and bus (a
- * "kept-free" disruption): the timetable's vehicles keep off them, and the platform shows the delay.
+ * platform track and the bus station's bays are kept for the story's own train and bus (a
+ * "story-train" disruption of core/story.js, with the passengers waiting for them): the timetable's
+ * vehicles keep off them, and the platform shows the delay.
  * When the story's train or bus comes in, stands and leaves, it tells the world as the services do
  * (`vehicle.arrived`, …): the passengers waiting there get on, others get off; going to another step
  * lets one standing at its dock leave. Each step sets the world's clock to its time when the clock is
@@ -25,7 +26,6 @@
 import { Story } from "../core/story.js";
 import { formatTime } from "../core/clock.js";
 import { CD, CD_LIGHT, OVERLAY, PALETTE, grey, mix, rgba, shade } from "../core/colors.js";
-import { dockOf } from "../core/disruptions.js";
 import { polylineAt, polylineLengths, polylineProject } from "../core/math.js";
 import { hiddenAt, joinPaths } from "../core/network.js";
 import { Vehicle } from "../core/services.js";
@@ -68,27 +68,6 @@ export function journeyTimes(delay, plan = JOURNEY_PLAN) {
   const waitLate = wait.arr - plan.re.arr, busLate = plan.bus.arr - plan.re.arr;
   return { delay: d, late, lost: n > 0, wait, waitLate, busLate, refund: refundShare(waitLate) };
 }
-
-/**
- * The disruption with which the story keeps a platform track or a bus bay free for its own train or
- * bus: the timetable's vehicles keep off it (one standing there leaves). The stop shows the message
- * (the late train's); a bay kept for the bus says nothing, and then puts up no sign and does not count
- * in the top bar (quiet).
- */
-export const JOURNEY_DISRUPTIONS = [
-  {
-    type: "kept-free",
-    label: "Kept free",
-    description: "One track of a platform or one bay of a bus station is kept free for the train or bus of a story (the journeys story's late train and its bus): the timetable's vehicles keep off it; the stop shows the message, if there is one.",
-    targets: "track",
-    hidden: true,
-    quiet: true,
-    params: [{ key: "text", label: "Message", type: "text", default: "" }],
-    duration: () => null,
-    appliesTo: (area, d) => !!dockOf(area, d.target),
-    effects: (d) => ({ closed: true, messages: d.params.text ? [String(d.params.text)] : [] }),
-  },
-];
 
 /**
  * The traveller: taller and stouter than the other people, in Brillantblau (no waiting passenger has
@@ -314,12 +293,12 @@ export class JourneyStory extends Story {
       const ph = scene.train?.phase, rb = `${JOURNEY_PLAN.rb.line} to ${JOURNEY_PLAN.rb.to}`;
       const text = i < stepAt("late") ? "" : ph === "arriving" ? `${rb} arriving, ${tm.delay} min late` : ph === "dwelling" ? `${rb} boarding, ${tm.delay} min late`
         : ph === "departing" || ph === "gone" ? "" : `${rb} about ${tm.delay} min late`;
-      scene.disruptions.push({ id: "late", type: "kept-free", target: d.dock.id, params: { text } });
+      scene.disruptions.push({ id: "late", type: "story-train", target: d.dock.id, params: { text, waiting: true } });
     }
     // the bus station is kept for her bus from when she walks there: her bay (its last) and the bays
     // before it, through which her bus drives in (a timetable bus there would stand in its way)
     if (b && (id === "walk" || id === "bus")) {
-      b.area.docks.forEach((k, j) => scene.disruptions.push({ id: k === b.dock ? "bay" : `bay-${j + 1}`, type: "kept-free", target: k.id, params: { text: "" } }));
+      b.area.docks.forEach((k, j) => scene.disruptions.push({ id: k === b.dock ? "bay" : `bay-${j + 1}`, type: "story-train", target: k.id, params: { text: "", waiting: true } }));
     }
     // the app's way to the bus; her whole way at the end; the cards
     if (id === "alternative") scene.route = "plan";

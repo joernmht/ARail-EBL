@@ -133,7 +133,7 @@ export const JOURNEYS = [{
 }, {
   id: "journeys-story", group: "journeys", title: "The journeys story",
   summary: "The app's Journeys tab: a traveller's view of Bf Neustadt to click through. Ada walks to the station, her RB 31 is late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; her journey in numbers and her rights as a passenger.",
-  description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. Ada walks over the sidewalks and through the underpass (the road network's walks), waits on the platform beside its display, walks to the bus station and gets on. Her platform track is kept free for the story's own late train from when she is on the platform, the bus station's bays for the story's own bus from when she walks there (a hidden, quiet kept-free disruption: the timetable's vehicles keep off, the platform shows the delay, a bay says nothing); the bus comes over the streets by the bus's street and leaves the same way. The train and the bus send the vehicle events of the services as they come to each phase, once; a step left while one stands at its dock lets it leave (doors closed, gone), so nobody is left at a door. Each step sets the world's clock to its time when it is more than five minutes away, the first one when the story begins. The flyover sees her walk from home from the street, facing her front door, and everything else facing the station's front. The lines, times and places beyond the layout are invented (JOURNEY_PLAN).",
+  description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. Ada walks over the sidewalks and through the underpass (the road network's walks), waits on the platform beside its display, walks to the bus station and gets on. Her platform track is kept free for the story's own late train from when she is on the platform, the bus station's bays for the story's own bus from when she walks there (the core's story-train with waiting: the timetable's vehicles keep off, the passengers wait for the story's train and bus, the platform shows the delay, a bay says nothing); the bus comes over the streets by the bus's street and leaves the same way. The train and the bus send the vehicle events of the services as they come to each phase, once; a step left while one stands at its dock lets it leave (doors closed, gone), so nobody is left at a door. Each step sets the world's clock to its time when it is more than five minutes away, the first one when the story begins. The flyover sees her walk from home from the street, facing her front door, and everything else facing the station's front. The lines, times and places beyond the layout are invented (JOURNEY_PLAN).",
   files: ["web/arail/journeys/story.js"],
   classes: [
     {
@@ -147,7 +147,7 @@ export const JOURNEYS = [{
     },
     {
       name: "journeys story", file: "web/arail/journeys/story.js", kind: "module", role: "Her timetable, the delay in numbers, the disruption.",
-      attributes: ["JOURNEY_PLAN — RB 31 07:42, RE 3 in Talsee 08:10, PlusBus 270 07:48, her exam 09:30", "JOURNEY_DISRUPTIONS — kept-free (hidden, quiet)", "REFUND_MIN_EUR — 4 €"],
+      attributes: ["JOURNEY_PLAN — RB 31 07:42, RE 3 in Talsee 08:10, PlusBus 270 07:48, her exam 09:30", "REFUND_MIN_EUR — 4 €"],
       operations: ["journeyTimes(delay, plan) — the late train, the RE she would wait for, how late", "refundShare(lateMin) — Fahrgastrechte"],
     },
   ],
@@ -168,7 +168,7 @@ export const JOURNEYS = [{
       ["a5", "action", "Her late train comes in, stands, leaves", "JourneyStory.trainAt", "the bus"],
       ["a6", "action", "Her ways on the layout and the card: the journey in numbers, the passenger rights", "JourneyStory.compose", "the end"],
       ["m1", "merge"],
-      ["a7", "action", "Its disruptions started or stopped (kept-free)", "Story._sync"],
+      ["a7", "action", "Its disruptions started or stopped (story-train, the passengers waiting for its train and bus)", "Story._sync"],
       ["a8", "action", "Drawn: Ada, her phone, the board, the display, the bus, the train, the card", "JourneyStory.draw"],
       ["e", "end"],
     ],
