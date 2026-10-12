@@ -114,9 +114,9 @@ export const PACKAGES = [
   },
   {
     id: "journeys", name: "journeys", group: "framework", path: "web/arail/journeys",
-    summary: "Travellers made by hand with travel plans and transfers; the journeys' timetable trains.",
-    files: ["web/arail/journeys/index.js", "web/arail/journeys/rail.js", "web/arail/journeys/planner.js", "web/arail/journeys/simulation.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing", "ops", "sims"],
+    summary: "Journeys: the journeys story to click through (a traveller's view); travellers made by hand with travel plans and transfers, the journeys' timetable trains.",
+    files: ["web/arail/journeys/index.js", "web/arail/journeys/rail.js", "web/arail/journeys/planner.js", "web/arail/journeys/simulation.js", "web/arail/journeys/story.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-disruptions", "core-drawing", "ops", "sims"],
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
@@ -295,10 +295,10 @@ export const EVENTS = [
   { name: "story.step", from: ["web/arail/core/story.js"], payload: "story, index, step", meaning: "A story went to a step (Next, Back, a jump, Play)." },
   { name: "story.play", from: ["web/arail/core/story.js"], payload: "story, playing", meaning: "A story goes on by itself, or stops." },
   { name: "scenario.message", from: ["web/arail/core/scenarios.js", "web/arail/terminal/operations.js"], payload: "scenario, text", meaning: "A message for the stage (also a refused terminal request)." },
-  { name: "vehicle.arriving", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "A train or bus comes in." },
-  { name: "vehicle.arrived", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "It stands at its dock: doors open." },
-  { name: "vehicle.departing", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "Doors close." },
-  { name: "vehicle.departed", from: ["web/arail/core/services.js", "web/arail/core/transit.js"], payload: "vehicle, dock, area", meaning: "It has left." },
+  { name: "vehicle.arriving", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "A train or bus comes in." },
+  { name: "vehicle.arrived", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "It stands at its dock: doors open." },
+  { name: "vehicle.departing", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "Doors close." },
+  { name: "vehicle.departed", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "It has left." },
   { name: "vehicle.cancelled", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/ops/simulation.js", "web/arail/journeys/rail.js"], payload: "vehicle, dock, area", meaning: "A service was cancelled: waiting passengers lose mood." },
   { name: "feed.trains", from: ["web/arail/core/trains.js"], payload: "trains", meaning: "Trains of the control system were updated." },
   { name: "feed.status", from: ["web/arail/feeds/websocket.js", "web/arail/feeds/mock.js"], payload: "status, error, url", meaning: "The connection to the control system changed." },
@@ -380,6 +380,7 @@ export const REGISTRY = {
     { type: "maintenance-story", class: "MaintenanceStory", file: "web/arail/infra/story.js", model: "infra-story" },
     { type: "ops-story", class: "OpsStory", file: "web/arail/ops/story.js", model: "ops-story" },
     { type: "journeys", class: "JourneysSimulation", file: "web/arail/journeys/simulation.js", model: "journeys" },
+    { type: "journeys-story", class: "JourneyStory", file: "web/arail/journeys/story.js", model: "journeys-story" },
     { type: "road-traffic", class: "RoadTraffic", file: "web/plugins/road-traffic.js", model: "plugins", plugin: true },
   ],
   objects: [
@@ -443,6 +444,7 @@ export const REGISTRY = {
     dis("cable-theft", "Cable theft", "web/arail/infra/disruptions.js", [], "A cable is stolen: its signals fail."),
     dis("storm", "Storm damage", "web/arail/infra/disruptions.js", ["count"], "Assets damaged by a storm fail."),
     dis("infra-fault", "Infrastructure fault", "web/arail/infra/disruptions.js", [], "A fault at the station (started by the infrastructure itself, hidden in the tab)."),
+    { ...dis("kept-free", "Kept free", "web/arail/journeys/story.js", ["text"], "A platform track or bus bay kept for a story's own train or bus (started by the journeys story, hidden in the tab); the stop shows its message, a sign only with one (quiet)."), model: "journeys-story" },
   ],
   vehicles: [
     { type: "train", label: "TRAIN: a multiple unit with doors", file: "web/arail/core/vehicles.js", model: "services" },

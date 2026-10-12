@@ -6,7 +6,7 @@ export const PAGES = [
   {
     id: "app", group: "pages", title: "The app",
     summary: "An interactive presentation of the lab: sources (camera, photo, video, flyover), the frame loop, the HUD and the panels: View (with the modules), Build, the modules' tabs (stories to click through; the terminal's moves), Disruptions and Settings (simulation and control system).",
-    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. A page (main.js; the game page's main.js) gives App its panels, the simulation that shows each module tab, and its examples: in the app the Operations tab shows the operations story and the Infrastructure tab the maintenance story (StoryPanel), the Terminal tab the containers to move one by one. The tabs follow the modules: a module tab appears while the layout has the page's simulation for it, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
+    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. A page (main.js; the game page's main.js) gives App its panels, the simulation that shows each module tab, and its examples: in the app the Operations tab shows the operations story, the Infrastructure tab the maintenance story and the Journeys tab the journeys story (StoryPanel), the Terminal tab the containers to move one by one. The tabs follow the modules: a module tab appears while the layout has the page's simulation for it, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
     files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js"],
     classes: [
       {
@@ -19,9 +19,9 @@ export const PAGES = [
       {
         name: "StoryPanel", file: "web/app/story.js", kind: "class", role: "A module tab's story: the current step, Back, Next, Play, Start again, all steps; the flyover's camera follows it.",
         attributes: ["tab: string", "type: string — the story's simulation type", "follow: boolean — Camera follows", "settingsHint: string"],
-        operations: ["render(el)", "update()", "next()", "back()", "restart()", "play()", "goTo(i)", "stepped() — after a step: the panel, the camera", "aim() — the flyover goes where the story happens", "setFollow(on)", "key(e) — Page Down, Page Up"],
+        operations: ["render(el)", "update()", "next()", "back()", "restart()", "play()", "goTo(i)", "stepped() — after a step: the panel, the camera", "aim() — the flyover goes where the story happens (from the side it says)", "setFollow(on)", "key(e) — Page Down, Page Up"],
       },
-      { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the operations story, the maintenance story, the terminal's moves), examples (Bf Neustadt first)." },
+      { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first)." },
       { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children)", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
     ],
     relations: [
@@ -31,7 +31,7 @@ export const PAGES = [
       { from: "App", to: "Editor", kind: "composes", label: "editor" },
       { from: "App", to: "Panels", kind: "composes", label: "panels" },
       { from: "App", to: "TerminalPanel", kind: "composes", label: "terminal" },
-      { from: "App", to: "StoryPanel", kind: "composes", label: "ops, infra (the app)" },
+      { from: "App", to: "StoryPanel", kind: "composes", label: "ops, infra, journeys (the app)" },
       { from: "StoryPanel", to: "Story", kind: "uses", label: "steps" },
       { from: "app main", to: "App", kind: "creates" },
       { from: "Panels", to: "ui", kind: "depends" },

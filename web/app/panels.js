@@ -19,7 +19,7 @@ const MODULE_ICONS = {
 /** The views of the Settings panel. */
 const SETTINGS_VIEWS = [["simulate", "Simulation"], ["control", "Control system"]];
 /** The icon of a module by the simulations of its layer. */
-const SIM_ICONS = { operations: "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys" };
+const SIM_ICONS = { operations: "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys", "journeys-story": "journeys" };
 /** "Platform 1, Track G2" for the id of a platform's track (a dock, "platform-1:left"), or null. */
 const trackName = (world, id) => {
   for (const a of world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;

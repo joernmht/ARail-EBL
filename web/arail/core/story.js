@@ -245,9 +245,11 @@ export class Story extends Simulation {
     return { index: this.index, count: steps.length, step: steps[this.index] ?? null, steps, progress: this.progress, playing: this.playing, finished: this.finished, focus: this.scene?.focus ?? [] };
   }
 
+  /** Stop playing (Clear passengers); the scene's disruptions start again with the next world step: the step's picture stays. */
   clear() {
     this.playing = false;
     this._sync([]);
+    this._key = null;
   }
 
   dispose() {

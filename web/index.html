@@ -263,7 +263,8 @@ footer a { color: inherit; }
       <a href="#app-terminal"><i>2</i>Container terminal</a>
       <a href="#app-operations"><i>3</i>Rail operations</a>
       <a href="#app-infrastructure"><i>4</i>Infrastructure</a>
-      <a href="#app-disruptions"><i>5</i>Disruptions</a>
+      <a href="#app-journeys"><i>5</i>Journeys</a>
+      <a href="#app-disruptions"><i>6</i>Disruptions</a>
     </nav>
   </div>
 </div>
@@ -357,7 +358,7 @@ footer a { color: inherit; }
       <div class="block-head">
         <p class="step-label"><span class="psign" aria-hidden="true">2</span>Applications</p>
         <h2 id="apps-title">What runs on the sister today</h2>
-        <p class="lead">Five function prototypes, each one an example layout that opens in the app, an interactive presentation of the lab: stories to click through and containers to move. Try them on the lab photo; they work the same on your own layout and on the live camera. The games and exercises behind them, with roles, budgets and comparisons, are on the <a href="game/">game page</a>, with the first role game: the <a href="game/signaller/">signaller of Bf Neustadt</a>, one of the <a href="game/roles/">roles of the railway</a> that are to become games, and the <a href="game/career/">career planner</a> through them.</p>
+        <p class="lead">Six function prototypes, each one an example layout that opens in the app, an interactive presentation of the lab: stories to click through and containers to move. Try them on the lab photo; they work the same on your own layout and on the live camera. The games and exercises behind them, with roles, budgets and comparisons, are on the <a href="game/">game page</a>, with the first role game: the <a href="game/signaller/">signaller of Bf Neustadt</a>, one of the <a href="game/roles/">roles of the railway</a> that are to become games, and the <a href="game/career/">career planner</a> through them.</p>
       </div>
       <div class="apps">
         <article class="app-card wide" id="app-town" aria-labelledby="t-town">
@@ -417,10 +418,24 @@ footer a { color: inherit; }
             </div>
           </div>
         </article>
-        <article class="app-card" id="app-disruptions" aria-labelledby="t-disrupt">
+        <article class="app-card" id="app-journeys" aria-labelledby="t-journeys">
+          <div class="pic"><img src="assets/app-journeys.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Journeys tab at step 6 of the journeys story, Her app finds a bus: on platform 1 a warning says RB 31 to Talsee about 20 min late, the platform display says about 20 min later, and over Ada her phone offers bus 270 from bay B of the bus station; a dashed orange line leads from the platform through the underpass and along Bahnhofstraße to the bus station; the departure board at the station shows the RB 31 with +20."><span class="badge">Prototype</span></div>
+          <div class="body">
+            <p class="kicker">5 · Journeys</p>
+            <h3 id="t-journeys">A traveller's journey, step by step</h3>
+            <p>Ada walks to platform 1 of Bf Neustadt. Her train is 20 minutes late, her connection in Talsee is lost, and her travel app finds a bus from the bus station; she takes it while the late train comes in without her. Then her journey in numbers and her rights as a passenger. The exercise in which every attendee plans a traveller is a game on the game page.</p>
+            <p class="teach">In teaching: passenger information, connections and how they break, passenger rights, the bus as the alternative.</p>
+            <div class="acts">
+              <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=journeys#journeys">Open this example</a>
+              <a href="game/?layout=../layouts/ebl-lab.json&amp;layers=journeys#journeys">The game</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/journeys.md">Guide</a>
+            </div>
+          </div>
+        </article>
+        <article class="app-card wide" id="app-disruptions" aria-labelledby="t-disrupt">
           <div class="pic"><img src="assets/app-disruptions.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo during the scenario Rush hour with a signal failure: crowded platforms, trains held; the Disruptions panel lists the scenarios."><span class="badge">Prototype</span></div>
           <div class="body">
-            <p class="kicker">5 · Disruptions and scenarios</p>
+            <p class="kicker">6 · Disruptions and scenarios</p>
             <h3 id="t-disrupt">A bouquet of disruptions</h3>
             <p>Delays, cancellations, closures, signal failures, crowd surges and rail replacement buses, started by hand or scripted as scenarios: rush hour with a signal failure, the crowd after the football match.</p>
             <p class="teach">In teaching: dispatching, passenger information, exercises that can be repeated.</p>

@@ -12,7 +12,7 @@
  *                                           // track of a platform, its dock id, e.g. "platform-1:left")
  *     params: [ParamSpec],                  // editable parameters (like object params)
  *     duration(params) -> seconds | null,   // default duration (null = until stopped)
- *     appliesTo(area, d, world) -> bool,    // optional; default: target is "*" or the area's object
+ *     appliesTo(area, d, world) -> bool,    // optional; default: target is "*", the area's object or a dock
  *     effects(d, area, world) -> Effects,   // how the disruption changes services and passengers
  *     draw(view, d, world),                 // optional extra drawing (default: warning sign)
  *     onStart(d, world), onStop(d, world),  // optional
@@ -66,7 +66,12 @@ export const BUILTIN_DISRUPTIONS = [
     duration: (p) => p.minutes * 60,
     effects: (d, area, world) => ({ closed: true, leave: true, demand: 0, messages: [`Closed${remaining(d, world)}`] }),
     draw(view, d, world) {
-      for (const area of affectedAreas(d, world)) drawHatch(view, area);
+      // one track of the stop (a dock): its band; the stop as a whole: hatched
+      for (const area of affectedAreas(d, world)) {
+        const dock = dockOf(area, d.target);
+        if (dock) drawClosedTrack(view, area, dock);
+        else drawHatch(view, area);
+      }
     },
   },
   {
@@ -135,7 +140,8 @@ export function affectedAreas(d, world) {
 function appliesTo(d, area, world) {
   if (d.def.appliesTo) return d.def.appliesTo(area, d, world);
   if (d.def.targets && d.def.targets !== "any" && area.kind !== d.def.targets) return false;
-  return d.target === "*" || area.owner?.id === d.target || area.id === d.target;
+  // a dock of the area: the disruption acts on the vehicles at that track or bay only (effectsFor)
+  return d.target === "*" || area.owner?.id === d.target || area.id === d.target || !!dockOf(area, d.target);
 }
 
 /** A closed track beside a platform: a red band along it with cross strokes. */
