@@ -35,7 +35,7 @@ async function stillEnglish(page) {
 }
 
 test("?lang=de: the frame, View, Settings, Build and a train's card in German; only names stay as they are", async ({ page }) => {
-  const errors = await openApp(page, "/app/?lang=de&layers=border");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json&lang=de&layers=border");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("tab", { name: "Ansicht" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Einstellungen" })).toBeVisible();

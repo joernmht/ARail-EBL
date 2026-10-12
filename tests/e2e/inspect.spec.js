@@ -3,7 +3,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-async function openApp(page, path = "/app/") {
+// The lab example: its trains have consists (the train data on the card) and a bus stop on the streets.
+const LAB = "/app/?layout=../layouts/ebl-lab.json";
+
+async function openApp(page, path = LAB) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(path);
@@ -78,7 +81,7 @@ test("the camera view: a tooltip on hover, the card on a click, Escape closes it
 });
 
 test("Build keeps its taps: a click selects for editing and opens no card; the tooltip still shows", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, `${LAB}#build`);
   const house = await spot(page, { id: "station-1" });
   expect(house).not.toBeNull();
   await page.mouse.move(house.x, house.y);
