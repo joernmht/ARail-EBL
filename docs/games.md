@@ -77,8 +77,11 @@ Every role's game has the same parts, so that it can stand alone and join the bi
 
 ## The game core
 
-`web/arail/game/core.js` is a first, small form of the common game core (#103). A **game**
-(`class Game`) is one role at work:
+`web/arail/game/core.js` is a first, small form of the common game core (#103). The role games have
+their own entry, `web/arail/game/index.js` (the core, the catalogue's checks, the career model, the
+signaller's game): the framework's entry `web/arail/index.js` does not export them, and no part of
+the framework imports them, so a layout, a simulation or a plugin loads none of their code (see
+[Using ARail for research](research.md)). A **game** (`class Game`) is one role at work:
 
 - a **clock** in simulated seconds (`t`), stepped by the page (`step(dt)`), with the game's own `tick`;
 - **resources** (`resource`, `add`, `value`): money, time, staff, counters;

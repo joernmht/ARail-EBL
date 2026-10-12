@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { ROLE_SETTINGS, SignallerGame, careerGraph, roleCounts, validateRoles } from "../../web/arail/index.js";
+import { ROLE_SETTINGS, SignallerGame, careerGraph, roleCounts, validateRoles } from "../../web/arail/game/index.js";
 import { ROLES_MD, rolesMarkdown } from "../../tools/roles-md.mjs";
 import { readJSON } from "./helpers.js";
 

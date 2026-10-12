@@ -8,7 +8,7 @@ import test from "node:test";
 
 import {
   ageOf, careerOptions, createCareer, missingText, prerequisiteTree, reachable, roleStatus, startPoints, study, takeRole, validateRoles, work,
-} from "../../web/arail/index.js";
+} from "../../web/arail/game/index.js";
 import { readJSON } from "./helpers.js";
 
 /** A small catalogue: two school certificates, an apprenticeship, a function training, a degree; three roles. */

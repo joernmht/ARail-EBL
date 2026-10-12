@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CONNECTIONS, Game, LEVELS, STATION, SignallerGame, TIMETABLE, ZS1_MS, clockOf } from "../../web/arail/index.js";
+import { CONNECTIONS, Game, LEVELS, STATION, SignallerGame, TIMETABLE, ZS1_MS, clockOf } from "../../web/arail/game/index.js";
 
 /** Step a game by `seconds` in steps of `dt`, calling `each` before every step. */
 function run(g, seconds, each = null, dt = 1) {

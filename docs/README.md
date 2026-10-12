@@ -24,6 +24,7 @@
 | Guide | What it covers |
 | --- | --- |
 | [Layout file format](layout-format.md) | The JSON file describing a layout, with its layers (the app's modules) and all built-in object types and simulations |
+| [Using ARail for research](research.md) | Applying a model or an algorithm of your own to the simulated railway: the ways in (plugin, planner, control-system feed, Node, scenarios), the browser workbench, what you can leave aside (the role games) |
 | [Control-system interface](control-system-interface.md) | Feed protocol, bridge and adapters |
 | [Extending ARail](extending.md) | Plugins: object types (also buildings), simulations, disruptions and vehicles; the drawing, clock, road and transit APIs |
 | [Architecture](architecture.md) | Modules, data flow, coordinate systems, tracking maths, rendering, simulation and tests; the whole architecture in UML on the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) (classes and activities of every model) |

@@ -122,6 +122,16 @@ test("packages: the «use» dependencies are exactly the imports between them", 
   }
 });
 
+test("packages: the framework never imports the role games (pages, tools and tests do)", () => {
+  // someone who uses ARail for a simulation loads no game: the games have their own entry (game/index.js)
+  const games = PACKAGES.find((p) => p.id === "games");
+  assert.ok(games, "a package games");
+  for (const p of PACKAGES.filter((x) => x.group === "framework" && x.id !== "games")) {
+    assert.ok(!(p.uses || []).includes("games"), `package ${p.id} must not use the role games`);
+  }
+  assert.deepEqual(games.uses, ["core-math"], "the games need only the framework's math");
+});
+
 test("models: every source file is described by a model; the models' files and groups exist", () => {
   const groups = new Set(MODEL_GROUPS.map((g) => g.id)), ids = new Set();
   for (const m of MODELS) {

@@ -3,7 +3,7 @@
 // signal with its checks, the tracks to close and open, the decisions and questions of the game, the
 // trains with their delays, the messages and the score. The game itself is arail/game/signaller.js;
 // this page passes the player's moves to it and draws its state.
-import { CONNECTIONS, LEVELS, STATION, SignallerGame, ZS1_REASONS, clockOf } from "../../arail/index.js";
+import { CONNECTIONS, LEVELS, STATION, SignallerGame, ZS1_REASONS, clockOf } from "../../arail/game/index.js";
 import { $, h, morph, mount, storage } from "../../app/ui.js";
 
 const NS = "http://www.w3.org/2000/svg";

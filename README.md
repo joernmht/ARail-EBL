@@ -71,6 +71,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Infrastructure](docs/infrastructure.md) | The maintenance story of the app (a signal exchanged, a track renewed, step by step); on the game page, asset management: assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
 | [Layout file format](docs/layout-format.md) | The JSON file that describes a layout, its modules (layers) and all built-in object types |
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
+| [Using ARail for research](docs/research.md) | Applying your own model or algorithm to the simulated railway: the ways in, and what you can leave aside |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
 | [Extending ARail](docs/extending.md) | Plugins: object types, simulations, disruptions, vehicles |
 | [Architecture](docs/architecture.md) | How tracking, the world and rendering fit together; the maths. In UML, with the classes and activities of every model: the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) |

@@ -120,8 +120,8 @@ export const PACKAGES = [
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
-    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the signaller's game of Bf Neustadt.",
-    files: ["web/arail/game/core.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js"],
+    summary: "The role games, apart from the framework (their own entry, game/index.js; no framework package imports them): the game core (a role at work: clock, resources, decisions, rules, objectives, score), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the signaller's game of Bf Neustadt.",
+    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js"],
     uses: ["core-math"],
   },
   {
@@ -134,7 +134,7 @@ export const PACKAGES = [
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "games", "feeds"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
@@ -146,7 +146,7 @@ export const PACKAGES = [
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: the app's shell with the games and exercises in the modules' tabs (infrastructure asset management, rail operations, journeys, the full terminal).",
     files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/roles/roles.js", "web/game/career/career.js"],
-    uses: ["app", "api"], links: [["vendor", "script tags"]],
+    uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {
     id: "markers", name: "markers", group: "pages", path: "web/markers",

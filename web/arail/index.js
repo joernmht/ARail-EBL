@@ -134,17 +134,6 @@ export {
 } from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
-// the role games: the game core, the role catalogue's checks, the career mode's model, the signaller's
-// game (no world; named exports only)
-export { Game, GAME_KINDS } from "./game/core.js";
-export { ROLE_SETTINGS, GAME_EFFORTS, validateRoles, careerGraph, roleCounts } from "./game/roles.js";
-export {
-  SELECTIONS, QUALIFICATION_KINDS, qualificationsOf, startPoints, createCareer, ageOf, yearsIn, canStart, routeStatus, roleStatus, options as careerOptions,
-  takeRole, study, work, missingText, prerequisiteTree, reachable,
-} from "./game/career.js";
-export {
-  SignallerGame, STATION, TIMETABLE, CONNECTIONS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf,
-} from "./game/signaller.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {

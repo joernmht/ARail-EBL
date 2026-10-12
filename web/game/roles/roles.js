@@ -2,7 +2,7 @@
 // means, limits, risks, the ways in with their qualifications and experience, typical moves, measures,
 // rhythm, the roles they work with, the mini game), the families to filter by, and a search. The
 // career planner (../career/) takes a role from here as its aim.
-import { ROLE_SETTINGS, qualificationsOf, roleCounts } from "../../arail/index.js";
+import { ROLE_SETTINGS, qualificationsOf, roleCounts } from "../../arail/game/index.js";
 import { $, h, mount } from "../../app/ui.js";
 
 const SETTING_LABELS = { operational: "operational", field: "in the field", office: "in the office", mixed: "mixed" };

@@ -2,7 +2,7 @@
 // (roles.json, arail/game/career.js). At every point it shows what is open (jobs whose requirements
 // are met, educations whose prerequisites are held, working on), the role aimed at with what is
 // missing on each way in, and the career so far. Nothing is laid out in advance: the player chooses.
-import { ageOf, careerOptions, createCareer, missingText, qualificationsOf, roleStatus, startPoints, study, takeRole, work } from "../../arail/index.js";
+import { ageOf, careerOptions, createCareer, missingText, qualificationsOf, roleStatus, startPoints, study, takeRole, work } from "../../arail/game/index.js";
 import { $, h, mount, morph, storage } from "../../app/ui.js";
 
 const KIND_LABELS = { school: "school", apprenticeship: "apprenticeship", degree: "degree", training: "training", licence: "licence", certificate: "certificate", exam: "exam" };

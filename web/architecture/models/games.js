@@ -9,8 +9,10 @@ export const GAMES = [
     id: "game-core", group: "games", title: "The game core",
     summary: "What the role games share: a role at work with a clock, resources, decisions with a deadline and a default, rules kept or broken, objectives with weights, a log; and the result that a round gives to the career mode and the big game.",
     description: "A first, small form of the common game core (issue #103). A game is one role of the role catalogue (docs/roles.md). It runs without the world and without the DOM, in Node and the browser, and is deterministic: random numbers come from streams keyed by the seed and what they are for. A page draws it and passes the player's moves; the game's events (log, decision, decided, violation, over) tell the page what happened.",
-    files: ["web/arail/game/core.js"],
+    files: ["web/arail/game/core.js", "web/arail/game/index.js"],
     classes: [{
+      name: "game index", file: "web/arail/game/index.js", kind: "module", role: "The role games' entry, apart from the framework's: what the game pages, tools and tests import.",
+    }, {
       name: "Game", file: "web/arail/game/core.js", kind: "class", role: "A role's game: clock, resources, decisions, rules, objectives, score.",
       attributes: ["static id, title, role, kind — the game, its role in the catalogue, knowledge, simulation or both", "t: number — simulated seconds since the start", "over: string | null — why it ended", "resources: Map — money, time, counters", "decisions: object[] — asked, with options, deadline and fallback", "violations: object[] — rules broken, with their severity", "logs: object[]"],
       operations: ["rng(...parts) — a random stream for one purpose", "on(fn)", "emit(name, payload)", "log(text, kind)", "resource(id, label, value, unit)", "add(id, v)", "value(id)", "ask(spec) — a decision with options, a deadline and a fallback", "decide(id, option) — the player's or, at the deadline, the fallback", "violate(rule, text, severity) — 1 a slip, 2 a breach, 3 a danger to people", "step(dt) — deadlines, then tick", "tick(dt) — the game's own step", "end(reason)", "objectives() — weighted, each reached 0–1", "score() — 0–100", "result() — for the career mode: score, rules broken, passed, decisions"],
