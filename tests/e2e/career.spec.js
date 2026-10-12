@@ -20,6 +20,8 @@ async function open(page, path = "/game/career/") {
 
 test("a career from leaving school: an education, a job, working on, a step back", async ({ page }) => {
   const errors = await open(page);
+  // the career started on opening is the one the start list shows
+  expect(await page.locator("#start").inputValue()).toBe(await page.evaluate(() => window.__career.person.start));
   // start from the first school certificate: no job is open yet, educations are
   const first = await page.locator("#start option").first().getAttribute("value");
   await page.selectOption("#start", first);

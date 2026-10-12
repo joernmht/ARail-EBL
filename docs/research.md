@@ -51,7 +51,7 @@ Measured on the branch that added them:
 | Loading the framework | nothing: the framework does not import the games |
 | Stories | their types are registered (three story simulations, one hidden disruption type), and they run only when a layout's story module is on |
 | Tests | the games' Node tests take about 2 s; their browser tests 4 of the specs |
-| Repository | the role catalogue's data and its guide, about 2 MB, next to the lab's photos and videos |
+| Repository | the role catalogue's data and its guide, about 2.6 MB, next to the lab's photos and videos |
 
 ## When you contribute
 

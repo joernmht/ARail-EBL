@@ -45,7 +45,7 @@ class CareerPage {
       this.person = null;
     }
     if (!this.person) this.start(starts.find((s) => /abitur/i.test(s.id))?.id ?? starts[0].id, { quiet: true });
-    else $("#start").value = this.person.start;
+    $("#start").value = this.person.start;
     this.render();
   }
 
@@ -127,7 +127,7 @@ class CareerPage {
       h("p", {}, h("strong", {}, this.roleLink(id)), ` · ${SELECTION_LABELS[a.selection]}${a.age_min ? ` · from age ${a.age_min}` : ""}${a.fitness ? ` · ${a.fitness}` : ""}`),
       h("p", {}, st.ok ? "Open to you now." : this.person.current === id ? "Your role now." : !st.age ? `You are too young (from ${a.age_min}).` : "Not yet: one of these ways leads in."),
       st.routes.map((rt) => h("div", { class: `career-route${rt.ok ? " open" : ""}` },
-        h("h4", {}, rt.route.label),
+        h("h3", {}, rt.route.label),
         h("ul", {},
           (rt.route.qualifications || []).map((q) => {
             const have = this.person.qualifications.has(q), qq = this.quals.get(q);

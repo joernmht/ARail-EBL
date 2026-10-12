@@ -28,7 +28,7 @@
 
 .career-route { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin-top: 8px; }
 .career-route.open { border-color: var(--accent); }
-.career-route h4 { font-size: .9rem; }
+.career-route h3 { font-size: .9rem; margin-top: 0; }
 .career-route ul { margin: 4px 0 0; padding-left: 1.2em; font-size: .88rem; }
 .career-route li.have::marker { content: "✓  "; color: var(--accent-ink); }
 .career-route li.miss::marker { content: "✗  "; color: var(--danger); }
