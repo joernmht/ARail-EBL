@@ -449,14 +449,30 @@ export class PassengerSimulation extends Simulation {
     const disrupted = fx.hold || fx.cancel;
     // no service (the night): nobody comes to wait, and the people waiting go home after a while
     const service = this._inService(a);
-    const rate = fx.closed || !service || !this.others ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
+    // the tracks of a platform closed on their own (a track closure, a story's train): nobody comes to
+    // wait there; those waiting go over to another track, or leave when none is open
+    const open = a.docks.filter((d) => !world.disruptions.effectsFor(a, d).closed);
+    const shut = !fx.closed && open.length < a.docks.length;
+    const rate = fx.closed || !service || !this.others || (a.docks.length && !open.length) ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
-      const dock = a.docks.length ? rng.pick(a.docks).id : null;
+      const dock = open.length ? rng.pick(open).id : null;
       const p = new Person(rng, this._access(c), [0, 0], "arriving", rng.uniform(0.62, 0.95) - (disrupted ? 0.3 : 0), dock);
       p.target = this._waitingSpot(c, dock);
       c.people.push(p);
       c.inTimes.push(c.t);
+    }
+    if (shut) {
+      for (const p of c.people) {
+        if ((p.state !== "waiting" && p.state !== "arriving") || p.dock == null || open.some((d) => d.id === p.dock)) continue;
+        if (open.length) {
+          p.dock = rng.pick(open).id;
+          p.target = this._waitingSpot(c, p.dock);
+        } else if (rng.chance(0.25 * dt)) {
+          p.state = "leaving";
+          p.target = this._exit(c, p.pos);
+        }
+      }
     }
     // give up and leave (closures, replacement services; the night, except agents: their owners decide)
     if (fx.leave || !service) {
@@ -646,7 +662,7 @@ export function dockStatus(world, area) {
  * Status texts for the docks of an area, the most important first: a timetable vehicle at a dock
  * ("RE 1 boarding", "Bus 305 arriving"), the next bus of each bus line that stops here (asked from
  * `world.transit`; the bays of a bus terminal can serve several lines), else the next vehicle of
- * the timetable ("Next train in 25 s").
+ * the timetable at the tracks that are open ("Next train in 25 s"; none when every track is closed).
  * @returns {string[]}
  */
 export function statusLines(world, area) {
@@ -669,7 +685,14 @@ export function statusLines(world, area) {
     const planned = world.services.planner?.statusLines?.(area) || [];
     if (planned.length || states.every((st) => st.mode !== "timetable")) return planned.length ? planned : ["No more trains today"];
   }
-  const next = Math.min(...states.map((st) => st.timer)) / (world.speed || 1);
+  // a closed track (a track closure, a story's train) and one kept for a story's own train have no
+  // next train of the timetable: its timer has run out
+  const open = states.filter((st) => {
+    const fx = world.disruptions.effectsFor(area, st.dock);
+    return !fx.closed && !fx.reserved;
+  });
+  if (!open.length) return [];
+  const next = Math.min(...open.map((st) => st.timer)) / (world.speed || 1);
   return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];
 }
 
@@ -696,16 +719,17 @@ function personColour(p) {
  * Used by the passenger simulation and by other simulations with people (the town).
  * @param {import("../core/view.js").View} view
  * @param {number[]} at layout point (mm)
- * @param {{dir?: number[], speed?: number, phase?: number, height?: number, colour: string, legs?: string | null}} o
+ * @param {{dir?: number[], speed?: number, phase?: number, height?: number, colour: string, legs?: string | null, girth?: number}} o
  *   dir: walking direction on the layout (any length), speed in m/s (legs swing when walking),
- *   phase: step phase (radians), height in prototype metres
+ *   phase: step phase (radians), height in prototype metres, girth: how stout (1 = as everybody; a
+ *   story's traveller is drawn stouter, to be found at once)
  */
-export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, height = 1.75, colour, legs = null }) {
+export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, height = 1.75, colour, legs = null, girth = 1 }) {
   const [x, y] = at;
   const m = view.m(1);
   if (view.simple) {
     // the simple view (core/simple.js): a plain block
-    const r = 0.3 * m;
+    const r = 0.3 * m * girth;
     view.block([[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]], 0, height * m, colour);
     return;
   }
@@ -726,7 +750,7 @@ export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, heigh
   const shadow = (ctx) => {
     ctx.globalAlpha *= 0.45 * (1 - 0.6 * view.darkness);
     ctx.fillStyle = "#141414";
-    const r = Math.hypot(side[0] - foot[0], side[1] - foot[1]);
+    const r = Math.hypot(side[0] - foot[0], side[1] - foot[1]) * girth;
     ctx.beginPath();
     ctx.ellipse(foot[0], foot[1], r, r * 0.45, 0, 0, 2 * Math.PI);
     ctx.fill();
@@ -736,7 +760,7 @@ export function drawPerson(view, at, { dir = [1, 0], speed = 0, phase = 0, heigh
   // people are under street and station lights: only half as dark at night
   const body = view.dim(colour, 0.5), legColour = view.dim(legs || shadeLegs(colour), 0.5);
   const figure = (ctx) => {
-    const bw = Math.max(2, ref * 0.42), lw = Math.max(1, ref * 0.14), headR = Math.max(1.6, ref * 0.15);
+    const bw = Math.max(2, ref * 0.42 * girth), lw = Math.max(1, ref * 0.14 * girth), headR = Math.max(1.6, ref * 0.15 * Math.sqrt(girth));
     ctx.lineCap = "round";
     const line = (u, v, w, style) => {
       ctx.beginPath();

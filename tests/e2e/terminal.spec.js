@@ -2,7 +2,7 @@
 // canvas (pointer and keyboard), arrivals, trucks, the start state, scenarios, phones.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/container-terminal.json#terminal";
+const EXAMPLE = "/game/?layout=../layouts/container-terminal.json#terminal";
 
 /** Collect uncaught page errors and console errors (blocked web fonts and other resources are ignored). */
 function trackErrors(page) {
@@ -367,9 +367,9 @@ test("Save as start state: the moved container stays where it is after a reload"
 
 test("a layout without a terminal has no Terminal tab: Settings → Simulation adds a terminal or switches on the module", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/app/#terminal");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/#terminal");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
   await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true");
@@ -397,9 +397,9 @@ test("a layout without a terminal has no Terminal tab: Settings → Simulation a
 
 test("picking in the camera view: a yard block and a reach stacker added to the lab photo", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/app/#terminal");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/app/#terminal");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   // a yard block in the middle of the markers, half full, and a reach stacker beside it
   await page.evaluate(async () => {

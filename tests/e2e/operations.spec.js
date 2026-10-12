@@ -3,7 +3,7 @@
 // operations to a layout from Settings → Simulation, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
 
-const EXAMPLE = "/app/?layout=../layouts/ebl-lab.json&layers=operations#ops";
+const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=operations#ops";
 
 /** Collect uncaught page errors and console errors (blocked web fonts and other resources are ignored). */
 function trackErrors(page) {
@@ -122,7 +122,7 @@ test("a comparison of setups runs in the page and gives a table, the cancelled t
 
 test("Settings → Simulation adds rail operations to a layout; a layout with a terminal shows the Terminal tab instead", async ({ page }) => {
   const errors = trackErrors(page);
-  const path = "/app/?layout=../layouts/ebl-lab.json#simulate";
+  const path = "/game/?layout=../layouts/ebl-lab.json#simulate";
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
@@ -151,7 +151,7 @@ test("Settings → Simulation adds rail operations to a layout; a layout with a 
 test("on a phone the five tabs fit; the arrow keys go from Build to Operations to Disruptions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // a link to the Disruptions tab switches its module on
-  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
+  const errors = await openOperations(page, "/game/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
   const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button")].filter((x) => !x.hidden).every((x) => {
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
@@ -175,7 +175,7 @@ test("on a phone the five tabs fit; the arrow keys go from Build to Operations t
 });
 
 test("the disruptions of the operations are offered without a place, and act on the operations", async ({ page }) => {
-  const errors = await openOperations(page, "/app/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
+  const errors = await openOperations(page, "/game/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
   const types = await page.locator("#disType option").allTextContents();
   expect(types).toEqual(expect.arrayContaining(["Drivers call in sick", "Unit failure", "Drivers leave", "Workshop closed", "Units damaged"]));
   // they have no place to choose

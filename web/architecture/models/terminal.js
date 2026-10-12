@@ -100,7 +100,7 @@ export const TERMINAL = [
       { name: "TruckVisit", file: "web/arail/terminal/visits.js", kind: "class", role: "A truck with a chassis: pickup or delivery.", attributes: ["purpose: string — pickup or delivery", "state: string — waiting, approaching, positioned, departing"] },
       { name: "PathMover", file: "web/arail/terminal/movers.js", kind: "class", role: "A deterministic 1-D mover: accelerate, cruise, brake.", attributes: ["s: number — position along the path", "v: number — speed"], operations: ["setTarget(s)", "arrived()", "step(dt, opts)"] },
       { name: "visits", file: "web/arail/terminal/visits.js", kind: "module", role: "The truck lane's traffic.", operations: ["stepTrucks(trucks, lane, dt, host)", "departTruck(t, host)"] },
-      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The Terminal tab: moves from the panel and on the stage.", operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
+      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The Terminal tab: moves from the panel and on the stage; on the game page (full) also the visits, new arrivals and crane jobs.", attributes: ["full: boolean — the game page's panel"], operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
     ],
     relations: [
       { from: "TerminalSimulation", to: "Inventory", kind: "composes", label: "inventory" },

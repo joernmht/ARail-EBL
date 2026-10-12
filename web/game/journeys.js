@@ -1,9 +1,9 @@
-// Journeys panel: the travellers of an exercise. Every attendee makes a traveller with a start and
-// an aim, asks for travel plans with transfers and chooses one; then all follow their travellers on
-// the layout ("Show" follows one with the flyover's camera), and the results compare the planned and
-// the real arrivals (CSV for the debriefing).
+// Journeys panel of the game page: the travellers of an exercise. Every attendee makes a traveller with
+// a start and an aim, asks for travel plans with transfers and chooses one; then all follow their
+// travellers on the layout ("Show" follows one with the flyover's camera), and the results compare the
+// planned and the real arrivals (CSV for the debriefing).
 import { formatTime, journeysOf, parseColor, TRAVELLER_STATES } from "../arail/index.js";
-import { download, h, morph, mount, section, storage, toast } from "./ui.js";
+import { download, h, morph, mount, section, storage, toast } from "../app/ui.js";
 
 /** Transfer times offered (clock minutes). */
 const TRANSFERS = [0, 2, 3, 5, 8, 10, 15, 20];
@@ -49,6 +49,8 @@ export class JourneysPanel {
     this.open = new Set();
     /** A wider panel (on large screens) for the results. */
     this.wide = storage.get("arail.journeysWide", false) === true;
+    /** What Settings → Simulation says of the module while the layout does not have it. */
+    this.settingsHint = "An exercise: instead of a town full of generated people, every attendee makes one traveller with a start and an aim and chooses a travel plan with transfers, on foot, by bus and by train; then all follow their travellers on the layout. The Journeys tab makes the travellers and compares planned and real arrivals.";
     this._removeAll = 0;
     this.el = null;
   }

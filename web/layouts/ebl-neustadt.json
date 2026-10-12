@@ -167,7 +167,7 @@
     {"id": "bus-terminal-1", "type": "bus-terminal", "name": "Neustadt Bf", "position": [3560, -372], "rotation_deg": 0, "bays": 2, "bay_length_m": 15, "width_m": 4.5, "lane_width_m": 3.5, "lines": "261, 262"},
     {"id": "plattenbau-1", "type": "plattenbau", "name": "WBS 70 Bahnhofstraße", "position": [1760, -470], "rotation_deg": 180, "series": "wbs70", "sections": 3},
     {"id": "house-1", "type": "building", "name": "Café am Markt", "position": [2420, -330], "rotation_deg": 90, "width_m": 12, "depth_m": 9, "floors": 2, "use": "work"},
-    {"id": "building-1", "type": "building", "name": "Hotel am Bahnhof", "position": [3330, -430], "rotation_deg": 180, "width_m": 16, "depth_m": 10, "floors": 3, "roof": "flat", "use": "work"},
+    {"id": "building-1", "type": "building", "name": "Hotel am Bahnhof", "position": [3280, -430], "rotation_deg": 180, "width_m": 16, "depth_m": 10, "floors": 3, "roof": "flat", "use": "work"},
     {"id": "altbau-1", "type": "altbau-block", "name": "Altbau Markt", "position": [3980, -420], "width_m": 36, "depth_m": 30, "floors": 4, "form": "u", "roof": "pitched", "seed": 5},
     {"id": "area-markt", "type": "area", "name": "Markt", "kind": "plaza", "points": [[2300, -300], [2780, -300], [2780, -540], [2300, -540]], "opacity": 0.8},
     {"id": "tree-1", "type": "tree", "position": [2340, -560], "kind": "deciduous", "height_m": 11},
@@ -295,6 +295,69 @@
         {"at": 5, "start": {"id": "fans", "type": "crowd", "target": "platform-2", "params": {"factor": 6, "minutes": 4}}},
         {"at": 60, "call": "platform-2", "message": "Extra train on platform 2."},
         {"at": 130, "call": "platform-2"}
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "description": "The station's infrastructure: the exit signals N1–N3 of the electronic interlocking, the displays on the platforms, the interlocking building and a maintenance base on a table module at the end of Bahnhofstraße. The Infrastructure tab tells a maintenance story to click through: signal N2 fails, is repaired and exchanged; track G3 is renewed.",
+      "enabled": false,
+      "objects": [
+        {"id": "platform-1", "built": 2004},
+        {"id": "platform-2", "built": 1998},
+        {"id": "track-g1", "built": 2004},
+        {"id": "track-g2", "built": 2004},
+        {"id": "track-g3", "built": 1984},
+        {"id": "table-stuetzpunkt", "type": "tabletop", "name": "Table module Stützpunkt", "position": [4850, -320], "width_mm": 1000, "depth_mm": 520},
+        {"id": "road-stuetzpunkt", "type": "road", "name": "Am Stützpunkt", "kind": "residential", "points": [[4340, -232], [5300, -232]]},
+        {"id": "interlocking-in", "type": "interlocking", "name": "ESTW Neustadt (electronic, 2004)", "generation": "electronic", "built": 2004, "position": [5180, -440], "rotation_deg": 180},
+        {"id": "signal-n1", "type": "signal", "name": "Exit signal N1", "real": true, "built": 2004, "interlocking": "interlocking-in", "position": [2529, 419], "rotation_deg": 180},
+        {"id": "signal-n2", "type": "signal", "name": "Exit signal N2", "real": true, "built": 1993, "interlocking": "interlocking-in", "position": [2521, 358], "rotation_deg": 180},
+        {"id": "signal-n3", "type": "signal", "name": "Exit signal N3", "real": true, "built": 2004, "interlocking": "interlocking-in", "position": [2529, 253], "rotation_deg": 180},
+        {"id": "display-1", "type": "passenger-display", "name": "Display platform 1", "real": true, "built": 2016, "position": [3044, 458], "rotation_deg": 90},
+        {"id": "display-2", "type": "passenger-display", "name": "Display platform 2", "real": true, "built": 2011, "position": [3022, 285], "rotation_deg": 90},
+        {"id": "gsmr-neustadt", "type": "gsmr-mast", "name": "GSM-R site Neustadt", "built": 2009, "position": [5230, -130], "height_m": 30},
+        {"id": "maintenance-base-1", "type": "maintenance-base", "name": "Maintenance base Neustadt", "position": [4780, -418], "rotation_deg": 180}
+      ],
+      "simulations": [
+        {"type": "maintenance-story", "name": "Maintenance at Bf Neustadt", "signal": "signal-n2", "renewal": "track-g3", "year": 2026}
+      ],
+      "scenarios": [
+        {
+          "id": "track-closed",
+          "name": "Track G2 closed",
+          "description": "Track G2 at platform 2 is closed for half an hour, as for a repair: no train stops there, track G3 runs as usual.",
+          "steps": [
+            {"at": 0, "start": {"id": "g2-closed", "type": "track-closure", "target": "platform-2:left", "params": {"minutes": 30}}, "message": "Track G2 is closed."}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Operations",
+      "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. The Operations tab tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop. Its story takes over platform 2: the module is shown alone.",
+      "enabled": false,
+      "exclusive": true,
+      "objects": [
+        {"id": "table-bw", "type": "tabletop", "name": "Table module Betriebswerk", "position": [4800, 935], "width_mm": 1600, "depth_mm": 540},
+        {"id": "depot-neustadt", "type": "depot", "name": "Betriebswerk Neustadt", "position": [4900, 935], "rotation_deg": 180, "length_m": 80, "bays": 2, "stabling": 2},
+        {"id": "track-bw-1", "type": "track", "name": "Depot lead, workshop track 1", "track_id": "BW1", "virtual": true, "points": [[4417, 989.6], [4025, 989.6]]},
+        {"id": "track-bw-3", "type": "track", "name": "Depot lead, stabling track 1", "track_id": "BW3", "virtual": true, "points": [[4463, 825.8], [4025, 825.8]]}
+      ],
+      "simulations": [
+        {"type": "ops-story", "name": "A breakdown at Bf Neustadt", "track": "track-g3", "spare_track": "track-g2", "depot": "depot-neustadt", "line": "RB 31", "destination": "Talsee", "departure": "07:42", "unit": "442 101", "spare": "442 108", "km": 22}
+      ]
+    },
+    {
+      "id": "journeys",
+      "name": "Journeys",
+      "description": "A traveller's view of the station. The Journeys tab tells Ada's journey to click through: she walks from her flat on Bahnhofstraße to platform 1, her RB 31 to Talsee is late and her connection to Altstadt lost, her app finds a bus from the bus station; her journey in numbers and her rights as a passenger.",
+      "enabled": false,
+      "simulations": [
+        {"type": "journeys-story", "name": "Ada's journey", "traveller": "Ada", "home": "plattenbau-1", "track": "track-g1", "bus_terminal": "bus-terminal-1", "delay_min": 20}
       ]
     }
   ],

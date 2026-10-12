@@ -626,11 +626,15 @@ export class OperationsSimulation extends Simulation {
     return true;
   }
 
-  /** A unit fails now (on its trip, or where it stands). */
+  /**
+   * A unit fails now (on its trip, or where it stands). A unit that has failed already or is in the
+   * workshop cannot fail.
+   * @returns {boolean} whether it failed
+   */
   failUnit(unitId, kind = "hard") {
     const e = this.engine;
     const u = e?.units.get(unitId);
-    if (!u) return false;
+    if (!u || u.status === "failed" || u.status === "job" || u.status === "transfer") return false;
     if (u.trip) {
       if (kind === "soft") e._softFailure(u, u.trip, 0.5);
       else e._hardFailure(u, u.trip, 0.5);

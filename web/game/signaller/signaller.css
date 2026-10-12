@@ -1,0 +1,85 @@
+/* The signaller's game: the panel (a control desk in Dunkelblau in light and dark mode, the track
+   lights in the light colours of the overlay: Türkis for a locked route, red for occupied, orange for a
+   closed track), the controls beside it, the trains and the messages. */
+.sig-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 18px 10px; }
+@media (min-width: 1100px) { .sig-layout { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; } }
+.sig-layout > *, .sig-main > *, .sig-side > * { min-width: 0; }
+.sig-main { display: grid; gap: 16px; }
+.sig-side { display: grid; gap: 16px; }
+
+.sig-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin-bottom: 10px; }
+.sig-clock { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-right: auto; }
+.sig-level { flex: 0 1 auto; }
+.sig-level select { min-width: 12em; }
+
+.sig-desk { background: var(--board); border-radius: var(--radius); padding: 8px; overflow-x: auto; }
+.sig-desk:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sig-desk svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.sig-desk text { fill: var(--board-text); font-family: var(--font); font-size: 13px; font-weight: 600; }
+.sig-desk .muted { fill: var(--board-muted); font-weight: 500; }
+.sig-desk .platform { fill: var(--board-2); stroke: var(--board-line); }
+.sig-desk .sec { stroke: var(--board-muted); stroke-width: 6; fill: none; stroke-linecap: round; }
+.sig-desk .sec.route { stroke: var(--overlay-ok); }
+.sig-desk .sec.occ { stroke: var(--overlay-bad); }
+.sig-desk .sec.closed { stroke: var(--board-warn); stroke-dasharray: 10 7; }
+.sig-desk .sec.preview { stroke: var(--overlay-ok); stroke-dasharray: 3 7; }
+.sig-desk .leg-off { opacity: .22; }
+.sig-desk .point-label { font-size: 11px; }
+.sig-desk .sig { cursor: pointer; }
+.sig-desk .sig .hit { fill: transparent; }
+.sig-desk .sig .mast { stroke: var(--board-muted); stroke-width: 2; }
+.sig-desk .sig .lamp { stroke: var(--board); stroke-width: 2; }
+.sig-desk .sig .lamp.stop { fill: #ff667e; }
+.sig-desk .sig .lamp.proceed { fill: #3ed37a; }
+.sig-desk .sig .lamp.failed { fill: var(--board-2); stroke: #ff667e; stroke-dasharray: 3 2; }
+.sig-desk .sig .zs1 { fill: #ffffff; }
+.sig-desk .sig.chosen .ring { stroke: var(--board-warn); stroke-width: 3; fill: none; }
+.sig-desk .sig:focus { outline: none; }
+.sig-desk .sig:focus-visible .ring { stroke: var(--overlay-ok); stroke-width: 3; fill: none; }
+.sig-desk .dest { cursor: pointer; }
+.sig-desk .dest rect { fill: var(--board-warn); }
+.sig-desk .dest text { fill: var(--board); }
+.sig-desk .dest:focus { outline: none; }
+.sig-desk .dest:focus-visible rect { stroke: #ffffff; stroke-width: 3; }
+.sig-desk .train rect { fill: #ffffff; stroke: var(--board); }
+.sig-desk .train text { fill: var(--board); font-size: 12px; font-weight: 700; }
+.sig-desk .train.late rect { fill: #ffe2b8; }
+
+.sig-legend { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .82rem; color: var(--text-2); }
+.sig-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.sig-legend .lg { display: inline-block; width: 22px; height: 6px; border-radius: 3px; background: var(--board-muted); outline: 3px solid var(--board); }
+.sig-legend .lg.route { background: var(--overlay-ok); }
+.sig-legend .lg.occ { background: var(--overlay-bad); }
+.sig-legend .lg.closed { background: repeating-linear-gradient(90deg, var(--board-warn) 0 6px, var(--board) 6px 10px); }
+.sig-legend .lamp { display: inline-block; width: 11px; height: 11px; border-radius: 50%; outline: 3px solid var(--board); }
+.sig-legend .lamp.stop { background: #ff667e; }
+.sig-legend .lamp.proceed { background: #3ed37a; }
+.sig-legend .lamp.zs1 { background: #ffffff; }
+
+.sig-decisions .decision { border: 1px solid var(--warn); border-radius: var(--radius); padding: 10px 12px; background: var(--surface-2); }
+.sig-decisions .decision.quiz { border-color: var(--accent); }
+.sig-decisions .decision h3 { font-size: .95rem; }
+.sig-decisions .decision p { font-size: .88rem; color: var(--text-2); margin-top: 4px; }
+.sig-decisions .decision .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sig-decisions .decision.quiz .row { flex-direction: column; align-items: stretch; }
+.sig-decisions .decision.quiz .btn { justify-content: flex-start; text-align: left; }
+.sig-decisions > * + * { margin-top: 10px; }
+
+.sig-form { display: grid; gap: 8px; }
+.sig-form .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.sig-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sig-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .9rem; }
+.sig-zs1 { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: grid; gap: 8px; }
+.sig-zs1 legend { font-weight: 700; padding: 0 4px; }
+.sig-zs1 .field.check { font-size: .88rem; }
+.sig-reason { color: var(--danger); font-size: .88rem; }
+
+.sig-trains .game-table td.late { color: var(--danger); font-weight: 700; }
+.sig-trains .table-scroll { overflow-x: auto; }
+.sig-log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: .86rem; max-height: 260px; overflow-y: auto; }
+.sig-log li { font-variant-numeric: tabular-nums; }
+.sig-log li.violation { color: var(--danger); font-weight: 600; }
+.sig-log li.fault { color: var(--text); font-weight: 600; }
+.sig-log li.right { color: var(--accent-ink); }
+.sig-log li.wrong { color: var(--danger); }
+.sig-debrief > * + * { margin-top: 8px; }

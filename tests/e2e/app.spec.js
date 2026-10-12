@@ -10,7 +10,7 @@ function trackErrors(page) {
   return errors;
 }
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = trackErrors(page);
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
@@ -45,7 +45,7 @@ test("the lab example is tracked and passengers appear", async ({ page }) => {
 });
 
 test("build: place, edit and delete a building", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   const before = await page.evaluate(() => window.__arail.world.objects.length);
   await page.getByRole("button", { name: /^Building/ }).click();
   await expect(page.locator("#placing")).toBeVisible();
@@ -67,7 +67,7 @@ test("build: place, edit and delete a building", async ({ page }) => {
 });
 
 test("disruptions: start and stop a delay", async ({ page }) => {
-  const errors = await openApp(page, "/app/#disrupt");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#disrupt");
   await page.selectOption("#disType", "delay");
   await page.selectOption("#disTarget", "platform-1");
   await page.getByRole("button", { name: "Start: Delay" }).click();
@@ -79,7 +79,7 @@ test("disruptions: start and stop a delay", async ({ page }) => {
 });
 
 test("control: the simulated control system reports trains", async ({ page }) => {
-  const errors = await openApp(page, "/app/#control");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#control");
   await page.getByRole("button", { name: "Simulated control system" }).click();
   await page.waitForFunction(() => window.__arail.world.trains.active && window.__arail.world.trains.trains.size > 0);
   await expect(page.locator("#hud")).toContainText("Control system");
@@ -131,7 +131,7 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
 });
 
 test("switching layouts while placing an object keeps the app running", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.selectOption("#exampleSelect", "neustadt");
   await page.waitForFunction(() => {
     const a = window.__arail;
@@ -212,7 +212,7 @@ test("a layout saved in this browser by version 0.1.0 is restored, and the app s
   };
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/app/#build");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate((json) => {
     localStorage.clear();
     localStorage.setItem(`arail.layout:${new URL("../layouts/ebl-lab.json", location.href).href}`, JSON.stringify(json));
@@ -235,16 +235,16 @@ test("a layout saved in this browser by version 0.1.0 is restored, and the app s
 });
 
 test("URL option ?scenario= plays a scenario of the layout; an unknown one is named in a message", async ({ page }) => {
-  const errors = await openApp(page, "/app/?scenario=football#disrupt");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json&scenario=football#disrupt");
   await expect.poll(() => page.evaluate(() => window.__arail.world.scenarios.current?.id)).toBe("football");
-  await page.goto("/app/?scenario=nope");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json&scenario=nope");
   await page.waitForFunction(() => window.__arail?.tracker.state.H);
   await expect(page.locator("#toast")).toContainText("no scenario “nope”");
   expect(errors).toEqual([]);
 });
 
 test("importing a file that is not a layout changes nothing", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   const before = await page.evaluate(() => JSON.stringify(window.__arail.world.toJSON().objects));
   const calibration = { format: "arail-camera/1", image_size: [1920, 1080], camera_matrix: [[1500, 0, 960], [0, 1500, 540], [0, 0, 1]] };
   await page.locator("#layoutImport").setInputFiles({
@@ -256,7 +256,7 @@ test("importing a file that is not a layout changes nothing", async ({ page }) =
 });
 
 test("editing offset X and then offset Y keeps both", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   // a bus station placed relative to marker 1
   await page.evaluate(() => window.__arail.world.addObject({ id: "bus-terminal-m", type: "bus-terminal", name: "Bus station", position: { marker: 1, offset: [100, -50] }, rotation_deg: 0, bays: 2 }));
   await page.waitForFunction(() => window.__arail.world.getObject("bus-terminal-m")?.geometry);
@@ -270,7 +270,7 @@ test("editing offset X and then offset Y keeps both", async ({ page }) => {
 });
 
 test("another tab opens at its top, also when the panel was scrolled down; on a phone the page scrolls back to the tabs", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
   await page.locator("#tab-view").click();
@@ -293,7 +293,7 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
 });
 
 test("periodic panel updates keep keyboard focus on buttons", async ({ page }) => {
-  const errors = await openApp(page, "/app/#view");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   await page.getByRole("button", { name: "Longer focal length" }).focus();
   await page.waitForTimeout(1000); // the panel is refreshed every 400 ms
   expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe("Longer focal length");
@@ -304,7 +304,7 @@ test("periodic panel updates keep keyboard focus on buttons", async ({ page }) =
 });
 
 test("the time chip says night after sunset, also with the day and night lighting switched off", async ({ page }) => {
-  const errors = await openApp(page, "/app/#simulate");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#simulate");
   const chip = page.locator("#hud .chip.clock");
   await page.getByRole("button", { name: "Night 22:30" }).click();
   await page.evaluate(() => window.__arail.updateHud());
@@ -320,7 +320,7 @@ test("the time chip says night after sunset, also with the day and night lightin
 });
 
 test("the layout list is named by the text it shows (Layouts…), for speech input", async ({ page }) => {
-  await openApp(page, "/app/");
+  await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
   const list = page.getByRole("combobox", { name: "Layouts", exact: true });
   await expect(list).toHaveAttribute("id", "exampleSelect");
   await expect(list.locator("option").first()).toHaveText("Layouts…");

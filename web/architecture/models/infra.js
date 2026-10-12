@@ -253,8 +253,8 @@ export const INFRA = [
   },
   {
     id: "infra-world", group: "infra", title: "Infrastructure on the layout",
-    summary: "The engine on the world's clock with the layout's assets: their state drawn, vans over the streets, drones, faults holding the trains at the platforms; records and GeoJSON; the Infrastructure tab for the roles.",
-    files: ["web/arail/infra/simulation.js", "web/arail/infra/objects.js", "web/arail/infra/disruptions.js", "web/arail/infra/export.js", "web/arail/infra/index.js", "web/app/infra.js"],
+    summary: "The engine on the world's clock with the layout's assets: their state drawn, vans over the streets, drones, faults holding the trains at the platforms; records and GeoJSON; the game page's Infrastructure tab for the roles.",
+    files: ["web/arail/infra/simulation.js", "web/arail/infra/objects.js", "web/arail/infra/disruptions.js", "web/arail/infra/export.js", "web/arail/infra/index.js", "web/game/infra.js"],
     classes: [
       {
         name: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", kind: "class", extends: "Simulation", role: "The engine on the world's clock.",
@@ -264,12 +264,13 @@ export const INFRA = [
       { name: "AssetObject", file: "web/arail/infra/objects.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Signals, switches, balises, level crossings, masts, lifts, displays: their state drawn.", operations: ["state()", "draw(view)"] },
       { name: "MaintenanceBase", file: "web/arail/infra/objects.js", kind: "class", extends: "BuildingBase", role: "Where vans and drones start.", operations: ["slots()"] },
       { name: "export", file: "web/arail/infra/export.js", kind: "module", role: "Asset records and GIS.", operations: ["assetRecord(e, a)", "toGeoJSON(e)"] },
-      { name: "InfraPanel", file: "web/app/infra.js", kind: "class", role: "The Infrastructure tab: roles, running fast, decisions, projects, saving games.", operations: ["can(what, item) — may the role do it?", "_act(name, args, text)", "update()"] },
+      { name: "InfraPanel", file: "web/game/infra.js", kind: "class", role: "The game page's Infrastructure tab: roles, running fast, decisions, projects, saving games.", operations: ["can(what, item) — may the role do it?", "_act(name, args, text)", "update()", "addInfrastructure()"] },
     ],
     relations: [
       { from: "InfrastructureSimulation", to: "InfraEngine", kind: "composes", label: "engine" },
       { from: "InfrastructureSimulation", to: "DisruptionManager", kind: "uses", label: "infra-fault" },
       { from: "AssetObject", to: "InfrastructureSimulation", kind: "uses", label: "assetView" },
+      { from: "AssetObject", to: "MaintenanceStory", kind: "uses", label: "assetView" },
       { from: "InfraPanel", to: "InfrastructureSimulation", kind: "uses" },
       { from: "export", to: "InfraEngine", kind: "uses" },
     ],
@@ -302,5 +303,42 @@ export const INFRA = [
     },
     parameters: [{ key: "display", default: "known condition, labels of faults", meaning: "What the layout shows: known or true condition, labels." }],
     rules: ["Engine time = offset + day × 1440 + the clock's minutes.", "A van drives the streets at 30 km/h, then walks at 1.2 m/s; 2 min to get ready."],
+  },
+  {
+    id: "infra-story", group: "infra", title: "The maintenance story",
+    summary: "The app's Infrastructure tab: a story to click through on Bf Neustadt. An old exit signal fails, its track is closed, the repair team drives out, repairs the signal and exchanges it; a worn track is closed and renewed with a construction train.",
+    description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. The assets of the layout show their condition by their age (as the game's rings); the signal and the renewed track by their step. The closed tracks hold their trains (track-closure on the platform's track); the repair van drives over the streets from the maintenance base, the technicians walk the last bit (through the underpass); the construction train comes in from the track's far end with the road-rail excavator ahead.",
+    files: ["web/arail/infra/story.js"],
+    classes: [{
+      name: "MaintenanceStory", file: "web/arail/infra/story.js", kind: "class", extends: "Story", role: "The maintenance case, step by step.",
+      attributes: ["static STEPS — 12 steps: normal, fault, close, drive, repair, exchange, reopen, possession, arrive, remove, build, done"],
+      operations: ["signal()", "dock() — the signal's platform track", "renewal()", "renewalDock()", "base()", "compose(index, k)", "ageGrade(o) — the condition by the age", "assetView(id) — as the infrastructure simulation's", "vanPath() — the drive and the walk", "works() — where the renewal works are", "vanAt()", "trainAt()", "diggerAt()", "tamperAt()", "view()", "draw(view)", "drawBase(view, base)"],
+    }],
+    relations: [
+      { from: "MaintenanceStory", to: "MaintenanceBase", kind: "uses", label: "the van leaves its yard" },
+    ],
+    activities: [{
+      id: "scene", name: "The picture of a step (MaintenanceStory.compose)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "The step and how far its animation has run", "Story.refresh"],
+        ["d1", "decision", "Which part of the story?"],
+        ["a2", "action", "The signal: old, failed, repaired, exchanged; the van in the yard, out, at the station, back", "MaintenanceStory.compose", "repair"],
+        ["a3", "action", "The signal's track closed while the team works", "MaintenanceStory.dock", "repair"],
+        ["a4", "action", "The renewed track: closed, fenced, old track out, new track in, tamped, accepted", "MaintenanceStory.compose", "renewal"],
+        ["a5", "action", "The construction train and the excavator on the track", "MaintenanceStory.trainAt", "renewal"],
+        ["m1", "merge"],
+        ["a6", "action", "Its disruptions started or stopped (track-closure, infra-fault)", "Story._sync"],
+        ["a7", "action", "Drawn: rings by age, the van, the technicians, the works", "MaintenanceStory.draw"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "steps 1–7"], ["a2", "a3"], ["a3", "m1"], ["d1", "a4", "steps 8–12"], ["a4", "a5"], ["a5", "m1"], ["m1", "a6"], ["a6", "a7"], ["a7", "e"]],
+    }],
+    parameters: [
+      { key: "signal", default: "signal-n2", meaning: "The signal that fails (an exit signal at a platform track).", sim: "maintenance-story" },
+      { key: "renewal", default: "track-g3", meaning: "The track that is renewed.", sim: "maintenance-story" },
+      { key: "year", default: "2026", meaning: "The year of the story: the age of the assets and their condition.", sim: "maintenance-story" },
+    ],
+    rules: ["Condition by age: grade value = 1 + 4.99 (1 − health at that age), the asset type's service life.", "The renewal works span the track from 6 % of its length to where the construction train waits, about 55 m from its far end."],
   },
 ];

@@ -1,9 +1,11 @@
 /**
  * Rail operations: rolling stock with maintenance (the entity in charge of maintenance, ECM, and its
- * four functions), crews with contracts and duties, and the penalties between the parties.
+ * four functions), crews with contracts and duties, and the penalties between the parties. The app
+ * shows the operations story (story.js), a walkthrough to click through; the operations game runs on
+ * the game page.
  *
  *   import { registerOperations } from "./ops/index.js";
- *   registerOperations(registry);   // the depot object, the "operations" simulation, its disruptions
+ *   registerOperations(registry);   // the depot object, the "operations" simulation, the operations story, its disruptions
  *
  * `arail/index.js` registers it with the built-ins. The engine also runs without a world (Node.js,
  * comparisons): `new OpsEngine(config, {layout})`, `runExperiment(...)`.
@@ -27,20 +29,23 @@ export {
 export { Depot } from "./depot.js";
 export { OperationsSimulation, opsOf, CREW_COLOURS } from "./simulation.js";
 export { OPS_DISRUPTIONS } from "./disruptions.js";
+export { OpsStory } from "./story.js";
 
 import { Depot } from "./depot.js";
 import { OperationsSimulation } from "./simulation.js";
 import { OPS_DISRUPTIONS } from "./disruptions.js";
+import { OpsStory } from "./story.js";
 
 /**
- * Register the depot object (palette group Transport), the "operations" simulation and its
- * disruption types.
+ * Register the depot object (palette group Transport), the "operations" simulation, the
+ * "ops-story" and the disruption types of the operations.
  * @param {import("../core/registry.js").Registry} registry
  * @returns {import("../core/registry.js").Registry}
  */
 export function registerOperations(registry) {
   registry.registerObject(Depot);
   registry.registerSimulation(OperationsSimulation);
+  registry.registerSimulation(OpsStory);
   for (const def of OPS_DISRUPTIONS) registry.registerDisruption(def);
   return registry;
 }

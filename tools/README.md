@@ -1,8 +1,8 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and three Node.js scripts,
-[`ops-compare.mjs`](#comparing-operations-setups), [`fetch-fonts.mjs`](#updating-the-fonts) and
-[`video/render.mjs`](#videos)):
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and four Node.js scripts,
+[`ops-compare.mjs`](#comparing-operations-setups), [`roles-md.mjs`](#the-role-catalogues-guide),
+[`fetch-fonts.mjs`](#updating-the-fonts) and [`video/render.mjs`](#videos)):
 
 | Command | What it does | Extra |
 | --- | --- | --- |
@@ -72,6 +72,17 @@ node tools/ops-compare.mjs web/layouts/ebl-lab.json --list   # the setups and st
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
 `--setups ID,ID` (default: the layout's setups, else the presets), `--csv FILE`, `--json FILE`.
+
+## The role catalogue's guide
+
+`roles-md.mjs` (Node.js) writes [docs/roles.md](../docs/roles.md) from the role catalogue's data,
+`web/game/roles/roles.json`, after checking it (ids, families, every field, careers naming roles of
+the catalogue). Change the data, then:
+
+```bash
+node tools/roles-md.mjs           # writes docs/roles.md
+node tools/roles-md.mjs --check   # fails if docs/roles.md is not up to date (also a Node test)
+```
 
 ## Updating the fonts
 

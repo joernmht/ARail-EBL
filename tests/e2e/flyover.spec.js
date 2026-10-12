@@ -11,7 +11,7 @@ function trackErrors(page) {
   return errors;
 }
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = trackErrors(page);
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
@@ -155,7 +155,7 @@ test("flyover navigation: drag to orbit, Shift-drag to pan, wheel to zoom, pinch
 });
 
 test("flyover build: a table module by two taps on the grid, dragging snaps, R turns", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await enterFlyover(page);
   await setCamera(page, { target: [2000, 100], distance: 3000, yaw_deg: 90, pitch_deg: 90 });
   await page.waitForTimeout(100);
@@ -223,7 +223,7 @@ test("flyover build: a table module by two taps on the grid, dragging snaps, R t
 });
 
 test("flyover build: drag out a table module; tables are picked at their edges, a drag inside pans", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await enterFlyover(page);
   await setCamera(page, { target: [1700, 100], distance: 3200, yaw_deg: 90, pitch_deg: 90 });
   await page.locator(".palette").getByRole("button", { name: /^Table module/ }).click();
@@ -255,7 +255,7 @@ test("flyover build: drag out a table module; tables are picked at their edges, 
 });
 
 test("camera view: a table module dragged out over the camera image covers it (no grid, no snapping)", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator(".palette").getByRole("button", { name: /^Table module/ }).click();
   const a = await screenPoint(page, 547, -153), b = await screenPoint(page, 813, -31);
   const box = await page.locator("#stage").boundingBox();
@@ -284,7 +284,7 @@ test("camera view: a table module dragged out over the camera image covers it (n
 });
 
 test("the outline of a real table is picked in the flyover only (over the camera image it is not drawn)", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.evaluate(() => {
     const a = window.__arail;
     a.world.addObject({ id: "real-table", type: "tabletop", kind: "physical", position: [700, -200], width_mm: 1800, depth_mm: 1000 });
@@ -307,7 +307,7 @@ test("the outline of a real table is picked in the flyover only (over the camera
 });
 
 test("View panel: grid spacing and snapping, markers; the camera view shows the grid on request", async ({ page }) => {
-  const errors = await openApp(page, "/app/#view");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   await page.locator("#btnFlyoverPanel").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(page.locator("#btnFlyoverPanel")).toHaveAttribute("aria-pressed", "true");
@@ -384,7 +384,7 @@ test("the video survey works in the flyover: markers appear on the table", async
 });
 
 test("dragging a line or an outline drawn on the grid keeps its points on the grid", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await enterFlyover(page);
   await setCamera(page, { target: [2100, -800], distance: 1600, yaw_deg: 90, pitch_deg: 90 });
   // an area beside the table, drawn on the 50 mm grid (its centre is not on the grid)
@@ -401,7 +401,7 @@ test("dragging a line or an outline drawn on the grid keeps its points on the gr
 });
 
 test("a bus stop dragged across its street follows the pointer (its position snaps, not the point on the street)", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await enterFlyover(page);
   await setCamera(page, { target: [650, -760], distance: 1500, yaw_deg: 0, pitch_deg: 90 });
   // Altmarkt on Schulstraße (x = 650): 60 mm towards the east, across the street, in small steps
@@ -453,7 +453,7 @@ test("a broken orthophoto entry does not stop the flyover from drawing", async (
 });
 
 test("keyboard: the Flyover toggle in the View panel and the rotate buttons keep the focus", async ({ page }) => {
-  const errors = await openApp(page, "/app/#view");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   await page.locator("#btnFlyoverPanel").focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
@@ -478,7 +478,7 @@ test("keyboard: the Flyover toggle in the View panel and the rotate buttons keep
 
 test("flyover keys only while the stage has the focus: F focuses it, scroll keys elsewhere are left alone", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const errors = await openApp(page, "/app/#view");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   await page.locator("#panel-view .hint").first().click(); // nothing focused
   await page.keyboard.press("f");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
@@ -512,7 +512,7 @@ test("without an image, the message of the empty stage comes back after the flyo
 for (const scheme of ["light", "dark"]) {
   test(`the flyover has no accessibility violations (${scheme} mode)`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
-    await openApp(page, "/app/#view");
+    await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
     await enterFlyover(page);
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])

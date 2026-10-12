@@ -4,6 +4,7 @@
  * internal disruption with which a fault at the station on the layout holds or slows its trains.
  * @module arail/infra/disruptions
  */
+import { dockOf } from "../core/disruptions.js";
 import { infraOf } from "./simulation.js";
 
 const common = { targets: "none", requires: "infrastructure", duration: () => 60, appliesTo: () => false };
@@ -43,12 +44,12 @@ export const INFRA_DISRUPTIONS = [
     // started by the infrastructure simulation itself for a fault at the station on the layout
     type: "infra-fault",
     label: "Infrastructure fault",
-    description: "A fault of the infrastructure at the station: trains are held or pass at caution until it is repaired.",
+    description: "A fault of the infrastructure at the station: trains are held or pass at caution until it is repaired (at a platform, or at one of its tracks).",
     targets: "rail",
     hidden: true,
     params: [],
     duration: () => null,
-    appliesTo: (area, d) => area.kind === "rail" && (d.target === "*" || area.owner?.id === d.target),
+    appliesTo: (area, d) => area.kind === "rail" && (d.target === "*" || area.owner?.id === d.target || !!dockOf(area, d.target)),
     effects: (d) => ({ hold: !!d.params.hold, mood: d.params.hold ? -0.02 : -0.006, messages: [d.params.text || "Infrastructure fault"] }),
   },
 ];

@@ -30,22 +30,36 @@ test("project page hands over from the picture to the applications, each opening
   const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
   expect(order).toEqual(["base", "applications", "next"]);
   const jumps = await page.getByRole("navigation", { name: "Applications" }).getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-disruptions"]);
+  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-journeys", "#app-disruptions"]);
   for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(examples).toHaveLength(5);
+  expect(examples).toHaveLength(6);
+  // the cards of the stories: the story in the app, the game on the game page
+  for (const [card, layer, tab] of [["#app-infrastructure", "infrastructure", "infra"], ["#app-journeys", "journeys", "journeys"]]) {
+    await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+  }
   // and the examples of the lab table
   const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
-  const app = await (await request.get("/app/app.js")).text();
-  for (const href of [...examples, ...fresh]) {
-    const params = new URL(href, "http://x/").searchParams;
+  // the examples of the app (app/main.js) and of the game page (game/main.js)
+  const pages = { app: await (await request.get("/app/main.js")).text(), game: await (await request.get("/game/main.js")).text() };
+  const links = [...examples, ...fresh, ...(await page.locator(".app-card .acts a[href^='app/'], .app-card .acts a[href^='game/']").evaluateAll((as) => as.map((a) => a.getAttribute("href"))))];
+  for (const href of links) {
+    const page = href.split("/")[0], params = new URL(href, "http://x/").searchParams;
     if (params.has("example")) {
-      expect(app, href).toContain(`id: "${params.get("example")}"`);
+      expect(pages[page], href).toContain(`id: "${params.get("example")}"`);
       continue;
     }
     const layout = params.get("layout");
-    expect((await request.get(new URL(layout, "http://localhost/app/").pathname)).ok(), layout).toBe(true);
+    expect((await request.get(new URL(layout, `http://localhost/${page}/`).pathname)).ok(), layout).toBe(true);
+  }
+  // the stories of the app open their module of Bf Neustadt; their games are a link to the game page
+  const neustadt = await (await request.get("/layouts/ebl-neustadt.json")).json();
+  for (const [card, layer, tab] of [["#app-operations", "operations", "ops"], ["#app-infrastructure", "infrastructure", "infra"]]) {
+    await expect(page.locator(`${card} a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+    expect(neustadt.layers.map((l) => l.id), card).toContain(layer);
   }
   // cooperation: the contact person by email
   await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
@@ -246,7 +260,7 @@ test("every page links to the Impressum and the Datenschutzerklärung, which giv
     }
   }
   // the project page's own footer is the way there from the app (the brand links to it)
-  await page.goto("/app/");
+  await page.goto("/app/?layout=../layouts/ebl-lab.json");
   await expect(page.locator("#bar .brand")).toHaveAttribute("href", "../");
   for (const path of ["/impressum/", "/datenschutz/"]) {
     await page.goto(path);

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>Roles of the railway · ARail Game</title>
+<meta name="description" content="The role catalogue of ARail-EBL: the roles of the German railway system, from the politician to the cleaning staff, each with its decisions, means and limits, personal risks, career and a mini game.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="roles.css">
+<script type="module" src="roles.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../signaller/">Signaller game</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="game-hero">
+    <div class="wrap">
+      <p class="eyebrow">Role catalogue</p>
+      <h1>Roles of the railway</h1>
+      <p class="lead">From the politician to the cleaning staff: <span id="roleCount">the roles</span> of the German railway system, each with its decisions, means and limits, personal risks, career, and a mini game. Each game works on its own, for teaching; together they make one big game, played as a career or as a railway undertaking's simulator (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>).</p>
+      <p class="lead small">Compiled for game design and teaching; names, rules and numbers are simplified and in orders of magnitude, to be checked by the chair's experts.</p>
+    </div>
+  </div>
+
+  <div class="wrap roles-layout">
+    <section class="roles-overview" aria-labelledby="overviewTitle">
+      <h2 id="overviewTitle" class="visually-hidden">Overview</h2>
+      <div id="families" class="roles-families" role="group" aria-label="Families of roles"></div>
+    </section>
+
+    <form class="roles-filters game-card" id="filters" role="search" aria-labelledby="filtersTitle">
+      <h2 id="filtersTitle">Find a role</h2>
+      <div class="roles-fields">
+        <label class="field" for="q"><span>Search</span><input type="search" id="q" placeholder="e.g. signaller, Zugbegleiter, budget"></label>
+        <label class="field" for="family"><span>Family</span><select id="family"></select></label>
+        <label class="field" for="setting"><span>Where</span><select id="setting"></select></label>
+        <label class="field" for="kind"><span>Kind of game</span><select id="kind"></select></label>
+      </div>
+      <p class="hint" id="count" aria-live="polite"></p>
+    </form>
+
+    <section class="roles-career game-card" aria-labelledby="careerTitle">
+      <h2 id="careerTitle">A career through the roles</h2>
+      <p>The career mode follows one person through these roles. It is not a path laid out in advance: from a school certificate, some jobs are open and some educations can be started; many roles need an apprenticeship, a degree, a function training or a licence first, and years in other roles. Each role's card shows its ways in.</p>
+      <p><a class="btn primary" href="../career/">Plan a career</a></p>
+    </section>
+
+    <section aria-labelledby="listTitle">
+      <h2 id="listTitle" class="visually-hidden">The roles</h2>
+      <div id="roles" class="roles-list"></div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>The catalogue's data: <a href="roles.json">roles.json</a>; described in <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/roles.md">docs/roles.md</a>. The first playable role game: the <a href="../signaller/">signaller of Bf Neustadt</a>.</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The catalogue is shown with JavaScript; its data is in <a href="roles.json">roles.json</a>.</p></noscript>
+</body>
+</html>

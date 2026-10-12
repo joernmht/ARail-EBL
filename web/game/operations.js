@@ -1,11 +1,12 @@
-// Operations panel: the layout's rail operations — the day (trains, units, crews, penalties), the fleet,
-// the workshop and who does which ECM function, the crews and their duties, the penalties between the
-// parties — and comparisons of setups under stress tests (runExperiment, in the page).
+// Operations panel of the game page: the layout's rail operations — the day (trains, units, crews,
+// penalties), the fleet, the workshop and who does which ECM function, the crews and their duties, the
+// penalties between the parties — and comparisons of setups under stress tests (runExperiment, in the
+// page).
 import {
   CAUSE_LABELS, FUNCTION_LABELS, KPIS, causeKeyLabel, durationLabel, hoursLabel, jobWord, opsOf, runExperiment, setupsOf, shortName,
   stressOf, toCSV,
 } from "../arail/index.js";
-import { download, h, morph, mount, storage, toast } from "./ui.js";
+import { download, h, morph, mount, storage, toast } from "../app/ui.js";
 
 const VIEWS = [["today", "Today"], ["fleet", "Fleet"], ["workshop", "Workshop"], ["crews", "Crews"], ["money", "Penalties"], ["compare", "Compare"]];
 const DAY = 1440;
@@ -30,6 +31,8 @@ export class OperationsPanel {
     this.compare = { setups: null, stress: "none", days: 14, seeds: 3, running: false, progress: 0, step: "", result: null, error: "", stop: false };
     /** A wider panel (on large screens) for the tables and the comparison. */
     this.wide = storage.get("arail.opsWide", false) === true;
+    /** What Settings → Simulation says of the module while the layout does not have it. */
+    this.settingsHint = "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups.";
     this.el = null;
   }
 

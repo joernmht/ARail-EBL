@@ -1,14 +1,15 @@
-// Infrastructure panel: the layout's infrastructure district as a game for teams. A role switcher (asset
-// manager, ALV, maintenance dispatcher, planner, construction supervision, funding authority, instructor)
-// decides what may be done; the views show the overview of the year, the line map of the network (km,
-// assets in the colour of their known condition), the asset register with the asset information model,
-// the decisions waiting for the role, the projects through the HOAI phases, the staff in shifts and the
-// results of the years. Games are kept per layout in the browser and can be saved as files.
+// Infrastructure panel of the game page: the layout's infrastructure district as a game for teams. A
+// role switcher (asset manager, ALV, maintenance dispatcher, planner, construction supervision, funding
+// authority, instructor) decides what may be done; the views show the overview of the year, the line map
+// of the network (km, assets in the colour of their known condition), the asset register with the asset
+// information model, the decisions waiting for the role, the projects through the HOAI phases, the staff
+// in shifts and the results of the years. Games are kept per layout in the browser and can be saved as
+// files.
 import {
   ASSET_TYPES, DISCIPLINES, DISCIPLINE_IDS, GENERATIONS, MEASURES, METHODS, PROCEDURES, PROJECT_STAGES, QUALITY, REPORTS, ROLES, ROLE_IDS,
   SUPERVISION, YEAR, assetRecord, durationText, eur, gradeColour, infraOf, kmLabel, roleLabel, scenariosOf, toGeoJSON,
 } from "../arail/index.js";
-import { download, h, morph, mount, readFile, storage, toast } from "./ui.js";
+import { download, h, morph, mount, readFile, storage, toast } from "../app/ui.js";
 
 const VIEWS = [["overview", "Overview"], ["map", "Line map"], ["assets", "Assets"], ["decisions", "Decisions"], ["projects", "Projects"], ["staff", "Staff"], ["results", "Results"]];
 const ROLE_CHOICES = [...ROLE_IDS, "instructor"];
@@ -61,6 +62,8 @@ export class InfraPanel {
     this.role = ROLE_CHOICES.includes(storage.get("arail.infraRole")) ? storage.get("arail.infraRole") : "asset-manager";
     // the tables and the line map need room: wide by default on large screens
     this.wide = storage.get("arail.infraWide", true) !== false;
+    /** What Settings → Simulation says of the module while the layout does not have it. */
+    this.settingsHint = "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab.";
     this.filter = { discipline: "", type: "", problems: false, layout: false, limit: 40 };
     this.assetChoice = null;
     this.projectChoice = null;

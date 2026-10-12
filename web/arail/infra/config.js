@@ -166,7 +166,8 @@ export const PRESET_SCENARIOS = [
   { id: "none", name: "Normal years", description: "No extra stress.", patch: {} },
   {
     id: "budget-cut", name: "Budget cut", description: "The maintenance budget is 15 % lower and the replacement money 25 % lower.",
-    patch: { budgets: { maintenance_eur: 6_375_000, replacement_eur: 6_750_000 } },
+    // 15 % and 25 % below the defaults (4.4 and 9 million euros)
+    patch: { budgets: { maintenance_eur: 3_740_000, replacement_eur: 6_750_000 } },
   },
   {
     id: "storm", name: "Autumn storm", description: "A storm in October of the first year damages overhead lines, signals and GSM-R masts on line 6250.",

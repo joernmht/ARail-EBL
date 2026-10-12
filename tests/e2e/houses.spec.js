@@ -9,7 +9,7 @@ function trackErrors(page) {
   return errors;
 }
 
-async function openApp(page, path = "/app/") {
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = trackErrors(page);
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
@@ -47,7 +47,7 @@ async function warmPixels(page, x, y, z = 0) {
 }
 
 test("buildings: place a Plattenbau, change its series and see its windows lit at night", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   const palette = page.locator(".palette");
   await expect(palette.getByRole("heading", { name: "Buildings" })).toBeVisible();
   for (const name of ["Building", "Plattenbau", "Altbau block", "Single-family house", "Single-family estate", "Office building", "School", "Supermarket", "Workshop / factory"]) {
@@ -98,7 +98,7 @@ test("buildings: place a Plattenbau, change its series and see its windows lit a
 });
 
 test("buildings: draw a single-family estate as an outline", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator(".palette").getByRole("button", { name: /^Single-family estate/ }).click();
   for (const [x, y] of [[850, 250], [1450, 266], [1441, 616], [841, 600]]) {
     const q = await screenPoint(page, x, y);
@@ -120,7 +120,7 @@ test("buildings: draw a single-family estate as an outline", async ({ page }) =>
 });
 
 test("buildings: an estate tapped three times on one spot keeps the app running", async ({ page }) => {
-  const errors = await openApp(page, "/app/#build");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator(".palette").getByRole("button", { name: /^Single-family estate/ }).click();
   const q = await screenPoint(page, 900, 300);
   for (let i = 0; i < 3; i++) await page.mouse.click(q.x, q.y);
