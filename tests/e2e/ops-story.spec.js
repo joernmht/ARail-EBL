@@ -1,5 +1,5 @@
 // End-to-end tests of the operations story in the app (Chromium): Bf Neustadt's module Operations
-// switched on in Settings, the story clicked through (the tracks its trains hold, the platform's
+// switched on in Settings (alone: Infrastructure takes its place), the story clicked through (the tracks its trains hold, the platform's
 // message, the list of steps, a presenter's clicker, Start again), the flyover's camera following
 // the spare unit to the depot, no timetable train where the story's trains are, and the game page
 // keeping its Operations game.

@@ -104,11 +104,11 @@ export class OpsStory extends Story {
     },
     {
       id: "empty", title: "{unit} runs empty to the workshop", seconds: 20,
-      text: "The driver isolates the faulty converter: with half of its traction the unit may run empty at reduced speed. He changes to the cab at the other end and takes it to the workshop of the depot; {track} is free again.",
+      text: "With the faulty converter isolated, the unit may run empty at reduced speed on half of its traction: the driver changes to the cab at the other end and takes it to the workshop of the depot. {Track} is free again.",
     },
     {
       id: "workshop", title: "In the workshop: diagnosis and repair", seconds: 12,
-      text: "The fitters read the fault memory: a power module (IGBT) of the traction converter has burnt out, and they exchange it in about {repair} hours. {line} and its trip back were more than {threshold} minutes late: under the transport contract the railway undertaking pays the transport authority {late}. Without the spare both trips would have been cancelled: {cancelled}.",
+      text: "The fitters read the fault memory: a power module (IGBT) of the traction converter has burnt out, and they exchange it in about {repair} hours. {line} and its trip back were more than {threshold} minutes late: under the transport contract the railway undertaking pays the transport authority (Aufgabenträger) {late}. Without the spare both trips would have been cancelled: {cancelled}.",
     },
     {
       id: "back", title: "Back to normal service", seconds: 12,
