@@ -120,8 +120,8 @@ export const PACKAGES = [
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
-    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score), the role catalogue's checks and career graph, and the signaller's game of Bf Neustadt.",
-    files: ["web/arail/game/core.js", "web/arail/game/roles.js", "web/arail/game/signaller.js"],
+    summary: "The role games: the game core (a role at work: clock, resources, decisions, rules, objectives, score), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the signaller's game of Bf Neustadt.",
+    files: ["web/arail/game/core.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js"],
     uses: ["core-math"],
   },
   {
@@ -145,7 +145,7 @@ export const PACKAGES = [
   {
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: the app's shell with the games and exercises in the modules' tabs (infrastructure asset management, rail operations, journeys, the full terminal).",
-    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/roles/roles.js"],
+    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api"], links: [["vendor", "script tags"]],
   },
   {

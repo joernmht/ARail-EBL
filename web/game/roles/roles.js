@@ -1,7 +1,8 @@
 // The role catalogue page: the roles of roles.json as cards with their details (decisions, effects,
-// means, limits, risks, career, measures, rhythm, the roles they work with, the mini game), the
-// families to filter by, a search, and the shortest career from one role to another.
-import { ROLE_SETTINGS, careerPath, roleCounts } from "../../arail/index.js";
+// means, limits, risks, the ways in with their qualifications and experience, typical moves, measures,
+// rhythm, the roles they work with, the mini game), the families to filter by, and a search. The
+// career planner (../career/) takes a role from here as its aim.
+import { ROLE_SETTINGS, qualificationsOf, roleCounts } from "../../arail/index.js";
 import { $, h, mount } from "../../app/ui.js";
 
 const SETTING_LABELS = { operational: "operational", field: "in the field", office: "in the office", mixed: "mixed" };
@@ -13,8 +14,8 @@ class RolesPage {
     this.cat = cat;
     this.byId = new Map(cat.roles.map((r) => [r.id, r]));
     this.family = new Map(cat.families.map((f) => [f.id, f]));
+    this.quals = qualificationsOf(cat);
     this.filters();
-    this.career();
     this.render();
     // a role named in the address: open it
     const id = decodeURIComponent(location.hash.replace(/^#role-/, ""));
@@ -83,13 +84,23 @@ class RolesPage {
           h("div", {}, h("dt", {}, "Personal risks"), h("dd", {}, list(r.risks))),
           h("div", {}, h("dt", {}, "Measured by"), h("dd", {}, list(r.kpis))),
           h("div", {}, h("dt", {}, "How one becomes it"), h("dd", {}, r.career?.entry)),
-          h("div", {}, h("dt", {}, "Comes from"), h("dd", {}, links(r.career?.from))),
-          h("div", {}, h("dt", {}, "Leads to"), h("dd", {}, links(r.career?.to))),
+          r.access?.job ? h("div", {}, h("dt", {}, "Ways in"), h("dd", {}, this.ways(r), h("p", {}, h("a", { href: `../career/#aim=${r.id}` }, "Aim for this role in the career planner")))) : null,
+          h("div", {}, h("dt", {}, "Often comes from"), h("dd", {}, links(r.career?.from))),
+          h("div", {}, h("dt", {}, "Often leads to"), h("dd", {}, links(r.career?.to))),
           h("div", {}, h("dt", {}, "Career chances and pay"), h("dd", {}, r.career?.chances)),
           h("div", {}, h("dt", {}, "Works with"), h("dd", {}, links(r.interacts))),
           h("div", {}, h("dt", {}, "The game"), h("dd", {}, h("p", {}, g.loop), h("p", {}, h("strong", {}, "Success: "), g.win), h("p", {}, h("strong", {}, "Knowledge: "), g.knowledge), h("p", {}, h("strong", {}, "In the big game: "), g.bigGame), h("p", {}, h("strong", {}, "Builds on: "), (g.arail || []).join(", ")))),
         )),
     );
+  }
+
+  /** A role's ways in: each route's qualifications and experience. */
+  ways(r) {
+    const a = r.access, q = (id) => this.quals.get(id)?.name ?? id;
+    return h("div", {},
+      h("p", { class: "hint" }, [{ application: "By application", internal: "Within the organisation", election: "By election", appointment: "By appointment", none: "Anyone" }[a.selection], a.age_min ? `from age ${a.age_min}` : null, a.fitness || null].filter(Boolean).join(" · ")),
+      h("ul", {}, (a.routes || []).map((rt) => h("li", {}, h("strong", {}, `${rt.label}: `),
+        [...(rt.qualifications || []).map(q), ...(rt.experience || []).map((e) => `${e.years} years as ${e.roles.map((x) => this.byId.get(x)?.name ?? x).join(" or ")}`)].join(", ") || "no formal requirement"))));
   }
 
   /** Show one role: clear filters that hide it, open its details, scroll to it. */
@@ -106,21 +117,6 @@ class RolesPage {
     el.scrollIntoView({ block: "start" });
     el.querySelector("h3").setAttribute("tabindex", "-1");
     el.querySelector("h3").focus({ preventScroll: true });
-  }
-
-  career() {
-    const sorted = [...this.cat.roles].sort((a, b) => a.name.localeCompare(b.name));
-    const options = (sel) => sorted.map((r) => h("option", { value: r.id, selected: r.id === sel }, r.name));
-    const has = (id) => this.byId.has(id);
-    mount($("#careerFrom"), options(has("train-cleaner") ? "train-cleaner" : sorted[0].id));
-    mount($("#careerTo"), options(has("federal-transport-minister") ? "federal-transport-minister" : sorted.at(-1).id));
-    const go = () => {
-      const path = careerPath(this.cat, $("#careerFrom").value, $("#careerTo").value);
-      mount($("#careerPath"), path ? path.map((id) => h("li", {}, this.link(id))) : h("li", {}, "No way between these roles in the catalogue's careers."));
-    };
-    $("#careerFrom").addEventListener("input", go);
-    $("#careerTo").addEventListener("input", go);
-    go();
   }
 }
 

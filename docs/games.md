@@ -9,8 +9,8 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
 - [The roles](#the-roles): the role catalogue
 - [A mini game](#a-mini-game): what each role's game has
 - [The game core](#the-game-core): what the games share in the code
-- [Two ways to play them together](#two-ways-to-play-them-together): the career mode and the
-  railway undertaking's simulator, and the big game
+- [Two ways to play them together](#two-ways-to-play-them-together): the career mode (a graph of
+  possibilities, with the career planner), the railway undertaking's simulator, and the big game
 - [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game
 - [Where the games are](#where-the-games-are) and [what comes next](#what-comes-next)
 
@@ -48,8 +48,14 @@ room, a train, a shift), **field** (outdoors on site), **office** or **mixed**; 
 the person takes and their **effects**; the **budgets and means** at hand, with orders of magnitude;
 the **rules and limits** (laws, regulations, contracts, physics); the **personal risks** (liability,
 injury, licence, stress, shift work, public exposure); the **career**: how one becomes it, where one
-comes from and can go, pay; what the role is **measured by**; the **rhythm** of its decisions (seconds
-to a legislature); the roles it **works with or against**; and a **mini game** for it.
+often comes from and goes, pay, and its **ways in** (below); what the role is **measured by**; the
+**rhythm** of its decisions (seconds to a legislature); the roles it **works with or against**; and a
+**mini game** for it.
+
+Next to the roles the catalogue holds the **qualifications** that the ways in need: school
+certificates, apprenticeships (such as Eisenbahner/in im Betriebsdienst), degrees and state exams,
+function trainings for career changers, licences (the train driver's licence), certificates and
+exams, each with what it needs first, how long it takes and whether it can be done alongside a job.
 
 The catalogue is described in [docs/roles.md](roles.md) and can be browsed on the game's roles page
 (`game/roles/`).
@@ -92,12 +98,30 @@ computer players for roles nobody plays.
 
 ## Two ways to play them together
 
-**The career mode** follows one person through roles. The catalogue's career paths (where one comes
-from, where one can go, what it takes: a training, a licence, years of experience) make a graph; each
-round of a role's game is a step on it. A passed round counts towards the next role; a failed one
-means another round, with an instructor; a danger to people ends with an investigation (in the game:
-an interview, a lost licence for a while). Pay, reputation and qualifications are the career's
-resources; stress and shift work are its costs.
+**The career mode** follows one person through roles. It is not a path laid out in advance but a
+**graph of possibilities**: the person starts from a school certificate, and at every point some
+jobs are open and some educations can be started; the player chooses. Each job has its **ways in**,
+alternatives of qualifications and years of experience in other roles: the signaller in a relay
+interlocking after the apprenticeship in railway operations, or as a career changer after a function
+training; an asset manager after a degree and years as an engineer; a minister by appointment after
+years in politics. Many roles can only be reached through an education first (studying, an
+apprenticeship, a training, a licence), and each qualification needs others before it. Educations
+that cannot be done alongside a job mean leaving the role for their time. How a role is filled
+(an application, a move within the organisation, an election, an appointment), a minimum age and the
+fitness needed are part of its way in; after a year in a role, what it gains (a supplementary
+certificate, a recognition) is held. The typical moves of the catalogue (where a role's people often
+come from and go) are hints, not rules.
+
+In the full game each step is a round of that role's game: a passed round counts towards the next
+step, a failed one means another round with an instructor, a danger to people ends with an
+investigation (an interview, a licence suspended for a while); applications and elections can fail.
+Pay, reputation and qualifications are the career's resources; stress and shift work its costs.
+
+The **career planner** (`game/career/`) is a first prototype: start from a school certificate, see
+what is open, take a job, start an education, work on, step back; aim at any role and see, on each of
+its ways in, what is there, what is missing, and what each missing qualification needs first. Its
+model is `web/arail/game/career.js` (`options`, `takeRole`, `study`, `work`, `roleStatus`,
+`reachable`); a test checks that every job of the catalogue can be reached from leaving school.
 
 **The railway undertaking's simulator** is the economic and logistic whole: the fleet and its
 maintenance, crews and rosters, contracts with the transport authority and their penalties, track
@@ -165,9 +189,10 @@ minutes late, the signal fails at 08:11:40, one more freight train.
 **In the big game.** The signaller takes the timetable (from the capacity planning and the railway
 undertakings) and the trains' delays; gives delays to the undertakings' dispatchers and to
 passenger information, fault reports to the maintenance dispatcher (the maintenance story's repair
-team), and closures and reopenings for works. In the career mode the role comes after the
-signaller's training (in a lab like the EBL) and leads to the dispatcher of an operations centre, to
-instructor, or to the emergency manager.
+team), and closures and reopenings for works. In the career mode the role is open after the
+apprenticeship in railway operations or, for career changers, after the signaller's function training
+(in a lab like the EBL); from it, among other ways, the dispatcher of an operations centre, the
+instructor or the emergency manager become possible.
 
 The code: `web/arail/game/signaller.js` (the interlocking, the trains, the failure, the score; Node
 tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser tests in
@@ -179,13 +204,15 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 | --- | --- |
 | `game/` | The game page: the games and exercises that were in the app, on the lab's layout (infrastructure asset management, rail operations, journeys, the full terminal) |
 | `game/signaller/` | The signaller of Bf Neustadt |
-| `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, career and mini game |
+| `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
+| `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |
 
 ## What comes next
 
 - The role games of the catalogue, one by one, each on the game core; first those that build on what
   ARail has (the maintenance dispatcher and the repair team with the maintenance story, the railway
   undertaking's dispatcher with the operations, the passenger with the journeys).
-- The career mode over the catalogue's career graph, keeping the results of rounds.
+- The career mode on the planner's model: each step a round of the role's game, applications and
+  elections that can fail, pay, reputation and stress (#146).
 - The parked games of the game page on the game core (#144).
 - Computer players for the roles nobody plays; the roles connected by their events (#104, #106).

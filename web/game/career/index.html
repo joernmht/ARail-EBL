@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>A career on the railway · ARail Game</title>
+<meta name="description" content="The career mode of ARail-EBL as a prototype: from a school certificate through apprenticeships, degrees, trainings and jobs of the railway, choosing at every point among the next steps that are open.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="career.css">
+<script type="module" src="career.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../roles/">Roles</a>
+    <a class="opt" href="../signaller/">Signaller game</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="game-hero">
+    <div class="wrap">
+      <p class="eyebrow">Career mode · prototype</p>
+      <h1>A career on the railway</h1>
+      <p class="lead">Not a path laid out in advance: from where you stand, some jobs are open to you and some educations can be started. Many roles need an apprenticeship, a degree, a function training or a licence first, and years in other roles. Choose your next step, work on, train again, change direction.</p>
+      <p class="lead small">The requirements are those of the <a href="../roles/">role catalogue</a>, simplified; in the full game every step is a round of that role's game, and applications and elections can fail.</p>
+    </div>
+  </div>
+
+  <div class="wrap career-layout">
+    <section class="game-card career-start" aria-labelledby="startTitle">
+      <h2 id="startTitle">Start</h2>
+      <div class="row">
+        <label class="field" for="start"><span>Leaving school with</span><select id="start"></select></label>
+        <button class="btn primary" type="button" id="startBtn">Start a career</button>
+        <button class="btn" type="button" id="undoBtn">Step back</button>
+      </div>
+    </section>
+
+    <section class="game-card career-you" aria-labelledby="youTitle">
+      <h2 id="youTitle">You</h2>
+      <div id="you" aria-live="polite"></div>
+    </section>
+
+    <section class="game-card career-next" aria-labelledby="nextTitle">
+      <h2 id="nextTitle">What you can do now</h2>
+      <div id="next"></div>
+    </section>
+
+    <section class="game-card career-aim" aria-labelledby="aimTitle">
+      <h2 id="aimTitle">Aim for a role</h2>
+      <label class="field" for="aim"><span>Role</span><select id="aim"></select></label>
+      <div id="aimInfo" aria-live="polite"></div>
+    </section>
+
+    <section class="game-card career-log" aria-labelledby="logTitle">
+      <h2 id="logTitle">Your career so far</h2>
+      <ol id="log"></ol>
+    </section>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>The career mode is one of the two ways to play the role games together (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md#two-ways-to-play-them-together">the game design</a>). Its data: the qualifications and the ways into every role in <a href="../roles/roles.json">roles.json</a>.</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The career planner runs with JavaScript.</p></noscript>
+</body>
+</html>

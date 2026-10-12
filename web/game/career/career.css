@@ -1,0 +1,39 @@
+/* The career planner: the start, you (age, role, qualifications, experience), what you can do now,
+   the role aimed at with what is missing on each way in, and the career so far. */
+.game-hero .lead.small { font-size: .92rem; }
+.career-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 18px 10px; align-items: start; }
+@media (min-width: 1000px) {
+  .career-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .career-start { grid-column: 1 / -1; }
+  .career-you { grid-column: 1; grid-row: 2; }
+  .career-log { grid-column: 1; grid-row: 3 / span 2; }
+  .career-next { grid-column: 2; grid-row: 2 / span 2; }
+  .career-aim { grid-column: 2; grid-row: 4; }
+}
+.career-layout > * { min-width: 0; }
+.career-start .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.career-start select { min-width: 16em; }
+
+.career-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: .92rem; }
+.career-facts dt { font-weight: 700; }
+.career-facts dd { margin: 0; }
+.career-chips { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 0; }
+
+.career-next h3, .career-aim h3 { font-size: .95rem; margin-top: 12px; }
+.career-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; max-height: 420px; overflow-y: auto; }
+.career-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.career-list li .what { min-width: 0; }
+.career-list li .hint { display: block; font-size: .8rem; }
+.career-list li .btn { flex: none; }
+
+.career-route { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin-top: 8px; }
+.career-route.open { border-color: var(--accent); }
+.career-route h4 { font-size: .9rem; }
+.career-route ul { margin: 4px 0 0; padding-left: 1.2em; font-size: .88rem; }
+.career-route li.have::marker { content: "✓  "; color: var(--accent-ink); }
+.career-route li.miss::marker { content: "✗  "; color: var(--danger); }
+.career-route .first { color: var(--text-2); font-size: .82rem; }
+
+.career-log ol { margin: 0; padding-left: 1.4em; display: grid; gap: 3px; font-size: .9rem; }
+.career-log li .age { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.career-reason { color: var(--danger); font-size: .9rem; margin-top: 8px; }

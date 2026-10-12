@@ -65,7 +65,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Streets, bus lines and road traffic](docs/streets-and-buses.md) | The road network, bus stops, bus lines, cars |
 | [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
 | [Games](docs/games.md) | A game for every role of the railway system, the game core, the career mode and the big game; the signaller of Bf Neustadt |
-| [Roles of the railway](docs/roles.md) | The role catalogue, from the politician to the cleaning staff: decisions, means, limits, risks, careers and a mini game for each role |
+| [Roles of the railway](docs/roles.md) | The role catalogue, from the politician to the cleaning staff: decisions, means, limits, risks, ways in and a mini game for each role; the qualifications they need |
 | [Rail operations](docs/operations.md) | On the game page: fleet, maintenance (ECM) and penalties, crews and rosters; comparing setups under stress tests |
 | [Journeys](docs/journeys.md) | On the game page, an exercise: travellers with a start, an aim and a travel plan with transfers, made by the attendees; missed connections and the results |
 | [Infrastructure](docs/infrastructure.md) | The maintenance story of the app (a signal exchanged, a track renewed, step by step); on the game page, asset management: assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
@@ -84,7 +84,7 @@ web/                  the website (published with GitHub Pages)
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);
-                      signaller/ the signaller's role game; roles/ the role catalogue
+                      signaller/ the signaller's role game; roles/ the role catalogue; career/ the career planner
   markers/            printable marker sheets and deck cards for model wagons
   impressum/, datenschutz/  legal notice and privacy policy (German)
   arail/              the framework (ES modules, no build step)
@@ -102,7 +102,7 @@ web/                  the website (published with GitHub Pages)
                       procurement), the level crossing plant, the objects on the layout
     journeys/         journeys: the timetable and the trains at the platforms, the planner of travel
                       plans with transfers, the travellers
-    game/             the role games: the game core, the role catalogue's checks, the signaller's game
+    game/             the role games: the game core, the role catalogue's checks, the career model, the signaller's game
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,

@@ -1,5 +1,6 @@
 // End-to-end tests of the role catalogue page (game/roles/): the roles as cards, the families and
-// the search as filters, a role named in the address, links between roles, the career finder, a phone.
+// the search as filters, a role named in the address, links between roles, its ways in and the link
+// to the career planner, a phone.
 import { expect, test } from "@playwright/test";
 
 /** Open the page; it is ready when the cards are there. */
@@ -46,13 +47,13 @@ test("a role in the address opens with its details; links lead to other roles; t
   expect(errors).toEqual([]);
 });
 
-test("the career finder: from the cleaning staff to the minister", async ({ page }) => {
-  const errors = await open(page);
-  await expect(page.locator("#careerFrom")).toHaveValue("train-cleaner");
-  await expect(page.locator("#careerTo")).toHaveValue("federal-transport-minister");
-  const steps = page.locator("#careerPath li");
-  await expect(steps.first()).toHaveText("Train cleaner");
-  await expect(steps.last()).toHaveText("Federal Minister of Transport");
+test("a role's ways in, and a link to aim for it in the career planner", async ({ page }) => {
+  const errors = await open(page, "/game/roles/#role-signaller-relay");
+  test.skip(await page.evaluate(() => window.__roles.cat.format !== "arail-roles/2"), "the catalogue has no careers yet (format 1)");
+  const card = page.locator("#role-signaller-relay");
+  await expect(card.locator("dt", { hasText: "Ways in" })).toBeVisible();
+  await expect(card.getByRole("link", { name: "Aim for this role in the career planner" })).toHaveAttribute("href", "../career/#aim=signaller-relay");
+  await expect(page.getByRole("link", { name: "Plan a career" })).toHaveAttribute("href", "../career/");
   expect(errors).toEqual([]);
 });
 

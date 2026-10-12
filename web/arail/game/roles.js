@@ -1,15 +1,22 @@
 /**
  * The role catalogue: every role of the railway system, from the politician to the cleaning staff,
  * with what a game of it needs (docs/roles.md). The data is web/game/roles/roles.json (format
- * "arail-roles/1"), loaded where it is needed: the roles page, the docs generator, the tests, later the
- * career mode. This module checks it and reads it as a career graph.
+ * "arail-roles/2"), loaded where it is needed: the roles page, the docs generator, the tests and the
+ * career mode (career.js). This module checks it and reads its typical moves as a graph.
+ *
+ * Format "arail-roles/1" has the roles without their careers (no qualifications, no access).
  *
  * A role: `id`, `name`, `name_de`, `family`, `organisation`, `setting` (operational, field, office,
- * mixed), `summary`, `decisions`, `effects`, `resources`, `limits`, `risks`, `career` (`entry`,
- * `from`, `to`, `chances`), `kpis`, `timescale`, `interacts`, `game` (`title`, `kind`, `loop`, `win`,
- * `knowledge`, `arail`, `bigGame`, `effort`, and `page` where it can be played).
+ * mixed), `summary`, `decisions`, `effects`, `resources`, `limits`, `risks`, `career` (`entry` in
+ * words, the typical moves `from` and `to`, `chances`), `access` (how one gets in: `job`, `selection`,
+ * `age_min`, `fitness`, `routes` of qualifications and experience, `gains`; see career.js), `kpis`,
+ * `timescale`, `interacts`, `game` (`title`, `kind`, `loop`, `win`, `knowledge`, `arail`, `bigGame`,
+ * `effort`, and `page` where it can be played). The catalogue's `qualifications`: school
+ * certificates, apprenticeships, degrees, trainings, licences, certificates and exams, each with
+ * `kind`, `months`, `requires` (alternatives of sets), `while_working`, `provider`, `note`.
  * @module arail/game/roles
  */
+import { QUALIFICATION_KINDS, SELECTIONS } from "./career.js";
 
 /** Where a role works. */
 export const ROLE_SETTINGS = ["operational", "field", "office", "mixed"];
@@ -27,9 +34,22 @@ const TEXTS = ["id", "name", "name_de", "family", "organisation", "summary", "ti
  */
 export function validateRoles(cat) {
   const out = [];
-  if (cat?.format !== "arail-roles/1") out.push(`format must be "arail-roles/1"`);
+  // format 1: roles without careers (no qualifications, no access); format 2: with them
+  const careers = cat?.format === "arail-roles/2";
+  if (!careers && cat?.format !== "arail-roles/1") out.push(`format must be "arail-roles/2" (or "arail-roles/1" without careers)`);
   const families = new Set((cat?.families || []).map((f) => f.id));
-  const ids = new Set();
+  const ids = new Set(), quals = new Set();
+  for (const q of cat?.qualifications || []) {
+    const at = `qualification ${q?.id ?? "?"}`;
+    if (quals.has(q.id)) out.push(`${at}: the id is used twice`);
+    quals.add(q.id);
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(q.id ?? "")) out.push(`${at}: the id must be kebab-case`);
+    for (const k of ["name", "name_de", "provider"]) if (typeof q[k] !== "string" || !q[k].trim()) out.push(`${at}: ${k} is missing`);
+    if (!QUALIFICATION_KINDS.includes(q.kind)) out.push(`${at}: kind must be one of ${QUALIFICATION_KINDS.join(", ")}`);
+    if (!(q.months >= 0)) out.push(`${at}: months must be 0 or more`);
+    if (!Array.isArray(q.requires) || q.requires.some((s) => !Array.isArray(s))) out.push(`${at}: requires must be a list of sets`);
+    if (typeof q.while_working !== "boolean") out.push(`${at}: while_working must be true or false`);
+  }
   for (const r of cat?.roles || []) {
     const at = `role ${r?.id ?? "?"}`;
     if (ids.has(r.id)) out.push(`${at}: the id is used twice`);
@@ -45,17 +65,36 @@ export function validateRoles(cat) {
     if (g && !["knowledge", "simulation", "both"].includes(g.kind)) out.push(`${at}: game kind must be knowledge, simulation or both`);
     if (g && !GAME_EFFORTS.includes(g.effort)) out.push(`${at}: game effort must be one of ${GAME_EFFORTS.join(", ")}`);
   }
+  for (const q of cat?.qualifications || []) for (const x of (q.requires || []).flat()) if (!quals.has(x)) out.push(`qualification ${q.id}: requires an unknown qualification "${x}"`);
   for (const r of cat?.roles || []) {
     for (const k of ["from", "to"]) for (const x of r.career?.[k] || []) if (!ids.has(x)) out.push(`role ${r.id}: career ${k} names an unknown role "${x}"`);
     for (const x of r.interacts || []) if (!ids.has(x)) out.push(`role ${r.id}: interacts with an unknown role "${x}"`);
+    const a = r.access, at = `role ${r.id}: access`;
+    if (!careers) continue;
+    if (!a) {
+      out.push(`${at} is missing`);
+      continue;
+    }
+    if (typeof a.job !== "boolean") out.push(`${at}: job must be true or false`);
+    if (!SELECTIONS.includes(a.selection)) out.push(`${at}: selection must be one of ${SELECTIONS.join(", ")}`);
+    if (a.job && !a.routes?.length) out.push(`${at}: a job needs at least one route in`);
+    for (const rt of a.routes || []) {
+      for (const x of rt.qualifications || []) if (!quals.has(x)) out.push(`${at}: route "${rt.label}" needs an unknown qualification "${x}"`);
+      for (const e of rt.experience || []) {
+        if (!(e.years > 0)) out.push(`${at}: route "${rt.label}": years of experience must be more than 0`);
+        for (const x of e.roles || []) if (!ids.has(x)) out.push(`${at}: route "${rt.label}" needs experience in an unknown role "${x}"`);
+      }
+    }
+    for (const x of a.gains || []) if (!quals.has(x)) out.push(`${at}: gains an unknown qualification "${x}"`);
   }
   for (const f of families) if (!(cat.roles || []).some((r) => r.family === f)) out.push(`family ${f} has no roles`);
   return out;
 }
 
 /**
- * The career graph: an edge from a role to each role one can move on to, from both sides of the
- * catalogue (a role's `to`, and the roles that name it in their `from`).
+ * The typical moves between roles: an edge from a role to each role one often moves on to, from both
+ * sides of the catalogue (a role's `to`, and the roles that name it in their `from`). Hints, not
+ * rules: what is possible is what the roles' access allows (career.js).
  * @returns {{edges: Array<[string, string]>, next: Map<string, string[]>, prev: Map<string, string[]>}}
  */
 export function careerGraph(cat) {
@@ -80,31 +119,6 @@ export function careerGraph(cat) {
     prev.get(b)?.push(a);
   }
   return { edges, next, prev };
-}
-
-/**
- * The shortest career from one role to another over the career graph (a list of role ids), or null.
- * @param {object} cat
- * @param {string} from
- * @param {string} to
- */
-export function careerPath(cat, from, to) {
-  const { next } = careerGraph(cat);
-  if (!next.has(from) || !next.has(to)) return null;
-  const back = new Map([[from, null]]), queue = [from];
-  while (queue.length) {
-    const a = queue.shift();
-    if (a === to) break;
-    for (const b of next.get(a)) {
-      if (back.has(b)) continue;
-      back.set(b, a);
-      queue.push(b);
-    }
-  }
-  if (!back.has(to)) return null;
-  const path = [];
-  for (let x = to; x != null; x = back.get(x)) path.unshift(x);
-  return path;
 }
 
 /** Counts for an overview: roles per family, per setting, per kind of game and per effort. */
