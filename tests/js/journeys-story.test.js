@@ -115,7 +115,7 @@ test("the journeys story of Bf Neustadt: a layer of the layout, its steps name t
   assert.match(s.steps[4].text, /Talsee at 08:24, but the RE 3 leaves at 08:10\. .* at 09:46, 60 minutes late/);
   assert.match(s.steps[5].text, /Neustadt Bf at 07:48, in Altstadt at 08:58/);
   assert.match(s.steps[8].text, /At 08:02, 20 minutes late, RB 31 stops at track G1/);
-  assert.match(s.steps[10].text, /25 % of the fare back, from 120 minutes 50 %.*she would have got 25 % of her fare back/);
+  assert.match(s.steps[10].text, /25 % of the fare back, from 120 minutes 50 % \(paid from 4 €\)\. Had she waited, she would have got 25 % of her fare back/);
   // another delay, another story: the texts follow the settings
   s.config.delay_min = 70;
   assert.equal(s.steps[3].title, "RB 31 is 70 minutes late");
@@ -191,11 +191,12 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.equal(s.scene.phone, "lost");
   s.goTo(at("alternative"));
   assert.equal(s.scene.route, "plan");
-  // to the bus station: its last bay is kept for her bus, silently; the other bay runs as usual
+  // to the bus station: its last bay is kept for her bus, and bay A, which her bus drives through, silently
   s.goTo(at("walk"));
-  assert.deepEqual(kept(world), ["kept-free@bus-terminal-1:bay2: ", "kept-free@platform-1:right: RB 31 to Talsee about 20 min late"]);
+  assert.deepEqual(kept(world), ["kept-free@bus-terminal-1:bay1: ", "kept-free@bus-terminal-1:bay2: ", "kept-free@platform-1:right: RB 31 to Talsee about 20 min late"]);
   assert.equal(world.disruptions.effectsFor(bus, bayB).closed, true);
-  assert.equal(world.disruptions.effectsFor(bus, bayA).closed, false);
+  assert.equal(world.disruptions.effectsFor(bus, bayA).closed, true);
+  assert.equal(world.disruptions.effectsFor(bus).closed, false, "the bus station stays open");
   assert.deepEqual(world.disruptions.effectsFor(bus).messages, []);
   s.skip();
   assert.deepEqual(s.adaAt().point, s.places().points.bay);
@@ -237,6 +238,7 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.deepEqual(kept(world), []);
   assert.equal(s.index, 0);
   assert.equal(registry.disruptions.get("kept-free").hidden, true, "not offered in the Disruptions tab");
+  assert.equal(registry.disruptions.get("kept-free").quiet, true, "a sign only with a message");
   assert.deepEqual(JOURNEY_DISRUPTIONS.map((d) => d.type), ["kept-free"]);
 });
 
@@ -269,9 +271,53 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   frames(world, 100);
   assert.deepEqual(events.slice(2), ["vehicle.departing train platform-1:right", "vehicle.departed train platform-1:right"]);
   assert.ok(waiting("platform-1") < before, `${waiting("platform-1")} still waiting of ${before}`);
+  // a jump while the train stands: it leaves with its step (nobody is left walking to its doors)
+  events.length = 0;
+  s.goTo(at("train"));
+  frames(world, 60);
+  assert.equal(s.scene.train.phase, "dwelling");
+  s.next();
+  assert.deepEqual(events, ["vehicle.arriving train platform-1:right", "vehicle.arrived train platform-1:right", "vehicle.departing train platform-1:right", "vehicle.departed train platform-1:right"]);
+  assert.ok(!passengers.crowds.get("platform-1").people.some((p) => p.state === "boarding" && p.dock === "platform-1:right"), "nobody walks to its doors");
+  // the step run to its end at once (skip): the bus has come and gone, and says so
+  events.length = 0;
+  s.goTo(at("bus"));
+  frames(world, 62);
+  s.skip();
+  frames(world, 1);
+  assert.deepEqual(events, ["vehicle.arrived bus bus-terminal-1:bay2", "vehicle.departing bus bus-terminal-1:bay2", "vehicle.departed bus bus-terminal-1:bay2"]);
+});
+
+test("timetable trains and buses keep off the story's track and bays; Clear passengers keeps them free", () => {
+  const { world, s } = journeys();
+  const on = (dock) => world.services.docks.get(dock)?.vehicle ?? null;
+  s.play(true);
+  // seconds since the story keeps the track (from the platform to the late train) and the bus station (her walk there, the bus)
+  const since = { track: 0, bays: 0 };
+  for (let i = 0; i < 4000 && s.index < at("arrive"); i++) {
+    world.step(0.1);
+    since.track = s.index >= at("platform") ? since.track + 0.1 : 0;
+    since.bays = s.index === at("walk") || s.index === at("bus") ? since.bays + 0.1 : 0;
+    // one there when the story begins to keep it comes in (at most 6 s) and leaves (6 s), as at a closed track
+    if (since.track > 13) assert.equal(on("platform-1:right"), null, `${s.current.id}: a timetable train at track G1`);
+    if (since.bays > 13) assert.ok(!on("bus-terminal-1:bay1") && !on("bus-terminal-1:bay2"), `${s.current.id}: a timetable bus in the bus station`);
+  }
+  assert.equal(s.index, at("arrive"), "Play went through the story");
+  // Clear passengers takes off the scene's disruptions; the next world step starts them again
+  s.goTo(at("walk"));
+  const before = kept(world);
+  s.clear();
+  assert.deepEqual(kept(world), []);
+  frames(world, 1);
+  assert.deepEqual(kept(world), before);
 });
 
 test("each step sets the world's clock to its time when it is more than a few minutes away", () => {
+  // the first step too, when the story begins: a night scene becomes the morning of her journey
+  const night = createWorld(JOURNEYS);
+  night.setTime("22:30");
+  night.step(0.1);
+  assert.equal(night.clock.label(), "07:30");
   const { world, s } = journeys();
   assert.equal(world.clock.label(), "07:30");
   s.goTo(at("late"));
@@ -285,6 +331,27 @@ test("each step sets the world's clock to its time when it is more than a few mi
   assert.equal(world.clock.label(), "08:58");
   s.restart();
   assert.equal(world.clock.label(), "07:30");
+  // a train so late that it comes in after her bus is in Altstadt: the cards do not set the clock back
+  s.config.delay_min = 90;
+  s.goTo(at("train"));
+  assert.equal(world.clock.label(), "09:10");
+  s.goTo(at("arrive"));
+  assert.equal(world.clock.label(), "09:10", "not back to 08:58: it runs on");
+  s.restart();
+  s.goTo(at("arrive"));
+  assert.equal(world.clock.label(), "09:14");
+});
+
+test("the camera: her walk from home seen from the street, facing her front door; the rest facing the station's front", () => {
+  const { s } = journeys();
+  const yaw = () => Math.round(s.view().yaw_deg);
+  assert.equal(yaw(), -90, "her house's door faces the station: the camera looks from there");
+  for (const id of ["board", "platform", "walk", "bus", "train", "arrive"]) {
+    s.goTo(at(id));
+    assert.equal(yaw(), 90, id);
+  }
+  s.goTo(at("train"));
+  assert.deepEqual(s.view().at, s.places().points.spot, "the train where she waited");
 });
 
 test("drawing the journeys story: every step, Ada with her name, legible labels, no sign for the bay kept free", () => {

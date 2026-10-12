@@ -12,13 +12,14 @@
  *
  * Everything is scripted (core/story.js): the picture is a function of the step and of how far its
  * animation has run, so Back, Next and a jump to a step always show the same. The late train's
- * platform track and the bus's bay are kept free for the story's own train and bus (a "kept-free"
- * disruption): the timetable's vehicles keep off them, and the platform shows the delay. When the
- * story's train or bus comes in, stands and leaves, it tells the world as the services do
- * (`vehicle.arrived`, …): the passengers waiting there get on, others get off. Each step sets the
- * world's clock to its time when the clock is more than five minutes away. Lines, times and places
- * beyond the layout are invented (JOURNEY_PLAN). The exercise with travellers made by hand
- * (`{"type": "journeys"}`, simulation.js) is not used.
+ * platform track and the bus station's bays are kept free for the story's own train and bus (a
+ * "kept-free" disruption): the timetable's vehicles keep off them, and the platform shows the delay.
+ * When the story's train or bus comes in, stands and leaves, it tells the world as the services do
+ * (`vehicle.arrived`, …): the passengers waiting there get on, others get off; going to another step
+ * lets one standing at its dock leave. Each step sets the world's clock to its time when the clock is
+ * more than five minutes away. Lines, times and places beyond the layout are invented
+ * (JOURNEY_PLAN). The exercise with travellers made by hand (`{"type": "journeys"}`, simulation.js)
+ * is not used.
  * @module arail/journeys/story
  */
 import { Story } from "../core/story.js";
@@ -71,7 +72,8 @@ export function journeyTimes(delay, plan = JOURNEY_PLAN) {
 /**
  * The disruption with which the story keeps a platform track or a bus bay free for its own train or
  * bus: the timetable's vehicles keep off it (one standing there leaves). The stop shows the message
- * (the late train's); a bay kept for the bus says nothing.
+ * (the late train's); a bay kept for the bus says nothing, and then puts up no sign and does not count
+ * in the top bar (quiet).
  */
 export const JOURNEY_DISRUPTIONS = [
   {
@@ -80,6 +82,7 @@ export const JOURNEY_DISRUPTIONS = [
     description: "One track of a platform or one bay of a bus station is kept free for the train or bus of a story (the journeys story's late train and its bus): the timetable's vehicles keep off it; the stop shows the message, if there is one.",
     targets: "track",
     hidden: true,
+    quiet: true,
     params: [{ key: "text", label: "Message", type: "text", default: "" }],
     duration: () => null,
     appliesTo: (area, d) => !!dockOf(area, d.target),
@@ -99,11 +102,17 @@ const BUS = { length_m: 12, width_m: 2.55, colour: CD.tuerkis };
 const PHASES = [null, "arriving", "dwelling", "departing", "gone"];
 /** Minutes the world's clock may be away from the time of a step before the step sets it. */
 const CLOCK_SLACK_MIN = 5;
-/** The time of each step (clock minutes) from the plan and her journey (journeyTimes). */
+/**
+ * The time of each step (clock minutes) from the plan and her journey (journeyTimes); the cards at the
+ * end never set the clock back (a train so late that it comes in after her bus is in Altstadt).
+ */
 const STEP_CLOCK = {
   home: (p) => p.leave, board: (p) => p.leave + 2, platform: (p) => p.leave + 3, late: (p) => p.announced, connection: (p) => p.announced + 1,
-  alternative: (p) => p.announced + 2, walk: (p) => p.announced + 2, bus: (p) => p.bus.at - 3, train: (p, tm) => tm.late.dep - 2, arrive: (p) => p.bus.arr, rights: (p) => p.bus.arr,
+  alternative: (p) => p.announced + 2, walk: (p) => p.announced + 2, bus: (p) => p.bus.at - 3, train: (p, tm) => tm.late.dep - 2,
+  arrive: (p, tm) => Math.max(p.bus.arr, tm.late.dep + 2), rights: (p, tm) => Math.max(p.bus.arr, tm.late.dep + 2),
 };
+/** The fare paid back only from this amount (€, Bagatellgrenze). */
+const REFUND_MIN_EUR = 4;
 
 /** 0…1 → a share of k from a to b (0 before a, 1 after b). */
 const part = (k, a, b) => Math.min(1, Math.max(0, (k - a) / Math.max(1e-9, b - a)));
@@ -171,7 +180,7 @@ export class JourneyStory extends Story {
     },
     {
       id: "rights", title: "Her rights as a passenger", seconds: 4,
-      text: "What counts is the delay at her destination, a missed connection included (Fahrgastrechte): from 20 minutes she may take another train; from 60 minutes she gets 25 % of the fare back, from 120 minutes 50 %. Had she waited, {refund}. The transport association adds its mobility guarantee (Mobilitätsgarantie): from 20 minutes, a taxi up to 30 €.",
+      text: "What counts is the delay at her destination, a missed connection included (Fahrgastrechte): from 20 minutes she may take another train; from 60 minutes she gets 25 % of the fare back, from 120 minutes 50 % (paid from {refundMin} €). Had she waited, {refund}. The transport association adds its mobility guarantee (Mobilitätsgarantie): from 20 minutes, a taxi up to 30 €.",
     },
   ];
 
@@ -180,6 +189,8 @@ export class JourneyStory extends Story {
     this._paths = new Map();
     /** The story's train and bus as vehicles of the services (for the events and the train's drawing). */
     this._vehicles = {};
+    /** The phase of its train and bus the world was told last (`vehicle.arrived`, …). */
+    this._told = { train: null, bus: null };
   }
 
   /* ---------------------------------------------------------------- the people, places and times of the story */
@@ -259,7 +270,7 @@ export class JourneyStory extends Story {
       dep: formatTime(plan.rb.dep), re: formatTime(plan.re.dep), arr: formatTime(plan.re.arr), delay: tm.delay,
       expDep: formatTime(tm.late.dep), expTalsee: formatTime(tm.late.arr), waitArr: formatTime(tm.wait.arr), waitLate: tm.waitLate,
       bus: formatTime(plan.bus.dep), busAt: formatTime(plan.bus.at), busArr: formatTime(plan.bus.arr), busLate: tm.busLate, busLine: plan.bus.line,
-      refund: tm.refund ? `she would have got ${tm.refund} % of her fare back` : "she would have got nothing back",
+      refund: tm.refund ? `she would have got ${tm.refund} % of her fare back` : "she would have got nothing back", refundMin: REFUND_MIN_EUR,
     };
     const fill = (s) => String(s ?? "").replace(/\{(\w+)\}/g, (m, k) => (k in words ? String(words[k]) : m));
     return super.steps.map((s) => ({ ...s, title: fill(s.title), text: fill(s.text) }));
@@ -298,14 +309,18 @@ export class JourneyStory extends Story {
       scene.bus = { phase, u: phase === "arriving" ? part(k, 0, 0.36) : phase === "departing" ? part(k, 0.58, 1) : 1, doors: k >= 0.38 && k < 0.56 };
     }
     // her platform track is kept for her train from when she is on the platform (no other train in front
-    // of her), and while it is late the platform shows it; the bay is kept for the bus
+    // of her), and while it is late the platform shows it
     if (d && i >= stepAt("platform") && i <= stepAt("train")) {
       const ph = scene.train?.phase, rb = `${JOURNEY_PLAN.rb.line} to ${JOURNEY_PLAN.rb.to}`;
       const text = i < stepAt("late") ? "" : ph === "arriving" ? `${rb} arriving, ${tm.delay} min late` : ph === "dwelling" ? `${rb} boarding, ${tm.delay} min late`
         : ph === "departing" || ph === "gone" ? "" : `${rb} about ${tm.delay} min late`;
       scene.disruptions.push({ id: "late", type: "kept-free", target: d.dock.id, params: { text } });
     }
-    if (b && (id === "walk" || id === "bus")) scene.disruptions.push({ id: "bay", type: "kept-free", target: b.dock.id, params: { text: "" } });
+    // the bus station is kept for her bus from when she walks there: her bay (its last) and the bays
+    // before it, through which her bus drives in (a timetable bus there would stand in its way)
+    if (b && (id === "walk" || id === "bus")) {
+      b.area.docks.forEach((k, j) => scene.disruptions.push({ id: k === b.dock ? "bay" : `bay-${j + 1}`, type: "kept-free", target: k.id, params: { text: "" } }));
+    }
     // the app's way to the bus; her whole way at the end; the cards
     if (id === "alternative") scene.route = "plan";
     if (id === "arrive" || id === "rights") {
@@ -467,24 +482,28 @@ export class JourneyStory extends Story {
   }
 
   /**
-   * Where to look in the current step (the app's flyover follows it): `{at, distance, pitch_deg}`
-   * (layout mm): the traveller on her way and where she waits, the bus, the train; at the end her
-   * whole way from above.
+   * Where to look in the current step (the app's flyover follows it): `{at, distance, pitch_deg,
+   * yaw_deg}` (layout mm): the traveller on her way and where she waits, the bus, the train; at the
+   * end her whole way from above. Her walk from home is seen from the street, facing her front door
+   * (from behind the houses they would hide her); everything else facing the station's front.
    */
   view() {
     const sc = this.scene, p = this.places();
     if (!sc || !p) return null;
+    const v = this._view(sc, p);
+    return v && { ...v, yaw_deg: facing(sc.step === "home" ? this.home() : this.station()) };
+  }
+
+  /** `view()` without its direction. */
+  _view(sc, p) {
     const ada = this.adaAt();
     if (sc.step === "bus") {
       const bus = this.busAt();
       if (bus && sc.bus.phase !== "dwelling") return { at: bus.front, distance: 1300, pitch_deg: 58 };
       return { at: p.points.bay, distance: 800, pitch_deg: 58 };
     }
-    // the train from above: the trains at the platforms in front would hide it
-    if (sc.step === "train") {
-      const d = this.dock();
-      return d ? { at: d.area.toLayout(d.area.L * 0.8, 0), distance: 1400, pitch_deg: 62 } : null;
-    }
+    // the train from above, where she waited: the trains at the platforms in front would hide it
+    if (sc.step === "train") return { at: p.points.spot, distance: 1100, pitch_deg: 62 };
     if (sc.route === "plan") return { at: mid(p.points.spot, p.points.bay), distance: 2300, pitch_deg: 64 };
     if (sc.card) return { at: mid(p.points.station, p.points.bay), distance: 3000, pitch_deg: 62 };
     // close to her, so that she is large; her track is kept free, the trains of the platform's other
@@ -503,34 +522,49 @@ export class JourneyStory extends Story {
 
   /**
    * Go to a step; the world's clock shows its time (it is set when it is more than a few minutes
-   * away, so that it runs on between steps that follow each other).
+   * away, so that it runs on between steps that follow each other). A train or bus of the story
+   * standing at its dock leaves with the step before (nobody is left walking to its doors); what the
+   * new step shows as it begins is not told (a jump), only what happens while it runs on.
    */
   goTo(i) {
+    this._leave();
     super.goTo(i);
+    this._told = { train: this.scene?.train?.phase ?? null, bus: this.scene?.bus?.phase ?? null };
     const want = this.clockOf(this.index), now = this.world.clock?.minutes;
     if (want == null || !Number.isFinite(now)) return;
     const off = Math.abs(((now - want + 720) % 1440 + 1440) % 1440 - 720);
     if (off > CLOCK_SLACK_MIN) this.world.setTime(want);
   }
 
-  /** Run the step on; when its train or bus has come to a later phase, tell the world (once: not on a jump). */
+  /** Run the step on (the first one begun when the story begins: its time); its train and bus tell the world each phase they come to, once. */
   step(dt) {
-    const before = { index: this.index, train: this.scene?.train?.phase ?? null, bus: this.scene?.bus?.phase ?? null };
+    if (this.active && !this._entered) this.goTo(this.index);
     super.step(dt);
-    // only while a step runs on, not on a jump: each moment once
-    if (!this.active || !this.scene || before.index !== this.index) return;
+    if (!this.active || !this.scene) return;
     const d = this.dock(), b = this.bay();
-    if (d) this._tell(this._vehicle("train", d.dock), before.train, this.scene.train?.phase ?? null);
-    if (b) this._tell(this._vehicle("bus", b.dock), before.bus, this.scene.bus?.phase ?? null);
+    if (d) this._tell("train", this._vehicle("train", d.dock), this.scene.train?.phase ?? null);
+    if (b) this._tell("bus", this._vehicle("bus", b.dock), this.scene.bus?.phase ?? null);
   }
 
-  /** A vehicle of the story went on from one phase to a later one: the events of the services for each phase begun. */
-  _tell(v, from, to) {
+  /** The story's train or bus came to a later phase than the world was told: the events of the services for each phase begun. */
+  _tell(kind, v, to) {
+    const from = this._told[kind] ?? null;
+    if (PHASES.indexOf(to) <= PHASES.indexOf(from)) return;
     for (let j = PHASES.indexOf(from) + 1; j <= PHASES.indexOf(to); j++) {
       if (PHASES[j] === "arriving") this._emit("vehicle.arriving", v);
       else if (PHASES[j] === "dwelling") this._emit("vehicle.arrived", v);
       else if (PHASES[j] === "departing") this._emit("vehicle.departing", v);
       else if (PHASES[j] === "gone") this._emit("vehicle.departed", v);
+    }
+    this._told[kind] = to;
+  }
+
+  /** Its train and bus leave the world's sight: one standing at its dock closes its doors and has left; one coming in just does not come (as services.sync). */
+  _leave() {
+    for (const kind of ["train", "bus"]) {
+      const v = this._vehicles[kind], told = this._told[kind];
+      if (v && (told === "dwelling" || told === "departing")) this._tell(kind, v, "gone");
+      this._told[kind] = null;
     }
   }
 
@@ -594,12 +628,13 @@ export class JourneyStory extends Story {
     return { colour: CD_LIGHT.tuerkis, lines: [`Bus ${plan.bus.line} · ${T(plan.bus.dep)} · ${bay}`.trim()] };
   }
 
-  /** The departure board (Abfahrtstafel) of the station, over its entrance: her train first, later with its delay. */
+  /** The departure board (Abfahrtstafel) of the station, in its hall beside the entrance: her train first, later with its delay. */
   _drawBoard(view, p, board) {
     const st = this.station(), d = this.dock(), plan = JOURNEY_PLAN, T = formatTime, tm = this.times;
-    // in the hall, a third of the building's length beside its entrance (her phone's message is over her)
+    // at the side of the hall, beside its entrance (her phone's message is over her)
     const entry = st?.entrances()[0]?.pos ?? p.points.station, c = st?.anchorPoint?.() ?? entry;
-    const out = [entry[0] - c[0], entry[1] - c[1]], l = Math.hypot(out[0], out[1]) || 1, side = st ? st.mm(+st.spec.length_m || 30) / 3 : 0;
+    const out = [entry[0] - c[0], entry[1] - c[1]], l = Math.hypot(out[0], out[1]) || 1;
+    const side = st ? st.mm(Math.min((+st.spec.hall_m || 18) / 2, (+st.spec.length_m || 30) / 3)) : 0;
     const at = [entry[0] + (out[1] / l) * side, entry[1] - (out[0] / l) * side];
     const number = (area) => area?.owner?.spec?.number || "";
     const other = this.world.stopAreas().find((a) => a.kind === "rail" && a !== d?.area);
@@ -647,8 +682,8 @@ export class JourneyStory extends Story {
       ? [`${this.traveller}: Neustadt → Altstadt`, `Planned  ${T(plan.rb.dep)} → ${T(plan.re.arr)}  ${plan.rb.line}, ${plan.re.line}`,
         `Real  ${T(plan.bus.dep)} → ${T(plan.bus.arr)}  Bus ${plan.bus.line} · +${tm.busLate} min`, `Waiting  ${T(tm.late.dep)} → ${T(tm.wait.arr)}  ${plan.rb.line}, ${plan.re.line} · +${tm.waitLate} min`]
       : ["Passenger rights (Fahrgastrechte)", "From 20 min: another train", "From 60 min: 25 % of the fare back", "From 120 min: 50 % back",
-        `Waiting, +${tm.waitLate} min: ${tm.refund} % back`, "Mobility guarantee: a taxi, up to 30 €"];
-    const colors = card === "arrive" ? [CD_LIGHT.orange, null, CD_LIGHT.tuerkis, OVERLAY.alert] : [CD_LIGHT.orange, null, null, null, OVERLAY.status, null];
+        `Paid from ${REFUND_MIN_EUR} €`, `Waiting, +${tm.waitLate} min: ${tm.refund} % back`, "Mobility guarantee: a taxi, up to 30 €"];
+    const colors = card === "arrive" ? [CD_LIGHT.orange, null, CD_LIGHT.tuerkis, OVERLAY.alert] : [CD_LIGHT.orange, null, null, null, null, OVERLAY.status, null];
     view.label([at[0], at[1], view.m(14)], lines, { size: 13, colors, order: 9 });
   }
 }
@@ -656,6 +691,11 @@ export class JourneyStory extends Story {
 /* ---------------------------------------------------------------- helpers */
 
 const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+/** The direction (degrees seen from above) in which one looks at a building's front door from the street, or undefined. */
+const facing = (o) => {
+  const e = o?.entrances?.()[0];
+  return e?.dir ? (Math.atan2(-e.dir[1], -e.dir[0]) * 180) / Math.PI : undefined;
+};
 
 /** The share of a way done (0…1) at time u (0…1) by a vehicle pulling away: speeding up over the first 30 %, then steady. */
 function cruise(u, b = 0.3) {

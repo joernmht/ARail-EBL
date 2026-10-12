@@ -202,9 +202,9 @@ export class Story extends Simulation {
   }
 
   /**
-   * Where to look in the current step, for a virtual camera: `{at: [x, y], distance, pitch_deg}`
-   * (layout mm; the tilt optional), or null. Subclasses say it; it may move during the step (a vehicle
-   * on its way).
+   * Where to look in the current step, for a virtual camera: `{at: [x, y], distance, pitch_deg, yaw_deg}`
+   * (layout mm; the tilt and the direction seen from above optional), or null. Subclasses say it; it
+   * may move during the step (a vehicle on its way).
    */
   view() {
     return null;
@@ -216,9 +216,11 @@ export class Story extends Simulation {
     return { index: this.index, count: steps.length, step: steps[this.index] ?? null, steps, progress: this.progress, playing: this.playing, finished: this.finished, focus: this.scene?.focus ?? [] };
   }
 
+  /** Stop playing (Clear passengers); the scene's disruptions start again with the next world step: the step's picture stays. */
   clear() {
     this.playing = false;
     this._sync([]);
+    this._key = null;
   }
 
   dispose() {

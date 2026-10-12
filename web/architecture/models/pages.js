@@ -19,7 +19,7 @@ export const PAGES = [
       {
         name: "StoryPanel", file: "web/app/story.js", kind: "class", role: "A module tab's story: the current step, Back, Next, Play, Start again, all steps; the flyover's camera follows it.",
         attributes: ["tab: string", "type: string — the story's simulation type", "follow: boolean — Camera follows", "settingsHint: string"],
-        operations: ["render(el)", "update()", "next()", "back()", "restart()", "play()", "goTo(i)", "stepped() — after a step: the panel, the camera", "aim() — the flyover goes where the story happens", "setFollow(on)", "key(e) — Page Down, Page Up"],
+        operations: ["render(el)", "update()", "next()", "back()", "restart()", "play()", "goTo(i)", "stepped() — after a step: the panel, the camera", "aim() — the flyover goes where the story happens (from the side it says)", "setFollow(on)", "key(e) — Page Down, Page Up"],
       },
       { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first)." },
       { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children)", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },

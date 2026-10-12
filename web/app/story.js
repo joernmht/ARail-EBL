@@ -106,7 +106,8 @@ export class StoryPanel {
     if (!v?.at) return;
     const fly = this.app.flyover;
     fly.follow(() => (this.story === story ? story.view()?.at ?? null : null));
-    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: v.pitch_deg ? (v.pitch_deg * Math.PI) / 180 : undefined }));
+    const rad = (deg) => (Number.isFinite(deg) ? (deg * Math.PI) / 180 : undefined);
+    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: rad(v.pitch_deg), yaw: rad(v.yaw_deg) }));
   }
 
   /** Let the flyover's camera follow the story or not; on, it opens the flyover. */

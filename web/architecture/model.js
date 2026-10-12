@@ -434,7 +434,7 @@ export const REGISTRY = {
     dis("cable-theft", "Cable theft", "web/arail/infra/disruptions.js", [], "A cable is stolen: its signals fail."),
     dis("storm", "Storm damage", "web/arail/infra/disruptions.js", ["count"], "Assets damaged by a storm fail."),
     dis("infra-fault", "Infrastructure fault", "web/arail/infra/disruptions.js", [], "A fault at the station (started by the infrastructure itself, hidden in the tab)."),
-    { ...dis("kept-free", "Kept free", "web/arail/journeys/story.js", ["text"], "A platform track or bus bay kept for a story's own train or bus (started by the journeys story, hidden in the tab); the stop shows its message."), model: "journeys-story" },
+    { ...dis("kept-free", "Kept free", "web/arail/journeys/story.js", ["text"], "A platform track or bus bay kept for a story's own train or bus (started by the journeys story, hidden in the tab); the stop shows its message, a sign only with one (quiet)."), model: "journeys-story" },
   ],
   vehicles: [
     { type: "train", label: "TRAIN: a multiple unit with doors", file: "web/arail/core/vehicles.js", model: "services" },

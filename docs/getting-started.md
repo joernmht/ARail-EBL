@@ -170,8 +170,8 @@ Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastr
 Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
 
 - The same controls as the Infrastructure tab: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
-- **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way.
-- Each step sets the clock to its time (07:30 when she leaves home, 08:00 when the late train comes in), when the clock is more than five minutes away.
+- **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way. Her walk from home it sees from the street, facing her front door; the rest facing the station's front.
+- Each step sets the clock to its time (07:30 when she leaves home, 08:00 when the late train comes in), when the clock is more than five minutes away; the first step as soon as the story begins.
 
 ### Disruptions
 

@@ -133,7 +133,7 @@ export const JOURNEYS = [{
 }, {
   id: "journeys-story", group: "journeys", title: "The journeys story",
   summary: "The app's Journeys tab: a traveller's view of Bf Neustadt to click through. Ada walks to the station, her RB 31 is late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; her journey in numbers and her rights as a passenger.",
-  description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. Ada walks over the sidewalks and through the underpass (the road network's walks), waits on the platform beside its display, walks to the bus station and gets on. Her platform track is kept free for the story's own late train from when she is on the platform, her bay for the story's own bus (a hidden kept-free disruption: the timetable's vehicles keep off, the platform shows the delay); the bus comes over the streets by the bus's street and leaves the same way. The train and the bus send the vehicle events of the services when they stop and leave, so the passengers waiting there get on and others get off. Each step sets the world's clock to its time when it is more than five minutes away. The lines, times and places beyond the layout are invented (JOURNEY_PLAN).",
+  description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. Ada walks over the sidewalks and through the underpass (the road network's walks), waits on the platform beside its display, walks to the bus station and gets on. Her platform track is kept free for the story's own late train from when she is on the platform, the bus station's bays for the story's own bus from when she walks there (a hidden, quiet kept-free disruption: the timetable's vehicles keep off, the platform shows the delay, a bay says nothing); the bus comes over the streets by the bus's street and leaves the same way. The train and the bus send the vehicle events of the services as they come to each phase, once; a step left while one stands at its dock lets it leave (doors closed, gone), so nobody is left at a door. Each step sets the world's clock to its time when it is more than five minutes away, the first one when the story begins. The flyover sees her walk from home from the street, facing her front door, and everything else facing the station's front. The lines, times and places beyond the layout are invented (JOURNEY_PLAN).",
   files: ["web/arail/journeys/story.js"],
   classes: [
     {
@@ -141,12 +141,13 @@ export const JOURNEYS = [{
       attributes: ["static STEPS — 11 steps: home, board, platform, late, connection, alternative, walk, bus, train, arrive, rights", "traveller — her name", "times — her journey with the delay of the settings (journeyTimes)"],
       operations: [
         "home()", "dock() — her train's platform track", "station()", "bay() — the bus station's last bay", "compose(index, k)", "places() — her places and walks", "busPath() — the bus's way over the streets",
-        "adaAt()", "busAt()", "trainAt() — her train as a vehicle of the services", "view()", "clockOf(index) — the time of a step", "goTo(i) — and the world's clock", "step(dt) — and the vehicle events", "_tell(v, from, to)", "draw(view)",
+        "adaAt()", "busAt()", "trainAt() — her train as a vehicle of the services", "view() — and from which side (yaw_deg)", "clockOf(index) — the time of a step", "goTo(i) — and the world's clock",
+        "step(dt) — and the vehicle events", "_tell(kind, v, to) — the events of each phase begun", "_leave() — one standing at its dock leaves with the step", "draw(view)",
       ],
     },
     {
       name: "journeys story", file: "web/arail/journeys/story.js", kind: "module", role: "Her timetable, the delay in numbers, the disruption.",
-      attributes: ["JOURNEY_PLAN — RB 31 07:42, RE 3 in Talsee 08:10, PlusBus 270 07:48, her exam 09:30", "JOURNEY_DISRUPTIONS — kept-free"],
+      attributes: ["JOURNEY_PLAN — RB 31 07:42, RE 3 in Talsee 08:10, PlusBus 270 07:48, her exam 09:30", "JOURNEY_DISRUPTIONS — kept-free (hidden, quiet)", "REFUND_MIN_EUR — 4 €"],
       operations: ["journeyTimes(delay, plan) — the late train, the RE she would wait for, how late", "refundShare(lateMin) — Fahrgastrechte"],
     },
   ],
@@ -162,7 +163,7 @@ export const JOURNEYS = [{
       ["a1", "action", "The step and how far its animation has run", "Story.refresh"],
       ["d1", "decision", "Which part of the story?"],
       ["a2", "action", "Ada walking or standing; her phone's message; the departure board and the platform's display", "JourneyStory.compose", "on the way"],
-      ["a3", "action", "Her track kept free (from the platform on); while late with the delay's message", "JourneyStory.dock", "on the way"],
+      ["a3", "action", "Her track kept free (from the platform on), while late with the delay's message; the bus station's bays from her walk there", "JourneyStory.dock", "on the way"],
       ["a4", "action", "The bus over the streets to her bay; she gets on; it leaves", "JourneyStory.busAt", "the bus"],
       ["a5", "action", "Her late train comes in, stands, leaves", "JourneyStory.trainAt", "the bus"],
       ["a6", "action", "Her ways on the layout and the card: the journey in numbers, the passenger rights", "JourneyStory.compose", "the end"],
@@ -173,17 +174,24 @@ export const JOURNEYS = [{
     ],
     edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "steps 1–7"], ["a2", "a3"], ["a3", "m1"], ["d1", "a4", "steps 8–9"], ["a4", "a5"], ["a5", "m1"], ["d1", "a6", "steps 10–11"], ["a6", "m1"], ["m1", "a7"], ["a7", "a8"], ["a8", "e"]],
   }, {
-    id: "vehicles", name: "The story's train and bus tell the world (JourneyStory.step)",
+    id: "vehicles", name: "The story's train and bus tell the world (JourneyStory.step, JourneyStory.goTo)",
     nodes: [
       ["s", "start"],
-      ["a1", "action", "The step runs on: the picture composed again", "Story.step"],
-      ["d1", "decision", "The same step, and its train or bus in a later phase?"],
+      ["d0", "decision", "The step runs on, or another step?"],
+      ["a1", "action", "The step runs on: the picture composed again (the first step begun when the story begins)", "Story.step"],
+      ["d1", "decision", "Its train or bus in a later phase than the world was told?"],
       ["x1", "send", "vehicle.arrived"],
       ["x2", "send", "vehicle.departing"],
       ["a2", "action", "Passengers waiting there get on, others get off (as at the services' vehicles)", "PassengerSimulation._arrived"],
+      ["a3", "action", "One standing at its dock leaves: doors closed (vehicle.departing), gone (vehicle.departed); the boarding go back to waiting", "JourneyStory._leave"],
+      ["a4", "action", "The new step's picture; what it shows as it begins is not told; the clock set to its time when more than 5 min away", "JourneyStory.goTo"],
+      ["m1", "merge"],
       ["e", "end"],
     ],
-    edges: [["s", "a1"], ["a1", "d1"], ["d1", "x1", "it stops"], ["d1", "x2", "its doors close"], ["d1", "e", "no"], ["x1", "a2"], ["a2", "e"], ["x2", "e"]],
+    edges: [
+      ["s", "d0"], ["d0", "a1", "runs on"], ["d0", "a3", "Next, Back, a jump, Start again"], ["a1", "d1"], ["d1", "x1", "it stops"], ["d1", "x2", "its doors close"], ["d1", "m1", "no"],
+      ["x1", "a2"], ["a2", "m1"], ["x2", "m1"], ["a3", "a4"], ["a4", "m1"], ["m1", "e"],
+    ],
   }],
   parameters: [
     { key: "traveller", default: "Ada", meaning: "Her name.", sim: "journeys-story" },
@@ -204,6 +212,8 @@ export const JOURNEYS = [{
   rules: [
     "Delay at the destination, a missed connection included: 25 % of the fare back from 60 min, 50 % from 120 min (Fahrgastrechte).",
     "The RE she would wait for: the first that leaves Talsee 3 min (to change) after the late train is in; hourly.",
-    "A step sets the world's clock to its time when it is more than 5 min away.",
+    "Paid back only from 4 € (Bagatellgrenze).",
+    "A step sets the world's clock to its time when it is more than 5 min away; the cards at the end never set it back.",
+    "Kept free: track G1 from the platform step to the late train; the bus station's bays (hers, the last, and those its bus drives through) while she walks there and the bus comes.",
   ],
 }];

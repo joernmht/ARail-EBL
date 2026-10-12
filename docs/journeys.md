@@ -24,29 +24,34 @@ at 08:10 to Altstadt, there at 08:46.
 
 | Step | What happens on the layout |
 | --- | --- |
-| 1. Ada sets off | Ada (taller than everybody, in Brillantblau, in an Orange ring with her name) leaves her flat in the WBS 70 on Bahnhofstraße at 07:30 and walks along the sidewalk to the station. |
+| 1. Ada sets off | Ada (taller than everybody, in Brillantblau, in an Orange ring with her name) leaves her flat in the WBS 70 on Bahnhofstraße at 07:30 and walks along the sidewalk to the station; the camera looks from the street at her front door. |
 | 2. The departure board | She stops at the station's entrance: the departure board (Abfahrtstafel) shows RB 31 to Talsee at 07:42, platform 1; her phone shows her plan. |
 | 3. On platform 1 | She walks through the underpass (out of sight, her name goes along) to platform 1 and waits beside its display (Zugzielanzeiger): RB 31 Talsee 07:42, on time. Her track G1 is kept free for her train. |
 | 4. RB 31 is 20 minutes late | At 07:38 the display changes and the platform shows the delay (a level crossing fault near Bergheim); RB 31 will leave at 08:02. |
 | 5. The connection in Talsee is lost | Her app: RB 31 reaches Talsee at 08:24, the RE 3 leaves at 08:10; the next one is in Altstadt at 09:46, 60 minutes late, after the start of her exam. |
 | 6. Her app finds a bus | The express bus 270 (PlusBus) from the bus station Neustadt Bf at 07:48, in Altstadt at 08:58; her ticket of the transport association is valid on it. The way to the bus is drawn on the layout. |
-| 7. To the bus station | Back through the underpass and along Bahnhofstraße to bay B of the bus station. |
+| 7. To the bus station | Back through the underpass and along Bahnhofstraße to bay B of the bus station. The bus station's bays are kept free for her bus from now on. |
 | 8. Bus 270 leaves with Ada | The bus comes up Marktstraße and along Bahnhofstraße into the bus station, stops at bay B, Ada and the other travellers get on, and it leaves the way it came. |
 | 9. Meanwhile: RB 31 comes in | At 08:02, 20 minutes late, RB 31 stops at track G1: the people waiting there get on, others get off. Whoever changes in Talsee now waits there an hour. |
 | 10. Ada in Altstadt: her journey in numbers | Her whole way on the layout (walked dashed, by bus solid) and a card: planned 07:42 → 08:46, real 07:48 → 08:58 by bus (12 minutes late), had she waited 08:02 → 09:46 (60 minutes late). |
-| 11. Her rights as a passenger | The card of the passenger rights (Fahrgastrechte): what counts is the delay at the destination, a missed connection included; from 20 minutes another train, from 60 minutes 25 % of the fare back, from 120 minutes 50 %; had she waited, 25 %. The transport association's mobility guarantee (Mobilitätsgarantie): from 20 minutes a taxi, up to 30 €. |
+| 11. Her rights as a passenger | The card of the passenger rights (Fahrgastrechte): what counts is the delay at the destination, a missed connection included; from 20 minutes another train, from 60 minutes 25 % of the fare back, from 120 minutes 50 %, paid from 4 €; had she waited, 25 %. The transport association's mobility guarantee (Mobilitätsgarantie): from 20 minutes a taxi, up to 30 €. |
 
 **Back**, **Next**, a step from the list, **Play** and **Start again**; a presenter's clicker works too
 (Page Down, Page Up). Every step looks the same each time it is shown. **Camera follows** opens the
 flyover and keeps its camera with Ada, her bus and the late train, and shows her whole way at the
-end. Each step sets the clock to its time when the clock is more than five minutes away (07:30 when
-she leaves, 08:00 when the late train comes in, 08:58 at the end), so the clock of the page and the
-times of the story agree.
+end; her walk from home it sees from the street, facing her front door (from the other side the
+houses would hide her), everything else facing the station's front. Each step sets the clock to its
+time when the clock is more than five minutes away (07:30 when she leaves, 08:00 when the late train
+comes in, 08:58 at the end), the first step as soon as the story begins, so the clock of the page and
+the times of the story agree; the cards at the end never set it back.
 
 While the story keeps a track or a bay for its own train or bus, the timetable's trains and buses
-keep off it (a hidden disruption *kept-free*; the platform shows its message, the bay says
-nothing). When the story's train or bus stops and leaves, it tells the world as the timetable's
-vehicles do, so the passengers waiting there get on and others get off.
+keep off it: track G1 from step 3 to step 9, both bays of the bus station in steps 7 and 8 (her bus
+drives through bay A to bay B). It does so with a disruption of its own, *kept-free*, hidden in the
+Disruptions tab and quiet: the platform shows its message, a bay says nothing, and the top bar counts
+it only while it has a message. When the story's train or bus stops and leaves, it tells the world as
+the timetable's vehicles do, so the passengers waiting there get on and others get off; going to
+another step while it stands at its dock lets it leave, so nobody is left walking to its doors.
 
 The story is the simulation `journeys-story` in the layer's `simulations`:
 
@@ -66,8 +71,9 @@ The story is the simulation `journeys-story` in the layer's `simulations`:
 
 The lines, the times, Talsee, Bergheim and Altstadt and the bus are invented; the rules of the
 passenger rights are those of the EU regulation 2021/782 as Germany applies them, simplified (no
-minimum amount, no exceptions for force majeure). A mobility guarantee is offered by many German
-transport associations, each with its own conditions; the story's is an example.
+exceptions for force majeure; season tickets have rules of their own). A mobility guarantee is
+offered by many German transport associations, each with its own conditions; the story's is an
+example.
 
 ## Running the exercise
 

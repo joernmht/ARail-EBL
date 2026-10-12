@@ -1188,7 +1188,9 @@ export class App {
     chips.push(["info clock", `${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`]);
     if (this.world.paused) chips.push(["info", "Paused"]);
     if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
-    if (this.world.disruptions.active.length) chips.push(["bad", `${this.world.disruptions.active.length} disruption${this.world.disruptions.active.length > 1 ? "s" : ""}`]);
+    // a quiet disruption without a message (a story's train holding its track) is none to speak of
+    const disrupted = this.world.disruptions.active.filter((d) => !d.def.quiet || d.def.effects?.(d, null, this.world)?.messages?.length).length;
+    if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
     if (this.world.trains.active) chips.push(["ok", `Control system · ${this.world.trains.trains.size} trains`]);
     const term = ARail.terminalOf(this.world);
     if (term) {
