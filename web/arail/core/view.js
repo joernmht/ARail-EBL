@@ -7,10 +7,15 @@
  * - solid layer: 3D things (buildings, trees, vehicles, people), far to near,
  * - overlay layer: labels and signs, always on top.
  * `render()` sorts and draws the list. Objects never draw directly in `draw(view)`.
+ *
+ * Day and night: `night` (0 = day ... 1 = night) darkens the background (the camera image)
+ * and every ground and solid item; colours marked `emissive` (lit windows, lamps, headlights)
+ * keep their brightness. Objects that draw with their own canvas code use `view.dim(colour)`.
+ * Overlays (labels, the editor's selection) are never darkened.
  * @module arail/core/view
  */
 import { poseFromHomography } from "./geometry.js";
-import { parseColor, rgba } from "./colors.js";
+import { FONT, OVERLAY, parseColor, parseRgba, rgba } from "./colors.js";
 
 const LIGHT = (() => {
   const l = [-0.45, 0.55, 0.7];
@@ -19,6 +24,19 @@ const LIGHT = (() => {
 })();
 
 export const LAYER = { ground: 0, solid: 1, overlay: 2 };
+
+/** Flat things closer to the camera than this (mm) are cut off. */
+const NEAR_MM = 2;
+
+/**
+ * Drawings whose points all lie further outside the image than this (CSS px, plus half the line
+ * width) are not queued: they cannot change a pixel (anti-aliasing, round joins and outlines
+ * reach less far). In the camera view most of a town on table extensions is outside the picture.
+ */
+const CULL_MARGIN_PX = 4;
+
+/** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
+const NIGHT_TINT = [0, 20, 80];
 
 export class View {
   /**
@@ -31,8 +49,15 @@ export class View {
    * @param {number} [options.opacity=1] global opacity of virtual objects
    * @param {number} [options.time=0] simulation time in seconds (for animations)
    * @param {number} [options.labelScale=1] size factor for labels (smaller on small screens)
+   * @param {number | null} [options.night] darkness 0 (day) .. 1 (night); null = set by `World.draw` from the clock
+   * @param {boolean} [options.virtual=false] true for a virtual camera (flyover): there is no camera
+   *   image, so objects also draw what is real in the lab (platform surfaces, tracks, the table)
+   * @param {boolean} [options.darken=true] darken the background (camera image) at night
+   * @param {{a1: number[], a2: number[], a3: number[], n: number[]}} [options.pose] the camera pose when it is
+   *   known (virtual camera, see core/flycam.js); otherwise it is recovered from H, assuming that the
+   *   layout origin is in front of the camera
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1 }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -41,9 +66,17 @@ export class View {
     this.opacity = opacity;
     this.time = time;
     this.labelScale = labelScale;
+    this.night = night;
+    this.virtual = virtual;
+    this.darken = darken;
+    /**
+     * [xmin, ymin, xmax, ymax] (mm) of a photo of the real table drawn under everything else (the
+     * flyover's orthophoto): there the real lab is visible as in the camera view, see `showsReal`.
+     */
+    this.groundPhoto = null;
     /** Rectangles of labels drawn so far (labels avoid overlapping each other). */
     this.placed = [];
-    this.pose = poseFromHomography(H, camera.intrinsics);
+    this.pose = pose || poseFromHomography(H, camera.intrinsics);
     const { a1, a2, n } = this.pose;
     const l1 = Math.hypot(...a1), l2 = Math.hypot(...a2);
     this.ex = a1.map((v) => v / l1);
@@ -102,16 +135,83 @@ export class View {
     return Math.max(vertical, 0.5 * ground);
   }
 
+  /**
+   * Is the real lab visible at these layout points (mm)? Then objects need not draw what is real
+   * there (platform surfaces, tracks). True over the camera image; for a virtual camera only
+   * where the photo of the table (`groundPhoto`) covers all of them.
+   */
+  showsReal(points) {
+    if (!this.virtual) return true;
+    const b = this.groundPhoto;
+    return !!b && points.every((p) => p[0] >= b[0] && p[0] <= b[2] && p[1] >= b[1] && p[1] <= b[3]);
+  }
+
   /** Is the layout point inside the image (with a margin in px)? */
   inImage(x, y, z = 0, margin = 50) {
     const p = this.project(x, y, z);
     return !!p && p[0] > -margin && p[1] > -margin && p[0] < this.camera.width + margin && p[1] < this.camera.height + margin;
   }
 
+  /**
+   * Are all these image points (px) further than `margin` px outside the image, on the same side?
+   * Then a drawing made of them cannot change a pixel. The image is the camera image (or the
+   * canvas, if that is larger). NaN coordinates are left out (the canvas ignores such points, too).
+   * @param {number[][]} pts image points
+   * @param {number} [margin] px; default: a few CSS px
+   */
+  offImage(pts, margin = CULL_MARGIN_PX * this.px) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      if (p[0] < x0) x0 = p[0];
+      if (p[0] > x1) x1 = p[0];
+      if (p[1] < y0) y0 = p[1];
+      if (p[1] > y1) y1 = p[1];
+    }
+    return this.boxOffImage(x0, y0, x1, y1, margin);
+  }
+
+  /** Is the box [x0, x1] × [y0, y1] (image px) further than `margin` px outside the image? See {@link View#offImage}. */
+  boxOffImage(x0, y0, x1, y1, margin = CULL_MARGIN_PX * this.px) {
+    const canvas = this.ctx?.canvas;
+    const W = Math.max(this.camera.width, canvas?.width || 0), H = Math.max(this.camera.height, canvas?.height || 0);
+    return x1 < -margin || y1 < -margin || x0 > W + margin || y0 > H + margin;
+  }
+
   /** Brightness factor for a surface with the given layout-frame normal. */
   light(normal) {
     const d = normal[0] * LIGHT[0] + normal[1] * LIGHT[1] + normal[2] * LIGHT[2];
     return 0.62 + 0.38 * Math.max(0, d);
+  }
+
+  /* ---------------------------------------------------------------- day and night */
+
+  /** Darkness 0 .. 1 (0 while unset). */
+  get darkness() {
+    return Math.min(1, Math.max(0, this.night || 0));
+  }
+
+  /**
+   * A colour as it looks at the current time of day (alpha is kept). `amount` scales the
+   * effect (0.5 = half as dark, e.g. for things under station lights).
+   * @param {string} colour CSS colour (#hex, rgb(), rgba())
+   */
+  dim(colour, amount = 1) {
+    const n = this.darkness * amount;
+    if (!n || !colour) return colour;
+    // the same colours come again and again (hundreds a frame at night): remembered for this view
+    // per amount of darkening (a view normally lives for one frame; the memo stays small anyway)
+    let memo = null;
+    if (typeof colour === "string") {
+      if (!this._dimmed || this._dimmed.size > 16) this._dimmed = new Map();
+      memo = this._dimmed.get(n);
+      if (!memo || memo.size > 4096) this._dimmed.set(n, (memo = new Map()));
+      const hit = memo.get(colour);
+      if (hit !== undefined) return hit;
+    }
+    const c = parseRgba(colour);
+    const out = c ? rgba(dimRgb(c, n), c[3]) : colour;
+    memo?.set(colour, out);
+    return out;
   }
 
   /** Normal (layout frame) -> camera frame. */
@@ -123,13 +223,18 @@ export class View {
   /* ---------------------------------------------------------------- display list */
 
   /**
-   * Queue a drawing operation.
+   * Queue a drawing operation. It is drawn with the canvas state it started with (the view saves
+   * and restores the state around it), unless `draw.plain` is true: then it promises to set the
+   * fill and stroke styles and the line width before it uses them, and to change nothing but
+   * these, line caps and joins and the opacity (multiplying it is fine; no transform, composite
+   * operation, line dash, font or clip), so that a run of such drawings can share one
+   * save/restore (see `render`; it sets the opacity, caps and joins back for each).
    * @param {number} layer LAYER.ground, LAYER.solid or LAYER.overlay
    * @param {number} key ground: order (low first); solid: depth (far first); overlay: order
-   * @param {(ctx: CanvasRenderingContext2D, view: View) => void} draw
+   * @param {((ctx: CanvasRenderingContext2D, view: View) => void) & {plain?: boolean}} draw
    */
   add(layer, key, draw) {
-    this.items.push({ layer, key, seq: this.seq++, draw });
+    this.items.push({ layer, key, seq: this.seq++, draw, plain: draw.plain === true });
   }
 
   ground(order, draw) {
@@ -153,16 +258,40 @@ export class View {
       return a.key - b.key || a.seq - b.seq;
     });
     const ctx = this.ctx;
-    for (const it of items) {
+    const n = this.darkness;
+    if (n > 0.01 && this.darken) {
+      // the real world (camera image or flyover background) gets darker, too
       ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(0,12,48,${(0.58 * n).toFixed(3)})`;
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.restore();
+    }
+    // Every drawing starts with the canvas state as it was before (save/restore). Plain drawings
+    // set their styles and line width themselves: one save/restore serves a run of them (it costs
+    // about as much as filling a small polygon, and there are hundreds a frame); their opacity,
+    // caps and joins are set back for each (thin outlines use the caps even on closed paths).
+    let run = false, cap, join;
+    for (const it of items) {
+      if (!it.plain || !run) {
+        if (run) ctx.restore();
+        ctx.save();
+        run = it.plain;
+        cap = ctx.lineCap;
+        join = ctx.lineJoin;
+      } else {
+        ctx.lineCap = cap;
+        ctx.lineJoin = join;
+      }
       ctx.globalAlpha = this.opacity;
       try {
         it.draw(ctx, this);
       } catch (err) {
         console.error("draw error", err);
       }
-      ctx.restore();
+      if (!it.plain) ctx.restore();
     }
+    if (run) ctx.restore();
     this.items = [];
     this.placed = [];
   }
@@ -173,23 +302,106 @@ export class View {
    * Flat polygon on the layout (or at height z). Coordinates in mm.
    * @param {number[][]} points
    * @param {{z?: number, fill?: string, stroke?: string, width?: number, alpha?: number,
-   *   dash?: number[], order?: number, layer?: "ground" | "overlay"}} [style]
+   *   dash?: number[], order?: number, layer?: "ground" | "overlay", emissive?: boolean}} [style]
+   *   `emissive`: not darkened at night (lights); overlays are never darkened
    */
   polygon(points, style = {}) {
-    const z = style.z || 0;
-    const pts = this.projectAll(points.map((p) => [p[0], p[1], z]));
-    if (!pts) return;
-    const draw = (ctx) => this._path(ctx, pts, true, style);
+    const pts = this._projectClipped(points, style.z || 0, true)[0];
+    if (!pts || this.offImage(pts, this._margin(style))) return;
+    const draw = plain((ctx) => this._path(ctx, pts, true, style), !style.dash);
     if (style.layer === "overlay") this.overlay(draw, style.order ?? 0);
     else this.ground(style.order ?? 0, draw);
   }
 
-  /** Polyline on the layout (ground layer). Width in CSS px, or `widthMM` in model mm. */
+  /**
+   * Flat plate on the layout (or at height z) with a text painted on it, e.g. a grey cover over a
+   * marker: a rectangle `length` × `width` (mm) around `center`, its length along `heading`. The
+   * text runs along the plate, turned half round where it would read from right to left.
+   * @param {number[]} center [x, y] in mm
+   * @param {number} heading radians
+   * @param {number} length mm
+   * @param {number} width mm
+   * @param {{z?: number, fill?: string, stroke?: string, text?: string, textColour?: string,
+   *   textSize?: number, order?: number}} [style] textSize: height of the text in mm (default 0.6 ×
+   *   the shorter side); order: ground order of the plate (the text comes right after it)
+   */
+  plate(center, heading, length, width, style = {}) {
+    const z = style.z || 0, c = Math.cos(heading), s = Math.sin(heading), l = length / 2, w = width / 2;
+    const at = (dx, dy) => [center[0] + dx * c - dy * s, center[1] + dx * s + dy * c];
+    const order = style.order ?? 0, corners = [at(-l, -w), at(l, -w), at(l, w), at(-l, w)];
+    this.polygon(corners, { z, fill: style.fill, stroke: style.stroke, width: 1, order });
+    if (!style.text) return;
+    const o = this.project(...at(0, 0), z), ax = this.project(...at(1, 0), z), ay = this.project(...at(0, -1), z);
+    const img = corners.map((p) => this.project(p[0], p[1], z));
+    if (!o || !ax || !ay || img.some((p) => !p) || this.offImage(img)) return;
+    const k = ax[0] < o[0] ? -1 : 1, size = style.textSize ?? 0.6 * Math.min(length, width), colour = style.textColour ?? "#fff";
+    this.ground(order + 0.01, (ctx) => {
+      // the plate's plane: its centre at the origin, 1 unit = 1 mm, the text's "up" across the plate
+      ctx.transform(k * (ax[0] - o[0]), k * (ax[1] - o[1]), k * (ay[0] - o[0]), k * (ay[1] - o[1]), o[0], o[1]);
+      ctx.font = `700 ${size}px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = this.dim(colour);
+      ctx.fillText(style.text, 0, 0.06 * size);
+    });
+  }
+
+  /** Polyline on the layout (ground layer); style as for `polygon` without the fill (`width` in CSS px). */
   line(points, style = {}) {
-    const z = style.z || 0;
-    const pts = this.projectAll(points.map((p) => [p[0], p[1], z]));
-    if (!pts) return;
-    this.ground(style.order ?? 1, (ctx) => this._path(ctx, pts, false, style));
+    const margin = this._margin(style);
+    for (const pts of this._projectClipped(points, style.z || 0, false)) {
+      if (this.offImage(pts, margin)) continue;
+      this.ground(style.order ?? 1, plain((ctx) => this._path(ctx, pts, false, style), !style.dash));
+    }
+  }
+
+  /** How far (px) a polygon or line drawn with this style reaches beyond its points. */
+  _margin(style) {
+    return (CULL_MARGIN_PX + (style.stroke ? style.width || 1 : 0)) * this.px;
+  }
+
+  /**
+   * Project a flat polygon or polyline at height z, cut off where it passes behind the camera
+   * (a virtual camera can be close to the layout and look along it).
+   * @returns {number[][][]} image polygons/polylines (one polygon; a polyline may fall into pieces)
+   */
+  _projectClipped(points, z, closed) {
+    const n = points.length;
+    const depth = points.map((p) => this.depth(p[0], p[1], z));
+    if (depth.every((d) => d >= NEAR_MM)) {
+      const out = this.projectAll(points.map((p) => [p[0], p[1], z]));
+      return out ? [out] : [];
+    }
+    const cut = (a, b, da, db) => {
+      const t = (NEAR_MM - da) / (db - da);
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    };
+    const pieces = [];
+    let cur = [];
+    if (closed) {
+      // Sutherland-Hodgman against the near plane
+      for (let i = 0; i < n; i++) {
+        const a = points[i], b = points[(i + 1) % n], da = depth[i], db = depth[(i + 1) % n];
+        if (da >= NEAR_MM) cur.push(a);
+        if ((da >= NEAR_MM) !== (db >= NEAR_MM)) cur.push(cut(a, b, da, db));
+      }
+      if (cur.length >= 3) pieces.push(cur);
+    } else {
+      for (let i = 0; i < n - 1; i++) {
+        const a = points[i], b = points[i + 1], da = depth[i], db = depth[i + 1];
+        if (da >= NEAR_MM) {
+          if (!cur.length) cur.push(a);
+          if (db >= NEAR_MM) cur.push(b);
+          else {
+            cur.push(cut(a, b, da, db));
+            pieces.push(cur);
+            cur = [];
+          }
+        } else if (db >= NEAR_MM) cur = [cut(a, b, da, db), b];
+      }
+      if (cur.length >= 2) pieces.push(cur);
+    }
+    return pieces.map((pc) => this.projectAll(pc.map((p) => [p[0], p[1], z]))).filter(Boolean);
   }
 
   /**
@@ -218,8 +430,9 @@ export class View {
     pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
     if (closed) ctx.closePath();
     if (style.alpha != null) ctx.globalAlpha *= style.alpha;
+    const lit = style.emissive || style.layer === "overlay";
     if (style.fill && closed) {
-      ctx.fillStyle = style.fill;
+      ctx.fillStyle = lit ? style.fill : this.dim(style.fill);
       ctx.fill();
     }
     if (style.stroke) {
@@ -227,7 +440,7 @@ export class View {
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       if (style.dash) ctx.setLineDash(style.dash.map((d) => d * this.px));
-      ctx.strokeStyle = style.stroke;
+      ctx.strokeStyle = lit ? style.stroke : this.dim(style.stroke);
       ctx.stroke();
     }
   }
@@ -235,15 +448,19 @@ export class View {
   /**
    * Draw a set of 3D faces as one solid item: back faces are culled, the rest is shaded
    * and drawn far to near.
-   * @param {{pts: number[][], normal?: number[], color: string, alpha?: number,
-   *   stroke?: string, twoSided?: boolean, flat?: boolean, decals?: {pts: number[][], color: string}[]}[]} faces
+   * @param {{pts: number[][], normal?: number[], color: string, alpha?: number, emissive?: boolean,
+   *   stroke?: string, twoSided?: boolean, flat?: boolean,
+   *   decals?: {pts: number[][], color: string, alpha?: number, emissive?: boolean}[]}[]} faces
    *   points [x, y, z] in mm; `normal` in the layout frame (needed for culling and shading);
-   *   `decals` are coplanar details (windows, doors) drawn right after their face
+   *   `decals` are coplanar details (windows, doors) drawn right after their face;
+   *   `emissive` faces and decals (lit windows, lamps) are neither shaded nor darkened at night
    * @param {number[]} ref reference point [x, y, z] for sorting against other solids
    * @param {{outline?: string}} [style]
    */
   faces(faces, ref, style = {}) {
     const drawn = [];
+    // outlines are 0.8 px wide
+    const margin = (CULL_MARGIN_PX + 1) * this.px;
     for (const f of faces) {
       const camPts = f.pts.map((p) => this.cam(p[0], p[1], p[2] || 0));
       if (camPts.some((c) => !(c[2] > 1))) continue;
@@ -255,42 +472,50 @@ export class View {
       const img = camPts.map((c) => this.camera.project(c));
       if (img.some((p) => !p)) continue;
       const k = f.normal && !f.flat ? this.light(f.normal) : 1;
-      const [r, g, b] = parseColor(f.color);
       const decals = [];
+      // a face outside the image is left out, unless one of its decals reaches into it
+      let off = this.offImage(img, margin);
       for (const d of f.decals || []) {
         const di = this.projectAll(d.pts);
         if (!di) continue;
-        const [dr, dg, db] = parseColor(d.color);
-        decals.push({ img: di, fill: rgba([dr * k, dg * k, db * k], d.alpha ?? f.alpha ?? 1) });
+        if (off && !this.offImage(di, margin)) off = false;
+        decals.push({ img: di, rgb: parseColor(d.color), k: d.emissive ? 1 : k, emissive: !!d.emissive, alpha: d.alpha ?? f.alpha ?? 1 });
       }
-      drawn.push({ img, depth: Math.hypot(...centre), fill: rgba([r * k, g * k, b * k], f.alpha ?? 1), stroke: f.stroke, decals });
+      if (off) continue;
+      drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals });
     }
     if (!drawn.length) return;
     drawn.sort((a, b) => b.depth - a.depth);
     const outline = style.outline;
-    this.solid(this.depth(ref[0], ref[1], ref[2] || 0), (ctx) => {
+    const draw = (ctx) => {
+      // colours are worked out when drawing, so that `night` may be set after queueing
+      const n = this.darkness;
+      let stroke = null, strokeStyle = null;
       ctx.lineJoin = "round";
       for (const f of drawn) {
-        ctx.beginPath();
-        f.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-        ctx.closePath();
-        ctx.fillStyle = f.fill;
+        tracePath(ctx, f.img);
+        ctx.fillStyle = faceFill(f, n);
         ctx.fill();
         const s = f.stroke || outline;
         if (s) {
+          if (s !== stroke) {
+            stroke = s;
+            strokeStyle = this.dim(s);
+          }
           ctx.lineWidth = 0.8 * this.px;
-          ctx.strokeStyle = s;
+          ctx.strokeStyle = strokeStyle;
           ctx.stroke();
         }
         for (const d of f.decals) {
-          ctx.beginPath();
-          d.img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-          ctx.closePath();
-          ctx.fillStyle = d.fill;
+          tracePath(ctx, d.img);
+          ctx.fillStyle = faceFill(d, n);
           ctx.fill();
         }
       }
-    });
+    };
+    // sets all it uses (joins, styles, widths): needs no save/restore of its own
+    draw.plain = true;
+    this.solid(this.depth(ref[0], ref[1], ref[2] || 0), draw);
   }
 
   /**
@@ -304,21 +529,122 @@ export class View {
   }
 
   /**
-   * Text label anchored at a layout point (overlay layer).
+   * A light seen as a soft glow (street lamps, headlights, lit signs); drawn only at night.
+   * @param {number[]} at [x, y, z] in mm
+   * @param {number} radiusMM size of the glow (model mm)
+   * @param {string} [colour] colour of the light
+   * @param {number} [strength=1] 0..1
+   */
+  glow(at, radiusMM, colour = "#ffe2a0", strength = 1) {
+    const a = this.darkness * strength;
+    if (a < 0.03) return;
+    const p = this.project(at[0], at[1], at[2] || 0);
+    if (!p) return;
+    const r = Math.max(1.5 * this.px, this.pxPerMM(at[0], at[1], at[2] || 0) * radiusMM);
+    if (this.boxOffImage(p[0] - r, p[1] - r, p[0] + r, p[1] + r)) return;
+    const [cr, cg, cb] = parseColor(colour);
+    // slightly in front of what the light is attached to
+    this.solid(this.depth(at[0], at[1], at[2] || 0) - 1, (ctx) => {
+      const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
+      g.addColorStop(0, `rgba(255,255,255,${a})`);
+      g.addColorStop(0.25, `rgba(${cr},${cg},${cb},${0.85 * a})`);
+      g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], r, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+  }
+
+  /**
+   * Light falling on the ground (pool of light under a street lamp); drawn only at night.
+   * @param {number[]} center [x, y] in mm
+   * @param {number} radiusMM radius on the ground (model mm)
+   */
+  lightPool(center, radiusMM, colour = "#ffd98a", strength = 1, order = 0.8) {
+    const a = this.darkness * strength;
+    if (a < 0.03) return;
+    const ring = [];
+    for (let k = 0; k < 16; k++) {
+      const t = (k * Math.PI) / 8;
+      ring.push([center[0] + radiusMM * Math.cos(t), center[1] + radiusMM * Math.sin(t), 0]);
+    }
+    const img = this.projectAll(ring), c = this.project(center[0], center[1], 0);
+    if (!img || !c || this.offImage(img)) return;
+    const r = Math.max(...img.map((q) => Math.hypot(q[0] - c[0], q[1] - c[1])));
+    const [cr, cg, cb] = parseColor(colour);
+    this.ground(order, (ctx) => {
+      const g = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], r);
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.55 * a})`);
+      g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      img.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])));
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  /**
+   * Text label anchored at a layout point (overlay layer). Labels are placed in overlay order
+   * (`order`, default 0); one that would overlap a label placed before moves up, or with `optional`
+   * is left out.
    * @param {number[]} at [x, y, z] in mm
    * @param {string | string[]} text one or more lines
    * @param {{size?: number, color?: string, background?: string, anchor?: "center" | "bottom" | "left",
-   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string}} [style]
+   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string,
+   *   order?: number, optional?: boolean}} [style]
    */
   label(at, text, style = {}) {
     const p = this.project(at[0], at[1], at[2] || 0);
     if (!p) return;
+    // labels of things just outside the picture are pulled in at its edge; far away ones (e.g. the
+    // stops of a town on table extensions beyond the photo) would only pile up there
+    const W = this.camera.width, H = this.camera.height;
+    if (p[0] < -0.25 * W || p[0] > 1.25 * W || p[1] < -0.25 * H || p[1] > 1.25 * H) return;
     const lines = Array.isArray(text) ? text : [text];
     this.overlay((ctx) => drawLabel(ctx, p, lines, style, this.px * this.labelScale, this.camera.width, this.camera.height, this.placed), style.order ?? 0);
   }
 }
 
 /* ---------------------------------------------------------------- helpers */
+
+/** Darken an [r, g, b] colour for the night (n = 0 .. 1) towards the night tint. */
+function dimRgb(c, n) {
+  const k = 1 - 0.62 * n, t = 0.3 * n;
+  return [0, 1, 2].map((i) => c[i] * k + NIGHT_TINT[i] * t);
+}
+
+/**
+ * Fill colour of a queued face or decal ({rgb, k, emissive, alpha}) at darkness n: shaded by k and
+ * darkened like {@link dimRgb} unless emissive (the same numbers, without arrays: hundreds a frame).
+ */
+function faceFill(it, n) {
+  let r = it.rgb[0] * it.k, g = it.rgb[1] * it.k, b = it.rgb[2] * it.k;
+  if (n && !it.emissive) {
+    const k = 1 - 0.62 * n, t = 0.3 * n;
+    r = r * k + NIGHT_TINT[0] * t;
+    g = g * k + NIGHT_TINT[1] * t;
+    b = b * k + NIGHT_TINT[2] * t;
+  }
+  return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${it.alpha})`;
+}
+
+/** Begin a new path along image points and close it. */
+function tracePath(ctx, pts) {
+  ctx.beginPath();
+  if (pts.length) ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath();
+}
+
+/** Mark a drawing of `_path` as plain (see `View#add`) when it sets no line dash. */
+function plain(draw, yes) {
+  draw.plain = yes;
+  return draw;
+}
 
 function centroid(poly) {
   let x = 0, y = 0;
@@ -367,7 +693,7 @@ export function rectFootprint(c, w, d, angle = 0) {
 function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   const size = (style.size || 13) * px;
   const pad = (style.padding ?? 6) * px;
-  ctx.font = `${style.bold === false ? 500 : 700} ${size}px "Archivo", system-ui, sans-serif`;
+  ctx.font = `${style.bold === false ? 500 : 700} ${size}px ${FONT}`;
   const widths = lines.map((l) => ctx.measureText(l).width);
   const badgeW = style.badge ? size * 1.7 : 0;
   const lineH = size * 1.25;
@@ -380,8 +706,9 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   else if (style.anchor === "right") x = p[0] - w - 6 * px;
   x = Math.max(2, Math.min(W - w - 2, x));
   y = Math.max(2, Math.min(H - h - 2, y));
-  // avoid labels drawn before: move up (or down at the top edge) until free
+  // avoid labels drawn before: move up (or down at the top edge) until free; an optional one is left out
   const hits = (yy) => placed.find((r) => x < r.x + r.w + 2 && x + w + 2 > r.x && yy < r.y + r.h + 2 && yy + h + 2 > r.y);
+  if (style.optional && hits(y)) return;
   for (let i = 0, r = hits(y); r && i < 8; i++, r = hits(y)) {
     const up = r.y - h - 3;
     y = up >= 2 ? up : r.y + r.h + 3;
@@ -389,15 +716,15 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   y = Math.max(2, Math.min(H - h - 2, y));
   placed.push({ x, y, w, h });
   if (style.background !== "none") {
-    ctx.fillStyle = style.background || "rgba(15,26,43,0.86)";
+    ctx.fillStyle = style.background || OVERLAY.label;
     roundRect(ctx, x, y, w, h, 4 * px);
     ctx.fill();
   }
   if (style.badge) {
-    ctx.fillStyle = style.badgeColor || "#1d4f9c";
+    ctx.fillStyle = style.badgeColor || OVERLAY.sign;
     roundRect(ctx, x, y, badgeW, h, 4 * px);
     ctx.fill();
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = OVERLAY.labelText;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(style.badge, x + badgeW / 2, y + h / 2);
@@ -405,7 +732,7 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   lines.forEach((l, i) => {
-    ctx.fillStyle = (style.colors && style.colors[i]) || style.color || "#fff";
+    ctx.fillStyle = (style.colors && style.colors[i]) || style.color || OVERLAY.labelText;
     ctx.fillText(l, x + badgeW + pad, y + pad + i * lineH);
   });
   if (barH) {

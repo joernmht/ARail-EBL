@@ -1,4 +1,5 @@
 // The project page and the marker sheets.
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test("project page links to the app and the compare slider works", async ({ page }) => {
@@ -9,11 +10,71 @@ test("project page links to the app and the compare slider works", async ({ page
   await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "app/");
   await page.locator("#compareRange").fill("20");
   await expect.poll(() => page.locator("#compare").evaluate((el) => el.style.getPropertyValue("--pos"))).toBe("20%");
-  const images = await page.locator("#compare img").evaluateAll((imgs) => imgs.map((i) => i.naturalWidth));
-  expect(images).toEqual([1600, 1600]);
+  await page.locator("#compare").scrollIntoViewIfNeeded();
+  await expect.poll(() => page.locator("#compare img").evaluateAll((imgs) => imgs.map((i) => i.naturalWidth))).toEqual([1600, 1600]);
+  // the video at the top: a real train through a virtual town, with its poster and a pause button
+  const video = page.locator("#heroClip");
+  await expect(video).toHaveAttribute("poster", "media/ebl-city-train.jpg");
+  for (const src of ["media/ebl-city-train.jpg", await page.locator("#heroClip source").getAttribute("src")]) {
+    expect((await page.request.get(`/${src}`)).ok(), src).toBe(true);
+  }
+  await expect(page.getByRole("button", { name: /^(Pause|Play) the video$/ })).toBeVisible();
   const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(width[0]).toBe(width[1]); // no horizontal scrolling
   expect(errors).toEqual([]);
+});
+
+test("project page hands over from the picture to the applications, each opening an example in the app", async ({ page, request }) => {
+  await page.goto("/");
+  // base, applications, next steps, in this order
+  const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
+  expect(order).toEqual(["base", "applications", "next"]);
+  const jumps = await page.getByRole("navigation", { name: "Applications" }).getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-journeys", "#app-disruptions"]);
+  for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
+  const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(examples).toHaveLength(6);
+  // the cards of the stories: the story in the app, the game on the game page
+  for (const [card, layer, tab] of [["#app-infrastructure", "infrastructure", "infra"], ["#app-journeys", "journeys", "journeys"]]) {
+    await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+  }
+  // and the examples of the lab table
+  const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
+  // the examples of the app (app/main.js) and of the game page (game/main.js)
+  const pages = { app: await (await request.get("/app/main.js")).text(), game: await (await request.get("/game/main.js")).text() };
+  const links = [...examples, ...fresh, ...(await page.locator(".app-card .acts a[href^='app/'], .app-card .acts a[href^='game/']").evaluateAll((as) => as.map((a) => a.getAttribute("href"))))];
+  for (const href of links) {
+    const page = href.split("/")[0], params = new URL(href, "http://x/").searchParams;
+    if (params.has("example")) {
+      expect(pages[page], href).toContain(`id: "${params.get("example")}"`);
+      continue;
+    }
+    const layout = params.get("layout");
+    expect((await request.get(new URL(layout, `http://localhost/${page}/`).pathname)).ok(), layout).toBe(true);
+  }
+  // the stories of the app open their module of Bf Neustadt; their games are a link to the game page
+  const neustadt = await (await request.get("/layouts/ebl-neustadt.json")).json();
+  for (const [card, layer, tab] of [["#app-operations", "operations", "ops"], ["#app-infrastructure", "infrastructure", "infra"]]) {
+    await expect(page.locator(`${card} a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+    expect(neustadt.layers.map((l) => l.id), card).toContain(layer);
+  }
+  // cooperation: the contact person by email
+  await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
+  const images = await page.locator(".app-card img, .fresh-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
+  for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
+});
+
+test("project page fits a phone: the video first, no horizontal scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const pic = await page.locator("#heroVideo").boundingBox();
+  const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+  expect(pic.y).toBeLessThan(title.y);
+  const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(width[0]).toBe(width[1]);
 });
 
 test("marker sheets have the exact paper size and validate the input", async ({ page }) => {
@@ -36,9 +97,178 @@ test("marker sheets have the exact paper size and validate the input", async ({ 
   await expect(page.locator("#status")).toHaveClass(/error/);
 });
 
+test("deck cards for model wagons have the exact spot pitch and validate the input", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?kind=rolling");
+  await expect(page.locator("#status")).toHaveText("6 cards with 18 markers on 1 sheet.");
+  await expect(page.locator("#rollingFields")).toBeVisible();
+  await expect(page.locator("#ids")).toBeHidden();
+  await expect(page.locator("#kind")).toHaveValue("rolling");
+  // the truck chassis is not model rolling stock; "all" (every ID per wagon) is for label sheets
+  expect(await page.locator("#wagonType option").evaluateAll((os) => os.map((o) => o.value))).toEqual(["sgns60", "lgns40", "sggrss80", "all"]);
+  const sheet = page.locator("svg.sheet").first();
+  await expect(sheet).toHaveAttribute("width", "210mm");
+  const g = await sheet.evaluate((svg) => {
+    const num = (el, a) => Number(el.getAttribute(a));
+    const card = svg.querySelector('rect[stroke]');
+    const tags = [...svg.querySelectorAll('rect[fill="#000"]')].slice(0, 3);
+    const label = [...svg.querySelectorAll("text")].find((t) => t.textContent.startsWith("W1 "));
+    return {
+      card: { x: num(card, "x"), y: num(card, "y"), w: num(card, "width"), h: num(card, "height") },
+      tags: tags.map((t) => ({ x: num(t, "x"), y: num(t, "y"), size: num(t, "width") })),
+      label: { y: num(label, "y"), text: label.textContent },
+    };
+  });
+  // tags at the 6.1 m spot pitch of an Sgns in H0 (70.1 mm), inside the card; the label below it
+  expect(Math.abs(g.tags[0].x - g.tags[1].x - 70.1)).toBeLessThanOrEqual(0.1);
+  expect(Math.abs(g.tags[1].x - g.tags[2].x - 70.1)).toBeLessThanOrEqual(0.1);
+  expect(g.card.h).toBeCloseTo(28.0, 1);
+  for (const t of g.tags) {
+    expect(t.size).toBe(20);
+    expect(t.x).toBeGreaterThanOrEqual(g.card.x + 2.5 - 0.001);
+    expect(t.x + t.size).toBeLessThanOrEqual(g.card.x + g.card.w - 2.5 + 0.001);
+  }
+  expect(g.label.text).toBe("W1 · Sgns (60 ft) · IDs 0–2");
+  expect(g.label.y - 3.4).toBeGreaterThanOrEqual(g.card.y + g.card.h);
+  // an 80 ft wagon's card is longer than a portrait sheet is wide
+  await page.locator("#wagonType").selectOption("sggrss80");
+  await expect(page.locator("#status")).toHaveText("6 cards with 24 markers on 2 sheets.");
+  await expect(sheet).toHaveAttribute("width", "297mm");
+  await expect.poll(() => page.locator("#pageSize").evaluate((el) => el.textContent)).toContain("size: 297mm 210mm");
+  // bad input
+  await page.locator("#tagSize").fill("24");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await expect(page.locator("#status")).toHaveText("Tags of 24 mm do not fit on the deck (at most 23 mm)");
+  await page.locator("#tagSize").fill("20");
+  await page.locator("#wagons").fill("one");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await page.locator("#wagons").fill("146-147");
+  await expect(page.locator("#status")).toHaveText("Wagon 147 needs ID 587; AprilTag 36h11 has 587 IDs");
+  await page.locator("#wagons").fill("3");
+  await expect(page.locator("#status")).toHaveText("1 card with 4 markers on 1 sheet.");
+  await expect(page.locator("#status")).not.toHaveClass(/error/);
+  // back to the markers for the layout
+  await page.locator("#kind").selectOption("markers");
+  await expect(page.locator("#status")).toHaveText("8 markers on 1 sheet.");
+  await expect(page.locator("#rollingFields")).toBeHidden();
+  expect(new URL(page.url()).searchParams.get("kind")).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("label sheets: one tag per container spot on 63.5 × 29.6 mm labels, layout markers on 60 × 60 mm labels", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/markers/?kind=rolling&paper=labels63x30&type=all&wagons=1-25");
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of 63.5 × 29.6 mm labels; 8 labels left over.");
+  await expect(page.locator("#labelFields")).toBeVisible();
+  await expect(page.locator("#scale")).toBeHidden();
+  const first = await page.locator("svg.sheet").first().evaluate((svg) => {
+    const r = svg.querySelector('rect[fill="#000"]');
+    return ["x", "y", "width"].map((a) => Number(r.getAttribute(a)));
+  });
+  expect(first).toEqual([7.25 + 21.75, 15.3 + 4.8, 20]);
+  await page.locator("#skip").fill("26");
+  await expect(page.locator("#status")).toHaveText("100 tags on 5 sheets of 63.5 × 29.6 mm labels; 9 labels left over.");
+  await page.locator("#paper").selectOption("a4");
+  await expect(page.locator("#status")).toHaveText("“Every ID per wagon” is for label sheets: choose a wagon type for deck cards");
+  await page.goto("/markers/?paper=labels60x60&ids=0-99&size=40");
+  await expect(page.locator("#status")).toHaveText("100 markers on 9 sheets of 60 × 60 mm labels; 8 labels left over.");
+  await expect(page.locator("#cutlines")).toBeHidden();
+  await page.locator("#size").fill("50");
+  await expect(page.locator("#status")).toHaveText(/at most 43 mm/);
+  // the ready-made sets are links that fill in the form
+  await page.getByRole("link", { name: "Wagon tags, IDs 0–99" }).click();
+  await expect(page.locator("#status")).toHaveText("100 tags on 4 sheets of 63.5 × 29.6 mm labels; 8 labels left over.");
+  await page.getByRole("link", { name: "60 × 60 mm", exact: true }).click();
+  await expect(page.locator("#outlines")).toBeChecked();
+  await expect(page.locator("#status")).toHaveText("12 markers on 1 sheet of 60 × 60 mm labels; 0 labels left over.");
+  // any other sheet from its measurements
+  await page.locator("#paper").selectOption("custom");
+  await expect(page.locator("#cw")).toBeVisible();
+  await page.locator("#cw").fill("70");
+  await page.locator("#ch").fill("37");
+  await page.locator("#crows").fill("8");
+  await page.locator("#cpx").fill("70");
+  await page.locator("#cpy").fill("37");
+  await page.locator("#cleft").fill("0");
+  await page.locator("#ctop").fill("0.5");
+  await expect(page.locator("#status")).toHaveText(/40 mm do not fit on 70 × 37 mm labels .*at most 25 mm/);
+  await page.locator("#size").fill("20");
+  await expect(page.locator("#status")).toHaveText("12 markers on 1 sheet of 70 × 37 mm labels; 12 labels left over.");
+  await page.locator("#crows").fill("9");
+  await expect(page.locator("#status")).toHaveText(/do not fit on A4/);
+  await page.locator("#crows").fill("8");
+  await page.locator("#paper").selectOption("labels60x60");
+  await expect(page.locator("#cw")).toBeHidden();
+  // the printer shift is kept for the next visit
+  await page.locator("#shiftX").fill("1.5");
+  await page.reload();
+  await expect(page.locator("#shiftX")).toHaveValue("1.5");
+  expect(errors).toEqual([]);
+});
+
+test("deck card settings come from the address; bad values are shown, not corrected", async ({ page }) => {
+  await page.goto("/markers/?kind=rolling&type=lgns40&wagons=2,5&stride=3&size=10&scale=160");
+  await expect(page.locator("#wagonType")).toHaveValue("lgns40");
+  await expect(page.locator("#wagons")).toHaveValue("2,5");
+  await expect(page.locator("#stride")).toHaveValue("3");
+  await expect(page.locator("#tagSize")).toHaveValue("10");
+  await expect(page.locator("#scale")).toHaveValue("160");
+  await expect(page.locator("#status")).toHaveText("2 cards with 4 markers on 1 sheet.");
+  // unknown type and scale: the defaults; a bad stride: an error
+  await page.goto("/markers/?kind=rolling&type=chassis40&scale=99&stride=9");
+  await expect(page.locator("#wagonType")).toHaveValue("sgns60");
+  await expect(page.locator("#scale")).toHaveValue("87");
+  await expect(page.locator("#stride")).toHaveValue("9");
+  await expect(page.locator("#status")).toHaveClass(/error/);
+  await expect(page.locator("#status")).toHaveText("IDs per wagon must be a whole number from 1 to 8");
+});
+
+for (const scheme of ["light", "dark"]) {
+  test(`deck card settings have no accessibility violations (${scheme} mode)`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/markers/?kind=rolling");
+    await expect(page.locator("#status")).toHaveText(/cards with/);
+    const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
+    const summary = async () => (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")})`);
+    expect(await summary()).toEqual([]);
+    // with an error message shown
+    await page.locator("#tagSize").fill("30");
+    await expect(page.locator("#status")).toHaveClass(/error/);
+    expect(await summary()).toEqual([]);
+  });
+}
+
 test("the 404 page links back to the site", async ({ page }) => {
   await page.goto("/404.html");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page not found");
   // GitHub Pages serves it for any missing address, so the links are absolute
   await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "/ARail-EBL/app/");
+});
+
+test("every page links to the Impressum and the Datenschutzerklärung, which give the operator", async ({ page, request }) => {
+  for (const path of ["/", "/markers/", "/lab-map/", "/architecture/", "/404.html", "/impressum/", "/datenschutz/"]) {
+    await page.goto(path);
+    for (const [name, target] of [[/^Impressum$/, "impressum/"], [/^Datenschutz/, "datenschutz/"]]) {
+      const link = page.getByRole("link", { name });
+      if (path.startsWith(`/${target}`)) continue;
+      await expect(link, `${path}: ${name}`).toHaveCount(1);
+      const href = new URL(await link.getAttribute("href"), page.url()).pathname.replace(/^\/ARail-EBL/, "");
+      expect(href, `${path}: ${name}`).toBe(`/${target}`);
+      expect((await request.get(href)).ok(), href).toBe(true);
+    }
+  }
+  // the project page's own footer is the way there from the app (the brand links to it)
+  await page.goto("/app/?layout=../layouts/ebl-lab.json");
+  await expect(page.locator("#bar .brand")).toHaveAttribute("href", "../");
+  for (const path of ["/impressum/", "/datenschutz/"]) {
+    await page.goto(path);
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(page.locator("main address")).toContainText("Jörn Maurischat");
+    await expect(page.locator("main address")).toContainText("01062 Dresden");
+    await expect(page.locator("main").getByRole("link", { name: "joern.maurischat@tu-dresden.de" })).toHaveAttribute("href", "mailto:joern.maurischat@tu-dresden.de");
+    const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    expect(width[0]).toBe(width[1]);
+  }
 });

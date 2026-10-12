@@ -1,0 +1,10 @@
+flowchart LR
+    CS[["control system"]] -- "its own protocol" --> AD
+    subgraph BR["arail-bridge (Python)"]
+        AD["adapter"]
+        SIM["recorded feed / simulator"]
+        WS["WebSocket server"]
+        AD --> WS
+        SIM --> WS
+    end
+    WS -- "arail-feed/1, one way" --> APP["ARail app(s)"]:::system

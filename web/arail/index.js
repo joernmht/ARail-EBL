@@ -19,15 +19,29 @@
 import { Registry } from "./core/registry.js";
 import { World } from "./core/world.js";
 import { BUILTIN_DISRUPTIONS } from "./core/disruptions.js";
+import { STORY_DISRUPTIONS } from "./core/story.js";
 import { BUS, TRAIN } from "./core/vehicles.js";
 import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
+import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
+import { StationBuilding } from "./objects/station.js";
+import { Underpass } from "./objects/underpass.js";
 import { Forest, Tree } from "./objects/trees.js";
-import { Area, Road } from "./objects/landscape.js";
+import { Area } from "./objects/landscape.js";
+import { Road } from "./objects/road.js";
+import { BusStop } from "./objects/bus-stop.js";
+import { BusLine } from "./objects/bus-line.js";
 import { Track } from "./objects/track.js";
 import { Label } from "./objects/label.js";
+import { Tabletop } from "./objects/tabletop.js";
 import { PassengerSimulation } from "./sims/passengers.js";
+import { TownSimulation } from "./sims/town.js";
+import { TrafficSimulation } from "./sims/traffic.js";
+import { registerTerminal } from "./terminal/index.js";
+import { registerOperations } from "./ops/index.js";
+import { registerInfrastructure } from "./infra/index.js";
+import { registerJourneys } from "./journeys/index.js";
 
 export const VERSION = "0.1.0";
 
@@ -40,30 +54,105 @@ export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
 export { World } from "./core/world.js";
 export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
+export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
+export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
-export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas } from "./core/disruptions.js";
+export { RoadNetwork, dockPose, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
+export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
+export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
+export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
+export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
-export { LAYOUT_FORMAT, DEFAULT_SERVICES, normalizeLayout, validateLayout, isLayout } from "./core/layout.js";
-export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo } from "./core/anchors.js";
-export { moodColor, shade, mix, rgba, parseColor, PALETTE } from "./core/colors.js";
+export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
+export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
+export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
+export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS } from "./core/vehicles.js";
-export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, PassengerSimulation };
+export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
+export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
+export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";
+export { BusStop, BusLine, TrafficSimulation };
+export { ROAD_KINDS, roadKind, offsetPolyline, drawStreetLamp } from "./objects/road.js";
+export { drawStopSign, STOP_SIGN } from "./objects/signs.js";
+export { CAR_COLOURS } from "./sims/traffic.js";
+export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
+export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
+export { StationBuilding, Underpass };
+export {
+  BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
+  gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
+} from "./objects/building-kit.js";
 export { drawTree } from "./objects/trees.js";
-export { dockStatus } from "./sims/passengers.js";
+export { BOARD_MIN_PX, boardStatus, dockStatus, drawPerson, NEUTRAL_PERSON, statusLines } from "./sims/passengers.js";
+// container terminal (named exports only: no `export *`, so no name can collide with the core's)
+export {
+  TERMINAL_EVENTS, TERMINAL_REQUESTS, PHASE_LABELS,
+  CONTAINER_SIZES, CONTAINER_WIDTH_M, CONTAINER_HEIGHT_M, HIGH_CUBE_HEIGHT_M, BAY_M, ROW_M, CARRIER_TYPES, yardType, bargeType,
+  bicCheckDigit, parseBic, bicProblem, makeBic, Container, Carrier, Inventory,
+  yardGrid, ContainerYard, GantryCrane, TruckLane, Quay, ReachStacker,
+  trapezoid, PathMover, TerminalSimulation, terminalOf,
+  CONTAINER_COLOURS, TERMINAL_COLOURS, colourFor, boxCorners, drawContainers, drawYardStacks, drawWagon, drawLocomotive, drawTruck,
+  drawBarge, drawCrane, drawReachStacker, drawYardGround, drawYardLabels, drawCraneRails, drawTruckLane, drawQuay, drawHighlights,
+  drawGhost, pickBoxes,
+  ROLLING_DEFAULTS, decodeTag, encodeTag, RollingStock, registerTerminal,
+} from "./terminal/index.js";
+// rail operations: fleet, maintenance (ECM), crews and penalties (named exports only, like the terminal)
+export {
+  OPS_DEFAULTS, DEFAULT_PROGRAM, DEFAULT_SOFT, DEFAULT_VEHICLE, DEFAULT_PARTIES, DEFAULT_CONTRACTS, PRESET_SETUPS, PRESET_STRESS,
+  autoNetwork, normalizeOps, validateOps, applySetup, setupsOf, stressOf, normalizeProgram, platformDocks,
+  tripTemplates, planRotations, planPieces, dayKind, lineProfile, emptyRunMin, emptyRunKm, deadheadMin,
+  Unit, UNIT_STATES, expectedFailures, wearInterval,
+  buildDuties, reserveDuties, makeStaff, contractMix, shiftOf, SHIFT_LABELS, WORK_RULES, commuteOf, shortName, pieceBounds,
+  CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
+  KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
+  normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
+  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, registerOperations,
+} from "./ops/index.js";
+// infrastructure: assets, maintenance, projects (named exports only; names that the core or the
+// operations use too get an "infra" prefix)
+export {
+  GRADES, gradeValue, gradeOf, healthOf, gradeLabel, gradeColour, DISCIPLINES, DISCIPLINE_IDS, GENERATIONS, GENERATION_IDS, REPORTS,
+  ASSET_TYPES, TYPE_IDS, hazardFactor, repairCap, METHODS, MEASURES,
+  ROLES, ROLE_IDS, DEFAULT_NETWORK, DEFAULT_PLACEMENT, INFRA_DEFAULTS, PRESET_SCENARIOS, normalizeInfra, applyScenario, scenariosOf, validateInfra,
+  Network, utmToLonLat, utmZone, kmLabel, Asset, generateAssets, healthAtAge, healthAfter, wearRate, ifcGuid,
+  StaffMember, makePeople, shiftOf as infraShiftOf, onCallPerson, weekdayOf, roleLabel, SHIFTS, Plant, PLANT_STAGES,
+  ProjectDesk, PROJECT_STAGES, PROCEDURES, QUALITY, SUPERVISION, annuityFactor, eur,
+  InfraEngine, INFRA_ACTIONS, TASK_WORDS, YEAR, durationText, toGeoJSON, assetRecord,
+  AssetObject, LinearAssetObject, Signal, Switch, Balise, LevelCrossing, GsmrMast, Lift, PassengerDisplay, Catenary, CableRoute, Interlocking,
+  MaintenanceBase, CrossingPlant, ASSET_OBJECTS, INFRA_OBJECTS, drawAssetState, drawLinearState,
+  InfrastructureSimulation, infraOf, STAFF_COLOURS, drawVan, drawDrone, INFRA_DISRUPTIONS, MaintenanceStory, registerInfrastructure,
+} from "./infra/index.js";
+// journeys: travellers with a start, an aim and a travel plan with transfers; the journeys story (named exports only)
+export {
+  TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
+  JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
+  JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare,
+} from "./journeys/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
 /** Register all built-in object types, simulations, disruptions and vehicles. */
 export function registerBuiltins(registry) {
-  for (const cls of [Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label]) registry.registerObject(cls);
+  for (const cls of [
+    Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
+    Building, StationBuilding, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
+  ]) {
+    registry.registerObject(cls);
+  }
   registry.registerSimulation(PassengerSimulation);
-  for (const def of BUILTIN_DISRUPTIONS) registry.registerDisruption(def);
+  registry.registerSimulation(TownSimulation);
+  registry.registerSimulation(TrafficSimulation);
+  for (const def of [...BUILTIN_DISRUPTIONS, ...STORY_DISRUPTIONS]) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);
+  registerTerminal(registry);
+  registerOperations(registry);
+  registerInfrastructure(registry);
+  registerJourneys(registry);
   return registry;
 }
 

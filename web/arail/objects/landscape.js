@@ -1,10 +1,9 @@
 /**
- * Landscape: coloured areas (grass, fields, water, ...) and roads.
+ * Landscape: coloured areas (grass, fields, water, ...). Streets are in objects/road.js.
  * @module arail/objects/landscape
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
-import { polylineLengths } from "../core/math.js";
 import { PALETTE } from "../core/colors.js";
 
 const AREA_KINDS = {
@@ -73,42 +72,5 @@ export class Area extends LayoutObject {
   }
 }
 
-export class Road extends LayoutObject {
-  static type = "road";
-  static label = "Road";
-  static category = "Scenery";
-  static placement = "polyline";
-  static description = "A road or footpath along a line.";
-  static params = [
-    { key: "name", label: "Name", type: "text", default: "" },
-    { key: "kind", label: "Kind", type: "select", options: [["road", "road"], ["path", "footpath"]], default: "road" },
-    { key: "width_m", label: "Width", type: "number", unit: "m", min: 1, max: 30, step: 0.5, default: 7 },
-  ];
-
-  computeGeometry() {
-    const pts = resolvePoints(this.world.map, this.spec.points);
-    if (!pts || pts.length < 2) return null;
-    return { points: pts, lengths: polylineLengths(pts) };
-  }
-
-  footprint() {
-    const g = this.geometry;
-    if (!g) return null;
-    const h = this.mm((+this.spec.width_m || 7) / 2);
-    const left = [], right = [];
-    g.points.forEach((p, i) => {
-      const a = g.points[Math.max(0, i - 1)], b = g.points[Math.min(g.points.length - 1, i + 1)];
-      const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
-      left.push([p[0] - (dy / l) * h, p[1] + (dx / l) * h]);
-      right.push([p[0] + (dy / l) * h, p[1] - (dx / l) * h]);
-    });
-    return left.concat(right.reverse());
-  }
-
-  draw(view) {
-    const g = this.geometry;
-    const path = this.spec.kind === "path";
-    view.polygon(this.footprint(), { fill: path ? PALETTE.sand : PALETTE.asphalt, alpha: path ? 0.6 : 0.8, order: 1 });
-    if (!path && (+this.spec.width_m || 7) >= 5) view.line(g.points, { stroke: "rgba(255,255,255,0.8)", width: 1.2, dash: [8, 8], order: 1.5 });
-  }
-}
+// Streets moved to objects/road.js; kept here for imports of older plugins.
+export { Road } from "./road.js";

@@ -3,19 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
 <title>ARail App</title>
-<meta name="description" content="Augmented reality for model railway labs: platforms, passengers, bus terminals, disruptions and scenery over the camera image.">
-<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<meta name="description" content="Augmented reality for model railway labs: platforms with passengers, a town with streets and bus lines through day and night, rail operations with fleet maintenance and crews, journeys with transfers for exercises, disruptions, and a flyover with a virtual camera.">
+<link rel="icon" href="../assets/favicon-app.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="flyover.css">
 </head>
 <body>
 <div class="app">
   <header class="bar" id="bar">
     <h1 class="visually-hidden">ARail app</h1>
-    <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+    <div class="identity">
+      <img class="cro-logo" src="../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+      <span class="divider" aria-hidden="true"></span>
+      <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+    </div>
     <span class="layout-name" id="layoutName"></span>
     <span class="spacer"></span>
     <div class="sources" role="group" aria-label="Image source">
@@ -26,7 +32,7 @@
       <input class="visually-hidden" type="file" id="fileVideo" accept="video/*" capture="environment">
       <label class="btn" for="fileOpen"><span class="long">Open file</span><span class="short">File</span></label>
       <input class="visually-hidden" type="file" id="fileOpen" accept="image/*,video/*">
-      <label class="visually-hidden" for="exampleSelect">Example</label>
+      <label class="visually-hidden" for="exampleSelect">Layouts</label>
       <select id="exampleSelect"></select>
     </div>
   </header>
@@ -36,7 +42,18 @@
       <canvas id="stage" width="1280" height="720" role="img" aria-label="Camera image with augmented reality"></canvas>
       <div class="empty-stage" id="emptyStage" hidden></div>
       <div class="hud" id="hud"></div>
+      <div class="fly-nav" id="flyNav" role="group" aria-label="Flyover camera" hidden>
+        <button class="btn" type="button" data-fly="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+        <button class="btn" type="button" data-fly="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+        <button class="btn" type="button" data-fly="rotate-left" aria-label="Rotate left" title="Rotate left (Q)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 7.5A6 6 0 1 1 4.6 13"/><path d="M4.5 3.5v4.4h4.4"/></svg></button>
+        <button class="btn" type="button" data-fly="rotate-right" aria-label="Rotate right" title="Rotate right (E)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14.8 7.5A6 6 0 1 0 15.4 13"/><path d="M15.5 3.5v4.4h-4.4"/></svg></button>
+        <button class="btn" type="button" data-fly="plan" aria-label="Plan view" aria-pressed="false" title="Plan view: look straight down (Page Up and Page Down tilt)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="1"/><path d="M3.5 10h13M10 3.5v13"/></svg></button>
+        <button class="btn" type="button" data-fly="fit" aria-label="Show the whole layout" title="Show the whole layout (Home)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg></button>
+      </div>
       <div class="stage-tools">
+        <button class="btn" id="btnFlyover" type="button" aria-pressed="false" title="Look at and edit the layout with a virtual camera (F)">Flyover</button>
+        <button class="btn" id="btnMap" type="button" data-simple="map" aria-pressed="false" title="Map: the whole layout from above, simple and fast (Shift+S)">Map</button>
+        <button class="btn" id="btnSimple3d" type="button" data-simple="3d" aria-pressed="false" title="Simple 2.5D view: a flat layout, moving things as blocks (S)">2.5D</button>
         <button class="btn" id="btnFreeze" type="button" aria-pressed="false" title="Keep the current frame (for editing)">Freeze</button>
         <button class="btn" id="btnFullscreen" type="button" title="Full screen">Full screen</button>
       </div>
@@ -48,15 +65,21 @@
       <nav class="tabs" role="tablist" aria-label="Panels">
         <button role="tab" id="tab-view" aria-controls="panel-view" aria-selected="true">View</button>
         <button role="tab" id="tab-build" aria-controls="panel-build" aria-selected="false">Build</button>
-        <button role="tab" id="tab-simulate" aria-controls="panel-simulate" aria-selected="false">Simulate</button>
-        <button role="tab" id="tab-disrupt" aria-controls="panel-disrupt" aria-selected="false">Disruptions</button>
-        <button role="tab" id="tab-control" aria-controls="panel-control" aria-selected="false" title="Connection to the control system">Control</button>
+        <button role="tab" id="tab-terminal" aria-controls="panel-terminal" aria-selected="false" title="Container terminal: trains, trucks, barges and cranes" hidden>Terminal</button>
+        <button role="tab" id="tab-ops" aria-controls="panel-ops" aria-selected="false" title="Operations: a train breaks down, a story to click through" hidden>Operations</button>
+        <button role="tab" id="tab-infra" aria-controls="panel-infra" aria-selected="false" title="Infrastructure: a maintenance story to click through" hidden>Infrastructure</button>
+        <button role="tab" id="tab-journeys" aria-controls="panel-journeys" aria-selected="false" title="Journeys: a traveller's journey to click through" hidden>Journeys</button>
+        <button role="tab" id="tab-disrupt" aria-controls="panel-disrupt" aria-selected="false" title="Disruptions and scenarios" hidden>Disruptions</button>
+        <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" title="Simulation (time, speed, demand, stops) and the control system">Settings</button>
       </nav>
       <section class="tabpanel" role="tabpanel" id="panel-view" aria-labelledby="tab-view"></section>
       <section class="tabpanel" role="tabpanel" id="panel-build" aria-labelledby="tab-build" hidden></section>
-      <section class="tabpanel" role="tabpanel" id="panel-simulate" aria-labelledby="tab-simulate" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-terminal" aria-labelledby="tab-terminal" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-ops" aria-labelledby="tab-ops" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-infra" aria-labelledby="tab-infra" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-journeys" aria-labelledby="tab-journeys" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-disrupt" aria-labelledby="tab-disrupt" hidden></section>
-      <section class="tabpanel" role="tabpanel" id="panel-control" aria-labelledby="tab-control" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" hidden></section>
     </aside>
   </div>
 </div>
@@ -69,6 +92,6 @@
 <script src="../vendor/js-aruco2/dictionaries/aruco_6x6_1000.js"></script>
 <script src="../vendor/js-aruco2/dictionaries/aruco_7x7_1000.js"></script>
 <script src="../vendor/js-aruco2/dictionaries/apriltag_36h11.js"></script>
-<script type="module" src="app.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>

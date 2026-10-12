@@ -1,0 +1,178 @@
+/**
+ * Models of the architecture page: disruptions and scenarios. See ../model.js for the format.
+ * @module architecture/models/disruptions
+ */
+export const DISRUPTIONS = [
+  {
+    id: "disruptions", group: "disruptions", title: "Disruptions and their effects",
+    summary: "A disruption is a registered definition started for a target: its effects, merged per stop area, are read in every sub-step by the timetable, the bus lines, the passengers and the planned trains until it expires or is stopped.",
+    description: "Disruptions are started from the Disruptions tab, by scenarios, by the control system's feed, or by simulations themselves (the infrastructure's faults). A definition says where it applies (any stop, platforms only, or nowhere: it acts once, like a driver calling in sick), its parameters, its duration and its effects: closed, hold, cancel, leave, demand, frequency, mood and messages. The types of all modules are listed under Extension points.",
+    files: ["web/arail/core/disruptions.js", "web/arail/ops/disruptions.js", "web/arail/infra/disruptions.js"],
+    classes: [
+      {
+        name: "DisruptionManager", file: "web/arail/core/disruptions.js", kind: "class", role: "The disruptions running, and their effects per stop area.",
+        attributes: ["world: World", "active: object[] — {id, type, def, target, params, started, until}"],
+        operations: ["start(spec) — {type, target, params, duration, id}", "stop(id)", "step() — stops those that expired", "effectsFor(area, dock) — the merged effects at a stop area, or at one of its tracks", "reset()", "draw(view) — hatching, a blinking sign at each stop (a quiet one only with a message)"],
+      },
+      {
+        name: "disruptions", file: "web/arail/core/disruptions.js", kind: "module", role: "The built-in types and where a disruption applies.",
+        attributes: ["BUILTIN_DISRUPTIONS — delay, cancellation, closure, replacement-bus, crowd, signal-failure, track-closure"],
+        operations: ["affectedAreas(d, world)", "appliesTo(d, area, world)", "dockOf(area, id) — the track (dock) of a stop area with this id"],
+      },
+      { name: "ops disruptions", file: "web/arail/ops/disruptions.js", kind: "module", role: "The operations' types: they inject an event into the operations engine.", attributes: ["OPS_DISRUPTIONS — crew-sick, unit-failure, drivers-leave, workshop-closed, units-damaged"] },
+      { name: "infra disruptions", file: "web/arail/infra/disruptions.js", kind: "module", role: "The infrastructure's types: they act on its engine.", attributes: ["INFRA_DISRUPTIONS — asset-fault, cable-theft, storm, infra-fault (started by the simulation)"] },
+    ],
+    relations: [
+      { from: "World", to: "DisruptionManager", kind: "composes", label: "disruptions" },
+      { from: "DisruptionManager", to: "Registry", kind: "uses", label: "definitions" },
+      { from: "ServiceManager", to: "DisruptionManager", kind: "uses", label: "effectsFor" },
+      { from: "PassengerSimulation", to: "DisruptionManager", kind: "uses", label: "effectsFor" },
+      { from: "Transit", to: "DisruptionManager", kind: "uses", label: "effectsFor" },
+      { from: "ops disruptions", to: "OperationsSimulation", kind: "uses", label: "inject" },
+      { from: "infra disruptions", to: "InfrastructureSimulation", kind: "uses", label: "failAsset, inject" },
+    ],
+    activities: [{
+      id: "life", name: "A disruption from start to expiry",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Asked for: Disruptions tab, scenario, control system or a simulation", "Panels._startDisruption", "source"],
+        ["d1", "decision", "Type registered?"],
+        ["a2", "action", "Its parameters and end; the same id replaced", "DisruptionManager.start"],
+        ["a3", "action", "Its onStart (operations, infrastructure: act once)", "DisruptionManager.start"],
+        ["x1", "send", "disruption.started"],
+        ["m1", "merge"],
+        ["a4", "action", "A sub-step of the world", "World.step"],
+        ["d2", "decision", "Expired, or stopped?"],
+        ["fk", "fork"],
+        ["a5", "action", "Timetable and bus lines: hold, cancel, pass closed stops", "ServiceManager.step", "consumers"],
+        ["a6", "action", "Passengers: fewer or more come, mood, leave", "PassengerSimulation._stepCrowd", "consumers"],
+        ["a7", "action", "Planned trains held or cancelled (operations, journeys)", "TimetableRail.step", "consumers"],
+        ["jn", "join"],
+        ["a8", "action", "Removed; its onStop", "DisruptionManager.stop"],
+        ["x2", "send", "disruption.ended"],
+        ["e", "end"],
+        ["f", "flowfinal"],
+      ],
+      edges: [["s", "a1"], ["a1", "d1"], ["d1", "f", "no: an error"], ["d1", "a2", "yes"], ["a2", "a3"], ["a3", "x1"], ["x1", "m1"], ["m1", "a4"], ["a4", "d2"], ["d2", "fk", "no"], ["fk", "a5"], ["fk", "a6"], ["fk", "a7"], ["a5", "jn"], ["a6", "jn"], ["a7", "jn"], ["jn", "m1"], ["d2", "a8", "yes"], ["a8", "x2"], ["x2", "e"]],
+    }],
+    events: {
+      emits: [
+        { name: "disruption.started", payload: "disruption", when: "started" },
+        { name: "disruption.ended", payload: "disruption", when: "expired or stopped" },
+      ],
+    },
+    rules: [
+      "Merged effects: closed, hold, cancel and leave if any disruption says so; demand and frequency multiplied; mood summed; messages joined.",
+      "A disruption whose target is one track of a platform or one bay (its dock, e.g. platform-1:left: the track closure; also a delay, cancellation or closure) acts on the vehicles at that track only; the platform shows its message.",
+      "Timetable: due vehicles wait while closed or held; cancelled ones do not come; closed sends dwelling vehicles away.",
+      "Bus lines: no departure while cancelled; a held bus stays; closed stops are passed.",
+      "Passengers: arrivals × demand (none while closed); −0.3 mood for newcomers while held or cancelled; leave: people walk out.",
+      "The Disruptions tab offers the types that are not hidden and whose simulation the layout has; the module Disruptions shows the tab.",
+      "A quiet type (a story's train or bus holding its track or bay, story-train) puts up a warning sign and counts in the top bar only while it has a message.",
+      "story-train closes its dock (the passengers go to another track) or, with waiting, reserves it (they wait for the story's own vehicle); either way the timetable sends nothing there and one standing there is taken away at once.",
+    ],
+  },
+  {
+    id: "scenarios", group: "disruptions", title: "Scenarios",
+    summary: "Timelines of a layout file: at given simulated times they set demand and speed, show messages, call trains, start and stop disruptions and send events.",
+    files: ["web/arail/core/scenarios.js"],
+    classes: [{
+      name: "ScenarioPlayer", file: "web/arail/core/scenarios.js", kind: "class", role: "Plays one scenario at a time.",
+      attributes: ["scenarios: object[] — {id, name, description, steps}", "current: object | null — the one playing", "startedAt: number — world time when played", "elapsed: number — simulated s since then"],
+      operations: ["load(scenarios)", "play(id)", "stop()", "step() — runs the steps that are due", "_run(step)"],
+    }],
+    relations: [
+      { from: "World", to: "ScenarioPlayer", kind: "composes", label: "scenarios" },
+      { from: "ScenarioPlayer", to: "DisruptionManager", kind: "uses", label: "start, stop" },
+      { from: "ScenarioPlayer", to: "ServiceManager", kind: "uses", label: "call" },
+      { from: "ScenarioPlayer", to: "EventBus", kind: "uses", label: "emit" },
+    ],
+    activities: [{
+      id: "run", name: "A scenario run",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Play (Disruptions tab, or ?scenario= in the address)", "ScenarioPlayer.play"],
+        ["x1", "send", "scenario.started"],
+        ["m1", "merge"],
+        ["a2", "action", "Each sub-step: the time since it was played", "ScenarioPlayer.step"],
+        ["d1", "decision", "A step due?"],
+        ["a3", "action", "Its actions in order: set, message, call, start, stop, emit", "ScenarioPlayer._run"],
+        ["d2", "decision", "Failed?"],
+        ["a4", "action", "Say so (scenario.message); its later actions skipped", "ScenarioPlayer._run"],
+        ["m2", "merge"],
+        ["d3", "decision", "Was it the last step?"],
+        ["a5", "action", "Stop: its disruptions run on", "ScenarioPlayer.stop"],
+        ["x2", "send", "scenario.ended"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "x1"], ["x1", "m1"], ["m1", "a2"], ["a2", "d1"], ["d1", "a3", "yes"], ["a3", "d2"], ["d2", "a4", "yes"], ["d2", "m2", "no"], ["a4", "m2"], ["m2", "d1"], ["d1", "d3", "no"], ["d3", "m1", "no: next sub-step"], ["d3", "a5", "yes"], ["a5", "x2"], ["x2", "e"]],
+    }],
+    parameters: [
+      { key: "scenarios[].steps[].at", default: "0", meaning: "Simulated seconds after Play (a pause stops the time)." },
+      { key: "set, message, call, start, stop, emit", default: "", meaning: "What a step does: demand or speed, a message, a train or bus called, a disruption started or stopped, an event sent (e.g. terminal.request.*)." },
+    ],
+    events: {
+      emits: [
+        { name: "scenario.started", payload: "scenario", when: "played" },
+        { name: "scenario.ended", payload: "scenario", when: "after its last step, or stopped" },
+        { name: "scenario.message", payload: "scenario, text", when: "a message step, or a step failed" },
+      ],
+    },
+    rules: ["The layers that are on add their scenarios; one with the same id replaces.", "call skips tracks run by the rail operations or the journeys, and the stops of bus lines."],
+  },
+  {
+    id: "stories", group: "disruptions", title: "Stories to click through",
+    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's module tabs show them with Back, Next, Play and Start again (Operations: the operations story; Infrastructure: the maintenance story; Journeys: the journeys story).",
+    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure, the operations story and the journeys story are scripted stories.",
+    files: ["web/arail/core/story.js"],
+    classes: [
+      {
+        name: "Story", file: "web/arail/core/story.js", kind: "class", extends: "Simulation", stereotype: "base class", role: "Steps to click through, and the picture of each moment.",
+        attributes: ["static STEPS — {id, title, text, seconds}", "static replay: boolean — a story that drives an engine", "index: number — the step shown", "t: number — simulated s into the step", "playing: boolean — goes on by itself", "scene: object | null — the picture of the moment (compose)", "steps — STEPS with the layout's texts over them (config.steps, by id)", "progress: number — 0…1 of the step's animation", "finished: boolean"],
+        operations: ["goTo(i)", "next()", "back()", "restart()", "skip() — the step's animation to its end", "play(on)", "step(dt)", "refresh() — compose the scene, the disruptions in line with it", "compose(index, k) — the picture (subclasses)", "reset() — replay stories: back to the start", "enter(index) — replay stories: a step begins", "settle(index) — replay stories: a step run to its end at once", "view() — where to look (flyover)", "state() — what the panel shows", "clear() — stops playing; the scene's disruptions start again with the next step"],
+      },
+      { name: "story", file: "web/arail/core/story.js", kind: "module", role: "Finding the layout's story; the disruption with which a story holds a track for its own train.", attributes: ["STORY_PAUSE_S — the pause between steps while playing", "STORY_DISRUPTIONS — story-train: a track held for a story's train (hidden, quiet)"], operations: ["storyOf(world, type)"] },
+    ],
+    relations: [
+      { from: "Story", to: "DisruptionManager", kind: "uses", label: "the scene's disruptions" },
+      { from: "Story", to: "EventBus", kind: "uses", label: "story.step, story.play" },
+      { from: "story", to: "ServiceManager", kind: "uses", label: "free (story-train)" },
+    ],
+    activities: [{
+      id: "goto", name: "Going to a step (Story.goTo)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Next, Back, a step chosen, Play, a clicker", "Story.goTo", "presenter"],
+        ["d1", "decision", "A story that drives an engine?"],
+        ["d2", "decision", "The very next step?"],
+        ["a2", "action", "Run the step shown to its end", "Story.settle"],
+        ["a3", "action", "Start again; replay the steps before, each begun and run to its end", "Story.reset"],
+        ["m1", "merge"],
+        ["a4", "action", "Begin the step", "Story.enter"],
+        ["m2", "merge"],
+        ["a5", "action", "Compose the picture at the step's start; its disruptions started or stopped", "Story.refresh"],
+        ["x1", "send", "story.step"],
+        ["m3", "merge"],
+        ["a6", "action", "Each sub-step: the animation runs on; the picture composed again", "Story.step"],
+        ["d3", "decision", "Playing, and the step and a pause over?"],
+        ["d4", "decision", "Another layout opened?"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "d1"], ["d1", "d2", "yes"], ["d1", "m2", "no: a scripted story"], ["d2", "a2", "yes"], ["d2", "a3", "no"], ["a2", "m1"], ["a3", "m1"], ["m1", "a4"], ["a4", "m2"], ["m2", "a5"], ["a5", "x1"], ["x1", "m3"], ["m3", "a6"], ["a6", "d3"], ["d3", "a1", "yes: the next step"], ["d3", "d4", "no"], ["d4", "m3", "no"], ["d4", "e", "yes"]],
+    }],
+    parameters: [
+      { key: "steps", default: "the story's own", meaning: "Retold steps: [{id, title, text}] over the built-in ones, by id." },
+    ],
+    events: {
+      emits: [
+        { name: "story.step", payload: "story, index, step", when: "a step begins" },
+        { name: "story.play", payload: "story, playing", when: "Play or Pause" },
+      ],
+    },
+    rules: [
+      "The scene's disruptions get the id story:<type>:<id> and run until the scene drops them; the app shows no toasts for them.",
+      "Playing: each step runs to its end, then after 6 simulated s the next one; Play stops at the last step.",
+      "story-train on a track (dock): closed there (no timetable train; one there is taken away at once, services.free); its text is the platform's message; quiet: a warning sign and a HUD count only while it has a message.",
+    ],
+  },
+];

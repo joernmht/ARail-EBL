@@ -1,0 +1,12 @@
+{
+  "about": "A bus stop of the virtual town in the flyover: a bus of line 7 comes in, people get on.",
+  "page": "example=neustadt",
+  "warm_s": 18,
+  "warm_speed": 10,
+  "speed": 1.5,
+  "fly": { "target": [-1460, -300], "distance": [430, 350], "yaw_deg": [148, 172], "pitch_deg": [25, 19] },
+  "wait": "app.world.transit.buses.some((b) => b.lineId === 'bus-line-7' && b.phase === 'arriving' && String(app.world.transit.lines.get(b.lineId)?.visits[b.next]?.dockId ?? '').startsWith('bus-stop-ringstrasse'))",
+  "lead_s": 1,
+  "frames": 240,
+  "out": "build/video/bus"
+}

@@ -1,18 +1,61 @@
-// ARail app: camera/photo/video in, markers tracked, virtual layout and simulations drawn on top.
+// ARail's pages with a stage: camera/photo/video in, markers tracked, virtual layout and simulations
+// drawn on top, and the panels. The app (main.js) shows the modules as stories to click through; the
+// game page (../game/main.js) has the games and exercises in the same tabs. A page says which panels
+// its tabs have, which simulation shows each module tab, and its examples (see `Page`).
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
+import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Panels } from "./panels.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
-const EXAMPLES = [
-  { id: "lab", label: "Example: EBL lab photo", layout: "../layouts/ebl-lab.json" },
-  { id: "synthetic", label: "Example: synthetic layout", layout: "../layouts/synthetic-demo.json" },
+/**
+ * A page with a stage (the app, the game page):
+ * - `id`: "app" or "game" (the game page keeps what it remembers in the browser apart);
+ * - `panels`: the panel of each module tab (`terminal`, `ops`, `infra`, `journeys`, …), made for the
+ *   app: `(app) => panel` with `render(el)`, `update()` and optionally `syncWidth()`, `key(e)`;
+ * - `shows`: the simulation type that shows each module tab (the tab is there while the layout has it);
+ * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, home?}` (`home`: the layout
+ *   it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the tab shown), the
+ *   first one opened when nothing else was;
+ * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on.
+ * @typedef {{id: string, panels: Object<string, (app: App) => object>, shows: Object<string, string>,
+ *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>}} Page
+ */
+/** Former example files that are layers of the lab example now (old links keep working). */
+const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
+/** Former tabs that are views of the Settings tab now (their links keep working): tab → [tab, view]. */
+const TAB_VIEWS = { simulate: ["settings", "simulate"], control: ["settings", "control"] };
+/** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
+const FEATURE_TABS = {
+  terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
+};
+/**
+ * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
+ * on and off in the View panel like those, without loading the layout again. `tab`: the tab it shows;
+ * `on`: whether it is on for a layout nobody has switched it for.
+ */
+const APP_MODULES = [
+  {
+    id: "build", name: "Build", tab: "build", icon: "build", on: true,
+    description: "Place and edit the objects of the layout, its settings and its marker map; survey the markers from a video. Off, nobody changes the layout by mistake.",
+  },
+  {
+    id: "disruptions", name: "Disruptions", tab: "disrupt", icon: "disruptions", on: false,
+    description: "Delays, signal failures, cancellations, closures and replacement buses at the stops, and the scenarios of the layout: timelines of disruptions for an exercise.",
+  },
 ];
-const TABS = ["view", "build", "simulate", "disrupt", "control"];
+/** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
+const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
-class App {
-  constructor() {
+export class App {
+  /** @param {Page} page */
+  constructor(page) {
+    this.page = page;
+    /** The tabs of the page, in their order (View, Build, the modules' tabs, Disruptions, Settings). */
+    this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
+    /** The panels of the module tabs, by tab. */
+    this.tabPanels = {};
     this.canvas = $("#stage");
     this.ctx = this.canvas.getContext("2d");
     this.proc = document.createElement("canvas");
@@ -23,6 +66,10 @@ class App {
     this.detector = null;
     this.source = null;
     this.detections = {};
+    /** Rolling-stock tags of the last frame (image corners by tag ID; see MarkerDetector.detectAll). */
+    this.rollingDetections = {};
+    /** The View of the last frame drawn (null while the layout is not tracked): for picking on the canvas. */
+    this.lastView = null;
     this.procMax = 960;
     this.frozen = false;
     this.fps = 0;
@@ -30,10 +77,16 @@ class App {
     this.feed = null;
     this.feedUrl = params.get("feed") || storage.get("arail.feedUrl", "ws://localhost:8765/feed");
     this.activeTab = "view";
-    this.display = { markers: false, opacity: 1, ...storage.get("arail.display", {}) };
+    this.display = { markers: false, opacity: 1, gridInCamera: false, flyMarkers: true, ...storage.get("arail.display", {}) };
+    /** "camera": the camera image (or photo, video) with AR; "flyover": the virtual camera (see flyover.js). */
+    this.mode = "camera";
+    /** The app's modules that are on, per layout (see _appModulesKey); also kept in the browser. */
+    this.appModules = new Map();
     this.layoutUrl = null;
     this.recorder = null;
     this._loadToken = 0;
+    /** Where the HUD's chips lie over the canvas (canvas px, measured with the HUD): the stage's labels keep clear of them. */
+    this.hudRects = [];
   }
 
   /* ---------------------------------------------------------------- start */
@@ -52,20 +105,42 @@ class App {
         storage.remove("arail.calibration");
       }
     }
+    this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
+    for (const [tab, make] of Object.entries(this.page.panels)) this.tabPanels[tab] = make(this);
+    /** The panels by their module: the terminal's picking, the journeys' following and Settings use them. */
+    this.terminal = this.tabPanels.terminal ?? null;
+    this.operations = this.tabPanels.ops ?? null;
+    this.infra = this.tabPanels.infra ?? null;
+    this.journeys = this.tabPanels.journeys ?? null;
     this._wireUi();
     this._wireEvents();
-    const layout = params.get("layout") || storage.get("arail.lastLayout") || EXAMPLES[0].layout;
+    // ?example=: an example with its own photo or clip (a link from the project page)
+    const example = this.page.examples.find((x) => x.id === params.get("example")) || null;
+    const layout = example?.layout || params.get("layout") || storage.get(this.key("lastLayout")) || this.page.examples[0].layout;
     const image = params.get("image");
-    await this.loadLayoutFromUrl(layout, { withImage: !image && params.get("camera") !== "1" });
+    const media = !image && (example?.image || example?.video) ? example : null;
+    const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
+    await this.loadLayoutFromUrl(layout, { withImage: !image && !media && params.get("camera") !== "1", layers });
     if (image) this.loadImage(new URL(image, location.href).href, "Image");
+    else if (media) this._loadExampleMedia(media);
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
     else if (params.get("feed")) this.panels.connect();
-    if (params.get("scenario")) setTimeout(() => this.world.scenarios.play(params.get("scenario")), 500);
-    const tab = location.hash.slice(1);
-    if (TABS.includes(tab)) this.selectTab(tab);
+    const scenario = params.get("scenario");
+    if (scenario) {
+      this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
+      setTimeout(() => {
+        if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
+        else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
+      }, 500);
+    }
+    const tab = location.hash.slice(1) || example?.tab || "";
+    // a link to the tab of a module of the app (Build, Disruptions) switches it on
+    const linked = APP_MODULES.find((m) => m.tab === tab);
+    if (linked) this.setAppModule(linked.id, true);
+    if (this.tabs().includes(TAB_VIEWS[tab]?.[0] ?? tab)) this.selectTab(tab);
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -86,11 +161,11 @@ class App {
 
   _wireUi() {
     // tabs
-    for (const name of TABS) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
+    for (const name of this.tabNames) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
     $(".tabs").addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const i = TABS.indexOf(this.activeTab) + (e.key === "ArrowRight" ? 1 : -1);
-      this.selectTab(TABS[(i + TABS.length) % TABS.length]);
+      const tabs = this.tabs(), i = tabs.indexOf(this.activeTab) + (e.key === "ArrowRight" ? 1 : -1);
+      this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
     // sources
@@ -98,6 +173,7 @@ class App {
       const f = e.target.files && e.target.files[0];
       e.target.value = "";
       if (!f) return;
+      this.flyover.leave(); // show what was just chosen
       const url = URL.createObjectURL(f);
       if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
       else this.loadImage(url, f.name, url);
@@ -105,16 +181,18 @@ class App {
     for (const id of ["filePhoto", "fileVideo", "fileOpen"]) $(`#${id}`).addEventListener("change", onFile);
     if (navigator.mediaDevices?.getUserMedia && window.isSecureContext) {
       $("#btnLive").hidden = false;
-      $("#btnLive").addEventListener("click", () => this.startLive());
+      $("#btnLive").addEventListener("click", () => {
+        this.flyover.leave();
+        this.startLive();
+      });
     }
     const sel = $("#exampleSelect");
-    mount(sel, h("option", { value: "" }, "Layouts…"), EXAMPLES.map((x) => h("option", { value: x.layout }, x.label)));
+    mount(sel, h("option", { value: "" }, "Layouts…"), this.page.examples.map((x) => h("option", { value: x.id }, x.label)));
     sel.addEventListener("change", async () => {
       if (!sel.value) return;
-      const url = sel.value;
+      const id = sel.value;
       sel.value = "";
-      this.stopLive();
-      await this.loadLayoutFromUrl(url, { withImage: true });
+      await this.openExample(id);
     });
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
@@ -131,8 +209,22 @@ class App {
   _wireEvents() {
     const ev = this.world.events;
     ev.on("scenario.message", (e) => toast(e.text));
-    ev.on("disruption.started", (e) => toast(`${e.disruption.def.label} started${e.disruption.target !== "*" ? ` at ${this.world.getObject(e.disruption.target)?.name || e.disruption.target}` : ""}.`));
-    ev.on("disruption.ended", (e) => toast(`${e.disruption.def.label} ended.`));
+    ev.on("disruption.started", (e) => {
+      const d = e.disruption;
+      // a simulation's own disruptions (the infrastructure's faults at the station) and a story's speak for themselves
+      if (d.def.hidden || d.id.startsWith("story:")) return;
+      // disruptions of the rail operations say what they did ("3 drivers call in sick: …")
+      if (typeof d.result === "string") toast(`${d.def.label}: ${d.result}.`);
+      else toast(`${d.def.label} started${d.target !== "*" ? ` at ${this.world.getObject(d.target)?.name || this._trackName(d.target) || d.target}` : ""}.`);
+    });
+    ev.on("disruption.ended", (e) => !e.disruption.def.hidden && !e.disruption.id.startsWith("story:") && toast(`${e.disruption.def.label} ended.`));
+    // a story went on (Play, a clicker, a scenario): its tab shows the new step at once
+    ev.on("story.step", () => this.storyPanel()?.stepped());
+    // journeys: a traveller at its aim
+    ev.on("journeys.traveller.arrived", (e) => {
+      const late = e.delay >= 1 ? `, ${e.delay} min late` : e.delay <= -1 ? `, ${-e.delay} min early` : ", on time";
+      toast(`${e.traveller.name} arrived${late}.`, 3500, { minor: true });
+    });
     ev.on("scenario.started", (e) => toast(`Scenario started: ${e.scenario.name || e.scenario.id}`));
     ev.on("feed.status", () => this.panels.updateControl());
     for (const name of ["disruption.started", "disruption.ended", "scenario.started", "scenario.ended"]) {
@@ -143,6 +235,14 @@ class App {
     }
     ev.on("object.added", () => this.panels.renderNewDisruption());
     ev.on("object.removed", () => this.panels.renderNewDisruption());
+    // the container terminal
+    const T = ARail.TERMINAL_EVENTS;
+    ev.on(T.moveFailed, (e) => toast(`${e.move.id}: ${e.move.reason}`));
+    ev.on(T.visitArrived, (e) => toast(`${e.visit.name} arrived.`, 3000, { minor: true }));
+    ev.on(T.containerLeft, (e) => toast(e.reason === "truck" && e.visit ? `${e.container.id} left the terminal on ${e.visit.name}.` : `${e.container.id} left the terminal (${e.reason}).`, 3000, { minor: true }));
+    ev.on(T.wagonLost, (e) => toast(`${e.carrier.label} is out of view; its containers stay on it.`, 3000, { minor: true }));
+    // rail operations
+    ev.on("ops.unit.failed", (e) => toast(`${e.unit.id} broke down${e.trip ? ` (${e.trip.lineName})` : ""}.`, 3000, { minor: true }));
   }
 
   _key(e) {
@@ -150,16 +250,38 @@ class App {
     if (tag === "input" || tag === "select" || tag === "textarea" || e.metaKey || e.ctrlKey || e.altKey) return;
     // Space and Enter activate focused buttons and links; they are not shortcuts there
     if ((e.key === " " || e.key === "Enter") && e.target.closest?.("button, a, summary, label, [role=button], [role=tab]")) return;
+    // a presenter's clicker (Page Down, Page Up) goes through the story of the tab shown
+    if (this.storyPanel()?.key(e)) {
+      e.preventDefault();
+      return;
+    }
+    if (this.flyover.key(e)) {
+      e.preventDefault();
+      return;
+    }
     const w = this.world;
-    if (e.key === " ") {
+    if (e.key === "f" || e.key === "F") {
+      this.flyover.toggle();
+      e.preventDefault();
+    } else if (e.key === "s" || e.key === "S") {
+      // the simple view: Shift+S the map, S the 2.5D view (or back to the full flyover)
+      this.flyover.simpleButton(e.shiftKey ? "map" : "3d");
+      e.preventDefault();
+    } else if ((e.key === "r" || e.key === "R") && this.activeTab === "build" && this.editor.selected) {
+      if (this.editor.rotateSelected(e.shiftKey ? 90 : 15)) e.preventDefault();
+    } else if (e.key === " ") {
       w.paused = !w.paused;
       this.panels.updateSimulateControls();
       e.preventDefault();
     } else if (/^[1-9]$/.test(e.key)) {
       const area = w.stopAreas()[Number(e.key) - 1];
-      if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free track right now.`);
+      if (area && area.docks.length && area.docks.every((d) => d.managed)) toast(`${area.owner.name} is served by its bus lines.`);
+      else if (area && area.docks.length && area.docks.every((d) => w.services.docks.get(d.id)?.mode === "plan")) toast(`${area.owner.name}: its trains run to the timetable of the rail operations.`);
+      else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
-      if (this.editor.placing) this.editor.cancel();
+      if (this.terminal?.cancelPick()) return;
+      if (this.activeTab === "terminal" && this.terminal?.selected) this.terminal.select(null);
+      else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
     } else if ((e.key === "Delete" || e.key === "Backspace") && this.activeTab === "build" && this.editor.selected) {
       this.editor.deleteSelected();
@@ -170,26 +292,108 @@ class App {
     }
   }
 
+  /**
+   * The tabs shown: View and Settings always; Build and Disruptions with the app's modules of those
+   * names (Build on unless switched off); the tab of a module when the layout has the simulation the
+   * page shows it for (the app: Infrastructure with the maintenance story, Journeys with the journeys
+   * story; the game page: with the infrastructure game, the journeys exercise).
+   */
+  tabs() {
+    const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
+    const shown = { view: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
+    // a module tab without a panel on this page is not shown
+    for (const [tab, type] of Object.entries(this.page.shows)) shown[tab] = !!this.tabPanels[tab] && has(type);
+    return this.tabNames.filter((t) => shown[t]);
+  }
+
+  /** The key of something the page remembers in the browser ("lastLayout": the app's "arail.lastLayout", the game page's "arail.game.lastLayout"). */
+  key(name) {
+    return this.page.id === "app" ? `arail.${name}` : `arail.${this.page.id}.${name}`;
+  }
+
+  /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
+  _syncTabs() {
+    const shown = this.tabs();
+    for (const t of this.tabNames) $(`#tab-${t}`).hidden = !shown.includes(t);
+    if (shown.includes(this.activeTab)) return false;
+    const next = (FEATURE_TABS[this.activeTab] || []).find((t) => shown.includes(t));
+    this.selectTab(next || "view");
+    return true;
+  }
+
+  /** Show a tab (or a former tab that is a view of Settings now: "simulate", "control"). */
   selectTab(name) {
+    if (TAB_VIEWS[name]) {
+      this.panels.settingsView = TAB_VIEWS[name][1];
+      storage.set("arail.settingsView", TAB_VIEWS[name][1]);
+      name = TAB_VIEWS[name][0];
+    }
+    // another tab opens at its top: the panels share one scrolling column (on a phone, the page)
+    if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
-    for (const t of TABS) {
+    for (const t of this.tabNames) {
       $(`#tab-${t}`).setAttribute("aria-selected", t === name ? "true" : "false");
       $(`#tab-${t}`).tabIndex = t === name ? 0 : -1;
       $(`#panel-${t}`).hidden = t !== name;
     }
-    this.canvas.classList.toggle("editing", name === "build");
+    this._scrollTabIntoView($(`#tab-${name}`));
+    this.canvas.classList.toggle("editing", name === "build" || name === "terminal");
     if (name !== "build" && this.editor.placing) this.editor.cancel();
+    if (name !== "terminal") this.terminal?.cancelPick();
+    this.terminal?.syncHighlight();
+    // a wide panel (the tables of a game) only while its tab is shown
+    document.querySelector(".main")?.classList.remove("wide");
+    this.tabPanels[name]?.syncWidth?.();
     this.renderPanel(name);
-    history.replaceState(null, "", `${location.pathname}${location.search}#${name}`);
+    // Settings is linked by its view (#simulate, #control), as the tabs were before
+    history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name}`);
+  }
+
+  /** Show a tab after an action elsewhere (e.g. a simulation added in Settings): its heading takes the keyboard focus. */
+  openTab(name) {
+    this.selectTab(name);
+    const head = $(`#panel-${name} h2`);
+    if (!head) return;
+    if (!head.hasAttribute("tabindex")) head.tabIndex = -1;
+    head.focus();
+  }
+
+  /** Scroll the panel column back to its top (on a phone: the page, as far as the tabs, if it is scrolled past them). */
+  _scrollPanelToTop() {
+    const panel = $("#panel");
+    panel.scrollTop = 0;
+    const top = panel.getBoundingClientRect().top;
+    if (top < 0) window.scrollBy(0, top);
+  }
+
+  /** On narrow screens the tabs scroll sideways: the selected one is kept in view (the page does not scroll). */
+  _scrollTabIntoView(tab) {
+    const bar = tab.parentElement;
+    if (bar.scrollWidth <= bar.clientWidth) return;
+    const left = tab.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft, right = left + tab.offsetWidth;
+    if (left < bar.scrollLeft) bar.scrollLeft = left - 16;
+    else if (right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth + 16;
+  }
+
+  /** "Platform 1, Track G2" for the id of a platform's track (a dock), or null. */
+  _trackName(id) {
+    for (const a of this.world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;
+    return null;
+  }
+
+  /** The panel of the module tab shown when it tells a story (the app's Infrastructure, …), or null. */
+  storyPanel() {
+    const p = this.tabPanels[this.activeTab];
+    return typeof p?.stepped === "function" ? p : null;
   }
 
   renderPanel(name) {
     const el = $(`#panel-${name}`);
     if (name === "view") this.panels.renderView(el);
     else if (name === "build") this.editor.render(el);
-    else if (name === "simulate") this.panels.renderSimulate(el);
+    else if (name === "settings") this.panels.renderSettings(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
-    else if (name === "control") this.panels.renderControl(el);
+    else this.tabPanels[name]?.render(el);
   }
 
   /** Periodic refresh of live figures in the visible panel. */
@@ -197,12 +401,12 @@ class App {
     this.updateHud();
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
-    else if (t === "simulate") this.panels.updateBoard();
+    else if (t === "settings") this.panels.updateSettings();
+    else if (this.tabPanels[t]) this.tabPanels[t].update();
     else if (t === "disrupt") {
       this.panels.updateDisruptions();
       this.panels.updateScenarios();
-    } else if (t === "control") this.panels.updateControl();
-    else if (t === "build" && this._mapVersionShown !== this.world.map.ids().length) {
+    } else if (t === "build" && this._mapVersionShown !== this.world.map.ids().length) {
       this._mapVersionShown = this.world.map.ids().length;
       this.editor.renderMarkers();
     }
@@ -210,7 +414,176 @@ class App {
 
   /* ---------------------------------------------------------------- layouts */
 
-  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image" } = {}) {
+  /**
+   * Open a layout from the list of layouts (or a panel) with its own image; the live camera stops.
+   * @param {string[] | null} [layers] the layers to switch on (default: as last time, else as in the file)
+   */
+  async openLayout(url, layers = null) {
+    this.stopLive();
+    await this.loadLayoutFromUrl(url, { withImage: true, layers });
+  }
+
+  /**
+   * Open one of the example layouts by its id (e.g. "terminal", or "operations": the lab with that
+   * module on), with its own photo or clip if it has one, and its tab.
+   */
+  async openExample(id) {
+    const x = this.page.examples.find((e) => e.id === id);
+    if (x && (x.image || x.video)) {
+      this.stopLive();
+      // the photo or clip shown until now belongs to the previous layout
+      if (this.source) this.source.stale = true;
+      await this.loadLayoutFromUrl(x.layout, { withImage: false });
+      this._loadExampleMedia(x);
+    } else if (x) await this.openLayout(x.layout);
+    if (x?.tab && this.tabs().includes(x.tab)) this.selectTab(x.tab);
+    if (x) return;
+    const l = this.page.exampleLayers[id];
+    if (!l) return;
+    // the layout is open already: switch the module on
+    if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
+    return this.openLayout(l.layout, [l.layer]);
+  }
+
+  /** The photo or clip of an example (shown over the camera image, not in the flyover). */
+  _loadExampleMedia(x) {
+    if (this._autoFlyover) {
+      this._autoFlyover = false;
+      this.flyover.leave();
+    }
+    const src = new URL(x.video || x.image, location.href).href;
+    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""));
+    else this.loadImage(src, x.label.replace(/^Example: /, ""));
+  }
+
+  /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
+  moduleOpening(exampleId) {
+    const x = this.page.examples.find((e) => e.id === exampleId), id = this.page.exampleLayers[exampleId]?.layer;
+    return this.world.layers().find((l) => !l.enabled && (l.id === id || (x && l.layout && new URL(l.layout, this.layoutUrl || location.href).href === new URL(x.layout, location.href).href))) || null;
+  }
+
+  /** Ids of the layers (modules) that are on. */
+  layersOn() {
+    return this.world.layers().filter((l) => l.enabled).map((l) => l.id);
+  }
+
+  /**
+   * The modules shown in the View panel: the layers of this layout (in a layout that is a module of
+   * another one, a layout of its own like the container terminal: the modules of that one), then the
+   * app's modules (Build, Disruptions).
+   * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
+   */
+  modules() {
+    const own = this.world.layers(), home = this.moduleHome;
+    const layers = own.length || !home ? own : home.modules.map((m) => ({ ...m, enabled: m.id === home.module }));
+    return [...layers, ...APP_MODULES.map((m) => ({ ...m, enabled: this.appModuleOn(m.id), exclusive: false, layout: null, app: true }))];
+  }
+
+  /** Where the app's modules switched for a layout are kept: per layout, a module layout (the terminal) with its home. */
+  _appModulesKey() {
+    return `arail.appModules:${this.moduleHome?.url || this.layoutUrl}`;
+  }
+
+  /** The ids of the app's modules that are on for this layout: as switched (kept in the browser), else as by default. */
+  _appModulesOn() {
+    const key = this._appModulesKey();
+    if (!this.appModules.has(key)) {
+      const saved = storage.get(key, {});
+      const switched = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      this.appModules.set(key, APP_MODULES.filter((m) => (typeof switched[m.id] === "boolean" ? switched[m.id] : m.on)).map((m) => m.id));
+    }
+    return this.appModules.get(key);
+  }
+
+  /** Is this module of the app (e.g. "disruptions") on? */
+  appModuleOn(id) {
+    return this._appModulesOn().includes(id);
+  }
+
+  /**
+   * Switch a module of the app on or off. Disruptions off: the disruptions started from its panel and
+   * the scenario stop (those the simulations start themselves, e.g. faults of the infrastructure, go on).
+   * Build off: an object being placed is dropped, the selection cleared.
+   */
+  setAppModule(id, on) {
+    const m = APP_MODULES.find((x) => x.id === id);
+    if (!m || this.appModuleOn(id) === on) return;
+    const ids = this._appModulesOn().filter((x) => x !== id);
+    if (on) ids.push(id);
+    this.appModules.set(this._appModulesKey(), ids);
+    // only what differs from the defaults is kept
+    storage.set(this._appModulesKey(), Object.fromEntries(APP_MODULES.filter((x) => ids.includes(x.id) !== x.on).map((x) => [x.id, ids.includes(x.id)])));
+    if (id === "build" && !on) {
+      if (this.editor.placing) this.editor.cancel();
+      this.editor.selected = null;
+    }
+    if (id === "disruptions" && !on) {
+      const w = this.world;
+      if (w.scenarios.current) w.scenarios.stop();
+      for (const d of [...w.disruptions.active]) if (!d.def.hidden) w.disruptions.stop(d.id);
+    }
+    if (!this._syncTabs() && this.activeTab === "view") this.renderPanel("view");
+  }
+
+  /**
+   * Switch a module on or off (View panel). Rail operations, infrastructure and journeys are combined;
+   * an exclusive module switches the others off, and a module that is a layout of its own (the
+   * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
+   * The app's modules (Build, Disruptions) go with every choice.
+   */
+  toggleModule(id) {
+    if (APP_MODULES.some((m) => m.id === id)) return this.setAppModule(id, !this.appModuleOn(id));
+    const home = this.moduleHome;
+    if (home && !this.world.layers().length) return this.openLayout(home.url, ARail.toggleLayer(home.modules, [home.module], id));
+    return this.chooseModules(ARail.toggleLayer(this.world.layers(), this.layersOn(), id));
+  }
+
+  /** Switch a module of the layout on (Settings, an example), with the others that go with it: an exclusive one alone, or without the exclusive ones. */
+  switchOnModule(id) {
+    const on = this.layersOn();
+    return this.chooseModules(on.includes(id) ? on : ARail.toggleLayer(this.world.layers(), on, id));
+  }
+
+  /** Exactly these modules on (exclusive ones alone); a module that is a layout of its own opens it. */
+  chooseModules(ids) {
+    const layers = this.world.layers();
+    const on = ARail.layerChoice(layers, ids);
+    const own = layers.find((l) => l.layout && on.includes(l.id));
+    if (own) return this._openModuleLayout(own, { url: this.layoutUrl, name: this.world.layout.name, layers });
+    return this.setLayers(on);
+  }
+
+  /** Open the layout of a module; its home (the layout whose module it is) is remembered for the way back. */
+  _openModuleLayout(layer, home) {
+    const url = new URL(layer.layout, home.url).href;
+    // the home keeps nothing else on: the module was chosen alone
+    storage.set(`arail.layers:${home.url}`, []);
+    storage.set(`arail.moduleHome:${url}`, moduleHomeRecord(home, layer.id));
+    this.stopLive();
+    return this.loadLayoutFromUrl(url, { withImage: true });
+  }
+
+  /** Switch the layout's layers: exactly these are on. Edits are kept; the simulations start again. */
+  async setLayers(ids) {
+    const json = ARail.withLayers(this.world.toJSON(), ids);
+    storage.set(this._layersKey(), [...ids]);
+    const edited = this._pendingSave != null || storage.get(this._layoutKey()) != null;
+    try {
+      await this._applyLayout(json);
+    } catch (err) {
+      toast(`The modules could not be switched: ${err.message}`, 7000);
+      return;
+    }
+    if (edited) this.saveLayout();
+  }
+
+  async loadLayoutFromUrl(url, { withImage = !this.source || this.source.kind === "image", layers = null } = {}) {
+    const legacy = Object.keys(LEGACY).find((f) => url.endsWith(f));
+    if (legacy) {
+      // a former example file: the lab example with that layer on
+      url = url.replace(legacy, "layouts/ebl-lab.json");
+      layers = layers || [LEGACY[legacy]];
+    }
     this.flushSave(); // pending edits belong to the current layout
     let json;
     try {
@@ -222,14 +595,37 @@ class App {
       toast(`Could not load the layout ${url}: ${err.message}`);
       json = {};
     }
-    this.layoutUrl = new URL(url, location.href).href;
+    const absolute = new URL(url, location.href).href;
+    // a module that is a layout of its own (asked for, or chosen last time): that layout, with this one as its home
+    const fileLayers = ARail.normalizeLayers(json.layers);
+    const wanted = ARail.layerChoice(fileLayers, layers || storage.get(`arail.layers:${absolute}`) || []);
+    const own = fileLayers.find((l) => l.layout && wanted.includes(l.id));
+    if (own) return this._openModuleLayout(own, { url: absolute, name: json.name || "Layout", layers: fileLayers });
+    // its modules that are layouts of their own know their home (for the way back)
+    for (const l of fileLayers) if (l.layout) storage.set(`arail.moduleHome:${new URL(l.layout, absolute).href}`, moduleHomeRecord({ url: absolute, name: json.name || "Layout", layers: fileLayers }, l.id));
+    this.layoutUrl = absolute;
     this.originalLayout = json;
-    storage.set("arail.lastLayout", url);
-    const edited = storage.get(this._layoutKey());
+    storage.set(this.key("lastLayout"), url);
+    this.moduleHome = await this._moduleHome(absolute);
+    // layers: as asked for, else as last time, else as the file has them
+    if (layers) storage.set(this._layersKey(), layers);
+    const chosen = layers || storage.get(this._layersKey()) || null;
+    // (an exclusive module alone)
+    const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, ARail.layerChoice(ARail.normalizeLayers(j.layers), chosen)) : j);
+    const img = json.view?.image;
+    // the layout's own image follows: the photo or video shown until then belongs to the previous
+    // layout, and markers detected in it must not be measured into this layout's marker map
+    if (withImage && img && this.source) this.source.stale = true;
+    // a virtual layout opens in the flyover: the photo or video shown until then does not belong to it
+    const virtual = json.view?.start === "flyover";
+    if (virtual && this.source) this.source.stale = true;
+    let edited = storage.get(this._layoutKey());
+    // changes saved before the layout had layers: they keep the file's layers
+    if (edited && edited.layers == null && Array.isArray(json.layers)) edited = { ...edited, layers: json.layers };
     let restored = false;
     if (edited) {
       try {
-        await this._applyLayout(edited);
+        await this._applyLayout(pick(edited));
         restored = true;
         toast("Your changes to this layout were restored. Use Build → Reset to original to discard them.");
       } catch (err) {
@@ -238,13 +634,20 @@ class App {
     }
     if (!restored) {
       try {
-        await this._applyLayout(json);
+        await this._applyLayout(pick(json));
       } catch (err) {
         toast(`The layout ${url} could not be loaded: ${err.message}`, 7000);
         await this._applyLayout({});
       }
     }
-    const img = json.view?.image;
+    if (virtual) {
+      this.flyover.enter();
+      this._autoFlyover = true;
+    } else if (withImage && img && this._autoFlyover) {
+      // back from a virtual layout to one with its own photo: the photo is shown
+      this._autoFlyover = false;
+      this.flyover.leave();
+    }
     if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
   }
 
@@ -252,10 +655,40 @@ class App {
     return `arail.layout:${this.layoutUrl}`;
   }
 
+  /**
+   * The home of a layout that is a module of another one ({url, name, module, modules}), or null: as
+   * remembered when it was opened as a module, else for an example its example home.
+   */
+  async _moduleHome(url) {
+    const saved = storage.get(`arail.moduleHome:${url}`);
+    if (saved?.url && Array.isArray(saved.modules)) return saved;
+    const x = this.page.examples.find((e) => e.home && new URL(e.layout, location.href).href === url);
+    if (!x) return null;
+    try {
+      const homeUrl = new URL(x.home, location.href).href;
+      const res = await fetch(homeUrl, { cache: "no-cache" });
+      const json = res.ok ? await res.json() : null;
+      const layers = ARail.normalizeLayers(json?.layers);
+      const layer = layers.find((l) => l.layout && new URL(l.layout, homeUrl).href === url);
+      if (!layer) return null;
+      const home = moduleHomeRecord({ url: homeUrl, name: json.name || "Layout", layers }, layer.id);
+      storage.set(`arail.moduleHome:${url}`, home);
+      return home;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Where the choice of layers of this layout is kept (it is no change of the layout). */
+  _layersKey() {
+    return `arail.layers:${this.layoutUrl}`;
+  }
+
   /** Load a layout into the world; on an error the previous layout stays loaded and the error is thrown. */
   async _applyLayout(json) {
-    if (json.plugins?.length) {
-      const errors = await ARail.loadPlugins(json.plugins, this.layoutUrl || location.href);
+    const plugins = ARail.layoutPlugins(json); // also those of layers that are off
+    if (plugins.length) {
+      const errors = await ARail.loadPlugins(plugins, this.layoutUrl || location.href);
       if (errors.length) toast(`Plugins could not be loaded: ${errors.join("; ")}`, 8000);
     }
     const problems = ARail.validateLayout(json, this.world.registry);
@@ -272,7 +705,9 @@ class App {
       this.tracker = new ARail.PlaneTracker(this.world.map);
       this.applyDictionary();
       this.showLayoutName();
-      this.renderPanel(this.activeTab);
+      this.flyover.layoutChanged();
+      if (!this._syncTabs()) this.renderPanel(this.activeTab);
+      this.sizeCanvas(); // view.extend_below of this layout
       this.redetect();
     }
     if (problems.length) console.warn("Layout problems:", problems);
@@ -305,7 +740,8 @@ class App {
   async resetLayout() {
     this.cancelSave();
     storage.remove(this._layoutKey());
-    await this._applyLayout(this.originalLayout || {});
+    const on = this.layersOn();
+    await this._applyLayout(ARail.withLayers(this.originalLayout || {}, on));
     toast("Layout reset to the original file.");
   }
 
@@ -333,27 +769,50 @@ class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles });
+    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers } = this.world.settings;
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers });
   }
 
   showLayoutName() {
-    $("#layoutName").textContent = this.world.layout.name;
+    const on = this.world.layers().filter((l) => l.enabled).map((l) => l.name);
+    $("#layoutName").textContent = [this.world.layout.name, ...on].join(" · ");
     document.title = `${this.world.layout.name} · ARail App`;
   }
 
-  applyDictionary() {
+  /** Follow a traveller of the journeys with the flyover's camera (it opens the flyover). */
+  followTraveller(id) {
+    const sim = ARail.journeysOf(this.world);
+    if (!sim) return;
+    sim.selected = id;
+    if (!this.flyover.active) this.flyover.enter();
+    this.flyover.follow(() => sim.positionOf(id));
+  }
+
+  /**
+   * Set up the marker detector for the layout: its marker type and number of codes (a locked
+   * marker map needs only the codes up to its highest ID, see MarkerMap.detectionCodes). Call it
+   * again when the map is locked or unlocked or its moving markers change, with `keepType`: a
+   * marker type that was detected automatically is then kept.
+   * @param {{keepType?: boolean}} [options]
+   */
+  applyDictionary({ keepType = false } = {}) {
     if (!this.detector) return;
-    const { dictionary: d, codes } = this.world.layout.markers;
-    if (this.detector.codes !== codes) {
+    const { dictionary: d, rolling: r } = this.world.layout.markers;
+    const codes = this.world.map.detectionCodes(this.world.layout.markers.codes);
+    const found = keepType && d === "auto" ? this.detector.selected?.name ?? null : null;
+    // rolling-stock tags (markers.rolling): a second marker family, read in the same pass
+    const rolling = r ? { dictionary: r.dictionary, codes: r.codes, maxBitErrors: r.max_bit_errors } : null;
+    if (this.detector.codes !== codes || JSON.stringify(this.detector.rollingOptions ?? null) !== JSON.stringify(rolling)) {
       try {
-        this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes });
+        this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO", codes, rolling });
       } catch (err) {
         toast(`Marker detection could not be set up for ${codes} codes: ${err.message}`);
       }
     }
+    // the small tags need a sharper image
+    if (rolling) this.procMax = Math.max(this.procMax, PROC_RANGE_ROLLING[0]);
     try {
-      this.detector.setDictionary(d === "auto" ? null : d);
+      this.detector.setDictionary(d === "auto" ? found : d);
     } catch {
       toast(`Unknown marker type “${d}”; detecting automatically.`);
       this.detector.setDictionary(null);
@@ -368,11 +827,13 @@ class App {
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
     this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl };
     if (old && old.el !== el) this._release(old);
-    this.canvas.width = this.source.w;
-    this.canvas.height = this.source.h;
+    // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
+    if (!this.flyover.active) this.sizeCanvas();
     this.camera.setSize(this.source.w, this.source.h);
     this.tracker.reset();
     this.detections = {};
+    this.rollingDetections = {};
+    ARail.terminalOf(this.world)?.forgetObservations();
     if (this.world.layout.markers.dictionary === "auto") this.detector?.setDictionary(null);
     this.setFrozen(false);
     $("#emptyStage").hidden = true;
@@ -411,6 +872,10 @@ class App {
     v.onloadedmetadata = () => {
       if (token !== this._loadToken) return this._release({ el: v, kind: stream ? "live" : "video", objectUrl });
       this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl);
+      if (this.flyover.active && !stream) {
+        this.flyover.resumeVideoOnLeave(); // shown (and played) when leaving the flyover
+        return;
+      }
       v.play().catch(() => toast("The video cannot be played here. Take a photo instead."));
     };
     v.onerror = () => token === this._loadToken && toast("The video cannot be played here. Take a photo instead.");
@@ -456,7 +921,7 @@ class App {
   setFrozen(on) {
     this.frozen = on && !!this.source && this.source.kind !== "image";
     const btn = $("#btnFreeze");
-    btn.hidden = !this.source || this.source.kind === "image";
+    btn.hidden = !this.source || this.source.kind === "image" || this.flyover.active;
     btn.setAttribute("aria-pressed", this.frozen ? "true" : "false");
     if (this.source?.kind === "video") this.frozen ? this.source.el.pause() : this.source.el.play().catch(() => {});
     if (this.frozen && this.source) {
@@ -475,8 +940,26 @@ class App {
     el.hidden = false;
   }
 
-  /** Fit the canvas into the stage while keeping its aspect ratio. */
+  /**
+   * The canvas for the source: the photo or video, and below it the share of its height that the
+   * layout extends the picture by (`view.extend_below`, not for the live camera). The camera stays
+   * the source's, so the virtual parts of the layout in front of the table are drawn below it.
+   */
+  sizeCanvas() {
+    const s = this.source;
+    if (!s || this.flyover.active) return;
+    const below = s.kind === "live" ? 0 : Math.round(s.h * ARail.extendBelowOf(this.world.layout));
+    if (this.canvas.width !== s.w || this.canvas.height !== s.h + below) {
+      this.canvas.width = s.w;
+      this.canvas.height = s.h + below;
+      this.fitCanvas();
+    }
+  }
+
+  /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
   fitCanvas() {
+    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
+    if (this.flyover?.active) return this.flyover.resize();
     const wrap = $("#stageWrap");
     const W = this.canvas.width, H = this.canvas.height;
     const maxW = wrap.clientWidth;
@@ -485,7 +968,31 @@ class App {
     const k = Math.min(maxW / W, maxH / H);
     this.canvas.style.width = `${Math.floor(W * k)}px`;
     this.canvas.style.height = `${Math.floor(H * k)}px`;
-    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
+  }
+
+  /**
+   * The current camera pose: homography layout (mm) -> canvas (px) and its inverse. From the
+   * virtual camera in the flyover, else from the marker tracking (H is null while not tracked).
+   * @returns {{H: number[] | null, Hinv: number[] | null}}
+   */
+  pose() {
+    return this.flyover.active ? this.flyover.pose() : this.tracker.state;
+  }
+
+  /** Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover). */
+  eventToLayout(e) {
+    const c = this.canvas, r = c.getBoundingClientRect();
+    const u = ((e.clientX - r.left) * c.width) / r.width, v = ((e.clientY - r.top) * c.height) / r.height;
+    if (this.flyover.active) return this.flyover.groundPoint(u, v);
+    const Hinv = this.tracker.state.Hinv;
+    if (!Hinv) return null;
+    const p = ARail.applyH(Hinv, [u, v]);
+    return p.every(Number.isFinite) ? p : null;
+  }
+
+  /** Is the grid shown? Always in the flyover, in the camera view only if chosen (View panel). */
+  gridVisible() {
+    return this.flyover.active || !!this.display.gridInCamera;
   }
 
   /** Canvas pixels per CSS pixel (line widths and fonts). */
@@ -495,24 +1002,25 @@ class App {
 
   /** Detect markers in a still image once, at high resolution. */
   redetect() {
-    if (!this.source || !this.detector) return;
+    if (!this.source || !this.detector || this.source.stale) return;
     if (this.source.kind !== "image") return; // video frames are processed continuously
     const { el, nw, nh } = this.source;
-    toast("Looking for markers…", 1500);
+    toast("Looking for markers…", 1500, { minor: true }); // e.g. "Your changes to this layout were restored" stays
     setTimeout(() => {
-      if (this.source?.el !== el) return;
+      if (this.source?.el !== el || this.source.stale) return;
       const s = Math.min(1, 2000 / Math.max(nw, nh));
       const pw = Math.round(nw * s), ph = Math.round(nh * s);
       this.proc.width = pw;
       this.proc.height = ph;
       this.pctx.drawImage(el, 0, 0, pw, ph);
       try {
-        this.detections = this.detector.detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
+        this._detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
       } catch (err) {
         toast(`The image cannot be analysed: ${err.message}`, 7000);
         return;
       }
       const st = this.tracker.update(this.detections, this.clock, this.camera, { still: true });
+      this._observeRolling(true);
       const n = Object.keys(this.detections).length;
       if (!n) toast("No markers found. Get closer, look from above at an angle, use good light, and check the marker type in Build → Layout.", 7000);
       else if (!st.H) toast(`${n} markers found, but none of them is in the marker map of this layout.`, 6000);
@@ -533,15 +1041,41 @@ class App {
     this.pctx.drawImage(el, 0, 0, pw, ph);
     const t0 = performance.now();
     try {
-      this.detections = this.detector.detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
+      this._detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
     } catch (err) {
       if (!this._detectError) toast(`The video cannot be analysed: ${err.message}`, 7000);
       this._detectError = true;
       return;
     }
     const ms = performance.now() - t0;
-    this.procMax = ms > 45 ? Math.max(480, this.procMax * 0.9) : ms < 20 ? Math.min(1600, this.procMax * 1.05) : this.procMax;
+    const [lo, hi] = this.detector.rolling ? PROC_RANGE_ROLLING : PROC_RANGE;
+    this.procMax = ms > 45 ? Math.max(lo, this.procMax * 0.9) : ms < 20 ? Math.min(hi, this.procMax * 1.05) : this.procMax;
     this.tracker.update(this.detections, this.clock, this.camera);
+    this._observeRolling(false);
+  }
+
+  /** Find the markers in an image: the layout's markers and (with `detectAll`) the rolling-stock tags. */
+  _detect(imageData, scale) {
+    if (typeof this.detector.detectAll === "function") {
+      const found = this.detector.detectAll(imageData, scale);
+      this.detections = found.markers;
+      this.rollingDetections = found.rolling || {};
+    } else {
+      this.detections = this.detector.detect(imageData, scale);
+      this.rollingDetections = {};
+    }
+  }
+
+  /**
+   * Model wagons: the rolling-stock tags of this frame, lifted to their deck height, go to the
+   * terminal. Without a camera pose they go without a pose: they keep a known wagon held.
+   */
+  _observeRolling(still) {
+    const term = ARail.terminalOf(this.world);
+    if (!term?.rollingConfig() || typeof this.tracker.liftMarkers !== "function") return;
+    const tags = this.tracker.liftMarkers(this.rollingDetections, this.camera, (id) => term.tagHeight(id));
+    if (!this.tracker.H) for (const id of Object.keys(this.rollingDetections)) tags[id] ??= { center: null, heading: null, edge_mm: null };
+    term.observe(tags, this.clock, { still });
   }
 
   /* ---------------------------------------------------------------- frame loop */
@@ -549,24 +1083,67 @@ class App {
   frame(dt) {
     this.clock += dt;
     if (dt > 0) this.fps = 0.9 * this.fps + 0.1 / Math.max(dt, 1e-3);
-    if (this.source && this.source.kind !== "image" && !this.frozen) this._processVideo();
+    const fly = this.flyover.active;
+    if (!fly && this.source && this.source.kind !== "image" && !this.frozen && !this.source.stale) this._processVideo();
     if (this.feed?.tick) this.feed.tick(dt);
     this.world.step(dt);
+    if (fly) this.flyover.step(dt);
     this.render();
   }
 
   render() {
+    if (this.flyover.active) return this.flyover.render();
+    this.lastView = null;
     const { ctx, source } = this;
-    if (!source) return;
+    if (!source || source.stale) return;
+    if (this.canvas.height > source.h) {
+      // the picture extended below the source (view.extend_below): only virtual things there
+      ctx.fillStyle = SKY.floorNear; // the lab floor of the flyover
+      ctx.fillRect(0, source.h, this.canvas.width, this.canvas.height - source.h);
+    }
     ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
-    const H = this.tracker.state.H;
+    const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
       const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
+      view.placed.push(...this.hudRects); // the labels keep clear of the HUD
+      if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
+      if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
       this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
+      this.terminal?.drawOverlay(ctx, view);
+      this.lastView = view;
     }
     if (this.display.markers) this._drawMarkers(ctx);
+  }
+
+  /**
+   * Grey plates over the markers of the map, each with its number painted on it (View → Show →
+   * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
+   * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
+   * table, under the virtual objects.
+   */
+  _drawMarkerCovers(view) {
+    const map = this.world.map, fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
+    for (const id of map.ids()) {
+      const e = map.get(id), s = map.sizeOf(id);
+      if (e) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
+    }
+  }
+
+  /** Where the grid is drawn over the camera image: around the markers, objects and table modules. */
+  _cameraGridBounds() {
+    const b = ARail.defaultTableBounds(this.world, 200) || [-500, -300, 500, 300];
+    for (const o of this.world.objects) {
+      if (o.type !== "tabletop" || !o.geometry) continue;
+      for (const p of o.geometry.footprint) {
+        b[0] = Math.min(b[0], p[0] - 200);
+        b[1] = Math.min(b[1], p[1] - 200);
+        b[2] = Math.max(b[2], p[0] + 200);
+        b[3] = Math.max(b[3], p[1] + 200);
+      }
+    }
+    return b;
   }
 
   _drawMarkers(ctx) {
@@ -577,30 +1154,79 @@ class App {
       c.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
       ctx.closePath();
       ctx.lineWidth = 2 * px;
-      ctx.strokeStyle = used.has(Number(id)) ? "#00e5ff" : "#ff5cf0";
+      ctx.strokeStyle = used.has(Number(id)) ? ARail.OVERLAY.tracked : ARail.OVERLAY.selection;
       ctx.stroke();
       const cx = c.reduce((s, p) => s + p[0], 0) / 4, cy = c.reduce((s, p) => s + p[1], 0) / 4;
-      ctx.font = `700 ${13 * px}px Archivo, sans-serif`;
+      ctx.font = `700 ${13 * px}px ${ARail.FONT}`;
       ctx.fillStyle = ctx.strokeStyle;
       ctx.textAlign = "center";
       ctx.fillText(id, cx, cy - 12 * px);
     }
+    // rolling-stock tags: dashed, with wagon and slot (W3·1)
+    const stride = this.world.layout.markers.rolling?.stride ?? 4;
+    ctx.save();
+    ctx.setLineDash([5 * px, 4 * px]);
+    ctx.strokeStyle = ctx.fillStyle = ARail.OVERLAY.tracked;
+    ctx.lineWidth = 2 * px;
+    ctx.font = `700 ${12 * px}px ${ARail.FONT}`;
+    ctx.textAlign = "center";
+    for (const [id, c] of Object.entries(this.rollingDetections)) {
+      ctx.beginPath();
+      c.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+      ctx.closePath();
+      ctx.stroke();
+      const { number, slot } = ARail.decodeTag(Number(id), stride);
+      const cx = c.reduce((s, p) => s + p[0], 0) / 4, cy = c.reduce((s, p) => s + p[1], 0) / 4;
+      ctx.fillText(`W${number}·${slot}`, cx, cy - 10 * px);
+    }
+    ctx.restore();
   }
 
   updateHud() {
     const st = this.tracker.state, chips = [];
-    if (!this.source) chips.push(["warn", "No image yet"]);
-    else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}`]);
+    if (this.flyover.active) {
+      const g = this.world.layout.grid;
+      chips.push(["ok", this.flyover.simple ? (this.flyover.cam.isPlan ? "Map" : "Simple 2.5D") : `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
+      chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
+    } else if (!this.source) chips.push(["warn", "No image yet"]);
+    else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
-    else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, none known yet`]);
+    else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
     else chips.push(["bad", "No markers in view"]);
+    // the clock's night (between sunset and sunrise), also while the day/night lighting is switched off
+    chips.push(["info clock", `${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`]);
     if (this.world.paused) chips.push(["info", "Paused"]);
     if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
-    if (this.world.disruptions.active.length) chips.push(["bad", `${this.world.disruptions.active.length} disruption${this.world.disruptions.active.length > 1 ? "s" : ""}`]);
+    // a quiet disruption without a message (a story's train holding its track) is none to speak of
+    const disrupted = this.world.disruptions.active.filter((d) => !d.def.quiet || d.def.effects?.(d, null, this.world)?.messages?.length).length;
+    if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
     if (this.world.trains.active) chips.push(["ok", `Control system · ${this.world.trains.trains.size} trains`]);
+    const term = ARail.terminalOf(this.world);
+    if (term) {
+      const n = term.moves.filter((m) => m.state === "queued" || m.state === "active").length;
+      chips.push(["info", `Terminal · ${n} move${n === 1 ? "" : "s"}`]);
+    }
+    const ops = ARail.opsOf(this.world)?.engine;
+    if (ops) {
+      const n = ops.tripsRunning().size, failed = [...ops.units.values()].filter((u) => u.status === "failed").length;
+      chips.push([failed ? "warn" : "info", `Operations · ${n} train${n === 1 ? "" : "s"}${failed ? ` · ${failed} unit${failed === 1 ? "" : "s"} failed` : ""}`]);
+    }
+    for (const story of this.world.simulations.filter((x) => x instanceof ARail.Story && x.active)) {
+      const st = story.state();
+      if (st.count) chips.push(["info", `${story.name} · step ${st.index + 1} of ${st.count}${st.playing ? " · playing" : ""}`]);
+    }
+    const journeys = ARail.journeysOf(this.world);
+    if (journeys?.travellers.length) {
+      const all = journeys.travellers, done = all.filter((t) => t.state === "arrived").length, going = all.filter((t) => t.state !== "home" && t.state !== "arrived").length;
+      chips.push(["info", `Journeys · ${going} travelling · ${done} of ${all.length} arrived`]);
+    }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.recorder) chips.push(["bad", "Recording"]);
-    morph($("#hud"), chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
+    const hud = $("#hud");
+    morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
+    // a label pulled in at the top edge of the picture (a depot's board out of view) goes below the chips
+    const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
+    this.hudRects = [...hud.children].map((el) => el.getBoundingClientRect()).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 
   /* ---------------------------------------------------------------- recording */
@@ -636,5 +1262,13 @@ class App {
   }
 }
 
-const app = new App();
-app.init();
+/** What is kept of the home of a module that is a layout of its own: its address, name and modules. */
+function moduleHomeRecord(home, module) {
+  const modules = home.layers.map(({ id, name, description, exclusive, layout, simulations }) => ({
+    id, name, description, exclusive, layout: layout ?? null,
+    // the types of the simulations the module adds (world.layers() has them already; a layout file's layers have the entries)
+    simulations: (simulations || []).map((s) => (typeof s === "string" ? s : s.patch === true ? null : s.type)).filter(Boolean),
+  }));
+  return { url: home.url, name: home.name, module, modules };
+}
+

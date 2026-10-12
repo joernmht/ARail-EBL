@@ -18,7 +18,7 @@ cd ARail-EBL
 npm install                                   # only dev tools (Playwright)
 python -m venv .venv && source .venv/bin/activate
 pip install -e "tools[headless,bridge,dev]"   # or [opencv,...] for the calibration window
-npm run fixtures                              # generates tests/fixtures (images for the JS tests)
+npm run fixtures                              # generates tests/fixtures (images and a short video for the tests)
 npm start                                     # http://localhost:8000
 ```
 
@@ -33,29 +33,40 @@ npx playwright install chromium   # once
 npm run test:e2e                  # browser tests (the app, the project page, the marker sheets, accessibility)
 ```
 
+The browser tests start a server on port 8123; set `ARAIL_PORT` to use another one (`ARAIL_PORT=8200 npm run test:e2e`).
+
 Run the fixtures again after changing `tools/arail_tools/synthetic.py` or the example images. CI runs all three suites on every pull request.
 
 Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`. If you improve the detector, please also report the effect on the lab photo and video (see `docs/architecture.md`).
 
 ## Code style
 
-- **JavaScript**: modern ES modules, no framework, no build step, no runtime dependencies besides the vendored js-aruco2. 2-space indentation, double quotes, semicolons. Keep modules focused and document public functions with JSDoc. Everything in `web/arail/` must also run in Node.js (no DOM access outside `web/app/`).
+- **JavaScript**: modern ES modules, no framework, no build step, no runtime dependencies besides the vendored js-aruco2 (and dagre, which lays out the diagrams of the architecture page). 2-space indentation, double quotes, semicolons. Keep modules focused and document public functions with JSDoc. Everything in `web/arail/` must also run in Node.js (no DOM access outside `web/app/`) and stay deterministic (use `world.rng` or `createRng(seed)`, never `Math.random`).
 - **Python**: formatted and linted with ruff: `cd tools && ruff format . ../tests/python && ruff check . ../tests/python`.
 - **Units in names**: `_mm` for model millimetres, `_m` for prototype metres, `_s` for seconds, `_deg` for degrees.
-- **User-facing text** in English, plain and specific ("Train arriving", "No markers in view").
+- **User-facing text** in English, plain and specific ("Train arriving", "No markers in view"), sentence case.
+- **Colours and type**: the app follows the corporate design of the Chair of Railway Operations. Use the tokens of `web/app/app.css` in the interface and `CD`, `OVERLAY`, `FONT` and `PALETTE` (`web/arail/core/colors.js`) on the canvas instead of new hard-coded colours; buildings stay greyscale. Text must keep a contrast of at least 4.5:1 in light and dark mode (the accessibility tests check it). The project page (`web/index.html`) and the marker sheets (`web/markers/`) load `app.css` and use the same tokens.
 
 ## Adding things
 
-- **Object types, simulations, disruptions, vehicles**: see [docs/extending.md](docs/extending.md). Generally useful ones can become built-ins (register them in `web/arail/index.js`, document them in `docs/layout-format.md`, add tests); specialised ones fit well as example plugins in `web/plugins/`.
+- **Object types, simulations, disruptions, vehicles**: see [docs/extending.md](docs/extending.md) (new building types extend `BuildingBase`). Generally useful ones can become built-ins (register them in `web/arail/index.js`, document them in `docs/layout-format.md`, add tests); specialised ones fit well as example plugins in `web/plugins/`.
 - **Control-system adapters**: see [docs/control-system-interface.md](docs/control-system-interface.md). Adapters for widely used systems are welcome; add a test with recorded data.
 - **Layouts of your lab**: example layouts help others; please add a photo of the layout with its markers.
+
+## Keeping the architecture page true
+
+The [architecture page](web/architecture/) shows the whole software in UML: packages, the data flow, and for every model its classes, activities, settings, events and rules. It is drawn from `web/architecture/model.js` and `web/architecture/models/*.js`, and `tests/js/architecture.test.js` (part of `npm test`) checks that data against the code: files, packages and their imports, classes, attributes and operations with their parameters, the code named in activities, the events sent, the registered types and the settings of the simulations.
+
+When you change the code, change the models in the same commit, and read the activity diagrams, rules and prose of what you changed (`docs/architecture.md` and the guide of that area): the test checks names, not meaning.
+
+The diagrams of the guides in `docs/` are Mermaid, drawn in the chair's design by the `tud-uml` skill of [tud_cro_chaircd](https://github.com/joernmht/tud_cro_chaircd) (`skills/tud-uml`, its rules in `reference/rules.md`). Edit the source in `docs/diagrams/*.mmd`, or write a new ```` ```mermaid ```` block, and render again: `node <tud_cro_chaircd>/skills/tud-uml/scripts/render.mjs docs/<guide>.md --rewrite --prefix <guide>`.
 
 ## Pull requests
 
 - One topic per pull request, with tests for new behaviour.
-- Update the documentation and `CHANGELOG.md` (section "Unreleased").
+- Update the documentation, the architecture page's models (`web/architecture/`) and `CHANGELOG.md` (section "Unreleased").
 - Describe how you tested it, ideally including a photo or video of a real layout for tracking and rendering changes.
-- By contributing, you agree that your contribution is licensed under the MIT license of this project.
+- By contributing, you agree that your contribution is licensed under the Apache License 2.0 of this project (section 5 of the [license](LICENSE)).
 
 ## Code of conduct
 

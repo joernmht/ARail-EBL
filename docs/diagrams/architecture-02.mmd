@@ -1,0 +1,7 @@
+flowchart LR
+    FRAME["camera frame"] --> DA["MarkerDetector.detectAll"]
+    DA -- "markers" --> UPD["PlaneTracker.update"]
+    DA -- "rolling" --> LIFT["PlaneTracker.liftMarkers<br/>(rolling, camera, height)"]
+    UPD -- "H (smoothed)" --> LIFT
+    LIFT -- "tags on the deck plane" --> OBS["TerminalSimulation.observe<br/>(tags, time)"]
+    OBS --> RS["RollingStock"] --> W["model wagons W1, W2, …"]:::system

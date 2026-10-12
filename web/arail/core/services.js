@@ -5,13 +5,19 @@
  * timetable (a vehicle every `headway` seconds, randomised); vehicles can also be called
  * manually or by scenarios. Disruptions change the behaviour through their effects
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
- * see `core/trains.js`.
+ * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
+ * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
+ * (`services.planner`, the operations simulation) can take over rail docks: they are in mode
+ * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
  *
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
  * `vehicle.departing` (doors close) -> `vehicle.departed`; or `vehicle.cancelled`.
  * @module arail/core/services
  */
 import { smoothstep } from "./math.js";
+
+/** Whether the timetable keeps off a dock: closed (a track closure), or kept for a story's own vehicle. */
+const kept = (fx) => fx.closed || fx.reserved;
 
 let nextVehicleId = 1;
 
@@ -45,6 +51,24 @@ export class ServiceManager {
     this.world = world;
     /** @type {Map<string, {dock: object, vehicle: Vehicle | null, timer: number, heldFor: number, mode: string, manual: object | null}>} */
     this.docks = new Map();
+    /**
+     * Something that runs the trains of some docks itself (the operations simulation), or null:
+     * `{claims(dock) -> boolean, statusLines?(area) -> string[]}`.
+     */
+    this.planner = null;
+  }
+
+  /** The mode of a dock while no control system is connected: "plan" where a planner runs the trains, else "timetable". */
+  baseMode(dock) {
+    return dock.kind === "rail" && this.planner?.claims?.(dock) ? "plan" : "timetable";
+  }
+
+  /** Apply the base modes again (after a planner came or went); docks under the control system keep it. */
+  refreshModes() {
+    for (const st of this.docks.values()) {
+      if (st.mode === "feed") continue;
+      st.mode = this.baseMode(st.dock);
+    }
   }
 
   reset() {
@@ -70,19 +94,22 @@ export class ServiceManager {
     const seen = new Set();
     for (const area of this.world.stopAreas()) {
       for (const dock of area.docks) {
+        if (dock.managed) continue; // served by bus lines (core/transit.js)
         seen.add(dock.id);
         const st = this.docks.get(dock.id);
         if (st) {
           st.dock = dock;
           if (st.vehicle) st.vehicle.dock = dock;
         } else {
-          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * dock.headway, heldFor: 0, mode: "timetable", manual: null });
+          const mode = dock.kind === "rail" && this.world.trains?.active ? "feed" : this.baseMode(dock);
+          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * dock.headway, heldFor: 0, mode, manual: null });
         }
       }
     }
     for (const [id, st] of this.docks) {
       if (!seen.has(id)) {
-        if (st.vehicle) this._emit("vehicle.departed", st.vehicle);
+        // a vehicle still coming in never stood at the dock: it just does not come
+        if (st.vehicle && st.vehicle.phase !== "arriving") this._emit("vehicle.departed", st.vehicle);
         this.docks.delete(id);
       }
     }
@@ -112,7 +139,9 @@ export class ServiceManager {
   }
 
   /**
-   * Send a vehicle to a dock now.
+   * Send a vehicle to a dock now. Docks of the control system are never chosen, docks of a planner
+   * (mode "plan") only by the planner (`source: "plan"`), closed docks (a track closure, a story's
+   * train) only by a planner.
    * @param {string} target dock ID, stop area ID or object ID (a free dock is chosen)
    * @param {{line?: string, source?: string, side?: number}} [options]
    * @returns {Vehicle | null}
@@ -122,10 +151,33 @@ export class ServiceManager {
       (st) => st.dock.id === target || st.dock.area.id === target || st.dock.area.owner?.id === target,
     );
     if (options.side) candidates = candidates.filter((st) => st.dock.side === options.side);
-    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed");
+    // docks of the control system and of a planner take no vehicles from others; a closed track none
+    // but a planner's (its trains leave again at once)
+    const planned = options.source === "plan";
+    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || planned)
+      && (planned || !kept(this.world.disruptions.effectsFor(st.dock.area, st.dock))));
     if (!free.length) return null;
     const st = this.rng.pick(free);
     return this._dispatch(st, { source: options.source || "manual", line: options.line });
+  }
+
+  /**
+   * Take the vehicle at a dock away at once (a story's own train takes the track): one still coming
+   * in just does not come, one standing or leaving is gone (the people on their way to its doors
+   * missed it). Trains of the control system stay.
+   * @param {string} dockId
+   * @returns {boolean} whether a vehicle was taken away
+   */
+  free(dockId) {
+    const st = this.docks.get(dockId), v = st?.vehicle;
+    if (!v || v.source === "feed") return false;
+    st.vehicle = null;
+    if (v.phase === "dwelling") {
+      v.phase = "departing";
+      this._emit("vehicle.departing", v);
+    }
+    if (v.phase !== "arriving") this._emit("vehicle.departed", v);
+    return true;
   }
 
   _dispatch(st, { source = "timetable", line, trainId = null } = {}) {
@@ -175,14 +227,16 @@ export class ServiceManager {
   step(dt) {
     const effects = this.world.disruptions;
     for (const st of this.docks.values()) {
-      const fx = effects.effectsFor(st.dock.area);
+      const fx = effects.effectsFor(st.dock.area, st.dock);
       if (st.vehicle) this._advance(st, st.vehicle, dt, fx);
       if (st.mode !== "timetable") continue;
       // The timetable runs on while a vehicle is at the dock: the headway is the time between
       // arrivals. A due vehicle waits while the dock is occupied, closed or held; the waiting
       // time is its delay, and it arrives as soon as it may.
       if (st.timer > 0) {
-        st.timer -= dt * Math.max(0, fx.frequency ?? 1);
+        // fewer vehicles at night and more in the rush hours (see core/clock.js)
+        const tod = this.world.clock.demand(st.dock.kind === "bus" ? "bus" : "rail");
+        st.timer -= dt * Math.max(0, fx.frequency ?? 1) * tod;
         if (st.timer > 0) continue;
       }
       if (fx.cancel) {
@@ -192,7 +246,7 @@ export class ServiceManager {
         st.heldFor = 0;
         continue;
       }
-      if (st.vehicle || fx.closed || fx.hold) {
+      if (st.vehicle || kept(fx) || fx.hold) {
         st.heldFor += dt;
         continue;
       }
@@ -212,7 +266,7 @@ export class ServiceManager {
       }
     } else if (v.phase === "dwelling") {
       v.dwellLeft -= dt;
-      if (v.dwellLeft <= 0 || (fx.closed && v.source !== "feed")) {
+      if (v.dwellLeft <= 0 || (kept(fx) && v.source !== "feed")) {
         v.phase = "departing";
         v.progress = 0;
         this._emit("vehicle.departing", v);
@@ -254,8 +308,9 @@ export class ServiceManager {
 
   draw(view) {
     // Trains from a control system are real: by default the train registry outlines them
-    // where they are; only with feedVehicles = "solid" is a virtual train drawn at the dock.
-    const style = this.world.settings.feedVehicles;
+    // where they are; only with feedVehicles = "solid" (or for a virtual camera, which shows no
+    // real trains) is a virtual train drawn at the dock.
+    const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
     for (const v of this.vehicles()) {
       if (v.source === "feed" && style !== "solid") continue;
       const p = this.placement(v);

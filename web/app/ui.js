@@ -72,14 +72,32 @@ export function section(title, ...children) {
 }
 
 let toastTimer = null;
-/** Show a short message over the stage. */
-export function toast(text, ms = 4500) {
+/**
+ * Show a short message over the stage.
+ * @param {string} text
+ * @param {number} [ms] how long it is shown
+ * @param {{minor?: boolean}} [options] minor: a passing note that does not replace a message being shown
+ */
+export function toast(text, ms = 4500, { minor = false } = {}) {
   const el = $("#toast");
-  if (!el) return;
+  if (!el || (minor && !el.hidden)) return;
   el.textContent = text;
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (el.hidden = true), ms);
+}
+
+/**
+ * Scroll the stage into view when its placing bar is out of view (on narrow screens the panel is
+ * below the stage): what to tap on the stage must be seen.
+ */
+export function revealStage() {
+  const stage = $("#stageWrap"), bar = $("#placing");
+  if (!stage || !bar || bar.hidden) return;
+  const r = bar.getBoundingClientRect();
+  if (r.top >= 0 && r.bottom <= innerHeight) return;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  stage.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
 }
 
 /** Offer a text file for download (works on normal web pages). */

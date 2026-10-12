@@ -350,6 +350,16 @@ export function polylineProject(pts, p, cum = polylineLengths(pts)) {
 
 /* ------------------------------------------------------------------ random numbers */
 
+/** FNV-1a hash of the parts joined by "|" (a seed for `createRng` from what a stream decides). */
+export function hashKey(...parts) {
+  let h = 2166136261;
+  for (const c of parts.join("|")) {
+    h ^= c.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 /**
  * Small, fast, seedable random number generator (xorshift32) with helpers.
  * Simulations use it so that runs are reproducible for a given seed.

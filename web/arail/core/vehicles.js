@@ -4,7 +4,7 @@
  * All sizes are prototype metres.
  * @module arail/core/vehicles
  */
-import { PALETTE } from "./colors.js";
+import { OVERLAY, PALETTE, rgba, shade } from "./colors.js";
 
 /** Box faces of a vehicle segment in stop-area coordinates (metres), converted to layout mm. */
 function vehicleFaces(area, view, { s0, s1, t0, t1, z0, z1 }, colors, decorate) {
@@ -43,11 +43,12 @@ export const TRAIN = {
   },
   draw(view, v, place) {
     const area = v.dock.area;
-    const alpha = 0.62;
-    const colors = { body: PALETTE.train, roof: "#3c7396", end: "#508cb4", alpha };
+    const alpha = view.virtual ? 0.92 : 0.62; // see-through over the camera image, nearly solid in the flyover
+    const colors = { body: PALETTE.train, roof: shade(PALETTE.train, 0.78), end: shade(PALETTE.train, 0.9), alpha };
     const z0 = this.floor_m, z1 = this.height_m;
     const doors = v.doorsOpen ? this.doors(v.dock) : [];
     const inner = v.dock.side > 0 ? "right" : "left"; // wall facing the platform
+    const lit = view.darkness > 0.35; // lights on inside
     const cars = Math.max(1, Math.round((place.s1 - place.s0) / this.carLength_m));
     const len = (place.s1 - place.s0) / cars;
     for (let c = 0; c < cars; c++) {
@@ -55,7 +56,7 @@ export const TRAIN = {
       const faces = vehicleFaces(area, view, { s0, s1, t0: place.t0, t1: place.t1, z0, z1 }, colors, (f, P, tl, tr) => {
         if (f.side !== "left" && f.side !== "right") return [];
         const t = f.side === "left" ? tr : tl;
-        const out = [{ pts: [P(s0 + 0.8, t, 2.2), P(s1 - 0.8, t, 2.2), P(s1 - 0.8, t, 3.1), P(s0 + 0.8, t, 3.1)], color: PALETTE.trainWindow, alpha }];
+        const out = [{ pts: [P(s0 + 0.8, t, 2.2), P(s1 - 0.8, t, 2.2), P(s1 - 0.8, t, 3.1), P(s0 + 0.8, t, 3.1)], color: lit ? PALETTE.litWindow : PALETTE.trainWindow, alpha, emissive: lit }];
         if (f.side === inner) {
           for (const d of doors) {
             if (d - 0.7 < s0 || d + 0.7 > s1) continue;
@@ -69,7 +70,8 @@ export const TRAIN = {
     }
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(place.s1 - 2, (place.t0 + place.t1) / 2);
-      view.label([top[0], top[1], view.m(5)], v.line, { size: 11, background: "rgba(29,79,156,0.9)" });
+      // `info`: more lines from the planner (units, driver, delay)
+      view.label([top[0], top[1], view.m(5)], v.info?.length ? [v.line, ...v.info] : v.line, { size: 11, background: rgba(OVERLAY.sign, 0.92) });
     }
   },
 };
@@ -92,16 +94,17 @@ export const BUS = {
   draw(view, v, place) {
     const area = v.dock.area;
     const alpha = 0.9;
-    const colors = { body: PALETTE.bus, roof: "#f3d27a", end: "#d9a41b", alpha };
+    const colors = { body: PALETTE.bus, roof: shade(PALETTE.bus, 1.45), end: shade(PALETTE.bus, 0.88), alpha };
     const z0 = this.floor_m, z1 = this.height_m;
     const doors = v.doorsOpen ? this.doors(v.dock) : [];
     const inner = v.dock.side > 0 ? "right" : "left";
+    const lit = view.darkness > 0.35;
     const { s0, s1 } = place;
     const faces = vehicleFaces(area, view, { s0, s1, t0: place.t0, t1: place.t1, z0, z1 }, colors, (f, P, tl, tr) => {
       const out = [];
       if (f.side === "left" || f.side === "right") {
         const t = f.side === "left" ? tr : tl;
-        out.push({ pts: [P(s0 + 0.6, t, 1.3), P(s1 - 0.4, t, 1.3), P(s1 - 0.4, t, 2.7), P(s0 + 0.6, t, 2.7)], color: PALETTE.busWindow, alpha });
+        out.push({ pts: [P(s0 + 0.6, t, 1.3), P(s1 - 0.4, t, 1.3), P(s1 - 0.4, t, 2.7), P(s0 + 0.6, t, 2.7)], color: lit ? PALETTE.litWindow : PALETTE.busWindow, alpha, emissive: lit });
         if (f.side === inner) {
           for (const d of doors) {
             if (d - 0.6 < s0 || d + 0.6 > s1) continue;
@@ -117,7 +120,7 @@ export const BUS = {
     view.faces(faces, [mid[0], mid[1], view.m(1.6)]);
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(s1 - 1, (place.t0 + place.t1) / 2);
-      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: "rgba(40,40,40,0.85)" });
+      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: OVERLAY.label });
     }
   },
 };

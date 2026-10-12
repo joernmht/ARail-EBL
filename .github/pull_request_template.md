@@ -10,4 +10,5 @@
 
 - [ ] `npm test` and `python -m pytest tests/python` pass
 - [ ] Documentation updated (`docs/`, README) where behaviour changed
+- [ ] Architecture page's models updated (`web/architecture/`), cross-checked with the code
 - [ ] `CHANGELOG.md` updated (section "Unreleased")

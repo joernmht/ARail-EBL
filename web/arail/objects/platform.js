@@ -7,7 +7,10 @@ import { LayoutObject } from "../core/object.js";
 import { resolveSegment, round1 } from "../core/anchors.js";
 import { StopArea } from "../core/stops.js";
 import { add2, len2, lerp2, perpLeft, scale2, sub2 } from "../core/math.js";
-import { PALETTE } from "../core/colors.js";
+import { FONT, PALETTE } from "../core/colors.js";
+
+/** Surface of a platform as drawn for a virtual camera: concrete, light edge stones, white safety line. */
+const CONCRETE = "#c9c6bd", EDGE_STONE = "#e8e6df", SAFETY_LINE = "#fbfbf8";
 
 export class Platform extends LayoutObject {
   static type = "platform";
@@ -90,6 +93,7 @@ export class Platform extends LayoutObject {
 
   draw(view) {
     const g = this.geometry;
+    if (!view.showsReal(g.corners)) this._drawSurface(view, g);
     view.polygon(g.corners, { stroke: "rgba(255,255,255,0.9)", width: 1.3, order: 10 });
     // yellow edge where a train is arriving or standing
     for (const st of this.world.services.forArea(this.id)) {
@@ -100,6 +104,22 @@ export class Platform extends LayoutObject {
     }
     if (this.spec.canopy) this._drawCanopy(view, g);
     this._drawSign(view, g);
+  }
+
+  /**
+   * The platform itself, for a virtual camera (flyover): in the camera view the real one is in
+   * the image. Light concrete with edge stones and a white safety line along the tracks.
+   */
+  _drawSurface(view, g) {
+    view.polygon(g.corners, { fill: CONCRETE, order: 9 });
+    const sides = this.spec.sides || "both";
+    const stone = Math.min(view.m(0.45), g.W * 0.12), line = Math.min(view.m(0.9), g.W * 0.22);
+    for (const side of [1, -1]) {
+      if (sides === "none" || (sides === "left" && side < 0) || (sides === "right" && side > 0)) continue;
+      const at = (t) => [add2(g.a, scale2(g.n, side * t)), add2(g.b, scale2(g.n, side * t))];
+      view.ribbon(at(g.W / 2 - stone / 2), stone, { fill: EDGE_STONE, order: 9.2 });
+      view.line(at(g.W / 2 - line), { stroke: SAFETY_LINE, width: 1, order: 9.3 });
+    }
   }
 
   _drawCanopy(view, g) {
@@ -127,7 +147,7 @@ export class Platform extends LayoutObject {
     const top = view.project(p[0], p[1], view.m(3.2)), foot = view.project(p[0], p[1], 0);
     if (!top || !foot) return;
     view.solid(view.depth(p[0], p[1], 0), (ctx) => {
-      ctx.strokeStyle = "#4b5563";
+      ctx.strokeStyle = view.dim("#4b5563");
       ctx.lineWidth = 1.5 * view.px;
       ctx.beginPath();
       ctx.moveTo(foot[0], foot[1]);
@@ -137,7 +157,7 @@ export class Platform extends LayoutObject {
       ctx.fillStyle = PALETTE.signBlue;
       ctx.fillRect(top[0] - s / 2, top[1] - s, s, s);
       ctx.fillStyle = "#fff";
-      ctx.font = `800 ${s * 0.7}px "Archivo", system-ui, sans-serif`;
+      ctx.font = `700 ${s * 0.7}px ${FONT}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(number), top[0], top[1] - s / 2);

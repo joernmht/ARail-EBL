@@ -1,0 +1,257 @@
+// Keyboard-only use of the main flows (switch panels, place an object, fly the virtual camera, set
+// the time) and what keyboard users must see: the focus on every control, and stage controls that
+// are not hidden behind the placing bar (WCAG 2.2: 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.11
+// Focus Not Obscured).
+import { expect, test } from "@playwright/test";
+
+async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
+  return errors;
+}
+
+/** Press Tab (or Shift+Tab) until `selector` has the focus; fails after `max` presses. */
+async function tabTo(page, selector, { back = false, max = 80 } = {}) {
+  for (let i = 0; i < max; i++) {
+    if (await page.locator(selector).evaluate((el) => el === document.activeElement)) return;
+    await page.keyboard.press(back ? "Shift+Tab" : "Tab");
+  }
+  throw new Error(`${selector} not reached with ${back ? "Shift+Tab" : "Tab"}`);
+}
+
+/** Buttons over the stage that are not (completely) visible: another element is on top of them. */
+const hiddenStageButtons = (page) => page.evaluate(() => {
+  const out = [];
+  for (const b of document.querySelectorAll("#stageWrap button, #stageWrap label.btn")) {
+    const q = b.getBoundingClientRect();
+    if (!q.width || b.closest("[hidden]") || q.bottom > innerHeight || q.top < 0) continue;
+    const corners = [[0.5, 0.5], [0.1, 0.15], [0.9, 0.15], [0.1, 0.85], [0.9, 0.85]];
+    const covered = corners.filter(([fx, fy]) => {
+      const top = document.elementFromPoint(q.left + q.width * fx, q.top + q.height * fy);
+      return top !== b && !b.contains(top);
+    });
+    if (covered.length) out.push(`${b.dataset.fly || b.id || b.textContent.trim()} (${covered.length} of 5 points covered)`);
+  }
+  return out;
+});
+
+test("the buttons that open files show the keyboard focus", async ({ page }) => {
+  await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
+  const outline = (id) => page.locator(`label[for="${id}"]`).evaluate((el) => getComputedStyle(el).outlineStyle);
+  // header: Take photo, Record video, Open file (labels of hidden file inputs)
+  await page.locator(".brand").focus();
+  for (const id of ["filePhoto", "fileVideo", "fileOpen"]) {
+    await tabTo(page, `#${id}`, { max: 4 });
+    expect(await outline(id), `focus ring on the “${id}” button`).not.toBe("none");
+  }
+  // View panel: Load calibration
+  await page.locator("#btnFlyoverPanel").focus();
+  await tabTo(page, "#calibrationFile");
+  expect(await outline("calibrationFile")).not.toBe("none");
+  // Build panel: Import layout and Survey a video
+  await page.locator("#tab-build").click();
+  await page.locator("#layoutNameField").focus();
+  await tabTo(page, "#layoutImport");
+  expect(await outline("layoutImport")).not.toBe("none");
+  await tabTo(page, "#surveyVideo");
+  expect(await outline("surveyVideo")).not.toBe("none");
+  // a mouse click on the label does not draw the ring
+  await page.locator("#tab-view").click();
+  expect(await outline("calibrationFile")).toBe("none");
+});
+
+for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tablet", { width: 1024, height: 768 }], ["phone", { width: 390, height: 844 }]]) {
+  test(`the placing bar leaves the stage buttons free (${name})`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
+    await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
+    await expect(page.locator("#placing")).toBeVisible();
+    await page.locator("#stageWrap").scrollIntoViewIfNeeded();
+    expect(await hiddenStageButtons(page), "camera view").toEqual([]);
+    // the Flyover button can be pressed while placing (with the mouse, too)
+    await page.locator("#btnFlyover").click();
+    await page.waitForFunction(() => window.__arail.mode === "flyover");
+    await expect(page.locator("#placing")).toBeVisible();
+    await page.locator("#stageWrap").scrollIntoViewIfNeeded();
+    expect(await hiddenStageButtons(page), "flyover").toEqual([]);
+    // a message while placing does not hide the placing bar either
+    await page.evaluate(() => window.__arail.editor.finish()); // "Tap at least 2 points."
+    await expect(page.locator("#toast")).toBeVisible();
+    expect(await hiddenStageButtons(page), "flyover with a message").toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}
+
+test("keyboard only: switch panels, fly the virtual camera, place a tree on the grid, set the time", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
+  const a = (fn) => page.evaluate(fn);
+  // F switches the flyover on and gives the stage the keyboard
+  await page.locator("#panel-view .hint").first().click();
+  await page.keyboard.press("f");
+  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await expect(page.locator("#stage")).toBeFocused();
+  for (const key of ["Home", "PageUp", "PageUp", "PageUp", "PageUp", "PageUp"]) await page.keyboard.press(key); // whole layout, plan view
+  // the panels: Tab to the selected tab, arrows switch
+  await tabTo(page, "#tab-view");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#tab-build")).toBeFocused();
+  await expect(page.locator("#panel-build")).toBeVisible();
+  // pick the tree in the palette
+  const tree = page.locator(".palette").getByRole("button", { name: /^Tree/ });
+  await tabTo(page, ".palette button[title='A single tree.']");
+  await page.keyboard.press("Enter");
+  await expect(tree).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#placing")).toContainText("Enter");
+  // back to the stage: the arrows move the view, Enter places the tree at the cross in the middle
+  await tabTo(page, "#stage", { back: true });
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowUp");
+  const aim = await a(() => {
+    const f = window.__arail.flyover, c = window.__arail.canvas;
+    return f.groundPoint(c.width / 2, c.height / 2);
+  });
+  const trees = () => a(() => window.__arail.world.objects.filter((o) => o.type === "tree").map((o) => o.spec.position));
+  const before = (await trees()).length;
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await trees()).length).toBe(before + 1);
+  const pos = (await trees()).at(-1);
+  // on the 50 mm grid, at the middle of the view
+  expect(Math.abs(pos[0] % 50)).toBe(0);
+  expect(Math.abs(pos[1] % 50)).toBe(0);
+  expect(Math.hypot(pos[0] - aim[0], pos[1] - aim[1])).toBeLessThan(40);
+  await expect(page.locator("#stage")).toBeFocused();
+  // the time of day: Settings → Simulation, the slider and presets (the tabs of modules that are off are skipped)
+  await tabTo(page, "#tab-build");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#tab-settings")).toBeFocused();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  await tabTo(page, "#timeOfDay");
+  const t0 = await a(() => window.__arail.world.clock.minutes);
+  await page.keyboard.press("ArrowRight"); // one quarter of an hour on from the quarter the slider shows
+  const t1 = await a(() => window.__arail.world.clock.minutes);
+  expect(t1).toBeGreaterThan(t0 + 1);
+  expect(t1).toBeLessThan(t0 + 23);
+  expect(t1 % 15).toBeLessThan(2);
+  await tabTo(page, "#panel-settings button:has-text('Night 22:30')");
+  await page.keyboard.press("Enter");
+  expect(await a(() => window.__arail.world.clock.label())).toMatch(/^22:3/);
+  expect(errors).toEqual([]);
+});
+
+test("keyboard placing in the flyover: a bus line picks the stop under the cross; a held Enter places one point", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
+  await page.keyboard.press("f");
+  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await page.locator(".palette").getByRole("button", { name: /^Bus line/ }).click();
+  await page.locator("#stage").focus();
+  /** Point the middle of the view at the layout point p (as the arrow keys would). */
+  const aimAt = (p) => page.evaluate((q) => {
+    const f = window.__arail.flyover;
+    f.anim = null;
+    f.cam.set({ target: q });
+  }, p);
+  const stops = await page.evaluate(() => window.__arail.world.objects.filter((o) => o.type === "bus-stop").slice(0, 2).map((o) => ({ id: o.id, at: o.anchorPoint() })));
+  expect(stops.length).toBe(2);
+  for (const [i, stop] of stops.entries()) {
+    await aimAt(stop.at);
+    await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => window.__arail.editor.placing.points.map((q) => q.id))).toEqual(stops.slice(0, i + 1).map((s) => s.id));
+  }
+  // the cross shows where Enter picks
+  const cross = await page.evaluate(() => window.__arail.editor.hoverPoint?.stopAt);
+  expect(Math.hypot(cross[0] - stops[1].at[0], cross[1] - stops[1].at[1])).toBeLessThan(1);
+  await page.keyboard.press("Escape");
+  // a street: holding Enter (key repeat) adds one point, not a row of points in the same place
+  await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
+  await page.locator("#stage").focus();
+  await aimAt([stops[0].at[0] + 200, stops[0].at[1]]);
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.up("Enter");
+  expect(await page.evaluate(() => window.__arail.editor.placing.points.length)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test("keyboard only: the Terminal tab between Build and Settings; a container moved from the list", async ({ page }) => {
+  const path = "/app/?layout=../layouts/container-terminal.json#simulate";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
+  // the arrows: Settings → Terminal → Build and back (the tabs of modules that are off are skipped)
+  await page.locator("#tab-settings").focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#tab-terminal")).toBeFocused();
+  await expect(page.locator("#panel-terminal")).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#tab-build")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#tab-terminal")).toBeFocused();
+  // a container in the list, a place in "Move to", the Move button
+  const item = page.locator("#termList button", { hasText: "ARLU 100004 5" });
+  await tabTo(page, `#${await item.getAttribute("id")}`);
+  await page.keyboard.press("Enter");
+  await expect(item).toHaveAttribute("aria-current", "true");
+  await expect(item).toBeFocused(); // the list is refreshed in place: the focus stays
+  await tabTo(page, "#termTarget");
+  const before = await page.locator("#termTarget").inputValue();
+  await page.keyboard.press("ArrowDown"); // the next place
+  const chosen = await page.locator("#termTarget").inputValue();
+  expect(chosen).not.toBe(before);
+  await tabTo(page, "#termMove");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Move M1 queued");
+  const move = await page.evaluate(() => window.__arail.terminal.sim.moves[0]);
+  expect(move.container).toBe("ARLU 100004 5");
+  expect(`${move.to.carrier}|${move.to.bay}|${move.to.row}|${move.to.tier}`).toBe(chosen);
+  expect(errors).toEqual([]);
+});
+
+test("keyboard: after Depart the focus stays on the arrival cards; an added terminal focuses its heading", async ({ page }) => {
+  const path = "/game/?layout=../layouts/container-terminal.json#terminal";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(path);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(path);
+  await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
+  await page.evaluate(() => (window.__arail.world.paused = true));
+  // KT 41 leaves: its card has no buttons now, the next card's first one takes the focus
+  const depart = page.locator(".term-board .stop[data-id=KT41]").getByRole("button", { name: "Depart", exact: true });
+  await depart.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("departing");
+  await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
+  // the last card leaves: the previous card's first button
+  await page.locator(".term-board .stop[data-id=BG1]").getByRole("button", { name: "Depart", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
+  await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
+  // a terminal added to a layout without one (Settings → Simulation): the Terminal tab opens, its heading has the focus
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
+  await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
+  await expect(page.locator("#tab-terminal")).toBeHidden();
+  await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
+  await page.locator("#tab-settings").click();
+  await page.locator("#termAdd").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
+  await expect(page.locator("#panel-terminal h2").first()).toBeFocused();
+  // the views of Settings with the keyboard: the button pressed keeps the focus
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-control").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#settingsView-control")).toBeFocused();
+  await expect(page.locator("#panel-settings")).toContainText("Control system");
+  expect(errors).toEqual([]);
+});

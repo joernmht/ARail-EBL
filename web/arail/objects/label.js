@@ -4,7 +4,7 @@
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint } from "../core/anchors.js";
-import { PALETTE } from "../core/colors.js";
+import { FONT, OVERLAY, PALETTE } from "../core/colors.js";
 
 export class Label extends LayoutObject {
   static type = "label";
@@ -27,20 +27,25 @@ export class Label extends LayoutObject {
     return c ? { center: c } : null;
   }
 
+  /** The simple view (core/simple.js): the sign or floating label as it is. */
+  drawSimple(view) {
+    this.draw(view);
+  }
+
   draw(view) {
     const c = this.geometry.center;
     const z = view.m(+this.spec.height_m || 0);
     if (this.spec.style === "floating") {
-      view.label([c[0], c[1], z], this.spec.text || "", { size: 14, background: "rgba(15,26,43,0.8)" });
+      view.label([c[0], c[1], z], this.spec.text || "", { size: 14, background: OVERLAY.label });
       return;
     }
     const top = view.project(c[0], c[1], z), foot = view.project(c[0], c[1], 0);
     if (!top || !foot) return;
     view.solid(view.depth(c[0], c[1], 0), (ctx) => {
       const s = Math.max(10 * view.px, view.pxPerMM(c[0], c[1], z) * view.m(0.9));
-      ctx.font = `700 ${s * 0.72}px "Archivo", system-ui, sans-serif`;
+      ctx.font = `700 ${s * 0.72}px ${FONT}`;
       const w = ctx.measureText(this.spec.text || "").width + s * 0.8;
-      ctx.strokeStyle = "#4b5563";
+      ctx.strokeStyle = view.dim("#4b5563");
       ctx.lineWidth = 1.5 * view.px;
       for (const dx of [-w * 0.35, w * 0.35]) {
         ctx.beginPath();

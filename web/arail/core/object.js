@@ -7,6 +7,7 @@
  */
 import { pointInPolygon, pointSegment } from "./math.js";
 import { translatePoint } from "./anchors.js";
+import { OVERLAY } from "./colors.js";
 
 /**
  * Description of an editable parameter; the app builds its property forms from these.
@@ -34,7 +35,9 @@ export class LayoutObject {
   static category = "Scenery";
   /**
    * How the editor places a new object:
-   * "point" (tap once), "segment" (two points or two markers), "polygon", "polyline".
+   * "point" (tap once), "segment" (two points or two markers), "polygon", "polyline",
+   * "rect" (two opposite corners, e.g. table modules: `position` = the centre, `width_mm`, `depth_mm`),
+   * "stops" (tap stops in order, e.g. bus lines: `spec.stops` = their ids; `static stopTypes` lists the types).
    */
   static placement = "point";
   /** @type {ParamSpec[]} */
@@ -165,7 +168,7 @@ export class LayoutObject {
   /** Highlight for the editor. */
   drawSelection(view) {
     const fp = this.footprint();
-    if (fp) view.polygon(fp, { stroke: "#00e5ff", width: 2.5, dash: [6, 4], order: 100, layer: "overlay" });
+    if (fp) view.polygon(fp, { stroke: OVERLAY.selection, width: 2.5, dash: [6, 4], order: 100, layer: "overlay" });
   }
 
   /** Entry for the layout file (parameters left at their default are omitted). */
