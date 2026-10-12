@@ -30,7 +30,7 @@ const box = (page, name) => page.locator(".modules").getByRole("button", { name,
 
 test("the View panel switches the modules of the lab example by clicking their boxes; the choice is kept", async ({ page }) => {
   const errors = await open(page, `${LAB}#view`);
-  await expect(page.locator(".modules").getByRole("button")).toHaveCount(6); // the lab's four, the app's Build and Disruptions
+  await expect(page.locator(".modules").getByRole("button")).toHaveCount(7); // the lab's five, the app's Build and Disruptions
   const ops = box(page, "Rail operations"), infra = box(page, "Infrastructure");
   await expect(ops).toHaveAttribute("aria-pressed", "false");
   await expect(infra).toHaveAttribute("aria-pressed", "false");

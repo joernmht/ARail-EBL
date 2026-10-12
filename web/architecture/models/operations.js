@@ -267,7 +267,7 @@ export const OPERATIONS = [
       {
         name: "OperationsSimulation", file: "web/arail/ops/simulation.js", kind: "class", extends: "Simulation", role: "The engine in the world; the services' planner of its platforms.",
         attributes: ["engine: OpsEngine", "visits: Map — trains at the platforms", "walkers: object[] — crews walking", "active: boolean — the layout's first operations"],
-        operations: ["step(dt)", "_ensure() — rebuilt when stations, lines or settings change", "_clockJump()", "_event(name, payload) — engine events to the world (ops.*)", "_stationFx(stationId)", "_stepVisits()", "_stepWalkers(dt)", "tripsAt(dockId)", "claims(dock)", "statusLines(area)"],
+        operations: ["step(dt)", "_ensure() — rebuilt when stations, lines or settings change", "_clockJump()", "_event(name, payload) — engine events to the world (ops.*)", "_stationFx(stationId)", "_stepVisits()", "_stepWalkers(dt)", "tripsAt(dockId)", "claims(dock)", "statusLines(area)", "pickables(view) — crews walking", "card(hit) — the duty of today", "describeVehicle(v, card) — trip, units, driver, delay", "describeObject(o, card) — the depot"],
       },
       { name: "Depot", file: "web/arail/ops/depot.js", kind: "class", extends: "BuildingBase", role: "The depot: the workshop's bays and the stabled units; its door is the crews' base. Its units and board come from the simulation that runs with a depotState (the rail operations, or the operations story).", operations: ["draw(view)", "plan() — the hall, its workshop tracks and the stabling tracks (local m)", "at(x, y, z) — a local point on the layout"] },
     ],

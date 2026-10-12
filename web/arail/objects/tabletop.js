@@ -64,6 +64,15 @@ export class Tabletop extends LayoutObject {
     return { center: c, width: w, depth: d, angle, footprint: rectFootprint(c, w, d, angle) };
   }
 
+  /** The card: real table or virtual extension, and its size. */
+  card() {
+    const card = super.card();
+    const g = this.geometry;
+    card.rows.push(["Kind", this.physical ? "real table" : "virtual extension"]);
+    if (g) card.rows.push(["Size", `${Math.round(g.width)} × ${Math.round(g.depth)} mm`]);
+    return card;
+  }
+
   footprint() {
     return this.geometry?.footprint || null;
   }

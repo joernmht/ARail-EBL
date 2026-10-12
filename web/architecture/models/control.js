@@ -12,7 +12,7 @@ export const CONTROL = [
       {
         name: "TrainRegistry", file: "web/arail/core/trains.js", kind: "class", role: "Positions, speeds and arrivals of the control system's trains.",
         attributes: ["trains: Map — id → train", "source: string | null — the control system", "timeout: number — 15 s without news: gone", "stopSpeed: number — 3 mm/s counts as standing", "stopAfter: number — 1.5 s standing: arrived"],
-        operations: ["apply(input) — a feed message", "step(dtReal)", "reset()", "draw(view)", "_matchDock(t)", "_syncModes()"],
+        operations: ["apply(input) — a feed message", "step(dtReal)", "reset()", "draw(view)", "_matchDock(t)", "_syncModes()", "pickables(view) — its trains, as drawn", "card(hit) — where reported, speed, platform"],
       },
       { name: "WebSocketFeed", file: "web/arail/feeds/websocket.js", kind: "class", role: "The client of the bridge, with reconnects.", attributes: ["url: string", "status: string — connecting, connected, disconnected, error", "messages: number", "rejected: number"], operations: ["connect()", "close()"] },
       { name: "MockFeed", file: "web/arail/feeds/mock.js", kind: "class", role: "A simulated control system in the page.", attributes: ["dwell: number — s at a platform"], operations: ["start()", "stop()", "tick(dt)"] },

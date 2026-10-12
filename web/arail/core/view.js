@@ -56,8 +56,10 @@ export class View {
    * @param {{a1: number[], a2: number[], a3: number[], n: number[]}} [options.pose] the camera pose when it is
    *   known (virtual camera, see core/flycam.js); otherwise it is recovered from H, assuming that the
    *   layout origin is in front of the camera
+   * @param {((text: string) => string) | null} [options.translate] the texts of labels in the language shown
+   *   (arail/i18n); null: as they are (English)
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -69,6 +71,8 @@ export class View {
     this.night = night;
     this.virtual = virtual;
     this.darken = darken;
+    /** Texts of labels in the language shown (arail/i18n `translate`); English as they are without. */
+    this.translate = translate;
     /**
      * [xmin, ymin, xmax, ymax] (mm) of a photo of the real table drawn under everything else (the
      * flyover's orthophoto): there the real lab is visible as in the camera view, see `showsReal`.
@@ -604,7 +608,8 @@ export class View {
     // stops of a town on table extensions beyond the photo) would only pile up there
     const W = this.camera.width, H = this.camera.height;
     if (p[0] < -0.25 * W || p[0] > 1.25 * W || p[1] < -0.25 * H || p[1] > 1.25 * H) return;
-    const lines = Array.isArray(text) ? text : [text];
+    let lines = Array.isArray(text) ? text : [text];
+    if (this.translate) lines = lines.map((l) => this.translate(l));
     this.overlay((ctx) => drawLabel(ctx, p, lines, style, this.px * this.labelScale, this.camera.width, this.camera.height, this.placed), style.order ?? 0);
   }
 }

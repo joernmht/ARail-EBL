@@ -42,6 +42,9 @@ import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
 import { registerJourneys } from "./journeys/index.js";
+import { registerRail } from "./rail/index.js";
+import { EN as TEXTS_EN } from "./i18n/en.js";
+import { DE as TEXTS_DE } from "./i18n/de.js";
 
 export const VERSION = "0.1.0";
 
@@ -57,6 +60,7 @@ export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
+export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, projectedHull } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
@@ -132,10 +136,19 @@ export {
   JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
   JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare,
 } from "./journeys/index.js";
+// railway systems of the track sections (named exports only)
+export {
+  POWER, PANTOGRAPH, TRAIN_CONTROL, ETCS, SIGNALLING, RADIO, GAUGE, AXLE_LOADS_T, METRE_LOADS_T, ROUTE_CLASS, LOADING_GAUGE, COUNTRIES,
+  SYSTEMS, SYSTEM_OVERLAYS, SYSTEM_PARAMS, routeClassLimits, sectionSystems, systemValue, systemRows, systemChanges, worldSystemChanges,
+  drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail,
+  BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard,
+  COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand,
+} from "./rail/index.js";
+export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";
 
-/** Register all built-in object types, simulations, disruptions and vehicles. */
+/** Register all built-in object types, simulations, disruptions, vehicles, card providers, checks and texts. */
 export function registerBuiltins(registry) {
   for (const cls of [
     Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
@@ -153,6 +166,9 @@ export function registerBuiltins(registry) {
   registerOperations(registry);
   registerInfrastructure(registry);
   registerJourneys(registry);
+  registerRail(registry);
+  registry.registerTexts("en", TEXTS_EN);
+  registry.registerTexts("de", TEXTS_DE);
   return registry;
 }
 

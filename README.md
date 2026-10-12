@@ -70,6 +70,8 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Journeys](docs/journeys.md) | The journeys story of the app (a late train, a lost connection, the bus instead, passenger rights), step by step; on the game page, an exercise: travellers with a start, an aim and a travel plan with transfers, made by the attendees; missed connections and the results |
 | [Infrastructure](docs/infrastructure.md) | The maintenance story of the app (a signal exchanged, a track renewed, step by step); on the game page, asset management: assets with their condition and what is known of it, maintenance staff, emergency vans and drones, renewals through the HOAI phases with funding and tenders; roles for students; the asset information model and GIS |
 | [Layout file format](docs/layout-format.md) | The JSON file that describes a layout, its modules (layers) and all built-in object types |
+| [Languages](docs/languages.md) | The app in English or German (View → Language, `?lang=de`); adding texts; the glossary of railway terms |
+| [Railway systems and trains](docs/rail-systems.md) | Traction power, train protection, signals, radio, gauge and line category of every track; colouring the tracks by them; borders and system changes; vehicles, consists, brake percentage and axle loads of trains; where a train may run |
 | [Disruptions and scenarios](docs/disruptions-and-scenarios.md) | Built-in disruptions, their effects, scripting scenarios |
 | [Using ARail for research](docs/research.md) | Applying your own model or algorithm to the simulated railway: the ways in, and what you can leave aside |
 | [Control-system interface](docs/control-system-interface.md) | Feed protocol, bridge, adapters, https/wss |
@@ -83,7 +85,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 web/                  the website (published with GitHub Pages)
   index.html          project page
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
-                      flyover and the in-app video survey; its shell is the game page's too
+                      flyover and the in-app video survey, in English and German; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);
                       signaller/ the signaller's role game; roles/ the role catalogue; career/ the career planner
   markers/            printable marker sheets and deck cards for model wagons
@@ -104,6 +106,10 @@ web/                  the website (published with GitHub Pages)
     journeys/         journeys: the journeys story; the timetable and the trains at the platforms,
                       the planner of travel plans with transfers, the travellers
     game/             the role games: the game core, the role catalogue's checks, the career model, the signaller's game
+    rail/             railway systems of the track sections (power, train protection, signals, radio,
+                      gauge, line category, country) and where they change; vehicles and consists;
+                      where a train may run
+    i18n/             texts in other languages: the translator and the framework's German texts
     feeds/            control-system feeds: WebSocket client, simulated control system
   plugins/            example plugins (windmill object, road traffic simulation)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,

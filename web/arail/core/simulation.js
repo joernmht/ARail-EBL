@@ -43,6 +43,51 @@ export class Simulation {
     return null;
   }
 
+  /**
+   * What of this simulation can be pointed at on the stage (people, vehicles; see core/pick.js):
+   * a list of pickables with their outline on the layout and `owner: this`.
+   * @param {import("./view.js").View} view
+   * @returns {import("./pick.js").Pickable[]}
+   */
+  pickables(view) {
+    return [];
+  }
+
+  /**
+   * The info card of one of its pickables.
+   * @param {import("./pick.js").Pickable} hit
+   * @returns {import("./pick.js").Card}
+   */
+  card(hit) {
+    return { title: hit.label };
+  }
+
+  /**
+   * Add what this simulation knows about a layout object to its card (e.g. the people waiting at a
+   * stop, the condition of an asset).
+   * @param {import("./object.js").LayoutObject} object
+   * @param {import("./pick.js").Card} card changed in place
+   */
+  describeObject(object, card) {}
+
+  /**
+   * The card of a person of this simulation that another simulation shows (a resident waiting at a
+   * stop is a person of the passenger simulation), or null if the agent is not its own.
+   * @param {object} agent
+   * @returns {import("./pick.js").Card | null}
+   */
+  describeAgent(agent) {
+    return null;
+  }
+
+  /**
+   * Add what this simulation knows about a vehicle at a stop to its card (the trip and units of a
+   * train of the rail operations).
+   * @param {object} vehicle
+   * @param {import("./pick.js").Card} card changed in place
+   */
+  describeVehicle(vehicle, card) {}
+
   /** Remove all simulated entities (keeps settings). */
   clear() {}
 

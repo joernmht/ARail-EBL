@@ -101,6 +101,8 @@ export class AssetObject extends LayoutObject {
   static asset = null;
   /** Radius of the state ring (m). */
   static ring_m = 2.5;
+  /** Height of its model (m): it is pointed at up to there. */
+  static pick_height_m = 2;
 
   computeGeometry() {
     const c = resolvePoint(this.world.map, this.spec.position);
@@ -118,6 +120,24 @@ export class AssetObject extends LayoutObject {
 
   anchorPoint() {
     return this.geometry?.center ?? null;
+  }
+
+  /** Picked up to the top of its model (a signal on its mast). */
+  pickHeight() {
+    return this.mm(/** @type {typeof AssetObject} */ (this.constructor).pick_height_m ?? 2);
+  }
+
+  /** The card: when it was built, whether it is real, the interlocking that controls it. */
+  card() {
+    const card = super.card();
+    const il = this.spec.interlocking ? this.world.getObject(this.spec.interlocking) : null;
+    if (+this.spec.built > 0) card.rows.push(["Built", String(this.spec.built)]);
+    card.rows.push(["On the real layout", this.spec.real ? "yes" : "no, virtual"]);
+    if (il) {
+      card.rows.push(["Interlocking", `${il.name} (${GENERATIONS[il.spec.generation]?.label ?? il.spec.generation})`]);
+      card.related = [il.id];
+    }
+    return card;
   }
 
   /** Draw the model (flyover, or a virtual object over the camera image) and the state. */
@@ -140,6 +160,7 @@ export class Signal extends AssetObject {
   static label = "Signal";
   static asset = "signal";
   static ring_m = 2.2;
+  static pick_height_m = 5.7;
   static description = "Light signal on a mast beside the track (an asset: its condition is known as well as its interlocking reports it).";
   static params = [...COMMON, INTERLOCKING, { key: "side", label: "Side", type: "select", default: "right", options: [["right", "right of the track"], ["left", "left of the track"]] }];
 
@@ -164,6 +185,7 @@ export class Switch extends AssetObject {
   static label = "Switch";
   static asset = "turnout";
   static ring_m = 3;
+  static pick_height_m = 0.8;
   static description = "A switch (turnout): its point machine reports to the interlocking as much as the interlocking can.";
   static params = [...COMMON, INTERLOCKING, { key: "hand", label: "Branch", type: "select", default: "left", options: [["left", "to the left"], ["right", "to the right"]] }, { key: "length_m", label: "Length", type: "number", unit: "m", min: 15, max: 80, step: 1, default: 33 }];
 
@@ -196,6 +218,7 @@ export class Balise extends AssetObject {
   static label = "Balise";
   static asset = "balise";
   static ring_m = 1.6;
+  static pick_height_m = 0.3;
   static description = "A balise or train protection magnet between the rails. It cannot report anything: its condition is known from tests.";
   static params = [...COMMON];
 
@@ -209,6 +232,7 @@ export class LevelCrossing extends AssetObject {
   static label = "Level crossing";
   static asset = "level-crossing";
   static ring_m = 4;
+  static pick_height_m = 3.4;
   static description = "A level crossing with light signals and half barriers (EBO § 11); built by the level crossing plant. Place it where a street crosses a track, turned along the track.";
   static params = [
     ...COMMON, INTERLOCKING,
@@ -257,6 +281,10 @@ export class GsmrMast extends AssetObject {
   static description = "A GSM-R site: lattice mast, antennas and the base station in its shelter; the network management reports its state live.";
   static params = [...COMMON, { key: "height_m", label: "Height", type: "number", unit: "m", min: 10, max: 60, step: 1, default: 30 }];
 
+  pickHeight() {
+    return this.mm(Math.min(60, Math.max(10, +this.spec.height_m || 30)));
+  }
+
   drawModel(view, { frame }) {
     const H = Math.min(60, Math.max(10, +this.spec.height_m || 30));
     const faces = [...box(frame, -1.4, -1.4, 1.4, 1.4, 0, 0.4, { side: CONCRETE, top: CONCRETE })];
@@ -276,6 +304,7 @@ export class Lift extends AssetObject {
   static label = "Lift";
   static asset = "lift";
   static ring_m = 2.2;
+  static pick_height_m = 5.5;
   static description = "A lift to a platform (step-free access); its remote monitoring reports faults and the state of the drive.";
   static params = [...COMMON];
 
@@ -291,6 +320,7 @@ export class PassengerDisplay extends AssetObject {
   static label = "Passenger display";
   static asset = "pis";
   static ring_m = 1.6;
+  static pick_height_m = 3.4;
   static description = "A departure display on a platform; it reports to the passenger information system.";
   static params = [...COMMON];
 
@@ -430,6 +460,18 @@ export class Interlocking extends BuildingBase {
     m.shadow(m.rect(-L / 2, -D / 2, L / 2, D / 2), H);
     m.entrance(0, -D / 2);
     return m.finish({ footprint: m.rect(-L / 2 - 1, -D / 2 - 1, L / 2 + 1, D / 2 + 1), height: H + 2, capacity: capacityFor("work", L * D) });
+  }
+
+  /** The card: its generation and the signals, switches and level crossings it controls. */
+  card() {
+    const card = super.card();
+    card.rows.push(["Generation", GENERATIONS[this.spec.generation]?.label ?? this.spec.generation]);
+    const controlled = this.world.objects.filter((o) => o.spec.interlocking === this.id);
+    if (controlled.length) {
+      card.sections = [...(card.sections || []), { title: "Controls", lines: controlled.map((o) => `${o.name} · ${o.constructor.label}`) }];
+      card.related = controlled.map((o) => o.id);
+    }
+    return card;
   }
 
   draw(view) {

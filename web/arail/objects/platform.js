@@ -61,6 +61,21 @@ export class Platform extends LayoutObject {
     return this.geometry?.center || null;
   }
 
+  /** The card: its number, length, tracks and lines. */
+  card() {
+    const card = super.card();
+    const s = this.spec;
+    if (s.number) card.rows.push(["Number", s.number]);
+    card.rows.push(["Length", `${Math.round(this.lengthM)} m`]);
+    const sides = s.sides || "both";
+    const tracks = [];
+    if (sides === "both" || sides === "left") tracks.push(s.track_left ? `track ${s.track_left} (left)` : "left");
+    if (sides === "both" || sides === "right") tracks.push(s.track_right ? `track ${s.track_right} (right)` : "right");
+    card.rows.push(["Trains stop", tracks.length ? tracks.join(" · ") : "nowhere"]);
+    if (s.lines) card.rows.push(["Lines", s.lines]);
+    return card;
+  }
+
   /** Platform length in the prototype (metres). */
   get lengthM() {
     return this.geometry ? this.meters(this.geometry.L) : 0;

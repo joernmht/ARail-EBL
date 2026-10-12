@@ -19,6 +19,7 @@ import { clamp, polylineAt, polylineLengths, polylineProject } from "../core/mat
 import { OVERLAY, PALETTE, grey, rgba } from "../core/colors.js";
 import { rectFootprint } from "../core/view.js";
 import { drawStopSign } from "./signs.js";
+import { linesServing } from "../core/transit.js";
 
 /** How far from the outer edge of the sidewalk a stop may be placed (m). */
 const NEAR_M = 15;
@@ -52,6 +53,18 @@ export class BusStop extends LayoutObject {
       this._cacheKey = null;
     }
     return super.geometry;
+  }
+
+  /** The card: its street and the bus lines that stop here. */
+  card() {
+    const card = super.card();
+    const p = resolvePoint(this.world.map, this.spec.position);
+    const street = p ? this._street(p)?.o : null;
+    if (street) card.rows.push(["Street", street.name]);
+    const lines = linesServing(this.world, this.id).map((id) => this.world.getObject(id)).filter(Boolean);
+    card.rows.push(["Bus lines", lines.length ? lines.map((o) => o.lineLabel?.() ?? o.name).join(", ") : "none"]);
+    card.related = lines.map((o) => o.id);
+    return card;
   }
 
   /** The street the stop is on: {o, info, s, at: {point, dir}}, or null. */

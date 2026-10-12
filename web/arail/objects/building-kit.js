@@ -718,6 +718,9 @@ export function axes(len, spacing, margin = 0) {
 
 /* ------------------------------------------------------------------ base class */
 
+/** What the uses of buildings mean, for info cards. */
+const USE_WORDS = { residential: "homes", work: "workplaces", school: "school", shop: "shops", other: "" };
+
 /**
  * Base class of all buildings. Subclasses build their geometry with {@link BuildingModel} and
  * return it from `computeGeometry()`; drawing, lit windows, selection and the interface for
@@ -756,6 +759,26 @@ export class BuildingBase extends LayoutObject {
   /** Overall height (top of the roof, layout mm). */
   heightMM() {
     return this.geometry?.height ?? 0;
+  }
+
+  /** Picked on its walls and roof. */
+  pickHeight() {
+    return this.heightMM();
+  }
+
+  /** The card: what it is used for, its floors, the people it holds and how many are inside now. */
+  card() {
+    const card = super.card();
+    const c = this.capacity(), use = this.use();
+    const word = USE_WORDS[use];
+    if (word && !card.subtitle.toLowerCase().includes(word.replace(/s$/, ""))) card.subtitle = `${card.subtitle} · ${word}`;
+    card.rows.push(["Floors", this.floorsCount()]);
+    const holds = [[c.residents, "residents"], [c.jobs, "jobs"], [c.pupils, "pupils"], [c.visitors, "visitors"]].filter(([n]) => n > 0).map(([n, w]) => `${Math.round(n)} ${w}`);
+    if (holds.length) card.rows.push(["Holds", holds.join(" · ")]);
+    const inside = this.world.occupancy?.get?.(this.id);
+    if (inside != null) card.rows.push(["Inside now", `${Math.round(inside)} ${Math.round(inside) === 1 ? "person" : "people"}`]);
+    card.rows.push(["Occupancy", `${Math.round(this.occupancy() * 100)} %${inside == null ? " (typical for the time of day)" : ""}`]);
+    return card;
   }
 
   /**
