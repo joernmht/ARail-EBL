@@ -128,6 +128,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Bf Neustadt: the Hotel am Bahnhof stood on the west end of the bus station's lane and bay A, so buses drove into it; it stands 4 m further west.
 - People walk on the sidewalks, not on the streets: a walk keeps to the sidewalk on the side it comes from and crosses a street at right angles where it must, and doors and stops join the sidewalk instead of the middle of the street (before, people walked from a door to the centre line and then drifted out, and walked the last stretch to a stop on the carriageway). They no longer cross tracks on their own: a door or stop is not connected to a street across a track, and a walk the streets do not connect happens out of sight instead of in a straight line across the layout. The same for the travellers of the journeys and the crews of the operations, who walked on the centre line. Network API: `walk`, `walkLine`, `crossesBarrier`, `hiddenAt`, `straightWalk`; objects can be barriers with `walkBarrier()` (tracks are).
 - Hybrid container train example: the gantry crane's far rail ran on the tagged train's track, so the crane stood on the wagons.
 - **Nothing was drawn when the camera looked away from the layout's origin marker**: the 3D pose took its sign from the depth of the origin, which lies behind the camera on a long layout filmed far from marker 0 (the EBL table from the terminal to Bf Neustadt). The pose now puts the layout in front of the camera where most of the picture shows it.

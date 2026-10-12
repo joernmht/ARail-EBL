@@ -167,7 +167,7 @@
     {"id": "bus-terminal-1", "type": "bus-terminal", "name": "Neustadt Bf", "position": [3560, -372], "rotation_deg": 0, "bays": 2, "bay_length_m": 15, "width_m": 4.5, "lane_width_m": 3.5, "lines": "261, 262"},
     {"id": "plattenbau-1", "type": "plattenbau", "name": "WBS 70 Bahnhofstraße", "position": [1760, -470], "rotation_deg": 180, "series": "wbs70", "sections": 3},
     {"id": "house-1", "type": "building", "name": "Café am Markt", "position": [2420, -330], "rotation_deg": 90, "width_m": 12, "depth_m": 9, "floors": 2, "use": "work"},
-    {"id": "building-1", "type": "building", "name": "Hotel am Bahnhof", "position": [3330, -430], "rotation_deg": 180, "width_m": 16, "depth_m": 10, "floors": 3, "roof": "flat", "use": "work"},
+    {"id": "building-1", "type": "building", "name": "Hotel am Bahnhof", "position": [3280, -430], "rotation_deg": 180, "width_m": 16, "depth_m": 10, "floors": 3, "roof": "flat", "use": "work"},
     {"id": "altbau-1", "type": "altbau-block", "name": "Altbau Markt", "position": [3980, -420], "width_m": 36, "depth_m": 30, "floors": 4, "form": "u", "roof": "pitched", "seed": 5},
     {"id": "area-markt", "type": "area", "name": "Markt", "kind": "plaza", "points": [[2300, -300], [2780, -300], [2780, -540], [2300, -540]], "opacity": 0.8},
     {"id": "tree-1", "type": "tree", "position": [2340, -560], "kind": "deciduous", "height_m": 11},

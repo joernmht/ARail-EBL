@@ -242,6 +242,27 @@ test("the journeys story step by step: Ada, her phone, the track and the bay kep
   assert.deepEqual(JOURNEY_DISRUPTIONS.map((d) => d.type), ["kept-free"]);
 });
 
+test("Back and a jump show the same as playing through: the scene, Ada, the bus, the train, the camera, what is kept free", () => {
+  const { world, s } = journeys();
+  const train = () => s.trainAt() && { phase: s.trainAt().phase, progress: s.trainAt().progress };
+  const snap = () => JSON.stringify({ scene: s.scene, ada: s.adaAt(), bus: s.busAt(), train: train(), kept: kept(world), view: s.view() });
+  // played through: each step halfway and at its end
+  const played = new Map();
+  s.play(true);
+  for (let i = 0; i < 6000 && !s.finished; i++) {
+    world.step(0.1);
+    for (const k of [0.5, 1]) if (s.progress >= k && !played.has(`${s.index}:${k}`)) played.set(`${s.index}:${k}`, { index: s.index, t: s.t, snap: snap() });
+  }
+  assert.equal(played.size, 2 * s.steps.length);
+  // the other way round, each step reached by a jump
+  for (const { index, t, snap: want } of [...played.values()].reverse()) {
+    s.goTo(index);
+    s.t = t;
+    s.refresh();
+    assert.equal(snap(), want, `step ${index + 1} at ${t.toFixed(1)} s`);
+  }
+});
+
 test("the story's train and bus tell the world when they stop and leave: passengers get on and off", () => {
   const { world, s } = journeys();
   const events = [];
