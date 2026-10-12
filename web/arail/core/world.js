@@ -25,6 +25,7 @@ import { Clock } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { drawFlat } from "./simple.js";
+import { cardOf, findPickable, pickAt } from "./pick.js";
 
 export class World {
   /**
@@ -54,6 +55,7 @@ export class World {
       lighting: true, // day/night lighting from the clock
       peopleColour: "auto", // colour of people: "auto" (town people by trip purpose, passengers by mood) | "purpose" | "mood"
       coverMarkers: true, // grey plates with their numbers over the markers and the labels of model wagons (camera view)
+      trackSystems: "", // colour the tracks by one of their railway systems ("power", "train_control", …; rail/systems.js), "" = off
     };
     /** Time of day (fast clock), see core/clock.js. */
     this.clock = new Clock();
@@ -63,6 +65,11 @@ export class World {
     this.trains = new TrainRegistry(this);
     /** Bus lines in operation (core/transit.js). */
     this.transit = new Transit(this);
+    /**
+     * The train whose compatibility the tracks show (View → Colour the tracks by, rail/compat.js):
+     * `{name, consist}`, or null.
+     */
+    this.compatibilityTrain = null;
     /** Incremented whenever an object is added, changed or removed (caches of derived data use it). */
     this.objectsVersion = 0;
     this.load(layout);
@@ -85,6 +92,7 @@ export class World {
     if (this.map) this.map.configure(markers);
     else this.map = new MarkerMap(markers);
     this.objects = [];
+    this.compatibilityTrain = null;
     this.time = 0;
     this.demand = 1;
     this.clock.configure(layout.clock);
@@ -170,6 +178,8 @@ export class World {
       objects: this.objects.map((o) => o.toJSON()),
       scenarios: L.scenarios,
       plugins: L.plugins,
+      ...(L.consists?.length ? { consists: L.consists } : {}),
+      ...(L.vehicle_types && Object.keys(L.vehicle_types).length ? { vehicle_types: L.vehicle_types } : {}),
       ...(L.view ? { view: L.view } : {}),
     };
   }
@@ -306,6 +316,38 @@ export class World {
       for (const o of this.objects) o.update(dt);
       for (const s of this.simulations) s.step(dt);
     }
+  }
+
+  /* ---------------------------------------------------------------- pointing at things */
+
+  /**
+   * What is at an image pixel of a view (core/pick.js): a person, vehicle or other thing that moves
+   * (the nearest), else a layout object, else null.
+   * @param {import("./view.js").View} view the view of the frame drawn last
+   * @param {number[]} pixel [u, v] image px
+   * @param {{tolerance?: number, ground?: number[] | null}} [options] tolerance in CSS px
+   * @returns {import("./pick.js").Pickable | null}
+   */
+  pick(view, pixel, options = {}) {
+    return pickAt(this, view, pixel, options);
+  }
+
+  /**
+   * The info card of a pickable: its owner's description, for a layout object what the simulations
+   * know about it, and what the card providers of the registry add (the train data of a train).
+   * @param {import("./pick.js").Pickable} hit
+   * @returns {import("./pick.js").Card}
+   */
+  card(hit) {
+    const card = cardOf(hit);
+    if (hit.kind === "object") for (const s of this.simulations) if (s.enabled !== false) s.describeObject?.(hit.ref, card);
+    for (const add of this.registry.cards?.values() || []) add(this, hit, card);
+    return card;
+  }
+
+  /** The pickable with this key now (things move on), or null when it is gone. */
+  findPickable(view, key) {
+    return findPickable(this, view, key);
   }
 
   /** Set the time of day ("HH:MM" or minutes); simulations re-place their people (`clock.set`). */

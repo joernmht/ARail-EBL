@@ -2,6 +2,7 @@
 import { applyH, dist2, FONT, markersUsed, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, readFile, revealStage, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
+import { tr } from "./i18n.js";
 
 const CATEGORIES = ["Transport", "Buildings", "Scenery", "Infrastructure", "Table"];
 const HINTS = {
@@ -621,7 +622,7 @@ export class Editor {
     mount(this.el.objects, objs.length
       ? objs.map((o) => h("li", {}, h("button", {
         type: "button", "aria-current": o === this.selected ? "true" : "false", onclick: () => this.select(o === this.selected ? null : o),
-      }, h("span", {}, o.name), h("span", { class: "meta" }, o.geometry ? o.type : `${o.type} · not placed`))))
+      }, h("span", { translate: "no" }, o.name), h("span", { class: "meta", translate: "no" }, o.geometry ? o.type : `${o.type} · ${tr("not placed")}`))))
       : h("li", { class: "item" }, h("span", { class: "hint" }, "Nothing placed yet. Pick an object type above and tap on the layout.")));
   }
 
@@ -749,7 +750,7 @@ export class Editor {
       w.layers().some((l) => l.enabled) ? h("label", { class: "field wide", for: "layoutActiveLayer" }, h("span", {}, "New objects go to"),
         h("select", { id: "layoutActiveLayer", onchange: (e) => { w.activeLayer = e.target.value || null; } },
           h("option", { value: "", selected: !w.activeLayer }, "Base (always on)"),
-          w.layers().filter((l) => l.enabled).map((l) => h("option", { value: l.id, selected: w.activeLayer === l.id }, `Module ${l.name}`)))) : null,
+          w.layers().filter((l) => l.enabled).map((l) => h("option", { value: l.id, selected: w.activeLayer === l.id, translate: "no" }, `${tr("Module")} ${tr(l.name)}`)))) : null,
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", onclick: () => download(`${slug(L.name)}.json`, JSON.stringify(w.toJSON(), null, 2) + "\n") }, "Export layout"),
         h("label", { class: "btn small", for: "layoutImport" }, "Import layout"), importInput,

@@ -8,6 +8,13 @@ import {
   CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, toRad,
 } from "../arail/index.js";
 import { $, storage, toast } from "./ui.js";
+import { tr } from "./i18n.js";
+
+/** The canvas's accessible name in the language shown (kept in English for a switch of language). */
+function labelCanvas(c, text) {
+  c.dataset.label = text;
+  c.setAttribute("aria-label", tr(text));
+}
 
 /** Widest canvas of the flyover (px); larger stages are scaled up by the browser. */
 const MAX_WIDTH = 1920;
@@ -65,7 +72,7 @@ export class Flyover {
     if (this._resumeVideo) src.el.pause();
     c.classList.add("flyover");
     c.tabIndex = 0;
-    c.setAttribute("aria-label", "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle.");
+    labelCanvas(c, "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle; elsewhere Enter shows the info card of what is in the middle.");
     c.hidden = false;
     // a message on the empty stage (no image yet) comes back when the flyover is left
     this._emptyShown = !$("#emptyStage").hidden;
@@ -100,7 +107,7 @@ export class Flyover {
     this._save(true);
     c.classList.remove("flyover", "dragging");
     c.removeAttribute("tabindex");
-    c.setAttribute("aria-label", "Camera image with augmented reality");
+    labelCanvas(c, "Camera image with augmented reality");
     $("#flyNav").hidden = true;
     const src = app.source;
     if (src && !src.stale) {
@@ -112,9 +119,9 @@ export class Flyover {
       // no image of this layout (a virtual layout, or none yet): the message of the empty stage
       app.ctx.clearRect(0, 0, c.width, c.height);
       if (!this._emptyShown) {
-        $("#emptyStage").textContent = app.world.layout.view?.start === "flyover"
+        $("#emptyStage").textContent = tr(app.world.layout.view?.start === "flyover"
           ? "This layout is virtual: take a photo or start the camera to see it over the real layout."
-          : "No image yet: take a photo, start the camera or open a file.";
+          : "No image yet: take a photo, start the camera or open a file.");
         c.hidden = true;
       }
       $("#emptyStage").hidden = false;
@@ -357,6 +364,14 @@ export class Flyover {
       this.app.terminal.pickAt([W / 2, H / 2], { keyboard: true });
       return true;
     }
+    // the info card of what is at the cross in the middle (outside Build and Terminal)
+    if (e.key === "Enter" && !placing && this.app.activeTab !== "build" && t === c) {
+      if (e.repeat) return true;
+      if (this.anim) this.cam.set(this.anim.to);
+      this.anim = null;
+      this.app.inspector.inspectCentre();
+      return true;
+    }
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
     if (e.key === "Enter") {
       if (!placing || t !== c) return false;
@@ -393,6 +408,7 @@ export class Flyover {
     this.move(op, 160);
     if (placing) this._keyAim = true;
     if (terminal) this.app.terminal.keyAim = true;
+    this.app.inspector.keyAim = true;
     return true;
   }
 
@@ -451,6 +467,7 @@ export class Flyover {
     c.addEventListener("pointerup", (e) => this.active && this._up(e, false));
     c.addEventListener("pointercancel", (e) => this.active && this._up(e, true));
     c.addEventListener("pointerleave", () => this.active && !this.pointers.size && !this._keyAim && this.app.editor.hover(null));
+    c.addEventListener("pointerdown", () => this.active && this.app.inspector.clearHover());
     // reached with Tab while placing: the cross in the middle shows where Enter puts the point
     c.addEventListener("focus", () => {
       if (this.active && this.app.activeTab === "build" && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
@@ -521,9 +538,10 @@ export class Flyover {
     const p = this._point(e);
     const prev = this.pointers.get(e.pointerId);
     if (!prev) {
-      // hovering: where the next point would go (the mouse takes over from the keyboard)
+      // hovering: where the next point would go (the mouse takes over from the keyboard), the tooltip
       this._keyAim = false;
       if (app.activeTab === "build" && ed.placing) ed.hover(this.groundPoint(p[0], p[1]), e);
+      if (e.pointerType === "mouse") app.inspector.hoverAt(p);
       return;
     }
     this.pointers.set(e.pointerId, p);
@@ -588,6 +606,7 @@ export class Flyover {
       if (q) ed.placeAt(q, e);
     } else if (!g.moved && app.activeTab === "build" && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
     else if (!g.moved && app.activeTab === "terminal" && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
+    else if (!g.moved && g.button === 0 && !g.shift) app.inspector.tapAt(p, { touch: e.pointerType !== "mouse" }); // the info card
   }
 
   /** Centre, spread and angle of the two fingers on the canvas. */
@@ -634,7 +653,7 @@ export class Flyover {
     this._background(ctx, W, H, night);
     const view = new (simple ? SimpleView : View)({
       ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: app.px(), time: world.time,
-      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true,
+      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true, translate: tr,
     });
     view.placed.push(...app.hudRects); // the labels keep clear of the HUD
     const table = this._defaultTable(); // table modules draw themselves (world.draw)
@@ -646,6 +665,7 @@ export class Flyover {
     app.editor.drawOverlay(ctx, view);
     app.terminal.drawOverlay(ctx, view);
     app.lastView = view;
+    app.inspector.drawOverlay(ctx, view);
   }
 
   /** Sky and floor of the lab, with the horizon where the camera's pitch puts it. */

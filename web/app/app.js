@@ -4,9 +4,11 @@
 // its tabs have, which simulation shows each module tab, and its examples (see `Page`).
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
+import { Inspector } from "./inspect.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Panels } from "./panels.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
+import { addTexts, chooseLanguage, i18n, setLanguage, tr } from "./i18n.js";
 
 const params = new URLSearchParams(location.search);
 /**
@@ -92,6 +94,7 @@ export class App {
   /* ---------------------------------------------------------------- start */
 
   async init() {
+    setLanguage(chooseLanguage());
     try {
       this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO" });
     } catch (err) {
@@ -114,6 +117,7 @@ export class App {
     this.operations = this.tabPanels.ops ?? null;
     this.infra = this.tabPanels.infra ?? null;
     this.journeys = this.tabPanels.journeys ?? null;
+    this.inspector = new Inspector(this);
     this._wireUi();
     this._wireEvents();
     // ?example=: an example with its own photo or clip (a link from the project page)
@@ -280,6 +284,7 @@ export class App {
       else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
       if (this.terminal?.cancelPick()) return;
+      if (this.inspector.close()) return;
       if (this.activeTab === "terminal" && this.terminal?.selected) this.terminal.select(null);
       else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
@@ -399,6 +404,7 @@ export class App {
   /** Periodic refresh of live figures in the visible panel. */
   refreshPanels() {
     this.updateHud();
+    this.inspector.update();
     const t = this.activeTab;
     if (t === "view") this.panels.updateView();
     else if (t === "settings") this.panels.updateSettings();
@@ -690,10 +696,12 @@ export class App {
     if (plugins.length) {
       const errors = await ARail.loadPlugins(plugins, this.layoutUrl || location.href);
       if (errors.length) toast(`Plugins could not be loaded: ${errors.join("; ")}`, 8000);
+      addTexts(); // the plugins' texts in other languages
     }
     const problems = ARail.validateLayout(json, this.world.registry);
     const settings = { ...this.world.settings, ...storage.get("arail.settings", {}) };
     this.editor.reset();
+    this.inspector?.reset();
     const previous = this.world.toJSON();
     try {
       this.world.load(json);
@@ -769,14 +777,34 @@ export class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers } = this.world.settings;
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers });
+    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
+    // where a train may run belongs to that train: not kept
+    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
+  }
+
+  /**
+   * Show the app in another language (View → Language), kept on this device: the page's markup,
+   * the panel, the HUD and an open card are made again.
+   * @param {string} lang
+   */
+  changeLanguage(lang) {
+    setLanguage(lang, { keep: true });
+    this.showLayoutName();
+    this.renderPanel(this.activeTab);
+    this.updateHud();
+    this.inspector.render();
+    toast(lang === "de" ? "Die App ist jetzt auf Deutsch. Was noch nicht übersetzt ist, bleibt Englisch." : "The app is in English now.");
+  }
+
+  /** The language the app is shown in ("en", "de"). */
+  get language() {
+    return i18n.lang;
   }
 
   showLayoutName() {
-    const on = this.world.layers().filter((l) => l.enabled).map((l) => l.name);
-    $("#layoutName").textContent = [this.world.layout.name, ...on].join(" · ");
-    document.title = `${this.world.layout.name} · ARail App`;
+    const on = this.world.layers().filter((l) => l.enabled).map((l) => tr(l.name));
+    $("#layoutName").textContent = [tr(this.world.layout.name), ...on].join(" · ");
+    document.title = `${tr(this.world.layout.name)} · ${tr("ARail App")}`;
   }
 
   /** Follow a traveller of the journeys with the flyover's camera (it opens the flyover). */
@@ -936,7 +964,7 @@ export class App {
 
   showEmpty(text) {
     const el = $("#emptyStage");
-    el.textContent = text;
+    el.textContent = tr(text);
     el.hidden = false;
   }
 
@@ -1105,7 +1133,7 @@ export class App {
     const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
-      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale });
+      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale, translate: tr });
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
@@ -1113,6 +1141,7 @@ export class App {
       this.editor.drawOverlay(ctx, view);
       this.terminal?.drawOverlay(ctx, view);
       this.lastView = view;
+      this.inspector.drawOverlay(ctx, view);
     }
     if (this.display.markers) this._drawMarkers(ctx);
   }

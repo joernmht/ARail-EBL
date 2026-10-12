@@ -15,7 +15,7 @@
  */
 import { Simulation } from "../core/simulation.js";
 import { CD } from "../core/colors.js";
-import { polylineAt } from "../core/math.js";
+import { polylineAt, rectAround } from "../core/math.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { drawPerson } from "../sims/passengers.js";
 import { OpsEngine, causeWord, jobWord } from "./engine.js";
@@ -554,6 +554,63 @@ export class OperationsSimulation extends Simulation {
       if (!view.inImage(at.point[0], at.point[1], 0)) continue;
       drawPerson(view, at.point, { dir: at.dir, speed: w.speed, phase: w.phase, height: 1.75, colour: CREW_COLOURS.body, legs: CREW_COLOURS.legs });
     }
+  }
+
+  /* ---------------------------------------------------------------- pointing at crews and trains */
+
+  /** The crews walking to and from the depot as pickables (core/pick.js). */
+  pickables(view) {
+    if (!this.active || !this.engine) return [];
+    const out = [];
+    for (const w of this.walkers) {
+      if (hiddenAt(w.path, w.s)) continue;
+      const at = polylineAt(w.path.points, w.s, w.path.lengths);
+      const p = this.engine.desk.people.get(w.person);
+      out.push({ key: `crew:${w.person}`, kind: "person", label: p ? shortName(p.name) : w.person, outline: rectAround(at.point, view.m(0.7), view.m(0.7)), z0: 0, z1: view.m(1.75), owner: this, ref: w });
+    }
+    return out;
+  }
+
+  /** The card of a member of a crew on the way to or from the depot: the duty of today. */
+  card(hit) {
+    const w = hit.ref, p = this.engine.desk.people.get(w.person);
+    const duty = p?.today ?? null;
+    const rows = [];
+    if (duty) rows.push(["Duty", `${duty.id} · ${hhmm(duty.signOn)}–${hhmm(duty.signOff)}`]);
+    if (duty?.lines?.length) rows.push(["Lines", duty.lines.join(", ")]);
+    return {
+      title: hit.label,
+      subtitle: `Rail operations · ${p?.role ?? "crew"}`,
+      status: w.arrive ? "Walking to the depot" : "Walking home",
+      rows,
+    };
+  }
+
+  /** A train of the rail operations at a platform: its trip, times, units and driver. */
+  describeVehicle(v, card) {
+    if (!v.ops || !this.engine) return;
+    const e = this.engine, trip = e.trips.get(v.ops.trip);
+    if (!trip) return;
+    const name = (id) => e.stations.get(id)?.name ?? id;
+    const driver = trip.driver ? e.desk.people.get(trip.driver) : trip.pieces?.driver?.person ? e.desk.people.get(trip.pieces.driver.person) : null;
+    const late = Math.round(Math.max(0, (trip.depA ?? e.now) - trip.dep));
+    card.title = trip.lineName;
+    card.subtitle = `Train · ${this.name}`;
+    card.rows = card.rows.filter((r) => r[0] !== "Delay");
+    card.rows.push(["Trip", `${name(trip.from)} ${hhmm(trip.dep)} → ${name(trip.to)} ${hhmm(trip.arr)}`]);
+    card.rows.push(["Units", (v.ops.units || []).join(" + ") || "–"]);
+    if (driver) card.rows.push(["Driver", shortName(driver.name)]);
+    card.rows.push(["Delay", late >= 1 ? `+${late} min` : "on time"]);
+    if (late >= 1) card.tone = late >= 5 ? "bad" : "warn";
+  }
+
+  /** The depot: what its workshop bays and stabling tracks hold. */
+  describeObject(o, card) {
+    if (o.type !== "depot" || !this.active) return;
+    const st = this.depotState(o);
+    if (!st) return;
+    card.status ||= st.lines[0];
+    card.sections = [...(card.sections || []), { title: "Depot", lines: [...st.lines, ...st.bays.map((b) => `Bay ${b.bay + 1}: ${b.text}`), ...st.stabled.flat().map((x) => x.text)] }];
   }
 
   /**

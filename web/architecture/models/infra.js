@@ -259,7 +259,7 @@ export const INFRA = [
       {
         name: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", kind: "class", extends: "Simulation", role: "The engine on the world's clock.",
         attributes: ["engine: InfraEngine | null", "offset: number — engine time = offset + the clock's minutes"],
-        operations: ["step(dt)", "runTo(t, opts)", "runYear(opts)", "newGame(opts)", "save()", "load(saved)", "layoutAssets(net)", "failAsset(nameOrId)", "_event(name, payload) — engine events to the world (infra.*)", "_startDisruption(f, a)", "_syncFaults()", "draw(view)"],
+        operations: ["step(dt)", "runTo(t, opts)", "runYear(opts)", "newGame(opts)", "save()", "load(saved)", "layoutAssets(net)", "failAsset(nameOrId)", "_event(name, payload) — engine events to the world (infra.*)", "_startDisruption(f, a)", "_syncFaults()", "draw(view)", "pickables(view) — the staff out with vans and drones", "card(hit)", "describeObject(o, card) — the condition of an asset, as known"],
       },
       { name: "AssetObject", file: "web/arail/infra/objects.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Signals, switches, balises, level crossings, masts, lifts, displays: their state drawn.", operations: ["state()", "draw(view)"] },
       { name: "MaintenanceBase", file: "web/arail/infra/objects.js", kind: "class", extends: "BuildingBase", role: "Where vans and drones start.", operations: ["slots()"] },

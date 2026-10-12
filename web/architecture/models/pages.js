@@ -7,12 +7,12 @@ export const PAGES = [
     id: "app", group: "pages", title: "The app",
     summary: "An interactive presentation of the lab: sources (camera, photo, video, flyover), the frame loop, the HUD and the panels: View (with the modules), Build, the modules' tabs (stories to click through; the terminal's moves), Disruptions and Settings (simulation and control system).",
     description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. A page (main.js; the game page's main.js) gives App its panels, the simulation that shows each module tab, and its examples: in the app the Operations tab shows the operations story, the Infrastructure tab the maintenance story and the Journeys tab the journeys story (StoryPanel), the Terminal tab the containers to move one by one. The tabs follow the modules: a module tab appears while the layout has the page's simulation for it, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js"],
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js"],
     classes: [
       {
         name: "App", file: "web/app/app.js", kind: "class", role: "A page with a stage: source, tracking, world, panels (the app and the game page).",
         attributes: ["page: Page — panels, the simulations that show the module tabs, examples", "tabPanels: object — the panels of the module tabs", "tabNames: string[] — the page's tabs", "world: World", "tracker: PlaneTracker", "detector: MarkerDetector", "camera: Camera", "source: object | null — camera, photo or video", "mode: string — camera or flyover", "activeTab: string", "layoutUrl: string | null", "moduleHome: object | null — the layout a module layout belongs to", "appModules: Map — the app's modules on, per layout (also kept in the browser)", "hudRects: object[] — the HUD's chips over the canvas: the stage's labels keep clear of them"],
-        operations: ["init()", "frame(dt)", "render()", "updateHud() — the chips over the stage, and where they lie (hudRects)", "tabs() — the tabs shown", "key(name) — what the page keeps in the browser", "storyPanel() — the panel of the tab shown, when it tells a story", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "switchOnModule(id) — from Settings or an example: an exclusive one alone, else without the exclusive ones", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()"],
+        operations: ["init()", "frame(dt)", "render()", "updateHud() — the chips over the stage, and where they lie (hudRects)", "tabs() — the tabs shown", "key(name) — what the page keeps in the browser", "storyPanel() — the panel of the tab shown, when it tells a story", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "switchOnModule(id) — from Settings or an example: an exclusive one alone, else without the exclusive ones", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()", "changeLanguage(lang) — View → Language"],
       },
       { name: "Panels", file: "web/app/panels.js", kind: "class", role: "The View, Settings and Disruptions panels.", attributes: ["settingsView: string — simulate or control"], operations: ["renderView(el)", "renderSettings(el)", "renderSimulate(el)", "setSettingsView(v)", "renderControl(el)", "renderDisruptions(el)", "_moduleBox(m)"] },
       { name: "Editor", file: "web/app/editor.js", kind: "class", role: "Build: placing, dragging, the inspector, the marker map.", operations: ["startPlacing(type)", "placeAt(p, e)", "select(obj)", "render(container)", "renderInspector()", "keepPositions()"] },
@@ -21,8 +21,13 @@ export const PAGES = [
         attributes: ["tab: string", "type: string — the story's simulation type", "follow: boolean — Camera follows", "settingsHint: string"],
         operations: ["render(el)", "update()", "next()", "back()", "restart()", "play()", "goTo(i)", "stepped() — after a step: the panel, the camera", "aim() — the flyover goes where the story happens (from the side it says)", "setFollow(on)", "key(e) — Page Down, Page Up"],
       },
+      {
+        name: "Inspector", file: "web/app/inspect.js", kind: "class", role: "Hover and click: the tooltip of what the mouse points at, the info card of what was tapped, their outlines on the stage.",
+        attributes: ["hover: object | null — the pickable under the mouse", "open: object | null — the card shown: its key and pickable", "keyAim: boolean — the cross in the middle of the flyover (keyboard)"],
+        operations: ["hoverAt(pixel)", "tapAt(pixel, opts) — outside Build and Terminal", "inspectCentre() — Enter on the flyover", "show(hit)", "close()", "update() — every 400 ms", "drawOverlay(ctx, view)", "act(id) — follow"],
+      },
       { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first)." },
-      { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children)", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
+      { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children) — its texts in the language chosen, unless translate: \"no\"", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
     ],
     relations: [
       { from: "App", to: "World", kind: "composes", label: "world" },
@@ -34,6 +39,8 @@ export const PAGES = [
       { from: "App", to: "StoryPanel", kind: "composes", label: "ops, infra, journeys (the app)" },
       { from: "StoryPanel", to: "Story", kind: "uses", label: "steps" },
       { from: "app main", to: "App", kind: "creates" },
+      { from: "App", to: "Inspector", kind: "composes", label: "inspector" },
+      { from: "Inspector", to: "World", kind: "uses", label: "pick, card" },
       { from: "Panels", to: "ui", kind: "depends" },
     ],
     activities: [{
@@ -73,7 +80,59 @@ export const PAGES = [
         { name: "story.step", does: "the story's tab shown anew; the flyover's camera follows" },
       ],
     },
-    rules: ["Edits are saved 300 ms after the last change, per layout.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
+    rules: ["Edits are saved 300 ms after the last change, per layout.", "Taps on the stage open the info card of what is there, except in Build (they select) and in Terminal (they pick containers); the tooltip follows the mouse in every tab.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
+  },
+  {
+    id: "i18n", group: "pages", title: "Texts in other languages",
+    summary: "The app in English or German: a translator without a build step whose keys are the English texts, the framework's and the app's German texts, the choice of the language.",
+    description: "The framework stays English: its cards, labels and settings are English texts. The app translates what it shows: h() (ui.js) the texts and the attributes people read or hear (aria-label, title, alt, placeholder) of the elements it makes, the View the labels on the canvas, translateDocument the page's own markup. A text is found as a whole, else by the pattern of an entry with placeholders (\"{n} min late\"; its variable parts are translated in turn and numbers get the language's decimal sign), else part by part between \" · \"; what has no translation stays English and is noted (Translator.missing). The language comes from ?lang=, else the choice in View → Language (kept on the device), else the browser. Plugins bring their texts with registry.registerTexts.",
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js"],
+    classes: [
+      {
+        name: "Translator", file: "web/arail/i18n/index.js", kind: "class", role: "Translates texts into one language at a time.",
+        attributes: ["lang: string — the language shown", "catalogues: Map — the entries by language", "patterns: Map — the entries with placeholders by language, the most specific first", "missing: Set — texts asked for without a translation"],
+        operations: ["add(lang, entries) — later entries replace earlier ones", "setLanguage(lang)", "has(text, lang)", "t(text, params) — an entry with its parameters; n chooses the plural form", "translate(text) — a finished English text", "number(x, options)", "euros(x)", "date(date, options)"],
+      },
+      { name: "i18n", file: "web/arail/i18n/index.js", kind: "module", role: "The languages and the placeholders of a text.", attributes: ["UI_LANGUAGES — each by its own name"], operations: ["placeholders(text)"] },
+      { name: "texts", file: "web/arail/i18n/de.js", kind: "module", role: "The framework's texts in German (and the English singulars in en.js), registered by registerBuiltins.", attributes: ["DE — English text → German"] },
+      {
+        name: "language", file: "web/app/i18n.js", kind: "module", role: "The app's translator and the choice of the language.",
+        attributes: ["i18n — the app's Translator", "tr — a finished text in the language shown", "TEXT_ATTRIBUTES"],
+        operations: ["addTexts(reg) — the registry's texts, then the app's (web/app/lang/de.js)", "chooseLanguage() — ?lang=, the device's choice, the browser's", "translateDocument(roots) — the page's own markup", "setLanguage(lang, { keep })"],
+      },
+    ],
+    relations: [
+      { from: "language", to: "Translator", kind: "creates", label: "i18n" },
+      { from: "Translator", to: "texts", kind: "depends", label: "catalogues" },
+    ],
+    activities: [{
+      id: "translate", name: "A finished text in the language shown (Translator.translate)",
+      nodes: [
+        ["s", "start"],
+        ["d1", "decision", "English, or no letters?"],
+        ["d2", "decision", "Translated before?"],
+        ["a1", "action", "The cached translation", "Translator.translate"],
+        ["d3", "decision", "The text as a whole in the catalogue?"],
+        ["a2", "action", "Its translation", "Translator._translate"],
+        ["d4", "decision", "An entry whose fixed parts it has (the most specific first)?"],
+        ["a3", "action", "Its translation, the variable parts translated in turn, numbers with the decimal sign", "Translator._translate"],
+        ["d5", "decision", "Parts between \" · \"?"],
+        ["a4", "action", "Each part on its own", "Translator._translate"],
+        ["a5", "action", "Stays English, noted as missing", "Translator.translate"],
+        ["m1", "merge"],
+        ["e", "end"],
+      ],
+      edges: [["s", "d1"], ["d1", "m1", "yes"], ["d1", "d2", "no"], ["d2", "a1", "yes"], ["d2", "d3", "no"], ["a1", "m1"], ["d3", "a2", "yes"], ["d3", "d4", "no"], ["a2", "m1"], ["d4", "a3", "yes"], ["d4", "d5", "no"], ["a3", "m1"], ["d5", "a4", "yes"], ["d5", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "e"]],
+    }],
+    parameters: [
+      { key: "?lang=", default: "the device's choice, else the browser's language", meaning: "The language of the app: en or de (e.g. for a projector); a choice in View → Language is kept on the device." },
+      { key: "translate: \"no\"", default: "", meaning: "An element of h() whose texts are names or what people typed: not translated." },
+    ],
+    rules: [
+      "The English text is the key: code stays readable, and a text without a translation stays English.",
+      "{n}, {id} and {time} stand for one word or number, other placeholders for any text up to \" · \".",
+      "A translation keeps the placeholders of its English text (checked by tests/js/i18n.test.js).",
+    ],
   },
   {
     id: "game-page", group: "pages", title: "The game page",
@@ -106,7 +165,7 @@ export const PAGES = [
   {
     id: "architecture-page", group: "pages", title: "This page",
     summary: "The architecture as data (model.js and models/*.js), drawn as UML with dagre's layout; a test checks the data against the code.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
     classes: [
       { name: "uml", file: "web/architecture/uml.js", kind: "module", role: "Diagrams as SVG.", operations: ["packageDiagram(spec, title, opts)", "dataFlowDiagram(spec, title)", "classDiagram(model, title, external)", "activityDiagram(activity)", "activitySteps(activity)", "fontsReady()"] },
       { name: "architecture", file: "web/architecture/architecture.js", kind: "module", role: "The page.", operations: ["renderPackages()", "renderDataFlow()", "renderModels()", "modelDetails(m)", "figure(make, caption, label)"] },

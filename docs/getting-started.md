@@ -88,18 +88,29 @@ Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop
 
 People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot = annoyed. People of the [town simulation](day-and-night.md#colours) are coloured by the purpose of their trip. Buildings look like a white architectural model in greys; at night their windows light up when people are inside.
 
+### Pointing at things
+
+Everything on the stage can be pointed at, over the camera image and in the flyover: people, trains, buses, cars, the staff's vans and drones, containers and wagons, buildings, stops, streets, tracks, signals and the other assets.
+
+- **Hover** with the mouse: a tooltip names it, says what it is and what it is doing (*S. Fink · Town · commuter · Walking to the train*, *RE 1 · Train · timetable · Boarding · Platform 1, Track 2*).
+- **Tap or click** it (outside Build and Terminal, where taps select and pick): the **info card** opens at the top left of the stage. It says more, from every part that knows something about it, and stays up to date: a building its use, floors, the people it holds and how many are inside now; a stop the people waiting, their mood, its bus lines and the next departures; a train its stop, doors and delay (with rail operations its trip, units and driver) and its **train data**: its vehicles as a strip, length, mass, axles, top speed, brake position and brake percentage (against the one its track requires), axle and metre loads (see [Railway systems](rail-systems.md#vehicles-and-trains)), and on which tracks of the layout it may run: **Show where it may run** colours the tracks by it ([May this train run here?](rail-systems.md#may-this-train-run-here)); a person where it lives and works, what it is waiting for, its mood and its plan for today; an asset of the infrastructure its condition as it is known, its age and its interlocking. What it relates to is outlined too (the stop of a train, the interlocking of a signal, the bus lines of a stop). **Follow** lets the flyover's camera follow a person.
+- **Keyboard**: in the flyover, move the view so that the cross in the middle is on it and press **Enter**; the card is read out to screen readers and the arrow keys go on moving the view. **Esc** closes the card.
+
+In Build the tooltip shows too, and a tap selects the object for editing as before.
+
 ## Panels
 
 The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
 
 ### View
 
-- *Modules*: boxes to click, one per module; each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure** and **Journeys** can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
+- *Modules*: boxes to click, one per module; each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
 - *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
 - *Flyover*: see above.
-- *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), and the opacity of virtual objects.
+- *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, and **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend; see [Railway systems](rail-systems.md).
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md).
 - *Record*: records the stage as a WebM video.
+- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, View, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
 
 ### Build
 
@@ -196,11 +207,11 @@ Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` 
 | F | flyover on/off |
 | S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
-| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross |
+| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross; elsewhere: the info card of what is at the cross |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
 | Delete, Backspace | delete the selected object (Build panel) |
 | Alt (Option) | hold while placing or dragging: no snapping to the grid or to streets |
-| Esc | cancel placing or a pick in the Terminal panel, or deselect |
+| Esc | cancel placing or a pick in the Terminal panel, close the info card, or deselect |
 | Page Down, Page Up | the next step of the story, or the one before (a module tab with a story; not while the stage has the focus) |
 | ← → | switch panels (when a panel tab has focus) |
 
@@ -256,6 +267,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `camera=1` | start the live camera |
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
+| `lang=de`, `lang=en` | the app in German or English for this link (e.g. the projector), without changing the choice of the device |
 | `scenario=<id>` | play a scenario of the layout (switches the module Disruptions on) |
 | `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra` or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`, or on the game page `game/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
 | `#view`, `#build`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#settings` | open a tab, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them; `#build` and `#disrupt` switch the modules Build and Disruptions on) |
