@@ -213,6 +213,10 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
   ARail has (the maintenance dispatcher and the repair team with the maintenance story, the railway
   undertaking's dispatcher with the operations, the passenger with the journeys).
 - The career mode on the planner's model: each step a round of the role's game, applications and
-  elections that can fail, pay, reputation and stress (#146).
+  elections that can fail, pay, reputation and stress (#146); qualifications earned by exams, quizzes
+  and practical rounds in the role's game (#158); starting points as people, such as a wheelchair user
+  for whom some ways are closed and others, through advocacy into politics, open faster (#157).
+- The wheelchair user's trip as a mini game: step-free stations and trains, booking assistance,
+  a broken lift (#156); the role games of every family (#148–#155).
 - The parked games of the game page on the game core (#144).
 - Computer players for the roles nobody plays; the roles connected by their events (#104, #106).
