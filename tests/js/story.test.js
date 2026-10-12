@@ -179,6 +179,18 @@ test("a track closure acts on one track of a platform; the platform shows its me
   assert.ok(world.services.docks.get(left.id).heldFor > 0);
   world.disruptions.stop(d.id);
   assert.equal(world.disruptions.effectsFor(area, left).closed, false);
+  // the built-in types act on one track too, when their target is its dock
+  const one = (type) => {
+    const x = world.disruptions.start({ type, target: right.id, params: { minutes: 3 } });
+    const fx = [world.disruptions.effectsFor(area, right), world.disruptions.effectsFor(area, left), world.disruptions.effectsFor(area)];
+    world.disruptions.stop(x.id);
+    return fx;
+  };
+  const [delayed, other, platform] = one("delay");
+  assert.ok(delayed.hold && !other.hold && !platform.hold, "a delay of track G3 holds its trains only");
+  assert.match(platform.messages[0], /^Delay \(3 min left\)$/, "the platform shows it");
+  assert.ok(one("cancellation")[0].cancel && !one("cancellation")[1].cancel);
+  assert.ok(one("closure")[0].closed && !one("closure")[2].closed, "a closed track, the platform open");
   // a platform's other disruptions still act on both of its tracks
   world.disruptions.start({ type: "signal-failure", target: "platform-2", params: { minutes: 3 } });
   assert.ok(world.disruptions.effectsFor(area, left).hold && world.disruptions.effectsFor(area, right).hold);

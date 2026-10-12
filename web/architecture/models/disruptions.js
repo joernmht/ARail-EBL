@@ -63,7 +63,7 @@ export const DISRUPTIONS = [
     },
     rules: [
       "Merged effects: closed, hold, cancel and leave if any disruption says so; demand and frequency multiplied; mood summed; messages joined.",
-      "A disruption whose target is one track of a platform (its dock, e.g. platform-1:left; the track closure) acts on the vehicles at that track only; the platform shows its message.",
+      "A disruption whose target is one track of a platform or one bay (its dock, e.g. platform-1:left: the track closure; also a delay, cancellation or closure) acts on the vehicles at that track only; the platform shows its message.",
       "Timetable: due vehicles wait while closed or held; cancelled ones do not come; closed sends dwelling vehicles away.",
       "Bus lines: no departure while cancelled; a held bus stays; closed stops are passed.",
       "Passengers: arrivals × demand (none while closed); −0.3 mood for newcomers while held or cancelled; leave: people walk out.",
