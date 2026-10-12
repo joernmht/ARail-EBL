@@ -19,6 +19,7 @@
 import { Registry } from "./core/registry.js";
 import { World } from "./core/world.js";
 import { BUILTIN_DISRUPTIONS } from "./core/disruptions.js";
+import { STORY_DISRUPTIONS } from "./core/story.js";
 import { BUS, TRAIN } from "./core/vehicles.js";
 import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
@@ -63,7 +64,7 @@ export { RoadNetwork, dockPose, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk }
 export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
-export { Story, storyOf, STORY_PAUSE_S } from "./core/story.js";
+export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
@@ -109,7 +110,7 @@ export {
   CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
   KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
-  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, registerOperations,
+  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, registerOperations,
 } from "./ops/index.js";
 // infrastructure: assets, maintenance, projects (named exports only; names that the core or the
 // operations use too get an "infra" prefix)
@@ -155,7 +156,7 @@ export function registerBuiltins(registry) {
   registry.registerSimulation(PassengerSimulation);
   registry.registerSimulation(TownSimulation);
   registry.registerSimulation(TrafficSimulation);
-  for (const def of BUILTIN_DISRUPTIONS) registry.registerDisruption(def);
+  for (const def of [...BUILTIN_DISRUPTIONS, ...STORY_DISRUPTIONS]) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);
   registerTerminal(registry);

@@ -462,7 +462,8 @@ tracks and inspection pits, stabling tracks behind it and the crew room at the f
 (entrance 0) is where crews sign on. With [rail operations](operations.md) it shows the units in
 the workshop and on the stabling tracks (a unit outlined in Orange is being worked on, one outlined in Rot has failed)
 and a board with the state of the workshop; the operations name it in
-`maintenance.workshop.object`.
+`maintenance.workshop.object`. The [operations story](operations.md#the-operations-story) draws its
+own units on the first workshop and stabling track and fills the board (its setting `depot`).
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
@@ -486,6 +487,7 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
 | `operations` | `name`, `stations`, `lines` (default: from the platforms' `lines`), `fleet`, `maintenance`, `parties`, `ecm`, `contracts`, `crew`, `dispatch`, `costs`, `setups`, `stress` | rail operations: units with maintenance and failures, the four ECM functions, penalties between the parties, crews with duties and rosters; its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Rail operations](operations.md#layout-file) for the keys. One per layout. |
+| `ops-story` | `name`, `track`, `spare_track`, `depot`, `line`, `destination`, `departure`, `unit`, `spare`, `km`, `steps` | the operations story to click through (the app's Operations tab): a train breaks down at the platform, the spare unit comes from the depot, the passengers change trains, the broken unit goes to the workshop; see [Rail operations](operations.md#the-operations-story). |
 | `maintenance-story` | `name`, `signal`, `renewal`, `year`, `steps` | the maintenance story to click through (the app's Infrastructure tab): a signal fails and is exchanged, a track is renewed; see [Infrastructure](infrastructure.md#the-maintenance-story). |
 | `infrastructure` | `name`, `placement`, `lines`, `stations`, `assets`, `types`, `budgets`, `funding`, `staff`, `costs`, `hoai`, `procurement`, `contractors`, `factory`, `upgrades`, `roles`, `scenarios`, … | infrastructure asset management: the layout's station in an invented district, assets with their condition, maintenance staff, projects through the HOAI phases; see [Infrastructure](infrastructure.md#layout-file) for the keys. One per layout. |
 | `journeys` | `transfer_min` (3), `stations`, `lines` (default: from the platforms' `lines`, as in the rail operations), `start_weekday` (`mon`), `travellers` | travellers made one by one in the app, each with a start, an aim and a chosen travel plan with transfers; without rail operations its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Journeys](journeys.md#layout-file) for the keys. One per layout. |

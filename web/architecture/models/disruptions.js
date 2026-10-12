@@ -12,7 +12,7 @@ export const DISRUPTIONS = [
       {
         name: "DisruptionManager", file: "web/arail/core/disruptions.js", kind: "class", role: "The disruptions running, and their effects per stop area.",
         attributes: ["world: World", "active: object[] — {id, type, def, target, params, started, until}"],
-        operations: ["start(spec) — {type, target, params, duration, id}", "stop(id)", "step() — stops those that expired", "effectsFor(area, dock) — the merged effects at a stop area, or at one of its tracks", "reset()", "draw(view) — hatching, a blinking sign at each stop"],
+        operations: ["start(spec) — {type, target, params, duration, id}", "stop(id)", "step() — stops those that expired", "effectsFor(area, dock) — the merged effects at a stop area, or at one of its tracks", "reset()", "draw(view) — hatching, a blinking sign at each stop (a quiet one only with a message)"],
       },
       {
         name: "disruptions", file: "web/arail/core/disruptions.js", kind: "module", role: "The built-in types and where a disruption applies.",
@@ -120,8 +120,8 @@ export const DISRUPTIONS = [
   },
   {
     id: "stories", group: "disruptions", title: "Stories to click through",
-    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's module tabs show them with Back, Next, Play and Start again.",
-    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look. The maintenance story of the infrastructure is the first one.",
+    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's module tabs show them with Back, Next, Play and Start again (Operations: the operations story; Infrastructure: the maintenance story).",
+    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure and the operations story are scripted stories.",
     files: ["web/arail/core/story.js"],
     classes: [
       {
@@ -129,11 +129,12 @@ export const DISRUPTIONS = [
         attributes: ["static STEPS — {id, title, text, seconds}", "static replay: boolean — a story that drives an engine", "index: number — the step shown", "t: number — simulated s into the step", "playing: boolean — goes on by itself", "scene: object | null — the picture of the moment (compose)", "steps — STEPS with the layout's texts over them (config.steps, by id)", "progress: number — 0…1 of the step's animation", "finished: boolean"],
         operations: ["goTo(i)", "next()", "back()", "restart()", "skip() — the step's animation to its end", "play(on)", "step(dt)", "refresh() — compose the scene, the disruptions in line with it", "compose(index, k) — the picture (subclasses)", "reset() — replay stories: back to the start", "enter(index) — replay stories: a step begins", "settle(index) — replay stories: a step run to its end at once", "view() — where to look (flyover)", "state() — what the panel shows", "clear()"],
       },
-      { name: "story", file: "web/arail/core/story.js", kind: "module", role: "Finding the layout's story.", attributes: ["STORY_PAUSE_S — the pause between steps while playing"], operations: ["storyOf(world, type)"] },
+      { name: "story", file: "web/arail/core/story.js", kind: "module", role: "Finding the layout's story; the disruption with which a story holds a track for its own train.", attributes: ["STORY_PAUSE_S — the pause between steps while playing", "STORY_DISRUPTIONS — story-train: a track held for a story's train (hidden, quiet)"], operations: ["storyOf(world, type)"] },
     ],
     relations: [
       { from: "Story", to: "DisruptionManager", kind: "uses", label: "the scene's disruptions" },
       { from: "Story", to: "EventBus", kind: "uses", label: "story.step, story.play" },
+      { from: "story", to: "ServiceManager", kind: "uses", label: "free (story-train)" },
     ],
     activities: [{
       id: "goto", name: "Going to a step (Story.goTo)",
@@ -166,6 +167,10 @@ export const DISRUPTIONS = [
         { name: "story.play", payload: "story, playing", when: "Play or Pause" },
       ],
     },
-    rules: ["The scene's disruptions get the id story:<type>:<id> and run until the scene drops them; the app shows no toasts for them.", "Playing: each step runs to its end, then after 6 simulated s the next one; Play stops at the last step."],
+    rules: [
+      "The scene's disruptions get the id story:<type>:<id> and run until the scene drops them; the app shows no toasts for them.",
+      "Playing: each step runs to its end, then after 6 simulated s the next one; Play stops at the last step.",
+      "story-train on a track (dock): closed there (no timetable train; one there is taken away at once, services.free); its text is the platform's message; quiet: a warning sign and a HUD count only while it has a message.",
+    ],
   },
 ];

@@ -102,8 +102,8 @@ export const PACKAGES = [
   },
   {
     id: "ops", name: "ops", group: "framework", path: "web/arail/ops",
-    summary: "Rail operations: a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
-    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js"],
+    summary: "Rail operations: the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
+    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims"],
   },
   {
@@ -378,6 +378,7 @@ export const REGISTRY = {
     { type: "operations", class: "OperationsSimulation", file: "web/arail/ops/simulation.js", model: "ops-world" },
     { type: "infrastructure", class: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", model: "infra-world" },
     { type: "maintenance-story", class: "MaintenanceStory", file: "web/arail/infra/story.js", model: "infra-story" },
+    { type: "ops-story", class: "OpsStory", file: "web/arail/ops/story.js", model: "ops-story" },
     { type: "journeys", class: "JourneysSimulation", file: "web/arail/journeys/simulation.js", model: "journeys" },
     { type: "road-traffic", class: "RoadTraffic", file: "web/plugins/road-traffic.js", model: "plugins", plugin: true },
   ],
@@ -432,6 +433,7 @@ export const REGISTRY = {
     dis("crowd", "Crowd surge", "web/arail/core/disruptions.js", ["factor", "minutes"], "Many more passengers come."),
     dis("signal-failure", "Signal failure", "web/arail/core/disruptions.js", ["minutes"], "Trains held at the platforms."),
     dis("track-closure", "Track closure", "web/arail/core/disruptions.js", ["minutes"], "One track of a platform closed: no train stops there; the other track runs."),
+    { ...dis("story-train", "A story's train", "web/arail/core/story.js", [], "A story's own train holds one track of a platform: no timetable train comes there; the platform shows the story's message (started by stories, hidden in the tab)."), model: "stories" },
     dis("crew-sick", "Drivers call in sick", "web/arail/ops/disruptions.js", ["count", "notice_min"], "Sick calls to the operations' crew desk."),
     dis("unit-failure", "Unit failure", "web/arail/ops/disruptions.js", ["kind"], "A unit of a running train fails (hard or soft)."),
     dis("drivers-leave", "Drivers leave", "web/arail/ops/disruptions.js", ["count"], "Drivers leave the company."),

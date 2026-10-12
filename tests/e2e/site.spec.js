@@ -49,6 +49,13 @@ test("project page hands over from the picture to the applications, each opening
     const layout = params.get("layout");
     expect((await request.get(new URL(layout, `http://localhost/${page}/`).pathname)).ok(), layout).toBe(true);
   }
+  // the stories of the app open their module of Bf Neustadt; their games are a link to the game page
+  const neustadt = await (await request.get("/layouts/ebl-neustadt.json")).json();
+  for (const [card, layer, tab] of [["#app-operations", "operations", "ops"], ["#app-infrastructure", "infrastructure", "infra"]]) {
+    await expect(page.locator(`${card} a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+    expect(neustadt.layers.map((l) => l.id), card).toContain(layer);
+  }
   // cooperation: the contact person by email
   await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
   const images = await page.locator(".app-card img, .fresh-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));

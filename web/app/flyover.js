@@ -636,6 +636,7 @@ export class Flyover {
       ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: app.px(), time: world.time,
       labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true,
     });
+    view.placed.push(...app.hudRects); // the labels keep clear of the HUD
     const table = this._defaultTable(); // table modules draw themselves (world.draw)
     if (table) drawTable(view, table, { surface: "grey" });
     if (!simple) this._drawOrtho(view, night);

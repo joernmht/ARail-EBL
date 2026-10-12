@@ -137,7 +137,8 @@ export class ServiceManager {
 
   /**
    * Send a vehicle to a dock now. Docks of the control system are never chosen, docks of a planner
-   * (mode "plan") only by the planner (`source: "plan"`).
+   * (mode "plan") only by the planner (`source: "plan"`), closed docks (a track closure, a story's
+   * train) only by a planner.
    * @param {string} target dock ID, stop area ID or object ID (a free dock is chosen)
    * @param {{line?: string, source?: string, side?: number}} [options]
    * @returns {Vehicle | null}
@@ -147,11 +148,33 @@ export class ServiceManager {
       (st) => st.dock.id === target || st.dock.area.id === target || st.dock.area.owner?.id === target,
     );
     if (options.side) candidates = candidates.filter((st) => st.dock.side === options.side);
-    // docks of the control system and of a planner take no vehicles from others
-    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || options.source === "plan"));
+    // docks of the control system and of a planner take no vehicles from others; a closed track none
+    // but a planner's (its trains leave again at once)
+    const planned = options.source === "plan";
+    const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || planned)
+      && (planned || !this.world.disruptions.effectsFor(st.dock.area, st.dock).closed));
     if (!free.length) return null;
     const st = this.rng.pick(free);
     return this._dispatch(st, { source: options.source || "manual", line: options.line });
+  }
+
+  /**
+   * Take the vehicle at a dock away at once (a story's own train takes the track): one still coming
+   * in just does not come, one standing or leaving is gone (the people on their way to its doors
+   * missed it). Trains of the control system stay.
+   * @param {string} dockId
+   * @returns {boolean} whether a vehicle was taken away
+   */
+  free(dockId) {
+    const st = this.docks.get(dockId), v = st?.vehicle;
+    if (!v || v.source === "feed") return false;
+    st.vehicle = null;
+    if (v.phase === "dwelling") {
+      v.phase = "departing";
+      this._emit("vehicle.departing", v);
+    }
+    if (v.phase !== "arriving") this._emit("vehicle.departed", v);
+    return true;
   }
 
   _dispatch(st, { source = "timetable", line, trainId = null } = {}) {

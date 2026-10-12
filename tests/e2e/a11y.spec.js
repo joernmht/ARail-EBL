@@ -11,6 +11,7 @@ const PAGES = [
   ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
   ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
+  ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["game page, View panel", "/game/#view"],
   ["signaller's game", "/game/signaller/"],
