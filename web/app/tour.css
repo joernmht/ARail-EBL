@@ -30,10 +30,13 @@
 .tour-step[data-step="1"] { right: 10px; }
 .tour-step svg { width: 26px; height: 26px; stroke-width: 2.4; }
 
-/* the HUD's chips beside the perspectives, a message while placing (at the top of the stage) below
-   them (their size is measured by tour-nav.js: --tour-w, --tour-h) */
+/* the HUD's chips beside the perspectives, and a message while placing (at the top of the stage,
+   above where one taps) in the room right of them (their width is measured by tour-nav.js: --tour-w) */
 .tour:not([hidden]) ~ .hud { left: calc(20px + var(--tour-w, 122px)); }
-.tour:not([hidden]) ~ .placing:not([hidden]) ~ .toast { top: calc(20px + var(--tour-h, 88px)); }
+.tour:not([hidden]) ~ .placing:not([hidden]) ~ .toast {
+  left: calc(50% + (20px + var(--tour-w, 122px)) / 2);
+  max-width: min(560px, calc(100% - 52px - var(--tour-w, 122px)));
+}
 
 @media (max-width: 640px) {
   .tour-views { grid-template-columns: repeat(3, 32px); gap: 3px; padding: 4px; }

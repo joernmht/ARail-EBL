@@ -171,9 +171,7 @@ export class TourNav {
       else b.setAttribute("aria-describedby", "tourMissing");
     }
     // the HUD and a message while placing keep clear of the buttons
-    const views = this.el.querySelector(".tour-views"), wrap = $("#stageWrap");
-    wrap?.style.setProperty("--tour-w", `${views?.offsetWidth || 0}px`);
-    wrap?.style.setProperty("--tour-h", `${views?.offsetHeight || 0}px`);
+    $("#stageWrap")?.style.setProperty("--tour-w", `${this.el.querySelector(".tour-views")?.offsetWidth || 0}px`);
   }
 
   /** The chips of the HUD: where the photo was taken; that it has no digital layer. */
