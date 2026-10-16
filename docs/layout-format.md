@@ -181,7 +181,7 @@ The flyover (View → Flyover, key F) shows a grid on the layout plane; placed p
 "view": { "image": "../media/ebl-lab.jpg", "ortho": { "image": "../media/ebl-lab-ortho.jpg", "bounds_mm": [-300, -320.2, 1870.2, 700] } }
 ```
 
-An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md); `arail-mosaic` joins the orthophotos of several surveyed parts into one, as for Bf Neustadt): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame (xmin < xmax, ymin < ymax). Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; its uncovered (light grey) border is left out. Where it covers platforms and tracks, their virtual surfaces are left out too (the photo shows the real ones). Table modules of the kind `extension` lie above the photo, real tables (`physical`) below it.
+An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md); `arail-mosaic` joins the orthophotos of several surveyed parts into one, as for Bf Neustadt): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame (xmin < xmax, ymin < ymax). Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; its uncovered (light grey) border is left out. Where it covers platforms and tracks, their virtual surfaces are left out too (the photo shows the real ones). Table modules of the kind `extension` lie above the photo; real tables (`physical`) are not drawn under it (the photo shows the real table, and where it shows none the flyover is blank; in Build their outline is dashed, to edit them).
 
 ## `view.extend_below`
 
@@ -401,12 +401,12 @@ Geometry: a rectangle, `position` (centre). A base plate whose top is the layout
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `kind` | `"extension"` | `extension`: a virtual table module beside the real table, drawn over the camera image too (it covers the floor there) and in the flyover; `physical`: the outline of a real table of the lab, only drawn in the flyover |
+| `kind` | `"extension"` | `extension`: a virtual table module beside the real table, drawn over the camera image too (it covers the floor there) and in the flyover; `physical`: the outline of a real table of the lab, only drawn in the flyover, and there only without an orthophoto (in Build dashed) or in the simple view |
 | `width_mm`, `depth_mm` | `1000`, `600` | size along its x and y axis (20–20000) |
 | `rotation_deg` | `0` | |
 | `surface` | `"grey"` | `grey` (light grey), `white`, `green` (model grass) |
 
-Without a `physical` table module and without an orthophoto, the flyover draws a light-grey default table around the markers and the objects (except those on table extensions), with a margin of 100 mm. With an orthophoto the photo shows the real table, and where it shows none (its uncovered grey) the flyover is blank.
+Without a `physical` table module and without an orthophoto, the flyover draws a light-grey default table around the markers and the objects (except those on table extensions), with a margin of 100 mm. With an orthophoto the photo shows the real table, and where it shows none (its uncovered grey) the flyover is blank: neither a default table nor the `physical` table modules are drawn there (in Build their outlines are dashed, and the simple view, which draws no photo, draws them).
 
 ### `container-yard`: container yard block
 

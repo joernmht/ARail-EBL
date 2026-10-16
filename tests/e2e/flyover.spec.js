@@ -407,6 +407,35 @@ test("blank space where there is no table: an orthophoto without a real table's 
   expect(errors).toEqual([]);
 });
 
+test("blank space where the photo shows no table: a real table's outline is not drawn under it, dashed in Build, grey in the map", async ({ page }) => {
+  // the hybrid container train: its real table (2300 x 1130 mm) is larger than its orthophoto shows
+  const errors = await openApp(page, "/app/?example=container-train#view");
+  await page.evaluate(() => (window.__arail.display.flyMarkers = false));
+  await enterFlyover(page);
+  await setCamera(page, { target: [-815, 985], distance: 1500, yaw_deg: 90, pitch_deg: 89.9 });
+  const sample = () => page.evaluate(() => {
+    const a = window.__arail;
+    a.world.settings.labels = false;
+    a.render();
+    const H = a.pose().H, [x, y] = [-815, 985], w = H[6] * x + H[7] * y + H[8]; // on the real table, outside the photo
+    return [...a.ctx.getImageData(Math.round((H[0] * x + H[1] * y + H[2]) / w), Math.round((H[3] * x + H[4] * y + H[5]) / w), 1, 1).data].slice(0, 3);
+  });
+  await page.waitForFunction(() => window.__arail.flyover.ortho?.ok);
+  const blank = await sample();
+  expect(blank).not.toEqual([220, 222, 220]); // TABLE_SURFACES.grey.top
+  expect(Math.max(...blank) - Math.min(...blank)).toBeLessThan(20); // the lab floor
+  // Build: the same (the outline, dashed, is at the table's edge)
+  await page.locator("#tab-build").click();
+  expect(await sample()).toEqual(blank);
+  // the map draws no photo: there the real table is drawn
+  await page.locator("#btnMap").click();
+  await page.waitForFunction(() => window.__arail.flyover.simple);
+  await setCamera(page, { target: [-815, 985], distance: 1500, yaw_deg: 90, pitch_deg: 90 });
+  const map = await sample();
+  expect(Math.max(...map.map((v, i) => Math.abs(v - blank[i])))).toBeGreaterThan(15);
+  expect(errors).toEqual([]);
+});
+
 test("the video survey works in the flyover: markers appear on the table", async ({ page }) => {
   test.skip(!hasScene(), "run `npm run fixtures` first");
   await routeScene(page);

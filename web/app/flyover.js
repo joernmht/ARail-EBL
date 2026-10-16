@@ -661,6 +661,9 @@ export class Flyover {
       labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true, translate: tr,
     });
     view.placed.push(...app.hudRects); // the labels keep clear of the HUD
+    // the photo of the table stands for the real tables (not in the simple view, which draws no photo)
+    view.tablePhoto = !simple && !!orthoOf(world.layout);
+    view.editing = app.activeTab === "build";
     const table = this._defaultTable(); // table modules draw themselves (world.draw)
     if (table) drawTable(view, table, { surface: "grey" });
     if (!simple) this._drawOrtho(view, night);

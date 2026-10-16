@@ -58,7 +58,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 ## The flyover
 
-**Flyover** (button, View panel or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where there is no table the lab is blank), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
+**Flyover** (button, View panel or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where the photo shows no table the lab is blank, also where the layout outlines a real table, whose outline Build shows dashed), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
 
 | Input | Mouse and keyboard | Touch |
 | --- | --- | --- |

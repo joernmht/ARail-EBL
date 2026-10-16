@@ -314,7 +314,7 @@ export const WORLD = [
     classes: [
       {
         name: "View", file: "web/arail/core/view.js", kind: "class", role: "Projection and display list of one frame.",
-        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown"],
+        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "tablePhoto: boolean — the flyover's orthophoto stands for the real tables (not drawn)", "editing: boolean — the flyover in Build (their outlines dashed)", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown"],
         operations: ["project(x, y, z)", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style)", "dim(colour, amount)", "render()"],
       },
       { name: "SimpleView", file: "web/arail/core/simple.js", kind: "class", extends: "View", role: "Map and 2.5D: flat footprints, plain blocks, always day.", operations: ["block(footprint, z0, z1, colour)"] },

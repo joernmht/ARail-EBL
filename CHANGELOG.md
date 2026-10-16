@@ -104,7 +104,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- Flyover: a layout with an orthophoto and no outline of a real table gets no grey default table any more: the photo shows the table, and where it shows none the lab is blank. The grid covers the whole orthophoto.
+- Flyover: under an orthophoto neither the grey default table nor the outlines of real tables (`physical` table modules) are drawn any more: the photo shows the table, and where it shows none the lab is blank (the hybrid container train, Beta 0.1). In Build the outlines of real tables are dashed, to edit them; the simple view, which draws no photo, still draws them. The grid covers the whole orthophoto.
 - The app has no list of layouts (**Layouts…**) in its bar any more: the photo tour chooses what the stage shows, and the examples with a clip, a tab or a layout of their own are in **View → Examples**; `?example=` works as before. The game page keeps its list.
 - Photo map: **Open with the digital layer** opens the app's photo tour at that photo (`app/?photo=<id>`), so the arrows go on round the lab from there.
 - The app's Terminal tab keeps to moving containers one by one (the containers, Move to, picking on the stage, the model wagons, Reset and Save as start state); the arrivals, new arrivals, crane jobs, the speed and loading model wagons as a whole are on the game page's Terminal tab.

@@ -7,9 +7,11 @@
  *   too (opaque enough to cover the floor beyond the real table) and in the flyover; virtual
  *   objects can be placed on it.
  * - `physical`: the outline of a real table in the lab. In the camera view the real table is
- *   in the image, so it is only drawn in the flyover (`view.virtual`). Without any physical
- *   table and without an orthophoto (which shows the real table, blank around it) the flyover
- *   draws a default one around the markers and objects ({@link defaultTableBounds}).
+ *   in the image, so it is only drawn in the flyover (`view.virtual`), and there only without an
+ *   orthophoto (`view.tablePhoto`): the photo shows the real table, blank where it shows none (in
+ *   Build the outline is dashed, to edit it). Without any physical table and without an
+ *   orthophoto the flyover draws a default one around the markers and objects
+ *   ({@link defaultTableBounds}).
  * @module arail/objects/tabletop
  */
 import { LayoutObject } from "../core/object.js";
@@ -35,6 +37,8 @@ export const TABLE_THICKNESS_MM = 18;
  * virtual extensions above it: a module placed over the photo hides it, as it would on the table.
  */
 const ORDER = { physical: { edge: -110, top: -100 }, extension: { edge: -88, top: -86 } };
+/** The dashed outline of a real table under the flyover's photo, in Build (Dunkelblau, as the grid). */
+const OUTLINE = "rgba(0,20,80,0.55)";
 
 export class Tabletop extends LayoutObject {
   static type = "tabletop";
@@ -99,6 +103,11 @@ export class Tabletop extends LayoutObject {
 
   draw(view) {
     if (this.physical && !view.virtual) return; // the real table is in the camera image
+    if (this.physical && view.tablePhoto) {
+      // the flyover's photo of the table shows the real table: blank where it shows none; in Build its outline
+      if (view.editing) view.polygon(this.geometry.footprint, { stroke: OUTLINE, width: 1.5, dash: [6, 4], order: -79 });
+      return;
+    }
     drawTable(view, this.geometry.footprint, { surface: this.spec.surface, alpha: view.virtual ? 1 : 0.94, kind: this.spec.kind === "physical" ? "physical" : "extension" });
   }
 }

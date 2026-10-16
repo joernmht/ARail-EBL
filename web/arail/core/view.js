@@ -78,6 +78,14 @@ export class View {
      * flyover's orthophoto): there the real lab is visible as in the camera view, see `showsReal`.
      */
     this.groundPhoto = null;
+    /**
+     * The flyover shows a photo of the table from above (the layout's orthophoto): it stands for the
+     * real tables, so their outlines (physical table modules) are not drawn, and where the photo
+     * shows no table the lab is blank. Set before the photo has loaded, unlike `groundPhoto`.
+     */
+    this.tablePhoto = false;
+    /** The flyover in Build: the outlines of real tables under a photo are shown (dashed), to edit them. */
+    this.editing = false;
     /** Rectangles of labels drawn so far (labels avoid overlapping each other). */
     this.placed = [];
     this.pose = pose || poseFromHomography(H, camera.intrinsics);

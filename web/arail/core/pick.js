@@ -146,7 +146,7 @@ export function pickObject(world, view, [u, v], ground, tol) {
   let best = null;
   for (const o of world.objects) {
     if (!o.geometry || typeof o.footprint !== "function") continue;
-    if (o.physical && !view.virtual) continue;
+    if (o.physical && (!view.virtual || (view.tablePhoto && !view.editing))) continue; // not drawn: over the camera image, under the flyover's photo
     const fp = o.footprint();
     if (!fp?.length) continue;
     let hit = false;

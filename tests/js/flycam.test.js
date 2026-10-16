@@ -324,6 +324,27 @@ test("table modules are drawn in the flyover, extensions also over the camera im
   }
 });
 
+test("under the flyover's photo of the table a real table is blank: its outline only in Build, dashed; picked only there", () => {
+  const world = createWorld({ objects: [{ id: "real", type: "tabletop", position: [0, 900], width_mm: 800, depth_mm: 400, kind: "physical" }] });
+  const cam = new FlyCamera({ target: [0, 900], distance: 2500, yaw: toRad(90), pitch: toRad(35) });
+  const edge = [0, 1100]; // the middle of its far edge
+  {
+    const { view, fills, strokes } = flyView(cam);
+    view.tablePhoto = true;
+    world.draw(view);
+    assert.equal(fills.length + strokes.length, 0, "the photo shows the real table");
+    assert.equal(world.pick(view, view.project(...edge, 0))?.key ?? null, null, "nothing to pick where nothing is drawn");
+  }
+  {
+    const { view, fills, strokes } = flyView(cam);
+    Object.assign(view, { tablePhoto: true, editing: true });
+    world.draw(view);
+    assert.equal(fills.length, 0);
+    assert.equal(strokes.length, 1, "Build: its outline, to edit it");
+    assert.equal(world.pick(view, view.project(...edge, 0))?.key, "object:real");
+  }
+});
+
 /** Is a fill colour (#hex or rgba()) the given #hex colour? */
 function colourIs(colour, hex) {
   const m = String(colour).match(/rgba?\(([^)]+)\)/);
