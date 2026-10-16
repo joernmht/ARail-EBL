@@ -57,6 +57,10 @@ export class Panels {
         h("p", { class: "hint" }, modules.some((m) => m.exclusive)
           ? "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Modules marked “alone” are not combined with others: choosing one switches the others off. Switching a module of the layout starts the simulations again; your changes are kept."
           : "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Switching a module of the layout starts the simulations again; your changes are kept.")),
+      // the app: the photo tour on the stage chooses what is shown; the examples with a clip, a tab or a layout of their own are here
+      app.tourNav ? section("Examples",
+        h("div", { class: "row examples" }, app.page.examples.map((x) => h("button", { class: "btn small", type: "button", id: `example-${x.id}`, onclick: () => app.openExample(x.id) }, x.label))),
+        h("p", { class: "hint" }, "The arrows at the edges of the stage walk round the lab from photo to photo (keys ← and →); the buttons in its upper left corner choose the side the photos are taken from. Where a photo has a digital layer, its layout opens with it.")) : null,
       section("Tracking", this.viewInfo, h("p", { class: "hint" },
         "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
       this.flyBox,

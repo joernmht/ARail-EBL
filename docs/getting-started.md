@@ -20,11 +20,23 @@ The top bar chooses what the app looks at:
 | **Take photo** | Opens the camera app of a phone; the photo is analysed once at high resolution. |
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
-| **Layouts…** | Loads an example layout together with its photo or clip (see [The examples](#the-examples)). The virtual container terminal has no image: it opens in the flyover. |
+
+The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a tab or a layout of their own are in **View → Examples** (on the game page in the list **Layouts…** of the top bar).
+
+### The photo tour
+
+The photos of the lab survey of 9 October 2026 (the [photo map](lab-session.md#the-photo-map)) as a Street View of the layout. They are grouped into parts of the table (the 15 marker groups of the survey: the curve at the Neustadt end, Bf Neustadt in four parts, Waldhof south, Waldhof, Waldhof north with the goods yard, the corner by Hp Papiermühle, Adorf and the test track in four parts, the door with the swing bridge, the left end), in their order round the ring of tables, and each part keeps at most **six photos: one from each perspective**: from the front, from the back and from the four diagonals (front left, front right, back left, back right). The front is the side of the middle of the hall, where visitors stand; left and right are as seen from the front.
+
+| Control | What it does |
+| --- | --- |
+| **Perspective** (the six buttons in the upper left corner of the stage) | Look at the part from that side. The three buttons above the bar (the table) are the cameras at its back, the three below it those at its front; each arrow points the way the camera looks. A dimmed button: no photo from that side here, the nearest one is shown. |
+| **‹ ›** (the arrows at the left and right edges of the stage), keys **←** and **→** | The next part to the left or the right, as the camera sees it: from the front, → goes clockwise round the ring (along the windows towards Waldhof), from the back the other way. The perspective stays where the next part has a photo from that side, else the nearest one is shown, and the next step again looks for the one you chose. |
+
+Where a photo has a **digital layer** (Bf Neustadt, the goods yard with the hybrid container train), its layout opens with it and tracks it, as any photo. The others are shown as the photo only: the HUD says *Photo only: no digital layer for this part yet*, no markers are looked for, and the layout open until then stays (also in the flyover). The HUD names the part and the perspective; the address follows the tour (`app/?photo=132526`), and the photo map's **Open with the digital layer** opens the tour at that photo. In the flyover the tour's buttons are hidden; the arrow keys pan there.
 
 ### The examples
 
-| Layouts… | Layout | Image | What it shows |
+| View → Examples | Layout | Image | What it shows |
 | --- | --- | --- | --- |
 | **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the modules operations, infrastructure and journeys with their stories (a train breaking down, the maintenance, a traveller's journey) |
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
@@ -46,7 +58,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 ## The flyover
 
-**Flyover** (button, View panel or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
+**Flyover** (button, View panel or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of all the linked parts of the lab, from the curve to Waldhof south, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts)), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
 
 | Input | Mouse and keyboard | Touch |
 | --- | --- | --- |
@@ -105,6 +117,7 @@ The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, *
 ### View
 
 - *Modules*: boxes to click, one per module; each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
+- *Examples* (the app): the examples with a clip, a tab or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
 - *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
 - *Flyover*: see above.
 - *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, and **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend; see [Railway systems](rail-systems.md).
@@ -161,7 +174,7 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 
 ### Terminal
 
-Shown when the layout has a container terminal (**Layouts… → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
+Shown when the layout has a container terminal (**View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
 
 - The terminal's state, **Reset terminal** and **Save as start state**.
 - *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**; while it moves, the line of its job, and **Cancel** before the crane locks it.
@@ -206,6 +219,7 @@ Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` 
 | M | marker outlines on/off |
 | F | flyover on/off |
 | S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
+| ← → | the photo tour (the app, not in the flyover): the next part to the left or the right (on the stage or with nothing focused) |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
 | Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross; elsewhere: the info card of what is at the cross |
 | R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
@@ -262,7 +276,8 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | Parameter | Effect |
 | --- | --- |
 | `layout=<url>` | load a layout file (relative to the app); without it the app opens the last layout, or Bf Neustadt (the game page: the lab example Beta 0.1) |
-| `example=<id>` | open an example of the Layouts menu with its photo or clip and tab: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
+| `example=<id>` | open an example (View → Examples; the game page: its Layouts menu) with its photo or clip and tab: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
+| `photo=<id>` | the app: a photo of the [photo tour](#the-photo-tour) by its id (the time it was taken, `hhmmss`, as on the photo map), with the layout of its digital layer |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |

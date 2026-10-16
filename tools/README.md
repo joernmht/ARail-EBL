@@ -9,6 +9,7 @@ Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and four No
 | `arail-bridge` | connects a control system to the ARail web app (WebSocket feed) | `bridge` |
 | `arail-calibrate` | camera calibration with the layout's markers, JSON output for the app | `opencv` |
 | `arail-survey` | surveys a layout from a video or photos: fixed marker map, report, orthophoto of the table | `opencv` or `headless` |
+| `arail-mosaic` | joins the orthophotos of the photo map's linked marker groups and a layout's own into one solid orthophoto for the flyover | `opencv` or `headless` |
 | `arail-stabilize` | steadier poses for a video of the app: the markers' poses joined with the picture's own motion | `opencv` or `headless` |
 | `arail-compose` | joins rendered shots into a video: crops, slow pushes, crossfades, a seamless loop; H.264 (ffmpeg) | `opencv` or `headless` |
 | `arail-synthetic` | renders the synthetic test scene of the tests (`npm run fixtures`) | `opencv` or `headless` |
@@ -41,6 +42,20 @@ only these markers; `--unlocked` to skip), and markers on vehicles (`markers.mov
 [lab-session checklist](../docs/lab-session.md) covers stickers, filming and checking the report.
 For a quick check in the lab, the app does a simpler survey of its own: Build → Marker map →
 Survey a video.
+
+When the lab is surveyed in parts (marker groups, as on the photo map `web/lab-map/data.json`),
+`arail-mosaic` puts the orthophotos of the linked groups into the frame of a layout and joins them
+with the layout's own orthophoto into one, without holes, for the flyover:
+
+```bash
+arail-mosaic web/lab-map/data.json --reference web/media/ebl-neustadt-ortho.jpg \
+    --bounds -2400 -70 3750 650 --out web/media/ebl-neustadt-linked-ortho.jpg \
+    --image ../media/ebl-neustadt-linked-ortho.jpg
+```
+
+It finds the hall frame in the layout frame from features of the photos (or `--frame x y deg
+scale`) and prints the `view.ortho` entry for the layout; see
+[Lab session](../docs/lab-session.md#one-orthophoto-of-the-linked-parts).
 
 ## Videos
 

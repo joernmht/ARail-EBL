@@ -7,6 +7,7 @@ import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Panels } from "./panels.js";
+import { TourNav } from "./tour-nav.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
 import { addTexts, chooseLanguage, i18n, setLanguage, tr } from "./i18n.js";
 
@@ -20,9 +21,12 @@ const params = new URLSearchParams(location.search);
  * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, home?}` (`home`: the layout
  *   it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the tab shown), the
  *   first one opened when nothing else was;
- * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on.
+ * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on;
+ * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
+ *   choose what is shown, and the examples are listed in the View panel; a page without it has the
+ *   list of layouts (Layouts…) in its bar.
  * @typedef {{id: string, panels: Object<string, (app: App) => object>, shows: Object<string, string>,
- *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>}} Page
+ *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
  */
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
@@ -118,16 +122,25 @@ export class App {
     this.infra = this.tabPanels.infra ?? null;
     this.journeys = this.tabPanels.journeys ?? null;
     this.inspector = new Inspector(this);
+    /** The photo tour on the stage (the app), or null (the game page). */
+    this.tourNav = this.page.tour && $("#tour") ? new TourNav(this, this.page.tour) : null;
     this._wireUi();
     this._wireEvents();
+    const tourReady = this.tourNav?.load();
+    // ?photo=: a photo of the photo tour, with the layout of its digital layer
+    const photo = params.has("photo") && (await tourReady) ? params.get("photo") : null;
+    const tourPhoto = !!photo && this.tourNav.byId.has(photo);
+    if (photo && !tourPhoto) toast(`There is no photo “${photo}” on the photo map.`, 7000);
+    const photoLayout = tourPhoto ? this.tourNav.layoutOf(photo) : null;
     // ?example=: an example with its own photo or clip (a link from the project page)
     const example = this.page.examples.find((x) => x.id === params.get("example")) || null;
-    const layout = example?.layout || params.get("layout") || storage.get(this.key("lastLayout")) || this.page.examples[0].layout;
+    const layout = photoLayout || example?.layout || params.get("layout") || storage.get(this.key("lastLayout")) || this.page.examples[0].layout;
     const image = params.get("image");
     const media = !image && (example?.image || example?.video) ? example : null;
     const layers = params.has("layers") ? params.get("layers").split(",").filter(Boolean) : null;
-    await this.loadLayoutFromUrl(layout, { withImage: !image && !media && params.get("camera") !== "1", layers });
-    if (image) this.loadImage(new URL(image, location.href).href, "Image");
+    await this.loadLayoutFromUrl(layout, { withImage: !tourPhoto && !image && !media && params.get("camera") !== "1", layers });
+    if (tourPhoto) this.tourNav.showPhoto(photo);
+    else if (image) this.loadImage(new URL(image, location.href).href, "Image");
     else if (media) this._loadExampleMedia(media);
     else if (params.get("camera") === "1") this.startLive();
     if (params.get("mock") === "1") this.panels.startMock();
@@ -190,14 +203,17 @@ export class App {
         this.startLive();
       });
     }
+    // the list of layouts in the bar (the game page; the app has the photo tour and its examples in the View panel)
     const sel = $("#exampleSelect");
-    mount(sel, h("option", { value: "" }, "Layouts…"), this.page.examples.map((x) => h("option", { value: x.id }, x.label)));
-    sel.addEventListener("change", async () => {
-      if (!sel.value) return;
-      const id = sel.value;
-      sel.value = "";
-      await this.openExample(id);
-    });
+    if (sel) {
+      mount(sel, h("option", { value: "" }, "Layouts…"), this.page.examples.map((x) => h("option", { value: x.id }, x.label)));
+      sel.addEventListener("change", async () => {
+        if (!sel.value) return;
+        const id = sel.value;
+        sel.value = "";
+        await this.openExample(id);
+      });
+    }
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
       const el = $("#stageWrap");
@@ -259,7 +275,7 @@ export class App {
       e.preventDefault();
       return;
     }
-    if (this.flyover.key(e)) {
+    if (this.flyover.key(e) || this.tourNav?.key(e)) {
       e.preventDefault();
       return;
     }
@@ -460,6 +476,30 @@ export class App {
     const src = new URL(x.video || x.image, location.href).href;
     if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""));
     else this.loadImage(src, x.label.replace(/^Example: /, ""));
+  }
+
+  /**
+   * Show a photo of the photo tour: with the layout of its digital layer (opened first when another
+   * one is open), which tracks it; without a layout (`track: false`) as the photo only: its markers
+   * are not looked for, and the layout stays.
+   * @param {string} src
+   * @param {string} name
+   * @param {{layout?: string | null, track?: boolean, current?: () => boolean}} [options] current:
+   *   false once another photo was asked for (while the layout loaded)
+   */
+  async openPhoto(src, name, { layout = null, track = true, current = () => true } = {}) {
+    this.stopLive();
+    if (layout && layout !== this.layoutUrl) {
+      // the photo or clip shown until now belongs to the previous layout
+      if (this.source) this.source.stale = true;
+      await this.loadLayoutFromUrl(layout, { withImage: false });
+      if (!current()) return;
+    }
+    if (this._autoFlyover) {
+      this._autoFlyover = false;
+      this.flyover.leave();
+    }
+    this.loadImage(src, name, null, { track });
   }
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
@@ -849,11 +889,15 @@ export class App {
 
   /* ---------------------------------------------------------------- sources */
 
-  setSource(el, kind, nw, nh, name, objectUrl = null) {
+  /**
+   * @param {{track?: boolean}} [options] track: false shows a photo without looking for its markers
+   *   (a photo of the photo tour without a digital layer: `source.untracked`)
+   */
+  setSource(el, kind, nw, nh, name, objectUrl = null, { track = true } = {}) {
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl };
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();
@@ -875,13 +919,14 @@ export class App {
    * @param {string} src URL
    * @param {string} name shown in the app
    * @param {string | null} [objectUrl] object URL to revoke when the source is replaced
+   * @param {{track?: boolean}} [options] track: false shows it without looking for markers (see setSource)
    */
-  loadImage(src, name, objectUrl = null) {
+  loadImage(src, name, objectUrl = null, { track = true } = {}) {
     const token = ++this._loadToken;
     const img = new Image();
     img.crossOrigin = "anonymous"; // images from other sites must allow it, or the canvas cannot be read
     img.onload = () => {
-      if (token === this._loadToken) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl);
+      if (token === this._loadToken) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track });
       else if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
     img.onerror = () => token === this._loadToken && toast(`The image ${name} could not be loaded.`);
@@ -1030,7 +1075,7 @@ export class App {
 
   /** Detect markers in a still image once, at high resolution. */
   redetect() {
-    if (!this.source || !this.detector || this.source.stale) return;
+    if (!this.source || !this.detector || this.source.stale || this.source.untracked) return;
     if (this.source.kind !== "image") return; // video frames are processed continuously
     const { el, nw, nh } = this.source;
     toast("Looking for markers…", 1500, { minor: true }); // e.g. "Your changes to this layout were restored" stays
@@ -1218,7 +1263,9 @@ export class App {
       chips.push(["ok", this.flyover.simple ? (this.flyover.cam.isPlan ? "Map" : "Simple 2.5D") : `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
       chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
     } else if (!this.source) chips.push(["warn", "No image yet"]);
-    else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
+    else if (this.source.untracked) {
+      // a photo of the photo tour without a digital layer: its chip says so (TourNav.hudChips)
+    } else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
     else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
     else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
     else chips.push(["bad", "No markers in view"]);
@@ -1250,7 +1297,9 @@ export class App {
       chips.push(["info", `Journeys · ${going} travelling · ${done} of ${all.length} arrived`]);
     }
     if (this.frozen) chips.push(["info", "Frozen frame"]);
+    if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
+    this.tourNav?.sync();
     const hud = $("#hud");
     morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
     // a label pulled in at the top edge of the picture (a depot's board out of view) goes below the chips

@@ -181,7 +181,7 @@ The flyover (View → Flyover, key F) shows a grid on the layout plane; placed p
 "view": { "image": "../media/ebl-lab.jpg", "ortho": { "image": "../media/ebl-lab-ortho.jpg", "bounds_mm": [-300, -320.2, 1870.2, 700] } }
 ```
 
-An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md)): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame (xmin < xmax, ymin < ymax). Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; its uncovered (light grey) border is left out. Where it covers platforms and tracks, their virtual surfaces are left out too (the photo shows the real ones). Table modules of the kind `extension` lie above the photo, real tables (`physical`) below it.
+An orthophoto of the table (from `arail-survey --ortho`, see [the lab session](lab-session.md); `arail-mosaic` joins the orthophotos of several surveyed parts into one, as for Bf Neustadt): `image` is relative to the layout file, `bounds_mm` = `[xmin, ymin, xmax, ymax]` in the layout frame (xmin < xmax, ymin < ymax). Row 0 of the image is at `ymax`, column 0 at `xmin`; the centre of pixel (u, v) of a W × H image is at x = xmin + (u + 0.5)/W · (xmax − xmin), y = ymax − (v + 0.5)/H · (ymax − ymin). The flyover draws it in perspective on the table; its uncovered (light grey) border is left out. Where it covers platforms and tracks, their virtual surfaces are left out too (the photo shows the real ones). Table modules of the kind `extension` lie above the photo, real tables (`physical`) below it.
 
 ## `view.extend_below`
 

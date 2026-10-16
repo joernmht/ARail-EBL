@@ -24,6 +24,7 @@ dev = ["pytest>=8", "ruff>=0.6"]
 arail-bridge = "arail_tools.bridge.__main__:main"
 arail-calibrate = "arail_tools.calibrate:main"
 arail-compose = "arail_tools.compose:main"
+arail-mosaic = "arail_tools.mosaic:main"
 arail-survey = "arail_tools.survey:main"
 arail-stabilize = "arail_tools.stabilize:main"
 arail-synthetic = "arail_tools.synthetic:main"

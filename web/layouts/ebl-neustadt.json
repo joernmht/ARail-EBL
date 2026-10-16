@@ -363,6 +363,6 @@
   ],
   "view": {
     "image": "../media/ebl-neustadt.jpg",
-    "ortho": {"image": "../media/ebl-neustadt-ortho.jpg", "bounds_mm": [-2400, -70, 3750, 650]}
+    "ortho": {"image": "../media/ebl-neustadt-linked-ortho.jpg", "bounds_mm": [-2603.4, -415.7, 12536.6, 1516.3]}
   }
 }

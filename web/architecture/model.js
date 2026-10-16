@@ -151,8 +151,8 @@ export const PACKAGES = [
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
-    summary: "The app, an interactive presentation: sources, frame loop, HUD, the panels (Build, View, the modules' tabs with their stories, Disruptions, Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/inspect.js", "web/app/i18n.js", "web/app/lang/de.js"],
+    summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panels (Build, View, the modules' tabs with their stories, Disruptions, Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {
@@ -193,8 +193,8 @@ export const PACKAGES = [
   },
   {
     id: "camera-tools", name: "camera tools (Python)", group: "tools", path: "tools/arail_tools",
-    summary: "arail-survey (marker map and orthophoto from a video), arail-calibrate, synthetic scenes and the test fixtures.",
-    files: ["tools/arail_tools/__init__.py", "tools/arail_tools/aruco.py", "tools/arail_tools/survey.py", "tools/arail_tools/calibrate.py", "tools/arail_tools/synthetic.py", "tools/arail_tools/fixtures.py"],
+    summary: "arail-survey (marker map and orthophoto from a video), arail-mosaic (one orthophoto of the linked parts of the lab), arail-calibrate, synthetic scenes and the test fixtures.",
+    files: ["tools/arail_tools/__init__.py", "tools/arail_tools/aruco.py", "tools/arail_tools/survey.py", "tools/arail_tools/mosaic.py", "tools/arail_tools/calibrate.py", "tools/arail_tools/synthetic.py", "tools/arail_tools/fixtures.py"],
     uses: [], links: [["core-world", "layout and calibration files"]],
   },
   {
@@ -231,11 +231,14 @@ export const DATA_FLOW = {
     { id: "feed", kind: "process", no: "P8", label: "Apply the feed", files: ["web/arail/feeds/websocket.js", "web/arail/core/trains.js"] },
     { id: "survey", kind: "process", no: "P9", label: "Survey (arail-survey)", files: ["tools/arail_tools/survey.py"] },
     { id: "calibrate", kind: "process", no: "P10", label: "Calibrate (arail-calibrate)", files: ["tools/arail_tools/calibrate.py"] },
+    { id: "tour", kind: "process", no: "P11", label: "Photo tour: the next photo", files: ["web/app/tour.js", "web/app/tour-nav.js"] },
+    { id: "mosaic", kind: "process", no: "P12", label: "Join orthophotos (arail-mosaic)", files: ["tools/arail_tools/mosaic.py"] },
     { id: "layouts", kind: "store", no: "D1", label: "Layout files" },
     { id: "browser", kind: "store", no: "D2", label: "Browser storage" },
     { id: "world", kind: "store", no: "D3", label: "World state" },
     { id: "results", kind: "store", no: "D4", label: "Results and saved games" },
     { id: "calibration", kind: "store", no: "D5", label: "Calibration file" },
+    { id: "photos", kind: "store", no: "D6", label: "Photo map of the lab" },
   ],
   flows: [
     { from: "camera", to: "detect", label: "frames" },
@@ -263,6 +266,12 @@ export const DATA_FLOW = {
     { from: "survey", to: "layouts", label: "locked marker map, orthophoto" },
     { from: "camera", to: "calibrate", label: "photos of markers" },
     { from: "calibrate", to: "calibration", label: "camera-calibration.json" },
+    { from: "people", to: "tour", label: "arrows, perspective" },
+    { from: "photos", to: "tour", label: "photos, their parts and layers" },
+    { from: "tour", to: "load", label: "the layout of the photo's digital layer" },
+    { from: "tour", to: "detect", label: "the photo (with a digital layer)" },
+    { from: "photos", to: "mosaic", label: "orthophotos of the linked groups" },
+    { from: "mosaic", to: "layouts", label: "one solid orthophoto" },
   ],
 };
 

@@ -5,14 +5,14 @@
 export const PAGES = [
   {
     id: "app", group: "pages", title: "The app",
-    summary: "An interactive presentation of the lab: sources (camera, photo, video, flyover), the frame loop, the HUD and the panels: View (with the modules), Build, the modules' tabs (stories to click through; the terminal's moves), Disruptions and Settings (simulation and control system).",
-    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. A page (main.js; the game page's main.js) gives App its panels, the simulation that shows each module tab, and its examples: in the app the Operations tab shows the operations story, the Infrastructure tab the maintenance story and the Journeys tab the journeys story (StoryPanel), the Terminal tab the containers to move one by one. The tabs follow the modules: a module tab appears while the layout has the page's simulation for it, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js"],
+    summary: "An interactive presentation of the lab: sources (camera, photo, video, flyover), the photo tour of the lab (from photo to photo, as in Street View), the frame loop, the HUD and the panels: View (with the modules and the examples), Build, the modules' tabs (stories to click through; the terminal's moves), Disruptions and Settings (simulation and control system).",
+    description: "App owns one World and replaces its layout when another is opened; the layout's edits, the choice of modules and the display settings are kept in the browser. In the app the photo tour chooses what the stage shows: the photos of the photo map (web/lab-map/data.json) in parts of the table round the ring of tables, at most one per perspective (from the front, the back and the four diagonals; the front is the side of the middle of the hall); the arrows go to the next part in the perspective chosen, and a photo with a digital layer opens with the layout of that layer. The game page has the list of layouts (Layouts…) in its bar instead. A page (main.js; the game page's main.js) gives App its panels, the simulation that shows each module tab, and its examples: in the app the Operations tab shows the operations story, the Infrastructure tab the maintenance story and the Journeys tab the journeys story (StoryPanel), the Terminal tab the containers to move one by one. The tabs follow the modules: a module tab appears while the layout has the page's simulation for it, Build and Disruptions with the app's modules of those names (Build is on until switched off); View and Settings are always there. Panels are rendered from small DOM helpers (ui.js) and refreshed every 400 ms in place (morph), so focus and clicks are kept.",
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/inspect.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/tour.js", "web/app/tour-nav.js"],
     classes: [
       {
         name: "App", file: "web/app/app.js", kind: "class", role: "A page with a stage: source, tracking, world, panels (the app and the game page).",
-        attributes: ["page: Page — panels, the simulations that show the module tabs, examples", "tabPanels: object — the panels of the module tabs", "tabNames: string[] — the page's tabs", "world: World", "tracker: PlaneTracker", "detector: MarkerDetector", "camera: Camera", "source: object | null — camera, photo or video", "mode: string — camera or flyover", "activeTab: string", "layoutUrl: string | null", "moduleHome: object | null — the layout a module layout belongs to", "appModules: Map — the app's modules on, per layout (also kept in the browser)", "hudRects: object[] — the HUD's chips over the canvas: the stage's labels keep clear of them"],
-        operations: ["init()", "frame(dt)", "render()", "updateHud() — the chips over the stage, and where they lie (hudRects)", "tabs() — the tabs shown", "key(name) — what the page keeps in the browser", "storyPanel() — the panel of the tab shown, when it tells a story", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "switchOnModule(id) — from Settings or an example: an exclusive one alone, else without the exclusive ones", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()", "changeLanguage(lang) — View → Language"],
+        attributes: ["page: Page — panels, the simulations that show the module tabs, examples", "tabPanels: object — the panels of the module tabs", "tabNames: string[] — the page's tabs", "world: World", "tracker: PlaneTracker", "detector: MarkerDetector", "camera: Camera", "source: object | null — camera, photo or video", "mode: string — camera or flyover", "activeTab: string", "layoutUrl: string | null", "moduleHome: object | null — the layout a module layout belongs to", "appModules: Map — the app's modules on, per layout (also kept in the browser)", "hudRects: object[] — the HUD's chips over the canvas: the stage's labels keep clear of them", "tourNav: TourNav | null — the photo tour (the app)"],
+        operations: ["init()", "frame(dt)", "render()", "updateHud() — the chips over the stage, and where they lie (hudRects)", "tabs() — the tabs shown", "key(name) — what the page keeps in the browser", "storyPanel() — the panel of the tab shown, when it tells a story", "selectTab(name)", "openTab(name) — after an action elsewhere, the focus on its heading", "modules() — the layout's modules and the app's", "toggleModule(id)", "switchOnModule(id) — from Settings or an example: an exclusive one alone, else without the exclusive ones", "setAppModule(id, on)", "openExample(id) — with its own photo or clip", "_loadExampleMedia(x)", "openPhoto(src, name, options) — a photo of the tour: with the layout of its digital layer, else untracked", "_drawMarkerCovers(view) — grey plates over the markers (setting coverMarkers)", "sizeCanvas() — the source, and below it the layout's view.extend_below", "loadLayoutFromUrl(url, opts)", "_applyLayout(json)", "saveLayout()", "changeLanguage(lang) — View → Language"],
       },
       { name: "Panels", file: "web/app/panels.js", kind: "class", role: "The View, Settings and Disruptions panels.", attributes: ["settingsView: string — simulate or control"], operations: ["renderView(el)", "renderSettings(el)", "renderSimulate(el)", "setSettingsView(v)", "renderControl(el)", "renderDisruptions(el)", "_moduleBox(m)"] },
       { name: "Editor", file: "web/app/editor.js", kind: "class", role: "Build: placing, dragging, the inspector, the marker map.", operations: ["startPlacing(type)", "placeAt(p, e)", "select(obj)", "render(container)", "renderInspector()", "keepPositions()"] },
@@ -26,7 +26,18 @@ export const PAGES = [
         attributes: ["hover: object | null — the pickable under the mouse", "open: object | null — the card shown: its key and pickable", "keyAim: boolean — the cross in the middle of the flyover (keyboard)"],
         operations: ["hoverAt(pixel)", "tapAt(pixel, opts) — outside Build and Terminal", "inspectCentre() — Enter on the flyover", "show(hit)", "close()", "update() — every 400 ms", "drawOverlay(ctx, view)", "act(id) — follow"],
       },
-      { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first)." },
+      {
+        name: "PhotoTour", file: "web/app/tour.js", kind: "class", role: "The photo map's photos as a tour: parts of the table in their order round the ring, at most one photo per perspective (testable in Node).",
+        attributes: ["parts: object[] — id, name, centre, front (the direction a camera at its front looks in), around, views (a photo per perspective), layers", "hall: object — the middle of the ring and its middle line", "layers: object — the photo map's digital layers"],
+        operations: ["view(index, perspective) — that photo, else the nearest one the part has (the same side first)", "step(index, perspective, dir) — to the right of a camera at the front is the next part clockwise", "find(id)", "home(layer) — the part with the most photos with a layer", "photos()"],
+      },
+      { name: "tour", file: "web/app/tour.js", kind: "module", role: "The perspectives.", attributes: ["PERSPECTIVES — front, back and the four diagonals, by where the camera stands"], operations: ["perspectiveOf(relative) — 60° each"] },
+      {
+        name: "TourNav", file: "web/app/tour-nav.js", kind: "class", role: "The photo tour on the stage: the perspective buttons in the upper left corner, the arrows at its edges, the keys ← and →.",
+        attributes: ["tour: PhotoTour", "perspective: string — chosen, kept while a part does not have it", "at: object | null — the photo shown", "byId: Map — every photo of the photo map"],
+        operations: ["load()", "go(dir)", "choose(perspective)", "showPhoto(id) — ?photo=", "layoutOf(id) — the layout of its digital layer", "showing()", "here() — the part shown, else the home of the layout's layer", "sync() — hidden in the flyover, the perspective pressed, missing ones dimmed", "hudChips()", "key(e)", "_open(view)"],
+      },
+      { name: "app main", file: "web/app/main.js", kind: "module", role: "The app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first), the photo tour." },
       { name: "ui", file: "web/app/ui.js", kind: "module", role: "DOM helpers.", attributes: ["storage — localStorage that never throws"], operations: ["h(tag, attrs, ...children) — its texts in the language chosen, unless translate: \"no\"", "mount(el, ...children)", "morph(el, ...children) — update in place", "toast(text, ms, opts)", "paramFields(params, values, onChange, opts)"] },
     ],
     relations: [
@@ -40,6 +51,8 @@ export const PAGES = [
       { from: "StoryPanel", to: "Story", kind: "uses", label: "steps" },
       { from: "app main", to: "App", kind: "creates" },
       { from: "App", to: "Inspector", kind: "composes", label: "inspector" },
+      { from: "App", to: "TourNav", kind: "composes", label: "tourNav (the app)" },
+      { from: "TourNav", to: "PhotoTour", kind: "creates", label: "tour" },
       { from: "Inspector", to: "World", kind: "uses", label: "pick, card" },
       { from: "Panels", to: "ui", kind: "depends" },
     ],
@@ -63,13 +76,32 @@ export const PAGES = [
         ["e", "end"],
       ],
       edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "yes"], ["a2", "a1"], ["d1", "a3", "no"], ["a3", "d2"], ["d2", "a4", "yes"], ["d2", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "a6"], ["a6", "d3"], ["d3", "a7", "yes"], ["d3", "a8", "no"], ["a7", "m2"], ["a8", "m2"], ["m2", "e"]],
+    }, {
+      id: "tour", name: "Walking round the lab (TourNav.go, an arrow or ← →)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "The next part on that side of the camera: clockwise from the front, the other way from the back", "PhotoTour.step"],
+        ["a2", "action", "Its photo in the perspective chosen, else the nearest one it has (the same side first)", "PhotoTour.view"],
+        ["d1", "decision", "A digital layer?"],
+        ["d2", "decision", "Its layout open?"],
+        ["a3", "action", "Open that layout; the photo shown until now is not measured into it", "App.openPhoto"],
+        ["m1", "merge"],
+        ["a4", "action", "The photo, tracked", "App.loadImage"],
+        ["a5", "action", "The photo only: no markers looked for, the layout stays", "App.loadImage"],
+        ["m2", "merge"],
+        ["a6", "action", "?photo= in the address; the buttons, the place in the HUD", "TourNav.sync"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "d2", "yes"], ["d2", "a3", "no"], ["d2", "m1", "yes"], ["a3", "m1"], ["m1", "a4"], ["d1", "a5", "no"], ["a4", "m2"], ["a5", "m2"], ["m2", "a6"], ["a6", "e"]],
     }],
     parameters: [
       { key: "?layout=, ?layers=", default: "the last layout, its last modules", meaning: "A layout and its modules (e.g. layers=journeys)." },
       { key: "#tab", default: "view", meaning: "The tab: view, build, terminal, ops, infra, journeys, disrupt, settings (simulate, control: its views); #build and #disrupt switch their module on." },
       { key: "Page Down, Page Up", default: "", meaning: "A presenter's clicker: the next or the step before of the story of the tab shown." },
       { key: "?image=, ?camera=1, ?scenario=", default: "", meaning: "A photo, the live camera, a scenario played (switches the module Disruptions on)." },
-      { key: "?example=", default: "", meaning: "An example of the Layouts menu with its own photo or clip and tab (e.g. example=crane-terminal: Bf Neustadt with the photo of the terminal)." },
+      { key: "?example=", default: "", meaning: "An example of the View panel (the game page: of its Layouts menu) with its own photo or clip and tab (e.g. example=crane-terminal: Bf Neustadt with the photo of the terminal)." },
+      { key: "?photo=", default: "", meaning: "A photo of the photo map by its id (hhmmss): shown in the photo tour, with the layout of its digital layer; the address follows the tour." },
+      { key: "← →", default: "", meaning: "The photo tour: the next part to the left or the right (on the stage, or with nothing focused; in the flyover the arrows pan)." },
     ],
     events: {
       listens: [
@@ -80,7 +112,7 @@ export const PAGES = [
         { name: "story.step", does: "the story's tab shown anew; the flyover's camera follows" },
       ],
     },
-    rules: ["Edits are saved 300 ms after the last change, per layout.", "Taps on the stage open the info card of what is there, except in Build (they select) and in Terminal (they pick containers); the tooltip follows the mouse in every tab.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on."],
+    rules: ["Edits are saved 300 ms after the last change, per layout.", "Taps on the stage open the info card of what is there, except in Build (they select) and in Terminal (they pick containers); the tooltip follows the mouse in every tab.", "The app's modules (Build, on by default; Disruptions, off) are kept per layout, only where switched from their default; a module layout (the terminal) shares them with its home.", "A link to the tab of an app's module (#build, #disrupt) switches it on.", "The photo tour keeps at most one photo per part and perspective: one with a digital layer first, then the one looking most nearly that way, near the middle of the part, with more markers.", "A photo of the tour without a digital layer is shown untracked: the layout stays, and none of its markers is measured into the map."],
   },
   {
     id: "i18n", group: "pages", title: "Texts in other languages",

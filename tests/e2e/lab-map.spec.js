@@ -25,9 +25,12 @@ test("a photo with a layer opens in the app, which tracks it", async ({ page }) 
   await page.keyboard.press("Enter");
   const link = page.locator("#viewerLayer");
   await expect(link).toBeVisible();
-  await expect(link).toHaveAttribute("href", /^\.\.\/app\/\?layout=.+&image=.+lab-map%2Fphotos%2F/);
+  // the app's photo tour at this photo, with the layout of its layer
+  await expect(link).toHaveAttribute("href", /^\.\.\/app\/\?photo=\d{6}$/);
+  const id = (await link.getAttribute("href")).match(/\d{6}/)[0];
   await link.click();
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.source.el.src)).toMatch(new RegExp(`/lab-map/photos/${id}\\.jpg$`));
 });
 
 test("?photo= opens that photo; the lists below the map open photos too", async ({ page }) => {

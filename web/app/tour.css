@@ -1,0 +1,48 @@
+/* The photo tour (web/app/tour-nav.js): walking round the lab from photo to photo. Uses the tokens
+   of app.css (corporate design of the Chair of Railway Operations): controls over the photo on the
+   Dunkelblau overlay, as the flyover's camera buttons; the perspective shown in Orange (pressed). */
+
+/* the controls lie over the stage; the stage under them stays clickable */
+.tour { position: absolute; inset: 0; pointer-events: none; }
+.tour .btn {
+  pointer-events: auto; padding: 0; border-radius: var(--radius);
+  background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22);
+}
+.tour .btn:hover { border-color: var(--overlay-text); }
+.tour .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
+.tour svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* the perspectives in the upper left corner: the cameras at the back of the table (above it) and
+   at its front (below), left and right as seen from the front; a part without a photo from a side
+   has that button dimmed */
+.tour-views {
+  position: absolute; top: 10px; left: 10px; display: grid; grid-template-columns: repeat(3, 36px); gap: 4px;
+  padding: 5px; border-radius: var(--radius); background: rgba(0, 20, 80, .5);
+}
+.tour-views .btn { width: 36px; height: 32px; }
+.tour-views svg { stroke-width: 2.2; }
+.tour-views .btn.missing:not([aria-pressed="true"]) { opacity: .5; }
+.tour-table { grid-column: 1 / -1; height: 4px; margin: 1px 3px; border-radius: 2px; background: var(--overlay-text); opacity: .7; }
+
+/* the arrows: at the left and right edges of the stage */
+.tour-step { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; }
+.tour-step[data-step="-1"] { left: 10px; }
+.tour-step[data-step="1"] { right: 10px; }
+.tour-step svg { width: 26px; height: 26px; stroke-width: 2.4; }
+
+/* the HUD's chips beside the perspectives, a message while placing (at the top of the stage) below
+   them (their size is measured by tour-nav.js: --tour-w, --tour-h) */
+.tour:not([hidden]) ~ .hud { left: calc(20px + var(--tour-w, 122px)); }
+.tour:not([hidden]) ~ .placing:not([hidden]) ~ .toast { top: calc(20px + var(--tour-h, 88px)); }
+
+@media (max-width: 640px) {
+  .tour-views { grid-template-columns: repeat(3, 32px); gap: 3px; padding: 4px; }
+  .tour-views .btn { width: 32px; height: 28px; }
+  .tour-step { width: 36px; height: 52px; }
+  /* a phone's stage has no room for them beside the placing bar (Build): they make room while it is shown */
+  .stage:has(> .placing:not([hidden])) .tour-step { display: none; }
+}
+@media (forced-colors: active) {
+  .tour-table { background: CanvasText; }
+  .tour .btn[aria-pressed="true"] { border-width: 3px; }
+}
