@@ -101,9 +101,7 @@ test("the catalogues: every translation keeps the placeholders of its English te
 
 test("every text the code asks for by name has a German translation", () => {
   const t = appTranslator();
-  const files = [
-    ...readdirSync(join(ROOT, "web/app")).filter((f) => f.endsWith(".js")).map((f) => `web/app/${f}`),
-  ];
+  const files = ["web/app", "web/builder"].flatMap((dir) => readdirSync(join(ROOT, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`));
   const asked = new Set();
   for (const f of files) {
     const src = read(f);
@@ -128,6 +126,18 @@ test("the page's own markup (bar, stage buttons, tabs) is translated", () => {
   assert.deepEqual(untranslated, []);
   assert.equal(t.translate("Colour the tracks by"), "Gleise färben nach", "the app's texts");
   assert.equal(t.translate("Rail platform"), "Bahnsteig", "the framework's texts");
+});
+
+test("the builder's own markup (bar, plan buttons, tabs) is translated", () => {
+  const t = appTranslator();
+  const html = read("web/builder/index.html");
+  const body = html.slice(html.indexOf("<body>"), html.indexOf("<script"));
+  const texts = new Set();
+  for (const m of body.matchAll(/>([^<>]+)</g)) texts.add(m[1].trim());
+  for (const m of body.matchAll(/\b(?:aria-label|title|alt|placeholder)="([^"]+)"/g)) texts.add(m[1]);
+  const BRAND = new Set(["AR", "ail"]);
+  const untranslated = [...texts].filter((s) => s && /[A-Za-z]{2}/.test(s) && !BRAND.has(s) && !t.has(s) && t.translate(s) === s);
+  assert.deepEqual(untranslated, []);
 });
 
 test("the cards of the framework in German: a train's data and where it may run, a track's systems", async () => {

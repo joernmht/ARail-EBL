@@ -2,7 +2,8 @@
 // The perspective buttons in the upper left corner choose the side the photos are taken from, the
 // arrows at the left and right edges of the stage (and the keys ← and →) go to the next part of the
 // table, in the same perspective where it has one. A photo with a digital layer opens with the
-// layout of that layer, which tracks it; the others are shown as photos only.
+// layout of that layer, which tracks it; the others are shown as photos only. A photo with a
+// covered version (`covered`, made in the builder's Photos tab) is shown covered.
 import { PERSPECTIVES, PhotoTour, perspectiveOf } from "./tour.js";
 import { $, h, mount } from "./ui.js";
 
@@ -139,7 +140,7 @@ export class TourNav {
 
   async _open(view) {
     const app = this.app, token = ++this._token, p = view.photo;
-    const src = new URL(p.image, this.dataUrl).href;
+    const src = new URL(p.covered || p.image, this.dataUrl).href; // its covered photo, where it has one
     this.at = { ...view, src };
     const part = this.tour.parts[view.part], label = PERSPECTIVES.find((v) => v.id === view.perspective).label;
     app.flyover.leave(); // a photo is shown in the camera view

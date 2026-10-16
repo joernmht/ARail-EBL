@@ -65,6 +65,7 @@ export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
 export { RoadNetwork, dockPose, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
+export { accessProblems, applyFix, carGroups, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
 export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";

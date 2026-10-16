@@ -63,6 +63,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `vehicle_types` | `{}` | vehicle types of the layout's own, as in the catalogue (`{"my-wagon": {label, kind, length_m, mass_t, axles, vmax_kmh, brake_t: {P: 30}}}`) |
 | `layers` | `[]` | parts of the layout that can be switched on and off (the app's modules), see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
+| `view.image_covered` | | the same photo with the room painted over (walls, windows, the floor), shown instead of `view.image`; transparent parts show the lab floor. Made by hand and pushed with the [builder](world-builder.md#covered-photos) |
 | `view.ortho` | | photo of the table seen from straight above, drawn on the table in the flyover, see below |
 | `view.start` | | `"flyover"`: the app opens the layout in the flyover (the [virtual container terminal](container-terminal.md#the-virtual-terminal) does) |
 

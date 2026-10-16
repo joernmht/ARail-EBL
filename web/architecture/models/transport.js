@@ -250,7 +250,7 @@ export const TRANSPORT = [
   {
     id: "network", group: "transport", title: "Streets and the road network",
     summary: "One graph of streets, footpaths, the underpass, bus lanes, building entrances and the access points of stops: routes on foot and by car, walks on the sidewalks that cross no track, driving lines.",
-    files: ["web/arail/core/network.js", "web/arail/objects/road.js", "web/arail/objects/underpass.js"],
+    files: ["web/arail/core/network.js", "web/arail/core/access.js", "web/arail/objects/road.js", "web/arail/objects/underpass.js"],
     classes: [
       {
         name: "RoadNetwork", file: "web/arail/core/network.js", kind: "class", role: "world.network(): rebuilt when objects, the marker map or the scale change.",
@@ -258,12 +258,19 @@ export const TRANSPORT = [
         operations: ["place(key)", "nearestNode(p, opts) — for walking, in a straight line over no track", "route(from, to, opts) — Dijkstra", "routeDirected(from, fromDir, to, toDir, opts)", "walk(from, to, keys) — on the sidewalks, or out of sight", "walkLine(path, from, to)", "crossesBarrier(a, b)", "pathAt(path, s)", "drivingLine(path, opts) — on the right lane", "junctions()", "boundaryNodes()"],
       },
       { name: "Underpass", file: "web/arail/objects/underpass.js", kind: "class", extends: "LayoutObject", role: "A footpath under the tracks." },
+      {
+        name: "access", file: "web/arail/core/access.js", kind: "module",
+        role: "Street access: what people and vehicles come to by street has a street that leads there, and the streets make sense; each problem with its fix where one is plain (the builder's Problems tab).",
+        attributes: ["TRUCK_ACCESS_M — 20 m from a truck lane's entry and end", "LANE_ACCESS_M — 40 m from a bus terminal's lane", "NEAR_MISS_M — 15 m: a street end this close to another street is meant to join it", "EDGE_M — 10 m: a dead end this close to the edge leads out of the layout", "FIX_MAX_M — 300 m: the longest street a fix draws", "STUB_M — 30 m: a street out of the layout"],
+        operations: ["accessProblems(world) — errors first, then warnings", "applyFix(world, fix, options) — a street, footpath or underpass to the nearest street, or a street end moved onto the street it almost meets", "nearestStreet(world, p, options)", "layoutBounds(world) — table modules and orthophoto, else everything", "carGroups(net) — streets for cars connected to each other, the largest first", "nameOf(obj)"],
+      },
     ],
     relations: [
       { from: "RoadNetwork", to: "Road", kind: "uses", label: "roadInfo()" },
       { from: "RoadNetwork", to: "StopArea", kind: "uses", label: "access, docks" },
       { from: "RoadNetwork", to: "BusTerminal", kind: "uses", label: "busLane()" },
       { from: "RoadNetwork", to: "Track", kind: "uses", label: "walkBarrier()" },
+      { from: "access", to: "RoadNetwork", kind: "uses", label: "place(), dock(), nodes, edges" },
     ],
     activities: [{
       id: "build", name: "Building the network",
@@ -277,6 +284,20 @@ export const TRANSPORT = [
         ["e", "end"],
       ],
       edges: [["s", "a0"], ["a0", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "e"]],
+    }, {
+      id: "access", name: "Checking the street access (accessProblems)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Stops: people reach a way in from a street or footpath (else a footpath, under the tracks if they are in the way); buses stop on a street", "accessProblems"],
+        ["a2", "action", "Bus terminals: a street within 40 m of the bus lane's ends", "accessProblems"],
+        ["a3", "action", "Truck lanes: a street within 20 m of the entry and the end (else one to the nearest street, or out of the layout)", "accessProblems"],
+        ["a4", "action", "Buildings: a street or footpath to each entrance; the maintenance base's vans a street for cars", "accessProblems"],
+        ["a5", "action", "Street ends: just before another street (join them), or a dead end inside the layout", "accessProblems"],
+        ["a6", "action", "Streets for cars not connected to the others (unless an end just misses them)", "carGroups"],
+        ["a7", "action", "Errors first, then warnings; each with its fix", "accessProblems"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "e"]],
     }, {
       id: "walk", name: "A walk",
       nodes: [

@@ -20,6 +20,7 @@ const PAGES = [
   ["career planner", "/game/career/#aim=signaller-relay"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
+  ["builder", "/builder/?layout=../layouts/ebl-lab.json"],
   ["404 page", "/404.html"],
   ["Impressum", "/impressum/"],
   ["Datenschutzerklärung", "/datenschutz/"],
@@ -33,6 +34,7 @@ for (const scheme of ["light", "dark"]) {
         await page.goto(path);
         // the app and the game page: tracking the layout's photo, or the flyover of a virtual layout (the container terminal)
         if (/^\/(app|game)\/\?layout=..\/layouts\/ebl-|^\/game\/#/.test(path)) await page.waitForFunction(() => window.__arail?.tracker.state.H || (window.__arail?.mode === "flyover" && window.__arail.world.objects.length), null, { timeout: 30_000 });
+        if (path.startsWith("/builder/")) await page.waitForFunction(() => window.__builder?.doc && document.querySelector("#panel-element").childElementCount, null, { timeout: 30_000 });
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
