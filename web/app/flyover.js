@@ -1,7 +1,8 @@
 // Flyover: look at and edit the layout with a virtual camera instead of the camera image.
 // An orbit camera (arail/core/flycam.js) flies around the layout. The stage shows the lab (sky
-// and floor), the table (table modules, or a default table around the markers and objects),
-// the orthophoto of the table (layout `view.ortho`), a grid, the markers and everything virtual.
+// and floor), the table (table modules; without them the orthophoto of the table, layout
+// `view.ortho`, and blank space where it shows none; with neither, a default table around the
+// markers and objects), a grid, the markers and everything virtual.
 // Navigation: mouse, touch, keyboard and on-screen buttons. In Build the editor works as in the
 // camera view, and placed or dragged things snap to the grid.
 import {
@@ -282,10 +283,14 @@ export class Flyover {
     return b[2] >= b[0] ? b : EMPTY_TABLE;
   }
 
-  /** The default table: around markers and objects, unless the layout has the outline of a real table. */
+  /**
+   * The default table around markers and objects, when the layout says nothing about its real table:
+   * no outline of a real table (a physical table module) and no orthophoto. With an orthophoto the
+   * photo shows the table, and where it shows none the lab is blank.
+   */
   _defaultTable() {
     const w = this.app.world;
-    if (hasPhysicalTable(w)) return null;
+    if (hasPhysicalTable(w) || orthoOf(w.layout)) return null;
     const b = defaultTableBounds(w) || EMPTY_TABLE;
     return [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]];
   }
@@ -707,7 +712,7 @@ export class Flyover {
     ctx.restore();
   }
 
-  /** The grid covers the tables and a border around them (room for more table modules). */
+  /** The grid covers the tables, the orthophoto and a border around them (room for more table modules). */
   _gridBounds() {
     const size = this.app.world.layout.grid.size_mm;
     const b = [Infinity, Infinity, -Infinity, -Infinity];
@@ -718,6 +723,12 @@ export class Flyover {
       b[3] = Math.max(b[3], y);
     };
     for (const fp of this._tables()) for (const p of fp) add(p[0], p[1]);
+    // the orthophoto: the real table it shows
+    const ortho = orthoOf(this.app.world.layout);
+    if (ortho) {
+      add(ortho.bounds_mm[0], ortho.bounds_mm[1]);
+      add(ortho.bounds_mm[2], ortho.bounds_mm[3]);
+    }
     // while placing, the grid also reaches the point looked at
     if (this.app.editor.placing) add(...this.cam.target);
     const m = Math.max(10 * size, 400);

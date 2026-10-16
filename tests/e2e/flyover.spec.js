@@ -368,6 +368,45 @@ test("the orthophoto of the table is drawn in perspective; night darkens the fly
   expect(errors).toEqual([]);
 });
 
+test("blank space where there is no table: an orthophoto without a real table's outline gets no default table", async ({ page }) => {
+  const errors = await openApp(page);
+  // the lab without its table modules and its orthophoto: a default table around markers and objects, as nothing shows the real table
+  await page.evaluate(() => {
+    const a = window.__arail;
+    for (const o of a.world.objects.filter((x) => x.type === "tabletop")) a.world.removeObject(o.id);
+    a.world.layout.view = { ...a.world.layout.view, ortho: undefined };
+    a.display.flyMarkers = false;
+  });
+  await enterFlyover(page);
+  await setCamera(page, { target: [700, 100], distance: 4000, yaw_deg: 90, pitch_deg: 89.9 });
+  expect(await page.evaluate(() => !!window.__arail.flyover._defaultTable())).toBe(true);
+  // with an orthophoto (here a small one, 1 m square) the photo is the table: around it the lab is blank, the grid covers it
+  await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 100;
+    const g = c.getContext("2d");
+    g.fillStyle = "#0000ff";
+    g.fillRect(0, 0, 100, 100);
+    const a = window.__arail;
+    a.world.layout.view = { ...a.world.layout.view, ortho: { image: c.toDataURL("image/png"), bounds_mm: [0, 0, 1000, 1000] } };
+  });
+  expect(await page.evaluate(() => window.__arail.flyover._defaultTable())).toBeNull();
+  const sample = (x, y) => page.evaluate(([px, py]) => {
+    const a = window.__arail;
+    a.world.settings.labels = false;
+    a.render();
+    const H = a.pose().H, w = H[6] * px + H[7] * py + H[8];
+    return [...a.ctx.getImageData(Math.round((H[0] * px + H[1] * py + H[2]) / w), Math.round((H[3] * px + H[4] * py + H[5]) / w), 1, 1).data].slice(0, 3);
+  }, [x, y]);
+  await expect.poll(() => sample(530, 530)).toEqual([0, 0, 255]); // the photo
+  const beside = await sample(1530, 530); // beside it, where the default table was: the lab floor of the flyover
+  expect(beside).not.toEqual([220, 222, 220]); // TABLE_SURFACES.grey.top
+  expect(Math.max(...beside) - Math.min(...beside)).toBeLessThan(20);
+  const grid = await page.evaluate(() => window.__arail.flyover._gridBounds());
+  expect(grid[2]).toBeGreaterThanOrEqual(1000);
+  expect(errors).toEqual([]);
+});
+
 test("the video survey works in the flyover: markers appear on the table", async ({ page }) => {
   test.skip(!hasScene(), "run `npm run fixtures` first");
   await routeScene(page);

@@ -19,9 +19,14 @@ flyover::
    reference first).
 4. Seams: for every pixel the piece with the most detail wins (finer pieces, and points farther from
    a piece's edge), with a narrow blend at the seams.
-5. Solid: holes and gaps between the pieces up to ``--close`` mm wide are filled smoothly from
-   their surroundings. Around the table the flat grey stays, which the flyover leaves
-   transparent.
+5. The table: only what has the colour of the table is kept, with what lies on it (tracks, trains,
+   platforms) and the holes the survey left in it; the rest (the floor, walls, windows and chairs
+   the photos show around the table) becomes the flat grey, which the flyover leaves transparent:
+   blank space where there is no table. The table is long and straight, so its outline is drawn in
+   straight lines along it: its front and back edge, bites into them (a window's glare, a shadow)
+   bridged and bumps cut off. The table's colour is the main colour of the reference
+   (``--table auto``), or given as a hue (``--table 140``); ``--table none`` keeps everything.
+6. Solid: holes and gaps up to ``--close`` mm wide are filled smoothly from their surroundings.
 
 Prints the frame and the ``view.ortho`` entry of the layout (JSON).
 """
@@ -43,6 +48,13 @@ GREY = (214, 214, 214)  # what the survey did not see (survey.ORTHO_BACKGROUND, 
 GREY_TOLERANCE = 8  # JPEG noise around the flat grey
 RAMP_MM = 200.0  # a piece's weight grows from its edge to this far inside
 SEAM = 0.04  # width of the blend at a seam, in units of the weight
+TABLE_HUE_TOL = 20  # hue within this of the table's (OpenCV units, 2° each) ...
+TABLE_SAT_MIN = 36  # ... with at least this saturation (walls and windows are paler) ...
+TABLE_VAL_MIN = 32  # ... and brightness (0..255) is table; shadows on it stay in
+TABLE_MIN_MM2 = 60_000  # smaller patches of the table's colour are not the table
+EDGE_BRIDGE_MM = 500  # the table's edges in straight lines: bites narrower than this are bridged, ...
+EDGE_SPUR_MM = 150  # ... bumps narrower than this cut off, ...
+EDGE_TOL_MM = 15  # ... and the lines stay within this of the edge
 MATCH_PX_PER_MM = 0.27  # scale the features are compared at (that of the photo map's orthophotos)
 
 
@@ -147,7 +159,8 @@ def register(reference: Piece, pieces: list[Piece], threshold_mm: float = 15.0) 
         src, dst, method=cv2.RANSAC, ransacReprojThreshold=threshold_mm, maxIters=20000, confidence=0.999
     )
     ok = inl is not None and A is not None and int(inl.sum()) >= 10
-    if not ok:
+    # both frames are in mm: a fit that shrinks or stretches much matched features that are not the same
+    if not ok or not 0.8 < np.hypot(A[0, 0], A[1, 0]) < 1.25:
         raise MosaicError("the pieces do not fit the reference: give the frame with --frame")
     inl = inl[:, 0] > 0
     res = src[inl] @ A[:, :2].T + A[:, 2] - dst[inl]
@@ -182,6 +195,67 @@ def fill_in(image: np.ndarray, known: np.ndarray) -> np.ndarray:
     return fill
 
 
+def table_hue(image: np.ndarray) -> float:
+    """The table's colour: the main hue (degrees) of the saturated pixels the survey saw."""
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    use = (hsv[..., 1] > 40) & (covered(image) > 0)
+    if use.sum() < 100:
+        raise MosaicError("the reference has no colour to take the table's from: give it with --table")
+    hist = np.bincount(hsv[..., 0][use].ravel(), minlength=180).astype(float)
+    smooth = np.convolve(np.r_[hist[-6:], hist, hist[:6]], np.ones(13), "valid")
+    return 2.0 * float(np.argmax(smooth))
+
+
+def table_mask(
+    image: np.ndarray, known: np.ndarray, holes: np.ndarray, hue_deg: float, mm_per_px: float, close_mm: float
+):
+    """Where the table is (bool): pixels of its colour, and the survey's holes inside the pieces,
+    joined over what lies on it (closing up to ``close_mm``) and filled; small patches left out.
+    Its outline is drawn in straight lines along the table (``straight_outline``)."""
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    dh = np.abs((hsv[..., 0].astype(np.int16) - int(round(hue_deg / 2)) + 90) % 180 - 90)
+    seed = known & (dh <= TABLE_HUE_TOL) & (hsv[..., 1] >= TABLE_SAT_MIN) & (hsv[..., 2] >= TABLE_VAL_MIN)
+    disk = lambda mm: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (max(3, int(round(mm / mm_per_px)) | 1),) * 2)  # noqa: E731
+    seed = cv2.morphologyEx(seed.astype(np.uint8), cv2.MORPH_OPEN, disk(6)) | holes.astype(np.uint8)
+    mask = _fill_holes(cv2.morphologyEx(seed, cv2.MORPH_CLOSE, disk(close_mm))) > 0
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=8)
+    big = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] * mm_per_px**2 >= TABLE_MIN_MM2]
+    straight = np.zeros(mask.shape, np.uint8)
+    for i in big:
+        cv2.fillPoly(straight, [np.round(straight_outline(labels == i, mm_per_px)).astype(np.int32)], 1)
+    return straight > 0
+
+
+def straight_outline(mask: np.ndarray, mm_per_px: float) -> np.ndarray:
+    """The outline of a long table in straight lines (pixels, N x 2): its back and front edge
+    along the image's rows, each with the bites narrower than EDGE_BRIDGE_MM bridged and the
+    bumps narrower than EDGE_SPUR_MM cut off, then simplified to lines within EDGE_TOL_MM."""
+    cols = np.nonzero(mask.any(axis=0))[0]
+    u = np.arange(cols[0], cols[-1] + 1)
+    rows = np.arange(mask.shape[0])[:, None]
+    m = mask[:, u]
+    has = m.any(axis=0)
+    # the back edge (row 0 is the back) and the front edge of every column; columns without table interpolated
+    back = np.where(m, rows, mask.shape[0]).min(axis=0).astype(float)
+    front = np.where(m, rows, -1).max(axis=0).astype(float)
+    back = np.interp(u, u[has], back[has])
+    front = np.interp(u, u[has], front[has])
+
+    def straighten(more_table: np.ndarray) -> np.ndarray:
+        """Bumps cut off (opening), then bites bridged (closing), along the table."""
+        f = more_table.astype(np.float32)[None, :]
+        bumps = np.ones((1, max(1, int(round(EDGE_SPUR_MM / mm_per_px)) | 1)), np.uint8)
+        bites = np.ones((1, max(1, int(round(EDGE_BRIDGE_MM / mm_per_px)) | 1)), np.uint8)
+        b = cv2.BORDER_REPLICATE
+        f = cv2.dilate(cv2.erode(f, bumps, borderType=b), bumps, borderType=b)
+        f = cv2.erode(cv2.dilate(f, bites, borderType=b), bites, borderType=b)
+        return f[0]
+
+    back, front = -straighten(-back), straighten(front)
+    outline = np.vstack([np.column_stack([u, back]), np.column_stack([u, front + 1])[::-1]]).astype(np.float32)
+    return cv2.approxPolyDP(outline[:, None, :], EDGE_TOL_MM / mm_per_px, True)[:, 0, :]
+
+
 def _fill_holes(mask: np.ndarray) -> np.ndarray:
     """The mask with every hole filled (what cannot be reached from the border)."""
     h, w = mask.shape
@@ -192,9 +266,16 @@ def _fill_holes(mask: np.ndarray) -> np.ndarray:
     return ((pad[1:-1, 1:-1] != 2) * 255).astype(np.uint8)
 
 
-def compose(pieces: list[Piece], mm_per_px: float = 2.0, close_mm: float = 150.0, margin_mm: float = 30.0):
-    """Join pieces (all in one frame; the first has its exposure kept) into one solid orthophoto.
-    Returns (image BGR, bounds_mm [xmin, ymin, xmax, ymax])."""
+def compose(
+    pieces: list[Piece],
+    mm_per_px: float = 2.0,
+    close_mm: float = 150.0,
+    margin_mm: float = 30.0,
+    table_hue_deg: float | None = None,
+):
+    """Join pieces (all in one frame; the first has its exposure kept) into one solid orthophoto;
+    with ``table_hue_deg``, only the table (of that colour) is kept. Returns (image BGR, bounds_mm
+    [xmin, ymin, xmax, ymax])."""
     # the region they cover
     corners = []
     for p in pieces:
@@ -214,6 +295,7 @@ def compose(pieces: list[Piece], mm_per_px: float = 2.0, close_mm: float = 150.0
     to_out = np.linalg.inv(pixels_to_mm([x0, y0, x0 + W * mm_per_px, y1], W, H))
     finest = min(p.mm_per_px for p in pieces)
     warped = []
+    holes = np.zeros((H, W), bool)
     for p in pieces:
         img, M = p.image, to_out @ p.to_frame
         shrink = p.mm_per_px / mm_per_px
@@ -222,7 +304,9 @@ def compose(pieces: list[Piece], mm_per_px: float = 2.0, close_mm: float = 150.0
             M = M @ np.diag([1 / shrink, 1 / shrink, 1])
         out = cv2.warpAffine(img, M[:2], (W, H), flags=cv2.INTER_LINEAR, borderValue=GREY)
         seen = cv2.warpAffine(covered(img), M[:2], (W, H), flags=cv2.INTER_NEAREST, borderValue=0)
-        dist = cv2.distanceTransform(seen, cv2.DIST_L2, 5) * mm_per_px
+        # (a piece that covers everything has no edge: no distance to it)
+        dist = np.minimum(cv2.distanceTransform(seen, cv2.DIST_L2, 5), RAMP_MM / mm_per_px) * mm_per_px
+        holes |= (_fill_holes(seen) > 0) & (seen == 0)  # what the survey left grey inside the piece
         score = np.minimum(dist, RAMP_MM) / RAMP_MM * (finest / p.mm_per_px)
         warped.append((p, out.astype(np.float32), seen > 0, score.astype(np.float32)))
     # exposure: each piece matched to those before it where they overlap
@@ -249,15 +333,22 @@ def compose(pieces: list[Piece], mm_per_px: float = 2.0, close_mm: float = 150.0
     image = np.empty((H, W, 3), np.uint8)
     image[:] = GREY
     image[union] = np.clip(acc[union] / total[union, None], 0, 255).astype(np.uint8)
-    # solid: holes and narrow gaps filled from their surroundings
-    k = max(3, int(round(close_mm / mm_per_px)) | 1)
-    solid = _fill_holes(
-        cv2.morphologyEx(
-            union.astype(np.uint8) * 255, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-        )
-    )
     # (a pixel in from the pieces' edges: what their borders blended with the grey is filled, too)
     known = cv2.erode(union.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    if table_hue_deg is not None:
+        # only the table: blank space where there is none
+        solid = table_mask(image, known, holes & ~known, table_hue_deg, mm_per_px, close_mm)
+        if not solid.any():
+            raise MosaicError(f"nothing has the table's colour (hue {table_hue_deg:.0f}°): give it with --table")
+        solid = solid.astype(np.uint8)
+    else:
+        # solid: holes and narrow gaps filled from their surroundings
+        k = max(3, int(round(close_mm / mm_per_px)) | 1)
+        solid = _fill_holes(
+            cv2.morphologyEx(
+                union.astype(np.uint8) * 255, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+            )
+        )
     gaps = (solid > 0) & ~known
     if gaps.any():
         image[gaps] = np.clip(fill_in(image, known)[gaps], 0, 255).astype(np.uint8)
@@ -289,6 +380,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--res", type=float, default=2.0, help="mm per pixel of the result (default 2)")
     ap.add_argument("--close", type=float, default=150.0, help="gaps up to this wide are filled (mm, default 150)")
+    ap.add_argument(
+        "--table",
+        default="auto",
+        help="the table's colour: auto (the reference's main colour), a hue in degrees, or none (keep everything)",
+    )
     ap.add_argument("--image", help="the image's URL in the layout (default: the file name)")
     ap.add_argument("--quality", type=int, default=85, help="JPEG quality (default 85)")
     return ap
@@ -315,13 +411,26 @@ def run(args, log) -> dict:
     else:
         frame = register(reference, groups)
         log(f"frame: {frame['inliers']} of {frame['matches']} features fit, rms {frame['rms_mm']:.1f} mm")
-    image, bounds = compose([reference] + [g.moved(frame["matrix"]) for g in groups], args.res, args.close)
+    if args.table == "none":
+        hue = None
+    elif args.table == "auto":
+        hue = table_hue(reference.image)
+    else:
+        try:
+            hue = float(args.table) % 360
+        except ValueError as exc:
+            raise MosaicError(f"--table must be auto, none or a hue in degrees, not {args.table!r}") from exc
+    if hue is not None:
+        log(f"table: hue {hue:.0f}°")
+    pieces = [reference] + [g.moved(frame["matrix"]) for g in groups]
+    image, bounds = compose(pieces, args.res, args.close, table_hue_deg=hue)
     if not cv2.imwrite(args.out, image, [cv2.IMWRITE_JPEG_QUALITY, args.quality]):
         raise MosaicError(f"cannot write {args.out}")
     log(f"{args.out}: {image.shape[1]} x {image.shape[0]} px, {', '.join(g.name for g in groups)} and the reference")
     out = {
         "frame": {k: round(float(frame[k]), 5 if k == "scale" else 2) for k in ("x", "y", "deg", "scale")},
         "groups": [g.name for g in groups],
+        "table_hue_deg": None if hue is None else round(hue),
         "ortho": {"image": args.image or os.path.basename(args.out), "bounds_mm": [round(float(v), 1) for v in bounds]},
     }
     for k in ("inliers", "rms_mm"):

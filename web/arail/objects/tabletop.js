@@ -8,7 +8,8 @@
  *   objects can be placed on it.
  * - `physical`: the outline of a real table in the lab. In the camera view the real table is
  *   in the image, so it is only drawn in the flyover (`view.virtual`). Without any physical
- *   table the flyover draws a default one around the markers and objects ({@link defaultTableBounds}).
+ *   table and without an orthophoto (which shows the real table, blank around it) the flyover
+ *   draws a default one around the markers and objects ({@link defaultTableBounds}).
  * @module arail/objects/tabletop
  */
 import { LayoutObject } from "../core/object.js";
@@ -173,10 +174,10 @@ export function hasPhysicalTable(world) {
 }
 
 /**
- * The real table as far as the layout knows it, for the flyover when no physical table module
- * is drawn: the bounding box of the markers, the objects and the orthophoto, plus a margin.
- * Table modules and objects standing on a virtual extension are left out (they are beside the
- * real table).
+ * The real table as far as the layout knows it, for the flyover when neither a physical table
+ * module nor an orthophoto shows it (and for the extent of the scene): the bounding box of the
+ * markers, the objects and the orthophoto, plus a margin. Table modules and objects standing on
+ * a virtual extension are left out (they are beside the real table).
  * @param {import("../core/world.js").World} world
  * @param {number} [margin=100] mm
  * @returns {number[] | null} [xmin, ymin, xmax, ymax] or null if there is nothing on the layout

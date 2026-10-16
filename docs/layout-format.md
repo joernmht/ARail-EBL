@@ -406,7 +406,7 @@ Geometry: a rectangle, `position` (centre). A base plate whose top is the layout
 | `rotation_deg` | `0` | |
 | `surface` | `"grey"` | `grey` (light grey), `white`, `green` (model grass) |
 
-Without a `physical` table module, the flyover draws a light-grey default table around the markers, the objects (except those on table extensions) and the orthophoto, with a margin of 100 mm.
+Without a `physical` table module and without an orthophoto, the flyover draws a light-grey default table around the markers and the objects (except those on table extensions), with a margin of 100 mm. With an orthophoto the photo shows the real table, and where it shows none (its uncovered grey) the flyover is blank.
 
 ### `container-yard`: container yard block
 

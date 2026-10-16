@@ -77,6 +77,44 @@ def test_pieces_join_into_a_solid_orthophoto_in_the_layout_frame():
     assert bounds[1] < corners[:, 1].min() and bounds[3] > corners[:, 1].max()
 
 
+def test_only_the_table_is_kept_in_straight_lines():
+    """A teal table on a brown floor, a wall behind it, glare biting into its edge: the floor and the
+    wall become the flat grey, the bite is bridged, the edges are straight lines."""
+    w, h = 1500, 500  # 3000 x 1000 mm at 2 mm/px
+    img = np.zeros((h, w, 3), np.uint8)
+    img[:] = (40, 70, 120)  # the floor (BGR, brown)
+    img[:60] = (150, 150, 145)  # a pale wall at the back
+    table = (slice(100, 400), slice(100, 1400))  # 2600 x 600 mm
+    img[table] = (160, 165, 60)  # teal (hue about 180°)
+    for y in range(140, 380, 40):
+        img[y : y + 8, 100:1400] = (40, 40, 40)  # tracks
+    img[100:160, 600:700] = (245, 245, 245)  # glare at the back edge, 200 mm wide
+    img[350:400, 1000:1040] = (40, 70, 120)  # a 80 mm notch of floor colour into the front edge
+    rng = np.random.default_rng(3)
+    img = np.clip(img.astype(int) + rng.integers(-6, 7, img.shape), 0, 255).astype(np.uint8)
+    piece = mo.Piece("p", img, mo.pixels_to_mm((0, 0, w * MM, h * MM), w, h))
+    hue = mo.table_hue(img[100:400, 100:1400])
+    assert abs(hue - 180) < 10
+    out, bounds = mo.compose([piece], mm_per_px=MM, table_hue_deg=hue, margin_mm=0)
+    to_px = np.linalg.inv(mo.pixels_to_mm(bounds, out.shape[1], out.shape[0]))
+    grey = np.abs(out.astype(int) - GREY.astype(int)).max(axis=2) <= 3
+
+    def px(x, y):
+        u, v, _ = to_px @ [x, y, 1]
+        return int(v), int(u)
+
+    # the floor and the wall are blank, the table is not
+    assert out.shape[0] * MM < 700 and out.shape[1] * MM < 2700  # cropped to the table
+    assert not grey[px(1500, 600)] and not grey[px(250, 300)]
+    # the glare is bridged (the table's white is kept), and so is the notch
+    assert not grey[px(1300, 750)] and (out[px(1300, 750)] > 200).all()
+    assert not grey[px(2040, 220)]
+    # straight edges: the table's back and front rows are the same along it
+    rows = [np.nonzero(~grey[:, u])[0] for u in range(10, out.shape[1] - 10, 50)]
+    assert max(r[0] for r in rows) - min(r[0] for r in rows) <= 8
+    assert max(r[-1] for r in rows) - min(r[-1] for r in rows) <= 8
+
+
 def test_fill_in_is_smooth_and_keeps_what_is_known():
     img = np.zeros((64, 64, 3), np.uint8)
     img[:, :32] = (200, 0, 0)
@@ -113,6 +151,7 @@ def test_the_command_joins_the_linked_groups_of_the_photo_map(tmp_path):
     )
     result = mo.run(args, lambda *a: None)
     assert result["groups"] == ["S01", "S02", "S03", "S04", "S10"]  # the linked ones (approx: false)
+    assert 120 < result["table_hue_deg"] < 160  # the lab's mint green tables
     assert (
         result["frame"]["rms_mm"] < 15 and abs(result["frame"]["deg"]) < 2 and abs(result["frame"]["scale"] - 1) < 0.03
     )
@@ -130,6 +169,20 @@ def test_the_layout_uses_the_joined_orthophoto():
     img = cv2.imread(os.path.join(ROOT, "web/layouts", o["image"]))
     x0, y0, x1, y1 = o["bounds_mm"]
     assert abs((x1 - x0) / img.shape[1] - (y1 - y0) / img.shape[0]) < 0.01  # square pixels
+    # only the table: its corners (the lab's floor and walls) are the flat grey the flyover leaves blank
+    for v, u in [(0, 0), (0, -1), (-1, 0), (-1, -1)]:
+        assert (np.abs(img[v, u].astype(int) - GREY.astype(int)) <= 8).all()
+
+
+def test_register_refuses_a_fit_that_is_no_similarity():
+    """The container train's close-up and the coarse orthophoto of its marker group share no
+    features that agree: refused, rather than a frame shrunk to a point."""
+    with open(os.path.join(ROOT, "web/lab-map/data.json"), encoding="utf-8") as f:
+        groups = mo.load_groups(json.load(f), os.path.join(ROOT, "web/lab-map"), ["S12"])
+    img = cv2.imread(os.path.join(ROOT, "web/media/ebl-container-train-ortho.jpg"))
+    train = mo.Piece("train", img, mo.pixels_to_mm((-950, -30, 1310, 1100), img.shape[1], img.shape[0]))
+    with pytest.raises(mo.MosaicError, match="do not fit"):
+        mo.register(train, groups)
 
 
 def test_errors_are_explained(tmp_path):

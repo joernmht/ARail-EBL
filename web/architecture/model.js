@@ -271,7 +271,7 @@ export const DATA_FLOW = {
     { from: "tour", to: "load", label: "the layout of the photo's digital layer" },
     { from: "tour", to: "detect", label: "the photo (with a digital layer)" },
     { from: "photos", to: "mosaic", label: "orthophotos of the linked groups" },
-    { from: "mosaic", to: "layouts", label: "one solid orthophoto" },
+    { from: "mosaic", to: "layouts", label: "one orthophoto of the table" },
   ],
 };
 
