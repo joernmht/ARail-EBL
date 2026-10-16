@@ -1,7 +1,8 @@
 // EBL photo map: the survey photos of 9 October 2026 on a map of the lab (data.json, made from the
 // survey), each opening as the photo or, where ARail has a layout for that part of the table, in the
-// app with its digital layer (app/?layout=…&image=…). Coordinates are mm in the hall frame: x along the
-// window wall towards Waldhof, y towards the windows (the SVG's y points down, so it is flipped).
+// app with its digital layer (app/?photo=…: the app's photo tour at that photo). Coordinates are mm
+// in the hall frame: x along the window wall towards Waldhof, y towards the windows (the SVG's y
+// points down, so it is flipped).
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("map");
@@ -155,7 +156,7 @@ function open(i) {
   const layer = p.layer && data.layers[p.layer];
   layerLink.hidden = !layer; noLayer.hidden = !!layer;
   if (layer) {
-    layerLink.href = `../app/?layout=${encodeURIComponent(layer.layout)}&image=${encodeURIComponent(`../lab-map/${p.image}`)}`;
+    layerLink.href = `../app/?photo=${encodeURIComponent(p.id)}`; // the app's photo tour, at this photo, with the layout of its layer
     layerLink.textContent = `Open with the digital layer (${layer.label})`;
   }
   document.getElementById("viewerFull").href = p.image;

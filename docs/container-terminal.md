@@ -34,8 +34,8 @@ Three examples have a terminal:
 
 ### The virtual terminal
 
-**Layouts… → Example: container terminal (virtual)** (or
-`app/?layout=../layouts/container-terminal.json#terminal`) opens
+**View → Examples → Example: container terminal (virtual)** (on the game page **Layouts… →
+Example: container terminal (virtual)**, or `app/?layout=../layouts/container-terminal.json#terminal`) opens
 [`web/layouts/container-terminal.json`](../web/layouts/container-terminal.json) in the flyover:
 
 - a gantry crane (100 m runway) over two loading tracks, the truck lane and yard **Block A** (12 bays × 4 rows × 3 tiers);

@@ -39,6 +39,8 @@ const PAGE = {
     { id: "lab", label: "Example: Beta 0.1 (EBL lab photo, older)", layout: LAB },
   ],
   exampleLayers: { operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
+  // the photos of the lab as a Street View: they choose what the stage shows (the examples are in the View panel)
+  tour: { data: "../lab-map/data.json" },
 };
 
 new App(PAGE).init();

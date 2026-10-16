@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="../assets/fonts/fonts-app.css">
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="flyover.css">
+<link rel="stylesheet" href="tour.css">
 </head>
 <body>
 <div class="app">
@@ -32,8 +33,6 @@
       <input class="visually-hidden" type="file" id="fileVideo" accept="video/*" capture="environment">
       <label class="btn" for="fileOpen"><span class="long">Open file</span><span class="short">File</span></label>
       <input class="visually-hidden" type="file" id="fileOpen" accept="image/*,video/*">
-      <label class="visually-hidden" for="exampleSelect">Layouts</label>
-      <select id="exampleSelect"></select>
     </div>
   </header>
 
@@ -41,6 +40,7 @@
     <main class="stage" id="stageWrap">
       <canvas id="stage" width="1280" height="720" role="img" aria-label="Camera image with augmented reality"></canvas>
       <div class="empty-stage" id="emptyStage" hidden></div>
+      <div class="tour" id="tour" role="group" aria-label="Photo tour of the lab" hidden></div>
       <div class="hud" id="hud"></div>
       <div class="fly-nav" id="flyNav" role="group" aria-label="Flyover camera" hidden>
         <button class="btn" type="button" data-fly="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>

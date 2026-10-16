@@ -107,7 +107,7 @@ test.describe("layout of the app bar and the tabs", () => {
     await expect(page.locator("#layoutName")).toBeVisible();
     const name = await page.locator("#layoutName").evaluate((el) => ({ width: el.clientWidth, full: el.scrollWidth <= el.clientWidth }));
     expect(name.full, `layout name shown in full (${name.width} px)`).toBe(true);
-    for (const id of ["#btnLive", "#exampleSelect"]) {
+    for (const id of ["#btnLive", "label[for=fileOpen]"]) {
       const box = await page.locator(id).boundingBox();
       expect(box.y + box.height, `${id} in the first row`).toBeLessThan(bar.y + 70);
     }

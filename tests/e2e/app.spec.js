@@ -19,6 +19,12 @@ async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   return errors;
 }
 
+/** Open an example from the View panel (the app's examples; the stage's photo tour chooses the rest). */
+async function chooseExample(page, id) {
+  await page.locator("#tab-view").click();
+  await page.locator(`#example-${id}`).click();
+}
+
 /** Screen position (CSS px) of a layout point (mm). */
 async function screenPoint(page, x, y) {
   return page.evaluate(([px, py]) => {
@@ -115,11 +121,11 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
   await expect(page.locator("#layoutName")).toHaveText("EBL Bf Neustadt and terminal (example)");
   await page.waitForFunction(() => window.__arail.tracker.state.used.length >= 6 && window.__arail.world.map.locked);
   // the same layout with the photo of the terminal: its own photo, the Terminal tab
-  await page.selectOption("#exampleSelect", "crane-terminal");
+  await chooseExample(page, "crane-terminal");
   await page.waitForFunction(() => window.__arail.source?.name === "terminal at the crane" && window.__arail.tracker.state.used.includes(5));
   await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
   // the hybrid container train: model wagons from the tags in its photo, a harbour below the table
-  await page.selectOption("#exampleSelect", "container-train");
+  await chooseExample(page, "container-train");
   await expect(page.locator("#layoutName")).toHaveText("EBL hybrid container train (example)");
   const terminal = () => window.__arail.world.simulations.find((s) => typeof s.markerWagons === "function");
   await page.waitForFunction((fn) => {
@@ -132,7 +138,8 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
 
 test("switching layouts while placing an object keeps the app running", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
-  await page.selectOption("#exampleSelect", "neustadt");
+  // (examples are chosen in the View panel, which ends placing; here the layout changes underneath, as a photo of the tour can do)
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
   await page.waitForFunction(() => {
     const a = window.__arail;
     return a.world.layout.name === "EBL Bf Neustadt and terminal (example)" && a.tracker.state.used.length >= 6;
@@ -146,7 +153,7 @@ test("switching layouts while placing an object keeps the app running", async ({
   const p = await screenPoint(page, marker[0], marker[1]);
   await page.mouse.click(p.x, p.y);
   await expect.poll(() => page.evaluate(() => window.__arail.editor.placing?.points.length)).toBe(1);
-  await page.selectOption("#exampleSelect", "lab");
+  await page.evaluate(() => window.__arail.openExample("lab"));
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)" && window.__arail.tracker.state.H);
   await expect(page.locator("#placing")).toBeHidden();
   const t0 = await page.evaluate(() => window.__arail.clock);
@@ -154,7 +161,7 @@ test("switching layouts while placing an object keeps the app running", async ({
   expect(errors).toEqual([]);
 });
 
-test("a layout chosen from the Layouts menu gets only its own markers, not those of the previous photo", async ({ page }) => {
+test("a layout chosen from the examples gets only its own markers, not those of the previous photo", async ({ page }) => {
   const errors = await openApp(page, "/app/?example=neustadt#build");
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL Bf Neustadt and terminal (example)" && window.__arail.tracker.state.used.length >= 6);
   // the lab photo arrives late: meanwhile the photo of Bf Neustadt (markers 10 to 30) is still the source
@@ -162,7 +169,7 @@ test("a layout chosen from the Layouts menu gets only its own markers, not those
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue();
   });
-  await page.selectOption("#exampleSelect", "lab");
+  await chooseExample(page, "lab");
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)");
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => window.__arail.world.map.ids())).toEqual([0, 1, 2, 3, 4]);
@@ -171,7 +178,7 @@ test("a layout chosen from the Layouts menu gets only its own markers, not those
   expect(errors).toEqual([]);
 });
 
-test("a layout chosen from the Layouts menu while a video plays is not tracked in that video", async ({ page }) => {
+test("a layout chosen from the examples while a video plays is not tracked in that video", async ({ page }) => {
   test.skip(!hasScene(), "run `npm run fixtures` first");
   await routeScene(page);
   const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
@@ -183,7 +190,7 @@ test("a layout chosen from the Layouts menu while a video plays is not tracked i
     await new Promise((resolve) => (sendPhoto = resolve));
     await route.continue();
   });
-  await page.selectOption("#exampleSelect", "lab");
+  await chooseExample(page, "lab");
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL lab, Beta 0.1 (example)");
   await page.waitForTimeout(800); // many video frames
   expect(await page.evaluate(() => ({ ids: window.__arail.world.map.ids(), tracked: !!window.__arail.tracker.state.H }))).toEqual({ ids: [0, 1, 2, 3, 4], tracked: false });
@@ -319,8 +326,8 @@ test("the time chip says night after sunset, also with the day and night lightin
   expect(errors).toEqual([]);
 });
 
-test("the layout list is named by the text it shows (Layouts…), for speech input", async ({ page }) => {
-  await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
+test("the layout list of the game page is named by the text it shows (Layouts…), for speech input", async ({ page }) => {
+  await openApp(page, "/game/?layout=../layouts/ebl-lab.json");
   const list = page.getByRole("combobox", { name: "Layouts", exact: true });
   await expect(list).toHaveAttribute("id", "exampleSelect");
   await expect(list.locator("option").first()).toHaveText("Layouts…");

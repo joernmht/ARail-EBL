@@ -94,10 +94,11 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the View (with the modules), Settings (simulation, control system) and Disruptions panels |
 | `app/inspect.js` | hover and click: the tooltip of what the mouse points at, the info card of what was tapped, their outlines on the stage, Enter at the flyover's cross |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
+| `app/tour.js`, `app/tour-nav.js` | the photo tour of the app: the photo map's photos in parts of the table round the ring, at most one per perspective (front, back, the four diagonals), the next part on either side (`PhotoTour`, testable in Node); its buttons and arrows on the stage, the keys ← and →, opening a photo with the layout of its digital layer or as the photo only (`TourNav`) |
 | `app/survey.js` | Build → Marker map → Survey a video |
 | `app/terminal.js` | the Terminal panel (in the app the containers and their moves; on the game page also visits, arrivals and crane jobs) and picking containers and places on the stage |
 | `app/story.js` | the panel of a module tab with a story (the app's Operations, Infrastructure and Journeys): the current step, Back, Next, Play, Start again, all steps, the flyover's camera following the story |
-| `app/main.js` | the app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves) and examples (Bf Neustadt first) |
+| `app/main.js` | the app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first; in the View panel) and the photo tour |
 | `game/main.js` | the game page: the app's shell (`App`) with the game panels in the modules' tabs, and its examples (the lab example Beta 0.1 first) |
 | `game/operations.js` | the game page's Operations panel: the day, fleet, workshop, crews, penalties; comparisons of setups in the page |
 | `game/infra.js` | the game page's Infrastructure panel: roles, running fast, overview, line map, assets and their records, decisions, projects, staff, results, saving games |
@@ -113,7 +114,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `index.js` | the framework's API: `registerBuiltins` (the core types, then those of the terminal, the operations, the infrastructure and the journeys), the default `registry`, `createWorld`, `loadPlugins` |
 | `architecture/` | this architecture as data (`model.js`, `models/*.js`) and its UML diagrams (`uml.js`, laid out with dagre) on the architecture page |
 | `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
-| `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `synthetic.py`, `fixtures.py`, `stabilize.py` and `compose.py` (videos, see [Videos of the lab](videos.md)) |
+| `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `mosaic.py` (`arail-mosaic`: one orthophoto of the linked parts of the lab), `synthetic.py`, `fixtures.py`, `stabilize.py` and `compose.py` (videos, see [Videos of the lab](videos.md)) |
 | `tools/video/` | `render.mjs` (the app rendered frame by frame after a plan, in Chromium), `sky.js` (the town video's sky), the plans of the project page's videos |
 
 ## Coordinate systems
@@ -204,7 +205,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 
 **Survey and caches.** Objects cache their geometry, and the world its stop areas and road network, until the marker map changes. While the map is surveyed (live camera or video, unlocked map), a marker seen in more than 10 frames is written into the map only every 8 frames, or at once when its estimate moved by more than 0.25 mm or 0.03° (`SURVEY_WRITE`); otherwise all of this would be worked out anew in every frame.
 
-**Flyover.** The flyover draws the sky and the lab floor (with the horizon where the camera's pitch puts it), the default table or the real table modules, the orthophoto (`view.ortho`) split into affine pieces where perspective needs it (with mipmaps, cached while the camera stands still), the grid and the marker stickers, then the world with `view.virtual = true`: platforms, tracks and real tables draw their surfaces where the orthophoto does not show them. Flat polygons and lines are cut off at the camera's near plane, so a close camera looking along the table still sees them.
+**Flyover.** The flyover draws the sky and the lab floor (with the horizon where the camera's pitch puts it), the real table modules (without them and without an orthophoto, a default table around the markers and objects; with an orthophoto, blank space where it shows no table), the orthophoto (`view.ortho`) split into affine pieces where perspective needs it (with mipmaps, cached while the camera stands still), the grid and the marker stickers, then the world with `view.virtual = true`: platforms, tracks and real tables draw their surfaces where the orthophoto does not show them. Flat polygons and lines are cut off at the camera's near plane, so a close camera looking along the table still sees them.
 
 ## Tests
 
@@ -223,6 +224,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/transit.test.js` | bus stops and lines: stop geometry, routing, a bus serving every stop, boarding, managed docks, status texts, town people riding |
 | `tests/js/lines.test.js` | bus lines over a day: lay-overs, bus counts, cars after edits, riders whose stop disappears, ring lines, boards and badges, commuters by bus, door side |
 | `tests/js/flycam.test.js` | the flyover camera (projection, pose, navigation, fit), the grid, table modules, drawing for a virtual camera |
+| `tests/js/tour.test.js` | the photo tour: six perspectives of 60°, the parts round the ring with their front towards the middle of the hall, one photo per perspective (a digital layer first), left and right keeping the perspective or the nearest one, the back going the other way, the lab's parts in the order of the ring |
 | `tests/js/design.test.js` | the corporate-design colours and font on the canvas, text contrast of the app's theme in light and dark mode |
 | `tests/js/view.test.js` | drawing without visible change: nothing queued outside the image, shared save/restores (a frame of the example town drawn both ways, operation by operation), night colours remembered per view, crowd forces |
 | `tests/js/layout-rolling.test.js` | `markers.rolling` in layout files: defaults, round trips, validation messages; the `static validate` hook of simulations; the terminal example |
@@ -252,10 +254,12 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/layers.test.js` | layers (modules): composing and splitting layouts, simulation patches, exclusive layers and layouts of their own, switching modules, validation, the modules of the lab example |
 | `tests/js/journeys-story.test.js` | the journeys story: her times, the lost connection and the refund; the steps with the layout's names; her walks and the bus over the streets; Back and a jump show the same as playing through; the track and the bays kept free, the timetable's trains and buses off them while it plays, also after Clear passengers; the vehicle events (passengers get on and off; a jump or skip lets a standing train or bus leave); the clock; the camera's side; drawing every step, labels legible |
 | `tests/python/test_survey.py` | `arail-survey`: corner refinement, adjustment, synthetic video within 2 mm / 0.5°, layout priors, moved markers, scale, orthophoto, the lab photo, the command line |
+| `tests/python/test_mosaic.py` | `arail-mosaic`: the frame found from features (a known shift and turn), pieces joined without grey inside and true to the texture, the smooth fill, the lab's linked groups, the layout using the result |
 | `tests/python/test_bridge.py`, `test_calibration.py`, `test_synthetic.py` | bridge protocol, adapters and WebSocket server end to end; calibration; the synthetic scene |
 | `tests/python/test_stabilize.py` | videos: the picture's motion from a synthetic clip, the joined poses closer to the truth and slipping far less, markers that disagree, the command line; composing shots with crossfades, the bare picture and the loop, encoding |
 | `tests/e2e/app.spec.js` | the app: tracking the examples, building, disruptions, control system, robustness of the panels |
 | `tests/e2e/flyover.spec.js` | the flyover: drawing, navigation, table modules, snapping, the View panel, orthophoto, keyboard |
+| `tests/e2e/tour.spec.js` | the photo tour: the arrows and keys in the same perspective, a photo with a digital layer tracked and one without as the photo only, the back going the other way round, the container train's layout, the examples in the View panel, the flyover hiding the tour and showing the joined orthophoto, `?photo=` |
 | `tests/e2e/houses.spec.js`, `streets.spec.js` | placing house types and estates; streets, bus stops, bus lines and the Stops board |
 | `tests/e2e/marker-map.spec.js`, `survey.spec.js` | Keep positions, Unlock, moving markers; surveying a video in the app |
 | `tests/e2e/design.spec.js`, `a11y.spec.js`, `site.spec.js` | the corporate design and the blue website; accessibility (axe, light and dark mode; also placing, the inspectors of the new object types, a locked map, the town, a phone screen, the Terminal, Operations, Infrastructure and Journeys panels, the operations, the maintenance and the journeys story, the game page, the signaller's game, the role catalogue, the career planner, the modules); the project page (its story cards with their games), marker sheets and deck cards |
