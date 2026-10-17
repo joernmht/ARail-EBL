@@ -53,6 +53,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/stops.js` | stop areas and docks, the common interface of stops |
 | `core/services.js`, `core/vehicles.js` | timetable, vehicle life cycle, drawing trains and buses; a track taken over at once for a story's train (`free`) |
 | `core/network.js`, `objects/road.js` | streets and the road network: junctions, places, routing, walks on the sidewalks around tracks, lanes |
+| `core/access.js` | street access: what people and vehicles come to has a street to it (stops, bus terminals, truck lanes, entrances), streets on their own, ends just before another street, dead ends inside the layout; a fix for each where one is plain |
 | `core/transit.js`, `objects/bus-stop.js`, `objects/bus-line.js`, `objects/signs.js` | bus lines: routes through the stops, dispatching, driving and stopping buses, stop signs |
 | `core/disruptions.js`, `core/scenarios.js` | disruption types and effects (also on one track of a platform: the track closure), scripted timelines |
 | `core/story.js` | stories to click through: steps with a title, a text and an animation; the picture of each moment composed from the step (or a replay of the steps before, for a story that drives an engine); `storyOf`; the `story-train` disruption with which a story holds a track for its own train |
@@ -96,6 +97,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/tour.js`, `app/tour-nav.js` | the photo tour of the app: the photo map's photos in parts of the table round the ring, at most one per perspective (front, back, the four diagonals), the next part on either side (`PhotoTour`, testable in Node); its buttons and arrows on the stage, the keys ← and →, opening a photo with the layout of its digital layer or as the photo only (`TourNav`) |
 | `app/survey.js` | Build → Marker map → Survey a video |
+| `builder/*` | the builder, a street and layout editor beside the app ([The builder](world-builder.md)): the plan from above (`plan.js`), snapping and placing at streets (`place.js`), undo (`history.js`), a file changed only where it was edited (`json-text.js`), commits through GitHub's API (`github.js`) |
 | `app/terminal.js` | the Terminal panel (in the app the containers and their moves; on the game page also visits, arrivals and crane jobs) and picking containers and places on the stage |
 | `app/story.js` | the panel of a module tab with a story (the app's Operations, Infrastructure and Journeys): the current step, Back, Next, Play, Start again, all steps, the flyover's camera following the story |
 | `app/main.js` | the app's page: its panels (the operations story, the maintenance story, the journeys story, the terminal's moves), examples (Bf Neustadt first; in the View panel) and the photo tour |

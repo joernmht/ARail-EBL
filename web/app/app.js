@@ -658,7 +658,8 @@ export class App {
     const chosen = layers || storage.get(this._layersKey()) || null;
     // (an exclusive module alone)
     const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, ARail.layerChoice(ARail.normalizeLayers(j.layers), chosen)) : j);
-    const img = json.view?.image;
+    // a covered photo (the room painted over, made in an image editor) is shown instead of the photo
+    const img = json.view?.image_covered || json.view?.image;
     // the layout's own image follows: the photo or video shown until then belongs to the previous
     // layout, and markers detected in it must not be measured into this layout's marker map
     if (withImage && img && this.source) this.source.stale = true;
@@ -1173,6 +1174,11 @@ export class App {
       // the picture extended below the source (view.extend_below): only virtual things there
       ctx.fillStyle = SKY.floorNear; // the lab floor of the flyover
       ctx.fillRect(0, source.h, this.canvas.width, this.canvas.height - source.h);
+    }
+    // behind a covered photo's transparent parts: the floor, as below the photo
+    if (source.kind === "image") {
+      ctx.fillStyle = SKY.floorNear;
+      ctx.fillRect(0, 0, source.w, source.h);
     }
     ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
     const { H } = this.pose();

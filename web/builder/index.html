@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>ARail Builder</title>
+<meta name="description" content="The street and layout editor of ARail-EBL: streets, bus stops, truck lanes and buildings on a plan of the layout, a check that everything has a street to it, and a push of the layout and covered photos to GitHub.">
+<link rel="icon" href="../assets/favicon-app.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../app/app.css">
+<link rel="stylesheet" href="builder.css">
+</head>
+<body>
+<a class="skip-link" href="#plan">Skip to the plan</a>
+<div class="builder">
+  <header class="bar" id="bar">
+    <h1 class="visually-hidden">ARail Builder</h1>
+    <div class="identity">
+      <img class="cro-logo" src="../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+      <span class="divider" aria-hidden="true"></span>
+      <a class="brand" href="../" title="About ARail-EBL"><span class="sign" translate="no">AR</span><span translate="no">ail</span> <small>Builder</small></a>
+    </div>
+    <span class="layout-name" id="layoutName" translate="no"></span>
+    <span class="save-state" id="saveState" role="status"></span>
+    <span class="spacer"></span>
+    <div class="row bar-actions">
+      <button class="btn" id="btnOpen" type="button">Open</button>
+      <button class="btn icon" id="btnUndo" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 3 9l4 4"/><path d="M3.5 9H12a4.5 4.5 0 0 1 0 9H8"/></svg></button>
+      <button class="btn icon" id="btnRedo" type="button" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m13 5 4 4-4 4"/><path d="M16.5 9H8a4.5 4.5 0 0 0 0 9h4"/></svg></button>
+      <a class="btn" id="btnApp" href="../app/">Open in the app</a>
+      <button class="btn primary" id="btnPush" type="button">Push to GitHub</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <nav class="tools" id="tools" aria-label="Tools"></nav>
+
+    <main class="stage" id="stageWrap">
+      <canvas id="plan" tabindex="0" role="application" aria-label="Plan of the layout" aria-describedby="hint"></canvas>
+      <div class="hint-bar" id="hintBar">
+        <p class="hint" id="hint"></p>
+        <div class="row" id="hintActions"></div>
+      </div>
+      <div class="plan-tools" role="group" aria-label="Plan">
+        <button class="btn icon" type="button" data-plan="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
+        <button class="btn icon" type="button" data-plan="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+        <button class="btn icon" type="button" data-plan="fit" aria-label="Show the whole layout" title="Show the whole layout (Home)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg></button>
+        <button class="btn small" type="button" data-plan="ortho" aria-pressed="true" title="The photo of the table from above">Photo</button>
+        <button class="btn small" type="button" data-plan="grid" aria-pressed="true" title="The grid; points snap to it (hold Alt to place freely)">Grid</button>
+        <button class="btn small" type="button" data-plan="simple" aria-pressed="false" title="Plain shapes instead of the detailed view">Plain</button>
+      </div>
+      <p class="coords" id="coords" aria-hidden="true"></p>
+      <div class="toast" id="toast" role="status" hidden></div>
+    </main>
+
+    <aside class="panel" id="panel">
+      <nav class="tabs" role="tablist" aria-label="Panels">
+        <button role="tab" id="tab-element" aria-controls="panel-element" aria-selected="true">Element</button>
+        <button role="tab" id="tab-problems" aria-controls="panel-problems" aria-selected="false">Problems</button>
+        <button role="tab" id="tab-photos" aria-controls="panel-photos" aria-selected="false">Photos</button>
+        <button role="tab" id="tab-layout" aria-controls="panel-layout" aria-selected="false">Layout</button>
+      </nav>
+      <section class="tabpanel" role="tabpanel" id="panel-element" aria-labelledby="tab-element"></section>
+      <section class="tabpanel" role="tabpanel" id="panel-problems" aria-labelledby="tab-problems" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-photos" aria-labelledby="tab-photos" hidden></section>
+      <section class="tabpanel" role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" hidden></section>
+    </aside>
+  </div>
+</div>
+
+<dialog id="openDialog" aria-labelledby="openTitle"></dialog>
+<dialog id="pushDialog" aria-labelledby="pushTitle"></dialog>
+
+<script type="module" src="builder.js"></script>
+</body>
+</html>

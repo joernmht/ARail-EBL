@@ -578,4 +578,23 @@ export const DE = {
   "home": "nach Hause",
   "to the train": "zum Zug",
   "No street here": "Hier ist keine Straße",
+
+  // ------------------------------------------------------------ street access (core/access.js)
+  "{name}: people cannot get there: no street or footpath within {n} m of its ways in": "{name}: Fußgänger kommen nicht hin: keine Straße und kein Fußweg im Umkreis von {n} m um die Zugänge",
+  "{name}: buses cannot stop here: it is not right next to a street for buses": "{name}: Busse können hier nicht halten: sie liegt nicht direkt an einer Straße für Busse",
+  "{name}: buses cannot drive in: no street within {n} m of its bus lane": "{name}: Busse können nicht einfahren: keine Straße im Umkreis von {n} m um die Busspur",
+  "{name}: buses cannot drive out: no street within {n} m of its bus lane": "{name}: Busse können nicht ausfahren: keine Straße im Umkreis von {n} m um die Busspur",
+  "{name}: trucks cannot get to it: no street at its entry (its first point)": "{name}: Lkw kommen nicht hin: keine Straße an der Einfahrt (dem ersten Punkt)",
+  "{name}: trucks cannot leave it: no street at its end (its last point)": "{name}: Lkw kommen nicht weg: keine Straße am Ende (dem letzten Punkt)",
+  "{name}: its vans cannot drive out: no street for cars within {n} m of its gate": "{name}: die Transporter kommen nicht heraus: keine Straße für Autos im Umkreis von {n} m um das Tor",
+  "{name}: no street or footpath within {n} m of its entrance": "{name}: keine Straße und kein Fußweg im Umkreis von {n} m um den Eingang",
+  "{names}: not connected to the other streets: no bus and no car comes from them": "{names}: nicht mit den anderen Straßen verbunden: von dort kommt kein Bus und kein Auto",
+  "{name} ends {n} m before {other}: join them": "{name} endet {n} m vor {other}: verbinden Sie sie",
+  "{name}: dead end inside the layout: cars appear and vanish here. Lead it to the edge of the layout, or join it to another street": "{name}: Sackgasse in der Anlage: hier tauchen Autos auf und verschwinden. Führen Sie sie zum Rand der Anlage, oder verbinden Sie sie mit einer anderen Straße",
+  "Add a footpath to {street}": "Fußweg zu {street} anlegen",
+  "Add a street to {street}": "Straße zu {street} anlegen",
+  "Add an underpass to {street}": "Unterführung zu {street} anlegen",
+  "Add a street to the edge of the layout": "Straße zum Rand der Anlage anlegen",
+  "Add a street out of the layout": "Straße aus der Anlage hinaus anlegen",
+  "Join it to {street}": "Mit {street} verbinden",
 };

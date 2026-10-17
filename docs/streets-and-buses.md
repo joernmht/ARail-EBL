@@ -44,6 +44,15 @@ Platforms and bus terminals are longer, so they keep their full boards unless th
 **Settings → Simulation → Stops** board lists both sides of such a stop as *Stop A* and *Stop B* (the letters
 on its signs).
 
+## In the builder
+
+The [builder](world-builder.md) draws streets on a plan of the layout, puts bus stops, bus terminals,
+truck lanes and buildings at a street, and checks that everything people and vehicles come to has a
+street to it: bus stops and platforms, the bus terminal's lane, the container terminal's truck lanes,
+the entrances of buildings. It also flags streets on their own, street ends a few metres before
+another street, and dead ends inside the layout, each with a fix where one is plain
+(`accessProblems(world)` and `applyFix(world, fix)` in `web/arail/core/access.js`).
+
 ## How the buses run
 
 - The line's route goes over the road network through all stops, on the side of the street in
@@ -106,6 +115,10 @@ See [Layout file format](layout-format.md#road-street) for the parameters of `ro
 
 ## For plugins and simulations
 
+- `accessProblems(world)` (`core/access.js`) lists what has no street to it and the streets that
+  make no sense, each `{key, level, id, text, at, fix}`; `applyFix(world, fix)` carries a fix out (a
+  street, footpath or underpass to the nearest street, or a street end moved onto the street it
+  almost meets).
 - `world.network()` returns the road network (`core/network.js`), rebuilt when objects, the marker
   map or the scale change. Nodes are at street corners and junctions; edges have `kind` ("road",
   "path", "connector", "lane"), `car`, `bus`, `walk`, `oneway`, `speed` (m/s), `width`,
