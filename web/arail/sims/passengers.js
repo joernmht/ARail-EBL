@@ -759,9 +759,9 @@ export class PassengerSimulation extends Simulation {
       for (const dock of a.docks) {
         if (dock.managed || !this.world.services.intervalOf) continue;
         const iv = this.world.services.intervalOf(dock);
-        const text = `every ${minutes(iv.minutes)} min (${why(iv.from === "demand")})`;
-        if (!seen.has(text)) rows.push([dock.kind === "rail" ? "Trains" : "Buses", text]);
-        seen.add(text);
+        const row = [dock.kind === "rail" ? "Trains" : "Buses", `every ${minutes(iv.minutes)} min (${why(iv.from === "demand")})`];
+        if (!seen.has(row.join("|"))) rows.push(row);
+        seen.add(row.join("|"));
       }
     }
     for (const line of this.world.transit?.lines?.values?.() || []) {

@@ -264,10 +264,15 @@ export class TownSimulation extends Simulation {
     return out;
   }
 
-  /** Key that changes when the buildings or the settings change (then the town is rebuilt). */
+  /**
+   * Key that changes when the buildings, the settings or whether there are platforms change (then
+   * the town is rebuilt: without platforms nobody comes or goes by train, see `_demand`). Moved
+   * buildings and changed lines keep the people on their ways.
+   */
   _populationKey(b) {
     const ids = (list) => list.map((x) => `${x.o.id}:${x.cap.residents || 0}:${x.cap.jobs || 0}:${x.cap.pupils || 0}`).join(",");
-    return [ids(b.residential), ids(b.work), ids(b.school), ids(b.shop), JSON.stringify(this.config)].join("/");
+    const rail = this.world.stopAreas().some((a) => a.kind === "rail");
+    return [ids(b.residential), ids(b.work), ids(b.school), ids(b.shop), rail, JSON.stringify(this.config)].join("/");
   }
 
   _build() {
@@ -553,10 +558,10 @@ export class TownSimulation extends Simulation {
   othersAt(area) {
     const d = this.demand;
     if (!this.enabled || !d || !(d.totals.residents > 0) || !area) return null;
-    // real people a day at each stop area, worked out once for the stops there are
+    // real people a day at each stop area, worked out once for the stops there are (world.stopAreas()
+    // gives a new list when they change: also when they move or a line starts to serve them)
     const areas = this.world.stopAreas();
-    const key = areas.map((a) => a.id).join(",");
-    if (!this._othersPerDay || this._othersPerDay.demand !== d || this._othersPerDay.key !== key) {
+    if (!this._othersPerDay || this._othersPerDay.demand !== d || this._othersPerDay.areas !== areas) {
       const perDay = new Map();
       const rail = areas.filter((a) => a.kind === "rail" && a.docks.length);
       for (const a of rail) perDay.set(a.id, (OTHER_TRIPS.rail * d.totals.residents) / rail.length);
@@ -566,7 +571,7 @@ export class TownSimulation extends Simulation {
         const near = stops.filter((a) => this._metres(dist2(this._accessPoint(a, this._nearestAccess(a, h.pos)), h.pos)) <= ACCESS_M);
         for (const a of near) perDay.set(a.id, (perDay.get(a.id) || 0) + (OTHER_TRIPS.bus * h.R) / near.length);
       }
-      this._othersPerDay = { demand: d, key, perDay };
+      this._othersPerDay = { demand: d, areas, perDay };
     }
     const perDay = this._othersPerDay.perDay.get(area.id) || 0;
     const clock = this.world.clock;

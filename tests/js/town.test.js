@@ -237,6 +237,25 @@ test("town: pupils without a school place go to school elsewhere; empty school p
   assert.ok(island.t.agents.every((a) => a.role !== "commuter" && a.role !== "visitor"));
 });
 
+test("town: a platform added later makes the balance go by train", () => {
+  const { world, t } = built(HOMES.filter((o) => o.type !== "platform"));
+  assert.equal(t.demand.totals.out, 0, "no platform: nobody works elsewhere");
+  world.addObject(HOMES.find((o) => o.type === "platform"));
+  world.step(0.1);
+  assert.ok(t.demand.totals.out > 0, "the town is worked out again with the platform");
+  assert.ok(t.agents.some((a) => a.role === "commuter"));
+});
+
+test("passengers: a stop's card names how often trains and buses stop, also when the intervals are alike", () => {
+  const { world } = built([
+    ...HOMES.map((o) => (o.type === "platform" ? { ...o, headway_s: 50 } : o)),
+    { id: "bt", type: "bus-terminal", position: [400, -400], bays: 1, headway_s: 50 },
+  ]);
+  const pax = world.simulations.find((s) => s.constructor.type === "passengers");
+  const rows = pax._intervalRows([world.getStopArea("p1"), world.getStopArea("bt")]);
+  assert.deepEqual(rows, [["Trains", "every 10 min (set)"], ["Buses", "every 10 min (set)"]]);
+});
+
 test("town: the cap scales residents and visitors alike", () => {
   const all = built([...HOMES, { id: "works", type: "test-box", position: [30000, 600], use: "work", people: 1000 }]);
   const capped = built([...HOMES, { id: "works", type: "test-box", position: [30000, 600], use: "work", people: 1000 }], { max_people: 60 });

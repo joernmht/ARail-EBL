@@ -94,7 +94,7 @@ scales residents and people from elsewhere alike). They are:
 | commuter (school) | pupils without a school place in the town | to the station at 06:30–07:15, back on a train between 13:00 and 15:30 |
 | pupil | pupils with a school place | to school at 07:00–07:40, home at 12:30–15:00 |
 | senior / at home | 25 % (and, without platforms, those without a place) | shopping in the morning (half of them) and sometimes in the afternoon |
-| visitor | `commuters_in` of the empty jobs, school places and shop visits | by train: to work at 06:30–09:00, back at 15:30–18:00; to school at 06:45–07:30, back at 12:30–15:00; to a shop between 08:00 and 18:00 for half an hour to an hour |
+| visitor | `commuters_in` of the empty jobs, school places and shop visits | by train: to work at 06:30–09:00, back at 15:30–18:00; to school at 06:45–07:30, back at 12:30–15:00; to a shop between 08:00 and 18:00 for 30–75 minutes |
 
 Some adults go shopping in the evening. Shops are open 07:00–21:00, schools 07:30–15:30. Without
 shops nobody goes shopping. Every day gets new, reproducible plans (from the world's random seed).
