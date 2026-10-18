@@ -13,7 +13,7 @@ export const TRANSPORT = [
     classes: [
       {
         name: "StopArea", file: "web/arail/core/stops.js", kind: "class", role: "A waiting area: s along, t across, in prototype metres.",
-        attributes: ["id: string — the owner's id (a bus stop: id:right, id:left)", "owner: LayoutObject", "kind: string — rail, bus or tram", "L: number — length (m)", "W: number — width (m)", "docks: object[] — {id, side, s0, s1, kind, track, headway, dwell, managed}", "access: object[] — where people come and go", "crossing: object | null — {kind, reach, s}: a strip with traffic people cross, to the vehicles (board) or to the area (island)"],
+        attributes: ["id: string — the owner's id (a bus stop: id:right, id:left)", "owner: LayoutObject", "kind: string — rail, bus or tram", "L: number — length (m)", "W: number — width (m)", "docks: object[] — {id, side, s0, s1, kind, track, headway, auto, dwell, managed}", "access: object[] — where people come and go", "crossing: object | null — {kind, reach, s}: a strip with traffic people cross, to the vehicles (board) or to the area (island)"],
         operations: ["toLayout(s, t) — m to layout mm", "fromLayout(p) — layout mm to [s, t]", "outline()"],
       },
       { name: "BusTerminal", file: "web/arail/objects/bus-terminal.js", kind: "class", extends: "LayoutObject", role: "Bays; those of bus lines are managed by them.", operations: ["stopAreas()", "busLane() — the lane of the road network"] },
@@ -24,7 +24,7 @@ export const TRANSPORT = [
       { from: "BusTerminal", to: "StopArea", kind: "creates", label: "1" },
       { from: "TramStop", to: "StopArea", kind: "creates", label: "1–2" },
     ],
-    parameters: [{ key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6", meaning: "Headway and dwell of the docks (simulated s); a platform can set its own." }],
+    parameters: [{ key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6, auto_interval true", meaning: "Headway and dwell of the docks (simulated s); a platform can set its own. auto_interval: docks and lines without their own headway run as often as the town needs (the headways, lines 240 s and trams 300 s, are then the default without a town)." }],
     rules: ["Access points by default at 0.3 m and L − 0.3 m (weight 0.35 each) and L/2 (0.3).", "1 m of the prototype = 1000 / scale mm."],
   },
   {
@@ -35,7 +35,7 @@ export const TRANSPORT = [
       {
         name: "ServiceManager", file: "web/arail/core/services.js", kind: "class", role: "world.services: the docks and their vehicles.",
         attributes: ["docks: Map — dock id → {dock, vehicle, timer, heldFor, mode}", "planner: object | null — rail operations or journeys: claims(dock), statusLines(area)"],
-        operations: ["sync() — docks in line with the stop areas", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "free(dockId) — the vehicle at a dock taken away at once (a story's train takes the track)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)", "pickables(view) — the vehicles at the docks", "card(hit) — line, stop, doors, delay"],
+        operations: ["sync() — docks in line with the stop areas", "headwayOf(dock) — its own, the layout's, or what the town needs (dock.auto)", "intervalOf(dock) — the headway, clock minutes and where it comes from (set, demand), for cards", "_demand() — the town simulation, which knows how often vehicles should run", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "free(dockId) — the vehicle at a dock taken away at once (a story's train takes the track)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts)", "_advance(st, v, dt, fx)", "placement(v)", "doors(v)", "draw(view)", "pickables(view) — the vehicles at the docks", "card(hit) — line, stop, doors, delay"],
       },
       {
         name: "Vehicle", file: "web/arail/core/services.js", kind: "class", role: "A train or bus at one dock.",
@@ -59,7 +59,7 @@ export const TRANSPORT = [
         ["s", "start"],
         ["d0", "decision", "Mode of the dock?"],
         ["m0", "merge"],
-        ["a1", "action", "Count down: headway × demand × frequency", "ServiceManager.step"],
+        ["a1", "action", "Count down: headway (its own, or what the town needs) × demand × frequency", "ServiceManager.headwayOf"],
         ["d1", "decision", "Due?"],
         ["a2", "action", "Cancelled: the next headway", "ServiceManager.step"],
         ["x1", "send", "vehicle.cancelled"],
@@ -87,7 +87,8 @@ export const TRANSPORT = [
       ],
     },
     rules: [
-      "The first vehicle after 0.15–0.6 × the headway, then every 0.7–1.3 × the headway (× the demand of the hour).",
+      "The first vehicle after 0.15–0.6 × the headway, then every 0.9–1.1 × the headway (× the demand of the hour).",
+      "Docks and lines without a headway of their own (dock.auto, line.auto, services.auto_interval) take the town's serviceInterval: a regular 5, 10, 15, 20, 30 or 60 clock minutes; without a town the layout's headway (lines 240 s, trams 300 s).",
       "A planner's vehicle stays until the planner lets it go (dwellLeft = ∞, then 0).",
       "Mode feed while the control system sends trains; closed ends a dwell (not a real train's), hold does not.",
       "call skips closed docks (a track closure, a story's train) unless a planner calls; free takes a vehicle away at once: one standing sends vehicle.departing (those on the way to its doors missed it) and vehicle.departed; one coming in never arrived.",
@@ -96,13 +97,13 @@ export const TRANSPORT = [
   {
     id: "passengers", group: "transport", title: "Passengers at the stops",
     summary: "A social-force crowd model per stop area: people arrive, find a waiting spot, wait (their mood falling with crowding and waiting), board through the doors, alight and leave; other simulations hand their people over.",
-    description: "Every person is attracted to a target (a waiting spot, a door, an exit) and pushed away by neighbours closer than 0.6 m; local density slows walkers and worsens their mood. New people come with the demand of the hour, the global demand, disruptions and a slow wave; alighting passengers come with every arriving vehicle. Other simulations (the town, the journeys) hand their people over with enter() and alight(): they wait for their own line or train and are reported back with passenger.boarded and passenger.exited.",
+    description: "Every person is attracted to a target (a waiting spot, a door, an exit) and pushed away by neighbours closer than 0.6 m; local density slows walkers and worsens their mood. New people come with the demand of the hour, the global demand, disruptions and a slow wave; alighting passengers come with every arriving vehicle. With a town simulation the other passengers follow its residents (othersAt): a few an hour at a small town's station, and as many alight from a vehicle as came to the stops in its interval; without a town base_rate per 25 m of stop. Other simulations (the town, the journeys) hand their people over with enter() and alight(): they wait for their own line or train and are reported back with passenger.boarded and passenger.exited.",
     files: ["web/arail/sims/passengers.js"],
     classes: [
       {
         name: "PassengerSimulation", file: "web/arail/sims/passengers.js", kind: "class", extends: "Simulation", role: "The crowds of all stop areas.",
         attributes: ["crowds: Map — Crowd per stop area", "others: boolean — generated passengers (off: only those handed over)"],
-        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents, options) — towards: a traveller gets off at the door closest to its way out", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_doorT(a, dock) — the doors beyond the strip at a tram in the middle of the street", "_walk(a) — may people cross the strip now (the stop's lights)?", "_goal(a, p, walk) — over the strip only on red, straight; to an island at its crossing, each way on one half of it", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting and the next vehicles at a stop"],
+        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents, options) — towards: a traveller gets off at the door closest to its way out", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_othersRate(c) — other passengers per s: the town's othersAt, else the setting per 25 m of stop", "_othersFromTown(area)", "_interval(vehicle, dock) — the time between two such vehicles: alighting others", "_intervalRows(areas) — how often trains, buses and trams stop, and when that is what the town needs", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_doorT(a, dock) — the doors beyond the strip at a tram in the middle of the street", "_walk(a) — may people cross the strip now (the stop's lights)?", "_goal(a, p, walk) — over the strip only on red, straight; to an island at its crossing, each way on one half of it", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting, how often vehicles stop, the other passengers an hour, the next vehicles at a stop"],
       },
       { name: "Crowd", file: "web/arail/sims/passengers.js", kind: "class", role: "The people of one stop area.", attributes: ["area: StopArea", "people: Person[]"], operations: ["wave() — demand 0.3 … 1 over 180 s"] },
       {
@@ -159,7 +160,7 @@ export const TRANSPORT = [
       },
     ],
     parameters: [
-      { key: "base_rate", default: "0.5", meaning: "Arrivals (people/s per 25 m of stop).", sim: "passengers" },
+      { key: "base_rate", default: "0.5", meaning: "Arrivals (people/s per 25 m of stop) without a town simulation.", sim: "passengers" },
       { key: "max_per_area", default: "140", meaning: "Most people generated at a stop (handed-over people are not limited).", sim: "passengers" },
       { key: "others", default: "true", meaning: "Generated passengers; the module Journeys switches them off.", sim: "passengers" },
     ],
@@ -187,17 +188,17 @@ export const TRANSPORT = [
   },
   {
     id: "town", group: "transport", title: "The town's residents",
-    summary: "Residents of the residential buildings with daily plans (work, school, shopping, home, the train): they walk the sidewalks, take buses and trains, and fill the buildings, whose windows light up.",
+    summary: "Residents of the residential buildings with daily plans (work, school, shopping, home, the train): they walk the sidewalks, take buses and trains, and fill the buildings, whose windows light up. How many people there are follows from the buildings without counting a place twice; from that the town says how often trains, buses and trams run and how many other passengers come to the stops.",
     files: ["web/arail/sims/town.js", "web/arail/objects/station.js"],
     classes: [
       {
         name: "TownSimulation", file: "web/arail/sims/town.js", kind: "class", extends: "Simulation", role: "The town.",
-        attributes: ["agents: Agent[]", "places: object — buildings by use"],
-        operations: ["step(dt)", "_build()", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pedestrians() — the residents walking, for zebra crossings and riders", "annoy(agent, amount) — a bike too close on the sidewalk: the mood drops and comes back slowly", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
+        attributes: ["agents: Agent[]", "places: object — buildings by use", "demand: object — homes with their kinds of people, visitors, places (local, from elsewhere), the ways of the morning, totals"],
+        operations: ["step(dt)", "_build()", "_demand(b) — who goes where: the places filled within reach, the balance by train", "_fill(demands, places) — nearest pairs first", "_reachable(h, p) — within catchment_m or by a line", "_linked(a, b) — a bus or tram line between stops near both", "_nearestRailPoint(p)", "serviceInterval(target) — how often a dock's trains or buses, or a line, should run", "_lineRiders(line) — the long ways of the morning a line serves", "othersAt(area) — other passengers at a stop per s", "describeObject(o, card) — a building's places: from the town, from elsewhere, empty", "_patience(a) — 20 min, or longer than the interval", "_makePlan(a, day)", "_placeAll() — after clock.set", "_place(a, now) — where its plan says, without travelling", "_countOccupancy() — the people inside each building anew", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pedestrians() — the residents walking, for zebra crossings and riders", "annoy(agent, amount) — a bike too close on the sidewalk: the mood drops and comes back slowly", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
       },
       {
         name: "Agent", file: "web/arail/sims/town.js", kind: "class", extends: "Person", role: "A resident or visitor.",
-        attributes: ["plan: object[] — {at, purpose, to, byTrain}", "state: string — inside, walking, stop, riding, away", "inside: string | null — the building", "purpose: string", "trip: object — its legs"],
+        attributes: ["plan: object[] — {at, purpose, to, byTrain}", "visit: string | null — work, school, shopping: what brings a visitor or takes a commuter away", "shop: string | null — a visitor's shop", "state: string — inside, walking, stop, riding, away", "inside: string | null — the building", "purpose: string", "trip: object — its legs"],
       },
       { name: "StationBuilding", file: "web/arail/objects/station.js", kind: "class", extends: "BuildingBase", role: "The station building: a shop and a workplace." },
     ],
@@ -206,8 +207,31 @@ export const TRANSPORT = [
       { from: "TownSimulation", to: "PassengerSimulation", kind: "uses", label: "enter, alight, release" },
       { from: "TownSimulation", to: "Transit", kind: "uses", label: "connections" },
       { from: "TownSimulation", to: "RoadNetwork", kind: "uses", label: "routes" },
+      { from: "ServiceManager", to: "TownSimulation", kind: "uses", label: "serviceInterval" },
+      { from: "Transit", to: "TownSimulation", kind: "uses", label: "serviceInterval" },
+      { from: "PassengerSimulation", to: "TownSimulation", kind: "uses", label: "othersAt" },
     ],
     activities: [{
+      id: "population", name: "Who lives, works and learns in the town",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "The homes give the residents: 60 % workers, 15 % pupils, 25 % seniors", "TownSimulation._demand"],
+        ["a2", "action", "Workers fill the jobs within reach, nearest first (commuters_out work elsewhere anyway)", "TownSimulation._fill"],
+        ["a3", "action", "Pupils fill the school places; adults the shop visits", "TownSimulation._fill"],
+        ["d1", "decision", "A platform?"],
+        ["a4", "action", "Workers and pupils without a place go elsewhere by train; commuters_in of the empty places come from elsewhere", "TownSimulation._demand"],
+        ["a5", "action", "Nobody comes or goes: without a place, at home by day", "TownSimulation._demand"],
+        ["m1", "merge"],
+        ["a6", "action", "Agents in proportion (people_per_100, max_people for all alike); the id says who: home, role, where to, number", "TownSimulation._build"],
+        ["d2", "decision", "Worked out again (buildings, settings, platforms or the lines' stops changed)?"],
+        ["a8", "action", "Who has the same id stays where they are; the new ones are placed by their plans, the gone ones taken off stops and buses", "TownSimulation._place"],
+        ["a9", "action", "Everybody where their plan says", "TownSimulation._placeAll"],
+        ["m2", "merge"],
+        ["a7", "action", "Others ask how often to run and how many others come", "TownSimulation.serviceInterval"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "d1"], ["d1", "a4", "yes"], ["d1", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "a6"], ["a6", "d2"], ["d2", "a8", "yes"], ["d2", "a9", "no"], ["a8", "m2"], ["a9", "m2"], ["m2", "a7"], ["a7", "e"]],
+    }, {
       id: "day", name: "A resident's day",
       nodes: [
         ["s", "start"],
@@ -222,7 +246,7 @@ export const TRANSPORT = [
         ["a5", "action", "Walk on the sidewalk", "TownSimulation._walk"],
         ["a6", "action", "Wait at the stop (handed to the passengers)", "TownSimulation._beginLeg"],
         ["d3", "decision", "What happened at the stop?"],
-        ["a7", "action", "Waited 20 min: walk instead, or home", "TownSimulation._exited"],
+        ["a7", "action", "Waited 20 min (or longer than the interval): walk instead, or home", "TownSimulation._exited"],
         ["a8", "action", "Away by train", "TownSimulation._boarded"],
         ["a9", "action", "Ride the bus; off at its stop", "TownSimulation._vehicleArrived"],
         ["a10", "action", "Inside: the building's occupancy counts it", "TownSimulation._setInside"],
@@ -234,8 +258,9 @@ export const TRANSPORT = [
       { key: "max_people", default: "300", meaning: "Most people shown.", sim: "town" },
       { key: "walk_max_m", default: "150", meaning: "Longest walk before the bus is considered (m).", sim: "town" },
       { key: "bus_share", default: "0.8", meaning: "Share of long ways taken by bus.", sim: "town" },
-      { key: "commuters_out", default: "0.35", meaning: "Share of workers who work elsewhere (train).", sim: "town" },
-      { key: "commuters_in", default: "40", meaning: "People per 100 local jobs who come by train.", sim: "town" },
+      { key: "catchment_m", default: "1500", meaning: "Local area (m): places this close to a home, or on a line from near it, are the residents' first.", sim: "town" },
+      { key: "commuters_out", default: "0.15", meaning: "Share of workers who work elsewhere (train) although there are jobs; those without a job in the town too.", sim: "town" },
+      { key: "commuters_in", default: "0.6", meaning: "Share of the jobs, school places and shop visits left empty that people from elsewhere take (train).", sim: "town" },
       { key: "shopping", default: "0.5", meaning: "Share of adults who go shopping each day.", sim: "town" },
     ],
     events: {
@@ -247,10 +272,12 @@ export const TRANSPORT = [
       ],
     },
     rules: [
-      "Roles: 15 % pupils, 25 % seniors, the rest workers; commuters among the workers when there are platforms.",
+      "Roles: 15 % pupils, 25 % seniors, the rest workers; a place within reach (catchment_m or a line) is taken once, nearest first; only the balance crosses the edge of the town, by train.",
+      "A shop takes 28 half-hour visits a day per visitor place at a fifth full; adults shop by the setting shopping (× 1.1 for the evening).",
+      "Intervals: the busiest hour (half the morning trips, 10 % of the other trips: 0.3 by train, 0.2 by bus a resident and day) over places at 70 % (train 140, bus 49, tram 4.2 per m) at the rush-hour frequency × 1.5; the longest of 5, 10, 15, 20, 30, 60 min that is enough.",
       "Plans: work 06:30–08:00 until 15:30–17:30; school 07:00–07:40; shopping 08:30–11:30 and evenings; trains 05:45–07:45 and 16:00–18:30.",
       "The bus (or tram) when a walk is longer than walk_max_m and it is faster (stops within 300 m); patience 20 clock minutes; a closed stop is not entered: walk instead, or away.",
-      "Shops are open 07:00–21:00; at most 14 residents per train.",
+      "Shops are open 07:00–21:00; at most 30 people get off a train.",
     ],
   },
   {
@@ -342,8 +369,8 @@ export const TRANSPORT = [
     classes: [
       {
         name: "Transit", file: "web/arail/core/transit.js", kind: "class", role: "world.transit: the bus lines and their buses.",
-        attributes: ["lines: Map — circuit, visits, headway, speed, single-track stretches, ends of stub tracks, curves of trams, problems", "buses: LineBus[] — buses and trams", "signals: StopSignals — the lights of the tram stops in the middle of the street"],
-        operations: ["sync()", "step(dt)", "_buildLine(obj, net, old) — trams: the corners rounded to 25 m (core/curves.js)", "_streetsAt(p, net) — the streets at a point, for the problems", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_singleFree(bus, iv, occupied)", "_occupy(bus) — a tram that has moved onto a single track is on it at once for the others", "_blockers() — cars wait beside a standing tram (where the stop has no lights)", "_nextDock(bus) — where it stops next, how far", "_clearAt(bus, line, s, users) — the place beyond the end of a stub track free?", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses and trams", "card(hit) — destination, next stop, people on board"],
+        attributes: ["lines: Map — circuit, visits, headway (auto: from the town), speed, single-track stretches, ends of stub tracks, curves of trams, problems", "buses: LineBus[] — buses and trams", "signals: StopSignals — the lights of the tram stops in the middle of the street"],
+        operations: ["sync()", "step(dt)", "_buildLine(obj, net, old) — trams: the corners rounded to 25 m (core/curves.js)", "_streetsAt(p, net) — the streets at a point, for the problems", "_autoHeadway(line, demand) — a line without headway_s: as often as the town needs", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_singleFree(bus, iv, occupied)", "_occupy(bus) — a tram that has moved onto a single track is on it at once for the others", "_blockers() — cars wait beside a standing tram (where the stop has no lights)", "_nextDock(bus) — where it stops next, how far", "_clearAt(bus, line, s, users) — the place beyond the end of a stub track free?", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses and trams", "card(hit) — destination, next stop, people on board"],
       },
       {
         name: "LineBus", file: "web/arail/core/transit.js", kind: "class", role: "A bus of a line (looks like a Vehicle to the passengers).",
@@ -383,7 +410,7 @@ export const TRANSPORT = [
       edges: [["s", "a1"], ["a1", "m1"], ["m1", "a2"], ["a2", "x1"], ["x1", "d1"], ["d1", "m1", "no"], ["d1", "a3", "yes"], ["a3", "x2"], ["x2", "d2"], ["d2", "a4", "yes"], ["d2", "m2", "no"], ["a4", "m2"], ["m2", "d3"], ["d3", "m2", "no"], ["d3", "d4", "yes"], ["d4", "a5", "yes"], ["d4", "a6", "no"], ["a5", "e"], ["a6", "m1"]],
     }],
     parameters: [
-      { key: "headway_s", default: "240", meaning: "Headway of a bus line (BusLine)." },
+      { key: "headway_s", default: "empty", meaning: "Headway of a bus line (BusLine); empty: as often as the town needs, 240 s without a town." },
       { key: "speed_kmh", default: "40", meaning: "Speed of its buses." },
       { key: "mode", default: "back-and-forth", meaning: "Back and forth, or a ring." },
     ],
@@ -400,6 +427,7 @@ export const TRANSPORT = [
     rules: [
       "Accelerate 1.0, brake 1.3 (hard 3.5) m/s²; gap 3 m; doors 2.5 s; dwell at least 8 s.",
       "Buses needed = ⌈cycle / (headway / demand)⌉ + 1, and a line running late gets no more; target speed = min(speed, limit, √(2 × 1.3 × d), √(2 × 1.3 × (gap − 3))).",
+      "A line without headway_s runs as often as the town needs (serviceInterval), else every 240 s (trams 300 s).",
       "Give way at junctions for at most 4 s at the same priority; not into a junction without room behind it; lay over at most max(3 × headway, 600 s).",
       "Trams on their track (the right one of two), never across a railway at street level; one direction at a time on a single track, one tram at the end of a stub track, where the driver changes ends (20 s).",
     ],

@@ -29,7 +29,7 @@ export class BusTerminal extends LayoutObject {
     { key: "width_m", label: "Waiting area width", type: "number", unit: "m", min: 2, max: 15, step: 0.5, default: 4.5 },
     { key: "lane_width_m", label: "Bus lane width", type: "number", unit: "m", min: 3, max: 8, step: 0.5, default: 3.5 },
     { key: "lines", label: "Lines", type: "text", default: "", help: "Comma-separated, e.g. \"62, 85\"." },
-    { key: "headway_s", label: "A bus every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Per bay. Empty = layout default." },
+    { key: "headway_s", label: "A bus every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Per bay. Empty = what the town needs (layout default without a town)." },
     { key: "shelter", label: "Shelters", type: "boolean", default: true },
   ];
 
@@ -69,14 +69,16 @@ export class BusTerminal extends LayoutObject {
     const g = this.geometry;
     if (!g) return [];
     const svc = this.world.layout.services;
-    const headway = Number(this.spec.headway_s) > 0 ? Number(this.spec.headway_s) : svc.bus_headway_s;
+    const own = Number(this.spec.headway_s) > 0;
+    const headway = own ? Number(this.spec.headway_s) : svc.bus_headway_s;
+    const auto = !own && svc.auto_interval !== false;
     const bayLen = +this.spec.bay_length_m || 16;
     // bays used by bus lines are managed by the lines (core/transit.js), not by the timetable
     const lines = linesServing(this.world, this.id).length;
     const docks = [];
     for (let i = 0; i < g.bays; i++) {
       docks.push({
-        id: `${this.id}:bay${i + 1}`, side: -1, s0: i * bayLen, s1: (i + 1) * bayLen, kind: "bus", label: `Bay ${String.fromCharCode(65 + i)}`, headway, dwell: svc.bus_dwell_s,
+        id: `${this.id}:bay${i + 1}`, side: -1, s0: i * bayLen, s1: (i + 1) * bayLen, kind: "bus", label: `Bay ${String.fromCharCode(65 + i)}`, headway, auto, dwell: svc.bus_dwell_s,
         managed: i < lines ? "line" : null,
       });
     }

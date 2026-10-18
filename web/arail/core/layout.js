@@ -23,6 +23,12 @@ export const DEFAULT_SERVICES = {
   bus_dwell_s: 20,
   /** Duration of the arrival and departure animations (simulated seconds). */
   approach_s: 6,
+  /**
+   * Docks and bus and tram lines without a headway of their own run as often as the town simulation
+   * says its people need (sims/town.js `serviceInterval`); without a town, or when this is false, the
+   * headways above (lines: 240 s, trams 300 s).
+   */
+  auto_interval: true,
 };
 
 /** Grid of the flyover and the editor: spacing (mm) and whether placed and dragged things snap to it. */

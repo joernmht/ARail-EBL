@@ -131,13 +131,18 @@ test("passengers arrive, trains come and people board and alight", () => {
     if (n > 1) crowded++;
   });
   world.events.on("vehicle.departed", (e) => atDock.set(e.dock.id, (atDock.get(e.dock.id) || 0) - 1));
-  run(world, 400);
+  // the morning rush of the small town: its commuters and pupils at the platforms, a few at the bus terminal
+  const sim = world.simulations[0];
+  const most = new Map();
+  for (let i = 0; i < 200; i++) {
+    run(world, 2);
+    for (const id of ["platform-1", "platform-2", "bus-terminal-1"]) most.set(id, Math.max(most.get(id) || 0, sim.stats(id)?.count || 0));
+  }
   assert.ok(events["vehicle.arrived"] >= 6, `vehicles arrived: ${events["vehicle.arrived"]}`);
   assert.equal(crowded, 0, "one vehicle at a dock at a time");
-  const sim = world.simulations[0];
   for (const id of ["platform-1", "platform-2", "bus-terminal-1"]) {
     const s = sim.stats(id);
-    assert.ok(s && s.count > 0, `${id}: people waiting (${s?.count})`);
+    assert.ok(most.get(id) > 0, `${id}: people waiting at some time (${most.get(id)})`);
     assert.ok(s.mood > 0.2 && s.mood <= 1, `${id}: mood ${s.mood}`);
   }
   const boardedOrAlighted = [...sim.crowds.values()].reduce((n, c) => n + c.outTimes.length, 0);
@@ -160,7 +165,8 @@ test("disruptions: a delay holds trains and makes passengers unhappy", () => {
 
 test("disruptions: closure empties the platform, replacement buses run more often", () => {
   const world = createWorld(LAB, { seed: 5 });
-  run(world, 120);
+  // a small town: wait until somebody waits at the platform (a few minutes at most)
+  for (let i = 0; i < 60 && !(world.simulations[0].stats("platform-2")?.count > 0); i++) run(world, 10);
   assert.ok(world.simulations[0].stats("platform-2").count > 0);
   world.disruptions.start({ type: "closure", target: "platform-2", params: { minutes: 10 } });
   run(world, 200);

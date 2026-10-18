@@ -1491,6 +1491,7 @@ test("determinism: the same seed gives the same events, inventory and crane posi
 test("isolation: a terminal entry leaves the passenger simulation unchanged", () => {
   const stats = (json) => {
     const world = createWorld(json, { seed: 5 });
+    world.demand = 10; // a busy day: people at the stops
     for (let i = 0; i < 60 / (0.1 * world.speed); i++) world.step(0.1);
     const p = world.simulations[0];
     return { stats: world.stopAreas().map((a) => p.stats(a.id)), next: world.rng.next(), time: world.time };

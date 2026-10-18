@@ -54,7 +54,7 @@ export class BusLine extends LayoutObject {
     { key: "name", label: "Name", type: "text", default: "" },
     { key: "number", label: "Line number", type: "text", default: "", help: "Shown on the buses and signs, e.g. \"62\"." },
     { key: "color", label: "Colour", type: "color", default: CD.tuerkis },
-    { key: "headway_s", label: "A bus every", type: "number", unit: "s (simulated)", min: 30, max: 3600, step: 10, default: 240, help: "Outside the rush hours; more often in the morning and evening, no buses at night." },
+    { key: "headway_s", label: "A bus every", type: "number", unit: "s (simulated)", min: 30, max: 3600, step: 10, help: "Outside the rush hours; more often in the morning and evening, no buses at night. Empty = as often as the town needs (240 s without a town)." },
     { key: "mode", label: "Route", type: "select", options: [["back-and-forth", "back and forth"], ["loop", "loop (round trip)"]], default: "back-and-forth" },
     { key: "speed_kmh", label: "Top speed", type: "number", unit: "km/h", min: 10, max: 80, step: 5, default: 40 },
     { key: "show_route", label: "Show the route", type: "boolean", default: true },

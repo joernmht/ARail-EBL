@@ -2,13 +2,15 @@
  * Vehicle services at docks: trains at platform tracks, buses at bus bays.
  *
  * Every dock has a state machine. Without a control-system feed it runs a simple
- * timetable (a vehicle every `headway` seconds, randomised); vehicles can also be called
+ * timetable (a vehicle every `headway` seconds, ±10 %); vehicles can also be called
  * manually or by scenarios. Disruptions change the behaviour through their effects
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
  * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
  * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
  * (`services.planner`, the operations simulation) can take over rail docks: they are in mode
  * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
+ * Docks without an interval of their own (`dock.auto`) run as often as the town needs
+ * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
  *
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
  * `vehicle.departing` (doors close) -> `vehicle.departed`; or `vehicle.cancelled`.
@@ -83,7 +85,31 @@ export class ServiceManager {
   }
 
   _headway(dock) {
-    return dock.headway * this.rng.uniform(0.7, 1.3);
+    return this.headwayOf(dock) * this.rng.uniform(0.9, 1.1);
+  }
+
+  /** What knows how often vehicles should run for the town (the town simulation), or null. */
+  _demand() {
+    return this.world.simulations?.find((s) => s.enabled && typeof s.serviceInterval === "function") || null;
+  }
+
+  /**
+   * The interval of a dock's timetable (simulated s, outside the rush hours): its own or the
+   * layout's, or, for docks that follow the demand (`dock.auto`), what the town needs.
+   */
+  headwayOf(dock) {
+    return this.intervalOf(dock).headway;
+  }
+
+  /**
+   * The interval of a dock's timetable with where it comes from, for cards.
+   * @returns {{headway: number, minutes: number, from: "set" | "demand"}} headway in simulated s, minutes on the clock
+   */
+  intervalOf(dock) {
+    const factor = this.world.clock.factor > 0 ? this.world.clock.factor : 12;
+    const iv = dock.auto ? this._demand()?.serviceInterval({ kind: dock.kind === "rail" ? "rail" : "bus", dock }) : null;
+    if (iv) return { headway: iv.headway_s, minutes: iv.minutes, from: "demand" };
+    return { headway: dock.headway, minutes: (dock.headway * factor) / 60, from: "set" };
   }
 
   /** Vehicle kind for a dock: a registered vehicle of the dock's kind (e.g. "tram"), else train or bus. */
@@ -105,7 +131,7 @@ export class ServiceManager {
           if (st.vehicle) st.vehicle.dock = dock;
         } else {
           const mode = dock.kind === "rail" && this.world.trains?.active ? "feed" : this.baseMode(dock);
-          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * dock.headway, heldFor: 0, mode, manual: null });
+          this.docks.set(dock.id, { dock, vehicle: null, timer: this.rng.uniform(0.15, 0.6) * this.headwayOf(dock), heldFor: 0, mode, manual: null });
         }
       }
     }

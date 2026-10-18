@@ -267,7 +267,7 @@ export const STREETS = [
     }],
     parameters: [
       { key: "kind, side, length_m, width_m, height_m, tactile, lights, shelter", default: "cape, both, 40, 2.5, by kind, true, true, true", meaning: "A tram stop (TramStop): its kind, sides, platform; traffic lights where people cross a lane." },
-      { key: "headway_s, mode, speed_kmh, length_m", default: "300, back-and-forth, 50, 30", meaning: "A tram line (TramLine)." },
+      { key: "headway_s, mode, speed_kmh, length_m", default: "empty, back-and-forth, 50, 30", meaning: "A tram line (TramLine); headway empty: as often as the town needs, 300 s without a town." },
     ],
     rules: [
       "Kinds: on the road (people step down from the curb and cross the lane; cars wait), raised road (25 cm, cars wait), island between track and car lane (cars drive past; people get onto it at its own lights, or at a zebra crossing or lights within 30 m), curb extension (like a bus stop: cars wait behind the tram).",

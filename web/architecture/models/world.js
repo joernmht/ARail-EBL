@@ -180,7 +180,7 @@ export const WORLD = [
     }],
     parameters: [
       { key: "scale", default: "87", meaning: "1 m of the prototype is 1000/87 mm (H0)." },
-      { key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6", meaning: "The built-in timetable (simulated seconds)." },
+      { key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6, auto_interval true", meaning: "The built-in timetable (simulated seconds); auto_interval: docks and lines without their own headway run as often as the town needs." },
       { key: "grid", default: "size_mm 50, snap", meaning: "The grid of the flyover and Build." },
       { key: "layers[]", default: "enabled false, exclusive false, layout null", meaning: "The modules: objects, simulations, scenarios and plugins they add." },
     ],

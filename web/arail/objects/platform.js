@@ -34,7 +34,7 @@ export class Platform extends LayoutObject {
     { key: "track_left", label: "Track name (left)", type: "text", default: "", help: "Name of this track in the control system." },
     { key: "track_right", label: "Track name (right)", type: "text", default: "" },
     { key: "lines", label: "Lines", type: "text", default: "", help: "Comma-separated line names, e.g. \"RE 1, S 2\"." },
-    { key: "headway_s", label: "A train every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Average interval of the built-in timetable. Empty = layout default." },
+    { key: "headway_s", label: "A train every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Average interval of the built-in timetable. Empty = what the town needs (layout default without a town)." },
     { key: "canopy", label: "Canopy", type: "boolean", default: false },
   ];
 
@@ -87,13 +87,16 @@ export class Platform extends LayoutObject {
     const g = this.geometry;
     if (!g) return [];
     const svc = this.world.layout.services;
-    const headway = Number(this.spec.headway_s) > 0 ? Number(this.spec.headway_s) : svc.rail_headway_s;
+    const own = Number(this.spec.headway_s) > 0;
+    const headway = own ? Number(this.spec.headway_s) : svc.rail_headway_s;
+    // without an interval of its own, it follows what the town needs (core/services.js headwayOf)
+    const auto = !own && svc.auto_interval !== false;
     const dwell = svc.rail_dwell_s;
     const docks = [];
     const sides = this.spec.sides || "both";
     const dock = (side, key) => {
       const track = this.spec[`track_${key}`] || null;
-      docks.push({ id: `${this.id}:${key}`, side, track, label: track ? `Track ${track}` : key === "left" ? "left track" : "right track", headway, dwell });
+      docks.push({ id: `${this.id}:${key}`, side, track, label: track ? `Track ${track}` : key === "left" ? "left track" : "right track", headway, auto, dwell });
     };
     if (sides === "both" || sides === "left") dock(1, "left");
     if (sides === "both" || sides === "right") dock(-1, "right");

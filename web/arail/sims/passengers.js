@@ -117,6 +117,9 @@ class Person {
   }
 }
 
+/** The mean of {@link Crowd#wave}. */
+const WAVE_MEAN = 0.65;
+
 class Crowd {
   constructor(area, rng) {
     this.area = area;
@@ -142,7 +145,10 @@ export class PassengerSimulation extends Simulation {
   static label = "Passengers";
   static description = "Passengers arrive, wait, board and alight; their colour shows their mood.";
   static params = [
-    { key: "base_rate", label: "Arrivals", type: "number", unit: "people/s per 25 m", min: 0, max: 5, step: 0.05, default: 0.5 },
+    {
+      key: "base_rate", label: "Arrivals", type: "number", unit: "people/s per 25 m", min: 0, max: 5, step: 0.05, default: 0.5,
+      help: "Other passengers at a stop without a town simulation. With a town they follow its residents.",
+    },
     { key: "max_per_area", label: "Max. people per stop", type: "number", min: 10, max: 500, step: 10, default: 140 },
     {
       key: "others", label: "Other passengers", type: "boolean", default: true,
@@ -193,6 +199,31 @@ export class PassengerSimulation extends Simulation {
   /** Tell the owners of agents among `people` that they are gone. */
   _dropped(people) {
     for (const p of people) if (p.agent) this.world.events.emit("passenger.removed", { agent: p.agent, person: p });
+  }
+
+  /** The other passengers a stop area gets from the town (people per simulated second by day), or null without a town. */
+  _othersFromTown(area) {
+    const town = this.world.simulations.find((s) => s !== this && s.enabled && typeof s.othersAt === "function");
+    const r = town?.othersAt(area);
+    return Number.isFinite(r) ? r : null;
+  }
+
+  /**
+   * Other passengers coming to a stop area now (people per simulated second, before the hour, the
+   * global demand and disruptions): what the town says when one runs, else `base_rate` per 25 m;
+   * with the slow wave.
+   */
+  _othersRate(c) {
+    const town = this._othersFromTown(c.area);
+    return town != null ? town * (c.wave() / WAVE_MEAN) : this.config.base_rate * c.wave() * (c.area.L / 25);
+  }
+
+  /** Time (simulated s) between two vehicles like this one at the dock: its line's interval, or the timetable's. */
+  _interval(vehicle, dock) {
+    const line = vehicle?.lineId ? this.world.transit?.lines?.get?.(vehicle.lineId) : null;
+    if (line?.headway > 0) return line.headway;
+    const h = dock.managed ? null : this.world.services.headwayOf?.(dock);
+    return h > 0 ? h : 120;
   }
 
   _sync() {
@@ -443,7 +474,12 @@ export class PassengerSimulation extends Simulation {
     const len = dock.s1 - dock.s0;
     const bus = dock.kind === "bus" || dock.kind === "tram";
     const tod = this.world.clock.demand("passengers");
-    const n = fx.closed || !this.others ? 0 : rng.poisson(((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25)) * Math.min(1, 0.25 + tod));
+    // with a town: as many as came to the stops served by one vehicle (what boards elsewhere comes back)
+    const town = this._othersFromTown(a);
+    const mean = town != null
+      ? town * this._interval(vehicle, dock) * this.world.demand * (c.wave() / WAVE_MEAN)
+      : (bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25);
+    const n = fx.closed || !this.others ? 0 : rng.poisson(mean * Math.min(1, 0.25 + tod));
     const late = vehicle.delayMin > 0.5;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const s = rng.pick(doors) + rng.uniform(-0.4, 0.4);
@@ -500,7 +536,7 @@ export class PassengerSimulation extends Simulation {
     // wait there; those waiting go over to another track, or leave when none is open
     const open = a.docks.filter((d) => !world.disruptions.effectsFor(a, d).closed);
     const shut = !fx.closed && open.length < a.docks.length;
-    const rate = fx.closed || !service || !this.others || (a.docks.length && !open.length) ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
+    const rate = fx.closed || !service || !this.others || (a.docks.length && !open.length) ? 0 : this._othersRate(c) * world.demand * fx.demand * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
     // a bus or tram stop in the street holds fewer people than a platform
     const max = a.kind === "bus" || a.kind === "tram" ? Math.min(this.config.max_per_area, ROAD_STOP_MAX) : this.config.max_per_area;
@@ -699,11 +735,39 @@ export class PassengerSimulation extends Simulation {
       }
     }
     card.rows.push(["Waiting", count ? `${count} ${count === 1 ? "person" : "people"} · mood ${Math.round((mood / count) * 100)} %` : "nobody"]);
+    for (const row of this._intervalRows(areas)) card.rows.push(row);
+    const others = areas.map((a) => this._othersFromTown(a)).filter((r) => r != null);
+    if (others.length) {
+      const perHour = (others.reduce((s, r) => s + r, 0) * 3600) / Math.max(1e-6, this.world.clock.factor || 12);
+      card.rows.push(["Others", `${perHour < 10 ? perHour.toFixed(1) : Math.round(perHour)} people per hour by day (from the town)`]);
+    }
     const next = boardStatus(this.world, areas, 4);
     if (next.length) {
       card.status ||= next[0];
       card.sections = [...(card.sections || []), { title: "Next", lines: next }];
     }
+  }
+
+  /** How often vehicles stop here (by day), and whether that is what the town needs: [label, text] rows. */
+  _intervalRows(areas) {
+    const factor = this.world.clock.factor > 0 ? this.world.clock.factor : 12;
+    const every = (m, demand) => `every ${m < 10 ? Math.round(m * 10) / 10 : Math.round(m)} min${demand ? " (what the town needs)" : ""}`;
+    const rows = [];
+    const seen = new Set();
+    for (const a of areas) {
+      for (const dock of a.docks) {
+        if (dock.managed || !this.world.services.intervalOf) continue;
+        const iv = this.world.services.intervalOf(dock);
+        const row = [dock.kind === "rail" ? "Trains" : "Buses", every(iv.minutes, iv.from === "demand")];
+        if (!seen.has(row.join("|"))) rows.push(row);
+        seen.add(row.join("|"));
+      }
+    }
+    for (const line of this.world.transit?.lines?.values?.() || []) {
+      if (!line.ok || !line.visits?.some((v) => areas.some((a) => a.id === v.area?.id))) continue;
+      rows.push([`${line.noun} ${line.label}`, every((line.headway * factor) / 60, line.auto && line.minutes != null)]);
+    }
+    return rows;
   }
 
   /* ---------------------------------------------------------------- drawing */

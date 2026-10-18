@@ -7,7 +7,9 @@
  * serves its stops in order and then in reverse (for a stop on both sides of the street, the side
  * in the direction of travel); a loop runs round. Where a direction begins (the termini; the first
  * stop of a loop) vehicles lay over and are dispatched: every `headway_s` (outside the rush hours)
- * × `clock.demand("bus")`, none at night.
+ * × `clock.demand("bus")`, none at night. A line without `headway_s` runs as often as the town
+ * needs (`serviceInterval` of the town simulation, sims/town.js), else (without a town, or with
+ * `services.auto_interval` false) every 240 s (trams 300 s).
  *
  * Buses drive along the circuit on the right lane, trams on their track (the right one of two),
  * with acceleration, braking and the speed limit of the street, keep their distance to the vehicle
@@ -536,7 +538,7 @@ export class Transit {
     const vehicle = LINE_TYPES[obj.constructor.type] || "bus", tram = vehicle === "tram";
     const line = {
       id: obj.id, obj, label: obj.lineLabel?.() ?? obj.id, name: obj.name, color: spec.color || CD.tuerkis,
-      headway: Math.max(10, +spec.headway_s || 240), mode: spec.mode === "loop" ? "loop" : "back-and-forth",
+      headway: +spec.headway_s > 0 ? Math.max(10, +spec.headway_s) : tram ? 300 : 240, auto: !(+spec.headway_s > 0) && this.world.layout?.services?.auto_interval !== false, mode: spec.mode === "loop" ? "loop" : "back-and-forth",
       speed: Math.max(2, (+spec.speed_kmh || (tram ? 50 : 40)) / 3.6),
       vehicle, noun: tram ? "Tram" : "Bus", length: tram ? clamp(+spec.length_m || 30, 15, 60) : 12, width: tram ? 2.65 : 2.55,
       ok: false, problems: [], visits: [], directions: [], circuit: null, signature: "", starts: [], single: [], crossings: [],
@@ -1008,7 +1010,12 @@ export class Transit {
       this._users = [];
       return;
     }
-    for (const line of this.lines.values()) if (line.ok) this._dispatch(line, dt);
+    const demand = this.world.simulations?.find((s) => s.enabled && typeof s.serviceInterval === "function");
+    for (const line of this.lines.values()) {
+      if (!line.ok) continue;
+      if (line.auto) this._autoHeadway(line, demand);
+      this._dispatch(line, dt);
+    }
     this._users = this.buses.map((b) => this._pose(b, this.lines.get(b.lineId)));
     this._users.push(...this._blockers());
     const all = this._users.slice();
@@ -1025,6 +1032,13 @@ export class Transit {
       this._occupy(bus);
     }
     this.buses = this.buses.filter((b) => b.phase !== "gone");
+  }
+
+  /** A line without an interval of its own: as often as the town needs, else the default. */
+  _autoHeadway(line, demand) {
+    const iv = demand?.serviceInterval({ kind: line.vehicle, line });
+    line.headway = iv ? iv.headway_s : line.vehicle === "tram" ? 300 : 240;
+    line.minutes = iv ? iv.minutes : null;
   }
 
   _dispatch(line, dt) {

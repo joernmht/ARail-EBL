@@ -529,3 +529,37 @@ test("town: commuters take the bus to the station when it is far, and home again
   assert.ok([...homeByBus].filter((a) => a.state === "inside" && a.inside === "home").length >= homeByBus.size * 0.7, "and are home");
   assert.equal(town.agents.filter((a) => a.state === "riding").length, 0);
 });
+
+test("town: a line without its own interval runs as often as the town needs, one with it keeps it", () => {
+  const objects = (headway) => [
+    ...STREET,
+    { id: "home", type: "test-box", position: [400, 160], use: "residential", people: 300 },
+    { id: "office", type: "test-box", position: [3600, 160], use: "work", people: 300 },
+    { id: "l", type: "bus-line", number: "62", ...(headway ? { headway_s: headway } : {}), stops: ["a", "b", "c"] },
+  ];
+  const w = townWorld(objects(null));
+  for (let i = 0; i < 3; i++) w.step(0.1);
+  const town = w.simulations.find((s) => s.constructor.type === "town");
+  const line = w.transit.lines.get("l");
+  assert.equal(line.auto, true);
+  const iv = town.serviceInterval({ kind: "bus", line });
+  assert.ok(iv.riders > 0, "the long ways from the homes to the office go by this line");
+  assert.equal(line.headway, iv.headway_s);
+  assert.equal(line.minutes, iv.minutes);
+  // the stop's card says how often and why
+  const card = { rows: [] };
+  w.simulations.find((s) => s.constructor.type === "passengers").describeObject(w.getObject("a"), card);
+  assert.ok(card.rows.some(([k, v]) => k === "Bus 62" && v === `every ${iv.minutes} min (what the town needs)`), JSON.stringify(card.rows));
+  const set = townWorld(objects(120));
+  for (let i = 0; i < 3; i++) set.step(0.1);
+  assert.equal(set.transit.lines.get("l").auto, false);
+  assert.equal(set.transit.lines.get("l").headway, 120);
+  // services.auto_interval false: the line without an interval runs every 240 s, the card says just how often
+  const off = townWorld(objects(null), { services: { auto_interval: false } });
+  for (let i = 0; i < 3; i++) off.step(0.1);
+  assert.equal(off.transit.lines.get("l").auto, false);
+  assert.equal(off.transit.lines.get("l").headway, 240);
+  const plain = { rows: [] };
+  off.simulations.find((s) => s.constructor.type === "passengers").describeObject(off.getObject("a"), plain);
+  assert.ok(plain.rows.some(([k, v]) => k === "Bus 62" && v === `every ${(240 * off.clock.factor) / 60} min`), JSON.stringify(plain.rows));
+});

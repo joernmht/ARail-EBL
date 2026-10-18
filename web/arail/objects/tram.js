@@ -411,7 +411,7 @@ export class TramLine extends BusLine {
     { key: "name", label: "Name", type: "text", default: "" },
     { key: "number", label: "Line number", type: "text", default: "", help: "Shown on the trams and signs, e.g. \"1\"." },
     { key: "color", label: "Colour", type: "color", default: "#00008C" },
-    { key: "headway_s", label: "A tram every", type: "number", unit: "s (simulated)", min: 30, max: 3600, step: 10, default: 300, help: "Outside the rush hours; more often in the morning and evening, no trams at night." },
+    { key: "headway_s", label: "A tram every", type: "number", unit: "s (simulated)", min: 30, max: 3600, step: 10, help: "Outside the rush hours; more often in the morning and evening, no trams at night. Empty = as often as the town needs (300 s without a town)." },
     { key: "mode", label: "Route", type: "select", options: [["back-and-forth", "back and forth"], ["loop", "loop (round trip)"]], default: "back-and-forth" },
     { key: "speed_kmh", label: "Top speed", type: "number", unit: "km/h", min: 10, max: 80, step: 5, default: 50 },
     { key: "length_m", label: "Tram length", type: "number", unit: "m", min: 15, max: 60, step: 1, default: 30 },
