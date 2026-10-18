@@ -68,7 +68,7 @@ export class CrossingType {
   }
 
   /** Is it closed for road traffic at simulated time t? Only level crossings with barriers or lights close. */
-  closed() {
+  closed(t) {
     return false;
   }
 
@@ -120,8 +120,8 @@ export class CrossingType {
     };
   }
 
-  /** Draw it at the crossing (frame: the crossing's geometry). */
-  draw() {}
+  /** Draw it at the crossing (g: the crossing's geometry). */
+  draw(view, g) {}
 }
 
 /** The street on a bridge over the track (Straßenüberführung). */

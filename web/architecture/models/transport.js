@@ -1,18 +1,19 @@
 /**
- * Models of the architecture page: stops, the timetable's vehicles, passengers, the town, streets,
- * bus lines and cars. See ../model.js for the format.
+ * Models of the architecture page: stops, the timetable's vehicles, passengers, the town, the road
+ * network, bus and tram lines and cars (streets' cross-sections, traffic rules, parking, trams and
+ * bikes: ./streets.js). See ../model.js for the format.
  * @module architecture/models/transport
  */
 export const TRANSPORT = [
   {
     id: "stops", group: "transport", title: "Stop areas and docks",
-    summary: "Where people wait and vehicles stop: platforms, bus stops and bus terminals give stop areas (in prototype metres) with docks along their edges; every simulation uses this interface.",
+    summary: "Where people wait and vehicles stop: platforms, bus stops, bus terminals and tram stops give stop areas (in prototype metres) with docks along their edges; every simulation uses this interface.",
     description: "A stop area is a rectangle with s along it (0 … L) and t across it (+ is left); its docks are the places along an edge where a train or bus stands (a platform's two tracks, a bus stop's side of the street, a terminal's bays), its access points are where people come and go. Docks of bus lines are managed by the bus lines (managed: \"line\"), the others by the timetable.",
     files: ["web/arail/core/stops.js", "web/arail/objects/platform.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js"],
     classes: [
       {
         name: "StopArea", file: "web/arail/core/stops.js", kind: "class", role: "A waiting area: s along, t across, in prototype metres.",
-        attributes: ["id: string — the owner's id (a bus stop: id:right, id:left)", "owner: LayoutObject", "kind: string — rail or bus", "L: number — length (m)", "W: number — width (m)", "docks: object[] — {id, side, s0, s1, kind, track, headway, dwell, managed}", "access: object[] — where people come and go"],
+        attributes: ["id: string — the owner's id (a bus stop: id:right, id:left)", "owner: LayoutObject", "kind: string — rail, bus or tram", "L: number — length (m)", "W: number — width (m)", "docks: object[] — {id, side, s0, s1, kind, track, headway, dwell, managed}", "access: object[] — where people come and go"],
         operations: ["toLayout(s, t) — m to layout mm", "fromLayout(p) — layout mm to [s, t]", "outline()"],
       },
       { name: "BusTerminal", file: "web/arail/objects/bus-terminal.js", kind: "class", extends: "LayoutObject", role: "Bays; those of bus lines are managed by them.", operations: ["stopAreas()", "busLane() — the lane of the road network"] },
@@ -21,6 +22,7 @@ export const TRANSPORT = [
       { from: "Platform", to: "StopArea", kind: "creates", label: "1" },
       { from: "BusStop", to: "StopArea", kind: "creates", label: "1–2" },
       { from: "BusTerminal", to: "StopArea", kind: "creates", label: "1" },
+      { from: "TramStop", to: "StopArea", kind: "creates", label: "1–2" },
     ],
     parameters: [{ key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6", meaning: "Headway and dwell of the docks (simulated s); a platform can set its own." }],
     rules: ["Access points by default at 0.3 m and L − 0.3 m (weight 0.35 each) and L/2 (0.3).", "1 m of the prototype = 1000 / scale mm."],
@@ -40,7 +42,7 @@ export const TRANSPORT = [
         attributes: ["kind: string — train or bus", "line: string", "source: string — timetable, manual, scenario, plan, feed", "phase: string — arriving, dwelling, departing", "dwellLeft: number — s", "delayMin: number"],
         operations: ["doorsOpen — getter"],
       },
-      { name: "vehicles", file: "web/arail/core/vehicles.js", kind: "module", role: "How trains and buses look: TRAIN and BUS (registered vehicles).", attributes: ["TRAIN — a multiple unit, doors every 7 m", "BUS — a 12 m bus, two doors"] },
+      { name: "vehicles", file: "web/arail/core/vehicles.js", kind: "module", role: "How trains, buses and trams look: TRAIN, BUS and TRAM (registered vehicles).", attributes: ["TRAIN — a multiple unit, doors every 7 m", "BUS — a 12 m bus, two doors", "TRAM — a 30 m low-floor tram, 2.65 m wide, floor 30 cm"] },
     ],
     relations: [
       { from: "ServiceManager", to: "Vehicle", kind: "composes", label: "0..1 per dock" },
@@ -96,7 +98,7 @@ export const TRANSPORT = [
       {
         name: "PassengerSimulation", file: "web/arail/sims/passengers.js", kind: "class", extends: "Simulation", role: "The crowds of all stop areas.",
         attributes: ["crowds: Map — Crowd per stop area", "others: boolean — generated passengers (off: only those handed over)"],
-        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents)", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting and the next vehicles at a stop"],
+        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents, options) — towards: a traveller gets off at the door closest to its way out", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting and the next vehicles at a stop"],
       },
       { name: "Crowd", file: "web/arail/sims/passengers.js", kind: "class", role: "The people of one stop area.", attributes: ["area: StopArea", "people: Person[]"], operations: ["wave() — demand 0.3 … 1 over 180 s"] },
       {
@@ -173,7 +175,7 @@ export const TRANSPORT = [
       "Neighbours within 1.3 m; closer than 0.6 m they push apart with 1.4 (0.6 − d)/0.6 m/s; density = max(0, neighbours − 2).",
       "Walking: v = unit(target − pos) × speed × min(1, dist/0.8) / (1 + 0.12 × density) + push; standing: 0.6 (target − pos) + 0.7 push; velocity eased (4/s).",
       "Mood per s while waiting: −(0.002 + 0.005 × density + 0.006 after 60 s) plus the disruptions' mood; boarding +0.02; leaving +0.008 − 0.004 × density.",
-      "Arrivals: Poisson(base_rate × demand × disruption demand × wave × L/25 × the hour's demand × dt); none while closed, out of service, or without others.",
+      "Arrivals: Poisson(base_rate × demand × disruption demand × wave × L/25 × the hour's demand × dt); none while closed, out of service, or without others; at most 40 at a bus or tram stop in the street.",
       "A track of the stop closed on its own (dock closed): newcomers wait at the other tracks; those waiting for it go over to another one, or leave (0.25/s) when every track is closed.",
       "The board's next train (statusLines): the soonest timer of the tracks that are open; none while every track is closed.",
       "A standing vehicle is boarded while it has more than 6 s to go (a real train always).",
@@ -187,7 +189,7 @@ export const TRANSPORT = [
       {
         name: "TownSimulation", file: "web/arail/sims/town.js", kind: "class", extends: "Simulation", role: "The town.",
         attributes: ["agents: Agent[]", "places: object — buildings by use"],
-        operations: ["step(dt)", "_build()", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
+        operations: ["step(dt)", "_build()", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pedestrians() — the residents walking, for zebra crossings and riders", "annoy(agent, amount) — a bike too close on the sidewalk: the mood drops and comes back slowly", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
       },
       {
         name: "Agent", file: "web/arail/sims/town.js", kind: "class", extends: "Person", role: "A resident or visitor.",
@@ -243,19 +245,19 @@ export const TRANSPORT = [
     rules: [
       "Roles: 15 % pupils, 25 % seniors, the rest workers; commuters among the workers when there are platforms.",
       "Plans: work 06:30–08:00 until 15:30–17:30; school 07:00–07:40; shopping 08:30–11:30 and evenings; trains 05:45–07:45 and 16:00–18:30.",
-      "The bus when a walk is longer than walk_max_m and the bus is faster (stops within 300 m); patience 20 clock minutes.",
+      "The bus (or tram) when a walk is longer than walk_max_m and it is faster (stops within 300 m); patience 20 clock minutes; a closed stop is not entered: walk instead, or away.",
       "Shops are open 07:00–21:00; at most 14 residents per train.",
     ],
   },
   {
     id: "network", group: "transport", title: "Streets and the road network",
-    summary: "One graph of streets, footpaths, the underpass, bus lanes, building entrances and the access points of stops: routes on foot and by car, walks on the sidewalks that cross no track, driving lines.",
+    summary: "One graph of streets, footpaths, tram tracks, the underpass, bus lanes, building entrances and the access points of stops: routes on foot, by car, bus, tram and bike, with the rules of signs, lights, zebra and railway crossings; walks on the sidewalks that cross no track, driving lines.",
     files: ["web/arail/core/network.js", "web/arail/core/access.js", "web/arail/objects/road.js", "web/arail/objects/underpass.js"],
     classes: [
       {
         name: "RoadNetwork", file: "web/arail/core/network.js", kind: "class", role: "world.network(): rebuilt when objects, the marker map or the scale change.",
-        attributes: ["nodes: object[] — junctions, places, ends", "edges: object[] — {road, length, kind, car, bus, walk, oneway, speed}", "places: Map — entrances and access points", "barriers: object[] — tracks people do not cross on their own"],
-        operations: ["place(key)", "nearestNode(p, opts) — for walking, in a straight line over no track", "route(from, to, opts) — Dijkstra", "routeDirected(from, fromDir, to, toDir, opts)", "walk(from, to, keys) — on the sidewalks, or out of sight", "walkLine(path, from, to)", "crossesBarrier(a, b)", "pathAt(path, s)", "drivingLine(path, opts) — on the right lane", "junctions()", "boundaryNodes()"],
+        attributes: ["nodes: object[] — junctions, places, ends", "edges: object[] — {road, length, kind, car, bus, tram, bike, walk, carDir, tramDir, speed, laneOffset, tramOffset, bikeOffset, bikeWay, zebras, rails}", "places: Map — entrances and access points", "barriers: object[] — tracks people do not cross on their own", "rules: object[] — signs and traffic lights, at their junctions"],
+        operations: ["place(key)", "nearestNode(p, opts) — for walking, in a straight line over no track", "route(from, to, opts) — Dijkstra", "routeDirected(from, fromDir, to, toDir, opts)", "walk(from, to, keys) — on the sidewalks, crossing at zebra crossings, or out of sight", "walkLine(path, from, to)", "crossesBarrier(a, b)", "pathAt(path, s)", "offsetAt(path, s, key) — lanes, tracks, bike lanes, sidewalks", "edgeAt(path, s)", "drivingLine(path, opts) — on the right lane, track or bike lane", "junctionsAlong(path, drive) — with their lights, signs and priorities", "crossingsAlong(path, drive) — zebra and railway crossings", "nextJunctionOnRoad(roadId, s, dir)", "signalOf(id) — the junction of traffic lights", "turnOf(v, inEdge, outEdge)", "turnAllowed(v, inEdge, outEdge, mode) — one-way streets, mandatory directions, lane arrows", "junctions()", "boundaryNodes()"],
       },
       { name: "Underpass", file: "web/arail/objects/underpass.js", kind: "class", extends: "LayoutObject", role: "A footpath under the tracks." },
       {
@@ -270,6 +272,8 @@ export const TRANSPORT = [
       { from: "RoadNetwork", to: "StopArea", kind: "uses", label: "access, docks" },
       { from: "RoadNetwork", to: "BusTerminal", kind: "uses", label: "busLane()" },
       { from: "RoadNetwork", to: "Track", kind: "uses", label: "walkBarrier()" },
+      { from: "RoadNetwork", to: "TrafficSign", kind: "uses", label: "trafficRule()" },
+      { from: "RoadNetwork", to: "RailCrossing", kind: "uses", label: "railCrossingInfo()" },
       { from: "access", to: "RoadNetwork", kind: "uses", label: "place(), dock(), nodes, edges" },
     ],
     activities: [{
@@ -281,23 +285,27 @@ export const TRANSPORT = [
         ["a2", "action", "Places: entrances and stop access points within 80 m, not across a track; bus lanes", "RoadNetwork._build"],
         ["a3", "action", "Nodes, street edges, connectors", "RoadNetwork._build"],
         ["a4", "action", "One-way lanes past the bus bays", "RoadNetwork._addLane"],
+        ["a5", "action", "Where streets cross tracks: the railway crossings put there, else at street level (no tram)", "RoadNetwork._railCrossings"],
+        ["a6", "action", "Zebra crossings on the edges", "RoadNetwork._zebras"],
+        ["a7", "action", "Signs and lights at their junctions: priorities, one-way streets, the turns allowed", "RoadNetwork._applyRules"],
         ["e", "end"],
       ],
-      edges: [["s", "a0"], ["a0", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "e"]],
+      edges: [["s", "a0"], ["a0", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "e"]],
     }, {
       id: "access", name: "Checking the street access (accessProblems)",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Stops: people reach a way in from a street or footpath (else a footpath, under the tracks if they are in the way); buses stop on a street", "accessProblems"],
+        ["a1", "action", "Stops: people reach a way in from a street or footpath (else a footpath, under the tracks if they are in the way); buses stop on a street, trams at a tram track", "accessProblems"],
+        ["a1b", "action", "Railway crossings: a street across a track at street level needs a level crossing; trams never (a bridge is the fix)", "accessProblems"],
         ["a2", "action", "Bus terminals: a street within 40 m of the bus lane's ends", "accessProblems"],
         ["a3", "action", "Truck lanes: a street within 20 m of the entry and the end (else one to the nearest street, or out of the layout)", "accessProblems"],
-        ["a4", "action", "Buildings: a street or footpath to each entrance; the maintenance base's vans a street for cars", "accessProblems"],
+        ["a4", "action", "Buildings: a street or footpath to each entrance; the maintenance base's vans a street for cars; parking lots and garages a street to their way in", "accessProblems"],
         ["a5", "action", "Street ends: just before another street (join them), or a dead end inside the layout", "accessProblems"],
         ["a6", "action", "Streets for cars not connected to the others (unless an end just misses them)", "carGroups"],
         ["a7", "action", "Errors first, then warnings; each with its fix", "accessProblems"],
         ["e", "end"],
       ],
-      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "e"]],
+      edges: [["s", "a1"], ["a1", "a1b"], ["a1b", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a7", "e"]],
     }, {
       id: "walk", name: "A walk",
       nodes: [
@@ -305,7 +313,7 @@ export const TRANSPORT = [
         ["a1", "action", "Start and goal: their places, else the nearest nodes reached in a straight line over no track", "RoadNetwork.walk"],
         ["d1", "decision", "A route on foot?"],
         ["a2", "action", "Each street on the sidewalk on the side the walk comes from, kept round corners", "RoadNetwork.walkLine"],
-        ["a3", "action", "Across at right angles at the end of a street where the next place lies on the other side", "RoadNetwork.walkLine"],
+        ["a3", "action", "Across at right angles at a zebra crossing on the way, else at the end of a street where the next place lies on the other side", "RoadNetwork.walkLine"],
         ["a4", "action", "Footpaths and connectors join the sidewalk; the underpass out of sight", "RoadNetwork.walkLine"],
         ["d2", "decision", "Any streets at all?"],
         ["a5", "action", "Out of sight (round the back of the layout)", "straightWalk"],
@@ -316,21 +324,22 @@ export const TRANSPORT = [
       edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "yes"], ["a2", "a3"], ["a3", "a4"], ["a4", "m"], ["d1", "d2", "no"], ["d2", "a5", "yes"], ["d2", "a6", "no"], ["a5", "m"], ["a6", "m"], ["m", "e"]],
     }],
     rules: [
-      "Streets 50 km/h (residential 30), footpaths for walking only (1.3 m/s).",
+      "Streets 50 km/h (residential 30), footpaths for walking (1.3 m/s) and, shared or as bike paths, for bikes; tram tracks of their own for trams only.",
+      "Trams use only edges with tram tracks, in the direction of a one-way track; a street crossing a railway at street level has no tram (BOStrab § 15).",
       "People do not cross tracks on their own: only on streets and footpaths over them (crossings, the underpass).",
       "Costs: walking by length, vehicles by time; trees of shortest paths cached (400).",
       "A U-turn costs 30 s at a dead end, else 600 s; lanes at a quarter of the street's width, sidewalks beside it.",
     ],
   },
   {
-    id: "transit", group: "transport", title: "Bus lines",
-    summary: "A bus line is a circuit through its stops on the road network; buses are dispatched at its ends by the headway and the hour's demand, drive on the right lane, keep their distance, give way at junctions, stop, dwell and lay over, carrying riders.",
+    id: "transit", group: "transport", title: "Bus and tram lines",
+    summary: "A bus or tram line is a circuit through its stops on the road network; its vehicles are dispatched at its ends by the headway and the hour's demand, drive on the right lane (trams on their track), keep their distance, obey the rules of the junctions, stop, dwell and lay over, carrying riders.",
     files: ["web/arail/core/transit.js", "web/arail/objects/bus-line.js"],
     classes: [
       {
         name: "Transit", file: "web/arail/core/transit.js", kind: "class", role: "world.transit: the bus lines and their buses.",
-        attributes: ["lines: Map — circuit, visits, headway, speed, problems", "buses: LineBus[]"],
-        operations: ["sync()", "step(dt)", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses", "card(hit) — destination, next stop, people on board"],
+        attributes: ["lines: Map — circuit, visits, headway, speed, single-track stretches, ends of stub tracks, problems", "buses: LineBus[] — buses and trams"],
+        operations: ["sync()", "step(dt)", "_buildLine(obj, net, old)", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_singleFree(bus, iv, occupied)", "_clearAt(bus, line, s, users) — the place beyond the end of a stub track free?", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses and trams", "card(hit) — destination, next stop, people on board"],
       },
       {
         name: "LineBus", file: "web/arail/core/transit.js", kind: "class", role: "A bus of a line (looks like a Vehicle to the passengers).",
@@ -338,11 +347,12 @@ export const TRANSPORT = [
         operations: ["doorsOpen — getter"],
       },
       { name: "BusLine", file: "web/arail/objects/bus-line.js", kind: "class", extends: "LayoutObject", role: "A bus line placed through its stops (Build).", operations: ["lineLabel()", "problems()"] },
-      { name: "transit", file: "web/arail/core/transit.js", kind: "module", role: "Rules shared with the cars.", operations: ["gapAhead(self, front, dir, users, lookMM, laneMM)", "mustYield(self, j, d, users)", "linesServing(world, objectId)"] },
+      { name: "transit", file: "web/arail/core/transit.js", kind: "module", role: "Rules shared with the cars and bikes.", attributes: ["LINE_TYPES — bus-line, tram-line", "GRIDLOCK_S — 8 s", "JUNCTION_WAIT_S — 4 s"], operations: ["gapAhead(self, front, dir, users, lookMM, laneMM, skip)", "leaderAhead(self, front, dir, users, lookMM, laneMM, skip) — the road user ahead in the lane", "mustYield(self, j, d, users, prio)", "roomAfter(self, exit, dir, users, lengthMM, laneMM) — keep the junction clear", "waitFor(self, user, dt) — who a vehicle waits for; circles squeeze past", "squeezing(self)", "lightAt(j, t)", "approachPrio(j, t)", "junctionPatience(prio)", "singleTrack(path, drive) — the single-track stretches of a tram line", "reversals(path, drive) — where trams change ends", "linesServing(world, objectId)"] },
     ],
     relations: [
       { from: "Transit", to: "LineBus", kind: "composes", label: "buses *" },
       { from: "Transit", to: "BusLine", kind: "uses", label: "spec" },
+      { from: "Transit", to: "TramLine", kind: "uses", label: "spec" },
       { from: "Transit", to: "RoadNetwork", kind: "uses", label: "routes, driving lines" },
       { from: "Transit", to: "transit", kind: "depends" },
     ],
@@ -385,43 +395,56 @@ export const TRANSPORT = [
     },
     rules: [
       "Accelerate 1.0, brake 1.3 (hard 3.5) m/s²; gap 3 m; doors 2.5 s; dwell at least 8 s.",
-      "Buses needed = ⌈cycle / (headway / demand)⌉ + 1; target speed = min(speed, limit, √(2 × 1.3 × d), √(2 × 1.3 × (gap − 3))).",
-      "Give way at junctions for at most 4 s; lay over at most max(3 × headway, 600 s).",
+      "Buses needed = ⌈cycle / (headway / demand)⌉ + 1, and a line running late gets no more; target speed = min(speed, limit, √(2 × 1.3 × d), √(2 × 1.3 × (gap − 3))).",
+      "Give way at junctions for at most 4 s at the same priority; not into a junction without room behind it; lay over at most max(3 × headway, 600 s).",
+      "Trams on their track (the right one of two), never across a railway at street level; one direction at a time on a single track, one tram at the end of a stub track, where the driver changes ends (20 s).",
     ],
   },
   {
     id: "traffic", group: "transport", title: "Road traffic",
-    summary: "Cars enter at the ends of the streets, drive the fastest routes (sometimes a detour), keep their distance, give way at junctions and leave; their number follows cars per km and the hour.",
+    summary: "Cars with a driver, maybe passengers and a purpose enter at the ends of the streets: through the town, or to a building, where they park as planned on the map; they keep their distance, obey signs and lights, give way, overtake slow bikes and leave; their number follows cars per km and the hour.",
     files: ["web/arail/sims/traffic.js"],
     classes: [{
       name: "TrafficSimulation", file: "web/arail/sims/traffic.js", kind: "class", extends: "Simulation", role: "Cars on the road network.",
-      attributes: ["cars: object[] — {path, dest, s, v, waited}"],
-      operations: ["step(dt)", "targetCount(net)", "roadUsers() — positions for the buses", "_enter(net)", "_route(net, from, to)", "_car(net, route, dest, s0)", "_drive(car, dt, users, net)", "pickables(view) — the cars", "card(hit)"],
+      attributes: ["cars: object[] — {driver, passengers, purpose, plan, path, dest, s, v, waited}", "parkedCars: object[] — {car, facility, slot, until}", "walkers: object[] — drivers and passengers on foot between a car and a building"],
+      operations: ["step(dt)", "targetCount(net)", "roadUsers() — positions for the buses, trams and bikes", "pedestrians() — the people walking to and from their cars", "_crew(purpose) — a driver and passengers", "_goals() — buildings by purpose and the hour", "_enter(net)", "_route(net, from, to)", "_car(net, route, dest, s0, crew)", "_fillParking() — residents' cars at night", "_leaveParking(net)", "_park(car, net)", "_drive(car, dt, users, net)", "_mayPass(car, me, users, net) — overtaking a bike (StVO § 5)", "pickables(view) — the cars", "card(hit) — driver, passengers, purpose, where it parks, the fee"],
     }],
     relations: [
       { from: "TrafficSimulation", to: "RoadNetwork", kind: "uses", label: "routes" },
       { from: "Transit", to: "TrafficSimulation", kind: "uses", label: "roadUsers()" },
+      { from: "TrafficSimulation", to: "ParkingSpaces", kind: "uses", label: "take, release" },
     ],
     activities: [{
       id: "car", name: "A car in road traffic",
       nodes: [
         ["s", "start"],
         ["a1", "action", "Fewer cars than the target: the spawn timer", "TrafficSimulation.step"],
-        ["a2", "action", "An end of a street; a route", "TrafficSimulation._enter"],
+        ["a2", "action", "An end of a street; through the town, or to a building and a parking space (planDrive)", "TrafficSimulation._enter"],
         ["d1", "decision", "Entry clear?"],
         ["a3", "action", "Its driving line and junctions", "TrafficSimulation._car"],
         ["m1", "merge"],
-        ["a4", "action", "Speed for the gap ahead; give way at junctions; move", "TrafficSimulation._drive"],
+        ["a4", "action", "Speed for the gap ahead; lights, signs, give way, keep the junction clear; behind a slow bike, overtake; move", "TrafficSimulation._drive"],
         ["d2", "decision", "End of its route?"],
+        ["d4", "decision", "A parking space as its goal?"],
+        ["a7", "action", "Park (or plan the next space); the people walk to the building, back after the stay", "TrafficSimulation._park"],
         ["d3", "decision", "A dead end, or too many cars?"],
         ["a5", "action", "Leave", "TrafficSimulation._drive"],
         ["a6", "action", "A new route", "TrafficSimulation._route"],
         ["e", "end"],
         ["f", "flowfinal"],
       ],
-      edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "f", "no"], ["d1", "a3", "yes"], ["a3", "m1"], ["m1", "a4"], ["a4", "d2"], ["d2", "m1", "no"], ["d2", "d3", "yes"], ["d3", "a5", "yes"], ["d3", "a6", "no"], ["a5", "e"], ["a6", "m1"]],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "f", "no"], ["d1", "a3", "yes"], ["a3", "m1"], ["m1", "a4"], ["a4", "d2"], ["d2", "m1", "no"], ["d2", "d4", "yes"], ["d4", "a7", "yes"], ["d4", "d3", "no"], ["a7", "e"], ["d3", "a5", "yes"], ["d3", "a6", "no"], ["a5", "e"], ["a6", "m1"]],
     }],
-    parameters: [{ key: "cars_per_km", default: "20", meaning: "Cars per km of street.", sim: "traffic" }],
-    rules: ["Target = round(cars_per_km × km × the hour's demand for cars).", "Length 4.4 m; accelerate 2.0, brake 2.5 (hard 7) m/s²; gap 2.5 m.", "A detour with chance 0.3 if it is at most 1.5 × the direct way."],
+    parameters: [
+      { key: "cars_per_km", default: "20", meaning: "Cars per km of street.", sim: "traffic" },
+      { key: "destinations", default: "0.5", meaning: "Share of the cars coming in that drive to a building and park there.", sim: "traffic" },
+      { key: "parked", default: "0.7", meaning: "Share of the residents' parking spaces taken at night.", sim: "traffic" },
+    ],
+    rules: [
+      "Target = round(cars_per_km × km × the hour's demand for cars).",
+      "Length 4.4 m; accelerate 2.0, brake 2.5 (hard 7) m/s²; gap 2.5 m.",
+      "People in a car by purpose (MiD 2017): to work 1.1, shopping 1.5, a visit 1.6, home 1.3, through 1.4 on average.",
+      "Parking: the facilities within 400 m of the building ranked by the drive, the walk (× 1.5) and the fee (12 € an hour of time); full on arrival: the next one, up to three tries.",
+    ],
   },
 ];

@@ -12,6 +12,7 @@ const HINTS = {
   polyline: "Tap the points along the line, then press Finish.",
   rect: "Drag from one corner to the opposite one, or tap both corners.",
   stops: "Tap the stops in the order the buses serve them, then press Finish.",
+  tramStops: "Tap the tram stops in the order the trams serve them, then press Finish.",
 };
 const PLACEMENT_HINTS = { point: "tap once", segment: "two ends", polygon: "outline", polyline: "line", rect: "two corners", stops: "tap stops" };
 export const SCALES = [
@@ -316,7 +317,7 @@ export class Editor {
     const types = this.placing.cls.stopTypes || ["bus-stop", "bus-terminal"];
     const tol = (10 * this.app.px()) / Math.max(1e-6, this.pxPerMM(p));
     const hit = this.world.objects.find((o) => types.includes(o.type) && o.geometry && o.contains(p, tol));
-    if (!hit) return toast("Tap a bus stop or a bus terminal.");
+    if (!hit) return toast(types.includes("bus-stop") ? "Tap a bus stop or a bus terminal." : "Tap a tram stop.");
     const points = this.placing.points;
     if (points[points.length - 1]?.id !== hit.id) points.push({ id: hit.id });
     this.renderPlacing();
@@ -606,7 +607,7 @@ export class Editor {
     // in the flyover the keyboard places too (see Flyover.key)
     const keys = this.app.mode === "flyover" ? ` Keyboard: the arrows on the stage move the view, Enter ${noun === "stop" ? "picks the stop" : "places a point"} at the cross in the middle.` : "";
     mount(bar,
-      h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), HINTS[cls.placement],
+      h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement],
         points.length ? ` (${points.length} ${noun}${points.length > 1 ? "s" : ""})` : "", grid, keys ? h("span", { class: "keys" }, keys) : null),
       multi ? h("button", { class: "btn small primary", type: "button", onclick: () => this.finish() }, "Finish") : null,
       points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, `Undo ${noun}`) : null,

@@ -1040,7 +1040,7 @@ class Builder {
     const params = (cls.params || []).filter((p) => STREET_SETTINGS.includes(p.key));
     const cs = this._crossSection(pl.kind);
     return h("div", { class: "street-settings", role: "group", "aria-labelledby": "streetSettingsTitle" },
-      h("h3", { id: "streetSettingsTitle" }, "The new street"),
+      h("h2", { id: "streetSettingsTitle" }, "The new street"),
       paramFields(params, values, (k, v) => this.setStreetSetting(k, v), { idPrefix: "new-street" }),
       h("p", { class: "street-width" }, `${metres(2 * cs.half)} m wide in all`),
       cs.warnings.map((w) => h("p", { class: "hint error" }, w)),

@@ -2,8 +2,9 @@
 
 The **builder** (`builder/`, `web/builder/`) is a street and layout editor of its own, beside the
 app. The app's **Build** tab stays as it is. The builder shows the layout as a plan from above. You
-draw streets that join where they meet, and put bus stops, bus terminals, truck lanes and buildings
-next to a street. A check lists everything that has no street leading to it, with a fix to click.
+draw streets that join where they meet, with the cross-section and widths you choose, and put bus
+and tram stops, bus terminals, parking, truck lanes and buildings next to a street, and signs,
+traffic lights, zebra and railway crossings on it. A check lists everything that has no street leading to it, with a fix to click.
 When the layout is done, **Push to GitHub** puts it into the repository in one commit, together with
 covered photos you made yourself.
 
@@ -27,8 +28,22 @@ does not work, an orange one something that makes no sense.
 
 ## Streets first
 
-Choose **Street** (key **S**), **Residential street**, **Main road**, **Footpath** (key **F**) or
-**Underpass**, then click the points of the street.
+Choose **Street** (key **S**), **Residential street**, **Main road**, **Footpath or bike path** (key
+**F**), **Tram track** (key **T**, a track of its own beside no street) or **Underpass**, then click
+the points of the street.
+
+Under the tools, **The new street** has the settings of the streets you draw next, for each kind:
+the **cross-section** (plain, with sidewalks, advisory bike lanes, bike lanes, bike paths at
+sidewalk level, shared paths; for footpaths: footpath, shared foot and bike path, bike path), the
+**width** of the car lanes, the lanes each way, the sidewalks, the bike lanes or paths, **tram
+tracks** in the street (in the car lanes, in lanes of their own, on a track bed in the middle; one
+or two tracks) and **street parking**. The widths offer the standard values of the German
+guidelines to click (RASt 06, ERA 2010, EFA 2002, BOStrab); any other can be typed in. Below them:
+how wide the street is in all, and what is below the guidelines (a bike lane too narrow, car lanes
+too narrow for two cars to pass). The settings are kept on this device; **Standard street** goes
+back to the defaults. While you draw, the Element tab shows the street across as a figure: its
+strips side by side, raised where they are at sidewalk level, the rails of its tracks, and the
+widths in words. See [Cross-sections](streets-and-buses.md#cross-sections).
 
 - A click near the end or a corner of another street snaps onto it: the two streets join there.
 - A click on another street puts the point on its centre line: a T junction.
@@ -39,7 +54,8 @@ Choose **Street** (key **S**), **Residential street**, **Main road**, **Footpath
 - **Double-click**, **Enter** or **Finish** ends the street; **Backspace** takes the last point
   back; **Esc** stops. The tool stays chosen for the next street.
 
-A selected street shows its corners as squares; **point 1** is where it starts.
+A selected street shows its corners as squares; **point 1** is where it starts. Its Element tab has
+the same figure and its settings, which can be changed at any time.
 
 - Drag a corner to move it. It snaps like a new point but never onto its own street.
 - **Double-click** on the street adds a corner there.
@@ -56,8 +72,20 @@ Put these next to a street, and they fit it:
 | **Bus stop** (key **B**) | On the street next to the click, on the side clicked (seen in the street's direction). Choose *both sides* in the Element tab for a line that runs back and forth. |
 | **Bus terminal** | Along the nearest street; its bus lane is connected to the streets within 40 m. |
 | **Bus line** | Click its stops in order, then finish. |
+| **Tram stop** | On the tram tracks of the street next to the click (or of a tram track); two tracks get a stop on both sides. |
+| **Tram line** | Click its tram stops in order, then finish. |
+| **Parking lot**, **Parking garage** | Turned with its way in to the nearest street. |
 | **Truck lane** | Click its points in driving direction: the first point is the entry. |
 | **Station building**, **House**, **Building** and the other buildings | Turned with its front, and the entrance, to the nearest street. **Face the street** turns it again after you move it. |
+
+**On the street** are the elements that go onto a street:
+
+| Element | Placed |
+| --- | --- |
+| **Traffic sign** | Beside the street, on the side of the traffic it is for. |
+| **Traffic lights** | On a junction of three or more streets. |
+| **Zebra crossing** | On the street, where people cross. |
+| **Railway crossing** | Where the street crosses a track. Choose a bridge, an underpass or a level crossing in the Element tab; a bridge says when its ramps do not fit. |
 
 **Other elements…** has every other type of the layout format, by category. A new element is
 selected: change it in the **Element** tab. There you also find **Turn 15° (R)** (Shift+R: 90°),
@@ -73,6 +101,10 @@ Everything people and vehicles come to needs a street that leads there. The chec
 | A truck lane has no street within 20 m of its entry, or of its end | does not work | *Add a street to …*: a street to the nearest street. In a layout without streets: a street to the edge of the layout, or a short one out of it where the lane ends at the edge. |
 | A bus terminal's lane has no street within 40 m of an end | does not work | a street to the nearest street |
 | A bus stop is not right next to a street for buses (the stop says so itself if no street is near) | does not work | none: drag it onto a street |
+| A tram stop is not at a tram track | does not work | none: drag it onto the tracks |
+| Tram tracks cross a railway at street level (BOStrab § 15) | does not work | *Make it a bridge over the track* (the railway crossing there), or *Build a bridge over the track* |
+| A street crosses a track without a railway crossing | makes no sense | *Add a level crossing with half barriers* |
+| A parking lot or garage has no street within 30 m of its way in | does not work | a street to the nearest street |
 | People cannot reach a platform or stop: no street or footpath within 80 m of any of its ways in (not across a track) | makes no sense | a footpath to the nearest street; an **underpass** where tracks are in the way |
 | A building's entrance has no street or footpath within 80 m | makes no sense | a footpath to the nearest street |
 | The maintenance base's vans have no street for cars within 80 m | does not work | a street to the nearest street |
@@ -80,8 +112,9 @@ Everything people and vehicles come to needs a street that leads there. The chec
 | A street ends a few metres (up to 15 m) before another one | makes no sense | *Join it to …*: its end is moved onto the other street |
 | A dead end inside the layout (more than 10 m from its edge) | makes no sense | none: lead it to the edge or join it. Cars come and go at dead ends, as if the street went on beyond the layout. |
 
-The tab also lists what elements say of themselves (a truck lane that no crane reaches, a bus line
-without a way along the streets) and problems of the layout file. **Show** zooms to the element.
+The tab also lists what elements say of themselves (a truck lane that no crane reaches, a bus or tram
+line without a way along the streets or tracks, widths below the guidelines, a bridge whose ramps do
+not fit) and problems of the layout file. **Show** zooms to the element.
 **Carry out all fixes** applies them one after another; **Undo** takes them back one by one.
 
 ## Undo, drafts and modules
@@ -141,7 +174,7 @@ replaces theirs. If `main` moves while you push (another commit), your commit go
 | Key | |
 | --- | --- |
 | V | Select and move |
-| S, F, B | Street, footpath, bus stop |
+| S, F, T, B | Street, footpath or bike path, tram track, bus stop |
 | Enter, double-click | Finish the street (or line) |
 | Backspace | While drawing: take the last point back |
 | Delete, Backspace | Delete the selected element, or the selected corner |
@@ -160,11 +193,12 @@ replaces theirs. If `main` moves while you push (another commit), your commit go
 
 ## For developers
 
-The page is `web/builder/`. `builder.js` holds the page. `plan.js` draws the plan with the
+The page is `web/builder/`. `builder.js` holds the page, with the settings of new streets and the
+cross-section figure (`crossSectionFigure`, from `crossSection` in `objects/street-profile.js`). `plan.js` draws the plan with the
 framework's `View` or `SimpleView` and a `FlyCamera` looking straight down. `place.js` holds the
 snapping and placing rules, `history.js` the undo, `json-text.js` the minimal changes to a file, and
 `github.js` the commits through GitHub's REST API (blobs, a tree, a commit, the branch moved on).
 `place.js`, `history.js`, `json-text.js`, `github.js` and the access check run in Node and have
 tests (`tests/js/access.test.js`, `tests/js/builder-*.test.js`). The browser tests
-(`tests/e2e/builder.spec.js`) push to a GitHub inside the test. See the
+(`tests/e2e/builder.spec.js`) choose the settings of new streets and push to a GitHub inside the test. See the
 [architecture page](https://joernmht.github.io/ARail-EBL/architecture/#model-builder).

@@ -222,11 +222,12 @@ export class TramStop extends LayoutObject {
     if (g?.ok) card.rows.push(["Street", this.world.getObject(g.road)?.name ?? g.road]);
     const a = this.accessibility();
     card.rows.push(["Platform", `${Math.round(this.platformHeight() * 100)} cm high`]);
-    card.rows.push(["Step-free", a.stepFree ? "yes" : `no: ${a.reasons.join(", ")}`]);
+    card.rows.push(["Step-free", a.stepFree ? "yes" : "no"]);
     card.rows.push(["Cars", this.blocksCars() ? "wait while the doors are open" : "drive past"]);
     const lines = linesServing(this.world, this.id).map((id) => this.world.getObject(id)).filter(Boolean);
     card.rows.push(["Tram lines", lines.length ? lines.map((o) => o.lineLabel?.() ?? o.name).join(", ") : "none"]);
     card.related = lines.map((o) => o.id);
+    if (a.reasons.length) card.sections = [...(card.sections || []), { title: "Not step-free", lines: a.reasons }];
     return card;
   }
 

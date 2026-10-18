@@ -391,7 +391,7 @@ export class ZebraCrossing extends LayoutObject {
   card() {
     const card = super.card();
     const g = this.geometry;
-    if (g?.ok) card.rows.push(["Street", this.world.getObject(g.road)?.name ?? g.road], ["Now", this.busy() ? "people are crossing: vehicles wait" : "free"]);
+    if (g?.ok) card.rows.push(["Street", this.world.getObject(g.road)?.name ?? g.road], ["Now", this.busy() ? "people are crossing: vehicles wait" : "nobody is crossing"]);
     return card;
   }
 

@@ -605,8 +605,10 @@ export class Transit {
       if (!best) {
         const towards = v.dir > 0 ? stops[n - 1].o.name : stops[0].o.name;
         const them = tram ? "trams" : "buses";
+        // trams kept off by a railway crossed at street level (BOStrab § 15) are told so
+        const level = tram && net.edges.some((e) => e.tramBlocked) ? ": trams cannot cross the railway at street level" : "";
         line.problems.push(v.st.docks.length > 1
-          ? `${v.st.o.name}: ${them} towards ${towards} cannot get there along ${where}.`
+          ? `${v.st.o.name}: ${them} towards ${towards} cannot get there along ${where}${level}.`
           : `${v.st.o.name}: ${them} towards ${towards} cannot stop here (stop on one side only; set Side to both sides).`);
         return;
       }

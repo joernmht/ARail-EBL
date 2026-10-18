@@ -403,7 +403,7 @@ export class Road extends LayoutObject {
     const xs = g.xs, m1 = (v) => Math.round(v * 100) / 100;
     card.rows.push(["Kind", ROAD_KINDS[g.kind]?.label ?? g.kind]);
     card.rows.push(["Length", `${Math.round(this.meters(g.length))} m`]);
-    if (g.kind === "tram") card.rows.push(["Track bed", `${m1(xs.tramBed)} m, ${TRAM_TRACKS[xs.tramTracks].label}`]);
+    if (g.kind === "tram") card.rows.push(["Track bed", `${m1(xs.tramBed)} m`], ["Tracks", TRAM_TRACKS[xs.tramTracks].label]);
     else {
       const P = (g.kind === "path" ? PATH_PROFILES : STREET_PROFILES)[xs.profile];
       card.rows.push(["Cross-section", P?.label ?? xs.profile]);
@@ -412,9 +412,10 @@ export class Road extends LayoutObject {
         card.rows.push(["Car lanes", `${xs.lanes * 2} × ${m1(xs.laneWidth)} m`]);
         if (xs.bikeWidth > 0) card.rows.push([xs.bike === "shared" ? "Shared paths" : xs.bike === "path" ? "Bike paths" : "Bike lanes", `${m1(xs.bikeWidth)} m`]);
         if (xs.sidewalk > 0 && xs.bike !== "shared") card.rows.push(["Sidewalks", `${m1(this.spec.sidewalk_m > 0 ? +this.spec.sidewalk_m : NORMS.sidewalk.default)} m`]);
-        if (xs.tram !== "none") card.rows.push(["Tram tracks", `${TRAM_LAYOUTS[xs.tram].label}, ${TRAM_TRACKS[xs.tramTracks].label}`]);
+        if (xs.tram !== "none") card.rows.push(["Tram tracks", TRAM_LAYOUTS[xs.tram].label], ["Tracks", TRAM_TRACKS[xs.tramTracks].label]);
         const parking = this.parkingInfo();
-        if (parking.length) card.rows.push(["Parking", `${parking.reduce((s, f) => s + f.spaces, 0)} spaces · ${parking[0].tariff.label()}`]);
+        const spaces = parking.reduce((s, f) => s + f.spaces, 0);
+        if (parking.length) card.rows.push(["Parking", `${spaces} ${spaces === 1 ? "space" : "spaces"} · ${parking[0].tariff.label()}`]);
         card.rows.push(["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
         if (xs.obstruct) card.rows.push(["Bikes", "hold up the cars behind them (too narrow to pass at 1.5 m)"]);
       }

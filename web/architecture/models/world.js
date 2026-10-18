@@ -12,7 +12,7 @@ export const WORLD = [
     classes: [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
-        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
+        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "parking: ParkingSpaces — the parking spaces and who is parked where", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
         operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
       },
       {
@@ -245,7 +245,7 @@ export const WORLD = [
       { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges.", operations: ["stopAreas()"] },
       { name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street or footpath of the road network.", operations: ["roadInfo()"] },
       { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own; a section with its railway systems.", operations: ["at(offsetMM)", "walkBarrier()", "card() — also its systems", "draw(view) — the track, a band by its system (View → Colour the tracks by)"] },
-      { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()"] },
+      { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()", "noParking(road, side) — the stop and 15 m on each side"] },
       { name: "House", file: "web/arail/objects/houses.js", kind: "class", extends: "BuildingBase", role: "One of the house types (also Plattenbau, office, school …)." },
     ],
     relations: [{ from: "BuildingBase", to: "BuildingModel", kind: "creates", label: "model()" }],

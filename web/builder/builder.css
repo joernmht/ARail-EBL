@@ -20,7 +20,8 @@
 .tools .tool[aria-pressed="true"] kbd { color: inherit; border-color: currentColor; }
 .tools select { width: 100%; }
 .street-settings { display: grid; gap: 8px; padding: 10px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
-.street-settings h3 { margin: 0; font-size: .8rem; }
+/* a heading of its own (the tool groups' labels are hidden from screen readers), shown also where those are not */
+.tools .street-settings h2 { display: block; margin: 0; font-size: .8rem; font-weight: 700; letter-spacing: normal; text-transform: none; color: var(--text); }
 .street-settings .fields { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .street-settings .hint { margin: 0; font-size: .76rem; }
 .street-width { margin: 0; font-weight: 700; font-size: .86rem; }

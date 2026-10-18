@@ -60,7 +60,7 @@ export const OCCUPANCY_BY_PURPOSE = {
 };
 
 /** Labels of the purposes for the cards. */
-const PURPOSE_WORDS = { work: "to work", shopping: "shopping", visit: "a visit", home: "home", through: "through the town" };
+const PURPOSE_WORDS = { work: "to work", shopping: "to the shops", visit: "a visit", home: "home", through: "through the town" };
 
 const LENGTH_M = 4.4;
 const WIDTH_M = 1.8;
@@ -263,7 +263,8 @@ export class TrafficSimulation extends Simulation {
   /** A driver and the passengers for a trip of this purpose (their names stay the same for a seed and car). */
   _crew(purpose) {
     const n = this.rng.weighted(OCCUPANCY_BY_PURPOSE[purpose] || OCCUPANCY_BY_PURPOSE.through);
-    const id = nextCarId;
+    // by the order the cars come (their seq), not by their program-wide id
+    const id = this._seq + 1;
     const person = (key, role) => new Person({ id: key.join("-"), ...this.people.name(key), role });
     return { driver: person(["car", id, "driver"], "driver"), passengers: Array.from({ length: n }, (_, k) => person(["car", id, "passenger", k], "passenger")) };
   }
@@ -407,7 +408,7 @@ export class TrafficSimulation extends Simulation {
         const crew = this._crew(purpose);
         const car = {
           id: `car${nextCarId++}`, seq: ++this._seq, kind: "car", colour: this.rng.pick(CAR_COLOURS), purpose, driver: crew.driver, passengers: crew.passengers,
-          destName: f.owner?.name ?? null, permits: residents ? new Set([f.id]) : null, fee: 0, why: "",
+          destName: f.for ? this.world.getObject(f.for)?.name ?? null : null, permits: residents ? new Set([f.id]) : null, fee: 0, why: "",
         };
         const slot = parking.take(f.id, car, f.spots[this.rng.int(Math.max(1, f.spots.length))]?.pos ?? null);
         if (!slot) break;
@@ -767,12 +768,12 @@ export class TrafficSimulation extends Simulation {
     const rows = [["Speed", `${kmh} km/h`]];
     if (car.driver?.name) rows.push(["Driver", car.driver.name]);
     const n = car.passengers?.length ?? 0;
-    rows.push(["Passengers", n ? car.passengers.map((p) => p.name).join(", ") : "none"]);
+    rows.push(["Riding along", n ? car.passengers.map((p) => p.name).join(", ") : "nobody"]);
     rows.push(["Trip", PURPOSE_WORDS[car.purpose] ?? car.purpose]);
     if (car.destName) rows.push(["To", car.destName]);
     const plan = car.plan;
     if (plan) {
-      rows.push(["Route", `${plan.km.toFixed(1)} km, about ${Math.max(1, Math.round(plan.minutes))} min`]);
+      rows.push(["Planned route", `${plan.km.toFixed(1)} km, about ${Math.max(1, Math.round(plan.minutes))} min`]);
       if (plan.facility) rows.push(["Parks at", `${plan.facility.label}, ${Math.round(plan.walkM)} m to walk`], ["Parking costs", plan.free ? plan.why || "free" : `${plan.fee.toFixed(2)} € (${plan.why})`]);
     }
     const sections = plan?.options?.length > 1 ? [{ title: "Parking on the map", lines: plan.options.map((o) => `${o.label}: ${Math.round(o.minutes * 10) / 10} min, ${Math.round(o.walkM)} m on foot, ${o.fee ? `${o.fee.toFixed(2)} €` : "free"}${o.full ? ", full" : ""}`) }] : [];

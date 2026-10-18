@@ -279,3 +279,63 @@ test("the app shows a layout's covered photo instead of the photo", async ({ pag
   expect(await page.evaluate(() => window.__arail.source.el.src)).toMatch(/media\/ebl-neustadt\.jpg$/);
   expect(errors).toEqual([]);
 });
+
+test("the street tools: the cross-section and widths of the new street, its figure, and the street drawn with them", async ({ page }) => {
+  const errors = await openBuilder(page);
+  await page.locator("#plan").focus();
+  await page.keyboard.press("s");
+  const settings = page.getByRole("group", { name: "The new street" });
+  await expect(settings).toBeVisible();
+  // a street with sidewalks: 7 m of car lanes and 2.5 m sidewalks, 12 m in all
+  const figure = page.locator("#panel-element figure.cross-section");
+  await expect(figure.locator("figcaption")).toContainText("Sidewalk 2.5 m · Car lanes 7 m · Sidewalk 2.5 m");
+  await expect(figure.locator("figcaption b")).toHaveText("12 m in all");
+  await expect(settings.locator(".street-width")).toHaveText("12 m wide in all");
+  // bike lanes: the field for their width appears, with the standard widths of ERA 2010 to click
+  await settings.locator("#new-street-profile").selectOption("bike-lanes");
+  const presets = settings.getByRole("group", { name: "Bike lanes or paths: standard values" });
+  await expect(presets.getByRole("button")).toHaveText(["1.5", "1.85", "2.25"]);
+  await presets.getByRole("button", { name: "1.5", exact: true }).click();
+  await expect(presets.getByRole("button", { name: "1.5", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(figure.locator("figcaption")).toContainText("Bike lane 1.5 m · Car lanes 7 m · Bike lane 1.5 m");
+  await expect(figure.locator("figcaption b")).toHaveText("15 m in all");
+  // narrower than the guidelines: said at once, and the street can still be drawn
+  await settings.locator("#new-street-bike_m").fill("1.2");
+  await settings.locator("#new-street-bike_m").press("Tab");
+  await expect(settings.locator(".hint.error")).toHaveText("Bike lane 1.2 m: below the minimum of 1.5 m (ERA 2010, VwV-StVO); bikes ride in the car lane");
+  // the car lanes: a standard width to click
+  await settings.getByRole("group", { name: "Width: standard values" }).getByRole("button", { name: "6.5", exact: true }).click();
+  await expect(figure.locator("figcaption b")).toHaveText("13.9 m in all");
+  // draw it: the new street has the settings chosen
+  await clickAt(page, [1700, -1500]);
+  await clickAt(page, [2300, -1500]);
+  await page.keyboard.press("Enter");
+  const street = (await objects(page, "road")).at(-1);
+  expect([street.profile, street.bike_m, street.width_m]).toEqual(["bike-lanes", 1.2, 6.5]);
+  // the settings stay for the next street of this kind; Standard street takes them back
+  await expect(settings.locator("#new-street-profile")).toHaveValue("bike-lanes");
+  await settings.getByRole("button", { name: "Standard street" }).click();
+  await expect(settings.locator("#new-street-profile")).toHaveValue("sidewalks");
+  await expect(figure.locator("figcaption b")).toHaveText("12 m in all");
+  // a tram track of its own (T): the track bed and the tracks
+  await page.locator("#plan").focus();
+  await page.keyboard.press("t");
+  await expect(page.getByRole("button", { name: "Tram track" })).toHaveAttribute("aria-pressed", "true");
+  await expect(figure.locator("figcaption")).toContainText("Track bed 6.6 m");
+  expect(errors).toEqual([]);
+});
+
+test("the street tools in German: the new street, its strips and widths", async ({ page }) => {
+  const errors = await openBuilder(page, `${LAB}&lang=de`);
+  await page.locator("#plan").focus();
+  await page.keyboard.press("s");
+  const settings = page.getByRole("group", { name: "Die neue Straße" });
+  await expect(settings).toBeVisible();
+  await expect(settings.locator("label[for=new-street-profile] > span").first()).toHaveText("Querschnitt");
+  const caption = page.locator("#panel-element figure.cross-section figcaption");
+  await expect(caption).toContainText("Gehweg 2,5 m · Fahrstreifen 7 m · Gehweg 2,5 m");
+  await expect(caption.locator("b")).toHaveText("insgesamt 12 m");
+  await settings.locator("#new-street-profile").selectOption("advisory-lanes");
+  await expect(caption).toContainText("Schutzstreifen 1,5 m");
+  expect(errors).toEqual([]);
+});

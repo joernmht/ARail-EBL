@@ -24,6 +24,7 @@ import { JOURNEYS } from "./models/journeys.js";
 import { OPERATIONS } from "./models/operations.js";
 import { PAGES } from "./models/pages.js";
 import { RAIL } from "./models/rail.js";
+import { STREETS } from "./models/streets.js";
 import { TERMINAL } from "./models/terminal.js";
 import { TOOLS } from "./models/tools.js";
 import { TRACKING } from "./models/tracking.js";
@@ -67,8 +68,8 @@ export const PACKAGES = [
   },
   {
     id: "core-transport", name: "core · transport", group: "framework", path: "web/arail/core",
-    summary: "Stops and docks, the timetable trains and buses, the road network and the street access of what needs it, bus lines, the control system's trains.",
-    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/trains.js"],
+    summary: "Stops and docks, the timetable trains and buses, the road network with its rules (signs, lights, zebra crossings, railway crossings) and the street access of what needs it, bus and tram lines, the parking spaces, the control system's trains.",
+    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/parking.js", "web/arail/core/trains.js"],
     uses: ["core-math", "core-drawing"],
   },
   {
@@ -85,15 +86,15 @@ export const PACKAGES = [
   },
   {
     id: "objects", name: "objects", group: "framework", path: "web/arail/objects",
-    summary: "The built-in object types: platforms, tracks, stations, streets, bus stops and lines, houses, trees, tables.",
-    files: ["web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/signs.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
+    summary: "The built-in object types: platforms, tracks, stations, streets with their cross-sections, bus stops and lines, tram stops and lines, traffic signs and lights, zebra crossings, railway crossings, parking, houses, trees, tables.",
+    files: ["web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/street-profile.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/tram.js", "web/arail/objects/signs.js", "web/arail/objects/traffic-signs.js", "web/arail/objects/crossings.js", "web/arail/objects/parking.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "sims", name: "sims", group: "framework", path: "web/arail/sims",
-    summary: "Passengers at the stops, the town's residents, road traffic.",
-    files: ["web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing"],
+    summary: "Passengers at the stops, the town's residents, road traffic with its drivers and parking, bikes and e-scooters.",
+    files: ["web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects"],
   },
   {
     id: "terminal", name: "terminal", group: "framework", path: "web/arail/terminal",
@@ -176,7 +177,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -296,7 +297,7 @@ export const DATA_FLOW = {
 export const MODEL_GROUPS = [
   { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
-  { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets, bus lines and cars." },
+  { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets and their cross-sections, traffic signs and crossings, bus and tram lines, cars and parking, bikes and e-scooters." },
   { id: "disruptions", name: "Disruptions, scenarios and stories", intro: "What can go wrong, timelines of it for exercises (the module Disruptions), and stories to click through (the app's module tabs)." },
   { id: "terminal", name: "Module: container terminal" },
   { id: "operations", name: "Module: rail operations" },
@@ -309,7 +310,7 @@ export const MODEL_GROUPS = [
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...GAMES, ...CONTROL, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...GAMES, ...CONTROL, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
@@ -412,6 +413,7 @@ export const REGISTRY = {
     { type: "passengers", class: "PassengerSimulation", file: "web/arail/sims/passengers.js", model: "passengers" },
     { type: "town", class: "TownSimulation", file: "web/arail/sims/town.js", model: "town" },
     { type: "traffic", class: "TrafficSimulation", file: "web/arail/sims/traffic.js", model: "traffic" },
+    { type: "cycling", class: "CyclingSimulation", file: "web/arail/sims/cycling.js", model: "cycling" },
     { type: "terminal", class: "TerminalSimulation", file: "web/arail/terminal/operations.js", model: "terminal-operations" },
     { type: "operations", class: "OperationsSimulation", file: "web/arail/ops/simulation.js", model: "ops-world" },
     { type: "infrastructure", class: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", model: "infra-world" },
@@ -428,6 +430,15 @@ export const REGISTRY = {
     obj("underpass", "Underpass", "web/arail/objects/underpass.js", "objects"),
     obj("bus-stop", "BusStop", "web/arail/objects/bus-stop.js", "objects"),
     obj("bus-line", "BusLine", "web/arail/objects/bus-line.js", "objects"),
+    obj("tram-stop", "TramStop", "web/arail/objects/tram.js", "trams"),
+    obj("tram-line", "TramLine", "web/arail/objects/tram.js", "trams"),
+    obj("traffic-sign", "TrafficSign", "web/arail/objects/traffic-signs.js", "traffic-rules"),
+    obj("traffic-light", "TrafficLight", "web/arail/objects/traffic-signs.js", "traffic-rules"),
+    obj("zebra-crossing", "ZebraCrossing", "web/arail/objects/traffic-signs.js", "traffic-rules"),
+    obj("rail-crossing", "RailCrossing", "web/arail/objects/crossings.js", "traffic-rules"),
+    obj("parking-lot", "ParkingLot", "web/arail/objects/parking.js", "parking"),
+    obj("parking-garage", "ParkingGarage", "web/arail/objects/parking.js", "parking"),
+    obj("bike-stand", "BikeStand", "web/arail/objects/parking.js", "parking"),
     obj("building", "Building", "web/arail/objects/building.js", "objects"),
     obj("station-building", "StationBuilding", "web/arail/objects/station.js", "objects"),
     obj("plattenbau", "Plattenbau", "web/arail/objects/houses.js", "objects"),
@@ -487,5 +498,6 @@ export const REGISTRY = {
   vehicles: [
     { type: "train", label: "TRAIN: a multiple unit with doors", file: "web/arail/core/vehicles.js", model: "services" },
     { type: "bus", label: "BUS: a 12 m bus", file: "web/arail/core/vehicles.js", model: "services" },
+    { type: "tram", label: "TRAM: a 30 m low-floor tram, 2.65 m wide", file: "web/arail/core/vehicles.js", model: "trams" },
   ],
 };

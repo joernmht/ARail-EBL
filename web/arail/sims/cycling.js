@@ -158,13 +158,14 @@ export class CyclingSimulation extends Simulation {
   /** A new rider: a person, bike or e-scooter, keeping the rules or not, a child or not. */
   _rider() {
     const r = this.rng, kind = r.chance(+this.config.scooters || 0) ? "scooter" : "bike";
-    const id = nextRiderId++;
-    const person = new Person({ id: `rider-${id}`, ...this.people.name(["rider", id]), role: "rider" });
+    // the id is unique in the program, the name stays the same for a seed (by the order the riders come)
+    const id = nextRiderId++, seq = ++this._seq;
+    const person = new Person({ id: `rider-${seq}`, ...this.people.name(["rider", seq]), role: "rider" });
     const child = kind === "bike" && r.chance(+this.config.children || 0);
     const R = RIDERS[kind];
     const kmh = child ? r.uniform(10, 14) : r.uniform(R.speed_kmh[0], R.speed_kmh[1]);
     return {
-      id: `${kind}${id}`, seq: ++this._seq, kind, person, child, compliant: child || !r.chance(+this.config.rule_breakers || 0), colour: r.pick(RIDER_COLOURS),
+      id: `${kind}${id}`, seq, kind, person, child, compliant: child || !r.chance(+this.config.rule_breakers || 0), colour: r.pick(RIDER_COLOURS),
       vmax: kmh / 3.6, v: 0, s: 0, mood: 0.85, met: new Set(), waited: 0,
     };
   }
@@ -454,7 +455,7 @@ export class CyclingSimulation extends Simulation {
   describeObject(o, card) {
     if (o.type !== "road") return;
     const n = this.conflicts.filter((c) => c.road === o.id).length;
-    if (n) card.rows.push(["Riders and people on foot", `${n} conflicts in the last hour`]);
+    if (n) card.rows.push(["Riders and people on foot", `${n} ${n === 1 ? "conflict" : "conflicts"} in the last hour`]);
     const locked = this.locked.filter((l) => l.spot.key?.startsWith(`${o.id}:`)).length;
     if (locked) card.rows.push(["Bikes at the lamps", locked]);
   }

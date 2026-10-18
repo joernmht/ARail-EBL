@@ -9,7 +9,12 @@
 import { dist2, rectBetween } from "./math.js";
 import { boxFaces } from "./transit.js";
 import { grey, shade } from "./colors.js";
-import { formatTime } from "./clock.js";
+
+/** Clock minutes as "07:05" (the next day wraps round). */
+const hhmm = (minutes) => {
+  const m = ((Math.floor(minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+};
 
 /** A parked car's size (m): the design car of EAR 23 is 4.88 × 1.89 m; an average one is smaller. */
 export const PARKED_CAR = { length_m: 4.5, width_m: 1.8 };
@@ -203,7 +208,7 @@ export class ParkingSpaces {
     const { car, facility, since } = hit.ref;
     const now = this.world.clock?.minutes ?? since;
     const minutes = (((now - since) % 1440) + 1440) % 1440;
-    const rows = [["Parked at", facility.label], ["Since", formatTime(since)]];
+    const rows = [["Parked at", facility.label], ["Since", hhmm(since)]];
     if (car.driver?.name) rows.push(["Driver", car.driver.name]);
     if (car.destName) rows.push(["Gone to", car.destName]);
     rows.push(["Costs", car.fee > 0 ? `${car.fee.toFixed(2)} €` : car.why || facility.tariff.label()]);
