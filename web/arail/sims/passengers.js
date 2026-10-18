@@ -42,6 +42,9 @@ function screenLength(view, areas) {
   return best;
 }
 
+/** At most this many people come to wait at a bus or tram stop in the street (agents of other simulations aside). */
+const ROAD_STOP_MAX = 40;
+
 /** People closer than this (m) count as neighbours (they slow each other down and get unhappy). */
 const NEIGHBOUR_M = 1.3;
 /** People closer than this (m) push each other apart. */
@@ -267,16 +270,21 @@ export class PassengerSimulation extends Simulation {
    * @param {object} vehicle
    * @param {object} dock
    * @param {object[]} agents
+   * @param {{towards?: ((agent: object) => number | null) | null}} [options] towards: where along the stop
+   *   (m) an agent will leave it; it gets off at the door closest to that
    * @returns {Person[]}
    */
-  alight(vehicle, dock, agents) {
+  alight(vehicle, dock, agents, { towards = null } = {}) {
     this._sync();
     const c = this.crowds.get(dock.area.id);
     if (!c || !agents.length) return [];
     const doors = this._doors(vehicle);
     const a = c.area, rng = this.rng, out = [];
     for (const agent of agents) {
-      const s = (doors.length ? rng.pick(doors) : rng.uniform(0.2, 0.8) * a.L) + rng.uniform(-0.4, 0.4);
+      let s = (doors.length ? rng.pick(doors) : rng.uniform(0.2, 0.8) * a.L) + rng.uniform(-0.4, 0.4);
+      // a traveller who knows the exit it takes rode near it: off at the door closest to it
+      const aim = towards?.(agent);
+      if (aim != null && doors.length) s = doors.reduce((b, d) => (Math.abs(d - aim) < Math.abs(b - aim) ? d : b), doors[0]);
       const p = new Person(rng, [s, dock.side * (a.W / 2 - 0.2)], [0, 0], "onboard", rng.uniform(0.7, 0.92), null);
       p.agent = agent;
       p.delay = rng.uniform(0, 4);
@@ -329,7 +337,7 @@ export class PassengerSimulation extends Simulation {
     // a stop of bus lines that no line in operation serves (yet, or any more): no bus comes
     const lines = this.world.transit?.lines;
     if (lines && a.docks.length && a.docks.every((d) => d.managed) && ![...lines.values()].some((l) => l.ok && l.visits.some((v) => v.areaId === a.id))) return false;
-    if (this.world.clock.demand(a.kind === "bus" ? "bus" : "rail") > 0) return true;
+    if (this.world.clock.demand(a.kind === "bus" || a.kind === "tram" ? "bus" : "rail") > 0) return true;
     return this.world.services.forArea(a.id).some((st) => st.mode === "feed" || st.vehicle)
       || a.docks.some((d) => d.managed && this.world.transit?.vehicleAt?.(d.id));
   }
@@ -398,7 +406,7 @@ export class PassengerSimulation extends Simulation {
     const rng = this.rng, a = c.area;
     const fx = this.world.disruptions.effectsFor(a);
     const len = dock.s1 - dock.s0;
-    const bus = dock.kind === "bus";
+    const bus = dock.kind === "bus" || dock.kind === "tram";
     const tod = this.world.clock.demand("passengers");
     const n = fx.closed || !this.others ? 0 : rng.poisson(((bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25)) * Math.min(1, 0.25 + tod));
     const late = vehicle.delayMin > 0.5;
@@ -459,7 +467,9 @@ export class PassengerSimulation extends Simulation {
     const shut = !fx.closed && open.length < a.docks.length;
     const rate = fx.closed || !service || !this.others || (a.docks.length && !open.length) ? 0 : this.config.base_rate * world.demand * fx.demand * c.wave() * (a.L / 25) * world.clock.demand("passengers");
     const n = rng.poisson(rate * dt);
-    for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
+    // a bus or tram stop in the street holds fewer people than a platform
+    const max = a.kind === "bus" || a.kind === "tram" ? Math.min(this.config.max_per_area, ROAD_STOP_MAX) : this.config.max_per_area;
+    for (let i = 0; i < n && c.people.length < max; i++) {
       const dock = open.length ? rng.pick(open).id : null;
       const p = new Person(rng, this._access(c), [0, 0], "arriving", rng.uniform(0.62, 0.95) - (disrupted ? 0.3 : 0), dock);
       p.target = this._waitingSpot(c, dock);
@@ -608,8 +618,8 @@ export class PassengerSimulation extends Simulation {
     const doing = { arriving: "Walking onto the stop", waiting: "Waiting", boarding: "Boarding", onboard: "Getting off", leaving: "Leaving the stop" }[p.state] || p.state;
     card.status = base ? `${doing} · ${owner?.name ?? "stop"}` : doing;
     const line = p.line ? this.world.transit?.lines?.get?.(p.line) : null;
-    const noun = area.kind === "bus" ? "bus" : "train";
-    const wants = line ? `Bus ${line.label}` : p.line || (dock ? `the ${noun}${dock.label ? ` at ${dock.label}` : ""}` : p.state === "waiting" || p.state === "arriving" ? `the next ${noun}` : null);
+    const noun = area.kind === "bus" ? "bus" : area.kind === "tram" ? "tram" : "train";
+    const wants = line ? `${line.noun ?? "Bus"} ${line.label}` : p.line || (dock ? `the ${noun}${dock.label ? ` at ${dock.label}` : ""}` : p.state === "waiting" || p.state === "arriving" ? `the next ${noun}` : null);
     if (wants) card.rows.push(["Waiting for", wants]);
     if (p.state === "waiting") card.rows.push(["Waited", `${Math.round((p.wait * this.world.clock.factor) / 60)} min`]);
     card.rows.push(["Mood", `${Math.round(p.mood * 100)} %`]);
@@ -698,9 +708,10 @@ export class PassengerSimulation extends Simulation {
     const ends = areas.flatMap((a) => [a.toLayout(0, 0), a.toLayout(a.L, 0)]);
     const at = areas.length > 1 ? [ends.reduce((s, p) => s + p[0], 0) / ends.length, ends.reduce((s, p) => s + p[1], 0) / ends.length] : first.toLayout(0, 0);
     const z = view.m(4.5);
-    const badge = owner.spec.number || (first.kind === "bus" ? "H" : null);
-    // the bus badge keeps the green of the German bus stop sign ("H"), platforms get CD Türkis
-    const badgeColor = first.kind === "bus" ? OVERLAY.busStop : OVERLAY.sign;
+    const road = first.kind === "bus" || first.kind === "tram";
+    const badge = owner.spec.number || (road ? "H" : null);
+    // the badge of bus and tram stops keeps the green of the German stop sign ("H"), platforms get CD Türkis
+    const badgeColor = road ? OVERLAY.busStop : OVERLAY.sign;
     const fxs = areas.map((a) => this.world.disruptions.effectsFor(a));
     const alert = fxs.find((fx) => fx.messages.length)?.messages[0];
     if (screenLength(view, areas) < BOARD_MIN_PX) {
@@ -735,7 +746,7 @@ export function statusLines(world, area) {
   const states = world.services.forArea(area.id);
   const lines = world.transit ? [...new Set(area.docks.filter((d) => d.managed).map((d) => world.transit.statusFor(d.id)).filter(Boolean))] : [];
   if (!states.length) return lines;
-  const noun = area.kind === "bus" ? "Bus" : "Train";
+  const noun = area.kind === "bus" ? "Bus" : area.kind === "tram" ? "Tram" : "Train";
   const busy = states.find((st) => st.vehicle);
   if (busy) {
     const v = busy.vehicle;

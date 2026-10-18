@@ -590,9 +590,14 @@ export class JourneysSimulation extends Simulation {
 
   /** A person getting off at a stop leaves it by the exit the next walk of the plan starts from. */
   _exitAsPlanned(t, p, area) {
-    const next = t.plan.legs[t.leg + 1];
-    const e = next?.type === "walk" && next.from?.kind === "area" && next.from.id === area.id ? area.access[next.from.access ?? 0] : null;
+    const e = this._plannedExit(t, area);
     if (e) p.target = [e.s, e.t];
+  }
+
+  /** The way out of a stop area the traveller's plan walks on from (an access of the area), or null. */
+  _plannedExit(t, area) {
+    const next = t.plan.legs[t.leg + 1];
+    return next?.type === "walk" && next.from?.kind === "area" && next.from.id === area.id ? area.access[next.from.access ?? 0] ?? null : null;
   }
 
   /** Is the traveller's person still on its stop (the passenger simulation may drop people)? */
@@ -677,7 +682,7 @@ export class JourneysSimulation extends Simulation {
     this._log(t, `Off ${leg.name} at ${leg.toPlatform ?? leg.toName}`, now);
     if (!dock || !pax) return this._next(t, now);
     t.state = "alighting";
-    const [p] = pax.alight({ kind: "train", dock }, dock, [t]);
+    const [p] = pax.alight({ kind: "train", dock }, dock, [t], { towards: (x) => this._plannedExit(x, area)?.s ?? null });
     if (!p) return this._next(t, now);
     this._alighted(p, area);
   }
@@ -837,7 +842,7 @@ export class JourneysSimulation extends Simulation {
           t.state = "alighting";
           this._log(t, `Off at ${t.current?.toName ?? dock.area.owner?.name}`, now);
         }
-        if (pax) for (const p of pax.alight(vehicle, dock, agents)) this._alighted(p, dock.area);
+        if (pax) for (const p of pax.alight(vehicle, dock, agents, { towards: (x) => this._plannedExit(x, dock.area)?.s ?? null })) this._alighted(p, dock.area);
         else for (const t of agents) this._next(t, now);
       }
     }
@@ -859,7 +864,7 @@ export class JourneysSimulation extends Simulation {
       t.trip = null;
       this._log(t, `Off ${t.current.name} at ${dock.area.owner?.name ?? station.name}`, now);
     }
-    if (pax) for (const p of pax.alight(vehicle, dock, off)) this._alighted(p, dock.area);
+    if (pax) for (const p of pax.alight(vehicle, dock, off, { towards: (x) => this._plannedExit(x, dock.area)?.s ?? null })) this._alighted(p, dock.area);
     else for (const t of off) this._next(t, now);
   }
 

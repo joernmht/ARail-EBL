@@ -80,7 +80,7 @@ export function objectPickable(o) {
  */
 export function movingPickables(world, view) {
   const out = [];
-  for (const source of [world.services, world.transit, world.trains, ...world.simulations]) {
+  for (const source of [world.services, world.transit, world.parking, world.trains, ...world.simulations]) {
     if (typeof source?.pickables !== "function") continue;
     for (const p of source.pickables(view) || []) if (p?.outline?.length) out.push(p);
   }

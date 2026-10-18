@@ -8,7 +8,10 @@
  * - **truck lanes** of the container terminal: trucks come from a street to the entry of the lane
  *   and leave onto one at its end;
  * - **buildings**: a street or footpath leads to each entrance; the maintenance base's vans need a
- *   street for cars;
+ *   street for cars; cars reach the way into a parking lot or garage;
+ * - **tram stops** are at a tram track; **railway crossings**: a street that crosses a track at
+ *   street level without a level crossing put there gets one, and trams never cross a railway at
+ *   street level (BOStrab § 15): there the crossing becomes a bridge;
  * - **the streets themselves**: they form one network (a street that is not connected to the others
  *   is reached by no bus and no car), a street that ends just before another one is joined to it,
  *   and a street ends in the middle of the layout only on purpose (cars come and go at dead ends,
@@ -16,7 +19,8 @@
  * What objects already report themselves (`problems()`: a bus stop not next to a street, a bus line
  * without a way) is not repeated. Each problem says where it is and, where one is plain, how to fix
  * it: a street or footpath to the nearest street (`street`), a street end moved onto the street it
- * almost meets (`join`). `applyFix` carries a fix out (the editor offers it as a button).
+ * almost meets (`join`), a railway crossing where a street crosses a track (`crossing`) or another
+ * kind for one (`crossing-kind`). `applyFix` carries a fix out (the editor offers it as a button).
  * @module arail/core/access
  */
 import { PLACE_MAX_M } from "./network.js";
@@ -47,15 +51,22 @@ export const STUB_M = 30;
 
 /**
  * @typedef {object} AccessFix
- * @property {"street" | "join"} kind street: draw a street (or footpath) `points`; join: move end
- *   `end` (0 first, 1 last point) of street `id` to `to`
+ * @property {"street" | "join" | "crossing" | "crossing-kind"} kind street: draw a street (or footpath)
+ *   `points`; join: move end `end` (0 first, 1 last point) of street `id` to `to`; crossing: put a
+ *   railway crossing of `crossingKind` at `to` (street `id`, track `track`); crossing-kind: give the
+ *   railway crossing `id` the kind `crossingKind`
  * @property {string} text the button, e.g. "Add a footpath to Main Street"
  * @property {number[][]} [points] layout mm, from the thing to the street
  * @property {"street" | "path" | "underpass"} [roadKind] underpass: a footpath under the tracks (type `underpass`)
  * @property {string} [id]
  * @property {0 | 1} [end]
  * @property {number[]} [to]
+ * @property {string} [track]
+ * @property {string} [crossingKind]
  */
+
+/** A parking lot or garage is reached by car from a street this close to its way in (m). */
+export const PARKING_ACCESS_M = 30;
 
 /** The name of an object for the texts: its name, else its kind and id. */
 export function nameOf(obj) {
@@ -173,10 +184,52 @@ export function accessProblems(world) {
         fix: fixStreet(at, { car: false, text: "Add a footpath to {street}" }),
       });
     }
-    if (area.kind !== "bus" || lanes || net.empty) continue;
+    if ((area.kind !== "bus" && area.kind !== "tram") || lanes || net.empty) continue;
     for (const dock of area.docks) {
-      if (dock.kind !== "bus" || net.dock(dock.id)) continue;
-      add({ key: `dock:${dock.id}`, level: "error", id: owner?.id ?? null, at: area.toLayout((dock.s0 + dock.s1) / 2, 0), text: `${name}: buses cannot stop here: it is not right next to a street for buses` });
+      if (dock.kind !== area.kind || net.dock(dock.id)) continue;
+      const text = area.kind === "tram" ? `${name}: trams cannot stop here: it is not at a tram track` : `${name}: buses cannot stop here: it is not right next to a street for buses`;
+      add({ key: `dock:${dock.id}`, level: "error", id: owner?.id ?? null, at: area.toLayout((dock.s0 + dock.s1) / 2, 0), text });
+    }
+  }
+
+  // railway crossings: a street across a track at street level needs a level crossing put there;
+  // trams never cross a railway at street level (BOStrab § 15)
+  const seenRail = new Set();
+  for (const e of net.edges) {
+    for (const r of e.rails || []) {
+      if (!r.level) continue;
+      const key = `${e.road}:${r.track}:${Math.round(r.pos[0])},${Math.round(r.pos[1])}`;
+      if (seenRail.has(key)) continue;
+      seenRail.add(key);
+      const road = world.getObject(e.road), track = world.getObject(r.track);
+      if (e.tramBlocked && e.tramBlocked === r) {
+        add({
+          key: `rail:${key}`, level: "error", id: e.road, at: r.pos,
+          text: `${nameOf(road)}: trams cannot cross ${nameOf(track)} at street level (BOStrab § 15): a bridge or an underpass is needed`,
+          fix: r.crossing?.obj
+            ? { kind: "crossing-kind", id: r.crossing.id, crossingKind: "over", text: "Make it a bridge over the track" }
+            : { kind: "crossing", id: e.road, track: r.track, to: r.pos, crossingKind: "over", text: "Build a bridge over the track" },
+        });
+      } else if (!r.crossing && e.car) {
+        add({
+          key: `rail:${key}`, level: "warning", id: e.road, at: r.pos,
+          text: `${nameOf(road)} crosses ${nameOf(track)} at street level without a railway crossing`,
+          fix: { kind: "crossing", id: e.road, track: r.track, to: r.pos, crossingKind: "half-barriers", text: "Add a level crossing with half barriers" },
+        });
+      }
+    }
+  }
+
+  // parking lots and garages: cars drive in from a street
+  for (const o of world.objects) {
+    if (typeof o.parkingInfo !== "function" || !o.geometry || o.type === "road" || o.type === "supermarket") continue;
+    for (const f of o.parkingInfo() || []) {
+      if (!f.entry || nearestStreet(world, f.entry, { car: true, maxMM: mm(PARKING_ACCESS_M) })) continue;
+      add({
+        key: `parking:${f.id}`, level: "error", id: o.id, at: f.entry,
+        text: `${nameOf(o)}: cars cannot get in: no street within ${PARKING_ACCESS_M} m of its way in`,
+        fix: fixStreet(f.entry, { car: true, text: "Add a street to {street}" }),
+      });
     }
   }
 
@@ -252,8 +305,10 @@ export function accessProblems(world) {
       const node = net.nodes[k ? own[own.length - 1].b : own[0].a];
       if (node.degree !== 1) continue; // joined to another street
       let near = null;
+      // a tram track of its own joins only what has tram tracks; a street does not join a tram track
+      const tramOnly = (x) => x.info.kind === "tram", tracks = (x) => !!x.info.tram && x.info.tram !== "none";
       for (const q of roads) {
-        if (q === r) continue;
+        if (q === r || (tramOnly(r) ? !tracks(q) : tramOnly(q))) continue;
         const pr = polylineProject(q.pts, p, q.cum), tol = Math.max(q.info.width / 2, mm(2));
         if (pr.distance > tol && pr.distance <= mm(NEAR_MISS_M) && (!near || pr.distance < near.distance)) near = { q, s: pr.s, distance: pr.distance };
       }
@@ -300,7 +355,7 @@ export function accessProblems(world) {
   }
 
   // errors first; then what is cut off, streets on their own, ends to join, dead ends
-  const rank = { error: 0, warning: 1 }, order = ["dock", "lane", "truck", "entrance", "area", "island", "near", "dead"];
+  const rank = { error: 0, warning: 1 }, order = ["dock", "rail", "lane", "truck", "parking", "entrance", "area", "island", "near", "dead"];
   const kind = (p) => order.indexOf(p.key.split(":")[0]);
   return out.map((p, i) => [p, i]).sort((a, b) => rank[a[0].level] - rank[b[0].level] || kind(a[0]) - kind(b[0]) || a[1] - b[1]).map(([p]) => p);
 }
@@ -350,6 +405,15 @@ export function applyFix(world, fix, { name } = {}) {
     const spec = fix.roadKind === "underpass" ? { type: "underpass", points } : { type: "road", kind: fix.roadKind === "path" ? "path" : "street", points };
     if (name) spec.name = name;
     return world.addObject(spec);
+  }
+  if (fix?.kind === "crossing" && fix.to) {
+    return world.addObject({ type: "rail-crossing", kind: fix.crossingKind || "half-barriers", position: round(fix.to), road: fix.id, track: fix.track });
+  }
+  if (fix?.kind === "crossing-kind") {
+    const c = world.getObject(fix.id);
+    if (!c) return null;
+    c.set({ kind: fix.crossingKind });
+    return c;
   }
   if (fix?.kind === "join") {
     const road = world.getObject(fix.id);

@@ -130,6 +130,7 @@ export const PALETTE = {
   trainWindow: "#23324a",
   trainDoor: CD.gelb,
   bus: CD.gelb, // Dresden's buses are yellow
+  tram: CD.gelb, // and so are its trams
   busWindow: "#2a3548",
   litWindow: "#ffe2a0", // windows with the lights on (night)
   warning: CD.rot,
@@ -143,6 +144,11 @@ export const PALETTE = {
   forest: "#3f7d4a",
   sand: "#e3cf9c",
   parking: "#8a8f96",
+  bikeLane: "#a9605a", // red-coated bike lanes on the street
+  bikePath: "#b8877c", // red paving of bike paths at sidewalk level
+  tramBed: "#6f9a5c", // grass track (Rasengleis) of a tram's own track bed
+  ballast: "#8d8880",
+  rail: "#5b5f64",
   plaza: "#c9c3b6",
   trunk: "#6b4a2f",
   leaves: "#4c8c3f",

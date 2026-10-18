@@ -20,7 +20,11 @@ import { OVERLAY } from "./colors.js";
  * @property {number} [max]
  * @property {number} [step]
  * @property {string} [unit]
- * @property {Array<[string, string]>} [options] for "select": [value, label]
+ * @property {Array<[string, string]> | ((values: object) => Array<[string, string]>)} [options] for "select":
+ *   [value, label], or a function of the other values (e.g. other cross-sections for a footpath)
+ * @property {number[] | ((values: object) => number[])} [presets] for "number": suggested values (standard widths)
+ * @property {(values: object) => boolean} [when] the field is shown only when this holds (e.g. the price
+ *   only when parking costs something); a hidden field keeps its value
  * @property {string} [objectType] for "object": only offer objects of this type
  * @property {string} [help]
  */

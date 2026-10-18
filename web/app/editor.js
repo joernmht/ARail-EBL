@@ -1,6 +1,6 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
 import { applyH, dist2, FONT, markersUsed, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
-import { $, download, h, morph, mount, paramFields, readFile, revealStage, section, toast } from "./ui.js";
+import { $, download, h, morph, mount, paramFields, paramShape, readFile, revealStage, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 import { tr } from "./i18n.js";
 
@@ -643,13 +643,14 @@ export class Editor {
     }
     const cls = o.constructor;
     const problemsOf = () => (typeof o.problems === "function" ? o.problems() : []);
-    const problems = problemsOf();
+    const problems = problemsOf(), shape = paramShape(cls.params, o.spec);
     const change = (key, value) => {
       o.set({ [key]: value });
       this.app.saveLayout();
       if (key === "name" || key === "text") this.renderObjects();
-      if (problemsOf().join("\n") !== problems.join("\n")) {
-        // e.g. a footpath chosen as a bus stop's street: the problems shown follow the change (the field keeps the focus)
+      if (problemsOf().join("\n") !== problems.join("\n") || paramShape(cls.params, o.spec) !== shape) {
+        // e.g. a footpath chosen as a bus stop's street, or a kind of street with other settings: the
+        // problems and fields shown follow the change (the field keeps the focus)
         const focused = document.activeElement?.id;
         this.renderInspector();
         if (focused) document.getElementById(focused)?.focus();

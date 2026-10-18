@@ -240,7 +240,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .settings-body { display: grid; gap: 18px; }
 
 .field { display: grid; gap: 3px; font-size: .8rem; color: var(--text-2); min-width: 0; }
-.field > span small { color: var(--text-2); font-weight: 400; }
+.field > span small, .field > label small { color: var(--text-2); font-weight: 400; }
+.field .row input[type="number"] { width: 6.5em; flex: none; }
+.seg.presets { flex-wrap: wrap; }
+.seg.presets button { padding: 5px 8px; font-size: .8rem; }
 .field input[type="text"], .field input[type="number"], .field input[type="url"], .field input[type="time"], .field select, .field textarea {
   width: 100%; min-width: 0; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; font-size: .92rem;
 }

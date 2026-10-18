@@ -1,5 +1,6 @@
 // The builder: a street and layout editor of its own, beside the app. The layout is a plan seen
-// from above (plan.js); streets are drawn point by point and join where they meet, bus stops,
+// from above (plan.js); streets are drawn point by point and join where they meet, each with the
+// cross-section and the widths chosen with the street tools (objects/street-profile.js), bus stops,
 // truck lanes and buildings are put where a street reaches them (place.js), and the Problems tab
 // lists what has no street to it (arail/core/access.js), each with its fix. Undo and redo keep the
 // whole layout; unpushed changes are kept in the browser as a draft. A push commits the layout and
@@ -25,7 +26,7 @@ const EXAMPLES = ["ebl-neustadt", "ebl-lab", "container-terminal", "ebl-containe
 /** The photo map, whose photos can have covered versions. */
 const PHOTO_MAP = "web/lab-map/data.json";
 
-const KEY = { draft: "arail.builder.draft", token: "arail.builder.token", last: "arail.builder.last", view: "arail.builder.view" };
+const KEY = { draft: "arail.builder.draft", token: "arail.builder.token", last: "arail.builder.last", view: "arail.builder.view", street: "arail.builder.street" };
 
 /** The repository path of a URL of the site ("web/…"), or null. */
 export const repoPathOf = (url) => (String(url).startsWith(SITE.href) ? `web/${decodeURI(String(url).slice(SITE.href.length).split(/[?#]/)[0])}` : null);
@@ -43,8 +44,17 @@ const TOOLS = [
       { id: "road:street", type: "road", kind: "street", label: "Street", key: "s" },
       { id: "road:residential", type: "road", kind: "residential", label: "Residential street" },
       { id: "road:main", type: "road", kind: "main", label: "Main road" },
-      { id: "road:path", type: "road", kind: "path", label: "Footpath", key: "f" },
+      { id: "road:path", type: "road", kind: "path", label: "Footpath or bike path", key: "f" },
+      { id: "road:tram", type: "road", kind: "tram", label: "Tram track", key: "t" },
       { id: "underpass", type: "underpass" },
+    ],
+  },
+  {
+    group: "On the street", items: [
+      { id: "traffic-sign", type: "traffic-sign" },
+      { id: "traffic-light", type: "traffic-light" },
+      { id: "zebra-crossing", type: "zebra-crossing" },
+      { id: "rail-crossing", type: "rail-crossing" },
     ],
   },
   {
@@ -52,6 +62,10 @@ const TOOLS = [
       { id: "bus-stop", type: "bus-stop", key: "b" },
       { id: "bus-terminal", type: "bus-terminal" },
       { id: "bus-line", type: "bus-line" },
+      { id: "tram-stop", type: "tram-stop" },
+      { id: "tram-line", type: "tram-line" },
+      { id: "parking-lot", type: "parking-lot" },
+      { id: "parking-garage", type: "parking-garage" },
       { id: "truck-lane", type: "truck-lane" },
       { id: "station-building", type: "station-building" },
       { id: "house", type: "house" },
@@ -59,6 +73,9 @@ const TOOLS = [
     ],
   },
 ];
+
+/** The settings of a new street the street tools offer (objects/road.js); the others keep their defaults. */
+const STREET_SETTINGS = ["profile", "width_m", "lanes", "sidewalk_m", "bike_m", "tram", "tram_tracks", "parking", "parking_sides"];
 
 /** Placing hints by placement. */
 const HINTS = {
@@ -70,7 +87,17 @@ const HINTS = {
   polyline: "Click the points. Double-click or Enter finishes, Backspace takes the last point back, Esc stops.",
   polygon: "Click the corners. Double-click or Enter finishes, Backspace takes the last point back, Esc stops.",
   stops: "Click the bus stops (or bus terminals) in the order the buses serve them. Double-click or Enter finishes.",
+  tramStops: "Click the tram stops in the order the trams serve them. Double-click or Enter finishes.",
   select: "Click an element to change it, drag it to move it. Drag the plan to move it, the wheel zooms.",
+};
+
+/** Placing hints of elements that go on a street, by type. */
+const TYPE_HINTS = {
+  "tram-stop": "Click on the tram tracks of a street (or on a tram track): the stop lines up with them.",
+  "traffic-sign": "Click beside the street, on the side of the traffic it is for.",
+  "traffic-light": "Click on the junction.",
+  "zebra-crossing": "Click on the street where people cross.",
+  "rail-crossing": "Click where the street crosses the railway track.",
 };
 
 const round1 = (v) => Math.round(v * 10) / 10;
@@ -78,7 +105,65 @@ const DRAG_PX = 4;
 /** "1 error", "3 errors" (the German catalogue has both). */
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : word.endsWith("x") ? "es" : "s"}`;
 /** The kinds of streets, as in Build (objects/road.js). */
-const KIND_LABELS = { street: "street (50 km/h)", residential: "residential street (30 km/h)", main: "main road (50 km/h, wider)", path: "footpath (no cars)" };
+const KIND_LABELS = { street: "street (50 km/h)", residential: "residential street (30 km/h)", main: "main road (50 km/h, wider)", path: "footpath (no cars)", tram: "tram track of its own (no street)" };
+
+/** Names of the strips of a cross-section (objects/street-profile.js), with their width. */
+const STRIP_NAMES = {
+  "car-lane": "Car lanes {n} m", "tram-lane": "Tram lanes {n} m", "tram-bed": "Track bed {n} m", "advisory-lane": "Advisory bike lane {n} m",
+  "bike-lane": "Bike lane {n} m", parking: "Parking {n} m", buffer: "Safety strip {n} m", "bike-path": "Bike path {n} m",
+  "shared-path": "Shared path {n} m", sidewalk: "Sidewalk {n} m", path: "Path {n} m",
+};
+const metres = (m) => String(Math.round(m * 100) / 100);
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** An SVG element. */
+function svg(tag, attrs = {}, ...children) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null) el.setAttribute(k, String(v));
+  for (const c of children.flat()) if (c) el.append(c);
+  return el;
+}
+
+/**
+ * A street's cross-section as a figure: its strips side by side as seen in the direction it was
+ * drawn (its left side on the left), raised where they are at sidewalk level, the rails of its tram
+ * tracks; below, the strips with their widths in words and the width in all.
+ * @param {object} cs a cross-section (ARail.crossSection)
+ * @param {string} kind the street's kind
+ */
+export function crossSectionFigure(cs, kind) {
+  const total = 2 * cs.half;
+  if (!(total > 0)) return null;
+  const strips = cs.strips.filter((st) => st.width > 1e-6);
+  // across the street from its left edge (0) to its right edge (total), in metres
+  const across = (st) => (st.side > 0 ? [cs.half - st.to, cs.half - st.from] : [cs.half + st.from, cs.half + st.to]);
+  const W = 600, k = W / total, top = { sidewalk: 6, bed: 10, street: 12 }, H = 30;
+  const shapes = strips.map((st) => {
+    const [a, b] = across(st), y = top[st.level] ?? 12;
+    return svg("rect", { x: (a * k).toFixed(1), y, width: Math.max(0.5, (b - a) * k).toFixed(1), height: H - y, fill: ARail.stripColour(st, kind) });
+  });
+  // the rails: two per track
+  const rails = [];
+  if (cs.tram !== "none") {
+    const tracks = cs.tramTracks === "double" ? [-cs.tramOffset, cs.tramOffset] : [0];
+    const y = cs.tram === "median" || cs.tram === "own" ? top.bed : top.street;
+    for (const t of tracks) for (const r of [-ARail.GAUGE_M / 2, ARail.GAUGE_M / 2]) rails.push(svg("rect", { x: ((cs.half + t + r) * k - 1).toFixed(1), y: y - 1.5, width: 2, height: 2.5, fill: ARail.PALETTE.rail }));
+  }
+  // the parts in words, from the left edge: equal neighbours (the car lanes of both directions) as one
+  const parts = [];
+  for (const st of [...strips].filter((x) => x.type !== "curb").sort((a, b) => across(a)[0] - across(b)[0])) {
+    const last = parts[parts.length - 1];
+    if (last && last.type === st.type && st.type !== "sidewalk" && st.type !== "buffer" && Math.abs(last.to - across(st)[0]) < 1e-6) {
+      last.to = across(st)[1];
+      last.width += st.width;
+    } else parts.push({ type: st.type, to: across(st)[1], width: st.width });
+  }
+  const words = parts.map((x) => (STRIP_NAMES[x.type] || `${x.type} {n} m`).replace("{n}", metres(x.width)));
+  const label = `${words.join(" · ")}: ${metres(total)} m in all`;
+  return h("figure", { class: "cross-section" },
+    svg("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", role: "img", "aria-label": tr(label) }, shapes, rails),
+    h("figcaption", {}, h("span", {}, words.join(" · ")), h("b", {}, `${metres(total)} m in all`)));
+}
 
 class Builder {
   constructor() {
@@ -93,6 +178,8 @@ class Builder {
     this.tool = TOOLS[0].items[0];
     /** While placing: {cls, kind, points, hover}. */
     this.placing = null;
+    /** The settings of new streets by kind (cross-section, widths, trams, parking), kept on this device. */
+    this.streetSettings = storage.get(KEY.street, {}) || {};
     this.selectedId = null;
     /** The corner of the selected street being dragged or chosen: index, or null. */
     this.vertex = null;
@@ -329,6 +416,7 @@ class Builder {
     }
     this.renderTools();
     this.renderHint();
+    this.renderPanel();
     $("#plan").classList.toggle("select", !this.placing);
     $("#plan").focus({ preventScroll: true });
   }
@@ -368,8 +456,9 @@ class Builder {
   _addPoint(p, e) {
     const pl = this.placing;
     if (pl.cls.placement === "stops") {
-      const hit = this.hitTest(p, (o) => (pl.cls.stopTypes || ["bus-stop", "bus-terminal"]).includes(o.type));
-      if (!hit) return toast("Click a bus stop or a bus terminal.");
+      const types = pl.cls.stopTypes || ["bus-stop", "bus-terminal"];
+      const hit = this.hitTest(p, (o) => types.includes(o.type));
+      if (!hit) return toast(types.includes("bus-stop") ? "Click a bus stop or a bus terminal." : "Click a tram stop.");
       if (pl.points[pl.points.length - 1] !== hit.id) pl.points.push(hit.id);
     } else {
       const q = this._placePoint(p, e), last = pl.points[pl.points.length - 1];
@@ -395,6 +484,7 @@ class Builder {
       return toast(`Place at least ${min} points.`);
     }
     if (pl.kind) spec.kind = pl.kind;
+    if (pl.cls.type === "road") Object.assign(spec, this._streetSettings(pl.kind));
     let obj;
     try {
       obj = this.world.addObject(spec);
@@ -900,10 +990,69 @@ class Builder {
     ctx.restore();
   }
 
-  /** The width of the street being drawn (mm). */
+  /** The width of the street being drawn (mm): all of it, by its cross-section. */
   _streetWidth(pl) {
-    const K = { street: 7, residential: 6, main: 10, path: 3 }[pl.kind || "street"] ?? 4;
-    return (K * 1000) / this.world.scale;
+    const cs = pl.cls.type === "road" ? this._crossSection(pl.kind) : null;
+    const m = cs ? 2 * cs.half : ({ street: 7, residential: 6, main: 10, path: 3 }[pl.kind || "street"] ?? 4);
+    return (m * 1000) / this.world.scale;
+  }
+
+  /** The settings chosen for new streets of a kind (only those chosen: the others stay by kind). */
+  _streetSettings(kind = "street") {
+    const out = {};
+    for (const [k, v] of Object.entries(this.streetSettings[kind] || {})) if (STREET_SETTINGS.includes(k) && v !== undefined && v !== "") out[k] = v;
+    return out;
+  }
+
+  /** The values of a new street of a kind, as its form shows them (with the defaults). */
+  _newStreetValues(kind = "street") {
+    const cls = this.world.registry.objects.get("road");
+    const v = { ...(cls?.defaults() || {}), kind, ...this._streetSettings(kind) };
+    if (v.profile === undefined) v.profile = ARail.profileOf({ ...v, kind: ARail.roadKind(kind) });
+    return v;
+  }
+
+  /** The cross-section of a new street of a kind (objects/street-profile.js). */
+  _crossSection(kind = "street") {
+    const k = ARail.roadKind(kind);
+    return ARail.crossSection({ ...this._newStreetValues(kind), kind: k }, ARail.ROAD_KINDS[k]);
+  }
+
+  /** Choose a setting of new streets of the kind being drawn. */
+  setStreetSetting(key, value) {
+    const kind = this.placing?.kind || "street";
+    const settings = { ...(this.streetSettings[kind] || {}) };
+    if (value === undefined || value === "") delete settings[key];
+    else settings[key] = value;
+    this.streetSettings[kind] = settings;
+    storage.set(KEY.street, this.streetSettings);
+    // the fields change with the settings (a bike lane's width only with bike lanes): the field keeps the focus
+    const focused = document.activeElement?.id;
+    this.renderTools();
+    this.renderPanel();
+    this.plan.redraw();
+    if (focused && document.activeElement?.id !== focused) document.getElementById(focused)?.focus();
+  }
+
+  /** The street settings for the kind being drawn: cross-section, widths (the standard ones to click), trams, parking. */
+  _streetSettingsGroup(pl) {
+    const cls = pl.cls, values = this._newStreetValues(pl.kind);
+    const params = (cls.params || []).filter((p) => STREET_SETTINGS.includes(p.key));
+    const cs = this._crossSection(pl.kind);
+    return h("div", { class: "street-settings", role: "group", "aria-labelledby": "streetSettingsTitle" },
+      h("h3", { id: "streetSettingsTitle" }, "The new street"),
+      paramFields(params, values, (k, v) => this.setStreetSetting(k, v), { idPrefix: "new-street" }),
+      h("p", { class: "street-width" }, `${metres(2 * cs.half)} m wide in all`),
+      cs.warnings.map((w) => h("p", { class: "hint error" }, w)),
+      Object.keys(this._streetSettings(pl.kind)).length ? h("button", { class: "btn small", type: "button", onclick: () => this._resetStreetSettings(pl.kind) }, "Standard street") : null);
+  }
+
+  _resetStreetSettings(kind) {
+    delete this.streetSettings[kind];
+    storage.set(KEY.street, this.streetSettings);
+    this.renderTools();
+    this.renderPanel();
+    this.plan.redraw();
   }
 
   /* ---------------------------------------------------------------- the panels */
@@ -946,8 +1095,13 @@ class Builder {
       },
     }, h("option", { value: "" }, "Other elements…"),
     [...byCat].sort(([a], [b]) => a.localeCompare(b)).map(([cat, list]) => h("optgroup", { label: tr(cat) }, list.sort((a, b) => a[1].label.localeCompare(b[1].label)).map(([type, cls]) => h("option", { value: type, selected: this.tool.type === type && !known.has(type) }, cls.label)))));
+    // drawing a street: its cross-section and widths below the street tools
+    const pl = this.placing, street = pl?.cls.type === "road" ? this._streetSettingsGroup(pl) : null;
     morph($("#tools"),
-      ...TOOLS.map((g) => h("div", { class: "group", role: "group", "aria-label": g.group }, h("h2", { "aria-hidden": "true" }, g.group), g.items.filter((x) => !x.type || reg.objects.has(x.type)).map(button))),
+      ...TOOLS.map((g, i) => [
+        h("div", { class: "group", role: "group", "aria-label": g.group }, h("h2", { "aria-hidden": "true" }, g.group), g.items.filter((x) => !x.type || reg.objects.has(x.type)).map(button)),
+        i === 0 ? street : null,
+      ]),
       h("div", { class: "group" }, h("h2", { "aria-hidden": "true" }, "More"), all));
   }
 
@@ -956,7 +1110,9 @@ class Builder {
     let text = HINTS.select;
     if (pl) {
       const cls = pl.cls;
-      text = this._isStreet(cls) ? HINTS.street : cls.placement === "point" ? (cls.type === "bus-stop" || facesStreet(cls) || cls.type === "bus-terminal" ? HINTS.needsStreet : HINTS.point) : HINTS[cls.placement] || HINTS.polyline;
+      text = this._isStreet(cls) ? HINTS.street
+        : TYPE_HINTS[cls.type] || (cls.placement === "point" ? (cls.type === "bus-stop" || facesStreet(cls) || cls.type === "bus-terminal" ? HINTS.needsStreet : HINTS.point)
+          : cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement] || HINTS.polyline);
       text = `${tr(cls.label)}${pl.kind ? ` (${tr(KIND_LABELS[pl.kind] || pl.kind)})` : ""}: ${tr(text)}`;
     }
     $("#hint").textContent = pl ? text : tr(text);
@@ -999,13 +1155,24 @@ class Builder {
 
   renderElement(el) {
     const o = this.selected;
+    const pl = this.placing;
+    if (!o && pl?.cls.type === "road") {
+      // drawing a street: what it will look like across, by the settings of the street tools
+      const kind = ARail.roadKind(pl.kind);
+      morph(el,
+        h("section", { class: "section" }, h("h2", {}, `New ${tr(KIND_LABELS[kind] || kind)}`),
+          crossSectionFigure(this._crossSection(pl.kind), kind),
+          h("p", { class: "hint" }, "Choose the cross-section and the widths on the left: the standard widths of the German guidelines (RASt 06, ERA 2010, EFA 2002, BOStrab) to click, or any other. Bike lanes and paths, tram tracks and parking make the street wider; the car lanes keep their width.")),
+        h("section", { class: "section" }, h("h2", {}, "How to"), h("p", { class: "hint" }, HINTS.street)));
+      return;
+    }
     if (!o) {
       mount(el,
         h("section", { class: "section" }, h("h2", {}, "Element"), h("p", { class: "hint" }, "Nothing selected. Click an element on the plan, or choose a tool to add one.")),
         h("section", { class: "section" }, h("h2", {}, "How to"),
           h("ul", { class: "hint" },
-            h("li", {}, "Streets first: draw them so that they meet; where they touch, they join."),
-            h("li", {}, "Then what needs a street: bus stops, the bus terminal, truck lanes, buildings. Put them next to a street: they line up with it."),
+            h("li", {}, "Streets first: draw them so that they meet; where they touch, they join. Choose the kind of street and its widths with the street tools."),
+            h("li", {}, "Then what needs a street: bus stops, tram stops, the bus terminal, parking, truck lanes, buildings. Put them next to a street: they line up with it."),
             h("li", {}, "The Problems tab lists what has no street to it, with a fix to click."),
             h("li", {}, "Push to GitHub when it is done: one commit to main, with only the lines you changed."))));
       return;
@@ -1020,11 +1187,15 @@ class Builder {
     const isLine = Array.isArray(o.spec.points);
     const point = cls.placement === "point" ? ARail.resolvePoint(this.world.map, o.spec.position) : null;
     const layer = this.world.layerOf(o.id);
+    // a street: its cross-section as a figure, and what the guidelines say about its widths
+    const xs = o.type === "road" ? o.geometry?.xs : null;
     morph(el,
       h("section", { class: "section" },
         h("h2", {}, cls.label, h("span", { class: "count", translate: "no" }, o.id)),
         layer ? h("p", { class: "hint" }, `In the module ${this.world.layers().find((l) => l.id === layer)?.name || layer}.`) : null,
         mine.length ? h("ul", { class: "problem-list" }, mine.map((p) => this._problem(p))) : null,
+        xs ? crossSectionFigure(xs, ARail.roadKind(o.spec.kind)) : null,
+        xs ? xs.warnings.map((w) => h("p", { class: "hint error" }, w)) : null,
         paramFields(cls.params || [], values, update, { idPrefix: "prop", world: this.world })),
       point ? h("section", { class: "section" }, h("h2", {}, "Place"),
         h("div", { class: "fields" },

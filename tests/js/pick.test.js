@@ -48,8 +48,9 @@ test("people, trains, buses and cars of the lab example can be pointed at where 
     keys.add(p.key);
     assert.ok(p.label && p.owner && p.outline.length >= 3, `${p.key}: label, owner and outline`);
   }
-  // each one in view is found at its middle, or something in front of it
-  let found = 0, checked = 0;
+  // each one in view is found at its middle, or something in front of it; most of those not behind
+  // a train or a bus (people on a platform between two trains) are found themselves
+  let found = 0, checked = 0, behind = 0;
   for (const p of all) {
     const q = middle(view, p);
     if (!inImage(q)) continue;
@@ -57,9 +58,10 @@ test("people, trains, buses and cars of the lab example can be pointed at where 
     const hit = world.pick(view, q);
     assert.ok(hit, `${p.key}: nothing at its middle`);
     if (hit.key === p.key) found++;
+    else if (hit.kind === "train" || hit.kind === "bus") behind++;
     else assert.notEqual(hit.kind, "object", `${p.key}: an object (${hit.key}) instead of it`);
   }
-  assert.ok(checked > 50 && found / checked > 0.6, `found ${found} of ${checked} at their middle`);
+  assert.ok(checked > 50 && found / (checked - behind) > 0.6, `found ${found} of ${checked - behind} at their middle (${behind} behind a vehicle)`);
 });
 
 test("objects: small ones before large ones, buildings also on their walls, table modules only at their edges", () => {

@@ -6,8 +6,8 @@
  *   world.draw(view);                   // queue and render all virtual content
  *
  * Tracking (camera, markers) is separate (see core/tracker.js); it shares `world.map`.
- * Streets form a road network (`world.network()`, core/network.js); bus lines run on it
- * (`world.transit`, core/transit.js). A layout's layers (core/layers.js) are merged in when it
+ * Streets form a road network (`world.network()`, core/network.js); bus and tram lines run on it
+ * (`world.transit`, core/transit.js), cars and bikes park in `world.parking` (core/parking.js). A layout's layers (core/layers.js) are merged in when it
  * is loaded (the ones that are on) and split out again by `toJSON()`; `setLayers` switches them.
  * @module arail/core/world
  */
@@ -24,6 +24,7 @@ import { TrainRegistry } from "./trains.js";
 import { Clock } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
+import { ParkingSpaces } from "./parking.js";
 import { drawFlat } from "./simple.js";
 import { cardOf, findPickable, pickAt } from "./pick.js";
 
@@ -63,8 +64,10 @@ export class World {
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
     this.trains = new TrainRegistry(this);
-    /** Bus lines in operation (core/transit.js). */
+    /** Bus and tram lines in operation (core/transit.js). */
     this.transit = new Transit(this);
+    /** Parking spaces and who is parked there (core/parking.js). */
+    this.parking = new ParkingSpaces(this);
     /**
      * The train whose compatibility the tracks show (View → Colour the tracks by, rail/compat.js):
      * `{name, consist}`, or null.
@@ -101,6 +104,7 @@ export class World {
     this.disruptions.reset();
     this.trains.reset();
     this.transit.reset();
+    this.parking?.reset();
     this._areas = null;
     this._syncedAreas = null;
     this._network = null;
@@ -378,6 +382,7 @@ export class World {
     } else for (const o of this.objects) if (o.geometry) o.draw(view);
     this.services.draw(view);
     this.transit.draw(view);
+    this.parking.draw(view);
     this.trains.draw(view);
     for (const s of this.simulations) s.draw(view);
     this.disruptions.draw(view);

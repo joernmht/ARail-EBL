@@ -252,6 +252,12 @@ export class LevelCrossing extends AssetObject {
     return Math.min(30, Math.max(0, +this.spec.span_m || 0));
   }
 
+  /** For the road network (core/network.js): the street crosses the track here, at street level. */
+  railCrossingInfo() {
+    const g = this.geometry;
+    return g ? { id: this.id, pos: g.center, kind: "half-barriers", level: true, obj: null } : null;
+  }
+
   drawModel(view, { frame }) {
     const w = (+this.spec.road_m || 7) / 2, st = this.state(), half = this._span() / 2;
     const down = !!st?.fault;

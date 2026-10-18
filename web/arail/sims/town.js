@@ -401,7 +401,7 @@ export class TownSimulation extends Simulation {
 
   /** Stop areas served by bus lines, with their access point positions. */
   _busStops() {
-    return this.world.stopAreas().filter((a) => a.kind === "bus" && a.docks.some((d) => d.managed));
+    return this.world.stopAreas().filter((a) => (a.kind === "bus" || a.kind === "tram") && a.docks.some((d) => d.managed));
   }
 
   _railAreas() {
@@ -581,6 +581,9 @@ export class TownSimulation extends Simulation {
       const pax = this.passengers;
       a.path = null;
       if (!pax) return this._skipStop(a, leg);
+      // a closed stop: people see it at the entrance and do not go in
+      const area = this.world.getStopArea(leg.area);
+      if (area && this.world.disruptions.effectsFor(area).closed) return this._skipStop(a, leg);
       const p = pax.enter(leg.area, { agent: a, dockId: leg.dockId, line: leg.line, anyDock: !leg.dockId, at: a.pos });
       if (!p) return this._skipStop(a, leg);
       a.person = p;
@@ -837,6 +840,8 @@ export class TownSimulation extends Simulation {
         this._startTrip(a, step);
       } else if (a.state === "walking") {
         this._walk(a, dt);
+        // anger at a bike on the sidewalk passes slowly
+        if (a.mood != null && a.mood < 0.85) a.mood = Math.min(0.85, a.mood + 0.003 * dt);
       } else if (a.state === "stop" && a.person && a.person.state === "waiting" && this.world.time - a.waitSince > patience) {
         this.passengers?.release(a.person);
         a.waitSince = Infinity;
@@ -909,9 +914,24 @@ export class TownSimulation extends Simulation {
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
         dir, speed: a.speed, phase: a.phase, height: 1.6 + (hashKey(a.id) % 30) / 100,
-        colour: mode === "mood" ? moodColor(0.85) : a.colour,
+        colour: mode === "mood" ? moodColor(a.mood ?? 0.85) : a.colour,
       });
     }
+  }
+
+  /** The residents walking now, for zebra crossings and riders (core/network.js, sims/cycling.js): [{pos, dir, agent}]. */
+  pedestrians() {
+    if (!this.enabled) return [];
+    const out = [];
+    for (const a of this.agents) if (a.state === "walking" && a.pos && !hiddenAt(a.path, a.s)) out.push({ pos: a.pos, dir: a.dir || [1, 0], agent: a });
+    return out;
+  }
+
+  /** Somebody got in a walker's way (a bike on the sidewalk): the mood drops, and comes back slowly. */
+  annoy(agent, amount = 0.2) {
+    if (!agent) return;
+    agent.mood = Math.max(0, (agent.mood ?? 0.85) - amount);
+    agent.annoyed = this.world.time;
   }
 
   /* ================================================================ pointing at people */
@@ -944,12 +964,13 @@ export class TownSimulation extends Simulation {
       inside: `In ${name(a.inside) ?? "a building"}`,
       walking: `Walking ${PURPOSE_LABELS[a.purpose] ?? ""}${dest && a.purpose !== "train" ? ` (${dest})` : ""}`.trim(),
       stop: `At a stop ${PURPOSE_LABELS[a.purpose] ?? ""}`.trim(),
-      riding: `On bus ${a.vehicle?.line ?? ""}`.trim(),
+      riding: `${a.vehicle?.kind === "tram" ? "On tram" : "On bus"} ${a.vehicle?.line ?? ""}`.trim(),
       away: "Away from the layout",
     }[a.state] || a.state;
     const rows = [["Lives", home]];
     if (a.job) rows.push(["Works at", name(a.job)]);
     if (a.school) rows.push(["School", name(a.school)]);
+    if (a.mood != null && a.mood < 0.8) rows.push(["Mood", `${Math.round(a.mood * 100)} %: a bike came too close on the sidewalk`]);
     const today = (a.plan || []).map((step, i) => {
       const to = step.to.kind === "building" ? ` (${name(step.to.id)})` : step.to.kind === "shop" ? " (the nearest shop)" : "";
       return `${i < a.next ? "✓ " : ""}${formatTime(step.at)} ${PURPOSE_LABELS[step.purpose] ?? step.purpose}${to}`;

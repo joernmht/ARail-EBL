@@ -148,8 +148,44 @@ export const storage = {
   },
 };
 
+/** Is the field shown for these values (`when` of a ParamSpec)? */
+function shown(p, values) {
+  try {
+    return typeof p.when !== "function" || !!p.when(values);
+  } catch {
+    return true;
+  }
+}
+
+/** The choices of a select ([value, label]); `options` may follow the other values. */
+function choicesOf(p, values) {
+  try {
+    return (typeof p.options === "function" ? p.options(values) : p.options) || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Suggested values of a number field (`presets`, e.g. the standard widths); they may follow the other values. */
+function presetsOf(p, values) {
+  try {
+    return (typeof p.presets === "function" ? p.presets(values) : p.presets) || [];
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Form fields for a list of parameter specs (see LayoutObject.params).
+ * What the form for these values looks like: the fields shown, the choices and suggestions they
+ * offer. A form whose shape changes with a value is drawn anew.
+ */
+export function paramShape(params, values) {
+  return JSON.stringify(params.filter((p) => shown(p, values)).map((p) => [p.key, p.type === "select" ? choicesOf(p, values).map(([k]) => k) : null, presetsOf(p, values)]));
+}
+
+/**
+ * Form fields for a list of parameter specs (see LayoutObject.params). Fields with `when` are shown
+ * only when it holds for the values; `options` and `presets` may be functions of the values.
  * @param {object[]} params ParamSpec list
  * @param {object} values current values
  * @param {(key: string, value: any) => void} onChange
@@ -158,6 +194,7 @@ export const storage = {
 export function paramFields(params, values, onChange, { idPrefix, world } = {}) {
   const wrap = h("div", { class: "fields" });
   for (const p of params) {
+    if (!shown(p, values)) continue;
     const id = `${idPrefix}-${p.key}`;
     const v = values[p.key];
     const help = p.help ? h("small", { class: "help", id: `${id}-help` }, p.help) : null;
@@ -169,7 +206,7 @@ export function paramFields(params, values, onChange, { idPrefix, world } = {}) 
       field = h("label", { class: "field check wide", for: id }, input, p.label, help);
     } else if (p.type === "select") {
       const sel = h("select", { id, "aria-describedby": described, onchange: (e) => onChange(p.key, e.target.value) },
-        p.options.map(([val, text]) => h("option", { value: val, selected: String(v) === String(val) }, text)));
+        choicesOf(p, values).map(([val, text]) => h("option", { value: val, selected: String(v) === String(val) }, text)));
       field = h("label", { class: "field", for: id }, label, sel, help);
     } else if (p.type === "color") {
       const input = h("input", { type: "color", id, value: v || p.fallback || "#7fb069", "aria-describedby": described, oninput: (e) => onChange(p.key, e.target.value) });
@@ -184,6 +221,7 @@ export function paramFields(params, values, onChange, { idPrefix, world } = {}) 
       field = h("label", { class: "field", for: id }, label, sel, help);
     } else {
       const isNum = p.type === "number";
+      const presets = isNum ? presetsOf(p, values) : [];
       const input = h("input", {
         type: isNum ? "number" : "text", id, value: v ?? "", min: p.min, max: p.max, step: p.step ?? "any",
         placeholder: isNum && p.default == null ? "default" : null, "aria-describedby": described,
@@ -195,7 +233,13 @@ export function paramFields(params, values, onChange, { idPrefix, world } = {}) 
           if (Number.isFinite(num)) onChange(p.key, num);
         },
       });
-      field = h("label", { class: `field${p.type === "text" && p.key !== "name" ? " wide" : ""}`, for: id }, label, input, help);
+      if (presets.length) {
+        // the standard values (e.g. the widths of the guidelines) to click; any other can be typed in
+        const chosen = v === undefined || v === "" ? null : Number(v);
+        const seg = h("div", { class: "seg presets", role: "group", "aria-label": `${p.label}: standard values` },
+          presets.map((x) => h("button", { type: "button", "aria-pressed": chosen === x ? "true" : "false", onclick: () => onChange(p.key, x) }, String(x))));
+        field = h("div", { class: "field wide" }, h("label", { for: id }, p.label, p.unit ? h("small", {}, ` (${p.unit})`) : null), h("div", { class: "row" }, input, seg), help);
+      } else field = h("label", { class: `field${p.type === "text" && p.key !== "name" ? " wide" : ""}`, for: id }, label, input, help);
     }
     wrap.append(field);
   }

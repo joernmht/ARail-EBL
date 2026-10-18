@@ -1,6 +1,6 @@
 /**
- * Built-in vehicle renderers: trains and buses, drawn as simple shaded boxes.
- * Register your own with `registry.registerVehicle({kind, ...})` (e.g. trams).
+ * Built-in vehicle renderers: trains, buses and trams, drawn as simple shaded boxes.
+ * Register your own with `registry.registerVehicle({kind, ...})`.
  * All sizes are prototype metres.
  * @module arail/core/vehicles
  */
@@ -122,5 +122,43 @@ export const BUS = {
       const top = area.toLayout(s1 - 1, (place.t0 + place.t1) / 2);
       view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: OVERLAY.label });
     }
+  },
+};
+
+/**
+ * A low-floor tram (Niederflurstraßenbahn): 2.65 m wide (the widest BOStrab allows, as in Dresden),
+ * 30 m long in five sections, its floor 0.30 m above the rails, four double doors on the right.
+ * Trams of tram lines are driven by core/transit.js; this definition gives their size, doors and
+ * where they stand at a stop.
+ */
+export const TRAM = {
+  kind: "tram",
+  label: "Tram",
+  width_m: 2.65,
+  height_m: 3.4,
+  floor_m: 0.3,
+  gap_m: 0.05,
+  overhang_m: 30,
+  length_m: 30,
+  /** A tram stands with its front 1 m before the end of the platform (m). */
+  extent: (dock) => [Math.max(dock.s0, dock.s1 - 1 - 30), dock.s1 - 1],
+  doors(dock) {
+    const [, front] = this.extent(dock);
+    return [front - 2.5, front - 10.5, front - 18.5, front - 26.5];
+  },
+  draw(view, v, place) {
+    const area = v.dock.area;
+    const colors = { body: PALETTE.tram, roof: shade(PALETTE.tram, 1.35), end: shade(PALETTE.tram, 0.88), alpha: 0.92 };
+    const doors = v.doorsOpen ? this.doors(v.dock) : [];
+    const lit = view.darkness > 0.35;
+    const faces = vehicleFaces(area, view, { s0: place.s0, s1: place.s1, t0: place.t0, t1: place.t1, z0: this.floor_m, z1: this.height_m }, colors, (f, P, tl, tr) => {
+      if (f.side !== "left" && f.side !== "right") return [];
+      const t = f.side === "left" ? tr : tl;
+      const out = [{ pts: [P(place.s0 + 0.5, t, 1.2), P(place.s1 - 0.5, t, 1.2), P(place.s1 - 0.5, t, 2.6), P(place.s0 + 0.5, t, 2.6)], color: lit ? PALETTE.litWindow : PALETTE.busWindow, alpha: 0.92, emissive: lit }];
+      for (const d of doors) out.push({ pts: [P(d - 0.65, t, this.floor_m), P(d + 0.65, t, this.floor_m), P(d + 0.65, t, 2.7), P(d - 0.65, t, 2.7)], color: "#2a2a2a", alpha: 0.95 });
+      return out;
+    });
+    const mid = area.toLayout((place.s0 + place.s1) / 2, (place.t0 + place.t1) / 2);
+    view.faces(faces, [mid[0], mid[1], view.m(1.7)]);
   },
 };
