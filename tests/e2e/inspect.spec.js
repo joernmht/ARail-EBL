@@ -20,14 +20,26 @@ async function openApp(page, path = LAB) {
  * Where (page px) something is seen now: a layout object by its id, or the first pickable of a kind
  * ("train", "person", …) in view.
  */
-async function spot(page, { id = null, kind = null }) {
-  return page.evaluate(async ({ id, kind }) => {
+/**
+ * Where to tap on the page: the object `id` (with `free`, a point of it where a tap does not hit a
+ * passing car or bike, its anchor first), or a moving thing of `kind`; null when not in view.
+ */
+async function spot(page, { id = null, kind = null, free = false }) {
+  return page.evaluate(async ({ id, kind, free }) => {
     const ARail = await import("/arail/index.js");
     const app = window.__arail, view = app.lastView, c = app.canvas, r = c.getBoundingClientRect();
     const toPage = (q) => q && q[0] > 0 && q[1] > 0 && q[0] < c.width && q[1] < c.height ? { x: r.left + (q[0] * r.width) / c.width, y: r.top + (q[1] * r.height) / c.height } : null;
     if (id) {
-      const o = app.world.getObject(id), a = o.anchorPoint();
-      return toPage(view.project(a[0], a[1], (o.pickHeight?.() || 0) * 0.6));
+      const o = app.world.getObject(id), a = o.anchorPoint(), z = (o.pickHeight?.() || 0) * 0.6;
+      if (!free) return toPage(view.project(a[0], a[1], z));
+      // the anchor, then points towards the corners of the footprint (a stop's waiting area beside the street)
+      const points = [a, ...(o.footprint?.() || []).map((q) => [a[0] + 0.7 * (q[0] - a[0]), a[1] + 0.7 * (q[1] - a[1])])];
+      for (const q of points) {
+        const at = toPage(view.project(q[0], q[1], z));
+        const hit = at && app.world.pick(view, [((at.x - r.left) * c.width) / r.width, ((at.y - r.top) * c.height) / r.height]);
+        if (hit && hit.kind !== "car" && hit.kind !== "bike" && hit.kind !== "scooter") return at;
+      }
+      return null;
     }
     for (const p of ARail.movingPickables(app.world, view)) {
       if (p.kind !== kind) continue;
@@ -36,7 +48,7 @@ async function spot(page, { id = null, kind = null }) {
       if (at && app.world.pick(view, [((at.x - r.left) * c.width) / r.width, ((at.y - r.top) * c.height) / r.height])?.key === p.key) return { ...at, key: p.key };
     }
     return null;
-  }, { id, kind });
+  }, { id, kind, free });
 }
 
 test("the camera view: a tooltip on hover, the card on a click, Escape closes it", async ({ page }) => {
@@ -97,7 +109,8 @@ test("the flyover: a tap opens the card of a stop with its next buses; Enter at 
   await page.locator("#btnFlyover").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover" && !window.__arail.flyover.anim);
   await page.waitForTimeout(300);
-  const stop = await spot(page, { id: "bus-stop-altmarkt" });
+  // not where a car drives past just then (a bus comes only every so often)
+  const stop = await spot(page, { id: "bus-stop-altmarkt", free: true });
   expect(stop).not.toBeNull();
   await page.mouse.click(stop.x, stop.y);
   const card = page.locator("#infoCard");
