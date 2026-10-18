@@ -714,15 +714,20 @@ export class PassengerSimulation extends Simulation {
     const badgeColor = road ? OVERLAY.busStop : OVERLAY.sign;
     const fxs = areas.map((a) => this.world.disruptions.effectsFor(a));
     const alert = fxs.find((fx) => fx.messages.length)?.messages[0];
-    if (screenLength(view, areas) < BOARD_MIN_PX) {
-      view.label([at[0], at[1], z], String(count), { size: 11, padding: 3, anchor: "bottom", badge: badge || "·", badgeColor: alert ? OVERLAY.danger : badgeColor, order: 1 });
+    const length = screenLength(view, areas);
+    const small = { size: 11, padding: 3, anchor: "bottom", badge: badge || "·", badgeColor: alert ? OVERLAY.danger : badgeColor, order: 1, fit: true };
+    if (length < BOARD_MIN_PX) {
+      view.label([at[0], at[1], z], String(count), small);
       return;
     }
     const lines = [`${owner.name} · ${count} ${count === 1 ? "person" : "people"} · ${(mood * 100).toFixed(0)} %`];
     lines.push(...(alert ? [alert] : boardStatus(this.world, areas)));
+    // the boards of the stops largest in the picture (the nearest) first; where the picture is
+    // crowded the others are badges (core/view.js, LABEL_SHARE)
     view.label([at[0], at[1], z], lines, {
       size: 12, anchor: "bottom", badge: badge || undefined, badgeColor,
-      colors: [null, ...lines.slice(1).map(() => (alert ? OVERLAY.alert : OVERLAY.status))], bar: mood, barColor: moodColor(mood), order: 1,
+      colors: [null, ...lines.slice(1).map(() => (alert ? OVERLAY.alert : OVERLAY.status))], bar: mood, barColor: moodColor(mood),
+      order: 1 + 0.5 / (1 + length / 100), compact: { text: String(count), style: small },
     });
   }
 }

@@ -1434,7 +1434,7 @@ export class Transit {
       const at = [front[0] - (front[0] - rear[0]) * 0.06, front[1] - (front[1] - rear[1]) * 0.06];
       const short = bus.line.length <= 3;
       const dest = bus.outOfService ? "Not in service" : bus.destination;
-      view.label([at[0], at[1], m(4.6)], short ? dest || "Tram" : `${bus.line}${dest ? ` ${dest}` : ""}`, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2 });
+      view.label([at[0], at[1], m(4.6)], short ? dest || "Tram" : `${bus.line}${dest ? ` ${dest}` : ""}`, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2, optional: true });
     }
   }
 
@@ -1485,7 +1485,7 @@ export class Transit {
       const short = bus.line.length <= 3;
       const dest = bus.outOfService ? "Not in service" : bus.destination;
       const text = short ? dest || "Bus" : `${bus.line}${dest ? ` ${dest}` : ""}`;
-      view.label([at[0], at[1], m(4.4)], text, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2 });
+      view.label([at[0], at[1], m(4.4)], text, { size: 11, badge: short ? bus.line : undefined, badgeColor: mix(line.color, "#000000", 0.15), order: 2, optional: true });
     }
   }
 }

@@ -61,7 +61,7 @@ export { MarkerMap, PlaneTracker } from "./core/tracker.js";
 export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
 export { World, offModules } from "./core/world.js";
-export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
+export { View, LAYER, LABEL_SHARE, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { Elevation, streetGradient } from "./core/elevation.js";

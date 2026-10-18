@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Camera, FlyCamera, View, createRng, createWorld, drawTree, prismFaces, rgba, toRad } from "../../web/arail/index.js";
+import { Camera, FlyCamera, LABEL_SHARE, View, createRng, createWorld, drawTree, prismFaces, rgba, toRad } from "../../web/arail/index.js";
 import { crowdForces } from "../../web/arail/sims/passengers.js";
 import { readJSON } from "./helpers.js";
 
@@ -378,4 +378,36 @@ test("labels: an overlapping label moves up, an optional one is left out", () =>
   assert.deepEqual(Object.keys(at).sort(), ["first", "free", "second"], "the optional label over the others is left out");
   assert.ok(at.second < at.first - 10, "the second one moves up");
   assert.equal(at.free, at.first, "an optional label where it is free stays at its anchor");
+});
+
+test("labels: where the picture is crowded a board takes its compact form and an optional label is left out; one that must fit and finds no room too", () => {
+  const board = (view, u, v) => view.label([xAt(view, u), v, 0], ["Board", "next bus"], { order: 1, compact: { text: "7", style: { badge: "H" } } });
+  const texts = (ops) => ops.filter((o) => o.op === "fillText").map((o) => o.text);
+  // alone: the board in full
+  const a = stateContext(), va = topView(a.ctx);
+  board(va, 1000, -200);
+  va.render();
+  assert.ok(texts(a.ops).includes("Board") && !texts(a.ops).includes("7"));
+  // after a big label (more than LABEL_SHARE of the picture), far from it: the badge; an optional label is left out
+  const b = stateContext(), vb = topView(b.ctx);
+  const big = Array.from({ length: 12 }, (_, i) => `${i} ${"x".repeat(98)}`);
+  assert.ok(612 * (12 * 16.25 + 12 - 3.25) > LABEL_SHARE * W * H, "the big label covers its share");
+  vb.label([xAt(vb, 300), 0, 0], big);
+  board(vb, 1000, -200);
+  vb.label([xAt(vb, 1000), 200, 0], "optional", { optional: true, order: 1 });
+  vb.render();
+  assert.deepEqual([texts(b.ops).includes("Board"), texts(b.ops).includes("7"), texts(b.ops).includes("optional")], [false, true, false]);
+  // where it would overlap a label placed before, also when the picture is not crowded: the badge
+  const c = stateContext(), vc = topView(c.ctx);
+  vc.label([xAt(vc, 1000), -200, 0], "first");
+  board(vc, 1000, -200);
+  vc.render();
+  assert.ok(texts(c.ops).includes("7") && !texts(c.ops).includes("Board"));
+  // no room at all (the HUD over the whole picture): a label that must fit is left out, others are drawn
+  const d = stateContext(), vd = topView(d.ctx);
+  vd.placed.push({ x: 0, y: 0, w: W, h: H });
+  vd.label([0, 0, 0], "fits", { fit: true });
+  vd.label([0, 0, 0], "anyway");
+  vd.render();
+  assert.deepEqual(texts(d.ops), ["anyway"]);
 });

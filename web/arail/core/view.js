@@ -42,6 +42,12 @@ const CULL_MARGIN_PX = 4;
 /** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
 const NIGHT_TINT = [0, 20, 80];
 
+/**
+ * Share of the picture the labels may cover before it is crowded: then a label with a compact form
+ * takes that form, and an optional label is left out (a phone shows one stop board in full).
+ */
+export const LABEL_SHARE = 0.1;
+
 export class View {
   /**
    * @param {object} options
@@ -616,12 +622,14 @@ export class View {
   /**
    * Text label anchored at a layout point (overlay layer). Labels are placed in overlay order
    * (`order`, default 0); one that would overlap a label placed before moves up, or with `optional`
-   * is left out.
+   * is left out, and with `fit` it is left out where it finds no room. Where it is crowded (it
+   * would overlap one, or the labels placed before cover {@link LABEL_SHARE} of the picture) a
+   * label with a `compact` form takes that form (which must fit), and an optional label is left out.
    * @param {number[]} at [x, y, z] in mm
    * @param {string | string[]} text one or more lines
    * @param {{size?: number, color?: string, background?: string, anchor?: "center" | "bottom" | "left",
    *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string,
-   *   order?: number, optional?: boolean}} [style]
+   *   order?: number, optional?: boolean, fit?: boolean, compact?: {text: string | string[], style?: object}}} [style]
    */
   label(at, text, style = {}) {
     const p = this.project(at[0], at[1], at[2] || 0);
@@ -630,9 +638,10 @@ export class View {
     // stops of a town on table extensions beyond the photo) would only pile up there
     const W = this.camera.width, H = this.camera.height;
     if (p[0] < -0.25 * W || p[0] > 1.25 * W || p[1] < -0.25 * H || p[1] > 1.25 * H) return;
-    let lines = Array.isArray(text) ? text : [text];
-    if (this.translate) lines = lines.map((l) => this.translate(l));
-    this.overlay((ctx) => drawLabel(ctx, p, lines, style, this.px * this.labelScale, this.camera.width, this.camera.height, this.placed), style.order ?? 0);
+    const toLines = (t) => (Array.isArray(t) ? t : [t]).map((l) => (this.translate ? this.translate(l) : l));
+    const lines = toLines(text);
+    const compact = style.compact ? { lines: toLines(style.compact.text), style: style.compact.style || {} } : null;
+    this.overlay((ctx) => drawLabel(ctx, p, lines, style, this.px * this.labelScale, this.camera.width, this.camera.height, this.placed, compact), style.order ?? 0);
   }
 }
 
@@ -717,7 +726,7 @@ export function rectFootprint(c, w, d, angle = 0) {
   return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([x, y]) => [c[0] + cs * x - sn * y, c[1] + sn * x + cs * y]);
 }
 
-function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
+function drawLabel(ctx, p, lines, style, px, W, H, placed = [], compact = null) {
   const size = (style.size || 13) * px;
   const pad = (style.padding ?? 6) * px;
   ctx.font = `${style.bold === false ? 500 : 700} ${size}px ${FONT}`;
@@ -733,15 +742,23 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = []) {
   else if (style.anchor === "right") x = p[0] - w - 6 * px;
   x = Math.max(2, Math.min(W - w - 2, x));
   y = Math.max(2, Math.min(H - h - 2, y));
-  // avoid labels drawn before: move up (or down at the top edge) until free; an optional one is left out
+  // avoid labels drawn before: move up (or down at the top edge) until free; an optional one is left
+  // out, and where it is crowded (the labels cover their share of the picture) the compact form is
+  // drawn instead (`placed.area`: what the labels cover, not the HUD the app puts there too)
   const hits = (yy) => placed.find((r) => x < r.x + r.w + 2 && x + w + 2 > r.x && yy < r.y + r.h + 2 && yy + h + 2 > r.y);
-  if (style.optional && hits(y)) return;
+  const crowded = (placed.area || 0) > LABEL_SHARE * W * H;
+  if (compact && (crowded || hits(y))) return drawLabel(ctx, p, compact.lines, { fit: true, ...compact.style }, px, W, H, placed);
+  if (style.optional && (crowded || hits(y))) return;
   for (let i = 0, r = hits(y); r && i < 8; i++, r = hits(y)) {
     const up = r.y - h - 3;
     y = up >= 2 ? up : r.y + r.h + 3;
   }
   y = Math.max(2, Math.min(H - h - 2, y));
+  // one that must fit (a badge, a compact form) and finds no room (it would hide behind another
+  // label or the HUD) is left out
+  if (style.fit && hits(y)) return;
   placed.push({ x, y, w, h });
+  placed.area = (placed.area || 0) + w * h;
   if (style.background !== "none") {
     ctx.fillStyle = style.background || OVERLAY.label;
     roundRect(ctx, x, y, w, h, 4 * px);

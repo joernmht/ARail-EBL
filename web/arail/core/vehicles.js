@@ -72,7 +72,7 @@ export const TRAIN = {
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(place.s1 - 2, (place.t0 + place.t1) / 2);
       // `info`: more lines from the planner (units, driver, delay)
-      view.label([top[0], top[1], view.m(5)], v.info?.length ? [v.line, ...v.info] : v.line, { size: 11, background: rgba(OVERLAY.sign, 0.92) });
+      view.label([top[0], top[1], view.m(5)], v.info?.length ? [v.line, ...v.info] : v.line, { size: 11, background: rgba(OVERLAY.sign, 0.92), fit: true });
     }
   },
 };
@@ -121,7 +121,7 @@ export const BUS = {
     view.faces(faces, [mid[0], mid[1], view.m(1.6)]);
     if (v.phase === "dwelling" && v.line) {
       const top = area.toLayout(s1 - 1, (place.t0 + place.t1) / 2);
-      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: OVERLAY.label });
+      view.label([top[0], top[1], view.m(4.2)], v.line, { size: 11, background: OVERLAY.label, fit: true });
     }
   },
 };

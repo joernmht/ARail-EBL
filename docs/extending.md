@@ -209,7 +209,7 @@ export default function register(arail) {
 | `view.ribbon(points, widthMM, style)` | a band of constant width along a line (platform edges) |
 | `view.prism(footprint, z0, z1, colors)` | a vertical prism, shaded and back-face culled (`colors`: `side`, `top`, `alpha`, `outline`) |
 | `view.faces(faces, ref, style)` | any set of 3D faces (`{pts, normal, color, alpha, twoSided, emissive, decals}`) as one solid |
-| `view.label([x, y, z], text, style)` | a sign or text anchored at a layout point; labels avoid overlapping each other (placed in `order`; a later one moves up, or with `optional: true` is left out) |
+| `view.label([x, y, z], text, style)` | a sign or text anchored at a layout point; labels avoid overlapping each other (placed in `order`; a later one moves up, or with `optional: true` is left out, with `fit: true` left out where it finds no room). Where the picture is crowded (it would overlap one, or the labels so far cover `LABEL_SHARE`, a tenth, of the picture) a label with `compact: {text, style}` takes that form, as stop boards become badges, and optional labels are left out |
 | `view.glow([x, y, z], radiusMM, colour, strength)` | a soft light (lamp, headlight), drawn only at night |
 | `view.lightPool([x, y], radiusMM, colour, strength)` | light falling on the ground (under a street lamp), only at night |
 | `view.ground(order, fn)`, `view.solid(depth, fn)`, `view.overlay(fn)` | custom drawing with the canvas context: `fn(ctx, view)` |
@@ -316,7 +316,7 @@ world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop 
 
 To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
 
-To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge.
+To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge, and also where the picture is crowded (the boards of the stops largest in the picture come first).
 
 ### World API
 
