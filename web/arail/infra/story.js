@@ -49,6 +49,8 @@ const upper = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const part = (k, a, b) => Math.min(1, Math.max(0, (k - a) / Math.max(1e-9, b - a)));
 
 export class MaintenanceStory extends Story {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static type = "maintenance-story";
   static label = "Maintenance story (infrastructure)";
   static description = "A walkthrough to click through: an old signal fails, its track is closed, the repair team drives out, repairs the signal and exchanges it; then a worn track is closed and renewed with a construction train.";

@@ -13,7 +13,9 @@ obeys them.
 
 ## Building it in the app
 
-All of it is in **Build → Add to the layout → Transport**.
+All of it is in **Build → Add to the layout → Transport**. Streets and everything else are built on
+table modules (**Build → Table**): a tap beside them places nothing (see
+[Heights](#heights-table-modules-ramps-and-bridges)).
 
 1. **Street**: tap the points along the street, then **Finish**. A tap near the end or a corner of
    another street (about 12 px) snaps onto it, and a tap on another street puts the point on its
@@ -251,16 +253,44 @@ changed at any time; each kind is a class of its own (`CrossingType` in
 | `crossbuck` | level crossing with a St Andrew's cross only | not for a main road (EBO § 11: little traffic only) |
 | `lights`, `half-barriers`, `full-barriers` | level crossing with light signals, with half barriers, with full barriers | closes while a train passes |
 
-The height of a bridge or an underpass is made up by ramps: the street at most 8 % (6 % with tram
-tracks), the track at most 12.5 ‰ (EBO § 7). `lift` says who changes level: the street, the track,
-or both half each. The card shows the height and the ramps; the crossing says when the ramps of the
-street do not fit before the next junction or end, or those of the track not on the track. Where the
-terrain makes up the height (`terrain`: the track in a cutting or on an embankment, the street on a
-slope) no ramps are needed. A level crossing closes while a train of the control system is near or
-a timetable train comes in or leaves nearby, else `trains_per_hour` times for `closed_min`; vehicles
-wait before it. Trams never cross a railway at street level (BOStrab § 15): a level crossing on a
-street with tram tracks is an error, and the fix makes it a bridge. New crossings of streets and
-railways are built over or under the track anyway (EKrG § 2).
+A bridge needs height: its street at least 6.7 m above the rails (77 mm in H0), an underpass 6.2 m
+below them, a level crossing at their height. The crossing asks its street for that height over its
+span (the tracks it crosses within 15 m, and 4 m beyond them); the street's heights follow from it
+and from the levels of the table modules (see [Heights](#heights-table-modules-ramps-and-bridges)):
+between two modules raised high enough the street runs straight over the tracks, otherwise it ramps up
+(or down) at most 8 % (6 % with tram tracks) and the ramps take up length on both sides. The card shows
+the clearance and the ramps; the crossing says when the ramps do not fit before the next junction or
+the end of the street. The street draws the bridge: its deck over the tracks (trains pass under it,
+cars on it), the edge of its deck, railings; for an underpass the railway's bridge. A level crossing
+closes while a train of the control system is near or a timetable train comes in or leaves nearby,
+else `trains_per_hour` times for `closed_min`; vehicles wait before it. Trams never cross a railway at
+street level (BOStrab § 15): a level crossing on a street with tram tracks is an error, and the fix
+makes it a bridge. New crossings of streets and railways are built over or under the track anyway
+(EKrG § 2).
+
+## Heights: table modules, ramps and bridges
+
+Table modules lie at a **level** (`level_mm`): the height of their top above the track level, the top
+of the real table. Houses, streets and the rest are built on table modules and stand at their level;
+in a layout with table modules, what stands off them is a problem, and the editors do not place it
+there. A street follows the modules it runs on (`web/arail/core/elevation.js`):
+
+- from one level to another it climbs at most at its **gradient**: 8 % (RASt 06), 6 % with tram tracks
+  and on footpaths (DIN 18040-3); the ramp lies on the lower side, so 80 mm in H0 take 1.0 m (8 %) or
+  1.3 m (6 %);
+- where it cannot come down to the ground between two higher parts it runs **straight from edge to
+  edge**: between two modules 80 mm high over the tracks on the real table that is a bridge with 6.0 m
+  clear above the rails; where it can, it goes down and up again;
+- where it crosses a track without a railway crossing, the heights decide: 6.7 m or more above the
+  rails it passes over (trams too), at their height it crosses at street level, between it runs into
+  the track (an error of the street access check);
+- streets meet at one height: a ramp that reaches into a junction, or a street that ends in the air,
+  is a problem of the street.
+
+The view draws everything at its height: what stands on a raised module up there, cars, bikes and
+people on a bridge on its deck, the railway (tracks, platforms, signals, trains) on its module, so
+trains pass under a bridge. Pointing at things and placing them find the point on a raised module
+where it is seen. The levels change nothing in a layout whose modules all lie at the track level.
 
 ## Road traffic
 
@@ -350,12 +380,12 @@ conflicts of the last hour and the bikes at its lamps.
 ## The example: Bf Neustadt
 
 The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. Two tram lines
-run from *Am Plattenring* (line 1, its tracks on a track bed in the middle of the street) and from
-*Lindenstraße* (line 2, one track for both directions) to a loop at the station (*Tram loop Markt*,
-one track one way, with an island stop). Line 1 crosses the railway on the **bridge of
-Brückenstraße** (the terrain makes up the height). Both share the car lanes of Ringstraße with
-traffic lights at Brückenstraße and a zebra crossing at Am Park, and have their own lanes in
-Bahnhofstraße. The stops
+run from *Am Bogen* (line 1) and from *Lindenstraße* (line 2, one track for both directions) to a loop
+at the station (*Tram loop Markt*, one track one way, with an island stop); both change ends at the
+stub of their first stop. Behind them **Brückenstraße** crosses the main line at a level crossing with
+half barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and everything lies at the track
+level. Both lines share the car lanes of Ringstraße with traffic lights at Brückenstraße and a zebra
+crossing at Am Park, and have their own lanes in Bahnhofstraße. The stops
 are of all four kinds. Residents park on a lot with a yearly permit, travellers on the P+R by the
 day; a Stop sign and a no-stopping zone stand at the streets; bikes and e-scooters ride with the
 cars.
@@ -435,6 +465,17 @@ The widths, gradients and rules come from these German guidelines and laws:
   `parkingInfo()` (parking facilities: a street's strips, lots, garages), `bikeParking()` (street
   lamps, bike stands), `noParking(road, side)` (stretches of a street where nobody parks), and for
   tram stops `dwellFactor()`, `blocksCars()` and `carLaneShift(dock)`.
+- **Heights**: `world.elevation` (`core/elevation.js`, `Elevation`): `ground(x, y)` (the level of the
+  table module there), `street(x, y)` (a street off the ground there, else the ground), `profile(id)`
+  and `heightOn(id, s)` (a street's heights along it), `trackCrossings(id)` (where a street crosses a
+  track: over, at street level, under or into it), `streetProblems(id)`, `onModules(points)`. Table
+  modules give their level with `groundLevel()`; railway crossings ask their street for heights with
+  `streetLevels(el)`. Objects and simulations say what they stand on with `elevation` (of the class or
+  the instance): `"street"` (the default), `"ground"` (the railway: on its module, under bridges) or
+  `"none"` (they draw their heights themselves); `World.draw` sets the view's `lift` for each.
+  `world.problemsOf(o)` adds *Not on a table module* to an object's own problems (`offModules`; a tree
+  stands on its trunk, `standsOn()`; `anywhere` for what may be anywhere). `surfacePoint(world, view,
+  pixel)` (`core/pick.js`) is the point seen at a pixel on a raised module or a bridge.
 - The cross-section: `crossSection(spec, kind)` (`objects/street-profile.js`) → the strips from the
   centre line out, the offsets of each kind of road user, `warnings`, `obstruct`, `conflict`;
   `NORMS` holds the widths, `widthChoices(key, spec)` the standard values offered in the editors.

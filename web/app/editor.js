@@ -1,5 +1,5 @@
 // Build mode: place, select, move and edit layout objects on the camera image or in the flyover.
-import { applyH, dist2, FONT, markersUsed, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
+import { applyH, dist2, FONT, markersUsed, offModules, OVERLAY, pointSegment, polylineAt, polylineProject, resolvePoint, rgba, snapToGrid, toDeg } from "../arail/index.js";
 import { $, download, h, morph, mount, paramFields, paramShape, readFile, revealStage, section, toast } from "./ui.js";
 import { markerPlotSvg, VideoSurvey } from "./survey.js";
 import { tr } from "./i18n.js";
@@ -370,6 +370,13 @@ export class Editor {
       if (points.length < min) return toast(`Tap at least ${min} points.`);
       geo.points = points.map((q) => q.xy);
     }
+    // houses, streets and the rest are built on table modules: a point off them is tapped again
+    const probe = new cls(this.world, { ...(replace ? replace.spec : {}), ...Object.fromEntries(Object.entries(geo).filter(([, v]) => v !== undefined)), id: "probe" });
+    if (probe.geometry && offModules(this.world, probe)) {
+      if (cls.placement === "point" || cls.placement === "rect" || cls.placement === "segment") points.pop();
+      this.renderPlacing();
+      return toast("Build on a table module: houses, streets and the rest stand on table modules. Tap on one, or add a table module first.");
+    }
     this.placing = null;
     this.hoverPoint = null;
     let obj;
@@ -643,7 +650,7 @@ export class Editor {
       return;
     }
     const cls = o.constructor;
-    const problemsOf = () => (typeof o.problems === "function" ? o.problems() : []);
+    const problemsOf = () => this.world.problemsOf(o);
     const problems = problemsOf(), shape = paramShape(cls.params, o.spec);
     const change = (key, value) => {
       o.set({ [key]: value });

@@ -403,14 +403,12 @@ Geometry: `position`, on a street (Fußgängerüberweg, Zeichen 293). Vehicles s
 
 ### `rail-crossing`: railway crossing
 
-Geometry: `position`, where a street crosses a track. See [Railway crossings](streets-and-buses.md#railway-crossings).
+Geometry: `position`, where a street crosses a track. See [Railway crossings](streets-and-buses.md#railway-crossings). The height of a bridge or an underpass comes from the levels of the table modules (`level_mm`): where they do not make it up, the street ramps. The parameters `terrain` and `lift` of earlier layouts are ignored.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
 | `kind` | `"over"` | `over` (a bridge: the street over the track), `under` (an underpass), `crossbuck` (level crossing with a St Andrew's cross only), `lights`, `half-barriers`, `full-barriers` |
 | `road`, `track` | the nearest | ids of the street and the track |
-| `terrain` | `false` | for `over` and `under`: the terrain makes up the height, no ramps |
-| `lift` | `"street"` | for `over` and `under`: who changes level, `street`, `track` or `both` (half each) |
 | `trains_per_hour` | `4` | for level crossings with lights or barriers: how often it closes when no train of the control system or the timetable passes |
 | `closed_min` | `1.5` | how long it is closed then |
 
@@ -527,7 +525,9 @@ Geometry: `position`. Parameters: `text` (`"Station"`), `style` (`board`: statio
 
 ### `tabletop`: table module
 
-Geometry: a rectangle, `position` (centre). A base plate whose top is the layout plane, with an 18 mm edge. In the editor (Build → Table) drag from one corner to the opposite one, or tap both corners; in the flyover the corners snap to the grid. Duplicate puts the copy right beside the original.
+Geometry: a rectangle, `position` (centre). A base plate whose top lies at its level, with an edge 18 mm deep below it, or down to the lower module beside it. In the editor (Build → Table) drag from one corner to the opposite one, or tap both corners; in the flyover the corners snap to the grid. Duplicate puts the copy right beside the original.
+
+Houses, streets and the rest are built on table modules: in a layout with table modules, an object that does not stand on them with its whole footprint (a tree with its trunk, a street or track with all its points) has the problem *Not on a table module*, and the editors do not place a new one there. Floating labels and railway crossings may be anywhere; a layout without table modules is the real table, wherever its objects are.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
@@ -535,6 +535,7 @@ Geometry: a rectangle, `position` (centre). A base plate whose top is the layout
 | `width_mm`, `depth_mm` | `1000`, `600` | size along its x and y axis (20–20000) |
 | `rotation_deg` | `0` | |
 | `surface` | `"grey"` | `grey` (light grey), `white`, `green` (model grass) |
+| `level_mm` | `0` | height of the top above the track level, the top of the real table (−500 … 500). What stands on the module stands there; streets climb from one level to another at most at 8 % (6 % with tram tracks and on footpaths), and between two raised modules they span what lies lower as a bridge: 80 mm let a street in H0 pass over the tracks (6.7 m above the rails). See [Heights](streets-and-buses.md#heights-table-modules-ramps-and-bridges) |
 
 Without a `physical` table module and without an orthophoto, the flyover draws a light-grey default table around the markers and the objects (except those on table extensions), with a margin of 100 mm. With an orthophoto the photo shows the real table, and where it shows none (its uncovered grey) the flyover is blank.
 

@@ -37,6 +37,8 @@ const VAN = { body: "#f2f2ef", top: CD.orange };
 const DRIVE_KMH = 30, WALK_MPS = 1.2;
 
 export class InfrastructureSimulation extends Simulation {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static type = "infrastructure";
   static label = "Infrastructure (assets and maintenance)";
   static description = "Railway assets with their condition, failures and how well they are known; maintenance staff in shifts, emergency vans and drones; renewals through the HOAI phases with funding and tenders.";

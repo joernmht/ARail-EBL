@@ -1,7 +1,8 @@
 // Railway crossings (objects/crossings.js): one object whose type is a class of its own by its kind
-// (a bridge, an underpass, level crossings by their protection), the height and ramps a bridge
-// needs, the terrain, ramps that do not fit, level crossings that close, trams that never cross a
-// railway at street level, and the street access check with its fixes (core/access.js).
+// (a bridge, an underpass, level crossings by their protection), the height a bridge needs and the
+// ramps of its street (or none between raised table modules), ramps that do not fit, level
+// crossings that close, trams that never cross a railway at street level, and the street access
+// check with its fixes (core/access.js).
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -11,6 +12,12 @@ import {
 
 const TRACK = { id: "track", type: "track", track_id: "G1", points: [[2000, -3000], [2000, 3000]] };
 const MAIN = { id: "main", type: "road", name: "Main", points: [[0, 0], [4000, 0]] };
+/** The real table with the track at the track level, and table modules raised 80 mm on both sides of it. */
+const MODULES = [
+  { id: "table", type: "tabletop", kind: "physical", position: [2000, 0], width_mm: 600, depth_mm: 6000 },
+  { id: "west", type: "tabletop", position: [850, 0], width_mm: 1700, depth_mm: 1000, level_mm: 80 },
+  { id: "east", type: "tabletop", position: [3150, 0], width_mm: 1700, depth_mm: 1000, level_mm: 80 },
+];
 
 function world(objects) {
   return createWorld({ objects, simulations: [], clock: { start: "10:00", profiles: false } }, { seed: 6 });
@@ -49,45 +56,43 @@ test("railway crossings: a class for each kind, changed with the kind", () => {
   assert.equal(card.Protection, "Light signals and half barriers");
 });
 
-test("bridges and underpasses: the height to make up, and ramps by the gradients", () => {
-  // over an electrified railway: 5.70 m clearance and a 1.0 m deck; the street at 8 %
+test("bridges and underpasses: the clearance, and ramps by the gradients where the modules do not make up the height", () => {
+  // over an electrified railway: the street 5.70 m clear above the rails and a 1.0 m deck; ramps at 8 %
   const over = crossing({ kind: "over" }).x.constraints();
-  assert.equal(round(over.rise), CROSSING_NORMS.railClearance + CROSSING_NORMS.roadDeck);
-  assert.equal(round(over.street), round(6.7 / 0.08));
-  assert.equal(over.track, 0);
+  assert.equal(round(over.clearance), CROSSING_NORMS.railClearance);
+  assert.equal(round(over.low - over.rails, 1), Math.round((6.7 * 1000) / 87));
+  assert.equal(Math.round(over.ramps.before), Math.round(6.7 / 0.08));
+  assert.equal(Math.round(over.ramps.after), Math.round(6.7 / 0.08));
+  assert.equal(over.gradient, 0.08);
   // under the railway: 4.70 m for the street and a 1.5 m railway deck
   const under = crossing({ kind: "under" }).x.constraints();
-  assert.equal(round(under.rise), 6.2);
-  assert.equal(round(under.street), round(6.2 / 0.08));
-  // the track instead (12.5 ‰), or both half each
-  const track = crossing({ kind: "over", lift: "track" }).x.constraints();
-  assert.equal(track.street, 0);
-  assert.equal(Math.round(track.track), Math.round(6.7 / 0.0125));
-  const both = crossing({ kind: "over", lift: "both" }).x.constraints();
-  assert.equal(round(both.street), round(6.7 / 2 / 0.08));
-  assert.equal(Math.round(both.track), Math.round(6.7 / 2 / 0.0125));
+  assert.equal(round(under.clearance), CROSSING_NORMS.roadClearance);
+  assert.equal(Math.round(under.ramps.before), Math.round(6.2 / 0.08));
   // with trams in the street: 6 %
   const tram = crossing({ kind: "over" }, [TRACK, { ...MAIN, tram: "street" }]).x.constraints();
-  assert.equal(round(tram.street), round(6.7 / 0.06));
-  // where the terrain makes up the height: no ramps
-  const terrain = crossing({ kind: "over", terrain: true }).x;
-  assert.deepEqual([terrain.constraints().street, terrain.constraints().track], [0, 0]);
-  assert.deepEqual(terrain.problems(), []);
-  const rows = Object.fromEntries(terrain.card().rows);
-  assert.equal(rows.Ramps, "none: the terrain makes up the height");
-  // the room for the ramps: the street on both sides up to its ends, the track up to its ends
-  const c = crossing({ kind: "over" }).x.constraints();
-  assert.ok(c.room.before > 170 && c.room.after > 170, JSON.stringify(c.room));
-  assert.ok(c.trackRoom.before > 250, JSON.stringify(c.trackRoom));
+  assert.equal(Math.round(tram.ramps.after), Math.round(6.7 / 0.06));
+  // the street between two table modules raised 80 mm: straight over the track, no ramps
+  const raised = crossing({ kind: "over" }, [TRACK, MAIN, ...MODULES]).x;
+  const c = raised.constraints();
+  assert.deepEqual([c.rails, c.low, c.high, c.ramps.before, c.ramps.after], [0, 80, 80, 0, 0]);
+  assert.equal(round(c.clearance), round((80 * 87) / 1000 - 1));
+  assert.deepEqual(raised.problems(), []);
+  const rows = Object.fromEntries(raised.card().rows);
+  assert.equal(rows.Ramps, "none: the table modules make up the height");
+  assert.equal(rows.Clearance, "6.0 m (at least 5.7 m)");
+  // the room for the ramps: the street on both sides up to its ends
+  assert.ok(over.room.before > 170 && over.room.after > 170, JSON.stringify(over.room));
 });
 
 test("ramps that do not fit, and level crossings that make no sense", () => {
   // a short street: 84 m of ramp do not fit before its ends
   const short = crossing({ kind: "over" }, [TRACK, { ...MAIN, points: [[1500, 0], [2500, 0]] }]).x;
-  assert.deepEqual(short.problems(), ["X: the street needs 84 m of ramp on each side (8 %), but there are only 44 m to the next junction or end. Lower the track, or choose another kind"]);
-  // lowering the track: 536 m of ramp on a track 261 m long on each side
-  const low = crossing({ kind: "over", lift: "track" }).x;
-  assert.deepEqual(low.problems(), ["X: the track needs 536 m of ramp on each side (12.5 ‰), but it is only 261 m long on one side"]);
+  assert.deepEqual(short.problems(), ["X: the street needs 84 m of ramp (8 %), but there are only 44 m to the next junction or end. Change the levels of the table modules, or choose another kind"]);
+  // a level crossing on a street between raised modules: down to the rails and up again, 87 m each side
+  const level = crossing({ kind: "half-barriers" }, [TRACK, MAIN, ...MODULES]).x.constraints();
+  assert.deepEqual([level.low, level.high], [0, 0]);
+  assert.equal(level.clearance, null);
+  assert.ok(level.ramps.before > 80 && level.ramps.after > 80, JSON.stringify(level.ramps));
   // a St Andrew's cross alone is no crossing for a main road (EBO § 11)
   const main = crossing({ kind: "crossbuck" }, [TRACK, { ...MAIN, kind: "main" }]).x;
   assert.deepEqual(main.problems(), ["X: a main road needs a level crossing with lights or barriers (EBO § 11: St Andrew's crosses only for little traffic)"]);

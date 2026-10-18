@@ -374,12 +374,7 @@ class Builder {
       console.warn("The street access could not be checked:", err);
     }
     for (const o of this.world.objects) {
-      let list = [];
-      try {
-        list = typeof o.problems === "function" ? o.problems() || [] : [];
-      } catch {
-        list = [];
-      }
+      const list = this.world.problemsOf(o);
       const at = o.anchorPoint?.() || o.geometry?.center || null;
       list.forEach((text, i) => out.push({ key: `object:${o.id}:${i}`, level: /not|cannot|no /i.test(text) ? "error" : "warning", id: o.id, text, at, fix: null }));
     }
@@ -485,6 +480,15 @@ class Builder {
     }
     if (pl.kind) spec.kind = pl.kind;
     if (pl.cls.type === "road") Object.assign(spec, this._streetSettings(pl.kind));
+    // houses, streets and the rest are built on table modules
+    const probe = new pl.cls(this.world, { ...spec, id: "probe" });
+    if (probe.geometry && ARail.offModules(this.world, probe)) {
+      if (["point", "rect", "segment"].includes(pl.cls.placement)) pl.points.pop();
+      else pl.points = [];
+      this.renderHint();
+      this.plan.redraw();
+      return toast("Build on a table module: houses, streets and the rest stand on table modules. Click on one, or add a table module first.", 5000);
+    }
     let obj;
     try {
       obj = this.world.addObject(spec);

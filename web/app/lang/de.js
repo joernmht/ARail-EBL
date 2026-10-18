@@ -354,6 +354,7 @@ export const DE = {
   "Tap the tram stops in the order the trams serve them, then press Finish.": "Tippen Sie die Straßenbahnhaltestellen in der Reihenfolge an, in der die Straßenbahnen sie bedienen, und drücken Sie dann Fertig.",
   "Tap a bus stop or a bus terminal.": "Tippen Sie eine Bushaltestelle oder einen Busbahnhof an.",
   "Tap a tram stop.": "Tippen Sie eine Straßenbahnhaltestelle an.",
+  "Build on a table module: houses, streets and the rest stand on table modules. Tap on one, or add a table module first.": "Bauen Sie auf einem Tischmodul: Häuser, Straßen und alles andere stehen auf Tischmodulen. Tippen Sie auf eines, oder legen Sie zuerst ein Tischmodul an.",
 
   // ------------------------------------------------------------ the info card
   "Close the info card": "Infokarte schließen",
@@ -426,6 +427,7 @@ export const DE = {
   "Undo point": "Punkt zurück",
   "Click a bus stop or a bus terminal.": "Klicken Sie eine Bushaltestelle oder einen Busbahnhof an.",
   "Click a tram stop.": "Klicken Sie eine Straßenbahnhaltestelle an.",
+  "Build on a table module: houses, streets and the rest stand on table modules. Click on one, or add a table module first.": "Bauen Sie auf einem Tischmodul: Häuser, Straßen und alles andere stehen auf Tischmodulen. Klicken Sie auf eines, oder legen Sie zuerst ein Tischmodul an.",
   "Place at least {n} points.": "Setzen Sie mindestens {n} Punkte.",
   "A line needs at least {n} points.": "Eine Linie braucht mindestens {n} Punkte.",
   "{what} added.": "{what} hinzugefügt.",

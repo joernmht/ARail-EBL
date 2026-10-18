@@ -139,9 +139,14 @@ test("tram lines never cross a railway at street level; a bridge opens the way",
     ]);
   };
   blocked(world(objects));
-  // a level crossing does not help; a bridge does
+  // a level crossing does not help; a bridge between raised table modules does
   blocked(world([...objects, { id: "x", type: "rail-crossing", position: [2500, 0], kind: "half-barriers" }]));
-  const w3 = world([...objects, { id: "x", type: "rail-crossing", position: [2500, 0], kind: "over", terrain: true }]);
+  const raised = [
+    { id: "table", type: "tabletop", kind: "physical", position: [2500, 0], width_mm: 600, depth_mm: 6000 },
+    { id: "west", type: "tabletop", position: [1100, 0], width_mm: 2200, depth_mm: 1000, level_mm: 80 },
+    { id: "east", type: "tabletop", position: [3900, 0], width_mm: 2200, depth_mm: 1000, level_mm: 80 },
+  ];
+  const w3 = world([...objects, ...raised, { id: "x", type: "rail-crossing", position: [2500, 0], kind: "over" }]);
   w3.transit.sync();
   const line3 = w3.transit.lines.get("line");
   assert.ok(line3.ok);
@@ -153,7 +158,7 @@ test("tram lines never cross a railway at street level; a bridge opens the way",
   assert.equal(w4.transit.lines.get("line").ok, false);
 });
 
-test("Bf Neustadt: two tram lines over the bridge to the loop at the station, every stop served", () => {
+test("Bf Neustadt: two tram lines to the loop at the station, every stop served; none across the level crossing", () => {
   const json = readJSON("web/layouts/ebl-neustadt.json");
   for (const l of json.layers || []) l.enabled = false;
   json.simulations = json.simulations.filter((s) => s.type === "passengers");
@@ -164,12 +169,19 @@ test("Bf Neustadt: two tram lines over the bridge to the loop at the station, ev
   for (const l of lines) {
     assert.ok(l.ok, `${l.id}: ${l.problems.join("; ")}`);
     assert.equal(l.vehicle, "tram");
+    assert.deepEqual(l.problems, []);
   }
-  // line 2 has a single track used both ways (Lindenstraße)
+  // line 2 has a single track used both ways (Lindenstraße); both change ends at the stub of their first stop
   assert.ok(lines[1].single.length > 0);
-  // the bridge carries the trams over the railway; no tram stop has a problem
-  assert.equal(w.getObject("rail-crossing-bruecke").crossingType.level, false);
+  assert.ok(lines.every((l) => l.reversals.length === 1));
+  // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
+  const crossing = w.getObject("rail-crossing-bruecke");
+  assert.equal(crossing.crossingType.level, true);
+  assert.deepEqual(crossing.problems(), []);
+  assert.equal(w.getObject(crossing.geometry.road).roadInfo().tram, "none");
   for (const o of w.objects.filter((x) => x.type === "tram-stop")) assert.deepEqual(o.problems(), [], o.id);
+  // everything at the track level
+  assert.equal(w.elevation.sync().flat, true);
   // all kinds of stops are there
   assert.deepEqual([...new Set(w.objects.filter((x) => x.type === "tram-stop").map((x) => x.kind()))].sort(), ["cape", "island", "raised", "road"]);
   const log = arrivals(w);

@@ -67,7 +67,7 @@
     {"id": "yard-a", "type": "container-yard", "name": "Block A", "position": [100, 58], "width_mm": 1190, "depth_mm": 67, "rotation_deg": 0, "tiers": 3},
     {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane", "position": [175, 226], "width_mm": 2150, "depth_mm": 510, "rotation_deg": 0, "outreach_m": 12, "lift_m": 15},
     {"id": "table-harbour", "type": "tabletop", "name": "Harbour module", "position": [180, -265], "width_mm": 2300, "depth_mm": 470},
-    {"id": "quay-1", "type": "quay", "name": "Quay", "points": [[-1000, -130], [1150, -130]], "berth_m": 60, "water_m": 16, "quay_side": "left"}
+    {"id": "quay-1", "type": "quay", "name": "Quay", "points": [[-960, -130], [1150, -130]], "berth_m": 60, "water_m": 16, "quay_side": "left"}
   ],
   "scenarios": [
     {

@@ -1053,13 +1053,18 @@ export class App {
     return this.flyover.active ? this.flyover.pose() : this.tracker.state;
   }
 
-  /** Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover). */
+  /**
+   * Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover): on
+   * what lies there, a raised table module or a bridge (core/elevation.js), as drawn in the last frame.
+   */
   eventToLayout(e) {
     const c = this.canvas, r = c.getBoundingClientRect();
     const u = ((e.clientX - r.left) * c.width) / r.width, v = ((e.clientY - r.top) * c.height) / r.height;
-    if (this.flyover.active) return this.flyover.groundPoint(u, v);
+    if (this.flyover.active) return this.flyover.surfacePoint(u, v);
     const Hinv = this.tracker.state.Hinv;
     if (!Hinv) return null;
+    const view = this.lastView;
+    if (view && view.H === this.tracker.state.H) return ARail.surfacePoint(this.world, view, [u, v]);
     const p = ARail.applyH(Hinv, [u, v]);
     return p.every(Number.isFinite) ? p : null;
   }
@@ -1201,13 +1206,14 @@ export class App {
    * Grey plates over the markers of the map, each with its number painted on it (View → Show →
    * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
    * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
-   * table, under the virtual objects.
+   * table, under the virtual objects. A marker under a raised table module needs none: the module
+   * covers it.
    */
   _drawMarkerCovers(view) {
-    const map = this.world.map, fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
+    const map = this.world.map, el = this.world.elevation.sync(), fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
     for (const id of map.ids()) {
       const e = map.get(id), s = map.sizeOf(id);
-      if (e) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
+      if (e && !(el.ground(e.x, e.y) > 0.5)) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
     }
   }
 

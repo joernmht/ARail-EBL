@@ -33,6 +33,8 @@ export const CHANGE_KINDS = {
 
 export class SystemChange extends LayoutObject {
   static type = "system-change";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "System change";
   static category = "Infrastructure";
   static placement = "point";

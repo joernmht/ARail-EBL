@@ -26,6 +26,12 @@ The dashed teal lines are the ways from building entrances and stops to their st
 network connects them (`world.network()`). Teal dots are junctions. A red **!** marks something that
 does not work, an orange one something that makes no sense.
 
+Houses, streets and the rest are built on **table modules**: a click beside them places nothing, and
+the Problems tab lists what stands off them. A table module lies at its **level** (Element tab:
+*Level*, the height of its top above the track level): between two modules raised 80 mm a street
+spans the tracks as a bridge, from one level to another it ramps at most 8 % (6 % with tram tracks).
+See [Heights](streets-and-buses.md#heights-table-modules-ramps-and-bridges).
+
 ## Streets first
 
 Choose **Street** (key **S**), **Residential street**, **Main road**, **Footpath or bike path** (key

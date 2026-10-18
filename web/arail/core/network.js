@@ -557,9 +557,12 @@ export class RoadNetwork {
 
   /**
    * Where the edges of streets cross a track (a barrier): `edge.rails` = [{s, pos, crossing,
-   * level, track}], with the railway crossing put there (objects/crossings.js, `railCrossingInfo()`)
-   * if there is one. A street without one crosses at street level. Trams never cross a railway at
-   * street level (BOStrab § 15): such an edge has no tram for routing (`tramBlocked`).
+   * level, track, clash?}], with the railway crossing put there (objects/crossings.js,
+   * `railCrossingInfo()`) if there is one. Without one the heights decide (core/elevation.js): a
+   * street far enough above or below the rails passes over or under the track, one at their height
+   * crosses at street level, and one between (`clash`: too low for a bridge) counts as crossing at
+   * street level. Trams never cross a railway at street level (BOStrab § 15): such an edge has no
+   * tram for routing (`tramBlocked`).
    */
   _railCrossings() {
     const crossings = [];
@@ -591,7 +594,11 @@ export class RoadNetwork {
                 crossing = c;
               }
             }
-            e.rails.push({ s, pos: x.p, crossing, level: crossing ? !!crossing.level : true, track: b.id });
+            // without a railway crossing the heights decide (core/elevation.js): a street high enough
+            // above the rails (or low enough below them) passes over (under) the track
+            const h = crossing ? null : this.world.elevation?.crossingAt(e.road, x.p, this.world.getObject(b.id));
+            const level = crossing ? !!crossing.level : !h || h.kind === "level" || h.kind === "clash";
+            e.rails.push({ s, pos: x.p, crossing, level, track: b.id, ...(h?.kind === "clash" ? { clash: h } : {}) });
           }
         }
       }

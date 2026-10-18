@@ -24,6 +24,8 @@ import { dist2, dot2, lerp2, polylineAt, polylineLengths, polylineProject, sub2,
 import { PALETTE, grey } from "../core/colors.js";
 import { NORMS, PARKING_LAYOUTS, PATH_PROFILES, STREET_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, crossSection, profileOf, widthChoices } from "./street-profile.js";
 import { TARIFFS, Tariff } from "./parking.js";
+import { CROSSING_NORMS, interpolate } from "../core/elevation.js";
+import { rectFootprint } from "../core/view.js";
 
 /** Kinds of streets: label in the editor, speed limit, default width of the car lanes (of the path, of the track bed), cars allowed. */
 export const ROAD_KINDS = {
@@ -424,9 +426,14 @@ export class Road extends LayoutObject {
     return card;
   }
 
-  /** What is wrong with the street (shown in the editor): widths below the minimum of the guidelines. */
+  /**
+   * What is wrong with the street (shown in the editor): widths below the minimum of the guidelines,
+   * and its heights (core/elevation.js): a ramp that reaches into a junction, an end in the air.
+   */
   problems() {
-    return this.geometry?.xs.warnings ?? [];
+    const g = this.geometry;
+    if (!g) return [];
+    return [...g.xs.warnings, ...this.world.elevation.streetProblems(this.id)];
   }
 
   /**
@@ -663,5 +670,87 @@ export class Road extends LayoutObject {
       if (k >= 1.2 * view.px) for (const r of jc.strips.rails) view.line(r, { stroke: PALETTE.rail, width: Math.max(0.6, Math.min(1.6, k / 6)), order: 1.15 });
     }
     for (const l of jc.lamps) if (view.inImage(l.pos[0], l.pos[1], 0, 80)) drawStreetLamp(view, l.pos, l.arm);
+    this._drawHeights(view, g);
   }
+
+  /**
+   * Where the street leaves the ground (core/elevation.js): its sides as walls down to the ground on
+   * a low ramp, as the edge of a deck a metre thick where it lies higher (a bridge), as walls up to
+   * the ground where it lies lower (a cutting); railings where it lies high. Over a track its deck is
+   * drawn as a solid (trains pass under it, cars on it), under a track the railway's bridge. Heights
+   * as worked out, without a lift.
+   */
+  _drawHeights(view, g) {
+    const el = this.world.elevation, p = el.profiles.get(this.id);
+    if (!p?.decks.length) return;
+    const m = (x) => this.mm(x), deck = m(CROSSING_NORMS.roadDeck), wall = grey(0.8), railing = grey(0.9);
+    view.withLift(null, () => {
+      for (const d of p.decks) {
+        const L = d.s[d.s.length - 1], n = Math.max(1, Math.ceil(L / m(4)));
+        for (let i = 0; i < n; i++) {
+          const a = (L * i) / n, b = (L * (i + 1)) / n;
+          const A = polylineAt(d.pts, a, d.lengths), B = polylineAt(d.pts, b, d.lengths);
+          const za = interpolate(d.s, d.z, a), zb = interpolate(d.s, d.z, b), ga = interpolate(d.s, d.ground, a), gb = interpolate(d.s, d.ground, b);
+          // above the ground: down to it on a low ramp, else a deck's thickness; below it: up to it
+          const bottom = (z, gr) => (z >= gr ? (z - gr <= 1.5 * deck ? gr : z - deck) : z), top = (z, gr) => Math.max(z, gr);
+          // each side on its own: the far one is drawn before the deck, the near one after it
+          for (const side of [-1, 1]) {
+            const off = (P) => [P.point[0] - P.dir[1] * d.half * side, P.point[1] + P.dir[0] * d.half * side];
+            const pa = off(A), pb = off(B), faces = [];
+            const fa = bottom(za, ga), fb = bottom(zb, gb), ta = top(za, ga), tb = top(zb, gb);
+            if (ta - fa > 0.05 || tb - fb > 0.05) faces.push({ pts: [[pa[0], pa[1], fa], [pb[0], pb[1], fb], [pb[0], pb[1], tb], [pa[0], pa[1], ta]], color: wall, twoSided: true });
+            if (za - ga > m(1.5) || zb - gb > m(1.5)) {
+              faces.push({ pts: [[pa[0], pa[1], za], [pb[0], pb[1], zb], [pb[0], pb[1], zb + m(0.9)], [pa[0], pa[1], za + m(0.9)]], color: railing, alpha: 0.7, twoSided: true });
+            }
+            if (faces.length) view.faces(faces, [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (za + zb) / 2]);
+          }
+        }
+      }
+      for (const c of el.trackCrossings(this.id)) {
+        if (c.kind === "over" || (c.kind === "clash" && c.clear > 0)) this._drawBridgeDeck(view, g, p, c);
+        else if (c.kind === "under" || (c.kind === "clash" && c.clear < 0)) drawRailBridge(view, g, c, this.mm(1));
+      }
+    });
+  }
+
+  /** The deck over a track as a solid in pieces: the sidewalks, the carriageway and tram rails on top. */
+  _drawBridgeDeck(view, g, p, c) {
+    const m = (x) => this.mm(x), xs = g.xs;
+    // across the track's clearance: 4 m each side of it, along the street
+    const along = polylineAt(g.points, c.s, g.lengths).dir, sin = Math.max(0.3, Math.abs(c.dir[0] * along[1] - c.dir[1] * along[0]));
+    const reach = m(4) / sin, s0 = Math.max(0, c.s - reach), s1 = Math.min(g.length, c.s + reach);
+    const tracks = xs.tram !== "none" ? (xs.tramTracks === "double" ? [-xs.tramOffset, xs.tramOffset] : [0]) : [];
+    const n = Math.max(1, Math.ceil((s1 - s0) / m(3)));
+    for (let i = 0; i < n; i++) {
+      const a = s0 + ((s1 - s0) * i) / n, b = s0 + ((s1 - s0) * (i + 1)) / n;
+      const A = polylineAt(g.points, a, g.lengths), B = polylineAt(g.points, b, g.lengths);
+      const za = interpolate(p.s, p.z, a), zb = interpolate(p.s, p.z, b);
+      const at = (P, t, z) => [P.point[0] - P.dir[1] * t, P.point[1] + P.dir[0] * t, z];
+      const band = (t0, t1, up = 0) => [at(A, t0, za + up), at(B, t0, zb + up), at(B, t1, zb + up), at(A, t1, za + up)];
+      const decals = g.kind === "path" || g.kind === "tram" ? [] : [{ pts: band(-g.width / 2, g.width / 2, 0.01), color: COLOURS.asphalt }];
+      for (const t of tracks) for (const r of [-GAUGE_M / 2, GAUGE_M / 2]) decals.push({ pts: band(m(t + r) - m(0.07), m(t + r) + m(0.07), 0.02), color: PALETTE.rail });
+      const colour = g.kind === "path" ? COLOURS.path : g.kind === "tram" ? PALETTE.tramBed : COLOURS.sidewalk;
+      const mid = polylineAt(g.points, (a + b) / 2, g.lengths).point;
+      view.faces([{ pts: band(-g.half, g.half), normal: [0, 0, 1], color: colour, decals, flat: true }], [mid[0], mid[1], (za + zb) / 2]);
+    }
+  }
+}
+
+/**
+ * The railway's bridge over a street in an underpass (Eisenbahnüberführung): its deck along the track
+ * with its top at the rails, abutments beside the street down to it, the street in its shade.
+ * @param {{pos: number[], dir: number[], street: number, rails: number}} c where the track crosses (core/elevation.js)
+ * @param {number} m1 one prototype metre in mm
+ */
+function drawRailBridge(view, g, c, m1) {
+  const w = 3.2 * m1, h1 = c.rails, h0 = Math.max(c.street, c.rails - CROSSING_NORMS.railDeck * m1);
+  const reach = g.half + m1, n = [(-c.dir[1] * w) / 2, (c.dir[0] * w) / 2];
+  const a = [c.pos[0] - c.dir[0] * reach, c.pos[1] - c.dir[1] * reach], b = [c.pos[0] + c.dir[0] * reach, c.pos[1] + c.dir[1] * reach];
+  view.prism([[a[0] - n[0], a[1] - n[1]], [b[0] - n[0], b[1] - n[1]], [b[0] + n[0], b[1] + n[1]], [a[0] + n[0], a[1] + n[1]]], h0, h1, { side: grey(0.7), top: grey(0.62) });
+  for (const t of [-1, 1]) {
+    const q = [c.pos[0] + c.dir[0] * t * (g.half + 0.6 * m1), c.pos[1] + c.dir[1] * t * (g.half + 0.6 * m1)];
+    view.prism(rectFootprint(q, 1.2 * m1, w, Math.atan2(c.dir[1], c.dir[0])), c.street, h0, { side: grey(0.78), top: grey(0.7) });
+  }
+  const s = [c.dir[0] * g.width * 0.5, c.dir[1] * g.width * 0.5], k = [-c.dir[1] * w * 0.5, c.dir[0] * w * 0.5];
+  view.polygon([[c.pos[0] - s[0] - k[0], c.pos[1] - s[1] - k[1]], [c.pos[0] - s[0] + k[0], c.pos[1] - s[1] + k[1]], [c.pos[0] + s[0] + k[0], c.pos[1] + s[1] + k[1]], [c.pos[0] + s[0] - k[0], c.pos[1] + s[1] - k[1]]], { z: c.street + 0.05, fill: grey(0.2), alpha: 0.35, order: 1.3 });
 }

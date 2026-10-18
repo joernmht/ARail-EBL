@@ -119,6 +119,8 @@ function craneReaches(world, points) {
  */
 export class ContainerYard extends LayoutObject {
   static type = "container-yard";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Container yard block";
   static category = "Terminal";
   static placement = "rect";
@@ -203,6 +205,8 @@ export class ContainerYard extends LayoutObject {
  */
 export class GantryCrane extends LayoutObject {
   static type = "gantry-crane";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Gantry crane";
   static category = "Terminal";
   static placement = "rect";
@@ -317,6 +321,8 @@ export class GantryCrane extends LayoutObject {
  */
 export class TruckLane extends LayoutObject {
   static type = "truck-lane";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Truck lane";
   static category = "Terminal";
   static placement = "polyline";
@@ -428,6 +434,8 @@ export class TruckLane extends LayoutObject {
  */
 export class Quay extends LayoutObject {
   static type = "quay";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Quay and fairway";
   static category = "Terminal";
   static placement = "polyline";
@@ -496,6 +504,8 @@ export class Quay extends LayoutObject {
  */
 export class ReachStacker extends LayoutObject {
   static type = "reach-stacker";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Reach stacker";
   static category = "Terminal";
   static placement = "point";

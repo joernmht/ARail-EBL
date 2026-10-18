@@ -51,8 +51,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people, the registry, the event bus and pointing at things.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/pick.js"],
+    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {

@@ -25,8 +25,29 @@ import { Clock } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { ParkingSpaces } from "./parking.js";
+import { Elevation } from "./elevation.js";
 import { drawFlat } from "./simple.js";
 import { cardOf, findPickable, pickAt } from "./pick.js";
+
+/** How far (mm) an object may reach over the edge of the table modules it stands on. */
+const MODULE_TOLERANCE_MM = 2;
+
+/**
+ * Is an object off the table modules? The problem as a text, or null. What is placed at a point
+ * stands on them with its whole footprint (or with what it says it stands on, `standsOn()`: a tree
+ * with its trunk); a street, track or area with all its points (a street may span the gap between
+ * two modules as a bridge). Only layouts with table modules ask.
+ */
+export function offModules(world, o) {
+  const cls = o.constructor;
+  if ((o.anywhere ?? cls.anywhere) || typeof o.groundLevel === "function" || typeof o.footprint !== "function") return null;
+  const el = world.elevation.sync();
+  if (!el.modules.length) return null;
+  const g = o.geometry;
+  const pts = typeof o.standsOn === "function" ? o.standsOn() : cls.placement === "point" ? o.footprint() : g?.points || o.footprint();
+  if (!pts?.length || el.onModules(pts, MODULE_TOLERANCE_MM)) return null;
+  return "Not on a table module: move it onto one, or add a table module under it.";
+}
 
 export class World {
   /**
@@ -68,6 +89,8 @@ export class World {
     this.transit = new Transit(this);
     /** Parking spaces and who is parked there (core/parking.js). */
     this.parking = new ParkingSpaces(this);
+    /** Heights: the levels of the table modules, streets on ramps and bridges (core/elevation.js). */
+    this.elevation = new Elevation(this);
     /**
      * The train whose compatibility the tracks show (View → Colour the tracks by, rail/compat.js):
      * `{name, consist}`, or null.
@@ -366,10 +389,20 @@ export class World {
     return this.settings.lighting === false ? 0 : this.clock.night();
   }
 
-  /** Queue everything on the view and render it. */
+  /**
+   * Queue everything on the view and render it. Things are lifted to their heights (core/elevation.js,
+   * `View#lift`) by what they say they stand on (`elevation`, of the class or the instance): "street"
+   * (the default: the street level, on bridges and ramps too), "ground" (the railway: the table
+   * module, so that trains pass under a bridge) or "none" (they draw their heights themselves, like
+   * the table modules). The simple view stays flat. Afterwards the view keeps the street level (for
+   * pointing at things and the editor's marks).
+   */
   draw(view, { selected = null } = {}) {
     if (view.night == null) view.night = this.night();
     this._syncStops();
+    const el = this.elevation.sync();
+    const lifts = view.simple ? {} : { street: el.streetLift, ground: el.groundLift };
+    const lift = (x) => lifts[x?.elevation ?? x?.constructor?.elevation ?? "street"] ?? null;
     if (view.simple) {
       // the simple view (core/simple.js): objects flat, what moves as plain blocks
       view.flat = true;
@@ -379,15 +412,40 @@ export class World {
         else drawFlat(view, o);
       }
       view.flat = false;
-    } else for (const o of this.objects) if (o.geometry) o.draw(view);
-    this.services.draw(view);
-    this.transit.draw(view);
-    this.parking.draw(view);
-    this.trains.draw(view);
-    for (const s of this.simulations) s.draw(view);
-    this.disruptions.draw(view);
+    } else {
+      for (const o of this.objects) {
+        if (!o.geometry) continue;
+        view.lift = lift(o);
+        o.draw(view);
+      }
+    }
+    for (const part of [this.services, this.transit, this.parking, this.trains, ...this.simulations, this.disruptions]) {
+      view.lift = lift(part);
+      part.draw(view);
+    }
     if (view.simple) view.flat = true;
+    view.lift = lift(selected);
     if (selected && selected.geometry) selected.drawSelection(view);
+    view.lift = lifts.street ?? null;
     view.render();
+  }
+
+  /**
+   * What is wrong with an object (shown in the editors): what it says of itself (`problems()`) and,
+   * when the layout has table modules, whether it stands on them: houses, streets and the rest are
+   * built on table modules (objects/tabletop.js). Table modules, floating labels, what has no
+   * footprint and what says so (`anywhere`, of the class or the object) may be anywhere.
+   * @param {import("./object.js").LayoutObject} o
+   * @returns {string[]}
+   */
+  problemsOf(o) {
+    let list = [];
+    try {
+      list = typeof o.problems === "function" ? o.problems() || [] : [];
+    } catch {
+      list = [];
+    }
+    const at = o.geometry ? offModules(this, o) : null;
+    return at ? [...list, at] : list;
   }
 }

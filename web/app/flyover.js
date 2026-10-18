@@ -6,7 +6,7 @@
 // Navigation: mouse, touch, keyboard and on-screen buttons. In Build the editor works as in the
 // camera view, and placed or dragged things snap to the grid.
 import {
-  CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, toRad,
+  CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, surfacePoint, toRad,
 } from "../arail/index.js";
 import { $, storage, toast } from "./ui.js";
 import { tr } from "./i18n.js";
@@ -258,10 +258,15 @@ export class Flyover {
     return this.cam.homography(c.width, c.height);
   }
 
-  /** Layout point (z = 0) under canvas pixel (u, v), or null above the horizon. */
-  groundPoint(u, v) {
+  /** Layout point (z = 0, or at height z) under canvas pixel (u, v), or null above the horizon. */
+  groundPoint(u, v, z = 0) {
     const c = this.app.canvas;
-    return this.cam.groundPoint(u, v, c.width, c.height, 200 * this.cam.distance);
+    return this.cam.groundPoint(u, v, c.width, c.height, 200 * this.cam.distance, z);
+  }
+
+  /** Layout point under canvas pixel (u, v) on what lies there: a raised table module, a bridge (core/elevation.js). */
+  surfacePoint(u, v) {
+    return surfacePoint(this.app.world, null, [u, v], (view, pixel, z) => this.groundPoint(pixel[0], pixel[1], z));
   }
 
   /** Everything on the layout: tables, objects, markers ([xmin, ymin, xmax, ymax] mm). */
@@ -523,7 +528,7 @@ export class Flyover {
     const panButton = e.button === 1 || e.button === 2 || e.shiftKey;
     const build = app.activeTab === "build", terminal = app.activeTab === "terminal";
     if (build && e.button === 0 && !panButton) {
-      const g = this.groundPoint(p[0], p[1]);
+      const g = this.surfacePoint(p[0], p[1]);
       if (ed.placing) {
         this.gesture = { type: "place", start: p, ground: g, button: 0 };
         return;
@@ -545,7 +550,7 @@ export class Flyover {
     if (!prev) {
       // hovering: where the next point would go (the mouse takes over from the keyboard), the tooltip
       this._keyAim = false;
-      if (app.activeTab === "build" && ed.placing) ed.hover(this.groundPoint(p[0], p[1]), e);
+      if (app.activeTab === "build" && ed.placing) ed.hover(this.surfacePoint(p[0], p[1]), e);
       if (e.pointerType === "mouse") app.inspector.hoverAt(p);
       return;
     }
@@ -554,13 +559,13 @@ export class Flyover {
     if (!g) return;
     if (g.type === "touch") return this._touch(g);
     if (g.type === "drag") {
-      const q = this.groundPoint(p[0], p[1]);
+      const q = this.surfacePoint(p[0], p[1]);
       if (q) ed.dragTo(q, e);
       return;
     }
     const far = Math.hypot(p[0] - g.start[0], p[1] - g.start[1]) / app.px() >= TAP_PX;
     if (g.type === "place") {
-      ed.hover(this.groundPoint(p[0], p[1]), e);
+      ed.hover(this.surfacePoint(p[0], p[1]), e);
       if (!far) return;
       // dragging while placing: a table module is drawn by dragging, otherwise the view pans
       if (ed.placing?.cls.placement === "rect" && !ed.placing.points.length && g.ground) {
@@ -572,7 +577,7 @@ export class Flyover {
         c.classList.add("dragging");
       }
     }
-    if (g.type === "rect") return ed.hover(this.groundPoint(p[0], p[1]), e);
+    if (g.type === "rect") return ed.hover(this.surfacePoint(p[0], p[1]), e);
     g.moved ||= far;
     if (!g.moved) return;
     const W = c.width, H = c.height;
@@ -607,7 +612,7 @@ export class Flyover {
       if (g.ground) ed.placeAt(g.ground, e);
       else toast("Tap on the table to place it (not on the sky).");
     } else if (g.type === "rect") {
-      const q = this.groundPoint(p[0], p[1]);
+      const q = this.surfacePoint(p[0], p[1]);
       if (q) ed.placeAt(q, e);
     } else if (!g.moved && app.activeTab === "build" && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
     else if (!g.moved && app.activeTab === "terminal" && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place

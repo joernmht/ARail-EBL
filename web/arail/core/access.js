@@ -193,7 +193,8 @@ export function accessProblems(world) {
   }
 
   // railway crossings: a street across a track at street level needs a level crossing put there;
-  // trams never cross a railway at street level (BOStrab § 15)
+  // trams never cross a railway at street level (BOStrab § 15); a street that meets the rails above
+  // or below them but not far enough for a bridge or an underpass runs into the track
   const seenRail = new Set();
   for (const e of net.edges) {
     for (const r of e.rails || []) {
@@ -202,6 +203,16 @@ export function accessProblems(world) {
       if (seenRail.has(key)) continue;
       seenRail.add(key);
       const road = world.getObject(e.road), track = world.getObject(r.track);
+      if (r.clash) {
+        const m = (v) => Math.round(((Math.abs(v) * world.scale) / 1000) * 10) / 10;
+        add({
+          key: `rail:${key}`, level: "error", id: e.road, at: r.pos,
+          text: r.clash.clear > 0
+            ? `${nameOf(road)} meets ${nameOf(track)} ${m(r.clash.clear)} m above the rails: not at their height, and too low for a bridge (${m(r.clash.need)} m)`
+            : `${nameOf(road)} meets ${nameOf(track)} ${m(r.clash.clear)} m below the rails: not at their height, and not deep enough for an underpass (${m(r.clash.need)} m)`,
+        });
+        continue;
+      }
       if (e.tramBlocked && e.tramBlocked === r) {
         add({
           key: `rail:${key}`, level: "error", id: e.road, at: r.pos,

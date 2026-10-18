@@ -96,6 +96,8 @@ const INTERLOCKING = { key: "interlocking", label: "Interlocking", type: "object
 /** Base of the point assets: a frame at `position` turned by `rotation_deg`. */
 export class AssetObject extends LayoutObject {
   static category = "Infrastructure";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static placement = "point";
   /** Asset type of the infrastructure simulation. */
   static asset = null;
@@ -346,6 +348,8 @@ export class PassengerDisplay extends AssetObject {
 /** Base of the linear assets (a polyline along a track). */
 export class LinearAssetObject extends LayoutObject {
   static category = "Infrastructure";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static placement = "polyline";
   static asset = null;
 

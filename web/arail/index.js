@@ -60,12 +60,13 @@ export { MarkerDetector, DICTIONARIES, markerBits, refineCorners } from "./core/
 export { MarkerMap, PlaneTracker } from "./core/tracker.js";
 export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
-export { World } from "./core/world.js";
+export { World, offModules } from "./core/world.js";
 export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
+export { Elevation, streetGradient } from "./core/elevation.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
-export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, projectedHull } from "./core/pick.js";
+export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, planePoint, projectedHull, surfacePoint } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
@@ -100,7 +101,7 @@ export { TrafficSign, TrafficLight, ZebraCrossing, SIGN_TYPES, TURNS, parseArrow
 export { TARIFFS, PARKING_ACCESS, Tariff, ParkingLot, ParkingGarage, BikeStand, ownerAccess, parkingTerms } from "./objects/parking.js";
 export { TramStop, TramLine, TRAM_STOP_TYPES, STEP_FREE_M } from "./objects/tram.js";
 export {
-  RailCrossing, CrossingType, OverTrack, UnderTrack, AtGrade, CrossbuckOnly, FlashingLights, HalfBarriers, FullBarriers, CROSSING_TYPES, CROSSING_NORMS, LIFTS,
+  RailCrossing, CrossingType, OverTrack, UnderTrack, AtGrade, CrossbuckOnly, FlashingLights, HalfBarriers, FullBarriers, CROSSING_TYPES, CROSSING_NORMS,
 } from "./objects/crossings.js";
 export { CAR_COLOURS, planDrive, OCCUPANCY_BY_PURPOSE } from "./sims/traffic.js";
 export { RIDERS, ridingSurface } from "./sims/cycling.js";

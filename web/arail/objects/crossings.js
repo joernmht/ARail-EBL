@@ -8,45 +8,31 @@
  *   only (`CrossbuckOnly`), light signals (`FlashingLights`), light signals with half barriers
  *   (`HalfBarriers`) or with full barriers (`FullBarriers`). Vehicles stop while it is closed.
  *
- * A bridge needs height: the street rises (or the track is lowered, or both) by the clearance plus
- * the deck, at most at the gradient a street (or a railway) allows; the ramps take up length on both
- * sides. The type works this out (`constraints()`) and says when the ramps do not fit before the
- * next junction or the end of the track (the costs come later). Where the terrain makes up the
- * height (`terrain`: the track in a cutting, the street on a slope) no ramps are needed. Trams never cross a railway at
- * street level (BOStrab § 15), and new crossings of streets and railways are built over or under
- * the track (EKrG § 2): a level crossing on a street with tram tracks is an error.
+ * A bridge needs height: the street lies the clearance and the deck above the rails (an underpass:
+ * the clearance and the railway bridge's deck below them), a level crossing at the height of the
+ * rails. The type says so to the street (`streetLevels()`), and the street's heights follow from it
+ * and from the levels of the table modules (core/elevation.js): between two modules high enough the
+ * street runs straight over the tracks; otherwise it ramps up (or down) at the gradient a street
+ * allows, and the ramps take up length on both sides. The type says what that takes
+ * (`constraints()`: the clearance, the ramps) and when the ramps do not fit before the next junction
+ * or the end of the street. Trams never cross a railway at street level (BOStrab § 15), and new
+ * crossings of streets and railways are built over or under the track (EKrG § 2): a level crossing
+ * on a street with tram tracks is an error.
  * @module arail/objects/crossings
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint } from "../core/anchors.js";
 import { dist2, dot2, polylineAt, polylineLengths, polylineProject } from "../core/math.js";
-import { CD, OVERLAY, PALETTE, grey, rgba } from "../core/colors.js";
+import { CD, OVERLAY, grey, rgba } from "../core/colors.js";
 import { rectFootprint } from "../core/view.js";
 import { segmentIntersection } from "../core/network.js";
+import { CROSSING_NORMS } from "../core/elevation.js";
 import { drawSign, drawTrafficLight } from "./signs.js";
-import { GAUGE_M, stripColour } from "./road.js";
 
-/**
- * Heights and gradients (m, shares). Clearances: a street under a railway 4.50 m, new bridges 4.70 m
- * (RE-ING); an electrified railway under a road bridge 5.70 m above the rails; a railway without
- * overhead line about 4.90 m (the EBO's clearance gauge and some room). Decks: about 1.0 m for a
- * road bridge, 1.5 m for a railway bridge (usual, not from a rule). Gradients: built-up streets 8 %
- * (12 % in exceptions, RASt 06), streets with trams about 6 % (usual), main-line railways 12.5 ‰
- * (EBO § 7).
- */
-export const CROSSING_NORMS = {
-  roadClearance: 4.7,
-  railClearance: 5.7,
-  railClearanceUnelectrified: 4.9,
-  roadDeck: 1.0,
-  railDeck: 1.5,
-  streetGradient: 0.08,
-  tramGradient: 0.06,
-  railGradient: 0.0125,
-};
+export { CROSSING_NORMS };
 
-/** How a bridge gets its height: the street goes up or down, the track does, or both half each. */
-export const LIFTS = { street: "the street", track: "the track", both: "both, half each" };
+/** Slopes flatter than this are flat. */
+const FLAT = 1e-4;
 
 /**
  * A type of railway crossing. Subclasses say whether it is at street level, what it needs and how
@@ -73,55 +59,101 @@ export class CrossingType {
   }
 
   /**
-   * What it takes to build: {rise (m the street or track must climb or sink), street (m of ramp on each
-   * side of the street), track (m of ramp on each side of the track), room ({before, after}: m of street
-   * on each side up to the next junction or end), trackRoom, terrain (the terrain makes up the height:
-   * no ramps)}, or null at street level.
+   * What it asks of the street's height over its span (mm), the rails at `rails` (mm): {min?, max?}.
+   * @param {number} rails
+   */
+  need(rails) {
+    return {};
+  }
+
+  /** The stretch of the street it asks for (along the street, mm): {s0, s1}. */
+  span(g) {
+    return { s0: g.s + g.from, s1: g.s + g.to };
+  }
+
+  /**
+   * What it takes ({rails: height of the rails (mm), low, high: the street's lowest and highest
+   * point over the span (mm), clearance: the room left under the bridge or the underpass's deck (m),
+   * gradient, ramps: {before, after} (m of ramp beyond the span on each side), room: {before, after}
+   * (m of street on each side up to the next junction or end)}), or null while it is not on a crossing.
    */
   constraints() {
+    const c = this.crossing, g = c.geometry;
+    if (!g?.ok) return null;
+    const p = c.world.elevation.profile(g.road);
+    if (!p) return null;
+    const rails = c.railLevel(), { s0, s1 } = this.span(g);
+    let low = Infinity, high = -Infinity;
+    for (let k = 0; k < p.s.length; k++) {
+      if (p.s[k] < s0 - 1e-6 || p.s[k] > s1 + 1e-6) continue;
+      low = Math.min(low, p.z[k]);
+      high = Math.max(high, p.z[k]);
+    }
+    if (!(low <= high)) low = high = c.world.elevation.heightOn(g.road, g.s);
+    return {
+      rails, low, high, clearance: this._clearance(rails, low, high), gradient: p.gradient,
+      ramps: { before: c.meters(ramp(p, s0, -1)), after: c.meters(ramp(p, s1, 1)) },
+      room: c.room() ?? { before: Infinity, after: Infinity },
+    };
+  }
+
+  /** The room under the bridge (or the underpass's deck) in m, or null for a level crossing. */
+  _clearance(rails, low, high) {
     return null;
   }
 
   /** Problems: what does not work or makes no sense (texts). */
   problems() {
-    const c = this.constraints(), g = this.crossing.geometry, out = [];
-    if (!c || !g?.ok) return out;
+    const c = this.constraints(), out = [];
+    if (!c) return out;
     const short = (have, need) => Number.isFinite(have) && have + 1e-6 < need;
-    if (c.street > 0 && (short(c.room.before, c.street) || short(c.room.after, c.street))) {
-      out.push(`${this.crossing.name}: the street needs ${Math.round(c.street)} m of ramp on each side (${Math.round(c.gradient * 1000) / 10} %), but there are only ${Math.round(Math.min(c.room.before, c.room.after))} m to the next junction or end. Lower the track, or choose another kind`);
-    }
-    if (c.track > 0 && (short(c.trackRoom.before, c.track) || short(c.trackRoom.after, c.track))) {
-      out.push(`${this.crossing.name}: the track needs ${Math.round(c.track)} m of ramp on each side (12.5 ‰), but it is only ${Math.round(Math.min(c.trackRoom.before, c.trackRoom.after))} m long on one side`);
+    if (short(c.room.before, c.ramps.before) || short(c.room.after, c.ramps.after)) {
+      const need = Math.max(c.ramps.before, c.ramps.after), room = Math.min(c.room.before, c.room.after);
+      out.push(`${this.crossing.name}: the street needs ${Math.round(need)} m of ramp (${Math.round(c.gradient * 1000) / 10} %), but there are only ${Math.round(room)} m to the next junction or end. Change the levels of the table modules, or choose another kind`);
     }
     return out;
   }
 
-  /** Rows of the info card. */
+  /** Rows of the info card: the clearance and the ramps. */
   rows() {
     const c = this.constraints();
     if (!c) return [];
-    const rows = [["Height to make up", `${c.rise.toFixed(1)} m`]];
-    if (c.terrain) rows.push(["Ramps", "none: the terrain makes up the height"]);
-    if (c.street > 0) rows.push(["Ramps of the street", `${Math.round(c.street)} m on each side (${Math.round(c.gradient * 1000) / 10} %)`]);
-    if (c.track > 0) rows.push(["Ramps of the track", `${Math.round(c.track)} m on each side (12.5 ‰)`]);
+    const rows = [];
+    if (c.clearance != null) rows.push(["Clearance", `${c.clearance.toFixed(1)} m (at least ${this._needed().toFixed(1)} m)`]);
+    if (c.ramps.before > 0.5 || c.ramps.after > 0.5) rows.push(["Ramps of the street", `${Math.round(c.ramps.before)} m and ${Math.round(c.ramps.after)} m (${Math.round(c.gradient * 1000) / 10} %)`]);
+    else if (c.clearance != null) rows.push(["Ramps", "none: the table modules make up the height"]);
     return rows;
   }
 
-  /** Ramps for a height `rise`: by the lift, the street's and the track's gradient. */
-  _ramps(rise) {
-    const g = this.crossing.geometry, lift = LIFTS[this.crossing.spec.lift] ? this.crossing.spec.lift : "street";
-    const gradient = g?.tram ? CROSSING_NORMS.tramGradient : CROSSING_NORMS.streetGradient;
-    const terrain = !!this.crossing.spec.terrain;
-    const streetRise = terrain ? 0 : lift === "street" ? rise : lift === "both" ? rise / 2 : 0;
-    const trackRise = terrain ? 0 : rise - streetRise;
-    return {
-      rise, gradient, street: streetRise / gradient, track: trackRise / CROSSING_NORMS.railGradient, terrain,
-      room: this.crossing.room() ?? { before: Infinity, after: Infinity }, trackRoom: g?.trackRoom ?? { before: Infinity, after: Infinity },
-    };
+  /** The clearance it needs (m). */
+  _needed() {
+    return 0;
   }
 
-  /** Draw it at the crossing (g: the crossing's geometry). */
+  /**
+   * Draw it at the crossing (g: the crossing's geometry). A bridge and an underpass are drawn by their
+   * street (objects/road.js), from its heights: the deck over the tracks, the railway's bridge.
+   */
   draw(view, g) {}
+}
+
+/**
+ * The length (mm) of ramp a street has beyond s (dir 1: on, −1: back) until it stands on the ground
+ * again and runs on flat (flat stretches off the ground do not count). Where it ends before, the ramp
+ * it would need to come down (or up) to the ground at its gradient.
+ */
+function ramp(p, s, dir) {
+  const S = p.s, Z = p.z, G = p.ground, N = S.length;
+  let k = dir > 0 ? S.findIndex((v) => v >= s - 1e-6) : S.findLastIndex((v) => v <= s + 1e-6);
+  if (k < 0) return 0;
+  const k0 = k;
+  let length = 0;
+  for (; k + dir >= 0 && k + dir < N; k += dir) {
+    const ds = Math.abs(S[k + dir] - S[k]), sloped = Math.abs(Z[k + dir] - Z[k]) > FLAT * ds;
+    if (!sloped && Math.abs(Z[k] - G[k]) < 1e-6) return length;
+    if (sloped) length += ds;
+  }
+  return Math.abs(Z[k] - G[k]) < 1e-6 ? length : Math.max(length, Math.abs(Z[k0] - G[k]) / p.gradient);
 }
 
 /** The street on a bridge over the track (Straßenüberführung). */
@@ -129,28 +161,16 @@ export class OverTrack extends CrossingType {
   static key = "over";
   static label = "Bridge: the street over the track";
 
-  constraints() {
-    const g = this.crossing.geometry;
-    const clearance = g?.electrified === false ? CROSSING_NORMS.railClearanceUnelectrified : CROSSING_NORMS.railClearance;
-    return this._ramps(clearance + CROSSING_NORMS.roadDeck);
+  need(rails) {
+    return { min: rails + this.crossing.mm(this._needed() + CROSSING_NORMS.roadDeck) };
   }
 
-  draw(view, g) {
-    // the deck over the tracks (drawn after them): the street's sidewalks and carriageway, the rails
-    // of its tram tracks; parapets along both edges
-    const span = g.span, k = view.m(1.1), order = 6.5;
-    const band = (t0, t1) => [g.at(-span, t0), g.at(span, t0), g.at(span, t1), g.at(-span, t1)];
-    view.polygon(band(-g.half, g.half), { fill: stripColour({ type: "sidewalk" }), order });
-    view.polygon(band(-g.width / 2, g.width / 2), { fill: stripColour({ type: "car-lane" }), order: order + 0.01 });
-    const xs = this.crossing.world.getObject(g.road)?.geometry?.xs;
-    if (xs && xs.tram !== "none") {
-      const m = (x) => view.m(x), tracks = xs.tramTracks === "double" ? [-xs.tramOffset, xs.tramOffset] : [0];
-      for (const t of tracks) for (const r of [-GAUGE_M / 2, GAUGE_M / 2]) view.line([g.at(-span, m(t + r)), g.at(span, m(t + r))], { stroke: PALETTE.rail, width: 1, order: order + 0.02 });
-    }
-    for (const side of [-1, 1]) {
-      const a = g.at(-span, side * g.half), b = g.at(span, side * g.half);
-      view.faces(wallFaces(a, b, 0, k, grey(0.82)), [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, k / 2]);
-    }
+  _needed() {
+    return this.crossing.geometry?.electrified === false ? CROSSING_NORMS.railClearanceUnelectrified : CROSSING_NORMS.railClearance;
+  }
+
+  _clearance(rails, low) {
+    return this.crossing.meters(low - rails) - CROSSING_NORMS.roadDeck;
   }
 }
 
@@ -159,23 +179,16 @@ export class UnderTrack extends CrossingType {
   static key = "under";
   static label = "Underpass: the street under the track";
 
-  constraints() {
-    return this._ramps(CROSSING_NORMS.roadClearance + CROSSING_NORMS.railDeck);
+  need(rails) {
+    return { max: rails - this.crossing.mm(CROSSING_NORMS.roadClearance + CROSSING_NORMS.railDeck) };
   }
 
-  draw(view, g) {
-    // the railway bridge across the street: its deck along the track, abutments beside the street
-    const w = view.m(3.2), h0 = view.m(CROSSING_NORMS.roadClearance), h1 = h0 + view.m(CROSSING_NORMS.railDeck);
-    const a = g.trackAt(-(g.half + view.m(1))), b = g.trackAt(g.half + view.m(1));
-    const n = [-g.trackDir[1] * w / 2, g.trackDir[0] * w / 2];
-    const fp = [[a[0] - n[0], a[1] - n[1]], [b[0] - n[0], b[1] - n[1]], [b[0] + n[0], b[1] + n[1]], [a[0] + n[0], a[1] + n[1]]];
-    view.prism(fp, h0, h1, { side: grey(0.7), top: grey(0.62) });
-    for (const t of [-1, 1]) {
-      const c = g.trackAt(t * (g.half + view.m(0.6)));
-      view.prism(rectFootprint(c, view.m(1.2), w, Math.atan2(g.trackDir[1], g.trackDir[0])), 0, h0, { side: grey(0.78), top: grey(0.7) });
-    }
-    // the street's surface in the shade of the bridge
-    view.polygon([g.at(-w / 2, -g.width / 2), g.at(w / 2, -g.width / 2), g.at(w / 2, g.width / 2), g.at(-w / 2, g.width / 2)], { fill: grey(0.2), alpha: 0.35, order: 1.3 });
+  _needed() {
+    return CROSSING_NORMS.roadClearance;
+  }
+
+  _clearance(rails, low, high) {
+    return this.crossing.meters(rails - high) - CROSSING_NORMS.railDeck;
   }
 }
 
@@ -223,16 +236,21 @@ export class AtGrade extends CrossingType {
     return v;
   }
 
+  /** The street at the height of the rails. */
+  need(rails) {
+    return { min: rails, max: rails };
+  }
+
   problems() {
     const g = this.crossing.geometry, out = [];
     if (g?.ok && g.tram) out.push(`${this.crossing.name}: trams cannot cross the railway at street level (BOStrab § 15). Make it a bridge or an underpass`);
-    return out;
+    return out.concat(super.problems());
   }
 
   rows() {
     const rows = [["Protection", this.constructor.label]];
     rows.push(["Now", this.closed() ? "closed: a train is coming" : "open"]);
-    return rows;
+    return rows.concat(super.rows());
   }
 
   draw(view, g) {
@@ -290,9 +308,9 @@ export class FullBarriers extends AtGrade {
 /** The types of railway crossings by key. */
 export const CROSSING_TYPES = { over: OverTrack, under: UnderTrack, crossbuck: CrossbuckOnly, lights: FlashingLights, "half-barriers": HalfBarriers, "full-barriers": FullBarriers };
 
-/** A wall face from a to b (layout mm) between heights z0 and z1. */
-function wallFaces(a, b, z0, z1, colour) {
-  return [{ pts: [[a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1]], color: colour, twoSided: true }];
+/** A wall face from a to b (layout mm) between heights z0 and z1 at a (zb0 and zb1 at b: the same by default). */
+function wallFaces(a, b, z0, z1, colour, zb0 = z0, zb1 = z1) {
+  return [{ pts: [[a[0], a[1], z0], [b[0], b[1], zb0], [b[0], b[1], zb1], [a[0], a[1], z1]], color: colour, twoSided: true }];
 }
 
 export class RailCrossing extends LayoutObject {
@@ -300,14 +318,14 @@ export class RailCrossing extends LayoutObject {
   static label = "Railway crossing";
   static category = "Transport";
   static placement = "point";
-  static description = "Where a street crosses a railway track: over it on a bridge, under it through an underpass, or at street level with a St Andrew's cross, light signals, half or full barriers. A bridge needs ramps; trams never cross a railway at street level. Put it where the street crosses the track.";
+  static description = "Where a street crosses a railway track: over it on a bridge, under it through an underpass, or at street level with a St Andrew's cross, light signals, half or full barriers. A bridge needs height: table modules raised beside the tracks, or ramps. Trams never cross a railway at street level. Put it where the street crosses the track.";
+  /** On the street, which may span a gap between table modules. */
+  static anywhere = true;
   static params = [
     { key: "name", label: "Name", type: "text", default: "" },
     { key: "kind", label: "Kind", type: "select", options: Object.entries(CROSSING_TYPES).map(([k, C]) => [k, C.label]), default: "over" },
     { key: "road", label: "Street", type: "object", objectType: "road", help: "Empty = the street nearest to it." },
     { key: "track", label: "Track", type: "object", objectType: "track", help: "Empty = the track nearest to it." },
-    { key: "terrain", label: "The terrain makes up the height", type: "boolean", default: false, when: (v) => v.kind === "over" || v.kind === "under", help: "The track lies in a cutting or on an embankment, or the street on a slope: no ramps needed." },
-    { key: "lift", label: "Height made up by", type: "select", options: Object.entries(LIFTS), default: "street", when: (v) => (v.kind === "over" || v.kind === "under") && !v.terrain, help: "A bridge needs the street higher (or lower), the track lower (or higher), or both." },
     { key: "trains_per_hour", label: "Trains an hour", type: "number", min: 0, max: 30, step: 1, default: 4, when: (v) => ["lights", "half-barriers", "full-barriers"].includes(v.kind), help: "When no train of the control system or the timetable passes: how often it closes." },
     { key: "closed_min", label: "Closed for", type: "number", unit: "min", min: 0.2, max: 10, step: 0.1, default: 1.5, when: (v) => ["lights", "half-barriers", "full-barriers"].includes(v.kind) },
   ];
@@ -360,8 +378,9 @@ export class RailCrossing extends LayoutObject {
     const rs = polylineProject(info.points, x.p, rl).s, ts = polylineProject(tp, x.p, tl).s;
     const dir = polylineAt(info.points, rs, rl).dir, trackDir = polylineAt(tp, ts, tl).dir;
     const n = [-dir[1], dir[0]];
-    // the span: the tracks side by side here (other tracks within 15 m of the crossing)
-    let span = this.mm(4);
+    // the span: the tracks side by side here (all tracks the street crosses within 15 m of the
+    // crossing, `tracks`: [{track, pos, d}] with d along the street), and 4 m beyond the outer ones
+    const crossed = [{ track: track.id, pos: x.p, d: 0 }];
     for (const o of this.world.objects) {
       if (typeof o.walkBarrier !== "function" || !o.geometry || o === track) continue;
       const pts = o.walkBarrier();
@@ -369,23 +388,45 @@ export class RailCrossing extends LayoutObject {
       for (let i = 1; i < info.points.length; i++) {
         for (let k = 1; k < pts.length; k++) {
           const y = segmentIntersection(info.points[i - 1], info.points[i], pts[k - 1], pts[k]);
-          if (y && dist2(y.p, x.p) < this.mm(15)) span = Math.max(span, dist2(y.p, x.p) + this.mm(4));
+          if (!y || dist2(y.p, x.p) >= this.mm(15)) continue;
+          crossed.push({ track: o.id, pos: y.p, d: polylineProject(info.points, y.p, rl).s - rs });
         }
       }
     }
-    // room for ramps: the street to its ends (to the next junctions: see room()), the track to its ends
+    const from = Math.min(...crossed.map((c) => c.d)) - this.mm(4), to = Math.max(...crossed.map((c) => c.d)) + this.mm(4);
+    // room for ramps: the street to its ends (to the next junctions: see room())
     const room = { before: this.meters(rs), after: this.meters(rl[rl.length - 1] - rs) };
-    const trackRoom = { before: this.meters(ts), after: this.meters(tl[tl.length - 1] - ts) };
     const width = info.width, half = info.half ?? width / 2 + info.sidewalk;
     const at = (a, t) => [x.p[0] + dir[0] * a + n[0] * t, x.p[1] + dir[1] * a + n[1] * t];
     const trackAt = (a) => [x.p[0] + trackDir[0] * a, x.p[1] + trackDir[1] * a];
     const power = track.spec?.power;
     return {
-      ok: true, center: x.p, pos: x.p, road: road.id, track: track.id, s: rs, trackS: ts, dir, trackDir, width, half, span: span / 2 + this.mm(2),
-      angle: Math.acos(Math.min(1, Math.abs(dot2(dir, trackDir)))), room, trackRoom, at, trackAt,
+      ok: true, center: x.p, pos: x.p, road: road.id, track: track.id, tracks: crossed, s: rs, trackS: ts, dir, trackDir, width, half, from, to,
+      angle: Math.acos(Math.min(1, Math.abs(dot2(dir, trackDir)))), room, at, trackAt,
       tram: !!info.tram && info.tram !== "none", electrified: power ? power !== "none" : null,
-      footprint: [at(-span / 2 - r, -half), at(span / 2 + r, -half), at(span / 2 + r, half), at(-span / 2 - r, half)],
+      footprint: [at(from - r, -half), at(to + r, -half), at(to + r, half), at(from - r, half)],
     };
+  }
+
+  /** Height of the rails here (mm): the level of the table module under the highest of the tracks it crosses. */
+  railLevel() {
+    const g = this.geometry;
+    if (!g?.ok) return 0;
+    const el = this.world.elevation.sync();
+    return Math.max(...g.tracks.map((t) => el.ground(t.pos[0], t.pos[1])));
+  }
+
+  /**
+   * What it asks of its street's height (core/elevation.js): [{road, s0, s1, min?, max?}], along the
+   * street and in mm: a bridge at least the clearance and its deck above the rails, an underpass at
+   * most the clearance and the railway bridge's deck below them, a level crossing at their height.
+   * @param {import("../core/elevation.js").Elevation} el the heights being worked out (the ground is known)
+   */
+  streetLevels(el) {
+    const g = this.geometry;
+    if (!g?.ok) return [];
+    const T = this.crossingType, rails = Math.max(...g.tracks.map((t) => el.ground(t.pos[0], t.pos[1])));
+    return [{ road: g.road, ...T.span(g), ...T.need(rails) }];
   }
 
   footprint() {
@@ -461,12 +502,12 @@ export class RailCrossing extends LayoutObject {
 
   drawSelection(view) {
     super.drawSelection(view);
-    // the ramps the street needs, dashed along it
+    // the ramps of the street, dashed along it
     const c = this.constraints(), g = this.geometry;
-    if (!c || !g?.ok || !(c.street > 0)) return;
-    const len = this.mm(c.street);
-    for (const k of [-1, 1]) {
-      const a = g.at(k * g.span, 0), b = g.at(k * (g.span + len), 0);
+    if (!c || !g?.ok) return;
+    for (const [k, len] of [[-1, this.mm(c.ramps.before)], [1, this.mm(c.ramps.after)]]) {
+      if (!(len > 0)) continue;
+      const end = k < 0 ? g.from : g.to, a = g.at(end, 0), b = g.at(end + k * len, 0);
       view.line([a, b], { stroke: OVERLAY.selection, width: 2, dash: [3, 4], order: 100, layer: "overlay" });
     }
   }

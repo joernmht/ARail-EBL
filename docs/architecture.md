@@ -17,7 +17,7 @@ The app has two modes. Over the **camera image** the markers in each frame give 
 <sub>Diagram source: [architecture-01.mmd](diagrams/architecture-01.mmd)</sub>
 <!-- /cro-diagram -->
 
-The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout plane), so placing, selecting and dragging are the same on the camera image and in the flyover. Tooltips and info cards (`app/inspect.js`) use the view of the last frame drawn: `World.pick` projects the box of every person and vehicle and finds what is at the pixel, else a layout object (`core/pick.js`).
+The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout, on a raised table module or a bridge where one is: `surfacePoint`), so placing, selecting and dragging are the same on the camera image and in the flyover. Tooltips and info cards (`app/inspect.js`) use the view of the last frame drawn: `World.pick` projects the box of every person and vehicle and finds what is at the pixel, else a layout object (`core/pick.js`).
 
 With rolling-stock markers (`markers.rolling`, model wagons of the [container terminal](container-terminal.md)) the camera mode reads a second marker family in the same pass:
 
@@ -49,11 +49,12 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/layout.js`, `core/anchors.js` | layout files (defaults, validation, `grid`, `view.ortho`, `markers.rolling`, the settings check of simulations), marker-relative points |
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `objects/building-kit.js`, `objects/houses.js`, `objects/building.js` | `BuildingBase` and `BuildingModel` (white-model look, lit windows, level of detail) and the house types |
-| `objects/tabletop.js` | table modules, the default table of the flyover |
+| `objects/tabletop.js` | table modules at their levels, the default table of the flyover |
+| `core/elevation.js` | heights: the levels of the table modules, each street's profile (ramps at most 8 %, 6 % with trams; straight from edge to edge between raised modules; the heights railway crossings ask for), how streets cross tracks by their heights, the street level and the ground the view lifts what is drawn by |
 | `core/stops.js` | stop areas and docks, the common interface of stops |
 | `core/services.js`, `core/vehicles.js` | timetable, vehicle life cycle, drawing trains and buses; a track taken over at once for a story's train (`free`) |
 | `core/network.js`, `objects/road.js`, `objects/street-profile.js` | streets and the road network: cross-sections by the German guidelines (car lanes, sidewalks, bike lanes and paths, tram tracks, parking), junctions, places, routing for people, cars, buses, trams and bikes, walks on the sidewalks around tracks, lanes, the traffic rules of signs and lights |
-| `objects/traffic-signs.js`, `objects/signs.js`, `objects/crossings.js` | traffic signs, traffic lights and zebra crossings; railway crossings, a class for each kind (bridge, underpass, level crossings by their protection) with their heights and ramps; how signs and lights look |
+| `objects/traffic-signs.js`, `objects/signs.js`, `objects/crossings.js` | traffic signs, traffic lights and zebra crossings; railway crossings, a class for each kind (bridge, underpass, level crossings by their protection) with the heights they ask of their street, the clearance and the ramps; how signs and lights look |
 | `objects/parking.js`, `core/parking.js` | parking lots, garages and bike stands, tariffs and who may park; `world.parking`: the facilities and who is parked where |
 | `core/access.js` | street access: what people and vehicles come to has a street to it (stops, bus terminals, truck lanes, entrances, parking), tram stops at their tracks, streets that cross a track, trams that would cross a railway at street level, streets on their own, ends just before another street, dead ends inside the layout; a fix for each where one is plain |
 | `core/transit.js`, `objects/bus-stop.js`, `objects/bus-line.js`, `objects/tram.js` | bus and tram lines: routes through the stops, dispatching, driving and stopping buses and trams, single tracks and stub tracks, tram stops and their step-free access |
@@ -63,7 +64,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `rail/compat.js` | may this train run here: a train's vehicles (their capability profiles) against the systems of a section (power and pantograph, train protection and ETCS, radio, gauge, line category, authorisation), on the card of a train and as the colour of the tracks |
 | `rail/systems.js`, `rail/objects.js` | railway systems of the track sections (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country and infrastructure manager; what is usual in a country), where neighbouring sections differ, the bands of View → Colour the tracks by; the system change board |
 | `core/trains.js`, `feeds/*` | control-system feed: protocol parsing, arrival detection, WebSocket client, in-browser simulator |
-| `core/view.js` | projection, display list, primitives (polygons, prisms, faces, labels, lights), day/night lighting |
+| `core/view.js` | projection (lifted to the heights of modules and bridges by `lift`), display list, primitives (polygons, prisms, faces, labels, lights), day/night lighting |
 | `core/simple.js` | the simple view (Map, 2.5D): `SimpleView` draws objects as flat footprints and moving things as plain blocks |
 | `core/colors.js` | the corporate-design colours (`CD`, `CD_LIGHT`, `OVERLAY`, `FONT`), the palette of the built-in objects, colour helpers |
 | `core/registry.js`, `core/events.js`, `core/simulation.js` | extension points, event bus, base class of simulations |
@@ -229,7 +230,8 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/transit.test.js` | bus stops and lines: stop geometry, routing, a bus serving every stop, boarding, managed docks, status texts, town people riding |
 | `tests/js/lines.test.js` | bus lines over a day: lay-overs, bus counts, cars after edits, riders whose stop disappears, ring lines, boards and badges, commuters by bus, door side |
 | `tests/js/streets.test.js` | cross-sections of streets: the strips and standard widths of each profile, tram tracks and parking strips, widths below the guidelines and what follows (bikes holding up cars, anger on shared paths), the settings the editors show; streets in the road network, street parking, traffic lights, signs and zebra crossings, who goes first at a junction, keeping it clear, squeezing past |
-| `tests/js/crossings.test.js` | railway crossings: a class for each kind, the height and ramps of bridges and underpasses, the terrain, ramps that do not fit, level crossings closing, trams never at street level and the access check's fixes |
+| `tests/js/crossings.test.js` | railway crossings: a class for each kind, the clearance and ramps of bridges and underpasses (none between raised table modules), ramps that do not fit, level crossings closing, trams never at street level and the access check's fixes |
+| `tests/js/elevation.test.js` | heights: table modules at their levels, streets ramping from one level to another and spanning lower parts between raised modules, crossing tracks by their heights, problems of a street's heights, the view lifting what is drawn (the railway on the ground), pointing at raised things, building only on table modules |
 | `tests/js/trams.test.js` | tram stops of four kinds and their step-free access, one tram at a time on a single track, changing ends at stub tracks, no tram across a railway at street level, Bf Neustadt's two tram lines serving every stop |
 | `tests/js/parking.test.js` | tariffs, who may park, lots and garages with their spaces, taking and releasing them, drivers planning where to park, road traffic parking at buildings |
 | `tests/js/cycling.test.js` | where riders ride (bike lanes, the road, sidewalks by signs, children, rule-breakers), the riders cars follow, bikes locked at lamps and stands, the same seed giving the same riders |

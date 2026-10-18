@@ -12,6 +12,10 @@
  * and every ground and solid item; colours marked `emissive` (lit windows, lamps, headlights)
  * keep their brightness. Objects that draw with their own canvas code use `view.dim(colour)`.
  * Overlays (labels, the editor's selection) are never darkened.
+ *
+ * Heights: z is above the track level (the top of the real table). What stands on a raised table
+ * module or on a bridge is lifted to it by `lift`, a height added to every point projected
+ * (core/elevation.js); objects draw as if they stood at z = 0.
  * @module arail/core/view
  */
 import { poseFromHomography } from "./geometry.js";
@@ -80,6 +84,11 @@ export class View {
     this.groundPhoto = null;
     /** Rectangles of labels drawn so far (labels avoid overlapping each other). */
     this.placed = [];
+    /**
+     * Height (mm) added to every point drawn, `(x, y) => z`, or null: things on a raised table module
+     * or on a bridge are drawn up there (core/elevation.js). `World#draw` sets it for each object.
+     */
+    this.lift = null;
     this.pose = pose || poseFromHomography(H, camera.intrinsics);
     const { a1, a2, n } = this.pose;
     const l1 = Math.hypot(...a1), l2 = Math.hypot(...a2);
@@ -97,8 +106,9 @@ export class View {
     return (meters * 1000) / this.scale;
   }
 
-  /** Camera coordinates (mm) of a layout point. */
+  /** Camera coordinates (mm) of a layout point (lifted by `lift`). */
   cam(x, y, z = 0) {
+    if (this.lift) z += this.lift(x, y);
     const { a1, a2, a3, n } = this.pose;
     return [
       x * a1[0] + y * a2[0] + a3[0] + z * n[0],
@@ -107,10 +117,22 @@ export class View {
     ];
   }
 
-  /** Distance of a layout point from the camera along the viewing direction (mm). */
+  /** Distance of a layout point from the camera along the viewing direction (mm; lifted by `lift`). */
   depth(x, y, z = 0) {
+    if (this.lift) z += this.lift(x, y);
     const { a1, a2, a3, n } = this.pose;
     return x * a1[2] + y * a2[2] + a3[2] + z * n[2];
+  }
+
+  /** Draw with another lift (null: heights as given), then go back to the one before; returns what `draw` returns. */
+  withLift(lift, draw) {
+    const before = this.lift;
+    this.lift = lift;
+    try {
+      return draw();
+    } finally {
+      this.lift = before;
+    }
   }
 
   /** Image position (px) of a layout point, or null if it is behind the camera. */

@@ -87,21 +87,21 @@ test("a street joins the one it starts on, a bus stop goes onto it, a fix connec
   const errors = await openBuilder(page);
   await expect(page.locator("#layoutName")).toHaveText("EBL lab, Beta 0.1 (example)");
   await expect(page.locator("#saveState")).toHaveText("No changes");
-  // Street (S): from the end of Bahnhofstraße to the east, then south; Enter finishes
+  // Street (S): from the west end of Lindenallee to the south, then east (on the town modules); Enter finishes
   await page.locator("#plan").focus();
   await page.keyboard.press("s");
   await expect(page.getByRole("button", { name: "Street", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await clickAt(page, [1455, -405]); // near the end: snaps onto it
-  await clickAt(page, [1700, -412]); // level with the point before
-  await clickAt(page, [1700, -900]);
+  await clickAt(page, [-145, -1065]); // near the end: snaps onto it
+  await clickAt(page, [-148, -1600]); // right below the point before
+  await clickAt(page, [300, -1600]);
   await page.keyboard.press("Enter");
   const street = (await objects(page, "road")).at(-1);
-  expect(street.points).toEqual([[1450, -410], [1700, -410], [1700, -900]]);
-  expect(await problems(page)).not.toContain("near:road-bahnhofstrasse:1"); // the end it started on is joined now
+  expect(street.points).toEqual([[-150, -1070], [-150, -1600], [300, -1600]]);
+  expect(await problems(page)).not.toContain("dead:road-lindenallee:0"); // the end it started on is joined now
   // a bus stop east of it: on its left side (it runs south)
   await page.keyboard.press("Escape");
   await page.keyboard.press("b");
-  await clickAt(page, [1740, -650]);
+  await clickAt(page, [-110, -1300]);
   const [stop] = await objects(page, "bus-stop").then((s) => s.filter((x) => x.id === "bus-stop-1"));
   expect(stop.side).toBe("left");
   await expect(page.locator("#panel-element h2").first()).toContainText("Bus stop");
@@ -120,6 +120,18 @@ test("a street joins the one it starts on, a bus stop goes onto it, a fix connec
   expect(await problems(page)).toContain("island:road-hinter-dem-bahnhof");
   await page.locator("#btnRedo").click();
   expect((await objects(page, "road")).length).toBe(roads + 1);
+  expect(errors).toEqual([]);
+});
+
+test("houses are built on table modules: a click beside them places nothing", async ({ page }) => {
+  const errors = await openBuilder(page);
+  const houses = (await objects(page, "house")).length;
+  await page.getByRole("button", { name: "Single-family house", exact: true }).click();
+  await clickAt(page, [2300, -1200]); // beside the town modules: refused
+  await expect(page.locator("#toast")).toContainText("Build on a table module");
+  expect((await objects(page, "house")).length).toBe(houses);
+  await clickAt(page, [300, -1250]); // on a town module
+  expect((await objects(page, "house")).length).toBe(houses + 1);
   expect(errors).toEqual([]);
 });
 
@@ -307,8 +319,8 @@ test("the street tools: the cross-section and widths of the new street, its figu
   await settings.getByRole("group", { name: "Width: standard values" }).getByRole("button", { name: "6.5", exact: true }).click();
   await expect(figure.locator("figcaption b")).toHaveText("13.9 m in all");
   // draw it: the new street has the settings chosen
-  await clickAt(page, [1700, -1500]);
-  await clickAt(page, [2300, -1500]);
+  await clickAt(page, [-100, -1500]);
+  await clickAt(page, [500, -1500]);
   await page.keyboard.press("Enter");
   const street = (await objects(page, "road")).at(-1);
   expect([street.profile, street.bike_m, street.width_m]).toEqual(["bike-lanes", 1.2, 6.5]);

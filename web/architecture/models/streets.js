@@ -66,7 +66,7 @@ export const STREETS = [
   {
     id: "traffic-rules", group: "transport", title: "Traffic signs, lights, zebra and railway crossings",
     summary: "Signs, traffic lights, zebra crossings and railway crossings are objects; the road network puts their rules on its junctions and edges, and cars, bikes, buses and trams obey them.",
-    description: "A sign belongs to the traffic on its side of its street and applies at the next junction (Stop, give way, priority road, mandatory directions, lane arrows) or along a zone (no stopping). Traffic lights at a junction give the approaches along the main street and those across it green in turn. Zebra crossings make vehicles stop while people cross and keep parking away. A railway crossing is one object whose type is a class of its own (CrossingType and its subclasses), chosen with its kind and changed at any time: a bridge over the track, an underpass under it, or a level crossing by its protection; a bridge needs height and ramps, trams never cross a railway at street level.",
+    description: "A sign belongs to the traffic on its side of its street and applies at the next junction (Stop, give way, priority road, mandatory directions, lane arrows) or along a zone (no stopping). Traffic lights at a junction give the approaches along the main street and those across it green in turn. Zebra crossings make vehicles stop while people cross and keep parking away. A railway crossing is one object whose type is a class of its own (CrossingType and its subclasses), chosen with its kind and changed at any time: a bridge over the track, an underpass under it, or a level crossing by its protection. It tells its street the heights it needs (streetLevels: a bridge the clearance and its deck above the rails); the street's heights follow from them and from the levels of the table modules (core/elevation.js), with ramps where the modules do not make up the height. The street draws the bridge. Trams never cross a railway at street level.",
     files: ["web/arail/objects/traffic-signs.js", "web/arail/objects/signs.js", "web/arail/objects/crossings.js", "web/arail/core/network.js", "web/arail/core/transit.js"],
     classes: [
       { name: "TrafficSign", file: "web/arail/objects/traffic-signs.js", kind: "class", extends: "LayoutObject", role: "A road sign beside a street, for the traffic on its side.", operations: ["trafficRule() — for the road network: the sign, its street, its side, the turns it allows", "noParking(road, side) — the zone of no stopping", "problems()", "card()", "draw(view)"] },
@@ -74,16 +74,16 @@ export const STREETS = [
       { name: "ZebraCrossing", file: "web/arail/objects/traffic-signs.js", kind: "class", extends: "LayoutObject", role: "A zebra crossing (Zeichen 293, 350).", operations: ["crossingInfo() — for the road network", "busy() — somebody on it or about to step on", "noParking(road) — on it and 5 m before it", "problems()", "card()", "draw(view)"] },
       { name: "traffic-signs", file: "web/arail/objects/traffic-signs.js", kind: "module", role: "Kinds of signs and where they belong.", attributes: ["SIGN_TYPES — Stop, give way, priority road, one-way street, mandatory directions, lane arrows, no stopping, restricted stopping, bikes or e-scooters allowed on the sidewalk, bike path, shared path, parking", "TURNS — the turns a mandatory direction allows"], operations: ["parseArrows(text) — lane arrows", "streetNear(world, p, opts) — the street of a sign or crossing, and its side", "nearestNodeTo(nodes, p, maxMM)"] },
       { name: "signs", file: "web/arail/objects/signs.js", kind: "module", role: "How signs and lights look.", attributes: ["ROAD_SIGNS — the signs as drawn (shape, colours, symbol)", "SIGN_COLOURS", "STOP_SIGN — the bus and tram stop's sign"], operations: ["drawSign(view, p, key, opts)", "drawTrafficLight(view, p, state, opts)", "drawStopSign(view, p, opts)"] },
-      { name: "RailCrossing", file: "web/arail/objects/crossings.js", kind: "class", extends: "LayoutObject", role: "Where a street crosses a railway track; its type by kind.", attributes: ["crossingType — getter: the CrossingType of its kind"], operations: ["railCrossingInfo() — for the road network: where, which street and track, at street level or not", "closed(t)", "room() — the street up to the next junction on each side (m)", "constraints()", "problems()", "card()", "draw(view)", "drawSelection(view) — the ramps along the street"] },
-      { name: "CrossingType", file: "web/arail/objects/crossings.js", kind: "class", stereotype: "base class", role: "A type of railway crossing.", attributes: ["crossing: RailCrossing", "level — getter: at street level"], operations: ["closed(t)", "constraints() — height, ramps of the street and of the track, the room for them", "problems() — ramps that do not fit", "rows()", "_ramps(rise)", "draw(view, g)"] },
-      { name: "OverTrack", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "The street on a bridge over the track (Straßenüberführung).", operations: ["constraints() — clearance over the rails and the deck", "draw(view, g) — the deck over the tracks, parapets"] },
-      { name: "UnderTrack", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "The street through an underpass (Eisenbahnüberführung).", operations: ["constraints()", "draw(view, g) — the railway bridge, its abutments"] },
-      { name: "AtGrade", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "A level crossing (Bahnübergang, EBO § 11).", operations: ["closed(t) — while a train passes (lights or barriers)", "problems() — trams: never (BOStrab § 15)", "rows()", "draw(view, g) — panels, St Andrew's crosses, lights, booms"] },
+      { name: "RailCrossing", file: "web/arail/objects/crossings.js", kind: "class", extends: "LayoutObject", role: "Where a street crosses a railway track; its type by kind; it spans the tracks side by side there.", attributes: ["crossingType — getter: the CrossingType of its kind", "anywhere — static: on its street, which may span a gap between table modules"], operations: ["railCrossingInfo() — for the road network: where, which street and track, at street level or not", "railLevel() — the height of the rails (the module under the tracks)", "streetLevels(el) — the heights its street must keep (core/elevation.js)", "closed(t)", "room() — the street up to the next junction on each side (m)", "constraints()", "problems()", "card()", "draw(view)", "drawSelection(view) — the ramps along the street"] },
+      { name: "CrossingType", file: "web/arail/objects/crossings.js", kind: "class", stereotype: "base class", role: "A type of railway crossing.", attributes: ["crossing: RailCrossing", "level — getter: at street level"], operations: ["closed(t)", "need(rails) — the street's height over the span: {min, max}", "span(g) — the stretch of the street it asks for", "constraints() — the rails, the street over the span, the clearance, the ramps beyond it and the room for them", "problems() — ramps that do not fit", "rows() — the clearance, the ramps", "draw(view, g)"] },
+      { name: "OverTrack", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "The street on a bridge over the track (Straßenüberführung); the street draws its deck.", operations: ["need(rails) — at least the clearance over the rails and the deck"] },
+      { name: "UnderTrack", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "The street through an underpass (Eisenbahnüberführung); the street draws the railway's bridge.", operations: ["need(rails) — at most the clearance and the railway deck below the rails"] },
+      { name: "AtGrade", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "A level crossing (Bahnübergang, EBO § 11).", operations: ["need(rails) — the street at the height of the rails", "closed(t) — while a train passes (lights or barriers)", "problems() — trams: never (BOStrab § 15)", "rows()", "draw(view, g) — panels, St Andrew's crosses, lights, booms"] },
       { name: "CrossbuckOnly", file: "web/arail/objects/crossings.js", kind: "class", extends: "AtGrade", role: "St Andrew's cross only.", operations: ["problems() — not on a main road"] },
       { name: "FlashingLights", file: "web/arail/objects/crossings.js", kind: "class", extends: "AtGrade", role: "Light signals." },
       { name: "HalfBarriers", file: "web/arail/objects/crossings.js", kind: "class", extends: "AtGrade", role: "Light signals and half barriers." },
       { name: "FullBarriers", file: "web/arail/objects/crossings.js", kind: "class", extends: "AtGrade", role: "Full barriers." },
-      { name: "crossings", file: "web/arail/objects/crossings.js", kind: "module", role: "Heights and gradients.", attributes: ["CROSSING_NORMS — clearances 4.70 m (street) and 5.70 m (electrified railway, 4.90 m without), decks 1.0 and 1.5 m, gradients 8 % (with trams 6 %) and 12.5 ‰", "LIFTS — the street, the track, or both", "CROSSING_TYPES — the types by kind"] },
+      { name: "crossings", file: "web/arail/objects/crossings.js", kind: "module", role: "The types by kind (the norms of heights are core/elevation.js's CROSSING_NORMS, exported here too).", attributes: ["CROSSING_TYPES — the types by kind"] },
     ],
     relations: [
       { from: "OverTrack", to: "CrossingType", kind: "inherits" },
@@ -98,6 +98,7 @@ export const STREETS = [
       { from: "RoadNetwork", to: "TrafficLight", kind: "uses", label: "trafficRule(), state()" },
       { from: "RoadNetwork", to: "ZebraCrossing", kind: "uses", label: "crossingInfo()" },
       { from: "RoadNetwork", to: "RailCrossing", kind: "uses", label: "railCrossingInfo()" },
+      { from: "Elevation", to: "RailCrossing", kind: "uses", label: "streetLevels()" },
       { from: "TrafficSign", to: "signs", kind: "depends", label: "drawSign" },
     ],
     activities: [{
@@ -124,9 +125,9 @@ export const STREETS = [
       nodes: [
         ["s", "start"],
         ["d1", "decision", "Kind?"],
-        ["a1", "action", "The height to make up and the ramps by the gradients, unless the terrain makes it up", "CrossingType._ramps"],
-        ["d2", "decision", "Do the ramps fit before the next junction and on the track?"],
-        ["a2", "action", "A problem: lower the track, or another kind", "CrossingType.problems"],
+        ["a1", "action", "The street's heights over the span and the ramps beyond it, from the levels of the table modules", "CrossingType.constraints"],
+        ["d2", "decision", "Do the ramps fit before the next junction or the end?"],
+        ["a2", "action", "A problem: change the levels of the table modules, or another kind", "CrossingType.problems"],
         ["a3", "action", "Closed while a train passes (lights, barriers); vehicles stop", "AtGrade.closed"],
         ["d3", "decision", "Tram tracks in the street?"],
         ["a4", "action", "An error: trams never cross at street level; the fix makes it a bridge", "AtGrade.problems"],
@@ -138,7 +139,7 @@ export const STREETS = [
     parameters: [
       { key: "sign, turn, arrows, zone_m", default: "stop", meaning: "The sign (TrafficSign), the turns of a mandatory direction, the lane arrows, the zone of no stopping." },
       { key: "cycle_s, split, main, offset_s", default: "60, 50, the first street, 0", meaning: "Traffic lights: the cycle, the main street's share of green, the main street, the offset for a green wave." },
-      { key: "kind, terrain, lift, trains_per_hour, closed_min", default: "over, false, street, 4, 1.5", meaning: "Railway crossing: its type, whether the terrain makes up the height, what is raised or lowered, how often a level crossing closes without trains of the timetable or control system." },
+      { key: "kind, road, track, trains_per_hour, closed_min", default: "over, nearest, nearest, 4, 1.5", meaning: "Railway crossing: its type, its street and track, how often a level crossing closes without trains of the timetable or control system. Its heights come from the levels of the table modules." },
     ],
     rules: [
       "Lights: the main street green for split × cycle, amber 3 s, all red 2 s, then the street across (red-amber 1 s, green, amber 3 s, all red 2 s).",
@@ -147,6 +148,7 @@ export const STREETS = [
       "Zebra crossings: vehicles stop while people are on it or about to step on; trams need not (StVO § 26); no parking on it or 5 m before it (StVO § 12).",
       "No stopping (283), restricted stopping (286): no parking in the zone; mandatory directions and lane arrows allow only their turns at the next junction.",
       "A level crossing closes while a train of the control system is within 250 mm or a timetable train comes in or leaves nearby, else trains_per_hour × closed_min; a crossbuck only is no crossing for a main road (EBO § 11).",
+      "A bridge: the street at least 5.70 m clear above the rails (4.90 m without overhead line) and a 1.0 m deck: 77 mm in H0; an underpass: 4.70 m and a 1.5 m railway deck below them; ramps at 8 % (6 % with trams). The span covers the tracks the street crosses within 15 m, and 4 m beyond them.",
     ],
   },
   {
