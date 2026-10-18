@@ -414,15 +414,17 @@ conflicts of the last hour and the bikes at its lamps.
 
 The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. Two tram lines
 start at *Lindenstraße* and run along Ringstraße and Bahnhofstraße: line 1 to *Neustadt Bf* and the
-*Busbahnhof*, line 2 on a track of its own into the *Markt* (an island stop). Both turn in loops at
-both ends, each on a town module of its own beyond a short single track: west of Lindenstraße, at
-the end of Bahnhofstraße past the Busbahnhof, and behind the Markt; their tracks bend in curves of
-25 m and more. Behind them **Brückenstraße** crosses the main line at a level crossing with half
-barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and everything lies at the track
-level. Both lines share the car lanes of Ringstraße with traffic lights at Brückenstraße and a zebra
-crossing at Am Park, and have their own lanes in the middle of Bahnhofstraße, where people cross the
-car lane to the trams at the lights of the stops. The stops are of all four kinds. Residents park on a lot with a yearly permit, travellers on the P+R by the day; a Stop sign
-and a no-stopping zone stand at the streets; bikes and e-scooters ride with the cars.
+*Busbahnhof*, line 2 on a track of its own into the *Markt* (an island stop on the way into the
+loop, where the trams stop before they go round it). Both turn in loops at both ends, each on a town
+module of its own beyond a short single track: west of Lindenstraße, at the end of Bahnhofstraße
+past the Busbahnhof, and behind the Markt; their tracks bend in curves of 25 m and more. Behind them
+**Brückenstraße** crosses the main line at a level crossing with half barriers to Am Plattenring: no
+tram goes over it (BOStrab § 15), and everything lies at the track level. Both lines share the car
+lanes of Ringstraße with traffic lights at Brückenstraße and a zebra crossing at Am Park, and have
+their own lanes in the middle of Bahnhofstraße, where people cross the car lane to the trams at the
+lights of the stops. The stops are of all four kinds. Residents park on a lot with a yearly permit,
+travellers on the P+R by the day; a Stop sign and a no-stopping zone stand at the streets; bikes and
+e-scooters ride with the cars.
 
 ## Day and night
 

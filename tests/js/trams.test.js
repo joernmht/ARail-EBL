@@ -439,6 +439,20 @@ test("Bf Neustadt: two tram lines from loop to loop, curves of 25 m, every stop 
   assert.deepEqual(crossing.problems(), []);
   assert.equal(w.getObject(crossing.geometry.road).roadInfo().tram, "none");
   for (const o of w.objects.filter((x) => x.type === "tram-stop")) assert.deepEqual(o.problems(), [], o.id);
+  // no platform reaches into another street (the Markt's island, on the diagonal track by
+  // Bahnhofstraße, has one side only: the one away from Bahnhofstraße)
+  const streets = w.objects.filter((x) => x.type === "road" && x.roadInfo().car);
+  for (const o of w.objects.filter((x) => x.type === "tram-stop")) {
+    const g = o.geometry, h = g.W / 2;
+    for (const sd of g.sides) {
+      const corners = [[0, -h], [g.L, -h], [g.L, h], [0, h]].map(([a, b]) => [sd.origin[0] + sd.dir[0] * a + sd.normal[0] * b, sd.origin[1] + sd.dir[1] * a + sd.normal[1] * b]);
+      for (const r of streets.filter((x) => x.id !== g.road)) {
+        const pts = r.geometry.points, half = r.roadInfo().width / 2;
+        for (const c of corners) for (let i = 1; i < pts.length; i++) assert.ok(toSegment(c, pts[i - 1], pts[i]) >= half, `${o.id}:${sd.side} reaches into ${r.id}`);
+      }
+    }
+  }
+  assert.deepEqual(w.getObject("tram-stop-markt").geometry.sides.map((sd) => sd.side), ["right"]);
   // everything at the track level, the loops on town modules of their own
   assert.equal(w.elevation.sync().flat, true);
   // all kinds of stops are there
