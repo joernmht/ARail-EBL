@@ -554,4 +554,12 @@ test("town: a line without its own interval runs as often as the town needs, one
   for (let i = 0; i < 3; i++) set.step(0.1);
   assert.equal(set.transit.lines.get("l").auto, false);
   assert.equal(set.transit.lines.get("l").headway, 120);
+  // services.auto_interval false: the line without an interval runs every 240 s, the card says just how often
+  const off = townWorld(objects(null), { services: { auto_interval: false } });
+  for (let i = 0; i < 3; i++) off.step(0.1);
+  assert.equal(off.transit.lines.get("l").auto, false);
+  assert.equal(off.transit.lines.get("l").headway, 240);
+  const plain = { rows: [] };
+  off.simulations.find((s) => s.constructor.type === "passengers").describeObject(off.getObject("a"), plain);
+  assert.ok(plain.rows.some(([k, v]) => k === "Bus 62" && v === `every ${(240 * off.clock.factor) / 60} min`), JSON.stringify(plain.rows));
 });

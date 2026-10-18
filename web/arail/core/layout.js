@@ -24,8 +24,9 @@ export const DEFAULT_SERVICES = {
   /** Duration of the arrival and departure animations (simulated seconds). */
   approach_s: 6,
   /**
-   * Docks without a headway of their own run as often as the town simulation says its people need
-   * (sims/town.js `serviceInterval`); the headways above apply without a town, or when this is false.
+   * Docks and bus and tram lines without a headway of their own run as often as the town simulation
+   * says its people need (sims/town.js `serviceInterval`); without a town, or when this is false, the
+   * headways above (lines: 240 s, trams 300 s).
    */
   auto_interval: true,
 };

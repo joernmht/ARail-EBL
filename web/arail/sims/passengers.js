@@ -748,25 +748,24 @@ export class PassengerSimulation extends Simulation {
     }
   }
 
-  /** How often vehicles stop here (by day), and whether it is set or what the town needs: [label, text] rows. */
+  /** How often vehicles stop here (by day), and whether that is what the town needs: [label, text] rows. */
   _intervalRows(areas) {
     const factor = this.world.clock.factor > 0 ? this.world.clock.factor : 12;
-    const why = (demand) => (demand ? "what the town needs" : "set");
-    const minutes = (m) => (m < 10 ? Math.round(m * 10) / 10 : Math.round(m));
+    const every = (m, demand) => `every ${m < 10 ? Math.round(m * 10) / 10 : Math.round(m)} min${demand ? " (what the town needs)" : ""}`;
     const rows = [];
     const seen = new Set();
     for (const a of areas) {
       for (const dock of a.docks) {
         if (dock.managed || !this.world.services.intervalOf) continue;
         const iv = this.world.services.intervalOf(dock);
-        const row = [dock.kind === "rail" ? "Trains" : "Buses", `every ${minutes(iv.minutes)} min (${why(iv.from === "demand")})`];
+        const row = [dock.kind === "rail" ? "Trains" : "Buses", every(iv.minutes, iv.from === "demand")];
         if (!seen.has(row.join("|"))) rows.push(row);
         seen.add(row.join("|"));
       }
     }
     for (const line of this.world.transit?.lines?.values?.() || []) {
       if (!line.ok || !line.visits?.some((v) => areas.some((a) => a.id === v.area?.id))) continue;
-      rows.push([`${line.noun} ${line.label}`, `every ${minutes((line.headway * factor) / 60)} min (${why(line.auto && line.minutes != null)})`]);
+      rows.push([`${line.noun} ${line.label}`, every((line.headway * factor) / 60, line.auto && line.minutes != null)]);
     }
     return rows;
   }

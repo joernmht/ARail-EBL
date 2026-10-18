@@ -609,7 +609,7 @@ export const DE = {
   "Trains": "Züge",
   "Buses": "Busse",
   "every {n} min (what the town needs)": "alle {n} min (was die Stadt braucht)",
-  "every {n} min (set)": "alle {n} min (eingestellt)",
+  "every {n} min": "alle {n} min",
   "Others": "Andere",
   "{n} people per hour by day (from the town)": "{n} Personen je Stunde tagsüber (aus der Stadt)",
   "Other passengers at a stop without a town simulation. With a town they follow its residents.": "Andere Fahrgäste an einer Haltestelle ohne Stadt-Simulation. Mit einer Stadt richten sie sich nach ihren Bewohnern.",

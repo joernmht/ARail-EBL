@@ -24,7 +24,7 @@ export const TRANSPORT = [
       { from: "BusTerminal", to: "StopArea", kind: "creates", label: "1" },
       { from: "TramStop", to: "StopArea", kind: "creates", label: "1–2" },
     ],
-    parameters: [{ key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6, auto_interval true", meaning: "Headway and dwell of the docks (simulated s); a platform can set its own. auto_interval: docks without their own headway run as often as the town needs (the headways are then the default without a town)." }],
+    parameters: [{ key: "services", default: "rail_headway_s 70, rail_dwell_s 24, bus_headway_s 90, bus_dwell_s 20, approach_s 6, auto_interval true", meaning: "Headway and dwell of the docks (simulated s); a platform can set its own. auto_interval: docks and lines without their own headway run as often as the town needs (the headways, lines 240 s and trams 300 s, are then the default without a town)." }],
     rules: ["Access points by default at 0.3 m and L − 0.3 m (weight 0.35 each) and L/2 (0.3).", "1 m of the prototype = 1000 / scale mm."],
   },
   {
@@ -88,7 +88,7 @@ export const TRANSPORT = [
     },
     rules: [
       "The first vehicle after 0.15–0.6 × the headway, then every 0.9–1.1 × the headway (× the demand of the hour).",
-      "Docks without a headway of their own (dock.auto, services.auto_interval) take the town's serviceInterval: a regular 5, 10, 15, 20, 30 or 60 clock minutes; without a town the layout's headway.",
+      "Docks and lines without a headway of their own (dock.auto, line.auto, services.auto_interval) take the town's serviceInterval: a regular 5, 10, 15, 20, 30 or 60 clock minutes; without a town the layout's headway (lines 240 s, trams 300 s).",
       "A planner's vehicle stays until the planner lets it go (dwellLeft = ∞, then 0).",
       "Mode feed while the control system sends trains; closed ends a dwell (not a real train's), hold does not.",
       "call skips closed docks (a track closure, a story's train) unless a planner calls; free takes a vehicle away at once: one standing sends vehicle.departing (those on the way to its doors missed it) and vehicle.departed; one coming in never arrived.",
@@ -103,7 +103,7 @@ export const TRANSPORT = [
       {
         name: "PassengerSimulation", file: "web/arail/sims/passengers.js", kind: "class", extends: "Simulation", role: "The crowds of all stop areas.",
         attributes: ["crowds: Map — Crowd per stop area", "others: boolean — generated passengers (off: only those handed over)"],
-        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents, options) — towards: a traveller gets off at the door closest to its way out", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_othersRate(c) — other passengers per s: the town's othersAt, else the setting per 25 m of stop", "_othersFromTown(area)", "_interval(vehicle, dock) — the time between two such vehicles: alighting others", "_intervalRows(areas) — how often trains, buses and trams stop, set or what the town needs", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_doorT(a, dock) — the doors beyond the strip at a tram in the middle of the street", "_walk(a) — may people cross the strip now (the stop's lights)?", "_goal(a, p, walk) — over the strip only on red, straight; to an island at its crossing, each way on one half of it", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting, how often vehicles stop, the other passengers an hour, the next vehicles at a stop"],
+        operations: ["step(dt)", "enter(areaId, opts) — a person of another simulation waits for its line", "alight(vehicle, dock, agents, options) — towards: a traveller gets off at the door closest to its way out", "release(person)", "_stepCrowd(c, dt) — arrivals, giving up", "_othersRate(c) — other passengers per s: the town's othersAt, else the setting per 25 m of stop", "_othersFromTown(area)", "_interval(vehicle, dock) — the time between two such vehicles: alighting others", "_intervalRows(areas) — how often trains, buses and trams stop, and when that is what the town needs", "_move(c, dt, fx) — forces, states, mood", "_board(p, dock, doors, delay, vehicle)", "_doorT(a, dock) — the doors beyond the strip at a tram in the middle of the street", "_walk(a) — may people cross the strip now (the stop's lights)?", "_goal(a, p, walk) — over the strip only on red, straight; to an island at its crossing, each way on one half of it", "_arrived(e)", "_departing(e)", "_cancelled(e)", "_wants(p, dock, vehicle)", "pickables(view) — the people at the stops", "card(hit) — waiting for what, how long, mood", "describeObject(o, card) — people waiting, how often vehicles stop, the other passengers an hour, the next vehicles at a stop"],
       },
       { name: "Crowd", file: "web/arail/sims/passengers.js", kind: "class", role: "The people of one stop area.", attributes: ["area: StopArea", "people: Person[]"], operations: ["wave() — demand 0.3 … 1 over 180 s"] },
       {

@@ -111,10 +111,9 @@ From the same numbers the town tells the stops what it needs:
   bus a resident and day. The interval is the longest of 5, 10, 15, 20, 30 and 60 clock minutes
   whose vehicles carry that at a comfortable 70 % (a regional train 140 people, a bus 49, a tram
   4.2 per metre of its length), with the rush-hour frequency (× 1.5). A small town gets a train an
-  hour on each track and a bus every half hour. This holds for platforms and bays without a
-  `headway_s` of their own (and `services.auto_interval`, true by default) and for lines without
-  `headway_s`; a set interval stays. The card of a stop shows each interval and whether it is set or
-  what the town needs.
+  hour on each track and a bus every half hour. This holds for platforms, bays and lines without a
+  `headway_s` of their own, while `services.auto_interval` is true (the default); a set interval
+  stays. The card of a stop shows each interval, and says so when it is what the town needs.
 - **Other passengers.** People the town's agents do not stand for (errands, leisure, visits,
   changes between train and bus) come to the stops from the residents: 0.3 trips a day by train
   for each resident (shared by the platforms), 0.2 by bus or tram for the residents within 300 m
@@ -164,7 +163,7 @@ shopping, on the bus, at stops and away.
 | `bus_share` | 0.8 | share of long ways taken by bus when a line fits |
 | `catchment_m` | 1500 | local area (prototype metres): places this close to a home, or on a line from near it, are its residents' first |
 | `commuters_out` | 0.15 | share of workers who work elsewhere (by train) although there are jobs; those without a job in the town work elsewhere too |
-| `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train) |
+| `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train); a value above 1 from an older layout (people per 100 local jobs) is read as hundredths |
 | `shopping` | 0.5 | share of adults who go shopping on a day |
 
 Setting the clock by hand puts everybody where their plan says they are at that time.

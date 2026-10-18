@@ -196,6 +196,8 @@ export class TownSimulation extends Simulation {
 
   constructor(world, config) {
     super(world, config);
+    // before #176 commuters_in counted people per 100 local jobs (0-200): read such values as a share
+    if (+this.config.commuters_in > 1) this.config.commuters_in = Math.min(1, +this.config.commuters_in / 100);
     /** @type {Agent[]} */
     this.agents = [];
     this._built = null;
@@ -250,11 +252,17 @@ export class TownSimulation extends Simulation {
 
   /* ================================================================ population */
 
-  /** Buildings with a capacity, by use. */
+  /** Where a building is (layout mm): its first entrance, else its anchor point; null when unknown. */
+  _placeOf(o) {
+    return this._buildingPos(o.id) || o.anchorPoint?.() || null;
+  }
+
+  /** Buildings with a capacity, by use; those without a known position take no part (nobody gets there). */
   _buildings() {
-    const out = { residential: residentialBuildings(this.world).map(({ o }) => ({ o, cap: o.capacity() || {} })), work: [], school: [], shop: [] };
+    const located = residentialBuildings(this.world).filter(({ o }) => this._placeOf(o));
+    const out = { residential: located.map(({ o }) => ({ o, cap: o.capacity() || {} })), work: [], school: [], shop: [] };
     for (const o of this.world.objects) {
-      if (!o.geometry || typeof o.capacity !== "function") continue;
+      if (!o.geometry || typeof o.capacity !== "function" || !this._placeOf(o)) continue;
       const cap = o.capacity() || {};
       const use = typeof o.use === "function" ? o.use() : o.constructor.use;
       if (cap.jobs > 0) out.work.push({ o, cap });
@@ -354,7 +362,7 @@ export class TownSimulation extends Simulation {
     const fromElsewhere = rail ? share(cfg.commuters_in, 0.6) : 0;
     const shopping = share(cfg.shopping, 0.5);
     this._reach = new Map();
-    const pos = (o) => this._buildingPos(o.id) || o.anchorPoint?.() || null;
+    const pos = (o) => this._placeOf(o);
     const homes = b.residential.map(({ o, cap }) => {
       const R = Math.max(0, +cap.residents || 0);
       return { o, pos: pos(o), R, workers: R * SHARES.worker, pupils: R * SHARES.pupil, seniors: R * SHARES.senior, jobs: new Map(), schools: new Map(), out: 0, pupilsOut: 0, kinds: [] };
@@ -406,12 +414,11 @@ export class TownSimulation extends Simulation {
     const station = (p) => this._nearestRailPoint(p);
     const flows = [];
     for (const h of homes) {
-      if (!h.pos) continue;
       for (const [id, n] of h.jobs) flows.push({ from: h.pos, to: work.find((p) => p.o.id === id)?.pos, n });
       for (const [id, n] of h.schools) flows.push({ from: h.pos, to: school.find((p) => p.o.id === id)?.pos, n });
       if (h.out + h.pupilsOut > 0) flows.push({ from: h.pos, to: station(h.pos), n: h.out + h.pupilsOut });
     }
-    for (const g of visitors) if (g.visit !== "shopping" && g.pos) flows.push({ from: station(g.pos), to: g.pos, n: g.n });
+    for (const g of visitors) if (g.visit !== "shopping") flows.push({ from: station(g.pos), to: g.pos, n: g.n });
     const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
     const totals = {
       residents: sum(homes, (h) => h.R),
@@ -440,7 +447,7 @@ export class TownSimulation extends Simulation {
     const pairs = [];
     demands.forEach((d, i) => {
       places.forEach((p, j) => {
-        if (left[i] > 0 && p.free > 0 && this._reachable(d.h, p)) pairs.push({ i, j, d: d.h.pos && p.pos ? dist2(d.h.pos, p.pos) : 0 });
+        if (left[i] > 0 && p.free > 0 && this._reachable(d.h, p)) pairs.push({ i, j, d: dist2(d.h.pos, p.pos) });
       });
     });
     pairs.sort((a, b) => a.d - b.d || a.i - b.i || a.j - b.j);
@@ -458,7 +465,6 @@ export class TownSimulation extends Simulation {
 
   /** Can the residents of a home reach a place: within the local area (`catchment_m`), or by a bus or tram line from near it? */
   _reachable(h, p) {
-    if (!h.pos || !p.pos) return true;
     const key = `${h.o.id}>${p.o.id}`;
     if (this._reach.has(key)) return this._reach.get(key);
     const ok = this._metres(dist2(h.pos, p.pos)) <= (+this.config.catchment_m || 1500) || this._linked(h.pos, p.pos);
@@ -567,7 +573,6 @@ export class TownSimulation extends Simulation {
       for (const a of rail) perDay.set(a.id, (OTHER_TRIPS.rail * d.totals.residents) / rail.length);
       const stops = this._busStops();
       for (const h of d.homes) {
-        if (!h.pos) continue;
         const near = stops.filter((a) => this._metres(dist2(this._accessPoint(a, this._nearestAccess(a, h.pos)), h.pos)) <= ACCESS_M);
         for (const a of near) perDay.set(a.id, (perDay.get(a.id) || 0) + (OTHER_TRIPS.bus * h.R) / near.length);
       }

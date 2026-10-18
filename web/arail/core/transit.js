@@ -8,7 +8,8 @@
  * in the direction of travel); a loop runs round. Where a direction begins (the termini; the first
  * stop of a loop) vehicles lay over and are dispatched: every `headway_s` (outside the rush hours)
  * × `clock.demand("bus")`, none at night. A line without `headway_s` runs as often as the town
- * needs (`serviceInterval` of the town simulation, sims/town.js), else every 240 s (trams 300 s).
+ * needs (`serviceInterval` of the town simulation, sims/town.js), else (without a town, or with
+ * `services.auto_interval` false) every 240 s (trams 300 s).
  *
  * Buses drive along the circuit on the right lane, trams on their track (the right one of two),
  * with acceleration, braking and the speed limit of the street, keep their distance to the vehicle
@@ -537,7 +538,7 @@ export class Transit {
     const vehicle = LINE_TYPES[obj.constructor.type] || "bus", tram = vehicle === "tram";
     const line = {
       id: obj.id, obj, label: obj.lineLabel?.() ?? obj.id, name: obj.name, color: spec.color || CD.tuerkis,
-      headway: +spec.headway_s > 0 ? Math.max(10, +spec.headway_s) : tram ? 300 : 240, auto: !(+spec.headway_s > 0), mode: spec.mode === "loop" ? "loop" : "back-and-forth",
+      headway: +spec.headway_s > 0 ? Math.max(10, +spec.headway_s) : tram ? 300 : 240, auto: !(+spec.headway_s > 0) && this.world.layout?.services?.auto_interval !== false, mode: spec.mode === "loop" ? "loop" : "back-and-forth",
       speed: Math.max(2, (+spec.speed_kmh || (tram ? 50 : 40)) / 3.6),
       vehicle, noun: tram ? "Tram" : "Bus", length: tram ? clamp(+spec.length_m || 30, 15, 60) : 12, width: tram ? 2.65 : 2.55,
       ok: false, problems: [], visits: [], directions: [], circuit: null, signature: "", starts: [], single: [], crossings: [],

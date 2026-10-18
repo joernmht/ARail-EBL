@@ -253,7 +253,22 @@ test("passengers: a stop's card names how often trains and buses stop, also when
   ]);
   const pax = world.simulations.find((s) => s.constructor.type === "passengers");
   const rows = pax._intervalRows([world.getStopArea("p1"), world.getStopArea("bt")]);
-  assert.deepEqual(rows, [["Trains", "every 10 min (set)"], ["Buses", "every 10 min (set)"]]);
+  assert.deepEqual(rows, [["Trains", "every 10 min"], ["Buses", "every 10 min"]]);
+});
+
+test("town: commuters_in of an older layout (people per 100 local jobs) is read as a share", () => {
+  assert.equal(built(HOMES, { commuters_in: 40 }).t.config.commuters_in, 0.4);
+  assert.equal(built(HOMES, { commuters_in: 150 }).t.config.commuters_in, 1);
+  assert.equal(built(HOMES, { commuters_in: 0.3 }).t.config.commuters_in, 0.3);
+});
+
+test("town: a building whose position is unknown takes no part", () => {
+  const { t } = built([...HOMES, { id: "nowhere", type: "test-box", position: [1e9, 1e9], use: "work", people: 100 }]);
+  const o = t.world.getObject("nowhere");
+  o.entrances = () => [];
+  o.anchorPoint = () => null;
+  const b = t._buildings();
+  assert.ok(!b.work.some((x) => x.o.id === "nowhere"));
 });
 
 test("town: the cap scales residents and visitors alike", () => {
