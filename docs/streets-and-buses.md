@@ -198,6 +198,14 @@ A **tram line** is placed like a bus line, through its tram stops, and its trams
   with tram tracks that crosses a track without a bridge or an underpass (a
   [railway crossing](#railway-crossings) over or under it) has no tram tracks for the routes there,
   and the line says *No way along the tram tracks … trams cannot cross the railway at street level*.
+- Tram tracks bend in **arcs of at least 25 m** (the alignment rules under BOStrab, TRStrab
+  Trassierung: 40 m as a rule, 25 m in exceptions). Where a line turns from one street into another
+  (or a street bends more tightly), the corner is rounded into an arc tangent to both, and the rails
+  are drawn along it; a street drawn as a gentler curve stays as it is. Where two corners are too
+  close together for that, the curves are as large as there is room for, and the line says *A curve
+  of 18 m at Ringstraße / Bahnhofstraße: tram tracks need at least 25 m. Give them more room there.*
+  Trams brake for a curve in time, to √(0.8 m/s² × radius): about 16 km/h in a curve of 25 m,
+  20 km/h in one of 40 m.
 - On **one track, both directions** a tram goes onto the single track only when none comes the
   other way; it waits before it (the passing loop is where the street has two tracks again).
 - At the end of a **stub track** (a track that ends) the tram stops, the driver changes ends (20 s)
@@ -380,15 +388,16 @@ conflicts of the last hour and the bikes at its lamps.
 ## The example: Bf Neustadt
 
 The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. Two tram lines
-run from *Am Bogen* (line 1) and from *Lindenstraße* (line 2, one track for both directions) to a loop
-at the station (*Tram loop Markt*, one track one way, with an island stop); both change ends at the
-stub of their first stop. Behind them **Brückenstraße** crosses the main line at a level crossing with
-half barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and everything lies at the track
-level. Both lines share the car lanes of Ringstraße with traffic lights at Brückenstraße and a zebra
-crossing at Am Park, and have their own lanes in Bahnhofstraße. The stops
-are of all four kinds. Residents park on a lot with a yearly permit, travellers on the P+R by the
-day; a Stop sign and a no-stopping zone stand at the streets; bikes and e-scooters ride with the
-cars.
+start at *Lindenstraße*, on one track for both directions at the west end of Ringstraße, and run
+along Ringstraße and Bahnhofstraße: line 1 to *Neustadt Bf*, line 2 on a track of its own into the
+*Markt* (an island stop); both change ends at the stubs of their first and last stops, and their
+tracks bend in curves of 25 m from Ringstraße into Bahnhofstraße and into the Markt. Behind them
+**Brückenstraße** crosses the main line at a level crossing with half barriers to Am Plattenring: no
+tram goes over it (BOStrab § 15), and everything lies at the track level. Both lines share the car
+lanes of Ringstraße with traffic lights at Brückenstraße and a zebra crossing at Am Park, and have
+their own lanes in Bahnhofstraße. The stops are of all four kinds. Residents park on a lot with a
+yearly permit, travellers on the P+R by the day; a Stop sign and a no-stopping zone stand at the
+streets; bikes and e-scooters ride with the cars.
 
 ## Day and night
 
@@ -417,8 +426,10 @@ The widths, gradients and rules come from these German guidelines and laws:
   lots and garages.
 - **DIN 18040-3** (barrier-free public traffic and open space) and **DIN 32984** (tactile walking
   surface indicators): step-free stops.
-- **BOStrab**: Verordnung über den Bau und Betrieb der Straßenbahnen, §§ 15 (crossings with
-  railways), 31 (platforms), 34 (vehicle widths).
+- **BOStrab**: Verordnung über den Bau und Betrieb der Straßenbahnen, §§ 15 (no crossing with a
+  railway at street level; curves and gradients that let trams run well), 17 (curves with little
+  lateral acceleration), 31 (platforms), 34 (vehicle widths); **TRStrab Trassierung** (curves of
+  40 m as a rule, 25 m in exceptions).
 - **StVO**: Straßenverkehrs-Ordnung, §§ 2 (bike paths, children on sidewalks), 5 (passing at
   1.5 m), 11 (keep junctions clear), 12 (no parking), 20 (public transport at stops), 26 (zebra
   crossings); **VwV-StVO** (the administrative rules on it); **eKFV** § 10 (e-scooters).

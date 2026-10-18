@@ -356,7 +356,7 @@ Geometry: `position`, projected onto the tram tracks of the nearest street with 
 
 ### `tram-line`
 
-Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the ids of tram stops in the order they are served, at least two. Trams never cross a railway at street level.
+Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the ids of tram stops in the order they are served, at least two. Trams never cross a railway at street level, and their tracks bend in arcs of at least 25 m (see [Trams](streets-and-buses.md#trams)).
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

@@ -28,6 +28,7 @@
  */
 import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
 import { driveS, joinPaths } from "./network.js";
+import { TRAM_CURVES, roundCorners } from "./curves.js";
 import { CD, PALETTE, grey, mix, shade } from "./colors.js";
 
 const ACCEL = 1.0; // m/s²
@@ -653,13 +654,25 @@ export class Transit {
       s += legs[k].length;
     });
     pulls.push({ ...pulls[0], s: path.length, after: 0 });
-    // buses pull in at their stops; trams stay on their track
-    const drive = tram
+    // buses pull in at their stops; trams stay on their track, which bends in arcs (core/curves.js)
+    let drive = tram
       ? net.drivingLine(path, { pulls: pulls.map((p) => ({ ...p, offset: net.offsetAt(path, Math.min(p.s, path.length - 1e-6), "tramOffset") })), offsetKey: "tramOffset", minLoop: 0 })
       : net.drivingLine(path, { pulls });
     if (!(drive.length > this.mm(5))) {
       line.problems.push("The route is too short.");
       return line;
+    }
+    line.curves = [];
+    if (tram) {
+      drive = roundCorners(drive, this.mm(TRAM_CURVES.min_m), { metre: this.mm(1) });
+      line.curves = drive.curves.map((c) => ({ ...c, v: Math.sqrt(TRAM_CURVES.lateral * this.meters(c.radius)) }));
+      // one problem for each place, with its tightest curve
+      const tight = new Map();
+      for (const t of drive.tight) {
+        const at = this._streetsAt(t.pos, net);
+        tight.set(at, Math.min(tight.get(at) ?? Infinity, t.radius));
+      }
+      for (const [at, r] of tight) line.problems.push(`A curve of ${Math.round(this.meters(r))} m at ${at}: tram tracks need at least ${TRAM_CURVES.min_m} m. Give them more room there.`);
     }
     line.circuit = { points: drive.points, lengths: drive.lengths, length: drive.length, speeds: drive.speeds };
     line.turns = turningNumber(drive.points);
@@ -708,6 +721,18 @@ export class Transit {
     });
     line.ok = true;
     return line;
+  }
+
+  /** The names of the streets at a point (a junction: both), for the problems of a line. */
+  _streetsAt(p, net) {
+    const names = [];
+    for (const e of net.edges) {
+      if (!e.road || !e.points?.length) continue;
+      const pr = polylineProject(e.points, p, e.lengths);
+      const name = this.world.getObject(e.road)?.name;
+      if (name && pr.distance <= this.mm(25) && !names.includes(name)) names.push(name);
+    }
+    return names.length ? names.join(" / ") : `${Math.round(p[0])}, ${Math.round(p[1])}`;
   }
 
   /** Part of a circuit between two arc lengths (to may exceed the length: it wraps). */
@@ -1155,6 +1180,11 @@ export class Transit {
     const d = this._ahead(line, bus.s, target.s), dM = this.meters(d);
     const seg = Math.min(c.speeds.length - 1, Math.max(0, segmentIndex(c.lengths, bus.s)));
     let vT = Math.min(line.speed, c.speeds[seg] ?? line.speed, Math.sqrt(2 * BRAKE * dM));
+    // slow enough at the next curves of a tram (in time to brake for them)
+    for (const cu of line.curves || []) {
+      const ahead = this.meters(this._ahead(line, bus.s, cu.s0));
+      if (ahead < 60) vT = Math.min(vT, Math.sqrt(cu.v * cu.v + 2 * BRAKE * ahead));
+    }
     const me = bus._pose || this._pose(bus, line);
     const look = this.mm(bus.v * bus.v / (2 * BRAKE) + GAP_M + 15);
     const lead = squeezing(bus) ? { gap: Infinity, user: null } : leaderAhead(bus, me.front, me.dir, users, look, this.mm(1.5));

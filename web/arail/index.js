@@ -65,6 +65,7 @@ export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
 export { Elevation, streetGradient } from "./core/elevation.js";
+export { TRAM_CURVES, roundCorners } from "./core/curves.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
 export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, planePoint, projectedHull, surfacePoint } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
@@ -99,7 +100,7 @@ export {
 export { drawStopSign, drawSign, drawTrafficLight, STOP_SIGN, SIGN_COLOURS, ROAD_SIGNS } from "./objects/signs.js";
 export { TrafficSign, TrafficLight, ZebraCrossing, SIGN_TYPES, TURNS, parseArrows, streetNear } from "./objects/traffic-signs.js";
 export { TARIFFS, PARKING_ACCESS, Tariff, ParkingLot, ParkingGarage, BikeStand, ownerAccess, parkingTerms } from "./objects/parking.js";
-export { TramStop, TramLine, TRAM_STOP_TYPES, STEP_FREE_M } from "./objects/tram.js";
+export { TramStop, TramLine, TRAM_STOP_TYPES, STEP_FREE_M, tramRails } from "./objects/tram.js";
 export {
   RailCrossing, CrossingType, OverTrack, UnderTrack, AtGrade, CrossbuckOnly, FlashingLights, HalfBarriers, FullBarriers, CROSSING_TYPES, CROSSING_NORMS,
 } from "./objects/crossings.js";

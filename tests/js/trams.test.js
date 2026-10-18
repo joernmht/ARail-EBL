@@ -1,11 +1,11 @@
-// Trams (objects/tram.js, core/transit.js): tram stops of four kinds with their step-free access
-// and what cars beside them do, tram lines on tram tracks only, one tram at a time on a single
-// track used both ways, trams changing ends at stub tracks, never across a railway at street
-// level, and the two tram lines of Bf Neustadt.
+// Trams (objects/tram.js, core/transit.js, core/curves.js): tram stops of four kinds with their
+// step-free access and what cars beside them do, tram lines on tram tracks only, curves of at least
+// 25 m, one tram at a time on a single track used both ways, trams changing ends at stub tracks,
+// never across a railway at street level, and the two tram lines of Bf Neustadt.
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { STEP_FREE_M, TRAM, TRAM_STOP_TYPES, createWorld } from "../../web/arail/index.js";
+import { STEP_FREE_M, TRAM, TRAM_STOP_TYPES, createWorld, tramRails } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
 function world(objects, extra = {}) {
@@ -158,7 +158,50 @@ test("tram lines never cross a railway at street level; a bridge opens the way",
   assert.equal(w4.transit.lines.get("line").ok, false);
 });
 
-test("Bf Neustadt: two tram lines to the loop at the station, every stop served; none across the level crossing", () => {
+test("tram tracks bend in arcs of at least 25 m; trams slow down for them; a corner too tight is reported", () => {
+  // Main to the east, then round the corner into Side to the north
+  const objects = [
+    { id: "main", type: "road", name: "Main", tram: "street", points: [[0, 0], [3000, 0]] },
+    { id: "side", type: "road", name: "Side", tram: "street", points: [[3000, 0], [3000, 3000]] },
+    { id: "a", type: "tram-stop", name: "A", position: [1000, 0] },
+    { id: "b", type: "tram-stop", name: "B", position: [3000, 2000] },
+    { id: "line", type: "tram-line", name: "Line 4", number: "4", stops: ["a", "b"] },
+  ];
+  const w = world(objects);
+  w.transit.sync();
+  const line = w.transit.lines.get("line");
+  assert.ok(line.ok);
+  assert.deepEqual(line.problems, []);
+  const mm25 = (25 * 1000) / 87;
+  // a curve at the corner each way, of 25 m; nowhere does the line turn more than 6° at a point
+  const corner = line.curves.filter((c) => Math.hypot(c.points[0][0] - 3000, c.points[0][1]) < 2 * mm25);
+  assert.equal(corner.length, 2);
+  for (const c of corner) assert.ok(Math.abs(c.radius - mm25) < 0.5, `${c.radius}`);
+  const P = line.circuit.points;
+  for (let i = 1; i < P.length - 1; i++) {
+    const a = [P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]], b = [P[i + 1][0] - P[i][0], P[i + 1][1] - P[i][1]];
+    const turn = Math.abs(Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]));
+    const near = Math.hypot(P[i][0] - 3000, P[i][1]) < 2 * mm25;
+    if (near) assert.ok(turn < (6 * Math.PI) / 180 + 1e-6, `${(turn * 180) / Math.PI}° at ${P[i]}`);
+  }
+  // in the curve at most 16 km/h (0.8 m/s² sideways); a tram never goes faster there
+  for (const c of corner) assert.ok(Math.abs(c.v - Math.sqrt(0.8 * 25)) < 1e-6);
+  let fastest = 0;
+  run(w, 300, () => {
+    for (const t of w.transit.buses.filter((b) => b.kind === "tram")) {
+      if (corner.some((c) => t.s >= c.s0 && t.s <= c.s1)) fastest = Math.max(fastest, t.v);
+    }
+  });
+  assert.ok(fastest > 2 && fastest <= Math.sqrt(0.8 * 25) + 0.3, `${fastest} m/s in the curve`);
+  // the same corner with the stops right at it: no room for 25 m, said so
+  const tight = world([objects[0], { ...objects[1], points: [[3000, 0], [3000, 450]] }, { ...objects[2], position: [2850, 0] }, { ...objects[3], position: [3000, 300] }, objects[4]]);
+  tight.transit.sync();
+  const problems = tight.transit.lines.get("line").problems;
+  assert.equal(problems.length, 1, problems.join(" | "));
+  assert.match(problems[0], /^A curve of \d+ m at Main \/ Side: tram tracks need at least 25 m\. Give them more room there\.$/);
+});
+
+test("Bf Neustadt: two tram lines to the station and the Markt, curves of 25 m, every stop served; none across the level crossing", () => {
   const json = readJSON("web/layouts/ebl-neustadt.json");
   for (const l of json.layers || []) l.enabled = false;
   json.simulations = json.simulations.filter((s) => s.type === "passengers");
@@ -171,9 +214,18 @@ test("Bf Neustadt: two tram lines to the loop at the station, every stop served;
     assert.equal(l.vehicle, "tram");
     assert.deepEqual(l.problems, []);
   }
-  // line 2 has a single track used both ways (Lindenstraße); both change ends at the stub of their first stop
-  assert.ok(lines[1].single.length > 0);
-  assert.ok(lines.every((l) => l.reversals.length === 1));
+  // both start on the single track of Ringstraße's west end (used both ways) and change ends at both
+  // ends (stub tracks); no curve is tighter than 25 m
+  assert.ok(lines.every((l) => l.single.length > 0));
+  assert.ok(lines.every((l) => l.reversals.length === 2));
+  for (const l of lines) for (const c of l.curves) assert.ok(c.radius >= (25 * 1000) / 87 - 0.5, `${l.id}: ${c.radius}`);
+  // the rails end where the tram tracks end (Bahnhofstraße at x = 3350, the Markt's track at
+  // [2761, -454]), not in a loop beyond: a crossover leads from one track to the other
+  const gauge = 1435 / 87, rails1 = tramRails(lines[0], gauge, 230), rails2 = tramRails(lines[1], gauge, 230);
+  assert.ok(rails1.flat().every((p) => p[0] < 3350 + 2), "no rails beyond the end of Bahnhofstraße's tram tracks");
+  assert.ok(rails2.flat().every((p) => Math.hypot(p[0] - 2350, p[1] + 217) < Math.hypot(2761 - 2350, 454 - 217) + 2 || p[0] < 2350), "nor beyond the Markt's");
+  // two rails for each crossover (at the ends with two tracks; Lindenstraße has one)
+  assert.equal(rails1.filter((r) => r.length === 2 && Math.hypot(r[1][0] - r[0][0], r[1][1] - r[0][1]) > 200).length, 2);
   // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
   const crossing = w.getObject("rail-crossing-bruecke");
   assert.equal(crossing.crossingType.level, true);

@@ -963,6 +963,7 @@ export const DE = {
   "No way along the tram tracks from {a} to {b}.": "Kein Weg auf den Straßenbahngleisen von {a} nach {b}.",
   "No way along the streets from {a} to {b}.": "Kein Weg über die Straßen von {a} nach {b}.",
   "The route is too short.": "Der Linienweg ist zu kurz.",
+  "A curve of {n} m at {where}: tram tracks need at least {n2} m. Give them more room there.": "Eine Kurve von {n} m bei {where}: Straßenbahngleise brauchen mindestens {n2} m. Geben Sie ihnen dort mehr Platz.",
 
   // ------------------------------------------------------------ trams, railway crossings and parking in the street access (core/access.js)
   "{name}: trams cannot stop here: it is not at a tram track": "{name}: Straßenbahnen können hier nicht halten: sie liegt nicht an einem Straßenbahngleis",

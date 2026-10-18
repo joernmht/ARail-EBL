@@ -29,7 +29,7 @@ import { TRAM } from "../core/vehicles.js";
 import { drawStopSign } from "./signs.js";
 import { BusLine } from "./bus-line.js";
 import { NORMS } from "./street-profile.js";
-import { offsetPolyline } from "./road.js";
+import { offsetPolyline, slicePolyline } from "./road.js";
 
 /** How far from the outer edge of a street a stop may be placed (m). */
 const NEAR_M = 15;
@@ -280,6 +280,41 @@ export class TramStop extends LayoutObject {
   }
 }
 
+/** Length of a crossover between two tram tracks, along them (m): about 1:6 for tracks 3.40 m apart. */
+const CROSSOVER_M = 20;
+
+/**
+ * The tracks a tram line uses (polylines): its circuit, also where it turns from one street into
+ * another (its curves), but not round the turn at the end of a stub track: the trams change ends
+ * there, and a crossover leads from the end of the track they came in on to the other one.
+ * @param {{circuit: {points: number[][], lengths: number[], length: number}, reversals?: {s0: number, s1: number}[]}} line the line (Transit)
+ * @param {number} crossover the length of a crossover along the tracks (mm)
+ * @returns {{pieces: number[][][], crossovers: number[][][]}}
+ */
+export function tramTracks(line, crossover) {
+  const c = line.circuit, L = c.length;
+  const at = (s) => polylineAt(c.points, ((s % L) + L) % L, c.lengths).point;
+  const turns = (line.reversals || []).slice().sort((a, b) => a.s0 - b.s0);
+  const pieces = [], crossovers = [];
+  if (!turns.length) pieces.push(c.points);
+  turns.forEach((r, i) => {
+    // from this turn to the next (over the start of the circuit after the last one)
+    const to = turns[(i + 1) % turns.length].s0 + (i === turns.length - 1 ? L : 0);
+    const piece = slicePolyline(c.points, c.lengths, r.s1, Math.min(to, L));
+    if (to > L) piece.push(...slicePolyline(c.points, c.lengths, 0, to - L).slice(1));
+    if (piece.length > 1) pieces.push(piece);
+    // (on one track the tram goes back on it)
+    if (dist2(at(r.s0), at(r.s1)) > crossover / 50) crossovers.push([at(r.s0), at(r.s1 + crossover)]);
+  });
+  return { pieces, crossovers };
+}
+
+/** The rails of a tram line: both rails of each of its tracks (tramTracks). */
+export function tramRails(line, gauge, crossover) {
+  const { pieces, crossovers } = tramTracks(line, crossover);
+  return [...pieces, ...crossovers].flatMap((p) => [-1, 1].map((k) => offsetPolyline(p, (k * gauge) / 2)));
+}
+
 export class TramLine extends BusLine {
   static type = "tram-line";
   static label = "Tram line";
@@ -299,14 +334,29 @@ export class TramLine extends BusLine {
     { key: "show_route", label: "Show the route", type: "boolean", default: true },
   ];
 
-  /** The rails along the route, also where it turns from one street into another (curves, turning loops), then the route. */
+  /** The route as it is drawn: the tracks it uses, with a crossover at the end of a stub track (tramTracks). */
+  routeLines(line) {
+    const t = this._tracks(line);
+    return [...t.pieces, ...t.crossovers];
+  }
+
+  /** The rails along the route (tramRails), also where it turns from one street into another, then the route. */
   draw(view) {
     const line = this.info();
     if (line?.circuit) {
-      if (this._rails?.c !== line.circuit) this._rails = { c: line.circuit, list: [-1, 1].map((k) => offsetPolyline(line.circuit.points, (k * this.mm(1.435)) / 2)) };
+      const rails = this._tracks(line).rails;
       const p = line.circuit.points[0], k = view.pxPerMM(p[0], p[1], 0) * this.mm(1.435);
-      if (k >= 1.2 * view.px) for (const r of this._rails.list) view.line(r, { stroke: PALETTE.rail, width: Math.max(0.6, Math.min(1.6, k / 6)), order: 1.15 });
+      if (k >= 1.2 * view.px) for (const r of rails) view.line(r, { stroke: PALETTE.rail, width: Math.max(0.6, Math.min(1.6, k / 6)), order: 1.15 });
     }
     super.draw(view);
+  }
+
+  /** The tracks and rails of the line, kept while its circuit stays the same. */
+  _tracks(line) {
+    if (this._kept?.c !== line.circuit) {
+      const crossover = this.mm(CROSSOVER_M);
+      this._kept = { c: line.circuit, ...tramTracks(line, crossover), rails: tramRails(line, this.mm(1.435), crossover) };
+    }
+    return this._kept;
   }
 }

@@ -338,15 +338,15 @@ export const TRANSPORT = [
     classes: [
       {
         name: "Transit", file: "web/arail/core/transit.js", kind: "class", role: "world.transit: the bus lines and their buses.",
-        attributes: ["lines: Map — circuit, visits, headway, speed, single-track stretches, ends of stub tracks, problems", "buses: LineBus[] — buses and trams"],
-        operations: ["sync()", "step(dt)", "_buildLine(obj, net, old)", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_singleFree(bus, iv, occupied)", "_clearAt(bus, line, s, users) — the place beyond the end of a stub track free?", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses and trams", "card(hit) — destination, next stop, people on board"],
+        attributes: ["lines: Map — circuit, visits, headway, speed, single-track stretches, ends of stub tracks, curves of trams, problems", "buses: LineBus[] — buses and trams"],
+        operations: ["sync()", "step(dt)", "_buildLine(obj, net, old) — trams: the corners rounded to 25 m (core/curves.js)", "_streetsAt(p, net) — the streets at a point, for the problems", "_dispatch(line, dt)", "_spawn(line, st)", "_drive(bus, line, dt, users)", "_singleFree(bus, iv, occupied)", "_clearAt(bus, line, s, users) — the place beyond the end of a stub track free?", "_arrive(bus, line, v)", "_drop(bus) — to the depot", "connections(fromAreaId, toAreaId) — for the town and the journeys", "vehicleAt(dockId)", "statusFor(dockId)", "pickables(view) — the line buses and trams", "card(hit) — destination, next stop, people on board"],
       },
       {
         name: "LineBus", file: "web/arail/core/transit.js", kind: "class", role: "A bus of a line (looks like a Vehicle to the passengers).",
         attributes: ["lineId: string", "riders: object[] — {agent, toDockId}", "phase: string — driving, arriving, dwelling, departing, gone", "s: number — mm along the circuit", "v: number — m/s"],
         operations: ["doorsOpen — getter"],
       },
-      { name: "BusLine", file: "web/arail/objects/bus-line.js", kind: "class", extends: "LayoutObject", role: "A bus line placed through its stops (Build).", operations: ["lineLabel()", "problems()"] },
+      { name: "BusLine", file: "web/arail/objects/bus-line.js", kind: "class", extends: "LayoutObject", role: "A bus line placed through its stops (Build).", operations: ["lineLabel()", "problems()", "routeLines(line) — the route as drawn: the circuit"] },
       { name: "transit", file: "web/arail/core/transit.js", kind: "module", role: "Rules shared with the cars and bikes.", attributes: ["LINE_TYPES — bus-line, tram-line", "GRIDLOCK_S — 8 s", "JUNCTION_WAIT_S — 4 s"], operations: ["gapAhead(self, front, dir, users, lookMM, laneMM, skip)", "leaderAhead(self, front, dir, users, lookMM, laneMM, skip) — the road user ahead in the lane", "mustYield(self, j, d, users, prio)", "roomAfter(self, exit, dir, users, lengthMM, laneMM) — keep the junction clear", "waitFor(self, user, dt) — who a vehicle waits for; circles squeeze past", "squeezing(self)", "lightAt(j, t)", "approachPrio(j, t)", "junctionPatience(prio)", "singleTrack(path, drive) — the single-track stretches of a tram line", "reversals(path, drive) — where trams change ends", "linesServing(world, objectId)"] },
     ],
     relations: [
