@@ -166,7 +166,11 @@ shopping, on the bus, at stops and away.
 | `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train); a value above 1 from an older layout (people per 100 local jobs) is read as hundredths |
 | `shopping` | 0.5 | share of adults who go shopping on a day |
 
-Setting the clock by hand puts everybody where their plan says they are at that time.
+Setting the clock by hand puts everybody where their plan says they are at that time. When the
+town is worked out again during the day (a building, a setting, the platforms or the stops of a
+line changed), everybody who is still there carries on where they are, also on the way, at a stop
+or on a bus; only the people the change adds are placed where their plan says, and only those it
+takes away leave.
 
 ## For plugins: handing people over at stops
 

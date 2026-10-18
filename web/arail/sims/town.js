@@ -212,7 +212,10 @@ export class TownSimulation extends Simulation {
       on("passenger.removed", (e) => this._removed(e)),
       on("vehicle.arrived", (e) => this._vehicleArrived(e)),
       on("clock.set", () => this.enabled && this._placeAll()),
-      on("layout.loaded", () => (this._built = null)),
+      on("layout.loaded", () => {
+        this._built = null;
+        this.agents = []; // another layout: nobody stays
+      }),
     ];
   }
 
@@ -242,12 +245,17 @@ export class TownSimulation extends Simulation {
   clear() {
     this._removeAgents();
     this._built = null;
+    this.agents = [];
   }
 
-  /** Take this town's people off the stops and buses (the agents of other simulations stay). */
-  _removeAgents() {
-    this.passengers?.removeAgents((agent) => agent instanceof Agent);
-    for (const v of this.world.transit?.buses || []) if (Array.isArray(v.riders)) v.riders = v.riders.filter((r) => !(r.agent instanceof Agent));
+  /**
+   * Take this town's people off the stops and buses (the agents of other simulations stay).
+   * @param {Set<Agent>} [only] just these
+   */
+  _removeAgents(only = null) {
+    const ours = (agent) => agent instanceof Agent && (!only || only.has(agent));
+    this.passengers?.removeAgents(ours);
+    for (const v of this.world.transit?.buses || []) if (Array.isArray(v.riders)) v.riders = v.riders.filter((r) => !ours(r.agent));
   }
 
   /* ================================================================ population */
@@ -273,14 +281,15 @@ export class TownSimulation extends Simulation {
   }
 
   /**
-   * Key that changes when the buildings, the settings or whether there are platforms change (then
-   * the town is rebuilt: without platforms nobody comes or goes by train, see `_demand`). Moved
-   * buildings and changed lines keep the people on their ways.
+   * Key that changes when what `_demand` depends on changes: the buildings, the settings, whether
+   * there are platforms, the stops of the lines (then the town is worked out again; the people who
+   * are still there keep where they are, see `_build`). Moved buildings keep the town as it is.
    */
   _populationKey(b) {
-    const ids = (list) => list.map((x) => `${x.o.id}:${x.cap.residents || 0}:${x.cap.jobs || 0}:${x.cap.pupils || 0}`).join(",");
+    const ids = (list) => list.map((x) => `${x.o.id}:${x.cap.residents || 0}:${x.cap.jobs || 0}:${x.cap.pupils || 0}:${x.cap.visitors || 0}`).join(",");
     const rail = this.world.stopAreas().some((a) => a.kind === "rail");
-    return [ids(b.residential), ids(b.work), ids(b.school), ids(b.shop), rail, JSON.stringify(this.config)].join("/");
+    const lines = [...(this.world.transit?.lines?.values?.() || [])].filter((l) => l.ok).map((l) => `${l.id}:${l.visits.map((v) => v.area?.id).join(",")}`);
+    return [ids(b.residential), ids(b.work), ids(b.school), ids(b.shop), rail, lines.join(";"), JSON.stringify(this.config)].join("/");
   }
 
   _build() {
@@ -294,10 +303,10 @@ export class TownSimulation extends Simulation {
     const key = this._populationKey(b);
     if (this._built === key) return false;
     this._built = key;
-    this._removeAgents();
     this.places = b;
     this._lineDemand = null;
-    const rng = createRng(hashKey(this.world.seed, "town"));
+    // random streams of their own for each home and each place: a change at one leaves the others as they are
+    const rngOf = (...parts) => createRng(hashKey(this.world.seed, "town", ...parts));
     const people = new Population(this.world.seed, "town");
     const d = (this.demand = this._demand(b));
     const scale = this.scale, max = Math.max(0, Math.round(+this.config.max_people || 0));
@@ -310,15 +319,18 @@ export class TownSimulation extends Simulation {
     /** Visible people per real person. */
     this._shown = scale * k;
     const agents = [];
+    // a person's id says who it is (home, role, where to, number): the same id is the same person
     d.homes.forEach((h, i) => {
+      const rng = rngOf("home", h.o.id);
       const n = Math.floor(wantedHomes[i] * k + rng.next());
       const entrances = this._entrances(h.o);
       const counts = apportion(rng, n, h.kinds.map((x) => x.n));
-      let j = 0;
       h.kinds.forEach((kind, q) => {
-        for (let c = 0; c < counts[q]; c++, j++) {
-          const home = { kind: "layout", building: h.o.id, entrance: rng.int(Math.max(1, entrances.length)) };
-          const a = people.add([h.o.id, j], { id: `${h.o.id}#${j}`, role: kind.role, home }, Agent);
+        const what = [kind.role, kind.job ?? kind.school ?? kind.visit].filter(Boolean).join(":");
+        for (let c = 0; c < counts[q]; c++) {
+          const id = `${h.o.id}#${what}#${c}`;
+          const home = { kind: "layout", building: h.o.id, entrance: rngOf(id, "entrance").int(Math.max(1, entrances.length)) };
+          const a = people.add(id, { id, role: kind.role, home }, Agent);
           a.job = kind.job ?? null;
           a.school = kind.school ?? null;
           a.visit = kind.visit ?? null;
@@ -327,11 +339,11 @@ export class TownSimulation extends Simulation {
       });
     });
     // people from elsewhere (by train) for the places the residents leave empty
-    let v = 0;
     d.visitors.forEach((group, i) => {
-      const n = Math.floor(wantedVisitors[i] * k + rng.next());
-      for (let c = 0; c < n; c++, v++) {
-        const a = people.add(["visitor", v], { id: `visitor#${v}`, role: "visitor", home: { kind: "station" } }, Agent);
+      const n = Math.floor(wantedVisitors[i] * k + rngOf("visitors", group.visit, group.id).next());
+      for (let c = 0; c < n; c++) {
+        const id = `visitor#${group.visit}:${group.id}#${c}`;
+        const a = people.add(id, { id, role: "visitor", home: { kind: "station" } }, Agent);
         a.visit = group.visit;
         if (group.visit === "work") a.job = group.id;
         else if (group.visit === "school") a.school = group.id;
@@ -340,11 +352,26 @@ export class TownSimulation extends Simulation {
       }
     });
     for (const a of agents) a.speed = createRng(hashKey(a.id, "speed")).uniform(...WALK_SPEED);
-    this.agents = agents;
+    // the town worked out again: who is still there stays where they are, on their way, at a stop or on a bus
+    const before = new Map((this.agents || []).map((a) => [a.id, a]));
+    const kept = new Set();
+    this.agents = agents.map((a) => {
+      const old = before.get(a.id);
+      if (!old) return a;
+      kept.add(old);
+      return old;
+    });
     // real people per agent (the cap makes it more than 100 / people_per_100)
-    const shown = agents.filter((a) => a.role !== "visitor").length;
+    const shown = this.agents.filter((a) => a.role !== "visitor").length;
     this._weight = shown > 0 ? d.totals.residents / shown : 1 / scale;
-    this._placeAll();
+    if (!kept.size) {
+      this._placeAll();
+      return true;
+    }
+    this._removeAgents(new Set([...before.values()].filter((a) => !kept.has(a))));
+    this._countOccupancy();
+    const now = this.world.clock.minutes;
+    for (const a of this.agents) if (!kept.has(a)) this._place(a, now);
     return true;
   }
 
@@ -667,35 +694,46 @@ export class TownSimulation extends Simulation {
     a.next = 0;
   }
 
-  /** Where an agent is (by its plan) at the current time of day, without travelling. */
+  /** Everybody where they are (by their plans) at the current time of day, without travelling. */
   _placeAll() {
     const clock = this.world.clock;
     const now = clock.minutes;
     this._removeAgents();
-    // every building of the town is listed (0 = nobody in: dark windows at night)
-    this.world.occupancy = new Map();
-    for (const list of Object.values(this.places || {})) for (const { o } of list) this.world.occupancy.set(o.id, 0);
-    for (const a of this.agents) {
-      a.planDay = -1;
-      this._ensurePlan(a);
-      a.inside = null; // counted afresh in the new occupancy (leaving the old building must not subtract)
-      a.trip = null;
-      a.person = null;
-      a.vehicle = null;
-      a.path = null;
-      let at = a.role === "visitor" ? { kind: "away" } : { kind: "home" };
-      let i = 0;
-      for (; i < a.plan.length && a.plan[i].at <= now; i++) {
-        const step = a.plan[i];
-        at = step.to.kind === "station" ? { kind: "away" } : step.to;
-        a.purpose = step.purpose;
-      }
-      a.next = i;
-      if (at.kind === "away") this._setAway(a);
-      else this._setInside(a, this._resolveBuilding(a, at));
-    }
+    for (const a of this.agents) a.inside = null; // counted afresh in the new occupancy (leaving the old building must not subtract)
+    this._countOccupancy();
+    for (const a of this.agents) this._place(a, now);
     this._lastMinutes = now;
     this._lastDay = clock.day;
+  }
+
+  /**
+   * `world.occupancy` anew: every building of the town listed (0 = nobody in: dark windows at
+   * night), the agents inside counted with the current weight.
+   */
+  _countOccupancy() {
+    const occ = (this.world.occupancy = new Map());
+    for (const list of Object.values(this.places || {})) for (const { o } of list) occ.set(o.id, 0);
+    for (const a of this.agents) if (a.state === "inside" && a.inside) occ.set(a.inside, (occ.get(a.inside) || 0) + this._personWeight());
+  }
+
+  /** Put an agent where its plan says it is at `now` (clock minutes), without travelling. */
+  _place(a, now) {
+    a.planDay = -1;
+    this._ensurePlan(a);
+    a.trip = null;
+    a.person = null;
+    a.vehicle = null;
+    a.path = null;
+    let at = a.role === "visitor" ? { kind: "away" } : { kind: "home" };
+    let i = 0;
+    for (; i < a.plan.length && a.plan[i].at <= now; i++) {
+      const step = a.plan[i];
+      at = step.to.kind === "station" ? { kind: "away" } : step.to;
+      a.purpose = step.purpose;
+    }
+    a.next = i;
+    if (at.kind === "away") this._setAway(a);
+    else this._setInside(a, this._resolveBuilding(a, at));
   }
 
   /* ================================================================ places and ways */

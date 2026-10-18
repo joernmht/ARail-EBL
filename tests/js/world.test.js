@@ -165,7 +165,8 @@ test("disruptions: a delay holds trains and makes passengers unhappy", () => {
 
 test("disruptions: closure empties the platform, replacement buses run more often", () => {
   const world = createWorld(LAB, { seed: 5 });
-  run(world, 120);
+  // a small town: wait until somebody waits at the platform (a few minutes at most)
+  for (let i = 0; i < 60 && !(world.simulations[0].stats("platform-2")?.count > 0); i++) run(world, 10);
   assert.ok(world.simulations[0].stats("platform-2").count > 0);
   world.disruptions.start({ type: "closure", target: "platform-2", params: { minutes: 10 } });
   run(world, 200);

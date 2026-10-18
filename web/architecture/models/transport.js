@@ -194,7 +194,7 @@ export const TRANSPORT = [
       {
         name: "TownSimulation", file: "web/arail/sims/town.js", kind: "class", extends: "Simulation", role: "The town.",
         attributes: ["agents: Agent[]", "places: object — buildings by use", "demand: object — homes with their kinds of people, visitors, places (local, from elsewhere), the ways of the morning, totals"],
-        operations: ["step(dt)", "_build()", "_demand(b) — who goes where: the places filled within reach, the balance by train", "_fill(demands, places) — nearest pairs first", "_reachable(h, p) — within catchment_m or by a line", "_linked(a, b) — a bus or tram line between stops near both", "_nearestRailPoint(p)", "serviceInterval(target) — how often a dock's trains or buses, or a line, should run", "_lineRiders(line) — the long ways of the morning a line serves", "othersAt(area) — other passengers at a stop per s", "describeObject(o, card) — a building's places: from the town, from elsewhere, empty", "_patience(a) — 20 min, or longer than the interval", "_makePlan(a, day)", "_placeAll() — after clock.set", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pedestrians() — the residents walking, for zebra crossings and riders", "annoy(agent, amount) — a bike too close on the sidewalk: the mood drops and comes back slowly", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
+        operations: ["step(dt)", "_build()", "_demand(b) — who goes where: the places filled within reach, the balance by train", "_fill(demands, places) — nearest pairs first", "_reachable(h, p) — within catchment_m or by a line", "_linked(a, b) — a bus or tram line between stops near both", "_nearestRailPoint(p)", "serviceInterval(target) — how often a dock's trains or buses, or a line, should run", "_lineRiders(line) — the long ways of the morning a line serves", "othersAt(area) — other passengers at a stop per s", "describeObject(o, card) — a building's places: from the town, from elsewhere, empty", "_patience(a) — 20 min, or longer than the interval", "_makePlan(a, day)", "_placeAll() — after clock.set", "_place(a, now) — where its plan says, without travelling", "_countOccupancy() — the people inside each building anew", "_startTrip(a, step)", "_legsTo(a, from, fromKey, destId)", "_bestBus(from, dest, fromKey, destKey, walkM)", "_beginLeg(a)", "_walk(a, dt)", "townStats()", "pedestrians() — the residents walking, for zebra crossings and riders", "annoy(agent, amount) — a bike too close on the sidewalk: the mood drops and comes back slowly", "pickables(view) — the residents walking", "describeAgent(a) — home, work, what it does, its plan for today"],
       },
       {
         name: "Agent", file: "web/arail/sims/town.js", kind: "class", extends: "Person", role: "A resident or visitor.",
@@ -222,11 +222,15 @@ export const TRANSPORT = [
         ["a4", "action", "Workers and pupils without a place go elsewhere by train; commuters_in of the empty places come from elsewhere", "TownSimulation._demand"],
         ["a5", "action", "Nobody comes or goes: without a place, at home by day", "TownSimulation._demand"],
         ["m1", "merge"],
-        ["a6", "action", "Agents in proportion (people_per_100, max_people for all alike)", "TownSimulation._build"],
+        ["a6", "action", "Agents in proportion (people_per_100, max_people for all alike); the id says who: home, role, where to, number", "TownSimulation._build"],
+        ["d2", "decision", "Worked out again (buildings, settings, platforms or the lines' stops changed)?"],
+        ["a8", "action", "Who has the same id stays where they are; the new ones are placed by their plans, the gone ones taken off stops and buses", "TownSimulation._place"],
+        ["a9", "action", "Everybody where their plan says", "TownSimulation._placeAll"],
+        ["m2", "merge"],
         ["a7", "action", "Others ask how often to run and how many others come", "TownSimulation.serviceInterval"],
         ["e", "end"],
       ],
-      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "d1"], ["d1", "a4", "yes"], ["d1", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "a6"], ["a6", "a7"], ["a7", "e"]],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "d1"], ["d1", "a4", "yes"], ["d1", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "a6"], ["a6", "d2"], ["d2", "a8", "yes"], ["d2", "a9", "no"], ["a8", "m2"], ["a9", "m2"], ["m2", "a7"], ["a7", "e"]],
     }, {
       id: "day", name: "A resident's day",
       nodes: [

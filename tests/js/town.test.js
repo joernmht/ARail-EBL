@@ -271,6 +271,29 @@ test("town: a building whose position is unknown takes no part", () => {
   assert.ok(!b.work.some((x) => x.o.id === "nowhere"));
 });
 
+test("town: worked out again during the day, the people who are still there keep where they are", () => {
+  const world = townWorld();
+  runUntil(world, "07:20");
+  const t = town(world);
+  const before = new Map(t.agents.map((a) => [a.id, { a, state: a.state, pos: a.pos && [...a.pos], inside: a.inside }]));
+  const moving = t.agents.filter((a) => a.state === "walking" || a.state === "stop" || a.state === "riding");
+  assert.ok(moving.length > 5, `${moving.length} people on their way`);
+  world.getObject("shop").set({ people: 60 }); // more shop visits: the town is worked out again
+  world.step(0.1);
+  assert.notEqual(t._built, null);
+  const kept = t.agents.filter((a) => before.get(a.id)?.a === a);
+  assert.ok(kept.length >= 0.9 * before.size, `${kept.length} of ${before.size} people are the same`);
+  for (const a of kept.filter((x) => moving.includes(x))) assert.notEqual(a.state, "inside", `${a.id} is still on its way`);
+  assert.ok(moving.filter((a) => t.agents.includes(a)).length >= 0.9 * moving.length, "people on their way stay on it");
+  // the people who are gone are off the stops; nobody is counted twice in the buildings
+  const pax = world.simulations.find((s) => s.constructor.type === "passengers");
+  for (const c of pax.crowds.values()) for (const p of c.people) if (p.agent) assert.ok(t.agents.includes(p.agent), "only the town's people are at the stops");
+  const inside = t.agents.filter((a) => a.state === "inside").length * t._personWeight();
+  assert.ok(Math.abs(inside - [...world.occupancy.values()].reduce((x, v) => x + v, 0)) < 1e-6);
+  runUntil(world, "09:30");
+  assert.ok(t.townStats().work > 10);
+});
+
 test("town: the cap scales residents and visitors alike", () => {
   const all = built([...HOMES, { id: "works", type: "test-box", position: [30000, 600], use: "work", people: 1000 }]);
   const capped = built([...HOMES, { id: "works", type: "test-box", position: [30000, 600], use: "work", people: 1000 }], { max_people: 60 });
