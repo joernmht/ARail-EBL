@@ -21,6 +21,7 @@
  * @property {string | null} track track name in the control system (rail docks)
  * @property {string} label e.g. "Track 3" or "Bay B"
  * @property {number | null} headway average time between vehicles (s); null on docks served by bus lines
+ * @property {boolean} auto the interval follows what the town needs (`ServiceManager.headwayOf`); `headway` without a town
  * @property {number} dwell dwell time (s)
  * @property {string | null} managed set (e.g. "line") when something other than the timetable
  *   serves the dock: bus lines (core/transit.js); the timetable services skip such docks
@@ -66,6 +67,7 @@ export class StopArea {
       track: d.track ?? null,
       label: d.label || "",
       headway: d.managed && d.headway === null ? null : d.headway ?? 70,
+      auto: !!d.auto,
       dwell: d.dwell ?? 24,
       managed: d.managed ?? null,
     }));

@@ -106,6 +106,7 @@ test("a train taken away for a story's train: the people on their way to its doo
 
 test("the people waiting for a held track go over to the other one, or leave when both are held; the board shows no next train then", () => {
   const world = createWorld(NEUSTADT, { seed: 3 });
+  world.demand = 10; // a busy day: the small town alone sends few people to the stops
   frames(world, 600);
   const area = world.getStopArea("platform-2"), [g2, g3] = area.docks;
   const sim = world.simulations.find((s) => s.constructor.type === "passengers");

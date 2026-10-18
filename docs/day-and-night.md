@@ -63,21 +63,64 @@ handles the stops):
 ### Who lives in the town
 
 Every residential building (Plattenbau, Altbau block, single-family houses and estates, the
-generic building with `"use": "residential"`) has residents according to its size and floors.
-The town shows `people_per_100` people per 100 residents (12 by default, at most `max_people`).
-They are:
+generic building with `"use": "residential"`) has residents according to its size and floors:
+60 % workers, 15 % pupils, 25 % seniors and others at home by day. The other buildings do not
+bring people of their own. Their jobs, school places and shop visits are **places**, and the
+residents fill them first:
 
-| Role | Share | Day |
+1. Each worker takes a job, each pupil a school place, each adult who shops a shop visit, within
+   reach of the home, the nearest first. Within reach means in the local area (`catchment_m`,
+   1500 m) or on a bus or tram line between stops within 300 m of both. A place is taken once.
+2. Only the balance crosses the edge of the town, by train. Workers without a job in the town work
+   elsewhere, and so do `commuters_out` (15 %) of the others anyway. Pupils without a school place
+   go to school elsewhere. Of the jobs, school places and shop visits the residents leave empty,
+   `commuters_in` (60 %) are taken by people from elsewhere.
+3. Without platforms nobody comes or goes: the workers and pupils without a place stay at home by
+   day, and empty places stay empty.
+
+So an office or a supermarket among the homes adds nobody: its jobs and visits go to the residents
+(and fewer commute). The same office far from any home, or a big school in a small town, draws
+people in by train. The card of a building says how many of its places the town takes, how many
+people from elsewhere, and how many stay empty. A shop takes 28 half-hour visits a day per visitor
+place (`capacity().visitors`) at a fifth full.
+
+The town shows `people_per_100` people per 100 real people (12 by default; at most `max_people`, which
+scales residents and people from elsewhere alike). They are:
+
+| Role | Who | Day |
 | --- | --- | --- |
-| worker | the rest | leaves 06:30–08:00 for a job in an office, a factory, a shop or a school; back 15:30–17:30, sometimes via the supermarket |
-| commuter | `commuters_out` of the workers (35 %) | walks or takes the bus to the station at 05:45–07:45 and leaves by train; comes back on a train between 16:00 and 18:30 |
-| pupil | 15 % | to school at 07:00–07:40, home at 12:30–15:00 |
-| senior / at home | 25 % | shopping in the morning (half of them) and sometimes in the afternoon |
-| visitor | `commuters_in` per 100 local jobs (40) | comes by train at 06:30–09:00 to work in the town and leaves by train at 15:30–18:00 |
+| worker | workers with a job in the town | leaves 06:30–08:00 for the job; back 15:30–17:30, sometimes via the supermarket |
+| commuter | workers without a job in the town, and `commuters_out` of the others | walks or takes the bus to the station at 05:45–07:45 and leaves by train; comes back on a train between 16:00 and 18:30 |
+| commuter (school) | pupils without a school place in the town | to the station at 06:30–07:15, back on a train between 13:00 and 15:30 |
+| pupil | pupils with a school place | to school at 07:00–07:40, home at 12:30–15:00 |
+| senior / at home | 25 % (and, without platforms, those without a place) | shopping in the morning (half of them) and sometimes in the afternoon |
+| visitor | `commuters_in` of the empty jobs, school places and shop visits | by train: to work at 06:30–09:00, back at 15:30–18:00; to school at 06:45–07:30, back at 12:30–15:00; to a shop between 08:00 and 18:00 for half an hour to an hour |
 
 Some adults go shopping in the evening. Shops are open 07:00–21:00, schools 07:30–15:30. Without
-platforms nobody commutes by train, without schools there are no pupils, and without shops
-nobody goes shopping. Every day gets new, reproducible plans (from the world's random seed).
+shops nobody goes shopping. Every day gets new, reproducible plans (from the world's random seed).
+
+### What the town needs: trains, buses, trams and other passengers
+
+From the same numbers the town tells the stops what it needs:
+
+- **How often vehicles run.** For the platforms: half the morning trips by train (commuters,
+  pupils and visitors, who spread over about two hours) and the busiest hour's share of the
+  other trips (0.3 trips by train a resident and day: errands, leisure, visits), shared by the
+  platform tracks. For a bus or tram line: the long ways of the morning (longer than
+  `walk_max_m`) between two of its stops, by `bus_share`. For the bays of a bus terminal: 0.2 trips by
+  bus a resident and day. The interval is the longest of 5, 10, 15, 20, 30 and 60 clock minutes
+  whose vehicles carry that at a comfortable 70 % (a regional train 140 people, a bus 49, a tram
+  4.2 per metre of its length), with the rush-hour frequency (× 1.5). A small town gets a train an
+  hour on each track and a bus every half hour. This holds for platforms and bays without a
+  `headway_s` of their own (and `services.auto_interval`, true by default) and for lines without
+  `headway_s`; a set interval stays. The card of a stop shows each interval and whether it is set or
+  what the town needs.
+- **Other passengers.** People the town's agents do not stand for (errands, leisure, visits,
+  changes between train and bus) come to the stops from the residents: 0.3 trips a day by train
+  for each resident (shared by the platforms), 0.2 by bus or tram for the residents within 300 m
+  of a stop, at the scale of the town's people, over the day as the clock's profile says. As many
+  get off a vehicle as came to the stops in its interval. The card of a stop shows them an
+  hour. Without a town, the passenger simulation's `base_rate` applies.
 
 ### How they travel
 
@@ -90,13 +133,14 @@ nobody goes shopping. Every day gets new, reproducible plans (from the world's r
   `bus_share` (80 %; pupils and seniors a little more often) when a bus or tram line connects a stop
   within 300 m of the start with a stop within 300 m of the destination, and it is not much slower
   than walking. People wait at the stop, board only their line, ride, get off at their stop and walk
-  on. Nobody waits longer than 20 clock minutes: then they walk (or go home instead of taking
+  on. Nobody waits longer than 20 clock minutes, or a little longer than the interval of what they
+  wait for (an hourly train is worth waiting for): then they walk (or go home instead of taking
   the train).
 - **Train**: commuters go to the nearest platform and take the next train on either side. A
   long way to the platform is taken by bus like any other (see above): to a stop near the
   platform, e.g. the station's bus terminal, and on foot to the platform. Visitors and returning
-  commuters get off arriving trains (up to 14 per train) and walk, or take the bus when it is far,
-  to work, home or the shop. Riders whose stop is taken off the line get off at the next stop.
+  commuters get off arriving trains (up to 30 per train) and walk, or take the bus when it is far,
+  to work, school, home or the shop. Riders whose stop is taken off the line get off at the next stop.
 
 While people are inside a building they are not drawn; the building lights its windows at night
 when people are in (`world.occupancy`).
@@ -115,11 +159,12 @@ shopping, on the bus, at stops and away.
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `people_per_100` | 12 | people shown per 100 residents |
-| `max_people` | 300 | upper limit (phones) |
+| `max_people` | 300 | upper limit (phones); scales residents and visitors alike |
 | `walk_max_m` | 150 | longest walk (prototype metres) before the bus is preferred |
 | `bus_share` | 0.8 | share of long ways taken by bus when a line fits |
-| `commuters_out` | 0.35 | share of workers who work elsewhere and take the train |
-| `commuters_in` | 40 | visitors coming by train, per 100 local jobs |
+| `catchment_m` | 1500 | local area (prototype metres): places this close to a home, or on a line from near it, are its residents' first |
+| `commuters_out` | 0.15 | share of workers who work elsewhere (by train) although there are jobs; those without a job in the town work elsewhere too |
+| `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train) |
 | `shopping` | 0.5 | share of adults who go shopping on a day |
 
 Setting the clock by hand puts everybody where their plan says they are at that time.

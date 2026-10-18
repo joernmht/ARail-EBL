@@ -269,6 +269,7 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   for (const name of ["vehicle.arriving", "vehicle.arrived", "vehicle.departing", "vehicle.departed"]) {
     world.events.on(name, (e) => e.vehicle.source === "story" && events.push(`${name} ${e.vehicle.kind} ${e.dock.id}`));
   }
+  world.demand = 10; // a busy day: the small town alone sends few people to the stops
   frames(world, 400); // people come to the platforms and the bus station
   const passengers = world.simulations.find((x) => x.constructor.type === "passengers");
   const waiting = (id) => passengers.crowds.get(id).people.filter((p) => p.state === "waiting" || p.state === "arriving").length;

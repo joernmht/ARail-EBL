@@ -267,7 +267,10 @@ function drawWorld(world, cam, { plain }) {
 
 test("a frame of the example town draws exactly the same with shared save/restores", (t) => {
   t.mock.method(console, "warn", () => {});
-  const world = createWorld(readJSON("web/layouts/ebl-lab.json"));
+  // without its town the passengers' own crowds (base_rate) fill the stops: many people to draw
+  const json = readJSON("web/layouts/ebl-lab.json");
+  json.simulations = json.simulations.filter((s) => s.type !== "town");
+  const world = createWorld(json);
   world.setTime("07:20");
   world.speed = 30;
   for (let i = 0; i < 60; i++) world.step(0.1); // crowds at the stops, buses and cars on the streets

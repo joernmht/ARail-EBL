@@ -150,7 +150,10 @@ in `web/arail/core/access.js`).
   A stop on one side only is served in that direction; the inspector says so.
 - At the first stop of each direction (the terminus) buses lay over with the doors open until
   their departure. A bus departs every `headway_s` simulated seconds × the time-of-day demand
-  (more often in the rush hours, none between 01:00 and 04:30). Buses come in from the depot when
+  (more often in the rush hours, none between 01:00 and 04:30). A line without `headway_s` runs as
+  often as the town needs: the long ways of its people between the line's stops decide a regular
+  5, 10, 15, 20, 30 or 60 clock minutes (see [Day and night](day-and-night.md#what-the-town-needs-trains-buses-trams-and-other-passengers));
+  without a town every 240 s (trams 300 s). Buses come in from the depot when
   none is waiting. A line keeps only as many buses as its timetable needs (one per departure
   during a round trip, and one to spare): after the rush hour, and at night, a bus that is not
   needed lets its passengers off at the terminus and goes to the depot (*Not in service*;

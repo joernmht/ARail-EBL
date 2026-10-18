@@ -12,7 +12,7 @@ A shortened version of the EBL example ([`web/layouts/ebl-lab.json`](../web/layo
   "scale": 87,
   "markers": { "dictionary": "ARUCO", "size_mm": 30, "codes": 50, "origin": 0,
                "poses": { "0": [0, 0, 0], "1": [700.4, 18.9, 1.47] } },
-  "services": { "rail_headway_s": 70, "rail_dwell_s": 24, "bus_headway_s": 80 },
+  "services": { "rail_headway_s": 70, "rail_dwell_s": 24, "bus_headway_s": 80, "auto_interval": true },
   "clock": { "start": "07:00" },
   "simulations": [
     { "type": "passengers" },
@@ -147,13 +147,14 @@ The built-in timetable of the platforms and bus terminals (used when no control 
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `rail_headway_s` | `70` | average time between trains at a platform track (±30 %) |
+| `rail_headway_s` | `70` | average time between trains at a platform track (±10 %) |
 | `rail_dwell_s` | `24` | how long a train stands at the platform |
 | `bus_headway_s` | `90` | average time between buses at a bus bay of a terminal |
 | `bus_dwell_s` | `20` | how long a bus stands at a bay; also the dwell time of line buses at bus stops (at least 8 s) |
 | `approach_s` | `6` | duration of the arrival and departure animations |
+| `auto_interval` | `true` | platforms and bays without a `headway_s` of their own run as often as the town simulation says its people need (a regular 5–60 clock minutes, see [Day and night](day-and-night.md#what-the-town-needs-trains-buses-trams-and-other-passengers)); the headways above apply without a town, or when this is `false` |
 
-The defaults are short so that something happens in a demo; Settings → Simulation sets the speed (simulated time per real time). With `clock.profiles` these intervals are the off-peak values: trains and buses run more often in the rush hours and not at all between 01:00 and 04:30. Bus lines have their own interval (`headway_s` of the `bus-line`).
+The defaults without a town are short so that something happens in a demo; Settings → Simulation sets the speed (simulated time per real time). With `clock.profiles` these intervals are the off-peak values: trains and buses run more often in the rush hours and not at all between 01:00 and 04:30. Bus and tram lines have their own interval (`headway_s` of the `bus-line` or `tram-line`; empty: what the town needs).
 
 ## `clock`
 
@@ -259,7 +260,7 @@ Geometry: `between: [a, b]` or `from`/`to`. Trains stop along the long edges; *l
 | `sides` | `"both"` | where trains stop: `both`, `left`, `right`, `none` |
 | `track_left`, `track_right` | `""` | names of the tracks in the control system |
 | `lines` | `""` | line names for the timetable trains, comma-separated (`"RE 1, S 2"`) |
-| `headway_s` | layout default | average time between trains |
+| `headway_s` | what the town needs (layout default without a town) | average time between trains |
 | `canopy` | `false` | draw a canopy over the middle of the platform |
 
 Over the camera image the platform surface is the real one; in the flyover the platform draws a concrete surface with edge stones and a safety line, unless the orthophoto shows it.
@@ -276,7 +277,7 @@ Geometry: `position` (centre). A waiting area with bays along a bus lane on its 
 | `width_m` | `4.5` | width of the waiting area |
 | `lane_width_m` | `3.5` | width of the bus lane |
 | `lines` | `""` | line names of the timetable buses, e.g. `"305, 328"` |
-| `headway_s` | layout default | average time between timetable buses per bay |
+| `headway_s` | what the town needs (layout default without a town) | average time between timetable buses per bay |
 | `shelter` | `true` | shelters at the bays |
 
 A bus line that has the terminal as a stop gets a bay of its own (the lines share the first bays in the order of their ids; their buses come over the streets to the bus lane); the other bays keep the timetable buses.
@@ -334,7 +335,7 @@ Buses that run along the streets from stop to stop. Geometry: `stops`, the ids o
 | --- | --- | --- |
 | `number` | `""` | line number on buses and signs (empty: the name, else the number in the id) |
 | `color` | `"#0A777F"` | colour of the route and of the stripe on the buses (Türkis) |
-| `headway_s` | `240` | time between buses outside the rush hours (simulated seconds, 30–3600); more often in the rush hours, none at night |
+| `headway_s` | empty | time between buses outside the rush hours (simulated seconds, 30–3600); more often in the rush hours, none at night. Empty: as often as the town needs, 240 without a town |
 | `mode` | `"back-and-forth"` | `back-and-forth` (in order, then in reverse) or `loop` (round, back to the first stop; the signs say *Ring ↻* or *Ring ↺*) |
 | `speed_kmh` | `40` | top speed |
 | `show_route` | `true` | draw the route |
@@ -363,7 +364,7 @@ Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the i
 | --- | --- | --- |
 | `number` | `""` | line number on trams and signs |
 | `color` | `"#00008C"` | colour of the route and of the trams |
-| `headway_s` | `300` | time between trams outside the rush hours (simulated seconds, 30–3600); more often in the rush hours, none at night |
+| `headway_s` | empty | time between trams outside the rush hours (simulated seconds, 30–3600); more often in the rush hours, none at night. Empty: as often as the town needs, 300 without a town |
 | `mode` | `"back-and-forth"` | `back-and-forth` or `loop` |
 | `speed_kmh` | `50` | top speed |
 | `length_m` | `30` | length of a tram (15–60) |
@@ -622,8 +623,8 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 
 | Type | Settings (defaults) | |
 | --- | --- | --- |
-| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140), `others` (true) | random passengers at all stops, their moods, boarding and alighting; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
-| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `commuters_out` (0.35 of the workers take the train), `commuters_in` (40 visitors by train per 100 local jobs), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train, see [Day and night](day-and-night.md#the-town-simulation) |
+| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand, without a town; with a town the other passengers follow its residents), `max_per_area` (140), `others` (true) | random passengers at all stops, their moods, boarding and alighting; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
+| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `catchment_m` (1500: the local area whose places the residents fill first), `commuters_out` (0.15 of the workers work elsewhere anyway; those without a job in the town too), `commuters_in` (0.6 of the places left empty are taken by people from elsewhere, by train), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train; the people follow the buildings, and the town sets how often trains, buses and trams run, see [Day and night](day-and-night.md#the-town-simulation) |
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic), `destinations` (0.5 of the cars coming in drive to a building and park there), `parked` (0.7 of the residents' spaces taken at night) | cars with drivers and passengers on the streets, parking near where they go, see [Streets, trams, buses and road traffic](streets-and-buses.md#road-traffic) |
 | `cycling` | `riders_per_km` (8 per km of street at normal daytime traffic), `scooters` (0.25 of them e-scooters), `rule_breakers` (0.15), `children` (0.08), `to_buildings` (0.4 lock their bike near a building for a while) | bikes and e-scooters on the streets, bike lanes and paths, see [Bikes and e-scooters](streets-and-buses.md#bikes-and-e-scooters) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
