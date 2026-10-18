@@ -39,8 +39,11 @@ export class StopArea {
    * @param {number} o.scale model scale denominator
    * @param {Array<Partial<Dock>>} [o.docks]
    * @param {Array<{s: number, t: number, weight?: number}>} [o.access] entrances/exits (m); default: both ends and the middle
+   * @param {{kind: "board" | "island", reach: number, s: number} | null} [o.crossing] a strip with traffic people
+   *   cross (m): to the vehicles, beyond the edge of the docks ("board": a tram in the middle of the street),
+   *   or to the area from the sidewalk, beyond the other edge at `s` ("island": an island in a street)
    */
-  constructor({ id, owner, kind, origin, dir, lengthMM, widthMM, scale, docks = [], access = null }) {
+  constructor({ id, owner, kind, origin, dir, lengthMM, widthMM, scale, docks = [], access = null, crossing = null }) {
     this.id = id;
     this.owner = owner;
     this.kind = kind;
@@ -66,6 +69,7 @@ export class StopArea {
       dwell: d.dwell ?? 24,
       managed: d.managed ?? null,
     }));
+    this.crossing = crossing;
     this.access = access || [
       { s: 0.3, t: 0, weight: 0.35 },
       { s: this.L - 0.3, t: 0, weight: 0.35 },

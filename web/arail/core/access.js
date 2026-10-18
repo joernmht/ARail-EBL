@@ -105,6 +105,23 @@ export function nearestStreet(world, p, { car = false, maxMM = Infinity, exclude
 }
 
 /**
+ * Is a point inside the layout, more than `edge` (mm) from its edge? With table modules from the
+ * edge of the modules (they need not make up a rectangle: a module that juts out does not put the
+ * end of a street at the edge of another one inside), else from the layout's bounds.
+ */
+export function insideLayout(world, p, edge, bounds = layoutBounds(world)) {
+  const el = world.elevation?.sync();
+  if (el?.modules.length) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4;
+      if (!el.moduleAt(p[0] + edge * Math.cos(a), p[1] + edge * Math.sin(a))) return false;
+    }
+    return true;
+  }
+  return !!bounds && p[0] - bounds[0] > edge && bounds[2] - p[0] > edge && p[1] - bounds[1] > edge && bounds[3] - p[1] > edge;
+}
+
+/**
  * The edge of the layout (layout mm, [x0, y0, x1, y1]): the table modules and the orthophoto,
  * else everything on it.
  */
@@ -333,8 +350,7 @@ export function accessProblems(world) {
         continue;
       }
       if (!r.info.car || !bounds) continue;
-      const inside = p[0] - bounds[0] > edge && bounds[2] - p[0] > edge && p[1] - bounds[1] > edge && bounds[3] - p[1] > edge;
-      if (inside) add({ key: `dead:${r.obj.id}:${k}`, level: "warning", id: r.obj.id, at: p, text: `${nameOf(r.obj)}: dead end inside the layout: cars appear and vanish here. Lead it to the edge of the layout, or join it to another street` });
+      if (insideLayout(world, p, edge, bounds)) add({ key: `dead:${r.obj.id}:${k}`, level: "warning", id: r.obj.id, at: p, text: `${nameOf(r.obj)}: dead end inside the layout: cars appear and vanish here. Lead it to the edge of the layout, or join it to another street` });
     }
   }
 

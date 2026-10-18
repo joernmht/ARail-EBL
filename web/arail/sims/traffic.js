@@ -73,6 +73,7 @@ const MAX_WALK_M = 400; // the farthest a driver parks from the goal (m)
 const EUR_PER_MIN = 0.2; // what a minute is worth to a driver (12 € an hour): weighs fees against time
 const PASS_AFTER_S = 2; // a car behind a bike waits this long before it looks for a chance to overtake
 const ONCOMING_M = 60; // overtaking needs the other lane free this far ahead (m)
+const SHIFT_MS = 1.2; // how fast a car moves over to the other lane and back (m/s)
 
 function hash(...parts) {
   let h = 2166136261;
@@ -655,14 +656,14 @@ export class TrafficSimulation extends Simulation {
     waitFor(car, lead.user, dt);
     if (lead.user && (lead.user.vehicle.kind === "bike" || lead.user.vehicle.kind === "scooter") && !car.passing) {
       car.behind = (car.behind || 0) + dt;
-      if (car.behind > PASS_AFTER_S && this._mayPass(car, me, users, net)) {
+      if (car.behind > PASS_AFTER_S && this._mayPass(car, me, users, net, lead)) {
         car.passing = { who: lead.user.vehicle, until: car.s + gap + this.mm(LENGTH_M + 12) };
         car.behind = 0;
       }
     } else if (!lead.user) car.behind = 0;
     if (car.passing && car.s > car.passing.until) car.passing = null;
     const laneShift = car.passing ? this._passShift(car) : 0;
-    car.shift = approach(car.shift || 0, laneShift, this.mm(1.2) * dt);
+    car.shift = approach(car.shift || 0, laneShift, this.mm(SHIFT_MS) * dt);
     if (gap < Infinity) vT = Math.min(vT, Math.sqrt(2 * BRAKE * Math.max(0, this.meters(gap) - GAP_M)));
     // where it has to stand: before a junction, a zebra crossing with people on it, a closed level crossing
     let stopAt = Infinity;
@@ -719,14 +720,22 @@ export class TrafficSimulation extends Simulation {
 
   /**
    * May a car overtake the bike ahead (StVO § 5)? On a street with one lane each way, with no
-   * vehicle coming the other way for 60 m and no junction just ahead.
+   * vehicle coming the other way for 60 m and no junction just ahead; not a bike that stands (in a
+   * queue, at a light), and not where the car would still be on the other lane at the traffic lights
+   * of a tram stop (core/stop-signals.js): it passes the bike, then moves back.
    */
-  _mayPass(car, me, users, net) {
+  _mayPass(car, me, users, net, lead) {
+    if ((lead.user.vehicle.v ?? 0) < 1) return false;
     const at = net.edgeAt(car.route, this._centreS(car));
     const e = at?.edge;
     if (!e || e.carDir || (e.lanes ?? 1) > 1 || e.laneOffset <= 0) return false;
     const j = car.junctions.find((x) => x.s + x.r > car.s);
     if (j && j.s - car.s < this.mm(30)) return false;
+    const back = this.meters(lead.gap) + LENGTH_M + 12 + (Math.max(car.v, 5) * this.meters(this._passShift(car))) / SHIFT_MS + 10;
+    for (const sig of this.world.transit?.signals?.list() || []) {
+      const d = sub2(sig.line[sig.line.length >> 1], me.front), along = this.meters(dot2(d, me.dir));
+      if (dot2(sig.dir, me.dir) > 0.7 && along > 0 && along < back && this.meters(Math.abs(d[0] * me.dir[1] - d[1] * me.dir[0])) < 25) return false;
+    }
     const far = this.mm(ONCOMING_M), left = [-me.dir[1], me.dir[0]];
     for (const u of users.near ? users.near(me.front, far) : users) {
       if (u.vehicle === car || dot2(u.dir, me.dir) > -0.5) continue;

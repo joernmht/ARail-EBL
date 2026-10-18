@@ -70,9 +70,10 @@ export { LayoutObject, UnknownObject } from "./core/object.js";
 export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, planePoint, projectedHull, surfacePoint } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
+export { STOP_SIGNAL, StopSignals } from "./core/stop-signals.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
 export { RoadNetwork, dockPose, driveS, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
-export { accessProblems, applyFix, carGroups, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
+export { accessProblems, applyFix, carGroups, insideLayout, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
 export {
   Transit, LineBus, RoadUsers, LINE_TYPES, linesServing, boxFaces, gapAhead, leaderAhead, mustYield, lightAt, approachPrio, junctionPatience, ringName, turningNumber,
   singleTrack, reversals, waitFor, squeezing, roomAfter, GRIDLOCK_S, JUNCTION_WAIT_S,

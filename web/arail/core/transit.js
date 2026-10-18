@@ -29,6 +29,7 @@
 import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
 import { driveS, joinPaths } from "./network.js";
 import { TRAM_CURVES, roundCorners } from "./curves.js";
+import { StopSignals } from "./stop-signals.js";
 import { CD, PALETTE, grey, mix, shade } from "./colors.js";
 
 const ACCEL = 1.0; // m/s²
@@ -205,6 +206,8 @@ export function leaderAhead(self, front, dir, users, lookMM, laneMM, skip = null
   let best = Infinity, who = null;
   for (const o of around(users, front, lookMM + laneMM)) {
     if (o.vehicle === self || o.vehicle.owner === self || skip?.has(o.vehicle)) continue;
+    // traffic lights at tram stops hold everybody but trams (at amber those who can still stop)
+    if (o.vehicle.obeys && !o.vehicle.obeys(self, front)) continue;
     const d = sub2(o.rear, front);
     const along = dot2(d, dir);
     if (along < -laneMM && best > 0 && dot2(o.dir, dir) >= 0.3) {
@@ -406,6 +409,8 @@ export class Transit {
     this._users = [];
     /** Buses and trams made so far (their `seq`). */
     this._seq = 0;
+    /** The traffic lights of the tram stops in the middle of the street (core/stop-signals.js). */
+    this.signals = new StopSignals(world);
     // the clock was set (e.g. from night to day): lines without buses get them at once
     world.events.on("clock.set", () => {
       for (const line of this.lines.values()) if (line.ok && !this.buses.some((b) => b.lineId === line.id)) this._populate(line);
@@ -419,6 +424,7 @@ export class Transit {
     this._key = null;
     this._deep = null;
     this._users = [];
+    this.signals = new StopSignals(this.world);
   }
 
   get scale() {
@@ -778,13 +784,17 @@ export class Transit {
     const L = line.circuit.length;
     const n = Math.min(12, Math.floor(this._cycle(line) / (line.headway / tod)));
     const rng = createRng(hash(`${this.world.seed}:${line.id}:populate`));
-    const offset = rng.uniform(0.2, 0.8);
+    const offset = rng.uniform(0.2, 0.8), placed = [];
     for (let k = 0; k < n; k++) {
       let s = ((k + offset) * L) / n;
       // not across the end of a stub track: beyond it, with the other end leading
       for (const r of line.reversals || []) if (this._ahead(line, r.s0, s) < r.s1 - r.s0 + this.mm(line.length)) s = (r.s1 + this.mm(line.length)) % L;
       const next = this._nextVisit(line, s);
       if (this._ahead(line, s, line.visits[next].s) < this.mm(20)) continue;
+      // not on a single track that a tram put there before uses the other way
+      const on = (line.single || []).filter((iv) => this._ahead(line, iv.s0, s) <= iv.s1 - iv.s0 + this.mm(line.length));
+      if (on.some((iv) => placed.some((o) => o.key === iv.key && (iv.dir === 0 || o.dir === 0 || o.dir === -iv.dir)))) continue;
+      placed.push(...on);
       const bus = new LineBus(line, s, next);
       bus.seq = ++this._seq;
       this._setDirection(bus, line, next);
@@ -1003,9 +1013,17 @@ export class Transit {
     this._users.push(...this._blockers());
     const all = this._users.slice();
     for (const s of this.world.simulations || []) if (typeof s.roadUsers === "function") all.push(...s.roadUsers());
+    // the lights at the stops: red while a tram comes and people cross; the vehicles stop at them
+    this.signals.step(dt, { buses: this.buses, meters: (mm) => this.meters(mm), ahead: (bus) => this._nextDock(bus) }, all);
+    const lights = this.signals.blockers();
+    this._users.push(...lights);
+    all.push(...lights);
     const users = new RoadUsers(all, this.mm(25));
     this._occupied = this._singleOccupancy();
-    for (const bus of this.buses) this._drive(bus, this.lines.get(bus.lineId), dt, users);
+    for (const bus of this.buses) {
+      this._drive(bus, this.lines.get(bus.lineId), dt, users);
+      this._occupy(bus);
+    }
     this.buses = this.buses.filter((b) => b.phase !== "gone");
   }
 
@@ -1046,20 +1064,27 @@ export class Transit {
 
   /**
    * Cars wait beside a tram at a stop without an island while its doors are open: people cross the
-   * lane to and from it (StVO § 20). One road user in that lane per tram, as long as the tram.
+   * lane to and from it (StVO § 20). One road user in that lane per tram, as long as the tram. Where
+   * the stop has traffic lights, they hold the cars at their stop line instead (core/stop-signals.js).
    */
   _blockers() {
     const out = [];
     for (const bus of this.buses) {
       if (bus.kind !== "tram" || bus.phase !== "dwelling" || bus.waiting || !bus._pose) continue;
       const owner = bus.dock?.area?.owner;
-      if (typeof owner?.blocksCars !== "function" || !owner.blocksCars()) continue;
+      if (typeof owner?.blocksCars !== "function" || !owner.blocksCars() || this.signals.forDock(bus.dock.id)) continue;
       const shift = owner.carLaneShift?.(bus.dock) ?? 0;
       const { front, rear, dir } = bus._pose, r = [dir[1], -dir[0]];
       const at = (p) => [p[0] + r[0] * shift, p[1] + r[1] * shift];
       out.push({ vehicle: { id: `block:${bus.id}`, phase: "block", v: 0, owner: bus }, front: at(front), rear: at(rear), dir, speed: 0, approach: null });
     }
     return out;
+  }
+
+  /** The dock a bus or tram drives to next and how far it is (mm), or null. */
+  _nextDock(bus) {
+    const line = this.lines.get(bus.lineId), v = line?.ok ? line.visits[bus.next] : null;
+    return v?.dock ? { dockId: v.dock.id, d: this._ahead(line, bus.s, v.s) } : null;
   }
 
   /** Which trams are on which single-track stretch now: key → [{bus, dir}] (see singleTrack). */
@@ -1077,6 +1102,22 @@ export class Transit {
       }
     }
     return map;
+  }
+
+  /**
+   * A tram that has just moved onto a single-track stretch is on it at once for the trams after it
+   * in this step (two trams at the two ends in the same step would both find it free).
+   */
+  _occupy(bus) {
+    const line = this.lines.get(bus.lineId);
+    if (bus.kind !== "tram" || !line?.single?.length || !this._occupied) return;
+    const len = this.mm(line.length);
+    for (const iv of line.single) {
+      if (this._ahead(line, iv.s0, bus.s) > iv.s1 - iv.s0 + len) continue;
+      const on = this._occupied.get(iv.key) || [];
+      if (!on.some((o) => o.bus === bus && o.dir === iv.dir)) on.push({ bus, dir: iv.dir });
+      this._occupied.set(iv.key, on);
+    }
   }
 
   /** May a tram enter a single-track stretch? Not while a tram comes the other way on it, or any tram where they turn. */
@@ -1150,6 +1191,8 @@ export class Transit {
         bus.delayMin += dt / 60;
         return;
       }
+      // the doors open once people may cross to the tram (the lights hold the vehicles beside it)
+      if (this.signals.holdsDoors(bus.dock?.id)) return;
       bus.dwellLeft -= dt;
       if (bus.dwellLeft <= 0 && bus.outOfService) this._drop(bus);
       else if (bus.dwellLeft <= 0) {

@@ -69,7 +69,7 @@ export const PACKAGES = [
   {
     id: "core-transport", name: "core · transport", group: "framework", path: "web/arail/core",
     summary: "Stops and docks, the timetable trains and buses, the road network with its rules (signs, lights, zebra crossings, railway crossings) and the street access of what needs it, bus and tram lines, the parking spaces, the control system's trains.",
-    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/curves.js", "web/arail/core/parking.js", "web/arail/core/trains.js"],
+    files: ["web/arail/core/stops.js", "web/arail/core/services.js", "web/arail/core/vehicles.js", "web/arail/core/network.js", "web/arail/core/access.js", "web/arail/core/transit.js", "web/arail/core/curves.js", "web/arail/core/stop-signals.js", "web/arail/core/parking.js", "web/arail/core/trains.js"],
     uses: ["core-math", "core-drawing"],
   },
   {

@@ -105,7 +105,9 @@ track bed too narrow for them. Two things act in the simulation:
 
 - **Bikes hold up the cars** where a car cannot pass a bike at 1.5 m (StVO § 5) within its lane:
   on one lane each way narrower than 4.60 m, next to an advisory lane on such a street, or on a bike
-  lane below its minimum. The cars follow the bike and overtake when the other lane is free.
+  lane below its minimum. The cars follow the bike and overtake when the other lane is free (not a
+  bike that waits in a queue or at a light, nor where they would still be on the other lane at the
+  traffic lights of a tram stop).
 - **People get angry** where riders and people on foot share too little room: on a shared path
   (often at 2.50 m, now and then at 3.00 m, rarely from 4.00 m), and next to a bike path below
   1.60 m or a sidewalk below 1.80 m. The street's card counts the conflicts of the last hour; the
@@ -181,15 +183,30 @@ cars wait beside a standing tram (StVO § 20) and how people get on:
 
 | Kind | Where people wait | Cars beside the tram |
 | --- | --- | --- |
-| *on the road* | on the sidewalk; they cross the lane to the door (no platform) | wait |
-| *raised road* (Zeitinsel) | the road raised to the tram floor | wait |
-| *island* between track and car lane (Haltestelleninsel) | on an island; the street must leave a car lane of 3.00 m beside it | drive past |
+| *on the road* | on the sidewalk; they cross the lane to the door (no platform) | wait at the traffic lights |
+| *raised road* (Zeitinsel) | on the sidewalk; the road is raised to the tram floor, they cross it to the door | wait at the traffic lights |
+| *island* between track and car lane (Haltestelleninsel) | on an island; the street must leave a car lane of 3.00 m beside it | drive past; wait at the traffic lights while people cross to the island |
 | *curb extension* (Haltestellenkap) | on the sidewalk built out to the track, like a bus stop | wait behind the tram |
+
+**Traffic lights** (`lights`, on by default): where people cross a lane with cars or bikes to a tram
+in the middle of the street (at a stop on the road or at a raised road), or to an island in a
+street, the stop has a light on each side for the traffic in that lane; it stands at the curb, and
+its stop line, 2 m before the stop, runs across the whole street. It is green for the cars and bikes
+until a tram comes (moving, within 50 m; after 5 s of green at least) or people want to cross (after
+12 s of green), then amber for 3 s, then red. People step onto the lane only while it is red and
+no car or bike is left in it: while the tram stands there, else for 8 s (their green); the tram
+opens its doors only then. It stays red while the tram comes or stands there and while people are
+in the lane, and turns red-amber 2 s after the last of them has left it, then green. At an island
+it changes for the people only: they cross the car lane at the island's end, on a crossing of 4 m,
+towards the island on one half and away from it on the other. Trams pass the lights; at amber only
+those stop who still can; nobody overtakes a bike there. The stop's card shows the lights now.
+Without lights (`lights: false`) the cars wait beside the standing tram while its doors are open.
 
 A stop is **step-free** (barrierefrei, DIN 18040-3) for a low-floor tram (floor about 0.30 m) when
 the step up and the gap are at most 5 cm, it has tactile paving (DIN 32984), its platform is at
-least 2.00 m wide (BOStrab § 31), and at an island people get onto it at a zebra crossing or
-traffic lights within 30 m. Its card says why it is not; boarding there takes 1.3 times as long.
+least 2.00 m wide (BOStrab § 31), and at an island in a street people get onto it at its own
+traffic lights, or at a zebra crossing or traffic lights within 30 m. Its card says why it is not;
+boarding there takes 1.3 times as long.
 
 A **tram line** is placed like a bus line, through its tram stops, and its trams run like the buses
 (the timetable, the depot, the boards and the disruptions are the same), with these differences:
@@ -208,6 +225,12 @@ A **tram line** is placed like a bus line, through its tram stops, and its trams
   20 km/h in one of 40 m.
 - On **one track, both directions** a tram goes onto the single track only when none comes the
   other way; it waits before it (the passing loop is where the street has two tracks again).
+- At the end of a line the trams turn best in a **turning loop** (Wendeschleife): a tram track of
+  its own, *one track, one direction*, that leaves the end of the line and comes back to where it
+  began, in curves of at least 25 m; with a loop at each end the line is a *dog bone*. Trams go
+  round it without changing ends, and a route never turns on the spot where a loop leads round. Lead
+  the line's two tracks into one (a short single track, the neck) a few metres before the loop, so
+  that the tracks join in a straight line: there the loop's two legs meet the neck at 40° each.
 - At the end of a **stub track** (a track that ends) the tram stops, the driver changes ends (20 s)
   and it goes back on the other track once that is free, over a crossover; one tram at a time.
 - Where cars and trams share the lanes, cars keep behind trams and trams behind cars. Trams need
@@ -390,16 +413,16 @@ conflicts of the last hour and the bikes at its lamps.
 ## The example: Bf Neustadt
 
 The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. Two tram lines
-start at *Lindenstraße*, on one track for both directions at the west end of Ringstraße, and run
-along Ringstraße and Bahnhofstraße: line 1 to *Neustadt Bf*, line 2 on a track of its own into the
-*Markt* (an island stop); both change ends at the stubs of their first and last stops, and their
-tracks bend in curves of 25 m from Ringstraße into Bahnhofstraße and into the Markt. Behind them
-**Brückenstraße** crosses the main line at a level crossing with half barriers to Am Plattenring: no
-tram goes over it (BOStrab § 15), and everything lies at the track level. Both lines share the car
-lanes of Ringstraße with traffic lights at Brückenstraße and a zebra crossing at Am Park, and have
-their own lanes in Bahnhofstraße. The stops are of all four kinds. Residents park on a lot with a
-yearly permit, travellers on the P+R by the day; a Stop sign and a no-stopping zone stand at the
-streets; bikes and e-scooters ride with the cars.
+start at *Lindenstraße* and run along Ringstraße and Bahnhofstraße: line 1 to *Neustadt Bf* and the
+*Busbahnhof*, line 2 on a track of its own into the *Markt* (an island stop). Both turn in loops at
+both ends, each on a town module of its own beyond a short single track: west of Lindenstraße, at
+the end of Bahnhofstraße past the Busbahnhof, and behind the Markt; their tracks bend in curves of
+25 m and more. Behind them **Brückenstraße** crosses the main line at a level crossing with half
+barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and everything lies at the track
+level. Both lines share the car lanes of Ringstraße with traffic lights at Brückenstraße and a zebra
+crossing at Am Park, and have their own lanes in the middle of Bahnhofstraße, where people cross the
+car lane to the trams at the lights of the stops. The stops are of all four kinds. Residents park on a lot with a yearly permit, travellers on the P+R by the day; a Stop sign
+and a no-stopping zone stand at the streets; bikes and e-scooters ride with the cars.
 
 ## Day and night
 

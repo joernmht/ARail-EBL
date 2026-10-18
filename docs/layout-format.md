@@ -352,11 +352,12 @@ Geometry: `position`, projected onto the tram tracks of the nearest street with 
 | `width_m` | `2.5` | width of the platform (at least 2.0 m, BOStrab § 31) |
 | `height_m` | by kind | platform height: 0 on the road, 0.25 otherwise (low-floor trams: about 0.30) |
 | `tactile` | `true` | tactile paving (DIN 32984) |
+| `lights` | `true` | traffic lights where people cross a lane with cars or bikes to the tram (`road`, `raised`) or to an island in a street: red for that traffic while a tram comes and stands there and while people cross; without them cars wait beside the tram while its doors are open |
 | `shelter` | `true` | a shelter |
 
 ### `tram-line`
 
-Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the ids of tram stops in the order they are served, at least two. Trams never cross a railway at street level, and their tracks bend in arcs of at least 25 m (see [Trams](streets-and-buses.md#trams)).
+Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the ids of tram stops in the order they are served, at least two. Trams never cross a railway at street level, and their tracks bend in arcs of at least 25 m. At the ends of the line they go round a turning loop where there is one (a `road` of `kind: "tram"` with `tram_tracks: "single-oneway"` that comes back to where it began), else they change ends at the end of the tracks (see [Trams](streets-and-buses.md#trams)).
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

@@ -285,7 +285,7 @@ export class PassengerSimulation extends Simulation {
       // a traveller who knows the exit it takes rode near it: off at the door closest to it
       const aim = towards?.(agent);
       if (aim != null && doors.length) s = doors.reduce((b, d) => (Math.abs(d - aim) < Math.abs(b - aim) ? d : b), doors[0]);
-      const p = new Person(rng, [s, dock.side * (a.W / 2 - 0.2)], [0, 0], "onboard", rng.uniform(0.7, 0.92), null);
+      const p = new Person(rng, [s, this._doorT(a, dock) - dock.side * 0.2], [0, 0], "onboard", rng.uniform(0.7, 0.92), null);
       p.agent = agent;
       p.delay = rng.uniform(0, 4);
       p.target = this._exit(c, p.pos);
@@ -370,7 +370,42 @@ export class PassengerSimulation extends Simulation {
   _doorSpot(dock, doors, s) {
     let best = doors[0];
     for (const d of doors) if (Math.abs(d - s) < Math.abs(best - s)) best = d;
-    return [best + this.rng.uniform(-0.3, 0.3), dock.side * (dock.area.W / 2 - 0.15)];
+    return [best + this.rng.uniform(-0.3, 0.3), this._doorT(dock.area, dock) - dock.side * 0.15];
+  }
+
+  /** How far across the area (m) the doors of a vehicle at a dock are: beyond the strip people cross to a tram in the middle of the street. */
+  _doorT(a, dock) {
+    return dock.side * (a.W / 2 + (a.crossing?.kind === "board" ? a.crossing.reach : 0));
+  }
+
+  /** May people step onto the area's strip with traffic now (core/stop-signals.js)? Where it has no lights, always. */
+  _walk(a) {
+    return this.world.transit?.signals?.walk(a.id) ?? true;
+  }
+
+  /**
+   * Where a person heads for now (area m): the target, but over a strip with traffic only while the
+   * lights let people cross, and straight over it; to an island in a street only at its crossing (4 m
+   * wide: towards the island on one half, away from it on the other, each person in a lane of it).
+   */
+  _goal(a, p, walk) {
+    const x = a.crossing, h = a.W / 2, [s, t] = p.pos, [gs, gt] = p.target;
+    if (x.kind === "board") {
+      // the strip lies beyond the edge of the docks: from the curb to the doors
+      if (t <= h + 0.05 && gt > h + 0.05 && !walk) return [gs, h - 0.25];
+      return p.target;
+    }
+    // an island: the strip is the car lane beyond its other edge, crossed at x.s
+    const far = -h - x.reach;
+    const where = (v) => (v > -h + 0.05 ? 1 : v < far - 0.05 ? -1 : 0);
+    const from = where(t), to = where(gt);
+    if (from === to && from !== 0) return p.target;
+    p.crossLane ??= this.rng.uniform(0.2, 1.7);
+    const at = x.s + (to === 1 ? 1 : -1) * p.crossLane;
+    if (from === 0) return [at, to >= 0 ? -h + 0.3 : far - 0.4];
+    const edge = from === 1 ? -h + 0.25 : far - 0.25;
+    if (!walk || Math.abs(s - at) > 0.5 || Math.abs(t - edge) > 0.4) return [at, edge];
+    return [at, to === 1 ? -h + 0.3 : far - 0.4];
   }
 
   /* ---------------------------------------------------------------- events */
@@ -412,7 +447,7 @@ export class PassengerSimulation extends Simulation {
     const late = vehicle.delayMin > 0.5;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const s = rng.pick(doors) + rng.uniform(-0.4, 0.4);
-      const p = new Person(rng, [s, dock.side * (a.W / 2 - 0.2)], [0, 0], "onboard", rng.uniform(0.6, 0.92) - (late ? 0.35 : 0), null);
+      const p = new Person(rng, [s, this._doorT(a, dock) - dock.side * 0.2], [0, 0], "onboard", rng.uniform(0.6, 0.92) - (late ? 0.35 : 0), null);
       p.delay = rng.uniform(0, 7);
       p.target = this._exit(c, p.pos);
       c.people.push(p);
@@ -428,11 +463,11 @@ export class PassengerSimulation extends Simulation {
     if (!c) return;
     for (const p of c.people) {
       if (p.state === "boarding" && p.dock === dock.id) {
-        // missed it
+        // missed it (from the strip in the street back onto the sidewalk)
         p.state = "waiting";
         p.vehicle = null;
         if (p.anyDock) p.dock = null;
-        p.target = p.pos.slice();
+        p.target = c.area.crossing?.kind === "board" ? [p.pos[0], Math.min(p.pos[1], c.area.W / 2 - 0.4)] : p.pos.slice();
         p.mood = Math.max(0, p.mood - 0.35);
       } else if (p.state === "onboard") {
         p.delay = 0;
@@ -503,26 +538,37 @@ export class PassengerSimulation extends Simulation {
 
   _move(c, dt, fx) {
     const rng = this.rng, a = c.area, L = a.L, W = a.W;
+    const x = a.crossing, walk = x ? this._walk(a) : true;
+    let crossing = 0, waiting = 0;
     for (const p of c.people) {
-      if (p.state === "onboard") {
-        p.delay -= dt;
-        if (p.delay <= 0) {
-          p.state = "leaving";
-          c.inTimes.push(c.t);
-        }
+      if (p.state !== "onboard") continue;
+      p.delay -= dt;
+      if (p.delay > 0) continue;
+      // off the tram over the strip only while the lights hold the traffic; till then they wait for it
+      if (x?.kind === "board" && !walk) waiting++;
+      else {
+        p.state = "leaving";
+        c.inTimes.push(c.t);
       }
     }
     const active = c.visible(), n = active.length;
-    if (!n) return;
+    // how far people may go beyond the area: onto the strip to the tram, or over the lane to an island
+    const lo = x?.kind === "island" ? -W / 2 - x.reach - 0.8 : null, hi = x?.kind === "board" ? W / 2 + x.reach - 0.1 : null;
+    if (!n) {
+      if (x) this.world.transit?.signals?.report(a.id, 0, waiting);
+      return;
+    }
     const { neighbours, push } = crowdForces(active);
     const gone = new Set();
     active.forEach((p, i) => {
-      const density = Math.max(0, neighbours[i] - 2);
-      const zx = p.target[0] - p.pos[0], zy = p.target[1] - p.pos[1], dist = Math.hypot(zx, zy);
+      const density = Math.max(0, neighbours[i] - 2), t0 = p.pos[1];
+      const goal = x ? this._goal(a, p, walk) : p.target;
+      const zx = goal[0] - p.pos[0], zy = goal[1] - p.pos[1], dist = Math.hypot(p.target[0] - p.pos[0], p.target[1] - p.pos[1]);
+      const ahead = Math.hypot(zx, zy);
       const walking = p.state === "arriving" || p.state === "leaving" || (p.state === "boarding" && p.delay <= 0);
       let vx, vy;
       if (walking) {
-        const k = (p.speed * Math.min(1, dist / 0.8)) / (1 + 0.12 * density) / Math.max(dist, 1e-6);
+        const k = (p.speed * Math.min(1, ahead / 0.8)) / (1 + 0.12 * density) / Math.max(ahead, 1e-6);
         vx = zx * k + push[i][0];
         vy = zy * k + push[i][1];
       } else {
@@ -535,8 +581,20 @@ export class PassengerSimulation extends Simulation {
       p.pos[0] += p.vel[0] * dt;
       p.pos[1] += p.vel[1] * dt;
       const margin = p.state === "boarding" ? 0.12 : 0.22;
+      // while the lights hold the people, nobody steps (or is pushed) onto the strip
+      let bottom = lo ?? -W / 2 + margin, top = hi ?? W / 2 - margin;
+      if (x && !walk) {
+        if (x.kind === "board" && t0 <= W / 2 + 0.05) top = W / 2 - margin;
+        if (x.kind === "island" && t0 >= -W / 2 - 0.05) bottom = -W / 2 + margin;
+        if (x.kind === "island" && t0 <= -W / 2 - x.reach - 0.05) top = -W / 2 - x.reach - 0.1;
+      }
       p.pos[0] = Math.min(Math.max(p.pos[0], 0.1), L - 0.1);
-      p.pos[1] = Math.min(Math.max(p.pos[1], -W / 2 + margin), W / 2 - margin);
+      p.pos[1] = Math.min(Math.max(p.pos[1], bottom), top);
+      if (x) {
+        const t = p.pos[1];
+        if (x.kind === "board" ? t > W / 2 + 0.05 : t < -W / 2 - 0.05 && t > -W / 2 - x.reach + 0.05) crossing++;
+        else if (goal !== p.target && (x.kind === "island" || !walk)) waiting++;
+      }
       const speed = Math.hypot(p.vel[0], p.vel[1]);
       p.phase += speed * dt * 5;
       // walking trail
@@ -583,6 +641,7 @@ export class PassengerSimulation extends Simulation {
       p.mood = Math.min(1, Math.max(0, p.mood));
     });
     if (gone.size) c.people = c.people.filter((p) => !gone.has(p));
+    if (x) this.world.transit?.signals?.report(a.id, crossing, waiting);
   }
 
   /* ---------------------------------------------------------------- pointing at people and stops */

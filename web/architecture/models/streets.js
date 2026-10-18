@@ -209,20 +209,26 @@ export const STREETS = [
   },
   {
     id: "trams", group: "transport", title: "Trams",
-    summary: "Tram stops of four kinds at tram tracks in the street or on a track of their own, step-free or not; tram lines run like bus lines, but only on tram tracks, in curves of at least 25 m, never across a railway at street level, one tram at a time on a single track used both ways, and they change ends at stub tracks.",
-    description: "A tram stop is a stop area beside a track (a dock for each direction of two tracks, one for a single track): on the road (no platform), at a raised road (Zeitinsel), on an island between the track and the car lane, or at a curb extension (Haltestellenkap). Its accessibility (DIN 18040-3) and whether cars wait beside a standing tram (StVO § 20) follow from its kind. Tram lines are bus lines of the vehicle tram (Transit): their circuits use tram tracks only; single-track stretches and the end of stub tracks are held for one tram (or one direction) at a time. Trams cannot turn on the spot: every corner of a tram line's driving line is rounded to an arc of 25 m (roundCorners); where the straights are too short for that, the arc is as large as fits and the line says so. Trams slow down for the curves, and the tram line draws its rails along them (TramLine.draw).",
-    files: ["web/arail/objects/tram.js", "web/arail/core/vehicles.js", "web/arail/core/transit.js", "web/arail/core/curves.js"],
+    summary: "Tram stops of four kinds at tram tracks in the street or on a track of their own, step-free or not; where people cross a lane to a tram in the middle of the street, traffic lights hold the cars and bikes; tram lines run like bus lines, but only on tram tracks, in curves of at least 25 m, never across a railway at street level, one tram at a time on a single track used both ways; they turn in loops, or change ends at stub tracks.",
+    description: "A tram stop is a stop area beside a track (a dock for each direction of two tracks, one for a single track): on the road (no platform), at a raised road (Zeitinsel), on an island between the track and the car lane, or at a curb extension (Haltestellenkap). Its accessibility (DIN 18040-3) and whether cars wait beside a standing tram (StVO § 20) follow from its kind. Tram lines are bus lines of the vehicle tram (Transit): their circuits use tram tracks only; single-track stretches and the end of stub tracks are held for one tram (or one direction) at a time. Trams cannot turn on the spot: every corner of a tram line's driving line is rounded to an arc of 25 m (roundCorners); where the straights are too short for that, the arc is as large as fits and the line says so. Trams slow down for the curves, and the tram line draws its rails along them (TramLine.draw). A loop at the end of a line (a one-way track of its own back to where it began) turns the trams without changing ends. Where people cross a strip with cars or bikes to a tram in the middle of the street (a stop on the road or at a raised road), or to an island in a street, the stop has traffic lights (StopSignals): red for the traffic while a tram comes and stands there and while people cross; people step onto the strip only while it is red and no vehicle is left on it, and the tram opens its doors only then. The stop line runs across the whole street, and cars do not overtake a bike where they would still be on the other lane at the lights.",
+    files: ["web/arail/objects/tram.js", "web/arail/core/vehicles.js", "web/arail/core/transit.js", "web/arail/core/curves.js", "web/arail/core/stop-signals.js"],
     classes: [
       {
         name: "TramStop", file: "web/arail/objects/tram.js", kind: "class", extends: "LayoutObject", role: "A tram stop at a tram track.",
-        operations: ["kind() — road, raised, island or cape", "platformHeight()", "accessibility() — step-free or not, and why", "dwellFactor() — boarding takes 1.3 times as long where it is not step-free", "blocksCars() — cars wait beside a standing tram", "carLaneShift(dock)", "noParking(road, side) — the stop and 15 m on each side", "problems() — not at a track; no room for an island", "card()", "stopAreas() — a dock (kind tram) per direction", "draw(view)"],
+        operations: ["kind() — road, raised, island or cape", "platformHeight()", "accessibility() — step-free or not, and why", "dwellFactor() — boarding takes 1.3 times as long where it is not step-free", "blocksCars() — cars wait beside a standing tram", "carLaneShift(dock)", "noParking(road, side) — the stop and 15 m on each side", "problems() — not at a track; no room for an island", "card() — with its lights now", "stopAreas() — a dock (kind tram) per direction; the strip people cross, and at an island in a street the way over the lane", "_strip(sd) — the strip with traffic people cross (to the tram, or to an island) and the other edge of the street", "stopSignals() — the lights for the traffic in the strips, their stop line across the street", "draw(view) — with the lights, their stop line and the crossing to an island"],
       },
       { name: "TramLine", file: "web/arail/objects/tram.js", kind: "class", extends: "BusLine", role: "A tram line placed through its tram stops.", operations: ["routeLines(line) — the tracks it uses, a crossover at the end of a stub track", "draw(view) — the rails, then its route", "_tracks(line) — kept while the circuit stays"] },
       {
         name: "tram", file: "web/arail/objects/tram.js", kind: "module", role: "Kinds of tram stops; the tracks of tram lines.",
-        attributes: ["TRAM_STOP_TYPES — on the road, raised road, island, curb extension", "STEP_FREE_M — 0.05 m: the largest step and gap that are step-free", "CROSSOVER_M — 20 m: a crossover between two tracks, along them"],
+        attributes: ["TRAM_STOP_TYPES — on the road, raised road, island, curb extension", "STEP_FREE_M — 0.05 m: the largest step and gap that are step-free", "CROSSOVER_M — 20 m: a crossover between two tracks, along them", "STOP_LINE_M — 2 m: the stop line of a stop's lights, before it", "CROSSING_M — 4 m: the crossing to an island"],
         operations: ["tramTracks(line, crossover) — the tracks a line uses: not round the turn at the end of a stub track, a crossover there", "tramRails(line, gauge, crossover) — both rails of each"],
       },
+      {
+        name: "StopSignals", file: "web/arail/core/stop-signals.js", kind: "class", role: "world.transit.signals: the traffic lights of the tram stops in the middle of the street.",
+        attributes: ["states: Map — light id → {state, since, clear, need, occupied, walk, walkFrom}", "reports: Map — stop area id → {crossing, waiting}: people on the strip and waiting to cross"],
+        operations: ["list() — the lights of the stops, kept while nothing changes", "state(id) — green, amber, red or red-amber", "walk(areaId) — may people cross now?", "_walk(id)", "forArea(areaId)", "forDock(dockId) — the light for the people getting on and off at a dock", "holdsDoors(dockId) — a tram there keeps its doors shut until people may cross", "report(areaId, crossing, waiting)", "step(dt, transit, users) — each light changes when it must", "_set(st, state, now)", "_tram(sig, transit) — a tram stands there (dwelling) or comes, moving, within 50 m (coming)", "_occupied(sig, users) — a vehicle on the strip, anywhere from its rear to its front?", "blockers() — road users along the stop line, across the street: what the vehicles stop at"],
+      },
+      { name: "stop-signals", file: "web/arail/core/stop-signals.js", kind: "module", role: "The timing of the lights.", attributes: ["STOP_SIGNAL — amber 3 s, red-amber 1 s, red 2 s after the last person, green at least 5 s (12 s before people ask again), the people's green 8 s (while a tram stands there, as long as it does), a tram within 50 m, 3.5 m/s² to stop at amber"], operations: ["obeysLight(sig, state) — everybody but trams; at amber those who can still stop"] },
       {
         name: "curves", file: "web/arail/core/curves.js", kind: "module", role: "The corners of a tram's driving line rounded to the radius tram tracks need.",
         attributes: ["TRAM_CURVES — radius 40 m as a rule, at least 25 m (TRStrab); 0.8 m/s² sideways in a curve"],
@@ -235,6 +241,10 @@ export const STREETS = [
       { from: "Transit", to: "TramLine", kind: "uses", label: "spec" },
       { from: "TramStop", to: "Road", kind: "uses", label: "roadInfo()" },
       { from: "Transit", to: "curves", kind: "depends", label: "roundCorners" },
+      { from: "Transit", to: "StopSignals", kind: "composes", label: "signals" },
+      { from: "StopSignals", to: "TramStop", kind: "uses", label: "stopSignals()" },
+      { from: "PassengerSimulation", to: "StopSignals", kind: "uses", label: "walk(), report()" },
+      { from: "TrafficSimulation", to: "StopSignals", kind: "uses", label: "list(): no overtaking before them" },
     ],
     activities: [{
       id: "tram", name: "A tram on its line",
@@ -248,7 +258,7 @@ export const STREETS = [
         ["d2", "decision", "The end of a stub track?"],
         ["a4", "action", "Stop; the driver changes ends (20 s); back on the other track once it is free", "Transit._clearAt"],
         ["d3", "decision", "At its stop?"],
-        ["a5", "action", "Stop, doors open; cars beside it wait (not at an island); longer where it is not step-free", "Transit._arrive"],
+        ["a5", "action", "Stop; the doors open once the lights hold the traffic beside it (people cross on red); cars beside it wait (not at an island); longer where it is not step-free", "Transit._arrive"],
         ["x1", "send", "vehicle.arrived"],
         ["d4", "decision", "Out of service?"],
         ["e", "end"],
@@ -256,17 +266,19 @@ export const STREETS = [
       edges: [["s", "a1"], ["a1", "m1"], ["m1", "a2"], ["a2", "d1"], ["d1", "a3", "yes"], ["a3", "d1"], ["d1", "d2", "no"], ["d2", "a4", "yes"], ["d2", "d3", "no"], ["a4", "d3"], ["d3", "m1", "no"], ["d3", "a5", "yes"], ["a5", "x1"], ["x1", "d4"], ["d4", "e", "yes"], ["d4", "m1", "no"]],
     }],
     parameters: [
-      { key: "kind, side, length_m, width_m, height_m, tactile, shelter", default: "cape, both, 40, 2.5, by kind, true, true", meaning: "A tram stop (TramStop): its kind, sides, platform." },
+      { key: "kind, side, length_m, width_m, height_m, tactile, lights, shelter", default: "cape, both, 40, 2.5, by kind, true, true, true", meaning: "A tram stop (TramStop): its kind, sides, platform; traffic lights where people cross a lane." },
       { key: "headway_s, mode, speed_kmh, length_m", default: "300, back-and-forth, 50, 30", meaning: "A tram line (TramLine)." },
     ],
     rules: [
-      "Kinds: on the road (people step down from the curb and cross the lane; cars wait), raised road (25 cm, cars wait), island between track and car lane (cars drive past; people get onto it at a zebra crossing or lights within 30 m), curb extension (like a bus stop: cars wait behind the tram).",
+      "Kinds: on the road (people step down from the curb and cross the lane; cars wait), raised road (25 cm, cars wait), island between track and car lane (cars drive past; people get onto it at its own lights, or at a zebra crossing or lights within 30 m), curb extension (like a bus stop: cars wait behind the tram).",
       "Step-free for a low-floor tram (floor 30 cm): a step and a gap of at most 5 cm, tactile paving, a platform at least 2.00 m wide (DIN 18040-3, BOStrab § 31).",
       "An island needs a car lane of 3.00 m beside it (RASt 06).",
-      "On a single track used both ways a tram enters only when none comes the other way; at the end of a stub track one tram at a time.",
+      "On a single track used both ways a tram enters only when none comes the other way (one that has just entered is on it at once for the others; none is put on it the other way when a line starts); at the end of a stub track one tram at a time.",
       "Trams never cross a railway at street level (BOStrab § 15): such a street has no tram for routing until a bridge or an underpass is put there.",
       "Curves of tram tracks at least 25 m (TRStrab: 40 m as a rule, 25 m in exceptions); a corner is one arc tangent to the straights before and after it, a run of points bending too tightly one corner, a curve drawn with points that bends gently enough stays; a tighter curve is a problem of the line. In a curve at most √(0.8 m/s² × r): 16 km/h at 25 m.",
       "A line running late gets no more trams (or buses) than it needs plus one.",
+      "A loop at the end of a line (a one-way tram track back to its start, after a short single track) turns the trams; routes take it rather than turning on the spot (a u-turn costs 600 s).",
+      "Lights at a stop where people cross a lane to the tram: green at least 5 s, then amber 3 s when a tram comes (moving, within 50 m; not one that lays over); red while it comes or stands there and while people are on the strip, red-amber 1 s once nobody has been on it for 2 s. People wanting to cross ask for red after 12 s of green (at an island only they do). People step onto the strip while it is red and no vehicle is left on it: while a tram stands there, else for 8 s; the tram's doors open then. Vehicles stop 2 m before the stop, all across the street; trams pass; at amber only those that can still stop (3.5 m/s²). Cars do not overtake a bike that stands, nor where they would still be on the other lane at the lights.",
     ],
   },
   {
@@ -315,7 +327,7 @@ export const STREETS = [
     rules: [
       "Bike paths and shared paths with the signs 237, 240, 241 must be used (StVO § 2 Abs. 4); sidewalks only with 'Radverkehr frei' (bikes) or 'E-Scooter frei' (eKFV § 10).",
       "Speeds: walking pace (7 km/h) on an allowed sidewalk, 11 km/h breaking the rules there, 15 km/h on a shared path, 5 km/h behind people on foot.",
-      "Cars follow a rider where they cannot pass at 1.5 m within their lane, and overtake after 2 s when the other lane is free for 60 m and no junction is near.",
+      "Cars follow a rider where they cannot pass at 1.5 m within their lane, and overtake after 2 s when the other lane is free for 60 m and no junction is near; not a rider who stands (in a queue, at a light), and not where they would still be on the other lane at the lights of a tram stop.",
       "Two bikes per street lamp; a rider locks the bike within 60 mm of the building and stays 20 to 240 clock minutes (children 30 to 120).",
     ],
   },
