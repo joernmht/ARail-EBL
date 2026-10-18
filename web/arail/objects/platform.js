@@ -14,6 +14,8 @@ const CONCRETE = "#c9c6bd", EDGE_STONE = "#e8e6df", SAFETY_LINE = "#fbfbf8";
 
 export class Platform extends LayoutObject {
   static type = "platform";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Rail platform";
   static category = "Transport";
   static placement = "segment";

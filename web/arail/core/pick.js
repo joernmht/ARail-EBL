@@ -14,7 +14,7 @@
  * things are found where they are seen, also in a tilted view.
  * @module arail/core/pick
  */
-import { applyH, inv3, polygonArea } from "./math.js";
+import { applyH, inv3, mul3, polygonArea } from "./math.js";
 import { convexHull } from "./simple.js";
 
 /**
@@ -65,6 +65,47 @@ export function groundPoint(view, pixel) {
   return view.depth(p[0], p[1], 0) > 0 ? p : null;
 }
 
+/**
+ * The layout point seen at an image pixel on the plane at height z (mm), or null (above the horizon).
+ * @param {import("./view.js").View} view
+ * @param {number[]} pixel [u, v]
+ * @param {number} z
+ */
+export function planePoint(view, pixel, z) {
+  if (!z) return groundPoint(view, pixel);
+  const { a1, a2, a3, n } = view.pose, K = view.camera.intrinsics;
+  const c = [a3[0] + z * n[0], a3[1] + z * n[1], a3[2] + z * n[2]];
+  const Hz = mul3([K.fx, 0, K.cx, 0, K.fy, K.cy, 0, 0, 1], [a1[0], a2[0], c[0], a1[1], a2[1], c[1], a1[2], a2[2], c[2]]);
+  const Hinv = inv3(Hz);
+  if (!Hinv) return null;
+  const p = applyH(Hinv, pixel);
+  if (!p.every(Number.isFinite)) return null;
+  return a1[2] * p[0] + a2[2] * p[1] + c[2] > 0 ? p : null;
+}
+
+/**
+ * The layout point seen at an image pixel on what lies there (core/elevation.js): on a raised table
+ * module or a street on a bridge where they are, else on the layout plane; null above the horizon.
+ * Found by looking again at the height of the point found (a few times).
+ * @param {import("./world.js").World | null} world
+ * @param {import("./view.js").View} view
+ * @param {number[]} pixel [u, v]
+ * @param {(view: import("./view.js").View, pixel: number[], z: number) => number[] | null} [at] the point on the plane at height z
+ */
+export function surfacePoint(world, view, pixel, at = planePoint) {
+  let p = at(view, pixel, 0);
+  const el = world?.elevation?.sync();
+  if (!p || !el || el.flat) return p;
+  for (let i = 0; i < 5; i++) {
+    const q = at(view, pixel, el.street(p[0], p[1]));
+    if (!q) return p;
+    const moved = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    p = q;
+    if (moved < 0.2) break;
+  }
+  return p;
+}
+
 /** The pickable of a layout object. */
 export function objectPickable(o) {
   const z1 = typeof o.pickHeight === "function" ? o.pickHeight() || 0 : 0;
@@ -80,7 +121,7 @@ export function objectPickable(o) {
  */
 export function movingPickables(world, view) {
   const out = [];
-  for (const source of [world.services, world.transit, world.trains, ...world.simulations]) {
+  for (const source of [world.services, world.transit, world.parking, world.trains, ...world.simulations]) {
     if (typeof source?.pickables !== "function") continue;
     for (const p of source.pickables(view) || []) if (p?.outline?.length) out.push(p);
   }
@@ -198,7 +239,7 @@ export function pickAt(world, view, pixel, { tolerance = PICK_TOLERANCE.mouse, g
     if (!best || score[0] < best.score[0] || (score[0] === best.score[0] && score[1] < best.score[1])) best = { p, score };
   }
   if (best) return best.p;
-  const g = ground === undefined ? groundPoint(view, pixel) : ground;
+  const g = ground === undefined ? surfacePoint(world, view, pixel) : ground;
   return pickObject(world, view, pixel, g, tol);
 }
 

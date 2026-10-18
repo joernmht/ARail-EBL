@@ -144,6 +144,9 @@ Optional methods the editor and the other parts look for:
 | `entrances()` | the road network and the town: doors `[{pos: [x, y], dir: [ux, uy]}]` |
 | `busLane()` | the road network: a one-way lane for buses (`{points, width}`, see `objects/bus-terminal.js`) |
 | `walkBarrier()` | the road network: a polyline people do not cross on their own, only on streets and footpaths over it (tracks have it, see `objects/track.js`) |
+| `trafficRule()`, `crossingInfo()`, `railCrossingInfo()` | the road network: the rule of a traffic sign or traffic lights, a zebra crossing, a railway crossing (see `objects/traffic-signs.js`, `objects/crossings.js`) |
+| `parkingInfo()`, `bikeParking()`, `noParking(road, side)` | `world.parking`: parking facilities (`[{id, kind, label, spaces, spots, tariff, access, entry}]`), places to lock bikes, stretches of a street where nobody parks (see `objects/parking.js`, `core/parking.js`) |
+| `dwellFactor()`, `blocksCars()`, `carLaneShift(dock)` | the transit, for a stop: boarding takes longer, cars beside a standing vehicle wait (see `objects/tram.js`) |
 | `card()` | the info card when someone points at the object (core/pick.js): `{title, subtitle, status, tone, rows: [[label, value]], sections: [{title, lines}], text, related: [ids], actions}`. Start from `super.card()` (name, type, description, module) and add rows; keep the texts plain English |
 | `pickHeight()` | how high (layout mm) the object is pointed at in the image: tall objects are found on their walls and roof, not only on the ground (buildings return their height, signals their mast) |
 
@@ -206,7 +209,7 @@ export default function register(arail) {
 | `view.ribbon(points, widthMM, style)` | a band of constant width along a line (platform edges) |
 | `view.prism(footprint, z0, z1, colors)` | a vertical prism, shaded and back-face culled (`colors`: `side`, `top`, `alpha`, `outline`) |
 | `view.faces(faces, ref, style)` | any set of 3D faces (`{pts, normal, color, alpha, twoSided, emissive, decals}`) as one solid |
-| `view.label([x, y, z], text, style)` | a sign or text anchored at a layout point; labels avoid overlapping each other (placed in `order`; a later one moves up, or with `optional: true` is left out) |
+| `view.label([x, y, z], text, style)` | a sign or text anchored at a layout point; labels avoid overlapping each other (placed in `order`; a later one moves up, or with `optional: true` is left out, with `fit: true` left out where it finds no room). Where the picture is crowded (it would overlap one, or the labels so far cover `LABEL_SHARE`, a tenth, of the picture) a label with `compact: {text, style}` takes that form, as stop boards become badges, and optional labels are left out |
 | `view.glow([x, y, z], radiusMM, colour, strength)` | a soft light (lamp, headlight), drawn only at night |
 | `view.lightPool([x, y], radiusMM, colour, strength)` | light falling on the ground (under a street lamp), only at night |
 | `view.ground(order, fn)`, `view.solid(depth, fn)`, `view.overlay(fn)` | custom drawing with the canvas context: `fn(ctx, view)` |
@@ -313,7 +316,7 @@ world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop 
 
 To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
 
-To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge.
+To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge, and also where the picture is crowded (the boards of the stops largest in the picture come first).
 
 ### World API
 
@@ -323,7 +326,7 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.objectsVersion` | counts object changes (for caches of derived data) |
 | `world.stopAreas()`, `getStopArea(id)` | all stop areas with their docks |
 | `world.services` | timetable vehicles: `call(target)`, `vehicles()`, `forArea(areaId)`, `doors(vehicle)`, `placement(vehicle)` |
-| `world.network()` | the road network of the streets: places, routes, sidewalks, lanes (see [Streets, bus lines and road traffic](streets-and-buses.md#for-plugins-and-simulations)) |
+| `world.network()` | the road network of the streets: places, routes, sidewalks, lanes (see [Streets, trams, buses and road traffic](streets-and-buses.md#for-plugins-and-simulations)) |
 | `world.transit` | bus lines in operation: `lines`, `connections(fromAreaId, toAreaId)`, `vehicleAt(dockId)`, `statusFor(dockId)`, `buses` |
 | `world.clock`, `world.setTime(t)`, `world.night()` | the time of day (below); `night()` is the darkness used for drawing (0 when the lighting is off) |
 | `world.occupancy` | `Map` building id → people inside, written by the town simulation (unset without one) |

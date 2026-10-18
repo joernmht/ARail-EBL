@@ -105,6 +105,8 @@ function posePoint(pose, along_m, across_m, scale) {
 const pickSize = (rng, table) => table[rng.weighted(table.map((e) => e[1]))][0];
 
 export class TerminalSimulation extends Simulation {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static type = "terminal";
   static label = "Container terminal";
   static description = "Container trains, trucks and barges, handled by gantry cranes and reach stackers.";

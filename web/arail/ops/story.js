@@ -58,6 +58,8 @@ const euros = (n) => `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "
 const TRANSPORT = DEFAULT_CONTRACTS.find((c) => c.id === "transport").penalties;
 
 export class OpsStory extends Story {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static type = "ops-story";
   static label = "Operations story (railway undertaking)";
   static description = "A walkthrough to click through: a regional train breaks down at the platform, the operations control sends the spare unit from the depot, the passengers change trains, and the broken unit goes to the workshop.";

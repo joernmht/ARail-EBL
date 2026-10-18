@@ -18,4 +18,6 @@ export const EN = {
   "{n} stops": { one: "{n} stop" },
   "{n} min": { one: "{n} min" },
   "{n} brakes isolated": { one: "{n} brake isolated" },
+  "{n} spaces": { one: "{n} space" },
+  "{n} conflicts in the last hour": { one: "{n} conflict in the last hour" },
 };

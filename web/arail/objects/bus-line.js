@@ -119,7 +119,7 @@ export class BusLine extends LayoutObject {
       if (pts.length > 1) strokeRoute(view, pts, { colour, width: 2, dash: [5, 6], alpha: 0.9, order: 1.6 });
       return;
     }
-    strokeRoute(view, line.circuit.points, { colour, width: 2.5, alpha: 0.85, order: 1.6 });
+    for (const pts of this.routeLines(line)) strokeRoute(view, pts, { colour, width: 2.5, alpha: 0.85, order: 1.6 });
     const dots = line.visits.map((v) => view.project(v.front[0], v.front[1], 0)).filter(Boolean);
     if (!dots.length) return;
     view.ground(1.65, (ctx) => {
@@ -136,6 +136,11 @@ export class BusLine extends LayoutObject {
     });
   }
 
+  /** The route as it is drawn (polylines): the circuit. */
+  routeLines(line) {
+    return [line.circuit.points];
+  }
+
   /** The simple view (core/simple.js): the route as it is. */
   drawSimple(view) {
     this.draw(view);
@@ -143,7 +148,7 @@ export class BusLine extends LayoutObject {
 
   drawSelection(view) {
     const line = this.info();
-    if (line?.circuit) strokeRoute(view, line.circuit.points, { colour: rgba(OVERLAY.selection, 0.95), width: 5, dash: [8, 6], order: 100 });
+    if (line?.circuit) for (const pts of this.routeLines(line)) strokeRoute(view, pts, { colour: rgba(OVERLAY.selection, 0.95), width: 5, dash: [8, 6], order: 100 });
     for (const o of this.stopObjects()) {
       const fp = o.footprint();
       if (fp) view.polygon(fp, { stroke: OVERLAY.selection, width: 2, dash: [4, 4], order: 100, layer: "overlay" });

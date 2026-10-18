@@ -132,16 +132,18 @@ export class FlyCamera {
   }
 
   /**
-   * The layout point (z = 0) seen at image pixel (u, v), or null above the horizon.
+   * The layout point seen at image pixel (u, v) on the layout plane (or at height z), or null above
+   * the horizon.
    * @param {number} [maxRange] ignore points farther than this from the eye (mm)
+   * @param {number} [z=0] height of the plane (mm), e.g. a raised table module
    */
-  groundPoint(u, v, width, height, maxRange = Infinity) {
+  groundPoint(u, v, width, height, maxRange = Infinity, z = 0) {
     const { right, down, fwd, eye } = this.basis();
     const f = this.focal(height);
     const x = (u - width / 2) / f, y = (v - height / 2) / f;
     const dir = [0, 1, 2].map((i) => x * right[i] + y * down[i] + fwd[i]);
-    if (!(dir[2] < -1e-9)) return null;
-    const s = -eye[2] / dir[2];
+    if (!(dir[2] < -1e-9) || !(eye[2] > z)) return null;
+    const s = (z - eye[2]) / dir[2];
     if (s * Math.hypot(...dir) > maxRange) return null;
     return [eye[0] + s * dir[0], eye[1] + s * dir[1]];
   }

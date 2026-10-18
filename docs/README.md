@@ -7,7 +7,7 @@
 | [Getting started](getting-started.md) | The app: image sources, the flyover, the panels, keyboard shortcuts and URL options |
 | [Setting up a lab](lab-setup.md) | Markers and dictionaries (also on model wagons), printing, placement, cameras and the marker map |
 | [Lab session](lab-session.md) | Stickers on the whole layout, one video and `arail-survey`: a fixed (locked) layout and an orthophoto of the table |
-| [Streets, bus lines and road traffic](streets-and-buses.md) | Streets as a road network, bus stops, bus lines with buses, cars |
+| [Streets, trams, buses and road traffic](streets-and-buses.md) | Streets as a road network with cross-sections by the German guidelines; bus and tram stops and lines; cars with parking; bikes and e-scooters; signs, lights, zebra and railway crossings |
 | [The builder](world-builder.md) | A street and layout editor beside the app: streets that join, what needs a street put at one, the check that everything has a street to it (with fixes), covered photos, a push to GitHub in one commit |
 | [Container terminal](container-terminal.md) | Container trains, trucks and barges, gantry cranes and the yard; model wagons with deck cards (rolling-stock markers); the Terminal panel |
 | [Infrastructure](infrastructure.md) | The maintenance story of the app on Bf Neustadt (a signal fails, is repaired and exchanged; a track renewed with a construction train), step by step; on the game page railway assets with their condition, faults and what is known of them; maintenance staff in shifts, emergency vans and drones; renewals and upgrades through the HOAI phases with funding, approval and tenders; the roles of the game; the asset information model, the line map and GeoJSON |

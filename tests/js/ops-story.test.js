@@ -285,11 +285,16 @@ test("while the story plays, no timetable train ever stands where its trains are
   }
   assert.ok(s.finished, "played to the end");
   assert.ok(seen > 400, String(seen));
-  // the module off: the platform's tracks run again
+  // the module off: the platform's tracks run again (a timetable train stands there now and then;
+  // when exactly follows the random intervals of the timetable)
   s.enabled = false;
   s.clear();
-  frames(world, 1200);
-  assert.ok([g2, g3].some((k) => world.services.docks.get(k.id).vehicle), "timetable trains at platform 2 again");
+  let again = 0;
+  for (let i = 0; i < 1200; i++) {
+    world.step(0.1);
+    if ([g2, g3].some((k) => world.services.docks.get(k.id).vehicle)) again++;
+  }
+  assert.ok(again > 100, `timetable trains at platform 2 again (${again} of 1200 steps)`);
 });
 
 test("drawing the operations story: every step at the station and the depot, by day and by night", () => {

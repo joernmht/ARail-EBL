@@ -1053,13 +1053,18 @@ export class App {
     return this.flyover.active ? this.flyover.pose() : this.tracker.state;
   }
 
-  /** Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover). */
+  /**
+   * Layout point (mm) under a pointer event, or null (layout not tracked; the sky of the flyover): on
+   * what lies there, a raised table module or a bridge (core/elevation.js), as drawn in the last frame.
+   */
   eventToLayout(e) {
     const c = this.canvas, r = c.getBoundingClientRect();
     const u = ((e.clientX - r.left) * c.width) / r.width, v = ((e.clientY - r.top) * c.height) / r.height;
-    if (this.flyover.active) return this.flyover.groundPoint(u, v);
+    if (this.flyover.active) return this.flyover.surfacePoint(u, v);
     const Hinv = this.tracker.state.Hinv;
     if (!Hinv) return null;
+    const view = this.lastView;
+    if (view && view.H === this.tracker.state.H) return ARail.surfacePoint(this.world, view, [u, v]);
     const p = ARail.applyH(Hinv, [u, v]);
     return p.every(Number.isFinite) ? p : null;
   }
@@ -1201,13 +1206,14 @@ export class App {
    * Grey plates over the markers of the map, each with its number painted on it (View → Show →
    * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
    * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
-   * table, under the virtual objects.
+   * table, under the virtual objects. A marker under a raised table module needs none: the module
+   * covers it.
    */
   _drawMarkerCovers(view) {
-    const map = this.world.map, fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
+    const map = this.world.map, el = this.world.elevation.sync(), fill = ARail.grey(0.62), stroke = ARail.grey(0.5), textColour = ARail.grey(0.93);
     for (const id of map.ids()) {
       const e = map.get(id), s = map.sizeOf(id);
-      if (e) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
+      if (e && !(el.ground(e.x, e.y) > 0.5)) view.plate([e.x, e.y], e.theta, 1.6 * s, 1.6 * s, { fill, stroke, text: String(id), textColour, textSize: 0.7 * s, order: -60 });
     }
   }
 
@@ -1264,10 +1270,13 @@ export class App {
 
   updateHud() {
     const st = this.tracker.state, chips = [];
+    // on a phone the chips would cover the picture: fewer of them (no grid, no terminal without moves,
+    // the speed and a pause with the clock)
+    const narrow = this.canvas.clientWidth > 0 && this.canvas.clientWidth <= 640;
     if (this.flyover.active) {
       const g = this.world.layout.grid;
       chips.push(["ok", this.flyover.simple ? (this.flyover.cam.isPlan ? "Map" : "Simple 2.5D") : `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
-      chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
+      if (!narrow) chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
     } else if (!this.source) chips.push(["warn", "No image yet"]);
     else if (this.source.untracked) {
       // a photo of the photo tour without a digital layer: its chip says so (TourNav.hudChips)
@@ -1276,9 +1285,9 @@ export class App {
     else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
     else chips.push(["bad", "No markers in view"]);
     // the clock's night (between sunset and sunrise), also while the day/night lighting is switched off
-    chips.push(["info clock", `${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`]);
-    if (this.world.paused) chips.push(["info", "Paused"]);
-    if (this.world.speed !== 1) chips.push(["info", `${this.world.speed}× time`]);
+    const pace = [this.world.paused ? "Paused" : null, this.world.speed !== 1 ? `${this.world.speed}× time` : null].filter(Boolean);
+    chips.push(["info clock", [`${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`, ...(narrow ? pace : [])].join(" · ")]);
+    if (!narrow) for (const t of pace) chips.push(["info", t]);
     // a quiet disruption without a message (a story's train holding its track) is none to speak of
     const disrupted = this.world.disruptions.active.filter((d) => !d.def.quiet || d.def.effects?.(d, null, this.world)?.messages?.length).length;
     if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
@@ -1286,7 +1295,7 @@ export class App {
     const term = ARail.terminalOf(this.world);
     if (term) {
       const n = term.moves.filter((m) => m.state === "queued" || m.state === "active").length;
-      chips.push(["info", `Terminal · ${n} move${n === 1 ? "" : "s"}`]);
+      if (n || !narrow) chips.push(["info", `Terminal · ${n} move${n === 1 ? "" : "s"}`]);
     }
     const ops = ARail.opsOf(this.world)?.engine;
     if (ops) {
@@ -1308,9 +1317,12 @@ export class App {
     this.tourNav?.sync();
     const hud = $("#hud");
     morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
-    // a label pulled in at the top edge of the picture (a depot's board out of view) goes below the chips
+    // the labels keep clear of the chips and of the buttons on the stage (a label pulled in at the top
+    // edge of the picture, a depot's board out of view, goes below the chips; a stop board under a
+    // button becomes a badge)
     const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
-    this.hudRects = [...hud.children].map((el) => el.getBoundingClientRect()).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
+    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-views, #tour:not([hidden]) .tour-step, .stage-tools .btn, #flyNav:not([hidden]) .btn");
+    this.hudRects = [...hud.children, ...controls].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 
   /* ---------------------------------------------------------------- recording */

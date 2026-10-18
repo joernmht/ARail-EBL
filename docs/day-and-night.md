@@ -82,13 +82,14 @@ nobody goes shopping. Every day gets new, reproducible plans (from the world's r
 ### How they travel
 
 - **Walking** over the street network, on the sidewalks: a street on the side they come from,
-  crossing at right angles where they must; never over a track except on a street or footpath
-  over it. Where the streets do not connect start and goal, they walk out of sight. Without any
-  streets people walk straight.
-- **Bus**: a way longer than `walk_max_m` (150 m) is taken by bus with probability `bus_share`
-  (80 %; pupils and seniors a little more often) when a bus line connects a stop within 300 m of
-  the start with a stop within 300 m of the destination, and the bus is not much slower than
-  walking. People wait at the stop, board only their line, ride, get off at their stop and walk
+  crossing at right angles at a zebra crossing on the way or where they must; never over a track
+  except on a street or footpath over it. Where the streets do not connect start and goal, they
+  walk out of sight. Without any streets people walk straight. A bike that comes too close on the
+  sidewalk (or a shared path) makes them angry for a while.
+- **Bus or tram**: a way longer than `walk_max_m` (150 m) is taken by bus or tram with probability
+  `bus_share` (80 %; pupils and seniors a little more often) when a bus or tram line connects a stop
+  within 300 m of the start with a stop within 300 m of the destination, and it is not much slower
+  than walking. People wait at the stop, board only their line, ride, get off at their stop and walk
   on. Nobody waits longer than 20 clock minutes: then they walk (or go home instead of taking
   the train).
 - **Train**: commuters go to the nearest platform and take the next train on either side. A

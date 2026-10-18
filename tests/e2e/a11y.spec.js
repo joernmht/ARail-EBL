@@ -60,6 +60,26 @@ async function violations(page, state, include = null) {
   return results.violations.map((v) => `${state}: ${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")})`);
 }
 
+// The builder while a street is drawn: the settings of the new street (with the standard widths to
+// click) and the figure of the street across.
+for (const scheme of ["light", "dark"]) {
+  test(`builder, the settings of a new street have no accessibility violations (${scheme} mode)`, async ({ page }) => {
+    const path = "/builder/?layout=../layouts/ebl-lab.json";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__builder?.doc && document.querySelector("#panel-element").childElementCount, null, { timeout: 30_000 });
+    await page.locator("#plan").focus();
+    await page.keyboard.press("s");
+    const settings = page.getByRole("group", { name: "The new street" });
+    await settings.locator("#new-street-profile").selectOption("bike-lanes");
+    await expect(settings.getByRole("group", { name: "Bike lanes or paths: standard values" })).toBeVisible();
+    await expect(page.locator("#panel-element figure.cross-section")).toBeVisible();
+    expect(await violations(page, "the settings of a new street")).toEqual([]);
+  });
+}
+
 // The states the new features add: placing (camera view and flyover), the inspector of every new
 // object type, a locked marker map with moving markers, the town at night; on a phone screen too.
 const STATES = [["light", "desktop", { width: 1440, height: 900 }], ["dark", "desktop", { width: 1440, height: 900 }], ["light", "phone", { width: 390, height: 844 }]];

@@ -1,27 +1,39 @@
 /**
- * Streets and footpaths (type `road`, "Street"): the road network that people walk on and buses
- * and cars drive on (see core/network.js).
+ * Streets, footpaths and tram tracks (type `road`, "Street"): the road network that people walk on
+ * and buses, cars, bikes and trams drive on (see core/network.js).
  *
- * A street has a carriageway, sidewalks on both sides with a curb, centre dashes on wider
- * streets, zebra crossings near junctions and street lamps (lit at night). Overlapping streets
- * look clean: all sidewalks are drawn first, then all curbs, then all carriageways, and the
- * corners where street ends meet are filled with round patches.
+ * A street has a cross-section (objects/street-profile.js): car lanes, and by its profile
+ * sidewalks, bike lanes on the street (dashed or solid line), bike paths at sidewalk level or shared
+ * foot and bike paths; tram tracks in the car lanes, in lanes of their own or on a track bed of their
+ * own in the middle; street parking on one or both sides. It is drawn strip by strip: the side
+ * spaces, the curbs, the carriageway, then the bike lanes, parking strips, tram lanes and track
+ * bed, the rails and the markings (centre line, lane lines, the solid or dashed line of a bike lane,
+ * parking spaces, zebra crossings near junctions). Street lamps stand at the edge (lit at night);
+ * a bike can be locked to each of them. Overlapping streets look clean: all side spaces are drawn
+ * first, then all curbs, then all carriageways, and the corners where street ends meet are filled
+ * with round patches; the strips stop short of junctions.
  *
  * Kinds: `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h),
- * `main` (main road, 50 km/h, wider) and `path` (footpath, no cars).
+ * `main` (main road, 50 km/h, wider), `path` (footpath, no cars; or a shared foot and bike path, or
+ * a bike path) and `tram` (a tram track of its own, away from the streets).
  * @module arail/objects/road
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
 import { dist2, dot2, lerp2, polylineAt, polylineLengths, polylineProject, sub2, unit2 } from "../core/math.js";
 import { PALETTE, grey } from "../core/colors.js";
+import { NORMS, PARKING_LAYOUTS, PATH_PROFILES, STREET_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, crossSection, profileOf, widthChoices } from "./street-profile.js";
+import { TARIFFS, Tariff } from "./parking.js";
+import { CROSSING_NORMS, interpolate } from "../core/elevation.js";
+import { rectFootprint } from "../core/view.js";
 
-/** Kinds of streets: label in the editor, speed limit, default carriageway width, cars allowed. */
+/** Kinds of streets: label in the editor, speed limit, default width of the car lanes (of the path, of the track bed), cars allowed. */
 export const ROAD_KINDS = {
   street: { label: "street (50 km/h)", speed_kmh: 50, width_m: 7, car: true, centreLine: true },
   residential: { label: "residential street (30 km/h)", speed_kmh: 30, width_m: 6, car: true, centreLine: false },
   main: { label: "main road (50 km/h, wider)", speed_kmh: 50, width_m: 10, car: true, centreLine: true },
   path: { label: "footpath (no cars)", speed_kmh: 0, width_m: 3, car: false, centreLine: false },
+  tram: { label: "tram track of its own (no street)", speed_kmh: 60, width_m: NORMS.tram.bedDouble, car: false, centreLine: false },
 };
 
 /** Kind of a street spec (old layouts: "road" = street). */
@@ -39,7 +51,41 @@ const COLOURS = {
   lamp: grey(0.32),
   light: "#ffe2a0",
   pool: "#ffd98a",
+  parking: grey(0.42),
+  buffer: grey(0.62),
 };
+
+/**
+ * The colour of a strip of a cross-section (objects/street-profile.js) as streets are drawn, for
+ * figures of a cross-section (the builder). `kind`: the street's kind (a footpath is sandy).
+ */
+export function stripColour(strip, kind = "street") {
+  switch (strip.type) {
+    case "bike-lane":
+      return PALETTE.bikeLane;
+    case "bike-path":
+      return PALETTE.bikePath;
+    case "parking":
+      return COLOURS.parking;
+    case "tram-bed":
+      return PALETTE.tramBed;
+    case "curb":
+      return COLOURS.curb;
+    case "path":
+      return COLOURS.path;
+    case "shared-path":
+      return kind === "path" ? COLOURS.path : COLOURS.sidewalk;
+    case "sidewalk":
+      return COLOURS.sidewalk;
+    case "buffer":
+      return strip.level === "sidewalk" ? COLOURS.buffer : COLOURS.asphalt;
+    default:
+      return COLOURS.asphalt; // car lanes, tram lanes, advisory bike lanes
+  }
+}
+
+/** Rail gauge (m) and the colour of the rails; Dresden's trams run on 1450 mm, most others on 1435 mm. */
+export const GAUGE_M = 1.435;
 
 /** Drop repeated points. */
 function dedupe(points) {
@@ -71,11 +117,13 @@ function band(pts, h) {
 }
 
 /**
- * The same band cut into quads at most `maxLen` (mm) long. They are filled as one path (no
- * seams), and a long street is still drawn when a part of it is behind the camera.
+ * Quads between two offset lines `a` and `b` (mm, + = left) along a polyline, at most `maxLen` (mm)
+ * long. They are filled as one path (no seams), and a long street is still drawn when a part of it
+ * is behind the camera.
  */
-function bandPieces(pts, h, maxLen) {
-  const L = offsetPolyline(pts, h), R = offsetPolyline(pts, -h);
+function stripPieces(pts, a, b, maxLen) {
+  if (pts.length < 2) return [];
+  const L = offsetPolyline(pts, a), R = offsetPolyline(pts, b);
   const left = [L[0]], right = [R[0]];
   for (let i = 1; i < pts.length; i++) {
     const k = Math.max(1, Math.ceil(dist2(pts[i - 1], pts[i]) / maxLen));
@@ -88,6 +136,40 @@ function bandPieces(pts, h, maxLen) {
   }
   const out = [];
   for (let i = 1; i < left.length; i++) out.push(ccw([left[i - 1], left[i], right[i], right[i - 1]]));
+  return out;
+}
+
+/** The band of half width `h` cut into quads (see stripPieces). */
+function bandPieces(pts, h, maxLen) {
+  return stripPieces(pts, h, -h, maxLen);
+}
+
+/** The part of a polyline between two arc lengths (mm). */
+export function slicePolyline(pts, lengths, s0, s1) {
+  const out = [polylineAt(pts, s0, lengths).point];
+  for (let i = 1; i < pts.length - 1; i++) if (lengths[i] > s0 + 1e-6 && lengths[i] < s1 - 1e-6) out.push(pts[i]);
+  out.push(polylineAt(pts, s1, lengths).point);
+  return dedupe(out);
+}
+
+/** Dashes (quads `w` wide) along the line `o` (mm, + = left) of a polyline: `dash` long, `gap` apart; solid without a gap. */
+function dashes(pts, lengths, ranges, o, w, dash, gap) {
+  const out = [];
+  for (const [s0, s1] of ranges) {
+    if (!gap) {
+      const part = slicePolyline(pts, lengths, s0, s1);
+      if (part.length >= 2) out.push(...stripPieces(part, o + w / 2, o - w / 2, Infinity));
+      continue;
+    }
+    for (let s = s0 + gap / 2; s + dash <= s1; s += dash + gap) {
+      const a = polylineAt(pts, s, lengths), b = polylineAt(pts, s + dash, lengths);
+      const n = [-a.dir[1], a.dir[0]], m = [-b.dir[1], b.dir[0]];
+      out.push(ccw([
+        [a.point[0] + n[0] * (o - w / 2), a.point[1] + n[1] * (o - w / 2)], [b.point[0] + m[0] * (o - w / 2), b.point[1] + m[1] * (o - w / 2)],
+        [b.point[0] + m[0] * (o + w / 2), b.point[1] + m[1] * (o + w / 2)], [a.point[0] + n[0] * (o + w / 2), a.point[1] + n[1] * (o + w / 2)],
+      ]));
+    }
+  }
   return out;
 }
 
@@ -192,49 +274,103 @@ export function drawStreetLamp(view, pos, arm) {
   view.lightPool([head[0], head[1]], view.m(7), COLOURS.pool, 0.55);
 }
 
+/** Labels of the settings' choices. */
+const options = (table) => Object.entries(table).map(([k, v]) => [k, v.label]);
+const isCarKind = (v) => !v.kind || ROAD_KINDS[roadKind(v.kind)].car;
+const isPath = (v) => v.kind === "path";
+const isTram = (v) => v.kind === "tram";
+const profileOfValues = (v) => profileOf({ ...v, kind: roadKind(v.kind) });
+
 export class Road extends LayoutObject {
   static type = "road";
   static label = "Street";
   static category = "Transport";
   static placement = "polyline";
-  static description = "A street with sidewalks (or a footpath) along a line. Streets that meet or cross are connected; buses and cars drive on them, people walk on the sidewalks.";
+  static description = "A street along a line: car lanes, and by its cross-section sidewalks, bike lanes or bike paths, tram tracks and parking. Streets that meet or cross are connected; buses, cars, bikes and trams drive on them, people walk on the sidewalks.";
   static params = [
     { key: "name", label: "Name", type: "text", default: "" },
-    { key: "kind", label: "Kind", type: "select", options: Object.entries(ROAD_KINDS).map(([k, v]) => [k, v.label]), default: "street" },
+    { key: "kind", label: "Kind", type: "select", options: options(ROAD_KINDS), default: "street" },
     {
-      key: "width_m", label: "Width", type: "number", unit: "m", min: 1, max: 30, step: 0.5,
-      help: "Of the carriageway (of the path for footpaths). Empty = by kind: 7 m street, 6 m residential street, 10 m main road, 3 m footpath.",
+      key: "profile", label: "Cross-section", type: "select",
+      options: (v) => options(isPath(v) ? PATH_PROFILES : STREET_PROFILES), when: (v) => !isTram(v),
+      help: "What lies beside the car lanes. Bike lanes and bike paths make the street wider.",
     },
-    { key: "sidewalk_m", label: "Sidewalks", type: "number", unit: "m", min: 0, max: 8, step: 0.5, default: 2.5, help: "Width on each side; 0 = none. Footpaths have none." },
+    {
+      key: "width_m", label: "Width", type: "number", unit: "m", min: 1, max: 30, step: 0.05,
+      presets: (v) => widthChoices("width_m", { ...v, kind: roadKind(v.kind) }),
+      help: "Of the car lanes together (of the path for footpaths, of the track bed for tram tracks). Empty = by kind: 7 m street, 6 m residential street, 10 m main road, 3 m footpath, 6.6 m tram track.",
+    },
+    { key: "lanes", label: "Lanes each way", type: "number", min: 1, max: 3, step: 1, default: 1, when: isCarKind },
+    {
+      key: "sidewalk_m", label: "Sidewalks", type: "number", unit: "m", min: 0, max: 8, step: 0.05, default: 2.5,
+      presets: () => widthChoices("sidewalk_m"), when: (v) => isCarKind(v) && !["plain", "shared-paths"].includes(profileOfValues(v)),
+      help: "Width on each side (RASt 06: 2.50 m); 0 = none.",
+    },
+    {
+      key: "bike_m", label: "Bike lanes or paths", type: "number", unit: "m", min: 0.5, max: 6, step: 0.05,
+      presets: (v) => widthChoices("bike_m", { ...v, kind: roadKind(v.kind) }),
+      when: (v) => isCarKind(v) && !["plain", "sidewalks"].includes(profileOfValues(v)),
+      help: "Width on each side. Empty = the regular width (ERA 2010): advisory lane 1.50 m, bike lane 1.85 m, bike path 2.00 m, shared path 2.50 m.",
+    },
+    { key: "tram", label: "Tram tracks", type: "select", options: options(TRAM_LAYOUTS), default: "none", when: isCarKind },
+    { key: "tram_tracks", label: "Tracks", type: "select", options: options(TRAM_TRACKS), default: "double", when: (v) => isTram(v) || (isCarKind(v) && v.tram && v.tram !== "none") },
+    { key: "parking", label: "Street parking", type: "select", options: options(PARKING_LAYOUTS), default: "none", when: isCarKind },
+    { key: "parking_sides", label: "Parking on", type: "select", options: [["both", "both sides"], ["right", "right side"], ["left", "left side"]], default: "both", when: (v) => isCarKind(v) && v.parking && v.parking !== "none" },
+    { key: "parking_tariff", label: "Parking costs", type: "select", options: options(TARIFFS), default: "free", when: (v) => isCarKind(v) && v.parking && v.parking !== "none" },
+    { key: "parking_price_eur", label: "Price", type: "number", unit: "€", min: 0, max: 2000, step: 0.1, when: (v) => isCarKind(v) && v.parking && v.parking !== "none" && v.parking_tariff && v.parking_tariff !== "free", help: "Per hour, day, week or year, as chosen. Empty = a usual price." },
     { key: "speed_kmh", label: "Speed limit", type: "number", unit: "km/h", min: 5, max: 130, step: 5, help: "Empty = by kind." },
     { key: "lamps", label: "Street lamps", type: "boolean", default: true },
-    { key: "crossings", label: "Zebra crossings at junctions", type: "boolean", default: true },
+    { key: "crossings", label: "Zebra crossings at junctions", type: "boolean", default: true, when: isCarKind },
   ];
+
+  constructor(world, spec) {
+    super(world, spec);
+    // the profile of an old street follows from its sidewalks; it is written only once it is chosen
+    if (!this._explicit.has("profile")) this.spec.profile = profileOf({ ...this.spec, kind: roadKind(this.spec.kind) });
+  }
+
+  set(patch) {
+    // a street becomes a footpath (or back): its profile follows unless chosen for that kind
+    if ("kind" in patch && !("profile" in patch)) {
+      const next = { ...this.spec, ...patch, kind: roadKind(patch.kind) };
+      const table = next.kind === "path" ? PATH_PROFILES : STREET_PROFILES;
+      if (!table[this.spec.profile]) patch = { ...patch, profile: next.kind === "path" ? "plain" : "sidewalks" };
+    }
+    super.set(patch);
+  }
+
+  toJSON() {
+    const out = super.toJSON();
+    if (!this._explicit.has("profile")) delete out.profile;
+    return out;
+  }
+
+  /** The cross-section in prototype metres (objects/street-profile.js). */
+  crossSection() {
+    const kind = roadKind(this.spec.kind);
+    return crossSection({ ...this.spec, kind }, ROAD_KINDS[kind]);
+  }
 
   computeGeometry() {
     const raw = resolvePoints(this.world.map, this.spec.points);
     const points = raw ? dedupe(raw) : [];
     if (points.length < 2) return null;
     const kind = roadKind(this.spec.kind), K = ROAD_KINDS[kind];
-    const width = this.mm(+this.spec.width_m > 0 ? +this.spec.width_m : K.width_m);
-    const sidewalk = K.car ? this.mm(Math.max(0, Number(this.spec.sidewalk_m) || 0)) : 0;
-    const lengths = polylineLengths(points), h = width / 2;
+    const xs = this.crossSection();
+    const mm = (m) => this.mm(m);
+    const lengths = polylineLengths(points), L = lengths[lengths.length - 1];
+    const width = mm(xs.carriageway), half = mm(xs.half), h = width / 2;
+    const sidewalk = K.car ? mm(xs.sidewalk) : 0;
+    const piece = mm(25);
     return {
-      points, lengths, length: lengths[lengths.length - 1], kind, car: K.car, width, sidewalk,
-      carriage: bandPieces(points, h, this.mm(25)),
-      curb: K.car ? bandPieces(points, h + this.mm(0.25), this.mm(25)) : null,
-      outer: sidewalk > 0 ? bandPieces(points, h + sidewalk, this.mm(25)) : null,
-      footprint: band(points, h + sidewalk),
-      dashes: K.centreLine && width >= this.mm(5.5) ? this._dashes(points, lengths) : [],
-      lamps: this.spec.lamps !== false ? this._lamps(points, lengths, h, sidewalk, K.car) : [],
+      points, lengths, length: L, kind, car: K.car, xs, width, half, sidewalk,
+      carriage: kind === "tram" ? [] : bandPieces(points, h, piece),
+      bed: kind === "tram" ? bandPieces(points, h, piece) : [],
+      curb: K.car ? bandPieces(points, h + mm(0.25), piece) : null,
+      outer: sidewalk > 0 ? bandPieces(points, half, piece) : null,
+      footprint: band(points, Math.max(half, mm(1))),
+      lamps: this.spec.lamps !== false && kind !== "tram" ? this._lamps(points, lengths, h, sidewalk, K.car) : [],
     };
-  }
-
-  /** Centre line: 3 m dashes, 6 m gaps. */
-  _dashes(points, lengths) {
-    const L = lengths[lengths.length - 1], dash = this.mm(3), gap = this.mm(6), w = this.mm(0.12), out = [];
-    for (let s = gap / 2; s + dash < L; s += dash + gap) out.push(quad(polylineAt(points, s, lengths).point, polylineAt(points, s + dash, lengths).point, w));
-    return out;
   }
 
   /** Street lamps every 30 m on each side (staggered), at the outer edge of the sidewalk. */
@@ -247,7 +383,7 @@ export class Road extends LayoutObject {
       const side = car && k % 2 ? 1 : -1;
       const at = polylineAt(points, s, lengths);
       const n = [-at.dir[1], at.dir[0]];
-      out.push({ pos: [at.point[0] + n[0] * inset * side, at.point[1] + n[1] * inset * side], arm: [-n[0] * side, -n[1] * side], s });
+      out.push({ pos: [at.point[0] + n[0] * inset * side, at.point[1] + n[1] * inset * side], arm: [-n[0] * side, -n[1] * side], s, side });
     }
     return out;
   }
@@ -261,39 +397,78 @@ export class Road extends LayoutObject {
     return g ? polylineAt(g.points, g.length / 2, g.lengths).point : null;
   }
 
-  /** The card: the kind of street, its length and speed limit. */
+  /** The card: the kind of street, its cross-section and widths, its length and speed limit. */
   card() {
     const card = super.card();
     const g = this.geometry;
     if (!g) return card;
+    const xs = g.xs, m1 = (v) => Math.round(v * 100) / 100;
     card.rows.push(["Kind", ROAD_KINDS[g.kind]?.label ?? g.kind]);
     card.rows.push(["Length", `${Math.round(this.meters(g.length))} m`]);
-    card.rows.push(["Width", `${Math.round(this.meters(g.width) * 10) / 10} m${g.sidewalk > 0 ? `, sidewalks ${Math.round(this.meters(g.sidewalk) * 10) / 10} m` : ""}`]);
-    if (g.car) card.rows.push(["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
+    if (g.kind === "tram") card.rows.push(["Track bed", `${m1(xs.tramBed)} m`], ["Tracks", TRAM_TRACKS[xs.tramTracks].label]);
+    else {
+      const P = (g.kind === "path" ? PATH_PROFILES : STREET_PROFILES)[xs.profile];
+      card.rows.push(["Cross-section", P?.label ?? xs.profile]);
+      card.rows.push(["Width", `${m1(xs.half * 2)} m`]);
+      if (g.car) {
+        card.rows.push(["Car lanes", `${xs.lanes * 2} × ${m1(xs.laneWidth)} m`]);
+        if (xs.bikeWidth > 0) card.rows.push([xs.bike === "shared" ? "Shared paths" : xs.bike === "path" ? "Bike paths" : "Bike lanes", `${m1(xs.bikeWidth)} m`]);
+        if (xs.sidewalk > 0 && xs.bike !== "shared") card.rows.push(["Sidewalks", `${m1(this.spec.sidewalk_m > 0 ? +this.spec.sidewalk_m : NORMS.sidewalk.default)} m`]);
+        if (xs.tram !== "none") card.rows.push(["Tram tracks", TRAM_LAYOUTS[xs.tram].label], ["Tracks", TRAM_TRACKS[xs.tramTracks].label]);
+        const parking = this.parkingInfo();
+        const spaces = parking.reduce((s, f) => s + f.spaces, 0);
+        if (parking.length) card.rows.push(["Parking", `${spaces} ${spaces === 1 ? "space" : "spaces"} · ${parking[0].tariff.label()}`]);
+        card.rows.push(["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
+        if (xs.obstruct) card.rows.push(["Bikes", "hold up the cars behind them (too narrow to pass at 1.5 m)"]);
+      }
+    }
+    if (xs.warnings.length) card.sections = [...(card.sections || []), { title: "Below the guidelines", lines: xs.warnings }];
     return card;
   }
 
   /**
+   * What is wrong with the street (shown in the editor): widths below the minimum of the guidelines,
+   * and its heights (core/elevation.js): a ramp that reaches into a junction, an end in the air.
+   */
+  problems() {
+    const g = this.geometry;
+    if (!g) return [];
+    return [...g.xs.warnings, ...this.world.elevation.streetProblems(this.id)];
+  }
+
+  /**
    * What the road network needs to know (see core/network.js).
-   * @returns {{points: number[][], kind: string, car: boolean, walk: boolean, width: number, sidewalk: number,
-   *   speed: number, walkOffset: number, laneOffset: number} | null} widths and offsets in mm, speed in m/s
+   * @returns {object | null} {points, kind, car, walk, bike, width, half, sidewalk, speed, walkOffset,
+   *   laneOffset, bikeOffset, bikeWidth, obstruct, conflict, tram, tramTracks, tramOffset, lanes}:
+   *   widths and offsets in mm, speed in m/s; `bike`: what bikes get ("road", "advisory", "lane",
+   *   "path", "shared", "none"); `tram`: where the tracks lie ("none", "street", "lanes", "median",
+   *   "own")
    */
   roadInfo() {
     const g = this.geometry;
     if (!g) return null;
-    const K = ROAD_KINDS[g.kind];
+    const K = ROAD_KINDS[g.kind], xs = g.xs, mm = (m) => this.mm(m);
     const kmh = Number(this.spec.speed_kmh) > 0 ? Number(this.spec.speed_kmh) : K.speed_kmh;
+    const tram = g.kind === "tram";
+    const walk = tram ? false : g.kind === "path" ? PATH_PROFILES[xs.profile]?.walk !== false : true;
+    // a narrow street has one lane for both directions: vehicles keep to its middle
+    const oneLane = g.car && xs.carWidth < 5 && (xs.tram === "none" || xs.tram === "street");
     return {
-      points: g.points, kind: g.kind, car: g.car, walk: true, width: g.width, sidewalk: g.sidewalk,
-      speed: g.car ? kmh / 3.6 : 1.3,
-      walkOffset: g.car ? (g.sidewalk > 0 ? g.width / 2 + g.sidewalk / 2 : g.width / 2 - this.mm(0.6)) : 0,
-      laneOffset: g.car && g.width >= this.mm(5) ? g.width / 4 : 0,
+      points: g.points, kind: g.kind, car: g.car, walk, bike: xs.bike, width: g.width, half: g.half, sidewalk: g.sidewalk,
+      speed: g.car || tram ? kmh / 3.6 : 1.3,
+      walkOffset: g.car ? mm(xs.walkOffset) : 0,
+      laneOffset: oneLane ? 0 : g.car ? mm(xs.laneOffset) : 0,
+      bikeOffset: mm(xs.bikeOffset), bikeWidth: mm(xs.bikeWidth), obstruct: xs.obstruct, conflict: xs.conflict,
+      tram: xs.tram, tramTracks: xs.tramTracks, tramOffset: mm(xs.tramOffset), lanes: xs.lanes,
     };
   }
 
+  /* ---------------------------------------------------------------- junctions, parking, bikes */
+
   /**
    * Junction details from the road network (cached until it changes): round patches where
-   * street ends meet, zebra crossings next to junctions, lamps that are not on a junction.
+   * street ends meet, zebra crossings next to junctions, the stretches the strips are drawn on
+   * (they stop short of junctions), lamps that are not on a junction.
    */
   _junctions() {
     const g = this.geometry;
@@ -304,15 +479,18 @@ export class Road extends LayoutObject {
       net = null;
     }
     if (this._jc && this._jc.net === net && this._jc.g === g) return this._jc;
-    const jc = { net, g, patches: [], zebras: [], lamps: g.lamps };
+    const jc = { net, g, patches: [], zebras: [], lamps: g.lamps, busy: [], ranges: [[0, g.length]] };
     this._jc = jc;
-    if (!net) return jc;
+    if (!net) {
+      jc.strips = this._strips(g, jc.ranges);
+      return jc;
+    }
     const mm = (m) => this.mm(m), h = g.width / 2;
     const roadsAt = (n) => {
       const by = new Map();
       for (const id of n.edges) {
         const e = net.edges[id];
-        if ((e.kind !== "road" && e.kind !== "path") || e.hidden) continue; // not an underpass
+        if ((e.kind !== "road" && e.kind !== "path" && e.kind !== "tram") || e.hidden) continue; // not an underpass
         by.set(e.road, (by.get(e.road) || 0) + 1);
       }
       return by;
@@ -324,18 +502,19 @@ export class Road extends LayoutObject {
       if (!by.has(this.id) || by.size < 2) continue;
       let reach = 0;
       for (const id of by.keys()) {
+        if (id === this.id) continue;
         const o = this.world.getObject(id), info = o?.roadInfo?.();
-        if (info) reach = Math.max(reach, info.width / 2 + info.sidewalk);
+        if (info) reach = Math.max(reach, info.half ?? info.width / 2 + info.sidewalk);
       }
-      busy.push({ pos: n.pos, r: reach + mm(1) });
+      busy.push({ pos: n.pos, r: reach + mm(1), s: polylineProject(g.points, n.pos, g.lengths).s });
       // all streets end here (corner or fork): fill the corner
       if ([...by.values()].every((k) => k === 1)) jc.patches.push(n.pos);
       // zebra crossings on this street, a little away from the junction
       if (this.spec.crossings === false || !g.car || n.degree < 3) continue;
-      const pr = polylineProject(g.points, n.pos, g.lengths);
+      const s0n = busy[busy.length - 1].s;
       const len = mm(4), d0 = reach + mm(1.5);
       for (const sign of [-1, 1]) {
-        const s0 = pr.s + sign * d0, s1 = pr.s + sign * (d0 + len);
+        const s0 = s0n + sign * d0, s1 = s0n + sign * (d0 + len);
         if (Math.min(s0, s1) < mm(1) || Math.max(s0, s1) > g.length - mm(1)) continue;
         const a = polylineAt(g.points, s0, g.lengths), b = polylineAt(g.points, s1, g.lengths);
         const nrm = [-a.dir[1], a.dir[0]];
@@ -345,23 +524,233 @@ export class Road extends LayoutObject {
         }
       }
     }
+    jc.busy = busy;
     jc.lamps = g.lamps.filter((l) => !busy.some((b) => dist2(l.pos, b.pos) < b.r));
+    // the strips stop short of junctions
+    const cut = busy.map((b) => [b.s - b.r, b.s + b.r]).sort((a, b) => a[0] - b[0]);
+    const ranges = [];
+    let s = 0;
+    for (const [a, b] of cut) {
+      if (a > s + mm(1)) ranges.push([s, Math.min(a, g.length)]);
+      s = Math.max(s, b);
+    }
+    if (s < g.length - mm(1)) ranges.push([s, g.length]);
+    jc.ranges = ranges;
+    jc.strips = this._strips(g, ranges);
     return jc;
+  }
+
+  /**
+   * The strips drawn over the carriageway and the side spaces, as quads by colour, and the
+   * markings: {fills: [{colour, order, alpha, quads}], marks: quads, rails: polylines}.
+   */
+  _strips(g, ranges) {
+    const xs = g.xs, mm = (m) => this.mm(m), P = g.points, Ls = g.lengths, piece = mm(25);
+    const fills = new Map(), marks = [], rails = [];
+    const fill = (colour, order, alpha, quads) => {
+      const key = `${colour}|${order}|${alpha}`;
+      if (!fills.has(key)) fills.set(key, { colour, order, alpha, quads: [] });
+      fills.get(key).quads.push(...quads);
+    };
+    const parts = ranges.map(([s0, s1]) => slicePolyline(P, Ls, s0, s1)).filter((p) => p.length >= 2);
+    const strip = (st, colour, order, alpha = 0.9) => {
+      for (const part of parts) fill(colour, order, alpha, stripPieces(part, st.side * mm(st.from), st.side * mm(st.to), piece));
+    };
+    const line = (o, w, dash = 0, gap = 0) => marks.push(...dashes(P, Ls, ranges, o, w, dash, gap));
+    for (const st of xs.strips) {
+      if (st.type === "bike-lane") strip(st, PALETTE.bikeLane, 1.12, 0.7);
+      else if (st.type === "bike-path") strip(st, PALETTE.bikePath, 1.02, 0.95);
+      else if (st.type === "buffer" && st.level === "sidewalk") strip(st, COLOURS.buffer, 1.02, 0.9);
+      else if (st.type === "parking") strip(st, COLOURS.parking, 1.12, 0.9);
+      else if (st.type === "tram-bed" && g.kind !== "tram") strip(st, PALETTE.tramBed, 1.12, 0.95);
+    }
+    // markings: the centre line, lane lines, the lines of bike lanes and tram lanes
+    const K = ROAD_KINDS[g.kind];
+    if (g.car) {
+      const laneW = mm(xs.laneWidth), carFrom = mm(xs.tram === "lanes" ? (xs.tramTracks === "double" ? NORMS.tram.lane : NORMS.tram.lane / 2) : xs.tram === "median" ? xs.tramBed / 2 : 0);
+      if (xs.tram === "none" || xs.tram === "street") {
+        if (xs.lanes > 1) for (const sd of [-1, 1]) line(sd * mm(0.15), mm(0.12));
+        else if (K.centreLine && mm(xs.carWidth) >= mm(5.5)) line(0, mm(0.12), mm(3), mm(6));
+      }
+      for (let i = 1; i < xs.lanes; i++) for (const sd of [-1, 1]) line(sd * (carFrom + i * laneW), mm(0.12), mm(3), mm(6));
+      if (xs.tram === "lanes") for (const sd of [-1, 1]) line(sd * carFrom, mm(0.12), mm(1.5), mm(1.5));
+      for (const st of xs.strips) {
+        if (st.side < 0 || (st.type !== "advisory-lane" && st.type !== "bike-lane")) continue;
+        for (const sd of [-1, 1]) line(sd * mm(st.from + (st.type === "bike-lane" ? 0.125 : 0.06)), mm(st.type === "bike-lane" ? 0.25 : 0.12), st.type === "advisory-lane" ? mm(1) : 0, st.type === "advisory-lane" ? mm(1) : 0);
+      }
+      // parking spaces
+      for (const side of ["right", "left"]) {
+        const p = xs.parking[side];
+        if (!p) continue;
+        const sd = side === "right" ? -1 : 1, a = sd * mm(p.from), b = sd * mm(p.from + p.depth);
+        for (const [s0, s1] of ranges) {
+          for (let s = s0 + mm(p.length); s < s1 - mm(1); s += mm(p.length)) {
+            const at = polylineAt(P, s, Ls), n = [-at.dir[1], at.dir[0]];
+            const t0 = p.layout === "parallel" ? b - sd * mm(0.5) : a, t1 = b;
+            marks.push(quad([at.point[0] + n[0] * t0, at.point[1] + n[1] * t0], [at.point[0] + n[0] * t1, at.point[1] + n[1] * t1], mm(0.1)));
+          }
+        }
+      }
+    }
+    // the rails: two per track, over the whole street (they cross junctions)
+    if (xs.tram !== "none") {
+      const offsets = xs.tramTracks === "double" ? [-mm(xs.tramOffset), mm(xs.tramOffset)] : [0];
+      for (const o of offsets) for (const r of [-1, 1]) rails.push(offsetPolyline(P, o + (r * mm(GAUGE_M)) / 2));
+    }
+    return { fills: [...fills.values()], marks, rails };
+  }
+
+  /**
+   * Street parking (`parking`): one facility per side with its spaces, for core/parking.js: spaces
+   * along the parking strip, none within 5 m of a junction and none at bus and tram stops (StVO § 12).
+   * @returns {Array<{id: string, owner: Road, kind: "street", label: string, side: "right" | "left", spaces: number,
+   *   spots: Array<{pos: number[], dir: number[]}>, tariff: Tariff, access: string, layout: string}>}
+   */
+  parkingInfo() {
+    const g = this.geometry;
+    if (!g?.car || !g.xs.parking.right && !g.xs.parking.left) return [];
+    const key = `${this.world.objectsVersion}:${this.world.map.version}:${this.world.scale}`;
+    if (this._parking?.key === key && this._parking.g === g) return this._parking.list;
+    const xs = g.xs, mm = (m) => this.mm(m), list = [];
+    const jc = this._junctions();
+    const tariff = new Tariff({ kind: this.spec.parking_tariff, price_eur: this.spec.parking_price_eur, street: true });
+    for (const side of ["right", "left"]) {
+      const p = xs.parking[side];
+      if (!p) continue;
+      const sd = side === "right" ? -1 : 1, t = sd * mm(p.from + p.depth / 2);
+      // no parking near junctions and at stops on this side (and 15 m before and after them)
+      const blocked = jc.busy.map((b) => [b.s - b.r - mm(5), b.s + b.r + mm(5)]);
+      for (const o of this.world.objects) {
+        const free = typeof o.noParking === "function" ? o.noParking(this, side) : null;
+        if (free) blocked.push(...free);
+      }
+      const spots = [];
+      const len = mm(p.length);
+      for (let s = len / 2 + mm(0.5); s < g.length - len / 2; s += len) {
+        if (blocked.some(([a, b]) => s + len / 2 > a && s - len / 2 < b)) continue;
+        const at = polylineAt(g.points, s, g.lengths), n = [-at.dir[1], at.dir[0]];
+        const heading = p.layout === "parallel" ? (side === "right" ? at.dir : [-at.dir[0], -at.dir[1]]) : [-n[0] * sd, -n[1] * sd];
+        spots.push({ pos: [at.point[0] + n[0] * t, at.point[1] + n[1] * t], dir: heading, s });
+      }
+      list.push({
+        id: `${this.id}:${side}`, owner: this, kind: "street", label: `${this.name} (${side} side)`, side, spaces: spots.length, spots,
+        tariff, access: tariff.kind === "yearly" ? "residents" : "public", layout: p.layout,
+      });
+    }
+    this._parking = { key, g, list };
+    return list;
+  }
+
+  /** Where bikes can be locked: to each street lamp, two at most. [{pos, capacity, kind: "lamp"}] */
+  bikeParking() {
+    const g = this.geometry;
+    if (!g) return [];
+    return this._junctions().lamps.map((l) => ({ pos: [l.pos[0] - l.arm[0] * this.mm(0.4), l.pos[1] - l.arm[1] * this.mm(0.4)], dir: [-l.arm[1], l.arm[0]], capacity: 2, kind: "lamp" }));
   }
 
   draw(view) {
     const g = this.geometry;
     const jc = this._junctions();
-    if (!g.car) {
-      fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), COLOURS.path, 1.02, 0.85);
+    if (g.kind === "path") {
+      const colour = g.xs.profile === "bike-paths" ? PALETTE.bikePath : COLOURS.path;
+      fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), colour, 1.02, 0.85);
+    } else if (g.kind === "tram") {
+      fillPolygons(view, g.bed.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.tramBed, 1.02, 0.9);
     } else {
       const h = g.width / 2;
-      if (g.outer) fillPolygons(view, g.outer.concat(jc.patches.map((p) => disc(p, h + g.sidewalk))), COLOURS.sidewalk, 1.0, 0.9);
+      if (g.outer) fillPolygons(view, g.outer.concat(jc.patches.map((p) => disc(p, g.half))), COLOURS.sidewalk, 1.0, 0.9);
       fillPolygons(view, g.curb.concat(jc.patches.map((p) => disc(p, h + this.mm(0.25)))), COLOURS.curb, 1.05, 0.95);
       fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, h))), COLOURS.asphalt, 1.1, 0.95);
-      fillPolygons(view, g.dashes, COLOURS.marking, 1.2, 0.85);
       fillPolygons(view, jc.zebras, COLOURS.marking, 1.2, 0.9);
     }
+    for (const f of jc.strips.fills) fillPolygons(view, f.quads, f.colour, f.order, f.alpha);
+    fillPolygons(view, jc.strips.marks, COLOURS.marking, 1.2, 0.85);
+    if (jc.strips.rails.length) {
+      const k = view.pxPerMM(g.points[0][0], g.points[0][1], 0) * this.mm(GAUGE_M);
+      if (k >= 1.2 * view.px) for (const r of jc.strips.rails) view.line(r, { stroke: PALETTE.rail, width: Math.max(0.6, Math.min(1.6, k / 6)), order: 1.15 });
+    }
     for (const l of jc.lamps) if (view.inImage(l.pos[0], l.pos[1], 0, 80)) drawStreetLamp(view, l.pos, l.arm);
+    this._drawHeights(view, g);
   }
+
+  /**
+   * Where the street leaves the ground (core/elevation.js): its sides as walls down to the ground on
+   * a low ramp, as the edge of a deck a metre thick where it lies higher (a bridge), as walls up to
+   * the ground where it lies lower (a cutting); railings where it lies high. Over a track its deck is
+   * drawn as a solid (trains pass under it, cars on it), under a track the railway's bridge. Heights
+   * as worked out, without a lift.
+   */
+  _drawHeights(view, g) {
+    const el = this.world.elevation, p = el.profiles.get(this.id);
+    if (!p?.decks.length) return;
+    const m = (x) => this.mm(x), deck = m(CROSSING_NORMS.roadDeck), wall = grey(0.8), railing = grey(0.9);
+    view.withLift(null, () => {
+      for (const d of p.decks) {
+        const L = d.s[d.s.length - 1], n = Math.max(1, Math.ceil(L / m(4)));
+        for (let i = 0; i < n; i++) {
+          const a = (L * i) / n, b = (L * (i + 1)) / n;
+          const A = polylineAt(d.pts, a, d.lengths), B = polylineAt(d.pts, b, d.lengths);
+          const za = interpolate(d.s, d.z, a), zb = interpolate(d.s, d.z, b), ga = interpolate(d.s, d.ground, a), gb = interpolate(d.s, d.ground, b);
+          // above the ground: down to it on a low ramp, else a deck's thickness; below it: up to it
+          const bottom = (z, gr) => (z >= gr ? (z - gr <= 1.5 * deck ? gr : z - deck) : z), top = (z, gr) => Math.max(z, gr);
+          // each side on its own: the far one is drawn before the deck, the near one after it
+          for (const side of [-1, 1]) {
+            const off = (P) => [P.point[0] - P.dir[1] * d.half * side, P.point[1] + P.dir[0] * d.half * side];
+            const pa = off(A), pb = off(B), faces = [];
+            const fa = bottom(za, ga), fb = bottom(zb, gb), ta = top(za, ga), tb = top(zb, gb);
+            if (ta - fa > 0.05 || tb - fb > 0.05) faces.push({ pts: [[pa[0], pa[1], fa], [pb[0], pb[1], fb], [pb[0], pb[1], tb], [pa[0], pa[1], ta]], color: wall, twoSided: true });
+            if (za - ga > m(1.5) || zb - gb > m(1.5)) {
+              faces.push({ pts: [[pa[0], pa[1], za], [pb[0], pb[1], zb], [pb[0], pb[1], zb + m(0.9)], [pa[0], pa[1], za + m(0.9)]], color: railing, alpha: 0.7, twoSided: true });
+            }
+            if (faces.length) view.faces(faces, [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (za + zb) / 2]);
+          }
+        }
+      }
+      for (const c of el.trackCrossings(this.id)) {
+        if (c.kind === "over" || (c.kind === "clash" && c.clear > 0)) this._drawBridgeDeck(view, g, p, c);
+        else if (c.kind === "under" || (c.kind === "clash" && c.clear < 0)) drawRailBridge(view, g, c, this.mm(1));
+      }
+    });
+  }
+
+  /** The deck over a track as a solid in pieces: the sidewalks, the carriageway and tram rails on top. */
+  _drawBridgeDeck(view, g, p, c) {
+    const m = (x) => this.mm(x), xs = g.xs;
+    // across the track's clearance: 4 m each side of it, along the street
+    const along = polylineAt(g.points, c.s, g.lengths).dir, sin = Math.max(0.3, Math.abs(c.dir[0] * along[1] - c.dir[1] * along[0]));
+    const reach = m(4) / sin, s0 = Math.max(0, c.s - reach), s1 = Math.min(g.length, c.s + reach);
+    const tracks = xs.tram !== "none" ? (xs.tramTracks === "double" ? [-xs.tramOffset, xs.tramOffset] : [0]) : [];
+    const n = Math.max(1, Math.ceil((s1 - s0) / m(3)));
+    for (let i = 0; i < n; i++) {
+      const a = s0 + ((s1 - s0) * i) / n, b = s0 + ((s1 - s0) * (i + 1)) / n;
+      const A = polylineAt(g.points, a, g.lengths), B = polylineAt(g.points, b, g.lengths);
+      const za = interpolate(p.s, p.z, a), zb = interpolate(p.s, p.z, b);
+      const at = (P, t, z) => [P.point[0] - P.dir[1] * t, P.point[1] + P.dir[0] * t, z];
+      const band = (t0, t1, up = 0) => [at(A, t0, za + up), at(B, t0, zb + up), at(B, t1, zb + up), at(A, t1, za + up)];
+      const decals = g.kind === "path" || g.kind === "tram" ? [] : [{ pts: band(-g.width / 2, g.width / 2, 0.01), color: COLOURS.asphalt }];
+      for (const t of tracks) for (const r of [-GAUGE_M / 2, GAUGE_M / 2]) decals.push({ pts: band(m(t + r) - m(0.07), m(t + r) + m(0.07), 0.02), color: PALETTE.rail });
+      const colour = g.kind === "path" ? COLOURS.path : g.kind === "tram" ? PALETTE.tramBed : COLOURS.sidewalk;
+      const mid = polylineAt(g.points, (a + b) / 2, g.lengths).point;
+      view.faces([{ pts: band(-g.half, g.half), normal: [0, 0, 1], color: colour, decals, flat: true }], [mid[0], mid[1], (za + zb) / 2]);
+    }
+  }
+}
+
+/**
+ * The railway's bridge over a street in an underpass (Eisenbahnüberführung): its deck along the track
+ * with its top at the rails, abutments beside the street down to it, the street in its shade.
+ * @param {{pos: number[], dir: number[], street: number, rails: number}} c where the track crosses (core/elevation.js)
+ * @param {number} m1 one prototype metre in mm
+ */
+function drawRailBridge(view, g, c, m1) {
+  const w = 3.2 * m1, h1 = c.rails, h0 = Math.max(c.street, c.rails - CROSSING_NORMS.railDeck * m1);
+  const reach = g.half + m1, n = [(-c.dir[1] * w) / 2, (c.dir[0] * w) / 2];
+  const a = [c.pos[0] - c.dir[0] * reach, c.pos[1] - c.dir[1] * reach], b = [c.pos[0] + c.dir[0] * reach, c.pos[1] + c.dir[1] * reach];
+  view.prism([[a[0] - n[0], a[1] - n[1]], [b[0] - n[0], b[1] - n[1]], [b[0] + n[0], b[1] + n[1]], [a[0] + n[0], a[1] + n[1]]], h0, h1, { side: grey(0.7), top: grey(0.62) });
+  for (const t of [-1, 1]) {
+    const q = [c.pos[0] + c.dir[0] * t * (g.half + 0.6 * m1), c.pos[1] + c.dir[1] * t * (g.half + 0.6 * m1)];
+    view.prism(rectFootprint(q, 1.2 * m1, w, Math.atan2(c.dir[1], c.dir[0])), c.street, h0, { side: grey(0.78), top: grey(0.7) });
+  }
+  const s = [c.dir[0] * g.width * 0.5, c.dir[1] * g.width * 0.5], k = [-c.dir[1] * w * 0.5, c.dir[0] * w * 0.5];
+  view.polygon([[c.pos[0] - s[0] - k[0], c.pos[1] - s[1] - k[1]], [c.pos[0] - s[0] + k[0], c.pos[1] - s[1] + k[1]], [c.pos[0] + s[0] + k[0], c.pos[1] + s[1] + k[1]], [c.pos[0] + s[0] - k[0], c.pos[1] + s[1] - k[1]]], { z: c.street + 0.05, fill: grey(0.2), alpha: 0.35, order: 1.3 });
 }

@@ -12,8 +12,8 @@ export const WORLD = [
     classes: [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
-        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
-        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts)", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
+        attributes: ["registry: Registry", "events: EventBus", "clock: Clock", "objects: LayoutObject[]", "simulations: Simulation[]", "parking: ParkingSpaces — the parking spaces and who is parked where", "elevation: Elevation — the heights: levels of the table modules, streets on ramps and bridges", "time: number — simulated s since loading", "speed: number — simulated s per real s", "paused: boolean", "demand: number — demand factor of the Settings", "objectsVersion: number — counts changes of objects"],
+        operations: ["load(json) — compose the layers, defaults, everything anew", "toJSON() — the layout file, layers split again", "layers() — the layers (modules)", "addObject(spec)", "removeObject(id)", "objectChanged(obj)", "stopAreas() — cached", "network() — cached road network", "step(dtReal)", "setTime(value)", "draw(view, opts) — each part lifted by what it stands on", "problemsOf(o) — what it says of itself, and whether it stands on the table modules", "pick(view, pixel, options) — what is at an image pixel", "card(hit) — its info card, with what the simulations and the card providers add", "findPickable(view, key) — the same thing now"],
       },
       {
         name: "Simulation", file: "web/arail/core/simulation.js", kind: "class", stereotype: "base class", role: "Base of all simulations: one per entry of the layout's simulations.",
@@ -29,6 +29,11 @@ export const WORLD = [
         name: "EventBus", file: "web/arail/core/events.js", kind: "class", role: "Publish and subscribe; \"*\" hears every event; errors of handlers are caught.",
         attributes: ["handlers: Map — name → handlers"],
         operations: ["on(name, handler) — returns an unsubscribe function", "once(name, handler)", "off(name, handler)", "emit(name, payload)"],
+      },
+      {
+        name: "world", file: "web/arail/core/world.js", kind: "module", role: "Building on the table modules.",
+        attributes: ["MODULE_TOLERANCE_MM — 2: how far an object may reach over the edge of the modules"],
+        operations: ["offModules(world, o) — the problem of an object off the table modules, or null"],
       },
       {
         name: "index", file: "web/arail/index.js", kind: "module", role: "The public API: the default registry, createWorld, plugins.",
@@ -47,6 +52,7 @@ export const WORLD = [
       { from: "World", to: "ScenarioPlayer", kind: "composes", label: "scenarios" },
       { from: "World", to: "TrainRegistry", kind: "composes", label: "trains" },
       { from: "World", to: "Registry", kind: "aggregates", label: "registry" },
+      { from: "World", to: "Elevation", kind: "composes", label: "elevation" },
       { from: "World", to: "RoadNetwork", kind: "creates", label: "network()" },
       { from: "index", to: "World", kind: "creates", label: "createWorld" },
       { from: "index", to: "Registry", kind: "creates" },
@@ -245,7 +251,7 @@ export const WORLD = [
       { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges.", operations: ["stopAreas()"] },
       { name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street or footpath of the road network.", operations: ["roadInfo()"] },
       { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own; a section with its railway systems.", operations: ["at(offsetMM)", "walkBarrier()", "card() — also its systems", "draw(view) — the track, a band by its system (View → Colour the tracks by)"] },
-      { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()"] },
+      { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks.", operations: ["stopAreas()", "noParking(road, side) — the stop and 15 m on each side"] },
       { name: "House", file: "web/arail/objects/houses.js", kind: "class", extends: "BuildingBase", role: "One of the house types (also Plattenbau, office, school …)." },
     ],
     relations: [{ from: "BuildingBase", to: "BuildingModel", kind: "creates", label: "model()" }],
@@ -314,8 +320,8 @@ export const WORLD = [
     classes: [
       {
         name: "View", file: "web/arail/core/view.js", kind: "class", role: "Projection and display list of one frame.",
-        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown"],
-        operations: ["project(x, y, z)", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style)", "dim(colour, amount)", "render()"],
+        attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "virtual: boolean — the flyover", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown", "lift: Function | null — the height added to every point drawn (core/elevation.js)", "placed: object[] — the rectangles of the labels so far (and of the app's HUD); area: what the labels cover", "LABEL_SHARE — 0.1: the share of the picture the labels may cover before it is crowded"],
+        operations: ["project(x, y, z)", "cam(x, y, z) — camera coordinates, lifted", "depth(x, y, z)", "withLift(lift, draw) — draw with another lift", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style) — placed so labels do not overlap; where crowded the compact form, optional ones left out", "dim(colour, amount)", "render()"],
       },
       { name: "SimpleView", file: "web/arail/core/simple.js", kind: "class", extends: "View", role: "Map and 2.5D: flat footprints, plain blocks, always day.", operations: ["block(footprint, z0, z1, colour)"] },
       { name: "colors", file: "web/arail/core/colors.js", kind: "module", role: "The corporate-design colours.", attributes: ["CD — the colours of the corporate design", "OVERLAY — colours over the camera image", "FONT"], operations: ["mix(a, b, t, alpha)", "shade(c, factor, alpha)", "moodColor(m, alpha, k)"] },
@@ -331,7 +337,7 @@ export const WORLD = [
         ["a1", "action", "Night from the clock (unless set)", "World.draw"],
         ["d1", "decision", "The simple view?"],
         ["a2", "action", "Objects as flat footprints", "World.draw"],
-        ["a3", "action", "Objects drawn", "LayoutObject.draw"],
+        ["a3", "action", "Objects drawn, each lifted by what it stands on: streets, the ground (the railway), or not at all (table modules)", "World.draw"],
         ["m1", "merge"],
         ["a4", "action", "Vehicles at the docks, line buses, the control system's trains", "ServiceManager.draw"],
         ["a5", "action", "The simulations (people, cars, machines), disruptions, the selection", "Simulation.draw"],
@@ -344,7 +350,61 @@ export const WORLD = [
       ],
       edges: [["s", "a1"], ["a1", "d1"], ["d1", "a2", "yes"], ["d1", "a3", "no"], ["a2", "m1"], ["a3", "m1"], ["m1", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "d2"], ["d2", "a7", "yes"], ["d2", "m2", "no"], ["a7", "m2"], ["m2", "a8"], ["a8", "e"]],
     }],
-    rules: ["Layers: ground 0, solids 1, overlays 2; solids sorted far first.", "Night: colour × (1 − 0.62 n) + Dunkelblau × 0.3 n; emissive colours and overlays are not darkened.", "Nothing is queued that lies entirely outside the image; plain drawings share one save/restore."],
+    rules: ["Layers: ground 0, solids 1, overlays 2; solids sorted far first.", "Heights: z is above the track level; the view lifts every point by the height there (lift) of what is drawn: the street level for most things, the ground for the railway, nothing for the table modules.", "Night: colour × (1 − 0.62 n) + Dunkelblau × 0.3 n; emissive colours and overlays are not darkened.", "Nothing is queued that lies entirely outside the image; plain drawings share one save/restore."],
+  },
+  {
+    id: "heights", group: "world", title: "Heights: table modules and bridges",
+    summary: "Table modules lie at levels; houses, streets and the rest are built on them. Streets ramp from one level to another and run as bridges between raised modules; the view draws everything at its height, trains under the bridges.",
+    description: "A table module's level is the height of its top above the track level, the top of the real table (z = 0). Elevation works out the ground (the highest module at a point) and each street's profile, its height along its centre line: on the modules it crosses, up or down at most at its gradient (8 %, 6 % with tram tracks and on footpaths) with the ramp on the lower side, straight from edge to edge where it cannot come down between two higher parts (a bridge), and at the heights railway crossings ask for (streetLevels). The stretches off the ground are decks: there the street level is the street's height. Where a street crosses a track without a railway crossing, the heights decide: high enough above the rails it passes over, at their height at street level, between it runs into the track. World.draw lifts each part by what it stands on, the street drew its walls, decks and railway bridges; pointing at things and placing them look at the height found (surfacePoint). In layouts with table modules, what stands off them is a problem (problemsOf) and the editors do not place it there.",
+    files: ["web/arail/core/elevation.js", "web/arail/objects/tabletop.js"],
+    classes: [
+      {
+        name: "Elevation", file: "web/arail/core/elevation.js", kind: "class", role: "The heights of the layout, worked out again when objects, the marker map or the scale change.",
+        attributes: ["world: World", "modules: object[] — the table modules with their levels, the highest first", "profiles: Map — each street's heights along it", "decks: object[] — stretches of streets off the ground", "flat: boolean — everything at the track level: nothing to lift", "streetLift: Function | null — for the view: the street level", "groundLift: Function | null — for the view: the ground"],
+        operations: ["sync() — anew when objects, the marker map or the scale changed", "moduleAt(x, y, tol) — the highest module there", "ground(x, y) — its level, 0 off the modules", "street(x, y) — a street off the ground there, else the ground", "groundAt(p)", "streetAt(p)", "onModules(points, tol) — all on table modules?", "profile(id)", "heightOn(id, s) — a street's height at s along it", "trackCrossings(id) — where it crosses tracks: over, at street level, under or into the track", "crossingAt(id, pos, track) — the same where no railway crossing is", "streetProblems(id) — a ramp in a junction, an end in the air", "_profile(id, info, asked)"],
+      },
+      {
+        name: "elevation", file: "web/arail/core/elevation.js", kind: "module", role: "Norms and the profile's steps.",
+        attributes: ["CROSSING_NORMS — clearances 4.70 m (street) and 5.70 m (electrified railway, 4.90 m without), decks 1.0 and 1.5 m, gradients 8 % (with trams and on footpaths 6 %) and 12.5 ‰"],
+        operations: ["streetGradient(info) — the steepest a street climbs", "spread(S, z, g, dir) — heights spread at most at gradient g", "hull(S, z, base, dir) — straight from where it stands on the ground to where it stands again", "deck(road, pts, cum, S, z, ground, half)", "deckHeight(d, x, y)", "interpolate(X, Y, v)"],
+      },
+      { name: "Tabletop", file: "web/arail/objects/tabletop.js", kind: "class", extends: "LayoutObject", role: "A table module at its level: a real table or a virtual extension.", operations: ["groundLevel() — the height of its top above the track level", "card() — kind, size, level", "draw(view) — its top at its level, its edges down to the module beside it or its thickness"] },
+    ],
+    relations: [
+      { from: "Elevation", to: "Tabletop", kind: "uses", label: "groundLevel()" },
+      { from: "Elevation", to: "Road", kind: "uses", label: "roadInfo()" },
+      { from: "Road", to: "Elevation", kind: "uses", label: "its profile: walls, decks, problems" },
+      { from: "RoadNetwork", to: "Elevation", kind: "uses", label: "crossingAt()" },
+      { from: "World", to: "View", kind: "uses", label: "lift" },
+    ],
+    activities: [{
+      id: "profile", name: "A street's heights",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "The ground along its centre line: the module's level a few mm apart and on both sides of every module edge", "Elevation._profile"],
+        ["a2", "action", "What railway crossings ask over their span: a bridge at least, an underpass at most, a level crossing just the rails' height", "RailCrossing.streetLevels"],
+        ["a3", "action", "Up at most at its gradient from what holds it up: ramps on the lower side", "spread"],
+        ["a4", "action", "Where it cannot come down to the ground between two higher parts: straight from edge to edge", "hull"],
+        ["d1", "decision", "Must it lie lower somewhere (an underpass, a level crossing below the modules)?"],
+        ["a5", "action", "The same downwards", "spread"],
+        ["m1", "merge"],
+        ["a6", "action", "The stretches off the ground: its decks, for the street level", "deck"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "d1"], ["d1", "a5", "yes"], ["d1", "m1", "no"], ["a5", "m1"], ["m1", "a6"], ["a6", "e"]],
+    }],
+    parameters: [
+      { key: "level_mm", default: "0", meaning: "Table module: the height of its top above the track level (mm); 80 mm lets a street in H0 pass over the tracks." },
+    ],
+    rules: [
+      "Where table modules overlap, the highest is the ground; off the modules it is the track level (z = 0).",
+      "Streets climb at most 8 % (RASt 06), with tram tracks and on footpaths 6 %; a ramp lies on the lower side of a step.",
+      "A street that cannot come down to the ground between two higher parts runs straight from one to the other; one that can goes down and up again.",
+      "Over a track: at least 6.7 m above the rails (77 mm in H0) a street passes over it, 6.2 m below under it, at the rails' height across at street level; between, it runs into the track (an error of the street access check).",
+      "Streets meet at the same height: a ramp in a junction or a street ending in the air is a problem of the street.",
+      "The view lifts most things by the street level, the railway (tracks, platforms, signals, catenary, trains, the terminal) by the ground, table modules not at all.",
+      "Houses, streets and the rest stand on table modules with their whole footprint (a tree with its trunk, a street with its points): off them it is a problem, and the editors do not place them there; floating labels and railway crossings may be anywhere.",
+    ],
   },
   {
     id: "pick", group: "world", title: "Pointing at things",
@@ -355,7 +415,7 @@ export const WORLD = [
       {
         name: "pick", file: "web/arail/core/pick.js", kind: "module", role: "Pointing at things; cards are data.",
         attributes: ["PICK_TOLERANCE — CSS px around outlines: mouse 4, touch 12"],
-        operations: ["pickAt(world, view, pixel, options) — the nearest thing that moves, else an object", "pickObject(world, view, pixel, ground, tol) — small objects before large ones, tables at their edges", "movingPickables(world, view) — of the managers and simulations", "objectPickable(o)", "projectedHull(view, p) — the image outline of its box", "groundPoint(view, pixel)", "findPickable(world, view, key)", "cardOf(hit) — the owner's card with every field"],
+        operations: ["pickAt(world, view, pixel, options) — the nearest thing that moves, else an object", "pickObject(world, view, pixel, ground, tol) — small objects before large ones, tables at their edges", "movingPickables(world, view) — of the managers and simulations", "objectPickable(o)", "projectedHull(view, p) — the image outline of its box", "groundPoint(view, pixel)", "planePoint(view, pixel, z) — on the plane at height z", "surfacePoint(world, view, pixel, at) — on a raised module or a bridge, looked at again at the height found", "findPickable(world, view, key)", "cardOf(hit) — the owner's card with every field"],
       },
     ],
     relations: [
@@ -375,7 +435,7 @@ export const WORLD = [
         ["a2", "action", "Each one's box projected; the pixel inside or within the tolerance?", "projectedHull"],
         ["d1", "decision", "One or more there?"],
         ["a3", "action", "The one with the pixel inside, the nearest to the camera", "pickAt"],
-        ["a4", "action", "The layout point at the pixel", "groundPoint"],
+        ["a4", "action", "The layout point at the pixel, on a raised module or a bridge where they are", "surfacePoint"],
         ["a5", "action", "Objects there on the ground, tall ones also on their walls and roof", "pickObject"],
         ["d2", "decision", "Any?"],
         ["a6", "action", "Small objects before long and large ones; the smallest", "pickObject"],

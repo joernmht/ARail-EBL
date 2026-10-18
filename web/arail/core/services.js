@@ -46,6 +46,9 @@ export class Vehicle {
 }
 
 export class ServiceManager {
+  /** Trains at platforms: on the table module, never on a street's bridge (core/elevation.js); buses on the street. */
+  static elevation = "ground";
+
   /** @param {import("./world.js").World} world */
   constructor(world) {
     this.world = world;
@@ -358,10 +361,14 @@ export class ServiceManager {
     // where they are; only with feedVehicles = "solid" (or for a virtual camera, which shows no
     // real trains) is a virtual train drawn at the dock.
     const style = view.virtual ? "solid" : this.world.settings.feedVehicles;
+    const ground = view.lift, street = view.lift && this.world.elevation.streetLift;
     for (const v of this.vehicles()) {
       if (v.source === "feed" && style !== "solid") continue;
       const p = this.placement(v);
-      if (p) p.def.draw(view, v, p);
+      if (!p) continue;
+      view.lift = v.kind === "train" ? ground : street;
+      p.def.draw(view, v, p);
     }
+    view.lift = ground;
   }
 }

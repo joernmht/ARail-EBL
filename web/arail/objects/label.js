@@ -22,6 +22,11 @@ export class Label extends LayoutObject {
     return this.spec.name || this.spec.text || this.id;
   }
 
+  /** Floating text may be anywhere; a board stands on posts on a table module. */
+  get anywhere() {
+    return this.spec.style === "floating";
+  }
+
   computeGeometry() {
     const c = resolvePoint(this.world.map, this.spec.position);
     return c ? { center: c } : null;

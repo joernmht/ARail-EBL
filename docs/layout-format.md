@@ -204,7 +204,7 @@ A **point** is one of
 
 A **segment** (platforms) is `"between": [idA, idB]` (the two marker centres) or `"from": point, "to": point`.
 
-**Polygons and polylines** (`points`) are lists of points. **Rectangles** (table modules) are a `position` (the centre) with `width_mm`, `depth_mm` and `rotation_deg`. **Stops** (bus lines) are `"stops": [objectId, ...]`, the ids of bus stops and bus terminals.
+**Polygons and polylines** (`points`) are lists of points. **Rectangles** (table modules) are a `position` (the centre) with `width_mm`, `depth_mm` and `rotation_deg`. **Stops** (bus and tram lines) are `"stops": [objectId, ...]`, the ids of bus stops and bus terminals (tram stops for tram lines).
 
 ## Objects
 
@@ -218,6 +218,15 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`underpass`](#underpass-pedestrian-underpass) | Pedestrian underpass (Transport) | `points` (polyline) |
 | [`bus-stop`](#bus-stop) | Bus stop (Transport) | `position` |
 | [`bus-line`](#bus-line) | Bus line (Transport) | `stops` |
+| [`tram-stop`](#tram-stop) | Tram stop (Transport) | `position` |
+| [`tram-line`](#tram-line) | Tram line (Transport) | `stops` |
+| [`traffic-sign`](#traffic-sign) | Traffic sign (Transport) | `position` |
+| [`traffic-light`](#traffic-light-traffic-lights) | Traffic lights (Transport) | `position` |
+| [`zebra-crossing`](#zebra-crossing) | Zebra crossing (Transport) | `position` |
+| [`rail-crossing`](#rail-crossing-railway-crossing) | Railway crossing (Transport) | `position` |
+| [`parking-lot`](#parking-lot) | Parking lot (Transport) | `position` |
+| [`parking-garage`](#parking-garage) | Parking garage (Transport) | `position` |
+| [`bike-stand`](#bike-stand-bike-stands) | Bike stands (Transport) | `position` |
 | [`building`](#building) | Building (Buildings) | `position` |
 | [`station-building`](#station-building) | Station building (Buildings) | `position` |
 | [`plattenbau`, `altbau-block`, `house`, `house-estate`, `office`, `school`, `supermarket`, `factory`](#german-house-types) | Plattenbau, Altbau block, Single-family house, Single-family estate, Office building, School, Supermarket, Workshop / factory (Buildings) | `position`; the estate `points` (polygon) |
@@ -274,16 +283,26 @@ A bus line that has the terminal as a stop gets a bay of its own (the lines shar
 
 ### `road`: street
 
-A street (or footpath). Geometry: `points` (polyline). Streets whose ends meet, that end on another street or that cross are connected (the road network, see [Streets, bus lines and road traffic](streets-and-buses.md)).
+A street (or footpath, or tram track of its own). Geometry: `points` (polyline). Streets whose ends meet, that end on another street or that cross are connected (the road network, see [Streets, trams, buses and road traffic](streets-and-buses.md)). The cross-section lays the strips out from the centre line: tram tracks in the middle, the car lanes, bike lanes, parking, the curb, then sidewalks, bike paths or shared paths; see [Cross-sections](streets-and-buses.md#cross-sections) for the standard widths.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `kind` | `"street"` | `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h), `main` (main road, 50 km/h, wider), `path` (footpath, no cars) |
-| `width_m` | by kind | carriageway (path) width: 7 street, 6 residential, 10 main road, 3 footpath |
+| `kind` | `"street"` | `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h), `main` (main road, 50 km/h, wider), `path` (footpath, no cars), `tram` (a tram track of its own, no street) |
+| `profile` | by `sidewalk_m` | the cross-section: `plain` (no sidewalks), `sidewalks`, `advisory-lanes` (Schutzstreifen), `bike-lanes` (Radfahrstreifen), `bike-paths` (at sidewalk level), `shared-paths` (Zeichen 240); for footpaths `plain` (people only), `shared-paths`, `bike-paths` (bikes only). Old streets: `sidewalks`, or `plain` where `sidewalk_m` is 0 |
+| `width_m` | by kind | the car lanes together (the path of a footpath, the track bed of a tram track): 7 street, 6 residential, 10 main road, 3 footpath, 6.6 tram track. Bike lanes and paths, tram tracks and parking make the street wider |
+| `lanes` | `1` | car lanes in each direction (1–3) |
 | `sidewalk_m` | `2.5` | sidewalk width on each side, 0 = none (footpaths have none) |
+| `bike_m` | by profile | width of the bike lanes or paths on each side: advisory lane 1.50, bike lane 1.85, bike path 2.00, shared path 2.50 (ERA 2010) |
+| `tram` | `"none"` | tram tracks in the street: `none`, `street` (in the car lanes), `lanes` (in lanes of their own in the middle, cars may cross), `median` (on a track bed of their own in the middle) |
+| `tram_tracks` | `"double"` | `double` (two tracks), `single` (one track, both directions), `single-oneway` (one track, in the direction the street was drawn); also for `kind: "tram"` |
+| `parking` | `"none"` | street parking: `none`, `parallel`, `angled` (45°), `perpendicular` |
+| `parking_sides` | `"both"` | `both`, `right`, `left` (seen in the drawing direction) |
+| `parking_tariff`, `parking_price_eur` | `"free"`, usual price | what street parking costs: `free`, `hourly` (1 €), `daily` (8 €), `weekly` (20 €), `yearly` (120 €, residents' permit: residents only) |
 | `speed_kmh` | by kind | speed limit |
-| `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side) |
+| `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side); bikes are locked to them |
 | `crossings` | `true` | zebra crossings next to junctions |
+
+Widths below the guidelines' minimum are allowed; the street reports them as problems (see [Cross-sections](streets-and-buses.md#cross-sections)).
 
 ### `underpass`: pedestrian underpass
 
@@ -319,6 +338,115 @@ Buses that run along the streets from stop to stop. Geometry: `stops`, the ids o
 | `mode` | `"back-and-forth"` | `back-and-forth` (in order, then in reverse) or `loop` (round, back to the first stop; the signs say *Ring ↻* or *Ring ↺*) |
 | `speed_kmh` | `40` | top speed |
 | `show_route` | `true` | draw the route |
+
+### `tram-stop`
+
+Geometry: `position`, projected onto the tram tracks of the nearest street with tram tracks (or a tram track of its own; or of the street in `road`). Each side is a stop area with one dock: `<id>:right` (*Stop A*) and `<id>:left` (*Stop B*); a stop on one side only has no letter. The tram lines serve the docks. See [Trams](streets-and-buses.md#trams).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `road` | nearest street with tram tracks | id of the street |
+| `kind` | `"cape"` | `road` (on the road, no platform; cars wait), `raised` (raised road, Zeitinsel; cars wait), `island` (between track and car lane; cars drive past), `cape` (curb extension, Haltestellenkap; cars wait behind the tram) |
+| `side` | `"both"` | `right`, `left` or `both`, seen in the street's drawing direction; two tracks need both sides, one track one side |
+| `length_m` | `40` | length of the stop (20–80; at least the tram, 30 m) |
+| `width_m` | `2.5` | width of the platform (at least 2.0 m, BOStrab § 31) |
+| `height_m` | by kind | platform height: 0 on the road, 0.25 otherwise (low-floor trams: about 0.30) |
+| `tactile` | `true` | tactile paving (DIN 32984) |
+| `lights` | `true` | traffic lights where people cross a lane with cars or bikes to the tram (`road`, `raised`) or to an island in a street: red for that traffic while a tram comes and stands there and while people cross; without them cars wait beside the tram while its doors are open |
+| `shelter` | `true` | a shelter |
+
+### `tram-line`
+
+Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the ids of tram stops in the order they are served, at least two. Trams never cross a railway at street level, and their tracks bend in arcs of at least 25 m. At the ends of the line they go round a turning loop where there is one (a `road` of `kind: "tram"` with `tram_tracks: "single-oneway"` that comes back to where it began), else they change ends at the end of the tracks (see [Trams](streets-and-buses.md#trams)).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `number` | `""` | line number on trams and signs |
+| `color` | `"#00008C"` | colour of the route and of the trams |
+| `headway_s` | `300` | time between trams outside the rush hours (simulated seconds, 30–3600); more often in the rush hours, none at night |
+| `mode` | `"back-and-forth"` | `back-and-forth` or `loop` |
+| `speed_kmh` | `50` | top speed |
+| `length_m` | `30` | length of a tram (15–60) |
+| `show_route` | `true` | draw the route (and the rails where it turns from one street into another) |
+
+### `traffic-sign`
+
+Geometry: `position`, beside a street: it applies to the traffic on its side (on the right side for the drawing direction, on the left side against it). See [Signs, lights and zebra crossings](streets-and-buses.md#signs-lights-and-zebra-crossings).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `sign` | `"stop"` | `stop` (206), `give-way` (205), `priority` (306), `one-way` (220), `turn` (mandatory direction, 209–214), `lane-arrows` (297), `no-stopping` (283), `restricted-stopping` (286), `bikes-allowed` and `scooters-allowed` (239 with *Radverkehr frei* or *E-Scooter frei*), `bike-path` (237), `shared-path` (240), `separate-paths` (241), `parking` (314) |
+| `road` | nearest street | id of the street |
+| `turn` | `"right"` | for `turn`: `right`, `left`, `straight`, `straight-right`, `straight-left`, `left-right` |
+| `arrows` | `"left \| straight right"` | for `lane-arrows`: the arrows of each lane from the left, lanes separated by `\|` |
+| `zone_m` | to the next junction | for no stopping: the length of the zone from the sign on |
+
+### `traffic-light`: traffic lights
+
+Geometry: `position`, on a junction of three or more streets.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `cycle_s` | `60` | the cycle (simulated seconds, 20–180) |
+| `split` | `50` | share of the cycle the main street has green (%, 20–80) |
+| `main` | the first street at the junction | id of the main street |
+| `offset_s` | `0` | shifts the cycle (a green wave) |
+
+### `zebra-crossing`
+
+Geometry: `position`, on a street (Fußgängerüberweg, Zeichen 293). Vehicles stop while people cross; no parking on it or 5 m before it.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `road` | nearest street | id of the street |
+| `width_m` | `4` | along the street (3–8) |
+| `signs` | `true` | the signs 350 on both sides |
+
+### `rail-crossing`: railway crossing
+
+Geometry: `position`, where a street crosses a track. See [Railway crossings](streets-and-buses.md#railway-crossings). The height of a bridge or an underpass comes from the levels of the table modules (`level_mm`): where they do not make it up, the street ramps. The parameters `terrain` and `lift` of earlier layouts are ignored.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `kind` | `"over"` | `over` (a bridge: the street over the track), `under` (an underpass), `crossbuck` (level crossing with a St Andrew's cross only), `lights`, `half-barriers`, `full-barriers` |
+| `road`, `track` | the nearest | ids of the street and the track |
+| `trains_per_hour` | `4` | for level crossings with lights or barriers: how often it closes when no train of the control system or the timetable passes |
+| `closed_min` | `1.5` | how long it is closed then |
+
+### `parking-lot`
+
+Geometry: `position` (centre); the front, the way in, faces −y at `rotation_deg` 0 and should face the street. Rows of spaces with aisles (EAR 23). See [Parking](streets-and-buses.md#parking).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | |
+| `width_m`, `depth_m` | `30`, `17` | size (8–200 m, 6–120 m) |
+| `layout` | `"perpendicular"` | `perpendicular` (2.65 × 5.20 m), `angled` (45°), `parallel` |
+| `owner` | — | id of a building: a supermarket's lot is free for its customers, a factory's for its employees, a house's for its residents |
+| `access` | `"auto"` | who may park: `auto` (by its owner, else everybody), `public`, `residents` (with a permit), `customers`, `employees` (free for them) |
+| `tariff`, `price_eur` | `"free"`, usual price | `free`, `hourly` (2 €), `daily` (15 €), `weekly` (25 €), `yearly` (120 €); € per hour, day, week or year |
+
+### `parking-garage`
+
+Geometry: `position` (centre). A multi-storey car park (Parkhaus) or an underground garage (Tiefgarage) under a building, of which only the ramp and the stairs are seen.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `kind` | `"multi-storey"` | `multi-storey` or `underground` |
+| `rotation_deg`, `width_m`, `depth_m` | `0`, `32`, `32` | |
+| `levels` | `4` | 1–12 |
+| `spaces` | by its size | a space per 25 m² of each level (EAR 05) |
+| `owner`, `access` | —, `"auto"` | as for a parking lot |
+| `tariff`, `price_eur` | `"hourly"`, usual price | as for a parking lot |
+
+### `bike-stand`: bike stands
+
+Geometry: `position` (centre), on a sidewalk. Bike stands (Anlehnbügel), two bikes each.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | along the row |
+| `stands` | `5` | 1–60, 1.2 m apart |
 
 ### `building`
 
@@ -398,7 +526,9 @@ Geometry: `position`. Parameters: `text` (`"Station"`), `style` (`board`: statio
 
 ### `tabletop`: table module
 
-Geometry: a rectangle, `position` (centre). A base plate whose top is the layout plane, with an 18 mm edge. In the editor (Build → Table) drag from one corner to the opposite one, or tap both corners; in the flyover the corners snap to the grid. Duplicate puts the copy right beside the original.
+Geometry: a rectangle, `position` (centre). A base plate whose top lies at its level, with an edge 18 mm deep below it, or down to the lower module beside it. In the editor (Build → Table) drag from one corner to the opposite one, or tap both corners; in the flyover the corners snap to the grid. Duplicate puts the copy right beside the original.
+
+Houses, streets and the rest are built on table modules: in a layout with table modules, an object that does not stand on them with its whole footprint (a tree with its trunk, a street or track with all its points) has the problem *Not on a table module*, and the editors do not place a new one there. Floating labels and railway crossings may be anywhere; a layout without table modules is the real table, wherever its objects are.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
@@ -406,6 +536,7 @@ Geometry: a rectangle, `position` (centre). A base plate whose top is the layout
 | `width_mm`, `depth_mm` | `1000`, `600` | size along its x and y axis (20–20000) |
 | `rotation_deg` | `0` | |
 | `surface` | `"grey"` | `grey` (light grey), `white`, `green` (model grass) |
+| `level_mm` | `0` | height of the top above the track level, the top of the real table (−500 … 500). What stands on the module stands there; streets climb from one level to another at most at 8 % (6 % with tram tracks and on footpaths), and between two raised modules they span what lies lower as a bridge: 80 mm let a street in H0 pass over the tracks (6.7 m above the rails). See [Heights](streets-and-buses.md#heights-table-modules-ramps-and-bridges) |
 
 Without a `physical` table module and without an orthophoto, the flyover draws a light-grey default table around the markers and the objects (except those on table extensions), with a margin of 100 mm. With an orthophoto the photo shows the real table, and where it shows none (its uncovered grey) the flyover is blank.
 
@@ -493,7 +624,8 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 | --- | --- | --- |
 | `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand), `max_per_area` (140), `others` (true) | random passengers at all stops, their moods, boarding and alighting; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
 | `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `commuters_out` (0.35 of the workers take the train), `commuters_in` (40 visitors by train per 100 local jobs), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train, see [Day and night](day-and-night.md#the-town-simulation) |
-| `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic) | cars on the streets, see [Streets, bus lines and road traffic](streets-and-buses.md#road-traffic) |
+| `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic), `destinations` (0.5 of the cars coming in drive to a building and park there), `parked` (0.7 of the residents' spaces taken at night) | cars with drivers and passengers on the streets, parking near where they go, see [Streets, trams, buses and road traffic](streets-and-buses.md#road-traffic) |
+| `cycling` | `riders_per_km` (8 per km of street at normal daytime traffic), `scooters` (0.25 of them e-scooters), `rule_breakers` (0.15), `children` (0.08), `to_buildings` (0.4 lock their bike near a building for a while) | bikes and e-scooters on the streets, bike lanes and paths, see [Bikes and e-scooters](streets-and-buses.md#bikes-and-e-scooters) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |
 | `operations` | `name`, `stations`, `lines` (default: from the platforms' `lines`), `fleet`, `maintenance`, `parties`, `ecm`, `contracts`, `crew`, `dispatch`, `costs`, `setups`, `stress` | rail operations: units with maintenance and failures, the four ECM functions, penalties between the parties, crews with duties and rosters; its trains run at the platforms of its stations (their tracks are in mode `plan`); see [Rail operations](operations.md#layout-file) for the keys. One per layout. |
 | `ops-story` | `name`, `track`, `spare_track`, `depot`, `line`, `destination`, `departure`, `unit`, `spare`, `km`, `steps` | the operations story to click through (the app's Operations tab): a train breaks down at the platform, the spare unit comes from the depot, the passengers change trains, the broken unit goes to the workshop; see [Rail operations](operations.md#the-operations-story). |

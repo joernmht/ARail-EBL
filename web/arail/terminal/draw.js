@@ -749,7 +749,7 @@ export function drawLocomotive(view, loco) {
     for (const t of [-0.85, 0.85]) view.glow(L.p(hl + 0.05, t, 1.4), view.m(0.8), HEADLIGHT, 0.9);
     view.lightPool(L.xy(hl + 6, 0), view.m(4), "#fff1c9", 0.35);
   }
-  if (loco.label && px >= 24) view.label(L.p(0, 0, 6), loco.label, { size: 11, background: rgba(OVERLAY.sign, 0.92) });
+  if (loco.label && px >= 24) view.label(L.p(0, 0, 6), loco.label, { size: 11, background: rgba(OVERLAY.sign, 0.92), fit: true });
 }
 
 /* ---------------------------------------------------------------- trucks */
@@ -800,7 +800,7 @@ export function drawTruck(view, truck, boxes) {
     view.lightPool(L.xy(front + 5, 0), view.m(3.5), "#fff1c9", 0.3);
   }
   containersOn(view, cells, boxes, k, alpha);
-  if (truck.label && px >= 24) view.label(L.p((rear + front) / 2, 0, 5.2), truck.label, { size: 10, background: OVERLAY.label });
+  if (truck.label && px >= 24) view.label(L.p((rear + front) / 2, 0, 5.2), truck.label, { size: 10, background: OVERLAY.label, fit: true });
 }
 
 /* ---------------------------------------------------------------- barges */
@@ -862,7 +862,7 @@ export function drawBarge(view, barge, boxesByBay = []) {
     view.glow(L.p(-hl + 4, 0, 8.5), view.m(1.2), "#ffffff", 0.9);
     view.glow(L.p(hl - 0.5, 0, 3.0), view.m(0.9), HEADLIGHT, 0.7);
   }
-  if (barge.name && px >= 24) view.label(L.p(-hl + 4, 0, 9.5), barge.name, { size: 11, background: OVERLAY.label });
+  if (barge.name && px >= 24) view.label(L.p(-hl + 4, 0, 9.5), barge.name, { size: 11, background: OVERLAY.label, fit: true });
 }
 
 /**
@@ -1169,7 +1169,7 @@ export function drawYardGround(view, geometry, { name = "" } = {}) {
     batchedLines(view, segs, CSS.yardLine, width, 4);
   }
   if (name && cssPx(view, k, g.width) >= 60) {
-    view.label([...L.xy(-(g.width / 2) / m1 - 3, 0), 0], name, { size: 10, background: OVERLAY.label, anchor: "right" });
+    view.label([...L.xy(-(g.width / 2) / m1 - 3, 0), 0], name, { size: 10, background: OVERLAY.label, anchor: "right", fit: true });
   }
 }
 

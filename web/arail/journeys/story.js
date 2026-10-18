@@ -101,6 +101,8 @@ const upper = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const stepAt = (id) => JourneyStory.STEPS.findIndex((s) => s.id === id);
 
 export class JourneyStory extends Story {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static type = "journeys-story";
   static label = "Journeys story (a traveller)";
   static description = "A walkthrough to click through: Ada walks to the station, her train is late and her connection lost, her app finds a bus; her journey in numbers and her rights as a passenger.";

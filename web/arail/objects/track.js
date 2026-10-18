@@ -21,6 +21,8 @@ const RAIL = { gauge_m: 1.435, head_m: 0.072, color: "#5b5f64" };
 
 export class Track extends LayoutObject {
   static type = "track";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static label = "Track";
   static category = "Infrastructure";
   static placement = "polyline";

@@ -1,30 +1,41 @@
 /**
- * Road network: streets, footpaths and bus lanes as a graph for people, buses and cars.
+ * Road network: streets, footpaths, tram tracks and bus lanes as a graph for people, buses, trams,
+ * cars and bikes.
  *
  * `world.network()` builds it from the objects of the layout and keeps it until objects, the
  * marker map or the scale change:
  * - **nodes** at the vertices of streets, where street ends meet, where a street ends on another
  *   one (T junction: that street is split) and where streets cross (X junction: both are split);
- * - **edges** along the streets (`kind` "road", or "path" for footpaths);
+ * - **edges** along the streets (`kind` "road", "path" for footpaths, "tram" for tram tracks of
+ *   their own); who may use them (`car`, `bus`, `tram`, `bike`, `walk`) and where across the
+ *   street each goes (`laneOffset`, `tramOffset`, `bikeOffset`, `walkOffset`);
  * - **places**: every building entrance and every access point of a stop area is connected to the
  *   nearest street or footpath (within 80 m) by a short footpath (`kind` "connector") that crosses
  *   no track; keys `"building:<objectId>:<i>"` and `"area:<areaId>:<i>"`;
- * - **bus stops**: a node on the street where the front of a bus stopping at a bus dock is
- *   (`dock(dockId)`);
- * - **bus terminals**: their bus lane as one-way `lane` edges, connected to the nearest streets.
+ * - **stops**: a node on the street where the front of a bus stopping at a bus dock is, on the
+ *   track where the front of a tram stopping at a tram dock is (`dock(dockId)`);
+ * - **bus terminals**: their bus lane as one-way `lane` edges, connected to the nearest streets;
+ * - **traffic rules** of the signs and lights (objects/traffic-signs.js, `trafficRule()`): one-way
+ *   streets (`carDir`), Stop and give way at the next junction and the priority road (`node.rules`),
+ *   the directions allowed there (`node.turns`), traffic lights (`node.signal`), bikes or e-scooters
+ *   allowed on the sidewalks; zebra crossings (`crossingInfo()`, `edge.zebras`), where people on
+ *   foot cross and vehicles give way; where streets cross a track (`edge.rails`), at a level
+ *   crossing or over or under it (objects/crossings.js, `railCrossingInfo()`): trams never cross a
+ *   railway at street level (BOStrab § 15), so such a street has no tram tracks for routing.
  *
  * Objects take part through duck-typed methods, so plugins can add their own: `roadInfo()`
  * (streets, see objects/road.js; `hidden: true` for paths whose walkers are out of sight, like
  * objects/underpass.js), `entrances()` (buildings), `stopAreas()` (stops),
- * `busLane()` (bus lanes) and `walkBarrier()` (a polyline people do not cross on their own:
- * tracks, see objects/track.js; streets and footpaths over it are crossings). Lengths are layout
- * mm, speeds prototype m/s.
+ * `busLane()` (bus lanes), `walkBarrier()` (a polyline people do not cross on their own:
+ * tracks, see objects/track.js; streets and footpaths over it are crossings), `trafficRule()`,
+ * `crossingInfo()` and `railCrossingInfo()`. Lengths are layout mm, speeds prototype m/s.
  *
- * Routes (`route`, `routeDirected`) are {@link Path}s. A walk (`walk`) follows the route on the
- * sidewalks (`walkLine`): a street on the side of the place the walk comes from, crossing at right
- * angles where the next place lies on the other side; a walk the streets do not connect is out of
- * sight. Without streets every query returns null, and callers walk or drive straight (a straight
- * walk that would cross a track is out of sight).
+ * Routes (`route`, `routeDirected`) are {@link Path}s; for vehicles they keep to one-way streets and
+ * the directions allowed at junctions. A walk (`walk`) follows the route on the sidewalks
+ * (`walkLine`): a street on the side of the place the walk comes from, crossing at right angles
+ * at a zebra crossing on the way, else where the next place lies on the other side; a walk the
+ * streets do not connect is out of sight. Without streets every query returns null, and callers
+ * walk or drive straight (a straight walk that would cross a track is out of sight).
  * @module arail/core/network
  */
 import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylineProject, smoothstep, sub2, unit2 } from "./math.js";
@@ -38,15 +49,24 @@ import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylineProject,
  * @property {number[]} lengths cumulative lengths of `points` (mm)
  * @property {number} length mm
  * @property {string | null} road id of the street (or bus terminal for lanes); null for connectors
- * @property {"road" | "path" | "connector" | "lane"} kind
+ * @property {"road" | "path" | "connector" | "lane" | "tram"} kind
  * @property {boolean} car cars may drive here
  * @property {boolean} bus buses may drive here (streets and bus lanes)
+ * @property {boolean} tram trams may run here (tram tracks, not across a railway at street level)
+ * @property {boolean} bike bikes and e-scooters may ride here (streets, shared paths, bike paths)
  * @property {boolean} walk people may walk here
- * @property {boolean} oneway only from a to b
+ * @property {boolean} oneway only from a to b (bus lanes)
+ * @property {-1 | 0 | 1} carDir 0: both ways; 1: only from a to b; -1: only from b to a (one-way streets; for cars, buses and bikes)
+ * @property {-1 | 0 | 1} tramDir the same for trams (one track, one direction)
  * @property {number} speed speed limit (prototype m/s; walking speed for footpaths)
  * @property {number} width carriageway width (mm)
  * @property {number} walkOffset centre of the sidewalk from the centre line (mm), 0 for paths and connectors
  * @property {number} laneOffset centre of the right lane from the centre line (mm), 0 for single-lane roads
+ * @property {number} tramOffset centre of the right track (mm), 0 for one track
+ * @property {number} bikeOffset centre of the right bike lane or path, or where bikes ride on the road (mm)
+ * @property {string} bikeWay what bikes get: "road", "advisory", "lane", "path", "shared", "none"
+ * @property {Array<{s: number, width: number, obj: object}>} zebras zebra crossings (s from a, mm)
+ * @property {Array<{s: number, crossing: object | null, level: boolean}>} rails where the edge crosses a track (s from a, mm)
  */
 
 /**
@@ -140,6 +160,34 @@ function offsetLine(C, off, side) {
 }
 
 /**
+ * A row of street centre lines `C` with the offset of each segment `off`, cut at arc length `s`:
+ * [C1, off1, C2, off2] (both parts have the cut point).
+ */
+function cutRun(C, off, s) {
+  let acc = 0;
+  for (let g = 0; g < C.length - 1; g++) {
+    const len = dist2(C[g], C[g + 1]);
+    if (acc + len >= s || g === C.length - 2) {
+      const t = len > 0 ? clamp((s - acc) / len, 0, 1) : 0;
+      const P = [C[g][0] + (C[g + 1][0] - C[g][0]) * t, C[g][1] + (C[g + 1][1] - C[g][1]) * t];
+      const C1 = C.slice(0, g + 1), off1 = off.slice(0, g + 1), C2 = [P, ...C.slice(g + 1)], off2 = off.slice(g);
+      if (dist2(C1[C1.length - 1], P) > 1e-6) C1.push(P);
+      else off1.pop();
+      if (C2.length > 1 && dist2(C2[0], C2[1]) <= 1e-6) {
+        C2.shift();
+        off2.shift();
+      }
+      // a part that is a single point: keep a tiny stub so both parts are lines
+      if (C1.length < 2) C1.push([P[0] + 1e-3, P[1]]), off1.push(off[0]);
+      if (C2.length < 2) C2.push([P[0] + 1e-3, P[1]]), off2.push(off[off.length - 1]);
+      return [C1, off1.length ? off1 : [off[0]], C2, off2.length ? off2 : [off[off.length - 1]]];
+    }
+    acc += len;
+  }
+  return [C, off, C, off];
+}
+
+/**
  * A walk as a polyline with the stretches out of sight: {points, lengths, length, hidden}, `hidden`
  * a list of [s0, s1] (arc length, mm).
  */
@@ -230,14 +278,23 @@ export class RoadNetwork {
   constructor(world) {
     this.world = world;
     this.scale = world.scale;
-    /** @type {Array<{id: number, pos: number[], edges: number[], kind: string, key?: string, degree: number, carDegree: number}>} */
+    /**
+     * @type {Array<{id: number, pos: number[], edges: number[], kind: string, key?: string, degree: number, carDegree: number,
+     *   tramDegree: number, vehDegree: number, rules?: Map<number, object>, turns?: Map<number, Set<string>>, signal?: object}>}
+     */
     this.nodes = [];
     /** @type {Edge[]} */
     this.edges = [];
     /** Place key ("building:<id>:<i>", "area:<id>:<i>") -> node id. */
     this.places = new Map();
-    /** Dock id -> {node, dir, pose}: where buses stop (front of the bus). */
+    /** Dock id -> {node, dir, pose}: where buses and trams stop (their front). */
     this.docks = new Map();
+    /** Traffic light id -> {node, approaches: [{edge, group, head}]} (objects/traffic-signs.js). */
+    this.signals = new Map();
+    /** The rules of the signs as read (for the street access check and the cards). */
+    this.rules = [];
+    /** Street id -> its edges in drawing order with their arc lengths on the street: [{edge, s0, s1}]. */
+    this.roadEdges = new Map();
     /** Polylines people do not cross on their own (tracks), with their bounding boxes. @type {Array<{points: number[][], box: number[]}>} */
     this.barriers = [];
     /** Changes only when what vehicles drive on changes (streets, bus stops, bus lanes), not with buildings. */
@@ -265,7 +322,7 @@ export class RoadNetwork {
       const pts = dedupe(o.walkBarrier() || []);
       if (pts.length < 2) continue;
       const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-      this.barriers.push({ points: pts, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] });
+      this.barriers.push({ id: o.id, points: pts, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] });
     }
     const roads = [];
     for (const o of world.objects) {
@@ -348,7 +405,7 @@ export class RoadNetwork {
       }
       return best;
     };
-    const walkable = (r) => r.info.walk !== false, drivable = (r) => !!r.info.car;
+    const walkable = (r) => r.info.walk !== false, drivable = (r) => !!r.info.car, tracked = (r) => !!r.info.tram && r.info.tram !== "none";
     // places: building entrances and access points of stop areas
     const places = [];
     const addPlace = (key, p) => {
@@ -380,18 +437,18 @@ export class RoadNetwork {
       lanes.push({ o, pts, cum: polylineLengths(pts), width: l.width || mm(3.5), in: a ? split(a.r, a.s, 2) : null, out: b ? split(b.r, b.s, 2) : null });
     }
     const laneOwners = new Set(lanes.map((l) => l.o));
-    // bus stops on streets: a node where the front of a stopping bus is
+    // bus stops on streets and tram stops on tracks: a node where the front of a stopping vehicle is
     const def = world.registry?.vehicles?.get("bus");
     const dockSplits = [];
-    if (def) {
-      for (const area of areas) {
-        if (area.kind !== "bus" || laneOwners.has(area.owner)) continue;
-        for (const dock of area.docks) {
-          if (dock.kind !== "bus") continue;
-          const pose = dockPose(dock, def);
-          const n = nearest(pose.front, mm(DOCK_MAX_M), drivable);
-          if (n) dockSplits.push({ dock, pose, split: split(n.r, n.s, 2) });
-        }
+    for (const area of areas) {
+      if ((area.kind !== "bus" && area.kind !== "tram") || laneOwners.has(area.owner)) continue;
+      const vdef = world.registry?.vehicles?.get(area.kind);
+      if (!vdef) continue;
+      for (const dock of area.docks) {
+        if (dock.kind !== area.kind) continue;
+        const pose = dockPose(dock, vdef);
+        const n = nearest(pose.front, mm(DOCK_MAX_M), area.kind === "tram" ? tracked : drivable);
+        if (n) dockSplits.push({ dock, pose, split: split(n.r, n.s, 2) });
       }
     }
     // split points very close to each other are one node
@@ -419,11 +476,17 @@ export class RoadNetwork {
     // street edges between consecutive nodes
     for (const r of roads) {
       const info = r.info;
+      const tram = !!info.tram && info.tram !== "none";
       const attrs = {
-        road: r.id, kind: info.car ? "road" : "path", car: !!info.car, bus: !!info.car, walk: info.walk !== false, oneway: false,
+        road: r.id, kind: info.car ? "road" : info.kind === "tram" ? "tram" : "path", car: !!info.car, bus: !!info.car, tram,
+        bike: !!info.car || (info.kind === "path" && !!info.bike && info.bike !== "none"), walk: info.walk !== false, oneway: false,
+        carDir: 0, tramDir: tram && info.tramTracks === "single-oneway" ? 1 : 0, singleTrack: tram && info.tramTracks === "single",
         speed: info.speed || 1.3, width: info.width, walkOffset: info.walkOffset || 0, laneOffset: info.laneOffset || 0,
-        hidden: !!info.hidden,
+        tramOffset: tram ? info.tramOffset || 0 : 0, tramWay: tram ? info.tram : "none", bikeOffset: info.bikeOffset || 0, bikeWidth: info.bikeWidth || 0,
+        bikeWay: info.bike || (info.car ? "road" : "none"), obstruct: !!info.obstruct, conflict: info.conflict || 0, lanes: info.lanes ?? 1,
+        sidewalkBikes: false, sidewalkScooters: false, hidden: !!info.hidden,
       };
+      const list = [];
       let last = null;
       for (const sp of r.splits) {
         const n = node(sp.id);
@@ -435,10 +498,11 @@ export class RoadNetwork {
           const pts = [this.nodes[last.n].pos];
           for (let i = 1; i < r.pts.length - 1; i++) if (r.cum[i] > last.s + 1e-6 && r.cum[i] < sp.s - 1e-6) pts.push(r.pts[i]);
           pts.push(this.nodes[n].pos);
-          this._edge(last.n, n, dedupe(pts), attrs);
+          list.push({ edge: this._edge(last.n, n, dedupe(pts), { ...attrs, zebras: [], rails: [] }), s0: last.s, s1: sp.s });
         }
         last = { n, s: sp.s };
       }
+      this.roadEdges.set(r.id, list);
     }
     // connectors from the places to their street
     for (const pl of places) {
@@ -450,33 +514,268 @@ export class RoadNetwork {
       const p = this._node(pl.pos, "place");
       this.nodes[p].key = pl.key;
       this._edge(p, n, [pl.pos, this.nodes[n].pos], {
-        road: null, kind: "connector", car: false, bus: false, walk: true, oneway: false, speed: 1.3, width: mm(2), walkOffset: 0, laneOffset: 0,
+        road: null, kind: "connector", car: false, bus: false, tram: false, bike: false, walk: true, oneway: false, carDir: 0, tramDir: 0,
+        speed: 1.3, width: mm(2), walkOffset: 0, laneOffset: 0, tramOffset: 0, bikeOffset: 0, zebras: [], rails: [],
       });
       this.places.set(pl.key, p);
     }
     for (const d of dockSplits) this.docks.set(d.dock.id, { node: node(d.split), dir: d.pose.dir, pose: d.pose });
-    this.carKey = JSON.stringify([
-      roads.filter((r) => r.info.car).map((r) => [r.id, r.pts, r.info.width, r.info.speed, r.info.laneOffset]),
-      dockSplits.map((d) => [d.dock.id, d.pose.front, d.pose.dir]),
-      lanes.map((l) => [l.o.id, l.pts, l.width]),
-    ]);
     // bus lanes: one-way edges past the bays, connected to the streets
     if (def) for (const l of lanes) this._addLane(l, def, node);
+    this._degrees();
+    // where streets cross tracks, zebra crossings, and the rules of the signs and lights
+    this._railCrossings();
+    this._zebras();
+    this._applyRules();
+    this._degrees();
+    this.carKey = JSON.stringify([
+      roads.filter((r) => r.info.car || (r.info.tram && r.info.tram !== "none")).map((r) => [r.id, r.pts, r.info.width, r.info.speed, r.info.laneOffset, r.info.tram, r.info.tramTracks, r.info.tramOffset]),
+      dockSplits.map((d) => [d.dock.id, d.pose.front, d.pose.dir]),
+      lanes.map((l) => [l.o.id, l.pts, l.width]),
+      this.rules.map((x) => [x.id, x.sign, x.road, Math.round(x.s ?? 0), x.dir, x.moves, x.pos]),
+      this.edges.filter((e) => e.rails.length).map((e) => [e.id, e.rails.map((x) => [x.crossing?.id ?? null, x.level])]),
+    ]);
+  }
+
+  /** Degrees of the nodes: street and path edges (junctions for walking), car edges, tram edges, edges of any vehicle. */
+  _degrees() {
     for (const n of this.nodes) {
       n.degree = 0;
       n.carDegree = 0;
+      n.tramDegree = 0;
+      n.vehDegree = 0;
       for (const id of n.edges) {
         const e = this.edges[id];
         const k = e.a === e.b ? 2 : 1;
         if ((e.kind === "road" || e.kind === "path") && !e.hidden) n.degree += k; // an underpass is no junction
         if (e.kind === "road" && e.car) n.carDegree += k;
+        if (e.tram) n.tramDegree += k;
+        if ((e.kind === "road" && e.car) || e.tram) n.vehDegree += k;
       }
     }
   }
 
+  /**
+   * Where the edges of streets cross a track (a barrier): `edge.rails` = [{s, pos, crossing,
+   * level, track, clash?}], with the railway crossing put there (objects/crossings.js,
+   * `railCrossingInfo()`) if there is one. Without one the heights decide (core/elevation.js): a
+   * street far enough above or below the rails passes over or under the track, one at their height
+   * crosses at street level, and one between (`clash`: too low for a bridge) counts as crossing at
+   * street level. Trams never cross a railway at street level (BOStrab § 15): such an edge has no
+   * tram for routing (`tramBlocked`).
+   */
+  _railCrossings() {
+    const crossings = [];
+    for (const o of this.world.objects) {
+      if (typeof o.railCrossingInfo !== "function" || !o.geometry) continue;
+      let c = null;
+      try {
+        c = o.railCrossingInfo();
+      } catch {
+        c = null;
+      }
+      if (c?.pos) crossings.push(c);
+    }
+    const near = this.mm(15);
+    for (const e of this.edges) {
+      if (!e.car && !e.tram && !e.bus) continue;
+      const P = e.points;
+      for (const b of this.barriers) {
+        for (let i = 1; i < P.length; i++) {
+          for (let k = 1; k < b.points.length; k++) {
+            const x = segmentIntersection(P[i - 1], P[i], b.points[k - 1], b.points[k]);
+            if (!x) continue;
+            const s = e.lengths[i - 1] + x.t * (e.lengths[i] - e.lengths[i - 1]);
+            let crossing = null, bd = near;
+            for (const c of crossings) {
+              const d = dist2(c.pos, x.p);
+              if (d <= bd && (!c.road || c.road === e.road)) {
+                bd = d;
+                crossing = c;
+              }
+            }
+            // without a railway crossing the heights decide (core/elevation.js): a street high enough
+            // above the rails (or low enough below them) passes over (under) the track
+            const h = crossing ? null : this.world.elevation?.crossingAt(e.road, x.p, this.world.getObject(b.id));
+            const level = crossing ? !!crossing.level : !h || h.kind === "level" || h.kind === "clash";
+            e.rails.push({ s, pos: x.p, crossing, level, track: b.id, ...(h?.kind === "clash" ? { clash: h } : {}) });
+          }
+        }
+      }
+      e.rails.sort((a, b) => a.s - b.s);
+      if (e.tram && e.rails.some((r) => r.level)) {
+        e.tram = false;
+        e.tramBlocked = e.rails.find((r) => r.level);
+      }
+    }
+  }
+
+  /** Zebra crossings (`crossingInfo()`) on the edges of their streets: `edge.zebras` = [{s, width, obj}]. */
+  _zebras() {
+    for (const o of this.world.objects) {
+      if (typeof o.crossingInfo !== "function" || !o.geometry) continue;
+      let c = null;
+      try {
+        c = o.crossingInfo();
+      } catch {
+        c = null;
+      }
+      const at = c ? this._edgeAt(c.road, c.s) : null;
+      if (!at) continue;
+      const pr = polylineProject(at.edge.points, c.pos, at.edge.lengths);
+      at.edge.zebras.push({ s: pr.s, width: c.width, obj: c.obj, id: c.id });
+    }
+    for (const e of this.edges) if (e.zebras.length > 1) e.zebras.sort((a, b) => a.s - b.s);
+  }
+
+  /**
+   * The rules of the signs and lights (`trafficRule()`, objects/traffic-signs.js): one-way streets,
+   * Stop and give way, the priority road, the directions allowed at a junction, bikes and e-scooters
+   * on the sidewalk, traffic lights.
+   */
+  _applyRules() {
+    const rules = [];
+    for (const o of this.world.objects) {
+      if (typeof o.trafficRule !== "function" || !o.geometry) continue;
+      let r = null;
+      try {
+        r = o.trafficRule();
+      } catch {
+        r = null;
+      }
+      if (r) rules.push(r);
+    }
+    this.rules = rules;
+    const rulesOf = (n) => (n.rules ||= new Map()), turnsOf = (n) => (n.turns ||= new Map());
+    for (const r of rules) {
+      if (r.sign === "light") {
+        this._signal(r);
+        continue;
+      }
+      if (!this._edgeAt(r.road, r.s)) continue;
+      if (r.sign === "one-way") for (const x of this._run(r.road, r.s)) x.edge.carDir = r.dir;
+      else if (r.sign === "stop" || r.sign === "give-way") {
+        const j = this._ahead(r.road, r.s, r.dir);
+        if (j) rulesOf(j.node).set(j.edge.id, { stop: r.sign === "stop", giveWay: true, id: r.id });
+      } else if (r.sign === "turn" || r.sign === "lane-arrows") {
+        const j = this._ahead(r.road, r.s, r.dir);
+        if (j && r.moves?.length) turnsOf(j.node).set(j.edge.id, new Set(r.moves));
+      } else if (r.sign === "priority") for (const x of this.roadEdges.get(r.road) || []) x.edge.priority = true;
+      else if (r.sign === "bikes-allowed") for (const x of this._run(r.road, r.s)) x.edge.sidewalkBikes = true;
+      else if (r.sign === "scooters-allowed") for (const x of this._run(r.road, r.s)) x.edge.sidewalkScooters = true;
+    }
+    // at the junctions of a priority road, the other streets give way (where no sign says more)
+    for (const n of this.nodes) {
+      if (!n.edges.some((id) => this.edges[id].priority && this.edges[id].car)) continue;
+      for (const id of n.edges) {
+        const e = this.edges[id];
+        if (!e.car || e.priority || rulesOf(n).has(id)) continue;
+        rulesOf(n).set(id, { stop: false, giveWay: true, id: null });
+      }
+    }
+    this.hasTurns = this.nodes.some((n) => n.turns?.size);
+  }
+
+  /** Traffic lights at the junction nearest to their position: the approaches in two groups by axis. */
+  _signal(r) {
+    let node = null, bd = this.mm(25);
+    for (const n of this.nodes) {
+      if (n.vehDegree < 3) continue;
+      const d = dist2(n.pos, r.pos);
+      if (d <= bd) {
+        bd = d;
+        node = n;
+      }
+    }
+    if (!node) return;
+    const into = (e) => (e.b === node.id ? e.dirB : [-e.dirA[0], -e.dirA[1]]);
+    const edges = node.edges.map((id) => this.edges[id]).filter((e) => (e.car || e.tram) && e.a !== e.b);
+    if (!edges.length) return;
+    const ref = edges.find((e) => r.main && e.road === r.main) || edges[0];
+    const refDir = into(ref);
+    let reach = 0;
+    for (const e of edges) reach = Math.max(reach, e.width / 2);
+    const groups = new Map(), approaches = [];
+    for (const e of edges) {
+      const d = into(e), group = Math.abs(dot2(d, refDir)) >= 0.7 ? 0 : 1;
+      groups.set(e.id, group);
+      const right = [d[1], -d[0]], back = reach + this.mm(1.5), side = e.width / 2 + this.mm(0.6);
+      approaches.push({ edge: e.id, group, head: [node.pos[0] - d[0] * back + right[0] * side, node.pos[1] - d[1] * back + right[1] * side] });
+    }
+    const obj = this.world.getObject(r.id);
+    node.signal = { id: r.id, obj, groups, r: reach + this.mm(1) };
+    this.signals.set(r.id, { node, approaches });
+  }
+
+  /** The edge of a street at arc length s (mm along the street): {edge, s0, s1}, or null. */
+  _edgeAt(roadId, s) {
+    const list = this.roadEdges.get(roadId);
+    if (!list?.length) return null;
+    for (const x of list) if (s >= x.s0 - 1e-6 && s <= x.s1 + 1e-6) return x;
+    return s < list[0].s0 ? list[0] : list[list.length - 1];
+  }
+
+  /** The edges of a street between the junctions around arc length s (a block). */
+  _run(roadId, s) {
+    const list = this.roadEdges.get(roadId) || [];
+    const at = this._edgeAt(roadId, s);
+    if (!at) return [];
+    let i = list.indexOf(at), j = i;
+    while (i > 0 && this.nodes[list[i].edge.a].vehDegree < 3) i--;
+    while (j < list.length - 1 && this.nodes[list[j].edge.b].vehDegree < 3) j++;
+    return list.slice(i, j + 1);
+  }
+
+  /** The next junction along a street from arc length s in direction dir: {node, edge (the one arriving there), s (on the street)}, or null. */
+  _ahead(roadId, s, dir) {
+    const list = this.roadEdges.get(roadId) || [];
+    const at = this._edgeAt(roadId, s);
+    if (!at) return null;
+    let i = list.indexOf(at);
+    for (; i >= 0 && i < list.length; i += dir > 0 ? 1 : -1) {
+      const x = list[i], n = this.nodes[dir > 0 ? x.edge.b : x.edge.a];
+      if (n.vehDegree >= 3) return { node: n, edge: x.edge, s: dir > 0 ? x.s1 : x.s0 };
+    }
+    return null;
+  }
+
+  /** Arc length (mm along the street) of the next junction from s in direction dir, or null (the street ends first). */
+  nextJunctionOnRoad(roadId, s, dir) {
+    return this._ahead(roadId, s, dir)?.s ?? null;
+  }
+
+  /** The traffic lights of an object: {node, approaches: [{edge, group, head}]}, or null when they are not at a junction. */
+  signalOf(id) {
+    return this.signals.get(id) || null;
+  }
+
+  /**
+   * The way a vehicle turns from one edge onto the next at node v: "straight", "left", "right" or
+   * "back" (seen from above, the layout's y away from the viewer).
+   */
+  turnOf(v, inEdge, outEdge) {
+    const a = this.edges[inEdge], b = this.edges[outEdge];
+    if (!a || !b) return "straight";
+    const din = a.b === v ? a.dirB : [-a.dirA[0], -a.dirA[1]];
+    const dout = b.a === v ? b.dirA : [-b.dirB[0], -b.dirB[1]];
+    const ang = Math.atan2(din[0] * dout[1] - din[1] * dout[0], dot2(din, dout)) * (180 / Math.PI);
+    if (Math.abs(ang) >= 150) return "back";
+    return ang > 35 ? "left" : ang < -35 ? "right" : "straight";
+  }
+
+  /** May a vehicle (not a tram: it follows its track) turn from one edge onto another at node v? */
+  turnAllowed(v, inEdge, outEdge, mode = "car") {
+    if (mode === "tram" || mode === "walk") return true;
+    const allowed = this.nodes[v]?.turns?.get(inEdge);
+    if (!allowed) return true;
+    const t = this.turnOf(v, inEdge, outEdge);
+    return t === "back" || allowed.has(t);
+  }
+
   _addLane(l, def, node) {
     const lane = {
-      road: l.o.id, kind: "lane", car: false, bus: true, walk: false, oneway: true,
+      road: l.o.id, kind: "lane", car: false, bus: true, tram: false, bike: false, walk: false, oneway: true, carDir: 1, tramDir: 0,
+      tramOffset: 0, bikeOffset: 0, zebras: [], rails: [],
       speed: LANE_SPEED, width: l.width, walkOffset: 0, laneOffset: 0,
     };
     const L = l.cum[l.cum.length - 1];
@@ -563,7 +862,14 @@ export class RoadNetwork {
   }
 
   _usable(e, mode) {
-    return mode === "walk" ? e.walk : mode === "bus" ? e.bus : e.car;
+    return mode === "walk" ? e.walk : mode === "bus" ? e.bus : mode === "tram" ? !!e.tram : mode === "bike" || mode === "scooter" ? !!e.bike : e.car;
+  }
+
+  /** May a vehicle of a mode go along an edge forward (a to b) or backward? One-way streets, one-way tracks, bus lanes. */
+  _allowed(e, forward, mode) {
+    if (mode === "walk") return true;
+    const dir = mode === "tram" ? e.tramDir || 0 : e.carDir ?? (e.oneway ? 1 : 0);
+    return !dir || (forward ? dir > 0 : dir < 0);
   }
 
   /** Cost of an edge: length (mm) for walking, travel time (s) for vehicles. */
@@ -659,15 +965,19 @@ export class RoadNetwork {
       }
       let j = i;
       while (j < E.length && isStreet(E[j])) j++;
-      // the centre line of the streets walked in a row, and the sidewalk offset of each segment
-      const C = [], off = [];
+      // the centre line of the streets walked in a row, the sidewalk offset of each segment, and
+      // the zebra crossings on the way (arc length along the row)
+      const C = [], off = [], zebras = [];
+      let run = 0;
       for (let k = i; k < j; k++) {
-        const p = pts(E[k]);
+        const p = pts(E[k]), e = E[k].edge;
+        for (const z of e.zebras || []) zebras.push(run + (E[k].forward ? z.s : e.length - z.s));
         if (!C.length) C.push(p[0]);
         for (let m = 1; m < p.length; m++) {
           if (dist2(p[m], C[C.length - 1]) < 1e-6) continue;
+          run += dist2(p[m], C[C.length - 1]);
           C.push(p[m]);
-          off.push(E[k].edge.walkOffset);
+          off.push(e.walkOffset);
         }
       }
       if (C.length >= 2) {
@@ -677,11 +987,18 @@ export class RoadNetwork {
         const side = sideOf(prev, C[0], C[1]) || 1;
         const end = sideOf(next, C[n - 2], C[n - 1]) || side;
         const hidden = E.slice(i, j).every((x) => x.edge.hidden);
-        for (const p of offsetLine(C, off, side)) push(p, hidden);
-        if (end !== side) {
-          // across the street at its end, at right angles
-          const nr = rightNormal(C[n - 2], C[n - 1]), o = off[off.length - 1] * end;
-          push([C[n - 1][0] + nr[0] * o, C[n - 1][1] + nr[1] * o], hidden);
+        // across at the zebra crossing nearest to the end, else at the end, at right angles
+        const zs = end !== side ? zebras.filter((z) => z > 1e-3 && z < run - 1e-3).sort((a, b) => b - a)[0] : undefined;
+        if (zs != null) {
+          const [C1, off1, C2, off2] = cutRun(C, off, zs);
+          for (const p of offsetLine(C1, off1, side)) push(p, hidden);
+          for (const p of offsetLine(C2, off2, end)) push(p, hidden);
+        } else {
+          for (const p of offsetLine(C, off, side)) push(p, hidden);
+          if (end !== side) {
+            const nr = rightNormal(C[n - 2], C[n - 1]), o = off[off.length - 1] * end;
+            push([C[n - 1][0] + nr[0] * o, C[n - 1][1] + nr[1] * o], hidden);
+          }
         }
       }
       afterStreet = true;
@@ -726,7 +1043,7 @@ export class RoadNetwork {
         const e = this.edges[id];
         if (e.a === e.b || !this._usable(e, mode)) continue;
         const forward = e.a === u;
-        if (!forward && e.oneway) continue;
+        if (!this._allowed(e, forward, mode)) continue;
         const v = forward ? e.b : e.a, nd = d + this._cost(e, mode);
         if (nd < dist[v]) {
           dist[v] = nd;
@@ -750,6 +1067,8 @@ export class RoadNetwork {
     const a = this._id(from), b = this._id(to);
     if (a == null || b == null) return null;
     if (a === b) return this._path(a, []);
+    // the directions allowed at junctions need a route edge by edge
+    if (this.hasTurns && mode !== "walk" && mode !== "tram") return this.routeDirected(a, null, b, null, { mode });
     const t = this._tree(a, mode);
     if (!Number.isFinite(t.dist[b])) return null;
     const seq = [];
@@ -785,8 +1104,8 @@ export class RoadNetwork {
       for (const id of this.nodes[u].edges) {
         const e = E[id];
         if (!this._usable(e, mode)) continue;
-        if (e.a === u) out.push(2 * id);
-        if (e.b === u && !e.oneway) out.push(2 * id + 1);
+        if (e.a === u && this._allowed(e, true, mode)) out.push(2 * id);
+        if (e.b === u && this._allowed(e, false, mode)) out.push(2 * id + 1);
       }
       return out;
     };
@@ -801,7 +1120,7 @@ export class RoadNetwork {
     for (const id of this.nodes[b].edges) {
       const e = E[id];
       if (!this._usable(e, mode)) continue;
-      if ((e.b === b && goal(2 * id)) || (e.a === b && !e.oneway && goal(2 * id + 1))) anyGoal = true;
+      if ((e.b === b && this._allowed(e, true, mode) && goal(2 * id)) || (e.a === b && this._allowed(e, false, mode) && goal(2 * id + 1))) anyGoal = true;
     }
     const isGoal = anyGoal ? goal : (arc) => head(arc) === b;
     const dist = new Map(), prev = new Map(), heap = new Heap();
@@ -822,9 +1141,11 @@ export class RoadNetwork {
         break;
       }
       const v = head(x), dx = endDir(x);
+      const degree = mode === "tram" ? this.nodes[v].tramDegree : this.nodes[v].carDegree;
       for (const y of leaving(v)) {
+        if ((y >> 1) !== (x >> 1) && !this.turnAllowed(v, x >> 1, y >> 1, mode)) continue;
         let c = d + this._cost(E[y >> 1], mode);
-        if ((y >> 1) === (x >> 1) && E[y >> 1].a !== E[y >> 1].b) c += this.nodes[v].carDegree <= 1 && this.nodes[v].kind !== "lane" ? UTURN_DEAD_END_S : UTURN_S;
+        if ((y >> 1) === (x >> 1) && E[y >> 1].a !== E[y >> 1].b) c += degree <= 1 && this.nodes[v].kind !== "lane" ? UTURN_DEAD_END_S : UTURN_S;
         else if (dot2(dx, startDir(y)) < -0.95) c += UTURN_S;
         if (c < (dist.get(y) ?? Infinity)) {
           dist.set(y, c);
@@ -874,11 +1195,14 @@ export class RoadNetwork {
     return { point: at.point, dir: at.dir, walkOffset: this.offsetAt(path, s, "walkOffset"), hidden };
   }
 
-  /** Lateral offset (`walkOffset` or `laneOffset` of the edges, mm) at arc length `s` of a path, blended at changes. */
+  /**
+   * Lateral offset (`walkOffset`, `laneOffset`, `tramOffset` of the edges, or what a function of
+   * the edge says; mm) at arc length `s` of a path, blended at changes.
+   */
   offsetAt(path, s, key = "walkOffset") {
     const E = path?.edges;
     if (!E?.length) return 0;
-    const val = (k) => E[k].edge[key] || 0;
+    const val = typeof key === "function" ? (k) => key(E[k].edge) || 0 : (k) => E[k].edge[key] || 0;
     const i = edgeIndex(E, s), o = val(i);
     // the run of edges with this offset, and the runs before and after it
     let a = i, b = i;
@@ -910,19 +1234,22 @@ export class RoadNetwork {
    * The line a vehicle drives along a path: on the right lane (`laneOffset` of the edges), with
    * a turning loop where the path turns back and pull-ins at stops.
    * @param {Path} path centre-line path (from `route`, `routeDirected` or joined paths)
-   * @param {{pulls?: Array<{s: number, offset: number, before: number, after: number}>, minLoop?: number}} [options]
+   * @param {{pulls?: Array<{s: number, offset: number, before: number, after: number}>, minLoop?: number,
+   *   offsetKey?: string | ((edge: Edge) => number)}} [options]
    *   pulls: keep the lateral `offset` (mm, + = right of the direction of travel) from `s - before`
    *   to `s + after` (arc lengths on the path, mm), e.g. at a bus stop; minLoop: smallest radius
-   *   of a turning loop (mm)
+   *   of a turning loop (mm); offsetKey: the lateral position on each edge: `laneOffset` (cars and
+   *   buses), `tramOffset` (trams), or a function of the edge (bikes)
    * @returns {{points: number[][], lengths: number[], length: number, speeds: number[], marks: number[], centre: number[]}}
    *   speeds: speed limit (m/s) of each segment; marks: arc length on the driving line of each pull's `s`;
    *   centre: arc length on the path of each point
    */
-  drivingLine(path, { pulls = [], minLoop = this.mm(3) } = {}) {
+  drivingLine(path, { pulls = [], minLoop = this.mm(3), offsetKey = "laneOffset" } = {}) {
     const P = path.points, cum = path.lengths, n = P.length;
     const ramp = this.mm(BLEND_M * 3), step = this.mm(2);
+    const off = typeof offsetKey === "function" ? offsetKey : (e) => e[offsetKey] || 0;
     const offset = (s) => {
-      let o = this.offsetAt(path, s, "laneOffset");
+      let o = this.offsetAt(path, s, offsetKey);
       for (const p of pulls) {
         const a = p.s - p.before, b = p.s + p.after;
         if (s >= a && s <= b) return p.offset;
@@ -939,7 +1266,7 @@ export class RoadNetwork {
     }
     for (let i = 1; i < (path.edges || []).length; i++) {
       const E = path.edges;
-      if ((E[i].edge.laneOffset || 0) !== (E[i - 1].edge.laneOffset || 0)) {
+      if (off(E[i].edge) !== off(E[i - 1].edge)) {
         for (let s = E[i].s0 - this.mm(BLEND_M); s <= E[i].s0 + this.mm(BLEND_M); s += step / 2) extra.push(s);
       }
     }
@@ -1015,8 +1342,10 @@ export class RoadNetwork {
   }
 
   /**
-   * The junctions a vehicle crosses on a path, located on its driving line:
-   * [{key, pos, r (radius, mm), s (arc length of the centre on the driving line)}].
+   * The junctions a vehicle crosses on a path, located on its driving line: [{key, pos, r (radius,
+   * mm), s (arc length of the centre on the driving line), node, inEdge, outEdge, turn, rule (Stop or
+   * give way of the approach, or null), signal ({obj, group}: traffic lights, or null), prio (0 give
+   * way, 1 none, 2 priority road)}]. Junctions are nodes with three or more edges for cars or trams.
    * @param {Path} path
    * @param {{lengths: number[], centre: number[]}} drive result of {@link drivingLine} for the path
    */
@@ -1026,15 +1355,55 @@ export class RoadNetwork {
     path.nodes.forEach((id, i) => {
       if (i === 0 || i === path.nodes.length - 1) return;
       const n = this.nodes[id];
-      if (n.carDegree < 3) return;
+      if ((n.vehDegree ?? n.carDegree) < 3) return;
       const cs = path.edges[i - 1].s1;
       while (k < drive.centre.length - 1 && drive.centre[k] < cs - 1e-6) k++;
       let r = 0;
       for (const e of n.edges) r = Math.max(r, this.edges[e].width / 2);
-      out.push({ key: `${Math.round(n.pos[0])},${Math.round(n.pos[1])}`, pos: n.pos, r: r + this.mm(1), s: drive.lengths[k] });
+      const inEdge = path.edges[i - 1].edge, outEdge = path.edges[i]?.edge;
+      const rule = n.rules?.get(inEdge.id) ?? null;
+      const group = n.signal?.groups.get(inEdge.id);
+      out.push({
+        key: `${Math.round(n.pos[0])},${Math.round(n.pos[1])}`, pos: n.pos, r: r + this.mm(1), s: drive.lengths[k], node: id,
+        inEdge: inEdge.id, outEdge: outEdge?.id ?? null, turn: outEdge ? this.turnOf(id, inEdge.id, outEdge.id) : "straight",
+        rule, signal: n.signal && group != null ? { obj: n.signal.obj, group } : null, prio: rule ? 0 : inEdge.priority ? 2 : 1,
+      });
     });
     return out;
   }
+
+  /**
+   * The zebra crossings and railway crossings on a path, located on its driving line:
+   * [{kind: "zebra" | "rail", obj, s (arc length on the driving line), half (mm along the path)}].
+   * Railway crossings over or under the track are left out.
+   * @param {Path} path
+   * @param {{lengths: number[], centre: number[]}} drive
+   */
+  crossingsAlong(path, drive) {
+    const out = [];
+    for (const x of path.edges || []) {
+      const e = x.edge, at = (s) => (x.forward ? x.s0 + s : x.s0 + (e.length - s));
+      for (const z of e.zebras || []) out.push({ kind: "zebra", obj: z.obj, s: driveS(drive, at(z.s)), half: z.width / 2 });
+      for (const r of e.rails || []) if (r.level && r.crossing?.obj) out.push({ kind: "rail", obj: r.crossing.obj, s: driveS(drive, at(r.s)), half: this.mm(3) });
+    }
+    return out.sort((a, b) => a.s - b.s);
+  }
+}
+
+/** The arc length on a driving line of an arc length on its centre-line path (`drive.centre`). */
+export function driveS(drive, s) {
+  const C = drive.centre, L = drive.lengths;
+  if (!C?.length) return s;
+  let lo = 0, hi = C.length - 1;
+  if (s <= C[0]) return L[0];
+  if (s >= C[hi]) return L[hi];
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (C[mid] <= s) lo = mid;
+    else hi = mid;
+  }
+  const t = C[hi] > C[lo] ? (s - C[lo]) / (C[hi] - C[lo]) : 0;
+  return L[lo] + t * (L[hi] - L[lo]);
 }
 
 /** Index of the path edge containing arc length s (binary search over s0). */

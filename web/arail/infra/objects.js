@@ -96,6 +96,8 @@ const INTERLOCKING = { key: "interlocking", label: "Interlocking", type: "object
 /** Base of the point assets: a frame at `position` turned by `rotation_deg`. */
 export class AssetObject extends LayoutObject {
   static category = "Infrastructure";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static placement = "point";
   /** Asset type of the infrastructure simulation. */
   static asset = null;
@@ -252,6 +254,12 @@ export class LevelCrossing extends AssetObject {
     return Math.min(30, Math.max(0, +this.spec.span_m || 0));
   }
 
+  /** For the road network (core/network.js): the street crosses the track here, at street level. */
+  railCrossingInfo() {
+    const g = this.geometry;
+    return g ? { id: this.id, pos: g.center, kind: "half-barriers", level: true, obj: null } : null;
+  }
+
   drawModel(view, { frame }) {
     const w = (+this.spec.road_m || 7) / 2, st = this.state(), half = this._span() / 2;
     const down = !!st?.fault;
@@ -340,6 +348,8 @@ export class PassengerDisplay extends AssetObject {
 /** Base of the linear assets (a polyline along a track). */
 export class LinearAssetObject extends LayoutObject {
   static category = "Infrastructure";
+  /** On the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
   static placement = "polyline";
   static asset = null;
 

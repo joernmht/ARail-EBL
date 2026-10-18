@@ -99,6 +99,12 @@ export class Tree extends LayoutObject {
     return [[g.center[0] - r, g.center[1] - r], [g.center[0] + r, g.center[1] - r], [g.center[0] + r, g.center[1] + r], [g.center[0] - r, g.center[1] + r]];
   }
 
+  /** It stands on its trunk: its crown may reach over the edge of a table module. */
+  standsOn() {
+    const g = this.geometry;
+    return g ? [g.center] : null;
+  }
+
   draw(view) {
     drawTree(view, this.geometry.center, +this.spec.height_m || 12, this.spec.kind, this.spec.color || null);
   }

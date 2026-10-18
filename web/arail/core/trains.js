@@ -51,6 +51,9 @@ function parseTrain(t) {
 }
 
 export class TrainRegistry {
+  /** What it draws stands on the table module, never on a street's bridge (core/elevation.js). */
+  static elevation = "ground";
+
   /** @param {import("./world.js").World} world */
   constructor(world) {
     this.world = world;

@@ -113,11 +113,18 @@ export class BusStop extends LayoutObject {
       const sign = names[0] === "right" ? -1 : 1, off = (half + W) / 2;
       footprint = rectFootprint([at.point[0] + n[0] * sign * off, at.point[1] + n[1] * sign * off], L, half + W, angle);
     }
-    return { ok: true, road: street.o.id, center: at.point, u, n, half, L, W, sides, footprint };
+    return { ok: true, road: street.o.id, s: street.s, center: at.point, u, n, half, L, W, sides, footprint };
   }
 
   footprint() {
     return this.geometry?.footprint || null;
+  }
+
+  /** No parking at the stop and 15 m before and after it (StVO § 12), on its sides. */
+  noParking(road, side) {
+    const g = this.geometry;
+    if (!g?.ok || g.road !== road.id || !g.sides.some((x) => x.side === side)) return null;
+    return [[g.s - g.L / 2 - this.mm(15), g.s + g.L / 2 + this.mm(15)]];
   }
 
   /** What is wrong with the stop (shown in the editor). */

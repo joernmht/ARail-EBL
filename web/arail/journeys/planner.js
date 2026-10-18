@@ -179,9 +179,9 @@ export class Planner {
 
   /* ---------------------------------------------------------------- buses */
 
-  /** Stop areas served by bus lines. */
+  /** Stop areas served by bus and tram lines. */
   _busAreas() {
-    return this.world.stopAreas().filter((a) => a.kind === "bus" && a.docks.some((d) => d.managed));
+    return this.world.stopAreas().filter((a) => (a.kind === "bus" || a.kind === "tram") && a.docks.some((d) => d.managed));
   }
 
   /** Clock minutes between two buses of a line at a time (world), or null at night (no buses). */
@@ -245,7 +245,7 @@ export class Planner {
         const wait = every / 2, min = this._rideMin(line, c);
         const visit = line.visits.find((v) => v.dockId === c.fromDockId);
         list.push({
-          type: "bus", line: line.id, name: `Bus ${line.label}`, label: line.label, colour: line.color, towards: towards(visit?.destination, visit?.loop),
+          type: "bus", line: line.id, name: `${line.noun ?? "Bus"} ${line.label}`, label: line.label, colour: line.color, towards: towards(visit?.destination, visit?.loop),
           fromArea: area.id, fromDock: c.fromDockId, fromName: areaName(area), toArea: to.id, toDock: c.toDockId, toName: areaName(to),
           every: Math.round(every), stops: c.stops, dep: tAt + wait, arr: tAt + wait + min, wait,
         });

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createWorld } from "../../web/arail/index.js";
-import { accessProblems, applyFix, carGroups, layoutBounds, nearestStreet } from "../../web/arail/core/access.js";
+import { accessProblems, applyFix, carGroups, insideLayout, layoutBounds, nearestStreet } from "../../web/arail/core/access.js";
 
 /** A table 6 × 4 m (H0: about 520 × 350 m) with Main Street along the middle, from edge to edge. */
 function town(objects = []) {
@@ -81,6 +81,25 @@ test("a dead end inside the layout is reported, one at its edge leads out of it"
   assert.equal(p.key, "dead:main:1");
   assert.match(p.text, /dead end inside the layout/);
   assert.deepEqual(p.at, [500, 0]);
+});
+
+test("the edge of the layout is the edge of its table modules, not of the box around them", () => {
+  // Main Street ends at the east edge of the table; a module beside it juts out to the south-east
+  // (the box around both would put the end of the street inside the layout)
+  const world = createWorld({
+    format: "arail-layout/1", scale: 87,
+    objects: [
+      { id: "table", type: "tabletop", position: [0, 0], width_mm: 6000, depth_mm: 4000 },
+      { id: "wing", type: "tabletop", position: [4000, 2500], width_mm: 2000, depth_mm: 1000 },
+      { id: "main", type: "road", name: "Main Street", points: [[-3000, 0], [3000, 0]] },
+    ],
+  });
+  assert.deepEqual(layoutBounds(world), [-3000, -2000, 5000, 3000]);
+  assert.deepEqual(keys(world), []);
+  assert.equal(insideLayout(world, [3000, 0], 100), false);
+  assert.equal(insideLayout(world, [2800, 0], 100), true);
+  assert.equal(insideLayout(world, [4000, 2500], 100), true, "on the other module");
+  assert.equal(insideLayout(world, [4000, 0], 100), false, "beside both");
 });
 
 test("a truck lane needs a street at its entry and at its end", () => {

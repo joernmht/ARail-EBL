@@ -20,7 +20,7 @@ import { Registry } from "./core/registry.js";
 import { World } from "./core/world.js";
 import { BUILTIN_DISRUPTIONS } from "./core/disruptions.js";
 import { STORY_DISRUPTIONS } from "./core/story.js";
-import { BUS, TRAIN } from "./core/vehicles.js";
+import { BUS, TRAIN, TRAM } from "./core/vehicles.js";
 import { Platform } from "./objects/platform.js";
 import { BusTerminal } from "./objects/bus-terminal.js";
 import { Building } from "./objects/building.js";
@@ -33,11 +33,16 @@ import { Road } from "./objects/road.js";
 import { BusStop } from "./objects/bus-stop.js";
 import { BusLine } from "./objects/bus-line.js";
 import { Track } from "./objects/track.js";
+import { TramLine, TramStop } from "./objects/tram.js";
+import { TrafficLight, TrafficSign, ZebraCrossing } from "./objects/traffic-signs.js";
+import { BikeStand, ParkingGarage, ParkingLot } from "./objects/parking.js";
+import { RailCrossing } from "./objects/crossings.js";
 import { Label } from "./objects/label.js";
 import { Tabletop } from "./objects/tabletop.js";
 import { PassengerSimulation } from "./sims/passengers.js";
 import { TownSimulation } from "./sims/town.js";
 import { TrafficSimulation } from "./sims/traffic.js";
+import { CyclingSimulation } from "./sims/cycling.js";
 import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
@@ -55,18 +60,25 @@ export { MarkerDetector, DICTIONARIES, markerBits, refineCorners } from "./core/
 export { MarkerMap, PlaneTracker } from "./core/tracker.js";
 export { EventBus } from "./core/events.js";
 export { Registry } from "./core/registry.js";
-export { World } from "./core/world.js";
-export { View, LAYER, prismFaces, rectFootprint } from "./core/view.js";
+export { World, offModules } from "./core/world.js";
+export { View, LAYER, LABEL_SHARE, prismFaces, rectFootprint } from "./core/view.js";
 export { SimpleView, drawFlat, simpleStyle, convexHull, SIMPLE_STYLES, CATEGORY_STYLES as SIMPLE_CATEGORY_STYLES } from "./core/simple.js";
 export { FlyCamera, FLYCAM_DEFAULTS, PITCH_MIN, PITCH_MAX, gridLines, snapToGrid } from "./core/flycam.js";
+export { Elevation, streetGradient } from "./core/elevation.js";
+export { TRAM_CURVES, roundCorners } from "./core/curves.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
-export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, projectedHull } from "./core/pick.js";
+export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, planePoint, projectedHull, surfacePoint } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
 export { StopArea } from "./core/stops.js";
+export { STOP_SIGNAL, StopSignals } from "./core/stop-signals.js";
 export { ServiceManager, Vehicle } from "./core/services.js";
-export { RoadNetwork, dockPose, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
-export { accessProblems, applyFix, carGroups, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
-export { Transit, LineBus, RoadUsers, linesServing, boxFaces, gapAhead, mustYield, ringName, turningNumber, JUNCTION_WAIT_S } from "./core/transit.js";
+export { RoadNetwork, dockPose, driveS, hiddenAt, joinPaths, PLACE_MAX_M, straightWalk } from "./core/network.js";
+export { accessProblems, applyFix, carGroups, insideLayout, layoutBounds, nearestStreet, nameOf } from "./core/access.js";
+export {
+  Transit, LineBus, RoadUsers, LINE_TYPES, linesServing, boxFaces, gapAhead, leaderAhead, mustYield, lightAt, approachPrio, junctionPatience, ringName, turningNumber,
+  singleTrack, reversals, waitFor, squeezing, roomAfter, GRIDLOCK_S, JUNCTION_WAIT_S,
+} from "./core/transit.js";
+export { ParkingSpaces, PARKED_CAR } from "./core/parking.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
@@ -76,14 +88,25 @@ export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, 
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
-export { TRAIN, BUS } from "./core/vehicles.js";
+export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
 export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";
-export { BusStop, BusLine, TrafficSimulation };
-export { ROAD_KINDS, roadKind, offsetPolyline, drawStreetLamp } from "./objects/road.js";
-export { drawStopSign, STOP_SIGN } from "./objects/signs.js";
-export { CAR_COLOURS } from "./sims/traffic.js";
+export { BusStop, BusLine, TrafficSimulation, CyclingSimulation };
+export { ROAD_KINDS, roadKind, offsetPolyline, slicePolyline, drawStreetLamp, stripColour, GAUGE_M } from "./objects/road.js";
+export {
+  NORMS, STREET_PROFILES, PATH_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, PARKING_LAYOUTS, PASS_M, ROAD_RIDE_M, crossSection, profileOf, bikeDefault, bikeNorm,
+  sharedConflict, widthChoices,
+} from "./objects/street-profile.js";
+export { drawStopSign, drawSign, drawTrafficLight, STOP_SIGN, SIGN_COLOURS, ROAD_SIGNS } from "./objects/signs.js";
+export { TrafficSign, TrafficLight, ZebraCrossing, SIGN_TYPES, TURNS, parseArrows, streetNear } from "./objects/traffic-signs.js";
+export { TARIFFS, PARKING_ACCESS, Tariff, ParkingLot, ParkingGarage, BikeStand, ownerAccess, parkingTerms } from "./objects/parking.js";
+export { TramStop, TramLine, TRAM_STOP_TYPES, STEP_FREE_M, tramRails } from "./objects/tram.js";
+export {
+  RailCrossing, CrossingType, OverTrack, UnderTrack, AtGrade, CrossbuckOnly, FlashingLights, HalfBarriers, FullBarriers, CROSSING_TYPES, CROSSING_NORMS,
+} from "./objects/crossings.js";
+export { CAR_COLOURS, planDrive, OCCUPANCY_BY_PURPOSE } from "./sims/traffic.js";
+export { RIDERS, ridingSurface } from "./sims/cycling.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
 export { StationBuilding, Underpass };
@@ -152,7 +175,8 @@ export { MockFeed } from "./feeds/mock.js";
 /** Register all built-in object types, simulations, disruptions, vehicles, card providers, checks and texts. */
 export function registerBuiltins(registry) {
   for (const cls of [
-    Platform, BusTerminal, Road, Underpass, BusStop, BusLine,
+    Platform, BusTerminal, Road, Underpass, BusStop, BusLine, TramStop, TramLine, TrafficSign, TrafficLight, ZebraCrossing, ParkingLot, ParkingGarage,
+    BikeStand, RailCrossing,
     Building, StationBuilding, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
   ]) {
     registry.registerObject(cls);
@@ -160,9 +184,11 @@ export function registerBuiltins(registry) {
   registry.registerSimulation(PassengerSimulation);
   registry.registerSimulation(TownSimulation);
   registry.registerSimulation(TrafficSimulation);
+  registry.registerSimulation(CyclingSimulation);
   for (const def of [...BUILTIN_DISRUPTIONS, ...STORY_DISRUPTIONS]) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);
+  registry.registerVehicle(TRAM);
   registerTerminal(registry);
   registerOperations(registry);
   registerInfrastructure(registry);
