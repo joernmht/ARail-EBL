@@ -25,9 +25,9 @@
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, dot2, polylineAt, rectBetween, sub2, unit2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
-import { APPROACH_M, approachPrio, boxFaces, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
+import { APPROACH_M, approachPrio, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
-import { drawPerson } from "./passengers.js";
+import { bikeColour, drawBike } from "../core/vehicles.js";
 
 /** The riders: label, top speed (km/h, e-scooters at most 20, eKFV), length and width of the vehicle (m). */
 export const RIDERS = {
@@ -466,13 +466,11 @@ export class CyclingSimulation extends Simulation {
     if (!this.enabled) return;
     const m = (x) => view.m(x);
     for (const r of this.riders) {
-      const { front, rear, dir } = r._pose || this._pose(r);
+      const { front, rear } = r._pose || this._pose(r);
       if (!view.inImage(front[0], front[1], 0, 40)) continue;
-      const R = RIDERS[r.kind];
-      // the bike or scooter, then the rider on it
-      view.faces(boxFaces(rear, front, m(R.width_m * 0.3), m(0.25), m(r.kind === "scooter" ? 0.35 : 0.9), { side: grey(0.22), top: grey(0.3) }), [front[0], front[1], m(0.5)]);
-      const mid = [(front[0] + rear[0]) / 2, (front[1] + rear[1]) / 2];
-      drawPerson(view, mid, { dir, speed: 0, height: r.child ? 1.35 : r.kind === "scooter" ? 1.85 : 1.75, colour: this.world.settings.peopleColour === "mood" ? moodColor(r.mood) : r.colour });
+      // the bike or e-scooter with its rider, pedalling (a turn of the cranks every 4.5 m)
+      const colour = this.world.settings.peopleColour === "mood" ? moodColor(r.mood) : r.colour;
+      drawBike(view, rear, front, { kind: r.kind, colour: bikeColour(r), scale: r.child ? 0.78 : 1, rider: { colour, phase: (this.meters(r.s) / 4.5) * 2 * Math.PI } });
     }
     // a short "!" where riders and people on foot just got in each other's way
     for (const c of this.conflicts) {

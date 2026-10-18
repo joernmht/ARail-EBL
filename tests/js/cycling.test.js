@@ -1,10 +1,11 @@
 // Bikes and e-scooters (sims/cycling.js): where riders ride by the street's cross-section, the
 // signs and the rules (children, rule-breakers), the riders the cars must follow, bikes locked near
-// buildings and at street lamps, the riders' cards, and reproducible runs.
+// buildings and at street lamps, the riders' cards, reproducible runs, and how bikes and e-scooters
+// are drawn (core/vehicles.js, drawBike).
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RIDERS, createWorld, ridingSurface } from "../../web/arail/index.js";
+import { BIKE_COLOURS, CD, Camera, FlyCamera, RIDERS, View, bikeColour, createWorld, drawBike, ridingSurface, toRad } from "../../web/arail/index.js";
 
 /** Main street with bike lanes, a plain street across it, a shared path, a house and a shop. */
 function world(cycling = {}, extra = [], seed = 9) {
@@ -111,4 +112,75 @@ test("bikes and e-scooters: the same seed gives the same riders", () => {
   assert.ok(a.length > 0);
   assert.equal(trace(9), a);
   assert.notEqual(trace(10), a);
+});
+
+/** A view close to the origin from the side, drawing into a context that records strokes and fills. */
+function closeView(distance = 120) {
+  const camera = new Camera(1280, 720);
+  const cam = new FlyCamera({ target: [0, 0], distance, yaw: Math.PI / 2, pitch: toRad(10) });
+  const { H, focal, pose } = cam.homography(1280, 720);
+  camera.setManualFocal(focal);
+  const strokes = [], fills = [];
+  let path = [];
+  const ctx = new Proxy(
+    {
+      canvas: { width: 1280, height: 720 },
+      beginPath: () => (path = []),
+      moveTo: (x, y) => path.push([x, y]),
+      lineTo: (x, y) => path.push([x, y]),
+      stroke() {
+        assert.ok(path.every((p) => p.every(Number.isFinite)), "finite coordinates");
+        strokes.push({ style: this.strokeStyle, points: path.length });
+      },
+      fill() {
+        fills.push(this.fillStyle);
+      },
+    },
+    { get: (o, k) => (k in o ? o[k] : k === "measureText" ? () => ({ width: 10 }) : () => ({ addColorStop() {} })), set: (o, k, v) => ((o[k] = v), true) },
+  );
+  return { view: new View({ ctx, camera, H, pose, scale: 87, virtual: true }), strokes, fills };
+}
+
+test("bikes and e-scooters are drawn as bikes: two wheels, a frame, a rider on it; locked bikes without one", () => {
+  // a bike with its rider, pedalling
+  const a = closeView();
+  drawBike(a.view, [-10, 0], [10, 0], { colour: BIKE_COLOURS[2], rider: { colour: CD.orange, phase: 1 } });
+  a.view.render();
+  const wheels = a.strokes.filter((x) => x.points === 16);
+  assert.equal(wheels.length, 2, "two wheels");
+  assert.ok(a.strokes.filter((x) => x.style === BIKE_COLOURS[2]).length >= 3, "the frame in its colour");
+  assert.ok(a.strokes.some((x) => x.style === CD.orange) && a.fills.includes(CD.orange), "the rider: body, arms and head");
+  // a locked bike: no rider
+  const b = closeView();
+  drawBike(b.view, [-10, 0], [10, 0], { colour: BIKE_COLOURS[0] });
+  b.view.render();
+  assert.equal(b.strokes.filter((x) => x.points === 16).length, 2);
+  assert.ok(!b.strokes.some((x) => x.style === CD.orange) && !b.fills.length);
+  // an e-scooter: small wheels, the deck and the stem, its rider standing on it
+  const c = closeView();
+  drawBike(c.view, [-7, 0], [7, 0], { kind: "scooter", colour: BIKE_COLOURS[1], rider: { colour: CD.tuerkis } });
+  c.view.render();
+  assert.equal(c.strokes.filter((x) => x.points === 16).length, 2);
+  assert.ok(c.strokes.some((x) => x.style === BIKE_COLOURS[1]) && c.fills.includes(CD.tuerkis));
+  // the same rider rides and locks the same bike
+  assert.equal(bikeColour({ seq: 3 }), bikeColour({ seq: 3 + BIKE_COLOURS.length }));
+});
+
+test("the riders of the simulation are drawn on their bikes", () => {
+  const w = world();
+  w.speed = 1;
+  for (let i = 0; i < 400; i++) w.step(0.25);
+  const sim = cyclingOf(w);
+  assert.ok(sim.riders.length > 3);
+  const r = sim.riders[0], p = r._pose || sim._pose(r);
+  const v = closeView(600);
+  // the view looks at the first rider
+  const cam = new FlyCamera({ target: p.front, distance: 600, yaw: Math.PI / 2, pitch: toRad(20) });
+  const { H, focal, pose } = cam.homography(1280, 720);
+  v.view.camera.setManualFocal(focal);
+  Object.assign(v.view, new View({ ctx: v.view.ctx, camera: v.view.camera, H, pose, scale: 87, virtual: true }));
+  sim.draw(v.view);
+  v.view.render();
+  assert.ok(v.strokes.filter((x) => x.points === 16).length >= 2, "wheels");
+  assert.ok(v.strokes.some((x) => x.style === bikeColour(r)), "its frame");
 });

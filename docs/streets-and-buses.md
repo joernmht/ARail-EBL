@@ -209,7 +209,7 @@ A **tram line** is placed like a bus line, through its tram stops, and its trams
 - On **one track, both directions** a tram goes onto the single track only when none comes the
   other way; it waits before it (the passing loop is where the street has two tracks again).
 - At the end of a **stub track** (a track that ends) the tram stops, the driver changes ends (20 s)
-  and it goes back on the other track once that is free; one tram at a time.
+  and it goes back on the other track once that is free, over a crossover; one tram at a time.
 - Where cars and trams share the lanes, cars keep behind trams and trams behind cars. Trams need
   not stop at zebra crossings (StVO § 26), but they stop at traffic lights and give way like the
   other vehicles.
@@ -371,7 +371,9 @@ Add the simulation to the layout:
 
 Riders on bikes (14 to 22 km/h) and e-scooters (15 to 20 km/h, eKFV) come in at the ends of the
 streets and ride to another end, or to a building, where they lock the bike at a street lamp or bike
-stand nearby for 20 to 240 minutes and ride on. Where they ride:
+stand nearby for 20 to 240 minutes and ride on. A bike is drawn as a bike: two wheels, the frame,
+saddle and handlebar, its rider pedalling (children on smaller bikes), with its lamp lit at night;
+an e-scooter with its deck and stem, its rider standing on it. Where they ride:
 
 - on the bike lane, advisory lane, bike path or shared path where the street has one (it must be
   used, StVO § 2 Abs. 4), else on the road near the curb;

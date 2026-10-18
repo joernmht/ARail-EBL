@@ -8,6 +8,7 @@
  */
 import { dist2, rectBetween } from "./math.js";
 import { boxFaces } from "./transit.js";
+import { bikeColour, drawBike } from "./vehicles.js";
 import { grey, shade } from "./colors.js";
 
 /** Clock minutes as "07:05" (the next day wraps round). */
@@ -239,17 +240,14 @@ export class ParkingSpaces {
     for (const b of spots) {
       const n = this.bikes.get(b.key)?.length ?? 0;
       if (!n || !view.inImage(b.pos[0], b.pos[1], 0, 40)) continue;
+      const list = this.bikes.get(b.key);
       for (let i = 0; i < n; i++) {
         // two bikes side by side, along the stand or the lamp
         const t = (i - (n - 1) / 2) * m(0.6), c = [b.pos[0] + b.dir[1] * t, b.pos[1] - b.dir[0] * t];
-        const a = [c[0] - b.dir[0] * m(0.85), c[1] - b.dir[1] * m(0.85)], d = [c[0] + b.dir[0] * m(0.85), c[1] + b.dir[1] * m(0.85)];
-        view.faces([{ pts: [[a[0], a[1], m(0.1)], [d[0], d[1], m(0.1)], [d[0], d[1], m(0.95)], [a[0], a[1], m(0.95)]], color: this._bikeColour(b, i), twoSided: true, alpha: 0.9 }], [c[0], c[1], m(0.5)]);
+        const a = [c[0] - b.dir[0] * m(0.9), c[1] - b.dir[1] * m(0.9)], d = [c[0] + b.dir[0] * m(0.9), c[1] + b.dir[1] * m(0.9)];
+        const rider = list?.[i]?.rider;
+        drawBike(view, a, d, { kind: rider?.kind || "bike", colour: bikeColour(rider), scale: rider?.child ? 0.78 : 1 });
       }
     }
-  }
-
-  _bikeColour(b, i) {
-    const list = this.bikes.get(b.key);
-    return list?.[i]?.rider?.colour || grey(0.35);
   }
 }

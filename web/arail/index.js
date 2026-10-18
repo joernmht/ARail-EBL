@@ -87,7 +87,7 @@ export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, 
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";
 export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelativeTo, markersUsed } from "./core/anchors.js";
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
-export { TRAIN, BUS, TRAM } from "./core/vehicles.js";
+export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
 export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";

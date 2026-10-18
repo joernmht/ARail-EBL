@@ -42,7 +42,11 @@ export const TRANSPORT = [
         attributes: ["kind: string — train or bus", "line: string", "source: string — timetable, manual, scenario, plan, feed", "phase: string — arriving, dwelling, departing", "dwellLeft: number — s", "delayMin: number"],
         operations: ["doorsOpen — getter"],
       },
-      { name: "vehicles", file: "web/arail/core/vehicles.js", kind: "module", role: "How trains, buses and trams look: TRAIN, BUS and TRAM (registered vehicles).", attributes: ["TRAIN — a multiple unit, doors every 7 m", "BUS — a 12 m bus, two doors", "TRAM — a 30 m low-floor tram, 2.65 m wide, floor 30 cm"] },
+      {
+        name: "vehicles", file: "web/arail/core/vehicles.js", kind: "module", role: "How trains, buses and trams look: TRAIN, BUS and TRAM (registered vehicles); bikes and e-scooters drawn with lines.",
+        attributes: ["TRAIN — a multiple unit, doors every 7 m", "BUS — a 12 m bus, two doors", "TRAM — a 30 m low-floor tram, 2.65 m wide, floor 30 cm", "BIKE_COLOURS — frames", "BIKE_PARTS — 28\" wheels, a diamond frame, saddle, handlebar, where the rider sits and holds on", "SCOOTER_PARTS — small wheels, the deck, the stem"],
+        operations: ["drawBike(view, rear, front, options) — wheels, frame, cranks, saddle and handlebar; a rider pedalling or standing on the deck; its lamp at night", "bikeColour(rider) — the same rider, the same bike", "knee(hip, foot, thigh, shin) — the rider's knee, bent forward"],
+      },
     ],
     relations: [
       { from: "ServiceManager", to: "Vehicle", kind: "composes", label: "0..1 per dock" },

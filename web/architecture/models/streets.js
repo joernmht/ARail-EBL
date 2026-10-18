@@ -165,7 +165,7 @@ export const STREETS = [
       {
         name: "ParkingSpaces", file: "web/arail/core/parking.js", kind: "class", role: "world.parking: the facilities and bike spots, and who is parked where.",
         attributes: ["cars: Map — facility id → slot → {car, since}", "bikes: Map — bike spot → riders", "PARKED_CAR — 4.5 × 1.8 m"],
-        operations: ["facilities()", "facility(id)", "occupied(id)", "free(id)", "take(id, car, near) — the free space nearest to a point", "release(id, car)", "clearCars()", "bikeSpots()", "lockBike(rider, p, maxMM)", "unlockBike(rider)", "pickables() — the parked cars", "card(hit)", "draw(view) — parked cars and bikes"],
+        operations: ["facilities()", "facility(id)", "occupied(id)", "free(id)", "take(id, car, near) — the free space nearest to a point", "release(id, car)", "clearCars()", "bikeSpots()", "lockBike(rider, p, maxMM)", "unlockBike(rider)", "pickables() — the parked cars", "card(hit)", "draw(view) — parked cars, locked bikes (drawBike)"],
       },
       { name: "traffic", file: "web/arail/sims/traffic.js", kind: "module", role: "Planning a drive.", attributes: ["OCCUPANCY_BY_PURPOSE — people in a car by purpose (MiD 2017)"], operations: ["planDrive(world, o) — the route and the parking space, as a trip is planned"] },
     ],
@@ -278,7 +278,7 @@ export const STREETS = [
       {
         name: "CyclingSimulation", file: "web/arail/sims/cycling.js", kind: "class", extends: "Simulation", role: "The riders.",
         attributes: ["riders: object[] — {kind, person, compliant, child, line, s, v, mood}", "locked: object[] — bikes locked near a building", "conflicts: object[] — riders and people on foot that met with anger"],
-        operations: ["step(dt)", "targetCount(net)", "roadUsers() — riders the cars must follow", "_rider()", "_route(rider, net, from, to)", "_enter(net)", "_goal(net)", "_ride(rider, dt, users, people, net)", "_meetPeople(rider, me, sf, people, slow)", "_unlock(net)", "pickables()", "card(hit)", "describeObject(o, card) — riders and conflicts on a street", "draw(view)"],
+        operations: ["step(dt)", "targetCount(net)", "roadUsers() — riders the cars must follow", "_rider()", "_route(rider, net, from, to)", "_enter(net)", "_goal(net)", "_ride(rider, dt, users, people, net)", "_meetPeople(rider, me, sf, people, slow)", "_unlock(net)", "pickables()", "card(hit)", "describeObject(o, card) — riders and conflicts on a street", "draw(view) — the riders on their bikes and e-scooters (drawBike)"],
       },
       { name: "cycling", file: "web/arail/sims/cycling.js", kind: "module", role: "Kinds of riders and where they ride.", attributes: ["RIDERS — bike (14–22 km/h), e-scooter (15–20 km/h, eKFV)"], operations: ["ridingSurface(edge, rider) — lane, road, sidewalk (allowed or not)"] },
     ],
