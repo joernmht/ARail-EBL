@@ -21,28 +21,8 @@ import { World } from "./core/world.js";
 import { BUILTIN_DISRUPTIONS } from "./core/disruptions.js";
 import { STORY_DISRUPTIONS } from "./core/story.js";
 import { BUS, TRAIN, TRAM } from "./core/vehicles.js";
-import { Platform } from "./objects/platform.js";
-import { BusTerminal } from "./objects/bus-terminal.js";
-import { Building } from "./objects/building.js";
-import { AltbauBlock, Factory, House, HouseEstate, Office, Plattenbau, School, Supermarket } from "./objects/houses.js";
-import { StationBuilding } from "./objects/station.js";
-import { Underpass } from "./objects/underpass.js";
-import { Forest, Tree } from "./objects/trees.js";
-import { Area } from "./objects/landscape.js";
-import { Road } from "./objects/road.js";
-import { BusStop } from "./objects/bus-stop.js";
-import { BusLine } from "./objects/bus-line.js";
-import { Track } from "./objects/track.js";
-import { TramLine, TramStop } from "./objects/tram.js";
-import { TrafficLight, TrafficSign, ZebraCrossing } from "./objects/traffic-signs.js";
-import { BikeStand, ParkingGarage, ParkingLot } from "./objects/parking.js";
-import { RailCrossing } from "./objects/crossings.js";
-import { Label } from "./objects/label.js";
-import { Tabletop } from "./objects/tabletop.js";
-import { PassengerSimulation } from "./sims/passengers.js";
-import { TownSimulation } from "./sims/town.js";
-import { TrafficSimulation } from "./sims/traffic.js";
-import { CyclingSimulation } from "./sims/cycling.js";
+import { registerObjects } from "./objects/index.js";
+import { registerSimulations } from "./sims/index.js";
 import { registerTerminal } from "./terminal/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
@@ -90,32 +70,10 @@ export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelat
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
-export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, PassengerSimulation, TownSimulation };
-export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./objects/tabletop.js";
-export { BusStop, BusLine, TrafficSimulation, CyclingSimulation };
-export { ROAD_KINDS, roadKind, offsetPolyline, slicePolyline, drawStreetLamp, stripColour, GAUGE_M } from "./objects/road.js";
-export {
-  NORMS, STREET_PROFILES, PATH_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, PARKING_LAYOUTS, PASS_M, ROAD_RIDE_M, crossSection, profileOf, bikeDefault, bikeNorm,
-  sharedConflict, widthChoices,
-} from "./objects/street-profile.js";
-export { drawStopSign, drawSign, drawTrafficLight, STOP_SIGN, SIGN_COLOURS, ROAD_SIGNS } from "./objects/signs.js";
-export { TrafficSign, TrafficLight, ZebraCrossing, SIGN_TYPES, TURNS, parseArrows, streetNear } from "./objects/traffic-signs.js";
-export { TARIFFS, PARKING_ACCESS, Tariff, ParkingLot, ParkingGarage, BikeStand, ownerAccess, parkingTerms } from "./objects/parking.js";
-export { TramStop, TramLine, TRAM_STOP_TYPES, STEP_FREE_M, tramRails } from "./objects/tram.js";
-export {
-  RailCrossing, CrossingType, OverTrack, UnderTrack, AtGrade, CrossbuckOnly, FlashingLights, HalfBarriers, FullBarriers, CROSSING_TYPES, CROSSING_NORMS,
-} from "./objects/crossings.js";
-export { CAR_COLOURS, planDrive, OCCUPANCY_BY_PURPOSE } from "./sims/traffic.js";
-export { RIDERS, ridingSurface } from "./sims/cycling.js";
-export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./sims/town.js";
-export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./objects/houses.js";
-export { StationBuilding, Underpass };
-export {
-  BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
-  gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
-} from "./objects/building-kit.js";
-export { drawTree } from "./objects/trees.js";
-export { BOARD_MIN_PX, boardStatus, dockStatus, drawPerson, NEUTRAL_PERSON, statusLines } from "./sims/passengers.js";
+// the object types and simulations of the layout, one area each (objects/index.js, sims/index.js); a name
+// they share with the core would be dropped silently, tests/js/world.test.js checks that none is
+export * from "./objects/index.js";
+export * from "./sims/index.js";
 // container terminal (named exports only: no `export *`, so no name can collide with the core's)
 export {
   TERMINAL_EVENTS, TERMINAL_REQUESTS, PHASE_LABELS,
@@ -174,17 +132,8 @@ export { MockFeed } from "./feeds/mock.js";
 
 /** Register all built-in object types, simulations, disruptions, vehicles, card providers, checks and texts. */
 export function registerBuiltins(registry) {
-  for (const cls of [
-    Platform, BusTerminal, Road, Underpass, BusStop, BusLine, TramStop, TramLine, TrafficSign, TrafficLight, ZebraCrossing, ParkingLot, ParkingGarage,
-    BikeStand, RailCrossing,
-    Building, StationBuilding, Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, Tree, Forest, Area, Track, Label, Tabletop,
-  ]) {
-    registry.registerObject(cls);
-  }
-  registry.registerSimulation(PassengerSimulation);
-  registry.registerSimulation(TownSimulation);
-  registry.registerSimulation(TrafficSimulation);
-  registry.registerSimulation(CyclingSimulation);
+  registerObjects(registry);
+  registerSimulations(registry);
   for (const def of [...BUILTIN_DISRUPTIONS, ...STORY_DISRUPTIONS]) registry.registerDisruption(def);
   registry.registerVehicle(TRAIN);
   registry.registerVehicle(BUS);

@@ -39,12 +39,11 @@ test("project page hands over from the picture to the applications, each opening
     await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
     await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
   }
-  // and the examples of the lab table
-  const fresh = await page.locator("#lab a.btn").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(fresh).toEqual(["app/?example=neustadt", "app/?example=crane-terminal", "app/?example=container-train"]);
+  // no dated "new from the lab" section: what is new goes to the changelog (#181)
+  await expect(page.locator("#lab, .fresh")).toHaveCount(0);
   // the examples of the app (app/main.js) and of the game page (game/main.js)
   const pages = { app: await (await request.get("/app/main.js")).text(), game: await (await request.get("/game/main.js")).text() };
-  const links = [...examples, ...fresh, ...(await page.locator(".app-card .acts a[href^='app/'], .app-card .acts a[href^='game/']").evaluateAll((as) => as.map((a) => a.getAttribute("href"))))];
+  const links = [...examples, ...(await page.locator(".app-card .acts a[href^='app/'], .app-card .acts a[href^='game/']").evaluateAll((as) => as.map((a) => a.getAttribute("href"))))];
   for (const href of links) {
     const page = href.split("/")[0], params = new URL(href, "http://x/").searchParams;
     if (params.has("example")) {
@@ -63,7 +62,7 @@ test("project page hands over from the picture to the applications, each opening
   }
   // cooperation: the contact person by email
   await expect(page.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", /^mailto:joern\.maurischat@tu-dresden\.de/);
-  const images = await page.locator(".app-card img, .fresh-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
+  const images = await page.locator(".app-card img").evaluateAll((imgs) => imgs.map((i) => i.getAttribute("src")));
   for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
 });
 

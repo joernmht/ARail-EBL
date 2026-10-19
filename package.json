@@ -20,7 +20,8 @@
     "start": "node tools/serve.mjs web 8000",
     "test": "node --test \"tests/js/*.test.js\"",
     "test:e2e": "playwright test",
-    "fixtures": "python -m arail_tools.fixtures tests/fixtures"
+    "fixtures": "python -m arail_tools.fixtures tests/fixtures",
+    "changelog": "node tools/changelog.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

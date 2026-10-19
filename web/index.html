@@ -118,18 +118,6 @@ p { margin: 0; }
 .facts strong { font-size: 1.25rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 .facts span { font-size: .84rem; color: var(--text-2); }
 
-/* fresh from the lab: the examples of the lab table */
-.fresh { padding-block: 40px 8px; display: grid; gap: 18px; }
-.fresh-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.fresh-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
-.fresh-card .pic { aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
-.fresh-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
-.fresh-card .pic.clip { position: relative; }
-.fresh-card .pic video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
-.fresh-card .body { padding: 14px 16px 16px; display: grid; gap: 8px; align-content: start; }
-.fresh-card p { color: var(--text-2); font-size: .94rem; }
-.fresh-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 2px; }
-
 /* (2) applications */
 .apps { display: grid; gap: 18px; }
 @media (min-width: 760px) { .apps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -275,46 +263,6 @@ footer a { color: inherit; }
     <p class="claim">Not only interlocking and train operation, not only the railway as a whole: <em>the whole transport system</em>, from the walk to work to the driver of a freight train that passes on containers between modes.</p>
     <p class="lead">Each course switches on the functions it needs and develops its own scenarios. Everything runs in the browser: no installation, no calibration board.</p>
   </div>
-
-  <!-- fresh from the lab -->
-  <section class="wrap fresh" id="lab" aria-labelledby="lab-title">
-    <div class="block-head">
-      <p class="step-label">New from the lab · 9 October 2026</p>
-      <h2 id="lab-title">Six metres of the lab table</h2>
-      <p class="lead">Stickers on the table, a few photos and clips, <code>arail-survey</code>: the station Bf Neustadt, the terminal at the crane and the curve in between, as one layout. And real container wagons that carry virtual containers.</p>
-    </div>
-    <div class="fresh-grid">
-      <article class="fresh-card" aria-labelledby="f-neustadt">
-        <div class="pic"><img src="assets/app-neustadt.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of Bf Neustadt: passengers on both platforms with their boards, a station building on a town module in front of the table."></div>
-        <div class="body">
-          <h3 id="f-neustadt">Bf Neustadt</h3>
-          <p>The station of the lab with its two platforms and passengers, the station building and the bus station on a town module in front of the table. Also as a clip, panning from the terminal to the station.</p>
-          <div class="acts"><a class="btn primary" href="app/?example=neustadt">Open Bf Neustadt</a><a href="app/?example=neustadt-video">Video</a></div>
-        </div>
-      </article>
-      <article class="fresh-card" aria-labelledby="f-terminal">
-        <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks, the markers under grey plates with their numbers: a virtual gantry crane over the three loading tracks unloads a container train into the yard block; the Terminal panel lists the arrivals."></div>
-        <div class="body">
-          <h3 id="f-terminal">The terminal at the crane</h3>
-          <p>For the first time on the real layout: a gantry crane over the lab's three terminal tracks, a truck lane and a yard. The real container train on the middle track keeps its place.</p>
-          <div class="acts"><a class="btn primary" href="app/?example=crane-terminal">Open the terminal</a></div>
-        </div>
-      </article>
-      <article class="fresh-card" aria-labelledby="f-train">
-        <div class="pic clip">
-          <video id="terminalClip" muted loop playsinline preload="none" poster="media/ebl-terminal-unloading.jpg" width="1280" height="720" aria-label="A photo of the lab's container train comes alive: a virtual gantry crane travels to a real wagon. Then a frame of a phone clip, taken from above in front of the real model truck: the crane lifts the container off the wagon, carries it over and sets it down on the truck's rear trailer. Grey plates with the wagon numbers cover the white labels.">
-            <source src="media/ebl-terminal-unloading.mp4" type="video/mp4">
-          </video>
-          <button class="pause" id="terminalPause" type="button" aria-pressed="true" aria-label="Play the terminal video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z"/></svg></button>
-        </div>
-        <div class="body">
-          <h3 id="f-train">A hybrid container train</h3>
-          <p>Real wagons and a real truck with AprilTag labels carry virtual containers; grey plates cover the labels where no container stands. In the clip the crane unloads a real wagon onto the real truck, seen in the photo and by a phone above the truck.</p>
-          <div class="acts"><a class="btn primary" href="app/?example=container-train">Open the train</a><a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/container-terminal.md#labels-where-they-fit">Labels on wagons</a></div>
-        </div>
-      </article>
-    </div>
-  </section>
 
   <!-- (1) the base -->
   <section class="block" id="base" aria-labelledby="base-title">
@@ -580,11 +528,10 @@ footer a { color: inherit; }
 </footer>
 
 <script>
-  // the videos: a pause button each, and no autoplay for people who prefer reduced motion; the
-  // terminal video plays while it is in view (and is only loaded then)
+  // the video: a pause button, and no autoplay for people who prefer reduced motion
   const icons = { pause: '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>', play: '<path d="M4 2l10 6-10 6z"/>' };
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  for (const [clipId, buttonId, name] of [["heroClip", "heroPause", "the video"], ["terminalClip", "terminalPause", "the terminal video"]]) {
+  for (const [clipId, buttonId, name] of [["heroClip", "heroPause", "the video"]]) {
     const clip = document.getElementById(clipId), pause = document.getElementById(buttonId);
     const showState = () => {
       const playing = !clip.paused;

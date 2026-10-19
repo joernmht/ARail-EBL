@@ -32,6 +32,6 @@
 | [Extending ARail](extending.md) | Plugins: object types (also buildings), simulations, disruptions and vehicles; the drawing, clock, road and transit APIs |
 | [Architecture](architecture.md) | Modules, data flow, coordinate systems, tracking maths, rendering, simulation and tests; the whole architecture in UML on the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) (classes and activities of every model) |
 
-The Python tools (`arail-bridge`, `arail-calibrate`, `arail-survey`, `arail-synthetic`, `arail-stabilize`, `arail-compose`), the comparison of operations setups (`tools/ops-compare.mjs`) and the video renderer (`tools/video/render.mjs`) are listed in [`tools/README.md`](../tools/README.md). What changed between versions is in the [changelog](../CHANGELOG.md).
+The Python tools (`arail-bridge`, `arail-calibrate`, `arail-survey`, `arail-synthetic`, `arail-stabilize`, `arail-compose`), the comparison of operations setups (`tools/ops-compare.mjs`) and the video renderer (`tools/video/render.mjs`) are listed in [`tools/README.md`](../tools/README.md). What changed between versions is in the [changelog](../CHANGELOG.md); changes not yet merged into it wait as fragments in [`changes/`](../changes/).
 
 Contributions to the documentation are welcome, see [CONTRIBUTING.md](../CONTRIBUTING.md).

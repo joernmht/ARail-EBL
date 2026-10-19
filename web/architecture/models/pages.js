@@ -118,7 +118,7 @@ export const PAGES = [
     id: "i18n", group: "pages", title: "Texts in other languages",
     summary: "The app in English or German: a translator without a build step whose keys are the English texts, the framework's and the app's German texts, the choice of the language.",
     description: "The framework stays English: its cards, labels and settings are English texts. The app translates what it shows: h() (ui.js) the texts and the attributes people read or hear (aria-label, title, alt, placeholder) of the elements it makes, the View the labels on the canvas, translateDocument the page's own markup. A text is found as a whole, else by the pattern of an entry with placeholders (\"{n} min late\"; its variable parts are translated in turn and numbers get the language's decimal sign), else part by part between \" · \"; what has no translation stays English and is noted (Translator.missing). The language comes from ?lang=, else the choice in View → Language (kept on the device), else the browser. Plugins bring their texts with registry.registerTexts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js"],
     classes: [
       {
         name: "Translator", file: "web/arail/i18n/index.js", kind: "class", role: "Translates texts into one language at a time.",
@@ -126,7 +126,7 @@ export const PAGES = [
         operations: ["add(lang, entries) — later entries replace earlier ones", "setLanguage(lang)", "has(text, lang)", "t(text, params) — an entry with its parameters; n chooses the plural form", "translate(text) — a finished English text", "number(x, options)", "euros(x)", "date(date, options)"],
       },
       { name: "i18n", file: "web/arail/i18n/index.js", kind: "module", role: "The languages and the placeholders of a text.", attributes: ["UI_LANGUAGES — each by its own name"], operations: ["placeholders(text)"] },
-      { name: "texts", file: "web/arail/i18n/de.js", kind: "module", role: "The framework's texts in German (and the English singulars in en.js), registered by registerBuiltins.", attributes: ["DE — English text → German"] },
+      { name: "texts", file: "web/arail/i18n/de.js", kind: "module", role: "The framework's texts in German (and the English singulars in en.js), registered by registerBuiltins; one file per area in de/ (TEXTS each), joined here.", attributes: ["DE — English text → German", "DE_PARTS — the area files' texts by file"] },
       {
         name: "language", file: "web/app/i18n.js", kind: "module", role: "The app's translator and the choice of the language.",
         attributes: ["i18n — the app's Translator", "tr — a finished text in the language shown", "TEXT_ATTRIBUTES"],

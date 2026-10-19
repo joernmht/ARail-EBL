@@ -1,0 +1,1 @@
+- **"New from the lab" on the project page** ([#181](https://github.com/joernmht/ARail-EBL/issues/181)): the dated section with the three examples of the lab table is gone (they are in the app's examples and the cards of the applications); what is new goes into the changelog, not onto the landing page.

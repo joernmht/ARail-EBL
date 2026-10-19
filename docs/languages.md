@@ -28,13 +28,13 @@ Plural forms are chosen with `Intl.PluralRules`: `"{n} tracks": {one: "{n} Gleis
 
 ## Adding texts
 
-- **The app's texts**: [`web/app/lang/de.js`](../web/app/lang/de.js).
-- **The framework's texts** (object types and their settings, cards, labels, railway systems, trains): [`web/arail/i18n/de.js`](../web/arail/i18n/de.js); English singulars in `en.js`.
+- **The app's texts**: [`web/app/lang/de.js`](../web/app/lang/de.js); the builder's in [`web/app/lang/de-builder.js`](../web/app/lang/de-builder.js).
+- **The framework's texts** (object types and their settings, cards, labels, railway systems, trains): one file per area in [`web/arail/i18n/de/`](../web/arail/i18n/de/) (general words, object types, settings, railway systems, trains, cards, the town, street access, streets, traffic signs, crossings, parking, traffic, trams), joined in [`web/arail/i18n/de.js`](../web/arail/i18n/de.js); English singulars in `en.js`. Changes in different areas then do not touch the same file; a new area gets a file of its own, listed in `de.js`.
 - **A plugin** brings its own: `registry.registerTexts("de", {"Windmill": "Windmühle", "Sail speed": "Flügeldrehzahl"})`.
 - In the app, build a text with `t("{n} people", {n})` where its parts change, or write it out and let `h()` translate it; `tr(text)` translates a finished text where no `h()` is involved (a toast, `textContent`).
 - Long German compounds may get soft hyphens (`Empfangs­gebäude`) where they must fit a narrow box.
 
-`tests/js/i18n.test.js` checks that every translation keeps the placeholders of its English text, that no text is in a catalogue twice, that every text the app asks for by name (`t("…")`, `tr("…")`) and the page's markup have a German translation, and the German cards of the framework; `tests/e2e/i18n.spec.js` opens the app in German and fails when the panels View, Settings and Build or a train's card show English that is not a name, a code or a number.
+`tests/js/i18n.test.js` checks that every translation keeps the placeholders of its English text, that no text is in a catalogue twice (nor in two of its area files), that every text the app asks for by name (`t("…")`, `tr("…")`) and the page's markup have a German translation, and the German cards of the framework; `tests/e2e/i18n.spec.js` opens the app in German and fails when the panels View, Settings and Build or a train's card show English that is not a name, a code or a number.
 
 A further language is a catalogue per file (`web/arail/i18n/<lang>.js`, `web/app/lang/<lang>.js`), registered like the German one, and an entry in `UI_LANGUAGES`.
 

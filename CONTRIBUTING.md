@@ -44,12 +44,12 @@ Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`
 - **JavaScript**: modern ES modules, no framework, no build step, no runtime dependencies besides the vendored js-aruco2 (and dagre, which lays out the diagrams of the architecture page). 2-space indentation, double quotes, semicolons. Keep modules focused and document public functions with JSDoc. Everything in `web/arail/` must also run in Node.js (no DOM access outside `web/app/`) and stay deterministic (use `world.rng` or `createRng(seed)`, never `Math.random`).
 - **Python**: formatted and linted with ruff: `cd tools && ruff format . ../tests/python && ruff check . ../tests/python`.
 - **Units in names**: `_mm` for model millimetres, `_m` for prototype metres, `_s` for seconds, `_deg` for degrees.
-- **User-facing text** in English, plain and specific ("Train arriving", "No markers in view"), sentence case. The English text is the key of its translations: add the German one to `web/app/lang/de.js` (the app) or `web/arail/i18n/de.js` (the framework), with the same placeholders (`"{n} min late": "{n} min Verspätung"`); names and what people typed get `translate: "no"`. See [Languages](docs/languages.md).
+- **User-facing text** in English, plain and specific ("Train arriving", "No markers in view"), sentence case. The English text is the key of its translations: add the German one to `web/app/lang/de.js` (the app; the builder's in `de-builder.js`) or to the file of its area in `web/arail/i18n/de/` (the framework), with the same placeholders (`"{n} min late": "{n} min Verspätung"`); names and what people typed get `translate: "no"`. See [Languages](docs/languages.md).
 - **Colours and type**: the app follows the corporate design of the Chair of Railway Operations. Use the tokens of `web/app/app.css` in the interface and `CD`, `OVERLAY`, `FONT` and `PALETTE` (`web/arail/core/colors.js`) on the canvas instead of new hard-coded colours; buildings stay greyscale. Text must keep a contrast of at least 4.5:1 in light and dark mode (the accessibility tests check it). The project page (`web/index.html`) and the marker sheets (`web/markers/`) load `app.css` and use the same tokens.
 
 ## Adding things
 
-- **Object types, simulations, disruptions, vehicles**: see [docs/extending.md](docs/extending.md) (new building types extend `BuildingBase`). Generally useful ones can become built-ins (register them in `web/arail/index.js`, document them in `docs/layout-format.md`, add tests); specialised ones fit well as example plugins in `web/plugins/`.
+- **Object types, simulations, disruptions, vehicles**: see [docs/extending.md](docs/extending.md) (new building types extend `BuildingBase`). Generally useful ones can become built-ins (add them to `web/arail/objects/index.js` or `web/arail/sims/index.js`, one per line, document them in `docs/layout-format.md`, add tests); specialised ones fit well as example plugins in `web/plugins/`.
 - **Control-system adapters**: see [docs/control-system-interface.md](docs/control-system-interface.md). Adapters for widely used systems are welcome; add a test with recorded data.
 - **Layouts of your lab**: example layouts help others; please add a photo of the layout with its markers.
 
@@ -61,10 +61,22 @@ When you change the code, change the models in the same commit, and read the act
 
 The diagrams of the guides in `docs/` are Mermaid, drawn in the chair's design by the `tud-uml` skill of [tud_cro_chaircd](https://github.com/joernmht/tud_cro_chaircd) (`skills/tud-uml`, its rules in `reference/rules.md`). Edit the source in `docs/diagrams/*.mmd`, or write a new ```` ```mermaid ```` block, and render again: `node <tud_cro_chaircd>/skills/tud-uml/scripts/render.mjs docs/<guide>.md --rewrite --prefix <guide>`.
 
+## Working in parallel
+
+Several people (and agents) work on ARail at the same time. A change merges without conflicts when it stays in its area:
+
+- **Changelog**: a fragment in `changes/` per pull request, never `CHANGELOG.md` itself.
+- **Registration**: object types in `web/arail/objects/index.js`, simulations in `web/arail/sims/index.js`, one per line; the terminal, operations, infrastructure, journeys and railway systems register their types in their own `index.js`.
+- **Translations**: one file per area (`web/arail/i18n/de/*.js`; the app's `web/app/lang/de.js` and the builder's `de-builder.js`). A new area gets a file of its own, listed in `web/arail/i18n/de.js`.
+- **The project page** (`web/index.html`) shows what ARail is, not what is new: a new function goes into the changelog and its guide, not onto the landing page.
+- **Overview documents** (`README.md`, `docs/architecture.md`, `docs/getting-started.md`): change them where a change alters the overview, not to list every new function.
+- **One topic per pull request**, and short-lived branches: merge `main` into a branch often, and split work that touches many areas.
+
 ## Pull requests
 
 - One topic per pull request, with tests for new behaviour.
-- Update the documentation, the architecture page's models (`web/architecture/`) and `CHANGELOG.md` (section "Unreleased").
+- Update the documentation and the architecture page's models (`web/architecture/`).
+- Do not edit `CHANGELOG.md`: add a changelog fragment, `changes/<topic>.<kind>.md` (see [changes/README.md](changes/README.md)). `node tools/changelog.mjs` merges the fragments at a release.
 - Describe how you tested it, ideally including a photo or video of a real layout for tracking and rendering changes.
 - By contributing, you agree that your contribution is licensed under the Apache License 2.0 of this project (section 5 of the [license](LICENSE)).
 

@@ -1,0 +1,48 @@
+/**
+ * The framework's texts in German: trains: train data and may it run here (rail/).
+ * Part of web/arail/i18n/de.js; English text → German.
+ * @module arail/i18n/de/rail-trains
+ */
+export const TEXTS = {
+  // ------------------------------------------------------------ trains: train data and may it run here (rail/)
+  "Train data": "Zugdaten",
+  "Consist": "Zugbildung",
+  "Mass": "Masse",
+  "Axles": "Achsen",
+  "Top speed": "Höchstgeschwindigkeit",
+  "Brake position": "Bremsstellung",
+  "Brake percentage": "Bremshundertstel",
+  "Highest axle load": "Größte Radsatzlast",
+  "Highest metre load": "Größte Meterlast",
+  "Required on this track": "Auf diesem Gleis nötig",
+  "Line speed here": "Streckengeschwindigkeit hier",
+  "{n} % · met": "{n} % · erfüllt",
+  "not met: the permitted speed is lower": "nicht erfüllt: die zulässige Geschwindigkeit ist niedriger",
+  "brake percentage too low": "Bremshundertstel zu niedrig",
+  "{n} km/h (the train {n2} km/h)": "{n} km/h (der Zug {n2} km/h)",
+  "No consist known: add one to the layout file (consists), by its line or train number.": "Keine Zugbildung bekannt: fügen Sie der Anlagendatei eine hinzu (consists), nach Linie oder Zugnummer.",
+  "{n} brakes isolated": { one: "{n} Bremse ausgeschaltet", other: "{n} Bremsen ausgeschaltet" },
+  "May it run here?": "Darf er hier fahren?",
+  "Show where it may run": "Zeigen, wo er fahren darf",
+  "Track {id}: yes": "Gleis {id}: ja",
+  "Track {id}: no": "Gleis {id}: nein",
+  "may not run on this track": "darf auf diesem Gleis nicht fahren",
+  "may run": "darf fahren",
+  "may not run: {why}": "darf nicht fahren: {why}",
+  "not authorised": "nicht zugelassen",
+  "{name} may run": "{name} darf fahren",
+  "{name} may not run": "{name} darf nicht fahren",
+  "where {name} may run": "wo {name} fahren darf",
+  "{power}: no vehicle can draw this power ({list})": "{power}: kein Fahrzeug kann diesen Strom abnehmen ({list})",
+  "Not electrified, and no diesel vehicle: {list} cannot run": "Nicht elektrifiziert und kein Dieselfahrzeug: {list} kann nicht fahren",
+  "Pantograph heads of {n} mm are needed here; {rest}": "Hier sind Stromabnehmerwippen von {n} mm nötig; {rest}",
+  "{what} needed; {who} has {list}": "{what} nötig; {who} hat {list}",
+  "{what} needed; no vehicle has it": "{what} nötig; kein Fahrzeug hat es",
+  "Track gauge {n} mm; {list} run on {n2} mm": "Spurweite {n} mm; {list} fahren auf {n2} mm",
+  "Line category {id} allows {n} t per axle; {who} has {n2} t": "Streckenklasse {id} erlaubt {n} t Radsatzlast; {who} hat {n2} t",
+  "Line category {id} allows {n} t per metre; {who} has {n2} t": "Streckenklasse {id} erlaubt {n} t Meterlast; {who} hat {n2} t",
+  "Not authorised in {id}: {list}": "Nicht zugelassen in {id}: {list}",
+  "No locomotive or multiple unit: the train cannot move by itself": "Keine Lok und kein Triebwagen: der Zug kann nicht selbst fahren",
+  "The line allows {n} km/h, the train {n2} km/h": "Die Strecke erlaubt {n} km/h, der Zug {n2} km/h",
+  "{who} cannot draw {power}: hauled without power": "{who} kann {power} nicht abnehmen: wird kalt geschleppt",
+};
