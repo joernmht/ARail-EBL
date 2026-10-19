@@ -59,6 +59,8 @@ export const TEXTS = {
   "{n} waiting": "{n} warten",
   "mood {n} %": "Stimmung {n} %",
   "People waiting": "Wartende",
+  "{n} % full": "{n} % ausgelastet",
+  "load and mood": "Auslastung und Stimmung",
   "Residents": "Einwohner",
   "condition": "Zustand",
   "wear": "Verschleiß",

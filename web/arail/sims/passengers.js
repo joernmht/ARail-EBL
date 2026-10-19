@@ -31,6 +31,20 @@ export const NEUTRAL_PERSON = "#e3e3e3";
  */
 export const BOARD_MIN_PX = 60;
 
+/**
+ * The load of a stop (Auslastung, the Overview): the people waiting against what its area holds at
+ * {@link STOP_CAPACITY_PER_M2} (people standing close, about Fruin's level of service D). Up to
+ * {@link STOP_LOAD_EASY} of that is easy going (score 1); the score falls to 0 when it is full.
+ */
+export const STOP_CAPACITY_PER_M2 = 2;
+export const STOP_LOAD_EASY = 0.25;
+
+/** The load of a stop area (0 … 1 and more) and its score (1: easy going … 0: full). */
+export function stopLoad(area, waiting) {
+  const load = waiting / Math.max(1, area.L * area.W * STOP_CAPACITY_PER_M2);
+  return { load, score: Math.min(1, Math.max(0, (1 - load) / (1 - STOP_LOAD_EASY))) };
+}
+
 /** Length (CSS px) of the longest of the stop areas on the screen (0 when it is not in front of the camera). */
 function screenLength(view, areas) {
   let best = 0;
@@ -255,8 +269,8 @@ export class PassengerSimulation extends Simulation {
   }
 
   /**
-   * The stops by the mood of the people waiting there (a stop nobody waits at counts as content),
-   * and every person waiting by their mood.
+   * The stops by their load and the mood of the people waiting there (the mean of both; a stop
+   * nobody waits at is as good as it gets), and every person waiting by their mood.
    */
   states() {
     const stops = [], people = [];
@@ -267,14 +281,15 @@ export class PassengerSimulation extends Simulation {
       const vis = c.visible(), mood = vis.length ? vis.reduce((s, p) => s + p.mood, 0) / vis.length : 1;
       // a bus stop on both sides of the street: "Altmarkt · Stop A", as on its board
       const name = areas.filter((x) => x.owner === owner).length > 1 && a.docks[0]?.label ? `${owner.name} · ${a.docks[0].label}` : owner.name;
-      stops.push({ name, score: mood, text: `${vis.length} waiting · mood ${Math.round(mood * 100)} %`, key: `object:${owner.id}` });
+      const load = stopLoad(a, vis.length);
+      stops.push({ name, score: (load.score + mood) / 2, text: `${vis.length} waiting · ${Math.round(load.load * 100)} % full · mood ${Math.round(mood * 100)} %`, key: `object:${owner.id}` });
       for (const p of vis) {
         p.uid ??= nextPersonUid++;
         people.push({ name: p.agent?.name || "Passenger", score: p.mood, text: `mood ${Math.round(p.mood * 100)} % · ${owner.name}`, key: `passenger:${p.uid}` });
       }
     }
     return [
-      { id: "stops", label: "Stops", measure: "mood", items: stops },
+      { id: "stops", label: "Stops", measure: "load and mood", items: stops },
       { id: "people-waiting", label: "People waiting", measure: "mood", items: people },
     ];
   }

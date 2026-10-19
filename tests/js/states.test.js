@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createWorld, overallState, searchStates, Simulation, STATE_BINS, stateGroups, summarizeStates, withLayers } from "../../web/arail/index.js";
+import { createWorld, overallState, searchStates, Simulation, STATE_BINS, STOP_CAPACITY_PER_M2, STOP_LOAD_EASY, stateGroups, stopLoad, summarizeStates, withLayers } from "../../web/arail/index.js";
 import { ROOT } from "./helpers.js";
 
 /** A world with simulations that report fixed states. */
@@ -69,4 +69,26 @@ test("Bf Neustadt with its maintenance story: the stops, the people, the residen
   assert.ok(signals.items.every((it) => /^grade \d\.\d$/.test(it.text) && it.key.startsWith("object:")));
   assert.equal(searchStates(st.groups, "N2")[0].name, "Exit signal N2");
   assert.ok(st.mean > 0 && st.mean < 1);
+});
+
+test("a stop is rated by its load and the mood of the people waiting: the mean of both", () => {
+  const area = { L: 10, W: 2 }; // 20 m², 40 people when full
+  assert.equal(STOP_CAPACITY_PER_M2 * 20, 40);
+  assert.deepEqual(stopLoad(area, 0), { load: 0, score: 1 });
+  assert.equal(stopLoad(area, 40 * STOP_LOAD_EASY).score, 1, "a quarter full is easy going");
+  assert.equal(stopLoad(area, 40).score, 0, "full");
+  assert.equal(stopLoad(area, 60).score, 0, "beyond full");
+  assert.ok(Math.abs(stopLoad(area, 25).score - 0.5) < 1e-9, "halfway between easy and full");
+  // in the world: a crowded tram stop scores lower than an empty one, its text says both
+  const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
+  const w = createWorld(json, { seed: 2 });
+  w.step(0.5);
+  const pax = w.simulations.find((x) => x.constructor.type === "passengers");
+  const stops = () => pax.states().find((g) => g.id === "stops").items;
+  const empty = stops().find((it) => it.name === "Lindenstraße · Stop A");
+  assert.match(empty.text, /^\d+ waiting · \d+ % full · mood \d+ %$/);
+  const a = w.stopAreas().find((x) => x.id === "tram-stop-lindenstrasse:right");
+  for (let i = 0; i < 60; i++) pax.enter(a.id, { agent: { id: `p${i}` } });
+  const full = stops().find((it) => it.key === `object:${a.owner.id}` && it.name === empty.name);
+  assert.ok(full.score < empty.score, `${full.text} against ${empty.text}`);
 });
