@@ -8,7 +8,7 @@ export const WORLD = [
     id: "world", group: "world", title: "World, step and registry",
     summary: "The loaded layout: its objects, simulations and managers, advanced in sub-steps and drawn; types come from the registry, news goes over the event bus.",
     description: "World.load builds everything from a layout file: objects by their type from the registry, one simulation per entry of the layout's simulations, the services, bus lines, disruptions and scenarios. World.step advances simulated time in sub-steps of at most 0.25 s in a fixed order; the parts talk over the event bus and the effects of disruptions, so each can be replaced. index.js registers the built-in types (registerBuiltins), creates worlds (createWorld) and loads plugins, which get the whole API.",
-    files: ["web/arail/core/world.js", "web/arail/core/simulation.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/index.js", "web/arail/core/layers.js", "web/arail/core/layout.js"],
+    files: ["web/arail/core/world.js", "web/arail/core/simulation.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/index.js", "web/arail/objects/index.js", "web/arail/sims/index.js", "web/arail/core/layers.js", "web/arail/core/layout.js"],
     classes: [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
@@ -38,8 +38,10 @@ export const WORLD = [
       {
         name: "index", file: "web/arail/index.js", kind: "module", role: "The public API: the default registry, createWorld, plugins.",
         attributes: ["VERSION — the framework's version", "registry — registerBuiltins(new Registry())"],
-        operations: ["registerBuiltins(registry) — core types, then terminal, operations, infrastructure, journeys", "createWorld(layout, opts)", "loadPlugins(urls, base, opts) — each plugin's default export gets the API"],
+        operations: ["registerBuiltins(registry) — the object types and simulations, the core's disruptions and vehicles, then terminal, operations, infrastructure, journeys, railway systems, the texts", "createWorld(layout, opts)", "loadPlugins(urls, base, opts) — each plugin's default export gets the API"],
       },
+      { name: "objects", file: "web/arail/objects/index.js", kind: "module", role: "The built-in object types, one per line, and their exports (index.js re-exports them).", attributes: ["OBJECT_TYPES — the object types, in the order of the Build tab"], operations: ["registerObjects(registry)"] },
+      { name: "sims", file: "web/arail/sims/index.js", kind: "module", role: "The built-in simulations of people and road traffic, and their exports (index.js re-exports them).", attributes: ["SIMULATION_TYPES — the simulations"], operations: ["registerSimulations(registry)"] },
     ],
     relations: [
       { from: "World", to: "EventBus", kind: "composes", label: "events" },

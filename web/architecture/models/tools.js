@@ -166,11 +166,12 @@ export const TOOLS = [
   },
   {
     id: "node-tools", group: "tools", title: "Node tools",
-    summary: "The development server, fetching the fonts, comparing operations setups on the command line, and writing the role catalogue's guide.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs"],
+    summary: "The development server, fetching the fonts, comparing operations setups on the command line, writing the role catalogue's guide, and merging the changelog fragments.",
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs"],
     classes: [
       { name: "roles-md", file: "tools/roles-md.mjs", kind: "module", role: "Writes docs/roles.md from web/game/roles/roles.json (or checks it with --check).", operations: ["rolesMarkdown(cat) — the guide: overview, families, every role"] },
+      { name: "changelog", file: "tools/changelog.mjs", kind: "module", role: "Merges the changelog fragments of the pull requests (changes/<topic>.<kind>.md) into CHANGELOG.md, section Unreleased, under the heading of their kind, and deletes them (or checks them with --check).", attributes: ["KINDS — the kinds of change and their headings, in the order of Keep a Changelog"], operations: ["fragmentFaults(name, text) — what is wrong with a fragment", "mergeFragments(changelog, fragments) — the changelog with the fragments in Unreleased", "readFragments(dir) — the fragments in changes/"] },
     ],
-    rules: ["serve.mjs serves web/ (the tests start it on port 8123).", "ops-compare.mjs runs the setups of a layout's rail operations under stress tests (runExperiment) and writes CSV.", "roles-md.mjs refuses a catalogue that validateRoles finds faults in; tests/js/roles.test.js checks that docs/roles.md is its output."],
+    rules: ["serve.mjs serves web/ (the tests start it on port 8123).", "ops-compare.mjs runs the setups of a layout's rail operations under stress tests (runExperiment) and writes CSV.", "roles-md.mjs refuses a catalogue that validateRoles finds faults in; tests/js/roles.test.js checks that docs/roles.md is its output.", "changelog.mjs: pull requests add fragments instead of editing CHANGELOG.md, so that two of them never change the same lines; tests/js/changelog.test.js checks every fragment."],
   },
 ];

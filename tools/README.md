@@ -1,8 +1,8 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and four Node.js scripts,
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and five Node.js scripts,
 [`ops-compare.mjs`](#comparing-operations-setups), [`roles-md.mjs`](#the-role-catalogues-guide),
-[`fetch-fonts.mjs`](#updating-the-fonts) and [`video/render.mjs`](#videos)):
+[`changelog.mjs`](#the-changelog-fragments), [`fetch-fonts.mjs`](#updating-the-fonts) and [`video/render.mjs`](#videos)):
 
 | Command | What it does | Extra |
 | --- | --- | --- |
@@ -98,6 +98,18 @@ the catalogue). Change the data, then:
 ```bash
 node tools/roles-md.mjs           # writes docs/roles.md
 node tools/roles-md.mjs --check   # fails if docs/roles.md is not up to date (also a Node test)
+```
+
+## The changelog fragments
+
+Pull requests do not edit `CHANGELOG.md`; each adds a fragment, `changes/<topic>.<kind>.md`
+(see [changes/README.md](../changes/README.md)), so that two of them never change the same lines.
+`changelog.mjs` (Node.js) moves the fragments into the section "Unreleased", under the heading of
+their kind, and deletes them:
+
+```bash
+node tools/changelog.mjs           # merges changes/*.md into CHANGELOG.md
+node tools/changelog.mjs --check   # fails if a fragment is malformed (also a Node test)
 ```
 
 ## Updating the fonts

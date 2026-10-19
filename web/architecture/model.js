@@ -87,13 +87,13 @@ export const PACKAGES = [
   {
     id: "objects", name: "objects", group: "framework", path: "web/arail/objects",
     summary: "The built-in object types: platforms, tracks, stations, streets with their cross-sections, bus stops and lines, tram stops and lines, traffic signs and lights, zebra crossings, railway crossings, parking, houses, trees, tables.",
-    files: ["web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/street-profile.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/tram.js", "web/arail/objects/signs.js", "web/arail/objects/traffic-signs.js", "web/arail/objects/crossings.js", "web/arail/objects/parking.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
+    files: ["web/arail/objects/index.js", "web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/street-profile.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/tram.js", "web/arail/objects/signs.js", "web/arail/objects/traffic-signs.js", "web/arail/objects/crossings.js", "web/arail/objects/parking.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "sims", name: "sims", group: "framework", path: "web/arail/sims",
     summary: "Passengers at the stops, the town's residents, road traffic with its drivers and parking, bikes and e-scooters.",
-    files: ["web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js"],
+    files: ["web/arail/sims/index.js", "web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects"],
   },
   {
@@ -141,7 +141,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -153,7 +153,7 @@ export const PACKAGES = [
   {
     id: "app", name: "app", group: "pages", path: "web/app",
     summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panels (Build, View, the modules' tabs with their stories, Disruptions, Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js"],
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {
@@ -213,7 +213,7 @@ export const PACKAGES = [
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",
     summary: "The development server, fetching the fonts, comparing operations setups on the command line, writing the role catalogue's guide.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs"],
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs"],
     uses: ["core-world", "ops", "games"],
   },
 ];

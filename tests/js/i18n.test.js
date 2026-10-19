@@ -8,9 +8,9 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { Registry, Translator, UI_LANGUAGES, placeholders, registry } from "../../web/arail/index.js";
-import { DE as FRAMEWORK_DE } from "../../web/arail/i18n/de.js";
+import { DE as FRAMEWORK_DE, DE_PARTS as FRAMEWORK_DE_PARTS } from "../../web/arail/i18n/de.js";
 import { EN as FRAMEWORK_EN } from "../../web/arail/i18n/en.js";
-import { DE as APP_DE } from "../../web/app/lang/de.js";
+import { DE as APP_DE, DE_PARTS as APP_DE_PARTS } from "../../web/app/lang/de.js";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
@@ -82,7 +82,8 @@ test("plugins bring their texts: registry.registerTexts", () => {
 });
 
 test("the catalogues: every translation keeps the placeholders of its English text, and no text twice", () => {
-  const sources = { "web/arail/i18n/de.js": FRAMEWORK_DE, "web/arail/i18n/en.js": FRAMEWORK_EN, "web/app/lang/de.js": APP_DE };
+  // the German texts are kept in one file per area: each is checked on its own
+  const sources = { ...FRAMEWORK_DE_PARTS, "web/arail/i18n/en.js": FRAMEWORK_EN, ...APP_DE_PARTS };
   for (const [file, cat] of Object.entries(sources)) {
     for (const [key, value] of Object.entries(cat)) {
       const forms = typeof value === "string" ? [value] : Object.values(value);
@@ -96,6 +97,17 @@ test("the catalogues: every translation keeps the placeholders of its English te
     const keys = [...read(file).matchAll(/^ {2}("(?:[^"\\]|\\.)*"|\w+):/gm)].map((m) => m[1]);
     const twice = keys.filter((k, i) => keys.indexOf(k) !== i);
     assert.deepEqual(twice, [], `${file}: texts written twice`);
+  }
+  // nor in two of the area files (the catalogue would keep the later one)
+  for (const [name, parts, all] of [["web/arail/i18n/de.js", FRAMEWORK_DE_PARTS, FRAMEWORK_DE], ["web/app/lang/de.js", APP_DE_PARTS, APP_DE]]) {
+    const seen = new Map();
+    for (const [file, cat] of Object.entries(parts)) {
+      for (const key of Object.keys(cat)) {
+        assert.ok(!seen.has(key), `"${key}" is in ${seen.get(key)} and in ${file}`);
+        seen.set(key, file);
+      }
+    }
+    assert.equal(Object.keys(all).length, seen.size, `${name} joins all its parts`);
   }
 });
 
