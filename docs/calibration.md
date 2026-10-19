@@ -32,7 +32,7 @@ arail-calibrate --images photos/*.jpg --output phone-calibration.json
 
 ## Using it
 
-In the app: **View → Camera → Load calibration**. The calibration is kept in the browser; **Remove calibration** returns to the estimate.
+In the app: **Settings → View → Camera → Load calibration**. The calibration is kept in the browser; **Remove calibration** returns to the estimate.
 
 The file (format `arail-camera/1`):
 

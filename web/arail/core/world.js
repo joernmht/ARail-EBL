@@ -71,6 +71,7 @@ export class World {
     /** Display settings, used by objects and simulations when drawing. */
     this.settings = {
       labels: true, // signs with counts above stops
+      stopBoards: false, // the full board over a stop (name, people, next vehicles); off: a badge with the people waiting
       trails: true, // walking trails of passengers
       showTracks: false, // draw track objects (normally hidden: the real track is there)
       feedVehicles: "outline", // how trains from the control system are drawn: outline | solid | none

@@ -112,7 +112,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, trails, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (View panel), kept in the browser; coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
+      { key: "settings", default: "labels, stopBoards, trails, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, the Stops tab has the rest); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
     ],
     events: {
       emits: [

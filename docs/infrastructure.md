@@ -105,7 +105,7 @@ a fraction of a second).
 
 ## The example
 
-The module **Infrastructure** of the lab example Beta 0.1 on the game page (View → Modules, or
+The module **Infrastructure** of the lab example Beta 0.1 on the game page (Settings → View → Modules, or
 `game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –

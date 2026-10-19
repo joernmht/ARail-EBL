@@ -150,7 +150,7 @@ test("streets: a footpath chosen as a bus stop's street is named in the inspecto
 });
 
 test("stops board: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#simulate");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#stops");
   await page.evaluate(() => {
     const w = window.__arail.world;
     w.setTime("10:00");

@@ -209,7 +209,7 @@ export class Inspector {
 
   /**
    * An action of a card: "follow" (the flyover's camera follows it), "compatibility" (the tracks
-   * coloured by whether this train may run there, View → Colour the tracks by).
+   * coloured by whether this train may run there, Settings → View → Colour the tracks by).
    */
   act(id) {
     const key = this.open?.key;
@@ -233,8 +233,8 @@ export class Inspector {
     if (!consist) return;
     world.compatibilityTrain = { name: world.card(hit).title, consist };
     world.settings.trackSystems = COMPATIBILITY;
-    if (this.app.activeTab === "view") this.app.panels.renderView($("#panel-view"));
-    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (View → Colour the tracks by).`, 6000);
+    this.app.panels.renderViewIfShown();
+    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (Settings → Settings → View → Colour the tracks by).`, 6000);
   }
 
   /* ---------------------------------------------------------------- highlight */

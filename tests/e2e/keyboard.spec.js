@@ -48,8 +48,8 @@ test("the buttons that open files show the keyboard focus", async ({ page }) => 
     await tabTo(page, `#${id}`, { max: 4 });
     expect(await outline(id), `focus ring on the “${id}” button`).not.toBe("none");
   }
-  // View panel: Load calibration
-  await page.locator("#btnFlyoverPanel").focus();
+  // Settings → View: Load calibration
+  await page.locator("#gridSize").focus();
   await tabTo(page, "#calibrationFile");
   expect(await outline("calibrationFile")).not.toBe("none");
   // Build panel: Import layout and Survey a video
@@ -60,7 +60,8 @@ test("the buttons that open files show the keyboard focus", async ({ page }) => 
   await tabTo(page, "#surveyVideo");
   expect(await outline("surveyVideo")).not.toBe("none");
   // a mouse click on the label does not draw the ring
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   expect(await outline("calibrationFile")).toBe("none");
 });
 
@@ -91,13 +92,15 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   const a = (fn) => page.evaluate(fn);
   // F switches the flyover on and gives the stage the keyboard
-  await page.locator("#panel-view .hint").first().click();
+  await page.locator("#panel-settings h2").first().click();
   await page.keyboard.press("f");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(page.locator("#stage")).toBeFocused();
   for (const key of ["Home", "PageUp", "PageUp", "PageUp", "PageUp", "PageUp"]) await page.keyboard.press(key); // whole layout, plan view
   // the panels: Tab to the selected tab, arrows switch
-  await tabTo(page, "#tab-view");
+  await tabTo(page, "#tab-settings");
+  await page.keyboard.press("ArrowRight"); // round to the first tab
+  await expect(page.locator("#tab-stops")).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-build")).toBeFocused();
   await expect(page.locator("#panel-build")).toBeVisible();
@@ -129,6 +132,9 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await tabTo(page, "#tab-build");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
+  await expect(page.locator("#settingsView-view")).toHaveAttribute("aria-pressed", "true"); // the view shown last
+  await tabTo(page, "#settingsView-simulate");
+  await page.keyboard.press("Enter");
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
   await tabTo(page, "#timeOfDay");
   const t0 = await a(() => window.__arail.world.clock.minutes);
@@ -239,8 +245,9 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
+  await expect(page.locator("#tab-stops")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await page.locator("#termAdd").focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");

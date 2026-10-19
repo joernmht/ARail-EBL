@@ -60,7 +60,7 @@ timetable buses stands in its bay). Seen from far away (the stop shorter
 than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a
 small badge with the stop sign and the number of people waiting; zoom in for the full board.
 Platforms and bus terminals are longer, so they keep their full boards unless they are tiny. The
-**Settings → Simulation → Stops** board lists both sides of such a stop as *Stop A* and *Stop B* (the letters
+**Stops** tab lists both sides of such a stop as *Stop A* and *Stop B* (the letters
 on its signs).
 
 ## Cross-sections

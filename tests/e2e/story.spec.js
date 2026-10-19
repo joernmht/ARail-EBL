@@ -63,7 +63,6 @@ test("the maintenance story: Next and Back, the list of steps, Start again and a
   await page.locator("#infraStoryNext").click();
   await expect(title(page)).toHaveText(/^The signaller closes/);
   expect(await storyDisruptions(page)).toEqual(["track-closure@platform-2:left"]);
-  await expect(page.locator("#hud")).toContainText("step 3 of 12");
   // back: the closure ends again
   await page.locator("#infraStoryBack").click();
   await expect(title(page)).toHaveText(/fails$/);

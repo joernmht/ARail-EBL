@@ -40,6 +40,7 @@ test("Settings switches on the module Operations of Bf Neustadt; its tab tells t
   expect(await page.evaluate(() => ["table-bw", "depot-neustadt"].map((id) => !!window.__arail.world.getObject(id)))).toEqual([true, true]);
   // the module is alone: Infrastructure, switched on from Settings, takes its place (both stories use platform 2)
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await page.locator("#infraOpenExample").click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["infrastructure"]);
@@ -62,7 +63,6 @@ test("the operations story: Next and Back, the platform's message, the list of s
   await expect(title(page)).toHaveText("442 101 reports a fault");
   expect(await held(page)).toEqual(["story-train@platform-2:left", "story-train@platform-2:right: RB 31 Talsee 07:42: delayed, fault on the train"]);
   await expect(page.locator("#hud")).toContainText("1 disruption");
-  await expect(page.locator("#hud")).toContainText("A breakdown at Bf Neustadt · step 2 of 10");
   // the passengers are sent across the platform
   await page.locator("#opsStoryNext").click();
   await page.locator("#opsStoryNext").click();

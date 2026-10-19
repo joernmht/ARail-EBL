@@ -817,8 +817,9 @@ export class PassengerSimulation extends Simulation {
   /**
    * The board of a stop object over its stop areas: name, people waiting, mood and the next
    * vehicle (for a bus stop on both sides of the street: per side; at a bus terminal: per line,
-   * see {@link boardStatus}). Seen from far away (the stop
-   * shorter than {@link BOARD_MIN_PX} on the screen) only a small badge with the people waiting.
+   * see {@link boardStatus}). Without the setting `stopBoards` (the default: the Stops tab has the
+   * figures), and seen from far away (the stop shorter than {@link BOARD_MIN_PX} on the screen), only
+   * a small badge with the people waiting.
    * @param {import("../core/view.js").View} view
    * @param {object} owner the stop object
    * @param {Array<{c: Crowd, count: number, moodSum: number}>} parts its stop areas
@@ -839,7 +840,7 @@ export class PassengerSimulation extends Simulation {
     const alert = fxs.find((fx) => fx.messages.length)?.messages[0];
     const length = screenLength(view, areas);
     const small = { size: 11, padding: 3, anchor: "bottom", badge: badge || "·", badgeColor: alert ? OVERLAY.danger : badgeColor, order: 1, fit: true };
-    if (length < BOARD_MIN_PX) {
+    if (!this.world.settings.stopBoards || length < BOARD_MIN_PX) {
       view.label([at[0], at[1], z], String(count), small);
       return;
     }

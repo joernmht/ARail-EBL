@@ -28,10 +28,10 @@ const tracked = (page) => page.waitForFunction(() => window.__arail.tourNav.show
 
 test("the arrows go round the lab in the same perspective; with a digital layer the photo is tracked, without it is the photo only", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132526");
-  // Bf Neustadt, its platforms from the front: tracked, the place in the HUD, the address keeps the photo
+  // Bf Neustadt, its platforms from the front: tracked, no chip on the stage, the address keeps the photo
   await tracked(page);
   expect(await shown(page)).toEqual(["132526", "front"]);
-  await expect(page.locator("#hud")).toContainText("Neustadt · From the front");
+  await expect(page.locator("#hud")).toBeEmpty();
   await expect(page.locator('[data-view="front"]')).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-view="back"]')).toHaveClass(/missing/); // no photo from straight behind here
   await expect(page.locator('[data-view="back"]')).toHaveAccessibleDescription(/nearest one is shown/);
@@ -59,18 +59,18 @@ test("the arrows go round the lab in the same perspective; with a digital layer 
   expect(errors).toEqual([]);
 });
 
-test("a photo of the container train opens its layout; the examples in the View panel open theirs", async ({ page }) => {
+test("a photo of the container train opens its layout; the examples in Settings → View open theirs", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132257");
   await expect(page.locator("#layoutName")).toHaveText("EBL hybrid container train (example)");
   await tracked(page);
   expect(await shown(page)).toEqual(["132257", "front"]);
   // the list of layouts is no longer in the bar: the examples are in the View panel
   await expect(page.locator("#exampleSelect")).toHaveCount(0);
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await page.locator("#example-neustadt").click();
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL Bf Neustadt and terminal (example)" && window.__arail.tracker.state.H);
   expect(await shown(page)).toBeNull(); // the layout's own photo, not one of the tour's
-  await expect(page.locator("#hud")).not.toContainText("From the front");
   // the tour goes on from the part of Bf Neustadt with the platforms
   await page.locator('[data-view="front"]').click();
   await expect.poll(() => shown(page)).toEqual(["132526", "front"]);

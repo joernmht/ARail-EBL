@@ -175,13 +175,10 @@ export class TourNav {
     $("#stageWrap")?.style.setProperty("--tour-w", `${this.el.querySelector(".tour-views")?.offsetWidth || 0}px`);
   }
 
-  /** The chips of the HUD: where the photo was taken; that it has no digital layer. */
+  /** The chip of the HUD: that the photo has no digital layer (the pressed button says where it was taken). */
   hudChips() {
-    if (!this.showing()) return [];
-    const part = this.tour.parts[this.at.part], label = PERSPECTIVES.find((v) => v.id === this.at.perspective).label;
-    const chips = [["info", `${part.name} · ${label}`]];
-    if (!this.layoutOf(this.at.photo.id)) chips.push(["warn", "Photo only: no digital layer for this part yet"]);
-    return chips;
+    if (!this.showing() || this.layoutOf(this.at.photo.id)) return [];
+    return [["warn", "Photo only: no digital layer for this part yet"]];
   }
 
   /** ← and → on the stage (or with nothing focused) go round the lab; returns true if the key was used. */

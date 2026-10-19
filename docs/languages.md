@@ -1,10 +1,10 @@
 # Languages
 
-The app speaks English and German ([#120](https://github.com/joernmht/ARail-EBL/issues/120)). German covers the page's frame (the bar, the stage's buttons, the tabs), the HUD, the panels **View**, **Settings** and **Build** (with the settings of every object type), **Disruptions**, the info cards with their train data, systems and where a train may run, and the labels on the stage. The tabs Terminal, Operations, Infrastructure and Journeys (the app's stories, the game page's games) are still English, as are the signaller's game, the role catalogue, the career planner, the project page, the marker page and the guides. The game page shares the app's shell, so its frame and its panels View, Settings, Build and Disruptions follow the language too.
+The app speaks English and German ([#120](https://github.com/joernmht/ARail-EBL/issues/120)). German covers the page's frame (the bar, the stage's buttons, the tabs), the HUD, the panels **Stops**, **Settings** and **Build** (with the settings of every object type), **Disruptions**, the info cards with their train data, systems and where a train may run, and the labels on the stage. The tabs Terminal, Operations, Infrastructure and Journeys (the app's stories, the game page's games) are still English, as are the signaller's game, the role catalogue, the career planner, the project page, the marker page and the guides. The game page shares the app's shell, so its frame and its panels View, Settings, Build and Disruptions follow the language too.
 
 ## Choosing the language
 
-- **View → Language**: *English* or *Deutsch*. The app switches at once (nothing is reloaded, the simulation goes on) and keeps the choice on this device.
+- **Settings → View → Language**: *English* or *Deutsch*. The app switches at once (nothing is reloaded, the simulation goes on) and keeps the choice on this device.
 - **A link**: `app/?lang=de` (or `?lang=en`) shows the app in that language, e.g. for the projector or a kiosk, without changing what a device has chosen.
 - **Otherwise** the browser's language: German for a browser set to German, else English.
 

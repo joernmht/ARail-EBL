@@ -81,7 +81,6 @@ test("the example terminal opens in the flyover; leaving it shows that the layou
   await expect(page.locator("#panel-terminal h2").first()).toHaveText("KV terminal");
   await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("at Loading track 1");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("at the quay");
-  await expect(page.locator("#hud")).toContainText("Terminal · 0 moves");
   await page.locator("#btnFlyover").click();
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await expect(page.locator("#emptyStage")).toBeVisible();
@@ -372,17 +371,18 @@ test("a layout without a terminal has no Terminal tab: Settings → Simulation a
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-view")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#tab-stops")).toHaveAttribute("aria-selected", "true");
   // adding one: the Terminal tab with the panel of an (empty) terminal
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await page.locator("#termAdd").click();
   await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
-  await expect(page.locator("#hud")).toContainText("Terminal · 0 moves");
   // the layout as it came: the tab is gone; the lab's module opens the example terminal
   await page.evaluate(() => window.__arail.resetLayout());
   await expect(page.locator("#tab-terminal")).toBeHidden();
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#termOpenExample")).toHaveText("Switch on the module “Container terminal”");
   await page.locator("#termOpenExample").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover" && window.__arail.terminal.sim?.name === "KV terminal", null, { timeout: 30_000 });
@@ -432,7 +432,8 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await openTerminal(page);
   // the scenarios are in the Disruptions tab, there with its module
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await page.locator("#tab-disrupt").click();
   await page.locator(".scenario[data-id=morning-shift]").getByRole("button", { name: "Play" }).click();
@@ -454,7 +455,8 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
 test("on a phone the five tabs fit, or scroll with the selected tab in view", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   const tabs = () => page.evaluate(() => {
     const bar = document.querySelector(".tabs").getBoundingClientRect(), sel = document.querySelector(".tabs [aria-selected=true]").getBoundingClientRect();

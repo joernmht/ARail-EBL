@@ -106,6 +106,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    wrapping the bar onto a second row (that would cost the stage height on tablets) */
 .layout-name { flex: 1000 1 0; color: var(--bar-muted); font-size: .9rem; min-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
 .bar .spacer { flex: 1; }
+/* the clock (time of day, speed): plain figures in the bar; it opens Settings → Simulation */
+.bar-clock { border: 0; background: none; color: var(--bar-text); font: 500 1rem var(--mono); font-variant-numeric: tabular-nums; padding: 4px 2px; cursor: pointer; white-space: nowrap; }
+.bar-clock:hover { text-decoration: underline; }
+.bar-clock:empty { display: none; }
 .sources { display: flex; gap: 8px; flex-wrap: wrap; }
 /* closed, the list reads "Layouts…": as narrow as that, whatever the names of the examples */
 .sources select { max-width: 11rem; }
@@ -257,21 +261,23 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .fields .wide { grid-column: 1 / -1; }
 input[type="range"] { width: 100%; }
 
-/* modules of the layout (View panel): boxes to click, Orange when on; a dashed box opens alone */
+/* modules of the layout (Settings → View): boxes to click, Orange when on; a dashed box opens alone */
 .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px; }
-.module { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 6px 9px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: var(--radius); padding: 10px 11px; cursor: pointer; font: inherit; }
+.module { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: var(--radius); padding: 10px 11px; cursor: pointer; font: inherit; }
 .module:hover { border-color: var(--accent); }
 .module.exclusive { border-style: dashed; }
-.module-icon { grid-row: span 2; width: 26px; height: 26px; color: var(--accent-ink); }
+.module-icon { width: 24px; height: 24px; color: var(--accent-ink); }
 .module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.module-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; min-width: 0; }
 .module-name { font-weight: 700; font-size: .92rem; line-height: 1.25; }
-.module-state { flex: none; padding: 1px 7px; border-radius: 999px; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line); background: var(--surface); }
-/* the whole text is the button's description; the box shows its first lines */
-.module-text { grid-column: 2; color: var(--text-2); font-size: .78rem; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+/* on, off or alone: plain text, the box's colour says it too */
+.module-state { color: var(--text-2); font-size: .8rem; }
 .module[aria-pressed="true"] .module-icon { color: var(--warn); }
 .module[aria-pressed="true"] { border: 1px solid var(--warn); box-shadow: inset 0 0 0 1px var(--warn); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
-.module[aria-pressed="true"] .module-state { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
+.module[aria-pressed="true"] .module-state { color: var(--text); font-weight: 700; }
+/* Settings → View → Camera: the tracking figures, folded away */
+details.tracking { margin-top: 10px; }
+details.tracking summary { cursor: pointer; color: var(--text-2); font-size: .9rem; }
+details.tracking[open] summary { margin-bottom: 8px; }
 
 /* palette of object types */
 .palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
@@ -300,6 +306,9 @@ input[type="range"] { width: 100%; }
 .board .status.warn { color: var(--board-warn); font-weight: 500; }
 .board .meter { height: 6px; background: rgba(255, 255, 255, .14); border-radius: 3px; overflow: hidden; }
 .board .meter > i { display: block; height: 100%; }
+/* the Stops tab: the people waiting beside the name, the rest below */
+.stops-board .stop { grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 10px; }
+.stops-board .meter, .stops-board .status, .stops-board .calls { grid-column: 2 / -1; }
 .board .calls { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 2; }
 .board .calls .btn { background: var(--board-2); border-color: var(--board-line); color: var(--board-text); padding: 4px 8px; font-size: .78rem; }
 .board .calls .btn:hover:not(:disabled) { border-color: var(--board-text); }
@@ -341,7 +350,6 @@ details[open] summary { margin-bottom: 8px; }
 .legend-list b { margin-left: auto; font-weight: 500; }
 .swatch { width: 12px; height: 12px; border-radius: 50%; flex: none; border: 1px solid rgba(0, 0, 0, .35); }
 .town-stats { display: grid; gap: 8px; }
-.chip.clock { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* container terminal (Terminal panel); its placing bar keeps Cancel beside the text on phones too */
 @media (max-width: 640px) { .placing[data-owner="terminal"] .grow { flex-basis: 0; } }

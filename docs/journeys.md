@@ -77,7 +77,7 @@ example.
 
 ## Running the exercise
 
-1. Open the lab example on the game page and switch on the module **Journeys** (View → Modules, or
+1. Open the lab example on the game page and switch on the module **Journeys** (Settings → View → Modules, or
    `game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
    home and no other passengers come; the trains run to the timetable.
 2. Set the time of day (Settings → Simulation → Time of day, e.g. 07:00) and pause (Space) while the travellers

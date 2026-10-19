@@ -25,6 +25,7 @@
     </div>
     <span class="layout-name" id="layoutName"></span>
     <span class="spacer"></span>
+    <button class="bar-clock" id="barClock" type="button" title="Time and speed (Settings → Simulation)"></button>
     <a class="btn game-link" href="roles/">Roles</a>
     <a class="btn game-link" href="career/">Career</a>
     <a class="btn game-link" href="signaller/">Signaller game</a>
@@ -67,16 +68,16 @@
 
     <aside class="panel" id="panel">
       <nav class="tabs" role="tablist" aria-label="Panels">
-        <button role="tab" id="tab-view" aria-controls="panel-view" aria-selected="true">View</button>
+        <button role="tab" id="tab-stops" aria-controls="panel-stops" aria-selected="true" title="Platforms and stops: people waiting, the next vehicles; the town">Stops</button>
         <button role="tab" id="tab-build" aria-controls="panel-build" aria-selected="false">Build</button>
         <button role="tab" id="tab-terminal" aria-controls="panel-terminal" aria-selected="false" title="Container terminal: trains, trucks, barges and cranes" hidden>Terminal</button>
         <button role="tab" id="tab-ops" aria-controls="panel-ops" aria-selected="false" title="Rail operations: fleet, workshop, crews, penalties; comparing setups" hidden>Operations</button>
         <button role="tab" id="tab-infra" aria-controls="panel-infra" aria-selected="false" title="Infrastructure: asset management as a game, with roles and budget years" hidden>Infrastructure</button>
         <button role="tab" id="tab-journeys" aria-controls="panel-journeys" aria-selected="false" title="Journeys: travellers with travel plans and transfers" hidden>Journeys</button>
         <button role="tab" id="tab-disrupt" aria-controls="panel-disrupt" aria-selected="false" title="Disruptions and scenarios" hidden>Disruptions</button>
-        <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" title="Simulation (time, speed, demand, stops) and the control system">Settings</button>
+        <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" title="View, simulation (time, speed, demand) and the control system">Settings</button>
       </nav>
-      <section class="tabpanel" role="tabpanel" id="panel-view" aria-labelledby="tab-view"></section>
+      <section class="tabpanel" role="tabpanel" id="panel-stops" aria-labelledby="tab-stops"></section>
       <section class="tabpanel" role="tabpanel" id="panel-build" aria-labelledby="tab-build" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-terminal" aria-labelledby="tab-terminal" hidden></section>
       <section class="tabpanel" role="tabpanel" id="panel-ops" aria-labelledby="tab-ops" hidden></section>

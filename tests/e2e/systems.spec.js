@@ -83,7 +83,8 @@ test("may this train run here: RE 1 at the Czech track G3; Show where it may run
   await card.getByRole("button", { name: "Show where it may run" }).click();
   expect(await page.evaluate(() => window.__arail.world.settings.trackSystems)).toBe("compatibility");
   // the View panel: the choice and its legend
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await expect(page.locator("#optTrackSystems")).toHaveValue("compatibility");
   const legend = page.getByRole("list", { name: "Colours of the tracks" });
   await expect(legend).toContainText("RE 1 may run");

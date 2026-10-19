@@ -24,7 +24,6 @@ test("Map and 2.5D: the simple view from above and tilted, and back to the full 
   await expect(page.locator("#btnMap")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#btnSimple3d")).toHaveAttribute("aria-pressed", "false");
   expect(await page.evaluate(() => window.__arail.flyover.cam.isPlan)).toBe(true);
-  await expect(page.locator("#hud")).toContainText("Map");
   expect(await page.evaluate(() => window.__arail.lastView.simple)).toBe(true);
 
   await page.locator("#btnSimple3d").click();
@@ -32,7 +31,6 @@ test("Map and 2.5D: the simple view from above and tilted, and back to the full 
   await expect(page.locator("#btnSimple3d")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#btnMap")).toHaveAttribute("aria-pressed", "false");
   expect(await page.evaluate(() => window.__arail.flyover.cam.isPlan)).toBe(false);
-  await expect(page.locator("#hud")).toContainText("Simple 2.5D");
 
   // pressed again: the full flyover
   await page.locator("#btnSimple3d").click();
