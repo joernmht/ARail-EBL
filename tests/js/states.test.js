@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createWorld, overallState, searchStates, Simulation, STATE_BINS, STOP_CAPACITY_PER_M2, STOP_LOAD_EASY, stateGroups, stopLoad, summarizeStates, withLayers } from "../../web/arail/index.js";
+import { createWorld, overallState, searchKinds, searchStates, Simulation, STATE_BINS, STOP_CAPACITY_PER_M2, STOP_LOAD_EASY, stateGroups, stopLoad, summarizeStates, withLayers } from "../../web/arail/index.js";
 import { ROOT } from "./helpers.js";
 
 /** A world with simulations that report fixed states. */
@@ -53,6 +53,10 @@ test("the layout: each kind counts once in the mean; the kinds from the worst; a
   assert.deepEqual(searchStates(st.groups, "n1 exit").map((x) => [x.name, x.group]), [["Exit signal N1", "Signal"]]);
   assert.equal(searchStates(st.groups, "person", 5).length, 5);
   assert.deepEqual(searchStates(st.groups, "  "), []);
+  // the kinds are matched as the items are: every word, case aside
+  assert.deepEqual(searchKinds(st.groups, "SIGNAL").map((g) => g.id), ["signal"]);
+  assert.deepEqual(searchKinds(st.groups, "exit signal"), []);
+  assert.deepEqual(searchKinds(st.groups, " "), []);
   assert.equal(overallState(fake()).mean, null);
 });
 

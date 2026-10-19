@@ -131,7 +131,7 @@ const APP_DE = {
   "State": "Zustand",
   "Search assets and people": "Anlagen und Menschen suchen",
   "Nothing to rate yet: switch on a module, or add stops and people.": "Noch nichts zu bewerten: Schalten Sie ein Modul ein oder fügen Sie Haltestellen und Menschen hinzu.",
-  "mean state of {n} kinds ({m} assets and people); 100 % is as good as new": "mittlerer Zustand von {n} Arten ({m} Anlagen und Menschen); 100 % ist wie neu",
+  "Mean state · {n} assets and people": "Mittlerer Zustand · {n} Anlagen und Menschen",
   "Worst": "Schlechteste",
   "Best": "Beste",
   "Worst: ": "Am schlechtesten: ",

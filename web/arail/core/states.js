@@ -77,15 +77,31 @@ export function overallState(world) {
  * @returns {Array<StateItem & {group: string}>}
  */
 export function searchStates(groups, query, limit = 30) {
-  const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const words = fold(query).split(/\s+/).filter(Boolean);
+  const words = queryWords(query);
   if (!words.length) return [];
   const out = [];
   for (const g of groups) {
     for (const it of g.items) {
-      const text = fold(`${it.name} ${g.label}`);
-      if (words.every((w) => text.includes(w))) out.push({ ...it, score: clampScore(it.score), group: g.label });
+      if (matches(`${it.name} ${g.label}`, words)) out.push({ ...it, score: clampScore(it.score), group: g.label });
     }
   }
   return out.sort((a, b) => a.score - b.score || a.name.localeCompare(b.name)).slice(0, limit);
 }
+
+/**
+ * The kinds whose name contains the query, matched as `searchStates` matches (case and accents aside).
+ * @param {StateSummary[]} groups
+ * @param {string} query
+ * @returns {StateSummary[]}
+ */
+export function searchKinds(groups, query) {
+  const words = queryWords(query);
+  return words.length ? groups.filter((g) => matches(g.label, words)) : [];
+}
+
+/** Lower case, without accents. */
+const fold = (s) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/** The words of a query, folded. */
+const queryWords = (query) => fold(query).split(/\s+/).filter(Boolean);
+/** Does the text contain every word? */
+const matches = (text, words) => { const t = fold(text); return words.every((w) => t.includes(w)); };

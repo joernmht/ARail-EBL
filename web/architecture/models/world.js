@@ -23,7 +23,7 @@ export const WORLD = [
       {
         name: "states", file: "web/arail/core/states.js", kind: "module", role: "The state of what the simulations keep: their groups joined by kind, summed up and searched (the Overview).",
         attributes: ["STATE_BINS — 10 bins of the histograms"],
-        operations: ["stateGroups(world) — the groups of the simulations that are on, joined by id", "summarizeStates(group) — mean, histogram, worst item", "overallState(world) — the mean of the kinds' means, the kinds from the worst", "searchStates(groups, query, limit) — items by name or kind, the worst first", "clampScore(x)"],
+        operations: ["stateGroups(world) — the groups of the simulations that are on, joined by id", "summarizeStates(group) — mean, histogram, worst item", "overallState(world) — the mean of the kinds' means, the kinds from the worst", "searchStates(groups, query, limit) — items by name or kind, the worst first", "searchKinds(groups, query) — the kinds of that name, matched as the items are", "clampScore(x)"],
       },
       {
         name: "Registry", file: "web/arail/core/registry.js", kind: "class", role: "Extension points by type name.",

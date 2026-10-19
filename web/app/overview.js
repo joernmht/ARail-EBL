@@ -1,7 +1,7 @@
 // The Overview tab: the modules to switch on and off, and the state of what the simulations keep
 // (assets, people, vehicles; core/states.js): one figure for the whole layout, a search, and per
-// kind its mean and a histogram with fixed axes, the worst and the best kind first.
-import { objectPickable, overallState, searchStates } from "../arail/index.js";
+// kind its mean and a histogram, the worst and the best kind first.
+import { objectPickable, overallState, searchKinds, searchStates } from "../arail/index.js";
 import { h, morph, mount, section, toast } from "./ui.js";
 
 /** Icons of the modules (by what they add): line drawings in the colour of the text. */
@@ -69,7 +69,7 @@ export class Overview {
     morph(this.stateBox,
       h("div", { class: "kpi" },
         h("span", { class: "kpi-value" }, pct(st.mean)),
-        h("span", { class: "kpi-text" }, `mean state of ${st.groups.length} kinds (${st.count} assets and people); 100 % is as good as new`)),
+        h("span", { class: "kpi-text" }, `Mean state · ${st.count} assets and people`)),
       q ? this._found(st.groups, q) : this._kinds(st.groups),
     );
   }
@@ -86,8 +86,7 @@ export class Overview {
 
   /** A search: the kinds of that name, and the items found, the worst first. */
   _found(groups, q) {
-    const words = q.toLowerCase();
-    const kinds = groups.filter((g) => g.label.toLowerCase().includes(words) || words.includes(g.label.toLowerCase()));
+    const kinds = searchKinds(groups, q);
     const items = searchStates(groups, q, Infinity);
     return [
       kinds.length ? h("div", { class: "kinds" }, kinds.map((g) => this._kind(g))) : null,
@@ -96,12 +95,12 @@ export class Overview {
     ];
   }
 
-  /** A kind: its name, how many, its mean, its histogram (fixed axes: 0–100 % across, 0–100 % of the items up) and its worst item. */
+  /** A kind: its name, how many, its mean, its histogram (0–100 % across; up to the fullest bin) and its worst item. */
   _kind(g, badge = null) {
-    const n = g.items.length;
+    const n = g.items.length, top = Math.max(1, ...g.bins);
     const bins = g.bins.map((c, i) => {
       const range = `${i * 10}–${(i + 1) * 10} %`;
-      return h("span", { class: `bin${c ? "" : " empty"}`, style: { height: `${(100 * c) / n}%` }, title: `${range}: ${c} of ${n}` });
+      return h("span", { class: `bin${c ? "" : " empty"}`, style: { height: `${(100 * c) / top}%` }, title: `${range}: ${c} of ${n}` });
     });
     return h("article", { class: "kind", "data-kind": g.id },
       h("p", { class: "kind-badge" }, badge ? `${badge} · ${n}` : String(n)),
@@ -132,12 +131,12 @@ export class Overview {
   }
 
   /**
-   * A module as a box to click (a toggle button): its icon, its name and whether it is on. Its
-   * accessible name is the module's name; what it adds describes it (and is its tooltip).
+   * A module as a box to click (a toggle button): its icon and its name, Orange when on, "Alone"
+   * for one that opens alone. Its accessible name is the module's name; what it adds describes it
+   * (and is its tooltip).
    */
   _moduleBox(m) {
     const id = `module-${m.id}`;
-    const state = m.enabled ? "On" : m.exclusive ? "Alone" : "Off";
     const icon = m.icon ?? (m.layout ? "layout" : Object.entries(SIM_ICONS).find(([t]) => m.simulations?.includes(t))?.[1] ?? "module");
     const box = h("button", {
       type: "button", class: `module${m.exclusive ? " exclusive" : ""}`, id, "aria-pressed": m.enabled ? "true" : "false", title: m.description || null,
@@ -146,7 +145,7 @@ export class Overview {
     },
     h("span", { class: "module-icon", "aria-hidden": "true" }),
     h("span", { class: "module-name", id: `${id}-name` }, m.name),
-    h("span", { class: "module-state", "aria-hidden": "true" }, state),
+    m.exclusive ? h("span", { class: "module-state", "aria-hidden": "true" }, "Alone") : null,
     // what it adds: for screen readers and as the tooltip, not as text in the box
     m.description ? h("span", { class: "visually-hidden", id: `${id}-text` }, m.description) : null);
     box.firstChild.innerHTML = MODULE_ICONS[icon];

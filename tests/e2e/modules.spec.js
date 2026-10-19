@@ -41,7 +41,6 @@ test("the View panel switches the modules of the lab example by clicking their b
   await expect(page.locator("#tab-ops")).toBeVisible();
   await expect(page.locator("#layoutName")).toContainText("Rail operations");
   await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "true");
-  await expect(box(page, "Rail operations").locator(".module-state")).toHaveText("On");
   // two at once
   await box(page, "Infrastructure").click();
   await page.waitForFunction(() => window.__arail.world.getObject("interlocking-bf"));
@@ -150,7 +149,6 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
   await expect(page.locator("#tab-disrupt")).toBeVisible();
   await expect(dis()).toHaveAttribute("aria-pressed", "true");
   await expect(dis()).toBeFocused();
-  await expect(dis().locator(".module-state")).toHaveText("On");
   expect(await on(page)).toEqual([]); // no layer of the layout
   // a delay and a scenario
   await page.locator("#tab-disrupt").click();

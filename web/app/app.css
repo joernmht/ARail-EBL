@@ -263,24 +263,24 @@ input[type="range"] { width: 100%; }
 
 /* modules of the layout (Settings → View): boxes to click, Orange when on; a dashed box opens alone */
 .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px; }
-.module { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: var(--radius); padding: 10px 11px; cursor: pointer; font: inherit; }
+.module { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 9px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: var(--radius); padding: 10px 11px; cursor: pointer; font: inherit; }
 .module:hover { border-color: var(--accent); }
 .module.exclusive { border-style: dashed; }
 .module-icon { width: 24px; height: 24px; color: var(--accent-ink); }
 .module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .module-name { font-weight: 700; font-size: .92rem; line-height: 1.25; }
-/* on, off or alone: plain text, the box's colour says it too */
-.module-state { color: var(--text-2); font-size: .8rem; }
+/* on or off: the box's colour says it; a module that opens alone says so */
+.module-state { grid-column: 2; color: var(--text-2); font-size: .8rem; }
 .module[aria-pressed="true"] .module-icon { color: var(--warn); }
 .module[aria-pressed="true"] { border: 1px solid var(--warn); box-shadow: inset 0 0 0 1px var(--warn); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
-.module[aria-pressed="true"] .module-state { color: var(--text); font-weight: 700; }
+.module[aria-pressed="true"] .module-state { color: var(--text); }
 /* Settings → View → Camera: the tracking figures, folded away */
 details.tracking { margin-top: 10px; }
 details.tracking summary { cursor: pointer; color: var(--text-2); font-size: .9rem; }
 details.tracking[open] summary { margin-bottom: 8px; }
 
-/* the Overview: the mean state as one figure, the kinds as cards with a histogram (fixed axes: the
-   score 0–100 % across, the share of the kind's items 0–100 % up), the items found */
+/* the Overview: the mean state as one figure, the kinds as cards with a histogram (the score
+   0–100 % across, the bars up to the fullest bin), the items found */
 .kpi { display: flex; align-items: baseline; gap: 12px; margin: 4px 0 12px; }
 .kpi-value { white-space: nowrap; font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .kpi-text { color: var(--text-2); font-size: .86rem; }
@@ -288,7 +288,7 @@ details.tracking[open] summary { margin-bottom: 8px; }
 .kind { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); padding: 10px 11px; display: grid; gap: 6px; min-width: 0; }
 .kind header { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .kind h3 { margin: 0; font-size: .92rem; flex: 1; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
-.kind-badge { margin: 0; color: var(--text-2); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.kind-badge { margin: 0; color: var(--text-2); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .kind-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 .histogram .bins { display: flex; align-items: flex-end; gap: 2px; height: 44px; border-bottom: 1px solid var(--line); }
 .histogram .bin { flex: 1; min-height: 0; background: var(--accent); border-radius: 2px 2px 0 0; }
