@@ -196,13 +196,12 @@ test("Settings holds the simulation and the control system: #simulate and #contr
   expect(new URL(page.url()).hash).toBe("#simulate");
   // the tab opens the view chosen last, also after a reload
   await page.locator("#settingsView-control").click();
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
-  expect(new URL(page.url()).hash).toBe("#view");
+  await page.locator("#tab-stops").click();
+  expect(new URL(page.url()).hash).toBe("#stops");
   await page.locator("#tab-settings").click();
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
   expect(new URL(page.url()).hash).toBe("#control");
-  await page.goto(`${LAB}#view`);
+  await page.goto(`${LAB}#stops`);
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
   await page.locator("#tab-settings").click();
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");

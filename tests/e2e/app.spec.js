@@ -296,7 +296,9 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
   const tabsTop = await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top);
   expect(tabsTop).toBeLessThan(0);
   await page.locator("#tab-settings").click(); // opens at its view shown last (View)
-  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBe(0);
+  // back to the tabs (at the top, or lower where the page is too short to scroll that far)
+  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBeGreaterThanOrEqual(0);
+  await expect(page.locator(".tabs")).toBeInViewport();
   await expect(page.locator(".modules")).toBeInViewport();
   expect(errors).toEqual([]);
 });
