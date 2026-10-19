@@ -14,6 +14,8 @@ changes/<topic>.<kind>.md
   - **Trams turn in loops** (`tram-line`, `web/arail/objects/tram.js`): ...
   ```
 
+Links are written relative to the repository root, as in `CHANGELOG.md` (`[Contributing](CONTRIBUTING.md)`, not `../CONTRIBUTING.md`): that is where the text ends up.
+
 A change of several kinds gets one file per kind (`trams.added.md`, `trams.fixed.md`).
 
 `node tools/changelog.mjs` moves all fragments into the section "Unreleased" of `CHANGELOG.md`, each under the heading of its kind, and deletes them. This happens at a release, or whenever the changelog should be read in one piece. `npm test` checks that every fragment is named and written correctly (`tests/js/changelog.test.js`).

@@ -70,7 +70,8 @@ export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelat
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
-// the object types and simulations of the layout, one area each (objects/index.js, sims/index.js)
+// the object types and simulations of the layout, one area each (objects/index.js, sims/index.js); a name
+// they share with the core would be dropped silently, tests/js/world.test.js checks that none is
 export * from "./objects/index.js";
 export * from "./sims/index.js";
 // container terminal (named exports only: no `export *`, so no name can collide with the core's)

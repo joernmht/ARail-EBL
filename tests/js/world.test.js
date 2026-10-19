@@ -8,6 +8,9 @@ import {
   createWorld, registry, validateLayout, loadPlugins, markersUsed, MockFeed, parseFeedMessage, LayoutObject, Registry, registerBuiltins, World,
   terminalOf, DEFAULT_ROLLING,
 } from "../../web/arail/index.js";
+import * as ARAIL from "../../web/arail/index.js";
+import * as OBJECTS from "../../web/arail/objects/index.js";
+import * as SIMS from "../../web/arail/sims/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
 const LAB = readJSON("web/layouts/ebl-lab.json");
@@ -15,6 +18,14 @@ const TERMINAL = readJSON("web/layouts/container-terminal.json");
 // the example layout uses the windmill plugin, loaded like the app does; the road-traffic example
 // plugin (replaced in the example by the built-in traffic simulation) must keep loading, too
 const pluginErrors = await loadPlugins([...LAB.plugins, "../plugins/road-traffic.js"], pathToFileURL(join(ROOT, "web/layouts/ebl-lab.json")).href);
+
+test("the framework re-exports all of objects/index.js and sims/index.js", () => {
+  // `export *` drops a name two modules share and lets a named export hide it, without an error
+  for (const [area, mod] of [["objects", OBJECTS], ["sims", SIMS]]) {
+    const lost = Object.keys(mod).filter((name) => ARAIL[name] !== mod[name]);
+    assert.deepEqual(lost, [], `${area}/index.js: not re-exported by web/arail/index.js`);
+  }
+});
 
 test("example plugins load and register their types", () => {
   assert.deepEqual(LAB.plugins, ["../plugins/windmill.js"]);
