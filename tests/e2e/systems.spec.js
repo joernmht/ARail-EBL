@@ -15,8 +15,8 @@ async function openApp(page, path = LAB) {
   return errors;
 }
 
-test("View → Colour the tracks by: the tracks of the border station by traction power, with a legend; the choice is kept", async ({ page }) => {
-  const errors = await openApp(page);
+test("Settings → View → Colour the tracks by: the tracks of the border station by traction power, with a legend; the choice is kept", async ({ page }) => {
+  const errors = await openApp(page, `${LAB}#view`);
   await expect(page.locator("#layoutName")).toContainText("Border station");
   await expect(page.locator("#optTrackSystems")).toHaveValue("");
   await page.locator("#optTrackSystems").selectOption("power");

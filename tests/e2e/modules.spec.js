@@ -184,8 +184,8 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
 
 test("Settings holds the simulation and the control system: #simulate and #control open those views, the last one is kept", async ({ page }) => {
   const errors = await open(page, `${LAB}#control`);
-  // no module on: View, Build and Settings
-  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["View", "Build", "Settings"]);
+  // no module on: Stops, Build and Settings
+  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["Stops", "Build", "Settings"]);
   await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#feedUrl")).toBeVisible();

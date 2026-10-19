@@ -101,6 +101,8 @@ export class App {
 
   async init() {
     setLanguage(chooseLanguage());
+    // the tab of the link: read before a layout loads (a layout without the tab shown first selects another one, and the address follows it)
+    const linkedTab = location.hash.slice(1);
     try {
       this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO" });
     } catch (err) {
@@ -155,7 +157,7 @@ export class App {
         else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
       }, 500);
     }
-    const tab = location.hash.slice(1) || example?.tab || "";
+    const tab = linkedTab || example?.tab || "";
     // a link to the tab of a module of the app (Build, Disruptions) switches it on
     const linked = APP_MODULES.find((m) => m.tab === tab);
     if (linked) this.setAppModule(linked.id, true);
@@ -183,7 +185,9 @@ export class App {
     for (const name of this.tabNames) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
     $(".tabs").addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const tabs = this.tabs(), i = tabs.indexOf(this.activeTab) + (e.key === "ArrowRight" ? 1 : -1);
+      // from the tab that has the focus (it may not be the one selected)
+      const from = e.target.closest?.("[role=tab]")?.id.replace(/^tab-/, "") ?? this.activeTab;
+      const tabs = this.tabs(), i = tabs.indexOf(from) + (e.key === "ArrowRight" ? 1 : -1);
       this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
@@ -836,9 +840,12 @@ export class App {
    * @param {string} lang
    */
   changeLanguage(lang) {
+    // the control that chose it (Settings → View → Language) keeps the focus in the panel made again
+    const focused = document.activeElement?.id;
     setLanguage(lang, { keep: true });
     this.showLayoutName();
     this.renderPanel(this.activeTab);
+    if (focused) document.getElementById(focused)?.focus();
     this.updateHud();
     this.inspector.render();
     toast(lang === "de" ? "Die App ist jetzt auf Deutsch. Was noch nicht übersetzt ist, bleibt Englisch." : "The app is in English now.");

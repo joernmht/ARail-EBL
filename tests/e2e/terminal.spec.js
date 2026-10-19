@@ -452,7 +452,7 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the five tabs fit, or scroll with the selected tab in view", async ({ page }) => {
+test("on a phone the four tabs fit, or scroll with the selected tab in view", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
   await page.locator("#tab-settings").click();
@@ -463,9 +463,10 @@ test("on a phone the five tabs fit, or scroll with the selected tab in view", as
     const all = [...document.querySelectorAll(".tabs button:not([hidden])")].map((x) => x.getBoundingClientRect());
     return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: sel.left >= bar.left - 0.5 && sel.right <= bar.right + 0.5 };
   });
-  const names = ["view", "build", "terminal", "disrupt", "settings"];
+  // the terminal has no stops: no Stops tab
+  const names = ["build", "terminal", "disrupt", "settings"];
   expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(names);
-  // 390 px: all five fit
+  // 390 px: all four fit
   for (const tab of names) {
     await page.locator(`#tab-${tab}`).click();
     expect((await tabs()).fits, `#tab-${tab} at 390 px`).toBe(true);
