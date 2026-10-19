@@ -95,7 +95,7 @@ The stage stays calm: a chip at its top left appears only when something needs a
 
 The **clock** is in the bar: the time of day of the fast clock (see [Day and night](day-and-night.md)), with the speed when it is not 1× (*07:32 · ×2*) or *Paused*. Tap it for **Settings → Simulation**. How the tracking goes (markers seen and used, the reprojection error, the frame rate) is in **Settings → View → Camera → Tracking details**; where a story is, in its tab.
 
-Every stop (platform, bus terminal, bus stop) has a **badge** above it: the stop sign (platform number or "H") and the number of people waiting, red during a disruption. The **Stops** tab lists them all: the people waiting and their mood (the bar), the next events (*Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*) and buttons that call a train or bus (keys 1–9); with a town also where its people are. **Settings → View → Show → Departure boards at the stops** puts the full **board** over each stop instead: the name, the people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board. Where the picture is crowded, the boards of the stops largest in the picture are shown in full and the others as badges: once the labels cover a tenth of the picture, and where a board would cover another label, a chip or a button on the stage (on a phone one board is shown in full). Tap a stop for its card with everything on the board. The labels of buses and trams standing at a stop are left out where they would cover another label.
+Every stop (platform, bus terminal, bus stop) has a **badge** above it: the stop sign (platform number or "H") and the number of people waiting, red during a disruption. The board of **Settings → Simulation → Stops** lists them all with the next events (*Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*); the **Overview** rates them by the mood of the people waiting. **Settings → View → Show → Departure boards at the stops** puts the full **board** over each stop instead: the name, the people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board. Where the picture is crowded, the boards of the stops largest in the picture are shown in full and the others as badges: once the labels cover a tenth of the picture, and where a board would cover another label, a chip or a button on the stage (on a phone one board is shown in full). Tap a stop for its card with everything on the board. The labels of buses and trams standing at a stop are left out where they would cover another label.
 
 People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot = annoyed. People of the [town simulation](day-and-night.md#colours) are coloured by the purpose of their trip. Buildings look like a white architectural model in greys; at night their windows light up when people are inside.
 
@@ -111,15 +111,16 @@ In Build the tooltip shows too, and a tap selects the object for editing as befo
 
 ## Panels
 
-The tabs: **Stops** (with platforms, stops or a town), **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
+The tabs: **Overview**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
 
-### Stops
+### Overview
 
-Every platform and stop of the layout, numbered as the keys 1–9 call them: the people waiting, their mood (the bar), the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*. With the town simulation also *Town*: how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), and on their way by the purpose of their trip.
+- *Modules*: boxes to click, one per module, with its name and whether it is on (its description is the tooltip); each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
+- *State*: how good the state of the layout is, from what its simulations keep. Each item gets a score from 0 % (worst) to 100 % (as good as new): an asset of the infrastructure by its condition (grade 1 … 6; a fault is 0 %), a stop and a person waiting by their mood, a resident of the town by theirs, a unit of the rail operations by the wear left to its next inspection. The large figure is the mean of all **kinds** (Signal, Track section, Stops, Residents, …), each kind counting once however many items it has. Below it the worst and the best kind, each with its mean, how many there are, a **histogram** (across: the score, 0–100 % in ten steps; up: the share of the kind's items, 0–100 %; the axes are the same for every kind, so the histograms compare at a glance) and its worst item; **Show all kinds** lists them all, from the worst. The **search** finds items by name or kind (*signal*, *N2*, a person's name), the worst first; a kind of that name shows its histogram too. Click an item for its info card on the stage.
 
 ### Build
 
-The layout editor. Shown with the module **Build**, which is on until you switch it off (Settings → View → Modules; a link with `#build` switches it on).
+The layout editor. Shown with the module **Build**, which is on until you switch it off (Overview → Modules; a link with `#build` switches it on).
 
 - *Add to the layout*: the palette, in six groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
 
@@ -151,18 +152,19 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 **View**
 
-- *Modules*: boxes to click, one per module, with its name and whether it is on (its description is the tooltip); each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
 - *Examples* (the app): the examples with a clip, a tab or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
 - *Show*: signs and boards, the departure boards at the stops (off: badges), walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend (see [Railway systems](rail-systems.md)), and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Grid*: see [The flyover](#the-flyover).
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md), recording the stage as a WebM video, and, folded away, *Tracking details*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
-- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, Stops, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
+- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, Overview, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
 
 **Simulation**
 
 - *Time of day*: the clock (time, day/dawn/dusk/night and the day number), a slider to set the time, the presets **Morning 06:30**, **Noon 12:00**, **Evening 17:00** and **Night 22:30**, the **Fast clock** ratio (1:1 real time … 1:60; 1:12 = one clock hour in five simulated minutes), **Day and night lighting** and **Stop the clock**. See [Day and night](day-and-night.md).
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
+- *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), and on their way by the purpose of their trip.
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
+- *Stops*: a board of all stops, numbered as the keys 1–9 call them: the people waiting, their mood (the bar), the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
 - *Rail operations* (on layouts without the operations story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Rail operations](operations.md#the-operations-story).
 - *Infrastructure* (on layouts without the maintenance story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Infrastructure](infrastructure.md#the-maintenance-story). *Journeys* (without the journeys story) the same way, see [Journeys](journeys.md#the-journeys-story). On the game page: the infrastructure game, *Rail operations* and the journeys exercise the same way, with **Add to this layout** (its tab opens, the focus on its heading).
 - *Container terminal* (on layouts without one): **Switch on the module** (on the lab example) or **Open the example terminal**, and **Add to this layout**, see [Container terminal](container-terminal.md).
@@ -183,15 +185,15 @@ On the stage, tap a container, then one of its outlined places. In the flyover a
 
 ### Operations
 
-Shown when the layout has the operations story (Bf Neustadt's module **Operations**, Settings → View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
+Shown when the layout has the operations story (Bf Neustadt's module **Operations**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
 
 - The same controls as the Infrastructure tab (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera looks at a slant along the platform, so that the train at the near track does not hide the passengers, and goes with the spare unit and the broken unit to the depot and back.
-- The module is marked *alone* in Settings → View → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
+- The module is marked *alone* in Overview → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
 
 ### Infrastructure
 
-Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, Settings → View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
+Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
 
 - The current step: its title, what happens, and how far its animation has run.
 - **Back**, **Next**, **Play** (step after step, with a pause between them), **Start again**, and the list of all steps to jump to; a presenter's clicker works too (Page Down, Page Up).
@@ -199,7 +201,7 @@ Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastr
 
 ### Journeys
 
-Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, Settings → View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
+Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
 
 - The same controls as the Infrastructure tab: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way. Her walk from home it sees from the street, facing her front door; the rest facing the station's front.
@@ -207,14 +209,14 @@ Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**,
 
 ### Disruptions
 
-Shown with the module **Disruptions** (Settings → View → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
+Shown with the module **Disruptions** (Overview → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
 
 ## Keyboard shortcuts
 
 | Key | Action |
 | --- | --- |
 | Space | pause / resume the simulation |
-| 1 … 9 | send a vehicle to the stop with that position in the Stops tab (stops served by bus lines or by the rail operations say so) |
+| 1 … 9 | send a vehicle to the stop with that position on the Stops board of Settings → Simulation (stops served by bus lines or by the rail operations say so) |
 | M | marker outlines on/off |
 | F | flyover on/off |
 | S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
@@ -230,7 +232,7 @@ Shown with the module **Disruptions** (Settings → View → Modules; a link wit
 
 ## The game page
 
-The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises in the modules' tabs. It opens the lab example Beta 0.1, whose modules (Settings → View → Modules) have them; it remembers its last layout apart from the app.
+The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises in the modules' tabs. It opens the lab example Beta 0.1, whose modules (Overview → Modules) have them; it remembers its last layout apart from the app.
 
 ### Infrastructure (game)
 

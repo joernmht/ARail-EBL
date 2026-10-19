@@ -34,20 +34,21 @@ async function stillEnglish(page) {
   });
 }
 
-test("?lang=de: the frame, Stops, Settings, Build and a train's card in German; only names stay as they are", async ({ page }) => {
+test("?lang=de: the frame, Overview, Settings, Build and a train's card in German; only names stay as they are", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json&lang=de&layers=border");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
-  await expect(page.getByRole("tab", { name: "Haltestellen" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Übersicht" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Einstellungen" })).toBeVisible();
   await expect(page.locator("#btnFlyover")).toHaveText("Überflug");
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", "Kamerabild mit erweiterter Realität");
-  await expect(page.locator("#panel-stops")).toContainText("warten");
+  await expect(page.locator("#panel-overview")).toContainText("Anlagen und Menschen");
   await page.evaluate(() => window.__arail.selectTab("view"));
   const view = page.locator("#panel-settings");
   await expect(view).toContainText("Gleise färben nach");
   await expect(page.locator("#optLanguage")).toHaveValue("de");
   // the other panels
   await page.evaluate(() => window.__arail.selectTab("simulate"));
+  await expect(page.locator("#panel-settings .board")).toContainText("warten");
   await expect(page.locator("#panel-settings")).toContainText("Uhrzeit");
   await page.evaluate(() => window.__arail.selectTab("control"));
   await expect(page.locator("#panel-settings")).toContainText("Leitsystem");
@@ -78,11 +79,11 @@ test("?lang=de: the frame, Stops, Settings, Build and a train's card in German; 
 test("Settings → View → Language switches without reloading and is kept on the device; ?lang= chooses for one link", async ({ page }) => {
   const errors = await openApp(page, "/app/#view");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByRole("tab", { name: "Stops" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
   await page.locator("#optLanguage").focus();
   await page.locator("#optLanguage").selectOption("de");
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
-  await expect(page.getByRole("tab", { name: "Haltestellen" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Übersicht" })).toBeVisible();
   await expect(page.locator("#panel-settings")).toContainText("Sprache der App");
   await expect(page.locator("#optLanguage")).toBeFocused();
   await expect(page.locator("#toast")).toContainText("Deutsch");
@@ -90,15 +91,15 @@ test("Settings → View → Language switches without reloading and is kept on t
   // kept: a reload is German
   await page.reload();
   await page.waitForFunction(() => window.__arail?.lastView);
-  await expect(page.getByRole("tab", { name: "Haltestellen" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Übersicht" })).toBeVisible();
   // a link with ?lang=en is English, without changing the choice; choosing here follows into the link
   await page.goto("/app/?lang=en#view");
   await page.waitForFunction(() => window.__arail?.lastView);
-  await expect(page.getByRole("tab", { name: "Stops" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
   await page.locator("#optLanguage").selectOption("de");
   await expect(page).toHaveURL(/lang=de/);
   await page.locator("#optLanguage").selectOption("en");
-  await expect(page.getByRole("tab", { name: "Stops" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Full screen" })).toBeVisible();
   expect(errors).toEqual([]);
 });

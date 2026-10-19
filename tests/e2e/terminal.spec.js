@@ -371,7 +371,7 @@ test("a layout without a terminal has no Terminal tab: Settings → Simulation a
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-stops")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#tab-overview")).toHaveAttribute("aria-selected", "true");
   // adding one: the Terminal tab with the panel of an (empty) terminal
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-simulate").click();
@@ -432,8 +432,7 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await openTerminal(page);
   // the scenarios are in the Disruptions tab, there with its module
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await page.locator("#tab-disrupt").click();
   await page.locator(".scenario[data-id=morning-shift]").getByRole("button", { name: "Play" }).click();
@@ -452,21 +451,19 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the four tabs fit, or scroll with the selected tab in view", async ({ page }) => {
+test("on a phone the five tabs fit, or scroll with the selected tab in view", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   const tabs = () => page.evaluate(() => {
     const bar = document.querySelector(".tabs").getBoundingClientRect(), sel = document.querySelector(".tabs [aria-selected=true]").getBoundingClientRect();
     const all = [...document.querySelectorAll(".tabs button:not([hidden])")].map((x) => x.getBoundingClientRect());
     return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: sel.left >= bar.left - 0.5 && sel.right <= bar.right + 0.5 };
   });
-  // the terminal has no stops: no Stops tab
-  const names = ["build", "terminal", "disrupt", "settings"];
+  const names = ["overview", "build", "terminal", "disrupt", "settings"];
   expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(names);
-  // 390 px: all four fit
+  // 390 px: all five fit
   for (const tab of names) {
     await page.locator(`#tab-${tab}`).click();
     expect((await tabs()).fits, `#tab-${tab} at 390 px`).toBe(true);

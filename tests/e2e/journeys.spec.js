@@ -129,8 +129,7 @@ test("the generated people can come back; Settings → Simulation offers the mod
   await page.locator("#journeysCrowd").uncheck();
   await page.waitForFunction(() => !window.__arail.world.simulations.find((s) => s.constructor.type === "town").enabled);
   // the lab without the module: Settings → Simulation offers it
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.journeys.sim);
   await expect(page.locator("#tab-journeys")).toBeHidden();

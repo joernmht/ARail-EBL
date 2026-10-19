@@ -49,6 +49,7 @@ export { TRAM_CURVES, roundCorners } from "./core/curves.js";
 export { LayoutObject, UnknownObject } from "./core/object.js";
 export { PICK_TOLERANCE, cardOf, findPickable, groundPoint, movingPickables, objectPickable, pickAt, pickObject, planePoint, projectedHull, surfacePoint } from "./core/pick.js";
 export { Simulation } from "./core/simulation.js";
+export { STATE_BINS, clampScore, overallState, searchStates, stateGroups, summarizeStates } from "./core/states.js";
 export { StopArea } from "./core/stops.js";
 export { STOP_SIGNAL, StopSignals } from "./core/stop-signals.js";
 export { ServiceManager, Vehicle } from "./core/services.js";

@@ -21,7 +21,7 @@ import { CD, OVERLAY, grey, rgba, shade } from "../core/colors.js";
 import { polylineAt, polylineLengths, polylineProject } from "../core/math.js";
 import { boxFaces } from "../core/transit.js";
 import { drawPerson } from "../sims/passengers.js";
-import { ASSET_TYPES, gradeColour } from "./catalog.js";
+import { ASSET_TYPES, gradeColour, healthOf } from "./catalog.js";
 import { healthAtAge } from "./assets.js";
 import { ASSET_OBJECTS } from "./objects.js";
 import { STAFF_COLOURS, drawVan } from "./simulation.js";
@@ -233,6 +233,23 @@ export class MaintenanceStory extends Story {
     if (!type || !built) return null;
     const h = healthAtAge(Math.max(0, (+this.config.year || 2026) - built), type.life_y);
     return 1 + 4.99 * (1 - h);
+  }
+
+  /**
+   * The station's assets by type, scored by their condition (grade 1 as new … 6 deficient; a fault
+   * is the worst): by their age, the story's signal and track as its step has them.
+   */
+  states() {
+    const groups = new Map();
+    for (const o of this.world.objects) {
+      const id = ASSET_OBJECTS[o.type], type = ASSET_TYPES[id];
+      if (!type) continue;
+      const v = this.assetView(o.id) ?? { value: this.ageGrade(o), fault: false };
+      if (v.value == null && !v.fault) continue;
+      const g = groups.get(id) ?? groups.set(id, { id: `asset:${id}`, label: type.label, measure: "condition", items: [] }).get(id);
+      g.items.push({ name: o.name, score: v.fault ? 0 : healthOf(v.value), text: v.fault ? "Fault" : `grade ${(Math.floor(v.value * 10 + 1e-9) / 10).toFixed(1)}`, key: `object:${o.id}` });
+    }
+    return [...groups.values()];
   }
 
   /**

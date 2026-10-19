@@ -19,6 +19,7 @@ import { polylineAt, rectAround } from "../core/math.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { drawPerson } from "../sims/passengers.js";
 import { OpsEngine, causeWord, jobWord } from "./engine.js";
+import { wearInterval } from "./fleet.js";
 import { autoNetwork, normalizeOps, validateOps } from "./config.js";
 import { residentialBuildings, shortName } from "../core/people.js";
 import { DAY, durationLabel, hhmm } from "./util.js";
@@ -587,7 +588,24 @@ export class OperationsSimulation extends Simulation {
   }
 
   /** A train of the rail operations at a platform: its trip, times, units and driver. */
-  describeVehicle(v, card) {
+  /**
+   * The fleet's units by type, scored by the wear left to their next inspection (a failed unit is
+   * the worst; each open defect takes off a tenth).
+   */
+  states() {
+    if (!this.engine) return [];
+    const groups = new Map();
+    for (const u of this.engine.units.values()) {
+      const id = u.type.id ?? u.type.name;
+      const g = groups.get(id) ?? groups.set(id, { id: `unit:${id}`, label: u.type.name ?? "Unit", measure: "wear", items: [] }).get(id);
+      const wear = Math.min(1, Math.max(0, u.wear / wearInterval(u.type.program)));
+      const score = u.status === "failed" ? 0 : Math.max(0, 1 - wear - 0.1 * u.defects.length);
+      g.items.push({ name: u.id, score, text: `${u.stateText()} · ${Math.round(u.wear).toLocaleString("en")} km of wear${u.defects.length ? ` · ${u.defects.length} defect${u.defects.length > 1 ? "s" : ""}` : ""}` });
+    }
+    return [...groups.values()];
+  }
+
+    describeVehicle(v, card) {
     if (!v.ops || !this.engine) return;
     const e = this.engine, trip = e.trips.get(v.ops.trip);
     if (!trip) return;

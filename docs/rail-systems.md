@@ -42,7 +42,7 @@ All of them have GSM-R, standard gauge and line category D4; no ETCS unless a tr
 - **Tap a track** (outside Build): its info card lists all its systems, those usual in the country marked so.
 - **System change** (Build → Infrastructure): a board beside the track where a system changes: a *system separation section* (traction power), a *train control transition*, a *state border* or the boundary between *infrastructure managers*. Its card says what drivers and dispatchers do there and lists the systems of the two tracks beside it.
 
-**Example**: the lab example's module **Border station** (Settings → View → Modules) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
+**Example**: the lab example's module **Border station** (Overview → Modules) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
 
 ## In the layout file
 

@@ -8,7 +8,7 @@ export const WORLD = [
     id: "world", group: "world", title: "World, step and registry",
     summary: "The loaded layout: its objects, simulations and managers, advanced in sub-steps and drawn; types come from the registry, news goes over the event bus.",
     description: "World.load builds everything from a layout file: objects by their type from the registry, one simulation per entry of the layout's simulations, the services, bus lines, disruptions and scenarios. World.step advances simulated time in sub-steps of at most 0.25 s in a fixed order; the parts talk over the event bus and the effects of disruptions, so each can be replaced. index.js registers the built-in types (registerBuiltins), creates worlds (createWorld) and loads plugins, which get the whole API.",
-    files: ["web/arail/core/world.js", "web/arail/core/simulation.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/index.js", "web/arail/objects/index.js", "web/arail/sims/index.js", "web/arail/core/layers.js", "web/arail/core/layout.js"],
+    files: ["web/arail/core/world.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/index.js", "web/arail/objects/index.js", "web/arail/sims/index.js", "web/arail/core/layers.js", "web/arail/core/layout.js"],
     classes: [
       {
         name: "World", file: "web/arail/core/world.js", kind: "class", role: "The loaded layout; step and draw.",
@@ -18,7 +18,12 @@ export const WORLD = [
       {
         name: "Simulation", file: "web/arail/core/simulation.js", kind: "class", stereotype: "base class", role: "Base of all simulations: one per entry of the layout's simulations.",
         attributes: ["type: string — static, the key in the registry", "params: object[] — static, its settings", "world: World", "config: object — defaults and the entry", "enabled: boolean"],
-        operations: ["step(dt)", "draw(view)", "stats(areaId)", "pickables(view) — its people and vehicles that can be pointed at", "card(hit) — the info card of one of them", "describeObject(object, card) — adds what it knows to an object's card", "describeAgent(agent) — the card of its person shown by another simulation", "describeVehicle(vehicle, card) — adds to the card of a vehicle at a stop", "clear()", "dispose()", "toJSON()"],
+        operations: ["step(dt)", "draw(view)", "stats(areaId)", "pickables(view) — its people and vehicles that can be pointed at", "card(hit) — the info card of one of them", "describeObject(object, card) — adds what it knows to an object's card", "describeAgent(agent) — the card of its person shown by another simulation", "describeVehicle(vehicle, card) — adds to the card of a vehicle at a stop", "states() — what it keeps by kind, each scored 0 (worst) … 1 (best), for the Overview", "clear()", "dispose()", "toJSON()"],
+      },
+      {
+        name: "states", file: "web/arail/core/states.js", kind: "module", role: "The state of what the simulations keep: their groups joined by kind, summed up and searched (the Overview).",
+        attributes: ["STATE_BINS — 10 bins of the histograms"],
+        operations: ["stateGroups(world) — the groups of the simulations that are on, joined by id", "summarizeStates(group) — mean, histogram, worst item", "overallState(world) — the mean of the kinds' means, the kinds from the worst", "searchStates(groups, query, limit) — items by name or kind, the worst first", "clampScore(x)"],
       },
       {
         name: "Registry", file: "web/arail/core/registry.js", kind: "class", role: "Extension points by type name.",

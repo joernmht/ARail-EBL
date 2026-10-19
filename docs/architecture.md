@@ -69,6 +69,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/simple.js` | the simple view (Map, 2.5D): `SimpleView` draws objects as flat footprints and moving things as plain blocks |
 | `core/colors.js` | the corporate-design colours (`CD`, `CD_LIGHT`, `OVERLAY`, `FONT`), the palette of the built-in objects, colour helpers |
 | `core/registry.js`, `core/events.js`, `core/simulation.js` | extension points, event bus, base class of simulations |
+| `core/states.js` | the state of what the simulations keep (`Simulation.states()`): kinds joined, their mean, a histogram, the search (the Overview) |
 | `i18n/` | texts in other languages: the `Translator` (the English text is the key, patterns with placeholders, plural forms, number and date formats) and the framework's German texts (one file per area in `i18n/de/`, joined in `i18n/de.js`); the app's language and its own texts in `app/i18n.js` and `app/lang/de.js` ([Languages](languages.md)) |
 | `core/pick.js` | pointing at things: what is under an image pixel (what moves, from the managers' and simulations' `pickables`, found in its projected box; else a layout object, also on the walls of tall ones) and its info card (`card`) |
 | `sims/passengers.js` | the passenger simulation at stops (over a lane to a tram in the middle of the street, or to an island, at its lights); hand-over of other simulations' people; boards |
@@ -97,7 +98,8 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `journeys/simulation.js` | `JourneysSimulation`: travellers following their plans through the passenger hand-over, missed and cancelled trains, the log and the results, validation |
 | `journeys/story.js` | `JourneyStory`: the app's journeys story on Bf Neustadt (Ada walks to the station, her train is late and her connection lost, her app's bus takes her, the late train comes in; her journey in numbers and her rights as a passenger), the platform track and bus bay kept for its own train and bus (`story-train` with the passengers waiting), `journeyTimes`, `refundShare` |
 | `app/app.js`, `app/ui.js` | the shell of the app and the game page (`App` with a page's panels): sources, frame loop, HUD (chips only for what needs attention; the stage's labels keep clear of them), the clock in the bar, recording; small DOM helpers |
-| `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the Stops (platforms and stops, the town), Settings (view with the modules, simulation, control system) and Disruptions panels |
+| `app/editor.js`, `app/panels.js` | the Build panel (placing, inspector, marker map); the Settings (view, simulation with the stops and the town, control system) and Disruptions panels |
+| `app/overview.js` | the Overview tab: the modules to switch on and off, the mean state of the layout, a search over assets and people, each kind with its histogram |
 | `app/inspect.js` | hover and click: the tooltip of what the mouse points at, the info card of what was tapped, their outlines on the stage, Enter at the flyover's cross |
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers |
 | `app/tour.js`, `app/tour-nav.js` | the photo tour of the app: the photo map's photos in parts of the table round the ring, at most one per perspective (front, back, the four diagonals), the next part on either side (`PhotoTour`, testable in Node); its buttons and arrows on the stage, the keys ← and →, opening a photo with the layout of its digital layer or as the photo only (`TourNav`) |
@@ -227,6 +229,7 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | `tests/js/clock.test.js` | the fast clock, daylight, demand profiles, the night break of the timetable |
 | `tests/js/handover.test.js` | handing agents to the passenger simulation: waiting, line filter, alighting, removal |
 | `tests/js/town.test.js` | the town's daily routine, lit homes in the evening, setting the clock, reproducible runs, layouts without platforms, schools or shops; places filled by the residents within reach (a workplace among the homes brings nobody new, one far away people from elsewhere), pupils elsewhere, a platform added later, worked out again during the day without losing anybody on the way, the cap, regular intervals from the demand, other passengers from the town, the intervals on a stop's card |
+| `tests/js/states.test.js` | the state of assets and people: kinds joined, mean and histogram, the mean of the layout, the search; Bf Neustadt's stops, residents and assets |
 | `tests/js/houses.test.js` | house types and the building kit: geometry, capacity, entrances, estate plots, JSON round trips, drawing by day and night |
 | `tests/js/network.test.js` | road network: junctions (end to end, T, X), routing, places, bus lanes, sidewalk offsets, walks on the sidewalks and around tracks, drawing, road traffic |
 | `tests/js/transit.test.js` | bus stops and lines: stop geometry, routing, a bus serving every stop, boarding, managed docks, status texts, town people riding |

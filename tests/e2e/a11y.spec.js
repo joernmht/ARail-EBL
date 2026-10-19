@@ -5,7 +5,8 @@ import { expect, test } from "@playwright/test";
 const PAGES = [
   ["project page", "/"],
   ["marker sheets", "/markers/"],
-  ["app, View panel", "/app/?layout=../layouts/ebl-lab.json#view"],
+  ["app, Overview", "/app/?layout=../layouts/ebl-lab.json#overview"],
+  ["app, Settings: view", "/app/?layout=../layouts/ebl-lab.json#view"],
   ["app, Build panel", "/app/?layout=../layouts/ebl-lab.json#build"],
   ["app, Settings: simulation", "/app/?layout=../layouts/ebl-lab.json#simulate"],
   ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
@@ -14,7 +15,7 @@ const PAGES = [
   ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["app, Journeys: the journeys story", "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys"],
-  ["game page, View panel", "/game/#view"],
+  ["game page, Overview", "/game/#overview"],
   ["signaller's game", "/game/signaller/"],
   ["role catalogue", "/game/roles/#role-signaller-relay"],
   ["career planner", "/game/career/#aim=signaller-relay"],
@@ -118,10 +119,15 @@ for (const [scheme, device, viewport] of STATES) {
     found.push(...(await violations(page, "Settings → View, locked map with moving markers")));
     await openSimulation(page);
     await page.getByRole("button", { name: "Night 22:30" }).click();
-    found.push(...(await violations(page, "Settings → Simulation at night")));
-    await page.locator("#tab-stops").click();
-    await expect(page.locator("#panel-stops .town-stats li").first()).toBeVisible();
-    found.push(...(await violations(page, "Stops with the town at night")));
+    await expect(page.locator("#panel-settings .town-stats li").first()).toBeVisible();
+    found.push(...(await violations(page, "Settings → Simulation with the town at night")));
+    await page.locator("#tab-overview").click();
+    await page.locator("#statesAll").click();
+    await expect(page.locator(".kind").nth(2)).toBeVisible();
+    found.push(...(await violations(page, "Overview with all kinds")));
+    await page.locator("#stateSearch").fill("a");
+    await expect(page.locator(".state-items li").first()).toBeVisible();
+    found.push(...(await violations(page, "Overview, a search")));
     expect(found).toEqual([]);
   });
 }
@@ -271,25 +277,22 @@ for (const [scheme, device, viewport] of STATES) {
       found.push(...(await violations(page, "Journeys panel, wide", "#panel")));
       await page.locator("#journeysWide").click();
     }
-    await page.locator("#tab-settings").click();
-    await page.locator("#settingsView-view").click();
+    await page.locator("#tab-overview").click();
     await expect(page.locator(".modules")).toBeVisible();
-    found.push(...(await violations(page, "Settings → View, modules", "#panel")));
+    found.push(...(await violations(page, "Overview, modules", "#panel")));
     await page.locator(".modules").getByRole("button", { name: "Container terminal", exact: true }).click();
     await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-    await page.locator("#tab-settings").click();
-    await page.locator("#settingsView-view").click();
-    found.push(...(await violations(page, "Settings → View, modules in the container terminal", "#panel")));
+    await page.locator("#tab-overview").click();
+    found.push(...(await violations(page, "Overview, modules in the container terminal", "#panel")));
     await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => /ebl-lab/.test(window.__arail.layoutUrl) && !window.__arail.journeys.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
     await openSimulation(page);
     await expect(page.locator("#journeysAdd")).toBeVisible();
     found.push(...(await violations(page, "Settings → Simulation, journeys offered", "#panel")));
-    await page.locator("#tab-settings").click();
-    await page.locator("#settingsView-view").click();
+    await page.locator("#tab-overview").click();
     await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
     await expect(page.locator("#tab-disrupt")).toBeVisible();
-    found.push(...(await violations(page, "Settings → View, the module Disruptions on", "#panel")));
+    found.push(...(await violations(page, "Overview, the module Disruptions on", "#panel")));
     await page.locator("#tab-disrupt").click();
     await page.selectOption("#disType", "delay");
     await page.getByRole("button", { name: "Start: Delay" }).click();

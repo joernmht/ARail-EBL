@@ -281,13 +281,13 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await page.locator("#tab-overview").click();
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
   await expect(page.locator(".modules")).toBeInViewport();
   // the same tab again (e.g. its panel drawn anew) stays where it is
+  await page.locator("#tab-build").click();
   await page.locator("#panel").evaluate((p) => (p.scrollTop = 300));
-  await page.evaluate(() => window.__arail.selectTab("view"));
+  await page.evaluate(() => window.__arail.selectTab("build"));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(300);
   // a phone: the page scrolls, the tabs stick to the top
   await page.setViewportSize({ width: 390, height: 844 });
@@ -299,7 +299,6 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
   // back to the tabs (at the top, or lower where the page is too short to scroll that far)
   expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBeGreaterThanOrEqual(0);
   await expect(page.locator(".tabs")).toBeInViewport();
-  await expect(page.locator(".modules")).toBeInViewport();
   expect(errors).toEqual([]);
 });
 

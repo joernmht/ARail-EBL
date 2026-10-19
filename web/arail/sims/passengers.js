@@ -254,6 +254,31 @@ export class PassengerSimulation extends Simulation {
     };
   }
 
+  /**
+   * The stops by the mood of the people waiting there (a stop nobody waits at counts as content),
+   * and every person waiting by their mood.
+   */
+  states() {
+    const stops = [], people = [];
+    const areas = this.world.stopAreas();
+    for (const c of this.crowds.values()) {
+      const a = c.area, owner = a.owner;
+      if (!owner) continue;
+      const vis = c.visible(), mood = vis.length ? vis.reduce((s, p) => s + p.mood, 0) / vis.length : 1;
+      // a bus stop on both sides of the street: "Altmarkt · Stop A", as on its board
+      const name = areas.filter((x) => x.owner === owner).length > 1 && a.docks[0]?.label ? `${owner.name} · ${a.docks[0].label}` : owner.name;
+      stops.push({ name, score: mood, text: `${vis.length} waiting · mood ${Math.round(mood * 100)} %`, key: `object:${owner.id}` });
+      for (const p of vis) {
+        p.uid ??= nextPersonUid++;
+        people.push({ name: p.agent?.name || "Passenger", score: p.mood, text: `mood ${Math.round(p.mood * 100)} % · ${owner.name}`, key: `passenger:${p.uid}` });
+      }
+    }
+    return [
+      { id: "stops", label: "Stops", measure: "mood", items: stops },
+      { id: "people-waiting", label: "People waiting", measure: "mood", items: people },
+    ];
+  }
+
   /* ---------------------------------------------------------------- hand-over of agents */
 
   /**

@@ -6,6 +6,7 @@ import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
+import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
 import { TourNav } from "./tour-nav.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
@@ -37,10 +38,10 @@ const FEATURE_TABS = {
   terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
 };
 /** The tab shown when the one shown goes (and a layout opens): the first of these the layout has. */
-const FIRST_TABS = ["stops", "terminal", "ops", "infra", "journeys", "settings"];
+const FIRST_TABS = ["overview", "terminal", "ops", "infra", "journeys", "settings"];
 /**
  * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
- * on and off in Settings → View like those, without loading the layout again. `tab`: the tab it shows;
+ * on and off in the Overview like those, without loading the layout again. `tab`: the tab it shows;
  * `on`: whether it is on for a layout nobody has switched it for.
  */
 const APP_MODULES = [
@@ -60,7 +61,7 @@ export class App {
   /** @param {Page} page */
   constructor(page) {
     this.page = page;
-    /** The tabs of the page, in their order (Stops, Build, the modules' tabs, Disruptions, Settings). */
+    /** The tabs of the page, in their order (Overview, Build, the modules' tabs, Disruptions, Settings). */
     this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
     /** The panels of the module tabs, by tab. */
     this.tabPanels = {};
@@ -84,7 +85,7 @@ export class App {
     this.clock = 0;
     this.feed = null;
     this.feedUrl = params.get("feed") || storage.get("arail.feedUrl", "ws://localhost:8765/feed");
-    this.activeTab = "stops";
+    this.activeTab = "overview";
     this.display = { markers: false, opacity: 1, gridInCamera: false, flyMarkers: true, ...storage.get("arail.display", {}) };
     /** "camera": the camera image (or photo, video) with AR; "flyover": the virtual camera (see flyover.js). */
     this.mode = "camera";
@@ -119,6 +120,7 @@ export class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
+    this.overview = new Overview(this);
     for (const [tab, make] of Object.entries(this.page.panels)) this.tabPanels[tab] = make(this);
     /** The panels by their module: the terminal's picking, the journeys' following and Settings use them. */
     this.terminal = this.tabPanels.terminal ?? null;
@@ -322,15 +324,14 @@ export class App {
   }
 
   /**
-   * The tabs shown: Settings always; Stops when the layout has platforms or stops, or a town; Build
-   * and Disruptions with the app's modules of those names (Build on unless switched off); the tab of
+   * The tabs shown: Overview and Settings always; Build and Disruptions with the app's modules of those names (Build on unless switched off); the tab of
    * a module when the layout has the simulation the page shows it for (the app: Infrastructure with
    * the maintenance story, Journeys with the journeys story; the game page: with the infrastructure
    * game, the journeys exercise).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const shown = { stops: this.world.stopAreas().length > 0 || has("town"), settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
+    const shown = { overview: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
     // a module tab without a panel on this page is not shown
     for (const [tab, type] of Object.entries(this.page.shows)) shown[tab] = !!this.tabPanels[tab] && has(type);
     return this.tabNames.filter((t) => shown[t]);
@@ -419,7 +420,7 @@ export class App {
 
   renderPanel(name) {
     const el = $(`#panel-${name}`);
-    if (name === "stops") this.panels.renderStops(el);
+    if (name === "overview") this.overview.render(el);
     else if (name === "build") this.editor.render(el);
     else if (name === "settings") this.panels.renderSettings(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
@@ -428,12 +429,10 @@ export class App {
 
   /** Periodic refresh of live figures in the visible panel. */
   refreshPanels() {
-    // a stop added in Build (or its markers measured) brings the Stops tab
-    if (this._syncTabs()) return;
     this.updateHud();
     this.inspector.update();
     const t = this.activeTab;
-    if (t === "stops") this.panels.updateStops();
+    if (t === "overview") this.overview.update();
     else if (t === "settings") this.panels.updateSettings();
     else if (this.tabPanels[t]) this.tabPanels[t].update();
     else if (t === "disrupt") {
@@ -525,7 +524,7 @@ export class App {
   }
 
   /**
-   * The modules shown in Settings → View: the layers of this layout (in a layout that is a module of
+   * The modules shown in the Overview: the layers of this layout (in a layout that is a module of
    * another one, a layout of its own like the container terminal: the modules of that one), then the
    * app's modules (Build, Disruptions).
    * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
@@ -579,11 +578,11 @@ export class App {
       if (w.scenarios.current) w.scenarios.stop();
       for (const d of [...w.disruptions.active]) if (!d.def.hidden) w.disruptions.stop(d.id);
     }
-    if (!this._syncTabs()) this.panels.renderViewIfShown();
+    if (!this._syncTabs()) this.overview.renderIfShown();
   }
 
   /**
-   * Switch a module on or off (Settings → View). Rail operations, infrastructure and journeys are combined;
+   * Switch a module on or off (the Overview). Rail operations, infrastructure and journeys are combined;
    * an exclusive module switches the others off, and a module that is a layout of its own (the
    * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
    * The app's modules (Build, Disruptions) go with every choice.

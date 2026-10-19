@@ -101,8 +101,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   // the module switched off in the middle of the story: nothing of it is left on the layout
   await step(page, "To the bus station").click();
   expect(await storyDisruptions(page)).toHaveLength(3);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
   await expect(page.locator("#tab-journeys")).toBeHidden();

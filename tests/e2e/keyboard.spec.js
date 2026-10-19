@@ -100,7 +100,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   // the panels: Tab to the selected tab, arrows switch
   await tabTo(page, "#tab-settings");
   await page.keyboard.press("ArrowRight"); // round to the first tab
-  await expect(page.locator("#tab-stops")).toBeFocused();
+  await expect(page.locator("#tab-overview")).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-build")).toBeFocused();
   await expect(page.locator("#panel-build")).toBeVisible();
@@ -245,7 +245,7 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-stops")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
+  await expect(page.locator("#tab-overview")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-simulate").click();
   await page.locator("#termAdd").focus();
