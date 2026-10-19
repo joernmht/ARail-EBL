@@ -129,16 +129,18 @@ test("the generated people can come back; Settings → Simulation offers the mod
   await page.locator("#journeysCrowd").uncheck();
   await page.waitForFunction(() => !window.__arail.world.simulations.find((s) => s.constructor.type === "town").enabled);
   // the lab without the module: Settings → Simulation offers it
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.journeys.sim);
   await expect(page.locator("#tab-journeys")).toBeHidden();
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#journeysOpenExample")).toHaveText("Switch on the module “Journeys”");
   // another layout: added to it, with the lines named on its platforms
   await page.evaluate(() => window.__arail.openExample("neustadt"));
   await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await page.locator("#journeysAdd").click();
   await page.waitForFunction(() => window.__arail.journeys.sim);
   await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");

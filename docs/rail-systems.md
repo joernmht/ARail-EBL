@@ -38,11 +38,11 @@ All of them have GSM-R, standard gauge and line category D4; no ETCS unless a tr
 ## In the app
 
 - **Build → Track**: the systems are parameters of every track (*as usual in the country* unless chosen).
-- **View → Show → Colour the tracks by**: traction power, train protection, ETCS, signals, train radio, track gauge, line category, loading gauge, country or infrastructure manager. Every track gets a band in the colour of its value, with the value at its middle, over the camera image (on the real tracks) and in the flyover; the View panel lists the colours and how many tracks have each. Where two tracks meet end to end with a different value, an orange mark shows the change (*15 kV 16.7 Hz | 3 kV DC*).
+- **Settings → View → Show → Colour the tracks by**: traction power, train protection, ETCS, signals, train radio, track gauge, line category, loading gauge, country or infrastructure manager. Every track gets a band in the colour of its value, with the value at its middle, over the camera image (on the real tracks) and in the flyover; Settings → View lists the colours and how many tracks have each. Where two tracks meet end to end with a different value, an orange mark shows the change (*15 kV 16.7 Hz | 3 kV DC*).
 - **Tap a track** (outside Build): its info card lists all its systems, those usual in the country marked so.
 - **System change** (Build → Infrastructure): a board beside the track where a system changes: a *system separation section* (traction power), a *train control transition*, a *state border* or the boundary between *infrastructure managers*. Its card says what drivers and dispatchers do there and lists the systems of the two tracks beside it.
 
-**Example**: the lab example's module **Border station** (View → Modules) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
+**Example**: the lab example's module **Border station** (Overview → Modules) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
 
 ## In the layout file
 
@@ -113,7 +113,7 @@ A train may run on a section only when its vehicles fit the section's systems ([
 
 **On the info card of a train**: *May it run here?* lists every track of the layout with *yes* or *no* and the reasons, e.g. *Track G3: no · 3 kV DC: no vehicle can draw this power (BR 146.2: 15 kV) · PZB needed; … · Not authorised in CZ: BR 146.2, DBpza*. When the train may not run on the track it stands on, the card says so in red.
 
-**On the table**: *Show where it may run* on the card colours the tracks by it (View → Colour the tracks by: *where RE 1 may run*): turquoise where the train may run, red where not, with the first reason on each track; the legend counts them. This choice is not kept for the next session, since it belongs to the train.
+**On the table**: *Show where it may run* on the card colours the tracks by it (Settings → View → Colour the tracks by: *where RE 1 may run*): turquoise where the train may run, red where not, with the first reason on each track; the legend counts them. This choice is not kept for the next session, since it belongs to the train.
 
 In the lab example's module *Border station*, RE 1 may run on G1 and G2 and not on the Czech track G3; a train hauled by a BR 193 (Vectron MS, multi-system with ETCS) may run on all three.
 

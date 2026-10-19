@@ -153,7 +153,6 @@ export class Flyover {
     if (on && plan != null && plan !== this.planTarget()) this.command("plan");
     this._syncSimple();
     app.updateHud();
-    app.panels.renderFlyover?.();
   }
 
   /** The Map and 2.5D buttons (`data-simple="map"` and `"3d"`): pressed for the view that is shown. */
@@ -187,7 +186,6 @@ export class Flyover {
     const app = this.app;
     $("#btnFlyover").setAttribute("aria-pressed", this.active ? "true" : "false");
     this._syncSimple();
-    app.panels.renderFlyover?.();
     app.updateHud();
     if (app.activeTab === "build") app.editor.renderPlacing();
     else if (app.activeTab === "terminal") app.terminal.renderPlacing();

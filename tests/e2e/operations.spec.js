@@ -82,6 +82,7 @@ test("its trains stand at the platforms with their units and driver; the boards 
   expect(label.label).toMatch(/^(RE|RB|S) \d/);
   expect(label.info.join(" ")).toMatch(/442 \d{3}/);
   await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#panel-settings .board")).toContainText(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
   // trains cannot be called to the platforms of the operations
   const calls = await page.locator("#panel-settings .board .calls .btn", { hasText: "Train →" }).evaluateAll((b) => b.map((x) => x.disabled));
@@ -115,7 +116,8 @@ test("a comparison of setups runs in the page and gives a table, the cancelled t
   const narrow = (await page.locator("#panel").boundingBox()).width;
   await page.locator("#opsWide").click();
   await expect.poll(async () => (await page.locator("#panel").boundingBox()).width).toBeGreaterThan(narrow + 200);
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await expect.poll(async () => (await page.locator("#panel").boundingBox()).width).toBeLessThan(narrow + 2);
   expect(errors).toEqual([]);
 });
@@ -156,8 +158,8 @@ test("on a phone the five tabs fit; the arrow keys go from Build to Operations t
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
   }));
-  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id))).toEqual(["tab-view", "tab-build", "tab-ops", "tab-disrupt", "tab-settings"]);
-  for (const tab of ["view", "build", "ops", "disrupt", "settings"]) {
+  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id))).toEqual(["tab-overview", "tab-build", "tab-ops", "tab-disrupt", "tab-settings"]);
+  for (const tab of ["overview", "build", "ops", "disrupt", "settings"]) {
     await page.locator(`#tab-${tab}`).click();
     expect(await fits(), `#tab-${tab} at 390 px`).toBe(true);
   }

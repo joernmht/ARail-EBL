@@ -1406,7 +1406,13 @@ export class TownSimulation extends Simulation {
   }
 
   /** Counts for the panel: where people are and what they are doing. */
-  townStats() {
+  /** The town's people by their mood (it drops when a bike comes too close on the sidewalk). */
+  states() {
+    const items = this.agents.map((a) => ({ name: a.name, score: a.mood ?? 0.85, text: `mood ${Math.round((a.mood ?? 0.85) * 100)} %`, key: `resident:${a.id}` }));
+    return [{ id: "residents", label: "Residents", measure: "mood", items }];
+  }
+
+    townStats() {
     const out = { total: this.agents.length, home: 0, work: 0, school: 0, shopping: 0, walking: 0, waiting: 0, riding: 0, away: 0, byPurpose: {} };
     const use = (id) => {
       const o = id ? this.world.getObject(id) : null;

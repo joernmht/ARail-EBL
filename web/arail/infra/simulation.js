@@ -26,7 +26,7 @@ import { InfraEngine, YEAR } from "./engine.js";
 import { applyScenario, normalizeInfra, scenariosOf, validateInfra } from "./config.js";
 import { ASSET_OBJECTS } from "./objects.js";
 import { Network } from "./network.js";
-import { DISCIPLINES, GENERATIONS, gradeColour, gradeLabel } from "./catalog.js";
+import { DISCIPLINES, GENERATIONS, gradeColour, gradeLabel, gradeValue, healthOf } from "./catalog.js";
 import { STAGE_LABELS } from "./factory.js";
 import { DAY } from "../ops/util.js";
 
@@ -525,6 +525,19 @@ export class InfrastructureSimulation extends Simulation {
       rows: [["Discipline", DISCIPLINES[p.discipline]?.label ?? p.discipline ?? "–"]],
       related: [e.assets.get(act.asset)?.object].filter((id) => id && this.world.getObject(id)),
     };
+  }
+
+  /** The assets of the network by type, scored by their condition as it is known (a known fault is the worst). */
+  states() {
+    if (!this.active || !this.engine) return [];
+    const e = this.engine, groups = new Map();
+    for (const a of e.active()) {
+      const k = e.known(a), v = k.value ?? gradeValue(k.h);
+      const g = groups.get(a.type) ?? groups.set(a.type, { id: `asset:${a.type}`, label: a.t.label, measure: "condition", items: [] }).get(a.type);
+      const object = a.object ?? (a.on_layout ? a.id : null);
+      g.items.push({ name: a.name, score: k.fault ? 0 : healthOf(v), text: k.fault ? "Fault" : `grade ${v.toFixed(1)}`, key: object ? `object:${object}` : undefined });
+    }
+    return [...groups.values()];
   }
 
   /**

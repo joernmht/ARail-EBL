@@ -66,8 +66,7 @@ test("flyover: switch on, it draws the layout, keyboard zoom, back to the camera
   const before = await page.evaluate(() => ({ w: window.__arail.canvas.width, h: window.__arail.canvas.height, H: window.__arail.tracker.state.H }));
   await enterFlyover(page);
   await expect(page.locator("#flyNav")).toBeVisible();
-  await expect(page.locator("#hud")).toContainText("Flyover");
-  await expect(page.locator("#hud")).toContainText("Grid 50 mm");
+  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
   expect(await canvasColours(page)).toBeGreaterThan(20);
   // the canvas fills the stage
   const box = await page.locator("#stage").boundingBox(), stage = await page.locator("#stageWrap").boundingBox();
@@ -87,14 +86,13 @@ test("flyover: switch on, it draws the layout, keyboard zoom, back to the camera
   // plan view button
   await page.locator("#flyNav [data-fly=plan]").click();
   await expect(page.locator("#flyNav [data-fly=plan]")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#hud")).toContainText("plan view");
   // F: back to the camera image with its tracking
   await page.keyboard.press("f");
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await expect(page.locator("#flyNav")).toBeHidden();
   const after = await page.evaluate(() => ({ w: window.__arail.canvas.width, h: window.__arail.canvas.height, H: window.__arail.tracker.state.H }));
   expect(after).toEqual(before);
-  await expect(page.locator("#hud")).toContainText("Tracking");
+  await expect(page.locator("#hud")).not.toContainText("markers");
   expect(errors).toEqual([]);
 });
 
@@ -306,20 +304,19 @@ test("the outline of a real table is picked in the flyover only (over the camera
   expect(errors).toEqual([]);
 });
 
-test("View panel: grid spacing and snapping, markers; the camera view shows the grid on request", async ({ page }) => {
+test("Settings → View: grid spacing and snapping, markers; the camera view shows the grid on request", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
-  await page.locator("#btnFlyoverPanel").click();
+  await page.locator("#btnFlyover").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(page.locator("#btnFlyoverPanel")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
   await page.selectOption("#gridSize", "25");
   expect(await page.evaluate(() => window.__arail.world.layout.grid.size_mm)).toBe(25);
-  await expect(page.locator("#hud")).toContainText("Grid 25 mm");
   await page.locator("#optSnap").uncheck();
   expect(await page.evaluate(() => window.__arail.world.toJSON().grid)).toEqual({ size_mm: 25, snap: false });
-  await page.locator(".fly-buttons").getByRole("button", { name: "Zoom in" }).click();
+  await page.locator("#flyNav").getByRole("button", { name: "Zoom in" }).click();
   await page.locator("#optFlyMarkers").uncheck();
   expect(await page.evaluate(() => window.__arail.display.flyMarkers)).toBe(false);
-  await page.locator("#btnFlyoverPanel").click();
+  await page.locator("#btnFlyover").click();
   await page.waitForFunction(() => window.__arail.mode === "camera");
   // grid over the camera image: snapping works there too
   expect(await page.evaluate(() => window.__arail.gridVisible())).toBe(false);
@@ -491,16 +488,16 @@ test("a broken orthophoto entry does not stop the flyover from drawing", async (
   expect(errors).toEqual([]);
 });
 
-test("keyboard: the Flyover toggle in the View panel and the rotate buttons keep the focus", async ({ page }) => {
+test("keyboard: the Flyover toggle on the stage and the rotate buttons keep the focus", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
-  await page.locator("#btnFlyoverPanel").focus();
+  await page.locator("#btnFlyover").focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(page.locator("#btnFlyoverPanel")).toBeFocused();
-  await expect(page.locator("#btnFlyoverPanel")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#btnFlyover")).toBeFocused();
+  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.__arail.mode === "camera");
-  await expect(page.locator("#btnFlyoverPanel")).toBeFocused();
+  await expect(page.locator("#btnFlyover")).toBeFocused();
   // Build: turn the selected house twice with the keyboard
   await page.locator("#tab-build").click();
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("building-1")));
@@ -518,7 +515,7 @@ test("keyboard: the Flyover toggle in the View panel and the rotate buttons keep
 test("flyover keys only while the stage has the focus: F focuses it, scroll keys elsewhere are left alone", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
-  await page.locator("#panel-view .hint").first().click(); // nothing focused
+  await page.locator("#panel-settings h2").first().click(); // nothing focused
   await page.keyboard.press("f");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(page.locator("#stage")).toBeFocused();
@@ -527,7 +524,7 @@ test("flyover keys only while the stage has the focus: F focuses it, scroll keys
   await page.keyboard.press("ArrowUp");
   expect((await cam()).target).not.toEqual(c0.target);
   // a click on text in the panel: Page Down and the arrows do not move the camera
-  await page.locator("#panel-view .hint").first().click();
+  await page.locator("#panel-settings h2").first().click();
   const c1 = await cam();
   for (const key of ["PageDown", "ArrowDown", "Home", "+"]) await page.keyboard.press(key);
   expect(await cam()).toEqual(c1);

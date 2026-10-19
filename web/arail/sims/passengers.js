@@ -31,6 +31,20 @@ export const NEUTRAL_PERSON = "#e3e3e3";
  */
 export const BOARD_MIN_PX = 60;
 
+/**
+ * The load of a stop (Auslastung, the Overview): the people waiting against what its area holds at
+ * {@link STOP_CAPACITY_PER_M2} (people standing close, about Fruin's level of service D). Up to
+ * {@link STOP_LOAD_EASY} of that is easy going (score 1); the score falls to 0 when it is full.
+ */
+export const STOP_CAPACITY_PER_M2 = 2;
+export const STOP_LOAD_EASY = 0.25;
+
+/** The load of a stop area (0 … 1 and more) and its score (1: easy going … 0: full). */
+export function stopLoad(area, waiting) {
+  const load = waiting / Math.max(1, area.L * area.W * STOP_CAPACITY_PER_M2);
+  return { load, score: Math.min(1, Math.max(0, (1 - load) / (1 - STOP_LOAD_EASY))) };
+}
+
 /** Length (CSS px) of the longest of the stop areas on the screen (0 when it is not in front of the camera). */
 function screenLength(view, areas) {
   let best = 0;
@@ -252,6 +266,32 @@ export class PassengerSimulation extends Simulation {
       inPerMin: c.inTimes.length,
       outPerMin: c.outTimes.length,
     };
+  }
+
+  /**
+   * The stops by their load and the mood of the people waiting there (the mean of both; a stop
+   * nobody waits at is as good as it gets), and every person waiting by their mood.
+   */
+  states() {
+    const stops = [], people = [];
+    const areas = this.world.stopAreas();
+    for (const c of this.crowds.values()) {
+      const a = c.area, owner = a.owner;
+      if (!owner) continue;
+      const vis = c.visible(), mood = vis.length ? vis.reduce((s, p) => s + p.mood, 0) / vis.length : 1;
+      // a bus stop on both sides of the street: "Altmarkt · Stop A", as on its board
+      const name = areas.filter((x) => x.owner === owner).length > 1 && a.docks[0]?.label ? `${owner.name} · ${a.docks[0].label}` : owner.name;
+      const load = stopLoad(a, vis.length);
+      stops.push({ name, score: (load.score + mood) / 2, text: `${vis.length} waiting · ${Math.round(load.load * 100)} % full · mood ${Math.round(mood * 100)} %`, key: `object:${owner.id}` });
+      for (const p of vis) {
+        p.uid ??= nextPersonUid++;
+        people.push({ name: p.agent?.name || "Passenger", score: p.mood, text: `mood ${Math.round(p.mood * 100)} % · ${owner.name}`, key: `passenger:${p.uid}` });
+      }
+    }
+    return [
+      { id: "stops", label: "Stops", measure: "load and mood", items: stops },
+      { id: "people-waiting", label: "People waiting", measure: "mood", items: people },
+    ];
   }
 
   /* ---------------------------------------------------------------- hand-over of agents */
@@ -817,8 +857,9 @@ export class PassengerSimulation extends Simulation {
   /**
    * The board of a stop object over its stop areas: name, people waiting, mood and the next
    * vehicle (for a bus stop on both sides of the street: per side; at a bus terminal: per line,
-   * see {@link boardStatus}). Seen from far away (the stop
-   * shorter than {@link BOARD_MIN_PX} on the screen) only a small badge with the people waiting.
+   * see {@link boardStatus}). Without the setting `stopBoards` (the default: the Stops tab has the
+   * figures), and seen from far away (the stop shorter than {@link BOARD_MIN_PX} on the screen), only
+   * a small badge with the people waiting.
    * @param {import("../core/view.js").View} view
    * @param {object} owner the stop object
    * @param {Array<{c: Crowd, count: number, moodSum: number}>} parts its stop areas
@@ -839,7 +880,7 @@ export class PassengerSimulation extends Simulation {
     const alert = fxs.find((fx) => fx.messages.length)?.messages[0];
     const length = screenLength(view, areas);
     const small = { size: 11, padding: 3, anchor: "bottom", badge: badge || "·", badgeColor: alert ? OVERLAY.danger : badgeColor, order: 1, fit: true };
-    if (length < BOARD_MIN_PX) {
+    if (!this.world.settings.stopBoards || length < BOARD_MIN_PX) {
       view.label([at[0], at[1], z], String(count), small);
       return;
     }

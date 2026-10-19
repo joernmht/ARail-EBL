@@ -6,6 +6,7 @@ import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
+import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
 import { TourNav } from "./tour-nav.js";
 import { $, h, morph, mount, storage, toast } from "./ui.js";
@@ -23,7 +24,7 @@ const params = new URLSearchParams(location.search);
  *   first one opened when nothing else was;
  * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on;
  * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
- *   choose what is shown, and the examples are listed in the View panel; a page without it has the
+ *   choose what is shown, and the examples are listed in Settings → View; a page without it has the
  *   list of layouts (Layouts…) in its bar.
  * @typedef {{id: string, panels: Object<string, (app: App) => object>, shows: Object<string, string>,
  *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
@@ -31,14 +32,16 @@ const params = new URLSearchParams(location.search);
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
 /** Former tabs that are views of the Settings tab now (their links keep working): tab → [tab, view]. */
-const TAB_VIEWS = { simulate: ["settings", "simulate"], control: ["settings", "control"] };
-/** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else View. */
+const TAB_VIEWS = { view: ["settings", "view"], simulate: ["settings", "simulate"], control: ["settings", "control"] };
+/** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else the first of FIRST_TABS. */
 const FEATURE_TABS = {
   terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
 };
+/** The tab shown when the one shown goes (and a layout opens): the first of these the layout has. */
+const FIRST_TABS = ["overview", "terminal", "ops", "infra", "journeys", "settings"];
 /**
  * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
- * on and off in the View panel like those, without loading the layout again. `tab`: the tab it shows;
+ * on and off in the Overview like those, without loading the layout again. `tab`: the tab it shows;
  * `on`: whether it is on for a layout nobody has switched it for.
  */
 const APP_MODULES = [
@@ -58,7 +61,7 @@ export class App {
   /** @param {Page} page */
   constructor(page) {
     this.page = page;
-    /** The tabs of the page, in their order (View, Build, the modules' tabs, Disruptions, Settings). */
+    /** The tabs of the page, in their order (Overview, Build, the modules' tabs, Disruptions, Settings). */
     this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
     /** The panels of the module tabs, by tab. */
     this.tabPanels = {};
@@ -82,7 +85,7 @@ export class App {
     this.clock = 0;
     this.feed = null;
     this.feedUrl = params.get("feed") || storage.get("arail.feedUrl", "ws://localhost:8765/feed");
-    this.activeTab = "view";
+    this.activeTab = "overview";
     this.display = { markers: false, opacity: 1, gridInCamera: false, flyMarkers: true, ...storage.get("arail.display", {}) };
     /** "camera": the camera image (or photo, video) with AR; "flyover": the virtual camera (see flyover.js). */
     this.mode = "camera";
@@ -99,6 +102,8 @@ export class App {
 
   async init() {
     setLanguage(chooseLanguage());
+    // the tab of the link: read before a layout loads (a layout without the tab shown first selects another one, and the address follows it)
+    const linkedTab = location.hash.slice(1);
     try {
       this.detector = new ARail.MarkerDetector({ dictionary: "ARUCO" });
     } catch (err) {
@@ -115,6 +120,7 @@ export class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
+    this.overview = new Overview(this);
     for (const [tab, make] of Object.entries(this.page.panels)) this.tabPanels[tab] = make(this);
     /** The panels by their module: the terminal's picking, the journeys' following and Settings use them. */
     this.terminal = this.tabPanels.terminal ?? null;
@@ -153,7 +159,7 @@ export class App {
         else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
       }, 500);
     }
-    const tab = location.hash.slice(1) || example?.tab || "";
+    const tab = linkedTab || example?.tab || "";
     // a link to the tab of a module of the app (Build, Disruptions) switches it on
     const linked = APP_MODULES.find((m) => m.tab === tab);
     if (linked) this.setAppModule(linked.id, true);
@@ -181,7 +187,9 @@ export class App {
     for (const name of this.tabNames) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
     $(".tabs").addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const tabs = this.tabs(), i = tabs.indexOf(this.activeTab) + (e.key === "ArrowRight" ? 1 : -1);
+      // from the tab that has the focus (it may not be the one selected)
+      const from = e.target.closest?.("[role=tab]")?.id.replace(/^tab-/, "") ?? this.activeTab;
+      const tabs = this.tabs(), i = tabs.indexOf(from) + (e.key === "ArrowRight" ? 1 : -1);
       this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
@@ -203,7 +211,7 @@ export class App {
         this.startLive();
       });
     }
-    // the list of layouts in the bar (the game page; the app has the photo tour and its examples in the View panel)
+    // the list of layouts in the bar (the game page; the app has the photo tour and its examples in Settings → View)
     const sel = $("#exampleSelect");
     if (sel) {
       mount(sel, h("option", { value: "" }, "Layouts…"), this.page.examples.map((x) => h("option", { value: x.id }, x.label)));
@@ -214,6 +222,8 @@ export class App {
         await this.openExample(id);
       });
     }
+    // the clock in the bar opens the time and speed
+    $("#barClock")?.addEventListener("click", () => this.openTab("simulate"));
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
       const el = $("#stageWrap");
@@ -309,19 +319,19 @@ export class App {
       e.preventDefault();
     } else if (e.key === "m" || e.key === "M") {
       this.display.markers = !this.display.markers;
-      this.panels.renderView($("#panel-view"));
+      this.panels.renderViewIfShown();
     }
   }
 
   /**
-   * The tabs shown: View and Settings always; Build and Disruptions with the app's modules of those
-   * names (Build on unless switched off); the tab of a module when the layout has the simulation the
-   * page shows it for (the app: Infrastructure with the maintenance story, Journeys with the journeys
-   * story; the game page: with the infrastructure game, the journeys exercise).
+   * The tabs shown: Overview and Settings always; Build and Disruptions with the app's modules of those names (Build on unless switched off); the tab of
+   * a module when the layout has the simulation the page shows it for (the app: Infrastructure with
+   * the maintenance story, Journeys with the journeys story; the game page: with the infrastructure
+   * game, the journeys exercise).
    */
   tabs() {
     const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const shown = { view: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
+    const shown = { overview: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
     // a module tab without a panel on this page is not shown
     for (const [tab, type] of Object.entries(this.page.shows)) shown[tab] = !!this.tabPanels[tab] && has(type);
     return this.tabNames.filter((t) => shown[t]);
@@ -335,14 +345,14 @@ export class App {
   /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
   _syncTabs() {
     const shown = this.tabs();
-    for (const t of this.tabNames) $(`#tab-${t}`).hidden = !shown.includes(t);
+    for (const t of this.tabNames) if ($(`#tab-${t}`).hidden !== !shown.includes(t)) $(`#tab-${t}`).hidden = !shown.includes(t);
     if (shown.includes(this.activeTab)) return false;
-    const next = (FEATURE_TABS[this.activeTab] || []).find((t) => shown.includes(t));
-    this.selectTab(next || "view");
+    const next = [...(FEATURE_TABS[this.activeTab] || []), ...FIRST_TABS].find((t) => shown.includes(t));
+    this.selectTab(next || "settings");
     return true;
   }
 
-  /** Show a tab (or a former tab that is a view of Settings now: "simulate", "control"). */
+  /** Show a tab (or a view of Settings: "view", "simulate", "control"). */
   selectTab(name) {
     if (TAB_VIEWS[name]) {
       this.panels.settingsView = TAB_VIEWS[name][1];
@@ -366,7 +376,7 @@ export class App {
     document.querySelector(".main")?.classList.remove("wide");
     this.tabPanels[name]?.syncWidth?.();
     this.renderPanel(name);
-    // Settings is linked by its view (#simulate, #control), as the tabs were before
+    // Settings is linked by its view (#view, #simulate, #control), as the tabs were before
     history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name}`);
   }
 
@@ -410,7 +420,7 @@ export class App {
 
   renderPanel(name) {
     const el = $(`#panel-${name}`);
-    if (name === "view") this.panels.renderView(el);
+    if (name === "overview") this.overview.render(el);
     else if (name === "build") this.editor.render(el);
     else if (name === "settings") this.panels.renderSettings(el);
     else if (name === "disrupt") this.panels.renderDisruptions(el);
@@ -422,7 +432,7 @@ export class App {
     this.updateHud();
     this.inspector.update();
     const t = this.activeTab;
-    if (t === "view") this.panels.updateView();
+    if (t === "overview") this.overview.update();
     else if (t === "settings") this.panels.updateSettings();
     else if (this.tabPanels[t]) this.tabPanels[t].update();
     else if (t === "disrupt") {
@@ -514,7 +524,7 @@ export class App {
   }
 
   /**
-   * The modules shown in the View panel: the layers of this layout (in a layout that is a module of
+   * The modules shown in the Overview: the layers of this layout (in a layout that is a module of
    * another one, a layout of its own like the container terminal: the modules of that one), then the
    * app's modules (Build, Disruptions).
    * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
@@ -568,11 +578,11 @@ export class App {
       if (w.scenarios.current) w.scenarios.stop();
       for (const d of [...w.disruptions.active]) if (!d.def.hidden) w.disruptions.stop(d.id);
     }
-    if (!this._syncTabs() && this.activeTab === "view") this.renderPanel("view");
+    if (!this._syncTabs()) this.overview.renderIfShown();
   }
 
   /**
-   * Switch a module on or off (View panel). Rail operations, infrastructure and journeys are combined;
+   * Switch a module on or off (the Overview). Rail operations, infrastructure and journeys are combined;
    * an exclusive module switches the others off, and a module that is a layout of its own (the
    * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
    * The app's modules (Build, Disruptions) go with every choice.
@@ -818,20 +828,23 @@ export class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
+    const { labels, stopBoards, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
     // where a train may run belongs to that train: not kept
-    storage.set("arail.settings", { labels, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
+    storage.set("arail.settings", { labels, stopBoards, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
   }
 
   /**
-   * Show the app in another language (View → Language), kept on this device: the page's markup,
+   * Show the app in another language (Settings → View → Language), kept on this device: the page's markup,
    * the panel, the HUD and an open card are made again.
    * @param {string} lang
    */
   changeLanguage(lang) {
+    // the control that chose it (Settings → View → Language) keeps the focus in the panel made again
+    const focused = document.activeElement?.id;
     setLanguage(lang, { keep: true });
     this.showLayoutName();
     this.renderPanel(this.activeTab);
+    if (focused) document.getElementById(focused)?.focus();
     this.updateHud();
     this.inspector.render();
     toast(lang === "de" ? "Die App ist jetzt auf Deutsch. Was noch nicht übersetzt ist, bleibt Englisch." : "The app is in English now.");
@@ -1069,7 +1082,7 @@ export class App {
     return p.every(Number.isFinite) ? p : null;
   }
 
-  /** Is the grid shown? Always in the flyover, in the camera view only if chosen (View panel). */
+  /** Is the grid shown? Always in the flyover, in the camera view only if chosen (Settings → View). */
   gridVisible() {
     return this.flyover.active || !!this.display.gridInCamera;
   }
@@ -1203,7 +1216,7 @@ export class App {
   }
 
   /**
-   * Grey plates over the markers of the map, each with its number painted on it (View → Show →
+   * Grey plates over the markers of the map, each with its number painted on it (Settings → View → Show →
    * Cover the markers, world setting `coverMarkers`): the stickers disappear from the picture. A
    * plate covers the marker and its white paper (1.6 times the marker's size); it lies on the
    * table, under the virtual objects. A marker under a raised table module needs none: the module
@@ -1268,52 +1281,26 @@ export class App {
     ctx.restore();
   }
 
+  /**
+   * The chips on the stage say only what needs attention (no image, no markers, a photo without a
+   * digital layer, disruptions, recording); the clock with the speed is in the bar.
+   */
   updateHud() {
     const st = this.tracker.state, chips = [];
-    // on a phone the chips would cover the picture: fewer of them (no grid, no terminal without moves,
-    // the speed and a pause with the clock)
-    const narrow = this.canvas.clientWidth > 0 && this.canvas.clientWidth <= 640;
     if (this.flyover.active) {
-      const g = this.world.layout.grid;
-      chips.push(["ok", this.flyover.simple ? (this.flyover.cam.isPlan ? "Map" : "Simple 2.5D") : `Flyover${this.flyover.cam.isPlan ? " · plan view" : ""}`]);
-      if (!narrow) chips.push(["info", `Grid ${g.size_mm} mm${g.snap ? " · snap" : ""}`]);
+      // the stage's buttons show the view
     } else if (!this.source) chips.push(["warn", "No image yet"]);
     else if (this.source.untracked) {
       // a photo of the photo tour without a digital layer: its chip says so (TourNav.hudChips)
-    } else if (st.H && !st.holding) chips.push(["ok", `Tracking · ${st.used.length} marker${st.used.length === 1 ? "" : "s"}${this.world.map.locked ? " · locked" : ""}`]);
-    else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
-    else if (st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
-    else chips.push(["bad", "No markers in view"]);
-    // the clock's night (between sunset and sunrise), also while the day/night lighting is switched off
-    const pace = [this.world.paused ? "Paused" : null, this.world.speed !== 1 ? `${this.world.speed}× time` : null].filter(Boolean);
-    chips.push(["info clock", [`${this.world.clock.label()}${this.world.clock.night() > 0.5 ? " · night" : ""}`, ...(narrow ? pace : [])].join(" · ")]);
-    if (!narrow) for (const t of pace) chips.push(["info", t]);
+    } else if (st.holding) chips.push(["warn", "Markers hidden · holding position"]);
+    else if (!st.H && st.visible.length) chips.push(["warn", `Markers ${st.visible.join(", ")} seen, ${this.world.map.locked ? "none in the locked marker map" : "none known yet"}`]);
+    else if (!st.H) chips.push(["bad", "No markers in view"]);
     // a quiet disruption without a message (a story's train holding its track) is none to speak of
     const disrupted = this.world.disruptions.active.filter((d) => !d.def.quiet || d.def.effects?.(d, null, this.world)?.messages?.length).length;
     if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
-    if (this.world.trains.active) chips.push(["ok", `Control system · ${this.world.trains.trains.size} trains`]);
-    const term = ARail.terminalOf(this.world);
-    if (term) {
-      const n = term.moves.filter((m) => m.state === "queued" || m.state === "active").length;
-      if (n || !narrow) chips.push(["info", `Terminal · ${n} move${n === 1 ? "" : "s"}`]);
-    }
-    const ops = ARail.opsOf(this.world)?.engine;
-    if (ops) {
-      const n = ops.tripsRunning().size, failed = [...ops.units.values()].filter((u) => u.status === "failed").length;
-      chips.push([failed ? "warn" : "info", `Operations · ${n} train${n === 1 ? "" : "s"}${failed ? ` · ${failed} unit${failed === 1 ? "" : "s"} failed` : ""}`]);
-    }
-    for (const story of this.world.simulations.filter((x) => x instanceof ARail.Story && x.active)) {
-      const st = story.state();
-      if (st.count) chips.push(["info", `${story.name} · step ${st.index + 1} of ${st.count}${st.playing ? " · playing" : ""}`]);
-    }
-    const journeys = ARail.journeysOf(this.world);
-    if (journeys?.travellers.length) {
-      const all = journeys.travellers, done = all.filter((t) => t.state === "arrived").length, going = all.filter((t) => t.state !== "home" && t.state !== "arrived").length;
-      chips.push(["info", `Journeys · ${going} travelling · ${done} of ${all.length} arrived`]);
-    }
-    if (this.frozen) chips.push(["info", "Frozen frame"]);
     if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
+    this._updateBarClock();
     this.tourNav?.sync();
     const hud = $("#hud");
     morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
@@ -1325,10 +1312,19 @@ export class App {
     this.hudRects = [...hud.children, ...controls].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 
+  /** The clock in the bar: the time of day, the speed when it is not 1×, Paused. */
+  _updateBarClock() {
+    const el = $("#barClock");
+    if (!el) return;
+    const w = this.world;
+    const text = [w.clock.label(), w.paused ? tr("Paused") : w.speed !== 1 ? `×${w.speed}` : null].filter(Boolean).join(" · ");
+    if (el.textContent !== text) el.textContent = text;
+  }
+
   /* ---------------------------------------------------------------- recording */
 
   toggleRecording() {
-    // the View panel may be rendered anew while recording: always use the current button
+    // Settings → View may be rendered anew while recording: always use the current button
     const setPressed = (on) => $("#btnRecord")?.setAttribute("aria-pressed", on ? "true" : "false");
     if (this.recorder) {
       this.recorder.stop();

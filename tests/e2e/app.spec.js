@@ -21,7 +21,8 @@ async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
 
 /** Open an example from the View panel (the app's examples; the stage's photo tour chooses the rest). */
 async function chooseExample(page, id) {
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await page.locator(`#example-${id}`).click();
 }
 
@@ -40,7 +41,7 @@ test("the lab example is tracked and passengers appear", async ({ page }) => {
   const errors = await openApp(page);
   const state = await page.evaluate(() => window.__arail.tracker.state);
   expect(state.used.length).toBeGreaterThanOrEqual(4);
-  await expect(page.locator("#hud")).toContainText("Tracking");
+  await expect(page.locator("#hud")).toBeEmpty(); // tracked: nothing needs attention
   await page.waitForFunction(() => {
     const sim = window.__arail.world.simulations.find((s) => s.constructor.type === "passengers");
     return [...sim.crowds.values()].reduce((n, c) => n + c.people.length, 0) > 5;
@@ -88,7 +89,7 @@ test("control: the simulated control system reports trains", async ({ page }) =>
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#control");
   await page.getByRole("button", { name: "Simulated control system" }).click();
   await page.waitForFunction(() => window.__arail.world.trains.active && window.__arail.world.trains.trains.size > 0);
-  await expect(page.locator("#hud")).toContainText("Control system");
+  await expect(page.locator("#panel-settings")).toContainText("Simulated control system is running.");
   const modes = await page.evaluate(() => [...window.__arail.world.services.docks.values()].filter((s) => s.dock.kind === "rail").map((s) => s.mode));
   expect(new Set(modes)).toEqual(new Set(["feed"]));
   await page.getByRole("button", { name: "Disconnect" }).click();
@@ -280,12 +281,13 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
   await expect(page.locator(".modules")).toBeInViewport();
   // the same tab again (e.g. its panel drawn anew) stays where it is
+  await page.locator("#tab-build").click();
   await page.locator("#panel").evaluate((p) => (p.scrollTop = 300));
-  await page.evaluate(() => window.__arail.selectTab("view"));
+  await page.evaluate(() => window.__arail.selectTab("build"));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(300);
   // a phone: the page scrolls, the tabs stick to the top
   await page.setViewportSize({ width: 390, height: 844 });
@@ -293,9 +295,10 @@ test("another tab opens at its top, also when the panel was scrolled down; on a 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const tabsTop = await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top);
   expect(tabsTop).toBeLessThan(0);
-  await page.locator("#tab-view").click();
-  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBe(0);
-  await expect(page.locator(".modules")).toBeInViewport();
+  await page.locator("#tab-settings").click(); // opens at its view shown last (View)
+  // back to the tabs (at the top, or lower where the page is too short to scroll that far)
+  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBeGreaterThanOrEqual(0);
+  await expect(page.locator(".tabs")).toBeInViewport();
   expect(errors).toEqual([]);
 });
 
@@ -310,19 +313,28 @@ test("periodic panel updates keep keyboard focus on buttons", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
-test("the time chip says night after sunset, also with the day and night lighting switched off", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#simulate");
-  const chip = page.locator("#hud .chip.clock");
-  await page.getByRole("button", { name: "Night 22:30" }).click();
-  await page.evaluate(() => window.__arail.updateHud());
-  await expect(chip).toContainText("· night");
+test("the clock in the bar: the time with the speed or Paused; it opens Settings → Simulation, which says night after sunset", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
+  const clock = page.locator("#barClock");
+  await page.evaluate(() => {
+    const a = window.__arail;
+    a.world.setTime("22:30");
+    a.world.speed = 2;
+    a.updateHud();
+  });
+  await expect(clock).toHaveText(/^22:3\d · ×2$/);
+  await page.evaluate(() => {
+    const a = window.__arail;
+    a.world.paused = true;
+    a.updateHud();
+  });
+  await expect(clock).toHaveText(/^22:3\d · Paused$/);
+  await clock.click();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright
-  await page.evaluate(() => window.__arail.updateHud());
-  await expect(chip).toContainText("· night");
   await expect(page.locator(".clockface")).toContainText("night");
   await page.getByRole("button", { name: "Noon 12:00" }).click();
-  await page.evaluate(() => window.__arail.updateHud());
-  await expect(chip).not.toContainText("night");
+  await expect(page.locator(".clockface")).not.toContainText("night");
   expect(errors).toEqual([]);
 });
 

@@ -19,7 +19,7 @@ video. The plans of the project page's videos are in `tools/video/plans/`, and
   fast the machine is, and every frame sees the simulation at the same time as the picture.
 - The clip is converted to WebM (VP9) with a key frame on every frame (`-g 1`): seeking is then exact
   (and headless Chromium cannot play H.264).
-- The name tags are switched off and the markers covered (View → Show → Cover the markers).
+- The name tags are switched off and the markers covered (Settings → View → Show → Cover the markers).
 - The sky and the horizon of the town video are drawn by a script added to the page for the video;
   they are not part of the app.
 
@@ -172,7 +172,7 @@ bus stop) and both compositions; it takes about an hour.
 | Step | Live? | How |
 | --- | --- | --- |
 | Marker detection, pose of each frame | yes | that is the app today |
-| One focal length | yes | calibrate the camera ([Camera calibration](calibration.md)), or, once it is learned, keep it with − and + in View → Camera (set by hand, it no longer changes) |
+| One focal length | yes | calibrate the camera ([Camera calibration](calibration.md)), or, once it is learned, keep it with − and + in Settings → View → Camera (set by hand, it no longer changes) |
 | The picture's motion (step 3) | yes, at a reduced size | it needs only the last frame and this one. Natively (OpenCV, 4 threads) it takes 5–6 ms at 360 × 640 with 200 to 300 corners, and 35 ms at 720 × 1280 with 900 corners. In the browser (WebAssembly or JavaScript), expect two to four times as long, so 10–25 ms at the reduced size. That fits next to the detection on a laptop (the app keeps the detection at 20–45 ms by its resolution) but is tight on a phone; run it in a Web Worker. On a phone, the gyroscope can give the camera's turning. |
 | Joining (step 4) as one solve | no | it uses the frames after each frame |
 | Joining as a causal filter | yes (try it with `arail-stabilize --method causal`) | each frame: carry the last corner positions with the picture's motion, then move them a small share (0.06) towards the markers' pose, less when the markers disagree with the motion (the weight of step 4, from past frames only). One step per frame, no cost worth mentioning. On the town clip it is as steady as the solve (table above). It can only correct with what it has seen: after a stretch with bad markers, it catches up slowly instead of spreading the correction over both sides. A fixed-lag smoother lies between the two: it solves over the last ten frames and shows the picture one to three frames late. |

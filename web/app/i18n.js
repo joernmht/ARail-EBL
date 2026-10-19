@@ -1,5 +1,5 @@
 // The app in the language chosen (arail/i18n): from the URL (?lang=de, e.g. for a projector), else
-// as chosen in the View panel (kept on this device), else the browser's. The English text is the
+// as chosen in Settings → View (kept on this device), else the browser's. The English text is the
 // key: `h()` (ui.js) translates the texts and labels of the elements it makes, the canvas labels
 // are translated by the View, and what has no translation stays English.
 import { Translator, UI_LANGUAGES, registry } from "../arail/index.js";

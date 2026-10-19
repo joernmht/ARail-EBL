@@ -259,7 +259,7 @@ export const INFRA = [
       {
         name: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", kind: "class", extends: "Simulation", role: "The engine on the world's clock.",
         attributes: ["engine: InfraEngine | null", "offset: number — engine time = offset + the clock's minutes"],
-        operations: ["step(dt)", "runTo(t, opts)", "runYear(opts)", "newGame(opts)", "save()", "load(saved)", "layoutAssets(net)", "failAsset(nameOrId)", "_event(name, payload) — engine events to the world (infra.*)", "_startDisruption(f, a)", "_syncFaults()", "draw(view)", "pickables(view) — the staff out with vans and drones", "card(hit)", "describeObject(o, card) — the condition of an asset, as known"],
+        operations: ["states() — the assets by type, by their known condition", "step(dt)", "runTo(t, opts)", "runYear(opts)", "newGame(opts)", "save()", "load(saved)", "layoutAssets(net)", "failAsset(nameOrId)", "_event(name, payload) — engine events to the world (infra.*)", "_startDisruption(f, a)", "_syncFaults()", "draw(view)", "pickables(view) — the staff out with vans and drones", "card(hit)", "describeObject(o, card) — the condition of an asset, as known"],
       },
       { name: "AssetObject", file: "web/arail/infra/objects.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Signals, switches, balises, level crossings, masts, lifts, displays: their state drawn.", operations: ["state()", "draw(view)"] },
       { name: "MaintenanceBase", file: "web/arail/infra/objects.js", kind: "class", extends: "BuildingBase", role: "Where vans and drones start.", operations: ["slots()"] },
@@ -312,7 +312,7 @@ export const INFRA = [
     classes: [{
       name: "MaintenanceStory", file: "web/arail/infra/story.js", kind: "class", extends: "Story", role: "The maintenance case, step by step.",
       attributes: ["static STEPS — 12 steps: normal, fault, close, drive, repair, exchange, reopen, possession, arrive, remove, build, done"],
-      operations: ["signal()", "dock() — the signal's platform track", "renewal()", "renewalDock()", "base()", "compose(index, k)", "ageGrade(o) — the condition by the age", "assetView(id) — as the infrastructure simulation's", "vanPath() — the drive and the walk", "works() — where the renewal works are", "vanAt()", "trainAt()", "diggerAt()", "tamperAt()", "view()", "draw(view)", "drawBase(view, base)"],
+      operations: ["states() — the station's assets by type, by their condition at this step", "signal()", "dock() — the signal's platform track", "renewal()", "renewalDock()", "base()", "compose(index, k)", "ageGrade(o) — the condition by the age", "assetView(id) — as the infrastructure simulation's", "vanPath() — the drive and the walk", "works() — where the renewal works are", "vanAt()", "trainAt()", "diggerAt()", "tamperAt()", "view()", "draw(view)", "drawBase(view, base)"],
     }],
     relations: [
       { from: "MaintenanceStory", to: "MaintenanceBase", kind: "uses", label: "the van leaves its yard" },

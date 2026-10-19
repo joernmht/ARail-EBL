@@ -34,7 +34,7 @@ Three examples have a terminal:
 
 ### The virtual terminal
 
-**View → Examples → Example: container terminal (virtual)** (on the game page **Layouts… →
+**Settings → View → Examples → Example: container terminal (virtual)** (on the game page **Layouts… →
 Example: container terminal (virtual)**, or `app/?layout=../layouts/container-terminal.json#terminal`) opens
 [`web/layouts/container-terminal.json`](../web/layouts/container-terminal.json) in the flyover:
 
@@ -262,7 +262,7 @@ height once per wagon type:
 An error of 1 mm in the height moves the wagon by about 1 mm on the layout. To check: take a photo
 from a low angle (about 30°), switch to the flyover (F) and look at the wagon. It should stand on
 its track. If it appears shifted away from where the camera stood, the height is too low; towards
-it, too high. The View panel shows the height the tags are lifted to.
+it, too high. Settings → View → Camera → Tracking details shows the height the tags are lifted to.
 
 Do this check on a piece of track that has no `track` object yet, e.g. before you draw the loading
 tracks: a wagon within 8 mm of a `track` object is snapped onto it, and that hides an error of a
@@ -358,7 +358,7 @@ Over the camera image, every container spot of a wagon that is seen gets a grey 
 numbered by wagon and spot (W8·1, W8·2, W8·3), and a label away from the spots a plate with the
 wagon's number: as big as a 20 ft container, on the deck under the containers, so a free spot
 shows its plate instead of the white label, and a container set down on it hides it. The plates
-follow View → Show → *Cover the markers* (world setting `coverMarkers`), like the plates over the
+follow Settings → View → Show → *Cover the markers* (world setting `coverMarkers`), like the plates over the
 layout's markers. A wagon whose tags are not found gets no plates: its labels stay white.
 
 ### Surveying with tagged wagons on the layout

@@ -14,7 +14,6 @@ async function openBuild(page) {
 }
 
 const codes = (page) => page.evaluate(() => window.__arail.detector.codes);
-const hud = (page) => page.locator("#hud");
 
 test("Keep positions locks the marker map; Unlock and Measure again open it again", async ({ page }) => {
   const errors = await openBuild(page);
@@ -23,8 +22,14 @@ test("Keep positions locks the marker map; Unlock and Measure again open it agai
   await expect(page.locator("#markerMapStatus")).toHaveText("Marker map locked: only these 5 markers are used; new markers are ignored.");
   await expect(page.locator("#toast")).toContainText("Marker map locked");
   expect(await codes(page)).toBe(5); // markers 0-4: five codes, further apart
+  // a tracked layout puts up no chip; the tracking details say it is locked
   await page.evaluate(() => window.__arail.render());
-  await expect(hud(page)).toContainText("Tracking · 5 markers · locked");
+  await expect(page.locator("#hud")).not.toContainText("markers");
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
+  await page.locator("details.tracking summary").click();
+  await expect(page.locator("details.tracking")).toContainText("5 markers (locked)");
+  await page.locator("#tab-build").click();
   // kept in the browser and in the exported layout
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith("arail.layout:"))) || "{}").markers?.locked)).toBe(true);
   // the locked state has no accessibility problems either

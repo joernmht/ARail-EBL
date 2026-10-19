@@ -9,7 +9,7 @@ import { TrafficSimulation } from "./traffic.js";
 import { CyclingSimulation } from "./cycling.js";
 
 export { PassengerSimulation, TownSimulation, TrafficSimulation, CyclingSimulation };
-export { BOARD_MIN_PX, boardStatus, dockStatus, drawPerson, NEUTRAL_PERSON, statusLines } from "./passengers.js";
+export { BOARD_MIN_PX, boardStatus, dockStatus, drawPerson, NEUTRAL_PERSON, STOP_CAPACITY_PER_M2, STOP_LOAD_EASY, statusLines, stopLoad } from "./passengers.js";
 export { PURPOSE_COLOURS, PURPOSE_LABELS } from "./town.js";
 export { CAR_COLOURS, planDrive, OCCUPANCY_BY_PURPOSE } from "./traffic.js";
 export { RIDERS, ridingSurface } from "./cycling.js";

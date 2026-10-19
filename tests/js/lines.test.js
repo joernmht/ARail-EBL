@@ -402,6 +402,11 @@ test("one board per stop; from far away only a badge with the people waiting", (
   for (let i = 0; i < 600; i++) w.step(0.25);
   for (let i = 0; i < 3; i++) pax.enter("b:right", { agent: { id: `p${i}` }, dockId: "b:right" });
   pax.enter("b:left", { agent: { id: "q" }, dockId: "b:left" });
+  // without the setting: badges only, near too
+  const plain = viewAt([2000, 0], 700);
+  pax.draw(plain.view);
+  assert.ok(plain.labels.filter((l) => l.style.badge === "H").every((l) => l.lines.length === 1), "badges only");
+  w.settings.stopBoards = true;
   // close: one board over both sides of the street, with the next bus on each side
   const close = viewAt([2000, 0], 700);
   pax.draw(close.view);
@@ -450,6 +455,7 @@ test("the board of a bus terminal shows the next bus of every line that starts t
     { id: "l2", type: "bus-line", number: "2", headway_s: 300, stops: ["t", "f"] },
   ]);
   const pax = w.simulations[0];
+  w.settings.stopBoards = true;
   const area = w.stopAreas().find((a) => a.owner.id === "t");
   const board = () => {
     const { view, labels } = viewAt([700, -150], 700);

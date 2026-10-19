@@ -71,7 +71,7 @@ The app writes `clock`, `grid` and all other sections when it exports a layout; 
 
 ## Layers
 
-One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **View → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below). Next to a layout's own modules the app offers its modules **Build** (on until switched off) and **Disruptions** for every layout; they are not part of the file.
+One layout can carry several setups of the same lab: the base (the table, the town, the streets) is always there, and **layers** add to it, e.g. rail operations or the infrastructure game on top of the same photo. The app shows them as **modules**: boxes in **Overview → Modules** that are clicked on and off (or `?layers=id,id` in the address); the choice is kept per layout in the browser. The [lab example](../web/layouts/ebl-lab.json) has the modules `operations`, `infrastructure`, `journeys` and `terminal` (a layout of its own, see below). Next to a layout's own modules the app offers its modules **Build** (on until switched off) and **Disruptions** for every layout; they are not part of the file.
 
 ```json
 "layers": [
@@ -104,7 +104,7 @@ One layout can carry several setups of the same lab: the base (the table, the to
 | `simulations` | `[]` | added to those of the base. An entry with `"patch": true` is a **patch** of the simulation of its `type` that is already there (in the base or an earlier layer): its settings are merged into it, e.g. `{"type": "town", "patch": true, "enabled": false}` switches the town off while the layer is on. A patch of a simulation that is not there does nothing. |
 | `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
 | `exclusive` | `false` | the layer is not combined with others: switching it on switches the others off, and switching on another one switches it off (the app marks its box "alone") |
-| `layout` | | a **layout of its own** (a path relative to this file): the module opens that layout instead of adding to this one. It is always exclusive, and has no objects, simulations, scenarios or plugins of its own. In that layout, View → Modules shows the modules of this one, so that clicking any of them comes back. |
+| `layout` | | a **layout of its own** (a path relative to this file): the module opens that layout instead of adding to this one. It is always exclusive, and has no objects, simulations, scenarios or plugins of its own. In that layout, Overview → Modules shows the modules of this one, so that clicking any of them comes back. |
 
 The layers that are on are added in their order. Edits in the app go back where they came from: an object to its layer, a field a layer patched to that layer's patch (of an object or a simulation), a new object to the layer chosen in **Build → Layout → New objects go to** (by default the base). Object ids are unique across all layers, also those that are off. `node tools/ops-compare.mjs` takes `--layers id,id` (by default it switches on the layers with rail operations).
 
@@ -170,7 +170,7 @@ The app writes the start time, not the time shown when the layout is exported.
 
 ## `grid`
 
-The flyover (View → Flyover, key F) shows a grid on the layout plane; placed points, the corners of table modules and dragged objects snap to it (hold Alt/Option to place freely). Over the camera image the grid (and snapping) is only on when "Grid in camera view" is ticked.
+The flyover (Settings → View → Flyover, key F) shows a grid on the layout plane; placed points, the corners of table modules and dragged objects snap to it (hold Alt/Option to place freely). Over the camera image the grid (and snapping) is only on when "Grid in camera view" is ticked.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -506,7 +506,7 @@ Geometry: `points` (polygon). A coloured area: `kind` (`grass`, `field`, `water`
 
 ### `track`
 
-Geometry: `points` (polyline along the centre of a real track). Over the camera image it is drawn only when "Tracks" is switched on in the View panel (the real track is in the image); the flyover draws the track itself (ballast, sleepers, rails) unless the orthophoto shows it. Used to place trains reported as "track + offset" by the control system.
+Geometry: `points` (polyline along the centre of a real track). Over the camera image it is drawn only when "Tracks" is switched on in Settings → View (the real track is in the image); the flyover draws the track itself (ballast, sleepers, rails) unless the orthophoto shows it. Used to place trains reported as "track + offset" by the control system.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

@@ -21,7 +21,7 @@ The top bar chooses what the app looks at:
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
 
-The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a tab or a layout of their own are in **View → Examples** (on the game page in the list **Layouts…** of the top bar).
+The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a tab or a layout of their own are in **Settings → View → Examples** (on the game page in the list **Layouts…** of the top bar).
 
 ### The photo tour
 
@@ -32,11 +32,11 @@ The photos of the lab survey of 9 October 2026 (the [photo map](lab-session.md#t
 | **Perspective** (the six buttons in the upper left corner of the stage) | Look at the part from that side. The three buttons above the bar (the table) are the cameras at its back, the three below it those at its front; each arrow points the way the camera looks. A dimmed button: no photo from that side here, the nearest one is shown. |
 | **‹ ›** (the arrows at the left and right edges of the stage), keys **←** and **→** | The next part to the left or the right, as the camera sees it: from the front, → goes clockwise round the ring (along the windows towards Waldhof), from the back the other way. The perspective stays where the next part has a photo from that side, else the nearest one is shown, and the next step again looks for the one you chose. |
 
-Where a photo has a **digital layer** (Bf Neustadt, the goods yard with the hybrid container train), its layout opens with it and tracks it, as any photo. The others are shown as the photo only: the HUD says *Photo only: no digital layer for this part yet*, no markers are looked for, and the layout open until then stays (also in the flyover). A photo with a covered version (the room painted over, pushed with the [builder](world-builder.md#covered-photos)) is shown covered. The HUD names the part and the perspective; the address follows the tour (`app/?photo=132526`), and the photo map's **Open with the digital layer** opens the tour at that photo. In the flyover the tour's buttons are hidden; the arrow keys pan there.
+Where a photo has a **digital layer** (Bf Neustadt, the goods yard with the hybrid container train), its layout opens with it and tracks it, as any photo. The others are shown as the photo only: the HUD says *Photo only: no digital layer for this part yet*, no markers are looked for, and the layout open until then stays (also in the flyover). A photo with a covered version (the room painted over, pushed with the [builder](world-builder.md#covered-photos)) is shown covered. The pressed perspective button says where the photo was taken; the address follows the tour (`app/?photo=132526`), and the photo map's **Open with the digital layer** opens the tour at that photo. In the flyover the tour's buttons are hidden; the arrow keys pan there.
 
 ### The examples
 
-| View → Examples | Layout | Image | What it shows |
+| Settings → View → Examples | Layout | Image | What it shows |
 | --- | --- | --- | --- |
 | **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the modules operations, infrastructure and journeys with their stories (a train breaking down, the maintenance, a traveller's journey) |
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
@@ -58,7 +58,7 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 ## The flyover
 
-**Flyover** (button, View panel or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where there is no table the lab is blank), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
+**Flyover** (button or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where there is no table the lab is blank), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
 
 | Input | Mouse and keyboard | Touch |
 | --- | --- | --- |
@@ -73,32 +73,29 @@ The keys work while the stage has the focus (click on it, or switch the flyover 
 
 In Build, everything works as on the camera image, and placed points, the corners of table modules and dragged objects **snap to the grid** (hold Alt/Option to place freely). Placing also works with the keyboard: pick the type in the palette, go back to the stage (Shift+Tab), move the view with the arrow keys and press **Enter** to put a point at the cross in the middle of the view (for a bus line: to pick the stop under the cross). **Build → Table → Table module** extends the tabletop with virtual table modules: drag from one corner to the opposite one, or tap both corners. A table module of the kind *real table* draws the outline of the lab's real table; once there is one, the flyover no longer draws its own light-grey default table around the markers and objects. Houses, streets and the rest are built on table modules: a tap beside them places nothing. A table module's *Level* raises it (or lowers it) above the track level; what stands on it stands up there, and between two raised modules a street spans the tracks as a bridge ([Heights](streets-and-buses.md#heights-table-modules-ramps-and-bridges)).
 
-The View panel's **Flyover** section has the same switch and camera buttons, the grid spacing (10, 25, 50, 100 or 250 mm), **Snap to the grid**, **Grid in camera view** (shows the grid over the camera image too, and snapping to it there) and **Show markers**.
+**Settings → View → Grid** has the grid spacing (10, 25, 50, 100 or 250 mm), **Snap to the grid**, **Grid in camera view** (shows the grid over the camera image too, and snapping to it there) and **Markers in the flyover**.
 
 ### The simple view: Map and 2.5D
 
-For running operations quickly, **Map** and **2.5D** (buttons next to Flyover, the View panel, or the keys Shift+S and S) draw the flyover with little detail. Everything on the layout is flat: each object is its footprint in one colour per kind (tables, streets, platforms, tracks, buildings, trees, areas, yard blocks, …), bus lines show their route. Everything that moves is a plain block: trains, buses, cars, people, cranes, containers, wagons, trucks, barges and vans are the outline of each part, extruded from its lowest to its highest point, without windows, doors or wheels. There are no lights and no night, and the orthophoto is left out. Boards and signs stay.
+For running operations quickly, **Map** and **2.5D** (buttons next to Flyover, or the keys Shift+S and S) draw the flyover with little detail. Everything on the layout is flat: each object is its footprint in one colour per kind (tables, streets, platforms, tracks, buildings, trees, areas, yard blocks, …), bus lines show their route. Everything that moves is a plain block: trains, buses, cars, people, cranes, containers, wagons, trucks, barges and vans are the outline of each part, extruded from its lowest to its highest point, without windows, doors or wheels. There are no lights and no night, and the orthophoto is left out. Boards and signs stay.
 
 **Map** looks straight down: a map of the layout. **2.5D** tilts the view, so the moving things stand up from the flat layout. All camera controls work as in the flyover (the plan-view button switches between the two), and so do Build (placing, selecting, dragging, snapping) and picking in the Terminal panel. The choice is kept in the browser.
 
 ## What you see
 
-The chips at the top left of the stage show the state:
+The stage stays calm: a chip at its top left appears only when something needs attention.
 
 | Chip | Meaning |
 | --- | --- |
-| *Tracking · 5 markers* | the layout is registered using five markers; *· locked* when the marker map is locked |
+| *No markers in view* | the layout is not registered: point the camera at the markers |
 | *Markers hidden · holding position* | all markers are hidden for a moment; the last pose is kept for 1.5 s |
 | *Markers 7, 9 seen, none known yet* | markers are in view, but none is in the marker map yet (*none in the locked marker map* when it is locked) |
-| *Flyover · plan view*, *Grid 50 mm · snap* | in the flyover: the camera and the grid; *Map* or *Simple 2.5D* in the simple view |
-| *07:32*, *22:30 · night* | the time of day of the fast clock, *· night* between sunset and sunrise (see [Day and night](day-and-night.md)) |
-| *Paused*, *5× time*, *1 disruption*, *Control system · 3 trains*, *Frozen frame*, *Recording* | simulation and recording state |
-| *Maintenance at Bf Neustadt · step 3 of 12* | a story: its step (*· playing* while it goes on by itself) |
-| *Operations · 5 trains*, *· 1 unit failed* | on the game page, [rail operations](operations.md): their trains on the way, failed units |
+| *Photo only: no digital layer for this part yet* | a photo of the photo tour without a layout |
+| *1 disruption*, *Recording* | disruptions running, the stage being recorded |
 
-On a phone the chips keep out of the picture where they can: the speed and a pause go with the clock (*07:32 · 2× time*), and the grid and a terminal without moves are not shown.
+The **clock** is in the bar: the time of day of the fast clock (see [Day and night](day-and-night.md)), with the speed when it is not 1× (*07:32 · ×2*) or *Paused*. Tap it for **Settings → Simulation**. How the tracking goes (markers seen and used, the reprojection error, the frame rate) is in **Settings → View → Camera → Tracking details**; where a story is, in its tab.
 
-Every stop (platform, bus terminal, bus stop) has a **board** above it: the stop sign (platform number or "H"), the name, the number of people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events: *Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board. Where the picture is crowded, the boards of the stops largest in the picture are shown in full and the others as badges: once the labels cover a tenth of the picture, and where a board would cover another label, a chip or a button on the stage (on a phone one board is shown in full). Tap a stop for its card with everything on the board. The labels of buses and trams standing at a stop are left out where they would cover another label.
+Every stop (platform, bus terminal, bus stop) has a **badge** above it: the stop sign (platform number or "H") and the number of people waiting, red during a disruption. The board of **Settings → Simulation → Stops** lists them all with the next events (*Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*); the **Overview** rates them by the mood of the people waiting. **Settings → View → Show → Departure boards at the stops** puts the full **board** over each stop instead: the name, the people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board. Where the picture is crowded, the boards of the stops largest in the picture are shown in full and the others as badges: once the labels cover a tenth of the picture, and where a board would cover another label, a chip or a button on the stage (on a phone one board is shown in full). Tap a stop for its card with everything on the board. The labels of buses and trams standing at a stop are left out where they would cover another label.
 
 People at stops are coloured by their mood: Türkis = happy, Gelb = so-so, Rot = annoyed. People of the [town simulation](day-and-night.md#colours) are coloured by the purpose of their trip. Buildings look like a white architectural model in greys; at night their windows light up when people are inside.
 
@@ -114,22 +111,16 @@ In Build the tooltip shows too, and a tap selects the object for editing as befo
 
 ## Panels
 
-The tabs: **View**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
+The tabs: **Overview**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
 
-### View
+### Overview
 
-- *Modules*: boxes to click, one per module; each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
-- *Examples* (the app): the examples with a clip, a tab or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
-- *Tracking*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
-- *Flyover*: see above.
-- *Show*: signs and boards, walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, and **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend; see [Railway systems](rail-systems.md).
-- *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md).
-- *Record*: records the stage as a WebM video.
-- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, View, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
+- *Modules*: boxes to click, one per module, with its name, orange when on (its description is the tooltip); each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
+- *State*: how good the state of the layout is, from what its simulations keep. Each item gets a score from 0 % (worst) to 100 % (as good as new): an asset of the infrastructure by its condition (grade 1 … 6; a fault is 0 %), a stop by its load and the mood of the people waiting there (the mean of both; the load is the people waiting against what the stop holds at 2 people per m², easy going up to a quarter of that, 0 % when full), a person waiting by their mood, a resident of the town by theirs, a unit of the rail operations by the wear left to its next inspection. The large figure is the mean of all **kinds** (Signal, Track section, Stops, Residents, …), each kind counting once however many items it has. Below it the worst and the best kind, each with its mean, how many there are, a **histogram** (across: the score, 0–100 % in ten steps; up: how many items, the fullest step at the top; hover a bar for its count) and its worst item; **Show all kinds** lists them all, from the worst. The **search** finds items by name or kind (*signal*, *N2*, a person's name), the worst first; a kind of that name (every word of the search in it) shows its histogram too. Click an item for its info card on the stage.
 
 ### Build
 
-The layout editor. Shown with the module **Build**, which is on until you switch it off (View → Modules; a link with `#build` switches it on).
+The layout editor. Shown with the module **Build**, which is on until you switch it off (Overview → Modules; a link with `#build` switches it on).
 
 - *Add to the layout*: the palette, in six groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
 
@@ -147,7 +138,7 @@ The layout editor. Shown with the module **Build**, which is on until you switch
 - *Selected*: all settings of the object, generated from the object type's parameters, and its problems (e.g. a bus stop away from the streets). **↺ 90°** and **↻ 90°** turn it (keys R and Shift+R: 15° and 90°). **Redraw position** places it again (**Pick the stops again** for a bus line), **Duplicate** puts a copy beside it (a table module right next to it), **Delete** and **Done** do what they say.
 - *Layout*: name, model scale, marker size and marker type, **Export layout** (downloads the JSON file), **Import layout**, **Reset to original**.
 - *Marker map*: the marker positions (ID, x, y, rotation; status *origin*, *fixed* or *surveyed*).
-  - **Keep positions** fixes all positions and **locks** the map: from then on only these markers are used, new markers are ignored, and the HUD says *Tracking · 5 markers · locked*.
+  - **Keep positions** fixes all positions and **locks** the map: from then on only these markers are used, new markers are ignored, and Tracking details say *5 markers (locked)*.
   - **Unlock** opens a locked map again: unknown markers are measured when they are seen together with known ones.
   - **Measure again** forgets the positions (and unlocks the map), for after markers were moved.
   - **Moving markers**: the IDs of markers on vehicles, e.g. `40, 41` for container wagons. They are never part of the map nor used for the pose. The app refuses the origin marker, IDs beyond `markers.codes` (they would never be detected) and markers that objects are placed relative to. A marker taken out by mistake gets its position back when you remove it from the list.
@@ -157,15 +148,23 @@ Changes are kept in the browser (per layout file). Export the layout to share it
 
 ### Settings
 
-Two views: **Simulation** and **Control system**. The tab opens the view chosen last; `#simulate` and `#control` in the app URL open a view (and the URL names the view shown).
+Three views: **View**, **Simulation** and **Control system**. The tab opens the view chosen last; `#view`, `#simulate` and `#control` in the app URL open a view (and the URL names the view shown).
+
+**View**
+
+- *Examples* (the app): the examples with a clip, a tab or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
+- *Show*: signs and boards, the departure boards at the stops (off: badges), walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend (see [Railway systems](rail-systems.md)), and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
+- *Grid*: see [The flyover](#the-flyover).
+- *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md), recording the stage as a WebM video, and, folded away, *Tracking details*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
+- *Language*: **English** or **Deutsch**, at once and kept on this device (without a choice, the browser's language). German covers the frame, Overview, Settings, Build, Disruptions, the info cards and the labels on the stage; see [Languages](languages.md).
 
 **Simulation**
 
 - *Time of day*: the clock (time, day/dawn/dusk/night and the day number), a slider to set the time, the presets **Morning 06:30**, **Noon 12:00**, **Evening 17:00** and **Night 22:30**, the **Fast clock** ratio (1:1 real time … 1:60; 1:12 = one clock hour in five simulated minutes), **Day and night lighting** and **Stop the clock**. See [Day and night](day-and-night.md).
-- *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), the colours of their trip purposes, and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Speed*: **Pause**, the speed (simulated time per real time: 1×, 2×, 5×, 10×, 30×) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
+- *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), and on their way by the purpose of their trip.
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
-- *Stops*: a departure board for all stops: people waiting, mood, people in and out per minute, the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
+- *Stops*: a board of all stops, numbered as the keys 1–9 call them: the people waiting, their mood (the bar), the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
 - *Rail operations* (on layouts without the operations story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Rail operations](operations.md#the-operations-story).
 - *Infrastructure* (on layouts without the maintenance story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Infrastructure](infrastructure.md#the-maintenance-story). *Journeys* (without the journeys story) the same way, see [Journeys](journeys.md#the-journeys-story). On the game page: the infrastructure game, *Rail operations* and the journeys exercise the same way, with **Add to this layout** (its tab opens, the focus on its heading).
 - *Container terminal* (on layouts without one): **Switch on the module** (on the lab example) or **Open the example terminal**, and **Add to this layout**, see [Container terminal](container-terminal.md).
@@ -176,7 +175,7 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 
 ### Terminal
 
-Shown when the layout has a container terminal (**View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
+Shown when the layout has a container terminal (**Settings → View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
 
 - The terminal's state, **Reset terminal** and **Save as start state**.
 - *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**; while it moves, the line of its job, and **Cancel** before the crane locks it.
@@ -186,15 +185,15 @@ On the stage, tap a container, then one of its outlined places. In the flyover a
 
 ### Operations
 
-Shown when the layout has the operations story (Bf Neustadt's module **Operations**, View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
+Shown when the layout has the operations story (Bf Neustadt's module **Operations**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
 
 - The same controls as the Infrastructure tab (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera looks at a slant along the platform, so that the train at the near track does not hide the passengers, and goes with the spare unit and the broken unit to the depot and back.
-- The module is marked *alone* in View → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
+- The module is marked *alone* in Overview → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
 
 ### Infrastructure
 
-Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
+Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
 
 - The current step: its title, what happens, and how far its animation has run.
 - **Back**, **Next**, **Play** (step after step, with a pause between them), **Start again**, and the list of all steps to jump to; a presenter's clicker works too (Page Down, Page Up).
@@ -202,7 +201,7 @@ Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastr
 
 ### Journeys
 
-Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, View → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
+Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
 
 - The same controls as the Infrastructure tab: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way. Her walk from home it sees from the street, facing her front door; the rest facing the station's front.
@@ -210,7 +209,7 @@ Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**,
 
 ### Disruptions
 
-Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
+Shown with the module **Disruptions** (Overview → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
 
 ## Keyboard shortcuts
 
@@ -233,7 +232,7 @@ Shown with the module **Disruptions** (View → Modules; a link with `#disrupt` 
 
 ## The game page
 
-The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises in the modules' tabs. It opens the lab example Beta 0.1, whose modules (View → Modules) have them; it remembers its last layout apart from the app.
+The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises in the modules' tabs. It opens the lab example Beta 0.1, whose modules (Overview → Modules) have them; it remembers its last layout apart from the app.
 
 ### Infrastructure (game)
 
@@ -278,7 +277,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | Parameter | Effect |
 | --- | --- |
 | `layout=<url>` | load a layout file (relative to the app); without it the app opens the last layout, or Bf Neustadt (the game page: the lab example Beta 0.1) |
-| `example=<id>` | open an example (View → Examples; the game page: its Layouts menu) with its photo or clip and tab: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
+| `example=<id>` | open an example (Settings → View → Examples; the game page: its Layouts menu) with its photo or clip and tab: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
 | `photo=<id>` | the app: a photo of the [photo tour](#the-photo-tour) by its id (the time it was taken, `hhmmss`, as on the photo map), with the layout of its digital layer |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |

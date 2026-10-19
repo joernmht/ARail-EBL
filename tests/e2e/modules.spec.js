@@ -29,7 +29,7 @@ const on = (page) => page.evaluate(() => window.__arail.layersOn());
 const box = (page, name) => page.locator(".modules").getByRole("button", { name, exact: true });
 
 test("the View panel switches the modules of the lab example by clicking their boxes; the choice is kept", async ({ page }) => {
-  const errors = await open(page, `${LAB}#view`);
+  const errors = await open(page, `${LAB}#overview`);
   await expect(page.locator(".modules").getByRole("button")).toHaveCount(7); // the lab's five, the app's Build and Disruptions
   const ops = box(page, "Rail operations"), infra = box(page, "Infrastructure");
   await expect(ops).toHaveAttribute("aria-pressed", "false");
@@ -41,7 +41,6 @@ test("the View panel switches the modules of the lab example by clicking their b
   await expect(page.locator("#tab-ops")).toBeVisible();
   await expect(page.locator("#layoutName")).toContainText("Rail operations");
   await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "true");
-  await expect(box(page, "Rail operations").locator(".module-state")).toHaveText("On");
   // two at once
   await box(page, "Infrastructure").click();
   await page.waitForFunction(() => window.__arail.world.getObject("interlocking-bf"));
@@ -94,7 +93,7 @@ test("Build: new objects go to the chosen module and stay with it", async ({ pag
 });
 
 test("the container terminal is a module of its own: chosen alone, the lab's modules shown there, and back", async ({ page }) => {
-  const errors = await open(page, `${LAB}#view`);
+  const errors = await open(page, `${LAB}#overview`);
   const url = () => page.evaluate(() => window.__arail.layoutUrl.replace(/.*\/layouts\//, ""));
   await box(page, "Rail operations").click();
   await page.waitForFunction(() => window.__arail.world.getObject("depot-1"));
@@ -106,7 +105,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   await expect(page.locator("#tab-terminal")).toBeVisible();
   await expect(page.locator("#tab-ops")).toBeHidden();
   expect(await page.evaluate(() => window.__arail.mode)).toBe("flyover");
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
   await expect(box(page, "Rail operations")).toHaveAttribute("aria-pressed", "false");
   // another module: back to the lab with that one
@@ -116,7 +115,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   // the terminal again, kept over a reload; clicked once more: the lab without modules
   await box(page, "Container terminal").click();
   await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail.layoutUrl));
-  await page.goto("/game/?layout=../layouts/ebl-lab.json#view");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#overview");
   await page.waitForFunction(() => window.__arail?.terminal?.sim);
   expect(await url()).toBe("container-terminal.json");
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
@@ -125,10 +124,10 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
   expect(await on(page)).toEqual([]);
   await expect(page.locator(".modules [aria-pressed=true] .module-name")).toHaveText(["Build"]); // only the app's Build, on by default
   // a link to the lab with the module, and a link straight to the terminal (in a new browser): its modules are the lab's
-  await page.goto(`${LAB}&layers=terminal#view`);
+  await page.goto(`${LAB}&layers=terminal#overview`);
   await page.waitForFunction(() => /container-terminal\.json$/.test(window.__arail?.layoutUrl || ""));
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/game/?layout=../layouts/container-terminal.json#view");
+  await page.goto("/game/?layout=../layouts/container-terminal.json#overview");
   await page.waitForFunction(() => window.__arail?.terminal?.sim);
   await expect(box(page, "Container terminal")).toHaveAttribute("aria-pressed", "true");
   // the lab from the list of layouts opens the lab, not the terminal again
@@ -139,7 +138,7 @@ test("the container terminal is a module of its own: chosen alone, the lab's mod
 });
 
 test("Disruptions is a module: its tab only while it is on; switched off, what it started stops; kept per layout", async ({ page }) => {
-  const errors = await open(page, `${LAB}#view`);
+  const errors = await open(page, `${LAB}#overview`);
   const dis = () => box(page, "Disruptions");
   await expect(dis()).toHaveAttribute("aria-pressed", "false");
   await expect(dis()).toHaveAccessibleDescription(/Delays, signal failures, cancellations/);
@@ -150,7 +149,6 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
   await expect(page.locator("#tab-disrupt")).toBeVisible();
   await expect(dis()).toHaveAttribute("aria-pressed", "true");
   await expect(dis()).toBeFocused();
-  await expect(dis().locator(".module-state")).toHaveText("On");
   expect(await on(page)).toEqual([]); // no layer of the layout
   // a delay and a scenario
   await page.locator("#tab-disrupt").click();
@@ -160,7 +158,7 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
   await expect.poll(() => page.evaluate(() => window.__arail.world.scenarios.current?.id)).toBe("football");
   await expect(page.locator("#panel-disrupt .disruption").first()).toContainText("Delay");
   // off: they stop, the tab goes
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await dis().click();
   await expect(page.locator("#tab-disrupt")).toBeHidden();
   expect(await page.evaluate(() => [window.__arail.world.scenarios.current, window.__arail.world.disruptions.active.length])).toEqual([null, 0]);
@@ -182,8 +180,8 @@ test("Disruptions is a module: its tab only while it is on; switched off, what i
 
 test("Settings holds the simulation and the control system: #simulate and #control open those views, the last one is kept", async ({ page }) => {
   const errors = await open(page, `${LAB}#control`);
-  // no module on: View, Build and Settings
-  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["View", "Build", "Settings"]);
+  // no module on: Overview, Build and Settings
+  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["Overview", "Build", "Settings"]);
   await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#feedUrl")).toBeVisible();
@@ -194,12 +192,12 @@ test("Settings holds the simulation and the control system: #simulate and #contr
   expect(new URL(page.url()).hash).toBe("#simulate");
   // the tab opens the view chosen last, also after a reload
   await page.locator("#settingsView-control").click();
-  await page.locator("#tab-view").click();
-  expect(new URL(page.url()).hash).toBe("#view");
+  await page.locator("#tab-overview").click();
+  expect(new URL(page.url()).hash).toBe("#overview");
   await page.locator("#tab-settings").click();
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
   expect(new URL(page.url()).hash).toBe("#control");
-  await page.goto(`${LAB}#view`);
+  await page.goto(`${LAB}#overview`);
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
   await page.locator("#tab-settings").click();
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
@@ -212,7 +210,7 @@ test("with the browser's storage blocked, the module Disruptions still switches 
     Storage.prototype.getItem = () => { throw new Error("storage blocked"); };
     Storage.prototype.setItem = () => { throw new Error("storage blocked"); };
   });
-  await page.goto(`${LAB}#view`);
+  await page.goto(`${LAB}#overview`);
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
   await box(page, "Disruptions").click();
   await expect(page.locator("#tab-disrupt")).toBeVisible();
@@ -230,7 +228,7 @@ test("Build is a module, on until switched off: off, its tab goes and placing st
   await expect(page.locator("#tab-build")).toHaveAttribute("aria-selected", "true");
   await page.locator(".palette").getByRole("button", { name: /^Tree/ }).click();
   await expect(page.locator("#placing")).toBeVisible();
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await expect(build()).toHaveAttribute("aria-pressed", "true");
   await expect(build()).toHaveAccessibleDescription(/Place and edit the objects of the layout/);
   await build().click();
@@ -238,9 +236,9 @@ test("Build is a module, on until switched off: off, its tab goes and placing st
   await expect(build()).toHaveAttribute("aria-pressed", "false");
   await expect(build()).toBeFocused();
   await expect(page.locator("#placing")).toBeHidden();
-  expect(await page.evaluate(() => [window.__arail.editor.placing, window.__arail.tabs()])).toEqual([null, ["view", "settings"]]);
+  expect(await page.evaluate(() => [window.__arail.editor.placing, window.__arail.tabs()])).toEqual([null, ["overview", "settings"]]);
   // the arrow keys skip it
-  await page.locator("#tab-view").focus();
+  await page.locator("#tab-overview").focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
   // kept over a reload, without counting as a change of the layout

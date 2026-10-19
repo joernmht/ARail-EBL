@@ -1,4 +1,4 @@
-// Panels: View, Settings (simulation and control system), Disruptions.
+// Panels: Settings (view, simulation and control system), Disruptions.
 import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 import { tr } from "./i18n.js";
@@ -7,20 +7,8 @@ const SPEEDS = [1, 2, 5, 10, 30];
 /** Fast-clock ratios offered in Settings → Simulation. */
 const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
 const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
-/** Icons of the modules (by what they add): line drawings in the colour of the text. */
-const MODULE_ICONS = {
-  operations: '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="3"/><path d="M6 10h12M9.5 13.5h.01M14.5 13.5h.01M8 21l2-4M16 21l-2-4"/></svg>',
-  infrastructure: '<svg viewBox="0 0 24 24"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><circle cx="12" cy="6.2" r="1.4"/><circle cx="12" cy="10.8" r="1.4"/><path d="M12 14.5V21M8 21h8"/></svg>',
-  journeys: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="5.5" r="2.5"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16" stroke-dasharray="2.2 2.2"/></svg>',
-  layout: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="10" rx="1"/><path d="M6.5 7v10M10 7v10M13.5 7v10M14 3.5h6.5V10M20.5 3.5 15 9"/></svg>',
-  module: '<svg viewBox="0 0 24 24"><path d="M12 3 21 8l-9 5-9-5 9-5Z"/><path d="m3 12.5 9 5 9-5M3 16.5l9 5 9-5"/></svg>',
-  build: '<svg viewBox="0 0 24 24"><path d="M3.5 20.5 4.6 16 15.8 4.8a2.1 2.1 0 0 1 3 3L7.6 19l-4.1 1.5Z"/><path d="m14 6.6 3 3M3 20.9h18"/></svg>',
-  disruptions: '<svg viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19L12 3.5Z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>',
-};
 /** The views of the Settings panel. */
-const SETTINGS_VIEWS = [["simulate", "Simulation"], ["control", "Control system"]];
-/** The icon of a module by the simulations of its layer. */
-const SIM_ICONS = { operations: "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys", "journeys-story": "journeys" };
+const SETTINGS_VIEWS = [["view", "View"], ["simulate", "Simulation"], ["control", "Control system"]];
 /** "Platform 1, Track G2" for the id of a platform's track (a dock, "platform-1:left"), or null. */
 const trackName = (world, id) => {
   for (const a of world.stopAreas()) for (const k of a.docks) if (k.id === id) return `${a.owner.name}, ${k.label}`;
@@ -31,42 +19,35 @@ export class Panels {
   constructor(app) {
     this.app = app;
     this.disruptionDraft = { type: "delay", target: "*", params: {} };
-    /** The view of the Settings panel: "simulate" or "control". */
-    this.settingsView = SETTINGS_VIEWS.some(([v]) => v === storage.get("arail.settingsView")) ? storage.get("arail.settingsView") : "simulate";
+    /** The view of the Settings panel: "view", "simulate" or "control". */
+    this.settingsView = SETTINGS_VIEWS.some(([v]) => v === storage.get("arail.settingsView")) ? storage.get("arail.settingsView") : "view";
   }
 
   get world() {
     return this.app.world;
   }
 
-  /* ================================================================ View */
+  /* ================================================================ View (a view of Settings) */
 
+  /** Settings → View: the examples, what is shown, the grid, the camera, recording, the language. */
   renderView(el) {
-    const app = this.app, s = app.world.settings, d = app.display;
+    const app = this.app, s = app.world.settings, d = app.display, g = app.world.layout.grid;
     // a control that had the focus (e.g. the box of a module just switched) gets it back in the new panel
     const focused = el.contains(document.activeElement) ? document.activeElement.id : null;
     const toggle = (id, label, get, set) => h("label", { class: "field check", for: id },
       h("input", { type: "checkbox", id, checked: get(), onchange: (e) => { set(e.target.checked); app.savePrefs(); } }), label);
+    const placing = () => { app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); };
+    const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
     this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
-    this.flyBox = h("div", { class: "section flyover-section" });
-    const modules = app.modules();
     mount(el,
-      section("Modules",
-        h("div", { class: "modules", role: "group", "aria-label": "Modules" }, modules.map((m) => this._moduleBox(m))),
-        h("p", { class: "hint" }, modules.some((m) => m.exclusive)
-          ? "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Modules marked “alone” are not combined with others: choosing one switches the others off. Switching a module of the layout starts the simulations again; your changes are kept."
-          : "Click a module to switch it on or off; each one on has its tab. The base (table, town, streets) is always there. Switching a module of the layout starts the simulations again; your changes are kept.")),
       // the app: the photo tour on the stage chooses what is shown; the examples with a clip, a tab or a layout of their own are here
       app.tourNav ? section("Examples",
-        h("div", { class: "row examples" }, app.page.examples.map((x) => h("button", { class: "btn small", type: "button", id: `example-${x.id}`, onclick: () => app.openExample(x.id) }, x.label))),
-        h("p", { class: "hint" }, "The arrows at the edges of the stage walk round the lab from photo to photo (keys ← and →); the buttons in its upper left corner choose the side the photos are taken from. Where a photo has a digital layer, its layout opens with it.")) : null,
-      section("Tracking", this.viewInfo, h("p", { class: "hint" },
-        "Point the camera at the layout from above at an angle. At least one known marker must be visible; more markers make it steadier.")),
-      this.flyBox,
+        h("div", { class: "row examples" }, app.page.examples.map((x) => h("button", { class: "btn small", type: "button", id: `example-${x.id}`, onclick: () => app.openExample(x.id) }, x.label)))) : null,
       section("Show",
         h("div", { class: "fields" },
           toggle("optLabels", "Signs and boards", () => s.labels, (v) => (s.labels = v)),
+          toggle("optStopBoards", "Departure boards at the stops", () => !!s.stopBoards, (v) => (s.stopBoards = v)),
           toggle("optTrails", "Walking trails", () => s.trails, (v) => (s.trails = v)),
           toggle("optMarkers", "Marker outlines", () => d.markers, (v) => (d.markers = v)),
           toggle("optCoverMarkers", "Cover the markers", () => s.coverMarkers, (v) => (s.coverMarkers = v)),
@@ -74,42 +55,53 @@ export class Panels {
         ),
         h("label", { class: "field", for: "optOpacity" }, h("span", {}, "Opacity of virtual objects"),
           h("input", { type: "range", id: "optOpacity", min: 0.2, max: 1, step: 0.05, value: d.opacity, oninput: (e) => { d.opacity = Number(e.target.value); app.savePrefs(); } })),
-        h("label", { class: "field", for: "optTrackSystems" }, h("span", {}, "Colour the tracks by"),
-          h("select", { id: "optTrackSystems", "aria-describedby": "optTrackSystems-help", onchange: (e) => { s.trackSystems = e.target.value; app.savePrefs(); this.renderView(el); } },
-            [["", "nothing"], ...SYSTEM_OVERLAYS, ...(app.world.compatibilityTrain ? [[COMPATIBILITY, `where ${app.world.compatibilityTrain.name} may run`]] : [])]
-              .map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t))),
-          h("small", { class: "help", id: "optTrackSystems-help" }, "Track systems: each track (Build → Track) has its traction power, train protection, signals, radio, gauge, line category and country; the tracks are coloured over the camera image too.")),
+        h("div", { class: "fields" },
+          h("label", { class: "field", for: "optTrackSystems" }, h("span", {}, "Colour the tracks by"),
+            h("select", { id: "optTrackSystems", onchange: (e) => { s.trackSystems = e.target.value; app.savePrefs(); this.renderView(el); } },
+              [["", "nothing"], ...SYSTEM_OVERLAYS, ...(app.world.compatibilityTrain ? [[COMPATIBILITY, `where ${app.world.compatibilityTrain.name} may run`]] : [])]
+                .map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t)))),
+          h("label", { class: "field", for: "peopleColour" }, h("span", {}, "Colour of people"),
+            h("select", { id: "peopleColour", onchange: (e) => { s.peopleColour = e.target.value; app.savePrefs(); } },
+              [["auto", "town: purpose of the trip; passengers: mood"], ["purpose", "purpose of the trip"], ["mood", "mood"]].map(([v, t]) => h("option", { value: v, selected: (s.peopleColour || "auto") === v }, t)))),
+        ),
         this._systemsLegend(),
       ),
+      section("Grid",
+        h("div", { class: "fields" },
+          h("label", { class: "field", for: "gridSize" }, h("span", {}, "Grid spacing"),
+            h("select", { id: "gridSize", onchange: (e) => { g.size_mm = Number(e.target.value); placing(); } },
+              sizes.map((v) => h("option", { value: v, selected: v === g.size_mm }, `${v} mm`)))),
+          toggle("optSnap", "Snap to the grid", () => g.snap, (v) => { g.snap = v; placing(); }),
+          toggle("optGridCamera", "Grid in camera view", () => !!d.gridInCamera, (v) => (d.gridInCamera = v)),
+          toggle("optFlyMarkers", "Markers in the flyover", () => d.flyMarkers !== false, (v) => (d.flyMarkers = v)),
+        ),
+      ),
       section("Camera",
-        h("p", { class: "hint" }, "The focal length is estimated from the markers. If people or buildings lean, adjust it by hand."),
-        this.focalRow,
+        h("div", { class: "field" }, h("span", {}, "Focal length"), this.focalRow),
         h("div", { class: "row" },
           h("label", { class: "btn small", for: "calibrationFile" }, "Load calibration"),
           h("input", { type: "file", id: "calibrationFile", accept: ".json,application/json", class: "visually-hidden", onchange: (e) => this._loadCalibration(e) }),
           h("button", { class: "btn small", type: "button", onclick: () => { app.camera.setCalibration(null); storage.remove("arail.calibration"); toast("Calibration removed."); } }, "Remove calibration"),
-        ),
-        h("p", { class: "hint" }, "A calibration file comes from ", h("code", {}, "arail-calibrate"), " (see the documentation). It only fits the camera and resolution it was made with."),
-      ),
-      section("Record",
-        h("div", { class: "row" },
           h("button", { class: "btn small", type: "button", id: "btnRecord", "aria-pressed": app.recorder ? "true" : "false", onclick: () => app.toggleRecording() }, "Record video of the stage"),
         ),
-        h("p", { class: "hint" }, "Saves the camera image with everything drawn on it as a WebM video."),
+        h("details", { class: "tracking" }, h("summary", {}, "Tracking details"), this.viewInfo),
       ),
       section("Language",
-        h("label", { class: "field", for: "optLanguage" }, h("span", {}, "Language of the app"),
-          h("select", { id: "optLanguage", "aria-describedby": "optLanguage-help", onchange: (e) => app.changeLanguage(e.target.value) },
-            Object.entries(UI_LANGUAGES).map(([v, name]) => h("option", { value: v, lang: v, translate: "no", selected: app.language === v }, name))),
-          h("small", { class: "help", id: "optLanguage-help" }, "Kept on this device; a link can choose it with ?lang=de. What is not translated yet stays English.")),
+        h("label", { class: "field", for: "optLanguage" }, h("span", { class: "visually-hidden" }, "Language of the app"),
+          h("select", { id: "optLanguage", onchange: (e) => app.changeLanguage(e.target.value) },
+            Object.entries(UI_LANGUAGES).map(([v, name]) => h("option", { value: v, lang: v, translate: "no", selected: app.language === v }, name)))),
       ),
     );
-    this.renderFlyover();
     this.updateView();
     if (focused) document.getElementById(focused)?.focus();
   }
 
-  /** The legend of View → Colour the tracks by: each value on the layout's tracks, with its colour and how many tracks have it. */
+  /** Draw Settings → View again if it is shown (a key pressed, a track colouring chosen on a card). */
+  renderViewIfShown() {
+    if (this.app.activeTab === "settings" && this.settingsView === "view" && this.settingsBody?.isConnected) this.renderView(this.settingsBody);
+  }
+
+  /** The legend of Settings → View → Colour the tracks by: each value on the layout's tracks, with its colour and how many tracks have it. */
   _systemsLegend() {
     const key = this.world.settings.trackSystems;
     if (!key) return null;
@@ -126,63 +118,6 @@ export class Panels {
     }
     return h("ul", { class: "legend-list", "aria-label": "Colours of the tracks" },
       [...seen.values()].map(({ v, n }) => h("li", {}, h("span", { class: "swatch", style: { background: v.colour }, "aria-hidden": "true" }), v.label, h("b", {}, `${n} track${n === 1 ? "" : "s"}`))));
-  }
-
-  /**
-   * A module as a box to click (a toggle button): its name, whether it is on, and what it adds.
-   * Its accessible name is the module's name; the text describes it.
-   */
-  _moduleBox(m) {
-    const id = `module-${m.id}`;
-    const state = m.enabled ? "On" : m.exclusive ? "Alone" : "Off";
-    const icon = m.icon ?? (m.layout ? "layout" : Object.entries(SIM_ICONS).find(([t]) => m.simulations?.includes(t))?.[1] ?? "module");
-    const box = h("button", {
-      type: "button", class: `module${m.exclusive ? " exclusive" : ""}`, id, "aria-pressed": m.enabled ? "true" : "false",
-      "aria-labelledby": `${id}-name`, "aria-describedby": m.description ? `${id}-text` : null,
-      onclick: () => this.app.toggleModule(m.id),
-    },
-    h("span", { class: "module-icon", "aria-hidden": "true" }),
-    h("span", { class: "module-head" }, h("span", { class: "module-name", id: `${id}-name` }, m.name), h("span", { class: "module-state", "aria-hidden": "true" }, state)),
-    m.description ? h("small", { class: "module-text", id: `${id}-text` }, m.description) : null);
-    box.firstChild.innerHTML = MODULE_ICONS[icon];
-    return box;
-  }
-
-  /** View panel, Flyover: switch it on and off, move its camera, set the grid. */
-  renderFlyover() {
-    const box = this.flyBox;
-    if (!box?.isConnected) return;
-    const app = this.app, fly = app.flyover, d = app.display, g = app.world.layout.grid, on = fly.active;
-    const toggle = (id, label, get, set) => h("label", { class: "field check", for: id },
-      h("input", { type: "checkbox", id, checked: get(), onchange: (e) => set(e.target.checked) }), label);
-    const button = (cmd, label, text) => h("button", { class: "btn small", type: "button", "data-fly": cmd, "aria-label": label, title: label }, text);
-    const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
-    // morph, not mount: the toggle that redrew this section keeps the keyboard focus
-    morph(box,
-      h("h2", {}, "Flyover"),
-      h("div", { class: "row" },
-        h("button", { class: "btn", type: "button", id: "btnFlyoverPanel", "aria-pressed": on ? "true" : "false", onclick: () => fly.toggle() }, "Flyover"),
-        h("span", { class: "hint" }, on ? "Virtual camera. Press F or the button to return to the camera image." : "Look at and edit the layout with a virtual camera (key F).")),
-      h("div", { class: "row", role: "group", "aria-label": "Simple view" },
-        h("button", { class: "btn small", type: "button", "data-simple": "map", "aria-pressed": on && fly.simple && fly.planTarget() ? "true" : "false" }, "Map"),
-        h("button", { class: "btn small", type: "button", "data-simple": "3d", "aria-pressed": on && fly.simple && !fly.planTarget() ? "true" : "false" }, "2.5D"),
-        h("span", { class: "hint" }, "Simple and fast: the layout flat, everything that moves as plain blocks (keys Shift+S and S). Build works here too.")),
-      on ? h("div", { class: "row fly-buttons", role: "group", "aria-label": "Flyover camera" },
-        button("zoom-in", "Zoom in", "+"), button("zoom-out", "Zoom out", "−"),
-        button("rotate-left", "Rotate left", "↺"), button("rotate-right", "Rotate right", "↻"),
-        h("button", { class: "btn small", type: "button", "data-fly": "plan", "aria-pressed": fly.cam.isPlan ? "true" : "false", title: "Plan view: look straight down" }, "Plan view"),
-        button("fit", "Show the whole layout", "Fit")) : null,
-      h("div", { class: "fields" },
-        h("label", { class: "field", for: "gridSize" }, h("span", {}, "Grid spacing"),
-          h("select", { id: "gridSize", onchange: (e) => { g.size_mm = Number(e.target.value); app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); } },
-            sizes.map((v) => h("option", { value: v, selected: v === g.size_mm }, `${v} mm`)))),
-        toggle("optSnap", "Snap to the grid", () => g.snap, (v) => { g.snap = v; app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); }),
-        toggle("optGridCamera", "Grid in camera view", () => !!d.gridInCamera, (v) => { d.gridInCamera = v; app.savePrefs(); }),
-        toggle("optFlyMarkers", "Show markers", () => d.flyMarkers !== false, (v) => { d.flyMarkers = v; app.savePrefs(); }),
-      ),
-      h("p", { class: "hint" },
-        "Drag to turn the view; Shift-drag, right-drag or two fingers pan; scroll or pinch to zoom. In Build, placed and dragged objects snap to the grid (hold Alt for free placement), and Build → Table adds table modules to extend the tabletop."),
-    );
   }
 
   async _loadCalibration(e) {
@@ -224,7 +159,7 @@ export class Panels {
     );
   }
 
-  /** View panel rows of the rolling-stock tags (layouts with `markers.rolling`): tags in view, model wagons. */
+  /** Tracking details rows of the rolling-stock tags (layouts with `markers.rolling`): tags in view, model wagons. */
   _rollingRows() {
     const app = this.app, r = app.world.layout.markers.rolling;
     if (!r) return [];
@@ -245,7 +180,7 @@ export class Panels {
 
   /* ================================================================ Settings */
 
-  /** The Settings panel: its views Simulation (time, town, speed, demand, stops, modules to add) and Control system. */
+  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, speed, demand, stops, modules to add) and Control system. */
   renderSettings(el) {
     this.settingsBody = h("div", { class: "settings-body" });
     mount(el,
@@ -254,9 +189,10 @@ export class Panels {
           SETTINGS_VIEWS.map(([v, label]) => h("button", { type: "button", id: `settingsView-${v}`, "aria-pressed": this.settingsView === v ? "true" : "false", onclick: () => this.setSettingsView(v) }, label)))),
       this.settingsBody,
     );
-    // the other view's controls are gone: its live figures are not refreshed
-    this.board = this.clockFace = this.townBox = this.speedSeg = this.feedStatus = null;
+    // the other views' controls are gone: their live figures are not refreshed
+    this.viewInfo = this.board = this.clockFace = this.townBox = this.speedSeg = this.feedStatus = null;
     if (this.settingsView === "control") this.renderControl(this.settingsBody);
+    else if (this.settingsView === "view") this.renderView(this.settingsBody);
     else this.renderSimulate(this.settingsBody);
   }
 
@@ -273,7 +209,9 @@ export class Panels {
   /** Live figures of the Settings panel (every 400 ms while it is shown). */
   updateSettings() {
     if (this.settingsView === "control") return this.updateControl();
+    if (this.settingsView === "view") return this.updateView();
     this.updateClock();
+    this.updateTown();
     this.updateBoard();
   }
 
@@ -281,7 +219,7 @@ export class Panels {
 
   renderSimulate(el) {
     const w = this.world;
-    this.board = h("div", { class: "board", "aria-live": "off" });
+    this.board = h("div", { class: "board stops-board", "aria-live": "off" });
     this.speedSeg = h("div", { class: "seg", role: "group", "aria-label": "Speed" });
     this.pauseBtn = h("button", { class: "btn", type: "button", onclick: () => { w.paused = !w.paused; this.updateSimulateControls(); } });
     const demand = h("input", { type: "range", id: "demandRange", "aria-label": "Passenger demand", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
@@ -331,26 +269,19 @@ export class Panels {
           h("label", { class: "field check", for: "optFreeze" },
             h("input", { type: "checkbox", id: "optFreeze", checked: !!w.clock.frozen, onchange: (e) => { w.clock.frozen = e.target.checked; } }), "Stop the clock"),
         ),
-        h("p", { class: "hint" }, "The clock runs faster than the trains and people (1:12 = one hour in five simulated minutes). Timetables, traffic and the town follow it: rush hours in the morning and evening, no trains and buses between 01:00 and 04:30."),
       ),
-      hasTown ? section("Town",
-        this.townBox,
-        h("label", { class: "field", for: "peopleColour" }, h("span", {}, "Colour of people"),
-          h("select", { id: "peopleColour", onchange: (e) => { s.peopleColour = e.target.value; app.savePrefs(); } },
-            [["auto", "town: purpose of the trip; passengers: mood"], ["purpose", "purpose of the trip"], ["mood", "mood"]].map(([v, t]) => h("option", { value: v, selected: (s.peopleColour || "auto") === v }, t)))),
-      ) : null,
+      hasTown ? section("Town", this.townBox) : null,
       section("Speed",
         h("div", { class: "row" }, this.pauseBtn, this.speedSeg,
           h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
-        h("p", { class: "hint" }, "Speed is simulated time per real time. Space pauses."),
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
-      section("Stops", this.board, h("p", { class: "hint" }, "Keys 1–9 send a vehicle to the stop with that position in the list.")),
+      section("Stops", this.board),
       moduleSection("ops", "Rail operations", "opsOpenExample", "operations", "addOperations", "opsAdd"),
       moduleSection("infra", "Infrastructure", "infraOpenExample", "infrastructure", "addInfrastructure", "infraAdd"),
       moduleSection("journeys", "Journeys", "journeysOpenExample", "journeys", "addJourneys", "journeysAdd"),
       hasTerminal ? null : section("Container terminal",
-        h("p", { class: "hint" }, "Container trains, trucks and barges, gantry cranes and reach stackers moving containers between them and the yard; model wagons with deck cards. It works with the objects of the group Terminal in Build. The Terminal tab moves the containers."),
+        h("p", { class: "hint" }, "Container trains, trucks and barges, cranes and the yard."),
         h("div", { class: "row" },
           app.moduleOpening("terminal")
             ? h("button", { class: "btn", type: "button", id: "termOpenExample", onclick: () => app.chooseModules([app.moduleOpening("terminal").id]) }, `Switch on the module “${app.moduleOpening("terminal").name}”`)
@@ -359,6 +290,7 @@ export class Panels {
     );
     this.updateSimulateControls();
     this.updateClock();
+    this.updateTown();
     this.updateBoard();
   }
 
@@ -370,7 +302,7 @@ export class Panels {
     toast(afresh.length ? `All passengers removed; ${afresh.join(" and ")} ${afresh.length > 1 ? "start" : "starts"} afresh.` : "All passengers removed.");
   }
 
-  /** Clock face and town figures (refreshed periodically while Settings → Simulation is open). */
+  /** The clock face (refreshed periodically while Settings → Simulation is open). */
   updateClock() {
     if (!this.clockFace) return;
     const w = this.world, c = w.clock;
@@ -384,8 +316,12 @@ export class Panels {
       this.timeRange.value = String(Math.round(c.minutes));
     }
     this.timeRange?.setAttribute("aria-valuetext", c.label());
-    const town = w.simulations.find((x) => x.constructor.type === "town");
-    if (!town || !this.townBox) return;
+  }
+
+  /** The town's people: where they are, and on their way by purpose (Settings → Simulation). */
+  updateTown() {
+    const town = this.world.simulations.find((x) => x.constructor.type === "town");
+    if (!town || !this.townBox?.isConnected) return;
     const st = town.townStats();
     const item = (label, n, colour = null) => h("li", {}, colour ? h("i", { class: "swatch", style: { background: colour } }) : null, h("span", {}, label), h("b", { class: "mono" }, String(n)));
     morph(this.townBox,
@@ -406,8 +342,9 @@ export class Panels {
     morph(this.speedSeg, SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.updateSimulateControls(); } }, `${s}×`)));
   }
 
+  /** The stops of Settings → Simulation: people waiting, mood, the next vehicles; a button to call one (keys 1–9). */
   updateBoard() {
-    if (!this.board) return;
+    if (!this.board?.isConnected) return;
     const w = this.world, sim = w.simulations[0];
     const areas = w.stopAreas();
     if (!areas.length) {
@@ -425,8 +362,9 @@ export class Panels {
         h("div", { class: `num${bus ? " bus" : ""}`, title: `Key ${i + 1}` }, a.owner.spec.number || (bus ? "H" : String(i + 1))),
         // a bus stop on both sides of the street: "Stop A" and "Stop B" (the letters on its signs)
         h("div", { class: "title" }, areas.filter((x) => x.owner === a.owner).length > 1 && a.docks[0]?.label ? `${a.owner.name} · ${a.docks[0].label}` : a.owner.name),
-        h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`), h("span", {}, `mood ${(s.mood * 100).toFixed(0)} %`), h("span", {}, `in ${s.inPerMin}/min · out ${s.outPerMin}/min`)),
-        h("div", { class: "meter" }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
+        // the people waiting; the bar is their mood
+        h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`)),
+        h("div", { class: "meter", title: `mood ${(s.mood * 100).toFixed(0)} %` }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
         h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
         h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => {
           // a closed track (a track closure, a story's train) takes no train, nor one kept for a story's own

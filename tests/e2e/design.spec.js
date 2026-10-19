@@ -37,7 +37,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       const box = await logo.boundingBox();
       expect(box.height).toBeGreaterThanOrEqual(30);
       expect(await style(page, "body", "fontFamily")).toMatch(/^"Noto Sans"/);
-      expect(await style(page, "#tab-view", "borderBottomColor")).toBe(expected.accent); // selected tab
+      expect(await style(page, "#tab-overview", "borderBottomColor")).toBe(expected.accent); // selected tab
       expect(await page.locator('meta[name="theme-color"]').count()).toBe(2);
     });
 
@@ -60,13 +60,17 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.keyboard.press("Escape");
 
       await page.locator("#tab-settings").click();
+      await page.locator("#settingsView-simulate").click();
       await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
       await page.getByRole("button", { name: "Pause" }).click();
       await expect(page.getByRole("button", { name: "Resume" })).toHaveAttribute("aria-pressed", "true");
       expect(await style(page, "#panel-settings .settings-body .btn[aria-pressed='true']", "backgroundColor")).toBe(scheme === "light" ? "rgb(200, 80, 0)" : "rgb(240, 146, 46)");
       expect(await contrastViolations(page, ["#panel-settings", "#hud"])).toEqual([]);
 
-      await page.locator("#tab-view").click();
+      await page.locator("#tab-settings").click();
+      await page.locator("#settingsView-simulate").click();
+
+      await page.locator("#tab-overview").click();
       await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
       await page.locator("#tab-disrupt").click();
       await page.selectOption("#disType", "delay");
@@ -134,7 +138,7 @@ test.describe("layout of the app bar and the tabs", () => {
     await openApp(page);
     const boxes = () => page.locator(".tabs button").evaluateAll((tabs) => tabs.map((t) => Math.round(t.getBoundingClientRect().left * 4) / 4));
     const before = await boxes();
-    for (const tab of ["#tab-build", "#tab-settings", "#tab-view"]) {
+    for (const tab of ["#tab-build", "#tab-settings", "#tab-overview"]) {
       await page.locator(tab).click();
       await expect(page.locator(tab)).toHaveAttribute("aria-selected", "true");
       expect(await boxes(), tab).toEqual(before);

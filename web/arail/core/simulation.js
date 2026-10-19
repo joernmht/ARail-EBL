@@ -54,6 +54,16 @@ export class Simulation {
   }
 
   /**
+   * The state of what it keeps, for the Overview (core/states.js): groups of one kind each ("Signal",
+   * "People waiting"), each item with a score from 0 (worst) to 1 (best), its state in words and the
+   * key of its pickable.
+   * @returns {import("./states.js").StateGroup[]}
+   */
+  states() {
+    return [];
+  }
+
+  /**
    * The info card of one of its pickables.
    * @param {import("./pick.js").Pickable} hit
    * @returns {import("./pick.js").Card}

@@ -114,11 +114,11 @@ test("a fault on the layout: the van drives out, the station's trains are distur
     return e.people.some((p) => ["driving", "repairing"].includes(e.activity(p).state));
   }), { timeout: 30_000 }).toBe(true);
   // the fault is listed in the Disruptions tab (module Disruptions); switching the module off leaves it on
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await page.locator("#tab-disrupt").click();
   await expect(page.locator("#panel-disrupt .disruption", { hasText: "Infrastructure fault" }).first()).toBeVisible();
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
   await expect(page.locator("#tab-disrupt")).toBeHidden();
   expect(await page.evaluate(() => window.__arail.world.disruptions.active.some((d) => d.type === "infra-fault"))).toBe(true);

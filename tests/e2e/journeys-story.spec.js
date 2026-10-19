@@ -69,7 +69,6 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
     return w.disruptions.effectsFor(w.stopAreas().find((a) => a.id === "platform-1")).messages;
   })).toEqual(["RB 31 to Talsee about 20 min late"]);
   expect(await page.evaluate(() => window.__arail.world.clock.label())).toBe("07:38");
-  await expect(page.locator("#hud")).toContainText("step 4 of 11");
   await expect(page.locator("#hud")).toContainText("1 disruption");
   await expect(page.locator("#toast")).not.toContainText("Kept free");
 
@@ -102,7 +101,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   // the module switched off in the middle of the story: nothing of it is left on the layout
   await step(page, "To the bus station").click();
   expect(await storyDisruptions(page)).toHaveLength(3);
-  await page.locator("#tab-view").click();
+  await page.locator("#tab-overview").click();
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
   await expect(page.locator("#tab-journeys")).toBeHidden();
