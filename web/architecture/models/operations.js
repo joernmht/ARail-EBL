@@ -261,7 +261,7 @@ export const OPERATIONS = [
   },
   {
     id: "ops-world", group: "operations", title: "Rail operations on the layout",
-    summary: "The engine on the world's clock: its trains at the platforms (docks in mode plan), the boards, crews walking to the depot, the depot's units, the Operations tab.",
+    summary: "The engine on the world's clock: its trains at the platforms (docks in mode plan), the boards, crews walking to the depot, the depot's units, the game page's case Railway undertaking → Operations.",
     files: ["web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/index.js", "web/game/operations.js"],
     classes: [
       {
@@ -305,7 +305,7 @@ export const OPERATIONS = [
   },
   {
     id: "ops-story", group: "operations", title: "The operations story",
-    summary: "The app's Operations tab: a story to click through on Bf Neustadt. RB 31 to Talsee breaks down at the platform, the operations control sends the spare unit from the depot, the passengers change trains, and the broken unit runs empty to the workshop and is repaired.",
+    summary: "The app's case Railway undertaking → Disruption: a story to click through on Bf Neustadt. RB 31 to Talsee breaks down at the platform, the operations control sends the spare unit from the depot, the passengers change trains, and the broken unit runs empty to the workshop and is repaired.",
     description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. It draws its own two-car units (the cars along the track, doors open on the platform's side, the pantograph, head and tail lights, their numbers), the passengers in the colour of their mood, the stand-by driver and the fitters, and the platform's display. Its trains hold their tracks with story-train disruptions: no timetable train comes there, and the platform's board shows the story's message. The trains come from the depot's end of the platform tracks, stop at the front end of the platform and go on to their destination; in the depot they run along a workshop track and a stabling track from the lead track beyond its gate. The depot's board is the story's (depotState). The penalties are those of the operations' default transport contract; the operations engine is not used.",
     files: ["web/arail/ops/story.js"],
     classes: [

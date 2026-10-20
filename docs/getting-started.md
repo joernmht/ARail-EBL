@@ -2,7 +2,7 @@
 
 The app runs in any current browser (Chrome, Edge, Firefox, Safari) on phones, tablets and PCs. Open it at <https://joernmht.github.io/ARail-EBL/app/>, or locally with `npm start` (then <http://localhost:8000/app/>).
 
-The app is an **interactive presentation** of the lab: its modules are stories to click through on the layout of the lab survey (Bf Neustadt), and the container terminal moves containers one by one. The **games and exercises** (asset management of the infrastructure, the railway undertaking's fleet, workshop and crews, journeys for a class, the terminal's arrivals) are on the **game page** beside it: <https://joernmht.github.io/ARail-EBL/game/> (see [The game page](#the-game-page)). Both share the stage, the flyover, Build and Settings described here.
+The app is an **interactive presentation** of the lab: its modules are cases in the chapter **Interaction**, by side (the infrastructure manager and the railway undertaking): stories to click through on the layout of the lab survey (Bf Neustadt), and the container terminal that moves containers one by one. The **games and exercises** (asset management of the infrastructure, the railway undertaking's fleet, workshop and crews, journeys for a class, the terminal's arrivals) are on the **game page** beside it: <https://joernmht.github.io/ARail-EBL/game/> (see [The game page](#the-game-page)). Both share the stage, the flyover, Build and Settings described here.
 
 The live camera needs a secure page: https (GitHub Pages) or `localhost`. Photos and videos work everywhere.
 
@@ -21,7 +21,7 @@ The top bar chooses what the app looks at:
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
 
-The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a tab or a layout of their own are in **Settings → View → Examples** (on the game page in the list **Layouts…** of the top bar).
+The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a case or a layout of their own are in **Settings → View → Examples** (on the game page in the list **Layouts…** of the top bar).
 
 ### The photo tour
 
@@ -38,10 +38,10 @@ Where a photo has a **digital layer** (Bf Neustadt, the goods yard with the hybr
 
 | Settings → View → Examples | Layout | Image | What it shows |
 | --- | --- | --- | --- |
-| **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the modules operations, infrastructure and journeys with their stories (a train breaking down, the maintenance, a traveller's journey) |
+| **Example: Bf Neustadt** | `ebl-neustadt.json` | a photo of Bf Neustadt | the app's first example: 6 m of the lab table surveyed on 9 October 2026, the station with its two platforms, passengers and the station building on a town module in front of the table; the modules infrastructure, operations and journeys with their stories (the maintenance, a train breaking down, a traveller's journey) and the terminal |
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
-| **Example: terminal at the crane** | `ebl-neustadt.json` | a photo of the terminal tracks | the container terminal on the real terminal tracks (Terminal tab) |
-| **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); the Terminal tab loads and unloads the real train and truck (Terminal tab) |
+| **Example: terminal at the crane** | `ebl-neustadt.json` | a photo of the terminal tracks | the container terminal on the real terminal tracks (module Terminal on, Railway undertaking → Terminal) |
+| **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); Railway undertaking → Terminal loads and unloads the real train and truck |
 | **Example: container terminal (virtual)** | `container-terminal.json` | none (flyover) | a terminal of its own, also a module of the lab example |
 | **Example: Beta 0.1 (EBL lab photo, older)** | `ebl-lab.json` | the lab photo of 30 September 2026, the first example | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal, whose games are on the game page |
 
@@ -93,7 +93,7 @@ The stage stays calm: a chip at its top left appears only when something needs a
 | *Photo only: no digital layer for this part yet* | a photo of the photo tour without a layout |
 | *1 disruption*, *Recording* | disruptions running, the stage being recorded |
 
-The **clock** is in the bar: the time of day of the fast clock (see [Day and night](day-and-night.md)), with the speed when it is not 1× (*07:32 · ×2*) or *Paused*. Tap it for **Settings → Simulation**. How the tracking goes (markers seen and used, the reprojection error, the frame rate) is in **Settings → View → Camera → Tracking details**; where a story is, in its tab.
+The **clock** is in the bar: the time of day of the fast clock (see [Day and night](day-and-night.md)), with the speed when it is not 1× (*07:32 · ×2*) or *Paused*. Tap it for **Settings → Simulation**. How the tracking goes (markers seen and used, the reprojection error, the frame rate) is in **Settings → View → Camera → Tracking details**; where a story is, in its case.
 
 Every stop (platform, bus terminal, bus stop) has a **badge** above it: the stop sign (platform number or "H") and the number of people waiting, red during a disruption. The board of **Settings → Simulation → Stops** lists them all with the next events (*Next train in 12 s*, *RE 1 boarding (Track 2)*, *Bus 62 Ring ↺ in 3 min*, or a disruption message such as *Signal failure (4 min left)*); the **Overview** rates them by the mood of the people waiting. **Settings → View → Show → Departure boards at the stops** puts the full **board** over each stop instead: the name, the people waiting and their average mood, e.g. *Altmarkt · 7 people · 70 %*, and the next events. A bus stop on both sides of the street has one board for both sides. Seen from far away (the stop shorter than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a badge with the stop sign and the number of people waiting; zoom in for the full board. Where the picture is crowded, the boards of the stops largest in the picture are shown in full and the others as badges: once the labels cover a tenth of the picture, and where a board would cover another label, a chip or a button on the stage (on a phone one board is shown in full). Tap a stop for its card with everything on the board. The labels of buses and trams standing at a stop are left out where they would cover another label.
 
@@ -111,16 +111,34 @@ In Build the tooltip shows too, and a tap selects the object for editing as befo
 
 ## Panels
 
-The tabs: **Overview**, **Build**, a tab for each module that is on (**Terminal**, **Operations**, **Infrastructure** and **Journeys**: in the app stories, on the game page the games; **Disruptions**) and **Settings**.
+Three chapters, always there: **Overview**, **Interaction** and **Settings**. No module shows or hides one.
 
 ### Overview
 
-- *Modules*: boxes to click, one per module, with its name, orange when on (its description is the tooltip); each module that is on has its tab (on the page that has it: the lab example's rail operations, infrastructure game and journeys on the game page). The layout's own modules (the lab example's) add to the base (the table, the town, the streets, which are always there): **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined; **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build (on until you switch it off) shows the Build tab, so that for an exercise nobody changes the layout by mistake when it is off; Disruptions shows the Disruptions tab (switching it off stops the disruptions started there and the scenario). The choice is kept per layout in the browser.
 - *State*: how good the state of the layout is, from what its simulations keep. Each item gets a score from 0 % (worst) to 100 % (as good as new): an asset of the infrastructure by its condition (grade 1 … 6; a fault is 0 %), a stop by its load and the mood of the people waiting there (the mean of both; the load is the people waiting against what the stop holds at 2 people per m², easy going up to a quarter of that, 0 % when full), a person waiting by their mood, a resident of the town by theirs, a unit of the rail operations by the wear left to its next inspection. The large figure is the mean of all **kinds** (Signal, Track section, Stops, Residents, …), each kind counting once however many items it has. Below it the worst and the best kind, each with its mean, how many there are, a **histogram** (across: the score, 0–100 % in ten steps; up: how many items, the fullest step at the top; hover a bar for its count) and its worst item; **Show all kinds** lists them all, from the worst. The **search** finds items by name or kind (*signal*, *N2*, a person's name), the worst first; a kind of that name (every word of the search in it) shows its histogram too. Click an item for its info card on the stage.
+
+### Interaction
+
+A strip at its side chooses what the chapter shows (its labels read upwards; with the keyboard ↑ and ↓ go along it):
+
+- **Modules**: boxes to click, one per module, with its name, orange when on (its description is the tooltip). The layout's own modules add to the base (the table, the town, the streets, which are always there). On Bf Neustadt: **Infrastructure**, **Operations** (marked *alone*: its story takes over platform 2), **Journeys** and **Terminal**; on the lab example: **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined, and **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build is on until you switch it off, so that for an exercise nobody changes the layout by mistake; switching Disruptions off stops the disruptions started there and the scenario. The choice is kept per layout in the browser.
+- **Infrastructure** and **Railway undertaking** (EVU): the two sides, each with its cases as tabs (← → with the keyboard). The app's cases:
+
+  | Side | Case | What it is |
+  | --- | --- | --- |
+  | Infrastructure | **Disruption** | the maintenance story: a signal fails and is exchanged, a worn track is renewed (Bf Neustadt's module Infrastructure) |
+  | Railway undertaking | **Disruption** | the operations story: a train breaks down at the platform (module Operations) |
+  | Railway undertaking | **Terminal** | the container terminal, its containers moved one by one (module Terminal) |
+  | Railway undertaking | **Journeys** | the journeys story: a traveller's train is late (module Journeys) |
+
+  A case whose module is off says so, with the way to it: **Switch on “…”** (a module of this layout), **Open the example**, or **Add to this layout** (the terminal; on the game page its games).
+- **Build** and **Disruptions**: the tools of the layout.
+
+Interaction remembers its case. Links: `#modules`, `#infra-disruption`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt`; the former `#infra` and `#ops` open the stories.
 
 ### Build
 
-The layout editor. Shown with the module **Build**, which is on until you switch it off (Overview → Modules; a link with `#build` switches it on).
+The layout editor, a tool of Interaction. It works with the module **Build**, which is on until you switch it off (Interaction → Modules; a link with `#build` switches it on).
 
 - *Add to the layout*: the palette, in six groups. Pick a type, then tap on the image (or on the table in the flyover). The small text under each type says how it is placed.
 
@@ -152,7 +170,7 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 **View**
 
-- *Examples* (the app): the examples with a clip, a tab or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
+- *Examples* (the app): the examples with a clip, a case or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
 - *Show*: signs and boards, the departure boards at the stops (off: badges), walking trails, marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend (see [Railway systems](rail-systems.md)), and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Grid*: see [The flyover](#the-flyover).
 - *Camera*: the focal length (estimated automatically; adjust it with − and + if people or buildings lean), loading a [camera calibration](calibration.md), recording the stage as a WebM video, and, folded away, *Tracking details*: markers seen, markers used for the pose, the size of the marker map (and whether it is locked), moving markers in view, the marker type, the reprojection error and the frame rate. With rolling-stock markers also the tags in view and the height they are lifted to (*W1·0, W1·2 in view (lifted to 15 mm)*) and the model wagons (*W1 standing, W3 moving*).
@@ -165,51 +183,48 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 - *Town* (only with the town simulation): how many people there are and where (at home, at work, at school, shopping, on the bus, at stops, away by train), and on their way by the purpose of their trip.
 - *Passenger demand*: more or fewer random passengers (× 0.25 … × 4).
 - *Stops*: a board of all stops, numbered as the keys 1–9 call them: the people waiting, their mood (the bar), the next event, and buttons that send a train or bus of the timetable to a track or bay right away. Stops of bus lines have no such buttons (the lines serve them), nor have the tracks of the rail operations, and a closed track's button is off (a track closure, a story's train); a bus stop on both sides of the street is listed as *Stop A* and *Stop B*.
-- *Rail operations* (on layouts without the operations story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Rail operations](operations.md#the-operations-story).
-- *Infrastructure* (on layouts without the maintenance story): **Switch on the module** (on Bf Neustadt) or **Open the example**, see [Infrastructure](infrastructure.md#the-maintenance-story). *Journeys* (without the journeys story) the same way, see [Journeys](journeys.md#the-journeys-story). On the game page: the infrastructure game, *Rail operations* and the journeys exercise the same way, with **Add to this layout** (its tab opens, the focus on its heading).
-- *Container terminal* (on layouts without one): **Switch on the module** (on the lab example) or **Open the example terminal**, and **Add to this layout**, see [Container terminal](container-terminal.md).
 
 **Control system**
 
 Connect to a control-system bridge (WebSocket address), or start the simulated control system, choose how its trains are drawn, and see the trains it reports. See [Control-system interface](control-system-interface.md).
 
-### Terminal
+### Railway undertaking → Terminal
 
-Shown when the layout has a container terminal (**Settings → View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
+Works when the layout has a container terminal (Bf Neustadt's module **Terminal**, **Settings → View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
 
 - The terminal's state, **Reset terminal** and **Save as start state**.
 - *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**; while it moves, the line of its job, and **Cancel** before the crane locks it.
 - *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and links to print their cards, one per wagon type.
 
-On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick. The game page's Terminal tab has the arrivals, new arrivals and crane jobs too (see [The game page](#the-game-page)).
+On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick. The game page's case Terminal has the arrivals, new arrivals and crane jobs too (see [The game page](#the-game-page)).
 
-### Operations
+### Railway undertaking → Disruption
 
-Shown when the layout has the operations story (Bf Neustadt's module **Operations**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
+Works when the layout has the operations story (Bf Neustadt's module **Operations**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#evu-disruption`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
 
-- The same controls as the Infrastructure tab (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
+- The same controls as Infrastructure → Disruption (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera looks at a slant along the platform, so that the train at the near track does not hide the passengers, and goes with the spare unit and the broken unit to the depot and back.
-- The module is marked *alone* in Overview → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
+- The module is marked *alone* in Interaction → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
 
-### Infrastructure
+### Infrastructure → Disruption
 
-Shown when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
+Works when the layout has the maintenance story (Bf Neustadt's module **Infrastructure**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra-disruption`): a maintenance case at the station in twelve steps. Signal N2 fails, track G2 is closed, the repair team drives out from the maintenance base, repairs the signal and exchanges it, the track reopens; then track G3 is closed and renewed with a construction train. See [The maintenance story](infrastructure.md#the-maintenance-story).
 
 - The current step: its title, what happens, and how far its animation has run.
 - **Back**, **Next**, **Play** (step after step, with a pause between them), **Start again**, and the list of all steps to jump to; a presenter's clicker works too (Page Down, Page Up).
 - **Camera follows**: the flyover's camera goes where the story happens (the van on its way, the signal from above, the works).
 
-### Journeys
+### Railway undertaking → Journeys
 
-Shown when the layout has the journeys story (Bf Neustadt's module **Journeys**, Overview → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
+Works when the layout has the journeys story (Bf Neustadt's module **Journeys**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys`): a traveller's view of the station in eleven steps. Ada, a student, walks from her flat to platform 1; her RB 31 to Talsee is 20 minutes late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; then her journey in numbers and her rights as a passenger. See [The journeys story](journeys.md#the-journeys-story).
 
-- The same controls as the Infrastructure tab: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
+- The same controls as Infrastructure → Disruption: the current step, **Back**, **Next**, **Play**, **Start again**, the list of steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera goes with Ada (on the sidewalks, through the underpass, on the platform), with her bus over the streets and to the late train; at the end it shows her whole way. Her walk from home it sees from the street, facing her front door; the rest facing the station's front.
 - Each step sets the clock to its time (07:30 when she leaves home, 08:00 when the late train comes in), when the clock is more than five minutes away; the first step as soon as the story begins.
 
 ### Disruptions
 
-Shown with the module **Disruptions** (Overview → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
+A tool of Interaction; it works with the module **Disruptions** (Interaction → Modules; a link with `#disrupt` or `?scenario=` switches it on): start a disruption (kind, where, duration and options), see the active ones and stop them, and play scenarios stored in the layout. See [Disruptions and scenarios](disruptions-and-scenarios.md).
 
 ## Keyboard shortcuts
 
@@ -222,29 +237,30 @@ Shown with the module **Disruptions** (Overview → Modules; a link with `#disru
 | S, Shift+S | the simple view tilted (2.5D) or from above (map); again: the full flyover |
 | ← → | the photo tour (the app, not in the flyover): the next part to the left or the right (on the stage or with nothing focused) |
 | ← ↑ → ↓, + −, Q E, Page Up/Down, Home | flyover: pan, zoom, rotate, tilt, show the whole layout (while the stage has the focus; Shift: bigger steps) |
-| Enter | flyover, while placing (Build panel, the stage has the focus): put a point at the cross in the middle of the view; in the Terminal panel: pick the container or place at the cross; elsewhere: the info card of what is at the cross |
-| R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build panel) |
-| Delete, Backspace | delete the selected object (Build panel) |
+| Enter | flyover, while placing (Build, the stage has the focus): put a point at the cross in the middle of the view; in Terminal: pick the container or place at the cross; elsewhere: the info card of what is at the cross |
+| R, Shift+R | turn the selected object by 15° or 90° counter-clockwise (Build) |
+| Delete, Backspace | delete the selected object (Build) |
 | Alt (Option) | hold while placing or dragging: no snapping to the grid or to streets |
-| Esc | cancel placing or a pick in the Terminal panel, close the info card, or deselect |
-| Page Down, Page Up | the next step of the story, or the one before (a module tab with a story; not while the stage has the focus) |
-| ← → | switch panels (when a panel tab has focus) |
+| Esc | cancel placing or a pick in Terminal, close the info card, or deselect |
+| Page Down, Page Up | the next step of the story, or the one before (a case with a story; not while the stage has the focus) |
+| ← → | the chapters (when a chapter's tab has the focus), the cases of a side (when a case's tab has it) |
+| ↑ ↓ | the entries of Interaction's strip (when one of them has the focus) |
 
 ## The game page
 
-The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises in the modules' tabs. It opens the lab example Beta 0.1, whose modules (Overview → Modules) have them; it remembers its last layout apart from the app.
+The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises as its cases: **Infrastructure → Assets**, and **Railway undertaking → Operations**, **Terminal** and **Journeys**. It opens the lab example Beta 0.1, whose modules (Interaction → Modules) have them; it remembers its last layout apart from the app.
 
-### Infrastructure (game)
+### Infrastructure → Assets (game)
 
-Shown when the layout has an [infrastructure simulation](infrastructure.md#the-asset-management-game) (the lab example's module **Infrastructure**): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
+Works when the layout has an [infrastructure simulation](infrastructure.md#the-asset-management-game) (the lab example's module **Infrastructure**): the station on the layout as part of an infrastructure district, a game for teams of students in roles.
 
 - **Your role** (asset manager, ALV, maintenance dispatcher, planner, construction supervision, funding authority, instructor) decides what may be done; **Run to the next decision** and **Run to the year's end** run fast.
 - **Overview**, **Line map** (the network by km; GeoJSON for QGIS), **Assets** (the register with each asset's record and the inspection plan), **Decisions**, **Projects** (through the HOAI phases), **Staff** (shifts, on call, drone pilots, the level crossing plant), **Results** (per year, the score; saving and loading a game).
 - On the layout the assets are coloured by their known condition (or the last check), faults pulse, vans drive out from the maintenance base and drones fly.
 
-### Operations (game)
+### Railway undertaking → Operations (game)
 
-Shown when the layout has [rail operations](operations.md) (the lab example's module **Rail operations**): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
+Works when the layout has [rail operations](operations.md) (the lab example's module **Rail operations**): units with maintenance and failures, the workshop and the parties in charge of maintenance, crews with duties, and the penalties between the parties.
 
 - **Today**: key figures of the day, what happened, and short-term changes (a driver calls in sick, a unit breaks down or gets a defect).
 - **Fleet**: every unit, where it is, its next maintenance and its defects.
@@ -255,9 +271,9 @@ Shown when the layout has [rail operations](operations.md) (the lab example's mo
 
 **Wide panel** (large screens) makes the panel wider for the tables.
 
-### Journeys (exercise)
+### Railway undertaking → Journeys (exercise)
 
-Shown when the layout has [journeys](journeys.md) (the lab example's module **Journeys**): travellers made one by one, for an exercise.
+Works when the layout has [journeys](journeys.md) (the lab example's module **Journeys**): travellers made one by one, for an exercise.
 
 - **New traveller**: a name, where it starts and where it goes (a building or a station beyond the layout), when it leaves and its transfer time; **Find travel plans** lists plans with walks, buses and trains and the time for each change; **Choose** makes the traveller.
 - **Travellers**: what each one is doing, its planned and expected arrival, **Show** (the flyover's camera follows it), **Start again**, **Remove**, and its plan and log.
@@ -266,7 +282,7 @@ Shown when the layout has [journeys](journeys.md) (the lab example's module **Jo
 
 **Wide panel** (large screens) makes the panel wider for the results.
 
-### Terminal (game)
+### Railway undertaking → Terminal (game)
 
 As in the app, and: the speed; *Arrivals* (every train, barge and truck with its state and load, **Call** and **Depart**; for a train or barge at the terminal also **Unload to yard** and **Load from yard**); *New arrival* (call a train or a barge, or send a truck); *Crane jobs* (the moves with their state; queued moves can be cancelled); for a unit of model wagons **Unload to yard** and **Load from yard**.
 
@@ -277,7 +293,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | Parameter | Effect |
 | --- | --- |
 | `layout=<url>` | load a layout file (relative to the app); without it the app opens the last layout, or Bf Neustadt (the game page: the lab example Beta 0.1) |
-| `example=<id>` | open an example (Settings → View → Examples; the game page: its Layouts menu) with its photo or clip and tab: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
+| `example=<id>` | open an example (Settings → View → Examples; the game page: its Layouts menu) with its photo or clip, its modules and case: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
 | `photo=<id>` | the app: a photo of the [photo tour](#the-photo-tour) by its id (the time it was taken, `hhmmss`, as on the photo map), with the layout of its digital layer |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |
@@ -285,9 +301,10 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `mock=1` | start the simulated control system |
 | `lang=de`, `lang=en` | the app in German or English for this link (e.g. the projector), without changing the choice of the device |
 | `scenario=<id>` | play a scenario of the layout (switches the module Disruptions on) |
-| `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra` or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops`, or on the game page `game/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
-| `#view`, `#build`, `#terminal`, `#ops`, `#infra`, `#journeys`, `#disrupt`, `#settings` | open a tab, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (`#terminal`, `#ops`, `#infra` and `#journeys` where the layout has them; `#build` and `#disrupt` switch the modules Build and Disruptions on) |
-| `#simulate`, `#control` | open Settings with its view Simulation or Control system |
+| `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra-disruption` or `app/?layout=../layouts/ebl-neustadt.json&layers=terminal#terminal`, or on the game page `game/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
+| `#overview`, `#interaction`, `#settings` | open a chapter |
+| `#modules`, `#infra-disruption`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt` | open Interaction with that case, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (a case whose module is off offers to switch it on; `#build` and `#disrupt` switch the modules Build and Disruptions on; the former `#infra` and `#ops` open the stories; the game page: `#infra`, `#ops`, `#terminal`, `#journeys`) |
+| `#view`, `#simulate`, `#control` | open Settings with its view View, Simulation or Control system |
 
 ## Tips for good tracking
 

@@ -111,8 +111,8 @@ for comparisons over weeks (in the game page's Compare view or with [`tools/ops-
 
 ## The example
 
-The module **Rail operations** of the lab example on the game page (Overview → Modules, or Settings → Simulation →
-Rail operations → Switch on the module, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
+The module **Rail operations** of the lab example on the game page (Interaction → Modules, or Railway undertaking →
+Operations → Switch on “Rail operations”, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
 - the station **Bahnhof** with platforms 1 and 2, and four lines out to stations beyond the
@@ -300,9 +300,9 @@ The key figures also count costs: drivers' paid hours (`driver_hour`, overtime �
 stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty runs and transfers
 (`empty_km`). They are for comparing setups, not a budget.
 
-## The Operations tab
+## Railway undertaking → Operations on the game page
 
-With rail operations on the layout, the game page has an **Operations** tab (`#ops`). Its views:
+With rail operations on the layout, the game page's case **Operations** (side Railway undertaking, `#ops`) works. Its views:
 
 - **Today**: trains run and cancelled, punctuality, units available, crews on duty, penalties of
   the day; what happened (newest first); buttons for short-term changes (*A driver calls in sick*,
@@ -459,7 +459,7 @@ Times are `"HH:MM"` (up to `"47:59"` for the night after) or minutes; day sets a
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `name` | `"Rail operations"` | shown in the Operations tab |
+| `name` | `"Rail operations"` | shown in the case Operations of the game page |
 | `start_weekday` | `"mon"` | weekday of day 1 |
 | `year` | `2026` | the year of day 1 (for the units' age) |
 | `burn_in_days` | `7` | days run before day 1, so that plans, counters and rosters are in a steady state |
@@ -509,7 +509,7 @@ stations, platforms, parties, vehicle types and depots in plain words.
 
 ## Disruptions and scenarios
 
-Five disruption types act on the operations; they are offered in the Disruptions tab (module Disruptions) only for
+Five disruption types act on the operations; they are offered in Interaction → Disruptions (module Disruptions) only for
 layouts with rail operations, and they have no place on the layout:
 
 | Type | Parameters | Does |

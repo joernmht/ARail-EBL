@@ -99,7 +99,7 @@ test("Build keeps its taps: a click selects for editing and opens no card; the t
   await page.mouse.move(house.x, house.y);
   await expect(page.locator("#tooltip")).toContainText("Station building");
   await page.mouse.click(house.x, house.y);
-  await expect(page.locator("#panel-build h2", { hasText: "Selected:" })).toBeVisible();
+  await expect(page.locator("#casePanel h2", { hasText: "Selected:" })).toBeVisible();
   await expect(page.locator("#infoCard")).toBeHidden();
   expect(errors).toEqual([]);
 });

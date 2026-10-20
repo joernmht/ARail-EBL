@@ -1,10 +1,11 @@
 // ARail's pages with a stage: camera/photo/video in, markers tracked, virtual layout and simulations
-// drawn on top, and the panels. The app (main.js) shows the modules as stories to click through; the
-// game page (../game/main.js) has the games and exercises in the same tabs. A page says which panels
-// its tabs have, which simulation shows each module tab, and its examples (see `Page`).
+// drawn on top, and the panel with its three chapters: Overview, Interaction and Settings. The app
+// (main.js) shows the modules as cases to click through; the game page (../game/main.js) has the games
+// and exercises as its cases. A page says which cases it has and its examples (see `Page`).
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
+import { Interaction } from "./interaction.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
@@ -16,41 +17,33 @@ const params = new URLSearchParams(location.search);
 /**
  * A page with a stage (the app, the game page):
  * - `id`: "app" or "game" (the game page keeps what it remembers in the browser apart);
- * - `panels`: the panel of each module tab (`terminal`, `ops`, `infra`, `journeys`, …), made for the
- *   app: `(app) => panel` with `render(el)`, `update()` and optionally `syncWidth()`, `key(e)`;
- * - `shows`: the simulation type that shows each module tab (the tab is there while the layout has it);
- * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, home?}` (`home`: the layout
- *   it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the tab shown), the
- *   first one opened when nothing else was;
+ * - `cases`: the classes of its cases in Interaction (cases.js), in their order: by side, then the tools;
+ * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, layers?, home?}` (`home`: the
+ *   layout it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the case or
+ *   chapter shown; `layers`: the modules switched on), the first one opened when nothing else was;
  * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on;
  * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
  *   choose what is shown, and the examples are listed in Settings → View; a page without it has the
  *   list of layouts (Layouts…) in its bar.
- * @typedef {{id: string, panels: Object<string, (app: App) => object>, shows: Object<string, string>,
- *   examples: object[], exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
+ * @typedef {{id: string, cases: Array<typeof import("./cases.js").Case>, examples: object[],
+ *   exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
  */
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
 /** Former tabs that are views of the Settings tab now (their links keep working): tab → [tab, view]. */
 const TAB_VIEWS = { view: ["settings", "view"], simulate: ["settings", "simulate"], control: ["settings", "control"] };
-/** Tabs of a feature of the layout: another feature's tab when the layout does not have it, else the first of FIRST_TABS. */
-const FEATURE_TABS = {
-  terminal: ["ops", "infra", "journeys"], ops: ["infra", "journeys", "terminal"], infra: ["ops", "journeys", "terminal"], journeys: ["ops", "infra", "terminal"],
-};
-/** The tab shown when the one shown goes (and a layout opens): the first of these the layout has. */
-const FIRST_TABS = ["overview", "terminal", "ops", "infra", "journeys", "settings"];
 /**
  * Modules of the app, offered for every layout next to the layout's own modules (layers): switched
- * on and off in the Overview like those, without loading the layout again. `tab`: the tab it shows;
- * `on`: whether it is on for a layout nobody has switched it for.
+ * on and off in Interaction like those, without loading the layout again. `on`: whether it is on for
+ * a layout nobody has switched it for.
  */
 const APP_MODULES = [
   {
-    id: "build", name: "Build", tab: "build", icon: "build", on: true,
+    id: "build", name: "Build", icon: "build", on: true,
     description: "Place and edit the objects of the layout, its settings and its marker map; survey the markers from a video. Off, nobody changes the layout by mistake.",
   },
   {
-    id: "disruptions", name: "Disruptions", tab: "disrupt", icon: "disruptions", on: false,
+    id: "disruptions", name: "Disruptions", icon: "disruptions", on: false,
     description: "Delays, signal failures, cancellations, closures and replacement buses at the stops, and the scenarios of the layout: timelines of disruptions for an exercise.",
   },
 ];
@@ -61,10 +54,12 @@ export class App {
   /** @param {Page} page */
   constructor(page) {
     this.page = page;
-    /** The tabs of the page, in their order (Overview, Build, the modules' tabs, Disruptions, Settings). */
+    /** The chapters of the page, in their order (Overview, Interaction, Settings). */
     this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
-    /** The panels of the module tabs, by tab. */
-    this.tabPanels = {};
+    /** The cases of Interaction (cases.js), in the page's order. @type {import("./cases.js").Case[]} */
+    this.cases = [];
+    /** What Interaction shows: a case's id, or "modules". */
+    this.activeCase = "modules";
     this.canvas = $("#stage");
     this.ctx = this.canvas.getContext("2d");
     this.proc = document.createElement("canvas");
@@ -121,12 +116,10 @@ export class App {
     this.editor = new Editor(this);
     this.panels = new Panels(this);
     this.overview = new Overview(this);
-    for (const [tab, make] of Object.entries(this.page.panels)) this.tabPanels[tab] = make(this);
-    /** The panels by their module: the terminal's picking, the journeys' following and Settings use them. */
-    this.terminal = this.tabPanels.terminal ?? null;
-    this.operations = this.tabPanels.ops ?? null;
-    this.infra = this.tabPanels.infra ?? null;
-    this.journeys = this.tabPanels.journeys ?? null;
+    this.cases = this.page.cases.map((C) => new C(this));
+    this.interaction = new Interaction(this);
+    const kept = storage.get(this.key("case"));
+    if (this.caseById(kept)) this.activeCase = kept;
     this.inspector = new Inspector(this);
     /** The photo tour on the stage (the app), or null (the game page). */
     this.tourNav = this.page.tour && $("#tour") ? new TourNav(this, this.page.tour) : null;
@@ -160,10 +153,10 @@ export class App {
       }, 500);
     }
     const tab = linkedTab || example?.tab || "";
-    // a link to the tab of a module of the app (Build, Disruptions) switches it on
-    const linked = APP_MODULES.find((m) => m.tab === tab);
-    if (linked) this.setAppModule(linked.id, true);
-    if (this.tabs().includes(TAB_VIEWS[tab]?.[0] ?? tab)) this.selectTab(tab);
+    // a link to a case of a module of the app (Build, Disruptions) switches it on
+    const linked = this.caseFor(tab)?.constructor.appModule;
+    if (linked) this.setAppModule(linked, true);
+    if (tab) this.selectTab(tab);
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -183,13 +176,13 @@ export class App {
   }
 
   _wireUi() {
-    // tabs
+    // the chapters
     for (const name of this.tabNames) $(`#tab-${name}`).addEventListener("click", () => this.selectTab(name));
     $(".tabs").addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       // from the tab that has the focus (it may not be the one selected)
       const from = e.target.closest?.("[role=tab]")?.id.replace(/^tab-/, "") ?? this.activeTab;
-      const tabs = this.tabs(), i = tabs.indexOf(from) + (e.key === "ArrowRight" ? 1 : -1);
+      const tabs = this.tabNames, i = tabs.indexOf(from) + (e.key === "ArrowRight" ? 1 : -1);
       this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
@@ -297,7 +290,7 @@ export class App {
       // the simple view: Shift+S the map, S the 2.5D view (or back to the full flyover)
       this.flyover.simpleButton(e.shiftKey ? "map" : "3d");
       e.preventDefault();
-    } else if ((e.key === "r" || e.key === "R") && this.activeTab === "build" && this.editor.selected) {
+    } else if ((e.key === "r" || e.key === "R") && this.showing("build") && this.editor.selected) {
       if (this.editor.rotateSelected(e.shiftKey ? 90 : 15)) e.preventDefault();
     } else if (e.key === " ") {
       w.paused = !w.paused;
@@ -311,10 +304,10 @@ export class App {
     } else if (e.key === "Escape") {
       if (this.terminal?.cancelPick()) return;
       if (this.inspector.close()) return;
-      if (this.activeTab === "terminal" && this.terminal?.selected) this.terminal.select(null);
+      if (this.showing("terminal") && this.terminal?.selected) this.terminal.select(null);
       else if (this.editor.placing) this.editor.cancel();
       else this.editor.select(null);
-    } else if ((e.key === "Delete" || e.key === "Backspace") && this.activeTab === "build" && this.editor.selected) {
+    } else if ((e.key === "Delete" || e.key === "Backspace") && this.showing("build") && this.editor.selected) {
       this.editor.deleteSelected();
       e.preventDefault();
     } else if (e.key === "m" || e.key === "M") {
@@ -323,18 +316,45 @@ export class App {
     }
   }
 
-  /**
-   * The tabs shown: Overview and Settings always; Build and Disruptions with the app's modules of those names (Build on unless switched off); the tab of
-   * a module when the layout has the simulation the page shows it for (the app: Infrastructure with
-   * the maintenance story, Journeys with the journeys story; the game page: with the infrastructure
-   * game, the journeys exercise).
-   */
-  tabs() {
-    const has = (type) => this.world.simulations.some((s) => s.constructor.type === type);
-    const shown = { overview: true, settings: true, build: this.appModuleOn("build"), disrupt: this.appModuleOn("disruptions") };
-    // a module tab without a panel on this page is not shown
-    for (const [tab, type] of Object.entries(this.page.shows)) shown[tab] = !!this.tabPanels[tab] && has(type);
-    return this.tabNames.filter((t) => shown[t]);
+  /** The case of this id, or null. */
+  caseById(id) {
+    return this.cases.find((c) => c.id === id) ?? null;
+  }
+
+  /** The case of an id or of a former tab name (the app: #ops, #infra open its stories), or null. */
+  caseFor(name) {
+    return this.caseById(name) ?? this.cases.find((c) => c.constructor.aliases.includes(name)) ?? null;
+  }
+
+  /** The case shown: Interaction is shown, with a case that has what it needs; else null. */
+  get shownCase() {
+    const c = this.activeTab === "interaction" ? this.caseById(this.activeCase) : null;
+    return c?.ready ? c : null;
+  }
+
+  /** Is this case shown? (Build: taps place and select; Terminal: taps pick containers.) */
+  showing(id) {
+    return this.shownCase?.id === id;
+  }
+
+  /** The panel of the container terminal, or null. */
+  get terminal() {
+    return this.caseFor("terminal")?.panel ?? null;
+  }
+
+  /** The panel of the rail operations (the app: the breakdown story), or null. */
+  get operations() {
+    return this.caseFor("ops")?.panel ?? null;
+  }
+
+  /** The panel of the infrastructure (the app: the maintenance story), or null. */
+  get infra() {
+    return this.caseFor("infra")?.panel ?? null;
+  }
+
+  /** The panel of the journeys, or null. */
+  get journeys() {
+    return this.caseFor("journeys")?.panel ?? null;
   }
 
   /** The key of something the page remembers in the browser ("lastLayout": the app's "arail.lastLayout", the game page's "arail.game.lastLayout"). */
@@ -342,24 +362,27 @@ export class App {
     return this.page.id === "app" ? `arail.${name}` : `arail.${this.page.id}.${name}`;
   }
 
-  /** Show the tabs of the layout's features; a tab no longer shown hands over to another one. */
-  _syncTabs() {
-    const shown = this.tabs();
-    for (const t of this.tabNames) if ($(`#tab-${t}`).hidden !== !shown.includes(t)) $(`#tab-${t}`).hidden = !shown.includes(t);
-    if (shown.includes(this.activeTab)) return false;
-    const next = [...(FEATURE_TABS[this.activeTab] || []), ...FIRST_TABS].find((t) => shown.includes(t));
-    this.selectTab(next || "settings");
-    return true;
-  }
-
-  /** Show a tab (or a view of Settings: "view", "simulate", "control"). */
+  /**
+   * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
+   * or a case of Interaction: its id, a former tab name (build, terminal, ops, …), or "modules".
+   */
   selectTab(name) {
     if (TAB_VIEWS[name]) {
       this.panels.settingsView = TAB_VIEWS[name][1];
       storage.set("arail.settingsView", TAB_VIEWS[name][1]);
       name = TAB_VIEWS[name][0];
     }
-    // another tab opens at its top: the panels share one scrolling column (on a phone, the page)
+    const c = this.caseFor(name);
+    if (c || name === "modules") {
+      const id = c?.id ?? "modules";
+      if (c?.side) this.interaction.last.set(c.side, id);
+      if (id !== this.activeCase) this._scrollPanelToTop();
+      this.activeCase = id;
+      storage.set(this.key("case"), id);
+      name = "interaction";
+    }
+    if (!this.tabNames.includes(name)) name = "overview";
+    // another chapter opens at its top: the chapters share one scrolling column (on a phone, the page)
     if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
     for (const t of this.tabNames) {
@@ -368,22 +391,16 @@ export class App {
       $(`#panel-${t}`).hidden = t !== name;
     }
     this._scrollTabIntoView($(`#tab-${name}`));
-    this.canvas.classList.toggle("editing", name === "build" || name === "terminal");
-    if (name !== "build" && this.editor.placing) this.editor.cancel();
-    if (name !== "terminal") this.terminal?.cancelPick();
-    this.terminal?.syncHighlight();
-    // a wide panel (the tables of a game) only while its tab is shown
-    document.querySelector(".main")?.classList.remove("wide");
-    this.tabPanels[name]?.syncWidth?.();
     this.renderPanel(name);
-    // Settings is linked by its view (#view, #simulate, #control), as the tabs were before
-    history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name}`);
+    // Settings is linked by its view (#view, #simulate, #control), Interaction by its case (#terminal, #modules)
+    history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name === "interaction" ? this.activeCase : name}`);
   }
 
-  /** Show a tab after an action elsewhere (e.g. a simulation added in Settings): its heading takes the keyboard focus. */
+  /** Show a chapter or a case after an action elsewhere (e.g. a terminal added): its heading takes the keyboard focus. */
   openTab(name) {
     this.selectTab(name);
-    const head = $(`#panel-${name} h2`);
+    const panel = $(`#panel-${this.activeTab}`);
+    const head = panel.querySelector(".case-panel h2") || panel.querySelector("h2");
     if (!head) return;
     if (!head.hasAttribute("tabindex")) head.tabIndex = -1;
     head.focus();
@@ -412,36 +429,43 @@ export class App {
     return null;
   }
 
-  /** The panel of the module tab shown when it tells a story (the app's Infrastructure, …), or null. */
+  /** The panel of the case shown when it tells a story (the app's stories), or null. */
   storyPanel() {
-    const p = this.tabPanels[this.activeTab];
+    const p = this.shownCase?.panel;
     return typeof p?.stepped === "function" ? p : null;
   }
 
+  /** Draw a chapter anew (the one shown). */
   renderPanel(name) {
     const el = $(`#panel-${name}`);
     if (name === "overview") this.overview.render(el);
-    else if (name === "build") this.editor.render(el);
     else if (name === "settings") this.panels.renderSettings(el);
-    else if (name === "disrupt") this.panels.renderDisruptions(el);
-    else this.tabPanels[name]?.render(el);
+    else this.interaction.render(el);
+    this._syncShown();
   }
 
-  /** Periodic refresh of live figures in the visible panel. */
+  /**
+   * What the case shown asks of the stage: in Build and Terminal taps on the canvas place, select and
+   * pick (elsewhere what was being placed or picked is dropped); a game's wide panel only while it is shown.
+   */
+  _syncShown() {
+    const build = this.showing("build"), terminal = this.showing("terminal");
+    this.canvas.classList.toggle("editing", build || terminal);
+    if (!build && this.editor.placing) this.editor.cancel();
+    if (!terminal) this.terminal?.cancelPick();
+    this.terminal?.syncHighlight();
+    document.querySelector(".main")?.classList.remove("wide");
+    this.shownCase?.panel?.syncWidth?.();
+  }
+
+  /** Periodic refresh of live figures in the chapter shown. */
   refreshPanels() {
     this.updateHud();
     this.inspector.update();
     const t = this.activeTab;
     if (t === "overview") this.overview.update();
     else if (t === "settings") this.panels.updateSettings();
-    else if (this.tabPanels[t]) this.tabPanels[t].update();
-    else if (t === "disrupt") {
-      this.panels.updateDisruptions();
-      this.panels.updateScenarios();
-    } else if (t === "build" && this._mapVersionShown !== this.world.map.ids().length) {
-      this._mapVersionShown = this.world.map.ids().length;
-      this.editor.renderMarkers();
-    }
+    else this.interaction.update();
   }
 
   /* ---------------------------------------------------------------- layouts */
@@ -465,10 +489,10 @@ export class App {
       this.stopLive();
       // the photo or clip shown until now belongs to the previous layout
       if (this.source) this.source.stale = true;
-      await this.loadLayoutFromUrl(x.layout, { withImage: false });
+      await this.loadLayoutFromUrl(x.layout, { withImage: false, layers: x.layers ?? null });
       this._loadExampleMedia(x);
-    } else if (x) await this.openLayout(x.layout);
-    if (x?.tab && this.tabs().includes(x.tab)) this.selectTab(x.tab);
+    } else if (x) await this.openLayout(x.layout, x.layers ?? null);
+    if (x?.tab) this.selectTab(x.tab);
     if (x) return;
     const l = this.page.exampleLayers[id];
     if (!l) return;
@@ -524,7 +548,7 @@ export class App {
   }
 
   /**
-   * The modules shown in the Overview: the layers of this layout (in a layout that is a module of
+   * The modules shown in Interaction: the layers of this layout (in a layout that is a module of
    * another one, a layout of its own like the container terminal: the modules of that one), then the
    * app's modules (Build, Disruptions).
    * @returns {Array<{id: string, name: string, description: string, enabled: boolean, exclusive: boolean, layout: string | null, app?: boolean}>}
@@ -578,11 +602,11 @@ export class App {
       if (w.scenarios.current) w.scenarios.stop();
       for (const d of [...w.disruptions.active]) if (!d.def.hidden) w.disruptions.stop(d.id);
     }
-    if (!this._syncTabs()) this.overview.renderIfShown();
+    this.interaction.renderIfShown();
   }
 
   /**
-   * Switch a module on or off (the Overview). Rail operations, infrastructure and journeys are combined;
+   * Switch a module on or off (Interaction). Rail operations, infrastructure and journeys are combined;
    * an exclusive module switches the others off, and a module that is a layout of its own (the
    * container terminal) opens that layout. In such a layout, any other choice goes back to its home.
    * The app's modules (Build, Disruptions) go with every choice.
@@ -765,7 +789,7 @@ export class App {
       this.applyDictionary();
       this.showLayoutName();
       this.flyover.layoutChanged();
-      if (!this._syncTabs()) this.renderPanel(this.activeTab);
+      this.renderPanel(this.activeTab);
       this.sizeCanvas(); // view.extend_below of this layout
       this.redetect();
     }
@@ -1206,7 +1230,7 @@ export class App {
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
-      this.world.draw(view, { selected: this.activeTab === "build" ? this.editor.selected : null });
+      this.world.draw(view, { selected: this.showing("build") ? this.editor.selected : null });
       this.editor.drawOverlay(ctx, view);
       this.terminal?.drawOverlay(ctx, view);
       this.lastView = view;

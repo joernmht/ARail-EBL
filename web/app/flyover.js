@@ -187,8 +187,8 @@ export class Flyover {
     $("#btnFlyover").setAttribute("aria-pressed", this.active ? "true" : "false");
     this._syncSimple();
     app.updateHud();
-    if (app.activeTab === "build") app.editor.renderPlacing();
-    else if (app.activeTab === "terminal") app.terminal.renderPlacing();
+    if (app.showing("build")) app.editor.renderPlacing();
+    else if (app.showing("terminal")) app.terminal.renderPlacing();
   }
 
   /** Canvas size: the whole stage, at the device's resolution (at most MAX_WIDTH wide). */
@@ -360,8 +360,8 @@ export class Flyover {
     const t = e.target, onStage = t === this.app.canvas || !!t.closest?.("#stageWrap");
     if (!onStage) return false;
     const c = this.app.canvas, W = c.width, H = c.height, s = e.shiftKey ? 3 : 1, d = 0.12 * Math.min(W, H) * s;
-    const ed = this.app.editor, placing = this.app.activeTab === "build" && !!ed.placing;
-    const terminal = this.app.activeTab === "terminal";
+    const ed = this.app.editor, placing = this.app.showing("build") && !!ed.placing;
+    const terminal = this.app.showing("terminal");
     // Terminal: Enter picks the container (or the place for it) at the cross in the middle
     if (e.key === "Enter" && terminal) {
       if (t !== c) return false;
@@ -373,7 +373,7 @@ export class Flyover {
       return true;
     }
     // the info card of what is at the cross in the middle (outside Build and Terminal)
-    if (e.key === "Enter" && !placing && this.app.activeTab !== "build" && t === c) {
+    if (e.key === "Enter" && !placing && !this.app.showing("build") && t === c) {
       if (e.repeat) return true;
       if (this.anim) this.cam.set(this.anim.to);
       this.anim = null;
@@ -430,7 +430,7 @@ export class Flyover {
   step(dt) {
     // placing with the keyboard: the cross of the next point follows the middle of the view
     const ed = this.app.editor;
-    if (this._keyAim && ed.placing && this.app.activeTab === "build") ed.hover(this.aimPoint());
+    if (this._keyAim && ed.placing && this.app.showing("build")) ed.hover(this.aimPoint());
     else this._keyAim = false;
     if (this.anim) {
       const a = this.anim, t = (performance.now() - a.t0) / a.ms;
@@ -478,14 +478,14 @@ export class Flyover {
     c.addEventListener("pointerdown", () => this.active && this.app.inspector.clearHover());
     // reached with Tab while placing: the cross in the middle shows where Enter puts the point
     c.addEventListener("focus", () => {
-      if (this.active && this.app.activeTab === "build" && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
+      if (this.active && this.app.showing("build") && this.app.editor.placing && c.matches(":focus-visible")) this._keyAim = true;
       if (this.active && !this._entering && c.matches(":focus-visible")) this.app.terminal.keyAim = true;
     });
     c.addEventListener("wheel", (e) => this.active && this._wheel(e), { passive: false });
     c.addEventListener("contextmenu", (e) => this.active && e.preventDefault());
     c.addEventListener("dblclick", (e) => {
       // Build and Terminal: taps select and pick there
-      if (!this.active || this.app.activeTab === "build" || this.app.activeTab === "terminal") return;
+      if (!this.active || this.app.showing("build") || this.app.showing("terminal")) return;
       const [x, y] = this._point(e), W = c.width, H = c.height;
       this.move((k) => k.zoomAt(2, x, y, W, H));
     });
@@ -524,7 +524,7 @@ export class Flyover {
     }
     if (this.pointers.size > 2) return;
     const panButton = e.button === 1 || e.button === 2 || e.shiftKey;
-    const build = app.activeTab === "build", terminal = app.activeTab === "terminal";
+    const build = app.showing("build"), terminal = app.showing("terminal");
     if (build && e.button === 0 && !panButton) {
       const g = this.surfacePoint(p[0], p[1]);
       if (ed.placing) {
@@ -548,7 +548,7 @@ export class Flyover {
     if (!prev) {
       // hovering: where the next point would go (the mouse takes over from the keyboard), the tooltip
       this._keyAim = false;
-      if (app.activeTab === "build" && ed.placing) ed.hover(this.surfacePoint(p[0], p[1]), e);
+      if (app.showing("build") && ed.placing) ed.hover(this.surfacePoint(p[0], p[1]), e);
       if (e.pointerType === "mouse") app.inspector.hoverAt(p);
       return;
     }
@@ -612,8 +612,8 @@ export class Flyover {
     } else if (g.type === "rect") {
       const q = this.surfacePoint(p[0], p[1]);
       if (q) ed.placeAt(q, e);
-    } else if (!g.moved && app.activeTab === "build" && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
-    else if (!g.moved && app.activeTab === "terminal" && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
+    } else if (!g.moved && app.showing("build") && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
+    else if (!g.moved && app.showing("terminal") && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
     else if (!g.moved && g.button === 0 && !g.shift) app.inspector.tapAt(p, { touch: e.pointerType !== "mouse" }); // the info card
   }
 
@@ -669,7 +669,7 @@ export class Flyover {
     if (!simple) this._drawOrtho(view, night);
     drawGrid(view, this._gridBounds(), world.layout.grid.size_mm);
     if (app.display.flyMarkers !== false) this._drawMarkers(view);
-    world.draw(view, { selected: app.activeTab === "build" ? app.editor.selected : null });
+    world.draw(view, { selected: app.showing("build") ? app.editor.selected : null });
     app.editor.drawOverlay(ctx, view);
     app.terminal.drawOverlay(ctx, view);
     app.lastView = view;

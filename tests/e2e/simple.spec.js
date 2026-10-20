@@ -1,5 +1,6 @@
 // The simple view: a map (plan view) and a 2.5D view with flat objects and moving things as blocks.
 import { expect, test } from "@playwright/test";
+import { openCase } from "./ui.js";
 
 async function openApp(page) {
   const errors = [];
@@ -52,7 +53,7 @@ test("Build works in the map: tapping an object selects it", async ({ page }) =>
   const errors = await openApp(page);
   await page.locator("#btnMap").click();
   await settle(page);
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   const target = await page.evaluate(() => {
     const a = window.__arail;
     a.render();

@@ -78,7 +78,7 @@ export class TerminalPanel {
     this._sim = null;
     this.el = null;
     // camera view: a tap on the canvas picks (the flyover routes its own pointer, see flyover.js)
-    const c = app.canvas, mine = (fn) => (e) => app.mode !== "flyover" && app.activeTab === "terminal" && fn(e);
+    const c = app.canvas, mine = (fn) => (e) => app.mode !== "flyover" && app.showing("terminal") && fn(e);
     c.addEventListener("pointerdown", mine((e) => {
       this._tap = e.button === 0 ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
     }));
@@ -192,16 +192,16 @@ export class TerminalPanel {
     morph(box, parts);
   }
 
-  /** The panel without a terminal (its tab is only shown with one): where to get one. */
+  /** The panel without a terminal (for a moment: the case shows how to get one). */
   _noTerminal() {
     return [
       h("h2", { tabindex: "-1" }, "Container terminal"),
-      h("p", { class: "hint" }, "This layout has no container terminal. Settings → Simulation adds one, or switches on the module of the lab example."),
+      h("p", { class: "hint" }, "This layout has no container terminal."),
       h("p", { class: "hint" }, "A terminal works with the objects of the group Terminal in Build: container yard blocks, gantry cranes, reach stackers, truck lanes and quays, with ordinary tracks as loading tracks."),
     ];
   }
 
-  /** "Add to this layout" (Settings → Simulation): a terminal entry with the default settings; the Terminal tab opens. */
+  /** "Add to this layout" (the case Terminal while the layout has none): a terminal entry with the default settings; the case opens. */
   async addTerminal() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "terminal" }];
@@ -567,7 +567,7 @@ export class TerminalPanel {
     const moves = sim.moves.slice(-JOBS_SHOWN);
     return [
       h("h2", {}, "Crane jobs ", h("span", { class: "count" }, sim.moves.length ? `(${sim.moves.length})` : "")),
-      moves.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-jobs" },
+      moves.length ? h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Crane jobs" }, h("table", { class: "term-jobs" },
         h("thead", {}, h("tr", {}, ["#", "Container", "From → To", "By", "State", h("span", { class: "visually-hidden" }, "Action")].map((t) => h("th", {}, t)))),
         h("tbody", {}, moves.map((m) => {
           const hd = sim.handlers.get(m.handler), c = sim.inventory.get(m.container);
@@ -600,7 +600,7 @@ export class TerminalPanel {
       h("h2", {}, "Model wagons"),
       // the real train and the real truck: unloaded and loaded as a whole, like a visit
       units.length && this.full ? h("div", { class: "board term-board", "aria-live": "off" }, units.map((u) => this._unitCard(sim, u))) : null,
-      wagons.length ? h("div", { class: "table-wrap" }, h("table", { class: "term-wagons" },
+      wagons.length ? h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Model wagons" }, h("table", { class: "term-wagons" },
         h("thead", {}, h("tr", {}, ["Wagon", "Type", "Tags seen", "State", "Containers"].map((t) => h("th", {}, t)))),
         h("tbody", {}, wagons.map((c) => {
           const t = sim.rolling?.wagons.get(c.number);
@@ -670,7 +670,7 @@ export class TerminalPanel {
   syncHighlight(targets = null) {
     const sim = this.sim;
     if (!sim) return;
-    const here = this.app.activeTab === "terminal";
+    const here = this.app.showing("terminal");
     const selected = here && this.selected && sim.inventory.get(this.selected) ? this.selected : null;
     const picking = selected && this.stage === "target";
     sim.highlight = { selected, targets: picking ? (targets ?? sim.targets(selected)).ok : null, slots: here };
@@ -786,7 +786,7 @@ export class TerminalPanel {
    */
   drawOverlay(ctx, view) {
     const app = this.app, c = app.canvas;
-    if (app.activeTab !== "terminal" || !app.flyover.active || document.activeElement !== c || !this.keyAim) return;
+    if (!app.showing("terminal") || !app.flyover.active || document.activeElement !== c || !this.keyAim) return;
     aimCross(ctx, view, this.stage === "target" ? "Enter: move here" : "Enter: pick");
   }
 }

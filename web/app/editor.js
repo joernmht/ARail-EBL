@@ -48,7 +48,7 @@ export class Editor {
   }
 
   get active() {
-    return this.app.activeTab === "build";
+    return this.app.showing("build");
   }
 
   /* ---------------------------------------------------------------- canvas interaction */
@@ -563,13 +563,14 @@ export class Editor {
     this.el = {
       palette: h("div", { class: "palette" }),
       objects: h("ul", { class: "list" }),
+      count: h("span", { class: "count", id: "objCount" }),
       inspector: h("div", { class: "section" }),
       layout: h("div", { class: "section" }),
       markers: h("div", { class: "section" }),
     };
     mount(container,
       section("Add to the layout", this.el.palette),
-      section(h("span", {}, "Objects ", h("span", { class: "count", id: "objCount" })), this.el.objects),
+      section(h("span", {}, "Objects ", this.el.count), this.el.objects),
       this.el.inspector,
       this.el.layout,
       this.el.markers,
@@ -626,7 +627,7 @@ export class Editor {
   renderObjects() {
     if (!this.el) return;
     const objs = this.world.objects;
-    $("#objCount").textContent = objs.length ? `(${objs.length})` : "";
+    this.el.count.textContent = objs.length ? `(${objs.length})` : "";
     mount(this.el.objects, objs.length
       ? objs.map((o) => h("li", {}, h("button", {
         type: "button", "aria-current": o === this.selected ? "true" : "false", onclick: () => this.select(o === this.selected ? null : o),
@@ -799,7 +800,7 @@ export class Editor {
       h("p", { class: "hint", id: "markerMapStatus" }, map.locked
         ? `Marker map locked: only these ${n} markers are used; new markers are ignored.`
         : "Positions of the markers on the layout (mm). Unknown markers are measured automatically when they are seen together with known ones. Keep positions fixes them and locks the map."),
-      rows.length ? h("div", { class: "table-wrap" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
+      rows.length ? h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Marker map" }, h("table", {}, h("thead", {}, h("tr", {}, ["ID", "X", "Y", "Rotation", "Status"].map((t) => h("th", {}, t)))), h("tbody", {}, rows))) : h("p", { class: "hint" }, "No markers known yet."),
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", disabled: surveying, onclick: () => this.keepPositions() }, "Keep positions"),
         map.locked ? h("button", { class: "btn small", type: "button", id: "btnUnlockMap", disabled: surveying, onclick: () => this.unlockMap() }, "Unlock") : null,

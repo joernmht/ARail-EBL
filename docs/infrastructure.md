@@ -100,12 +100,12 @@ What is simulated:
 
 The simulation runs in two speeds: a **live day** on the layout with the fast clock (vans driving
 through the town, technicians at work, drones flying, faults holding the station's trains), and
-**fast runs** in the Infrastructure tab to the next decision or to the end of the year (a year takes
+**fast runs** in Infrastructure → Assets to the next decision or to the end of the year (a year takes
 a fraction of a second).
 
 ## The example
 
-The module **Infrastructure** of the lab example Beta 0.1 on the game page (Overview → Modules, or
+The module **Infrastructure** of the lab example Beta 0.1 on the game page (Interaction → Modules, or
 `game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
@@ -127,12 +127,12 @@ On table modules beside the table:
 - **Industry module E1**: the **level crossing plant** *BÜ-Werk Mittelsachsen* (on the street
   *Werkstraße*).
 
-Beyond the layout the network is a **line map** in the Infrastructure tab. The scenario *Faults at
-the station* (Disruptions tab) makes signal N2 and the level crossing fail.
+Beyond the layout the network is a **line map** in Infrastructure → Assets. The scenario *Faults at
+the station* (Interaction → Disruptions) makes signal N2 and the level crossing fail.
 
-## The Infrastructure tab of the game page
+## Infrastructure → Assets on the game page
 
-With an infrastructure simulation on the layout, the game page has an **Infrastructure** tab (`#infra`).
+With an infrastructure simulation on the layout, the game page's case **Infrastructure → Assets** (`#infra`) works.
 At the top: the date, **Your role**, and the run controls:
 
 - **Run to the next decision** runs fast until a decision of a role played by students comes up, or
@@ -487,7 +487,7 @@ camera image too) and `platform` objects are assets as well.
 
 ## Disruptions and events
 
-Offered in the Disruptions tab (module Disruptions) for layouts with the infrastructure:
+Offered in Interaction → Disruptions (module Disruptions) for layouts with the infrastructure:
 
 | Type | Parameters | Does |
 | --- | --- | --- |

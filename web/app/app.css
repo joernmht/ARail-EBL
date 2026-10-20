@@ -219,6 +219,21 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 @media (max-width: 640px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 @container panel (max-width: 480px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
+/* Interaction: the strip at its side (Modules, the sides, the tools; its labels read upwards) and the cases of a side as tabs */
+.interaction { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; margin-left: -10px; }
+.strip { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 56px; align-self: start; padding-right: 4px; border-right: 1px solid var(--line); }
+.strip-item { writing-mode: vertical-rl; transform: rotate(180deg); display: flex; align-items: center; gap: 7px; padding: 11px 6px; border: 0; border-left: 3px solid transparent; background: none; color: var(--text-2); font: inherit; font-weight: 600; font-size: .82rem; line-height: 1.2; cursor: pointer; white-space: nowrap; }
+.strip-item:hover { color: var(--text); }
+.strip-item[aria-selected="true"] { color: var(--accent-ink); border-left-color: var(--accent); }
+.strip-item.first-tool { margin-top: 14px; }
+.strip-icon { width: 20px; height: 20px; transform: rotate(180deg); flex: none; }
+.strip-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.interaction-body { min-width: 0; display: grid; align-content: start; }
+.case-tabs { display: flex; flex-wrap: wrap; gap: 0 2px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.case-tabs button { border: 0; background: none; padding: 7px 8px 6px; font: inherit; font-weight: 500; font-size: .88rem; color: var(--text-2); border-bottom: 3px solid transparent; cursor: pointer; }
+.case-tabs button:hover { color: var(--text); }
+.case-tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.case-panel { display: grid; gap: 18px; align-content: start; min-width: 0; }
 .section { display: grid; gap: 8px; }
 .section > h2 { margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
 .section > h2 .count { font-weight: 500; color: var(--text-2); letter-spacing: 0; text-transform: none; }

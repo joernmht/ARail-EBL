@@ -528,12 +528,12 @@ arail.registry.registerDisruption({
 });
 ```
 
-Two more fields: `requires: "<simulation type>"` offers the type in the Disruptions tab only
+Two more fields: `requires: "<simulation type>"` offers the type in Interaction → Disruptions only
 when the layout has that simulation, and `targets: "none"` is for disruptions without a place (the
 panel shows no *Where*; they are started with target `"*"`). The rail operations' types use both and
 act in `onStart`; a string they leave in `d.result` (*3 sick calls*) is shown when they start.
-`hidden: true` marks a type that a simulation or story starts itself: it is not offered in the
-Disruptions tab and starts and ends without a toast. `quiet: true` puts up its warning sign and
+`hidden: true` marks a type that a simulation or story starts itself: it is not offered in
+Interaction → Disruptions and starts and ends without a toast. `quiet: true` puts up its warning sign and
 counts in the top bar only while it has a message (a story's `story-train`, which keeps a bus bay
 for the story's bus without a word). `targets: "track"` is
 for one dock of a stop (a platform's track, `platform-1:right`; a bus bay, `bus-terminal-1:bay2`):

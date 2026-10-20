@@ -2,6 +2,7 @@
 // the card of a track, and the lab example's module Border station.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openCase } from "./ui.js";
 
 const LAB = "/app/?layout=../layouts/ebl-lab.json&layers=border";
 
@@ -54,7 +55,7 @@ test("the card of a track lists its systems; Build offers them per track", async
   await expect(card).toContainText("Infrastructure manager: Správa železnic (usual in CZ)");
   // Build: the systems as fields of the track
   await page.keyboard.press("Escape");
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("track-g3")));
   await expect(page.locator("#obj-track-g3-country")).toHaveValue("CZ");
   await expect(page.locator("#obj-track-g3-power")).toHaveValue("");

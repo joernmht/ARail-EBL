@@ -17,7 +17,7 @@ Three examples have a terminal:
 
 - **Example: terminal at the crane** (`app/?example=crane-terminal`): the lab's real terminal
   tracks at the model gantry crane, in [`web/layouts/ebl-neustadt.json`](../web/layouts/ebl-neustadt.json)
-  (the layout of Bf Neustadt, see [Getting started](getting-started.md#the-examples)): a virtual
+  (the layout of Bf Neustadt with its module **Terminal**, see [Getting started](getting-started.md#the-examples)): a virtual
   gantry crane over the three real loading tracks G 14 to G 16, a truck lane in front of them and
   yard Block A behind them. KT 41 Hamburg stands on loading track 1; the scenario **Morning shift
   at the terminal** brings KT 52 on loading track 3. The real container train on the middle track
@@ -206,7 +206,7 @@ Open the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/?kind=
 | Scale | H0 (1:87) | the scale of the wagons |
 
 For the example: W1–W2 as Sgns, W3 as Sggrss and W4 as Lgns, three prints. The links under
-**Model wagons** in the Terminal tab open the page filled in, one link per wagon type of the
+**Model wagons** in the case Terminal open the page filled in, one link per wagon type of the
 `rolling_stock` list, with the layout's stride, tag size and scale. Then
 
 1. print at 100 % ("actual size") and check the 100 mm bar with a ruler;
@@ -328,7 +328,7 @@ describe them, all along the wagon in layout mm from its centre, + towards the A
 | `tags_mm` | `[68, -68]` | where each tag sits: slot 0, 1, … (default: one tag on each container spot) |
 | `tags_deg` | `[0, 180]` | how each tag is turned: 0 = its x axis (the label's arrow) points to the A end, 180 = to the B end |
 | `spots_mm` | `[50, -50]` | where the container spots are (default: the wagon type's); such spots take 20 ft containers only |
-| `unit` | `"Truck"` | the model train or truck the wagon belongs to (1–40 characters): the Terminal tab unloads and loads a unit as a whole |
+| `unit` | `"Truck"` | the model train or truck the wagon belongs to (1–40 characters): the case Terminal unloads and loads a unit as a whole |
 
 The example's container train is the lab's: Sgns wagons with a label at each end, on the two
 outer spots (136 mm apart), the middle spot bare, and each label's arrow pointing to its own end
@@ -368,11 +368,12 @@ The tags never enter the marker map. Still, set `markers.dictionary` to the layo
 "auto") when rolling-stock markers are used*. Or take the tagged wagons off the layout while you
 film the survey video.
 
-## The Terminal tab, step by step
+## Railway undertaking → Terminal, step by step
 
-The **Terminal** tab (`#terminal` in the app URL) runs the terminal; it is shown when the layout has
-one. On a layout without one, **Settings → Simulation → Container terminal** offers **Open the example
-terminal** (on the lab example: **Switch on the module “Container terminal”**) and **Add to this layout**.
+The case **Terminal** of Interaction (side Railway undertaking, `#terminal` in the app URL) runs the
+terminal when the layout has one (Bf Neustadt: its module **Terminal**). On a layout without one, the
+case offers **Switch on “Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab
+example) or **Open the example**, and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), the speed (1×, 2×, 5×, 10×, 30×), **Reset terminal** (back to the start
@@ -404,7 +405,7 @@ terminal** (on the lab example: **Switch on the module “Container terminal”*
    wagon type). Scenarios unload and load a unit by its name (`terminal.request.unload` and
    `terminal.request.load` with `"visit": "Truck"`).
 
-**On the stage.** In the Terminal tab a tap on a container chooses it, and its possible places are
+**On the stage.** In the case Terminal a tap on a container chooses it, and its possible places are
 outlined; a tap on an outlined place (or on another container, or on a carrier) queues the move:
 *Move M4 queued: Portal crane 1, from KT 41 Hamburg · wagon 1 · bay 1–2 to Block A · bay 3–4 ·
 row 1 · tier 1*. Esc or **Cancel** stops the pick. This works over the camera image and in the flyover. In the flyover
@@ -432,7 +433,7 @@ Loading tracks are **Infrastructure → Track**, drawn along the real track (or 
 flyover). Cranes and quays are picked at their edges unless selected, so the yard and the tracks
 under them stay selectable. Then:
 
-1. In **Settings → Simulation → Container terminal** press **Add to this layout**: the Terminal tab opens.
+1. In **Railway undertaking → Terminal** press **Add to this layout**: the case shows the new terminal.
 2. Call trains (choose the loading track), barges and trucks with **New arrival**, and move
    containers into the yard.
 3. **Save as start state**, then **Export layout**. Fine-tune the result in the layout file (below):
@@ -472,7 +473,7 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `name` | `"Container terminal"` | shown in the Terminal tab |
+| `name` | `"Container terminal"` | shown in the case Terminal |
 | `default_wagon` | `"sgns60"` | type of trains' wagons and of model wagons that are not listed: `sgns60`, `lgns40` or `sggrss80` |
 | `rolling_stock` | `[]` | model wagons: `number` (from 1), `type`, `name` (default `W<number>`), `height_mm` (0–200, default `markers.rolling.height_mm`), `tags_mm`, `tags_deg` and `spots_mm` (see [Labels where they fit](#labels-where-they-fit)) |
 | `trains` | `[]` | `id`, `name`, `track` (id of a `track` object), `direction` (1: from the track's first point to its last, −1: the other way), `stop_mm` (the head's distance from the entry end; default: the wagons' middle at the track's middle), `start` (`"away"`, the default, or `"positioned"`: at its stop when the layout is loaded), `wagons` (types from the head; default three of `default_wagon`) |
