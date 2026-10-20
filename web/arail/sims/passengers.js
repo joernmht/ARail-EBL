@@ -349,6 +349,8 @@ export class PassengerSimulation extends Simulation {
     this._sync();
     const c = this.crowds.get(dock.area.id);
     if (!c || !agents.length) return [];
+    const svc = this.world.services;
+    if (svc.capacityOf(vehicle) != null) vehicle.onboard = Math.max(0, svc.onboardOf(vehicle) - agents.length);
     const doors = this._doors(vehicle);
     const a = c.area, rng = this.rng, out = [];
     for (const agent of agents) {
@@ -481,17 +483,30 @@ export class PassengerSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- events */
 
-  /** Board a vehicle the person wants that stands at a dock of the area (doors open, not about to leave). */
+  /** Board a vehicle the person wants that stands at a dock of the area (doors open, not about to leave, room for it). */
   _boardStanding(p, a) {
     const docks = p.dock ? a.docks.filter((d) => d.id === p.dock) : p.anyDock ? a.docks : [];
     for (const d of docks) {
       const v = this._vehicleAt(d.id);
-      if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v)) {
+      if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v) && this._getsOn(p, v)) {
         this._board(p, d, this._doors(v), 0, v);
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Is there room for a person in a vehicle with places (seats and standing, core/services.js)? It
+   * then counts the person on board. Agents (the town's, the travellers) always get on: they squeeze
+   * in; the others not once it is full.
+   */
+  _getsOn(p, vehicle) {
+    const svc = this.world.services, cap = svc.capacityOf(vehicle);
+    if (cap == null) return true;
+    if (!p.agent && svc.onboardOf(vehicle) >= cap) return false;
+    vehicle.onboard = svc.onboardOf(vehicle) + 1;
+    return true;
   }
 
   _board(p, dock, doors, delay, vehicle = null) {
@@ -520,6 +535,9 @@ export class PassengerSimulation extends Simulation {
       ? town * this._interval(vehicle, dock) * this.world.demand * (c.wave() / WAVE_MEAN)
       : (bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25);
     const n = fx.closed || !this.others ? 0 : rng.poisson(mean * Math.min(1, 0.25 + tod));
+    // a vehicle with places: those who get off make room
+    const svc = this.world.services;
+    if (svc.capacityOf(vehicle) != null) vehicle.onboard = Math.max(0, svc.onboardOf(vehicle) - n);
     const late = vehicle.delayMin > 0.5;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const s = rng.pick(doors) + rng.uniform(-0.4, 0.4);
@@ -529,8 +547,13 @@ export class PassengerSimulation extends Simulation {
       c.people.push(p);
     }
     for (const p of c.people) {
-      // agents always take their vehicle; a few other people wait for the next one
-      if (this._wants(p, dock, vehicle) && (p.agent || rng.chance(0.95))) this._board(p, dock, doors, undefined, vehicle);
+      // agents always take their vehicle; a few other people wait for the next one, and all of them when it is full
+      if (!this._wants(p, dock, vehicle) || !(p.agent || rng.chance(0.95))) continue;
+      if (this._getsOn(p, vehicle)) this._board(p, dock, doors, undefined, vehicle);
+      else {
+        vehicle.leftBehind++;
+        p.mood = Math.max(0, p.mood - 0.15);
+      }
     }
   }
 

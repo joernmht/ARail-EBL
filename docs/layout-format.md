@@ -59,7 +59,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `objects` | `[]` | the virtual objects |
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
-| `consists` | `[]` | the vehicles of trains, by line or train number: `{id, name, lines, trains, vehicles: [{type, count, loaded, isolated}], brake_position}`, see [Railway systems](rail-systems.md#vehicles-and-trains) |
+| `consists` | `[]` | the vehicles of trains, by line or train number: `{id, name, lines, trains, vehicles: [{type, count, loaded, isolated}], brake_position, peak}` (`peak`: coupled that many times in the rush hours); without one, a train of the timetable runs with the default fleet of its line, see [Railway systems](rail-systems.md#vehicles-and-trains) |
 | `vehicle_types` | `{}` | vehicle types of the layout's own, as in the catalogue (`{"my-wagon": {label, kind, length_m, mass_t, axles, vmax_kmh, brake_t: {P: 30}}}`) |
 | `layers` | `[]` | parts of the layout that can be switched on and off (the app's modules), see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |

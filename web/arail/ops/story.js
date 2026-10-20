@@ -20,10 +20,13 @@
  * @module arail/ops/story
  */
 import { Story } from "../core/story.js";
-import { CD, OVERLAY, PALETTE, grey, moodColor, shade } from "../core/colors.js";
+import { CD, OVERLAY, grey, moodColor, shade } from "../core/colors.js";
 import { polylineAt, polylineLengths, polylineProject } from "../core/math.js";
 import { formatTime, parseTime } from "../core/clock.js";
 import { boxFaces } from "../core/transit.js";
+import { drawTrain, turnCars } from "../rail/draw.js";
+import { carsOf } from "../rail/stock.js";
+import { Consist } from "../rail/vehicles.js";
 import { drawPerson } from "../sims/passengers.js";
 import { hash01 } from "../objects/building-kit.js";
 import { DEFAULT_CONTRACTS } from "./config.js";
@@ -32,8 +35,8 @@ import { CREW_COLOURS } from "./simulation.js";
 /** A two-car electric multiple unit (class 442, prototype metres): its cars, sizes and door places (shares of a car). */
 const EMU = { cars: 2, car_m: 21, gap_m: 0.6, width_m: 2.9, floor_m: 0.6, roof_m: 3.95, doors: [0.22, 0.78] };
 const EMU_M = EMU.cars * EMU.car_m + (EMU.cars - 1) * EMU.gap_m;
-/** Livery of the units: light grey with a red band and red cab ends. */
-const LIVERY = { body: grey(0.93), roof: grey(0.66), band: CD.rot, cab: CD.rot, glass: PALETTE.trainWindow, door: PALETTE.trainDoor, closed: grey(0.74), pantograph: grey(0.2) };
+/** The unit's cars as the trains at the platforms draw an ET 442 of two cars, and turned round (the driver changed ends). */
+const UNIT_CARS = carsOf(new Consist({ vehicles: [{ type: "et442s" }] })), UNIT_TURNED = turnCars(UNIT_CARS);
 /** Fitters in the workshop: an orange vest over dark blue trousers (the drivers wear yellow, CREW_COLOURS). */
 const FITTER_COLOURS = { body: CD.orange, legs: CD.dunkelblau };
 /** Minutes after the scheduled departure: the fault, the spare leaves the depot, stands at the platform, the train leaves. */
@@ -633,99 +636,18 @@ export class OpsStory extends Story {
 /* ---------------------------------------------------------------- drawing helpers */
 
 /**
- * A two-car unit on its line: car bodies with a red band, windows, doors (yellow while open, on the
- * platform's side), red cab ends with their windscreens, the pantograph (up or down), head and tail
- * lights while it is powered, and a label with its number. Cars beyond the line's ends are not drawn.
+ * A two-car unit on its line (an ET 442 Talent 2 of two cars, as the trains at the platforms draw it,
+ * rail/draw.js): car bodies with a red band, windows, doors (yellow while open, on the platform's
+ * side), red cab ends with their windscreens, the pantograph (up or down), head and tail lights while
+ * it is powered, and a label with its number. Cars beyond the line's ends are not drawn.
  * @param {object} view
  * @param {{line: object, head: number, dir: number, flip: boolean, pantograph: number, powered: boolean, doors: number, area?: object}} u
  * @param {{label?: {lines: string[], danger: boolean} | null, ref?: number[] | null}} [o] its label, and a
  *   reference point to sort it by (a unit in the depot's hall: behind the hall, seen through its glass)
  */
 export function drawUnit(view, u, { label = null, ref = null } = {}) {
-  const { line, head, dir } = u, m = line.m, mz = view.m(1);
-  const car = EMU.car_m * m, gap = EMU.gap_m * m, z0 = EMU.floor_m * mz, z1 = EMU.roof_m * mz;
-  const lit = u.powered && view.darkness > 0.35;
-  let top = null;
-  for (let c = 0; c < EMU.cars; c++) {
-    const f = head - dir * c * (car + gap), r = f - dir * car;
-    const lo = Math.max(0, Math.min(f, r)), hi = Math.min(line.total, Math.max(f, r));
-    if (hi - lo < 0.5 * m) continue;
-    const fc = dir > 0 ? hi : lo, rc = dir > 0 ? lo : hi;
-    const A = polylineAt(line.points, rc, line.lengths).point, B = polylineAt(line.points, fc, line.lengths).point;
-    // a car is long: one whose middle is off the picture may still reach into it
-    if (!view.inImage((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, 0, 400)) continue;
-    const len = Math.hypot(B[0] - A[0], B[1] - A[1]) / m;
-    const ax = [(B[0] - A[0]) / (len * m || 1), (B[1] - A[1]) / (len * m || 1)];
-    // the platform's side (doors open there), seen along the car
-    let doorSide = null;
-    if (u.area && u.doors > 0) {
-      const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], w = u.area.toLayout(u.area.fromLayout(mid)[0], 0);
-      doorSide = -ax[1] * (w[0] - mid[0]) + ax[0] * (w[1] - mid[1]) > 0 ? "left" : "right";
-    }
-    // where the car's doors are (m from its clipped rear) and whether its ends are cabs
-    const offset = Math.abs(rc - r) / m, cabFront = c === 0 && fc === f, cabBack = c === EMU.cars - 1 && rc === r;
-    const doors = EMU.doors.map((x) => (u.flip ? 1 - x : x) * EMU.car_m - offset).filter((x) => x > 0.8 && x < len - 0.8);
-    const faces = boxFaces(A, B, EMU.width_m * m, z0, z1, { side: LIVERY.body, top: LIVERY.roof, end: shade(LIVERY.body, 0.9) }, (face, P, L, hw) => {
-      const out = [];
-      if (face.side === "left" || face.side === "right") {
-        const t = face.side === "left" ? hw : -hw, a0 = cabBack ? 2.6 * m : 0.6 * m, a1 = L - (cabFront ? 2.6 * m : 0.6 * m);
-        out.push({ pts: [P(0, t, 0.75 * mz), P(L, t, 0.75 * mz), P(L, t, 1.35 * mz), P(0, t, 1.35 * mz)], color: LIVERY.band });
-        if (a1 > a0) out.push({ pts: [P(a0, t, 1.75 * mz), P(a1, t, 1.75 * mz), P(a1, t, 2.75 * mz), P(a0, t, 2.75 * mz)], color: lit ? PALETTE.litWindow : LIVERY.glass, emissive: lit });
-        const open = face.side === doorSide ? u.doors : 0;
-        for (const d of doors) {
-          const w = 0.65 * m;
-          out.push({ pts: [P(d * m - w, t, z0 + 0.05 * mz), P(d * m + w, t, z0 + 0.05 * mz), P(d * m + w, t, 2.9 * mz), P(d * m - w, t, 2.9 * mz)], color: open > 0.5 ? LIVERY.door : LIVERY.closed });
-        }
-      } else if ((face.side === "front" && cabFront) || (face.side === "back" && cabBack)) {
-        const a = face.side === "front" ? L : 0;
-        out.push({ pts: [P(a, -1.15 * m, 2.05 * mz), P(a, 1.15 * m, 2.05 * mz), P(a, 1.15 * m, 3.15 * mz), P(a, -1.15 * m, 3.15 * mz)], color: LIVERY.glass });
-      }
-      return out;
-    });
-    for (const face of faces) {
-      if ((face.side === "front" && cabFront) || (face.side === "back" && cabBack)) face.color = LIVERY.cab;
-    }
-    const midPt = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-    view.faces(faces, ref || [midPt[0], midPt[1], 2 * mz]);
-    // the pantograph on the same car whichever way the unit runs (the second from its end 1), near the coupling
-    if ((u.flip ? EMU.cars - 1 - c : c) === EMU.cars - 1) drawPantograph(view, A, ax, m, mz, u.pantograph ?? 0, c === 0 ? 4 : len - 4, ref);
-    // head and tail lights
-    if (u.powered) {
-      const q = [-ax[1], ax[0]];
-      const end = (a, colour) => {
-        for (const sgn of [-1, 1]) {
-          const p = [A[0] + ax[0] * a * m + q[0] * sgn * 0.85 * m, A[1] + ax[1] * a * m + q[1] * sgn * 0.85 * m, 0.95 * mz];
-          view.glow(p, 0.45 * m, colour, 0.9);
-        }
-      };
-      if (cabFront) end(len + 0.05, CD.white);
-      if (cabBack) end(-0.05, CD.rot);
-    }
-    if (c === 0 || !top) top = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-  }
+  const top = drawTrain(view, u.line, { head: u.head, dir: u.dir, cars: u.flip ? UNIT_TURNED : UNIT_CARS, doors: u.doors, area: u.area, powered: u.powered, pantograph: u.pantograph ?? 0 }, { ref });
   if (label && top) {
     view.label([top[0], top[1], view.m(6)], label.lines, { size: 11, background: label.danger ? OVERLAY.dangerLabel : OVERLAY.label, colors: [null, label.danger ? OVERLAY.alert : OVERLAY.status], order: 4 });
   }
-}
-
-/**
- * A single-arm pantograph on a car's roof at `a` (m from the car's rear `A`, along `ax`): its base, the
- * lower and the upper arm (seen from the side) and the head across the roof (seen from above), from
- * folded down (`up` 0) to raised to the contact wire (1).
- */
-function drawPantograph(view, A, ax, m, mz, up, a, ref) {
-  const q = [-ax[1], ax[0]], roof = EMU.roof_m, mix = (x, y) => x + (y - x) * up;
-  const at = (s, across = 0) => [A[0] + ax[0] * s * m + q[0] * across * m, A[1] + ax[1] * s * m + q[1] * across * m];
-  const P = (s, across, z) => [...at(s, across), z * mz];
-  // the hinge, the knee and the head (along the car, height in m): folded flat, or raised
-  const hinge = [a - 1.1, roof + 0.3], knee = [mix(a + 1.2, a + 0.7), mix(roof + 0.42, roof + 1.15)], head = [mix(a - 0.9, a - 0.2), mix(roof + 0.5, roof + 1.95)];
-  const arm = (p0, p1, th = 0.09) => ({ pts: [P(p0[0], 0, p0[1] - th), P(p1[0], 0, p1[1] - th), P(p1[0], 0, p1[1] + th), P(p0[0], 0, p0[1] + th)], normal: [q[0], q[1], 0], color: LIVERY.pantograph, twoSided: true });
-  const flat = (s0, s1, w, z) => ({ pts: [P(s0, -w, z), P(s1, -w, z), P(s1, w, z), P(s0, w, z)], normal: [0, 0, 1], color: LIVERY.pantograph, twoSided: true });
-  const p = at(a);
-  view.faces([
-    ...boxFaces(at(a - 1.4), at(a + 1.4), 1.3 * m, roof * mz, (roof + 0.25) * mz, { side: grey(0.45), top: grey(0.5) }),
-    arm(hinge, knee),
-    arm(knee, head),
-    flat(head[0] - 0.18, head[0] + 0.18, 0.95, head[1] + 0.08),
-  ], ref || [p[0], p[1], (roof + 1) * mz]);
 }

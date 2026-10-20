@@ -34,7 +34,8 @@ export const VEHICLE_KINDS = {
  * The catalogue. Per type: `label`, `kind`, `length_m` (over buffers), `mass_t` (empty, in
  * service), `load_t` (the most a wagon carries; 0 for others), `axles`, `vmax_kmh`, `brake_t`
  * (brake weight per brake position, t; for wagons with a load-dependent brake `brake_loaded_t`
- * too), `seats`, `power_kw`; what it is equipped with (rail/systems.js keys): `power` (the
+ * too), `seats`, `standing` (standing places, at about 4 people per m²), `cars` (the cars of a
+ * multiple unit or railcar), `power_kw`; what it is equipped with (rail/systems.js keys): `power` (the
  * systems it runs on), `pantograph_mm` (heads fitted), `train_control` (class B systems),
  * `etcs` (the highest level it can run), `radio`, `gauge_mm`, `countries` (where it is
  * authorised to run).
@@ -67,20 +68,24 @@ export const VEHICLE_TYPES = {
   },
   /* ---------------------------------------------------------------- multiple units and railcars */
   et442: {
-    label: "ET 442 Talent 2 (4 cars)", kind: "multiple-unit", length_m: 66, mass_t: 135, axles: 10, vmax_kmh: 160, power_kw: 2880, seats: 200,
+    label: "ET 442 Talent 2 (4 cars)", kind: "multiple-unit", length_m: 66, mass_t: 135, axles: 10, vmax_kmh: 160, power_kw: 2880, seats: 200, standing: 240, cars: 4,
     brake_t: { R: 190, "R+Mg": 230 }, power: ["ac15"], pantograph_mm: [1950], train_control: ["pzb", "pzb_lzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
   },
+  et442s: {
+    label: "ET 442 Talent 2 (2 cars)", kind: "multiple-unit", length_m: 42.6, mass_t: 82, axles: 6, vmax_kmh: 160, power_kw: 1440, seats: 96, standing: 120, cars: 2,
+    brake_t: { R: 115, "R+Mg": 140 }, power: ["ac15"], pantograph_mm: [1950], train_control: ["pzb", "pzb_lzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
+  },
   br642: {
-    label: "BR 642 Desiro Classic (diesel)", kind: "railcar", length_m: 41.7, mass_t: 69, axles: 6, vmax_kmh: 120, power_kw: 550, seats: 120,
+    label: "BR 642 Desiro Classic (diesel)", kind: "railcar", length_m: 41.7, mass_t: 69, axles: 6, vmax_kmh: 120, power_kw: 550, seats: 120, standing: 100, cars: 2,
     brake_t: { R: 95, "R+Mg": 115 }, power: [], pantograph_mm: [], train_control: ["pzb"], etcs: "none", radio: ["gsmr"], countries: ["DE", "CZ", "PL"],
   },
   /* ---------------------------------------------------------------- coaches */
   dbpza: {
-    label: "DBpza (double-deck coach)", kind: "coach", length_m: 26.8, mass_t: 49, axles: 4, vmax_kmh: 160, seats: 120,
+    label: "DBpza (double-deck coach)", kind: "coach", length_m: 26.8, mass_t: 49, axles: 4, vmax_kmh: 160, seats: 120, standing: 80,
     brake_t: { P: 55, R: 75 }, countries: ["DE"],
   },
   bpmz: {
-    label: "Bpmz (open coach)", kind: "coach", length_m: 26.4, mass_t: 47, axles: 4, vmax_kmh: 200, seats: 80,
+    label: "Bpmz (open coach)", kind: "coach", length_m: 26.4, mass_t: 47, axles: 4, vmax_kmh: 200, seats: 80, standing: 50,
     brake_t: { P: 52, R: 74, "R+Mg": 96 }, countries: ["DE", "AT", "CH", "CZ", "PL", "NL"],
   },
   /* ---------------------------------------------------------------- freight wagons */
@@ -171,6 +176,21 @@ export class Consist {
     return this.vehicles.reduce((s, v) => s + v.t.axles, 0);
   }
 
+  /** Seats of the train. */
+  get seats() {
+    return this.vehicles.reduce((s, v) => s + (v.t.seats || 0), 0);
+  }
+
+  /** Standing places of the train. */
+  get standing() {
+    return this.vehicles.reduce((s, v) => s + (v.t.standing || 0), 0);
+  }
+
+  /** The people it takes: seats and standing places. */
+  get capacity() {
+    return this.seats + this.standing;
+  }
+
   /** Sum of the brake weights in the train's brake position (t). */
   get brakeWeight_t() {
     return this.vehicles.reduce((s, v) => s + Consist.brakeWeightOf(v, this.brakePosition), 0);
@@ -246,6 +266,7 @@ export function consistRows(c) {
     ["Highest axle load", `${a.t.toFixed(1)} t`],
     ["Highest metre load", `${m.t.toFixed(1)} t/m`],
   ];
+  if (c.capacity) rows.push(["Places", `${c.seats} seats · ${c.standing} standing`]);
   if (c.unknown.length) rows.push(["Unknown vehicle types", c.unknown.join(", ")]);
   return rows;
 }

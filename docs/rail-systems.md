@@ -61,19 +61,20 @@ ARail knows trains as technical objects too: what they are made of, how heavy th
 
 **The catalogue** (`VEHICLE_TYPES`, typical values, rounded, for teaching; a real vehicle's are on its data plate):
 
-| Type | Kind | Length | Mass | Axles | Top speed | Brake weights |
-| --- | --- | --- | --- | --- | --- | --- |
-| `br146` BR 146.2 (TRAXX P160 AC2) | locomotive | 18.9 m | 85 t | 4 | 160 km/h | G 64, P 105, R 105 t |
-| `br185` BR 185.2 (TRAXX F140 AC2) | locomotive | 18.9 m | 85 t | 4 | 140 km/h | G 64, P 100, R 100 t |
-| `br193` BR 193 (Vectron MS) | locomotive | 19 m | 90 t | 4 | 200 km/h | G 70, P 115, R 135 t |
-| `cd380` ČD 380 (Škoda 109E) | locomotive | 20.8 m | 87 t | 4 | 200 km/h | G 65, P 110, R 130 t |
-| `eu07` EU07 (PKP) | locomotive | 15.9 m | 80 t | 4 | 125 km/h | G 52, P 80 t |
-| `br218` BR 218 (diesel) | locomotive | 16.4 m | 79 t | 4 | 140 km/h | G 55, P 85, R 85 t |
-| `et442` ET 442 Talent 2 (4 cars) | multiple unit | 66 m | 135 t | 10 | 160 km/h | R 190, R+Mg 230 t |
-| `br642` BR 642 Desiro Classic | railcar (diesel) | 41.7 m | 69 t | 6 | 120 km/h | R 95, R+Mg 115 t |
-| `dbpza` DBpza (double-deck coach) | coach | 26.8 m | 49 t | 4 | 160 km/h | P 55, R 75 t |
-| `bpmz` Bpmz (open coach) | coach | 26.4 m | 47 t | 4 | 200 km/h | P 52, R 74, R+Mg 96 t |
-| `sgns`, `eanos`, `habbins`, `zacns` | freight wagons | 15.5–23.3 m | 20–28 t empty, 90 t loaded | 4 | 100–120 km/h | empty = tare, loaded 58 t (load-dependent brake) |
+| Type | Kind | Length | Mass | Axles | Top speed | Brake weights | Places (seats + standing) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `br146` BR 146.2 (TRAXX P160 AC2) | locomotive | 18.9 m | 85 t | 4 | 160 km/h | G 64, P 105, R 105 t | – |
+| `br185` BR 185.2 (TRAXX F140 AC2) | locomotive | 18.9 m | 85 t | 4 | 140 km/h | G 64, P 100, R 100 t | – |
+| `br193` BR 193 (Vectron MS) | locomotive | 19 m | 90 t | 4 | 200 km/h | G 70, P 115, R 135 t | – |
+| `cd380` ČD 380 (Škoda 109E) | locomotive | 20.8 m | 87 t | 4 | 200 km/h | G 65, P 110, R 130 t | – |
+| `eu07` EU07 (PKP) | locomotive | 15.9 m | 80 t | 4 | 125 km/h | G 52, P 80 t | – |
+| `br218` BR 218 (diesel) | locomotive | 16.4 m | 79 t | 4 | 140 km/h | G 55, P 85, R 85 t | – |
+| `et442` ET 442 Talent 2 (4 cars) | multiple unit | 66 m | 135 t | 10 | 160 km/h | R 190, R+Mg 230 t | 200 + 240 |
+| `et442s` ET 442 Talent 2 (2 cars) | multiple unit | 42.6 m | 82 t | 6 | 160 km/h | R 115, R+Mg 140 t | 96 + 120 |
+| `br642` BR 642 Desiro Classic | railcar (diesel) | 41.7 m | 69 t | 6 | 120 km/h | R 95, R+Mg 115 t | 120 + 100 |
+| `dbpza` DBpza (double-deck coach) | coach | 26.8 m | 49 t | 4 | 160 km/h | P 55, R 75 t | 120 + 80 |
+| `bpmz` Bpmz (open coach) | coach | 26.4 m | 47 t | 4 | 200 km/h | P 52, R 74, R+Mg 96 t | 80 + 50 |
+| `sgns`, `eanos`, `habbins`, `zacns` | freight wagons | 15.5–23.3 m | 20–28 t empty, 90 t loaded | 4 | 100–120 km/h | empty = tare, loaded 58 t (load-dependent brake) | – |
 
 Each type also says what it is equipped with: the traction power systems it runs on, its pantograph heads, its train protection systems, ETCS, radio and the countries it is authorised for.
 
@@ -87,7 +88,9 @@ Each type also says what it is equipped with: the traction power systems it runs
 ]
 ```
 
-`count` repeats a vehicle; `loaded` is the share of a wagon's load (`true` = full); `isolated` cuts out the brakes (`true`, or how many of the `count`). Without a consist, a train of the rail operations is made of its units when their fleet type is in the catalogue (`et442`). `vehicle_types` adds types of the layout's own.
+`count` repeats a vehicle; `loaded` is the share of a wagon's load (`true` = full); `isolated` cuts out the brakes (`true`, or how many of the `count`); `peak` couples the vehicles in the rush hours (`2`: twice), where the platform is long enough. Without a consist, a train of the rail operations is made of its units when their fleet type is in the catalogue (`et442`), and a train of the timetable runs as the **default fleet** has it for the kind of its line: RE a BR 146 with four double-deck coaches, RB a two-car ET 442 (`et442s`), S a four-car ET 442, any other line a two-car ET 442; the units with `peak` 2. `vehicle_types` adds types of the layout's own.
+
+**At the platforms** ([#192](https://github.com/joernmht/ARail-EBL/issues/192)) a train is drawn solid from its consist: its cars as long as they are, on its track, in the colours of their type, with cabs, pantographs and doors that open on the platform's side. It stops with its front 3 m before the end of the platform it heads for, comes in along its track and leaves the same way. In the rush hours (from a demand of 1.3 of the timetable: about 06:30–08:30 and 16:00–18:30) it runs coupled as `peak` says. Its card shows its places and the people on board; a full train takes nobody else, and the people left behind are counted.
 
 **The figures of a train**, on its info card (tap the train): its vehicles as a strip, length, mass, axles, the top speed (the lowest of its vehicles, and which one limits it), the brake position and the **brake percentage** (Bremshundertstel), the highest axle load and metre load.
 

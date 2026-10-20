@@ -106,7 +106,7 @@ export const PACKAGES = [
     id: "ops", name: "ops", group: "framework", path: "web/arail/ops",
     summary: "Rail operations: the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
     files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims", "rail"],
   },
   {
     id: "infra", name: "infra", group: "framework", path: "web/arail/infra",
@@ -129,8 +129,8 @@ export const PACKAGES = [
   {
     id: "rail", name: "rail", group: "framework", path: "web/arail/rail",
     summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures; whether a train may run on a section.",
-    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/compat.js"],
-    uses: ["core-math", "core-world", "core-drawing"],
+    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/stock.js", "web/arail/rail/draw.js", "web/arail/rail/compat.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing"],
   },
   {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",

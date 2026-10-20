@@ -553,6 +553,8 @@ arail.registry.registerVehicle({
 
 See `core/vehicles.js` for the built-in train and bus. Line buses (`core/transit.js`) use the bus's `extent` and `doors`, so passengers board them like any other bus.
 
+A kind that knows where it is along its own track adds `pose(vehicle)` (where it is now, or null), `outline(pose)` (layout mm, for pointing at it) and `doorsOf(vehicle)` (its doors along the dock); `draw` then gets `{def, pose}` as its place. `capacity(vehicle)` (its places) lets the passengers fill it: a full one takes nobody else. The trains of `rail/stock.js` (`RAIL_TRAIN`, registered by `registerRail` in place of core's train) do all of it.
+
 ## Info cards and layout checks
 
 Two more extension points of the registry, for parts that are not a simulation:
