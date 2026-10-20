@@ -6,7 +6,7 @@ export const TERMINAL = [
   {
     id: "terminal-model", group: "terminal", title: "Containers, carriers and the inventory",
     summary: "The terminal's rules without the world: container sizes and codes, carrier types, and the inventory with its stacking rules and reservations.",
-    description: "Every check returns a sentence that says why not (shown in the Terminal tab), or null. Wagons, trucks, barges and yard blocks are carriers with bays, rows and tiers; a 40 or 45 ft container fills two bays. A move reserves its target cell, so no other move can use it.",
+    description: "Every check returns a sentence that says why not (shown in the case Terminal), or null. Wagons, trucks, barges and yard blocks are carriers with bays, rows and tiers; a 40 or 45 ft container fills two bays. A move reserves its target cell, so no other move can use it.",
     files: ["web/arail/terminal/model.js"],
     classes: [
       {
@@ -75,7 +75,7 @@ export const TERMINAL = [
   {
     id: "terminal-operations", group: "terminal", title: "The terminal at work",
     summary: "Moves from a request to done: checked, reserved, given to a free crane or reach stacker, carried through the machine's phases; trains, barges and trucks come and go.",
-    description: "TerminalSimulation re-reads its objects whenever they, the marker map or the scale change, keeping its machines by object id. Each step it moves its trains, barges and trucks along their paths (a 1-D mover each), starts queued moves on idle machines whose carriers are ready, and advances the machines through their phases. Its random numbers are a stream of its own, so a terminal changes nothing in the other simulations. The Terminal tab and scenarios (terminal.request.* events) give it its work.",
+    description: "TerminalSimulation re-reads its objects whenever they, the marker map or the scale change, keeping its machines by object id. Each step it moves its trains, barges and trucks along their paths (a 1-D mover each), starts queued moves on idle machines whose carriers are ready, and advances the machines through their phases. Its random numbers are a stream of its own, so a terminal changes nothing in the other simulations. The case Terminal and scenarios (terminal.request.* events) give it its work.",
     files: ["web/arail/terminal/operations.js", "web/arail/terminal/handlers.js", "web/arail/terminal/visits.js", "web/arail/terminal/movers.js", "web/arail/terminal/types.js", "web/arail/terminal/draw.js", "web/app/terminal.js"],
     classes: [
       {
@@ -100,7 +100,7 @@ export const TERMINAL = [
       { name: "TruckVisit", file: "web/arail/terminal/visits.js", kind: "class", role: "A truck with a chassis: pickup or delivery.", attributes: ["purpose: string — pickup or delivery", "state: string — waiting, approaching, positioned, departing"] },
       { name: "PathMover", file: "web/arail/terminal/movers.js", kind: "class", role: "A deterministic 1-D mover: accelerate, cruise, brake.", attributes: ["s: number — position along the path", "v: number — speed"], operations: ["setTarget(s)", "arrived()", "step(dt, opts)"] },
       { name: "visits", file: "web/arail/terminal/visits.js", kind: "module", role: "The truck lane's traffic.", operations: ["stepTrucks(trucks, lane, dt, host)", "departTruck(t, host)"] },
-      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The Terminal tab: moves from the panel and on the stage; on the game page (full) also the visits, new arrivals and crane jobs.", attributes: ["full: boolean — the game page's panel"], operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
+      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The case Terminal (Railway undertaking): moves from the panel and on the stage; on the game page (full) also the visits, new arrivals and crane jobs.", attributes: ["full: boolean — the game page's panel"], operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
     ],
     relations: [
       { from: "TerminalSimulation", to: "Inventory", kind: "composes", label: "inventory" },
@@ -181,7 +181,7 @@ export const TERMINAL = [
         id: "train", name: "A train's or barge's visit",
         nodes: [
           ["s", "start"],
-          ["a1", "action", "Called (Terminal tab or scenario)", "TerminalSimulation.call"],
+          ["a1", "action", "Called (the case Terminal or a scenario)", "TerminalSimulation.call"],
           ["d1", "decision", "Path and place free?"],
           ["a2", "action", "Approach and stop at its place", "PathVisit.step"],
           ["x1", "send", "terminal.visit.arrived"],

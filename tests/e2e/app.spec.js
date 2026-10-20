@@ -121,10 +121,12 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
   const errors = await openApp(page, "/app/?example=neustadt");
   await expect(page.locator("#layoutName")).toHaveText("EBL Bf Neustadt and terminal (example)");
   await page.waitForFunction(() => window.__arail.tracker.state.used.length >= 6 && window.__arail.world.map.locked);
-  // the same layout with the photo of the terminal: its own photo, the Terminal tab
+  // the same layout with the photo of the terminal: its own photo, the module Terminal on, its case shown
   await chooseExample(page, "crane-terminal");
   await page.waitForFunction(() => window.__arail.source?.name === "terminal at the crane" && window.__arail.tracker.state.used.includes(5));
-  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["terminal"]);
+  await expect(page.locator("#casePanel")).toContainText("KV terminal Neustadt");
   // the hybrid container train: model wagons from the tags in its photo, a harbour below the table
   await chooseExample(page, "container-train");
   await expect(page.locator("#layoutName")).toHaveText("EBL hybrid container train (example)");
@@ -277,21 +279,26 @@ test("editing offset X and then offset Y keeps both", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("another tab opens at its top, also when the panel was scrolled down; on a phone the page scrolls back to the tabs", async ({ page }) => {
+test("another chapter or case opens at its top, also when the panel was scrolled down; on a phone the page scrolls back to the tabs", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
   await page.locator("#tab-overview").click();
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
-  await expect(page.locator(".modules")).toBeInViewport();
-  // the same tab again (e.g. its panel drawn anew) stays where it is
-  await page.locator("#tab-build").click();
+  await expect(page.locator("#stateSearch")).toBeInViewport();
+  // another entry of the strip opens at its top too
+  await page.locator("#tab-interaction").click();
+  await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
+  await page.locator("#strip-modules").click();
+  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
+  // the same case again (e.g. its panel drawn anew) stays where it is
+  await page.locator("#strip-build").click();
   await page.locator("#panel").evaluate((p) => (p.scrollTop = 300));
   await page.evaluate(() => window.__arail.selectTab("build"));
   expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(300);
   // a phone: the page scrolls, the tabs stick to the top
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator("#tab-build").click();
+  await page.locator("#tab-interaction").click();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const tabsTop = await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top);
   expect(tabsTop).toBeLessThan(0);

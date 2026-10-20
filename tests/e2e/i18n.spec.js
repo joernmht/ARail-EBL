@@ -53,8 +53,13 @@ test("?lang=de: the frame, Overview, Settings, Build and a train's card in Germa
   await page.evaluate(() => window.__arail.selectTab("control"));
   await expect(page.locator("#panel-settings")).toContainText("Leitsystem");
   await page.evaluate(() => window.__arail.selectTab("build"));
-  await expect(page.locator("#panel-build")).toContainText("Zur Anlage hinzufügen");
-  await expect(page.locator("#panel-build")).toContainText("Bahnsteig");
+  await expect(page.locator("#casePanel")).toContainText("Zur Anlage hinzufügen");
+  await expect(page.locator("#casePanel")).toContainText("Bahnsteig");
+  await expect(page.locator("#strip-evu")).toHaveText("EVU");
+  await page.evaluate(() => window.__arail.selectTab("modules"));
+  await expect(page.locator(".modules")).toContainText("Grenzbahnhof");
+  await page.evaluate(() => window.__arail.selectTab("terminal"));
+  await expect(page.locator("#casePanel")).toContainText("Containerzüge, Lkw und Binnenschiffe");
   await page.evaluate(() => window.__arail.selectTab("view"));
   // the card of RE 1 at the Czech track G3: its train data and where it may run, in German
   await page.evaluate(() => window.__arail.world.services.call("platform-1:right", { line: "RE 1" }));

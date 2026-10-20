@@ -2,6 +2,7 @@
 // placing bus stops on it, picking them for a bus line, and a bus serving the stops.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openCase } from "./ui.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -105,7 +106,7 @@ test("streets: draw a street, place bus stops and a bus line; a bus serves the s
   await expect.poll(() => page.evaluate(() => window.__arail.world.transit.lines.get(window.__arail.editor.selected.id).label)).toBe("62");
 
   // the inspector of the line is accessible
-  const results = await new AxeBuilder({ page }).include("#panel-build").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  const results = await new AxeBuilder({ page }).include("#casePanel").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 
   // run: a bus of the line arrives at a stop with its doors open
@@ -170,7 +171,7 @@ test("stops board: both sides of a stop as Stop A and B; loop lines go round as 
   await expect(board.locator('.stop[data-id="bus-terminal-1"] .status')).toHaveText(/^Bus (62 Ring ↺.* · Bus 85 Ring ↻|30[58] .* · Bus (62|85) Ring)/);
   await expect(board.locator(".stop .status").filter({ hasText: /(^|· )30[58] / })).toHaveCount(0);
   // the inspector of a loop line says which way round its buses go
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-line-85")));
   await expect(page.locator(".section").filter({ hasText: "Selected: Bus line" })).toContainText("The buses go round clockwise (“Ring ↻” on the signs).");
   expect(errors).toEqual([]);

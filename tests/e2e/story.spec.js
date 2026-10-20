@@ -2,6 +2,7 @@
 // click through (buttons, the list of steps, a presenter's clicker, Play, the camera that follows it),
 // the reduced Terminal tab, and the game page with the games on the lab's layout.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase } from "./ui.js";
 
 const STORY = "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra";
 
@@ -28,30 +29,27 @@ const storyDisruptions = (page) => page.evaluate(() => window.__arail.world.disr
 
 const title = (page) => page.locator("#infraStoryTitle");
 
-test("the app opens Bf Neustadt; Settings switches on the maintenance story", async ({ page }) => {
-  const errors = await open(page, "/app/#simulate");
+test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the maintenance story", async ({ page }) => {
+  const errors = await open(page, "/app/#overview");
   expect(await page.evaluate(() => window.__arail.layoutUrl)).toMatch(/ebl-neustadt\.json$/);
-  // the presentation has no game tabs; the infrastructure module is off until it is switched on
-  await expect(page.locator("#tab-ops")).toBeHidden();
-  await expect(page.locator("#tab-journeys")).toBeHidden();
-  await expect(page.locator("#tab-infra")).toBeHidden();
-  await expect(page.locator("#tab-terminal")).toBeVisible();
-  const on = page.locator("#infraOpenExample");
-  await expect(on).toHaveText("Switch on the module “Infrastructure”");
+  // the presentation has no game cases; its modules (the terminal among them) are off until they are switched on
+  for (const c of ["evu-disruption", "journeys", "infra-disruption", "terminal"]) expect(await caseReady(page, c), c).toBe(false);
+  await openCase(page, "infra-disruption");
+  const on = page.locator("#caseOn");
+  await expect(on).toHaveText("Switch on “Infrastructure”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#tab-infra")).toBeVisible();
-  await page.locator("#tab-infra").click();
-  await expect(page.locator("#panel-infra h2").first()).toHaveText("Maintenance at Bf Neustadt");
+  await expect(page.locator("#case-infra-disruption")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Maintenance at Bf Neustadt");
   await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
 });
 
 test("the maintenance story: Next and Back, the list of steps, Start again and a clicker", async ({ page }) => {
   const errors = await open(page, STORY);
-  await expect(page.locator("#tab-infra")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-infra-disruption")).toHaveAttribute("aria-selected", "true");
   await expect(title(page)).toHaveText("The station in normal service");
-  await expect(page.locator("#panel-infra .story-count")).toHaveText("Step 1 of 12");
+  await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 12");
   await expect(page.locator("#infraStoryBack")).toBeDisabled();
   expect(await storyDisruptions(page)).toEqual([]);
 
@@ -69,9 +67,9 @@ test("the maintenance story: Next and Back, the list of steps, Start again and a
   expect(await storyDisruptions(page)).toEqual(["infra-fault@platform-2:left"]);
 
   // a jump in the list of steps: the construction train on the renewed track
-  await page.locator("#panel-infra .story-steps button", { hasText: "The construction train arrives" }).click();
+  await page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" }).click();
   await expect(title(page)).toHaveText("The construction train arrives");
-  await expect(page.locator("#panel-infra .story-steps button", { hasText: "The construction train arrives" })).toHaveAttribute("aria-current", "step");
+  await expect(page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" })).toHaveAttribute("aria-current", "step");
   expect(await storyDisruptions(page)).toEqual(["track-closure@platform-2:right"]); // track G3
 
   // a presenter's clicker: Page Down and Page Up
@@ -113,7 +111,7 @@ test("Camera follows opens the flyover and goes where the story happens", async 
   await follow.click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(follow).toHaveAttribute("aria-pressed", "true");
-  await page.locator("#panel-infra .story-steps button", { hasText: "The team repairs the signal" }).click();
+  await page.locator("#casePanel .story-steps button", { hasText: "The team repairs the signal" }).click();
   // the camera's target comes to the signal
   await expect.poll(() => page.evaluate(() => {
     const a = window.__arail, at = a.infra.story.view().at, t = a.flyover.cam.target;
@@ -126,10 +124,10 @@ test("Camera follows opens the flyover and goes where the story happens", async 
   expect(errors).toEqual([]);
 });
 
-test("the app's Terminal tab moves containers; the visits are on the game page", async ({ page }) => {
+test("the app's case Terminal moves containers; the visits are on the game page", async ({ page }) => {
   const errors = await open(page, "/app/?layout=../layouts/container-terminal.json#terminal");
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-  const panel = page.locator("#panel-terminal");
+  const panel = page.locator("#casePanel");
   await expect(panel).toBeVisible();
   await expect(panel.locator("h2", { hasText: "Containers" })).toBeVisible();
   for (const name of ["Arrivals", "New arrival", "Crane jobs"]) await expect(panel.locator("h2", { hasText: name })).toHaveCount(0);
@@ -150,8 +148,8 @@ test("the app's Terminal tab moves containers; the visits are on the game page",
   // the game page: the whole terminal with its visits and crane jobs
   await open(page, "/game/?layout=../layouts/container-terminal.json#terminal");
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await expect(page.locator("#panel-terminal h2", { hasText: "Arrivals" })).toBeVisible();
-  await expect(page.locator("#panel-terminal h2", { hasText: "Crane jobs" })).toBeVisible();
+  await expect(page.locator("#casePanel h2", { hasText: "Arrivals" })).toBeVisible();
+  await expect(page.locator("#casePanel h2", { hasText: "Crane jobs" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -159,10 +157,10 @@ test("the game page opens the lab with its games", async ({ page }) => {
   const errors = await open(page, "/game/#view");
   expect(await page.evaluate(() => window.__arail.layoutUrl)).toMatch(/ebl-lab\.json$/);
   await expect(page.locator(".brand")).toContainText("Game");
-  // the game tabs: their modules are layers of the lab, switched on in Settings or by the URL
+  // the game cases: their modules are layers of the lab, switched on in Interaction or by the URL
   await open(page, "/game/?layers=infrastructure#infra");
   await page.waitForFunction(() => window.__arail.infra?.sim, null, { timeout: 60_000 });
-  await expect(page.locator("#tab-infra")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
   expect(await page.evaluate(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"))).toBe(false);
   expect(errors).toEqual([]);
 });

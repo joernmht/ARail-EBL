@@ -1,34 +1,29 @@
 // Story panel: a story of the layout (arail/core/story.js) as steps to click through, the panel of a
-// module's tab (Operations: the operations story; Infrastructure: the maintenance story; Journeys: a
-// traveller's journey). The current step with its text and how far its animation has run; Back, Next,
-// Play and Start again; the list of all steps to jump to. A presenter's clicker (Page Down, Page Up)
-// goes on and back while the tab is shown. In the flyover the camera follows the story (the story's
-// `view()`: the spare unit on its way, the van, the signal, the works; the traveller, her bus, her
-// train), from the side the story says, if it says one.
+// case of Interaction (the app: the infrastructure's disruption, the maintenance story; the railway
+// undertaking's, the operations story; the journeys story). The current step with its text and how far
+// its animation has run; Back, Next, Play and Start again; the list of all steps to jump to. A
+// presenter's clicker (Page Down, Page Up) goes on and back while the case is shown. In the flyover the
+// camera follows the story (the story's `view()`: the spare unit on its way, the van, the signal, the
+// works; the traveller, her bus, her train), from the side the story says, if it says one.
 import { storyOf } from "../arail/index.js";
 import { h, morph, mount, storage } from "./ui.js";
 
 export class StoryPanel {
   /**
    * @param {object} app the ARail app (app.js)
-   * @param {{tab: string, type: string, title: string, empty: string, hint?: string}} o the tab (also the
-   *   prefix of the panel's ids), the story's simulation type, the tab's heading, the hint without a
-   *   story, and what Settings → Simulation says of the module while the layout does not have it
+   * @param {{prefix: string, type: string}} o the prefix of the panel's ids ("infra": #infraStoryNext)
+   *   and the story's simulation type
    */
-  constructor(app, { tab, type, title, empty, hint = "" }) {
+  constructor(app, { prefix, type }) {
     this.app = app;
-    this.tab = tab;
+    this.prefix = prefix;
     this.type = type;
-    this.title = title;
-    this.empty = empty;
-    /** What Settings → Simulation says of the module while the layout does not have it. */
-    this.settingsHint = hint;
     /** Whether the flyover's camera follows the story. */
     this.follow = storage.get("arail.storyFollow", true) !== false;
     this.el = null;
   }
 
-  /** The layout's story of this tab, or null. */
+  /** The layout's story, or null. */
   get story() {
     return storyOf(this.app.world, this.type);
   }
@@ -46,12 +41,12 @@ export class StoryPanel {
     if (!e?.root.isConnected) return;
     const story = this.story;
     if (!story) {
-      morph(e.head, h("h2", { tabindex: "-1" }, this.title), h("p", { class: "hint" }, this.empty));
+      morph(e.head);
       morph(e.now);
       morph(e.steps);
       return;
     }
-    const st = story.state(), id = (x) => `${this.tab}Story${x}`;
+    const st = story.state(), id = (x) => `${this.prefix}Story${x}`;
     // pressed while the flyover follows; in the camera view, a press opens the flyover
     const following = this.follow && this.app.mode === "flyover";
     morph(e.head,

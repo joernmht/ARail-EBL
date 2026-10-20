@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 import { SCENE, SCENE_NAME, SCENE_VIDEO, atPath, hasScene, routeScene } from "./scene.js";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
-const axe = async (page) => (await new AxeBuilder({ page }).include("#panel-build").withTags(TAGS).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
+const axe = async (page) => (await new AxeBuilder({ page }).include("#casePanel").withTags(TAGS).analyze()).violations.map((v) => `${v.id}: ${v.help}`);
 
 const VIDEO = SCENE_VIDEO; // made by `npm run fixtures`
 

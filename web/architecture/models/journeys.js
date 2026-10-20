@@ -29,7 +29,7 @@ export const JOURNEYS = [{
     },
     { name: "OperationsRail", file: "web/arail/journeys/rail.js", kind: "class", role: "The rail operations' trips, read as the journeys' trips.", operations: ["trips(day)", "tripOf(vehicle)", "expected(trip, station, kind)"] },
     { name: "journeys", file: "web/arail/journeys/index.js", kind: "module", role: "Registration.", operations: ["journeysOf(world)", "registerJourneys(registry)"] },
-    { name: "JourneysPanel", file: "web/game/journeys.js", kind: "class", role: "The game page's Journeys tab: make a traveller, choose a plan, follow it, results.", operations: ["render(el)", "update()", "addJourneys()"] },
+    { name: "JourneysPanel", file: "web/game/journeys.js", kind: "class", role: "The game page's case Railway undertaking → Journeys: make a traveller, choose a plan, follow it, results.", operations: ["render(el)", "update()", "addJourneys()"] },
   ],
   relations: [
     { from: "JourneysSimulation", to: "Traveller", kind: "composes", label: "travellers *" },
@@ -132,7 +132,7 @@ export const JOURNEYS = [{
   ],
 }, {
   id: "journeys-story", group: "journeys", title: "The journeys story",
-  summary: "The app's Journeys tab: a traveller's view of Bf Neustadt to click through. Ada walks to the station, her RB 31 is late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; her journey in numbers and her rights as a passenger.",
+  summary: "The app's case Railway undertaking → Journeys: a traveller's view of Bf Neustadt to click through. Ada walks to the station, her RB 31 is late, her connection in Talsee is lost, her app finds a bus; she takes it, the late train comes in without her; her journey in numbers and her rights as a passenger.",
   description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. Ada walks over the sidewalks and through the underpass (the road network's walks), waits on the platform beside its display, walks to the bus station and gets on. Her platform track is kept free for the story's own late train from when she is on the platform, the bus station's bays for the story's own bus from when she walks there (the core's story-train with waiting: the timetable's vehicles keep off, the passengers wait for the story's train and bus, the platform shows the delay, a bay says nothing); the bus comes over the streets by the bus's street and leaves the same way. The train and the bus send the vehicle events of the services as they come to each phase, once; a step left while one stands at its dock lets it leave (doors closed, gone), so nobody is left at a door. Each step sets the world's clock to its time when it is more than five minutes away, the first one when the story begins. The flyover sees her walk from home from the street, facing her front door, and everything else facing the station's front. The lines, times and places beyond the layout are invented (JOURNEY_PLAN).",
   files: ["web/arail/journeys/story.js"],
   classes: [

@@ -253,7 +253,7 @@ export const INFRA = [
   },
   {
     id: "infra-world", group: "infra", title: "Infrastructure on the layout",
-    summary: "The engine on the world's clock with the layout's assets: their state drawn, vans over the streets, drones, faults holding the trains at the platforms; records and GeoJSON; the game page's Infrastructure tab for the roles.",
+    summary: "The engine on the world's clock with the layout's assets: their state drawn, vans over the streets, drones, faults holding the trains at the platforms; records and GeoJSON; the game page's case Infrastructure → Assets for the roles.",
     files: ["web/arail/infra/simulation.js", "web/arail/infra/objects.js", "web/arail/infra/disruptions.js", "web/arail/infra/export.js", "web/arail/infra/index.js", "web/game/infra.js"],
     classes: [
       {
@@ -264,7 +264,7 @@ export const INFRA = [
       { name: "AssetObject", file: "web/arail/infra/objects.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Signals, switches, balises, level crossings, masts, lifts, displays: their state drawn.", operations: ["state()", "draw(view)"] },
       { name: "MaintenanceBase", file: "web/arail/infra/objects.js", kind: "class", extends: "BuildingBase", role: "Where vans and drones start.", operations: ["slots()"] },
       { name: "export", file: "web/arail/infra/export.js", kind: "module", role: "Asset records and GIS.", operations: ["assetRecord(e, a)", "toGeoJSON(e)"] },
-      { name: "InfraPanel", file: "web/game/infra.js", kind: "class", role: "The game page's Infrastructure tab: roles, running fast, decisions, projects, saving games.", operations: ["can(what, item) — may the role do it?", "_act(name, args, text)", "update()", "addInfrastructure()"] },
+      { name: "InfraPanel", file: "web/game/infra.js", kind: "class", role: "The game page's case Infrastructure → Assets: roles, running fast, decisions, projects, saving games.", operations: ["can(what, item) — may the role do it?", "_act(name, args, text)", "update()", "addInfrastructure()"] },
     ],
     relations: [
       { from: "InfrastructureSimulation", to: "InfraEngine", kind: "composes", label: "engine" },
@@ -306,7 +306,7 @@ export const INFRA = [
   },
   {
     id: "infra-story", group: "infra", title: "The maintenance story",
-    summary: "The app's Infrastructure tab: a story to click through on Bf Neustadt. An old exit signal fails, its track is closed, the repair team drives out, repairs the signal and exchanges it; a worn track is closed and renewed with a construction train.",
+    summary: "The app's case Infrastructure → Disruption: a story to click through on Bf Neustadt. An old exit signal fails, its track is closed, the repair team drives out, repairs the signal and exchanges it; a worn track is closed and renewed with a construction train.",
     description: "A scripted story (core/story.js): each step's picture is composed from the step and how far its animation has run. The assets of the layout show their condition by their age (as the game's rings); the signal and the renewed track by their step. The closed tracks hold their trains (track-closure on the platform's track); the repair van drives over the streets from the maintenance base, the technicians walk the last bit (through the underpass); the construction train comes in from the track's far end with the road-rail excavator ahead.",
     files: ["web/arail/infra/story.js"],
     classes: [{
