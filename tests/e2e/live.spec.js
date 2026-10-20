@@ -59,6 +59,8 @@ test("settings and keys: the address keeps them, the fit to the glasses moves th
   await expect(page).toHaveURL(/bg=black/);
   await page.keyboard.press("Escape");
   await expect(page.locator("#settings")).toBeHidden();
+  // the focus goes back to the button, so the keys reach the page, not a hidden control
+  await expect(page.locator("#btnSettings")).toBeFocused();
   await page.keyboard.press("c");
   await expect(page).toHaveURL(/cache=0/);
   await expect(page.locator("#layer-city")).toBeHidden();

@@ -766,6 +766,8 @@ class Live {
   }
 
   toggleSettings(open = $("settings").hidden) {
+    // closed with the focus in it: back to the button (keys would go to a hidden control)
+    if (!open && $("settings").contains(document.activeElement)) $("btnSettings").focus();
     $("settings").hidden = !open;
     $("btnSettings").setAttribute("aria-expanded", String(open));
   }
