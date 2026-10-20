@@ -266,7 +266,7 @@ export class InfraPanel {
           h("button", { class: "btn small", type: "button", id: "infraFail", onclick: () => this._say(sim.failAsset("")) }, "An asset at the station fails"),
           h("button", { class: "btn small", type: "button", id: "infraTheft", onclick: () => this._say(sim.inject({ type: "theft" })) }, "Cable theft"),
           h("button", { class: "btn small", type: "button", id: "infraStorm", onclick: () => this._say(sim.inject({ type: "storm", count: 4 })) }, "A storm")),
-        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in the Disruptions tab (module Disruptions) and in scenarios.")),
+        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in Interaction → Disruptions (module Disruptions) and in scenarios.")),
     ];
   }
 

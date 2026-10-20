@@ -359,9 +359,10 @@ With rail operations on the layout, the game page's case **Operations** (side Ra
   and the largest causes.
 - **Compare**: [comparisons of setups](#comparing-setups).
 
-On large screens **Wide panel** makes the panel wider for the tables. Settings → Simulation of a layout
-without rail operations offers **Add to this layout** (the platforms' line names, *Lines* in Build,
-become the lines; a depot comes from Build → Transport) and **Open the example**.
+On large screens **Wide panel** makes the panel wider for the tables. Railway undertaking → Operations of a
+layout without rail operations offers **Add to this layout** (the platforms' line names, *Lines* in Build,
+become the lines; a depot comes from Build → Transport) and **Open the example** (or **Switch on “…”**
+for a module of the layout that has it).
 
 ## Comparing setups
 

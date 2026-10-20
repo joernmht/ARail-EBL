@@ -173,7 +173,7 @@ export class OperationsPanel {
           h("button", { class: "btn small", type: "button", id: "opsBreak", onclick: () => this._inject({ type: "failure", kind: "hard" }) }, "A unit breaks down"),
           h("button", { class: "btn small", type: "button", id: "opsDefect", onclick: () => this._inject({ type: "failure", kind: "soft" }) }, "A unit gets a defect"),
         ),
-        h("p", { class: "hint" }, "More in the Disruptions tab (module Disruptions: drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
+        h("p", { class: "hint" }, "More in Interaction → Disruptions (module Disruptions: drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
       ),
     ];
   }

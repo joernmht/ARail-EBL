@@ -149,7 +149,7 @@ export class App {
       this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
       setTimeout(() => {
         if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
-        else toast(`This layout has no scenario “${scenario}” (see the Disruptions tab).`, 7000);
+        else toast(`This layout has no scenario “${scenario}” (see Interaction → Disruptions).`, 7000);
       }, 500);
     }
     const tab = linkedTab || example?.tab || "";

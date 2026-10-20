@@ -108,6 +108,7 @@ const APP_DE = {
   "Every attendee makes a traveller and chooses a travel plan": "Alle Teilnehmenden legen eine reisende Person an und wählen einen Reiseplan",
   "Switch on": "Einschalten",
   "Switch on “{name}”": "„{name}“ einschalten",
+  "This layout has no scenario “{id}” (see Interaction → Disruptions).": "Diese Anlage hat kein Szenario „{id}“ (siehe Interaktion → Störungen).",
   "This layout has no container terminal.": "Diese Anlage hat kein Containerterminal.",
   "This layout has no infrastructure simulation.": "Diese Anlage hat keine Infrastruktursimulation.",
   "This layout has no journeys.": "Diese Anlage hat keine Reisen.",

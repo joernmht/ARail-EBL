@@ -170,8 +170,8 @@ Its views:
   scenario, and who plays which role.
 
 On large screens the tab opens with the **Wide panel**. The game is kept in the browser per layout
-and restored when the layout is opened again. Settings → Simulation of a layout without infrastructure
-offers **Add to this layout** and **Open the example**.
+and restored when the layout is opened again. Infrastructure → Assets of a layout without infrastructure
+offers **Add to this layout** and **Open the example** (or **Switch on “…”** for a module of the layout that has it).
 
 ### Roles
 
