@@ -14,6 +14,7 @@ import { add2, perpLeft, scale2, toRad } from "../core/math.js";
 import { PALETTE } from "../core/colors.js";
 import { linesServing } from "../core/transit.js";
 import { drawStopSign } from "./signs.js";
+import { KERB_PARAM, kerbHeight } from "./bus-stop.js";
 
 export class BusTerminal extends LayoutObject {
   static type = "bus-terminal";
@@ -31,6 +32,7 @@ export class BusTerminal extends LayoutObject {
     { key: "lines", label: "Lines", type: "text", default: "", help: "Comma-separated, e.g. \"62, 85\"." },
     { key: "headway_s", label: "A bus every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Per bay. Empty = what the town needs (layout default without a town)." },
     { key: "shelter", label: "Shelters", type: "boolean", default: true },
+    KERB_PARAM,
   ];
 
   /** The card: the bus lines that stop here. */
@@ -84,7 +86,7 @@ export class BusTerminal extends LayoutObject {
     }
     const Lm = g.bays * bayLen, Wm = +this.spec.width_m || 4.5;
     return [new StopArea({
-      id: this.id, owner: this, kind: "bus", origin: g.origin, dir: g.u, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, docks,
+      id: this.id, owner: this, kind: "bus", origin: g.origin, dir: g.u, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, docks, height_m: kerbHeight(this.spec),
       access: [{ s: Lm / 2, t: Wm / 2 - 0.3, weight: 0.5 }, { s: 0.3, t: 0, weight: 0.25 }, { s: Lm - 0.3, t: 0, weight: 0.25 }],
     })];
   }

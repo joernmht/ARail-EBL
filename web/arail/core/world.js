@@ -73,6 +73,7 @@ export class World {
       labels: true, // signs with counts above stops
       stopBoards: false, // the full board over a stop (name, people, next vehicles); off: a badge with the people waiting
       trails: true, // walking trails of passengers
+      spaceCircles: false, // the room people take (core/mobility.js): a circle on the ground, the load of vehicles in spaces
       showTracks: false, // draw track objects (normally hidden: the real track is there)
       feedVehicles: "outline", // how trains from the control system are drawn: outline | solid | none
       lighting: true, // day/night lighting from the clock

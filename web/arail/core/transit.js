@@ -375,6 +375,8 @@ export class LineBus {
     /** Index of the next visit (or of the stop it stands at). */
     this.next = next;
     this.dwellLeft = 0;
+    /** The doors stay open until this world time (s), while people are getting on and off (sims/passengers.js). */
+    this.holdUntil = 0;
     this.doorsLeft = 0;
     this.delayMin = 0;
     this.trainId = null;
@@ -1208,6 +1210,8 @@ export class Transit {
       // the doors open once people may cross to the tram (the lights hold the vehicles beside it)
       if (this.signals.holdsDoors(bus.dock?.id)) return;
       bus.dwellLeft -= dt;
+      // the doors stay open while people are getting on and off (sims/passengers.js sets holdUntil)
+      if (bus.dwellLeft <= 0 && bus.holdUntil > this.world.time) return;
       if (bus.dwellLeft <= 0 && bus.outOfService) this._drop(bus);
       else if (bus.dwellLeft <= 0) {
         bus.phase = "departing";

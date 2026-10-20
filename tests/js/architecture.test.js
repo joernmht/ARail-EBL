@@ -393,7 +393,10 @@ test("settings: the parameters of each simulation are its `static params`, with 
     const model = MODELS.find((m) => m.id === entry?.model);
     assert.ok(model, `simulation ${type}: REGISTRY.simulations needs the model that describes it`);
     const documented = (model.parameters || []).filter((p) => p.sim === type);
-    const code = Sim.params || [];
+    // a table (type "table") is documented row by row: key "<table>.<row>", default its cells "cell value, …"
+    const code = (Sim.params || []).flatMap((p) => p.type === "table"
+      ? p.rows.map((r) => ({ key: `${p.key}.${r.key}`, default: Object.values(r.cells).map((c) => `${c.key} ${c.default}`).join(", ") }))
+      : [p]);
     assert.deepEqual(documented.map((p) => p.key).sort(), code.map((p) => p.key).sort(), `simulation ${type}: the parameters (sim: "${type}") of model ${model.id} must be its static params`);
     for (const p of code) {
       const d = documented.find((x) => x.key === p.key);

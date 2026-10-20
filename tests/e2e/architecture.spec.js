@@ -56,7 +56,7 @@ test("a link to a model opens it; the passenger model shows its forces, its sett
   await expect(model.locator(".events-table")).toContainText("passenger.boarded");
   // steps as text
   await model.getByText("Steps as text").first().click();
-  await expect(model.locator("ol.steps").first()).toContainText("Board: to the nearest door");
+  await expect(model.locator("ol.steps").first()).toContainText("Board: to its door");
   // a diagram at its actual size, and back
   const fig = model.locator(".diagram-figure").first();
   await fig.getByRole("button", { name: "Actual size" }).click();

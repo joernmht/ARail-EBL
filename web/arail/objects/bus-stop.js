@@ -26,6 +26,21 @@ const NEAR_M = 15;
 
 const COLOURS = { area: grey(0.8), curb: grey(0.96), marking: "#ffffff", roof: grey(0.55) };
 
+/** Kerb heights of bus stops (m): a plain kerb (0.12) and raised bus kerbs (Kasseler Sonderbord 0.16, 0.18, 0.22). */
+export const KERB_HEIGHTS_M = [0.12, 0.16, 0.18, 0.22];
+
+/** The kerb height parameter of bus stops and bus terminals. */
+export const KERB_PARAM = {
+  key: "kerb_m", label: "Kerb height", type: "number", unit: "m", min: 0, max: 0.4, step: 0.01, default: 0.18, presets: KERB_HEIGHTS_M,
+  help: "Above the road. A raised kerb (Kasseler Sonderbord, 18 cm) brings it near the floor of a low-floor bus; the rest is a step, and a wheelchair needs the bus's ramp.",
+};
+
+/** The kerb height of a bus stop or terminal (m). */
+export function kerbHeight(spec) {
+  const h = Number(spec.kerb_m);
+  return spec.kerb_m !== undefined && spec.kerb_m !== "" && Number.isFinite(h) ? clamp(h, 0, 0.4) : KERB_PARAM.default;
+}
+
 export class BusStop extends LayoutObject {
   static type = "bus-stop";
   static label = "Bus stop";
@@ -43,6 +58,7 @@ export class BusStop extends LayoutObject {
     { key: "length_m", label: "Length", type: "number", unit: "m", min: 8, max: 60, step: 1, default: 18 },
     { key: "width_m", label: "Waiting area width", type: "number", unit: "m", min: 1, max: 6, step: 0.5, default: 2.5 },
     { key: "shelter", label: "Shelter", type: "boolean", default: true },
+    KERB_PARAM,
   ];
 
   /** The stop follows its street: the geometry is also recomputed when other objects change. */
@@ -63,6 +79,7 @@ export class BusStop extends LayoutObject {
     if (street) card.rows.push(["Street", street.name]);
     const lines = linesServing(this.world, this.id).map((id) => this.world.getObject(id)).filter(Boolean);
     card.rows.push(["Bus lines", lines.length ? lines.map((o) => o.lineLabel?.() ?? o.name).join(", ") : "none"]);
+    card.rows.push(["Kerb height", `${Math.round(kerbHeight(this.spec) * 100)} cm`]);
     card.related = lines.map((o) => o.id);
     return card;
   }
@@ -146,7 +163,7 @@ export class BusStop extends LayoutObject {
     const one = g.sides.length === 1;
     return g.sides.map((sd) => new StopArea({
       id: one ? this.id : `${this.id}:${sd.side}`, owner: this, kind: "bus",
-      origin: sd.origin, dir: sd.dir, lengthMM: g.L, widthMM: g.W, scale: this.world.scale,
+      origin: sd.origin, dir: sd.dir, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, height_m: kerbHeight(this.spec),
       docks: [{
         id: `${this.id}:${sd.side}`, side: 1, s0: 0, s1: Lm, kind: "bus", label: one ? "Stop" : sd.side === "right" ? "Stop A" : "Stop B",
         managed: "line", headway: null, dwell: svc.bus_dwell_s,

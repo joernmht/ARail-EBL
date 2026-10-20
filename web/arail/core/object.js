@@ -14,7 +14,9 @@ import { OVERLAY } from "./colors.js";
  * @typedef {object} ParamSpec
  * @property {string} key name in the layout file (use unit suffixes: _mm = model mm, _m = prototype metres, _s = seconds)
  * @property {string} label
- * @property {"number" | "text" | "select" | "boolean" | "color" | "marker" | "object"} type
+ * @property {"number" | "text" | "select" | "boolean" | "color" | "marker" | "object" | "table"} type "table": rows of
+ *   number cells (`rows`, e.g. the passenger simulation's table of the people, core/mobility.js); a layout gives
+ *   only the cells it changes
  * @property {*} [default]
  * @property {number} [min]
  * @property {number} [max]
@@ -26,6 +28,8 @@ import { OVERLAY } from "./colors.js";
  * @property {(values: object) => boolean} [when] the field is shown only when this holds (e.g. the price
  *   only when parking costs something); a hidden field keeps its value
  * @property {string} [objectType] for "object": only offer objects of this type
+ * @property {ReadonlyArray<{key: string, label: string, cells: object}>} [rows] for "table": its rows, each with
+ *   its cells (number specs with a default)
  * @property {string} [help]
  */
 

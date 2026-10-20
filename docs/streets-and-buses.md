@@ -162,7 +162,12 @@ in `web/arail/core/access.js`).
   keep their distance to the vehicle ahead, and obey the junctions (see
   [Signs, lights and zebra crossings](#signs-lights-and-zebra-crossings)). At a stop the front of
   the bus stands 1.5 m before the end of the stop, and the doors open on the stop side; people get
-  off, then the waiting passengers of this line get on. A bus laying over does not block the
+  off, then the waiting passengers of this line get on, one after the other at each door. The kerb
+  of a stop (`kerb_m`, 18 cm: a raised bus kerb) is 14 cm below the floor of a low-floor bus: the
+  step slows old people and those with a rollator or a pram, and the driver puts out the ramp at the
+  middle door for a wheelchair (60 s; a kerb lower than 7 cm leaves a step too high for the ramp). The
+  bus waits while somebody is in its doors, so its dwell follows the people getting on and off (see
+  [Passenger mobility](day-and-night.md#passenger-mobility)). A bus laying over does not block the
   street: when a vehicle waits behind it (another bus for the stop, a bus of another line on its
   way to the next bay of a terminal, cars behind a terminus on the street) it leaves early with its
   next departure; while departures are suspended by a disruption it makes room by going to the
@@ -209,7 +214,8 @@ A stop is **step-free** (barrierefrei, DIN 18040-3) for a low-floor tram (floor 
 the step up and the gap are at most 5 cm, it has tactile paving (DIN 32984), its platform is at
 least 2.00 m wide (BOStrab § 31), and at an island in a street people get onto it at its own
 traffic lights, or at a zebra crossing or traffic lights within 30 m. Its card says why it is not;
-boarding there takes 1.3 times as long.
+boarding there takes 1.3 times as long, and each person takes longer at the doors by the step (a
+stop on the road: 30 cm and the lane; the tram's ramp cannot bridge that for a wheelchair).
 
 A **tram line** is placed like a bus line, through its tram stops, and its trams run like the buses
 (the timetable, the depot, the boards and the disruptions are the same), with these differences:
@@ -338,7 +344,10 @@ Cars enter where streets end (dead ends at the edge of the layout) and leave aga
 number is `cars_per_km` per kilometre of street at normal daytime traffic, more in the rush hours
 and few at night (`clock.demand("car")`). Every car has a **driver** and, by the purpose of the
 trip, **passengers** (MiD 2017: about 1.1 people per car to work, 1.5 for shopping and leisure), and
-a **planned route**:
+a **planned route**. The driver has a driving licence and a car; the passengers are anybody (children
+too, see [Passenger mobility](day-and-night.md#passenger-mobility)). They walk to and from the car at
+the slowest one's pace, and loading and unloading take their time: luggage into the boot 20 s, a pram
+folded and the child in its seat 60 s, a wheelchair user into the seat 120 s.
 
 - A share of the cars (`destinations`) drives to a building, by the time of day: to work in the
   morning, to the shops in the day, to visit people, home in the afternoon. The driver plans the

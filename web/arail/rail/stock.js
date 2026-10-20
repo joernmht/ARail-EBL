@@ -169,6 +169,15 @@ export const RAIL_TRAIN = {
   floor_m: 0.6,
   gap_m: 0.3,
   overhang_m: 0,
+  carLength_m: 26,
+  /** Getting on and off as core's TRAIN: a regional multiple unit for 76 cm platforms (core/vehicles.js, sims/passengers.js). */
+  entry_m: 0.76,
+  door_gap_m: 0.05,
+  assist: null,
+  seats_per_car: 80,
+  standing_per_car_m2: 10,
+  wheelchair_places: 2,
+  racks: true,
   /** Stopped extent along the dock (m), as far as the platform goes. */
   extent: (dock) => [dock.s0, dock.s1],
   /** Doors along a dock without knowing the train: every 7 m. */

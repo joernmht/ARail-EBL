@@ -60,7 +60,8 @@ test("a bus laying over does not block the street or the terminal lane", () => {
     { id: "f", type: "bus-stop", name: "Far", position: [4500, -70], side: "both" },
     { id: "l1", type: "bus-line", number: "1", headway_s: 300, stops: ["t", "e"] },
     { id: "l2", type: "bus-line", number: "2", headway_s: 300, stops: ["t", "f"] },
-  ], { simulations: [{ type: "passengers", base_rate: 0 }, { type: "traffic", cars_per_km: 25 }] });
+    // nobody gets on or off (a wheelchair user's ramp would keep a bus at East longer than the cars may stand)
+  ], { simulations: [{ type: "passengers", base_rate: 0, others: false }, { type: "traffic", cars_per_km: 25 }] });
   w.transit.sync();
   assert.deepEqual([...w.transit.lines.values()].map((l) => l.visits[0].dockId), ["t:bay1", "t:bay2"]);
   const laidOver = new Set();
@@ -71,8 +72,10 @@ test("a bus laying over does not block the street or the terminal lane", () => {
 });
 
 test("as many buses as the timetable needs: extra buses go to the depot, none at night", () => {
+  // nobody gets on or off: the buses keep to their dwell (people at the doors would hold them, and the
+  // buses too many of the evening would reach the terminus, where they go to the depot, later)
   const w = world([...STREET, { id: "l", type: "bus-line", number: "62", headway_s: 60, stops: ["a", "c"] }], {
-    clock: { start: "17:00", profiles: true },
+    clock: { start: "17:00", profiles: true }, simulations: [{ type: "passengers", base_rate: 0, others: false }],
   });
   const t = w.transit, line = () => t.lines.get("l");
   const counts = {};

@@ -71,6 +71,11 @@ export { resolvePoint, resolvePoints, resolveSegment, translatePoint, pointRelat
 export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, CD_LIGHT, OVERLAY, FONT } from "./core/colors.js";
 export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
+export {
+  AGES, AIDS, LUGGAGE, MOBILITY_PARAMS, MOBILITY_KEYS, PEOPLE, DEFAULT_MOBILITY, GROUPS as MOBILITY_GROUPS, MIN_MPS, MAX_MPS,
+  mobilitySettings, mobilityOf, peopleProblems, drawProfile, normalizeProfile, aidShares, luggageShares, speedFactor, walkingSpeed, isLevel, boardingTime,
+  spaceOf, carLegTime, canDrive, profileWords, drivingWords, profileGroups,
+} from "./core/mobility.js";
 // the object types and simulations of the layout, one area each (objects/index.js, sims/index.js); a name
 // they share with the core would be dropped silently, tests/js/world.test.js checks that none is
 export * from "./objects/index.js";
@@ -116,7 +121,7 @@ export {
 // journeys: travellers with a start, an aim and a travel plan with transfers; the journeys story (named exports only)
 export {
   TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine, Planner, WALK_MPS, walkPath, placePoint, areaName,
-  JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
+  JourneysSimulation, JOURNEY_PARTS, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
   JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare,
 } from "./journeys/index.js";
 // railway systems of the track sections, vehicles and trains (named exports only)

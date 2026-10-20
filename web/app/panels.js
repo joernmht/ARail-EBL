@@ -1,6 +1,6 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
-import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
-import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
+import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { download, h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 import { tr } from "./i18n.js";
 
 const SPEEDS = [1, 2, 5, 10, 30];
@@ -49,6 +49,7 @@ export class Panels {
           toggle("optLabels", "Signs and boards", () => s.labels, (v) => (s.labels = v)),
           toggle("optStopBoards", "Departure boards at the stops", () => !!s.stopBoards, (v) => (s.stopBoards = v)),
           toggle("optTrails", "Walking trails", () => s.trails, (v) => (s.trails = v)),
+          toggle("optSpaceCircles", "The room people take", () => !!s.spaceCircles, (v) => (s.spaceCircles = v)),
           toggle("optMarkers", "Marker outlines", () => d.markers, (v) => (d.markers = v)),
           toggle("optCoverMarkers", "Cover the markers", () => s.coverMarkers, (v) => (s.coverMarkers = v)),
           toggle("optTracks", "Tracks", () => s.showTracks, (v) => (s.showTracks = v)),
@@ -295,10 +296,27 @@ export class Panels {
       h("p", { class: "hint" }, `${st.total} people (${town.config.people_per_100} per 100 residents). Where they are:`),
       h("ul", { class: "legend-list" },
         item("at home", st.home), item("at work", st.work), item("at school", st.school), item("shopping", st.shopping),
-        item("on the bus", st.riding), item("at stops", st.waiting), item("away (by train)", st.away)),
+        item("on the bus", st.riding), item("by car", st.driving), item("at stops", st.waiting), item("away (by train)", st.away)),
       h("p", { class: "hint" }, `On their way (${st.walking}), coloured by where they are going:`),
       h("ul", { class: "legend-list" }, Object.keys(PURPOSE_COLOURS).map((k) => item(PURPOSE_LABELS[k], st.byPurpose[k] || 0, PURPOSE_COLOURS[k]))),
+      h("p", { class: "hint" }, `${st.captive} adults without a driving licence or a car: they walk or take the bus and the train.`),
+      st.stranded ? h("p", { class: "hint" }, `${st.stranded} times one of them gave up waiting at a stop or found it closed.`) : null,
+      this._tripTable(town),
     );
+  }
+
+  /** The town's trips from door to door by group (mean clock minutes in all and in their parts), with the CSV of all trips. */
+  _tripTable(town) {
+    const rows = town.tripStats();
+    if (!rows.length) return h("p", { class: "hint" }, "No trip from door to door finished yet.");
+    const parts = Object.keys(TRIP_PARTS);
+    return h("div", {},
+      h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Door to door by group" }, h("table", { class: "trip-table" },
+        h("caption", {}, "Door to door by group (mean clock minutes)"),
+        h("thead", {}, h("tr", {}, ["Group", "Trips", "In all", ...parts.map((k) => TRIP_PARTS[k])].map((x) => h("th", { scope: "col" }, x)))),
+        h("tbody", {}, rows.map((r) => h("tr", {}, h("th", { scope: "row" }, r.label), h("td", {}, String(r.trips)), h("td", {}, String(Math.round(r.minutes))),
+          ...parts.map((k) => h("td", {}, String(Math.round(r.parts[k]))))))))),
+      h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)")));
   }
 
   updateSimulateControls() {

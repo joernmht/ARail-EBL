@@ -13,7 +13,7 @@
  */
 export { TimetableRail, OperationsRail, worldNow, stopIndex, reaches, depAt, arrAt, sameLine } from "./rail.js";
 export { Planner, WALK_MPS, walkPath, placePoint, areaName } from "./planner.js";
-export { JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys } from "./simulation.js";
+export { JourneysSimulation, JOURNEY_PARTS, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys } from "./simulation.js";
 export { JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare } from "./story.js";
 
 import { JourneysSimulation } from "./simulation.js";
