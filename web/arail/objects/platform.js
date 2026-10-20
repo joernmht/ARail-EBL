@@ -1,6 +1,8 @@
 /**
  * Rail platform: a strip between two markers (or two points). Trains stop along its long
  * edges; each edge that serves trains is a dock (optionally linked to a control-system track).
+ * Its height above the rails and the help its staff give wheelchair users decide how people get on
+ * and off the trains (sims/passengers.js).
  * @module arail/objects/platform
  */
 import { LayoutObject } from "../core/object.js";
@@ -8,6 +10,9 @@ import { resolveSegment, round1 } from "../core/anchors.js";
 import { StopArea } from "../core/stops.js";
 import { add2, len2, lerp2, perpLeft, scale2, sub2 } from "../core/math.js";
 import { FONT, PALETTE } from "../core/colors.js";
+
+/** Platform heights above the rails (m): EBO § 13 (0.38, 0.55, 0.76) and the S-Bahn of Berlin and Hamburg (0.96). */
+export const PLATFORM_HEIGHTS_M = [0.38, 0.55, 0.76, 0.96];
 
 /** Surface of a platform as drawn for a virtual camera: concrete, light edge stones, white safety line. */
 const CONCRETE = "#c9c6bd", EDGE_STONE = "#e8e6df", SAFETY_LINE = "#fbfbf8";
@@ -36,6 +41,14 @@ export class Platform extends LayoutObject {
     { key: "lines", label: "Lines", type: "text", default: "", help: "Comma-separated line names, e.g. \"RE 1, S 2\"." },
     { key: "headway_s", label: "A train every", type: "number", unit: "s (simulated)", min: 10, max: 3600, step: 5, help: "Average interval of the built-in timetable. Empty = what the town needs (layout default without a town)." },
     { key: "canopy", label: "Canopy", type: "boolean", default: false },
+    {
+      key: "height_m", label: "Platform height", type: "number", unit: "m", min: 0.2, max: 1.2, step: 0.01, default: 0.76, presets: PLATFORM_HEIGHTS_M,
+      help: "Above the rails (EBO § 13: 0.76 m, also 0.55 m; old platforms 0.38 m, S-Bahn 0.96 m). Where it differs from the floor of the trains there is a step: getting on takes longer, and a wheelchair needs help.",
+    },
+    {
+      key: "assistance", label: "Help for wheelchair users", type: "boolean", default: false,
+      help: "Station staff put out a ramp or a lift for wheelchair users (from 06:00 to 22:00).",
+    },
   ];
 
   computeGeometry() {
@@ -75,7 +88,15 @@ export class Platform extends LayoutObject {
     if (sides === "both" || sides === "right") tracks.push(s.track_right ? `track ${s.track_right} (right)` : "right");
     card.rows.push(["Trains stop", tracks.length ? tracks.join(" · ") : "nowhere"]);
     if (s.lines) card.rows.push(["Lines", s.lines]);
+    card.rows.push(["Platform height", `${Math.round(this.height() * 100)} cm`]);
+    if (s.assistance) card.rows.push(["Help for wheelchair users", "station staff, 06:00–22:00"]);
     return card;
+  }
+
+  /** Height of the platform above the rails (m). */
+  height() {
+    const h = Number(this.spec.height_m);
+    return this.spec.height_m !== undefined && this.spec.height_m !== "" && Number.isFinite(h) ? Math.min(1.2, Math.max(0.2, h)) : 0.76;
   }
 
   /** Platform length in the prototype (metres). */
@@ -100,7 +121,10 @@ export class Platform extends LayoutObject {
     };
     if (sides === "both" || sides === "left") dock(1, "left");
     if (sides === "both" || sides === "right") dock(-1, "right");
-    return [new StopArea({ id: this.id, owner: this, kind: "rail", origin: g.a, dir: g.u, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, docks })];
+    return [new StopArea({
+      id: this.id, owner: this, kind: "rail", origin: g.a, dir: g.u, lengthMM: g.L, widthMM: g.W, scale: this.world.scale, docks,
+      height_m: this.height(), assist: this.spec.assistance ? "staff" : null,
+    })];
   }
 
   /** Dragging a marker-anchored platform moves it sideways (changes the offset). */

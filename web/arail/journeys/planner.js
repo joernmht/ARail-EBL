@@ -3,7 +3,8 @@
  *
  * Places are the buildings on the layout (by their entrances) and the stations beyond the layout
  * (from the timetable, see rail.js). A plan is a list of legs:
- * - `walk`: over the road network (streets, footpaths, the underpass), at 1.3 m/s;
+ * - `walk`: over the road network (streets, footpaths, the underpass), at the traveller's own
+ *   walking speed (its profile, core/mobility.js; 1.34 m/s without one);
  * - `bus`: a bus line from one stop to another (`world.transit`). Buses run at a headway, not to a
  *   timetable: the planner expects half the headway of waiting and the line's average speed, so its
  *   bus times are estimates ("about 07:52");
@@ -12,18 +13,25 @@
  * The walks and the buses run on the layout, at the speed of the simulation, while the clock is
  * faster (`clock.factor`): their minutes are clock minutes too, so a walk of 100 m takes about 15
  * clock minutes at 1:12. Between a vehicle and a train the traveller keeps a transfer time (the
- * minimum the attendee asks for). Plans are ranked by arrival, then by transfers and walking; for
- * each way (the same modes and lines) at most two departures are offered.
+ * minimum the attendee asks for); getting off takes the traveller's own time at the door (its
+ * profile and the step there). A wheelchair user only gets plans that it can take: a train only
+ * from and to platforms with level boarding or with the station's staff there at that hour, a bus
+ * or tram only at stops its ramp can serve. Plans are ranked by arrival, then by transfers and
+ * walking; for each way (the same modes and lines) at most two departures are offered. A plan
+ * carries its parts (clock minutes): walk (to and from the vehicles), wait, ride, transfer (the
+ * walks between two vehicles).
  * @module arail/journeys/planner
  */
 import { straightWalk } from "../core/network.js";
 import { PROFILES, profileAt } from "../core/clock.js";
 import { towards } from "../core/transit.js";
+import { boardingTime, mobilityOf, walkingSpeed } from "../core/mobility.js";
+import { boardingAccess } from "../sims/passengers.js";
 import { DAY } from "../ops/util.js";
 import { arrAt, depAt, reaches, stopIndex } from "./rail.js";
 
-/** Walking speed of the travellers (prototype m/s). */
-export const WALK_MPS = 1.3;
+/** Walking speed of a traveller without a profile (prototype m/s): the mean walking speed (Weidmann 1993). */
+export const WALK_MPS = 1.34;
 /** Longest walk to or from a bus stop (prototype m). */
 const ACCESS_M = 450;
 /** Minutes after the departure time the planner looks for trains. */
@@ -90,6 +98,9 @@ export class Planner {
     this.world = sim.world;
     this._walks = new Map();
     this._walksKey = null;
+    /** The traveller planned for: its profile (null: none) and walking speed (m/s). */
+    this.profile = null;
+    this.speed = WALK_MPS;
   }
 
   get rail() {
@@ -101,9 +112,29 @@ export class Planner {
     return (seconds * this.world.clock.factor) / 60;
   }
 
-  /** Clock minutes to get off a vehicle at a stop area and walk to its exit (a quarter of its length, on average). */
+  /** The vehicle kind that stops at a stop area: a train at a platform, else its kind (bus, tram). */
+  _kindAt(area) {
+    return area?.kind === "rail" ? "train" : area?.kind === "tram" ? "tram" : "bus";
+  }
+
+  /**
+   * Clock minutes to get off a vehicle at a stop area and walk to its exit (a quarter of its length,
+   * on average): the traveller's time at the door (its profile and the step there) and its speed.
+   */
   alightMin(area) {
-    return area ? this.clockMin(area.L / 4 / WALK_MPS + 4) : 0;
+    if (!area) return 0;
+    const door = this.profile ? boardingTime(this.profile, boardingAccess(this.world, area, this._kindAt(area)), mobilityOf(this.world)) : null;
+    return this.clockMin(area.L / 4 / this.speed + (door?.ok ? door.s : 4));
+  }
+
+  /**
+   * Can the traveller get on and off at a stop area (world time `t`, clock minutes)? Everybody but a
+   * wheelchair user can; it needs level boarding or help there (a ramp, the station's staff at that hour).
+   */
+  usable(area, t = null) {
+    if (this.profile?.aid !== "wheelchair" || !area) return true;
+    const minutes = t == null ? null : ((t % DAY) + DAY) % DAY;
+    return boardingTime(this.profile, boardingAccess(this.world, area, this._kindAt(area), minutes), mobilityOf(this.world)).ok;
   }
 
   /* ---------------------------------------------------------------- places */
@@ -170,7 +201,7 @@ export class Planner {
     }
     if (!best) return null;
     const m = (best.mm * this.world.scale) / 1000;
-    return { from: best.from, to: best.to, m, min: this.clockMin(m / WALK_MPS) };
+    return { from: best.from, to: best.to, m, min: this.clockMin(m / this.speed) };
   }
 
   _walkLeg(w, dep) {
@@ -254,7 +285,7 @@ export class Planner {
     };
     for (const o of origins) {
       for (const d of dests) {
-        if (o.area.owner === d.area.owner) continue;
+        if (o.area.owner === d.area.owner || !this.usable(o.area, t) || !this.usable(d.area, t)) continue;
         for (const c of transit.connections(o.area.id, d.area.id)) {
           // to the way in nearest the bay of the line (a terminal is long)
           const w = this.walk(fromPoints, [this._areaPoints(o.area)[this._dockAccess(o.area, c.fromDockId)]]) || o.walk;
@@ -269,14 +300,15 @@ export class Planner {
     // one change of buses: at a stop where another line goes on (also across the street)
     for (const o of origins) {
       const tStop = t + o.walk.min;
+      if (!this.usable(o.area, t)) continue;
       for (const mid of this._busAreas()) {
-        if (mid.owner === o.area.owner) continue;
+        if (mid.owner === o.area.owner || !this.usable(mid, tStop)) continue;
         for (const first of ride(o.area, mid, tStop)) {
           for (const next of this._busAreas().filter((a) => a.owner === mid.owner)) {
             const change = next === mid ? null : this.walk(this._areaPoints(mid), this._areaPoints(next));
             const tNext = first.arr + this.alightMin(mid) + (change?.min ?? 0);
             for (const d of dests) {
-              if (d.area.owner === mid.owner) continue;
+              if (d.area.owner === mid.owner || !this.usable(next, tNext) || !this.usable(d.area, tNext)) continue;
               for (const second of ride(next, d.area, tNext)) {
                 if (second.line === first.line) continue;
                 const legs = [this._walkLeg(o.walk, t), first];
@@ -347,7 +379,7 @@ export class Planner {
     for (const { station, area } of this._platforms()) {
       const pts = this._areaPoints(area);
       const w = this.walk(place.points, pts);
-      if (!w) continue;
+      if (!w || !this.usable(area, t + w.min)) continue;
       out.push({ station, area: area.id, t: t + w.min, legs: [this._walkLeg(w, t)] });
       for (const p of this._bus(place.points, pts, t)) if (p.arr < t + w.min) out.push({ station, area: area.id, t: p.arr, legs: p.legs });
     }
@@ -361,11 +393,11 @@ export class Planner {
       const pts = this._areaPoints(area);
       const w = this.walk(pts, place.points);
       if (!w) continue;
-      out.push({ station, area: area.id, build: (t0) => {
+      out.push({ station, area: area.id, usable: (t0) => this.usable(area, t0), build: (t0) => {
         const leg = this._walkLeg(w, t0);
         return { legs: [leg], arr: leg.arr };
       } });
-      out.push({ station, area: area.id, bus: true, build: (t0) => {
+      out.push({ station, area: area.id, bus: true, usable: (t0) => this.usable(area, t0), build: (t0) => {
         const p = this._bus(pts, place.points, t0)[0];
         return p && p.arr < t0 + w.min ? p : null;
       } });
@@ -383,6 +415,7 @@ export class Planner {
     const out = [];
     const finish = (head, trip, from, e) => {
       const arr = arrAt(trip, e.station);
+      if (e.usable && !e.usable(arr)) return;
       const tail = e.build(arr + (e.area ? this.alightMin(this._tripArea(trip, e.station)) : 0));
       if (tail) out.push({ legs: [...head, this._trainLeg(trip, from, e.station), ...tail.legs], arr: tail.arr });
     };
@@ -409,6 +442,7 @@ export class Planner {
             const e = ends.find((x) => reaches(next, h, x.station) && onArea(next, x.station, x.area));
             if (!e) continue;
             const a2 = here ? this._tripArea(next, h) : null;
+            if (!this.usable(a1, arr) || !this.usable(a2, depAt(next, h))) continue;
             const change = a1 && a2 && a1 !== a2 ? this.walk(this._areaPoints(a1), this._areaPoints(a2)) : null;
             const dep = depAt(next, h), off = this.alightMin(a1);
             if (dep < arr + off + (change?.min ?? 0) + transfer) continue;
@@ -427,14 +461,17 @@ export class Planner {
 
   /**
    * Travel plans from a place to another one, leaving at a time.
-   * @param {{from: {kind: string, id: string}, to: {kind: string, id: string}, leave: number, transfer?: number}} request
+   * @param {{from: {kind: string, id: string}, to: {kind: string, id: string}, leave: number, transfer?: number, profile?: object | null}} request
    *   `leave`: world time (clock minutes since 00:00 of day 0); `transfer`: the least clock minutes
-   *   between getting to a platform or off a train and the next train
-   * @returns {object[]} plans {legs, dep, arr, transfers, walk, wait, pattern, signature}, the best first
+   *   between getting to a platform or off a train and the next train; `profile`: the traveller's
+   *   characteristics (core/mobility.js: its walking speed, its time at the doors, a wheelchair)
+   * @returns {object[]} plans {legs, dep, arr, transfers, walk, wait, ride, transfer, pattern, signature}, the best first
    */
-  plan({ from, to, leave, transfer = 3 }) {
+  plan({ from, to, leave, transfer = 3, profile = null }) {
     const A = this.place(from), B = this.place(to);
     if (!A || !B || (A.kind === B.kind && A.id === B.id)) return [];
+    this.profile = profile ?? null;
+    this.speed = profile ? walkingSpeed(profile, mobilityOf(this.world)) : WALK_MPS;
     const found = [];
     if (A.kind === "building" && B.kind === "building") {
       const w = this.walk(A.points, B.points);
@@ -456,17 +493,25 @@ function best(plans, keyOf) {
   return [...out.values()].sort((a, b) => a.arr - b.arr);
 }
 
-/** A plan with its figures: transfers, walking and waiting minutes, the way it goes. */
+/**
+ * A plan with its figures: transfers; its minutes walking (to and from the vehicles), waiting,
+ * riding and changing (the walks between two vehicles); the way it goes.
+ */
 function finishPlan(p, leave) {
   const rides = p.legs.filter((l) => l.type !== "walk");
-  let walk = 0, wait = 0, t = leave;
-  for (const l of p.legs) {
-    if (l.type === "walk") walk += l.min;
-    else wait += Math.max(0, l.dep - t);
+  const first = p.legs.findIndex((l) => l.type !== "walk"), last = p.legs.findLastIndex((l) => l.type !== "walk");
+  let walk = 0, wait = 0, ride = 0, change = 0, t = leave;
+  p.legs.forEach((l, i) => {
+    if (l.type === "walk" && i > first && i < last) change += l.min;
+    else if (l.type === "walk") walk += l.min;
+    else {
+      wait += Math.max(0, l.dep - t);
+      ride += l.arr - l.dep;
+    }
     t = l.arr;
-  }
+  });
   return {
-    legs: p.legs, dep: leave, arr: p.arr, transfers: Math.max(0, rides.length - 1), walk, wait,
+    legs: p.legs, dep: leave, arr: p.arr, transfers: Math.max(0, rides.length - 1), walk, wait, ride, transfer: change,
     pattern: p.legs.map((l) => (l.type === "walk" ? "walk" : `${l.type}:${l.line}`)).join("|"),
     signature: p.legs.map((l) => (l.type === "walk" ? `walk:${l.to?.id}` : l.type === "bus" ? `bus:${l.line}:${l.fromDock}:${l.toDock}` : `train:${l.day}:${l.trip}:${l.from}:${l.to}`)).join("|"),
   };

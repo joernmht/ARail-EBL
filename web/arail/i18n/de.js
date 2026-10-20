@@ -21,6 +21,7 @@ import { TEXTS as CROSSINGS } from "./de/crossings.js";
 import { TEXTS as PARKING } from "./de/parking.js";
 import { TEXTS as TRAFFIC } from "./de/traffic.js";
 import { TEXTS as TRAMS } from "./de/trams.js";
+import { TEXTS as MOBILITY } from "./de/mobility.js";
 
 /** The parts by their file, for the checks of the catalogues. */
 export const DE_PARTS = {
@@ -38,6 +39,7 @@ export const DE_PARTS = {
   "web/arail/i18n/de/parking.js": PARKING,
   "web/arail/i18n/de/traffic.js": TRAFFIC,
   "web/arail/i18n/de/trams.js": TRAMS,
+  "web/arail/i18n/de/mobility.js": MOBILITY,
 };
 
 /** The framework's German texts. */

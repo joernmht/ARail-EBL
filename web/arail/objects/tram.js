@@ -26,6 +26,7 @@ import { OVERLAY, PALETTE, grey, rgba } from "../core/colors.js";
 import { rectFootprint } from "../core/view.js";
 import { linesServing } from "../core/transit.js";
 import { TRAM } from "../core/vehicles.js";
+import { STEP_FREE_M } from "../core/mobility.js";
 import { drawStopSign, drawTrafficLight } from "./signs.js";
 import { BusLine } from "./bus-line.js";
 import { NORMS } from "./street-profile.js";
@@ -33,8 +34,10 @@ import { offsetPolyline, slicePolyline } from "./road.js";
 
 /** How far from the outer edge of a street a stop may be placed (m). */
 const NEAR_M = 15;
-/** Step-free: platform at most this much below the tram floor, the gap at most this wide (m). */
-export const STEP_FREE_M = 0.05;
+/** Step-free: platform at most this much below the tram floor, the gap at most this wide (m); as for every stop (core/mobility.js). */
+export { STEP_FREE_M };
+/** On the road people step down from the kerb and cross the lane to the door: the gap (m). */
+const ROAD_GAP_M = 0.6;
 
 /** The kinds of tram stops: label, platform height by default (m), cars wait while the doors are open. */
 export const TRAM_STOP_TYPES = {
@@ -164,7 +167,7 @@ export class TramStop extends LayoutObject {
     const kind = this.kind(), reasons = [];
     const step = Math.max(0, TRAM.floor_m - this.platformHeight());
     // on the road people step down from the curb and cross the lane to the door
-    const gap = kind === "road" ? 0.6 : TRAM.gap_m;
+    const gap = kind === "road" ? ROAD_GAP_M : TRAM.gap_m;
     if (step > STEP_FREE_M + 1e-9) reasons.push(`a step of ${Math.round(step * 100)} cm up into the tram`);
     if (gap > STEP_FREE_M + 1e-9) reasons.push("a gap between the curb and the tram");
     if (this.spec.tactile === false) reasons.push("no tactile paving for blind people");
@@ -308,6 +311,7 @@ export class TramStop extends LayoutObject {
       return new StopArea({
         id: one ? this.id : `${this.id}:${sd.side}`, owner: this, kind: "tram",
         origin: sd.origin, dir: sd.dir, lengthMM: g.L, widthMM: g.W, scale: this.world.scale,
+        height_m: this.platformHeight(), gap_m: this.kind() === "road" ? ROAD_GAP_M : null,
         docks: [{
           id: `${this.id}:${sd.side}`, side: 1, s0: 0, s1: Lm, kind: "tram", label: one ? "Stop" : sd.side === "right" ? "Stop A" : "Stop B",
           managed: "line", headway: null, dwell: svc.bus_dwell_s,

@@ -14,7 +14,8 @@
  * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
  *
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
- * `vehicle.departing` (doors close) -> `vehicle.departed`; or `vehicle.cancelled`.
+ * `vehicle.departing` (doors close: when the dwell is over and nobody is in the doors any more,
+ * `holdUntil`) -> `vehicle.departed`; or `vehicle.cancelled`.
  *
  * A vehicle comes in with people on board: more in the rush hours (the timetable's demand when it
  * was sent) and with more passenger demand. A kind of vehicle that knows its places (`capacity`;
@@ -45,6 +46,8 @@ export class Vehicle {
     this.phase = "arriving";
     this.progress = 0;
     this.dwellLeft = dock.dwell;
+    /** The doors stay open until this world time (s), while people are getting on and off (sims/passengers.js). */
+    this.holdUntil = 0;
     // trains on the left edge travel towards s = 0, on the right edge towards s = L; buses always forward
     this.direction = kind === "bus" ? 1 : -dock.side;
     /** The timetable's demand when it was sent (the clock's profile): in the rush hours trains run longer (rail/trains.js). */
@@ -314,7 +317,8 @@ export class ServiceManager {
       }
     } else if (v.phase === "dwelling") {
       v.dwellLeft -= dt;
-      if (v.dwellLeft <= 0 || (kept(fx) && v.source !== "feed")) {
+      // the doors stay open while people are getting on and off (sims/passengers.js sets holdUntil)
+      if ((v.dwellLeft <= 0 && !(v.holdUntil > this.world.time)) || (kept(fx) && v.source !== "feed")) {
         v.phase = "departing";
         v.progress = 0;
         this._emit("vehicle.departing", v);

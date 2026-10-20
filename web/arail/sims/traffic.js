@@ -27,6 +27,11 @@
  * a bike only when the other lane is free (StVO § 5: 1.5 m in towns). Their number follows
  * `cars_per_km` and the time of day (`clock.demand("car")`).
  *
+ * The people of a car have profiles (core/mobility.js): the driver an adult or old person with a
+ * driving licence and a car, those riding along anybody (children too). They walk to and from the
+ * car at the pace of the slowest of them, and loading and unloading at the car takes its time
+ * (`carLegTime`: luggage into the boot, a pram folded, a wheelchair user into the seat).
+ *
  * The example plugin `web/plugins/road-traffic.js` is a simpler version (cars per street, no
  * junctions); both can run side by side.
  * @module arail/sims/traffic
@@ -37,8 +42,9 @@ import { CD, grey, mix, shade } from "../core/colors.js";
 import { APPROACH_M, approachPrio, boxFaces, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, roomAfter, squeezing, waitFor } from "../core/transit.js";
 import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
+import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
 import { parkingTerms } from "../objects/parking.js";
-import { drawPerson } from "./passengers.js";
+import { drawPerson, personLooks } from "./passengers.js";
 
 /** Muted CD colours, and many greys, white and black (most cars are). */
 export const CAR_COLOURS = [
@@ -261,12 +267,19 @@ export class TrafficSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- people and trips */
 
-  /** A driver and the passengers for a trip of this purpose (their names stay the same for a seed and car). */
+  /**
+   * A driver and the passengers for a trip of this purpose (their names and profiles stay the same
+   * for a seed and car): the driver with a licence and a car, those riding along anybody.
+   */
   _crew(purpose) {
     const n = this.rng.weighted(OCCUPANCY_BY_PURPOSE[purpose] || OCCUPANCY_BY_PURPOSE.through);
     // by the order the cars come (their seq), not by their program-wide id
-    const id = this._seq + 1;
-    const person = (key, role) => new Person({ id: key.join("-"), ...this.people.name(key), role });
+    const id = this._seq + 1, mob = mobilityOf(this.world);
+    const person = (key, role) => {
+      const p = new Person({ id: key.join("-"), ...this.people.name(key), role });
+      p.profile = drawProfile(this.people.rng(key, "profile"), { driver: role === "driver", km: purpose === "through" ? 20 : 8, purpose }, mob);
+      return p;
+    };
     return { driver: person(["car", id, "driver"], "driver"), passengers: Array.from({ length: n }, (_, k) => person(["car", id, "passenger", k], "passenger")) };
   }
 
@@ -548,7 +561,7 @@ export class TrafficSimulation extends Simulation {
         this._walkers(p.car, p.back.door, p.spot?.pos ?? p.facility.exit, () => {
           p.leaving = false;
           p.until = this._now() - 1;
-        });
+        }, { after: this._loadTime(p.car) });
         keep.push(p);
         continue;
       }
@@ -582,24 +595,46 @@ export class TrafficSimulation extends Simulation {
     return true;
   }
 
-  /** The people of a car walk from a point to another (on the sidewalks); `then` when they are there. */
-  _walkers(car, from, to, then) {
+  /** Seconds the people of a car take at it to load or unload (luggage, a pram, a wheelchair: core/mobility.js carLegTime). */
+  _loadTime(car) {
+    return carLegTime([car.driver, ...(car.passengers || [])].map((p) => p?.profile), mobilityOf(this.world));
+  }
+
+  /**
+   * The people of a car walk from a point to another (on the sidewalks) at the pace of the slowest of
+   * them; `then` when they are there. `wait`: seconds at the start first (unloading the car),
+   * `after`: seconds at the end (loading it).
+   */
+  _walkers(car, from, to, then, { wait = 0, after = 0 } = {}) {
     const net = networkOf(this.world);
     if (!net || !from || !to) return then();
     const walk = net.walk(from.pos ?? from, to.pos ?? to, { fromKey: from.key ?? null, toKey: to.key ?? null });
     if (!walk || walk.offstage) return then();
-    this.walkers.push({ car, people: [car.driver, ...(car.passengers || [])].filter(Boolean), walk, s: 0, speed: this.mm(WALK_MPS), then, pos: walk.points[0], dir: [1, 0] });
+    const people = [car.driver, ...(car.passengers || [])].filter(Boolean), mob = mobilityOf(this.world);
+    const mps = Math.min(...people.map((p) => (p.profile ? walkingSpeed(p.profile, mob) : WALK_MPS)), WALK_MPS * 2);
+    this.walkers.push({ car, people, walk, s: 0, mps, speed: this.mm(mps), wait, after, then, pos: walk.points[0], dir: [1, 0] });
   }
 
   _walk(dt) {
     if (!this.walkers.length) return;
     const done = [];
     for (const w of this.walkers) {
+      // unloading the car before the walk, loading it after
+      if (w.wait > 0) {
+        w.wait -= dt;
+        continue;
+      }
+      if (w.s >= w.walk.length && w.after > 0) {
+        w.after -= dt;
+        if (w.after > 0) continue;
+        done.push(w);
+        continue;
+      }
       w.s += w.speed * dt;
       const at = polylineAt(w.walk.points, Math.min(w.s, w.walk.length), w.walk.lengths);
       w.pos = at.point;
       w.dir = at.dir;
-      if (w.s >= w.walk.length) done.push(w);
+      if (w.s >= w.walk.length && !(w.after > 0)) done.push(w);
     }
     if (!done.length) return;
     this.walkers = this.walkers.filter((w) => !done.includes(w));
@@ -634,7 +669,7 @@ export class TrafficSimulation extends Simulation {
     // the people walk to the building; their stay begins when they are there
     this._walkers(car, slot.spot?.pos ?? f.exit, plan.door, () => {
       entry.until = this._now() + car.stay;
-    });
+    }, { wait: this._loadTime(car) });
     return true;
   }
 
@@ -778,6 +813,8 @@ export class TrafficSimulation extends Simulation {
     if (car.driver?.name) rows.push(["Driver", car.driver.name]);
     const n = car.passengers?.length ?? 0;
     rows.push(["Riding along", n ? car.passengers.map((p) => p.name).join(", ") : "nobody"]);
+    const load = this._loadTime(car);
+    if (load > 0) rows.push(["At the car", `${Math.round(load)} s to load and unload`]);
     rows.push(["Trip", PURPOSE_WORDS[car.purpose] ?? car.purpose]);
     if (car.destName) rows.push(["To", car.destName]);
     const plan = car.plan;
@@ -832,7 +869,8 @@ export class TrafficSimulation extends Simulation {
       w.people.forEach((p, i) => {
         const back = i * m(0.7);
         const at = polylineAt(w.walk.points, Math.max(0, Math.min(w.s, w.walk.length) - back), w.walk.lengths).point;
-        drawPerson(view, at, { dir: w.dir, speed: 1.3, phase: (this.world.time * 2 + i) % 1, colour: w.car.colour });
+        const still = w.wait > 0 || w.s >= w.walk.length;
+        drawPerson(view, at, { dir: w.dir, speed: still ? 0 : w.mps, phase: (this.world.time * 2 + i) % 1, colour: w.car.colour, ...personLooks(this.world, p.profile) });
       });
     }
   }

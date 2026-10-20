@@ -262,6 +262,8 @@ Geometry: `between: [a, b]` or `from`/`to`. Trains stop along the long edges; *l
 | `lines` | `""` | line names for the timetable trains, comma-separated (`"RE 1, S 2"`) |
 | `headway_s` | what the town needs (layout default without a town) | average time between trains |
 | `canopy` | `false` | draw a canopy over the middle of the platform |
+| `height_m` | `0.76` | height above the rails (0.2–1.2; EBO § 13: 0.38, 0.55, 0.76, the S-Bahn 0.96); where it differs from the floor of the trains (0.76 m) people step up or down, and a wheelchair needs help, see [Passenger mobility](day-and-night.md#passenger-mobility) |
+| `assistance` | `false` | station staff help wheelchair users with a ramp or a lift, from 06:00 to 22:00 |
 
 Over the camera image the platform surface is the real one; in the flyover the platform draws a concrete surface with edge stones and a safety line, unless the orthophoto shows it.
 
@@ -279,6 +281,7 @@ Geometry: `position` (centre). A waiting area with bays along a bus lane on its 
 | `lines` | `""` | line names of the timetable buses, e.g. `"305, 328"` |
 | `headway_s` | what the town needs (layout default without a town) | average time between timetable buses per bay |
 | `shelter` | `true` | shelters at the bays |
+| `kerb_m` | `0.18` | kerb height above the road (a raised bus kerb; a plain one 0.12): the step into the buses (a low-floor bus 0.32 m), bridged by their ramp for a wheelchair |
 
 A bus line that has the terminal as a stop gets a bay of its own (the lines share the first bays in the order of their ids; their buses come over the streets to the bus lane); the other bays keep the timetable buses.
 
@@ -326,6 +329,7 @@ Geometry: `position`, projected onto the nearest street (or the street in `road`
 | `length_m` | `18` | length of the stop |
 | `width_m` | `2.5` | width of the waiting area |
 | `shelter` | `true` | a shelter |
+| `kerb_m` | `0.18` | kerb height above the road (Kasseler Sonderbord; a plain kerb 0.12): the step into the buses (a low-floor bus 0.32 m), bridged by their ramp for a wheelchair |
 
 ### `bus-line`
 
@@ -623,8 +627,8 @@ A list of `{"type": ..., <settings>}`. The built-in simulations also take `"enab
 
 | Type | Settings (defaults) | |
 | --- | --- | --- |
-| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand, without a town; with a town the other passengers follow its residents), `max_per_area` (140), `others` (true) | random passengers at all stops, their moods, boarding and alighting; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
-| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `catchment_m` (1500: the local area whose places the residents fill first), `commuters_out` (0.15 of the workers work elsewhere anyway; those without a job in the town too), `commuters_in` (0.6 of the places left empty are taken by people from elsewhere, by train; values above 1, people per 100 jobs in older layouts, are read as hundredths), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus and by train; the people follow the buildings, and the town sets how often trains, buses and trams run, see [Day and night](day-and-night.md#the-town-simulation) |
+| `passengers` | `base_rate` (0.5 people per second per 25 m of platform at normal demand, without a town; with a town the other passengers follow its residents), `max_per_area` (140), `others` (true), `people` (the table of the people of the whole layout: per trait its share, walking speed, boarding, room and time at the car; only the cells a layout changes, e.g. `{"wheelchair": {"share": 0.02}}`), `standing_per_m2` (4), `onboard_share` (0.25; see [Passenger mobility](day-and-night.md#settings-of-the-people)) | random passengers at all stops, their moods, boarding and alighting door by door, the room in the vehicles; it also handles the people of the town and the travellers of the journeys at stops. `others: false`: only those use the stops, nobody else comes to wait or gets off the trains and buses |
+| `town` | `people_per_100` (12 people shown per 100 residents), `max_people` (300), `walk_max_m` (150: longer ways by bus), `bus_share` (0.8), `car_share` (0.3 of those with a licence and a car drive their long ways), `catchment_m` (1500: the local area whose places the residents fill first), `commuters_out` (0.15 of the workers work elsewhere anyway; those without a job in the town too), `commuters_in` (0.6 of the places left empty are taken by people from elsewhere, by train; values above 1, people per 100 jobs in older layouts, are read as hundredths), `shopping` (0.5 of the adults per day) | residents go to work, school and shopping and come home, on foot, by bus, by car and by train, each trip recorded from door to door; the people follow the buildings, and the town sets how often trains, buses and trams run, see [Day and night](day-and-night.md#the-town-simulation) |
 | `traffic` | `cars_per_km` (20 cars per km of street at normal daytime traffic), `destinations` (0.5 of the cars coming in drive to a building and park there), `parked` (0.7 of the residents' spaces taken at night) | cars with drivers and passengers on the streets, parking near where they go, see [Streets, trams, buses and road traffic](streets-and-buses.md#road-traffic) |
 | `cycling` | `riders_per_km` (8 per km of street at normal daytime traffic), `scooters` (0.25 of them e-scooters), `rule_breakers` (0.15), `children` (0.08), `to_buildings` (0.4 lock their bike near a building for a while) | bikes and e-scooters on the streets, bike lanes and paths, see [Bikes and e-scooters](streets-and-buses.md#bikes-and-e-scooters) |
 | `terminal` | `name`, `default_wagon` (`sgns60`), `rolling_stock`, `trains`, `barges`, `trucks`, `containers`, `fill` | the container terminal: trains, trucks and barges, cranes and reach stackers moving containers, model wagons with deck cards; see [Container terminal](container-terminal.md#layout-file) for the keys. One per layout. |

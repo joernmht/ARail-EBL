@@ -20,6 +20,15 @@
  * From that the town tells the other parts what it needs (`serviceInterval`: how often trains,
  * buses and trams run; `othersAt`: the other passengers at a stop).
  *
+ * Every person has a profile of characteristics (core/mobility.js), drawn once from their own
+ * random stream: pupils are children, seniors old; it sets how fast they walk and get on, the room
+ * they take, and whether they can drive: a long way (longer than `walk_max_m`) is taken by car
+ * (`car_share`) by those with a driving licence and a car, by bus or tram (`bus_share`) by the
+ * others where a line serves it. A car trip is not drawn (the road traffic has cars of its own):
+ * it takes the walks to and from the car, the time to load and unload (luggage, a pram, a
+ * wheelchair), the drive and parking. Each trip is recorded from door to door, in its parts (on
+ * foot, waiting, at the doors, riding, by car): `tripStats()` by group, `tripsCSV()`.
+ *
  * Everything degrades gracefully: without roads people walk straight, without bus lines
  * they walk, without platforms nobody commutes by train, without a passenger simulation
  * stops are skipped.
@@ -31,7 +40,8 @@ import { createRng, dist2, hashKey, polylineAt, rectAround } from "../core/math.
 import { DAY_MINUTES, PROFILES, formatTime, wrapMinutes } from "../core/clock.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
-import { drawPerson } from "./passengers.js";
+import { GROUPS, canDrive, carLegTime, drawProfile, mobilityOf, profileGroups, profileWords, walkingSpeed } from "../core/mobility.js";
+import { drawPerson, personLooks, profileRows } from "./passengers.js";
 
 /** Colours of people by the purpose of their trip (corporate design colours). */
 export const PURPOSE_COLOURS = {
@@ -53,10 +63,17 @@ const VISIT_LABELS = { work: "comes by train to work", school: "pupil, comes by 
 /** Opening hours (minutes) of the destinations. */
 const OPEN = { shop: [7 * 60, 21 * 60], school: [7 * 60 + 30, 15 * 60 + 30] };
 
-const WALK_SPEED = [1.05, 1.5]; // m/s prototype
 const BUS_SPEED = 25 / 3.6; // average speed of a bus incl. stops, for planning (m/s)
 const PATIENCE_MIN = 20; // clock minutes an agent waits for a bus or train
 const ACCESS_M = 300; // longest walk to a bus stop (prototype metres)
+/** A car trip in the town: driving at about 30 km/h, the way 1.3 × as long as the straight line, a minute to park. */
+const CAR_MPS = 30 / 3.6, CAR_DETOUR = 1.3, PARK_S = 60;
+/** The walk to the car at home and from the car park to the door (prototype m). */
+const CAR_WALK_M = [30, 60];
+/** Trips kept for the statistics (the latest). */
+const TRIP_LOG = 5000;
+/** The parts of a trip (`tripStats`), in words. */
+export const TRIP_PARTS = { walk: "on foot", wait: "waiting", doors: "at the doors", ride: "riding", car: "by car" };
 
 /** Shares of the residents: pupils, seniors (and others at home by day), workers. */
 const SHARES = { pupil: 0.15, senior: 0.25, worker: 0.6 };
@@ -140,7 +157,7 @@ class Agent extends Person {
     this.plan = [];
     this.planDay = -1;
     this.next = 0;
-    /** "inside" | "walking" | "stop" (with the passenger simulation) | "riding" | "away" */
+    /** "inside" | "walking" | "stop" (with the passenger simulation) | "riding" | "driving" (by car, not drawn) | "away" */
     this.state = "inside";
     /** Building id while inside, else null. */
     this.inside = null;
@@ -150,8 +167,13 @@ class Agent extends Person {
     this.pos = null;
     this.path = null;
     this.s = 0;
-    this.speed = 1.3;
+    /** Age, aid, luggage, licence and car (core/mobility.js), drawn once from its own stream. */
+    this.profile = null;
+    /** Walking speed (m/s), from the profile. */
+    this.speed = 1.34;
     this.phase = 0;
+    /** Today's trips from door to door: [{purpose, from, to, start, minutes, parts, end}] (clock minutes). */
+    this.trips = [];
     this.person = null;
     this.waitSince = 0;
     this.vehicle = null;
@@ -180,6 +202,10 @@ export class TownSimulation extends Simulation {
     { key: "walk_max_m", label: "Longest walk", type: "number", unit: "m", min: 20, max: 3000, step: 10, default: 150, help: "Longer ways are taken by bus when a line connects both ends." },
     { key: "bus_share", label: "Take the bus", type: "number", unit: "share of long ways", min: 0, max: 1, step: 0.05, default: 0.8 },
     {
+      key: "car_share", label: "Take the car", type: "number", unit: "share of those who can drive", min: 0, max: 1, step: 0.05, default: 0.3,
+      help: "Of the people with a driving licence and a car (see the settings of the passengers), the share who drive their long ways in the town today; the others walk or take the bus.",
+    },
+    {
       key: "catchment_m", label: "Local area", type: "number", unit: "m", min: 50, max: 20000, step: 50, default: 1500,
       help: "Jobs, school places and shops this close to a home (or on a bus or tram line from near it) are taken by its residents first.",
     },
@@ -200,6 +226,10 @@ export class TownSimulation extends Simulation {
     if (+this.config.commuters_in > 1) this.config.commuters_in = Math.min(1, +this.config.commuters_in / 100);
     /** @type {Agent[]} */
     this.agents = [];
+    /** The latest trips from door to door (see `tripStats`): [{id, name, groups, purpose, from, to, start, minutes, parts, end}]. */
+    this.tripLog = [];
+    /** Captive people (no licence or no car) who gave up waiting at a stop or found it closed, since the layout was loaded. */
+    this.stranded = 0;
     this._built = null;
     this._lastMinutes = null;
     this._lastDay = null;
@@ -351,7 +381,12 @@ export class TownSimulation extends Simulation {
         agents.push(a);
       }
     });
-    for (const a of agents) a.speed = createRng(hashKey(a.id, "speed")).uniform(...WALK_SPEED);
+    // what each one is like: from its own random stream (the same id, the same person)
+    const mob = mobilityOf(this.world);
+    for (const a of agents) {
+      a.profile = drawProfile(createRng(hashKey(this.world.seed, a.id, "profile")), this._profileContext(a), mob);
+      a.speed = walkingSpeed(a.profile, mob);
+    }
     // the town worked out again: who is still there stays where they are, on their way, at a stop or on a bus
     const before = new Map((this.agents || []).map((a) => [a.id, a]));
     const kept = new Set();
@@ -441,11 +476,11 @@ export class TownSimulation extends Simulation {
     const station = (p) => this._nearestRailPoint(p);
     const flows = [];
     for (const h of homes) {
-      for (const [id, n] of h.jobs) flows.push({ from: h.pos, to: work.find((p) => p.o.id === id)?.pos, n });
-      for (const [id, n] of h.schools) flows.push({ from: h.pos, to: school.find((p) => p.o.id === id)?.pos, n });
-      if (h.out + h.pupilsOut > 0) flows.push({ from: h.pos, to: station(h.pos), n: h.out + h.pupilsOut });
+      for (const [id, n] of h.jobs) flows.push({ kind: "work", from: h.pos, to: work.find((p) => p.o.id === id)?.pos, n });
+      for (const [id, n] of h.schools) flows.push({ kind: "school", from: h.pos, to: school.find((p) => p.o.id === id)?.pos, n });
+      if (h.out + h.pupilsOut > 0) flows.push({ kind: "train", from: h.pos, to: station(h.pos), n: h.out + h.pupilsOut });
     }
-    for (const g of visitors) if (g.visit !== "shopping") flows.push({ from: station(g.pos), to: g.pos, n: g.n });
+    for (const g of visitors) if (g.visit !== "shopping") flows.push({ kind: "train", from: station(g.pos), to: g.pos, n: g.n });
     const sum = (list, f) => list.reduce((s, x) => s + f(x), 0);
     const totals = {
       residents: sum(homes, (h) => h.R),
@@ -559,8 +594,9 @@ export class TownSimulation extends Simulation {
 
   /**
    * People in the busiest hour on a bus or tram line: the long ways of the morning (longer than
-   * `walk_max_m`) between two stops of the line, by `bus_share`; a way that several lines serve is
-   * shared among them.
+   * `walk_max_m`) between two stops of the line, by `bus_share`, without the workers who drive
+   * (`car_share` of those with a licence and a car); a way that several lines serve is shared among
+   * them.
    */
   _lineRiders(line) {
     const transit = this.world.transit;
@@ -570,11 +606,13 @@ export class TownSimulation extends Simulation {
       const riders = new Map(lines.map((l) => [l.id, 0]));
       const walkMax = +this.config.walk_max_m || 150;
       const share = Math.min(1, Math.max(0, +this.config.bus_share || 0));
+      const mob = mobilityOf(this.world), drive = this._carShare() * mob.adult.licence * mob.everybody.car;
       const near = (l, p) => l.visits.some((v) => v.area && this._metres(dist2(this._accessPoint(v.area, this._nearestAccess(v.area, p)), p)) <= ACCESS_M);
       for (const f of this.demand?.flows || []) {
         if (this._metres(dist2(f.from, f.to)) * 1.3 <= walkMax) continue;
         const serving = lines.filter((l) => near(l, f.from) && near(l, f.to));
-        for (const l of serving) riders.set(l.id, riders.get(l.id) + (f.n * share * PEAK_HOUR) / serving.length);
+        const byCar = f.kind === "work" ? drive : 0;
+        for (const l of serving) riders.set(l.id, riders.get(l.id) + (f.n * share * (1 - byCar) * PEAK_HOUR) / serving.length);
       }
       this._lineDemand = { key, riders };
     }
@@ -681,7 +719,27 @@ export class TownSimulation extends Simulation {
       plan.push({ at: t + between(rng, 15, 35), purpose: "home", to: home, after: true });
     }
     plan.sort((p, q) => p.at - q.at);
+    // today by car (on the long ways in the town), if it can drive; visitors came by train, their car is elsewhere
+    a.drives = a.role !== "visitor" && canDrive(a.profile) && rng.chance(this._carShare());
     return plan;
+  }
+
+  /** The share of those who can drive who take the car today (`car_share`). */
+  _carShare() {
+    const v = Number(this.config.car_share);
+    return Number.isFinite(v) && this.config.car_share !== "" && this.config.car_share != null ? Math.min(1, Math.max(0, v)) : 0.3;
+  }
+
+  /**
+   * What a person's profile is drawn with (core/mobility.js drawProfile): pupils are children,
+   * seniors old, the others adults; the length of their trips (to the train: 30 km, else 2 km) and
+   * what for, for their luggage.
+   */
+  _profileContext(a) {
+    const child = a.role === "pupil" || a.visit === "school";
+    const age = child ? "child" : a.role === "senior" ? "old" : "adult";
+    const train = a.role === "visitor" || a.role === "commuter";
+    return { age, km: train ? 30 : 2, purpose: child ? "school" : a.visit ?? (a.role === "worker" ? "work" : a.role === "senior" ? "shopping" : null) };
   }
 
   _ensurePlan(a) {
@@ -692,6 +750,7 @@ export class TownSimulation extends Simulation {
     a.plan = this._makePlan(a, day);
     a.planDay = day;
     a.next = 0;
+    a.trips = [];
   }
 
   /** Everybody where they are (by their plans) at the current time of day, without travelling. */
@@ -721,6 +780,7 @@ export class TownSimulation extends Simulation {
     a.planDay = -1;
     this._ensurePlan(a);
     a.trip = null;
+    a.record = null;
     a.person = null;
     a.vehicle = null;
     a.path = null;
@@ -839,8 +899,10 @@ export class TownSimulation extends Simulation {
       if (!destId || destId === a.inside) return; // nothing to do (e.g. no shop)
       if (step.to.kind === "shop" && !this._open("shop")) return;
     }
+    const fromId = a.inside;
     this._leave(a);
     a.pos = from.slice();
+    a.record = this._newRecord(step.purpose, fromId, step.to.kind === "station" ? null : destId);
     if (step.to.kind === "station") {
       const legs = this._trainLegs(a, from, fromKey);
       if (!legs) {
@@ -861,15 +923,28 @@ export class TownSimulation extends Simulation {
     return m >= o && m < c;
   }
 
-  /** Legs from a point to a building: walk, or walk + bus + walk. */
+  /** Legs from a point to a building: walk, by car (a long way, for those who drive today), or walk + bus + walk. */
   _legsTo(a, from, fromKey, destId) {
     const dest = this._buildingPos(destId);
     if (!dest) return [];
     const destKey = `building:${destId}:0`;
     const walk = this._walkPath(from, dest, fromKey, destKey);
-    const bus = this._busChoice(a, from, fromKey, dest, destKey, this._metres(walk.length));
+    const walkM = this._metres(walk.length);
+    if (a.drives && walkM > (+this.config.walk_max_m || 150)) return [{ type: "car", toBuilding: destId, seconds: this._carSeconds(a, from, dest) }];
+    const bus = this._busChoice(a, from, fromKey, dest, destKey, walkM);
     if (bus) return [...this._busLegs(bus), { type: "walk", path: null, toBuilding: destId }];
     return [{ type: "walk", path: walk, toBuilding: destId }];
+  }
+
+  /**
+   * How long a trip by car takes (simulated s; it is not drawn): the walk to the car and from the car
+   * park at the person's speed, loading and unloading (luggage, a pram, a wheelchair: carLegTime), the
+   * drive at 30 km/h on a way 1.3 × the straight line, and a minute to park.
+   */
+  _carSeconds(a, from, dest) {
+    const mob = mobilityOf(this.world);
+    const drive = (this._metres(dist2(from, dest)) * CAR_DETOUR) / CAR_MPS;
+    return (CAR_WALK_M[0] + CAR_WALK_M[1]) / Math.max(0.3, a.speed) + 2 * carLegTime(a.profile, mob) + drive + PARK_S;
   }
 
   /**
@@ -882,7 +957,7 @@ export class TownSimulation extends Simulation {
     const shareBoost = a.role === "pupil" || a.role === "senior" ? 0.1 : 0;
     const rng = createRng(hashKey(this.world.seed, a.id, this.world.clock.day, a.next, "mode"));
     if (!transit || !pax || !(walkM > (+this.config.walk_max_m || 150)) || !rng.chance(Math.min(1, (+this.config.bus_share || 0) + shareBoost))) return null;
-    return this._bestBus(from, dest, fromKey, destKey, walkM);
+    return this._bestBus(from, dest, fromKey, destKey, walkM, a.speed);
   }
 
   /** Walk to the stop, wait for the bus of the connection, ride it to the other stop. */
@@ -894,8 +969,8 @@ export class TownSimulation extends Simulation {
     ];
   }
 
-  /** Best bus connection between two points, or null when walking is about as good. */
-  _bestBus(from, dest, fromKey, destKey, walkM) {
+  /** Best bus connection between two points, or null when walking (at `speed`, m/s) is about as good. */
+  _bestBus(from, dest, fromKey, destKey, walkM, speed = 1.34) {
     const transit = this.world.transit;
     if (typeof transit?.connections !== "function") return null;
     const stops = this._busStops();
@@ -914,13 +989,13 @@ export class TownSimulation extends Simulation {
         for (const conn of transit.connections(o.area.id, t.area.id) || []) {
           const headway = this._headway(conn.lineId);
           const ride = this._metres(conn.rideMM || 0) / BUS_SPEED;
-          const time = (o.m + t.m) / 1.3 + headway / 2 + ride;
+          const time = (o.m + t.m) / speed + headway / 2 + ride;
           if (!best || time < best.time) best = { time, conn, fromArea: o.area, toArea: t.area, walk1: o.path, access: o.access };
         }
       }
     }
     if (!best) return null;
-    return best.time < (walkM / 1.3) * 1.3 ? best : null;
+    return best.time < (walkM / speed) * 1.3 ? best : null;
   }
 
   _headway(lineId) {
@@ -973,13 +1048,23 @@ export class TownSimulation extends Simulation {
       a.path = leg.path;
       a.s = 0;
       a.person = null;
+    } else if (leg.type === "car") {
+      // by car: not drawn, there after the time it takes
+      a.state = "driving";
+      a.path = null;
+      a.pos = null;
+      a.person = null;
+      a.carUntil = this.world.time + leg.seconds;
     } else if (leg.type === "wait") {
       const pax = this.passengers;
       a.path = null;
       if (!pax) return this._skipStop(a, leg);
-      // a closed stop: people see it at the entrance and do not go in
+      // a closed stop: people see it at the entrance and do not go in (a captive one has no car to take instead)
       const area = this.world.getStopArea(leg.area);
-      if (area && this.world.disruptions.effectsFor(area).closed) return this._skipStop(a, leg);
+      if (area && this.world.disruptions.effectsFor(area).closed) {
+        if (a.profile && a.profile.age !== "child" && !canDrive(a.profile)) this.stranded++;
+        return this._skipStop(a, leg);
+      }
       const p = pax.enter(leg.area, { agent: a, dockId: leg.dockId, line: leg.line, anyDock: !leg.dockId, at: a.pos });
       if (!p) return this._skipStop(a, leg);
       a.person = p;
@@ -1012,6 +1097,7 @@ export class TownSimulation extends Simulation {
 
   _finishTrip(a) {
     const dest = a.trip?.dest ?? null, station = !!a.trip?.station;
+    this._closeRecord(a, dest && this.world.getObject(dest) ? "arrived" : station ? "train" : "home");
     a.trip = null;
     a.path = null;
     a.person = null;
@@ -1037,6 +1123,8 @@ export class TownSimulation extends Simulation {
   }
 
   _setInside(a, id) {
+    // a trip that ended otherwise (taken off a stop, sent home): recorded as such
+    if (a.record) this._closeRecord(a, "other");
     this._leave(a);
     a.state = "inside";
     a.inside = id && this.world.getObject(id) ? id : null;
@@ -1053,6 +1141,7 @@ export class TownSimulation extends Simulation {
   }
 
   _setAway(a) {
+    if (a.record) this._closeRecord(a, a.trip?.station ? "train" : "other");
     this._leave(a);
     a.state = "away";
     a.pos = null;
@@ -1077,6 +1166,7 @@ export class TownSimulation extends Simulation {
     const leg = a.trip?.legs[a.trip.leg];
     if (leg?.type === "wait" && leg.train) {
       // off by train; visitors and commuters come back by train later
+      this._closeRecord(a, "train");
       a.trip = null;
       this._setAway(a);
       return;
@@ -1105,6 +1195,8 @@ export class TownSimulation extends Simulation {
     }
     const leg = a.trip.legs[a.trip.leg];
     if (leg?.type === "wait") {
+      // a captive one: no car to take instead
+      if (a.profile && a.profile.age !== "child" && !canDrive(a.profile)) this.stranded++;
       // gave up waiting (or the stop was closed): walk instead, or go home
       if (leg.train) {
         a.trip = null;
@@ -1180,6 +1272,7 @@ export class TownSimulation extends Simulation {
       const i = this._nearestAccess(dock.area, this._buildingPos(destId) || this._accessPoint(dock.area));
       const legs = this._legsTo(a, this._accessPoint(dock.area, i), `area:${dock.area.id}:${i}`, destId);
       a.trip = { legs: [{ type: "train-off" }, ...(legs.length ? legs : [{ type: "walk", path: null, toBuilding: destId }])], leg: 0, purpose: a.purpose, dest: destId };
+      a.record = this._newRecord(a.purpose, null, destId, "train");
       a.state = "stop";
     }
     if (pax) {
@@ -1218,6 +1311,7 @@ export class TownSimulation extends Simulation {
     this._lastDay = clock.day;
     for (const a of this.agents) {
       this._ensurePlan(a);
+      if (a.record) this._tally(a, dt);
       if (a.state === "inside" || (a.state === "away" && !a.trip)) {
         const step = a.plan[a.next];
         if (!step || step.at > now) continue;
@@ -1233,6 +1327,11 @@ export class TownSimulation extends Simulation {
           continue;
         }
         this._startTrip(a, step);
+      } else if (a.state === "driving") {
+        if (this.world.time >= a.carUntil) {
+          a.pos = this._buildingPos(a.trip?.legs[a.trip.leg]?.toBuilding) ?? a.pos;
+          this._nextLeg(a);
+        }
       } else if (a.state === "walking") {
         this._walk(a, dt);
         // anger at a bike on the sidewalk passes slowly
@@ -1283,6 +1382,83 @@ export class TownSimulation extends Simulation {
     a.dir = at.dir;
   }
 
+  /* ================================================================ trips from door to door */
+
+  /** Clock minutes since 00:00 of day 0. */
+  _clockNow() {
+    const c = this.world.clock;
+    return (c.day ?? 0) * DAY_MINUTES + c.minutes;
+  }
+
+  /**
+   * A new record of a trip: what for, from and to which building (ids; null: the train or a station),
+   * when it began (clock minutes since day 0) and its parts (clock minutes) so far.
+   */
+  _newRecord(purpose, from, to, fromKind = null) {
+    return { purpose, from: from ?? null, to: to ?? null, fromTrain: fromKind === "train", start: this._clockNow(), parts: { walk: 0, wait: 0, doors: 0, ride: 0, car: 0 } };
+  }
+
+  /**
+   * A step of a trip into its part: on foot (also on the stop area), waiting at a stop, at the doors
+   * (getting on and off), riding, by car.
+   */
+  _tally(a, dt) {
+    const p = a.person?.state;
+    const part = a.state === "walking" ? "walk" : a.state === "riding" ? "ride" : a.state === "driving" ? "car"
+      : a.state === "stop" ? (p === "waiting" ? "wait" : p === "boarding" || p === "onboard" ? "doors" : "walk") : null;
+    if (part) a.record.parts[part] += (dt * this.world.clock.factor) / 60;
+  }
+
+  /** The trip is over (`end`: arrived, train: left by train, home: went home instead): into today's trips and the statistics. */
+  _closeRecord(a, end) {
+    const r = a.record;
+    a.record = null;
+    if (!r) return;
+    r.minutes = this._clockNow() - r.start;
+    r.end = end;
+    a.trips.push(r);
+    if (a.trips.length > 12) a.trips.shift();
+    this.tripLog.push({ id: a.id, name: a.name, groups: profileGroups(a.profile), profile: a.profile, ...r });
+    if (this.tripLog.length > TRIP_LOG) this.tripLog.splice(0, this.tripLog.length - TRIP_LOG);
+  }
+
+  /**
+   * Trips from door to door by group (core/mobility.js GROUPS: everybody, age groups, aids, luggage,
+   * no licence or no car): the trips that reached their building (from home or from the train), their
+   * mean minutes in all and in each part, and the share by car.
+   * @returns {Array<{group: string, label: string, trips: number, minutes: number, parts: Record<string, number>, car: number}>}
+   */
+  tripStats() {
+    const by = new Map();
+    for (const r of this.tripLog) {
+      if (r.end !== "arrived") continue;
+      for (const g of r.groups) {
+        const x = by.get(g) || { trips: 0, minutes: 0, car: 0, parts: Object.fromEntries(Object.keys(TRIP_PARTS).map((k) => [k, 0])) };
+        x.trips++;
+        x.minutes += r.minutes;
+        if (r.parts.car > 0) x.car++;
+        for (const k of Object.keys(TRIP_PARTS)) x.parts[k] += r.parts[k];
+        by.set(g, x);
+      }
+    }
+    return Object.keys(GROUPS).filter((g) => by.has(g)).map((g) => {
+      const x = by.get(g), mean = (v) => Math.round((v / x.trips) * 10) / 10;
+      return { group: g, label: GROUPS[g], trips: x.trips, minutes: mean(x.minutes), parts: Object.fromEntries(Object.entries(x.parts).map(([k, v]) => [k, mean(v)])), car: Math.round((x.car / x.trips) * 100) / 100 };
+    });
+  }
+
+  /** The trips of the statistics as CSV (clock minutes; for the debriefing). */
+  tripsCSV() {
+    const q = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+    const name = (id) => (id ? this.world.getObject(id)?.name ?? id : "");
+    const head = ["id", "name", "characteristics", "purpose", "from", "to", "start", "minutes", ...Object.keys(TRIP_PARTS), "end"];
+    const rows = this.tripLog.map((r) => [
+      r.id, r.name, profileWords(r.profile), r.purpose, r.fromTrain ? "train" : name(r.from), r.to ? name(r.to) : "train", formatTime(r.start % DAY_MINUTES),
+      r.minutes.toFixed(1), ...Object.keys(TRIP_PARTS).map((k) => r.parts[k].toFixed(1)), r.end,
+    ].map(q).join(","));
+    return `${head.join(",")}\n${rows.join("\n")}\n`;
+  }
+
   /** Repair agents whose stop, vehicle or building disappeared. */
   _sanity() {
     const transit = this.world.transit;
@@ -1325,8 +1501,8 @@ export class TownSimulation extends Simulation {
       if (hiddenAt(a.path, a.s)) continue; // in an underpass, or off stage
       if (!view.inImage(x, y, 0)) continue;
       drawPerson(view, [x, y], {
-        dir, speed: a.speed, phase: a.phase, height: 1.6 + (hashKey(a.id) % 30) / 100,
-        colour: mode === "mood" ? moodColor(a.mood ?? 0.85) : a.colour,
+        dir, speed: a.speed, phase: a.phase, height: (a.profile?.age === "child" ? 1.2 : 1.6) + (hashKey(a.id) % 30) / 100,
+        colour: mode === "mood" ? moodColor(a.mood ?? 0.85) : a.colour, ...personLooks(this.world, a.profile),
       });
     }
   }
@@ -1377,24 +1553,32 @@ export class TownSimulation extends Simulation {
       walking: `Walking ${PURPOSE_LABELS[a.purpose] ?? ""}${dest && a.purpose !== "train" ? ` (${dest})` : ""}`.trim(),
       stop: `At a stop ${PURPOSE_LABELS[a.purpose] ?? ""}`.trim(),
       riding: `${a.vehicle?.kind === "tram" ? "On tram" : "On bus"} ${a.vehicle?.line ?? ""}`.trim(),
+      driving: `By car${dest ? ` to ${dest}` : ""}`,
       away: "Away from the layout",
     }[a.state] || a.state;
     const rows = [["Lives", home]];
     if (a.job) rows.push(["Works at", name(a.job)]);
     if (a.school) rows.push(["School", name(a.school)]);
     if (a.shop) rows.push(["Shops at", name(a.shop)]);
+    if (a.profile) rows.push(...profileRows(a.profile, a.speed));
     if (a.mood != null && a.mood < 0.8) rows.push(["Mood", `${Math.round(a.mood * 100)} %: a bike came too close on the sidewalk`]);
     const today = (a.plan || []).map((step, i) => {
       const to = step.to.kind === "building" ? ` (${name(step.to.id)})` : step.to.kind === "shop" ? " (the nearest shop)" : "";
       return `${i < a.next ? "✓ " : ""}${formatTime(step.at)} ${PURPOSE_LABELS[step.purpose] ?? step.purpose}${to}`;
     });
     const related = [a.house?.building, a.trip?.dest].filter((id) => id && this.world.getObject(id));
+    // the trips of today from door to door, in their parts
+    const minutes = (m) => `${Math.round(m)} min`;
+    const trips = (a.trips || []).map((r) => {
+      const parts = Object.entries(TRIP_PARTS).filter(([k]) => r.parts[k] >= 0.5).map(([k, w]) => `${w} ${minutes(r.parts[k])}`);
+      return [`${formatTime(r.start % DAY_MINUTES)} ${PURPOSE_LABELS[r.purpose] ?? r.purpose}: ${minutes(r.minutes)}`, ...parts].join(" · ");
+    });
     return {
       title: a.name,
       subtitle: `Town · ${this._roleLabel(a)}`,
       status: doing,
       rows,
-      sections: today.length ? [{ title: "Today", lines: today }] : [],
+      sections: [...(today.length ? [{ title: "Today", lines: today }] : []), ...(trips.length ? [{ title: "Door to door", lines: trips }] : [])],
       related,
     };
   }
@@ -1405,15 +1589,19 @@ export class TownSimulation extends Simulation {
     return ROLE_LABELS[a.role] ?? a.role;
   }
 
-  /** Counts for the panel: where people are and what they are doing. */
   /** The town's people by their mood (it drops when a bike comes too close on the sidewalk). */
   states() {
     const items = this.agents.map((a) => ({ name: a.name, score: a.mood ?? 0.85, text: `mood ${Math.round((a.mood ?? 0.85) * 100)} %`, key: `resident:${a.id}` }));
     return [{ id: "residents", label: "Residents", measure: "mood", items }];
   }
 
-    townStats() {
-    const out = { total: this.agents.length, home: 0, work: 0, school: 0, shopping: 0, walking: 0, waiting: 0, riding: 0, away: 0, byPurpose: {} };
+  /**
+   * Counts for the panel: where people are and what they are doing (`driving`: by car, not drawn), the
+   * captive ones (`captive`: adults and old people without a licence or a car) and how many times one of
+   * them gave up waiting at a stop or found it closed (`stranded`).
+   */
+  townStats() {
+    const out = { total: this.agents.length, home: 0, work: 0, school: 0, shopping: 0, walking: 0, waiting: 0, riding: 0, driving: 0, away: 0, captive: 0, byPurpose: {} };
     const use = (id) => {
       const o = id ? this.world.getObject(id) : null;
       return o ? (typeof o.use === "function" ? o.use() : o.constructor.use) : null;
@@ -1432,8 +1620,11 @@ export class TownSimulation extends Simulation {
         out.byPurpose[a.purpose] = (out.byPurpose[a.purpose] || 0) + 1;
       } else if (a.state === "stop") out.waiting++;
       else if (a.state === "riding") out.riding++;
+      else if (a.state === "driving") out.driving++;
       else out.away++;
+      if (a.profile && a.profile.age !== "child" && !canDrive(a.profile)) out.captive++;
     }
+    out.stranded = this.stranded;
     return out;
   }
 

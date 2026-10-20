@@ -314,13 +314,16 @@ pax.removeAgents((agent) => agent instanceof MyAgent);   // drop your agents sil
 world.events.on("passenger.boarded", ({ agent, vehicle, dock, area }) => { /* on the vehicle now */ });
 world.events.on("passenger.exited", ({ agent, pos, area }) => { /* left the stop at pos (layout mm) */ });
 world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop deleted) */ });
+world.events.on("passenger.denied", ({ agent, vehicle, reason }) => { /* left behind: "step", "full" or "wheelchair"; it waits for the next one */ });
 ```
 
-`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `accept` (board only vehicles this function accepts), `anyDock`, `at` (where the person comes from), `mood`. A vehicle the person wants that stands at the stop already is boarded at once. An agent with a `colour` property is drawn in that colour while people show trip purposes (Settings → Simulation → Town → Colour of people). With the setting `others: false` the passenger simulation only handles such agents: nobody else comes to wait or gets off the vehicles.
+`enter()` options: `agent` (your object, returned in the events), `dockId` (wait at this dock; without it any dock), `line` (board only vehicles with this `lineId`), `accept` (board only vehicles this function accepts), `anyDock`, `at` (where the person comes from), `mood`, `profile` (its characteristics, default: the agent's `profile`, else drawn), `rideMin` (clock minutes it will ride: a squeezed space costs mood for so long). A vehicle the person wants that stands at the stop already is boarded at once. People go through a door one after the other at the pace of their profile; a person who does not fit, or a wheelchair user without level boarding or help, is left behind (`passenger.denied`) and waits for the next vehicle: your agent decides when to give up (`release`). The doors stay open while somebody is in them (the vehicle's `holdUntil`). An agent with a `colour` property is drawn in that colour while people show trip purposes (Settings → Simulation → Town → Colour of people). With the setting `others: false` the passenger simulation only handles such agents: nobody else comes to wait or gets off the vehicles.
+
+What a person is like comes from `core/mobility.js` (see [Passenger mobility](day-and-night.md#passenger-mobility)): `drawProfile(rng, ctx, mobilityOf(world))` draws a profile (`{age, aid, luggage, licence, car, base_mps}`; `ctx` fixes traits, e.g. `{age: "old"}`, or gives the trip, `{km, purpose}`), `normalizeProfile(spec)` makes one from chosen traits, and `walkingSpeed`, `boardingTime`, `spaceOf`, `carLegTime` and `canDrive` say what it changes. Give your agents a `profile`, and the passenger simulation uses it at the stops.
 
 To make people like the built-in simulations do, use a `Population` (`core/people.js`): `new Population(seed, "my-sim").add(key, spec, Kind)` makes a `Person` (or your subclass `Kind`) with an id, a name made of two bird names in one language (stable for the seed and key, unique in the population), its language (`lang`), `role` and `home`. `population.rng(key)` is the person's own random stream, `pickHome(rng, {homes, outer, outerShare})` picks a home (a house on the layout, a station beyond it, or away) and `residentialBuildings(world)` lists the houses with their residents.
 
-To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs})` (a figure with a shadow, half as dark at night). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge, and also where the picture is crowded (the boards of the stops largest in the picture come first).
+To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir, speed, phase, height, colour, legs, ...personLooks(world, profile)})` (a figure with a shadow, half as dark at night; with its pram, rollator, stick, wheelchair or luggage, and with the setting `spaceCircles` a circle on the ground for the room it takes). Texts for boards come from `statusLines(world, area)` (all status texts of a stop area, the most important first), `dockStatus(world, area)` (its first line) and `boardStatus(world, areas, max)` (the lines of a stop's board over all its areas). Below `BOARD_MIN_PX` (60 CSS px) on the screen the built-in boards shrink to a badge, and also where the picture is crowded (the boards of the stops largest in the picture come first).
 
 ### World API
 
@@ -340,7 +343,7 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.map` | the marker map (`MarkerMap`: `ids()`, `get(id)` → `{x, y, theta, fixed}`, `locked`, `moving`, `version`) |
 | `world.events` | the event bus: `on(name, fn)` returns an unsubscribe function |
 | `world.time`, `speed`, `paused`, `demand`, `scale`, `rng` | simulation state; use `world.rng` (or `createRng(seed)`) for reproducible randomness, never `Math.random` |
-| `world.settings` | display settings: `labels`, `trails`, `showTracks`, `feedVehicles`, `lighting` (day/night lighting on), `peopleColour` (`auto`, `purpose`, `mood`) |
+| `world.settings` | display settings: `labels`, `trails`, `spaceCircles` (the room people take as circles, the loads of vehicles in spaces), `showTracks`, `feedVehicles`, `lighting` (day/night lighting on), `peopleColour` (`auto`, `purpose`, `mood`) |
 | `world.pick(view, pixel)`, `card(hit)`, `findPickable(view, key)` | what is at an image pixel, its info card, the same thing a moment later (see [Pointing at what a simulation draws](#pointing-at-what-a-simulation-draws)) |
 | `terminalOf(world)` | the world's [container terminal](#the-container-terminal), or null (a function of the API) |
 
@@ -366,6 +369,7 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `passenger.boarded` | `{agent, person, vehicle, dock, area}` |
 | `passenger.exited` | `{agent, person, pos, area}` |
 | `passenger.removed` | `{agent, person}` |
+| `passenger.denied` | `{agent, person, vehicle, dock, area, reason}`: left behind (`step`, `full`, `wheelchair`) |
 | `clock.day` | `{day}` at midnight |
 | `clock.set` | `{minutes}` after `world.setTime()` |
 | `disruption.started`, `disruption.ended` | `{disruption}` |
@@ -548,11 +552,14 @@ arail.registry.registerVehicle({
   width_m: 2.65, height_m: 3.6, floor_m: 0.3, gap_m: 0.3, overhang_m: 0,
   extent: (dock) => [dock.s1 - 32, dock.s1],                       // where it stands along the dock (m)
   doors: (dock) => [dock.s1 - 28, dock.s1 - 18, dock.s1 - 8],      // door positions for boarding (m)
+  // for the people getting on and off (optional): the floor at the doors above the rails (m), the gap there,
+  // a ramp the driver puts out for wheelchairs, the door of the multi-purpose area, and its places
+  entry_m: 0.3, door_gap_m: 0.05, assist: "ramp", access_door: 1, seats: 64, standing_m2: 32, wheelchair_places: 2,
   draw(view, vehicle, place) { /* place: {s0, s1, t0, t1} in stop-area metres */ },
 });
 ```
 
-See `core/vehicles.js` for the built-in train and bus. Line buses (`core/transit.js`) use the bus's `extent` and `doors`, so passengers board them like any other bus.
+Without `entry_m` a vehicle's floor is taken to be level with the platform; without places, 30 seats and 10 m² of standing room (a train counts them per car: `seats_per_car`, `standing_per_car_m2`, `carLength_m`; `racks: true`: heavy luggage goes into the racks). See `core/vehicles.js` for the built-in train and bus. Line buses (`core/transit.js`) use the bus's `extent` and `doors`, so passengers board them like any other bus.
 
 A kind that knows where it is along its own track adds `pose(vehicle)` (where it is now, or null), `outline(pose)` (layout mm, for pointing at it) and `doorsOf(vehicle)` (its doors along the dock); `draw` then gets `{def, pose}` as its place. `capacity(vehicle)` (its places) lets the passengers fill it: a full one takes nobody else. The trains of `rail/stock.js` (`RAIL_TRAIN`, registered by `registerRail` in place of core's train) do all of it.
 

@@ -124,7 +124,7 @@ export const RAIL = [
     classes: [
       {
         name: "rail stock", file: "web/arail/rail/stock.js", kind: "module", role: "The trains at the platforms.",
-        attributes: ["LOOKS — by vehicle type: livery, doors, decks, heights", "STOP_MARGIN_M — the front's distance from the platform's end", "RAIL_TRAIN — the vehicle of kind train: pose, doorsOf, outline, capacity, draw"],
+        attributes: ["LOOKS — by vehicle type: livery, doors, decks, heights", "STOP_MARGIN_M — the front's distance from the platform's end", "RAIL_TRAIN — the vehicle of kind train: pose, doorsOf, outline, capacity, draw; for boarding the floor, places and racks of core's TRAIN (entry_m, seats_per_car, wheelchair_places, racks)"],
         operations: ["carsOf(consist) — the cars, with cabs, doors, pantographs and their look", "dockLine(world, dock) — the track, else a line along the platform; kept per layout", "trainPose(world, v) — its cars, its front along the line, its direction; coming in and leaving as far as it is long", "trainDoors(world, v) — along the platform (m)", "trainOutline(pose)"],
       },
       {

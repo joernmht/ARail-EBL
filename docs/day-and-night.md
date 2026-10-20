@@ -128,10 +128,17 @@ From the same numbers the town tells the stops what it needs:
   except on a street or footpath over it. Where the streets do not connect start and goal, they
   walk out of sight. Without any streets people walk straight. A bike that comes too close on the
   sidewalk (or a shared path) makes them angry for a while.
+- **By car**: of the residents with a driving licence and a car ([Passenger mobility](#passenger-mobility)),
+  `car_share` (30 %) drive their ways longer than `walk_max_m` in the town that day (visitors came by
+  train: their car is elsewhere). A trip by car
+  is not drawn (the road traffic has cars of its own): it takes the walk to the car (30 m) and from
+  the car park (60 m) at their speed, loading and unloading (luggage, a pram, a wheelchair), the
+  drive at 30 km/h on a way 1.3 times the straight line, and a minute to park. The others are
+  *captive*: they walk or take the bus and the train. Trips to elsewhere stay by train.
 - **Bus or tram**: a way longer than `walk_max_m` (150 m) is taken by bus or tram with probability
   `bus_share` (80 %; pupils and seniors a little more often) when a bus or tram line connects a stop
   within 300 m of the start with a stop within 300 m of the destination, and it is not much slower
-  than walking. People wait at the stop, board only their line, ride, get off at their stop and walk
+  than walking at their own speed (a slow walker takes the bus sooner). People wait at the stop, board only their line, ride, get off at their stop and walk
   on. Nobody waits longer than 20 clock minutes, or a little longer than the interval of what they
   wait for (an hourly train is worth waiting for): then they walk (or go home instead of taking
   the train).
@@ -151,7 +158,20 @@ colours: **to work** Türkis, **to school** Orange, **shopping** Gelb, **home** 
 **to the train** Rot. Other passengers at platforms and stops keep the mood colours (Türkis = happy,
 Gelb = so-so, Rot = annoyed). **Settings → Simulation → Town → Colour of people** switches between both, or
 everybody by purpose or by mood. The Town section also counts who is at home, at work, at school,
-shopping, on the bus, at stops and away.
+shopping, on the bus, by car, at stops and away, the captive adults (no licence or no car), and how
+often one of them gave up waiting at a stop or found it closed (a cancelled bus strands them: they have
+no car to take instead).
+
+### Trips from door to door
+
+Every trip of a resident is recorded from its door (or the train it came by) to the door it goes
+to, in clock minutes and in its parts: **on foot**, **waiting** at a stop, **at the doors** (getting
+on and off), **riding**, **by car**. The card of a person lists today's trips ("07:12 to work:
+23 min (on foot 9 min, waiting 6 min, riding 7 min)"). **Settings → Simulation → Town** shows the
+mean of the trips that reached their building by group: everybody, children, adults, old people,
+those with a walking stick, a rollator, a wheelchair or a pram, with heavy or bulky luggage, and
+those without a licence or a car; **Download the trips (CSV)** gives every trip for the debriefing.
+`town.tripStats()` and `town.tripsCSV()` give the same to scripts.
 
 ### Settings
 
@@ -161,6 +181,7 @@ shopping, on the bus, at stops and away.
 | `max_people` | 300 | upper limit (phones); scales residents and visitors alike |
 | `walk_max_m` | 150 | longest walk (prototype metres) before the bus is preferred |
 | `bus_share` | 0.8 | share of long ways taken by bus when a line fits |
+| `car_share` | 0.3 | of the people with a driving licence and a car, the share who drive their long ways in the town that day |
 | `catchment_m` | 1500 | local area (prototype metres): places this close to a home, or on a line from near it, are its residents' first |
 | `commuters_out` | 0.15 | share of workers who work elsewhere (by train) although there are jobs; those without a job in the town work elsewhere too |
 | `commuters_in` | 0.6 | share of the jobs, school places and shop visits left empty that people from elsewhere take (by train); a value above 1 from an older layout (people per 100 local jobs) is read as hundredths |
@@ -172,6 +193,134 @@ line changed), everybody who is still there carries on where they are, also on t
 or on a bus; only the people the change adds are placed where their plan says, and only those it
 takes away leave.
 
+## Passenger mobility
+
+All people of the simulations are one kind of person with a **profile** of characteristics
+(`core/mobility.js`): the people at the stops, the town's residents, the journeys' travellers and the
+people in the cars. There are no kinds of people; the traits combine (an old person with a rollator
+and a suitcase):
+
+| Trait | Values |
+| --- | --- |
+| `age` | child, adult, old (65 and older) |
+| `aid` | none, walking stick, rollator, wheelchair, pram (Kinderwagen) |
+| `luggage` | none, light (a bag, a backpack), heavy (a suitcase), bulky (a bike, skis) |
+| `licence`, `car` | a driving licence; a car available |
+
+A profile is drawn once from the person's own seeded random stream, so a run is reproducible. The
+town's pupils are children and its seniors old; the luggage depends on the trip: heavy luggage on
+3 % of the short trips (up to 5 km) and 35 % of the long ones (100 km), in between by the length, half
+of it to work or school. The others at a station make a regional trip (30 km), at a bus or tram stop
+a short one (4 km). A journeys traveller has what its maker chose. Drivers have a licence and a car.
+
+From the profile follow:
+
+- **Walking speed**: a base speed from a normal distribution, N(1.34 m/s, 0.26 m/s) cut to
+  0.5–2.2 m/s (Weidmann 1993), times the factors of the traits: child 0.9, old 0.83 (Knoblauch et al.
+  1996), walking stick 0.65, rollator 0.46, wheelchair 0.7 (Boyce et al. 1999), pram 0.9, heavy
+  luggage 0.85 (Young 1999), bulky 0.8.
+- **Getting on and off** (`boardingTime`): 1.5 s at a door at level boarding (Weidmann 1994), plus
+  0.4 s per 10 cm of step, times the larger of the factors of age and aid, which are small at level
+  boarding and large with a step (old 1.3 / 2.5, walking stick 1.5 / 3, rollator 2 / 4, pram 2 / 5,
+  child 1.2 / 1.6: an old person with a rollator takes 3 s at level boarding and 9.2 s with a step of
+  20 cm), plus loading heavy (3 s) or bulky luggage (8 s), twice as long with a step. Level
+  boarding means the step between the platform (or kerb) and the vehicle's floor at the doors and the
+  gap are at most 5 cm. A **wheelchair** gets on only at level boarding or with help: the ramp of a
+  bus or tram, put out by the driver (60 s, TCQSM 2013; for a step of at most 25 cm), or the lift or
+  ramp of the station's staff (120 s) where the platform has `assistance` (06:00–22:00). A ramp once
+  out serves the next wheelchair user too.
+- **The room it takes** (spaces): a person 1, a child 0.7; heavy luggage adds 0.5 (none in a train's
+  luggage racks), a rollator 0.7, a pram, a wheelchair or bulky luggage 1.5. Squeezed, a person takes
+  0.8, heavy luggage 0.2 (on the lap), a folded rollator 0.3, a pram 1.2; a wheelchair and bulky luggage
+  are not squeezed.
+
+At the stops this means:
+
+- People go through a **door one after the other**, those getting off first, each as long as it
+  takes them: a slow person holds up those behind. People with an aid, a pram or bulky luggage take
+  the door of the multi-purpose area (the bus's and the tram's second door, the train's middle one).
+  A story's train and bus keep to the time of their step and do not wait: nobody queues at their doors.
+- The **doors stay open** while somebody is in them (at most a minute past the dwell; as long as a
+  ramp or a lift is in use), and for those waiting at a door at most 20 s past it: the dwell follows
+  the boarding, and a wheelchair user's ramp keeps the bus 60 s.
+  The card of a stop says how many seconds the doors were held past the dwell.
+- **Vehicles hold spaces, not heads**: seats and standing room at 4 people per m² (VDV), a 12 m bus 32
+  seats and 11 m² (76 spaces, 1 wheelchair place), a tram 60 seats and 30 m² (180, 2), a train per 26 m
+  car 80 seats and 10 m² (120; 2 wheelchair places). A vehicle comes in with the riders of the town and
+  the journeys who stay on and a quarter of its spaces of people riding through (more in the rush
+  hours); those getting off make room, however full it came in. A train of the rail package with a
+  consist also counts heads against its places (its card: *On board*, *Left behind*). A person gets on if its space fits; else squeezed, down to its least, which costs mood (0.05
+  per squeezed space and minute of the ride); else it is **left behind** (`passenger.denied`: full, no
+  wheelchair place, or no level boarding without help) and waits for the next one, its mood down.
+- **Heights**: a platform is 0.76 m above the rails unless set (`height_m`: 0.38, 0.55, 0.76, 0.96;
+  EBO § 13), a bus stop's or terminal's kerb 0.18 m (`kerb_m`, a raised bus kerb); a tram stop by its
+  kind. The trains' floor at the doors is 0.76 m, a low-floor bus 0.32 m, a tram 0.30 m: a train at a
+  0.55 m platform has a step of 21 cm, a bus at a raised kerb one of 14 cm (its ramp bridges it).
+
+The card of a person shows its characteristics, walking speed, the room it takes and whether it can
+drive; the card of a stop the step into its vehicles and the help there, how many got on and how long
+they took at the doors (and what age, aids and luggage added), the share with luggage, those left
+behind and squeezed in; the card of a bus or tram line the same for the people who got on its
+vehicles; the card of a vehicle at a stop its load in spaces. **Settings → View → The
+room people take** draws a circle on the ground under each person whose area is its space (a person
+with a pram is visibly larger), and the load of each vehicle at a stop in spaces. The Overview lists
+the vehicles at the stops by the room left in them.
+
+### Settings of the people
+
+The traits and their effects are one table of the passenger simulation, `people`, for the whole
+layout (the town, the journeys and the road traffic use the same): a row for everybody and one per
+trait, a cell per effect. A layout sets only the cells it changes; the others keep their defaults:
+
+```json
+{ "type": "passengers", "people": { "wheelchair": { "share": 0.02 }, "everybody": { "walk_mps": 1.3 }, "old": { "board_step": 3 } } }
+```
+
+| Row | `share` | `speed` | `board`, `board_step` | `load_s` | `space`, `squeeze` | `car_s` | Also |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `child` | 0.15 | 0.9 | 1.2, 1.6 | | 0.7 | | |
+| `adult` | | | | | | | `licence` 0.87 |
+| `old` | 0.22 | 0.83 | 1.3, 2.5 | | | | `licence` 0.75 |
+| `stick` | 0.1 | 0.65 | 1.5, 3 | | | | |
+| `rollator` | 0.06 | 0.46 | 2, 4 | | 0.7, 0.3 | | |
+| `wheelchair` | 0.01 | 0.7 | 2.5 | | 1.5 | 120 | `ramp_s` 60, `lift_s` 120 |
+| `pram` | 0.03 | 0.9 | 2, 5 | | 1.5, 1.2 | 60 | |
+| `light` | 0.45 | | | | | | |
+| `heavy` | 0.03 | 0.85 | | 3 | 0.5, 0.2 | 20 | `share_long` 0.35 |
+| `bulky` | 0.02 | 0.8 | | 8 | 1.5 | 20 | |
+
+- `share`: children, old people and wheelchair users of the people (Destatis 2023; about 1.6 million
+  wheelchair users in Germany, fewer of them travel); a stick and a rollator of the old people (of the
+  adults a tenth); a pram of the adults (of the old a third); luggage of the trips: heavy on trips up
+  to 5 km, `share_long` on trips of 100 km and more (in between by the length, half of it to work or
+  school). `licence`: a driving licence (MiD 2017).
+- `speed`: the factors of the walking speed (Knoblauch et al. 1996, Boyce et al. 1999, Young 1999).
+- `board`, `board_step`: the boarding factors at level boarding and with a step (a wheelchair only
+  at level boarding or on the help); `load_s`: seconds to load the luggage (twice with a step);
+  `ramp_s`, `lift_s`: a vehicle's ramp and the staff's lift (TCQSM 2013).
+- `space`: a child's own room (a person 1), or the room an aid or luggage adds (heavy luggage none in
+  a train's racks); `squeeze`: the least it takes squeezed (without one, as a wheelchair and bulky
+  luggage, it is not squeezed).
+- `car_s`: seconds at each end of a trip by car.
+
+| `everybody` | Default | Meaning (source) |
+| --- | --- | --- |
+| `walk_mps`, `walk_sd_mps` | 1.34, 0.26 | the normal distribution of the base speed (Weidmann 1993) |
+| `board_s`, `board_step_s` | 1.5, 0.4 | seconds at a door, and per 10 cm of step (Weidmann 1994) |
+| `squeeze` | 0.8 | a person squeezed takes this much of its room |
+| `squeeze_mood` | 0.05 | mood lost per squeezed space and minute of the ride |
+| `car` | 0.75 | a car for those with a driving licence (MiD 2017) |
+
+Two more settings of the passenger simulation are about the vehicles:
+
+| Field | Default | Meaning (source) |
+| --- | --- | --- |
+| `standing_per_m2` | 4 | people standing per m² (VDV) |
+| `onboard_share` | 0.25 | the share of a vehicle's spaces taken by people riding through when it comes in |
+
+The values without a source are estimates for teaching; the architecture page lists every row
+with its cells, and `core/mobility.js` (`PEOPLE`) every cell with its range and source.
+
 ## For plugins: handing people over at stops
 
 The passenger simulation can take care of people of other simulations at stops, so waiting,
@@ -181,15 +330,20 @@ ARail](extending.md#handing-people-over-at-stops)):
 ```js
 const pax = world.simulations.find((s) => s.constructor.type === "passengers");
 // wait at a stop area for line "bus-line-1" at a given dock
-const person = pax.enter(areaId, { agent: myAgent, dockId, line: "bus-line-1", at: [x, y] });
+const person = pax.enter(areaId, { agent: myAgent, dockId, line: "bus-line-1", at: [x, y], rideMin: 12 });
 // let agents get off a vehicle standing at a dock
 pax.alight(vehicle, dock, [agentA, agentB]);
 pax.release(person); // give up waiting and walk to the exit
 world.events.on("passenger.boarded", ({ agent, vehicle, dock }) => { /* on the vehicle now */ });
 world.events.on("passenger.exited", ({ agent, pos }) => { /* left the stop at pos (layout mm) */ });
 world.events.on("passenger.removed", ({ agent }) => { /* dropped (cleared, stop deleted) */ });
+world.events.on("passenger.denied", ({ agent, reason }) => { /* left behind: "step", "full" or "wheelchair" */ });
 ```
 
+An agent with a `profile` (`core/mobility.js`: `drawProfile`, `normalizeProfile`) walks, gets on and
+takes room by it; without one the passenger simulation draws one. `rideMin` (clock minutes) is how
+long it will ride: a squeezed space costs mood for so long.
+
 Agents with a `colour` property are drawn in that colour (people colour "auto"/"purpose").
-`drawPerson(view, [x, y], {dir, speed, phase, height, colour})` draws a person like the built-in
-simulations do. `world.setTime("06:30")` jumps the clock and emits `clock.set`.
+`drawPerson(view, [x, y], {dir, speed, phase, height, colour, ...personLooks(world, profile)})` draws a
+person like the built-in simulations do, with its aid and luggage (and its room, with the setting). `world.setTime("06:30")` jumps the clock and emits `clock.set`.

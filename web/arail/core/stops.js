@@ -43,8 +43,13 @@ export class StopArea {
    * @param {{kind: "board" | "island", reach: number, s: number} | null} [o.crossing] a strip with traffic people
    *   cross (m): to the vehicles, beyond the edge of the docks ("board": a tram in the middle of the street),
    *   or to the area from the sidewalk, beyond the other edge at `s` ("island": an island in a street)
+   * @param {number | null} [o.height_m] height of the platform or the kerb above the rails or the road (m),
+   *   for the step into the vehicles (core/mobility.js); null: not known (the vehicle's own floor height)
+   * @param {number | null} [o.gap_m] the gap people step over to the doors (m), where it is wider than the
+   *   vehicle's own (a tram stop on the road: the lane between the kerb and the tram)
+   * @param {"staff" | null} [o.assist] help for wheelchair users at the stop: station staff with a ramp or a lift
    */
-  constructor({ id, owner, kind, origin, dir, lengthMM, widthMM, scale, docks = [], access = null, crossing = null }) {
+  constructor({ id, owner, kind, origin, dir, lengthMM, widthMM, scale, docks = [], access = null, crossing = null, height_m = null, gap_m = null, assist = null }) {
     this.id = id;
     this.owner = owner;
     this.kind = kind;
@@ -72,6 +77,9 @@ export class StopArea {
       managed: d.managed ?? null,
     }));
     this.crossing = crossing;
+    this.height_m = Number.isFinite(height_m) ? height_m : null;
+    this.gap_m = Number.isFinite(gap_m) ? gap_m : null;
+    this.assist = assist === "staff" ? "staff" : null;
     this.access = access || [
       { s: 0.3, t: 0, weight: 0.35 },
       { s: this.L - 0.3, t: 0, weight: 0.35 },
