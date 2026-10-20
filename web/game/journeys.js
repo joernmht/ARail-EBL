@@ -51,8 +51,6 @@ export class JourneysPanel {
     this.open = new Set();
     /** A wider panel (on large screens) for the results. */
     this.wide = storage.get("arail.journeysWide", false) === true;
-    /** What Settings → Simulation says of the module while the layout does not have it. */
-    this.settingsHint = "An exercise: instead of a town full of generated people, every attendee makes one traveller with a start and an aim and chooses a travel plan with transfers, on foot, by bus and by train; then all follow their travellers on the layout. The Journeys tab makes the travellers and compares planned and real arrivals.";
     this._removeAll = 0;
     this.el = null;
   }
@@ -80,7 +78,7 @@ export class JourneysPanel {
 
   /** The panel is wide while the Journeys tab is shown and the wide panel is chosen. */
   syncWidth() {
-    if (this.app.activeTab === "journeys") document.querySelector(".main")?.classList.toggle("wide", this.wide);
+    if (this.app.showing("journeys")) document.querySelector(".main")?.classList.toggle("wide", this.wide);
   }
 
   setWide(on) {
@@ -90,7 +88,7 @@ export class JourneysPanel {
     this.update();
   }
 
-  /** "Add journeys to this layout" (Settings → Simulation): a journeys entry with the default settings. */
+  /** "Add to this layout" (the case Journeys while the layout has none): a journeys entry with the default settings. */
   async addJourneys() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "journeys" }];
@@ -121,7 +119,7 @@ export class JourneysPanel {
       this.renderForm();
     }
     if (!sim) {
-      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys. Settings → Simulation adds them, or switches on the module of the lab example."));
+      morph(e.head, h("h2", { tabindex: "-1" }, "Journeys"), h("p", { class: "hint" }, "This layout has no journeys."));
       morph(e.list);
       morph(e.results);
       return;

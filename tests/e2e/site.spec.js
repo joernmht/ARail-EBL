@@ -35,9 +35,10 @@ test("project page hands over from the picture to the applications, each opening
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(examples).toHaveLength(6);
   // the cards of the stories: the story in the app, the game on the game page
-  for (const [card, layer, tab] of [["#app-infrastructure", "infrastructure", "infra"], ["#app-journeys", "journeys", "journeys"]]) {
-    await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
-    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+  // (the app's case of each story; the game page's case of each game)
+  for (const [card, layer, story, game] of [["#app-infrastructure", "infrastructure", "infra-disruption", "infra"], ["#app-journeys", "journeys", "journeys", "journeys"]]) {
+    await expect(page.locator(`${card} .acts a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${story}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${game}`);
   }
   // no dated "new from the lab" section: what is new goes to the changelog (#181)
   await expect(page.locator("#lab, .fresh")).toHaveCount(0);
@@ -55,9 +56,9 @@ test("project page hands over from the picture to the applications, each opening
   }
   // the stories of the app open their module of Bf Neustadt; their games are a link to the game page
   const neustadt = await (await request.get("/layouts/ebl-neustadt.json")).json();
-  for (const [card, layer, tab] of [["#app-operations", "operations", "ops"], ["#app-infrastructure", "infrastructure", "infra"]]) {
-    await expect(page.locator(`${card} a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${tab}`);
-    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${tab}`);
+  for (const [card, layer, story, game] of [["#app-operations", "operations", "evu-disruption", "ops"], ["#app-infrastructure", "infrastructure", "infra-disruption", "infra"]]) {
+    await expect(page.locator(`${card} a.btn.primary`)).toHaveAttribute("href", `app/?layout=../layouts/ebl-neustadt.json&layers=${layer}#${story}`);
+    await expect(page.locator(`${card} .acts a`, { hasText: "The game" })).toHaveAttribute("href", `game/?layout=../layouts/ebl-lab.json&layers=${layer}#${game}`);
     expect(neustadt.layers.map((l) => l.id), card).toContain(layer);
   }
   // cooperation: the contact person by email

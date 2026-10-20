@@ -34,7 +34,6 @@ export const TEXTS = {
   "Room": "Platzbedarf",
   "{n} spaces in a vehicle": "{n} Plätze im Fahrzeug",
   "Driving licence": "Führerschein",
-  "Left behind": "Stehen gelassen",
   "once": "einmal",
   "{n} times": "{n}-mal",
   "At the door": "An der Tür",
@@ -70,7 +69,6 @@ export const TEXTS = {
   "{n} s past the dwell": "{n} s über die Haltezeit",
   // ------------------------------------------------------------ the card of a vehicle, the Overview
   "{n} of {n2} spaces": "{n} von {n2} Plätzen",
-  "{n} seats": "{n} Sitzplätze",
   "Wheelchair places": "Rollstuhlplätze",
   "{n} of {n2} taken": "{n} von {n2} belegt",
   "Vehicles at the stops": "Fahrzeuge an den Haltestellen",

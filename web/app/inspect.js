@@ -48,8 +48,7 @@ export class Inspector {
 
   /** Taps open cards outside Build and Terminal (there they select and pick). */
   get clicks() {
-    const tab = this.app.activeTab;
-    return tab !== "build" && tab !== "terminal";
+    return !this.app.showing("build") && !this.app.showing("terminal");
   }
 
   /** The tooltip follows the mouse unless something is being placed or dragged. */

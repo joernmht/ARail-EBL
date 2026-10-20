@@ -3,6 +3,7 @@
 // platform track and the bus bay kept free, the clock, the camera that follows Ada and her bus); the
 // game page keeps the journeys exercise.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase, openModules } from "./ui.js";
 
 const STORY = "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys";
 
@@ -28,26 +29,26 @@ const storyDisruptions = (page) => page.evaluate(() => window.__arail.world.disr
   .filter((d) => d.id.startsWith("story:")).map((d) => `${d.type}@${d.target}`).sort());
 
 const title = (page) => page.locator("#journeysStoryTitle");
-const step = (page, name) => page.locator("#panel-journeys .story-steps button", { hasText: name });
+const step = (page, name) => page.locator("#casePanel .story-steps button", { hasText: name });
 
-test("the app opens Bf Neustadt; Settings switches on the journeys story", async ({ page }) => {
-  const errors = await open(page, "/app/#simulate");
-  await expect(page.locator("#tab-journeys")).toBeHidden();
-  const on = page.locator("#journeysOpenExample");
-  await expect(on).toHaveText("Switch on the module “Journeys”");
+test("the app opens Bf Neustadt; the case Journeys switches on the journeys story", async ({ page }) => {
+  const errors = await open(page, "/app/#overview");
+  expect(await caseReady(page, "journeys")).toBe(false);
+  await openCase(page, "journeys");
+  const on = page.locator("#caseOn");
+  await expect(on).toHaveText("Switch on “Journeys”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#tab-journeys")).toBeVisible();
-  await page.locator("#tab-journeys").click();
-  await expect(page.locator("#panel-journeys h2").first()).toHaveText("Ada's journey");
+  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Ada's journey");
   await expect(title(page)).toHaveText("Ada sets off");
-  await expect(page.locator("#panel-journeys .story-count")).toHaveText("Step 1 of 11");
+  await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 11");
   expect(errors).toEqual([]);
 });
 
 test("the journeys story: Next and Back, the list of steps, a clicker; her track and her bay kept free; the clock", async ({ page }) => {
   const errors = await open(page, STORY);
-  await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
   await expect(title(page)).toHaveText("Ada sets off");
   await expect(page.locator("#journeysStoryBack")).toBeDisabled();
   expect(await storyDisruptions(page)).toEqual([]);
@@ -63,7 +64,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   // the train is late: the platform shows it; the story's disruptions are no toasts
   await page.locator("#journeysStoryNext").click();
   await expect(title(page)).toHaveText("RB 31 is 20 minutes late");
-  await expect(page.locator("#panel-journeys .story-now")).toContainText("a level crossing fault near Bergheim");
+  await expect(page.locator("#casePanel .story-now")).toContainText("a level crossing fault near Bergheim");
   expect(await page.evaluate(() => {
     const w = window.__arail.world;
     return w.disruptions.effectsFor(w.stopAreas().find((a) => a.id === "platform-1")).messages;
@@ -84,11 +85,11 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   expect(await page.evaluate(() => window.__arail.world.clock.label())).toBe("08:00");
   await page.keyboard.press("PageDown");
   await expect(title(page)).toHaveText("Ada in Altstadt: her journey in numbers");
-  await expect(page.locator("#panel-journeys .story-now")).toContainText("12 minutes late");
+  await expect(page.locator("#casePanel .story-now")).toContainText("12 minutes late");
   expect(await storyDisruptions(page)).toEqual([]);
   await page.keyboard.press("PageDown");
   await expect(title(page)).toHaveText("Her rights as a passenger");
-  await expect(page.locator("#panel-journeys .story-now")).toContainText("25 % of her fare back");
+  await expect(page.locator("#casePanel .story-now")).toContainText("25 % of her fare back");
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText("Ada in Altstadt: her journey in numbers");
 
@@ -101,10 +102,10 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   // the module switched off in the middle of the story: nothing of it is left on the layout
   await step(page, "To the bus station").click();
   expect(await storyDisruptions(page)).toHaveLength(3);
-  await page.locator("#tab-overview").click();
+  await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#tab-journeys")).toBeHidden();
+  expect(await caseReady(page, "journeys")).toBe(false);
   expect(await page.evaluate(() => window.__arail.world.disruptions.active.length)).toBe(0);
   expect(errors).toEqual([]);
 });
@@ -139,11 +140,11 @@ test("Camera follows: the flyover goes with Ada through the town and with her bu
   expect(errors).toEqual([]);
 });
 
-test("the game page keeps the journeys exercise in its Journeys tab", async ({ page }) => {
+test("the game page keeps the journeys exercise in its case Journeys", async ({ page }) => {
   const errors = await open(page, "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys");
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys"), null, { timeout: 30_000 });
-  await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-journeys h2", { hasText: "New traveller" })).toBeVisible();
+  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2", { hasText: "New traveller" })).toBeVisible();
   expect(await page.evaluate(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"))).toBe(false);
   expect(errors).toEqual([]);
 });

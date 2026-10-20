@@ -3,6 +3,7 @@
 // plans on the layout, "Show" following one in the flyover, the results and their CSV, the
 // travellers kept with the layout, and the module offered in Settings → Simulation.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase, openModules } from "./ui.js";
 
 const PATH = "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
 
@@ -39,8 +40,8 @@ async function make(page, { name = "", from, to, leave, transfer = null, pick = 
 test("make travellers, choose their plans, follow them and compare the arrivals", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await open(page);
-  await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-journeys h2").first()).toHaveText("Journeys");
+  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Journeys");
   // the town's residents stay at home; the box brings them back and takes them away again
   await expect(page.locator("#journeysCrowd")).not.toBeChecked();
   // a plan for a house to a station beyond the layout: on foot to platform 2, the S 8
@@ -122,28 +123,25 @@ test("make travellers, choose their plans, follow them and compare the arrivals"
   expect(errors).toEqual([]);
 });
 
-test("the generated people can come back; Settings → Simulation offers the module; journeys can be added to another layout", async ({ page }) => {
+test("the generated people can come back; the case offers the module while it is off; journeys can be added to another layout", async ({ page }) => {
   const errors = await open(page);
   await page.locator("#journeysCrowd").check();
   await page.waitForFunction(() => window.__arail.world.simulations.find((s) => s.constructor.type === "town").agents.length > 0);
   await page.locator("#journeysCrowd").uncheck();
   await page.waitForFunction(() => !window.__arail.world.simulations.find((s) => s.constructor.type === "town").enabled);
-  // the lab without the module: Settings → Simulation offers it
-  await page.locator("#tab-overview").click();
+  // the lab without the module: the case offers it
+  await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Journeys", exact: true }).click();
   await page.waitForFunction(() => !window.__arail.journeys.sim);
-  await expect(page.locator("#tab-journeys")).toBeHidden();
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#journeysOpenExample")).toHaveText("Switch on the module “Journeys”");
+  expect(await caseReady(page, "journeys")).toBe(false);
+  await openCase(page, "journeys");
+  await expect(page.locator("#caseOn")).toHaveText("Switch on “Journeys”");
   // another layout: added to it, with the lines named on its platforms
   await page.evaluate(() => window.__arail.openExample("neustadt"));
   await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await page.locator("#journeysAdd").click();
+  await page.locator("#caseAdd").click();
   await page.waitForFunction(() => window.__arail.journeys.sim);
-  await expect(page.locator("#tab-journeys")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#journeyFrom option").first()).toBeAttached();
   expect(errors).toEqual([]);
 });

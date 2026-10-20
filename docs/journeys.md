@@ -48,7 +48,7 @@ the times of the story agree; the cards at the end never set it back.
 While the story keeps a track or a bay for its own train or bus, the timetable's trains and buses
 keep off it: track G1 from step 3 to step 9, both bays of the bus station in steps 7 and 8 (her bus
 drives through bay A to bay B). It does so with the stories' disruption *story-train* (with the
-passengers waiting for the story's train and bus), hidden in the Disruptions tab and quiet: the
+passengers waiting for the story's train and bus), hidden in Interaction → Disruptions and quiet: the
 platform shows its message, a bay says nothing, and the top bar counts it only while it has a message. When the story's train or bus stops and leaves, it tells the world as
 the timetable's vehicles do, so the passengers waiting there get on and others get off; going to
 another step while it stands at its dock lets it leave, so nobody is left walking to its doors.
@@ -77,7 +77,7 @@ example.
 
 ## Running the exercise
 
-1. Open the lab example on the game page and switch on the module **Journeys** (Overview → Modules, or
+1. Open the lab example on the game page and switch on the module **Journeys** (Interaction → Modules, or
    `game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
    home and no other passengers come; the trains run to the timetable.
 2. Set the time of day (Settings → Simulation → Time of day, e.g. 07:00) and pause (Space) while the travellers
@@ -87,7 +87,7 @@ example.
    then **Find travel plans** and **Choose** one of them. The traveller gets a number and a colour.
 4. Resume. **Show** follows a traveller with the flyover's camera; its box says what it is doing
    ("Waiting for S 8 → Waldau 07:41 at Platform 2", "On RE 1 to Bahnhof, arrives 08:59").
-5. Disturb the operations: the Disruptions tab (switch on the module **Disruptions**) holds or cancels the trains at a platform; with the
+5. Disturb the operations: Interaction → Disruptions (switch on the module **Disruptions**) holds or cancels the trains at a platform; with the
    module **Rail operations** on as well, drivers call in sick and units fail.
 6. Talk about the **Results**: who arrived when, how late, how many trains were missed or cancelled;
    **Download results (CSV)** for the debriefing.
@@ -111,7 +111,7 @@ simulation entries:
 
 The first two are [patches](layout-format.md#layers) of the base's simulations: no other passengers
 at the stops, and the town switched off while the module is on (the box *Generated people too* in
-the Journeys tab brings them back). The journeys have the network of the rail operations: the
+Railway undertaking → Journeys brings them back). The journeys have the network of the rail operations: the
 station **Bahnhof** with platforms 1 and 2 and four lines out to stations beyond the layout, **RE 1**
 to Altstadt (47 min, hourly), **RB 33** to Bergheim (35 min, hourly), **S 2** to Talsee (25 min) and
 **S 8** to Waldau (24 min), both every 30 minutes. The RE and the RB stop at platform 1, the S-Bahn
@@ -223,7 +223,7 @@ name of their line (the feed's `line`, e.g. "S 8").
 Without `stations` and `lines`, the network is made from the platforms' line names, as in the rail
 operations: every line named on a platform runs out to a station beyond the layout and back.
 
-## The Journeys tab of the game page
+## Railway undertaking → Journeys on the game page
 
 - **New traveller**: name, from, to, leaves at, transfer time, its age, walking aid and luggage;
   **Find travel plans** lists the plans

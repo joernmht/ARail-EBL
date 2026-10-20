@@ -7,7 +7,8 @@
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
  * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
  * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
- * (`services.planner`, the operations simulation) can take over rail docks: they are in mode
+ * (`services.planner`: the operations simulation, the journeys' trains, the operations plan while it
+ * runs) can take over rail docks: they are in mode
  * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
  * Docks without an interval of their own (`dock.auto`) run as often as the town needs
  * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
@@ -15,9 +16,15 @@
  * Vehicle life cycle and events: `vehicle.arriving` -> `vehicle.arrived` (doors open) ->
  * `vehicle.departing` (doors close: when the dwell is over and nobody is in the doors any more,
  * `holdUntil`) -> `vehicle.departed`; or `vehicle.cancelled`.
+ *
+ * A vehicle comes in with people on board: more in the rush hours (the timetable's demand when it
+ * was sent) and with more passenger demand. A kind of vehicle that knows its places (`capacity`;
+ * the trains of rail/stock.js) is then full at some point: the passengers simulation lets nobody
+ * else on. A kind that knows where it is along its own track (`pose`) is placed, pointed at and
+ * boarded there (`outline`, `doorsOf`), not in a box over the whole dock.
  * @module arail/core/services
  */
-import { smoothstep } from "./math.js";
+import { hashKey, smoothstep } from "./math.js";
 
 /** Whether the timetable keeps off a dock: closed (a track closure), or kept for a story's own vehicle. */
 const kept = (fx) => fx.closed || fx.reserved;
@@ -43,6 +50,14 @@ export class Vehicle {
     this.holdUntil = 0;
     // trains on the left edge travel towards s = 0, on the right edge towards s = L; buses always forward
     this.direction = kind === "bus" ? 1 : -dock.side;
+    /** The timetable's demand when it was sent (the clock's profile): in the rush hours trains run longer (rail/trains.js). */
+    this.demand = 1;
+    /** Share of its places taken when it comes in, 0…1. */
+    this.occupancy = 0.5;
+    /** People on board (null until counted, see ServiceManager.onboardOf). */
+    this.onboard = null;
+    /** People who did not get on because it was full. */
+    this.leftBehind = 0;
   }
 
   get doorsOpen() {
@@ -60,7 +75,8 @@ export class ServiceManager {
     /** @type {Map<string, {dock: object, vehicle: Vehicle | null, timer: number, heldFor: number, mode: string, manual: object | null}>} */
     this.docks = new Map();
     /**
-     * Something that runs the trains of some docks itself (the operations simulation), or null:
+     * Something that runs the trains of some docks itself (the operations simulation, the journeys'
+     * trains, the operations plan while it runs), or null:
      * `{claims(dock) -> boolean, statusLines?(area) -> string[]}`.
      */
     this.planner = null;
@@ -223,6 +239,9 @@ export class ServiceManager {
       trainId,
       approach: this.world.layout.services.approach_s,
     });
+    // how full it comes in: by the time of day and the demand, its own share by its id (no random number of the world drawn)
+    v.demand = this.world.clock.demand(dock.kind === "bus" ? "bus" : "rail");
+    v.occupancy = Math.min(1, Math.max(0.05, (0.1 + 0.45 * v.demand * this.world.demand) * (0.8 + (0.4 * (hashKey(v.id) % 1000)) / 1000)));
     st.vehicle = v;
     st.heldFor = 0;
     this._emit("vehicle.arriving", v);
@@ -314,12 +333,17 @@ export class ServiceManager {
   }
 
   /**
-   * Where a vehicle is drawn: its extent along the area and across it, in metres.
-   * @returns {{s0: number, s1: number, t0: number, t1: number, def: object} | null}
+   * Where a vehicle is drawn: its extent along the area and across it, in metres; for a kind on its
+   * own track (`def.pose`, the trains of rail/stock.js) where it is along it.
+   * @returns {{s0: number, s1: number, t0: number, t1: number, def: object} | {def: object, pose: object} | null}
    */
   placement(v) {
     const def = this.world.registry.vehicles.get(v.kind);
     if (!def) return null;
+    if (def.pose) {
+      const pose = def.pose(v);
+      return pose ? { def, pose } : null;
+    }
     const dock = v.dock, area = dock.area;
     const [a, b] = def.extent(dock);
     const travel = b - a + 5;
@@ -336,7 +360,21 @@ export class ServiceManager {
   /** Door positions (s, m) of a vehicle standing at its dock. */
   doors(v) {
     const def = this.world.registry.vehicles.get(v.kind);
-    return def ? def.doors(v.dock) : [];
+    if (!def) return [];
+    return def.doorsOf ? def.doorsOf(v) : def.doors(v.dock);
+  }
+
+  /** The places of a vehicle (seats and standing), or null where its kind does not count them. */
+  capacityOf(v) {
+    return this.world.registry.vehicles.get(v.kind)?.capacity?.(v) ?? null;
+  }
+
+  /** People on board of a vehicle with places (counted the first time from how full it came in), else null. */
+  onboardOf(v) {
+    const cap = this.capacityOf(v);
+    if (cap == null) return null;
+    if (v.onboard == null) v.onboard = Math.round(cap * v.occupancy);
+    return v.onboard;
   }
 
   /**
@@ -352,7 +390,8 @@ export class ServiceManager {
       const p = this.placement(v);
       if (!p) continue;
       const a = v.dock.area;
-      const outline = [a.toLayout(p.s0, p.t0), a.toLayout(p.s1, p.t0), a.toLayout(p.s1, p.t1), a.toLayout(p.s0, p.t1)];
+      const outline = p.pose ? p.def.outline(p.pose) : [a.toLayout(p.s0, p.t0), a.toLayout(p.s1, p.t0), a.toLayout(p.s1, p.t1), a.toLayout(p.s0, p.t1)];
+      if (!outline.length) continue;
       out.push({ key: `vehicle:${v.id}`, kind: v.kind === "bus" ? "bus" : "train", label: v.line || p.def.label || v.kind, outline, z0: view.m(p.def.floor_m ?? 0), z1: view.m(p.def.height_m ?? 3), owner: this, ref: v });
     }
     return out;
@@ -381,6 +420,13 @@ export class ServiceManager {
       sections: [],
       related: area.owner?.id ? [area.owner.id] : [],
     };
+    const cap = this.capacityOf(v);
+    if (cap != null) {
+      const on = this.onboardOf(v);
+      card.rows.push(["On board", `${on} of ${cap} (${Math.round((100 * on) / cap)} %)`]);
+      if (on >= cap) card.status = `${card.status} · full`;
+    }
+    if (v.leftBehind) card.rows.push(["Left behind", `${v.leftBehind} (full)`]);
     if (v.trainId) card.rows.push(["Train of the control system", v.trainId]);
     for (const s of this.world.simulations) if (s.enabled !== false) s.describeVehicle?.(v, card);
     return card;

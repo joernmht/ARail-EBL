@@ -181,7 +181,7 @@ export class Panels {
 
   /* ================================================================ Settings */
 
-  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, speed, demand, stops, modules to add) and Control system. */
+  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, speed, demand, stops) and Control system. */
   renderSettings(el) {
     this.settingsBody = h("div", { class: "settings-body" });
     mount(el,
@@ -232,29 +232,6 @@ export class Panels {
     this.townBox = h("div", { class: "town-stats" });
     const app = this.app, s = w.settings;
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
-    const hasTerminal = w.simulations.some((x) => x.constructor.type === "terminal");
-    /** A module (layer) of this layout (off) that has a simulation of this type. */
-    const layerWith = (type) => w.layers().find((l) => !l.enabled && l.simulations.includes(type)) || null;
-    /** The button that switches on the module with a simulation of this type, or opens the example. */
-    const moduleButton = (type, id, example) => {
-      const l = layerWith(type);
-      return l ? h("button", { class: "btn", type: "button", id, onclick: () => app.switchOnModule(l.id) }, `Switch on the module “${l.name}”`)
-        : h("button", { class: "btn", type: "button", id, onclick: () => app.openExample(example) }, "Open the example");
-    };
-    /**
-     * A module of the page's tab (rail operations, infrastructure, journeys) that this layout does not
-     * have: what its panel says of it (`settingsHint`), switching on the module or opening the example,
-     * and adding it to the layout where its panel can (the game page).
-     */
-    const moduleSection = (tab, title, openId, example, add, addId) => {
-      const panel = app.tabPanels[tab], type = app.page.shows[tab];
-      if (!panel || !type || w.simulations.some((x) => x.constructor.type === type)) return null;
-      return section(title,
-        h("p", { class: "hint" }, panel.settingsHint ?? ""),
-        h("div", { class: "row" },
-          moduleButton(type, openId, example),
-          typeof panel[add] === "function" ? h("button", { class: "btn", type: "button", id: addId, onclick: () => panel[add]() }, "Add to this layout") : null));
-    };
     mount(el,
       section("Time of day",
         this.clockFace,
@@ -278,16 +255,6 @@ export class Panels {
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
       section("Stops", this.board),
-      moduleSection("ops", "Rail operations", "opsOpenExample", "operations", "addOperations", "opsAdd"),
-      moduleSection("infra", "Infrastructure", "infraOpenExample", "infrastructure", "addInfrastructure", "infraAdd"),
-      moduleSection("journeys", "Journeys", "journeysOpenExample", "journeys", "addJourneys", "journeysAdd"),
-      hasTerminal ? null : section("Container terminal",
-        h("p", { class: "hint" }, "Container trains, trucks and barges, cranes and the yard."),
-        h("div", { class: "row" },
-          app.moduleOpening("terminal")
-            ? h("button", { class: "btn", type: "button", id: "termOpenExample", onclick: () => app.chooseModules([app.moduleOpening("terminal").id]) }, `Switch on the module “${app.moduleOpening("terminal").name}”`)
-            : h("button", { class: "btn", type: "button", id: "termOpenExample", onclick: () => app.openExample("terminal") }, "Open the example terminal"),
-          h("button", { class: "btn", type: "button", id: "termAdd", onclick: () => app.terminal.addTerminal() }, "Add to this layout"))),
     );
     this.updateSimulateControls();
     this.updateClock();
@@ -563,7 +530,7 @@ export class Panels {
     morph(this.feedStatus, h("span", { class: `status-dot ${dot}` }), text);
     const trains = [...tr.trains.values()];
     morph(this.trainTable, trains.length
-      ? h("div", { class: "table-wrap" }, h("table", {},
+      ? h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Trains" }, h("table", {},
         h("thead", {}, h("tr", {}, ["Train", "Position", "Speed", "At"].map((t) => h("th", {}, t)))),
         h("tbody", {}, trains.map((t) => h("tr", {},
           h("td", {}, t.name),

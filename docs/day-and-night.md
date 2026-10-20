@@ -239,6 +239,7 @@ At the stops this means:
 - People go through a **door one after the other**, those getting off first, each as long as it
   takes them: a slow person holds up those behind. People with an aid, a pram or bulky luggage take
   the door of the multi-purpose area (the bus's and the tram's second door, the train's middle one).
+  A story's train and bus keep to the time of their step and do not wait: nobody queues at their doors.
 - The **doors stay open** while somebody is in them (at most a minute past the dwell; as long as a
   ramp or a lift is in use), and for those waiting at a door at most 20 s past it: the dwell follows
   the boarding, and a wheelchair user's ramp keeps the bus 60 s.
@@ -247,7 +248,8 @@ At the stops this means:
   seats and 11 m² (76 spaces, 1 wheelchair place), a tram 60 seats and 30 m² (180, 2), a train per 26 m
   car 80 seats and 10 m² (120; 2 wheelchair places). A vehicle comes in with the riders of the town and
   the journeys who stay on and a quarter of its spaces of people riding through (more in the rush
-  hours). A person gets on if its space fits; else squeezed, down to its least, which costs mood (0.05
+  hours); those getting off make room, however full it came in. A train of the rail package with a
+  consist also counts heads against its places (its card: *On board*, *Left behind*). A person gets on if its space fits; else squeezed, down to its least, which costs mood (0.05
   per squeezed space and minute of the ride); else it is **left behind** (`passenger.denied`: full, no
   wheelchair place, or no level boarding without help) and waits for the next one, its mood down.
 - **Heights**: a platform is 0.76 m above the rails unless set (`height_m`: 0.38, 0.55, 0.76, 0.96;

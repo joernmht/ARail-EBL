@@ -32,8 +32,6 @@ export class OperationsPanel {
     this.compare = { setups: null, stress: "none", days: 14, seeds: 3, running: false, progress: 0, step: "", result: null, error: "", stop: false };
     /** A wider panel (on large screens) for the tables and the comparison. */
     this.wide = storage.get("arail.opsWide", false) === true;
-    /** What Settings → Simulation says of the module while the layout does not have it. */
-    this.settingsHint = "Units with maintenance and failures, a workshop and the parties in charge of maintenance (ECM) with their penalties, and crews with contracts and duties who walk to work. The trains at the platforms then run to its timetable; the Operations tab shows the day and compares setups.";
     this.el = null;
   }
 
@@ -96,19 +94,19 @@ export class OperationsPanel {
 
   /** The panel is wide while the Operations tab is shown and the wide panel is chosen. */
   syncWidth() {
-    document.querySelector(".main")?.classList.toggle("wide", this.wide && this.app.activeTab === "ops");
+    document.querySelector(".main")?.classList.toggle("wide", this.wide && this.app.showing("ops"));
   }
 
   _noOperations() {
     return [
       h("h2", { tabindex: "-1" }, "Rail operations"),
-      h("p", { class: "hint" }, "This layout has no rail operations. Settings → Simulation adds them, or switches on the module of the lab example."),
+      h("p", { class: "hint" }, "This layout has no rail operations."),
     ];
   }
 
   /**
-   * "Add rail operations to this layout" (Settings → Simulation): an operations entry with the default
-   * settings; the Operations tab opens.
+   * "Add to this layout" (the case Operations while the layout has none): an operations entry with the default
+   * settings; the case opens.
    */
   async addOperations() {
     const app = this.app, json = this.world.toJSON();
@@ -175,7 +173,7 @@ export class OperationsPanel {
           h("button", { class: "btn small", type: "button", id: "opsBreak", onclick: () => this._inject({ type: "failure", kind: "hard" }) }, "A unit breaks down"),
           h("button", { class: "btn small", type: "button", id: "opsDefect", onclick: () => this._inject({ type: "failure", kind: "soft" }) }, "A unit gets a defect"),
         ),
-        h("p", { class: "hint" }, "More in the Disruptions tab (module Disruptions: drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
+        h("p", { class: "hint" }, "More in Interaction → Disruptions (module Disruptions: drivers leave, the workshop closes, units damaged) and in scripted scenarios."),
       ),
     ];
   }

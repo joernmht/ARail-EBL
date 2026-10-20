@@ -468,7 +468,8 @@ const { kpi } = arail.runOne(config, { layout: arail.normalizeLayout(json), setu
 **Docks run by a planner.** The operations run the trains of their platforms themselves: they set
 `world.services.planner` to an object with `claims(dock)` (true for the docks it runs) and
 `statusLines(area)` (the lines of the boards). The [journeys](journeys.md#the-trains) do the same
-when there are no rail operations. `ops.tripsAt(dockId)` gives the trips of the train at a dock (the
+when there are no rail operations, and the [operations plan](operations.md#the-operations-plan)
+while it runs (its vehicles carry their consist in `consistSpec`). `ops.tripsAt(dockId)` gives the trips of the train at a dock (the
 one it came with and the one it leaves with), `ops.engineOffset()` the minutes the engine's time is
 ahead of the world's. Those docks are in mode `"plan"`: the timetable sends
 nothing there, `services.call()` sends a vehicle only with `{source: "plan"}`, and a connected
@@ -532,12 +533,12 @@ arail.registry.registerDisruption({
 });
 ```
 
-Two more fields: `requires: "<simulation type>"` offers the type in the Disruptions tab only
+Two more fields: `requires: "<simulation type>"` offers the type in Interaction → Disruptions only
 when the layout has that simulation, and `targets: "none"` is for disruptions without a place (the
 panel shows no *Where*; they are started with target `"*"`). The rail operations' types use both and
 act in `onStart`; a string they leave in `d.result` (*3 sick calls*) is shown when they start.
-`hidden: true` marks a type that a simulation or story starts itself: it is not offered in the
-Disruptions tab and starts and ends without a toast. `quiet: true` puts up its warning sign and
+`hidden: true` marks a type that a simulation or story starts itself: it is not offered in
+Interaction → Disruptions and starts and ends without a toast. `quiet: true` puts up its warning sign and
 counts in the top bar only while it has a message (a story's `story-train`, which keeps a bus bay
 for the story's bus without a word). `targets: "track"` is
 for one dock of a stop (a platform's track, `platform-1:right`; a bus bay, `bus-terminal-1:bay2`):
@@ -559,6 +560,8 @@ arail.registry.registerVehicle({
 ```
 
 Without `entry_m` a vehicle's floor is taken to be level with the platform; without places, 30 seats and 10 m² of standing room (a train counts them per car: `seats_per_car`, `standing_per_car_m2`, `carLength_m`; `racks: true`: heavy luggage goes into the racks). See `core/vehicles.js` for the built-in train and bus. Line buses (`core/transit.js`) use the bus's `extent` and `doors`, so passengers board them like any other bus.
+
+A kind that knows where it is along its own track adds `pose(vehicle)` (where it is now, or null), `outline(pose)` (layout mm, for pointing at it) and `doorsOf(vehicle)` (its doors along the dock); `draw` then gets `{def, pose}` as its place. `capacity(vehicle)` (its places) lets the passengers fill it: a full one takes nobody else. The trains of `rail/stock.js` (`RAIL_TRAIN`, registered by `registerRail` in place of core's train) do all of it.
 
 ## Info cards and layout checks
 

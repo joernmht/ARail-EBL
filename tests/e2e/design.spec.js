@@ -3,6 +3,7 @@
 // colours (pressed toggles, placing, toasts, disruptions) are checked for contrast in both modes.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openCase, openModules } from "./ui.js";
 
 async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   await page.goto(path);
@@ -70,15 +71,15 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.locator("#tab-settings").click();
       await page.locator("#settingsView-simulate").click();
 
-      await page.locator("#tab-overview").click();
+      await openModules(page);
       await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-      await page.locator("#tab-disrupt").click();
+      await openCase(page, "disrupt");
       await page.selectOption("#disType", "delay");
       await page.selectOption("#disTarget", "platform-1");
       await page.getByRole("button", { name: "Start: Delay" }).click();
       await expect(page.locator(".disruption")).toBeVisible();
       await expect(page.locator("#toast")).toBeVisible();
-      expect(await contrastViolations(page, ["#panel-disrupt", "#toast"])).toEqual([]);
+      expect(await contrastViolations(page, ["#panel-interaction", "#toast"])).toEqual([]);
     });
   });
 }
@@ -138,7 +139,7 @@ test.describe("layout of the app bar and the tabs", () => {
     await openApp(page);
     const boxes = () => page.locator(".tabs button").evaluateAll((tabs) => tabs.map((t) => Math.round(t.getBoundingClientRect().left * 4) / 4));
     const before = await boxes();
-    for (const tab of ["#tab-build", "#tab-settings", "#tab-overview"]) {
+    for (const tab of ["#tab-interaction", "#tab-settings", "#tab-overview"]) {
       await page.locator(tab).click();
       await expect(page.locator(tab)).toHaveAttribute("aria-selected", "true");
       expect(await boxes(), tab).toEqual(before);

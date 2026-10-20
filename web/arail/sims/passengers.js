@@ -234,6 +234,8 @@ class Person {
     this.deniedBy = null;
     /** Clock minutes it will ride: its squeezed spaces cost mood for so long. */
     this.rideMin = OTHERS_RIDE_MIN;
+    /** The id of the last full vehicle this person could not get on (counted once in its `leftBehind`). */
+    this.leftBy = null;
   }
 }
 
@@ -532,6 +534,8 @@ export class PassengerSimulation extends Simulation {
     this._sync();
     const c = this.crowds.get(dock.area.id);
     if (!c || !agents.length) return [];
+    const svc = this.world.services;
+    if (svc.capacityOf(vehicle) != null) vehicle.onboard = Math.max(0, svc.onboardOf(vehicle) - agents.length);
     const doors = this._doors(vehicle);
     const a = c.area, rng = this.rng, out = [];
     const access = this.access(a, vehicle);
@@ -587,6 +591,8 @@ export class PassengerSimulation extends Simulation {
    * (the crowd's clock).
    */
   _useDoor(c, vehicle, door, s) {
+    // a story's vehicle keeps to the time of its step and cannot wait for its doors: nobody queues there
+    if (vehicle?.source === "story") return c.t + s;
     const key = `${vehicle?.id ?? "?"}|${door ?? 0}`;
     const from = Math.max(c.doors.get(key) ?? 0, c.t);
     c.doors.set(key, from + s);
@@ -737,17 +743,38 @@ export class PassengerSimulation extends Simulation {
 
   /* ---------------------------------------------------------------- events */
 
-  /** Board a vehicle the person wants that stands at a dock of the area (doors open, not about to leave). */
+  /** Board a vehicle the person wants that stands at a dock of the area (doors open, not about to leave, room for it). */
   _boardStanding(p, a) {
     const docks = p.dock ? a.docks.filter((d) => d.id === p.dock) : p.anyDock ? a.docks : [];
     for (const d of docks) {
       const v = this._vehicleAt(d.id);
-      if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v)) {
+      if (v && v.phase === "dwelling" && (v.dwellLeft > 6 || v.source === "feed") && this._wants(p, d, v) && this._getsOn(p, v)) {
         this._board(p, d, this._doors(v), 0, v);
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Is there room for a person in a vehicle with places (seats and standing, core/services.js)? It
+   * then counts the person on board. Agents (the town's, the travellers) always get on: they squeeze
+   * in; the others not once it is full: they stay behind (counted once per vehicle) and are less
+   * pleased.
+   */
+  _getsOn(p, vehicle) {
+    const svc = this.world.services, cap = svc.capacityOf(vehicle);
+    if (cap == null) return true;
+    if (!p.agent && svc.onboardOf(vehicle) >= cap) {
+      if (p.leftBy !== vehicle.id) {
+        p.leftBy = vehicle.id;
+        vehicle.leftBehind++;
+        p.mood = Math.max(0, p.mood - 0.15);
+      }
+      return false;
+    }
+    vehicle.onboard = svc.onboardOf(vehicle) + 1;
+    return true;
   }
 
   _board(p, dock, doors, delay, vehicle = null) {
@@ -824,6 +851,8 @@ export class PassengerSimulation extends Simulation {
     if (p.anyDock) p.dock = null;
     p.deniedBy = v;
     p.denied++;
+    // a train with places counted it on board when it set off for the doors (_getsOn)
+    if (v && v.onboard != null && this.world.services.capacityOf(v) != null) v.onboard = Math.max(0, v.onboard - 1);
     p.target = dock ? this._waitingSpot(c, dock.id) : p.pos.slice();
     p.mood = Math.max(0, p.mood - 0.25);
     const st = c.stats;
@@ -885,16 +914,25 @@ export class PassengerSimulation extends Simulation {
       ? town * this._interval(vehicle, dock) * this.world.demand * (c.wave() / WAVE_MEAN)
       : (bus ? 1 : 2) + (bus ? 3 : 6) * this.world.demand * c.wave() * (len / 25);
     const n = fx.closed || !this.others ? 0 : rng.poisson(mean * Math.min(1, 0.25 + tod));
+    // a vehicle with places: those who get off make room
+    const svc = this.world.services;
+    if (svc.capacityOf(vehicle) != null) vehicle.onboard = Math.max(0, svc.onboardOf(vehicle) - n);
     const late = vehicle.delayMin > 0.5;
     const access = this.access(a, vehicle);
+    let off = 0;
     for (let i = 0; i < n && c.people.length < this.config.max_per_area; i++) {
       const p = this._person(a, [0, 0], "onboard", rng.uniform(0.6, 0.92) - (late ? 0.35 : 0), null);
       this._getOff(c, p, vehicle, dock, doors, access);
       c.people.push(p);
+      off += spaceOf(p.profile, {}, this.mobility).space;
     }
+    // their spaces are free again, however full it came in
+    const load = vehicle.load;
+    load.spaces = Math.min(load.spaces, Math.max(0, load.cap.spaces - off));
     for (const p of c.people) {
-      // agents always take their vehicle; a few other people wait for the next one
-      if (this._wants(p, dock, vehicle) && (p.agent || rng.chance(0.95))) this._board(p, dock, doors, undefined, vehicle);
+      // agents always take their vehicle; a few other people wait for the next one, and all of them when it is full
+      if (!this._wants(p, dock, vehicle) || !(p.agent || rng.chance(0.95))) continue;
+      if (this._getsOn(p, vehicle)) this._board(p, dock, doors, undefined, vehicle);
     }
   }
 

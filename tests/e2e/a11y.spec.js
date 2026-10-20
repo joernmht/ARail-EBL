@@ -1,17 +1,22 @@
 // Accessibility checks (axe-core, WCAG 2.2 AA rules) of the published pages, in light and dark mode.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openCase, openModules } from "./ui.js";
 
 const PAGES = [
   ["project page", "/"],
   ["marker sheets", "/markers/"],
   ["app, Overview", "/app/?layout=../layouts/ebl-lab.json#overview"],
   ["app, Settings: view", "/app/?layout=../layouts/ebl-lab.json#view"],
+  ["app, Interaction: modules", "/app/?layout=../layouts/ebl-neustadt.json#modules"],
+  ["app, Interaction: a case whose module is off", "/app/?layout=../layouts/ebl-neustadt.json#evu-disruption"],
   ["app, Build panel", "/app/?layout=../layouts/ebl-lab.json#build"],
   ["app, Settings: simulation", "/app/?layout=../layouts/ebl-lab.json#simulate"],
   ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
   ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
+  ["app, Railway undertaking: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations"],
+  ["app, Infrastructure: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#infra-operations"],
   ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["app, Journeys: the journeys story", "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys"],
@@ -105,8 +110,8 @@ for (const [scheme, device, viewport] of STATES) {
     await page.waitForFunction(() => window.__arail.mode === "camera");
     for (const type of ["plattenbau", "altbau-block", "house-estate", "office", "school", "supermarket", "factory", "road", "bus-stop", "bus-line", "tabletop"]) {
       await page.evaluate((t) => window.__arail.editor.select(window.__arail.world.objects.find((o) => o.type === t)), type);
-      await expect(page.locator("#panel-build h2", { hasText: "Selected:" })).toBeVisible();
-      found.push(...(await violations(page, `inspector of ${type}`, "#panel-build")));
+      await expect(page.locator("#casePanel h2", { hasText: "Selected:" })).toBeVisible();
+      found.push(...(await violations(page, `inspector of ${type}`, "#casePanel")));
     }
     await page.evaluate(() => window.__arail.editor.select(null));
     await page.getByRole("button", { name: "Keep positions" }).click();
@@ -132,8 +137,8 @@ for (const [scheme, device, viewport] of STATES) {
   });
 }
 
-// Rail operations: every view of the Operations tab, the results of a comparison, the wide panel,
-// and Settings → Simulation of a layout without rail operations.
+// Rail operations: every view of the case Operations, the results of a comparison, the wide panel,
+// and the case of a layout without rail operations.
 for (const [scheme, device, viewport] of STATES) {
   test(`operations states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -165,15 +170,15 @@ for (const [scheme, device, viewport] of STATES) {
     }
     await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => !window.__arail.operations.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await openSimulation(page);
-    await expect(page.locator("#opsAdd")).toBeVisible();
-    found.push(...(await violations(page, "Settings → Simulation, rail operations offered", "#panel")));
+    await openCase(page, "ops");
+    await expect(page.locator("#caseAdd")).toBeVisible();
+    found.push(...(await violations(page, "Operations off: switch on or add it", "#panel")));
     expect(found).toEqual([]);
   });
 }
 
-// Infrastructure: every view of the Infrastructure tab with an asset's record, a decision and the
-// instructor's controls, and Settings → Simulation of a layout without it.
+// Infrastructure: every view of the case Assets with an asset's record, a decision and the
+// instructor's controls, and the case of a layout without it.
 for (const [scheme, device, viewport] of STATES) {
   test(`infrastructure states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -190,14 +195,14 @@ for (const [scheme, device, viewport] of STATES) {
     for (const view of ["overview", "map", "assets", "decisions", "projects", "staff", "results"]) {
       await page.locator(`#infraView-${view}`).click();
       await expect(page.locator(`#infraView-${view}`)).toHaveAttribute("aria-pressed", "true");
-      if (view === "assets") await page.locator("#panel-infra .infra-assets tbody tr button.link").first().click();
+      if (view === "assets") await page.locator("#casePanel .infra-assets tbody tr button.link").first().click();
       found.push(...(await violations(page, `Infrastructure panel, ${view}`, "#panel")));
     }
     await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => !window.__arail.infra.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await openSimulation(page);
-    await expect(page.locator("#infraAdd")).toBeVisible();
-    found.push(...(await violations(page, "Settings → Simulation, infrastructure offered", "#panel")));
+    await openCase(page, "infra");
+    await expect(page.locator("#caseAdd")).toBeVisible();
+    found.push(...(await violations(page, "Assets off: switch on or add it", "#panel")));
     expect(found).toEqual([]);
   });
 }
@@ -225,20 +230,20 @@ for (const [scheme, device, viewport] of STATES) {
     await page.getByRole("button", { name: "To the yard" }).click();
     await expect(page.locator(".term-jobs tbody tr")).toHaveCount(1);
     found.push(...(await violations(page, "the crane jobs with a move")));
-    await page.locator("#tab-build").click();
+    await openCase(page, "build");
     for (const type of ["container-yard", "gantry-crane", "truck-lane", "quay", "reach-stacker"]) {
       await page.evaluate((t) => window.__arail.editor.select(window.__arail.world.objects.find((o) => o.type === t)), type);
-      await expect(page.locator("#panel-build h2", { hasText: "Selected:" })).toBeVisible();
-      found.push(...(await violations(page, `inspector of ${type}`, "#panel-build")));
+      await expect(page.locator("#casePanel h2", { hasText: "Selected:" })).toBeVisible();
+      found.push(...(await violations(page, `inspector of ${type}`, "#casePanel")));
     }
     expect(found).toEqual([]);
   });
 }
 
-// Journeys: the Journeys tab with travel plans found, travellers on their way (one followed, its plan
-// and log open), the results and the wide panel; the module boxes of the View panel (also in the
-// container terminal, a module of its own), the Disruptions tab of its module and Settings →
-// Simulation offering the journeys.
+// Journeys: the case Journeys with travel plans found, travellers on their way (one followed, its plan
+// and log open), the results and the wide panel; the module boxes of Interaction (also in the
+// container terminal, a module of its own), the tool Disruptions of its module and the case
+// Journeys offering the journeys.
 for (const [scheme, device, viewport] of STATES) {
   test(`journeys and modules states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -277,23 +282,22 @@ for (const [scheme, device, viewport] of STATES) {
       found.push(...(await violations(page, "Journeys panel, wide", "#panel")));
       await page.locator("#journeysWide").click();
     }
-    await page.locator("#tab-overview").click();
-    await expect(page.locator(".modules")).toBeVisible();
-    found.push(...(await violations(page, "Overview, modules", "#panel")));
+    await openModules(page);
+    found.push(...(await violations(page, "Interaction, modules", "#panel")));
     await page.locator(".modules").getByRole("button", { name: "Container terminal", exact: true }).click();
     await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-    await page.locator("#tab-overview").click();
-    found.push(...(await violations(page, "Overview, modules in the container terminal", "#panel")));
+    await expect(page.locator(".modules")).toBeVisible();
+    found.push(...(await violations(page, "Interaction, modules in the container terminal", "#panel")));
     await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-lab.json", [])); // the lab without modules
     await page.waitForFunction(() => /ebl-lab/.test(window.__arail.layoutUrl) && !window.__arail.journeys.sim && window.__arail.world.objects.length, null, { timeout: 30_000 });
-    await openSimulation(page);
-    await expect(page.locator("#journeysAdd")).toBeVisible();
-    found.push(...(await violations(page, "Settings → Simulation, journeys offered", "#panel")));
-    await page.locator("#tab-overview").click();
+    await openCase(page, "journeys");
+    await expect(page.locator("#caseAdd")).toBeVisible();
+    found.push(...(await violations(page, "Journeys off: switch on or add it", "#panel")));
+    await openModules(page);
     await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-    await expect(page.locator("#tab-disrupt")).toBeVisible();
-    found.push(...(await violations(page, "Overview, the module Disruptions on", "#panel")));
-    await page.locator("#tab-disrupt").click();
+    await expect(page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true })).toHaveAttribute("aria-pressed", "true");
+    found.push(...(await violations(page, "Interaction, the module Disruptions on", "#panel")));
+    await openCase(page, "disrupt");
     await page.selectOption("#disType", "delay");
     await page.getByRole("button", { name: "Start: Delay" }).click();
     await page.locator(".scenario").first().getByRole("button", { name: "Play" }).click();

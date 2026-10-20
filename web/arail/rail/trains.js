@@ -2,7 +2,9 @@
  * The consists of the trains the world shows, and their train data on the info card: a train at a
  * platform (of the timetable, of the rail operations) or of the control system gets the vehicles
  * of the layout's `consists` entry that matches it (by its train number or its line), else those
- * of its units (rail operations).
+ * of its units (rail operations), else, a train of the timetable, those of the default fleet for the
+ * kind of its line. In the rush hours an entry's `peak` couples its vehicles where the platform is
+ * long enough.
  * @module arail/rail/trains
  */
 import { Consist, VEHICLE_TYPES, consistRows } from "./vehicles.js";
@@ -13,6 +15,28 @@ import { checkSection, compatibilitySection } from "./compat.js";
 export function vehicleTypes(world) {
   const own = world.layout?.vehicle_types;
   return own && Object.keys(own).length ? { ...VEHICLE_TYPES, ...own } : VEHICLE_TYPES;
+}
+
+/**
+ * The trains of the timetable where the layout names no consist for their line, by the kind of the
+ * line (the letters it begins with): a regional express a locomotive with four double-deck
+ * coaches, a regional train a two-car unit, an S-Bahn a four-car unit, any other train a two-car
+ * unit. `peak`: in the rush hours the vehicles run that many times, coupled, where the platform
+ * takes them.
+ */
+export const DEFAULT_FLEET = {
+  RE: { name: "Regional express", vehicles: [{ type: "br146" }, { type: "dbpza", count: 4 }] },
+  RB: { name: "Regional train", vehicles: [{ type: "et442s" }], peak: 2 },
+  S: { name: "S-Bahn", vehicles: [{ type: "et442" }], peak: 2 },
+  "": { name: "Train", vehicles: [{ type: "et442s" }], peak: 2 },
+};
+/** From this demand of the rail timetable (the clock's profile; 1.5 in the rush hours) units run coupled. */
+export const PEAK_DEMAND = 1.3;
+
+/** The default fleet's entry for a line: by the letters it begins with ("RB 71", "S1"). */
+export function fleetEntry(line) {
+  const kind = (String(line ?? "").trim().match(/^[A-Za-z]+/)?.[0] ?? "").toUpperCase();
+  return DEFAULT_FLEET[kind] ?? DEFAULT_FLEET[""];
 }
 
 /** Does a consist entry of the layout file match a train (its number or name, or its line)? */
@@ -46,6 +70,37 @@ export function consistFor(world, who) {
     if (known.length) return new Consist({ name: who.line, vehicles: known.map((u) => ({ type: u.type })) }, types);
   }
   return null;
+}
+
+/**
+ * The consist of a train at a platform (a vehicle of the services), worked out once and kept on it
+ * (`v.stock`): its own (`v.consistSpec`, a planner's), the layout's `consists` entry of its line or
+ * train number, its units (rail operations), else, a train that is not the control system's (those
+ * are what they are), the default fleet by its line. In the rush hours (the timetable's demand when
+ * it was sent, `v.demand`) an entry's `peak` couples its vehicles as often as the platform takes them.
+ * @param {import("../core/world.js").World} world
+ * @param {object} v
+ * @returns {Consist | null}
+ */
+export function trainConsist(world, v) {
+  const ops = v.ops ? world.simulations.find((s) => s.constructor.type === "operations")?.engine : null;
+  const units = v.ops?.units ? v.ops.units.map((id) => ({ type: ops?.units.get(id)?.type })) : null;
+  const key = `${world.objectsVersion}|${JSON.stringify(v.consistSpec ?? null)}|${units?.map((u) => u.type).join("+") ?? ""}`;
+  if (v.stock?.key === key) return v.stock.consist;
+  const types = vehicleTypes(world), who = { train: v.trainId, line: v.line };
+  const known = units?.filter((u) => types[u.type]) ?? [];
+  const spec = v.consistSpec ?? (world.layout?.consists || []).find((e) => matches(e, who))
+    ?? (known.length ? { name: v.line, vehicles: known } : null) ?? (v.source !== "feed" ? fleetEntry(v.line) : null);
+  let consist = null;
+  if (spec) {
+    consist = new Consist(spec, types);
+    // coupled in the rush hours, as often as the platform takes them
+    const one = consist.length_m, room = v.dock ? v.dock.s1 - v.dock.s0 - 6 : 0;
+    const times = (v.demand ?? 1) >= PEAK_DEMAND && spec.peak > 1 && one > 0 ? Math.min(Math.round(spec.peak), Math.floor(room / one)) : 1;
+    if (times > 1) consist = new Consist({ ...spec, vehicles: Array.from({ length: times }, () => spec.vehicles).flat() }, types);
+  }
+  v.stock = { key, consist };
+  return consist;
 }
 
 /**
@@ -86,6 +141,8 @@ export function consistProblems(json) {
 export function consistOfHit(world, hit) {
   if (hit?.kind !== "train") return null;
   const r = hit.ref;
+  // a train at a platform: the consist it runs with
+  if (hit.key.startsWith("vehicle:") && r?.dock) return trainConsist(world, r);
   const ops = r?.ops ? world.simulations.find((s) => s.constructor.type === "operations")?.engine : null;
   const trip = ops?.trips.get(r.ops.trip);
   return consistFor(world, {

@@ -3,6 +3,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { SCENE, SCENE_NAME, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
+import { openCase } from "./ui.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -499,7 +500,7 @@ test("keyboard: the Flyover toggle on the stage and the rotate buttons keep the 
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await expect(page.locator("#btnFlyover")).toBeFocused();
   // Build: turn the selected house twice with the keyboard
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("building-1")));
   const rot0 = await page.evaluate(() => window.__arail.editor.selected.spec.rotation_deg || 0);
   const button = page.getByRole("button", { name: "90° clockwise" });
@@ -556,7 +557,7 @@ for (const scheme of ["light", "dark"]) {
     const summary = results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")})`);
     expect(summary).toEqual([]);
     // the Build panel with the rotation buttons of a selected object
-    await page.locator("#tab-build").click();
+    await openCase(page, "build");
     await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("building-1")));
     const build = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
     expect(build.violations.map((v) => v.id)).toEqual([]);

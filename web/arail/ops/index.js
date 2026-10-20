@@ -1,11 +1,12 @@
 /**
  * Rail operations: rolling stock with maintenance (the entity in charge of maintenance, ECM, and its
  * four functions), crews with contracts and duties, and the penalties between the parties. The app
- * shows the operations story (story.js), a walkthrough to click through; the operations game runs on
+ * shows the operations story (story.js), a walkthrough to click through, and the operations plan
+ * (plan.js), the trains of an hour with their units, drivers and tracks; the operations game runs on
  * the game page.
  *
  *   import { registerOperations } from "./ops/index.js";
- *   registerOperations(registry);   // the depot object, the "operations" simulation, the operations story, its disruptions
+ *   registerOperations(registry);   // the depot object, the "operations" simulation, the operations story and plan, its disruptions
  *
  * `arail/index.js` registers it with the built-ins. The engine also runs without a world (Node.js,
  * comparisons): `new OpsEngine(config, {layout})`, `runExperiment(...)`.
@@ -30,15 +31,17 @@ export { Depot } from "./depot.js";
 export { OperationsSimulation, opsOf, CREW_COLOURS } from "./simulation.js";
 export { OPS_DISRUPTIONS } from "./disruptions.js";
 export { OpsStory } from "./story.js";
+export { OpsPlan, planOf, PLAN_KEYS, PLAN_SIDES } from "./plan.js";
 
 import { Depot } from "./depot.js";
 import { OperationsSimulation } from "./simulation.js";
 import { OPS_DISRUPTIONS } from "./disruptions.js";
 import { OpsStory } from "./story.js";
+import { OpsPlan } from "./plan.js";
 
 /**
  * Register the depot object (palette group Transport), the "operations" simulation, the
- * "ops-story" and the disruption types of the operations.
+ * "ops-story", the "ops-plan" and the disruption types of the operations.
  * @param {import("../core/registry.js").Registry} registry
  * @returns {import("../core/registry.js").Registry}
  */
@@ -46,6 +49,7 @@ export function registerOperations(registry) {
   registry.registerObject(Depot);
   registry.registerSimulation(OperationsSimulation);
   registry.registerSimulation(OpsStory);
+  registry.registerSimulation(OpsPlan);
   for (const def of OPS_DISRUPTIONS) registry.registerDisruption(def);
   return registry;
 }

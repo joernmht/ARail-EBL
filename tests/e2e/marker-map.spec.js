@@ -2,6 +2,7 @@
 // only the measured markers (and fewer detector codes); moving markers are never part of it.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { openCase } from "./ui.js";
 
 async function openBuild(page) {
   const errors = [];
@@ -29,11 +30,11 @@ test("Keep positions locks the marker map; Unlock and Measure again open it agai
   await page.locator("#settingsView-view").click();
   await page.locator("details.tracking summary").click();
   await expect(page.locator("details.tracking")).toContainText("5 markers (locked)");
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   // kept in the browser and in the exported layout
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith("arail.layout:"))) || "{}").markers?.locked)).toBe(true);
   // the locked state has no accessibility problems either
-  const results = await new AxeBuilder({ page }).include("#panel-build").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+  const results = await new AxeBuilder({ page }).include("#casePanel").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
   // after a reload the map is still locked
   await page.reload();

@@ -45,7 +45,7 @@ export const WORLD = [
         attributes: ["VERSION — the framework's version", "registry — registerBuiltins(new Registry())"],
         operations: ["registerBuiltins(registry) — the object types and simulations, the core's disruptions and vehicles, then terminal, operations, infrastructure, journeys, railway systems, the texts", "createWorld(layout, opts)", "loadPlugins(urls, base, opts) — each plugin's default export gets the API"],
       },
-      { name: "objects", file: "web/arail/objects/index.js", kind: "module", role: "The built-in object types, one per line, and their exports (index.js re-exports them).", attributes: ["OBJECT_TYPES — the object types, in the order of the Build tab"], operations: ["registerObjects(registry)"] },
+      { name: "objects", file: "web/arail/objects/index.js", kind: "module", role: "The built-in object types, one per line, and their exports (index.js re-exports them).", attributes: ["OBJECT_TYPES — the object types, in the order of Build"], operations: ["registerObjects(registry)"] },
       { name: "sims", file: "web/arail/sims/index.js", kind: "module", role: "The built-in simulations of people and road traffic, and their exports (index.js re-exports them).", attributes: ["SIMULATION_TYPES — the simulations"], operations: ["registerSimulations(registry)"] },
     ],
     relations: [
@@ -117,7 +117,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, the Stops tab has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
+      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, Settings → Simulation → Stops has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
     ],
     events: {
       emits: [
@@ -164,11 +164,11 @@ export const WORLD = [
     ],
     activities: [{
       id: "module", name: "Switching a module",
-      description: "View → Modules: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
+      description: "Interaction → Modules: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
       nodes: [
         ["s", "start"],
         ["d0", "decision", "A module of the app (Build, Disruptions)?"],
-        ["a0", "action", "Switch it; its tab shows or hides (nothing is loaded again)", "App.setAppModule"],
+        ["a0", "action", "Switch it; its case in Interaction works or says it is off (nothing is loaded again)", "App.setAppModule"],
         ["d1", "decision", "The module on?"],
         ["a1", "action", "Switch it off", "toggleLayer"],
         ["d2", "decision", "Exclusive?"],

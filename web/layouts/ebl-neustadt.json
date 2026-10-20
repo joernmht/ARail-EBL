@@ -50,33 +50,7 @@
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
     {"type": "town", "people_per_100": 25, "walk_max_m": 120, "bus_share": 0.6},
     {"type": "traffic", "cars_per_km": 18},
-    {"type": "cycling"},
-    {
-      "type": "terminal",
-      "name": "KV terminal Neustadt",
-      "default_wagon": "sgns60",
-      "trains": [
-        {"id": "KT41", "name": "KT 41 Hamburg", "track": "track-g16", "direction": -1, "stop_mm": 3740, "start": "positioned", "wagons": ["sgns60", "sgns60", "sgns60", "sggrss80", "sgns60"]},
-        {"id": "KT52", "name": "KT 52 Duisburg", "track": "track-g14", "direction": -1, "stop_mm": 3755, "start": "away", "wagons": ["sgns60", "lgns40"]}
-      ],
-      "trucks": {"lane": "lane-1"},
-      "containers": [
-        {"id": "ARLU 100001 9", "size": "40", "high": true, "at": {"carrier": "KT41/1", "bay": 0}},
-        {"id": "ARLU 100002 4", "size": "20", "at": {"carrier": "KT41/1", "bay": 2}},
-        {"id": "ARLU 100003 0", "size": "20", "at": {"carrier": "KT41/2", "bay": 0}},
-        {"id": "ARLU 100004 5", "size": "40", "at": {"carrier": "KT41/2", "bay": 1}},
-        {"id": "EBLU 300001 1", "size": "40", "at": {"carrier": "KT41/3", "bay": 0}},
-        {"id": "EBLU 300002 7", "size": "20", "at": {"carrier": "KT41/3", "bay": 2}},
-        {"id": "EBLU 300004 8", "size": "20", "at": {"carrier": "KT41/4", "bay": 0}},
-        {"id": "DBCU 400002 4", "size": "40", "at": {"carrier": "KT41/4", "bay": 2}},
-        {"id": "TUDU 200003 6", "size": "20", "high": true, "at": {"carrier": "KT41/5", "bay": 1}},
-        {"id": "EBLU 300003 2", "size": "40", "at": {"carrier": "KT52/1", "bay": 0}},
-        {"id": "TUDU 200001 5", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
-        {"id": "TUDU 200002 0", "size": "20", "high": true, "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},
-        {"id": "DBCU 400001 9", "size": "40", "at": {"carrier": "yard-a", "bay": 2, "row": 1, "tier": 0}}
-      ],
-      "fill": {"yard-a": 0.35}
-    }
+    {"type": "cycling"}
   ],
   "objects": [
     {"id": "table-lab", "type": "tabletop", "name": "EBL table, front level", "kind": "physical", "position": [1800, 290], "width_mm": 8400, "depth_mm": 700},
@@ -313,20 +287,6 @@
   ],
   "scenarios": [
     {
-      "id": "morning-shift",
-      "name": "Morning shift at the terminal",
-      "description": "KT 52 arrives on loading track 3; trucks collect and deliver; the crane works the trains and the yard.",
-      "steps": [
-        {"at": 0, "message": "Morning shift: KT 52 is due on loading track 3."},
-        {"at": 0, "emit": {"name": "terminal.request.call", "payload": {"visit": "KT52"}}},
-        {"at": 5, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "pickup"}}},
-        {"at": 6, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 100002 4", "to": {"kind": "truck"}}}},
-        {"at": 8, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 100001 9", "to": {"carrier": "yard-a"}}}},
-        {"at": 10, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 300003 2", "to": {"carrier": "yard-a"}}}},
-        {"at": 12, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "delivery", "size": "40"}}}
-      ]
-    },
-    {
       "id": "football",
       "name": "After the football match",
       "description": "A crowd surge on platform 2; extra trains are sent.",
@@ -342,7 +302,7 @@
     {
       "id": "infrastructure",
       "name": "Infrastructure",
-      "description": "The station's infrastructure: the exit signals N1–N3 of the electronic interlocking, the displays on the platforms, the interlocking building and a maintenance base on a table module at the end of Bahnhofstraße. The Infrastructure tab tells a maintenance story to click through: signal N2 fails, is repaired and exchanged; track G3 is renewed.",
+      "description": "The station's infrastructure: the exit signals N1–N3 of the electronic interlocking, the displays on the platforms, the interlocking building and a maintenance base on a table module at the end of Bahnhofstraße. Infrastructure → Disruption tells a maintenance story to click through: signal N2 fails, is repaired and exchanged; track G3 is renewed.",
       "enabled": false,
       "objects": [
         {"id": "platform-1", "built": 2004},
@@ -376,9 +336,50 @@
       ]
     },
     {
-      "id": "operations",
+      "id": "plan",
       "name": "Operations",
-      "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. The Operations tab tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop. Its story takes over platform 2: the module is shown alone.",
+      "description": "Normal operations at Bf Neustadt on a weekday morning: the trains of the railway undertaking on S 1, RB 71 and RE 2. Railway undertaking → Operations puts a unit and a driver on each train, Infrastructure → Operations puts each train on a track; Run plays the plan. The plan runs the trains of the platforms while it plays: the module is shown alone.",
+      "enabled": false,
+      "exclusive": true,
+      "simulations": [
+        {
+          "type": "ops-plan",
+          "name": "A morning at Bf Neustadt",
+          "start": "07:00",
+          "margin_min": 2,
+          "lines": {
+            "S 1": {"to": "Talsee", "away_min": 20},
+            "RB 71": {"to": "Bergdorf", "away_min": 30},
+            "RE 2": {"to": "Altstadt", "away_min": 60}
+          },
+          "units": [
+            {"id": "442 101", "type": "et442"},
+            {"id": "442 102", "type": "et442"},
+            {"id": "442 201", "type": "et442s"},
+            {"id": "442 202", "type": "et442s"},
+            {"id": "146 210", "name": "146 210 + 4 DBpza", "vehicles": [{"type": "br146"}, {"type": "dbpza", "count": 4}]}
+          ],
+          "drivers": [
+            {"id": "becker", "name": "Becker", "from": "05:30", "to": "08:10"},
+            {"id": "kaya", "name": "Kaya", "from": "06:30", "to": "14:30"},
+            {"id": "novak", "name": "Novak", "from": "07:00", "to": "15:00"},
+            {"id": "weber", "name": "Weber", "from": "07:15", "to": "15:15"}
+          ],
+          "trains": [
+            {"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "becker", "track": "G2"},
+            {"id": "rb71-0722", "line": "RB 71", "arr": "07:17", "dep": "07:22", "passengers": 150, "unit": "442 201", "driver": "kaya", "track": "G3"},
+            {"id": "re2-0723", "line": "RE 2", "arr": "07:19", "dep": "07:23", "passengers": 520, "unit": "146 210", "driver": "novak", "track": "G1"},
+            {"id": "s1-0725", "line": "S 1", "arr": "07:20", "dep": "07:25", "passengers": 420, "unit": "442 202", "driver": "weber", "track": "G3"},
+            {"id": "s1-0745", "line": "S 1", "arr": "07:40", "dep": "07:45", "passengers": 300, "unit": "442 101", "driver": "weber"},
+            {"id": "rb71-0752", "line": "RB 71", "arr": "07:47", "dep": "07:52", "passengers": 120, "unit": "442 201", "driver": "becker", "track": "G2"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Breakdown",
+      "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. Railway undertaking → Disruption tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop. Its story takes over platform 2: the module is shown alone.",
       "enabled": false,
       "exclusive": true,
       "objects": [
@@ -394,10 +395,60 @@
     {
       "id": "journeys",
       "name": "Journeys",
-      "description": "A traveller's view of the station. The Journeys tab tells Ada's journey to click through: she walks from her flat on Bahnhofstraße to platform 1, her RB 31 to Talsee is late and her connection to Altstadt lost, her app finds a bus from the bus station; her journey in numbers and her rights as a passenger.",
+      "description": "A traveller's view of the station. Railway undertaking → Journeys tells Ada's journey to click through: she walks from her flat on Bahnhofstraße to platform 1, her RB 31 to Talsee is late and her connection to Altstadt lost, her app finds a bus from the bus station; her journey in numbers and her rights as a passenger.",
       "enabled": false,
       "simulations": [
         {"type": "journeys-story", "name": "Ada's journey", "traveller": "Ada", "home": "plattenbau-1", "track": "track-g1", "bus_terminal": "bus-terminal-1", "delay_min": 20}
+      ]
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "description": "The container terminal at the loading tracks G14–G16: container trains, trucks, the gantry crane and the yard. Railway undertaking → Terminal moves the containers.",
+      "enabled": false,
+      "simulations": [
+        {
+          "type": "terminal",
+          "name": "KV terminal Neustadt",
+          "default_wagon": "sgns60",
+          "trains": [
+            {"id": "KT41", "name": "KT 41 Hamburg", "track": "track-g16", "direction": -1, "stop_mm": 3740, "start": "positioned", "wagons": ["sgns60", "sgns60", "sgns60", "sggrss80", "sgns60"]},
+            {"id": "KT52", "name": "KT 52 Duisburg", "track": "track-g14", "direction": -1, "stop_mm": 3755, "start": "away", "wagons": ["sgns60", "lgns40"]}
+          ],
+          "trucks": {"lane": "lane-1"},
+          "containers": [
+            {"id": "ARLU 100001 9", "size": "40", "high": true, "at": {"carrier": "KT41/1", "bay": 0}},
+            {"id": "ARLU 100002 4", "size": "20", "at": {"carrier": "KT41/1", "bay": 2}},
+            {"id": "ARLU 100003 0", "size": "20", "at": {"carrier": "KT41/2", "bay": 0}},
+            {"id": "ARLU 100004 5", "size": "40", "at": {"carrier": "KT41/2", "bay": 1}},
+            {"id": "EBLU 300001 1", "size": "40", "at": {"carrier": "KT41/3", "bay": 0}},
+            {"id": "EBLU 300002 7", "size": "20", "at": {"carrier": "KT41/3", "bay": 2}},
+            {"id": "EBLU 300004 8", "size": "20", "at": {"carrier": "KT41/4", "bay": 0}},
+            {"id": "DBCU 400002 4", "size": "40", "at": {"carrier": "KT41/4", "bay": 2}},
+            {"id": "TUDU 200003 6", "size": "20", "high": true, "at": {"carrier": "KT41/5", "bay": 1}},
+            {"id": "EBLU 300003 2", "size": "40", "at": {"carrier": "KT52/1", "bay": 0}},
+            {"id": "TUDU 200001 5", "size": "20", "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 0}},
+            {"id": "TUDU 200002 0", "size": "20", "high": true, "at": {"carrier": "yard-a", "bay": 0, "row": 0, "tier": 1}},
+            {"id": "DBCU 400001 9", "size": "40", "at": {"carrier": "yard-a", "bay": 2, "row": 1, "tier": 0}}
+          ],
+          "fill": {"yard-a": 0.35}
+        }
+      ],
+      "scenarios": [
+        {
+          "id": "morning-shift",
+          "name": "Morning shift at the terminal",
+          "description": "KT 52 arrives on loading track 3; trucks collect and deliver; the crane works the trains and the yard.",
+          "steps": [
+            {"at": 0, "message": "Morning shift: KT 52 is due on loading track 3."},
+            {"at": 0, "emit": {"name": "terminal.request.call", "payload": {"visit": "KT52"}}},
+            {"at": 5, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "pickup"}}},
+            {"at": 6, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 100002 4", "to": {"kind": "truck"}}}},
+            {"at": 8, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 100001 9", "to": {"carrier": "yard-a"}}}},
+            {"at": 10, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 300003 2", "to": {"carrier": "yard-a"}}}},
+            {"at": 12, "emit": {"name": "terminal.request.truck", "payload": {"purpose": "delivery", "size": "40"}}}
+          ]
+        }
       ]
     }
   ],
