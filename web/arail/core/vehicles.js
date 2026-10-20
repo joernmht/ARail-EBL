@@ -3,6 +3,15 @@
  * e-scooters drawn with lines (drawBike).
  * Register your own with `registry.registerVehicle({kind, ...})`.
  * All sizes are prototype metres.
+ *
+ * For the people getting on and off (sims/passengers.js, core/mobility.js) a vehicle type also says
+ * how high its floor is at the doors above the rails or the road (`entry_m`), the gap at its doors
+ * (`door_gap_m`), the help its crew gives a wheelchair user (`assist`: "ramp" the driver puts out,
+ * else none: the station's staff), the door of its multi-purpose area (`access_door`, an index of
+ * `doors()`), and its places: `seats` and standing room (`standing_m2`; trains per car of
+ * `carLength_m`: `seats_per_car`, `standing_per_car_m2`), the wheelchair places, and whether heavy
+ * luggage goes into racks (`racks`). Without these the passengers take a floor level with the
+ * platform, 30 seats and 10 m² of standing room.
  * @module arail/core/vehicles
  */
 import { CD, OVERLAY, PALETTE, grey, mix, rgba, shade } from "./colors.js";
@@ -35,6 +44,14 @@ export const TRAIN = {
   gap_m: 0.3,
   overhang_m: 0,
   carLength_m: 26,
+  /** A regional multiple unit for 76 cm platforms (EBO § 13: the standard height), with sliding steps at the doors. */
+  entry_m: 0.76,
+  door_gap_m: 0.05,
+  assist: null,
+  seats_per_car: 80,
+  standing_per_car_m2: 10,
+  wheelchair_places: 2,
+  racks: true,
   /** Stopped extent along the dock (m): the whole platform track. */
   extent: (dock) => [dock.s0, dock.s1],
   doors(dock) {
@@ -86,6 +103,14 @@ export const BUS = {
   gap_m: 0.4,
   overhang_m: 30,
   length_m: 12,
+  /** A 12 m low-floor bus (kneeling), close to the kerb: a folding ramp at the middle door, the multi-purpose area behind it. */
+  entry_m: 0.32,
+  door_gap_m: 0.05,
+  assist: "ramp",
+  access_door: 1,
+  seats: 32,
+  standing_m2: 11,
+  wheelchair_places: 1,
   /** A bus stands at the end of its bay (m). */
   extent: (dock) => [Math.max(dock.s0, dock.s1 - 1.5 - 12), dock.s1 - 1.5],
   doors(dock) {
@@ -141,6 +166,14 @@ export const TRAM = {
   gap_m: 0.05,
   overhang_m: 30,
   length_m: 30,
+  /** Low floor at every door; a ramp the driver puts out where the stop is not step-free; multi-purpose areas at the second door. */
+  entry_m: 0.3,
+  door_gap_m: 0.05,
+  assist: "ramp",
+  access_door: 1,
+  seats: 60,
+  standing_m2: 30,
+  wheelchair_places: 2,
   /** A tram stands with its front 1 m before the end of the platform (m). */
   extent: (dock) => [Math.max(dock.s0, dock.s1 - 1 - 30), dock.s1 - 1],
   doors(dock) {

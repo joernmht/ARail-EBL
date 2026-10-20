@@ -276,7 +276,9 @@ test("town: worked out again during the day, the people who are still there keep
   runUntil(world, "07:20");
   const t = town(world);
   const before = new Map(t.agents.map((a) => [a.id, { a, state: a.state, pos: a.pos && [...a.pos], inside: a.inside }]));
-  const moving = t.agents.filter((a) => a.state === "walking" || a.state === "stop" || a.state === "riding");
+  // on their way, and not at the end of their walk within the next step (they may arrive in it)
+  const ahead = (a) => a.state !== "walking" || !a.path || (a.path.length - a.s) / ((a.speed * 1000) / world.scale) > 2;
+  const moving = t.agents.filter((a) => (a.state === "walking" || a.state === "stop" || a.state === "riding") && ahead(a));
   assert.ok(moving.length > 5, `${moving.length} people on their way`);
   world.getObject("shop").set({ people: 60 }); // more shop visits: the town is worked out again
   world.step(0.1);

@@ -12,6 +12,12 @@
  * (with the delay the train had). What happened is logged per traveller; `results()` compares the
  * planned and the real arrival.
  *
+ * A traveller has the characteristics its maker chose (`profile`, core/mobility.js: age, a walking
+ * aid or a pram, luggage; an adult without any by default): it walks at its own speed, takes its own
+ * time at the doors, and the planner plans with them (a wheelchair user gets only plans it can take).
+ * Its trip is recorded from door to door in its parts, planned and real (clock minutes): walk, wait,
+ * at the doors, ride, transfer (the walks between two vehicles); `results()` has them.
+ *
  * The trains come from rail.js: the journeys' own timetable, which the journeys run at the
  * platforms (as the services' planner), or the trips of the rail operations when they run. The
  * travellers are kept in the layout (`travellers`), so a layout carries an exercise; the state of a
@@ -23,11 +29,12 @@ import { CD, CD_LIGHT, mix, OVERLAY } from "../core/colors.js";
 import { hashKey, polylineAt, rectAround } from "../core/math.js";
 import { hiddenAt } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
-import { drawPerson } from "../sims/passengers.js";
+import { mobilityOf, normalizeProfile, profileWords, walkingSpeed } from "../core/mobility.js";
+import { drawPerson, personLooks, profileRows } from "../sims/passengers.js";
 import { opsOf } from "../ops/simulation.js";
 import { DAY, hhmm } from "../ops/util.js";
 import { OperationsRail, TimetableRail, depAt, reaches, sameLine, worldNow } from "./rail.js";
-import { Planner, WALK_MPS, areaName, placePoint, walkPath } from "./planner.js";
+import { Planner, areaName, placePoint, walkPath } from "./planner.js";
 
 /** Colours of the travellers, by their number (CD colours and mixes of them, apart from each other). */
 export const TRAVELLER_COLOURS = Object.freeze([
@@ -47,6 +54,10 @@ const ARRIVAL_GRACE_MIN = 10;
 const RETRY_S = 5;
 /** Longest time (simulated s) a bus waits for a traveller who is getting on. */
 const BUS_HOLD_S = 20;
+/** The parts of a trip from door to door (`Traveller.parts`), in words. */
+export const JOURNEY_PARTS = { walk: "walk", wait: "wait", doors: "at the doors", ride: "ride", transfer: "transfer" };
+/** Why a traveller could not get on (passenger.denied), in words. */
+const DENIED = { step: "no level boarding and no help for the wheelchair", full: "the vehicle was full", wheelchair: "no wheelchair place free" };
 
 /** A traveller of the journeys: a Person with its plan and where it is on it. */
 export class Traveller extends Person {
@@ -62,6 +73,10 @@ export class Traveller extends Person {
     this.transfer = Number(spec.transfer_min ?? 3);
     /** The plan (times relative to the journey's day, like `leave`). */
     this.plan = spec.plan && Array.isArray(spec.plan.legs) ? spec.plan : { legs: [], dep: this.leave, arr: this.leave };
+    /** What it is like, as its maker chose (core/mobility.js; an adult without aids or luggage by default). */
+    this.profile = normalizeProfile(spec.profile);
+    /** Walking speed (m/s), from the profile (set again with the world's settings, JourneysSimulation). */
+    this.speed = walkingSpeed(this.profile);
     this.reset(0);
   }
 
@@ -92,6 +107,8 @@ export class Traveller extends Person {
     this.started = null;
     this.arrived = null;
     this.log = [];
+    /** The real trip so far in its parts (clock minutes, see JOURNEY_PARTS). */
+    this.parts = { walk: 0, wait: 0, doors: 0, ride: 0, transfer: 0 };
   }
 
   /** World time of a time of the journey's day. */
@@ -111,7 +128,25 @@ export class Traveller extends Person {
 
   /** For the layout file: who it is and its plan. */
   toJSON() {
-    return { id: this.id, name: this.name, number: this.number, colour: this.colour, from: this.from, to: this.to, leave: this.leave, transfer_min: this.transfer, plan: this.plan };
+    const { age, aid, luggage } = this.profile;
+    return { id: this.id, name: this.name, number: this.number, colour: this.colour, profile: { age, aid, luggage }, from: this.from, to: this.to, leave: this.leave, transfer_min: this.transfer, plan: this.plan };
+  }
+
+  /** The planned trip in its parts (clock minutes, see JOURNEY_PARTS): from the plan's legs. */
+  get plannedParts() {
+    const legs = this.plan.legs || [];
+    const first = legs.findIndex((l) => l.type !== "walk"), last = legs.findLastIndex((l) => l.type !== "walk");
+    const out = { walk: 0, wait: 0, doors: 0, ride: 0, transfer: 0 };
+    let t = this.plan.dep ?? this.leave;
+    legs.forEach((l, i) => {
+      if (l.type === "walk") out[i > first && i < last ? "transfer" : "walk"] += l.min || 0;
+      else {
+        out.wait += Math.max(0, l.dep - t);
+        out.ride += l.arr - l.dep;
+      }
+      t = l.arr;
+    });
+    return out;
   }
 }
 
@@ -136,7 +171,10 @@ export class JourneysSimulation extends Simulation {
     super(world, config);
     /** @type {Traveller[]} */
     this.travellers = (Array.isArray(config.travellers) ? config.travellers : []).filter((t) => t && typeof t === "object" && t.id).map((t) => new Traveller(t));
-    for (const t of this.travellers) t.reset(world.clock.day);
+    for (const t of this.travellers) {
+      this._characterise(t, config.travellers.find((x) => x?.id === t.id)?.profile);
+      t.reset(world.clock.day);
+    }
     /** The traveller chosen in the panel (drawn with a ring). */
     this.selected = null;
     this.planner = new Planner(this);
@@ -147,6 +185,7 @@ export class JourneysSimulation extends Simulation {
       on("passenger.boarded", (e) => this._boarded(e)),
       on("passenger.exited", (e) => this._exited(e)),
       on("passenger.removed", (e) => this._removed(e)),
+      on("passenger.denied", (e) => this._denied(e)),
       on("vehicle.arrived", (e) => this._vehicleArrived(e)),
       on("clock.set", () => this._clockSet()),
     ];
@@ -228,13 +267,21 @@ export class JourneysSimulation extends Simulation {
 
   /**
    * Travel plans (see Planner.plan) from a place to another one.
-   * @param {{from: object, to: object, leave: number | string, transfer?: number}} request
-   *   `leave`: a time of day ("07:40") or a world time (number)
+   * @param {{from: object, to: object, leave: number | string, transfer?: number, profile?: object | null}} request
+   *   `leave`: a time of day ("07:40") or a world time (number); `profile`: the traveller's
+   *   characteristics ({age, aid, luggage}, core/mobility.js), default an adult without any
    */
-  plan({ from, to, leave, transfer = this.config.transfer_min }) {
+  plan({ from, to, leave, transfer = this.config.transfer_min, profile = null }) {
     const t = typeof leave === "string" ? this.departureTime(leave) : leave;
     if (t == null) return [];
-    return this.planner.plan({ from, to, leave: t, transfer });
+    return this.planner.plan({ from, to, leave: t, transfer, profile: normalizeProfile(profile ?? {}, mobilityOf(this.world)) });
+  }
+
+  /** A traveller's profile as written (none: an adult without aids), with the layout's settings (its base speed the mean walking speed), and its speed. */
+  _characterise(t, spec) {
+    const mob = mobilityOf(this.world);
+    t.profile = normalizeProfile(spec ?? {}, mob);
+    t.speed = walkingSpeed(t.profile, mob);
   }
 
   /** A name for a new traveller ("S. Fink"), not used by another one. */
@@ -249,10 +296,11 @@ export class JourneysSimulation extends Simulation {
 
   /**
    * Add a traveller with the plan chosen for it (a plan of `plan()`, world times).
-   * @param {{name?: string, from: object, to: object, plan: object, transfer?: number, colour?: string}} spec
+   * @param {{name?: string, from: object, to: object, plan: object, transfer?: number, colour?: string, profile?: object}} spec
+   *   `profile`: its characteristics ({age, aid, luggage}), as the plan was made for
    * @returns {Traveller}
    */
-  addTraveller({ name, from, to, plan, transfer = this.config.transfer_min, colour }) {
+  addTraveller({ name, from, to, plan, transfer = this.config.transfer_min, colour, profile = null }) {
     if (!plan?.legs?.length) throw new Error("Choose a travel plan first");
     const number = Math.max(0, ...this.travellers.map((t) => t.number)) + 1;
     let id = `t${number}`;
@@ -264,6 +312,7 @@ export class JourneysSimulation extends Simulation {
       id, number, name: String(name || "").trim() || this.newName(number), colour, from, to, leave: rel(plan.dep), transfer_min: transfer,
       plan: { legs, dep: rel(plan.dep), arr: rel(plan.arr), transfers: plan.transfers },
     });
+    this._characterise(t, profile);
     t.reset(day);
     this.travellers.push(t);
     this.world.events.emit("journeys.traveller.added", { simulation: this, traveller: t });
@@ -391,14 +440,21 @@ export class JourneysSimulation extends Simulation {
     return end == null ? t.plannedArrival + late : end + (t.plan.arr - legs[last].arr);
   }
 
-  /** Rows for the results: who went where, planned and real arrival, delay, missed trains. */
+  /**
+   * Rows for the results: who went where, what it is like, planned and real arrival, delay, missed
+   * trains, the minutes from door to door (planned, and real once arrived) and their parts, planned
+   * and real so far (see JOURNEY_PARTS).
+   */
   results() {
+    const round = (parts) => Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, Math.round(v * 10) / 10]));
     return this.travellers.map((t) => {
       const st = this.status(t);
       return {
-        id: t.id, number: t.number, name: t.name, from: placeName(this, t.from), to: placeName(this, t.to),
+        id: t.id, number: t.number, name: t.name, from: placeName(this, t.from), to: placeName(this, t.to), characteristics: profileWords(t.profile),
         leave: t.at(t.leave), planned: t.plannedArrival, arrived: t.arrived, expected: st.expected, delay: st.delay,
         transfers: t.plan.transfers ?? Math.max(0, t.plan.legs.filter((l) => l.type !== "walk").length - 1), missed: t.missed, state: t.state, status: st.text,
+        plannedMinutes: Math.round((t.plan.arr - t.plan.dep) * 10) / 10, minutes: t.arrived != null && t.started != null ? Math.round((t.arrived - t.started) * 10) / 10 : null,
+        plannedParts: round(t.plannedParts), parts: round(t.parts),
       };
     });
   }
@@ -420,6 +476,7 @@ export class JourneysSimulation extends Simulation {
   }
 
   _stepTraveller(t, now, dt) {
+    this._tally(t, dt);
     switch (t.state) {
       case "home":
         if (now >= t.at(t.leave)) this._start(t, now);
@@ -448,6 +505,23 @@ export class JourneysSimulation extends Simulation {
         if (this.world.time >= t.retryAt) this._retry(t, now);
         break;
     }
+  }
+
+  /**
+   * A step of the trip into its part: walking (between two vehicles: transfer), waiting (also beyond
+   * the layout and outside a closed stop), at the doors (getting on and off), riding.
+   */
+  _tally(t, dt) {
+    if (t.state === "home" || t.state === "arrived" || t.state === "stuck") return;
+    const p = t.person?.state, legs = t.plan.legs, ride = (l) => l && l.type !== "walk";
+    // on foot between two vehicles: a transfer (also onto the stop of the next one, and off the last but one)
+    const before = legs.slice(0, Math.max(0, t.leg)).some(ride), after = legs.slice(t.leg + 1).some(ride);
+    const between = t.state === "walking" ? before && after : t.state === "waiting" ? before : (before || ride(legs[t.leg])) && after;
+    const walking = between ? "transfer" : "walk";
+    const part = t.state === "walking" ? walking : t.state === "bus" || t.state === "train" ? "ride"
+      : t.state === "waiting" ? (p === "boarding" ? "doors" : p === "arriving" ? walking : "wait")
+        : t.state === "alighting" ? (p === "onboard" ? "doors" : walking) : t.state === "beyond" || t.state === "outside" ? "wait" : null;
+    if (part) t.parts[part] += (dt * this.world.clock.factor) / 60;
   }
 
   _start(t, now) {
@@ -506,8 +580,8 @@ export class JourneysSimulation extends Simulation {
   _walk(t, dt, now) {
     const path = t.path;
     if (!path) return this._next(t, now);
-    t.s += ((WALK_MPS * 1000) / this.world.scale) * dt;
-    t.phase += WALK_MPS * dt * 5;
+    t.s += ((t.speed * 1000) / this.world.scale) * dt;
+    t.phase += t.speed * dt * 5;
     if (t.s >= path.length) {
       t.pos = path.points[path.points.length - 1].slice();
       t.path = null;
@@ -536,7 +610,7 @@ export class JourneysSimulation extends Simulation {
     const opts = leg.type === "bus"
       ? { dockId: area.docks.some((d) => d.id === leg.fromDock) ? leg.fromDock : null, line: leg.line, anyDock: !area.docks.some((d) => d.id === leg.fromDock) }
       : { anyDock: true, accept: (v) => this._takes(t, leg, v) };
-    const p = pax.enter(area.id, { agent: t, at: t.pos, ...opts });
+    const p = pax.enter(area.id, { agent: t, at: t.pos, rideMin: Math.max(1, (leg.arr ?? 0) - (leg.dep ?? 0)), ...opts });
     if (!p) return this._stuck(t, `${areaName(area)} cannot be used`);
     t.person = p;
     t.area = area.id;
@@ -817,6 +891,14 @@ export class JourneysSimulation extends Simulation {
     }
   }
 
+  /** A traveller could not get on (passenger.denied): logged; it waits for the next one. */
+  _denied({ agent, vehicle, reason }) {
+    const t = this._ours(agent);
+    if (!t) return;
+    const leg = t.current;
+    this._log(t, `Could not get on ${leg?.name ?? vehicle?.line ?? "the vehicle"}: ${DENIED[reason] ?? reason}`);
+  }
+
   _removed({ agent }) {
     const t = this._ours(agent);
     if (!t) return;
@@ -918,13 +1000,19 @@ export class JourneysSimulation extends Simulation {
       : `${hhmm(t.at(leg.dep))} ${leg.name} ${leg.fromName} → ${leg.toName}`);
     const rows = [["Leaves", hhmm(t.at(t.leave))], ["Planned arrival", hhmm(st.planned)]];
     if (st.expected != null && st.expected !== st.planned) rows.push(["Expected arrival", hhmm(st.expected)]);
+    rows.push(...profileRows(t.profile, t.speed));
+    // from door to door: planned and real, in their parts
+    const planned = t.plannedParts, minutes = (m) => `${Math.round(m)} min`;
+    const doors = t.state === "home" ? [] : Object.entries(JOURNEY_PARTS).filter(([k]) => planned[k] >= 0.5 || t.parts[k] >= 0.5)
+      .map(([k, w]) => `${w}: ${minutes(t.parts[k])}${k === "doors" ? "" : ` (planned ${minutes(planned[k])})`}`);
+    if (t.state === "arrived" && t.started != null) doors.unshift(`door to door: ${minutes(t.arrived - t.started)} (planned ${minutes(t.plan.arr - t.plan.dep)})`);
     return {
       title: t.name,
       subtitle: `Traveller ${t.number} · journeys`,
       status: st.text,
       tone: st.tone,
       rows,
-      sections: legs.length ? [{ title: "Travel plan", lines: legs }] : [],
+      sections: [...(legs.length ? [{ title: "Travel plan", lines: legs }] : []), ...(doors.length ? [{ title: "Door to door", lines: doors }] : [])],
       actions: [{ id: "follow", label: "Follow" }],
     };
   }
@@ -945,7 +1033,9 @@ export class JourneysSimulation extends Simulation {
         // in the underpass or off stage: out of sight (the chosen traveller keeps its ring and name)
         hidden = hiddenAt(t.path, t.s);
         if (hidden && !chosen) continue;
-        if (!hidden && view.inImage(at[0], at[1], 0)) drawPerson(view, at, { dir, speed: WALK_MPS, phase: t.phase, height: 1.7 + (hashKey(t.id) % 20) / 100, colour: t.colour });
+        if (!hidden && view.inImage(at[0], at[1], 0)) {
+          drawPerson(view, at, { dir, speed: t.speed, phase: t.phase, height: (t.profile.age === "child" ? 1.3 : 1.7) + (hashKey(t.id) % 20) / 100, colour: t.colour, ...personLooks(this.world, t.profile) });
+        }
       } else at = this.positionOf(t.id);
       if (!at) continue;
       if (t.state === "home" || t.state === "arrived") {

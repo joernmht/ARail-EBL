@@ -51,8 +51,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
+    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -141,7 +141,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -344,6 +344,7 @@ export const EVENTS = [
   { name: "passenger.boarded", from: ["web/arail/sims/passengers.js"], payload: "area, dock, vehicle, person, agent", meaning: "Someone got on (with the agent of the simulation that handed the person over)." },
   { name: "passenger.exited", from: ["web/arail/sims/passengers.js"], payload: "area, person, agent, pos", meaning: "Someone left a stop on foot." },
   { name: "passenger.removed", from: ["web/arail/sims/passengers.js"], payload: "agent, person", meaning: "Someone was taken off a stop (e.g. the stop was removed)." },
+  { name: "passenger.denied", from: ["web/arail/sims/passengers.js"], payload: "area, dock, vehicle, person, agent, reason", meaning: "Someone could not get on and was left behind: reason step (a wheelchair without level boarding or help), full or wheelchair (no wheelchair place free)." },
   { name: "terminal.visit.arriving", from: ["web/arail/terminal/visits.js"], payload: "terminal, visit", meaning: "A train, barge or truck comes in." },
   { name: "terminal.visit.arrived", from: ["web/arail/terminal/visits.js"], payload: "terminal, visit", meaning: "It is in its place." },
   { name: "terminal.visit.departing", from: ["web/arail/terminal/visits.js"], payload: "terminal, visit", meaning: "It leaves." },

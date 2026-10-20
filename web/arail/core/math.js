@@ -374,6 +374,28 @@ export function polylineProject(pts, p, cum = polylineLengths(pts)) {
 
 /* ------------------------------------------------------------------ random numbers */
 
+/** The standard normal distribution function Φ(x) (Abramowitz and Stegun 26.2.17, error below 7.5e-8). */
+export function normalCdf(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const tail = (Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI)) * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x >= 0 ? 1 - tail : tail;
+}
+
+/** The inverse of Φ: the x with Φ(x) = p, for 0 < p < 1 (Acklam's algorithm, relative error below 1.2e-9). */
+export function normalQuantile(p) {
+  if (!(p > 0)) return -Infinity;
+  if (!(p < 1)) return Infinity;
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const tail = (q) => (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  if (p < 0.02425) return tail(Math.sqrt(-2 * Math.log(p)));
+  if (p > 1 - 0.02425) return -tail(Math.sqrt(-2 * Math.log(1 - p)));
+  const q = p - 0.5, r = q * q;
+  return ((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q) / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+
 /** FNV-1a hash of the parts joined by "|" (a seed for `createRng` from what a stream decides). */
 export function hashKey(...parts) {
   let h = 2166136261;
@@ -405,6 +427,16 @@ export function createRng(seed = 1) {
     pick: (arr) => arr[Math.floor(next() * arr.length)],
     chance: (p) => next() < p,
     normal: (mean = 0, sd = 1) => mean + sd * Math.sqrt(-2 * Math.log(next() + 1e-12)) * Math.cos(2 * Math.PI * next()),
+    /**
+     * Normally distributed, cut to `lo` … `hi` (a truncated normal distribution, by the inverse of Φ):
+     * always one random number, so that what is drawn after it does not depend on the bounds.
+     */
+    truncNormal: (mean = 0, sd = 1, lo = -Infinity, hi = Infinity) => {
+      const u = next();
+      if (!(sd > 0)) return clamp(mean, lo, hi);
+      const a = normalCdf((lo - mean) / sd), b = normalCdf((hi - mean) / sd);
+      return clamp(mean + sd * normalQuantile(a + (b - a) * (1e-9 + u * (1 - 2e-9))), lo, hi);
+    },
     poisson: (lambda) => {
       if (!(lambda > 0)) return 0;
       if (lambda > 30) return Math.max(0, Math.round(rng.normal(lambda, Math.sqrt(lambda))));

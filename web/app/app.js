@@ -828,9 +828,9 @@ export class App {
 
   savePrefs() {
     storage.set("arail.display", this.display);
-    const { labels, stopBoards, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
+    const { labels, stopBoards, trails, spaceCircles, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems } = this.world.settings;
     // where a train may run belongs to that train: not kept
-    storage.set("arail.settings", { labels, stopBoards, trails, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
+    storage.set("arail.settings", { labels, stopBoards, trails, spaceCircles, showTracks, feedVehicles, lighting, peopleColour, coverMarkers, trackSystems: trackSystems === "compatibility" ? "" : trackSystems });
   }
 
   /**

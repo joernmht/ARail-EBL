@@ -1,8 +1,10 @@
 // Journeys panel of the game page: the travellers of an exercise. Every attendee makes a traveller with
 // a start and an aim, asks for travel plans with transfers and chooses one; then all follow their
 // travellers on the layout ("Show" follows one with the flyover's camera), and the results compare the
-// planned and the real arrivals (CSV for the debriefing).
-import { formatTime, journeysOf, parseColor, TRAVELLER_STATES } from "../arail/index.js";
+// planned and the real arrivals, from door to door and in their parts (CSV for the debriefing). A
+// traveller can be a child or old, use a walking aid, push a pram or carry luggage: it walks and
+// gets on at its own pace, and the planner plans for it.
+import { AGES, AIDS, formatTime, JOURNEY_PARTS, journeysOf, LUGGAGE, parseColor, TRAVELLER_STATES } from "../arail/index.js";
 import { download, h, morph, mount, section, storage, toast } from "../app/ui.js";
 
 /** Transfer times offered (clock minutes). */
@@ -42,7 +44,7 @@ export class JourneysPanel {
   constructor(app) {
     this.app = app;
     /** The traveller being made. */
-    this.draft = { name: "", from: "", to: "", leave: "", transfer: null };
+    this.draft = { name: "", from: "", to: "", leave: "", transfer: null, age: "adult", aid: "none", luggage: "none" };
     /** Plans found for the draft (null: not asked yet). */
     this.plans = null;
     /** Travellers whose plan and log are open. */
@@ -183,6 +185,9 @@ export class JourneysPanel {
     if (!has(d.to) || d.to === d.from) d.to = valueOf(places.find((p) => p.kind === "station") || places.find((p) => valueOf(p) !== d.from));
     if (!d.leave) d.leave = formatTime(Math.ceil((this.world.clock.minutes + 10) / 5) * 5);
     d.transfer ??= Number(sim.config.transfer_min ?? 3);
+    const choice = (id, label, key, words) => h("label", { class: "field", for: id }, h("span", {}, label),
+      h("select", { id, onchange: (ev) => this._change(key, ev.target.value) },
+        Object.entries(words).map(([v, text]) => h("option", { value: v, selected: d[key] === v }, text))));
     const options = (id, label, key) => h("label", { class: "field", for: id }, h("span", {}, label),
       h("select", { id, onchange: (ev) => this._change(key, ev.target.value) },
         GROUPS.map(([g, title]) => {
@@ -202,12 +207,22 @@ export class JourneysPanel {
           h("label", { class: "field", for: "journeyTransfer" }, h("span", {}, "Transfer time"),
             h("select", { id: "journeyTransfer", onchange: (ev) => this._change("transfer", Number(ev.target.value)) },
               [...new Set([...TRANSFERS, d.transfer])].sort((a, b) => a - b).map((m) => h("option", { value: m, selected: m === d.transfer }, `${m} min`)))),
+          choice("journeyAge", "Age", "age", AGES),
+          choice("journeyAid", "Walking aid", "aid", AIDS),
+          choice("journeyLuggage", "Luggage", "luggage", LUGGAGE),
         ),
+        h("p", { class: "hint" }, "Old people, a walking aid, a pram or luggage make the traveller walk and get on more slowly; a wheelchair user only gets plans with level boarding or help at the doors."),
         h("p", { class: "hint" }, "The transfer time is the least time between getting to a platform (or off a train) and the next train: short ones are fast, but a little delay breaks them. Times are on the layout's fast clock: walks and buses take longer than in reality."),
         h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", id: "journeyFind", onclick: () => this.findPlans() }, "Find travel plans")),
         e.plans,
       ]);
     this._renderPlans();
+  }
+
+  /** The characteristics chosen for the traveller being made. */
+  _profile() {
+    const d = this.draft;
+    return { age: d.age, aid: d.aid, luggage: d.luggage };
   }
 
   _change(key, value) {
@@ -226,7 +241,7 @@ export class JourneysPanel {
     if (!from || !to) return toast("Choose where the traveller starts and where it goes.");
     if (d.from === d.to) return toast("The start and the aim are the same place.");
     if (!/^\d{1,2}:\d{2}$/.test(d.leave || "")) return toast("Enter the time the traveller leaves, e.g. 07:40.");
-    this.plans = sim.plan({ from, to, leave: d.leave, transfer: d.transfer });
+    this.plans = sim.plan({ from, to, leave: d.leave, transfer: d.transfer, profile: this._profile() });
     this._renderPlans();
     if (!this.plans.length) return;
     this.el.plans.querySelector("button")?.focus({ preventScroll: false });
@@ -263,7 +278,7 @@ export class JourneysPanel {
     if (!sim) return;
     let t;
     try {
-      t = sim.addTraveller({ name: d.name, from: refOf(d.from), to: refOf(d.to), plan, transfer: d.transfer });
+      t = sim.addTraveller({ name: d.name, from: refOf(d.from), to: refOf(d.to), plan, transfer: d.transfer, profile: this._profile() });
     } catch (err) {
       toast(err.message);
       return;
@@ -352,17 +367,18 @@ export class JourneysPanel {
         ? `${arrived.length} of ${rows.length} arrived, ${late.length} of them late${late.length ? ` (on average ${Math.round(late.reduce((s, r) => s + r.delay, 0) / late.length)} min)` : ""}; ${rows.reduce((s, r) => s + r.missed, 0)} trains missed or cancelled.`
         : "Nobody has arrived yet."),
       h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Results of the journeys" }, h("table", { class: "journey-results" },
-        h("thead", {}, h("tr", {}, ["#", "Traveller", "From → to", "Leaves", "Planned", "Arrived", "Delay", "Missed"].map((x) => h("th", { scope: "col" }, x)))),
+        h("thead", {}, h("tr", {}, ["#", "Traveller", "From → to", "Leaves", "Planned", "Arrived", "Delay", "Missed", "Door to door"].map((x) => h("th", { scope: "col" }, x)))),
         h("tbody", {}, rows.map((r) => h("tr", {},
           h("td", {}, String(r.number)),
-          h("th", { scope: "row" }, r.name),
+          h("th", { scope: "row" }, r.name, h("small", {}, ` ${r.characteristics}`)),
           h("td", { class: "wrap" }, `${r.from} → ${r.to}`),
           h("td", {}, hm(r.leave)),
           h("td", {}, hm(r.planned)),
           h("td", {}, r.arrived != null ? hm(r.arrived) : r.expected != null && r.state !== "home" ? `(${hm(r.expected)})` : "–"),
           h("td", { class: r.delay >= 5 ? "bad" : r.delay >= 1 ? "warn" : "" }, r.delay == null ? "–" : r.delay > 0 ? `+${r.delay}` : String(r.delay)),
-          h("td", {}, String(r.missed))))))),
-      h("p", { class: "hint" }, "Arrived: the real arrival; in brackets the expected one of those still travelling. Delay in clock minutes against the plan."),
+          h("td", {}, String(r.missed)),
+          h("td", { class: "wrap" }, doorToDoor(r))))))),
+      h("p", { class: "hint" }, "Arrived: the real arrival; in brackets the expected one of those still travelling. Delay in clock minutes against the plan. Door to door: the minutes from leaving to arriving (planned in brackets), and how they were spent."),
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", id: "journeysCsv", onclick: () => this.downloadCSV() }, "Download results (CSV)"),
         h("button", { class: "btn small", type: "button", id: "journeysRestart", onclick: () => this.restartAll() }, "Start all again"),
@@ -372,9 +388,12 @@ export class JourneysPanel {
 
   downloadCSV() {
     const rows = this.sim?.results() || [];
-    const head = ["number", "name", "from", "to", "leaves", "planned_arrival", "arrival", "delay_min", "transfers", "missed", "state"];
+    const parts = Object.keys(JOURNEY_PARTS);
+    const head = ["number", "name", "characteristics", "from", "to", "leaves", "planned_arrival", "arrival", "delay_min", "transfers", "missed", "state", "planned_min", "door_to_door_min",
+      ...parts.flatMap((k) => [`planned_${k}_min`, `${k}_min`])];
     const q = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-    const lines = rows.map((r) => [r.number, r.name, r.from, r.to, hm(r.leave), hm(r.planned), r.arrived != null ? hm(r.arrived) : "", r.delay ?? "", r.transfers, r.missed, r.state].map(q).join(","));
+    const lines = rows.map((r) => [r.number, r.name, r.characteristics, r.from, r.to, hm(r.leave), hm(r.planned), r.arrived != null ? hm(r.arrived) : "", r.delay ?? "", r.transfers, r.missed, r.state,
+      r.plannedMinutes, r.minutes ?? "", ...parts.flatMap((k) => [r.plannedParts[k], r.parts[k]])].map(q).join(","));
     download("journeys.csv", `${head.join(",")}\n${lines.join("\n")}\n`, "text/csv");
   }
 
@@ -403,6 +422,13 @@ export class JourneysPanel {
     toast("All travellers removed.");
     this.update();
   }
+}
+
+/** From door to door: the minutes in all (planned in brackets) and those of each part so far. */
+function doorToDoor(r) {
+  const parts = Object.entries(JOURNEY_PARTS).filter(([k]) => r.parts[k] >= 0.5).map(([k, w]) => `${w} ${minutes(r.parts[k])}`);
+  const all = r.minutes != null ? `${minutes(r.minutes)} (${minutes(r.plannedMinutes)})` : r.state === "home" ? `(${minutes(r.plannedMinutes)})` : "";
+  return [all, parts.join(" · ")].filter(Boolean).join(": ") || "–";
 }
 
 /** A leg's times moved by `by` minutes (the plan of a traveller is kept relative to its day). */

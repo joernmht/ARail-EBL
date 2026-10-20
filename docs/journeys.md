@@ -128,7 +128,8 @@ A traveller goes from a **building** of the layout (one with an entrance: houses
 office, the station building, …) or a **station beyond the layout** to another one. The planner
 looks for ways with these legs:
 
-- **walk** over the road network: sidewalks, footpaths and the underpass, at 1.3 m/s;
+- **walk** over the road network: sidewalks, footpaths and the underpass, at the traveller's own
+  walking speed (1.34 m/s for an adult without aids or luggage, see below);
 - **bus**: a bus line from a stop near the start to a stop near the aim, directly or with one change
   of buses. Buses run at a headway, not to a timetable, so the planner expects half the headway of
   waiting and the line's average pace: bus times are estimates ("~07:52", "every 13 min");
@@ -145,6 +146,19 @@ getting to a platform (or off a train or bus) and the next train; the walk off t
 counted on top of it. Short transfer times make fast plans that break with a little delay; long
 ones are safe but slow.
 
+### What the traveller is like
+
+A traveller is an adult without aids or luggage unless its maker chooses otherwise: its **age**
+(child, adult, old), a **walking aid** (walking stick, rollator, wheelchair, pram) and its
+**luggage** (light, heavy, bulky). These are the characteristics of every person of the
+simulations ([Passenger mobility](day-and-night.md#passenger-mobility)): an old traveller with a
+rollator walks at 1.34 × 0.83 × 0.46 ≈ 0.5 m/s and takes 3 s at a level door, 9 s where there is a
+step of 20 cm. The planner plans with them: the walks at its speed, getting off at its pace. A
+**wheelchair user** only gets plans it can take: a train only from and to platforms with level
+boarding (the platform as high as the train's floor at the doors) or where the station's staff help
+at that hour, a bus or tram only at stops whose step its ramp bridges. So a plan that is fine for one
+traveller may not exist for another.
+
 Plans are ranked by arrival, then by the number of changes and by walking. Up to six are offered;
 of each way (the same modes and lines) the next two departures. The fastest plan and the one with
 the fewest changes are marked. A time that passed more than half an hour ago is taken as tomorrow's.
@@ -159,7 +173,10 @@ for its train) and takes its plan leg by leg:
   line, and a train of its line that goes to its station: the planned one, or, if that one left
   without it or is cancelled, the next one of the line ("S 8 08:11 instead of 07:41"). A train or
   bus that already stands there is boarded at once; trains wait a few seconds for people getting
-  on, and a bus driver waits a little for a traveller at the door.
+  on, and a bus driver waits a little for a traveller at the door. People go through a door one
+  after the other, at their own pace; a vehicle that is full, or has no free wheelchair place, or
+  cannot take a wheelchair at that stop, leaves the traveller behind ("Could not get on S 8: the
+  vehicle was full"): it waits for the next one.
 - When its train stands at another platform of the station (a change of platforms), it goes over
   there.
 - Beyond the layout it rides along the timetable: it arrives at its station at the trip's time plus
@@ -171,6 +188,13 @@ Every step is logged ("07:42 S 8 → Waldau 07:41 from Platform 2", "S 8 07:41 i
 08:11.", "08:35 Arrived at Waldau, 30 min late"). The box of a traveller shows its state, the planned
 arrival and the expected one: from the trains it is on or will catch (the next of its line where it
 will miss one) and what is left of its plan.
+
+From door to door the trip is recorded in its parts (clock minutes): **walk** (to the first and from
+the last vehicle), **wait** (at the stop, beyond the layout, outside a closed stop), **at the doors**
+(getting on and off), **ride** and **transfer** (the walks between two vehicles), each next to its
+planned value. The card of a traveller shows them; the results and their CSV have them for
+everybody, so the debriefing can compare where the time went, e.g. for an old traveller with a
+suitcase and one without.
 
 The journeys themselves are not saved: after loading the layout, every traveller starts again at
 its departure time. Setting the clock back to before a traveller's departure starts it again too.
@@ -201,13 +225,16 @@ operations: every line named on a platform runs out to a station beyond the layo
 
 ## The Journeys tab of the game page
 
-- **New traveller**: name, from, to, leaves at, transfer time; **Find travel plans** lists the plans
+- **New traveller**: name, from, to, leaves at, transfer time, its age, walking aid and luggage;
+  **Find travel plans** lists the plans
   with their legs (walks, buses with their headway, trains with their platform and arrival, the time
   for each change); **Choose** makes the traveller.
 - **Travellers**: per traveller its number and colour (as on the layout), what it is doing, the
   planned and expected arrival, **Show** (follow it in the flyover; again to stop), **Start again**,
   **Remove**, and its plan and log.
-- **Results**: planned and real arrival, the delay and the missed trains of everybody; CSV;
+- **Results**: planned and real arrival, the delay and the missed trains of everybody, the minutes
+  from door to door (planned in brackets) and how they were spent; CSV (with every part, planned
+  and real);
   **Start all again**, **Remove all** (a second click does it).
 - *Generated people too*: the town's residents and the other passengers on or off.
 
@@ -226,7 +253,7 @@ underpass.
   "lines": [{"id": "S 8", "route": ["hbf", "waldau"], "run_min": 24, "takt_min": 30, "first": "05:11", "last": "00:11", "turn_min": 6, "docks": {"hbf": ["platform-2:right", "platform-2:left"]}}],
   "travellers": [
     {
-      "id": "t1", "name": "Ada", "number": 1, "colour": "#C85000",
+      "id": "t1", "name": "Ada", "number": 1, "colour": "#C85000", "profile": {"age": "adult", "aid": "none", "luggage": "heavy"},
       "from": {"kind": "building", "id": "plattenbau-2"}, "to": {"kind": "station", "id": "waldau"},
       "leave": 440, "transfer_min": 3,
       "plan": {"dep": 440, "arr": 485, "transfers": 0, "legs": ["…"]}
@@ -243,7 +270,9 @@ underpass.
 | `travellers` | `[]` | the travellers made in the app |
 | `enabled` | `true` | `false` switches the journeys off |
 
-A traveller has its `id`, `name`, `number` and `colour`, its start and aim (`{"kind": "building" |
+A traveller has its `id`, `name`, `number` and `colour`, its `profile` (`age`: `child`, `adult`,
+`old`; `aid`: `none`, `stick`, `rollator`, `wheelchair`, `pram`; `luggage`: `none`, `light`,
+`heavy`, `bulky`; an adult without any by default), its start and aim (`{"kind": "building" |
 "station", "id": …}`), its departure `leave` (minutes after 00:00 of its day), its `transfer_min`
 and the `plan` chosen: `dep`, `arr` (minutes, like `leave`) and the `legs`. A leg is
 `{"type": "walk", "from", "to", "min", "m"}` (places `{"kind": "building", "id", "entrance"}` or
@@ -260,10 +289,11 @@ import { createWorld, journeysOf } from "../arail/index.js";
 const world = createWorld(layout);
 const journeys = journeysOf(world);
 const from = { kind: "building", id: "plattenbau-2" }, to = { kind: "station", id: "waldau" };
-const plans = journeys.plan({ from, to, leave: "07:20", transfer: 3 });
-const ada = journeys.addTraveller({ name: "Ada", from, to, plan: plans[0] });
+const profile = { age: "old", aid: "rollator", luggage: "heavy" };
+const plans = journeys.plan({ from, to, leave: "07:20", transfer: 3, profile });
+const ada = journeys.addTraveller({ name: "Ada", from, to, plan: plans[0], profile });
 journeys.status(ada);   // {text, tone, planned, expected, delay}
-journeys.results();     // one row per traveller
+journeys.results();     // one row per traveller, with its characteristics and the parts of its trip
 ```
 
 `plan()` takes `leave` as a time of day or a world time (clock minutes since 00:00 of the world's
@@ -283,4 +313,6 @@ The journeys use the passenger simulation's hand-over (see [Extending](extending
   its plan and does not plan anew (it only takes the next train of its line).
 - Everything runs on one device: attendees take turns at the shared screen (or a projector), or
   prepare their travellers in a layout file.
+- Step-free ways on foot are not planned yet: a wheelchair user walks the underpass like everybody
+  (lifts and ramps on the way are [#66](https://github.com/joernmht/ARail-EBL/issues/66)).
 - Beyond the layout the trains are only times: there is nothing to see of them.
