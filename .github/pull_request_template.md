@@ -1,6 +1,10 @@
 ## What does this change?
 
-<!-- A short description, and the issue it closes (e.g. "Closes #12"). -->
+<!-- A short description. -->
+
+Closes #
+
+<!-- One "Closes #N" per issue this finishes (GitHub then closes it on merge); "Part of #N" for an issue it only advances. -->
 
 ## How was it tested?
 
