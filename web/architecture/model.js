@@ -104,8 +104,8 @@ export const PACKAGES = [
   },
   {
     id: "ops", name: "ops", group: "framework", path: "web/arail/ops",
-    summary: "Rail operations: the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
-    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js"],
+    summary: "Rail operations: the operations plan of a morning (units and drivers on the trains, the trains on tracks; Run plays it); the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
+    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js", "web/arail/ops/plan.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims", "rail"],
   },
   {
@@ -153,7 +153,7 @@ export const PACKAGES = [
   {
     id: "app", name: "app", group: "pages", path: "web/app",
     summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panel's three chapters (Overview; Interaction with the modules and their cases by side, infrastructure and railway undertaking, and the tools Build and Disruptions; Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js"],
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {
@@ -333,12 +333,13 @@ export const EVENTS = [
   { name: "scenario.ended", from: ["web/arail/core/scenarios.js"], payload: "scenario", meaning: "A scenario ended." },
   { name: "story.step", from: ["web/arail/core/story.js"], payload: "story, index, step", meaning: "A story went to a step (Next, Back, a jump, Play)." },
   { name: "story.play", from: ["web/arail/core/story.js"], payload: "story, playing", meaning: "A story goes on by itself, or stops." },
+  { name: "plan.finished", from: ["web/arail/ops/plan.js"], payload: "plan, result", meaning: "A run of the operations plan ended: its trains on time, late and cancelled, the people left behind." },
   { name: "scenario.message", from: ["web/arail/core/scenarios.js", "web/arail/terminal/operations.js"], payload: "scenario, text", meaning: "A message for the stage (also a refused terminal request)." },
   { name: "vehicle.arriving", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "A train or bus comes in." },
   { name: "vehicle.arrived", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "It stands at its dock: doors open." },
   { name: "vehicle.departing", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "Doors close." },
   { name: "vehicle.departed", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/journeys/story.js"], payload: "vehicle, dock, area", meaning: "It has left." },
-  { name: "vehicle.cancelled", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/ops/simulation.js", "web/arail/journeys/rail.js"], payload: "vehicle, dock, area", meaning: "A service was cancelled: waiting passengers lose mood." },
+  { name: "vehicle.cancelled", from: ["web/arail/core/services.js", "web/arail/core/transit.js", "web/arail/ops/simulation.js", "web/arail/ops/plan.js", "web/arail/journeys/rail.js"], payload: "vehicle, dock, area", meaning: "A service was cancelled: waiting passengers lose mood." },
   { name: "feed.trains", from: ["web/arail/core/trains.js"], payload: "trains", meaning: "Trains of the control system were updated." },
   { name: "feed.status", from: ["web/arail/feeds/websocket.js", "web/arail/feeds/mock.js"], payload: "status, error, url", meaning: "The connection to the control system changed." },
   { name: "passenger.boarded", from: ["web/arail/sims/passengers.js"], payload: "area, dock, vehicle, person, agent", meaning: "Someone got on (with the agent of the simulation that handed the person over)." },
@@ -419,6 +420,7 @@ export const REGISTRY = {
     { type: "infrastructure", class: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", model: "infra-world" },
     { type: "maintenance-story", class: "MaintenanceStory", file: "web/arail/infra/story.js", model: "infra-story" },
     { type: "ops-story", class: "OpsStory", file: "web/arail/ops/story.js", model: "ops-story" },
+    { type: "ops-plan", class: "OpsPlan", file: "web/arail/ops/plan.js", model: "ops-plan" },
     { type: "journeys", class: "JourneysSimulation", file: "web/arail/journeys/simulation.js", model: "journeys" },
     { type: "journeys-story", class: "JourneyStory", file: "web/arail/journeys/story.js", model: "journeys-story" },
     { type: "road-traffic", class: "RoadTraffic", file: "web/plugins/road-traffic.js", model: "plugins", plugin: true },

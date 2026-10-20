@@ -361,4 +361,56 @@ export const OPERATIONS = [
       "Step 9: the faulty converter, 8 m from the unit's rear end, is lifted off the roof and a new one put on; the camera looks at it, the fitters stand on the side it sees.",
     ],
   },
+  {
+    id: "ops-plan", group: "operations", title: "The operations plan",
+    summary: "The app's cases Infrastructure → Operations and Railway undertaking → Operations on Bf Neustadt: the trains of a morning, the same for both sides. The railway undertaking puts a unit and a driver on each train, the infrastructure manager puts it on a track; the checks say at once what does not work, and Run plays the plan on the layout.",
+    description: "An ops-plan entry of the layout (in Bf Neustadt's module Operations) has its trains (line, arrival and departure, the people expected), its lines (where they go, how long a unit and its driver are away: away_min), its units (a vehicle type, or vehicles: a locomotive with its coaches) and its drivers (their shift), and the plan as drafted (each train's unit, driver and track). OpsPlan keeps the plan as people change it (set, reset) and checks it: for the railway undertaking no unit, too few places for the people expected, the unit still out with another train, no driver, a train outside the driver's shift, the driver still out; for the infrastructure no track, the track still taken by another train (until margin_min after it left), a train longer than the platform (its unit's consist, else its line's default fleet). Its tracks are the platform tracks of the layout (the services' rail docks). schedule() works out how the plan runs: in the order of arrival, a train comes when its time has come and its track, unit and driver are free, and keeps its time at the platform; without a unit, driver or track, or outside the driver's shift, it is cancelled. run() sets the clock to the plan's start, takes the platform tracks over as the services' planner (mode plan: the timetable leaves them alone) and calls the trains at their times: with the unit's consist (consistSpec), the unit and driver on their label, their delay, as full as the people expected (those who do not fit are left behind). The boards show its next trains and cancellations; when the last departure has passed, the result (on time, late, cancelled, left behind) is kept and the tracks go back to the timetable. Setting the clock or switching the module off ends a run.",
+    files: ["web/arail/ops/plan.js"],
+    classes: [
+      {
+        name: "OpsPlan", file: "web/arail/ops/plan.js", kind: "class", extends: "Simulation", role: "The plan, its checks and its run.",
+        attributes: [
+          "static type — \"ops-plan\"", "trains: object[] — {id, line, to, arr, dep, back, passengers}, by departure (clock minutes)", "units: object[] — {id, name, spec, consist, places, length_m}",
+          "drivers: object[] — {id, name, from, to}", "plan: Map — train id → {unit, driver, track}", "running: object | null — the run: its schedule, the trains called and at the platforms", "result: object | null — the last run of the plan as it is: on time, late, cancelled, left behind",
+          "tracks — the platform tracks: {id, dock, length_m, label}", "margin — minutes a track stays taken after a train left (margin_min, 2)", "canRun — its tracks are there, and neither another planner nor the control system runs them",
+        ],
+        operations: [
+          "static validate(cfg)", "reset() — the plan as the layout has it (not while it runs)", "get(trainId)", "set(trainId, key, value) — a unit, driver or track (null: none); not while it runs", "train(id)", "unit(id)", "driver(id)", "track(id)", "_unit(u) — its consist and places",
+          "consistOf(trainId) — its unit's, else its line's default fleet", "label(t) — S 1 → Talsee 07:05", "checks() — by train: the problems of each side", "problems(side)", "schedule() — arrive, depart, delay, cancelled",
+          "run()", "stop()", "claims(dock) — the services' planner", "step()", "_call(t, s) — the train to its track", "_finish() — the result", "progress()", "_docksOf(t)", "statusLines(area) — the board", "describeVehicle(v, card)", "dispose()", "toJSON() — with the plan as it is",
+        ],
+      },
+      { name: "ops plan", file: "web/arail/ops/plan.js", kind: "module", role: "The keys of a train's plan and who decides them.", attributes: ["PLAN_KEYS — unit, driver, track", "PLAN_SIDES — the unit and driver: evu; the track: infra"], operations: ["planOf(world)"] },
+    ],
+    relations: [
+      { from: "OpsPlan", to: "Simulation", kind: "inherits" },
+      { from: "OpsPlan", to: "ServiceManager", kind: "uses", label: "planner: call, free" },
+      { from: "OpsPlan", to: "Consist", kind: "creates", label: "units" },
+    ],
+    activities: [{
+      id: "run", name: "A run of the plan (OpsPlan.step)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Run: the clock to the start, the platform tracks taken over", "OpsPlan.run"],
+        ["a2", "action", "A train whose time has come (its arrival as the schedule has it)", "OpsPlan.step"],
+        ["d1", "decision", "Cancelled in the schedule?"],
+        ["a3", "action", "Announce it on the board of its platform, 10 min before its departure", "OpsPlan._docksOf"],
+        ["a4", "action", "Call it to its track: its unit's consist, unit and driver on its label, its delay, as full as the people expected", "OpsPlan._call"],
+        ["a5", "action", "At its departure (as the schedule has it) it leaves", "OpsPlan.step"],
+        ["m1", "merge"],
+        ["d2", "decision", "Every train done and the last departure passed?"],
+        ["a6", "action", "The result kept; the tracks back to the timetable", "OpsPlan._finish"],
+        ["n1", "send", "plan.finished"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "a3", "yes"], ["d1", "a4", "no"], ["a4", "a5"], ["a3", "m1"], ["a5", "m1"], ["m1", "d2"], ["d2", "a2", "no"], ["d2", "a6", "yes"], ["a6", "n1"], ["n1", "e"]],
+    }],
+    rules: [
+      "A unit and its driver are out from the train's arrival until it is back: its line's away_min after the departure; a track is taken from the arrival until margin_min (2) after the departure.",
+      "The later of two trains that want the same unit, driver or track at the same time has the problem.",
+      "In the run a train waits for its track, unit and driver: its delay; it keeps its minutes at the platform. Without a unit, driver or track, or outside the driver's shift, it is cancelled.",
+      "A train comes in with 85 % of the people expected on board (as many as it has places); those who do not fit are left behind.",
+      "Bf Neustadt's draft: 6 trains of S 1, RB 71 and RE 2 between 07:02 and 07:52, 5 units, 4 drivers; 4 problems for the railway undertaking and 2 for the infrastructure.",
+    ],
+  },
 ];

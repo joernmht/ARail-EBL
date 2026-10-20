@@ -48,4 +48,17 @@ export const TEXTS = {
   "No locomotive or multiple unit: the train cannot move by itself": "Keine Lok und kein Triebwagen: der Zug kann nicht selbst fahren",
   "The line allows {n} km/h, the train {n2} km/h": "Die Strecke erlaubt {n} km/h, der Zug {n2} km/h",
   "{who} cannot draw {power}: hauled without power": "{who} kann {power} nicht abnehmen: wird kalt geschleppt",
+  // ------------------------------------------------------------ the operations plan (ops/plan.js): its checks, its trains
+  "Operations plan (trains, units, drivers, tracks)": "Betriebsplan (Züge, Fahrzeuge, Fahrer, Gleise)",
+  "The trains of an hour at a station: the railway undertaking puts a unit and a driver on each, the infrastructure manager a track; Run plays the plan.": "Die Züge einer Stunde an einem Bahnhof: Das Eisenbahnverkehrsunternehmen teilt jedem ein Fahrzeug und einen Fahrer zu, das Infrastrukturunternehmen ein Gleis; Fahren spielt den Plan ab.",
+  "No unit": "Kein Fahrzeug",
+  "No driver": "Kein Fahrer",
+  "No track": "Kein Gleis",
+  "Too few places: {n} for {n2}": "Zu wenige Plätze: {n} für {n2}",
+  "{unit} is still out until {time}": "{unit} ist bis {time} unterwegs",
+  "Outside the shift of {name} ({from}–{to})": "Außerhalb der Schicht von {name} ({from}–{to})",
+  "Track {id} is taken by {line} until {time}": "Gleis {id} ist bis {time} von {line} belegt",
+  "Too long: {n} m for {n2} m": "Zu lang: {n} m für {n2} m",
+  "{line} {time} cancelled": "{line} {time} fällt aus",
+  "Unit": "Fahrzeug",
 };

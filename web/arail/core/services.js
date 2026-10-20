@@ -7,7 +7,8 @@
  * (hold, cancel, closed, frequency). A connected control system takes over rail docks,
  * see `core/trains.js`. Docks with `managed` set (bus stops of bus lines) are left to their
  * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
- * (`services.planner`, the operations simulation) can take over rail docks: they are in mode
+ * (`services.planner`: the operations simulation, the journeys' trains, the operations plan while it
+ * runs) can take over rail docks: they are in mode
  * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
  * Docks without an interval of their own (`dock.auto`) run as often as the town needs
  * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
@@ -71,7 +72,8 @@ export class ServiceManager {
     /** @type {Map<string, {dock: object, vehicle: Vehicle | null, timer: number, heldFor: number, mode: string, manual: object | null}>} */
     this.docks = new Map();
     /**
-     * Something that runs the trains of some docks itself (the operations simulation), or null:
+     * Something that runs the trains of some docks itself (the operations simulation, the journeys'
+     * trains, the operations plan while it runs), or null:
      * `{claims(dock) -> boolean, statusLines?(area) -> string[]}`.
      */
     this.planner = null;

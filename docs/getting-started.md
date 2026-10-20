@@ -121,20 +121,22 @@ Three chapters, always there: **Overview**, **Interaction** and **Settings**. No
 
 A strip at its side chooses what the chapter shows (its labels read upwards; with the keyboard ↑ and ↓ go along it):
 
-- **Modules**: boxes to click, one per module, with its name, orange when on (its description is the tooltip). The layout's own modules add to the base (the table, the town, the streets, which are always there). On Bf Neustadt: **Infrastructure**, **Operations** (marked *alone*: its story takes over platform 2), **Journeys** and **Terminal**; on the lab example: **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined, and **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build is on until you switch it off, so that for an exercise nobody changes the layout by mistake; switching Disruptions off stops the disruptions started there and the scenario. The choice is kept per layout in the browser.
+- **Modules**: boxes to click, one per module, with its name, orange when on (its description is the tooltip). The layout's own modules add to the base (the table, the town, the streets, which are always there). On Bf Neustadt: **Infrastructure**, **Operations** (the operations plan of a morning; marked *alone*: it runs the trains of the platforms while it plays), **Breakdown** (marked *alone*: its story takes over platform 2), **Journeys** and **Terminal**; on the lab example: **Rail operations**, **Infrastructure**, **Journeys** and **Border station** (track G3 Czech, see [Railway systems](rail-systems.md)) can be combined, and **Container terminal** is a layout of its own, marked *alone*: choosing it opens the terminal (in the flyover) and switches the others off, and there the boxes show the lab's modules again, so that clicking the terminal once more, or another module, goes back to the lab. Switching these starts the simulations again; your changes are kept. See [Layers](layout-format.md#layers). **Build** and **Disruptions** are modules of the app, offered for every layout: Build is on until you switch it off, so that for an exercise nobody changes the layout by mistake; switching Disruptions off stops the disruptions started there and the scenario. The choice is kept per layout in the browser.
 - **Infrastructure** and **Railway undertaking** (EVU): the two sides, each with its cases as tabs (← → with the keyboard). The app's cases:
 
   | Side | Case | What it is |
   | --- | --- | --- |
-  | Infrastructure | **Disruption** | the maintenance story: a signal fails and is exchanged, a worn track is renewed (Bf Neustadt's module Infrastructure) |
-  | Railway undertaking | **Disruption** | the operations story: a train breaks down at the platform (module Operations) |
+  | Infrastructure | **Operations** | the trains of a morning on the tracks of the station (Bf Neustadt's module Operations) |
+  | Infrastructure | **Disruption** | the maintenance story: a signal fails and is exchanged, a worn track is renewed (module Infrastructure) |
+  | Railway undertaking | **Operations** | a unit and a driver on each of the same trains (module Operations) |
+  | Railway undertaking | **Disruption** | the operations story: a train breaks down at the platform (module Breakdown) |
   | Railway undertaking | **Terminal** | the container terminal, its containers moved one by one (module Terminal) |
   | Railway undertaking | **Journeys** | the journeys story: a traveller's train is late (module Journeys) |
 
   A case whose module is off says so, with the way to it: **Switch on “…”** (a module of this layout), **Open the example**, or **Add to this layout** (the terminal; on the game page its games).
 - **Build** and **Disruptions**: the tools of the layout.
 
-Interaction remembers its case. Links: `#modules`, `#infra-disruption`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt`; the former `#infra` and `#ops` open the stories.
+Interaction remembers its case. Links: `#modules`, `#infra-operations`, `#infra-disruption`, `#evu-operations`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt`; the former `#infra` and `#ops` open the stories.
 
 ### Build
 
@@ -198,13 +200,21 @@ Works when the layout has a container terminal (Bf Neustadt's module **Terminal*
 
 On the stage, tap a container, then one of its outlined places. In the flyover a drag pans the view in this panel; with the keyboard, move the view so that the cross in the middle lies on the container, press **Enter**, then do the same for the place. Esc cancels the pick. The game page's case Terminal has the arrivals, new arrivals and crane jobs too (see [The game page](#the-game-page)).
 
+### Railway undertaking → Operations and Infrastructure → Operations
+
+Normal operations at Bf Neustadt on a weekday morning, the same six trains of S 1, RB 71 and RE 2 for both sides (Bf Neustadt's module **Operations**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations`). The plan comes as drafted, with mistakes in it; see [The operations plan](operations.md#the-operations-plan).
+
+- **Railway undertaking**: a unit and a driver for each train, chosen in its two lists (a unit with its places, a driver with the shift). What does not work is shown at once under the train: too few places for the people expected, a unit or driver still out with another train, a train outside the driver's shift. The chart *Units and drivers* shows when each is out, red where it does not work.
+- **Infrastructure**: a track for each train (its platform time and length are shown). What does not work: the track is still taken by another train, the train is longer than the platform. The chart *Tracks* shows the occupation of G1, G2 and G3.
+- **Run** plays the plan on the layout from 07:00 (with the speed buttons beside **Stop**): the trains come to their tracks with their units (as long as they are), the unit and driver on their label; a train waits for its track, unit or driver (late), one without them is cancelled (on the board), one with too few places leaves people behind. At the end the panel shows how it went: on time, late, cancelled, left behind. **Start again** brings back the draft.
+
 ### Railway undertaking → Disruption
 
-Works when the layout has the operations story (Bf Neustadt's module **Operations**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#evu-disruption`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
+Works when the layout has the operations story (Bf Neustadt's module **Breakdown**, Interaction → Modules, or `app/?layout=../layouts/ebl-neustadt.json&layers=operations#evu-disruption`): a train that breaks down, in ten steps. RB 31 to Talsee reports a fault at track G3, the driver calls the operations control, the spare unit comes from the depot to track G2, the passengers change trains and RB 31 leaves 25 minutes late; the broken unit runs empty to the workshop and is repaired, and the penalties are counted. See [The operations story](operations.md#the-operations-story).
 
 - The same controls as Infrastructure → Disruption (below): the current step, **Back**, **Next**, **Play**, **Start again**, the list of all steps, a presenter's clicker.
 - **Camera follows**: the flyover's camera looks at a slant along the platform, so that the train at the near track does not hide the passengers, and goes with the spare unit and the broken unit to the depot and back.
-- The module is marked *alone* in Interaction → Modules: its story takes over platform 2, so it does not run together with the module Infrastructure.
+- The module is marked *alone* in Interaction → Modules: its story takes over platform 2, so it does not run together with the modules Infrastructure and Operations.
 
 ### Infrastructure → Disruption
 
@@ -303,7 +313,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `scenario=<id>` | play a scenario of the layout (switches the module Disruptions on) |
 | `layers=<id>,<id>` | switch on these modules of the layout, e.g. `app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra-disruption` or `app/?layout=../layouts/ebl-neustadt.json&layers=terminal#terminal`, or on the game page `game/?layout=../layouts/ebl-lab.json&layers=operations,journeys#journeys` (a module that is a layout of its own, such as `terminal`, opens that layout) |
 | `#overview`, `#interaction`, `#settings` | open a chapter |
-| `#modules`, `#infra-disruption`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt` | open Interaction with that case, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (a case whose module is off offers to switch it on; `#build` and `#disrupt` switch the modules Build and Disruptions on; the former `#infra` and `#ops` open the stories; the game page: `#infra`, `#ops`, `#terminal`, `#journeys`) |
+| `#modules`, `#infra-operations`, `#infra-disruption`, `#evu-operations`, `#evu-disruption`, `#terminal`, `#journeys`, `#build`, `#disrupt` | open Interaction with that case, e.g. `app/?layout=../layouts/container-terminal.json#terminal` (a case whose module is off offers to switch it on; `#build` and `#disrupt` switch the modules Build and Disruptions on; the former `#infra` and `#ops` open the stories; the game page: `#infra`, `#ops`, `#terminal`, `#journeys`) |
 | `#view`, `#simulate`, `#control` | open Settings with its view View, Simulation or Control system |
 
 ## Tips for good tracking

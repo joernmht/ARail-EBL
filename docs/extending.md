@@ -464,7 +464,8 @@ const { kpi } = arail.runOne(config, { layout: arail.normalizeLayout(json), setu
 **Docks run by a planner.** The operations run the trains of their platforms themselves: they set
 `world.services.planner` to an object with `claims(dock)` (true for the docks it runs) and
 `statusLines(area)` (the lines of the boards). The [journeys](journeys.md#the-trains) do the same
-when there are no rail operations. `ops.tripsAt(dockId)` gives the trips of the train at a dock (the
+when there are no rail operations, and the [operations plan](operations.md#the-operations-plan)
+while it runs (its vehicles carry their consist in `consistSpec`). `ops.tripsAt(dockId)` gives the trips of the train at a dock (the
 one it came with and the one it leaves with), `ops.engineOffset()` the minutes the engine's time is
 ahead of the world's. Those docks are in mode `"plan"`: the timetable sends
 nothing there, `services.call()` sends a vehicle only with `{source: "plan"}`, and a connected

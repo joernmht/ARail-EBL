@@ -15,6 +15,8 @@ const PAGES = [
   ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
   ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
+  ["app, Railway undertaking: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations"],
+  ["app, Infrastructure: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#infra-operations"],
   ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["app, Journeys: the journeys story", "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys"],

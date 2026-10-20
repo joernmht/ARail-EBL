@@ -20,4 +20,5 @@ export const EN = {
   "{n} brakes isolated": { one: "{n} brake isolated" },
   "{n} spaces": { one: "{n} space" },
   "{n} conflicts in the last hour": { one: "{n} conflict in the last hour" },
+  "{n} problems": { one: "{n} problem" },
 };

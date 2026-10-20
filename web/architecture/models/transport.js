@@ -34,7 +34,7 @@ export const TRANSPORT = [
     classes: [
       {
         name: "ServiceManager", file: "web/arail/core/services.js", kind: "class", role: "world.services: the docks and their vehicles.",
-        attributes: ["docks: Map — dock id → {dock, vehicle, timer, heldFor, mode}", "planner: object | null — rail operations or journeys: claims(dock), statusLines(area)"],
+        attributes: ["docks: Map — dock id → {dock, vehicle, timer, heldFor, mode}", "planner: object | null — rail operations, journeys or the operations plan while it runs: claims(dock), statusLines(area)"],
         operations: ["sync() — docks in line with the stop areas", "headwayOf(dock) — its own, the layout's, or what the town needs (dock.auto)", "intervalOf(dock) — the headway, clock minutes and where it comes from (set, demand), for cards", "_demand() — the town simulation, which knows how often vehicles should run", "baseMode(dock) — plan if the planner claims it", "step(dt)", "call(target, options) — send a vehicle (keys 1–9, scenarios, planners)", "free(dockId) — the vehicle at a dock taken away at once (a story's train takes the track)", "feedArrived(dockId, info)", "feedDeparted(dockId)", "_dispatch(st, opts) — with the timetable's demand and how full it comes in", "_advance(st, v, dt, fx)", "placement(v) — a box along the dock, or where a kind on its own track is (def.pose)", "doors(v) — the kind's doors of this vehicle (def.doorsOf), else along the dock", "capacityOf(v) — seats and standing places (def.capacity), or null", "onboardOf(v) — counted the first time from how full it came in", "draw(view)", "pickables(view) — the vehicles at the docks", "card(hit) — line, stop, doors, delay, on board"],
       },
       {

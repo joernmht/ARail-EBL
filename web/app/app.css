@@ -565,6 +565,34 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent-ink);
 .story-steps li.done button.link { color: var(--text-2); }
 .story-steps li.now button.link { font-weight: 700; text-decoration: none; color: var(--text); }
 
+/* the operations plan (Operations of both sides, plan.js): a block per train with its choices and
+   what does not work; the plan over the hour as bars per unit, driver or track; red where it does not work */
+.plan-status { margin: 0; font-size: .86rem; font-weight: 600; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.plan-status.bad { color: var(--danger); }
+.plan-trains { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.plan-train { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); }
+.plan-train.bad { border-left-color: var(--danger); }
+.plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.plan-head .meta { color: var(--text-2); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.plan-chip { margin-left: auto; padding: 1px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; background: var(--surface-2); color: var(--accent-ink); }
+.plan-chip.warn { background: var(--warn); color: var(--warn-text); }
+.plan-chip.bad { background: var(--danger); color: var(--warn-text); }
+.plan-fields { display: grid; gap: 4px; }
+.plan-fields select { width: 100%; min-width: 0; padding: 5px 8px; font-size: .86rem; }
+.plan-problems { margin: 0; padding-left: 1.2em; color: var(--danger); font-size: .82rem; }
+.plan-chart { display: grid; gap: 3px; font-size: .72rem; font-variant-numeric: tabular-nums; }
+.plan-row { display: grid; grid-template-columns: 4.8em minmax(0, 1fr); align-items: center; gap: 6px; }
+.plan-label { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-lane { position: relative; height: 20px; border-radius: 4px; background: var(--surface-2); }
+.plan-shift { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--line); }
+.plan-span { position: absolute; top: 2px; bottom: 2px; padding: 0 3px; overflow: hidden; white-space: nowrap; line-height: 16px; border-radius: 3px; background: var(--accent); color: var(--accent-text); box-shadow: inset -1px 0 0 var(--surface); }
+.plan-span.bad { background: var(--danger); color: var(--warn-text); }
+.plan-now { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--warn); }
+.plan-axis { position: relative; height: 1.3em; margin-left: calc(4.8em + 6px); color: var(--text-2); }
+.plan-axis span { position: absolute; transform: translateX(-50%); }
+.plan-axis span:first-child { transform: none; }
+.plan-axis span:last-child { transform: translateX(-100%); }
+
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {

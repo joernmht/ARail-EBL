@@ -336,8 +336,49 @@
       ]
     },
     {
-      "id": "operations",
+      "id": "plan",
       "name": "Operations",
+      "description": "Normal operations at Bf Neustadt on a weekday morning: the trains of the railway undertaking on S 1, RB 71 and RE 2. Railway undertaking → Operations puts a unit and a driver on each train, Infrastructure → Operations puts each train on a track; Run plays the plan. The plan runs the trains of the platforms while it plays: the module is shown alone.",
+      "enabled": false,
+      "exclusive": true,
+      "simulations": [
+        {
+          "type": "ops-plan",
+          "name": "A morning at Bf Neustadt",
+          "start": "07:00",
+          "margin_min": 2,
+          "lines": {
+            "S 1": {"to": "Talsee", "away_min": 20},
+            "RB 71": {"to": "Bergdorf", "away_min": 30},
+            "RE 2": {"to": "Altstadt", "away_min": 60}
+          },
+          "units": [
+            {"id": "442 101", "type": "et442"},
+            {"id": "442 102", "type": "et442"},
+            {"id": "442 201", "type": "et442s"},
+            {"id": "442 202", "type": "et442s"},
+            {"id": "146 210", "name": "146 210 + 4 DBpza", "vehicles": [{"type": "br146"}, {"type": "dbpza", "count": 4}]}
+          ],
+          "drivers": [
+            {"id": "becker", "name": "Becker", "from": "05:30", "to": "08:10"},
+            {"id": "kaya", "name": "Kaya", "from": "06:30", "to": "14:30"},
+            {"id": "novak", "name": "Novak", "from": "07:00", "to": "15:00"},
+            {"id": "weber", "name": "Weber", "from": "07:15", "to": "15:15"}
+          ],
+          "trains": [
+            {"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "becker", "track": "G2"},
+            {"id": "rb71-0722", "line": "RB 71", "arr": "07:17", "dep": "07:22", "passengers": 150, "unit": "442 201", "driver": "kaya", "track": "G3"},
+            {"id": "re2-0723", "line": "RE 2", "arr": "07:19", "dep": "07:23", "passengers": 520, "unit": "146 210", "driver": "novak", "track": "G1"},
+            {"id": "s1-0725", "line": "S 1", "arr": "07:20", "dep": "07:25", "passengers": 420, "unit": "442 202", "driver": "weber", "track": "G3"},
+            {"id": "s1-0745", "line": "S 1", "arr": "07:40", "dep": "07:45", "passengers": 300, "unit": "442 101", "driver": "weber"},
+            {"id": "rb71-0752", "line": "RB 71", "arr": "07:47", "dep": "07:52", "passengers": 120, "unit": "442 201", "driver": "becker", "track": "G2"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Breakdown",
       "description": "A railway undertaking at Bf Neustadt: its depot (Betriebswerk) with the workshop and a spare unit, on a table module behind the table. Railway undertaking → Disruption tells a story to click through: RB 31 to Talsee breaks down at track G3, the spare unit comes in at track G2, the passengers change trains, and the broken unit goes to the workshop. Its story takes over platform 2: the module is shown alone.",
       "enabled": false,
       "exclusive": true,

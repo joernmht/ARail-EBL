@@ -1,9 +1,11 @@
 // The cases of the Interaction chapter, a class each: what the modules let people do on the layout.
 // A case belongs to a side of the strip, the infrastructure manager ("infra") or the railway
 // undertaking (EVU, "evu"), or it is a tool of the layout (Build, Disruptions: no side). It needs a
-// simulation of the layout (a story, the terminal) or a module of the app, and shows its panel;
-// without what it needs, it offers to switch its module on, to open the example that has it, or to
-// add it to the layout. A page lists its case classes (main.js): a new case is one class and one line.
+// simulation of the layout (a story, the operations plan, the terminal) or a module of the app,
+// and shows its panel; without what it needs, it offers to switch its module on, to open the
+// example that has it, or to add it to the layout. A page lists its case classes (main.js): a new
+// case is one class and one line.
+import { PlanPanel } from "./plan.js";
 import { StoryPanel } from "./story.js";
 import { TerminalPanel } from "./terminal.js";
 import { h, mount } from "./ui.js";
@@ -112,6 +114,17 @@ export class StoryCase extends Case {
 
   makePanel() {
     return new StoryPanel(this.app, { prefix: this.constructor.prefix, type: this.constructor.needs });
+  }
+}
+
+/** Operations: the operations plan of the layout (arail/ops/plan.js), the part of the case's side. */
+export class PlanCase extends Case {
+  static label = "Operations";
+  static needs = "ops-plan";
+  static example = "plan";
+
+  makePanel() {
+    return new PlanPanel(this.app, { side: this.constructor.side });
   }
 }
 

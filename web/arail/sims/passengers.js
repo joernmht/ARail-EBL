@@ -128,6 +128,8 @@ class Person {
     this.accept = null;
     /** The vehicle this person is boarding. */
     this.vehicle = null;
+    /** The id of the last full vehicle this person could not get on (counted once in its `leftBehind`). */
+    this.leftBy = null;
   }
 }
 
@@ -499,12 +501,20 @@ export class PassengerSimulation extends Simulation {
   /**
    * Is there room for a person in a vehicle with places (seats and standing, core/services.js)? It
    * then counts the person on board. Agents (the town's, the travellers) always get on: they squeeze
-   * in; the others not once it is full.
+   * in; the others not once it is full: they stay behind (counted once per vehicle) and are less
+   * pleased.
    */
   _getsOn(p, vehicle) {
     const svc = this.world.services, cap = svc.capacityOf(vehicle);
     if (cap == null) return true;
-    if (!p.agent && svc.onboardOf(vehicle) >= cap) return false;
+    if (!p.agent && svc.onboardOf(vehicle) >= cap) {
+      if (p.leftBy !== vehicle.id) {
+        p.leftBy = vehicle.id;
+        vehicle.leftBehind++;
+        p.mood = Math.max(0, p.mood - 0.15);
+      }
+      return false;
+    }
     vehicle.onboard = svc.onboardOf(vehicle) + 1;
     return true;
   }
@@ -550,10 +560,6 @@ export class PassengerSimulation extends Simulation {
       // agents always take their vehicle; a few other people wait for the next one, and all of them when it is full
       if (!this._wants(p, dock, vehicle) || !(p.agent || rng.chance(0.95))) continue;
       if (this._getsOn(p, vehicle)) this._board(p, dock, doors, undefined, vehicle);
-      else {
-        vehicle.leftBehind++;
-        p.mood = Math.max(0, p.mood - 0.15);
-      }
     }
   }
 

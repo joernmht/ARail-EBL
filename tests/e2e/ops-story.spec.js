@@ -1,4 +1,4 @@
-// End-to-end tests of the operations story in the app (Chromium): Bf Neustadt's module Operations
+// End-to-end tests of the operations story in the app (Chromium): Bf Neustadt's module Breakdown
 // switched on in Settings (alone: Infrastructure takes its place), the story clicked through (the tracks its trains hold, the platform's
 // message, the list of steps, a presenter's clicker, Start again), the flyover's camera following
 // the spare unit to the depot, no timetable train where the story's trains are, and the game page
@@ -25,12 +25,12 @@ const held = (page) => page.evaluate(() => window.__arail.world.disruptions.acti
 
 const title = (page) => page.locator("#opsStoryTitle");
 
-test("Railway undertaking → Disruption switches on the module Operations of Bf Neustadt and tells the story", async ({ page }) => {
+test("Railway undertaking → Disruption switches on the module Breakdown of Bf Neustadt and tells the story", async ({ page }) => {
   const errors = await open(page, "/app/#overview");
   expect(await caseReady(page, "evu-disruption")).toBe(false);
   await openCase(page, "evu-disruption");
   const on = page.locator("#caseOn");
-  await expect(on).toHaveText("Switch on “Operations”");
+  await expect(on).toHaveText("Switch on “Breakdown”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "ops-story"), null, { timeout: 30_000 });
   await expect(page.locator("#case-evu-disruption")).toHaveAttribute("aria-selected", "true");

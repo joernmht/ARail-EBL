@@ -1,11 +1,26 @@
 // The ARail app: an interactive presentation of the lab. Its cases in Interaction, by side: the
-// infrastructure's disruption (a signal fails, a track is renewed), the railway undertaking's (a train
-// breaks down), the container terminal and a traveller's journey; Build and Disruptions are tools of
-// the layout. The games and exercises are on the game page (../game/).
+// operations of a morning (the infrastructure puts the trains on tracks, the railway undertaking puts
+// units and drivers on them), the infrastructure's disruption (a signal fails, a track is renewed), the
+// railway undertaking's (a train breaks down), the container terminal and a traveller's journey; Build
+// and Disruptions are tools of the layout. The games and exercises are on the game page (../game/).
 import { App } from "./app.js";
-import { BuildCase, DisruptionsCase, StoryCase, TerminalCase } from "./cases.js";
+import { BuildCase, DisruptionsCase, PlanCase, StoryCase, TerminalCase } from "./cases.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
+
+/** Infrastructure → Operations: the trains of the operations plan on the tracks of the station. */
+class InfraOperations extends PlanCase {
+  static id = "infra-operations";
+  static side = "infra";
+  static description = "Put the trains of the morning on the tracks of the station";
+}
+
+/** Railway undertaking → Operations: a unit and a driver on each train of the operations plan. */
+class EvuOperations extends PlanCase {
+  static id = "evu-operations";
+  static side = "evu";
+  static description = "Put a unit and a driver on each train of the morning";
+}
 
 /** Infrastructure → Disruption: the maintenance story (a signal fails and is exchanged; a worn track is renewed). */
 class InfraDisruption extends StoryCase {
@@ -45,7 +60,7 @@ class JourneysStory extends StoryCase {
 /** @type {import("./app.js").Page} */
 const PAGE = {
   id: "app",
-  cases: [InfraDisruption, EvuDisruption, TerminalCase, JourneysStory, BuildCase, DisruptionsCase],
+  cases: [InfraOperations, InfraDisruption, EvuOperations, EvuDisruption, TerminalCase, JourneysStory, BuildCase, DisruptionsCase],
   examples: [
     { id: "neustadt", label: "Example: Bf Neustadt", layout: NEUSTADT },
     { id: "neustadt-video", label: "Example: Bf Neustadt, video", layout: NEUSTADT, video: "../media/ebl-station-trains.mp4" },
@@ -54,7 +69,7 @@ const PAGE = {
     { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
     { id: "lab", label: "Example: Beta 0.1 (EBL lab photo, older)", layout: LAB },
   ],
-  exampleLayers: { operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
+  exampleLayers: { plan: { layout: NEUSTADT, layer: "plan" }, operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
   // the photos of the lab as a Street View: they choose what the stage shows (the examples are in Settings → View)
   tour: { data: "../lab-map/data.json" },
 };

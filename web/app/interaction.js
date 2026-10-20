@@ -8,6 +8,7 @@ import { h, mount } from "./ui.js";
 export const ICONS = {
   operations: '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="3"/><path d="M6 10h12M9.5 13.5h.01M14.5 13.5h.01M8 21l2-4M16 21l-2-4"/></svg>',
   infrastructure: '<svg viewBox="0 0 24 24"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><circle cx="12" cy="6.2" r="1.4"/><circle cx="12" cy="10.8" r="1.4"/><path d="M12 14.5V21M8 21h8"/></svg>',
+  plan: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>',
   journeys: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="5.5" r="2.5"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16" stroke-dasharray="2.2 2.2"/></svg>',
   terminal: '<svg viewBox="0 0 24 24"><path d="M3 21V5h18v16M3 8h18"/><path d="M12 8v5"/><rect x="9" y="13" width="6" height="4" rx=".5"/><path d="M6 21v-2h12v2"/></svg>',
   layout: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="10" rx="1"/><path d="M6.5 7v10M10 7v10M13.5 7v10M14 3.5h6.5V10M20.5 3.5 15 9"/></svg>',
@@ -17,7 +18,7 @@ export const ICONS = {
 };
 /** The icon of a module by the simulations of its layer. */
 const SIM_ICONS = {
-  operations: "operations", "ops-story": "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys", "journeys-story": "journeys", terminal: "terminal",
+  "ops-plan": "plan", operations: "operations", "ops-story": "operations", infrastructure: "infrastructure", "maintenance-story": "infrastructure", journeys: "journeys", "journeys-story": "journeys", terminal: "terminal",
 };
 /** The strip's first entry. */
 const MODULES = { id: "modules", label: "Modules", description: "Switch the modules of the layout on and off", icon: "module" };
