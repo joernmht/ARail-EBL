@@ -109,8 +109,17 @@ test("the flyover: a tap opens the card of a stop with its next buses; Enter at 
   await page.locator("#btnFlyover").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover" && !window.__arail.flyover.anim);
   await page.waitForTimeout(300);
-  // not where a car drives past just then (a bus comes only every so often)
-  const stop = await spot(page, { id: "bus-stop-altmarkt", free: true });
+  // not where a car drives past just then (a bus comes only every so often); nothing moves between
+  // finding the spot and the tap, or a car could drive onto it
+  const pause = (on) => page.evaluate((on) => (window.__arail.world.paused = on), on);
+  let stop = null;
+  for (let i = 0; i < 10 && !stop; i++) {
+    await pause(true);
+    stop = await spot(page, { id: "bus-stop-altmarkt", free: true });
+    if (stop) break;
+    await pause(false);
+    await page.waitForTimeout(300);
+  }
   expect(stop).not.toBeNull();
   await page.mouse.click(stop.x, stop.y);
   const card = page.locator("#infoCard");
@@ -119,6 +128,7 @@ test("the flyover: a tap opens the card of a stop with its next buses; Enter at 
   await expect(card).toContainText(/Altmarkt|Bus|Passenger/);
   await page.keyboard.press("Escape");
   await expect(card).toBeHidden();
+  await pause(false);
   // keyboard: Enter on the stage shows the card of what is at the cross in the middle
   await page.locator("#stage").focus();
   await page.keyboard.press("ArrowLeft");
