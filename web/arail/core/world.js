@@ -397,30 +397,39 @@ export class World {
    * module, so that trains pass under a bridge) or "none" (they draw their heights themselves, like
    * the table modules). The simple view stays flat. Afterwards the view keeps the street level (for
    * pointing at things and the editor's marks).
+   *
+   * A part of the world can be drawn on its own (the live page, web/live/, keeps the city in a
+   * picture of its own and draws only what moves in every frame): `objects` are the layout objects
+   * drawn (default: all of them), `moving` whether what moves is drawn (services, transit, parking,
+   * the control system's trains, the simulations, the disruptions).
+   * @param {import("./view.js").View} view
+   * @param {{selected?: import("./object.js").LayoutObject | null, objects?: Iterable<import("./object.js").LayoutObject> | null,
+   *   moving?: boolean}} [options]
    */
-  draw(view, { selected = null } = {}) {
+  draw(view, { selected = null, objects = null, moving = true } = {}) {
     if (view.night == null) view.night = this.night();
     this._syncStops();
     const el = this.elevation.sync();
     const lifts = view.simple ? {} : { street: el.streetLift, ground: el.groundLift };
     const lift = (x) => lifts[x?.elevation ?? x?.constructor?.elevation ?? "street"] ?? null;
+    const drawn = objects ?? this.objects;
     if (view.simple) {
       // the simple view (core/simple.js): objects flat, what moves as plain blocks
       view.flat = true;
-      for (const o of this.objects) {
+      for (const o of drawn) {
         if (!o.geometry) continue;
         if (typeof o.drawSimple === "function") o.drawSimple(view);
         else drawFlat(view, o);
       }
       view.flat = false;
     } else {
-      for (const o of this.objects) {
+      for (const o of drawn) {
         if (!o.geometry) continue;
         view.lift = lift(o);
         o.draw(view);
       }
     }
-    for (const part of [this.services, this.transit, this.parking, this.trains, ...this.simulations, this.disruptions]) {
+    for (const part of moving ? [this.services, this.transit, this.parking, this.trains, ...this.simulations, this.disruptions] : []) {
       view.lift = lift(part);
       part.draw(view);
     }

@@ -2,7 +2,7 @@
 
 **Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets, trams and bus lines and a container terminal on it, runs the town through day and night, tells a train breaking down, the maintenance of the railway's infrastructure and a traveller's journey as stories to click through, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. The app is an interactive presentation; its games and exercises (asset management of the infrastructure, a railway undertaking with its fleet, workshop and crews, journeys with transfers that the attendees plan themselves) are on the game page beside it, with the first of the role games: the signaller of Bf Neustadt in a relay interlocking. It runs in the browser, needs no installation and no calibration board.
 
-[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Signaller game](https://joernmht.github.io/ARail-EBL/game/signaller/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
+[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Live AR for XR glasses](https://joernmht.github.io/ARail-EBL/live/?source=demo) · [Signaller game](https://joernmht.github.io/ARail-EBL/game/signaller/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
 
 ![The EBL lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building and a street on a virtual table module, and Plattenbau behind the tracks](web/assets/ebl-lab-ar.jpg)
 
@@ -62,6 +62,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Setting up a lab](docs/lab-setup.md) | Markers (also on model wagons), printing, placement, cameras, the marker map |
 | [Lab session](docs/lab-session.md) | Stickers on the whole layout, one video, `arail-survey`: a fixed layout and an orthophoto |
 | [The builder](docs/world-builder.md) | Editing a layout as a plan: streets that join, bus stops, truck lanes and buildings at a street, the street access check with its fixes, covered photos, a push to GitHub |
+| [Live AR on XR glasses](docs/live-ar.md) | ARail Live: the town and its moving cars live on XR glasses or a phone, drawn once and fitted to the camera; a performance test |
 | [Day and night](docs/day-and-night.md) | The fast clock, lighting, demand over the day, the town simulation |
 | [Streets, trams, buses and road traffic](docs/streets-and-buses.md) | The road network and its cross-sections, bus and tram lines, cars and parking, bikes and e-scooters, signs, lights and railway crossings |
 | [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
@@ -91,6 +92,8 @@ web/                  the website (published with GitHub Pages)
                       signaller/ the signaller's role game; roles/ the role catalogue; career/ the career planner
   builder/            the builder: a street and layout editor beside the app, with the street access check and
                       a push of the layout and covered photos to GitHub
+  live/               ARail Live: live AR for XR glasses, reduced to the town and its road traffic; the town
+                      drawn once and fitted to the camera, markers found in a worker (a performance test)
   markers/            printable marker sheets and deck cards for model wagons
   impressum/, datenschutz/  legal notice and privacy policy (German)
   arail/              the framework (ES modules, no build step)

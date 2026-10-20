@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>ARail Live</title>
+<meta name="description" content="Live AR for XR glasses and phones, reduced to the town and its road traffic: a test of how fast the layout can follow the camera.">
+<link rel="icon" href="../assets/favicon-app.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../app/app.css">
+<link rel="stylesheet" href="live.css">
+</head>
+<body class="live">
+<main>
+<h1 class="visually-hidden">ARail Live: the town and its traffic in AR</h1>
+<div class="live-view" id="view">
+  <div class="live-stage" id="stage">
+    <video id="video" muted playsinline hidden></video>
+    <canvas id="layer-background" aria-hidden="true"></canvas>
+    <canvas id="layer-city" aria-hidden="true"></canvas>
+    <canvas id="layer-cars" role="img" aria-label="The town and its traffic over the camera image"></canvas>
+  </div>
+</div>
+<p class="live-message" id="message" role="status"></p>
+<section class="live-hud" id="hud" aria-label="Performance">
+  <dl id="stats"></dl>
+</section>
+<div class="live-buttons">
+  <button class="btn small" id="btnSettings" type="button" aria-expanded="false" aria-controls="settings">Settings</button>
+  <button class="btn small" id="btnFullscreen" type="button">Full screen</button>
+</div>
+<form class="live-settings" id="settings" hidden aria-label="Settings">
+  <h2>Live AR</h2>
+  <label>Source
+    <select id="source">
+      <option value="camera">Camera</option>
+      <option value="clip">Clip of Bf Neustadt</option>
+      <option value="demo">Demo without a camera</option>
+    </select>
+  </label>
+  <label id="deviceRow" hidden>Camera
+    <select id="device"></select>
+  </label>
+  <label>Layout
+    <select id="layout">
+      <option value="../layouts/ebl-neustadt.json">Bf Neustadt</option>
+      <option value="../layouts/ebl-lab.json">Beta 0.1 (EBL lab)</option>
+    </select>
+  </label>
+  <label>Background
+    <select id="background-mode">
+      <option value="camera">Camera image</option>
+      <option value="black">Black (see-through glasses)</option>
+    </select>
+  </label>
+  <label>Camera image
+    <select id="sync">
+      <option value="synced">In step with the town (one frame later)</option>
+      <option value="direct">As it comes (the town lags behind)</option>
+    </select>
+  </label>
+  <fieldset>
+    <legend>Town</legend>
+    <label class="check"><input type="checkbox" id="cache"> Draw the town once and fit it to the camera</label>
+    <label><span>Draw it again above an error of <output id="errorOut"></output> px</span>
+      <input type="range" id="error" min="0.5" max="6" step="0.5">
+    </label>
+    <label><span>Margin around the picture <output id="marginOut"></output> %</span>
+      <input type="range" id="margin" min="5" max="50" step="5">
+    </label>
+    <label><span>Resolution <output id="resOut"></output> %</span>
+      <input type="range" id="res" min="50" max="200" step="25">
+    </label>
+    <label class="check"><input type="checkbox" id="occlusion"> Buildings hide the cars behind them</label>
+  </fieldset>
+  <fieldset>
+    <legend>Traffic</legend>
+    <label><span>Cars per km of street <output id="carsOut"></output></span>
+      <input type="range" id="cars" min="0" max="120" step="5">
+    </label>
+    <label class="check"><input type="checkbox" id="bikes"> Bikes and e-scooters</label>
+  </fieldset>
+  <label class="check"><input type="checkbox" id="worker"> Find the markers in a worker</label>
+  <fieldset>
+    <legend>Fit to the glasses</legend>
+    <label><span>Left and right <output id="fitXOut"></output> px</span>
+      <input type="range" id="fitX" min="-400" max="400" step="2">
+    </label>
+    <label><span>Up and down <output id="fitYOut"></output> px</span>
+      <input type="range" id="fitY" min="-300" max="300" step="2">
+    </label>
+    <label><span>Size <output id="fitScaleOut"></output> %</span>
+      <input type="range" id="fitScale" min="50" max="200" step="1">
+    </label>
+    <label><span>Turn <output id="fitTurnOut"></output>°</span>
+      <input type="range" id="fitTurn" min="-15" max="15" step="0.25">
+    </label>
+    <button class="btn small" id="fitReset" type="button">Reset the fit</button>
+  </fieldset>
+  <p class="live-keys">Keys: <kbd>S</kbd> settings, <kbd>H</kbd> numbers, <kbd>F</kbd> full screen, <kbd>C</kbd> town picture on or off, <kbd>B</kbd> background, arrows, <kbd>+</kbd> <kbd>−</kbd>, <kbd>[</kbd> <kbd>]</kbd> fit, <kbd>0</kbd> reset the fit.</p>
+  <p class="live-keys"><a href="../app/">The full app</a> · <a href="../">About ARail</a></p>
+</form>
+</main>
+<script type="module" src="live.js"></script>
+</body>
+</html>
