@@ -606,7 +606,7 @@ export class TownSimulation extends Simulation {
       const riders = new Map(lines.map((l) => [l.id, 0]));
       const walkMax = +this.config.walk_max_m || 150;
       const share = Math.min(1, Math.max(0, +this.config.bus_share || 0));
-      const mob = mobilityOf(this.world), drive = this._carShare() * mob.licence_adult * mob.car_share;
+      const mob = mobilityOf(this.world), drive = this._carShare() * mob.adult.licence * mob.everybody.car;
       const near = (l, p) => l.visits.some((v) => v.area && this._metres(dist2(this._accessPoint(v.area, this._nearestAccess(v.area, p)), p)) <= ACCESS_M);
       for (const f of this.demand?.flows || []) {
         if (this._metres(dist2(f.from, f.to)) * 1.3 <= walkMax) continue;

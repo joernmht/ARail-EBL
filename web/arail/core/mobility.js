@@ -14,10 +14,11 @@
  *   normal distribution (Weidmann 1993: 1.34 m/s, standard deviation 0.26 m/s), cut to 0.5–2.2 m/s
  *
  * The traits combine: an old person with a rollator and a suitcase walks at
- * base × 0.83 × 0.46 × 0.85. The shares of the traits and every effect are settings
- * ({@link MOBILITY_PARAMS}), each with a default and its source; the passenger simulation holds
- * them for the whole layout (`mobilityOf(world)`). Profiles are drawn from a seeded random stream
- * (always the same five random numbers and one normal one), so a run is reproducible.
+ * base × 0.83 × 0.46 × 0.85. The shares of the traits and every effect are the cells of one
+ * table, a row per trait ({@link PEOPLE}), each with a default and its source; the passenger
+ * simulation holds it for the whole layout (`people`, `mobilityOf(world)`). Profiles are drawn
+ * from a seeded random stream (always the same five random numbers and one normal one), so a run
+ * is reproducible.
  *
  * Sources: Weidmann, U. (1993): Transporttechnik der Fussgänger, IVT ETH Zürich, Schriftenreihe 90;
  * Weidmann, U. (1994): Der Fahrgastwechsel im öffentlichen Personenverkehr, IVT ETH Zürich,
@@ -52,95 +53,193 @@ export const RAMP_MAX_M = 0.25;
 /** A trip this long or longer (km) has the share of heavy luggage of a long trip; up to 5 km that of a short one. */
 const LONG_KM = 100, SHORT_KM = 5;
 
-const share = (key, label, value, help, source, unit = "share") => ({ key, label, type: "number", unit, min: 0, max: 1, step: 0.01, default: value, help, source, group: "people" });
-const factor = (group, key, label, value, source, max = 10) => ({ key, label, type: "number", unit: "factor", min: 0.05, max, step: 0.05, default: value, source, group });
-const seconds = (group, key, label, value, source, max = 600) => ({ key, label, type: "number", unit: "s", min: 0, max, step: 0.5, default: value, source, group });
-const spaces = (key, label, value, source, min = 0, max = 4) => ({ key, label, type: "number", unit: "spaces", min, max, step: 0.05, default: value, source, group: "space" });
+/**
+ * The columns of the table of the people ({@link PEOPLE}): what a value of a row does, its unit and
+ * range (a cell may have its own). For an age group `space` is its own room (a person 1), for an aid
+ * or luggage the room it adds.
+ */
+const COLUMNS = {
+  share: { label: "Share", unit: "share", min: 0, max: 1, step: 0.01 },
+  share_long: { label: "Share on long trips", unit: "share", min: 0, max: 1, step: 0.01 },
+  licence: { label: "Driving licence", unit: "share", min: 0, max: 1, step: 0.01 },
+  speed: { label: "Walking speed", unit: "factor", min: 0.05, max: 10, step: 0.05 },
+  board: { label: "Boarding, level", unit: "factor", min: 0.05, max: 10, step: 0.05 },
+  board_step: { label: "Boarding, with a step", unit: "factor", min: 0.05, max: 20, step: 0.05 },
+  load_s: { label: "Loading", unit: "s", min: 0, max: 120, step: 0.5 },
+  ramp_s: { label: "Ramp", unit: "s", min: 0, max: 600, step: 0.5 },
+  lift_s: { label: "Lift or ramp of the station staff", unit: "s", min: 0, max: 600, step: 0.5 },
+  space: { label: "Room", unit: "spaces", min: 0, max: 4, step: 0.05 },
+  squeeze: { label: "Room squeezed", unit: "spaces", min: 0, max: 4, step: 0.05 },
+  car_s: { label: "At the car", unit: "s", min: 0, max: 600, step: 0.5 },
+  walk_mps: { label: "Walking speed", unit: "m/s", min: 0.5, max: 2, step: 0.01 },
+  walk_sd_mps: { label: "Spread of the walking speed", unit: "m/s", min: 0, max: 0.6, step: 0.01 },
+  board_s: { label: "Boarding time", unit: "s", min: 0, max: 10, step: 0.1 },
+  board_step_s: { label: "Boarding time per 10 cm of step", unit: "s", min: 0, max: 5, step: 0.1 },
+  squeeze_mood: { label: "Mood lost by squeezing", unit: "per space and minute", min: 0, max: 1, step: 0.01 },
+  car: { label: "Car available", unit: "share", min: 0, max: 1, step: 0.01 },
+};
+
+const cell = (value, source, more = {}) => ({ default: value, source, ...more });
+const OF_THE_OLD = "Share of the old people (of the adults a tenth of it).";
+
+/**
+ * The table of the people, the passenger simulation's setting `people` (see sims/passengers.js):
+ * a row for everybody (a person without traits) and one per trait (age, aid, luggage), its cells
+ * the effects of the trait, each with its default and `source`. A layout sets only the cells it
+ * changes: `"people": {"wheelchair": {"share": 0.02}, "everybody": {"walk_mps": 1.3}}`.
+ * @type {ReadonlyArray<{key: string, label: string, cells: Readonly<Record<string, {key: string, label: string,
+ *   unit: string, min: number, max: number, step: number, default: number, source: string, help?: string}>>}>}
+ */
+export const PEOPLE = Object.freeze([
+  ["everybody", "Everybody", {
+    walk_mps: cell(1.34, "Weidmann 1993", { help: "The mean of the normal distribution the base speed is drawn from." }),
+    walk_sd_mps: cell(0.26, "Weidmann 1993", { help: "Its standard deviation (cut to 0.5–2.2 m/s)." }),
+    board_s: cell(1.5, "Weidmann 1994: 1.2–2 s a person and door stream at level boarding", { help: "At a door at level boarding." }),
+    board_step_s: cell(0.4, "Estimate after Weidmann 1994", { help: "More per 10 cm of step." }),
+    squeeze: cell(0.8, "Estimate: standing closer", { unit: "of its room", min: 0.1, max: 1, help: "A person squeezed takes this much of its room." }),
+    squeeze_mood: cell(0.05, "Estimate", { help: "Every space a person is squeezed out of costs this much mood per minute of the ride (0 … 1)." }),
+    car: cell(0.75, "MiD 2017", { help: "Share of the people with a driving licence who have a car available." }),
+  }],
+  ["child", "Children", {
+    share: cell(0.15, "Destatis 2023: 14 % are younger than 15", { help: "Share of the people." }),
+    speed: cell(0.9, "Estimate after Weidmann 1993"),
+    board: cell(1.2, "Estimate"),
+    board_step: cell(1.6, "Estimate"),
+    space: cell(0.7, "Estimate", { min: 0.1, max: 1, help: "Its own room (a person 1)." }),
+  }],
+  ["adult", "Adults", {
+    licence: cell(0.87, "MiD 2017"),
+  }],
+  ["old", "Old people (65 and older)", {
+    share: cell(0.22, "Destatis 2023: 22 %", { help: "Share of the people." }),
+    speed: cell(0.83, "Knoblauch et al. 1996: 1.25 of 1.51 m/s"),
+    board: cell(1.3, "Estimate after Weidmann 1994"),
+    board_step: cell(2.5, "Estimate after Weidmann 1994"),
+    licence: cell(0.75, "MiD 2017 (fewer among the very old)"),
+  }],
+  ["stick", "Walking stick", {
+    share: cell(0.1, "Estimate", { help: OF_THE_OLD }),
+    speed: cell(0.65, "Boyce et al. 1999: 0.81 of 1.24 m/s"),
+    board: cell(1.5, "Estimate"),
+    board_step: cell(3, "Estimate"),
+  }],
+  ["rollator", "Rollator", {
+    share: cell(0.06, "Estimate: about 2 million rollators in Germany", { help: OF_THE_OLD }),
+    speed: cell(0.46, "Boyce et al. 1999: 0.57 of 1.24 m/s"),
+    board: cell(2, "Estimate"),
+    board_step: cell(4, "Estimate: the rollator is lifted in"),
+    space: cell(0.7, "Estimate"),
+    squeeze: cell(0.3, "Estimate: folded"),
+  }],
+  ["wheelchair", "Wheelchair", {
+    share: cell(0.01, "About 1.6 million wheelchair users in Germany (2 %); fewer of them travel", { help: "Share of the people." }),
+    speed: cell(0.7, "Boyce et al. 1999: 0.69 (manual) to 0.89 m/s (electric) of 1.24 m/s"),
+    board: cell(2.5, "Estimate", { help: "At level boarding, and on a ramp or a lift." }),
+    ramp_s: cell(60, "TCQSM 2013: 30–60 s for a ramp the driver puts out", { help: "A vehicle's folding ramp, for a step of at most 25 cm." }),
+    lift_s: cell(120, "TCQSM 2013: 60–200 s for a lift", { help: "Where the platform has assistance (06:00–22:00)." }),
+    space: cell(1.5, "Estimate (in a wheelchair place; not squeezed)"),
+    car_s: cell(120, "Estimate: into the seat, the wheelchair folded"),
+  }],
+  ["pram", "Pram", {
+    share: cell(0.03, "Estimate", { help: "Share of the adults pushing a pram (Kinderwagen; of the old a third of it)." }),
+    speed: cell(0.9, "Estimate"),
+    board: cell(2, "Estimate"),
+    board_step: cell(5, "Estimate: lifted in, often with help"),
+    space: cell(1.5, "Estimate"),
+    squeeze: cell(1.2, "Estimate: a pram with a baby is not folded"),
+    car_s: cell(60, "Estimate: folded, the child in its seat"),
+  }],
+  ["light", "Light luggage", {
+    share: cell(0.45, "Estimate", { help: "Share of the people with a bag or a backpack." }),
+  }],
+  ["heavy", "Heavy luggage", {
+    share: cell(0.03, "Estimate", { help: "Share with a suitcase on trips up to 5 km (half of it to work or school)." }),
+    share_long: cell(0.35, "Estimate (long-distance trains, holidays, weekend commuters)", { help: "On trips of 100 km and more; in between it grows with the length of the trip." }),
+    speed: cell(0.85, "Young 1999 (airport terminals)"),
+    load_s: cell(3, "Estimate (twice as long with a step)"),
+    space: cell(0.5, "Estimate (none in a train's luggage racks)"),
+    squeeze: cell(0.2, "Estimate: on the lap, between the legs"),
+    car_s: cell(20, "Estimate: into the boot"),
+  }],
+  ["bulky", "Bulky luggage", {
+    share: cell(0.02, "Estimate", { help: "Share with a bike, skis or something as large." }),
+    speed: cell(0.8, "Estimate"),
+    load_s: cell(8, "Estimate (twice as long with a step)"),
+    space: cell(1.5, "Estimate (not squeezed)"),
+    car_s: cell(20, "Estimate: into the boot"),
+  }],
+].map(([key, label, cells]) => Object.freeze({
+  key, label, cells: Object.freeze(Object.fromEntries(Object.entries(cells).map(([k, c]) => [k, Object.freeze({ key: k, ...COLUMNS[k], ...c })]))),
+})));
 
 /**
  * The characteristics of people as settings (ParamSpecs of the passenger simulation, see
- * sims/passengers.js): `group` people (shares), walking (speed), boarding, space and car; `source`
- * where the default comes from.
+ * sims/passengers.js): the table of the people ({@link PEOPLE}; no default of its own, so a layout
+ * keeps only the cells it changes) and the room in the vehicles.
  */
 export const MOBILITY_PARAMS = Object.freeze([
-  share("share_child", "Children", 0.15, "Share of the people.", "Destatis 2023: 14 % are younger than 15"),
-  share("share_old", "Old people", 0.22, "Share of the people who are 65 or older.", "Destatis 2023: 22 %"),
-  share("share_wheelchair", "Wheelchair users", 0.01, "Share of the people.", "About 1.6 million wheelchair users in Germany (2 %); fewer of them travel"),
-  share("share_rollator", "Rollator", 0.06, "Share of the old people (of the others a tenth of it).", "Estimate: about 2 million rollators in Germany"),
-  share("share_stick", "Walking stick", 0.1, "Share of the old people (of the others a tenth of it).", "Estimate"),
-  share("share_pram", "Pram", 0.03, "Share of the adults pushing a pram (Kinderwagen; of the old a third of it).", "Estimate"),
-  share("share_light", "Light luggage", 0.45, "Share of the people with a bag or a backpack.", "Estimate"),
-  share("share_heavy", "Heavy luggage on short trips", 0.03, "Share with a suitcase on trips up to 5 km (half of it to work or school).", "Estimate"),
-  share("share_heavy_long", "Heavy luggage on long trips", 0.35, "Share with a suitcase on trips of 100 km and more; in between it grows with the length of the trip.", "Estimate (long-distance trains, holidays, weekend commuters)"),
-  share("share_bulky", "Bulky luggage", 0.02, "Share with a bike, skis or something as large.", "Estimate"),
-  share("licence_adult", "Driving licence", 0.87, "Share of the adults with a driving licence.", "MiD 2017"),
-  share("licence_old", "Driving licence of the old", 0.75, "Share of the old people with a driving licence.", "MiD 2017 (fewer among the very old)"),
-  share("car_share", "Car available", 0.75, "Share of the people with a driving licence who have a car available.", "MiD 2017"),
-  { key: "walk_mean_mps", label: "Walking speed", type: "number", unit: "m/s", min: 0.5, max: 2, step: 0.01, default: 1.34, help: "The mean of the normal distribution the base speed is drawn from.", source: "Weidmann 1993", group: "walking" },
-  { key: "walk_sd_mps", label: "Spread of the walking speed", type: "number", unit: "m/s", min: 0, max: 0.6, step: 0.01, default: 0.26, help: "Its standard deviation (cut to 0.5–2.2 m/s).", source: "Weidmann 1993", group: "walking" },
-  factor("walking", "speed_child", "Walking speed of children", 0.9, "Estimate after Weidmann 1993"),
-  factor("walking", "speed_old", "Walking speed of old people", 0.83, "Knoblauch et al. 1996: 1.25 of 1.51 m/s"),
-  factor("walking", "speed_stick", "Walking speed with a stick", 0.65, "Boyce et al. 1999: 0.81 of 1.24 m/s"),
-  factor("walking", "speed_rollator", "Walking speed with a rollator", 0.46, "Boyce et al. 1999: 0.57 of 1.24 m/s"),
-  factor("walking", "speed_wheelchair", "Speed in a wheelchair", 0.7, "Boyce et al. 1999: 0.69 (manual) to 0.89 m/s (electric) of 1.24 m/s"),
-  factor("walking", "speed_pram", "Walking speed with a pram", 0.9, "Estimate"),
-  factor("walking", "speed_heavy", "Walking speed with heavy luggage", 0.85, "Young 1999 (airport terminals)"),
-  factor("walking", "speed_bulky", "Walking speed with bulky luggage", 0.8, "Estimate"),
-  seconds("boarding", "board_s", "Boarding time", 1.5, "Weidmann 1994: 1.2–2 s a person and door stream at level boarding", 10),
-  seconds("boarding", "board_step_s", "Boarding time per 10 cm of step", 0.4, "Estimate after Weidmann 1994", 5),
-  factor("boarding", "board_child", "Boarding of children, level", 1.2, "Estimate"),
-  factor("boarding", "board_child_step", "Boarding of children, with a step", 1.6, "Estimate"),
-  factor("boarding", "board_old", "Boarding of old people, level", 1.3, "Estimate after Weidmann 1994"),
-  factor("boarding", "board_old_step", "Boarding of old people, with a step", 2.5, "Estimate after Weidmann 1994"),
-  factor("boarding", "board_stick", "Boarding with a stick, level", 1.5, "Estimate"),
-  factor("boarding", "board_stick_step", "Boarding with a stick, with a step", 3, "Estimate"),
-  factor("boarding", "board_rollator", "Boarding with a rollator, level", 2, "Estimate"),
-  factor("boarding", "board_rollator_step", "Boarding with a rollator, with a step", 4, "Estimate: the rollator is lifted in"),
-  factor("boarding", "board_pram", "Boarding with a pram, level", 2, "Estimate"),
-  factor("boarding", "board_pram_step", "Boarding with a pram, with a step", 5, "Estimate: lifted in, often with help", 20),
-  factor("boarding", "board_wheelchair", "Boarding in a wheelchair, level", 2.5, "Estimate"),
-  seconds("boarding", "ramp_s", "Ramp", 60, "TCQSM 2013: 30–60 s for a ramp the driver puts out"),
-  seconds("boarding", "lift_s", "Lift or ramp of the station staff", 120, "TCQSM 2013: 60–200 s for a lift"),
-  seconds("boarding", "load_heavy_s", "Loading heavy luggage", 3, "Estimate (twice as long with a step)", 60),
-  seconds("boarding", "load_bulky_s", "Loading bulky luggage", 8, "Estimate (twice as long with a step)", 120),
-  spaces("space_child", "Space of a child", 0.7, "Estimate", 0.1, 1),
-  spaces("space_heavy", "Space of heavy luggage", 0.5, "Estimate (none in a train's luggage racks)"),
-  spaces("space_rollator", "Space of a rollator", 0.7, "Estimate"),
-  spaces("space_pram", "Space of a pram", 1.5, "Estimate"),
-  spaces("space_wheelchair", "Space of a wheelchair", 1.5, "Estimate (in a wheelchair place; not squeezed)"),
-  spaces("space_bulky", "Space of bulky luggage", 1.5, "Estimate (not squeezed)"),
-  spaces("squeeze_person", "Squeezed person", 0.8, "Estimate: standing closer", 0.1, 1),
-  spaces("squeeze_heavy", "Squeezed heavy luggage", 0.2, "Estimate: on the lap, between the legs"),
-  spaces("squeeze_rollator", "Squeezed rollator", 0.3, "Estimate: folded"),
-  spaces("squeeze_pram", "Squeezed pram", 1.2, "Estimate: a pram with a baby is not folded"),
-  { key: "standing_per_m2", label: "Standing room", type: "number", unit: "people per m²", min: 1, max: 8, step: 0.5, default: 4, help: "People standing per m² of a vehicle's standing room (its capacity in spaces: seats and standing room).", source: "VDV: 4 people per m² for planning", group: "space" },
-  { key: "onboard_share", label: "Riding through", type: "number", unit: "share of the spaces", min: 0, max: 1, step: 0.05, default: 0.25, help: "A vehicle comes in with the people who get off, its riders of the town and the journeys, and this share of its spaces taken by people riding on (at the normal daytime level; more in the rush hours).", source: "Estimate", group: "space" },
-  { key: "squeeze_mood", label: "Mood lost by squeezing", type: "number", unit: "per space and minute", min: 0, max: 1, step: 0.01, default: 0.05, help: "Every space a person is squeezed out of costs this much mood per minute of the ride (0 … 1).", source: "Estimate", group: "space" },
-  seconds("car", "car_luggage_s", "Luggage into the boot", 20, "Estimate"),
-  seconds("car", "car_pram_s", "Pram into the car", 60, "Estimate: folded, the child in its seat"),
-  seconds("car", "car_wheelchair_s", "Wheelchair into the car", 120, "Estimate: into the seat, the wheelchair folded"),
+  { key: "people", label: "People", type: "table", rows: PEOPLE, help: "Per trait (age, aid, luggage) its share and what it changes: walking speed, boarding, room, the car; a row for everybody. A layout sets only the cells it changes." },
+  { key: "standing_per_m2", label: "Standing room", type: "number", unit: "people per m²", min: 1, max: 8, step: 0.5, default: 4, help: "People standing per m² of a vehicle's standing room (its capacity in spaces: seats and standing room).", source: "VDV: 4 people per m² for planning" },
+  { key: "onboard_share", label: "Riding through", type: "number", unit: "share of the spaces", min: 0, max: 1, step: 0.05, default: 0.25, help: "A vehicle comes in with the people who get off, its riders of the town and the journeys, and this share of its spaces taken by people riding on (at the normal daytime level; more in the rush hours).", source: "Estimate" },
 ]);
 
 /** The keys of the settings. */
 export const MOBILITY_KEYS = Object.freeze(MOBILITY_PARAMS.map((p) => p.key));
 
+/** A value of a setting where it is a number, cut to its range; else its default. */
+function numberIn(raw, spec) {
+  const v = Number(raw);
+  return raw !== undefined && raw !== null && raw !== "" && typeof raw !== "boolean" && Number.isFinite(v) ? clamp(v, spec.min, spec.max) : spec.default;
+}
+
 /**
- * The settings of mobility with their defaults: a value of `config` where it is a number in its
- * range (else the default).
+ * The settings of mobility with their defaults: each row of the table of the people
+ * (`mob.old.speed`, `mob.everybody.walk_mps`) with the cells of `config.people` where they are
+ * numbers in their range (else the default), and the room in the vehicles (`mob.standing_per_m2`,
+ * `mob.onboard_share`).
  * @param {object} [config] e.g. the passenger simulation's config
- * @returns {Readonly<Record<string, number>>}
+ * @returns {Readonly<Record<string, any>>}
  */
 export function mobilitySettings(config = {}) {
-  const out = {};
-  for (const p of MOBILITY_PARAMS) {
-    const raw = config?.[p.key], v = Number(raw);
-    out[p.key] = raw !== undefined && raw !== null && raw !== "" && Number.isFinite(v) ? clamp(v, p.min, p.max) : p.default;
+  const out = {}, people = config?.people && typeof config.people === "object" ? config.people : {};
+  for (const row of PEOPLE) {
+    const given = people[row.key] && typeof people[row.key] === "object" ? people[row.key] : {};
+    out[row.key] = Object.freeze(Object.fromEntries(Object.values(row.cells).map((c) => [c.key, numberIn(given[c.key], c)])));
   }
+  for (const p of MOBILITY_PARAMS) if (p.type === "number") out[p.key] = numberIn(config?.[p.key], p);
   return Object.freeze(out);
 }
 
 /** The settings with every default. */
 export const DEFAULT_MOBILITY = mobilitySettings({});
+
+/**
+ * Problems of a table of the people as a layout writes it (`people`): rows and cells it does not
+ * know (a typo would be lost silently), cells that are not numbers.
+ * @param {*} people
+ * @returns {string[]}
+ */
+export function peopleProblems(people) {
+  if (people === undefined) return [];
+  if (!people || typeof people !== "object" || Array.isArray(people)) return ["people must be an object of rows, e.g. {\"wheelchair\": {\"share\": 0.02}}"];
+  const out = [];
+  for (const [key, given] of Object.entries(people)) {
+    const row = PEOPLE.find((r) => r.key === key);
+    if (!row) {
+      out.push(`people: no row "${key}" (${PEOPLE.map((r) => r.key).join(", ")})`);
+      continue;
+    }
+    if (!given || typeof given !== "object" || Array.isArray(given)) {
+      out.push(`people.${key} must be an object of cells (${Object.keys(row.cells).join(", ")})`);
+      continue;
+    }
+    for (const [k, v] of Object.entries(given)) {
+      if (!row.cells[k]) out.push(`people.${key}: no cell "${k}" (${Object.keys(row.cells).join(", ")})`);
+      else if (typeof v !== "number" || !Number.isFinite(v)) out.push(`people.${key}.${k} must be a number`);
+    }
+  }
+  return out;
+}
 
 /**
  * The settings of mobility of a world: those of the simulation that holds them (the passenger
@@ -165,24 +264,24 @@ function pick(u, shares, rest) {
 /** The aids people of an age group have: [[aid, share], …]. */
 export function aidShares(age, mob = DEFAULT_MOBILITY) {
   const k = age === "old" ? 1 : age === "adult" ? 0.1 : 0;
-  return [["wheelchair", mob.share_wheelchair], ["rollator", mob.share_rollator * k], ["stick", mob.share_stick * k], ["pram", age === "adult" ? mob.share_pram : age === "old" ? mob.share_pram / 3 : 0]];
+  return [["wheelchair", mob.wheelchair.share], ["rollator", mob.rollator.share * k], ["stick", mob.stick.share * k], ["pram", age === "adult" ? mob.pram.share : age === "old" ? mob.pram.share / 3 : 0]];
 }
 
 /**
  * The luggage people carry on a trip: [[class, share], …]. Heavy luggage grows with the length of
- * the trip (from `share_heavy` up to 5 km to `share_heavy_long` at 100 km), half of it to work or
+ * the trip (from `heavy.share` up to 5 km to `heavy.share_long` at 100 km), half of it to work or
  * school; children carry a third as much heavy and bulky luggage.
  * @param {{km?: number, purpose?: string | null}} [trip]
  * @param {string} [age]
  */
 export function luggageShares({ km = SHORT_KM, purpose = null } = {}, age = "adult", mob = DEFAULT_MOBILITY) {
   const long = clamp((Number(km) - SHORT_KM) / (LONG_KM - SHORT_KM), 0, 1) || 0;
-  let heavy = mob.share_heavy + (mob.share_heavy_long - mob.share_heavy) * long;
+  let heavy = mob.heavy.share + (mob.heavy.share_long - mob.heavy.share) * long;
   if (purpose === "work" || purpose === "school") heavy *= 0.5;
   const kid = age === "child" ? 1 / 3 : 1;
-  const bulky = mob.share_bulky * kid;
+  const bulky = mob.bulky.share * kid;
   heavy *= kid;
-  return [["bulky", bulky], ["heavy", heavy], ["light", Math.min(mob.share_light, Math.max(0, 1 - bulky - heavy))]];
+  return [["bulky", bulky], ["heavy", heavy], ["light", Math.min(mob.light.share, Math.max(0, 1 - bulky - heavy))]];
 }
 
 /**
@@ -194,22 +293,22 @@ export function luggageShares({ km = SHORT_KM, purpose = null } = {}, age = "adu
  * @param {{age?: string, aid?: string, luggage?: string, licence?: boolean, car?: boolean, base_mps?: number,
  *   km?: number, purpose?: string | null, driver?: boolean}} [ctx] fixed traits; the trip (`km`, `purpose`)
  *   the luggage depends on; `driver`: an adult or old person with a licence and a car
- * @param {Readonly<Record<string, number>>} [mob] the settings
+ * @param {Readonly<Record<string, any>>} [mob] the settings
  * @returns {{age: string, aid: string, luggage: string, licence: boolean, car: boolean, base_mps: number}}
  */
 export function drawProfile(rng, ctx = {}, mob = DEFAULT_MOBILITY) {
   const u = [rng.next(), rng.next(), rng.next(), rng.next(), rng.next()];
-  const base = rng.truncNormal(mob.walk_mean_mps, mob.walk_sd_mps, BASE_MPS[0], BASE_MPS[1]);
+  const base = rng.truncNormal(mob.everybody.walk_mps, mob.everybody.walk_sd_mps, BASE_MPS[0], BASE_MPS[1]);
   const driver = !!ctx.driver;
   let age = ctx.age;
   if (!AGES[age]) {
-    if (driver) age = u[0] < mob.share_old / Math.max(1e-9, 1 - mob.share_child) ? "old" : "adult";
-    else age = pick(u[0], [["child", mob.share_child], ["old", mob.share_old]], "adult");
+    if (driver) age = u[0] < mob.old.share / Math.max(1e-9, 1 - mob.child.share) ? "old" : "adult";
+    else age = pick(u[0], [["child", mob.child.share], ["old", mob.old.share]], "adult");
   }
   const aid = AIDS[ctx.aid] ? ctx.aid : pick(u[1], aidShares(age, mob), "none");
   const luggage = LUGGAGE[ctx.luggage] ? ctx.luggage : pick(u[2], luggageShares(ctx, age, mob), "none");
-  const licence = typeof ctx.licence === "boolean" ? ctx.licence : driver || (age !== "child" && u[3] < (age === "old" ? mob.licence_old : mob.licence_adult));
-  const car = typeof ctx.car === "boolean" ? ctx.car && licence : driver || (licence && u[4] < mob.car_share);
+  const licence = typeof ctx.licence === "boolean" ? ctx.licence : driver || (age !== "child" && u[3] < mob[age].licence);
+  const car = typeof ctx.car === "boolean" ? ctx.car && licence : driver || (licence && u[4] < mob.everybody.car);
   const speed = Number(ctx.base_mps);
   return { age, aid, luggage, licence, car, base_mps: Math.round((Number.isFinite(speed) && speed > 0 ? clamp(speed, ...BASE_MPS) : base) * 100) / 100 };
 }
@@ -227,19 +326,19 @@ export function normalizeProfile(spec = {}, mob = DEFAULT_MOBILITY) {
   const speed = Number(s.base_mps);
   return {
     age, aid: AIDS[s.aid] ? s.aid : "none", luggage: LUGGAGE[s.luggage] ? s.luggage : "none", licence, car: s.car === true && licence,
-    base_mps: Math.round((s.base_mps != null && Number.isFinite(speed) && speed > 0 ? clamp(speed, ...BASE_MPS) : mob.walk_mean_mps) * 100) / 100,
+    base_mps: Math.round((s.base_mps != null && Number.isFinite(speed) && speed > 0 ? clamp(speed, ...BASE_MPS) : mob.everybody.walk_mps) * 100) / 100,
   };
 }
 
 /** The factor of the walking speed of a profile's traits (its age, aid and luggage). */
 export function speedFactor(profile, mob = DEFAULT_MOBILITY) {
-  const f = (trait) => mob[`speed_${trait}`] ?? 1;
+  const f = (trait) => mob[trait]?.speed ?? 1;
   return f(profile?.age) * f(profile?.aid) * f(profile?.luggage);
 }
 
 /** How fast a person walks (m/s): the base speed × the factors of their traits, cut to 0.3–2.2 m/s. */
 export function walkingSpeed(profile, mob = DEFAULT_MOBILITY) {
-  const base = Number.isFinite(profile?.base_mps) ? profile.base_mps : mob.walk_mean_mps;
+  const base = Number.isFinite(profile?.base_mps) ? profile.base_mps : mob.everybody.walk_mps;
   return Math.round(clamp(base * speedFactor(profile, mob), MIN_MPS, MAX_MPS) * 100) / 100;
 }
 
@@ -250,12 +349,12 @@ export function isLevel(step_m = 0, gap_m = 0) {
 
 /**
  * How long a person takes to get on (or off) a vehicle through a door, and whether they can:
- * `board_s`, plus `board_step_s` per 10 cm of step, × the larger of the factors of their age and
- * their aid (level or with a step: an old person with a rollator is as slow as the rollator makes
- * them, not slower again for their age), plus the loading time of their luggage (twice as long with
- * a step). A wheelchair
- * gets on only at level boarding or with help: a ramp the driver puts out (`ramp_s`, for a step of
- * at most {@link RAMP_MAX_M}) or the lift of the station's staff (`lift_s`).
+ * `everybody.board_s`, plus `everybody.board_step_s` per 10 cm of step, × the larger of the factors
+ * of their age and their aid (`board` level, `board_step` with a step: an old person with a rollator
+ * is as slow as the rollator makes them, not slower again for their age), plus the loading time of
+ * their luggage (`load_s`, twice as long with a step). A wheelchair gets on only at level boarding
+ * or with help: a ramp the driver puts out (`wheelchair.ramp_s`, for a step of at most
+ * {@link RAMP_MAX_M}) or the lift of the station's staff (`wheelchair.lift_s`).
  * @param {object} profile
  * @param {{step_m?: number, gap_m?: number, assist?: "ramp" | "lift" | null}} [access] the step between the
  *   platform (or the kerb) and the floor at the door (m, up or down), the gap (m), the help there is
@@ -267,22 +366,23 @@ export function isLevel(step_m = 0, gap_m = 0) {
 export function boardingTime(profile, { step_m = 0, gap_m = 0, assist = null } = {}, mob = DEFAULT_MOBILITY) {
   const p = profile || {}, level = isLevel(step_m, gap_m);
   const factorOf = (trait) => {
-    const lv = mob[`board_${trait}`];
-    return lv == null ? 1 : level ? lv : mob[`board_${trait}_step`] ?? lv;
+    const row = mob[trait], lv = row?.board;
+    return lv == null ? 1 : level ? lv : row.board_step ?? lv;
   };
-  let base = mob.board_s + (level ? 0 : (Math.abs(step_m) / 0.1) * mob.board_step_s);
+  const every = mob.everybody;
+  let base = every.board_s + (level ? 0 : (Math.abs(step_m) / 0.1) * every.board_step_s);
   const fAge = factorOf(p.age);
   let fAid = factorOf(p.aid), help = 0, used = null;
   if (p.aid === "wheelchair" && !level) {
     const helped = assist === "lift" || (assist === "ramp" && Math.abs(step_m) <= RAMP_MAX_M + 1e-9);
     if (!helped) return { s: 0, ok: false, level, assist: null, help: 0, why: assist === "ramp" ? "the step is too high for the ramp" : "no level boarding", extra: { age: 0, aid: 0, luggage: 0 } };
     used = assist;
-    help = assist === "ramp" ? mob.ramp_s : mob.lift_s;
+    help = assist === "ramp" ? mob.wheelchair.ramp_s : mob.wheelchair.lift_s;
     // on the ramp or the lift: as at level boarding
-    base = mob.board_s;
-    fAid = mob.board_wheelchair;
+    base = every.board_s;
+    fAid = mob.wheelchair.board;
   }
-  const load = (p.luggage === "heavy" ? mob.load_heavy_s : p.luggage === "bulky" ? mob.load_bulky_s : 0) * (level ? 1 : 2);
+  const load = (mob[p.luggage]?.load_s ?? 0) * (level ? 1 : 2);
   const round = (x) => Math.round(x * 10) / 10;
   const f = Math.max(fAge, fAid);
   const s = base * f + help + load;
@@ -290,44 +390,39 @@ export function boardingTime(profile, { step_m = 0, gap_m = 0, assist = null } =
 }
 
 /**
- * The room a person takes in a vehicle, in spaces (a person alone 1, a child `space_child`), with
- * what their aid and luggage add; `min`: squeezed as far as it goes (a wheelchair and bulky luggage
- * are not squeezed); `wheelchair`: needs a wheelchair place. In `racks` (a train's luggage racks)
- * heavy luggage takes no room.
+ * The room a person takes in a vehicle, in spaces: their own (a person 1, the `space` of their age
+ * group: a child 0.7) and the `space` their aid and luggage add; `min`: squeezed as far as it goes
+ * (their own room × `everybody.squeeze`, an aid or luggage its `squeeze`; without one, as a
+ * wheelchair and bulky luggage, it is not squeezed); `wheelchair`: needs a wheelchair place. In
+ * `racks` (a train's luggage racks) heavy luggage takes no room.
  * @param {object} profile
  * @param {{racks?: boolean}} [where]
  * @returns {{space: number, min: number, wheelchair: boolean}}
  */
 export function spaceOf(profile, { racks = false } = {}, mob = DEFAULT_MOBILITY) {
   const p = profile || {};
-  const own = p.age === "child" ? mob.space_child : 1;
-  let space = own, min = own * mob.squeeze_person;
-  const add = (s, m) => {
-    space += s;
-    min += Math.min(s, m);
-  };
-  if (p.aid === "rollator") add(mob.space_rollator, mob.squeeze_rollator);
-  else if (p.aid === "pram") add(mob.space_pram, mob.squeeze_pram);
-  else if (p.aid === "wheelchair") add(mob.space_wheelchair, mob.space_wheelchair);
-  if (p.luggage === "heavy" && !racks) add(mob.space_heavy, mob.squeeze_heavy);
-  else if (p.luggage === "bulky") add(mob.space_bulky, mob.space_bulky);
+  const own = mob[p.age]?.space ?? 1;
+  let space = own, min = own * mob.everybody.squeeze;
+  for (const trait of [p.aid, p.luggage]) {
+    const row = mob[trait];
+    if (!row?.space || (trait === "heavy" && racks)) continue;
+    space += row.space;
+    min += Math.min(row.space, row.squeeze ?? row.space);
+  }
   const round = (x) => Math.round(x * 100) / 100;
   return { space: round(space), min: round(min), wheelchair: p.aid === "wheelchair" };
 }
 
 /**
- * Seconds at each end of a trip by car besides the walk to and from the car: luggage into (or out
- * of) the boot, a pram folded and the child in its seat, a wheelchair user into the seat and the
- * wheelchair folded. For the people of a car together: the sum of theirs.
+ * Seconds at each end of a trip by car besides the walk to and from the car (the `car_s` of the
+ * aid and the luggage): luggage into (or out of) the boot, a pram folded and the child in its seat,
+ * a wheelchair user into the seat and the wheelchair folded. For the people of a car together: the
+ * sum of theirs.
  * @param {object | object[]} profiles
  */
 export function carLegTime(profiles, mob = DEFAULT_MOBILITY) {
   let s = 0;
-  for (const p of [profiles].flat().filter(Boolean)) {
-    if (p.luggage === "heavy" || p.luggage === "bulky") s += mob.car_luggage_s;
-    if (p.aid === "pram") s += mob.car_pram_s;
-    if (p.aid === "wheelchair") s += mob.car_wheelchair_s;
-  }
+  for (const p of [profiles].flat().filter(Boolean)) s += (mob[p.aid]?.car_s ?? 0) + (mob[p.luggage]?.car_s ?? 0);
   return s;
 }
 

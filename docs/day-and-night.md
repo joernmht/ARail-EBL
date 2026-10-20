@@ -266,38 +266,58 @@ the vehicles at the stops by the room left in them.
 
 ### Settings of the people
 
-The traits and their effects are settings of the passenger simulation, for the whole layout (the
-town, the journeys and the road traffic use the same):
+The traits and their effects are one table of the passenger simulation, `people`, for the whole
+layout (the town, the journeys and the road traffic use the same): a row for everybody and one per
+trait, a cell per effect. A layout sets only the cells it changes; the others keep their defaults:
 
 ```json
-{ "type": "passengers", "share_wheelchair": 0.02, "walk_mean_mps": 1.3, "board_old_step": 3 }
+{ "type": "passengers", "people": { "wheelchair": { "share": 0.02 }, "everybody": { "walk_mps": 1.3 }, "old": { "board_step": 3 } } }
 ```
+
+| Row | `share` | `speed` | `board`, `board_step` | `load_s` | `space`, `squeeze` | `car_s` | Also |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `child` | 0.15 | 0.9 | 1.2, 1.6 | | 0.7 | | |
+| `adult` | | | | | | | `licence` 0.87 |
+| `old` | 0.22 | 0.83 | 1.3, 2.5 | | | | `licence` 0.75 |
+| `stick` | 0.1 | 0.65 | 1.5, 3 | | | | |
+| `rollator` | 0.06 | 0.46 | 2, 4 | | 0.7, 0.3 | | |
+| `wheelchair` | 0.01 | 0.7 | 2.5 | | 1.5 | 120 | `ramp_s` 60, `lift_s` 120 |
+| `pram` | 0.03 | 0.9 | 2, 5 | | 1.5, 1.2 | 60 | |
+| `light` | 0.45 | | | | | | |
+| `heavy` | 0.03 | 0.85 | | 3 | 0.5, 0.2 | 20 | `share_long` 0.35 |
+| `bulky` | 0.02 | 0.8 | | 8 | 1.5 | 20 | |
+
+- `share`: children, old people and wheelchair users of the people (Destatis 2023; about 1.6 million
+  wheelchair users in Germany, fewer of them travel); a stick and a rollator of the old people (of the
+  adults a tenth); a pram of the adults (of the old a third); luggage of the trips: heavy on trips up
+  to 5 km, `share_long` on trips of 100 km and more (in between by the length, half of it to work or
+  school). `licence`: a driving licence (MiD 2017).
+- `speed`: the factors of the walking speed (Knoblauch et al. 1996, Boyce et al. 1999, Young 1999).
+- `board`, `board_step`: the boarding factors at level boarding and with a step (a wheelchair only
+  at level boarding or on the help); `load_s`: seconds to load the luggage (twice with a step);
+  `ramp_s`, `lift_s`: a vehicle's ramp and the staff's lift (TCQSM 2013).
+- `space`: a child's own room (a person 1), or the room an aid or luggage adds (heavy luggage none in
+  a train's racks); `squeeze`: the least it takes squeezed (without one, as a wheelchair and bulky
+  luggage, it is not squeezed).
+- `car_s`: seconds at each end of a trip by car.
+
+| `everybody` | Default | Meaning (source) |
+| --- | --- | --- |
+| `walk_mps`, `walk_sd_mps` | 1.34, 0.26 | the normal distribution of the base speed (Weidmann 1993) |
+| `board_s`, `board_step_s` | 1.5, 0.4 | seconds at a door, and per 10 cm of step (Weidmann 1994) |
+| `squeeze` | 0.8 | a person squeezed takes this much of its room |
+| `squeeze_mood` | 0.05 | mood lost per squeezed space and minute of the ride |
+| `car` | 0.75 | a car for those with a driving licence (MiD 2017) |
+
+Two more settings of the passenger simulation are about the vehicles:
 
 | Field | Default | Meaning (source) |
 | --- | --- | --- |
-| `share_child`, `share_old` | 0.15, 0.22 | children, people 65 and older (Destatis 2023) |
-| `share_wheelchair` | 0.01 | wheelchair users (about 1.6 million in Germany; fewer of them travel) |
-| `share_rollator`, `share_stick` | 0.06, 0.1 | of the old people (of the adults a tenth) |
-| `share_pram` | 0.03 | of the adults (of the old a third) |
-| `share_light`, `share_heavy`, `share_heavy_long`, `share_bulky` | 0.45, 0.03, 0.35, 0.02 | luggage: light; heavy on trips up to 5 km and of 100 km; bulky |
-| `licence_adult`, `licence_old`, `car_share` | 0.87, 0.75, 0.75 | a driving licence; a car for those with one (MiD 2017) |
-| `walk_mean_mps`, `walk_sd_mps` | 1.34, 0.26 | the normal distribution of the base speed (Weidmann 1993) |
-| `speed_child`, `speed_old` | 0.9, 0.83 | walking speed factors (Knoblauch et al. 1996) |
-| `speed_stick`, `speed_rollator`, `speed_wheelchair`, `speed_pram` | 0.65, 0.46, 0.7, 0.9 | (Boyce et al. 1999) |
-| `speed_heavy`, `speed_bulky` | 0.85, 0.8 | with luggage (Young 1999) |
-| `board_s`, `board_step_s` | 1.5, 0.4 | seconds at a door, and per 10 cm of step (Weidmann 1994) |
-| `board_child`, `board_child_step`, `board_old`, `board_old_step`, … | 1.2, 1.6, 1.3, 2.5, … | boarding factors at level boarding and with a step: also `board_stick*` 1.5, 3; `board_rollator*` 2, 4; `board_pram*` 2, 5; `board_wheelchair` 2.5 |
-| `ramp_s`, `lift_s` | 60, 120 | a vehicle's ramp, the staff's lift (TCQSM 2013) |
-| `load_heavy_s`, `load_bulky_s` | 3, 8 | loading luggage (twice with a step) |
-| `space_child`, `space_heavy`, `space_rollator`, `space_pram`, `space_wheelchair`, `space_bulky` | 0.7, 0.5, 0.7, 1.5, 1.5, 1.5 | spaces |
-| `squeeze_person`, `squeeze_heavy`, `squeeze_rollator`, `squeeze_pram` | 0.8, 0.2, 0.3, 1.2 | the least, squeezed |
 | `standing_per_m2` | 4 | people standing per m² (VDV) |
 | `onboard_share` | 0.25 | the share of a vehicle's spaces taken by people riding through when it comes in |
-| `squeeze_mood` | 0.05 | mood lost per squeezed space and minute of the ride |
-| `car_luggage_s`, `car_pram_s`, `car_wheelchair_s` | 20, 60, 120 | at each end of a trip by car |
 
-The values without a source are estimates for teaching; the architecture page lists every setting
-with its source.
+The values without a source are estimates for teaching; the architecture page lists every row
+with its cells, and `core/mobility.js` (`PEOPLE`) every cell with its range and source.
 
 ## For plugins: handing people over at stops
 

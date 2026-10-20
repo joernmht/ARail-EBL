@@ -27,8 +27,9 @@
  * their space fits, squeezed down to its least (which costs mood), else they are left behind
  * (`passenger.denied`) and wait for the next one. The doors stay open while somebody is in them,
  * and for those waiting at them a little longer (`holdUntil`): the dwell follows the boarding. The
- * settings of the people for the whole layout are this simulation's (`mobility`, see
- * `mobilityOf(world)`).
+ * settings of the people for the whole layout are this simulation's: the table `people` (a row per
+ * trait, core/mobility.js PEOPLE), the standing room and the people riding through (`mobility`,
+ * see `mobilityOf(world)`).
  * @module arail/sims/passengers
  */
 import { Simulation } from "../core/simulation.js";
@@ -36,7 +37,7 @@ import { grey, mix, moodColor, OVERLAY } from "../core/colors.js";
 import { rectAround } from "../core/math.js";
 import {
   DEFAULT_MOBILITY, MOBILITY_KEYS, MOBILITY_PARAMS, boardingTime, drawProfile, drivingWords, isLevel, mobilityOf, mobilitySettings,
-  profileGroups, profileWords, spaceOf, walkingSpeed,
+  peopleProblems, profileGroups, profileWords, spaceOf, walkingSpeed,
 } from "../core/mobility.js";
 
 /** Colour of people who are not agents of another simulation, when people show their trip purpose. */
@@ -128,7 +129,7 @@ export function boardingAccess(world, area, kind, minutes = null) {
  * places, from its type (core/vehicles.js; a train by the cars along its dock).
  * @param {object} world
  * @param {{kind: string, dock?: object}} vehicle
- * @param {Readonly<Record<string, number>>} [mob]
+ * @param {Readonly<Record<string, any>>} [mob] the settings of mobility (core/mobility.js)
  * @returns {{seats: number, spaces: number, wheelchair: number}}
  */
 export function vehicleSpaces(world, vehicle, mob = DEFAULT_MOBILITY) {
@@ -186,7 +187,7 @@ let nextPersonUid = 1;
 class Person {
   /**
    * @param {object} profile the person's characteristics (core/mobility.js)
-   * @param {Readonly<Record<string, number>>} mob the settings of mobility
+   * @param {Readonly<Record<string, any>>} mob the settings of mobility
    */
   constructor(rng, pos, target, state, mood, dock, profile, mob = DEFAULT_MOBILITY) {
     this.pos = pos.slice();
@@ -287,9 +288,18 @@ export class PassengerSimulation extends Simulation {
       key: "others", label: "Other passengers", type: "boolean", default: true,
       help: "People who are not residents of the town or travellers of the journeys: they come to the stops and get off the trains and buses.",
     },
-    // the characteristics of the people of the whole layout (core/mobility.js)
+    // the characteristics of the people of the whole layout: the table of the people, the room in the vehicles (core/mobility.js)
     ...MOBILITY_PARAMS,
   ];
+
+  /**
+   * Problems of a passengers entry (validateLayout prefixes them): the rows and cells of its table
+   * of the people.
+   * @param {object} cfg the entry as written in the file
+   */
+  static validate(cfg) {
+    return peopleProblems(cfg.people);
+  }
 
   constructor(world, config) {
     super(world, config);
@@ -311,7 +321,7 @@ export class PassengerSimulation extends Simulation {
 
   /** The settings of the people's characteristics (core/mobility.js) for the whole layout: this simulation's. */
   get mobility() {
-    const key = MOBILITY_KEYS.map((k) => this.config[k]).join("|");
+    const key = JSON.stringify(MOBILITY_KEYS.map((k) => this.config[k] ?? null));
     if (key !== this._mobilityKey) {
       this._mobilityKey = key;
       this._mobility = mobilitySettings(this.config);
@@ -604,7 +614,7 @@ export class PassengerSimulation extends Simulation {
     p.door = door ?? this._doorOf(p, vehicle, doors, guess);
     p.pos = [(p.door != null ? doors[p.door] : guess) + rng.uniform(-0.4, 0.4), this._doorT(a, dock) - dock.side * 0.2];
     const t = boardingTime(p.profile, access, mob);
-    p.doorS = t.ok ? this._doorTime(c, vehicle, p.door, t) : Math.round((mob.lift_s + mob.board_s * mob.board_wheelchair) * 10) / 10;
+    p.doorS = t.ok ? this._doorTime(c, vehicle, p.door, t) : Math.round((mob.wheelchair.lift_s + mob.everybody.board_s * mob.wheelchair.board) * 10) / 10;
     p.helped = !t.ok || !!t.assist;
     p.delay = doors.length ? this._useDoor(c, vehicle, p.door, p.doorS) - c.t : p.doorS;
     p.alighting = vehicle;
@@ -773,7 +783,7 @@ export class PassengerSimulation extends Simulation {
     if (room.wheelchair) load.wheelchairs++;
     const st = c.stats;
     if (p.squeezed > 0) {
-      const lost = Math.min(p.mood, p.squeezed * mob.squeeze_mood * p.rideMin);
+      const lost = Math.min(p.mood, p.squeezed * mob.everybody.squeeze_mood * p.rideMin);
       p.mood -= lost;
       load.squeezed++;
       st.squeezed++;

@@ -72,8 +72,8 @@ export { moodColor, shade, mix, rgba, parseColor, parseRgba, grey, PALETTE, CD, 
 export { TRAIN, BUS, TRAM, BIKE_COLOURS, bikeColour, drawBike } from "./core/vehicles.js";
 export { LANGUAGES, Person, Population, pickHome, residentialBuildings } from "./core/people.js";
 export {
-  AGES, AIDS, LUGGAGE, MOBILITY_PARAMS, MOBILITY_KEYS, DEFAULT_MOBILITY, GROUPS as MOBILITY_GROUPS, MIN_MPS, MAX_MPS,
-  mobilitySettings, mobilityOf, drawProfile, normalizeProfile, aidShares, luggageShares, speedFactor, walkingSpeed, isLevel, boardingTime,
+  AGES, AIDS, LUGGAGE, MOBILITY_PARAMS, MOBILITY_KEYS, PEOPLE, DEFAULT_MOBILITY, GROUPS as MOBILITY_GROUPS, MIN_MPS, MAX_MPS,
+  mobilitySettings, mobilityOf, peopleProblems, drawProfile, normalizeProfile, aidShares, luggageShares, speedFactor, walkingSpeed, isLevel, boardingTime,
   spaceOf, carLegTime, canDrive, profileWords, drivingWords, profileGroups,
 } from "./core/mobility.js";
 // the object types and simulations of the layout, one area each (objects/index.js, sims/index.js); a name

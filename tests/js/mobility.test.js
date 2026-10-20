@@ -9,8 +9,8 @@ import test from "node:test";
 
 import {
   aidShares, boardingAccess, boardingTime, carLegTime, createRng, createWorld, DEFAULT_MOBILITY, drawPerson, drawProfile, isLevel,
-  journeysOf, luggageShares, MOBILITY_PARAMS, mobilityOf, mobilitySettings, normalizeProfile, profileGroups, profileWords, spaceOf,
-  vehicleSpaces, walkingSpeed, withLayers,
+  journeysOf, luggageShares, MOBILITY_PARAMS, mobilityOf, mobilitySettings, normalizeProfile, PEOPLE, profileGroups, profileWords,
+  registry, spaceOf, validateLayout, vehicleSpaces, walkingSpeed, withLayers,
 } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
@@ -41,24 +41,24 @@ test("profiles: the shares of the traits, the luggage of long trips, drivers", (
   const rng = createRng(3), n = 30000;
   const all = Array.from({ length: n }, () => drawProfile(rng, {}, mob));
   const share = (f) => all.filter(f).length / n;
-  assert.ok(Math.abs(share((p) => p.age === "child") - mob.share_child) < 0.01);
-  assert.ok(Math.abs(share((p) => p.age === "old") - mob.share_old) < 0.01);
-  assert.ok(Math.abs(share((p) => p.aid === "wheelchair") - mob.share_wheelchair) < 0.003);
+  assert.ok(Math.abs(share((p) => p.age === "child") - mob.child.share) < 0.01);
+  assert.ok(Math.abs(share((p) => p.age === "old") - mob.old.share) < 0.01);
+  assert.ok(Math.abs(share((p) => p.aid === "wheelchair") - mob.wheelchair.share) < 0.003);
   const old = all.filter((p) => p.age === "old");
-  assert.ok(Math.abs(old.filter((p) => p.aid === "rollator").length / old.length - mob.share_rollator) < 0.015, "rollators of the old");
+  assert.ok(Math.abs(old.filter((p) => p.aid === "rollator").length / old.length - mob.rollator.share) < 0.015, "rollators of the old");
   assert.ok(all.filter((p) => p.age === "child").every((p) => !p.licence && !p.car && p.aid !== "rollator" && p.aid !== "stick" && p.aid !== "pram"));
   const adults = all.filter((p) => p.age === "adult");
-  assert.ok(Math.abs(adults.filter((p) => p.licence).length / adults.length - mob.licence_adult) < 0.015);
+  assert.ok(Math.abs(adults.filter((p) => p.licence).length / adults.length - mob.adult.licence) < 0.015);
   assert.ok(all.every((p) => !p.car || p.licence), "a car only with a licence");
-  assert.ok(Math.abs(mean(all.map((p) => p.base_mps)) - mob.walk_mean_mps) < 0.01);
+  assert.ok(Math.abs(mean(all.map((p) => p.base_mps)) - mob.everybody.walk_mps) < 0.01);
   // heavy luggage grows with the length of the trip; half of it to work
   const heavy = (ctx) => Object.fromEntries(luggageShares(ctx, "adult", mob)).heavy;
-  assert.equal(heavy({ km: 2 }), mob.share_heavy);
-  assert.equal(heavy({ km: 300 }), mob.share_heavy_long);
+  assert.equal(heavy({ km: 2 }), mob.heavy.share);
+  assert.equal(heavy({ km: 300 }), mob.heavy.share_long);
   assert.ok(heavy({ km: 50 }) > heavy({ km: 10 }));
-  assert.equal(heavy({ km: 300, purpose: "work" }), mob.share_heavy_long / 2);
+  assert.equal(heavy({ km: 300, purpose: "work" }), mob.heavy.share_long / 2);
   const long = Array.from({ length: 5000 }, () => drawProfile(rng, { km: 300 }, mob));
-  assert.ok(Math.abs(long.filter((p) => p.luggage === "heavy" && p.age !== "child").length / long.filter((p) => p.age !== "child").length - mob.share_heavy_long) < 0.03);
+  assert.ok(Math.abs(long.filter((p) => p.luggage === "heavy" && p.age !== "child").length / long.filter((p) => p.age !== "child").length - mob.heavy.share_long) < 0.03);
   // drivers have a licence and a car, and are no children
   for (let i = 0; i < 500; i++) {
     const p = drawProfile(rng, { driver: true }, mob);
@@ -78,17 +78,22 @@ test("walking speed: the base × the factors of age, aid and luggage, cut to 0.3
   assert.equal(walkingSpeed(p, mob), Math.round(1.4 * 0.83 * 0.46 * 0.85 * 100) / 100);
   assert.equal(walkingSpeed({ age: "adult", aid: "none", luggage: "none", base_mps: 1.34 }, mob), 1.34);
   assert.equal(walkingSpeed({ age: "old", aid: "rollator", luggage: "bulky", base_mps: 0.5 }, mob), 0.3, "never slower than 0.3 m/s");
-  assert.equal(walkingSpeed(null, mob), mob.walk_mean_mps);
+  assert.equal(walkingSpeed(null, mob), mob.everybody.walk_mps);
   // the settings change it
-  const slow = mobilitySettings({ speed_old: 0.5, walk_mean_mps: 9 });
-  assert.equal(slow.speed_old, 0.5);
-  assert.equal(slow.walk_mean_mps, 2, "cut to its range");
-  assert.equal(mobilitySettings({ speed_old: "x" }).speed_old, mob.speed_old, "not a number: the default");
+  const slow = mobilitySettings({ people: { old: { speed: 0.5 }, everybody: { walk_mps: 9 } } });
+  assert.equal(slow.old.speed, 0.5);
+  assert.equal(slow.old.board, mob.old.board, "the cells not given: their defaults");
+  assert.equal(slow.everybody.walk_mps, 2, "cut to its range");
+  assert.equal(mobilitySettings({ people: { old: { speed: "x" } } }).old.speed, mob.old.speed, "not a number: the default");
+  assert.deepEqual(mobilitySettings({ people: "x", standing_per_m2: 3 }), { ...mob, standing_per_m2: 3 }, "no table: the defaults");
   assert.equal(walkingSpeed({ age: "old", aid: "none", luggage: "none", base_mps: 1.2 }, slow), 0.6);
-  assert.ok(MOBILITY_PARAMS.every((q) => q.source && q.default >= q.min && q.default <= q.max), "every setting has a source and a default in its range");
+  const cells = [...PEOPLE.flatMap((r) => Object.values(r.cells)), ...MOBILITY_PARAMS.filter((q) => q.type === "number")];
+  assert.ok(cells.every((q) => q.source && q.label && q.unit && q.default >= q.min && q.default <= q.max), "every setting has a source and a default in its range");
+  assert.deepEqual(MOBILITY_PARAMS.map((q) => q.key), ["people", "standing_per_m2", "onboard_share"], "one table and the room in the vehicles");
+  assert.equal(MOBILITY_PARAMS[0].default, undefined, "a layout keeps only the cells it changes");
   // a chosen profile: an adult without aids at the mean speed, unless it says otherwise
-  assert.deepEqual(normalizeProfile({}), { age: "adult", aid: "none", luggage: "none", licence: true, car: false, base_mps: mob.walk_mean_mps });
-  assert.deepEqual(normalizeProfile({ age: "child", aid: "bogus", licence: true }), { age: "child", aid: "none", luggage: "none", licence: false, car: false, base_mps: mob.walk_mean_mps });
+  assert.deepEqual(normalizeProfile({}), { age: "adult", aid: "none", luggage: "none", licence: true, car: false, base_mps: mob.everybody.walk_mps });
+  assert.deepEqual(normalizeProfile({ age: "child", aid: "bogus", licence: true }), { age: "child", aid: "none", luggage: "none", licence: false, car: false, base_mps: mob.everybody.walk_mps });
   assert.equal(profileWords(normalizeProfile({ age: "old", aid: "rollator", luggage: "heavy" })), "old · rollator · heavy luggage");
   assert.equal(profileWords(normalizeProfile({})), "no special needs");
   assert.deepEqual(profileGroups({ age: "old", aid: "wheelchair", luggage: "heavy", licence: false, car: false }), ["all", "old", "wheelchair", "luggage", "captive"]);
@@ -108,9 +113,9 @@ test("boarding: the step, the traits, the luggage; a wheelchair needs level boar
   assert.equal(no.ok, false);
   assert.equal(no.why, "no level boarding");
   const ramp = boardingTime(wheelchair, { step_m: 0.14, assist: "ramp" }, mob);
-  assert.ok(ramp.ok && ramp.assist === "ramp" && ramp.help === mob.ramp_s && ramp.s === Math.round((mob.ramp_s + 1.5 * 2.5) * 10) / 10);
+  assert.ok(ramp.ok && ramp.assist === "ramp" && ramp.help === mob.wheelchair.ramp_s && ramp.s === Math.round((mob.wheelchair.ramp_s + 1.5 * 2.5) * 10) / 10);
   assert.equal(boardingTime(wheelchair, { step_m: 0.3, assist: "ramp" }, mob).ok, false, "too high for the ramp");
-  assert.equal(boardingTime(wheelchair, { step_m: 0.4, assist: "lift" }, mob).s, Math.round((mob.lift_s + 3.75) * 10) / 10);
+  assert.equal(boardingTime(wheelchair, { step_m: 0.4, assist: "lift" }, mob).s, Math.round((mob.wheelchair.lift_s + 3.75) * 10) / 10);
 });
 
 test("space: a person 1, a child less; aids and luggage add, squeezed down to their least", () => {
@@ -120,7 +125,7 @@ test("space: a person 1, a child less; aids and luggage add, squeezed down to th
   assert.deepEqual(spaceOf(normalizeProfile({ aid: "wheelchair" }), {}, mob), { space: 2.5, min: 2.3, wheelchair: true }, "a wheelchair is not squeezed");
   assert.equal(spaceOf(normalizeProfile({ luggage: "heavy" }), {}, mob).space, 1.5);
   assert.equal(spaceOf(normalizeProfile({ luggage: "heavy" }), { racks: true }, mob).space, 1, "in the racks of a train");
-  assert.equal(carLegTime([normalizeProfile({ aid: "pram" }), normalizeProfile({ luggage: "heavy" }), normalizeProfile({})], mob), mob.car_pram_s + mob.car_luggage_s);
+  assert.equal(carLegTime([normalizeProfile({ aid: "pram" }), normalizeProfile({ luggage: "heavy" }), normalizeProfile({})], mob), mob.pram.car_s + mob.heavy.car_s);
 });
 
 /** A platform and a bus stop on a street, with a bus line to a second stop, and the passengers (only the people handed over). */
@@ -180,7 +185,7 @@ test("at a platform with a step: a wheelchair user is left behind without help, 
     run(w, 300);
     if (assistance) {
       assert.ok(events.some((e) => e.name === "passenger.boarded" && e.agent === agent), "on board with the lift");
-      assert.ok(sim.stats("p1").doorS >= mob.lift_s, "the lift took its time");
+      assert.ok(sim.stats("p1").doorS >= mob.wheelchair.lift_s, "the lift took its time");
     } else {
       const denied = events.filter((e) => e.name === "passenger.denied" && e.agent === agent);
       assert.ok(denied.length >= 1 && denied.every((e) => e.reason === "step"), "left behind: no level boarding");
@@ -243,9 +248,22 @@ test("room in the vehicles: squeezed in at a cost of mood, left behind when full
 });
 
 test("the settings of the passengers are the people's of the whole layout", () => {
-  const w = stops({}, { share_wheelchair: 0.5, speed_old: 0.6 });
-  assert.equal(mobilityOf(w).share_wheelchair, 0.5);
-  assert.equal(mobilityOf(w).speed_old, 0.6);
+  const w = stops({}, { people: { wheelchair: { share: 0.5 }, old: { speed: 0.6 } } });
+  assert.equal(mobilityOf(w).wheelchair.share, 0.5);
+  assert.equal(mobilityOf(w).old.speed, 0.6);
+  const sim = w.simulations.find((s) => s.constructor.type === "passengers");
+  assert.deepEqual(sim.toJSON().people, { wheelchair: { share: 0.5 }, old: { speed: 0.6 } }, "saved: only the cells it changes");
+  assert.equal(stops().simulations[0].toJSON().people, undefined, "nothing changed, nothing saved");
+  sim.config.people = { old: { speed: 0.7 } };
+  assert.equal(mobilityOf(w).old.speed, 0.7, "a change of the table is seen");
+  // the layout check names rows and cells it does not know
+  const check = (people) => validateLayout({ objects: [], simulations: [{ type: "passengers", people }] }, registry);
+  assert.deepEqual(check({ old: { speed: 0.7 } }), []);
+  assert.deepEqual(check({ wheelchairs: { share: 0.02 }, old: { sped: 0.7, board: "x" } }), [
+    'simulations[0] (passengers): people: no row "wheelchairs" (everybody, child, adult, old, stick, rollator, wheelchair, pram, light, heavy, bulky)',
+    'simulations[0] (passengers): people.old: no cell "sped" (share, speed, board, board_step, licence)',
+    "simulations[0] (passengers): people.old.board must be a number",
+  ]);
   assert.equal(mobilityOf(null), DEFAULT_MOBILITY);
 });
 
@@ -383,7 +401,7 @@ test("a bus line's card: the people who got on its buses, their time at the door
 
 test("the town counts the captive people a closed stop strands", () => {
   // nobody has a driving licence: every adult is captive
-  const w = town({ bus_share: 1 }, { licence_adult: 0, licence_old: 0 });
+  const w = town({ bus_share: 1 }, { people: { adult: { licence: 0 }, old: { licence: 0 } } });
   w.step(0.1);
   const t = w.simulations.find((s) => s.constructor.type === "town");
   w.disruptions.start({ type: "closure", target: "p1", params: { minutes: 600 } });
