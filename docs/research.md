@@ -34,7 +34,7 @@ in the browser; time is simulated time, with a fast clock (see [Day and night](d
 
 ## In the browser
 
-- The **app** (`app/`) is an interactive presentation of the lab: its module tabs are stories to
+- The **app** (`app/`) is an interactive presentation of the lab: its modules' cases are stories to
   click through. Build, Disruptions and Settings work on any layout.
 - The **game page** (`game/`) has the tools with the most to set and measure: the rail operations
   with their setups compared under stress tests and CSV export, the infrastructure asset

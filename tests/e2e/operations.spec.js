@@ -2,6 +2,7 @@
 // the crews, the penalties, a comparison of setups), its trains at the platforms, adding rail
 // operations to a layout from Settings → Simulation, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=operations#ops";
 
@@ -25,11 +26,12 @@ async function openOperations(page, path = EXAMPLE) {
   return errors;
 }
 
-test("the Operations tab shows the day, the fleet, the workshop, the crews and the penalties", async ({ page }) => {
+test("Railway undertaking → Operations shows the day, the fleet, the workshop, the crews and the penalties", async ({ page }) => {
   const errors = await openOperations(page);
-  await expect(page.locator("#tab-ops")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#tab-terminal")).toBeHidden(); // the layout has rail operations and no terminal
-  await expect(page.locator("#panel-ops h2").first()).toHaveText("EBL regional network");
+  await expect(page.locator("#strip-evu")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "terminal")).toBe(false); // the layout has rail operations and no terminal
+  await expect(page.locator("#casePanel h2").first()).toHaveText("EBL regional network");
   // Today: key figures and short-term changes
   await page.locator("#opsView-today").click();
   await expect(page.locator(".ops-tiles .tile")).toHaveCount(6);
@@ -43,15 +45,15 @@ test("the Operations tab shows the day, the fleet, the workshop, the crews and t
   // Fleet: a row per unit
   await page.locator("#opsView-fleet").click();
   const units = await page.evaluate(() => window.__arail.operations.sim.engine.units.size);
-  await expect(page.locator("#panel-ops .ops-table tbody tr")).toHaveCount(units);
+  await expect(page.locator("#casePanel .ops-table tbody tr")).toHaveCount(units);
   // Workshop: the four functions of the ECM and the tracks
   await page.locator("#opsView-workshop").click();
-  await expect(page.locator("#panel-ops .ops-table").first().locator("tbody tr")).toHaveCount(4);
-  await expect(page.locator("#panel-ops .kv dt", { hasText: "Track 1" })).toBeVisible();
+  await expect(page.locator("#casePanel .ops-table").first().locator("tbody tr")).toHaveCount(4);
+  await expect(page.locator("#casePanel .kv dt", { hasText: "Track 1" })).toBeVisible();
   // Crews: today's duties, and a driver calls in sick from the panel
   await page.locator("#opsView-crews").click();
   const duties = await page.evaluate(() => { const e = window.__arail.operations.sim.engine; return e.days.get(e.today).duties.length; });
-  await expect(page.locator("#panel-ops .ops-table tbody tr")).toHaveCount(duties);
+  await expect(page.locator("#casePanel .ops-table tbody tr")).toHaveCount(duties);
   if (await page.locator("#opsPerson").count()) {
     await page.getByRole("button", { name: "Calls in sick" }).click();
     await expect(page.locator("#toast")).toContainText(/called in sick|Nobody/);
@@ -59,8 +61,8 @@ test("the Operations tab shows the day, the fleet, the workshop, the crews and t
   // Penalties: the contracts of the layout and the net per party
   await page.locator("#opsView-money").click();
   const contracts = await page.evaluate(() => window.__arail.operations.sim.engine.model.contracts.length);
-  await expect(page.locator("#panel-ops .ops-table").first().locator("tbody tr")).toHaveCount(contracts);
-  await expect(page.locator("#panel-ops .ops-net tbody tr")).toHaveCount(4);
+  await expect(page.locator("#casePanel .ops-table").first().locator("tbody tr")).toHaveCount(contracts);
+  await expect(page.locator("#casePanel .ops-net tbody tr")).toHaveCount(4);
   // the view is kept
   await page.reload();
   await page.waitForFunction(() => window.__arail?.operations.sim?.engine, null, { timeout: 60_000 });
@@ -122,57 +124,60 @@ test("a comparison of setups runs in the page and gives a table, the cancelled t
   expect(errors).toEqual([]);
 });
 
-test("Settings → Simulation adds rail operations to a layout; a layout with a terminal shows the Terminal tab instead", async ({ page }) => {
+test("the case Operations adds rail operations to a layout while it is off; in the terminal it offers its module", async ({ page }) => {
   const errors = trackErrors(page);
-  const path = "/game/?layout=../layouts/ebl-lab.json#simulate";
+  const path = "/game/?layout=../layouts/ebl-lab.json#ops";
   await page.goto(path);
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.world.objects.length, null, { timeout: 30_000 });
-  await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#tab-ops")).toBeHidden();
-  await expect(page.locator("#tab-terminal")).toBeHidden(); // the lab has no terminal
-  await page.locator("#opsAdd").click();
-  await expect(page.locator("#tab-ops")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-ops h2").first()).toBeFocused();
-  await expect(page.locator("#tab-terminal")).toBeHidden();
+  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "ops")).toBe(false);
+  expect(await caseReady(page, "terminal")).toBe(false); // the lab has no terminal
+  await page.locator("#caseAdd").click();
+  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toBeFocused();
+  expect(await caseReady(page, "terminal")).toBe(false);
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
   await expect(page.locator(".ops-tiles .tile")).toHaveCount(6);
   // kept in this browser
   await page.reload();
   await page.waitForFunction(() => window.__arail?.operations.sim, null, { timeout: 60_000 });
-  // back to the example list: a layout without operations gives the Terminal tab back
+  // the container terminal, a module of the lab: the case stays and offers the lab's module
   await page.evaluate(() => window.__arail.openExample("terminal"));
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await expect(page.locator("#tab-terminal")).toBeVisible();
-  await expect(page.locator("#tab-ops")).toBeHidden();
-  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "terminal")).toBe(true);
+  expect(await caseReady(page, "ops")).toBe(false);
+  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#caseOn")).toHaveText("Switch on “Rail operations”");
   expect(errors).toEqual([]);
 });
 
-test("on a phone the five tabs fit; the arrow keys go from Build to Operations to Disruptions", async ({ page }) => {
+test("on a phone the three chapters and the strip fit; the arrow keys go along the strip", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  // a link to the Disruptions tab switches its module on
+  // a link to the tool Disruptions switches its module on
   const errors = await openOperations(page, "/game/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
-  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button")].filter((x) => !x.hidden).every((x) => {
+  await expect(page.locator("#strip-disrupt")).toHaveAttribute("aria-selected", "true");
+  const fits = (sel) => page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((x) => x.getClientRects().length).every((x) => {
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
-  }));
-  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id))).toEqual(["tab-overview", "tab-build", "tab-ops", "tab-disrupt", "tab-settings"]);
-  for (const tab of ["overview", "build", "ops", "disrupt", "settings"]) {
+  }), sel);
+  expect(await page.locator(".tabs button").evaluateAll((b) => b.map((x) => x.id))).toEqual(["tab-overview", "tab-interaction", "tab-settings"]);
+  for (const tab of ["overview", "interaction", "settings"]) {
     await page.locator(`#tab-${tab}`).click();
-    expect(await fits(), `#tab-${tab} at 390 px`).toBe(true);
+    expect(await fits(".tabs button"), `#tab-${tab} at 390 px`).toBe(true);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.locator("#tab-build").click();
-  await page.locator("#tab-build").focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-ops")).toBeFocused();
-  await expect(page.locator("#panel-ops")).toBeVisible();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-disrupt")).toBeFocused();
-  await page.keyboard.press("ArrowLeft");
-  await expect(page.locator("#tab-ops")).toBeFocused();
+  await page.locator("#tab-interaction").click();
+  await page.locator("#strip-disrupt").focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#strip-build")).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#strip-evu")).toBeFocused();
+  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  expect(await fits(".strip-item, .case-tabs button, #casePanel .ops-views button"), "the strip and the case at 390 px").toBe(true);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("#strip-build")).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -186,11 +191,11 @@ test("the disruptions of the operations are offered without a place, and act on 
   await page.getByRole("button", { name: "Start: Drivers call in sick" }).click();
   await expect(page.locator("#toast")).toContainText("Drivers call in sick:");
   expect(await page.evaluate(() => window.__arail.world.disruptions.active.map((d) => d.target))).toEqual(["*"]);
-  await expect(page.locator("#panel-disrupt .scenario", { hasText: "Drivers missing in the morning" })).toBeVisible();
+  await expect(page.locator("#casePanel .scenario", { hasText: "Drivers missing in the morning" })).toBeVisible();
   // the other layouts do not offer them
   await page.evaluate(() => window.__arail.openExample("terminal"));
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await page.locator("#tab-disrupt").click();
+  await openCase(page, "disrupt");
   const others = await page.locator("#disType option").allTextContents();
   expect(others).not.toContain("Drivers call in sick");
   expect(errors).toEqual([]);

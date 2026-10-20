@@ -1,6 +1,7 @@
 // The container terminal in the app: the Terminal tab, moves from the panel and by picking on the
 // canvas (pointer and keyboard), arrivals, trucks, the start state, scenarios, phones.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase, openModules } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/container-terminal.json#terminal";
 
@@ -21,7 +22,7 @@ async function openTerminal(page, path = EXAMPLE) {
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await expect(page.locator("#panel-terminal")).toBeVisible();
+  await expect(page.locator("#casePanel")).toBeVisible();
   return errors;
 }
 
@@ -36,7 +37,7 @@ const setSpeed = (page, speed) => page.evaluate((s) => (window.__arail.world.spe
 /** Choose a container in the list of the Terminal panel. */
 async function chooseInList(page, id) {
   await page.locator("#termList button", { hasText: id }).click();
-  await expect(page.locator("#panel-terminal h2", { hasText: `Move ${id}` })).toBeVisible();
+  await expect(page.locator("#casePanel h2", { hasText: `Move ${id}` })).toBeVisible();
 }
 
 /** Point the flyover camera straight down at a layout point (no animation). */
@@ -77,8 +78,8 @@ test("the example terminal opens in the flyover; leaving it shows that the layou
     return { kt41: sim.visits.get("KT41").state, bg1: sim.visits.get("BG1").state, kt52: sim.visits.get("KT52").state, yard: sim.carrier("yard-a")?.present };
   });
   expect(state).toEqual({ kt41: "positioned", bg1: "positioned", kt52: "away", yard: true });
-  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-terminal h2").first()).toHaveText("KV terminal");
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toHaveText("KV terminal");
   await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("at Loading track 1");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("at the quay");
   await page.locator("#btnFlyover").click();
@@ -116,7 +117,7 @@ test("a move from the panel: a container from the train to the yard", async ({ p
 test("the deck card links print each wagon type with the layout's settings", async ({ page }) => {
   const errors = await openTerminal(page);
   // one link per type of the example's rolling stock: W1-W2 Sgns, W3 Sggrss, W4 Lgns
-  const links = page.locator("#panel-terminal a", { hasText: /^(Sgns|Sggrss|Lgns) W/ });
+  const links = page.locator("#casePanel a", { hasText: /^(Sgns|Sggrss|Lgns) W/ });
   await expect(links).toHaveText(["Sgns W1–W2", "Sggrss W3", "Lgns W4"]);
   const href = await links.nth(1).getAttribute("href");
   const q = new URL(href, page.url()).searchParams;
@@ -193,7 +194,7 @@ test("model wagon tags seen without a camera pose keep the wagon held", async ({
 
 test("Build does not take the rolling-stock marker type for the layout", async ({ page }) => {
   const errors = await openTerminal(page);
-  await page.locator("#tab-build").click();
+  await openCase(page, "build");
   const select = page.locator("#layoutDictionary");
   await expect(select).toHaveValue("ARUCO");
   await select.selectOption("APRILTAG_36h11");
@@ -364,34 +365,30 @@ test("Save as start state: the moved container stays where it is after a reload"
   expect(errors).toEqual([]);
 });
 
-test("a layout without a terminal has no Terminal tab: Settings → Simulation adds a terminal or switches on the module", async ({ page }) => {
+test("a layout without a terminal: the case Terminal adds one or switches on the module", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.evaluate(() => localStorage.clear());
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
-  await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-overview")).toHaveAttribute("aria-selected", "true");
-  // adding one: the Terminal tab with the panel of an (empty) terminal
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await page.locator("#termAdd").click();
-  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
-  // the layout as it came: the tab is gone; the lab's module opens the example terminal
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "terminal")).toBe(false);
+  // adding one: the panel of an (empty) terminal
+  await page.locator("#caseAdd").click();
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Container terminal");
+  // the layout as it came: the case is off again; the lab's module opens the example terminal
   await page.evaluate(() => window.__arail.resetLayout());
-  await expect(page.locator("#tab-terminal")).toBeHidden();
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#termOpenExample")).toHaveText("Switch on the module “Container terminal”");
-  await page.locator("#termOpenExample").click();
+  expect(await caseReady(page, "terminal")).toBe(false);
+  await expect(page.locator("#caseOn")).toHaveText("Switch on “Container terminal”");
+  await page.locator("#caseOn").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover" && window.__arail.terminal.sim?.name === "KV terminal", null, { timeout: 30_000 });
-  await expect(page.locator("#tab-terminal")).toBeVisible();
-  // back to the lab photo: the flyover is left and the photo is shown again, without the Terminal tab
+  await expect(page.locator("#casePanel h2").first()).toHaveText("KV terminal");
+  // back to the lab photo: the flyover is left and the photo is shown again, the case off
   await page.selectOption("#exampleSelect", "lab");
   await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.tracker.state.H && !window.__arail.terminal.sim, null, { timeout: 30_000 });
   await expect(page.locator("#emptyStage")).toBeHidden();
-  await expect(page.locator("#tab-terminal")).toBeHidden();
+  expect(await caseReady(page, "terminal")).toBe(false);
   expect(errors).toEqual([]);
 });
 
@@ -411,7 +408,7 @@ test("picking in the camera view: a yard block and a reach stacker added to the 
     await a._applyLayout(json);
   });
   await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.lastView && window.__arail.terminal.sim?.boxes(window.__arail.lastView).length, null, { timeout: 30_000 });
-  await page.locator("#tab-terminal").click(); // the tab is there now that the layout has a terminal
+  await expect(page.locator("#termList")).toBeVisible(); // the case works now that the layout has a terminal
   // the topmost container of a stack, near the middle of the block
   const id = await page.evaluate(() => {
     const sim = window.__arail.terminal.sim, inv = sim.inventory;
@@ -431,10 +428,10 @@ test("picking in the camera view: a yard block and a reach stacker added to the 
 test("the morning shift scenario finishes its moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await openTerminal(page);
-  // the scenarios are in the Disruptions tab, there with its module
-  await page.locator("#tab-overview").click();
+  // the scenarios are in the tool Disruptions, there with its module
+  await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-  await page.locator("#tab-disrupt").click();
+  await openCase(page, "disrupt");
   await page.locator(".scenario[data-id=morning-shift]").getByRole("button", { name: "Play" }).click();
   await page.waitForFunction(() => window.__arail.world.scenarios.elapsed > 0 && window.__arail.world.speed === 10);
   await setSpeed(page, 30);
@@ -451,29 +448,22 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the five tabs fit, or scroll with the selected tab in view", async ({ page }) => {
+test("on a phone the three chapters, the strip and the terminal's case fit, also at 300 px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  await page.locator("#tab-overview").click();
-  await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-  const tabs = () => page.evaluate(() => {
-    const bar = document.querySelector(".tabs").getBoundingClientRect(), sel = document.querySelector(".tabs [aria-selected=true]").getBoundingClientRect();
-    const all = [...document.querySelectorAll(".tabs button:not([hidden])")].map((x) => x.getBoundingClientRect());
-    return { fits: all.every((x) => x.left >= 0 && x.right <= innerWidth + 0.5), shown: sel.left >= bar.left - 0.5 && sel.right <= bar.right + 0.5 };
-  });
-  const names = ["overview", "build", "terminal", "disrupt", "settings"];
-  expect(await page.locator(".tabs button:not([hidden])").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(names);
-  // 390 px: all five fit
-  for (const tab of names) {
-    await page.locator(`#tab-${tab}`).click();
-    expect((await tabs()).fits, `#tab-${tab} at 390 px`).toBe(true);
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  // narrower: the tabs scroll, the selected one is kept in view (selected as the arrow keys do, without the browser scrolling it)
-  await page.setViewportSize({ width: 300, height: 700 });
-  for (const tab of [...names, ...names.slice().reverse()]) {
-    await page.evaluate((t) => window.__arail.selectTab(t), tab);
-    expect((await tabs()).shown, `#tab-${tab} at 300 px`).toBe(true);
+  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button, .strip-item, .case-tabs button, #termList button")].filter((x) => x.getClientRects().length)
+    .every((x) => {
+      const r = x.getBoundingClientRect();
+      return r.left >= 0 && r.right <= innerWidth + 0.5;
+    }));
+  expect(await page.locator(".tabs button").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(["overview", "interaction", "settings"]);
+  for (const width of [390, 300]) {
+    await page.setViewportSize({ width, height: 760 });
+    for (const tab of ["overview", "settings", "modules", "build", "terminal"]) {
+      await page.evaluate((t) => window.__arail.selectTab(t), tab);
+      expect(await fits(), `${tab} at ${width} px`).toBe(true);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), `${width} px`).toBeLessThanOrEqual(width);
   }
   expect(errors).toEqual([]);
 });
@@ -494,8 +484,8 @@ test("on a phone, Pick on the layout and a Build palette button scroll the stage
   await expect(page.locator("#placing")).toContainText("Move ARLU 100003 0");
   await page.locator("#placing").getByRole("button", { name: "Cancel" }).click();
   // the Build palette places on the stage too
-  await page.locator("#tab-build").click();
-  const crane = page.locator("#panel-build button", { hasText: "Gantry crane" });
+  await openCase(page, "build");
+  const crane = page.locator("#casePanel button", { hasText: "Gantry crane" });
   await crane.scrollIntoViewIfNeeded();
   expect(await barInView()).toBe(false);
   await crane.click();

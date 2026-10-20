@@ -97,7 +97,7 @@ export {
   CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
   KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
-  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, registerOperations,
+  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, OpsPlan, planOf, PLAN_KEYS, PLAN_SIDES, registerOperations,
 } from "./ops/index.js";
 // infrastructure: assets, maintenance, projects (named exports only; names that the core or the
 // operations use too get an "infra" prefix)
@@ -119,12 +119,14 @@ export {
   JourneysSimulation, Traveller, TRAVELLER_COLOURS, TRAVELLER_STATES, placeName, validateJourneys, journeysOf, registerJourneys,
   JourneyStory, JOURNEY_PLAN, journeyTimes, refundShare,
 } from "./journeys/index.js";
-// railway systems of the track sections (named exports only)
+// railway systems of the track sections, vehicles and trains (named exports only)
 export {
   POWER, PANTOGRAPH, TRAIN_CONTROL, ETCS, SIGNALLING, RADIO, GAUGE, AXLE_LOADS_T, METRE_LOADS_T, ROUTE_CLASS, LOADING_GAUGE, COUNTRIES,
   SYSTEMS, SYSTEM_OVERLAYS, SYSTEM_PARAMS, routeClassLimits, sectionSystems, systemValue, systemRows, systemChanges, worldSystemChanges,
   drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail,
   BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard,
+  DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, trainConsist, LIVERIES, carsLength, drawTrain, turnCars,
+  LOOKS, RAIL_TRAIN, STOP_MARGIN_M, carsOf, dockLine, trainDoors, trainOutline, trainPose,
   COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand,
 } from "./rail/index.js";
 export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";

@@ -172,7 +172,7 @@ function renderEvents() {
 }
 
 function renderRegistry() {
-  const groups = [["simulations", "Simulations", "The parts that move: each runs in every step of the world."], ["objects", "Object types", "What can be placed on a layout (Build panel)."], ["disruptions", "Disruptions", "What can go wrong (Disruptions tab, scenarios)."], ["vehicles", "Vehicles", "How trains and buses are drawn."]];
+  const groups = [["simulations", "Simulations", "The parts that move: each runs in every step of the world."], ["objects", "Object types", "What can be placed on a layout (Build panel)."], ["disruptions", "Disruptions", "What can go wrong (Interaction → Disruptions, scenarios)."], ["vehicles", "Vehicles", "How trains and buses are drawn."]];
   mount($("#registry-body"), groups.map(([key, title, intro]) => h("div", { class: "registry-group" },
     h("h3", {}, title, h("span", { class: "count" }, ` (${REGISTRY[key].length})`)),
     h("p", { class: "intro" }, intro),

@@ -1,21 +1,62 @@
 # Rail operations: fleet, maintenance and crews
 
-The rail operations come in two forms:
+The rail operations come in three forms:
 
-- **In the app, an operations story to click through** (the module *Operations* of Bf Neustadt):
+- **In the app, the operations plan of a morning** (the module *Operations* of Bf Neustadt): the
+  railway undertaking puts a unit and a driver on each train, the infrastructure manager puts it on
+  a track, and Run plays the plan on the layout. See [The operations plan](#the-operations-plan).
+- **In the app, an operations story to click through** (the module *Breakdown* of Bf Neustadt):
   a regional train breaks down at the platform, the operations control sends the spare unit from
   the depot, the passengers change trains, and the broken unit goes to the workshop. See
   [The operations story](#the-operations-story).
 - **On the game page** (`game/`), a railway undertaking as a game with its fleet, workshop and
   crews. The rest of this guide describes it.
 
+## The operations plan
+
+`app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations` opens Bf Neustadt with its
+module **Operations** ([#191](https://github.com/joernmht/ARail-EBL/issues/191)): six trains of
+S 1, RB 71 and RE 2 between 07:02 and 07:52, each with the people it is expected to carry, the same
+for both sides of Interaction.
+
+| Case | What you decide | What is checked at once |
+| --- | --- | --- |
+| Railway undertaking → **Operations** | a unit (5: two four-car and two two-car ET 442, a BR 146 with four double-deck coaches) and a driver (4, each with a shift) for each train | too few places for the people expected; the unit or the driver still out with another train; the train outside the driver's shift |
+| Infrastructure → **Operations** | a track (G1, G2, G3) for each train | the track still taken by another train (until 2 minutes after it left); the train longer than the platform |
+
+A unit and its driver are out from the train's arrival until they are back (S 1: 20 minutes after
+the departure, RB 71: 30, RE 2: 60). The plan comes as drafted, with four problems for the railway
+undertaking and two for the infrastructure; a chart per side shows the plan over the hour, red
+where it does not work. **Start again** brings back the draft.
+
+**Run** sets the clock to 07:00, takes the platform tracks over from the timetable and plays the
+plan: each train comes to its track with its unit (drawn as long as it is), the unit and driver on
+its label. A train waits for its track, unit or driver and is late; one without a unit, driver or
+track, or outside its driver's shift, is cancelled and announced on the board; one with too few
+places comes in full and leaves people behind. When the last train has left, the panel shows how
+it went (on time, late, cancelled, left behind) and the timetable takes the tracks back. Setting
+the clock or switching the module off ends a run.
+
+The plan is the simulation `ops-plan` (`web/arail/ops/plan.js`) in the layer's `simulations`:
+
+```json
+{"type": "ops-plan", "name": "A morning at Bf Neustadt", "start": "07:00", "margin_min": 2,
+ "lines": {"S 1": {"to": "Talsee", "away_min": 20}},
+ "units": [{"id": "442 101", "type": "et442"}, {"id": "146 210", "vehicles": [{"type": "br146"}, {"type": "dbpza", "count": 4}]}],
+ "drivers": [{"id": "becker", "name": "Becker", "from": "05:30", "to": "08:10"}],
+ "trains": [{"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "becker", "track": "G2"}]}
+```
+
+`unit`, `driver` and `track` of a train are the draft (any may be missing); a layout saved after
+changes keeps the plan as it is then. The tracks are the platform tracks of the layout.
+
 ## The operations story
 
 `app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops` opens Bf Neustadt (the layout of
-the lab survey of 9 October 2026) with its module **Operations**: the depot *Betriebswerk Neustadt*
+the lab survey of 9 October 2026) with its module **Breakdown**: the depot *Betriebswerk Neustadt*
 (a glass workshop hall with two tracks, two stabling tracks and the crew room) on a table module
-behind the right end of the table, with its lead tracks. The **Operations** tab tells the story of a
-railway undertaking (EVU) whose train breaks down, in ten steps:
+behind the right end of the table, with its lead tracks. Railway undertaking → **Disruption** tells the
+story of a railway undertaking (EVU) whose train breaks down, in ten steps:
 
 | Step | What happens on the layout |
 | --- | --- |
@@ -85,8 +126,8 @@ at short notice (a driver calls in sick, a unit breaks down), and **compare setu
 tests: who does the maintenance and how the roles are split, how many drivers are on stand-by,
 how much time the duties leave to change trains.
 
-The rail operations and their **Operations** tab are on the **game page** (`game/`); the app tells
-the operations story (see [Getting started](getting-started.md#the-game-page)).
+The rail operations and their case **Operations** are on the **game page** (`game/`); the app has
+the operations plan and the operations story (see [Getting started](getting-started.md#the-game-page)).
 
 What is simulated:
 
@@ -111,8 +152,8 @@ for comparisons over weeks (in the game page's Compare view or with [`tools/ops-
 
 ## The example
 
-The module **Rail operations** of the lab example on the game page (Overview → Modules, or Settings → Simulation →
-Rail operations → Switch on the module, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
+The module **Rail operations** of the lab example on the game page (Interaction → Modules, or Railway undertaking →
+Operations → Switch on “Rail operations”, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
 - the station **Bahnhof** with platforms 1 and 2, and four lines out to stations beyond the
@@ -300,9 +341,9 @@ The key figures also count costs: drivers' paid hours (`driver_hour`, overtime �
 stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty runs and transfers
 (`empty_km`). They are for comparing setups, not a budget.
 
-## The Operations tab
+## Railway undertaking → Operations on the game page
 
-With rail operations on the layout, the game page has an **Operations** tab (`#ops`). Its views:
+With rail operations on the layout, the game page's case **Operations** (side Railway undertaking, `#ops`) works. Its views:
 
 - **Today**: trains run and cancelled, punctuality, units available, crews on duty, penalties of
   the day; what happened (newest first); buttons for short-term changes (*A driver calls in sick*,
@@ -318,9 +359,10 @@ With rail operations on the layout, the game page has an **Operations** tab (`#o
   and the largest causes.
 - **Compare**: [comparisons of setups](#comparing-setups).
 
-On large screens **Wide panel** makes the panel wider for the tables. Settings → Simulation of a layout
-without rail operations offers **Add to this layout** (the platforms' line names, *Lines* in Build,
-become the lines; a depot comes from Build → Transport) and **Open the example**.
+On large screens **Wide panel** makes the panel wider for the tables. Railway undertaking → Operations of a
+layout without rail operations offers **Add to this layout** (the platforms' line names, *Lines* in Build,
+become the lines; a depot comes from Build → Transport) and **Open the example** (or **Switch on “…”**
+for a module of the layout that has it).
 
 ## Comparing setups
 
@@ -459,7 +501,7 @@ Times are `"HH:MM"` (up to `"47:59"` for the night after) or minutes; day sets a
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `name` | `"Rail operations"` | shown in the Operations tab |
+| `name` | `"Rail operations"` | shown in the case Operations of the game page |
 | `start_weekday` | `"mon"` | weekday of day 1 |
 | `year` | `2026` | the year of day 1 (for the units' age) |
 | `burn_in_days` | `7` | days run before day 1, so that plans, counters and rosters are in a steady state |
@@ -509,7 +551,7 @@ stations, platforms, parties, vehicle types and depots in plain words.
 
 ## Disruptions and scenarios
 
-Five disruption types act on the operations; they are offered in the Disruptions tab (module Disruptions) only for
+Five disruption types act on the operations; they are offered in Interaction → Disruptions (module Disruptions) only for
 layouts with rail operations, and they have no place on the layout:
 
 | Type | Parameters | Does |

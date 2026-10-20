@@ -3,6 +3,7 @@
 // year's end, saving), faults on the layout, adding infrastructure to a layout from Settings →
 // Simulation, and the tabs on a phone.
 import { expect, test } from "@playwright/test";
+import { caseReady, openCase, openModules } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
 
@@ -25,14 +26,15 @@ async function openInfra(page, path = EXAMPLE) {
   return errors;
 }
 
-test("the Infrastructure tab shows the district: overview, line map, assets, decisions, projects, staff, results", async ({ page }) => {
+test("Infrastructure → Assets shows the district: overview, line map, assets, decisions, projects, staff, results", async ({ page }) => {
   const errors = await openInfra(page);
-  await expect(page.locator("#tab-infra")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-ops")).toBeHidden();
-  await expect(page.locator("#panel-infra h2").first()).toHaveText("Infrastructure district Bahnhof");
+  await expect(page.locator("#strip-infra")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "terminal")).toBe(false);
+  expect(await caseReady(page, "ops")).toBe(false);
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Infrastructure district Bahnhof");
   // Overview: key figures, the colours on the layout, what happened
-  await expect(page.locator("#panel-infra .ops-tiles .tile")).toHaveCount(8);
+  await expect(page.locator("#casePanel .ops-tiles .tile")).toHaveCount(8);
   await page.locator("#infraColour").selectOption("checked");
   await expect.poll(() => page.evaluate(() => window.__arail.infra.sim.display.mode)).toBe("checked");
   await page.locator("#infraColour").selectOption("known");
@@ -51,16 +53,16 @@ test("the Infrastructure tab shows the district: overview, line map, assets, dec
   // Assets: filters, the record and the measures of the ALV
   await page.locator("#infraView-assets").click();
   await page.locator("#infraOnLayout").check();
-  const rows = await page.locator("#panel-infra .infra-assets tbody tr").count();
+  const rows = await page.locator("#casePanel .infra-assets tbody tr").count();
   const onLayout = await page.evaluate(() => window.__arail.infra.sim.engine.active().filter((a) => a.on_layout).length);
   expect(rows).toBe(Math.min(onLayout, 40));
   await page.locator("#infraRole").selectOption("alv");
-  await page.locator("#panel-infra .infra-assets tbody tr").first().locator("button.link").click();
+  await page.locator("#casePanel .infra-assets tbody tr").first().locator("button.link").click();
   await expect(page.locator(".infra-card")).toBeVisible();
   await page.locator(".infra-card button", { hasText: /^Repair/ }).first().click();
   await expect(page.locator("#toast")).toContainText(/Proposed|cannot/);
   // the inspection plan of the ALV
-  await expect(page.locator("#panel-infra select[aria-label$=': method']").first()).toBeVisible();
+  await expect(page.locator("#casePanel select[aria-label$=': method']").first()).toBeVisible();
   // Decisions: the asset manager approves the proposal
   await page.locator("#infraRole").selectOption("asset-manager");
   await page.locator("#infraView-decisions").click();
@@ -70,22 +72,22 @@ test("the Infrastructure tab shows the district: overview, line map, assets, dec
   await expect(page.locator("#toast")).toBeVisible();
   // Projects, Staff, Results
   await page.locator("#infraView-projects").click();
-  await expect(page.locator("#panel-infra .infra-upgrades li")).toHaveCount(2);
+  await expect(page.locator("#casePanel .infra-upgrades li")).toHaveCount(2);
   await page.locator("#infraView-staff").click();
-  await expect(page.locator("#panel-infra .ops-table").first().locator("tbody tr")).toHaveCount(4);
+  await expect(page.locator("#casePanel .ops-table").first().locator("tbody tr")).toHaveCount(4);
   await page.locator("#infraView-results").click();
-  await expect(page.locator("#panel-infra .ops-compare")).toBeVisible();
+  await expect(page.locator("#casePanel .ops-compare")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
 test("running to the next decision and to the year's end; the year's results; saving the game", async ({ page }) => {
   const errors = await openInfra(page);
   await page.locator("#infraNext").click();
-  await expect(page.locator("#panel-infra [role=status]")).toContainText(/Ran .* to /);
+  await expect(page.locator("#casePanel [role=status]")).toContainText(/Ran .* to /);
   await page.locator("#infraYear").click();
   await expect.poll(() => page.evaluate(() => window.__arail.infra.sim.engine.years.length)).toBeGreaterThan(0);
   await page.locator("#infraView-results").click();
-  await expect(page.locator("#panel-infra .ops-compare thead th").nth(1)).toHaveText("2027");
+  await expect(page.locator("#casePanel .ops-compare thead th").nth(1)).toHaveText("2027");
   const download = page.waitForEvent("download");
   await page.locator("#infraSave").click();
   expect((await download).suggestedFilename()).toMatch(/game\.json$/);
@@ -113,35 +115,36 @@ test("a fault on the layout: the van drives out, the station's trains are distur
     const e = window.__arail.infra.sim.engine;
     return e.people.some((p) => ["driving", "repairing"].includes(e.activity(p).state));
   }), { timeout: 30_000 }).toBe(true);
-  // the fault is listed in the Disruptions tab (module Disruptions); switching the module off leaves it on
-  await page.locator("#tab-overview").click();
+  // the fault is listed in Disruptions (module Disruptions); switching the module off leaves it on
+  await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-  await page.locator("#tab-disrupt").click();
-  await expect(page.locator("#panel-disrupt .disruption", { hasText: "Infrastructure fault" }).first()).toBeVisible();
-  await page.locator("#tab-overview").click();
+  await openCase(page, "disrupt");
+  await expect(page.locator("#casePanel .disruption", { hasText: "Infrastructure fault" }).first()).toBeVisible();
+  await openModules(page);
   await page.locator(".modules").getByRole("button", { name: "Disruptions", exact: true }).click();
-  await expect(page.locator("#tab-disrupt")).toBeHidden();
+  expect(await caseReady(page, "disrupt")).toBe(false);
   expect(await page.evaluate(() => window.__arail.world.disruptions.active.some((d) => d.type === "infra-fault"))).toBe(true);
   expect(errors).toEqual([]);
 });
 
-test("adding infrastructure to a layout from Settings → Simulation", async ({ page }) => {
+test("adding infrastructure to a layout from the case Assets while it is off", async ({ page }) => {
   const errors = trackErrors(page);
-  await page.goto("/game/?layout=../layouts/ebl-lab.json#simulate");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#infra");
   await page.evaluate(() => localStorage.clear());
-  await page.goto("/game/?layout=../layouts/ebl-lab.json#simulate");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#infra");
   await page.waitForFunction(() => window.__arail?.world.objects.length, null, { timeout: 30_000 });
-  await expect(page.locator("#tab-infra")).toBeHidden();
-  await page.locator("#infraAdd").click();
-  await expect(page.locator("#tab-infra")).toHaveAttribute("aria-selected", "true");
+  expect(await caseReady(page, "infra")).toBe(false);
+  await expect(page.locator("#caseOn")).toHaveText("Switch on “Infrastructure”");
+  await page.locator("#caseAdd").click();
+  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
   await expect.poll(() => page.evaluate(() => window.__arail.infra.sim?.engine?.assets.size ?? 0)).toBeGreaterThan(100);
   expect(errors).toEqual([]);
 });
 
-test("the Infrastructure tab on a phone", async ({ page }) => {
+test("Infrastructure → Assets on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openInfra(page);
-  await expect(page.locator("#tab-infra")).toBeVisible();
+  await expect(page.locator("#case-infra")).toBeVisible();
   for (const v of ["map", "assets", "decisions", "projects", "staff", "results", "overview"]) {
     await page.locator(`#infraView-${v}`).click();
     await expect(page.locator(`#infraView-${v}`)).toHaveAttribute("aria-pressed", "true");

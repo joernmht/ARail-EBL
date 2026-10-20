@@ -6,7 +6,7 @@ export const DISRUPTIONS = [
   {
     id: "disruptions", group: "disruptions", title: "Disruptions and their effects",
     summary: "A disruption is a registered definition started for a target: its effects, merged per stop area, are read in every sub-step by the timetable, the bus lines, the passengers and the planned trains until it expires or is stopped.",
-    description: "Disruptions are started from the Disruptions tab, by scenarios, by the control system's feed, or by simulations themselves (the infrastructure's faults). A definition says where it applies (any stop, platforms only, or nowhere: it acts once, like a driver calling in sick), its parameters, its duration and its effects: closed, hold, cancel, leave, demand, frequency, mood and messages. The types of all modules are listed under Extension points.",
+    description: "Disruptions are started in Interaction → Disruptions, by scenarios, by the control system's feed, or by simulations themselves (the infrastructure's faults). A definition says where it applies (any stop, platforms only, or nowhere: it acts once, like a driver calling in sick), its parameters, its duration and its effects: closed, hold, cancel, leave, demand, frequency, mood and messages. The types of all modules are listed under Extension points.",
     files: ["web/arail/core/disruptions.js", "web/arail/ops/disruptions.js", "web/arail/infra/disruptions.js"],
     classes: [
       {
@@ -35,7 +35,7 @@ export const DISRUPTIONS = [
       id: "life", name: "A disruption from start to expiry",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Asked for: Disruptions tab, scenario, control system or a simulation", "Panels._startDisruption", "source"],
+        ["a1", "action", "Asked for: Interaction → Disruptions, scenario, control system or a simulation", "Panels._startDisruption", "source"],
         ["d1", "decision", "Type registered?"],
         ["a2", "action", "Its parameters and end; the same id replaced", "DisruptionManager.start"],
         ["a3", "action", "Its onStart (operations, infrastructure: act once)", "DisruptionManager.start"],
@@ -67,7 +67,7 @@ export const DISRUPTIONS = [
       "Timetable: due vehicles wait while closed or held; cancelled ones do not come; closed sends dwelling vehicles away.",
       "Bus lines: no departure while cancelled; a held bus stays; closed stops are passed.",
       "Passengers: arrivals × demand (none while closed); −0.3 mood for newcomers while held or cancelled; leave: people walk out.",
-      "The Disruptions tab offers the types that are not hidden and whose simulation the layout has; the module Disruptions shows the tab.",
+      "Interaction → Disruptions offers the types that are not hidden and whose simulation the layout has; it works while the module Disruptions is on.",
       "A quiet type (a story's train or bus holding its track or bay, story-train) puts up a warning sign and counts in the top bar only while it has a message.",
       "story-train closes its dock (the passengers go to another track) or, with waiting, reserves it (they wait for the story's own vehicle); either way the timetable sends nothing there and one standing there is taken away at once.",
     ],
@@ -91,7 +91,7 @@ export const DISRUPTIONS = [
       id: "run", name: "A scenario run",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Play (Disruptions tab, or ?scenario= in the address)", "ScenarioPlayer.play"],
+        ["a1", "action", "Play (Interaction → Disruptions, or ?scenario= in the address)", "ScenarioPlayer.play"],
         ["x1", "send", "scenario.started"],
         ["m1", "merge"],
         ["a2", "action", "Each sub-step: the time since it was played", "ScenarioPlayer.step"],

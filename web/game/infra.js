@@ -63,8 +63,6 @@ export class InfraPanel {
     this.role = ROLE_CHOICES.includes(storage.get("arail.infraRole")) ? storage.get("arail.infraRole") : "asset-manager";
     // the tables and the line map need room: wide by default on large screens
     this.wide = storage.get("arail.infraWide", true) !== false;
-    /** What Settings → Simulation says of the module while the layout does not have it. */
-    this.settingsHint = "The station on the layout as part of an infrastructure district: railway assets with their condition, faults and how well they are known; maintenance staff in shifts with emergency vans and drones; renewals through the HOAI phases with funding and tenders. Students play the roles in the Infrastructure tab.";
     this.filter = { discipline: "", type: "", problems: false, layout: false, limit: 40 };
     this.assetChoice = null;
     this.projectChoice = null;
@@ -107,7 +105,7 @@ export class InfraPanel {
     if (!e?.root.isConnected) return;
     const sim = this.sim;
     if (!sim) {
-      morph(e.head, h("h2", { tabindex: "-1" }, "Infrastructure"), h("p", { class: "hint" }, "This layout has no infrastructure simulation. Settings → Simulation adds it, or switches on the module of the lab example."));
+      morph(e.head, h("h2", { tabindex: "-1" }, "Infrastructure"), h("p", { class: "hint" }, "This layout has no infrastructure simulation."));
       morph(e.body);
       return;
     }
@@ -150,7 +148,7 @@ export class InfraPanel {
   }
 
   syncWidth() {
-    document.querySelector(".main")?.classList.toggle("wide", this.wide && this.app.activeTab === "infra");
+    document.querySelector(".main")?.classList.toggle("wide", this.wide && this.app.showing("infra"));
   }
 
   /* ---------------------------------------------------------------- saving the game */
@@ -175,7 +173,7 @@ export class InfraPanel {
     storage.set(this._key(), sim.save());
   }
 
-  /** "Add infrastructure to this layout" (Settings → Simulation). */
+  /** "Add to this layout" (the case Assets while the layout has none). */
   async addInfrastructure() {
     const app = this.app, json = this.world.toJSON();
     json.simulations = [...(json.simulations || []), { type: "infrastructure" }];
@@ -268,7 +266,7 @@ export class InfraPanel {
           h("button", { class: "btn small", type: "button", id: "infraFail", onclick: () => this._say(sim.failAsset("")) }, "An asset at the station fails"),
           h("button", { class: "btn small", type: "button", id: "infraTheft", onclick: () => this._say(sim.inject({ type: "theft" })) }, "Cable theft"),
           h("button", { class: "btn small", type: "button", id: "infraStorm", onclick: () => this._say(sim.inject({ type: "storm", count: 4 })) }, "A storm")),
-        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in the Disruptions tab (module Disruptions) and in scenarios.")),
+        h("p", { class: "hint" }, "On the layout: the emergency van drives out from the maintenance base, the trains at the station are held or pass at caution. More in Interaction → Disruptions (module Disruptions) and in scenarios.")),
     ];
   }
 

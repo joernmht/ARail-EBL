@@ -3,6 +3,7 @@
 // are not hidden behind the placing bar (WCAG 2.2: 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.11
 // Focus Not Obscured).
 import { expect, test } from "@playwright/test";
+import { openCase } from "./ui.js";
 
 async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = [];
@@ -52,8 +53,8 @@ test("the buttons that open files show the keyboard focus", async ({ page }) => 
   await page.locator("#gridSize").focus();
   await tabTo(page, "#calibrationFile");
   expect(await outline("calibrationFile")).not.toBe("none");
-  // Build panel: Import layout and Survey a video
-  await page.locator("#tab-build").click();
+  // Build: Import layout and Survey a video
+  await openCase(page, "build");
   await page.locator("#layoutNameField").focus();
   await tabTo(page, "#layoutImport");
   expect(await outline("layoutImport")).not.toBe("none");
@@ -97,13 +98,20 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(page.locator("#stage")).toBeFocused();
   for (const key of ["Home", "PageUp", "PageUp", "PageUp", "PageUp", "PageUp"]) await page.keyboard.press(key); // whole layout, plan view
-  // the panels: Tab to the selected tab, arrows switch
+  // the chapters: Tab to the selected tab, arrows switch
   await tabTo(page, "#tab-settings");
   await page.keyboard.press("ArrowRight"); // round to the first tab
   await expect(page.locator("#tab-overview")).toBeFocused();
   await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-build")).toBeFocused();
-  await expect(page.locator("#panel-build")).toBeVisible();
+  await expect(page.locator("#tab-interaction")).toBeFocused();
+  await expect(page.locator("#panel-interaction")).toBeVisible();
+  // the strip: Tab to its entry chosen (Modules), the arrows go down to Build
+  await tabTo(page, "#strip-modules");
+  for (const id of ["infra", "evu", "build"]) {
+    await page.keyboard.press("ArrowDown");
+    await expect(page.locator(`#strip-${id}`)).toBeFocused();
+  }
+  await expect(page.locator("#strip-build")).toHaveAttribute("aria-selected", "true");
   // pick the tree in the palette
   const tree = page.locator(".palette").getByRole("button", { name: /^Tree/ });
   await tabTo(page, ".palette button[title='A single tree.']");
@@ -128,8 +136,8 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(Math.abs(pos[1] % 50)).toBe(0);
   expect(Math.hypot(pos[0] - aim[0], pos[1] - aim[1])).toBeLessThan(40);
   await expect(page.locator("#stage")).toBeFocused();
-  // the time of day: Settings → Simulation, the slider and presets (the tabs of modules that are off are skipped)
-  await tabTo(page, "#tab-build");
+  // the time of day: Settings → Simulation, the slider and presets
+  await tabTo(page, "#tab-interaction");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
   await expect(page.locator("#settingsView-view")).toHaveAttribute("aria-pressed", "true"); // the view shown last
@@ -184,7 +192,7 @@ test("keyboard placing in the flyover: a bus line picks the stop under the cross
   expect(errors).toEqual([]);
 });
 
-test("keyboard only: the Terminal tab between Build and Settings; a container moved from the list", async ({ page }) => {
+test("keyboard only: the chapter Interaction, the side Railway undertaking, its case Terminal; a container moved from the list", async ({ page }) => {
   const path = "/app/?layout=../layouts/container-terminal.json#simulate";
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -192,15 +200,24 @@ test("keyboard only: the Terminal tab between Build and Settings; a container mo
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
-  // the arrows: Settings → Terminal → Build and back (the tabs of modules that are off are skipped)
+  // the arrows: Settings → Interaction; down the strip to the railway undertaking, its first case that is on (Terminal)
   await page.locator("#tab-settings").focus();
   await page.keyboard.press("ArrowLeft");
-  await expect(page.locator("#tab-terminal")).toBeFocused();
-  await expect(page.locator("#panel-terminal")).toBeVisible();
+  await expect(page.locator("#tab-interaction")).toBeFocused();
+  await expect(page.locator("#panel-interaction")).toBeVisible();
+  await tabTo(page, "#strip-modules");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("#strip-evu")).toBeFocused();
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  // the cases of the side: left and right
+  await tabTo(page, "#case-terminal");
   await page.keyboard.press("ArrowLeft");
-  await expect(page.locator("#tab-build")).toBeFocused();
+  await expect(page.locator("#case-evu-disruption")).toBeFocused();
+  await expect(page.locator("#caseExample")).toBeVisible(); // its module is not in this layout: the example that has it
   await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#tab-terminal")).toBeFocused();
+  await expect(page.locator("#case-terminal")).toBeFocused();
+  await expect(page.locator("#termList")).toBeVisible();
   // a container in the list, a place in "Move to", the Move button
   const item = page.locator("#termList button", { hasText: "ARLU 100004 5" });
   await tabTo(page, `#${await item.getAttribute("id")}`);
@@ -241,18 +258,15 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   await page.keyboard.press("Enter");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("leaving");
   await expect(page.locator(".term-board .stop[data-id=KT52]").getByRole("button", { name: "Call" })).toBeFocused();
-  // a terminal added to a layout without one (Settings → Simulation): the Terminal tab opens, its heading has the focus
+  // a terminal added to a layout without one (the case, off): the case shows it, its heading has the focus
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await expect(page.locator("#tab-terminal")).toBeHidden();
-  await expect(page.locator("#tab-overview")).toHaveAttribute("aria-selected", "true"); // the link's tab is not there
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await page.locator("#termAdd").focus();
+  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true"); // the link's case, with the way to it
+  await expect(page.locator("#caseOn")).toHaveText("Switch on “Container terminal”");
+  await page.locator("#caseAdd").focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#tab-terminal")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#panel-terminal h2").first()).toHaveText("Container terminal");
-  await expect(page.locator("#panel-terminal h2").first()).toBeFocused();
+  await expect(page.locator("#casePanel h2").first()).toHaveText("Container terminal");
+  await expect(page.locator("#casePanel h2").first()).toBeFocused();
   // the views of Settings with the keyboard: the button pressed keeps the focus
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-control").focus();

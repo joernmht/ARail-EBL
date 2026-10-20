@@ -75,6 +75,7 @@ Several people (and agents) work on ARail at the same time. A change merges with
 ## Pull requests
 
 - One topic per pull request, with tests for new behaviour.
+- Name the issues it finishes with `Closes #N`, one per issue, so GitHub closes them on merge; "Part of #N" for an issue it only advances.
 - Update the documentation and the architecture page's models (`web/architecture/`).
 - Do not edit `CHANGELOG.md`: add a changelog fragment, `changes/<topic>.<kind>.md` (see [changes/README.md](changes/README.md)). `node tools/changelog.mjs` merges the fragments at a release.
 - Describe how you tested it, ideally including a photo or video of a real layout for tracking and rendering changes.

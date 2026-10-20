@@ -1,6 +1,6 @@
 # Games: a game for every role
 
-ARail has two faces. The **app** (`app/`) presents the lab: its modules' tabs are stories to click
+ARail has two faces. The **app** (`app/`) presents the lab: its modules' cases are stories to click
 through on Bf Neustadt (see [Getting started](getting-started.md)). The **games** let students take
 decisions themselves and live with their consequences. This guide describes how the games are meant
 to fit together, and the first role game, the signaller of Bf Neustadt.
