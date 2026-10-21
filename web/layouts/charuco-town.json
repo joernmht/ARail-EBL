@@ -1,0 +1,695 @@
+{
+  "format": "arail-layout/1",
+  "name": "ChArUco board: a town on the table (ISG demo)",
+  "description": "A town at 1:250 on a ChArUco board printed on A3 (7 × 5 squares of 56 mm, ArUco Original markers 0–16 of 42 mm). The markers' positions come from the board, so the marker map is locked and nothing needs surveying: lay the board on a table and point a phone at it. A ring street with a one-way tram, a bus through the Marktstraße, a Plattenbau, Altbau blocks, a supermarket, residents and cars.",
+  "scale": 250,
+  "markers": {
+    "dictionary": "ARUCO",
+    "size_mm": 42.0,
+    "codes": 17,
+    "origin": 0,
+    "locked": true,
+    "poses": {
+      "0": [
+        0.0,
+        0.0,
+        0
+      ],
+      "1": [
+        112.0,
+        0.0,
+        0
+      ],
+      "2": [
+        224.0,
+        0.0,
+        0
+      ],
+      "3": [
+        -56.0,
+        -56.0,
+        0
+      ],
+      "4": [
+        56.0,
+        -56.0,
+        0
+      ],
+      "5": [
+        168.0,
+        -56.0,
+        0
+      ],
+      "6": [
+        280.0,
+        -56.0,
+        0
+      ],
+      "7": [
+        0.0,
+        -112.0,
+        0
+      ],
+      "8": [
+        112.0,
+        -112.0,
+        0
+      ],
+      "9": [
+        224.0,
+        -112.0,
+        0
+      ],
+      "10": [
+        -56.0,
+        -168.0,
+        0
+      ],
+      "11": [
+        56.0,
+        -168.0,
+        0
+      ],
+      "12": [
+        168.0,
+        -168.0,
+        0
+      ],
+      "13": [
+        280.0,
+        -168.0,
+        0
+      ],
+      "14": [
+        0.0,
+        -224.0,
+        0
+      ],
+      "15": [
+        112.0,
+        -224.0,
+        0
+      ],
+      "16": [
+        224.0,
+        -224.0,
+        0
+      ]
+    }
+  },
+  "clock": {
+    "start": "07:30"
+  },
+  "simulations": [
+    {
+      "type": "passengers",
+      "base_rate": 0.4,
+      "max_per_area": 40
+    },
+    {
+      "type": "town",
+      "people_per_100": 30,
+      "walk_max_m": 150,
+      "bus_share": 0.7
+    },
+    {
+      "type": "traffic",
+      "cars_per_km": 22
+    },
+    {
+      "type": "cycling"
+    }
+  ],
+  "objects": [
+    {
+      "id": "board",
+      "type": "tabletop",
+      "name": "ChArUco board (A3)",
+      "kind": "physical",
+      "position": [
+        112.0,
+        -112.0
+      ],
+      "width_mm": 392.0,
+      "depth_mm": 280.0
+    },
+    {
+      "id": "road-ring-nord",
+      "type": "road",
+      "name": "Ringstraße",
+      "kind": "main",
+      "tram": "street",
+      "tram_tracks": "single-oneway",
+      "width_m": 6.5,
+      "points": [
+        [
+          392.0,
+          -112.0
+        ],
+        [
+          392.0,
+          -68.0
+        ],
+        [
+          389.9,
+          -44.4
+        ],
+        [
+          383.8,
+          -21.5
+        ],
+        [
+          373.8,
+          -0.0
+        ],
+        [
+          360.2,
+          19.4
+        ],
+        [
+          343.4,
+          36.2
+        ],
+        [
+          324.0,
+          49.8
+        ],
+        [
+          302.5,
+          59.8
+        ],
+        [
+          279.6,
+          65.9
+        ],
+        [
+          256.0,
+          68.0
+        ],
+        [
+          -32.0,
+          68.0
+        ],
+        [
+          -55.6,
+          65.9
+        ],
+        [
+          -78.5,
+          59.8
+        ],
+        [
+          -100.0,
+          49.8
+        ],
+        [
+          -119.4,
+          36.2
+        ],
+        [
+          -136.2,
+          19.4
+        ],
+        [
+          -149.8,
+          -0.0
+        ],
+        [
+          -159.8,
+          -21.5
+        ],
+        [
+          -165.9,
+          -44.4
+        ],
+        [
+          -168.0,
+          -68.0
+        ],
+        [
+          -168.0,
+          -112.0
+        ]
+      ]
+    },
+    {
+      "id": "road-ring-sued",
+      "type": "road",
+      "name": "Ringstraße",
+      "kind": "main",
+      "tram": "street",
+      "tram_tracks": "single-oneway",
+      "width_m": 6.5,
+      "points": [
+        [
+          -168.0,
+          -112.0
+        ],
+        [
+          -168.0,
+          -156.0
+        ],
+        [
+          -165.9,
+          -179.6
+        ],
+        [
+          -159.8,
+          -202.5
+        ],
+        [
+          -149.8,
+          -224.0
+        ],
+        [
+          -136.2,
+          -243.4
+        ],
+        [
+          -119.4,
+          -260.2
+        ],
+        [
+          -100.0,
+          -273.8
+        ],
+        [
+          -78.5,
+          -283.8
+        ],
+        [
+          -55.6,
+          -289.9
+        ],
+        [
+          -32.0,
+          -292.0
+        ],
+        [
+          256.0,
+          -292.0
+        ],
+        [
+          279.6,
+          -289.9
+        ],
+        [
+          302.5,
+          -283.8
+        ],
+        [
+          324.0,
+          -273.8
+        ],
+        [
+          343.4,
+          -260.2
+        ],
+        [
+          360.2,
+          -243.4
+        ],
+        [
+          373.8,
+          -224.0
+        ],
+        [
+          383.8,
+          -202.5
+        ],
+        [
+          389.9,
+          -179.6
+        ],
+        [
+          392.0,
+          -156.0
+        ],
+        [
+          392.0,
+          -112.0
+        ]
+      ]
+    },
+    {
+      "id": "road-markt",
+      "type": "road",
+      "name": "Marktstraße",
+      "kind": "residential",
+      "points": [
+        [
+          112.0,
+          -292.0
+        ],
+        [
+          112.0,
+          68.0
+        ]
+      ]
+    },
+    {
+      "id": "tram-stop-nord",
+      "type": "tram-stop",
+      "name": "Ringstraße Nord",
+      "road": "road-ring-nord",
+      "kind": "cape",
+      "side": "both",
+      "length_m": 26,
+      "position": [
+        36.0,
+        68.0
+      ]
+    },
+    {
+      "id": "tram-stop-sued",
+      "type": "tram-stop",
+      "name": "Ringstraße Süd",
+      "road": "road-ring-sued",
+      "kind": "cape",
+      "side": "both",
+      "length_m": 26,
+      "position": [
+        188.0,
+        -292.0
+      ]
+    },
+    {
+      "id": "tram-line-1",
+      "type": "tram-line",
+      "name": "Line 1",
+      "number": "1",
+      "color": "#D20F41",
+      "mode": "loop",
+      "headway_s": 240,
+      "length_m": 24,
+      "stops": [
+        "tram-stop-nord",
+        "tram-stop-sued"
+      ]
+    },
+    {
+      "id": "bus-stop-markt",
+      "type": "bus-stop",
+      "name": "Markt",
+      "road": "road-markt",
+      "position": [
+        112.0,
+        -80.0
+      ],
+      "side": "both"
+    },
+    {
+      "id": "bus-stop-west",
+      "type": "bus-stop",
+      "name": "Ringstraße West",
+      "road": "road-ring-sued",
+      "position": [
+        -168.0,
+        -136.0
+      ],
+      "side": "both"
+    },
+    {
+      "id": "bus-line-62",
+      "type": "bus-line",
+      "name": "Line 62",
+      "number": "62",
+      "color": "#C85000",
+      "mode": "loop",
+      "headway_s": 200,
+      "stops": [
+        "bus-stop-markt",
+        "bus-stop-west"
+      ]
+    },
+    {
+      "id": "plattenbau-1",
+      "type": "plattenbau",
+      "name": "WBS 70 Ringstraße",
+      "position": [
+        -8.0,
+        -12.0
+      ],
+      "rotation_deg": 180,
+      "series": "wbs70",
+      "sections": 3
+    },
+    {
+      "id": "altbau-1",
+      "type": "altbau-block",
+      "name": "Altbau Marktstraße",
+      "position": [
+        232.0,
+        -16.0
+      ],
+      "width_m": 40,
+      "depth_m": 26,
+      "wing_depth_m": 12,
+      "floors": 5,
+      "form": "closed",
+      "roof": "mansard",
+      "seed": 7
+    },
+    {
+      "id": "supermarket-1",
+      "type": "supermarket",
+      "name": "Supermarket",
+      "position": [
+        -20.0,
+        -212.0
+      ],
+      "width_m": 34,
+      "depth_m": 18,
+      "parking": false
+    },
+    {
+      "id": "parking-markt",
+      "type": "parking-lot",
+      "name": "Parking Supermarket",
+      "position": [
+        16.0,
+        -156.0
+      ],
+      "rotation_deg": 0,
+      "width_m": 22,
+      "depth_m": 7,
+      "access": "customers"
+    },
+    {
+      "id": "altbau-2",
+      "type": "altbau-block",
+      "name": "Altbau Ringstraße",
+      "position": [
+        232.0,
+        -204.0
+      ],
+      "width_m": 40,
+      "depth_m": 14,
+      "floors": 5,
+      "form": "row",
+      "roof": "mansard",
+      "rotation_deg": 180,
+      "seed": 3
+    },
+    {
+      "id": "area-green-1",
+      "type": "area",
+      "name": "Green",
+      "kind": "grass",
+      "opacity": 0.85,
+      "points": [
+        [
+          -124.0,
+          -112.0
+        ],
+        [
+          92.0,
+          -112.0
+        ],
+        [
+          92.0,
+          36.0
+        ],
+        [
+          -124.0,
+          36.0
+        ]
+      ]
+    },
+    {
+      "id": "area-green-2",
+      "type": "area",
+      "name": "Green",
+      "kind": "grass",
+      "opacity": 0.85,
+      "points": [
+        [
+          132.0,
+          -112.0
+        ],
+        [
+          348.0,
+          -112.0
+        ],
+        [
+          348.0,
+          36.0
+        ],
+        [
+          132.0,
+          36.0
+        ]
+      ]
+    },
+    {
+      "id": "area-green-3",
+      "type": "area",
+      "name": "Green",
+      "kind": "grass",
+      "opacity": 0.85,
+      "points": [
+        [
+          -124.0,
+          -260.0
+        ],
+        [
+          92.0,
+          -260.0
+        ],
+        [
+          92.0,
+          -112.0
+        ],
+        [
+          -124.0,
+          -112.0
+        ]
+      ]
+    },
+    {
+      "id": "area-green-4",
+      "type": "area",
+      "name": "Green",
+      "kind": "grass",
+      "opacity": 0.85,
+      "points": [
+        [
+          132.0,
+          -260.0
+        ],
+        [
+          348.0,
+          -260.0
+        ],
+        [
+          348.0,
+          -112.0
+        ],
+        [
+          132.0,
+          -112.0
+        ]
+      ]
+    },
+    {
+      "id": "tree-1",
+      "type": "tree",
+      "position": [
+        -88.0,
+        -84.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-2",
+      "type": "tree",
+      "position": [
+        -40.0,
+        -84.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-3",
+      "type": "tree",
+      "position": [
+        56.0,
+        -84.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-4",
+      "type": "tree",
+      "position": [
+        80.0,
+        -136.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-5",
+      "type": "tree",
+      "position": [
+        80.0,
+        -256.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-6",
+      "type": "tree",
+      "position": [
+        160.0,
+        -132.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-7",
+      "type": "tree",
+      "position": [
+        304.0,
+        -132.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-8",
+      "type": "tree",
+      "position": [
+        144.0,
+        32.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-9",
+      "type": "tree",
+      "position": [
+        320.0,
+        40.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    },
+    {
+      "id": "tree-10",
+      "type": "tree",
+      "position": [
+        -96.0,
+        -256.0
+      ],
+      "kind": "deciduous",
+      "height_m": 10
+    }
+  ]
+}

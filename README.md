@@ -94,7 +94,7 @@ web/                  the website (published with GitHub Pages)
                       a push of the layout and covered photos to GitHub
   live/               ARail Live: live AR for XR glasses, reduced to the town and its road traffic; the town
                       drawn once and fitted to the camera, markers found in a worker (a performance test)
-  markers/            printable marker sheets and deck cards for model wagons
+  markers/            printable marker sheets and deck cards for model wagons; a ChArUco board for A3
   impressum/, datenschutz/  legal notice and privacy policy (German)
   arail/              the framework (ES modules, no build step)
     core/             tracking, geometry, world, rendering, clock, road network, bus and tram
@@ -121,7 +121,7 @@ web/                  the website (published with GitHub Pages)
   layouts/            example layout files (the EBL lab with its modules rail operations, infrastructure,
                       journeys and container terminal; Bf Neustadt with the terminal at the crane, the
                       town at the curve and its modules infrastructure and journeys; the hybrid
-                      container train; the container terminal)
+                      container train; the container terminal; a town on a ChArUco board for a table)
   media/              the images and clips of the example layouts and their orthophotos, the project
                       page's video
   assets/             logos, icons and the website's images

@@ -16,6 +16,15 @@ It reuses the framework's modules (marker detection and tracking, the world and 
 
 The settings (button **Settings** or key **S**) write themselves into the address, so a link keeps a test as it was set up.
 
+### A town on a ChArUco board
+
+For a table without the lab: print [`markers/charuco-town-a3.pdf`](../web/markers/charuco-town-a3.pdf) on A3 at 100 % (one square must measure 56 mm) and lay it on the table. It is a ChArUco board of 7 × 5 squares whose 17 markers (ArUco Original, IDs 0–16, 42 mm) are ARail markers: their positions come from the board, so the layout [`charuco-town.json`](../web/layouts/charuco-town.json) has a locked marker map and nothing needs surveying. On it and round it stands a small town at 1:250: a ring street with a one-way tram, a bus through the Marktstraße, a Plattenbau, Altbau blocks, a supermarket, residents and cars.
+
+| Link | What it shows |
+| --- | --- |
+| [`app/?layout=../layouts/charuco-town.json&camera=1`](https://joernmht.github.io/ARail-EBL/app/?layout=../layouts/charuco-town.json&camera=1) | The app with the camera: the town with its trams, buses and people |
+| [`live/?layout=../layouts/charuco-town.json`](https://joernmht.github.io/ARail-EBL/live/?layout=../layouts/charuco-town.json) | ARail Live: the town and its cars, also for XR glasses (`&bg=black`) |
+
 ## With XR glasses (VITURE Luma Ultra and others)
 
 Glasses like the VITURE Luma Ultra are a display for a phone, tablet or computer, connected over USB-C (DisplayPort alternate mode). The page runs in the browser of that device and is shown in the glasses:
