@@ -17,6 +17,7 @@
 | [Roles of the railway](roles.md) | The role catalogue: the roles of the German railway system from the politician to the cleaning staff, each with its decisions, means, limits, personal risks, ways in and a mini game; the qualifications of the sector with their prerequisites (written from `web/game/roles/roles.json`) |
 | [Languages](languages.md) | The app in English or German: choosing the language, how texts are translated, adding texts (also for plugins), the glossary of railway terms |
 | [Railway systems and trains](rail-systems.md) | What each track section is equipped with (traction power, train protection, ETCS, signals, radio, gauge, line category, country); colouring the tracks by a system; where systems change (borders, separation sections); vehicles, consists and the train data (brake percentage, axle loads); where a train may run |
+| [Live AR on XR glasses](live-ar.md) | ARail Live: the town and its moving cars, live on XR glasses (camera image or see-through) or a phone; the town drawn once and fitted to the camera, markers found in a worker; the numbers of the performance test, settings and links |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |

@@ -1,0 +1,52 @@
+/* ARail Live: the stage fills the screen on black (black is transparent in see-through glasses); the
+   numbers and the buttons are small overlays in the corners, the settings a panel on the right. The
+   colours are the app's tokens (app.css) in their dark form. */
+body.live {
+  margin: 0; overflow: hidden; background: #000; color: var(--overlay-text);
+  --bg: #000c2e; --surface: #00103a; --surface-2: #0c2766; --text: #eaf1ff; --text-2: #a0b4d8; --line: #2a4a92;
+  --accent: #36b8bf; --accent-text: #001450; --accent-ink: #36b8bf; --warn: #f0922e; --warn-text: #001450; --focus: #36b8bf;
+  color-scheme: dark;
+}
+/* the view carries the fit to the glasses (a CSS transform set by live.js) */
+.live-view { position: fixed; inset: 0; transform-origin: 50% 50%; }
+.live-stage { position: absolute; overflow: hidden; background: #000; }
+.live-stage canvas, .live-stage video { position: absolute; left: 0; top: 0; }
+#layer-background, #layer-cars, .live-stage video { width: 100%; height: 100%; }
+/* the town's picture: its own size in CSS px, warped by a matrix3d from its top left corner */
+#layer-city { transform-origin: 0 0; will-change: transform; }
+.live-stage.black #layer-background, .live-stage.black video { visibility: hidden; }
+
+.live-message {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); margin: 0; max-width: calc(100% - 32px);
+  padding: 8px 14px; border-radius: var(--radius); background: var(--overlay); font-size: .9rem; text-align: center;
+}
+.live-message:empty { display: none; }
+
+.live-hud {
+  position: fixed; left: 8px; top: 8px; padding: 6px 10px; border-radius: var(--radius); background: rgba(0, 20, 80, .78);
+  font: 12px/1.35 var(--mono); pointer-events: none;
+}
+.live-hud dl { margin: 0; display: grid; grid-template-columns: auto auto; column-gap: 10px; }
+.live-hud dt { color: var(--board-muted); }
+.live-hud dd { margin: 0; font-variant-numeric: tabular-nums; }
+.live-hud .warn { color: var(--overlay-warn); }
+
+.live-buttons { position: fixed; right: 8px; top: 8px; display: flex; gap: 6px; }
+.live-buttons .btn { background: var(--overlay); color: var(--overlay-text); border-color: var(--board-line); }
+
+.live-settings {
+  position: fixed; right: 8px; top: 48px; bottom: 8px; width: min(340px, calc(100% - 16px)); overflow: auto;
+  display: grid; align-content: start; gap: 10px; padding: 12px 14px; border-radius: var(--radius);
+  background: var(--surface); color: var(--text); border: 1px solid var(--line); font-size: .88rem;
+}
+.live-settings[hidden] { display: none; }
+.live-settings h2 { margin: 0; font-size: 1.05rem; }
+.live-settings label { display: grid; gap: 3px; }
+.live-settings label.check { display: flex; gap: 8px; align-items: center; }
+.live-settings select { padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); }
+.live-settings fieldset { margin: 0; padding: 8px 10px 10px; display: grid; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius); }
+.live-settings legend { padding: 0 4px; font-weight: 600; }
+.live-settings output { font-variant-numeric: tabular-nums; }
+.live-keys { margin: 0; color: var(--text-2); font-size: .8rem; }
+.live-keys a { color: var(--accent-ink); }
+.live-keys kbd { font: .78rem var(--mono); padding: 0 3px; border: 1px solid var(--line); border-radius: 4px; }
