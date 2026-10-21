@@ -7,8 +7,9 @@
  * Abs. 4); else on the road, near the curb. The sidewalk is for people on foot: bikes may use it
  * only where a sign allows it ("Radverkehr frei"), e-scooters only with "E-Scooter frei" (eKFV § 10;
  * "Radverkehr frei" covers them only from March 2027), children under 10 on bikes may and under 8
- * must (StVO § 2 Abs. 5). A share of the riders breaks the rules (`rule_breakers`): they ride on the
- * sidewalk anyway and now and then through a red light.
+ * must (StVO § 2 Abs. 5). In a pedestrian zone bikes ride where "Radverkehr frei" allows it, at
+ * walking pace; e-scooters go round it. A share of the riders breaks the rules (`rule_breakers`):
+ * they ride on the sidewalk anyway and now and then through a red light.
  *
  * - **Bikes hold up cars** where a car cannot pass them at 1.5 m (StVO § 5) within its lane: on a
  *   narrow street without a bike lane, next to an advisory lane that is too narrow, on a bike lane
@@ -35,7 +36,7 @@ export const RIDERS = {
   scooter: { label: "E-scooter", speed_kmh: [15, 20], length_m: 1.2, width_m: 0.5 },
 };
 
-/** Speeds (km/h): walking pace where riding on the sidewalk is allowed, rule-breakers there, a shared path, behind people on foot. */
+/** Speeds (km/h): walking pace where riding on the sidewalk is allowed and in a pedestrian zone, rule-breakers on a sidewalk, a shared path, behind people on foot. */
 const SIDEWALK_KMH = 7;
 const ILLEGAL_SIDEWALK_KMH = 11;
 const SHARED_KMH = 15;
@@ -174,13 +175,13 @@ export class CyclingSimulation extends Simulation {
   _offset(e, rider) {
     const where = ridingSurface(e, rider);
     if (where === "sidewalk" || where === "sidewalk-allowed") return e.walkOffset > 0 ? e.walkOffset - this.mm(0.4) : this.mm(0.4);
-    if (e.kind !== "road") return e.bikeWay === "shared" ? e.bikeOffset || this.mm(0.5) : this.mm(0.4);
+    if (e.kind !== "road") return e.bikeWay === "shared" || e.bikeWay === "zone" ? e.bikeOffset || this.mm(0.5) : this.mm(0.4);
     return e.bikeOffset || e.laneOffset;
   }
 
   /** Give a rider a route from a node to a node: its riding line, junctions, crossings and the surface of each part. */
   _route(rider, net, from, to) {
-    const route = net.route(from, to, { mode: "bike" });
+    const route = net.route(from, to, { mode: rider.kind === "scooter" ? "scooter" : "bike" });
     if (!route || route.length < this.mm(8)) return false;
     const line = net.drivingLine(route, { offsetKey: (e) => this._offset(e, rider), minLoop: this.mm(1.5) });
     // the surface and speed of each segment of the riding line
@@ -190,7 +191,8 @@ export class CyclingSimulation extends Simulation {
       const e = net.edgeAt(route, c)?.edge;
       const where = e ? ridingSurface(e, rider) : "road";
       surfaces.push({ where, edge: e });
-      const kmh = where === "sidewalk-allowed" ? SIDEWALK_KMH : where === "sidewalk" ? ILLEGAL_SIDEWALK_KMH : e?.bikeWay === "shared" ? SHARED_KMH : Infinity;
+      // a pedestrian zone with "Radverkehr frei": at walking pace, as on a sidewalk where bikes are allowed
+      const kmh = where === "sidewalk-allowed" || e?.bikeWay === "zone" ? SIDEWALK_KMH : where === "sidewalk" ? ILLEGAL_SIDEWALK_KMH : e?.bikeWay === "shared" ? SHARED_KMH : Infinity;
       limits.push(Math.min(rider.vmax, kmh / 3.6, e?.car ? e.speed : Infinity));
     }
     Object.assign(rider, {
@@ -443,7 +445,7 @@ export class CyclingSimulation extends Simulation {
   /** The card of a rider: who, where it rides (and whether it may), its speed and mood. */
   card(hit) {
     const r = hit.ref, sf = this._surface(r), kmh = Math.round(r.v * 3.6);
-    const where = { lane: sf.edge?.bikeWay === "shared" ? "on the shared path" : sf.edge?.kind === "road" ? "on the bike lane or path" : "on the path", road: "on the road", "sidewalk-allowed": "on the sidewalk (allowed by a sign)", sidewalk: r.child ? "on the sidewalk (a child may)" : "on the sidewalk (not allowed)" }[sf.where] || sf.where;
+    const where = { lane: sf.edge?.bikeWay === "shared" ? "on the shared path" : sf.edge?.bikeWay === "zone" ? "in the pedestrian zone (allowed, at walking pace)" : sf.edge?.kind === "road" ? "on the bike lane or path" : "on the path", road: "on the road", "sidewalk-allowed": "on the sidewalk (allowed by a sign)", sidewalk: r.child ? "on the sidewalk (a child may)" : "on the sidewalk (not allowed)" }[sf.where] || sf.where;
     const rows = [["Rider", r.person.name], ["Riding", where], ["Speed", `${kmh} km/h`], ["Keeps the rules", r.compliant ? "yes" : "no"], ["Mood", `${Math.round(r.mood * 100)} %`]];
     if (r.child) rows.push(["Age", "a child under 10"]);
     if (sf.edge?.obstruct && sf.where !== "sidewalk" && sf.where !== "sidewalk-allowed") rows.push(["Cars behind", "cannot pass it at 1.5 m: they wait"]);

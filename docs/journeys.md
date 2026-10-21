@@ -31,7 +31,7 @@ at 08:10 to Altstadt, there at 08:46.
 | 5. The connection in Talsee is lost | Her app: RB 31 reaches Talsee at 08:24, the RE 3 leaves at 08:10; the next one is in Altstadt at 09:46, 60 minutes late, after the start of her exam. |
 | 6. Her app finds a bus | The express bus 270 (PlusBus) from the bus station Neustadt Bf at 07:48, in Altstadt at 08:58; her ticket of the transport association is valid on it. The way to the bus is drawn on the layout. |
 | 7. To the bus station | Back through the underpass and along Bahnhofstraße to bay B of the bus station. The bus station's bays are kept free for her bus from now on. |
-| 8. Bus 270 leaves with Ada | The bus comes up Marktstraße and along Bahnhofstraße into the bus station, stops at bay B, Ada and the other travellers get on, and it leaves the way it came. |
+| 8. Bus 270 leaves with Ada | The bus comes up Schulstraße and along Am Stützpunkt and Bahnhofstraße into the bus station, stops at bay B, Ada and the other travellers get on, and it leaves the way it came. |
 | 9. Meanwhile: RB 31 comes in | At 08:02, 20 minutes late, RB 31 stops at track G1: the people waiting there get on, others get off. Whoever changes in Talsee now waits there an hour. |
 | 10. Ada in Altstadt: her journey in numbers | Her whole way on the layout (walked dashed, by bus solid) and a card: planned 07:42 → 08:46, real 07:48 → 08:58 by bus (12 minutes late), had she waited 08:02 → 09:46 (60 minutes late). |
 | 11. Her rights as a passenger | The card of the passenger rights (Fahrgastrechte): what counts is the delay at the destination, a missed connection included; from 20 minutes another train, from 60 minutes 25 % of the fare back, from 120 minutes 50 %, paid from 4 €; had she waited, 25 %. The transport association's mobility guarantee (Mobilitätsgarantie): from 20 minutes a taxi, up to 30 €. |
@@ -65,7 +65,7 @@ The story is the simulation `journeys-story` in the layer's `simulations`:
 | `home` | `plattenbau-1` | The building she leaves from (one with an entrance; else the layout's first). |
 | `track` | `track-g1` | The track of her train at a platform; she waits on that platform, the track is kept free for her train. |
 | `bus_terminal` | `bus-terminal-1` | The bus station; her bus stops at its last bay. |
-| `bus_street` | `road-marktstrasse` | The bus comes in and leaves by the end of this street at the edge of the layout (else by the ends nearest to the bus lane). |
+| `bus_street` | `road-schulstrasse` | The bus comes in and leaves by the end of this street at the edge of the layout (else by the ends nearest to the bus lane). |
 | `delay_min` | `20` | The delay of her train, 10 to 90 minutes: the times of the texts, the RE she would wait for and the refund follow it (from 64 minutes she would be 120 minutes late: 50 %). |
 | `steps` | | The steps retold: `[{"id": "late", "title": "…", "text": "…"}]` over the built-in ones (ids `home`, `board`, `platform`, `late`, `connection`, `alternative`, `walk`, `bus`, `train`, `arrive`, `rights`). |
 

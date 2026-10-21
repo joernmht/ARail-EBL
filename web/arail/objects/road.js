@@ -15,14 +15,22 @@
  *
  * Kinds: `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h),
  * `main` (main road, 50 km/h, wider), `path` (footpath, no cars; or a shared foot and bike path, or
- * a bike path) and `tram` (a tram track of its own, away from the streets).
+ * a bike path), `pedestrian` (a pedestrian zone, Fußgängerzone: paved from house to house, no cars,
+ * bikes only where allowed, trams may run through it; Zeichen 242.1 where it begins) and `tram` (a
+ * tram track of its own, away from the streets).
+ *
+ * A street whose end meets no other street leads out of the layout: cars come and go there. A
+ * **dead end** (Sackgasse, `dead_end`) ends in the layout instead: it has a turning circle
+ * (Wendekreis) or a turning hammer (Wendehammer) there, vehicles turn round in it, and Zeichen 357
+ * stands where the street begins.
  * @module arail/objects/road
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
-import { dist2, dot2, lerp2, polylineAt, polylineLengths, polylineProject, sub2, unit2 } from "../core/math.js";
+import { clamp, dist2, dot2, lerp2, polylineAt, polylineLengths, polylineProject, sub2, unit2 } from "../core/math.js";
 import { PALETTE, grey } from "../core/colors.js";
 import { NORMS, PARKING_LAYOUTS, PATH_PROFILES, STREET_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, crossSection, profileOf, widthChoices } from "./street-profile.js";
+import { drawSign } from "./signs.js";
 import { TARIFFS, Tariff } from "./parking.js";
 import { CROSSING_NORMS, interpolate } from "../core/elevation.js";
 import { rectFootprint } from "../core/view.js";
@@ -33,8 +41,40 @@ export const ROAD_KINDS = {
   residential: { label: "residential street (30 km/h)", speed_kmh: 30, width_m: 6, car: true, centreLine: false },
   main: { label: "main road (50 km/h, wider)", speed_kmh: 50, width_m: 10, car: true, centreLine: true },
   path: { label: "footpath (no cars)", speed_kmh: 0, width_m: 3, car: false, centreLine: false },
+  pedestrian: { label: "pedestrian zone (no cars)", speed_kmh: 20, width_m: NORMS.zone.default, car: false, centreLine: false },
   tram: { label: "tram track of its own (no street)", speed_kmh: 60, width_m: NORMS.tram.bedDouble, car: false, centreLine: false },
 };
+
+/** Where a street is a dead end (Sackgasse): none (its free ends lead out of the layout), at its last or first point, at both. */
+export const DEAD_ENDS = {
+  none: { label: "none: its free ends lead out of the layout", ends: [false, false] },
+  end: { label: "at its last point", ends: [false, true] },
+  start: { label: "at its first point", ends: [true, false] },
+  both: { label: "at both ends", ends: [true, true] },
+};
+
+/**
+ * Turning areas at a dead end (RASt 06, Wendeanlagen): a turning circle (Wendekreis) of `turning_m`
+ * across, or a turning hammer (Wendehammer) as wide across the street; or none (only cars turn,
+ * backing up).
+ */
+export const TURNING_AREAS = {
+  circle: { label: "turning circle (Wendekreis)" },
+  hammer: { label: "turning hammer (Wendehammer)" },
+  none: { label: "none" },
+};
+
+/**
+ * Size of a turning area (m, curb to curb): 22 m across give a three-axle refuse truck room to turn in
+ * one go; a bus needs about 25 m, a car 12 m.
+ */
+export const TURNING_M = { default: 22, values: [12, 18, 22, 25] };
+
+/** Which ends of a street spec are dead ends: [first point, last point]. Only streets for cars have them. */
+export function deadEnds(spec = {}) {
+  if (!ROAD_KINDS[roadKind(spec.kind)].car) return [false, false];
+  return (DEAD_ENDS[spec.dead_end] || DEAD_ENDS.none).ends.slice();
+}
 
 /** Kind of a street spec (old layouts: "road" = street). */
 export function roadKind(kind) {
@@ -53,6 +93,7 @@ const COLOURS = {
   pool: "#ffd98a",
   parking: grey(0.42),
   buffer: grey(0.62),
+  paving: grey(0.58),
 };
 
 /**
@@ -73,6 +114,8 @@ export function stripColour(strip, kind = "street") {
       return COLOURS.curb;
     case "path":
       return COLOURS.path;
+    case "zone":
+      return PALETTE.plaza;
     case "shared-path":
       return kind === "path" ? COLOURS.path : COLOURS.sidewalk;
     case "sidewalk":
@@ -279,6 +322,10 @@ const options = (table) => Object.entries(table).map(([k, v]) => [k, v.label]);
 const isCarKind = (v) => !v.kind || ROAD_KINDS[roadKind(v.kind)].car;
 const isPath = (v) => v.kind === "path";
 const isTram = (v) => v.kind === "tram";
+const isZone = (v) => v.kind === "pedestrian";
+const hasDeadEnd = (v) => isCarKind(v) && !!v.dead_end && v.dead_end !== "none";
+/** Tram tracks through a pedestrian zone lie in its paving. */
+const ZONE_TRAM = [["none", "no tram"], ["street", "in the paving, through the pedestrian zone"]];
 const profileOfValues = (v) => profileOf({ ...v, kind: roadKind(v.kind) });
 
 export class Road extends LayoutObject {
@@ -286,19 +333,19 @@ export class Road extends LayoutObject {
   static label = "Street";
   static category = "Transport";
   static placement = "polyline";
-  static description = "A street along a line: car lanes, and by its cross-section sidewalks, bike lanes or bike paths, tram tracks and parking. Streets that meet or cross are connected; buses, cars, bikes and trams drive on them, people walk on the sidewalks.";
+  static description = "A street along a line: car lanes, and by its cross-section sidewalks, bike lanes or bike paths, tram tracks and parking; or a footpath, a pedestrian zone or a tram track of its own. Streets that meet or cross are connected; buses, cars, bikes and trams drive on them, people walk on the sidewalks. An end that meets no other street leads out of the layout, unless the street is a dead end there.";
   static params = [
     { key: "name", label: "Name", type: "text", default: "" },
     { key: "kind", label: "Kind", type: "select", options: options(ROAD_KINDS), default: "street" },
     {
       key: "profile", label: "Cross-section", type: "select",
-      options: (v) => options(isPath(v) ? PATH_PROFILES : STREET_PROFILES), when: (v) => !isTram(v),
+      options: (v) => options(isPath(v) ? PATH_PROFILES : STREET_PROFILES), when: (v) => !isTram(v) && !isZone(v),
       help: "What lies beside the car lanes. Bike lanes and bike paths make the street wider.",
     },
     {
       key: "width_m", label: "Width", type: "number", unit: "m", min: 1, max: 30, step: 0.05,
       presets: (v) => widthChoices("width_m", { ...v, kind: roadKind(v.kind) }),
-      help: "Of the car lanes together (of the path for footpaths, of the track bed for tram tracks). Empty = by kind: 7 m street, 6 m residential street, 10 m main road, 3 m footpath, 6.6 m tram track.",
+      help: "Of the car lanes together (of the path for footpaths, from house to house for a pedestrian zone, of the track bed for tram tracks). Empty = by kind: 7 m street, 6 m residential street, 10 m main road, 3 m footpath, 12 m pedestrian zone, 6.6 m tram track.",
     },
     { key: "lanes", label: "Lanes each way", type: "number", min: 1, max: 3, step: 1, default: 1, when: isCarKind },
     {
@@ -312,13 +359,23 @@ export class Road extends LayoutObject {
       when: (v) => isCarKind(v) && !["plain", "sidewalks"].includes(profileOfValues(v)),
       help: "Width on each side. Empty = the regular width (ERA 2010): advisory lane 1.50 m, bike lane 1.85 m, bike path 2.00 m, shared path 2.50 m.",
     },
-    { key: "tram", label: "Tram tracks", type: "select", options: options(TRAM_LAYOUTS), default: "none", when: isCarKind },
-    { key: "tram_tracks", label: "Tracks", type: "select", options: options(TRAM_TRACKS), default: "double", when: (v) => isTram(v) || (isCarKind(v) && v.tram && v.tram !== "none") },
+    { key: "bikes", label: "Bikes allowed", type: "boolean", default: false, when: isZone, help: "Radverkehr frei: bikes ride through the pedestrian zone at walking pace." },
+    { key: "tram", label: "Tram tracks", type: "select", options: (v) => (isZone(v) ? ZONE_TRAM : options(TRAM_LAYOUTS)), default: "none", when: (v) => isCarKind(v) || isZone(v) },
+    { key: "tram_tracks", label: "Tracks", type: "select", options: options(TRAM_TRACKS), default: "double", when: (v) => isTram(v) || ((isCarKind(v) || isZone(v)) && v.tram && v.tram !== "none") },
     { key: "parking", label: "Street parking", type: "select", options: options(PARKING_LAYOUTS), default: "none", when: isCarKind },
     { key: "parking_sides", label: "Parking on", type: "select", options: [["both", "both sides"], ["right", "right side"], ["left", "left side"]], default: "both", when: (v) => isCarKind(v) && v.parking && v.parking !== "none" },
     { key: "parking_tariff", label: "Parking costs", type: "select", options: options(TARIFFS), default: "free", when: (v) => isCarKind(v) && v.parking && v.parking !== "none" },
     { key: "parking_price_eur", label: "Price", type: "number", unit: "€", min: 0, max: 2000, step: 0.1, when: (v) => isCarKind(v) && v.parking && v.parking !== "none" && v.parking_tariff && v.parking_tariff !== "free", help: "Per hour, day, week or year, as chosen. Empty = a usual price." },
-    { key: "speed_kmh", label: "Speed limit", type: "number", unit: "km/h", min: 5, max: 130, step: 5, help: "Empty = by kind." },
+    { key: "speed_kmh", label: "Speed limit", type: "number", unit: "km/h", min: 5, max: 130, step: 5, help: "Empty = by kind. In a pedestrian zone: of the trams (20 km/h)." },
+    {
+      key: "dead_end", label: "Dead end", type: "select", options: options(DEAD_ENDS), default: "none", when: isCarKind,
+      help: "A free end of a street leads out of the layout: cars come and go there. A dead end (Sackgasse) ends in the layout: vehicles turn round there.",
+    },
+    { key: "turning", label: "Turning area", type: "select", options: options(TURNING_AREAS), default: "circle", when: hasDeadEnd },
+    {
+      key: "turning_m", label: "Turning area size", type: "number", unit: "m", min: 8, max: 40, step: 0.5, presets: () => TURNING_M.values,
+      when: (v) => hasDeadEnd(v) && v.turning !== "none", help: "Across, curb to curb: 22 m for a refuse truck, 25 m for a bus, 12 m for cars.",
+    },
     { key: "lamps", label: "Street lamps", type: "boolean", default: true },
     { key: "crossings", label: "Zebra crossings at junctions", type: "boolean", default: true, when: isCarKind },
   ];
@@ -361,7 +418,7 @@ export class Road extends LayoutObject {
     const lengths = polylineLengths(points), L = lengths[lengths.length - 1];
     const width = mm(xs.carriageway), half = mm(xs.half), h = width / 2;
     const sidewalk = K.car ? mm(xs.sidewalk) : 0;
-    const piece = mm(25);
+    const piece = mm(25), zone = kind === "pedestrian";
     return {
       points, lengths, length: L, kind, car: K.car, xs, width, half, sidewalk,
       carriage: kind === "tram" ? [] : bandPieces(points, h, piece),
@@ -369,8 +426,28 @@ export class Road extends LayoutObject {
       curb: K.car ? bandPieces(points, h + mm(0.25), piece) : null,
       outer: sidewalk > 0 ? bandPieces(points, half, piece) : null,
       footprint: band(points, Math.max(half, mm(1))),
-      lamps: this.spec.lamps !== false && kind !== "tram" ? this._lamps(points, lengths, h, sidewalk, K.car) : [],
+      // a pedestrian zone has its lamps on both sides, a metre from the houses
+      lamps: this.spec.lamps !== false && kind !== "tram" ? this._lamps(points, lengths, zone ? h - mm(1.6) : h, sidewalk, K.car || zone) : [],
+      turnings: K.car ? this._turnings(points, width) : [],
     };
+  }
+
+  /**
+   * The turning areas at the dead ends: [{end (0: first point, 1: last), pos, out (unit vector out
+   * of the street), kind ("circle" or "hammer"), size (mm across, curb to curb)}].
+   * @param {number} width the carriageway (mm): a turning area is never narrower
+   */
+  _turnings(points, width) {
+    const kind = TURNING_AREAS[this.spec.turning] ? this.spec.turning : "circle";
+    if (kind === "none") return [];
+    const size = Math.max(this.mm(clamp(Number(this.spec.turning_m) > 0 ? +this.spec.turning_m : TURNING_M.default, 8, 40)), width);
+    const out = [], n = points.length;
+    deadEnds(this.spec).forEach((dead, end) => {
+      if (!dead) return;
+      const p = end ? points[n - 1] : points[0], q = end ? points[n - 2] : points[1];
+      out.push({ end, pos: p, out: unit2(sub2(p, q)), kind, size });
+    });
+    return out;
   }
 
   /** Street lamps every 30 m on each side (staggered), at the outer edge of the sidewalk. */
@@ -406,7 +483,11 @@ export class Road extends LayoutObject {
     card.rows.push(["Kind", ROAD_KINDS[g.kind]?.label ?? g.kind]);
     card.rows.push(["Length", `${Math.round(this.meters(g.length))} m`]);
     if (g.kind === "tram") card.rows.push(["Track bed", `${m1(xs.tramBed)} m`], ["Tracks", TRAM_TRACKS[xs.tramTracks].label]);
-    else {
+    else if (g.kind === "pedestrian") {
+      card.rows.push(["Width", `${m1(xs.half * 2)} m`]);
+      card.rows.push(["Bikes", xs.bike === "zone" ? "allowed, at walking pace" : "not allowed"]);
+      if (xs.tram !== "none") card.rows.push(["Tram tracks", TRAM_TRACKS[xs.tramTracks].label], ["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
+    } else {
       const P = (g.kind === "path" ? PATH_PROFILES : STREET_PROFILES)[xs.profile];
       card.rows.push(["Cross-section", P?.label ?? xs.profile]);
       card.rows.push(["Width", `${m1(xs.half * 2)} m`]);
@@ -420,6 +501,10 @@ export class Road extends LayoutObject {
         if (parking.length) card.rows.push(["Parking", `${spaces} ${spaces === 1 ? "space" : "spaces"} · ${parking[0].tariff.label()}`]);
         card.rows.push(["Speed limit", `${Math.round((this.roadInfo()?.speed ?? 0) * 3.6)} km/h`]);
         if (xs.obstruct) card.rows.push(["Bikes", "hold up the cars behind them (too narrow to pass at 1.5 m)"]);
+        if (this.spec.dead_end && DEAD_ENDS[this.spec.dead_end] && this.spec.dead_end !== "none") {
+          const t = g.turnings[0];
+          card.rows.push(["Dead end", t ? `${DEAD_ENDS[this.spec.dead_end].label} · ${TURNING_AREAS[t.kind].label} · ${m1(this.meters(t.size))} m` : DEAD_ENDS[this.spec.dead_end].label]);
+        }
       }
     }
     if (xs.warnings.length) card.sections = [...(card.sections || []), { title: "Below the guidelines", lines: xs.warnings }];
@@ -439,27 +524,29 @@ export class Road extends LayoutObject {
   /**
    * What the road network needs to know (see core/network.js).
    * @returns {object | null} {points, kind, car, walk, bike, width, half, sidewalk, speed, walkOffset,
-   *   laneOffset, bikeOffset, bikeWidth, obstruct, conflict, tram, tramTracks, tramOffset, lanes}:
-   *   widths and offsets in mm, speed in m/s; `bike`: what bikes get ("road", "advisory", "lane",
-   *   "path", "shared", "none"); `tram`: where the tracks lie ("none", "street", "lanes", "median",
-   *   "own")
+   *   laneOffset, bikeOffset, bikeWidth, obstruct, conflict, tram, tramTracks, tramOffset, lanes,
+   *   deadEnds}: widths and offsets in mm, speed in m/s; `bike`: what bikes get ("road", "advisory",
+   *   "lane", "path", "shared", "zone": a pedestrian zone at walking pace, "none"); `tram`: where the
+   *   tracks lie ("none", "street", "lanes", "median", "own"); `deadEnds`: [first point, last point]
+   *   are dead ends (vehicles turn there, nobody comes from beyond the layout)
    */
   roadInfo() {
     const g = this.geometry;
     if (!g) return null;
     const K = ROAD_KINDS[g.kind], xs = g.xs, mm = (m) => this.mm(m);
     const kmh = Number(this.spec.speed_kmh) > 0 ? Number(this.spec.speed_kmh) : K.speed_kmh;
-    const tram = g.kind === "tram";
+    const tram = g.kind === "tram", tracks = g.kind === "pedestrian" && xs.tram !== "none";
     const walk = tram ? false : g.kind === "path" ? PATH_PROFILES[xs.profile]?.walk !== false : true;
     // a narrow street has one lane for both directions: vehicles keep to its middle
     const oneLane = g.car && xs.carWidth < 5 && (xs.tram === "none" || xs.tram === "street");
     return {
       points: g.points, kind: g.kind, car: g.car, walk, bike: xs.bike, width: g.width, half: g.half, sidewalk: g.sidewalk,
-      speed: g.car || tram ? kmh / 3.6 : 1.3,
-      walkOffset: g.car ? mm(xs.walkOffset) : 0,
+      speed: g.car || tram || tracks ? kmh / 3.6 : 1.3,
+      walkOffset: g.car || g.kind === "pedestrian" ? mm(xs.walkOffset) : 0,
       laneOffset: oneLane ? 0 : g.car ? mm(xs.laneOffset) : 0,
       bikeOffset: mm(xs.bikeOffset), bikeWidth: mm(xs.bikeWidth), obstruct: xs.obstruct, conflict: xs.conflict,
       tram: xs.tram, tramTracks: xs.tramTracks, tramOffset: mm(xs.tramOffset), lanes: xs.lanes,
+      deadEnds: deadEnds(this.spec),
     };
   }
 
@@ -468,7 +555,8 @@ export class Road extends LayoutObject {
   /**
    * Junction details from the road network (cached until it changes): round patches where
    * street ends meet, zebra crossings next to junctions, the stretches the strips are drawn on
-   * (they stop short of junctions), lamps that are not on a junction.
+   * (they stop short of junctions), lamps that are not on a junction, the turning areas of the dead
+   * ends that meet no other street, and the signs where a dead end or a pedestrian zone begins.
    */
   _junctions() {
     const g = this.geometry;
@@ -479,7 +567,7 @@ export class Road extends LayoutObject {
       net = null;
     }
     if (this._jc && this._jc.net === net && this._jc.g === g) return this._jc;
-    const jc = { net, g, patches: [], zebras: [], lamps: g.lamps, busy: [], ranges: [[0, g.length]] };
+    const jc = { net, g, patches: [], zebras: [], lamps: g.lamps, busy: [], ranges: [[0, g.length]], turnings: g.turnings, signs: [] };
     this._jc = jc;
     if (!net) {
       jc.strips = this._strips(g, jc.ranges);
@@ -537,6 +625,24 @@ export class Road extends LayoutObject {
     if (s < g.length - mm(1)) ranges.push([s, g.length]);
     jc.ranges = ranges;
     jc.strips = this._strips(g, ranges);
+    // the ends: a dead end turns where it meets no other street for cars (a footpath may go on from
+    // it); signs where the street begins
+    const own = net.roadEdges.get(this.id) || [];
+    const ends = own.length ? [net.nodes[own[0].edge.a], net.nodes[own[own.length - 1].edge.b]] : [null, null];
+    jc.turnings = g.turnings.filter((t) => !ends[t.end] || ends[t.end].carDegree <= 1);
+    const sign = (end, key, plate = "") => {
+      const node = ends[end];
+      if (!node || (g.car ? node.carDegree : node.degree) < 2) return;
+      const d = (busy.find((b) => dist2(b.pos, node.pos) < mm(1))?.r ?? mm(2)) + mm(1.5);
+      if (d >= g.length / 2) return;
+      const at = polylineAt(g.points, end ? g.length - d : d, g.lengths);
+      // on the right of the traffic coming in from that end
+      const into = end ? [-at.dir[0], -at.dir[1]] : at.dir, inset = g.half - mm(0.4);
+      jc.signs.push({ key, plate, pos: [at.point[0] + into[1] * inset, at.point[1] - into[0] * inset] });
+    };
+    const dead = deadEnds(this.spec);
+    if (dead[0] !== dead[1]) sign(dead[0] ? 1 : 0, "dead-end");
+    if (g.kind === "pedestrian") for (const end of [0, 1]) sign(end, "pedestrian-zone", "ZONE");
     return jc;
   }
 
@@ -563,6 +669,18 @@ export class Road extends LayoutObject {
       else if (st.type === "buffer" && st.level === "sidewalk") strip(st, COLOURS.buffer, 1.02, 0.9);
       else if (st.type === "parking") strip(st, COLOURS.parking, 1.12, 0.9);
       else if (st.type === "tram-bed" && g.kind !== "tram") strip(st, PALETTE.tramBed, 1.12, 0.95);
+    }
+    // a pedestrian zone: bands of darker paving across it every 8 m, a gutter down the middle without trams
+    if (g.kind === "pedestrian") {
+      const h = g.width / 2 - mm(0.4), bands = [];
+      for (const [s0, s1] of ranges) {
+        for (let s = s0 + mm(4); s < s1 - mm(1); s += mm(8)) {
+          const at = polylineAt(P, s, Ls), n = [-at.dir[1], at.dir[0]];
+          bands.push(quad([at.point[0] + n[0] * h, at.point[1] + n[1] * h], [at.point[0] - n[0] * h, at.point[1] - n[1] * h], mm(0.6)));
+        }
+      }
+      fill(COLOURS.paving, 1.03, 0.45, bands);
+      if (xs.tram === "none") fill(COLOURS.paving, 1.03, 0.6, dashes(P, Ls, ranges, 0, mm(0.4), 0, 0));
     }
     // markings: the centre line, lane lines, the lines of bike lanes and tram lanes
     const K = ROAD_KINDS[g.kind];
@@ -654,6 +772,8 @@ export class Road extends LayoutObject {
     if (g.kind === "path") {
       const colour = g.xs.profile === "bike-paths" ? PALETTE.bikePath : COLOURS.path;
       fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), colour, 1.02, 0.85);
+    } else if (g.kind === "pedestrian") {
+      fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.plaza, 1.02, 0.92);
     } else if (g.kind === "tram") {
       fillPolygons(view, g.bed.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.tramBed, 1.02, 0.9);
     } else {
@@ -662,6 +782,15 @@ export class Road extends LayoutObject {
       fillPolygons(view, g.curb.concat(jc.patches.map((p) => disc(p, h + this.mm(0.25)))), COLOURS.curb, 1.05, 0.95);
       fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, h))), COLOURS.asphalt, 1.1, 0.95);
       fillPolygons(view, jc.zebras, COLOURS.marking, 1.2, 0.9);
+      // the turning areas of the dead ends, in the same layers as the street
+      const area = (t, grow) => (t.kind === "circle" ? disc(t.pos, t.size / 2 + grow, 28) : quad(
+        [t.pos[0] + t.out[1] * (t.size / 2 + grow), t.pos[1] - t.out[0] * (t.size / 2 + grow)],
+        [t.pos[0] - t.out[1] * (t.size / 2 + grow), t.pos[1] + t.out[0] * (t.size / 2 + grow)], g.width + 2 * grow));
+      if (jc.turnings.length) {
+        if (g.sidewalk > 0) fillPolygons(view, jc.turnings.map((t) => area(t, g.sidewalk + this.mm(0.25))), COLOURS.sidewalk, 1.0, 0.9);
+        fillPolygons(view, jc.turnings.map((t) => area(t, this.mm(0.25))), COLOURS.curb, 1.05, 0.95);
+        fillPolygons(view, jc.turnings.map((t) => area(t, 0)), COLOURS.asphalt, 1.1, 0.95);
+      }
     }
     for (const f of jc.strips.fills) fillPolygons(view, f.quads, f.colour, f.order, f.alpha);
     fillPolygons(view, jc.strips.marks, COLOURS.marking, 1.2, 0.85);
@@ -670,6 +799,7 @@ export class Road extends LayoutObject {
       if (k >= 1.2 * view.px) for (const r of jc.strips.rails) view.line(r, { stroke: PALETTE.rail, width: Math.max(0.6, Math.min(1.6, k / 6)), order: 1.15 });
     }
     for (const l of jc.lamps) if (view.inImage(l.pos[0], l.pos[1], 0, 80)) drawStreetLamp(view, l.pos, l.arm);
+    for (const sg of jc.signs) if (view.inImage(sg.pos[0], sg.pos[1], 0, 80)) drawSign(view, sg.pos, sg.key, { plate: sg.plate });
     this._drawHeights(view, g);
   }
 
@@ -727,9 +857,9 @@ export class Road extends LayoutObject {
       const za = interpolate(p.s, p.z, a), zb = interpolate(p.s, p.z, b);
       const at = (P, t, z) => [P.point[0] - P.dir[1] * t, P.point[1] + P.dir[0] * t, z];
       const band = (t0, t1, up = 0) => [at(A, t0, za + up), at(B, t0, zb + up), at(B, t1, zb + up), at(A, t1, za + up)];
-      const decals = g.kind === "path" || g.kind === "tram" ? [] : [{ pts: band(-g.width / 2, g.width / 2, 0.01), color: COLOURS.asphalt }];
+      const decals = g.car ? [{ pts: band(-g.width / 2, g.width / 2, 0.01), color: COLOURS.asphalt }] : [];
       for (const t of tracks) for (const r of [-GAUGE_M / 2, GAUGE_M / 2]) decals.push({ pts: band(m(t + r) - m(0.07), m(t + r) + m(0.07), 0.02), color: PALETTE.rail });
-      const colour = g.kind === "path" ? COLOURS.path : g.kind === "tram" ? PALETTE.tramBed : COLOURS.sidewalk;
+      const colour = g.kind === "path" ? COLOURS.path : g.kind === "pedestrian" ? PALETTE.plaza : g.kind === "tram" ? PALETTE.tramBed : COLOURS.sidewalk;
       const mid = polylineAt(g.points, (a + b) / 2, g.lengths).point;
       view.faces([{ pts: band(-g.half, g.half), normal: [0, 0, 1], color: colour, decals, flat: true }], [mid[0], mid[1], (za + zb) / 2]);
     }

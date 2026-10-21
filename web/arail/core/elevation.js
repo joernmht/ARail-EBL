@@ -49,10 +49,10 @@ const EPS = 0.5;
 /** Spacing (mm) of the points along a street its profile is worked out on. */
 const STEP = 5;
 
-/** The steepest a street climbs (a share): with tram tracks or on a footpath 6 %, else 8 %. */
+/** The steepest a street climbs (a share): with tram tracks, on a footpath or in a pedestrian zone 6 %, else 8 %. */
 export function streetGradient(info) {
   if (info.kind === "tram" || (info.tram && info.tram !== "none")) return CROSSING_NORMS.tramGradient;
-  return info.kind === "path" ? CROSSING_NORMS.pathGradient : CROSSING_NORMS.streetGradient;
+  return info.kind === "path" || info.kind === "pedestrian" ? CROSSING_NORMS.pathGradient : CROSSING_NORMS.streetGradient;
 }
 
 /**

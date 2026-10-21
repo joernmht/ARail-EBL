@@ -141,6 +141,8 @@ test("the street's settings: old layouts by their sidewalks, the standard widths
   assert.deepEqual(widthChoices("width_m", { lanes: 2 }), [10, 11, 13]);
   assert.deepEqual(widthChoices("width_m", { kind: "tram" }), [3.4, 6.6]);
   assert.deepEqual(widthChoices("width_m", { kind: "path" }), [2, 2.5, 3, 4]);
+  assert.deepEqual(widthChoices("width_m", { kind: "pedestrian" }), NORMS.zone.values);
+  assert.equal(profileOf({ kind: "pedestrian" }), "zone");
   assert.deepEqual(widthChoices("bike_m", { profile: "bike-lanes" }), NORMS.bikeLane.values);
   assert.deepEqual(widthChoices("bike_m", { profile: "advisory-lanes" }), NORMS.advisoryLane.values);
   assert.deepEqual(widthChoices("bike_m", { profile: "sidewalks" }), []);
@@ -149,7 +151,14 @@ test("the street's settings: old layouts by their sidewalks, the standard widths
   const params = registry.objects.get("road").params;
   const shape = (values) => JSON.parse(paramShape(params, values));
   const keys = (values) => shape(values).map(([k]) => k);
-  assert.deepEqual(keys({ kind: "street" }), ["name", "kind", "profile", "width_m", "lanes", "sidewalk_m", "tram", "parking", "speed_kmh", "lamps", "crossings"]);
+  assert.deepEqual(keys({ kind: "street" }), ["name", "kind", "profile", "width_m", "lanes", "sidewalk_m", "tram", "parking", "speed_kmh", "dead_end", "lamps", "crossings"]);
+  // a dead end: its turning area and its size
+  assert.deepEqual(keys({ kind: "residential", dead_end: "end" }).slice(-5), ["dead_end", "turning", "turning_m", "lamps", "crossings"]);
+  assert.ok(!keys({ kind: "residential", dead_end: "end", turning: "none" }).includes("turning_m"));
+  // a pedestrian zone: its width, bikes, trams; no cross-section, lanes, parking or dead end
+  assert.deepEqual(keys({ kind: "pedestrian" }), ["name", "kind", "width_m", "bikes", "tram", "speed_kmh", "lamps"]);
+  assert.ok(keys({ kind: "pedestrian", tram: "street" }).includes("tram_tracks"));
+  assert.deepEqual(shape({ kind: "pedestrian" }).find(([k]) => k === "tram")[1], ["none", "street"], "trams in the paving, or none");
   assert.ok(keys({ kind: "street", profile: "bike-lanes" }).includes("bike_m"));
   assert.ok(!keys({ kind: "street", profile: "shared-paths" }).includes("sidewalk_m"), "a shared path is the sidewalk");
   assert.ok(keys({ kind: "street", tram: "median" }).includes("tram_tracks"));
@@ -192,6 +201,94 @@ test("streets in the road network: who may use an edge, and where across the str
   const a = net.nearestNode([0, 0], { mode: "car" }), b = net.nearestNode([4000, 0], { mode: "car" });
   assert.ok(net.route(a, b, { mode: "bike" }), "bikes ride along Main");
   assert.equal(net.route(a, b, { mode: "tram" }), null, "no tram tracks in Main");
+});
+
+test("a pedestrian zone: paved from house to house, people along the shop windows, no cars; bikes and trams where allowed", () => {
+  // 12 m from house to house: one strip; people stroll 2.5 m from the house fronts
+  const zone = xs({ kind: "pedestrian" });
+  assert.deepEqual(strips(zone), ["zone 0–6"]);
+  assert.deepEqual([zone.half, zone.walkOffset, zone.bike, zone.tram, zone.warnings], [6, 3.5, "none", "none", []]);
+  // bikes at walking pace where allowed (Radverkehr frei); trams in the paving, a sidewalk's width beside them
+  const both = xs({ kind: "pedestrian", bikes: true, tram: "street" });
+  assert.deepEqual([both.bike, both.tram, both.tramOffset], ["zone", "street", NORMS.tram.spacing / 2]);
+  assert.deepEqual(xs({ kind: "pedestrian", width_m: 8, tram: "street" }).warnings, ["Pedestrian zone 8 m: trams need 11.05 m, with a sidewalk's width on each side to walk beside them"]);
+  assert.deepEqual(xs({ kind: "pedestrian", width_m: 8, tram: "street", tram_tracks: "single" }).warnings, [], "one track needs less room");
+  const w = world([
+    { id: "main", type: "road", name: "Main", points: [[0, 0], [4000, 0]] },
+    { id: "zone", type: "road", name: "Zone", kind: "pedestrian", points: [[2000, 0], [2000, -2000]] },
+    { id: "ride", type: "road", name: "Ride", kind: "pedestrian", bikes: true, tram: "street", points: [[0, 0], [0, -2000]] },
+  ]);
+  const net = w.network(), mm = (m) => (m * 1000) / w.scale;
+  const edgeOf = (id) => net.edges.find((e) => e.road === id && e.kind !== "connector");
+  const zoneEdge = edgeOf("zone"), ride = edgeOf("ride");
+  assert.deepEqual([zoneEdge.kind, zoneEdge.car, zoneEdge.bus, zoneEdge.bike, zoneEdge.walk, zoneEdge.tram], ["path", false, false, false, true, false]);
+  near(zoneEdge.walkOffset, mm(3.5));
+  assert.deepEqual([ride.bike, ride.bikeWay, ride.tram], [true, "zone", true]);
+  near(ride.speed, 20 / 3.6, "trams at 20 km/h");
+  // bikes ride through where allowed; e-scooters do not ("Radverkehr frei" is not "E-Scooter frei", eKFV § 10)
+  const s0 = net.nearestNode([0, 0], { mode: "bike" }), s1 = net.nearestNode([0, -2000], { mode: "bike" });
+  assert.ok(net.route(s0, s1, { mode: "bike" }));
+  assert.equal(net.route(s0, s1, { mode: "scooter" }), null);
+  // no car turns into it; people walk through it on the side they come from
+  const a = net.nearestNode([2000, 0], { mode: "car" }), b = net.nearestNode([2000, -2000], { mode: "walk" });
+  assert.equal(net.route(a, b, { mode: "car" }), null);
+  const walk = net.walk([2100, -100], [2100, -1900]);
+  assert.ok(walk.points.slice(1, -1).every((p) => Math.abs(p[0] - (2000 + mm(3.5))) < mm(0.5)), "along the shop windows on the east side");
+  // its card and the sign where it begins (Zeichen 242.1 at Main, none at its free end)
+  const rows = Object.fromEntries(w.getObject("ride").card().rows);
+  assert.deepEqual([rows.Kind, rows.Width, rows.Bikes, rows["Speed limit"]], ["pedestrian zone (no cars)", "12 m", "allowed, at walking pace", "20 km/h"]);
+  const signs = w.getObject("zone")._junctions().signs;
+  assert.deepEqual(signs.map((x) => [x.key, x.plate]), [["pedestrian-zone", "ZONE"]]);
+  assert.ok(signs[0].pos[1] < -mm(5) && signs[0].pos[0] < 2000, "on the right of who comes in from Main");
+});
+
+test("dead ends: vehicles turn there, nobody comes in from beyond the layout; a turning circle and the sign where it begins", () => {
+  const objects = [
+    { id: "table", type: "tabletop", position: [0, 0], width_mm: 8000, depth_mm: 6000 },
+    { id: "main", type: "road", name: "Main", points: [[-4000, 0], [4000, 0]] },
+    { id: "close", type: "road", name: "Close", kind: "residential", dead_end: "end", points: [[0, 0], [0, -2000]] },
+    { id: "stop", type: "bus-stop", name: "Close", road: "close", side: "both", position: [0, -1200] },
+    { id: "stop-main", type: "bus-stop", name: "Main", road: "main", side: "both", position: [-2500, 0] },
+    { id: "line", type: "bus-line", name: "Line 5", number: "5", stops: ["stop-main", "stop"] },
+  ];
+  const w = world(objects);
+  const net = w.network();
+  // the free ends of Main lead out of the layout; the end of Close is a dead end
+  const end = net.nodes.find((n) => Math.hypot(n.pos[0], n.pos[1] + 2000) < 1);
+  assert.equal(end.deadEnd, true);
+  assert.deepEqual(net.boundaryNodes().map((n) => n.pos).sort((p, q) => p[0] - q[0]), [[-4000, 0], [4000, 0]]);
+  assert.deepEqual(w.getObject("close").roadInfo().deadEnds, [false, true]);
+  // the bus turns round at the end of Close: one way in, back out
+  w.transit.sync();
+  const line = w.transit.lines.get("line");
+  assert.ok(line.ok, line.problems.join("; "));
+  const ys = line.circuit.points.map((p) => p[1]);
+  assert.ok(Math.min(...ys) < -1900, "to the turning circle");
+  // the turning circle (22 m across by default) and Zeichen 357 where Close begins, on the right coming in
+  const close = w.getObject("close"), mm = (m) => (m * 1000) / w.scale;
+  const jc = close._junctions();
+  assert.deepEqual(jc.turnings.map((t) => [t.end, t.kind, Math.round(t.size)]), [[1, "circle", Math.round(mm(22))]]);
+  assert.deepEqual(jc.signs.map((x) => x.key), ["dead-end"]);
+  assert.ok(jc.signs[0].pos[0] < 0 && jc.signs[0].pos[1] < 0);
+  assert.match(Object.fromEntries(close.card().rows)["Dead end"], /at its last point · turning circle \(Wendekreis\) · 22 m/);
+  // a turning hammer is as wide across; a dead end that meets another street draws no turning area
+  close.set({ turning: "hammer", turning_m: 18 });
+  assert.deepEqual(close._junctions().turnings.map((t) => [t.kind, Math.round(t.size)]), [["hammer", Math.round(mm(18))]]);
+  // a footpath going on from the turning circle (Zeichen 357 with a walker): the turning circle stays
+  w.addObject({ id: "on", type: "road", kind: "path", points: [[0, -2000], [600, -2600]] });
+  assert.deepEqual(close._junctions().turnings.map((t) => t.end), [1]);
+  w.removeObject("on");
+  close.set({ dead_end: "both" });
+  assert.deepEqual(close._junctions().turnings.map((t) => t.end), [1], "its first point is on Main");
+  assert.deepEqual(close._junctions().signs, [], "a street closed at both ends has no way in to sign");
+  // road traffic and bikes come only from the free ends
+  const w2 = createWorld({ objects: objects.slice(0, 3), simulations: [{ type: "traffic", cars_per_km: 40 }, { type: "cycling", riders_per_km: 30 }], clock: { start: "10:00", profiles: false } }, { seed: 4 });
+  const ends = w2.network().boundaryNodes();
+  assert.equal(ends.length, 2);
+  for (let i = 0; i < 300; i++) w2.step(0.5);
+  const traffic = w2.simulations.find((x) => x.constructor.type === "traffic");
+  assert.ok(traffic.cars.length > 0);
+  for (const car of traffic.cars) assert.ok(Math.hypot(car.path.points[0][0], car.path.points[0][1] + 2000) > 1, "no car comes from the dead end");
 });
 
 test("street parking: spaces along the strip, none near junctions and at bus stops, a tariff", () => {

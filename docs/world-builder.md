@@ -34,9 +34,11 @@ See [Heights](streets-and-buses.md#heights-table-modules-ramps-and-bridges).
 
 ## Streets first
 
-Choose **Street** (key **S**), **Residential street**, **Main road**, **Footpath or bike path** (key
+Choose **Street** (key **S**), **Residential street**, **Main road**, **Pedestrian zone**
+(Fußgängerzone: no cars, bikes if allowed, trams may run through it), **Footpath or bike path** (key
 **F**), **Tram track** (key **T**, a track of its own beside no street) or **Underpass**, then click
-the points of the street.
+the points of the street. A street that ends inside the layout is a **dead end** (Element tab: *Dead
+end*, with a turning circle or hammer), or cars appear and vanish there as if it went on.
 
 Under the tools, **The new street** has the settings of the streets you draw next, for each kind:
 the **cross-section** (plain, with sidewalks, advisory bike lanes, bike lanes, bike paths at
@@ -116,7 +118,7 @@ Everything people and vehicles come to needs a street that leads there. The chec
 | The maintenance base's vans have no street for cars within 80 m | does not work | a street to the nearest street |
 | Streets for cars that are not connected to the others | makes no sense | a street from their nearest end to the others |
 | A street ends a few metres (up to 15 m) before another one | makes no sense | *Join it to …*: its end is moved onto the other street |
-| A dead end inside the layout (more than 10 m from its edge) | makes no sense | none: lead it to the edge or join it. Cars come and go at dead ends, as if the street went on beyond the layout. |
+| A street for cars ends inside the layout (more than 10 m from its edge) and is no dead end | makes no sense | *Make it a dead end*: it gets a turning circle there, and cars no longer come and go at that end as if the street went on beyond the layout. Or lead it to the edge, or join it. |
 
 The tab also lists what elements say of themselves (a truck lane that no crane reaches, a bus or tram
 line without a way along the streets or tracks, widths below the guidelines, a bridge whose ramps do

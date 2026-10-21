@@ -15,13 +15,14 @@ export const TEXTS = {
   "{name}: no street or footpath within {n} m of its entrance": "{name}: keine Straße und kein Fußweg im Umkreis von {n} m um den Eingang",
   "{names}: not connected to the other streets: no bus and no car comes from them": "{names}: nicht mit den anderen Straßen verbunden: von dort kommt kein Bus und kein Auto",
   "{name} ends {n} m before {other}: join them": "{name} endet {n} m vor {other}: verbinden Sie sie",
-  "{name}: dead end inside the layout: cars appear and vanish here. Lead it to the edge of the layout, or join it to another street": "{name}: Sackgasse in der Anlage: hier tauchen Autos auf und verschwinden. Führen Sie sie zum Rand der Anlage, oder verbinden Sie sie mit einer anderen Straße",
+  "{name} ends inside the layout: cars appear and vanish here. Lead it to the edge of the layout, join it to another street, or make it a dead end": "{name} endet in der Anlage: hier tauchen Autos auf und verschwinden. Führen Sie sie zum Rand der Anlage, verbinden Sie sie mit einer anderen Straße, oder machen Sie daraus eine Sackgasse",
   "Add a footpath to {street}": "Fußweg zu {street} anlegen",
   "Add a street to {street}": "Straße zu {street} anlegen",
   "Add an underpass to {street}": "Unterführung zu {street} anlegen",
   "Add a street to the edge of the layout": "Straße zum Rand der Anlage anlegen",
   "Add a street out of the layout": "Straße aus der Anlage hinaus anlegen",
   "Join it to {street}": "Mit {street} verbinden",
+  "Make it a dead end": "Daraus eine Sackgasse machen",
 
   // ------------------------------------------------------------ trams, railway crossings and parking in the street access (core/access.js)
   "{name}: trams cannot stop here: it is not at a tram track": "{name}: Straßenbahnen können hier nicht halten: sie liegt nicht an einem Straßenbahngleis",

@@ -287,22 +287,25 @@ A bus line that has the terminal as a stop gets a bay of its own (the lines shar
 
 ### `road`: street
 
-A street (or footpath, or tram track of its own). Geometry: `points` (polyline). Streets whose ends meet, that end on another street or that cross are connected (the road network, see [Streets, trams, buses and road traffic](streets-and-buses.md)). The cross-section lays the strips out from the centre line: tram tracks in the middle, the car lanes, bike lanes, parking, the curb, then sidewalks, bike paths or shared paths; see [Cross-sections](streets-and-buses.md#cross-sections) for the standard widths.
+A street (or footpath, pedestrian zone, or tram track of its own). Geometry: `points` (polyline). Streets whose ends meet, that end on another street or that cross are connected (the road network, see [Streets, trams, buses and road traffic](streets-and-buses.md)). An end that meets no other street leads out of the layout, unless the street is a dead end there. The cross-section lays the strips out from the centre line: tram tracks in the middle, the car lanes, bike lanes, parking, the curb, then sidewalks, bike paths or shared paths; see [Cross-sections](streets-and-buses.md#cross-sections) for the standard widths.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `kind` | `"street"` | `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h), `main` (main road, 50 km/h, wider), `path` (footpath, no cars), `tram` (a tram track of its own, no street) |
+| `kind` | `"street"` | `street` (50 km/h; the old value `road` means the same), `residential` (30 km/h), `main` (main road, 50 km/h, wider), `path` (footpath, no cars), `pedestrian` (pedestrian zone: paved from house to house, no cars; see [Pedestrian zones](streets-and-buses.md#pedestrian-zones)), `tram` (a tram track of its own, no street) |
 | `profile` | by `sidewalk_m` | the cross-section: `plain` (no sidewalks), `sidewalks`, `advisory-lanes` (Schutzstreifen), `bike-lanes` (Radfahrstreifen), `bike-paths` (at sidewalk level), `shared-paths` (Zeichen 240); for footpaths `plain` (people only), `shared-paths`, `bike-paths` (bikes only). Old streets: `sidewalks`, or `plain` where `sidewalk_m` is 0 |
-| `width_m` | by kind | the car lanes together (the path of a footpath, the track bed of a tram track): 7 street, 6 residential, 10 main road, 3 footpath, 6.6 tram track. Bike lanes and paths, tram tracks and parking make the street wider |
+| `width_m` | by kind | the car lanes together (the path of a footpath, from house to house in a pedestrian zone, the track bed of a tram track): 7 street, 6 residential, 10 main road, 3 footpath, 12 pedestrian zone, 6.6 tram track. Bike lanes and paths, tram tracks and parking make the street wider |
 | `lanes` | `1` | car lanes in each direction (1–3) |
 | `sidewalk_m` | `2.5` | sidewalk width on each side, 0 = none (footpaths have none) |
 | `bike_m` | by profile | width of the bike lanes or paths on each side: advisory lane 1.50, bike lane 1.85, bike path 2.00, shared path 2.50 (ERA 2010) |
-| `tram` | `"none"` | tram tracks in the street: `none`, `street` (in the car lanes), `lanes` (in lanes of their own in the middle, cars may cross), `median` (on a track bed of their own in the middle) |
+| `bikes` | `false` | a pedestrian zone: bikes allowed (Radverkehr frei), at walking pace |
+| `tram` | `"none"` | tram tracks in the street: `none`, `street` (in the car lanes; in a pedestrian zone in the paving), `lanes` (in lanes of their own in the middle, cars may cross), `median` (on a track bed of their own in the middle) |
 | `tram_tracks` | `"double"` | `double` (two tracks), `single` (one track, both directions), `single-oneway` (one track, in the direction the street was drawn); also for `kind: "tram"` |
 | `parking` | `"none"` | street parking: `none`, `parallel`, `angled` (45°), `perpendicular` |
 | `parking_sides` | `"both"` | `both`, `right`, `left` (seen in the drawing direction) |
 | `parking_tariff`, `parking_price_eur` | `"free"`, usual price | what street parking costs: `free`, `hourly` (1 €), `daily` (8 €), `weekly` (20 €), `yearly` (120 €, residents' permit: residents only) |
-| `speed_kmh` | by kind | speed limit |
+| `speed_kmh` | by kind | speed limit (in a pedestrian zone: of the trams, 20) |
+| `dead_end` | `"none"` | a dead end (Sackgasse) at `end` (the last point), `start` (the first) or `both`: vehicles turn there, nobody comes in from beyond the layout; `none`: a free end leads out of the layout. Streets for cars only; see [Dead ends](streets-and-buses.md#dead-ends) |
+| `turning`, `turning_m` | `"circle"`, `22` | the turning area of a dead end: `circle` (Wendekreis), `hammer` (Wendehammer) or `none`, and its size across (8–40 m) |
 | `lamps` | `true` | street lamps every 30 m on each side, staggered (lit at night; footpaths: on one side); bikes are locked to them |
 | `crossings` | `true` | zebra crossings next to junctions |
 
@@ -455,7 +458,7 @@ Geometry: `position` (centre), on a sidewalk. Bike stands (Anlehnbügel), two bi
 
 ### `building`
 
-Geometry: `position` (centre). A generic building. Like all buildings it looks like a white architectural model (neutral greys from mid grey up to white; at night the windows light up, depending on the time of day and on how many people are inside), has a use for the town simulation and a capacity from its size.
+Geometry: `position` (centre). A generic building; narrower than deep, its gable faces the street. Like all buildings it looks like a white architectural model (neutral greys from mid grey up to white; at night the windows light up, depending on the time of day and on how many people are inside), has a use for the town simulation and a capacity from its size.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
@@ -465,6 +468,7 @@ Geometry: `position` (centre). A generic building. Like all buildings it looks l
 | `floor_height_m` | `3` | 2.4–6 |
 | `roof` | `"gable"` | `gable` or `flat` |
 | `use` | `"residential"` | `residential`, `work`, `school`, `shop`, `other` |
+| `shops` | `"none"` | shops on the ground floor of the front (not for `use: "shop"`): `none`, `some` (left of the door), `all`; their jobs and shoppers come on top of the building's use |
 | `color`, `roof_color` | `#f2f2f2`, `#a6a6a6` | wall and roof colour (older layouts set their own) |
 | `windows` | `true` | |
 
@@ -487,11 +491,11 @@ Geometry: `position` (centre) and `rotation_deg` (default `0`: the street front 
 
 | Type | Parameters (defaults) | Use, notes |
 | --- | --- | --- |
-| `plattenbau` | `series` (`wbs70`: WBS 70 with 6 floors, `wbs70-11`: 11 floors, `qp61`: QP 61 with 8 floors, `p2`: P2 with 5 floors), `sections` (4: entrances of about 12 m each, 1–12), `floors` (empty: the series'; 2–25), `balconies` (true: loggias on the garden side) | residential; GDR slab block |
-| `altbau-block` | `width_m` (60), `depth_m` (50), `wing_depth_m` (13), `floors` (5, 3–6), `form` (`closed`, `u`: open at the back, `row`), `rear_wings` (false: side wings and rear buildings in the courtyard), `roof` (`mansard`, `pitched`), `seed` (1) | residential with shops on the ground floor; Gründerzeit perimeter block of parcels; falls back to `row` when no courtyard fits |
+| `plattenbau` | `series` (`wbs70`: WBS 70 with 6 floors, `wbs70-11`: 11 floors, `qp61`: QP 61 with 8 floors, `p2`: P2 with 5 floors), `sections` (4: entrances of about 12 m each, 1–12; one section with many floors is a point tower), `floors` (empty: the series'; 2–25), `balconies` (true: loggias on the garden side), `shops` (`none`; `all`: on the ground floor beside the stairwells of every section, `some`: of every other one) | residential; GDR slab block |
+| `altbau-block` | `width_m` (60), `depth_m` (50), `wing_depth_m` (13), `floors` (5, 3–6), `form` (`closed`, `u`: open at the back, `row`), `rear_wings` (false: side wings and rear buildings in the courtyard), `roof` (`mansard`, `pitched`), `shops` (`some`: in the corner houses and some others; `all`, `none`), `seed` (1) | residential with shops on the ground floor; Gründerzeit perimeter block of parcels; falls back to `row` when no courtyard fits |
 | `house` | `style` (`gable`, `hip`: Stadtvilla, `bungalow`, `semi`: semi-detached), `width_m` (10; semi: both halves), `depth_m` (9), `floors` (1.5: a floor and an attic; 1–2 in steps of 0.5), `garage` (true), `chimney` (true) | residential; single-family house |
 | `house-estate` | `plot_width_m` (16), `plot_depth_m` (28), `mix` (`mixed`, `gable`, `hip`, `bungalow`), `garages` (true), `density` (0.85: share of the plots built, 0.5–1), `street_m` (12: room for a street between each pair of rows, 0 = none), `seed` (1) | residential; rows of plots along the longest edge of the polygon, only plots completely inside, one entrance per house |
-| `office` | `width_m` (30), `depth_m` (15), `floors` (4, 1–20) | work; ribbon windows |
+| `office` | `width_m` (30), `depth_m` (15), `floors` (4, 1–20), `shops` (`none`; `all`: on both sides of the hall, `some`: on its left) | work; ribbon windows |
 | `school` | `floors` (3, 2–5), `gym` (true) | school; GDR "Typ Erfurt", 60 × 13 m with a stair tower and a gym hall |
 | `supermarket` | `width_m` (45), `depth_m` (30), `parking` (true) | shop; glass front, parking lot in front, lit while open |
 | `factory` | `width_m` (40), `depth_m` (25), `chimney` (true) | work; sawtooth roof |

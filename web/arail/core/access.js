@@ -14,13 +14,15 @@
  *   street level (BOStrab § 15): there the crossing becomes a bridge;
  * - **the streets themselves**: they form one network (a street that is not connected to the others
  *   is reached by no bus and no car), a street that ends just before another one is joined to it,
- *   and a street ends in the middle of the layout only on purpose (cars come and go at dead ends,
- *   as if the street went on beyond the layout).
+ *   and a street ends in the middle of the layout only on purpose: as a dead end (Sackgasse,
+ *   `dead_end`), where vehicles turn; else cars come and go at its end, as if the street went on
+ *   beyond the layout.
  * What objects already report themselves (`problems()`: a bus stop not next to a street, a bus line
  * without a way) is not repeated. Each problem says where it is and, where one is plain, how to fix
  * it: a street or footpath to the nearest street (`street`), a street end moved onto the street it
  * almost meets (`join`), a railway crossing where a street crosses a track (`crossing`) or another
- * kind for one (`crossing-kind`). `applyFix` carries a fix out (the editor offers it as a button).
+ * kind for one (`crossing-kind`), a dead end where a street ends inside the layout (`dead-end`).
+ * `applyFix` carries a fix out (the editor offers it as a button).
  * @module arail/core/access
  */
 import { PLACE_MAX_M } from "./network.js";
@@ -51,10 +53,10 @@ export const STUB_M = 30;
 
 /**
  * @typedef {object} AccessFix
- * @property {"street" | "join" | "crossing" | "crossing-kind"} kind street: draw a street (or footpath)
+ * @property {"street" | "join" | "crossing" | "crossing-kind" | "dead-end"} kind street: draw a street (or footpath)
  *   `points`; join: move end `end` (0 first, 1 last point) of street `id` to `to`; crossing: put a
  *   railway crossing of `crossingKind` at `to` (street `id`, track `track`); crossing-kind: give the
- *   railway crossing `id` the kind `crossingKind`
+ *   railway crossing `id` the kind `crossingKind`; dead-end: make end `end` of street `id` a dead end
  * @property {string} text the button, e.g. "Add a footpath to Main Street"
  * @property {number[][]} [points] layout mm, from the thing to the street
  * @property {"street" | "path" | "underpass"} [roadKind] underpass: a footpath under the tracks (type `underpass`)
@@ -338,7 +340,12 @@ export function accessProblems(world) {
       for (const q of roads) {
         if (q === r || (tramOnly(r) ? !tracks(q) : tramOnly(q))) continue;
         const pr = polylineProject(q.pts, p, q.cum), tol = Math.max(q.info.width / 2, mm(2));
-        if (pr.distance > tol && pr.distance <= mm(NEAR_MISS_M) && (!near || pr.distance < near.distance)) near = { q, s: pr.s, distance: pr.distance };
+        if (pr.distance <= tol || pr.distance > mm(NEAR_MISS_M) || (near && pr.distance >= near.distance)) continue;
+        // nearest at the end of the other street, which ends on this one: they meet there already
+        // (this street runs on past it, e.g. to the edge of the layout)
+        const qEnd = pr.s <= 1e-6 ? q.pts[0] : pr.s >= q.L - 1e-6 ? q.pts[q.pts.length - 1] : null;
+        if (qEnd && polylineProject(r.pts, qEnd, r.cum).distance <= Math.max(r.info.width / 2, mm(2))) continue;
+        near = { q, s: pr.s, distance: pr.distance };
       }
       if (near) {
         nearMisses.push({ r, q: near.q });
@@ -349,8 +356,14 @@ export function accessProblems(world) {
         });
         continue;
       }
-      if (!r.info.car || !bounds) continue;
-      if (insideLayout(world, p, edge, bounds)) add({ key: `dead:${r.obj.id}:${k}`, level: "warning", id: r.obj.id, at: p, text: `${nameOf(r.obj)}: dead end inside the layout: cars appear and vanish here. Lead it to the edge of the layout, or join it to another street` });
+      if (!r.info.car || !bounds || r.info.deadEnds?.[k]) continue; // a dead end on purpose
+      if (insideLayout(world, p, edge, bounds)) {
+        add({
+          key: `dead:${r.obj.id}:${k}`, level: "warning", id: r.obj.id, at: p,
+          text: `${nameOf(r.obj)} ends inside the layout: cars appear and vanish here. Lead it to the edge of the layout, join it to another street, or make it a dead end`,
+          fix: { kind: "dead-end", id: r.obj.id, end: k, text: "Make it a dead end" },
+        });
+      }
     }
   }
 
@@ -441,6 +454,14 @@ export function applyFix(world, fix, { name } = {}) {
     if (!c) return null;
     c.set({ kind: fix.crossingKind });
     return c;
+  }
+  if (fix?.kind === "dead-end") {
+    const road = world.getObject(fix.id);
+    if (!road) return null;
+    const ends = (road.roadInfo?.()?.deadEnds || [false, false]).slice();
+    ends[fix.end ? 1 : 0] = true;
+    road.set({ dead_end: ends[0] && ends[1] ? "both" : ends[0] ? "start" : "end" });
+    return road;
   }
   if (fix?.kind === "join") {
     const road = world.getObject(fix.id);

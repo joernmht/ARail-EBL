@@ -202,7 +202,7 @@ export const JOURNEYS = [{
     { key: "home", default: "plattenbau-1", meaning: "The building she leaves from.", sim: "journeys-story" },
     { key: "track", default: "track-g1", meaning: "The track of her train at a platform; kept free for it.", sim: "journeys-story" },
     { key: "bus_terminal", default: "bus-terminal-1", meaning: "The bus station; her bus stops at its last bay.", sim: "journeys-story" },
-    { key: "bus_street", default: "road-marktstrasse", meaning: "The street by whose end at the edge of the layout the bus comes and leaves.", sim: "journeys-story" },
+    { key: "bus_street", default: "road-schulstrasse", meaning: "The street by whose end at the edge of the layout the bus comes and leaves.", sim: "journeys-story" },
     { key: "delay_min", default: "20", meaning: "The delay of her train (10–90 min): the times in the texts, the RE she would wait for, the refund.", sim: "journeys-story" },
   ],
   events: {

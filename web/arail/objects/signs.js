@@ -4,13 +4,16 @@
  * railway crossings put up (Stop 206, give way 205, priority road 306, one-way street 220, the
  * mandatory directions 209–214, no stopping 283 and 286, parking 314, bike and footpath signs 237,
  * 239, 240, 241 with "Radverkehr frei" or "E-Scooter frei", pedestrian crossing 350, the St Andrew's
- * cross 201). Real-world signs keep their colours (`SIGN_COLOURS`, after RAL); they are only half as
+ * cross 201); the streets put up dead end 357 and pedestrian zone 242.1. Real-world signs keep their colours (`SIGN_COLOURS`, after RAL); they are only half as
  * dark at night (retroreflective).
  * @module arail/objects/signs
  */
 import { FONT, grey, OVERLAY } from "../core/colors.js";
 
 export const STOP_SIGN = { disc: "#f7d417", text: OVERLAY.busStop, post: grey(0.4) };
+
+/** Is a sign of radius `r` (px) larger than the image? Then it stands right at the camera and is not drawn. */
+const atCamera = (view, r) => r > Math.max(view.camera.width, view.camera.height);
 
 /** The colours of German road signs (RAL 3020 traffic red, 5017 traffic blue, 1023 traffic yellow, 9016 traffic white). */
 export const SIGN_COLOURS = {
@@ -42,6 +45,8 @@ export const ROAD_SIGNS = {
   "separate-paths": { code: "241", shape: "disc", fill: "blue", glyph: "separate" },
   footpath: { code: "239", shape: "disc", fill: "blue", glyph: "walker" },
   "pedestrian-crossing": { code: "350", shape: "square", fill: "blue", glyph: "crossing" },
+  "pedestrian-zone": { code: "242.1", shape: "square", fill: "blue", glyph: "zone" },
+  "dead-end": { code: "357", shape: "square", fill: "blue", glyph: "dead-end" },
   crossbuck: { code: "201", shape: "crossbuck", fill: "white", border: "red" },
 };
 
@@ -55,6 +60,8 @@ export function drawStopSign(view, p, { letter = "", height_m = 2.9 } = {}) {
   const z = view.m(height_m);
   const top = view.project(p[0], p[1], z), foot = view.project(p[0], p[1], 0);
   if (!top || !foot) return;
+  const r = Math.max(5 * view.px, view.pxPerMM(p[0], p[1], z) * view.m(0.35));
+  if (atCamera(view, r)) return;
   view.solid(view.depth(p[0], p[1], 0), (ctx) => {
     ctx.strokeStyle = view.dim(STOP_SIGN.post);
     ctx.lineWidth = 1.5 * view.px;
@@ -62,7 +69,6 @@ export function drawStopSign(view, p, { letter = "", height_m = 2.9 } = {}) {
     ctx.moveTo(foot[0], foot[1]);
     ctx.lineTo(top[0], top[1]);
     ctx.stroke();
-    const r = Math.max(5 * view.px, view.pxPerMM(p[0], p[1], z) * view.m(0.35));
     // the sign is retroreflective: only half as dark at night
     ctx.beginPath();
     ctx.arc(top[0], top[1], r, 0, 2 * Math.PI);
@@ -212,6 +218,25 @@ function glyph(ctx, view, sign, x, y, r) {
     ctx.stroke();
   } else if (g === "bike") bike(ctx, x, y, r * 0.55);
   else if (g === "walker") walker(ctx, x, y, r * 0.6);
+  else if (g === "zone") {
+    // a grown-up and a child
+    walker(ctx, x - r * 0.2, y - r * 0.05, r * 0.62);
+    walker(ctx, x + r * 0.42, y + r * 0.2, r * 0.38);
+  } else if (g === "dead-end") {
+    // a white street that ends in a red bar
+    ctx.lineCap = "butt";
+    ctx.lineWidth = r * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(x, y + r * 0.9);
+    ctx.lineTo(x, y - r * 0.3);
+    ctx.stroke();
+    ctx.strokeStyle = C("red");
+    ctx.lineWidth = r * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(x - r * 0.55, y - r * 0.45);
+    ctx.lineTo(x + r * 0.55, y - r * 0.45);
+    ctx.stroke();
+  }
   else if (g === "shared") {
     ctx.beginPath();
     ctx.moveTo(x - r * 0.8, y);
@@ -257,7 +282,7 @@ export function drawSign(view, p, key, { height_m = 2.3, plate = "", under = "" 
   const top = view.project(p[0], p[1], z), foot = view.project(p[0], p[1], 0);
   if (!top || !foot) return;
   const r = view.pxPerMM(p[0], p[1], z) * view.m(0.32);
-  if (r < 0.8 * view.px) return;
+  if (r < 0.8 * view.px || atCamera(view, r)) return;
   view.solid(view.depth(p[0], p[1], 0), (ctx) => {
     const C = (c) => view.dim(SIGN_COLOURS[c], 0.5);
     ctx.strokeStyle = view.dim(SIGN_COLOURS.post);
@@ -355,6 +380,7 @@ export function drawTrafficLight(view, p, state, { height_m = 3.2 } = {}) {
   const top = view.project(p[0], p[1], z), foot = view.project(p[0], p[1], 0);
   if (!top || !foot) return;
   const r = view.pxPerMM(p[0], p[1], z) * view.m(0.14);
+  if (atCamera(view, 4 * r)) return;
   const lit = { red: state === "red" || state === "red-amber", amber: state === "amber" || state === "red-amber", green: state === "green" };
   const on = { red: SIGN_COLOURS.lampRed, amber: SIGN_COLOURS.lampAmber, green: SIGN_COLOURS.lampGreen };
   view.solid(view.depth(p[0], p[1], 0), (ctx) => {

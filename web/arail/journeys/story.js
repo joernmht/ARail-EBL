@@ -111,7 +111,7 @@ export class JourneyStory extends Story {
     { key: "home", label: "Home", type: "object", default: "plattenbau-1", help: "The building she leaves from (one with an entrance)." },
     { key: "track", label: "Track of her train", type: "object", objectType: "track", default: "track-g1", help: "A track at a platform: her train leaves there; it is kept free for her train from when she waits on the platform." },
     { key: "bus_terminal", label: "Bus station", type: "object", objectType: "bus-terminal", default: "bus-terminal-1", help: "Her bus stops at its last bay." },
-    { key: "bus_street", label: "Street of the bus", type: "object", objectType: "road", default: "road-marktstrasse", help: "Her bus comes in and leaves by the end of this street at the edge of the layout." },
+    { key: "bus_street", label: "Street of the bus", type: "object", objectType: "road", default: "road-schulstrasse", help: "Her bus comes in and leaves by the end of this street at the edge of the layout." },
     {
       key: "delay_min", label: "Delay of her train", type: "number", unit: "min", min: 10, max: 90, step: 1, default: 20,
       help: "The times in the texts, the RE she would wait for and the share of her fare paid back follow it.",

@@ -82,7 +82,10 @@ So an office or a supermarket among the homes adds nobody: its jobs and visits g
 (and fewer commute). The same office far from any home, or a big school in a small town, draws
 people in by train. The card of a building says how many of its places the town takes, how many
 people from elsewhere, and how many stay empty. A shop takes 28 half-hour visits a day per visitor
-place (`capacity().visitors`) at a fifth full.
+place (`capacity().visitors`) at a fifth full. Shops on the ground floor of a house or office
+(`shops`: an Altbau block's shop windows, a Plattenbau's or office's shop sections, the generic
+building's shop front) count as shops too: their jobs and visits come on top of the building's own
+residents or jobs.
 
 The town shows `people_per_100` people per 100 real people (12 by default; at most `max_people`, which
 scales residents and people from elsewhere alike). They are:

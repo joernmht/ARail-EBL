@@ -6,23 +6,23 @@
 export const STREETS = [
   {
     id: "streets", group: "transport", title: "Streets and their cross-sections",
-    summary: "A street has a cross-section: car lanes, and beside them sidewalks, bike lanes or bike paths, tram tracks and parking, with the standard widths of the German guidelines; the road network, the drawing and the simulations read where cars, bikes, trams and people on foot go.",
-    description: "The cross-section (crossSection) lays the strips out from the centre line: tram lanes or a track bed in the middle, the car lanes, advisory or bike lanes, parking strips with a safety strip, the curb, then sidewalks, bike paths or shared paths. width_m is always the width of the car lanes: bike lanes and paths, tram tracks and parking make the street wider. The result gives the offsets of each kind of road user, which widths are below the guidelines' minimum (warnings), whether a bike holds up the cars behind it (obstruct) and how often riders and people on foot get in each other's way (conflict). Footpaths can be shared with bikes or be bike paths; a tram track of its own is a street of the kind tram.",
+    summary: "A street has a cross-section: car lanes, and beside them sidewalks, bike lanes or bike paths, tram tracks and parking, with the standard widths of the German guidelines; the road network, the drawing and the simulations read where cars, bikes, trams and people on foot go. A pedestrian zone is paved from house to house; a dead end has a turning area.",
+    description: "The cross-section (crossSection) lays the strips out from the centre line: tram lanes or a track bed in the middle, the car lanes, advisory or bike lanes, parking strips with a safety strip, the curb, then sidewalks, bike paths or shared paths. width_m is always the width of the car lanes: bike lanes and paths, tram tracks and parking make the street wider. The result gives the offsets of each kind of road user, which widths are below the guidelines' minimum (warnings), whether a bike holds up the cars behind it (obstruct) and how often riders and people on foot get in each other's way (conflict). Footpaths can be shared with bikes or be bike paths; a tram track of its own is a street of the kind tram. A pedestrian zone (kind pedestrian, Fußgängerzone) is one strip: people stroll along the house fronts, bikes ride at walking pace where allowed, trams may run through it; Zeichen 242.1 stands where it begins. A free end of a street leads out of the layout; a dead end (dead_end) ends in it with a turning circle or hammer, vehicles turn there and nobody comes in from beyond; Zeichen 357 stands where it begins.",
     files: ["web/arail/objects/street-profile.js", "web/arail/objects/road.js"],
     classes: [
       {
         name: "street-profile", file: "web/arail/objects/street-profile.js", kind: "module", role: "Cross-sections by the German guidelines (RASt 06, ERA 2010, EFA 2002, EAR 23, BOStrab).",
-        attributes: ["NORMS — standard widths: car lanes, sidewalks, advisory and bike lanes, bike and shared paths, safety strips, parking, trams", "STREET_PROFILES — plain, with sidewalks, advisory bike lanes, bike lanes, bike paths at sidewalk level, shared paths", "PATH_PROFILES — footpath, shared foot and bike path, bike path", "TRAM_LAYOUTS — in the car lanes, in lanes of their own, on a track bed in the middle", "TRAM_TRACKS — two tracks, one track both ways, one track one way", "PARKING_LAYOUTS — parallel, angled, perpendicular", "PASS_M — 4.6 m: a car passes a bike within its lane only on a wider lane", "ROAD_RIDE_M — 0.8 m: bikes on the road ride this far from the curb"],
+        attributes: ["NORMS — standard widths: car lanes, sidewalks, advisory and bike lanes, bike and shared paths, safety strips, parking, trams, pedestrian zones", "ZONE_PROFILE — the one profile of a pedestrian zone", "STREET_PROFILES — plain, with sidewalks, advisory bike lanes, bike lanes, bike paths at sidewalk level, shared paths", "PATH_PROFILES — footpath, shared foot and bike path, bike path", "TRAM_LAYOUTS — in the car lanes, in lanes of their own, on a track bed in the middle", "TRAM_TRACKS — two tracks, one track both ways, one track one way", "PARKING_LAYOUTS — parallel, angled, perpendicular", "PASS_M — 4.6 m: a car passes a bike within its lane only on a wider lane", "ROAD_RIDE_M — 0.8 m: bikes on the road ride this far from the curb"],
         operations: ["crossSection(spec, kind) — the strips, the offsets of cars, bikes, trams and people on foot, obstruct, conflict, warnings", "profileOf(spec) — old layouts by their sidewalks", "bikeDefault(profile)", "bikeNorm(profile, kind)", "sharedConflict(width) — how often a rider and a person on foot meet with anger on a shared path", "widthChoices(key, spec) — the standard widths for the editors"],
       },
       {
-        name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street, footpath or tram track of its own, with its cross-section.",
-        operations: ["crossSection() — of its settings", "roadInfo() — for the road network: width, offsets of lanes, tracks, bike lanes and sidewalks, what it is for", "parkingInfo() — its parking strips as facilities, without the stretches where nobody may park", "bikeParking() — two bikes at each street lamp", "problems()", "card() — the cross-section in words, the warnings", "draw(view) — surfaces, strips, markings, rails, lamps"],
+        name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street, footpath, pedestrian zone or tram track of its own, with its cross-section; a dead end at one or both ends.",
+        operations: ["crossSection() — of its settings", "roadInfo() — for the road network: width, offsets of lanes, tracks, bike lanes and sidewalks, what it is for, its dead ends", "parkingInfo() — its parking strips as facilities, without the stretches where nobody may park", "bikeParking() — two bikes at each street lamp", "problems()", "card() — the cross-section in words, the dead end, the warnings", "draw(view) — surfaces, strips, markings, rails, lamps, the turning areas of its dead ends, the signs where a dead end or a pedestrian zone begins"],
       },
       {
         name: "road", file: "web/arail/objects/road.js", kind: "module", role: "Kinds of streets and drawing helpers.",
-        attributes: ["ROAD_KINDS — street, residential street, main road, footpath, tram track of its own", "GAUGE_M — 1.435 m"],
-        operations: ["roadKind(kind)", "stripColour(strip, kind) — the colour of a strip as streets are drawn (the builder's figure)", "offsetPolyline(pts, d, limit)", "slicePolyline(pts, lengths, s0, s1)", "drawStreetLamp(view, pos, arm)"],
+        attributes: ["ROAD_KINDS — street, residential street, main road, footpath, pedestrian zone, tram track of its own", "DEAD_ENDS — none, at the last point, at the first, at both", "TURNING_AREAS — turning circle, turning hammer, none", "TURNING_M — 22 m across by default (12 m cars, 25 m buses)", "GAUGE_M — 1.435 m"],
+        operations: ["roadKind(kind)", "deadEnds(spec) — [first point, last point] are dead ends", "stripColour(strip, kind) — the colour of a strip as streets are drawn (the builder's figure)", "offsetPolyline(pts, d, limit)", "slicePolyline(pts, lengths, s0, s1)", "drawStreetLamp(view, pos, arm)"],
       },
     ],
     relations: [
@@ -34,6 +34,8 @@ export const STREETS = [
       id: "cross-section", name: "The cross-section of a street (crossSection)",
       nodes: [
         ["s", "start"],
+        ["d0", "decision", "A pedestrian zone?"],
+        ["a0", "action", "One strip from house to house; people along the house fronts; bikes where allowed; tram tracks in the paving, a sidewalk's width beside them", "crossSection"],
         ["d1", "decision", "A footpath, or a tram track of its own?"],
         ["a1", "action", "One strip: the path by its profile, or the track bed", "crossSection"],
         ["a2", "action", "In the middle: tram lanes or a track bed (one track or two)", "crossSection"],
@@ -45,7 +47,7 @@ export const STREETS = [
         ["m", "merge"],
         ["e", "end"],
       ],
-      edges: [["s", "d1"], ["d1", "a1", "yes"], ["d1", "a2", "no"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a1", "m"], ["a7", "m"], ["m", "e"]],
+      edges: [["s", "d0"], ["d0", "a0", "yes"], ["d0", "d1", "no"], ["d1", "a1", "yes"], ["d1", "a2", "no"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "a7"], ["a0", "m"], ["a1", "m"], ["a7", "m"], ["m", "e"]],
     }],
     parameters: [
       { key: "profile", default: "by the sidewalks", meaning: "The cross-section (Road): plain, with sidewalks, bike lanes, bike paths, shared paths; for footpaths, shared or bike paths." },
@@ -53,6 +55,8 @@ export const STREETS = [
       { key: "sidewalk_m, bike_m", default: "2.5, by profile", meaning: "Sidewalks, bike lanes or paths on each side." },
       { key: "tram, tram_tracks", default: "none, double", meaning: "Tram tracks in the street and how many." },
       { key: "parking, parking_sides, parking_tariff, parking_price_eur", default: "none, both, free, —", meaning: "Street parking, its sides and what it costs." },
+      { key: "dead_end, turning, turning_m", default: "none, circle, 22", meaning: "A dead end at the last, the first or both points; its turning circle or hammer and its size across (m)." },
+      { key: "bikes", default: "false", meaning: "A pedestrian zone: bikes allowed (Radverkehr frei), at walking pace." },
     ],
     rules: [
       "Car lanes of a two-way street: 4.50 m (two cars), 5.50 m (a truck and a car), 6.50 m (two buses), 7.00 m (often); below 4.10 m two cars cannot pass; a lane 3.00 to 3.50 m (RASt 06).",
@@ -61,6 +65,8 @@ export const STREETS = [
       "A bike holds up the cars behind it on one lane each way narrower than 4.60 m (StVO § 5: 1.5 m to pass), next to an advisory lane too narrow for that, or on a bike lane below its minimum.",
       "Riders and people on foot on a shared path meet with anger: 0.4 at 2.50 m, 0.3 at 3.00 m, 0.1 from 4.00 m; next to a bike path below 1.60 m or a sidewalk below 1.80 m 0.35 each.",
       "Tram tracks 3.40 m apart, trams 2.65 m wide (BOStrab § 34), tram lanes 3.25 m, a track bed of its own 6.60 m (two tracks) or 3.40 m (one).",
+      "A pedestrian zone 12 m from house to house by default; people stroll 2.50 m from the house fronts; with tram tracks at least the tracks, a tram and a sidewalk's width on each side (11.05 m for two tracks).",
+      "A dead end's turning circle or hammer is 22 m across by default (a three-axle refuse truck turns in one go; a bus needs 25 m, cars 12 m); it is drawn where no other street for cars meets that end.",
     ],
   },
   {
@@ -73,7 +79,7 @@ export const STREETS = [
       { name: "TrafficLight", file: "web/arail/objects/traffic-signs.js", kind: "class", extends: "LayoutObject", role: "Traffic lights at a junction.", operations: ["trafficRule()", "state(group, t) — green, amber, red or red-amber of the approaches along the main street (0) or across it (1)", "problems() — not on a junction", "card()", "draw(view) — a light head at each approach"] },
       { name: "ZebraCrossing", file: "web/arail/objects/traffic-signs.js", kind: "class", extends: "LayoutObject", role: "A zebra crossing (Zeichen 293, 350).", operations: ["crossingInfo() — for the road network", "busy() — somebody on it or about to step on", "noParking(road) — on it and 5 m before it", "problems()", "card()", "draw(view)"] },
       { name: "traffic-signs", file: "web/arail/objects/traffic-signs.js", kind: "module", role: "Kinds of signs and where they belong.", attributes: ["SIGN_TYPES — Stop, give way, priority road, one-way street, mandatory directions, lane arrows, no stopping, restricted stopping, bikes or e-scooters allowed on the sidewalk, bike path, shared path, parking", "TURNS — the turns a mandatory direction allows"], operations: ["parseArrows(text) — lane arrows", "streetNear(world, p, opts) — the street of a sign or crossing, and its side", "nearestNodeTo(nodes, p, maxMM)"] },
-      { name: "signs", file: "web/arail/objects/signs.js", kind: "module", role: "How signs and lights look.", attributes: ["ROAD_SIGNS — the signs as drawn (shape, colours, symbol)", "SIGN_COLOURS", "STOP_SIGN — the bus and tram stop's sign"], operations: ["drawSign(view, p, key, opts)", "drawTrafficLight(view, p, state, opts)", "drawStopSign(view, p, opts)"] },
+      { name: "signs", file: "web/arail/objects/signs.js", kind: "module", role: "How signs and lights look; a sign right at the camera (larger than the image) is not drawn.", attributes: ["ROAD_SIGNS — the signs as drawn (shape, colours, symbol), with the dead end (357) and the pedestrian zone (242.1) the streets put up", "SIGN_COLOURS", "STOP_SIGN — the bus and tram stop's sign"], operations: ["drawSign(view, p, key, opts)", "drawTrafficLight(view, p, state, opts)", "drawStopSign(view, p, opts)"] },
       { name: "RailCrossing", file: "web/arail/objects/crossings.js", kind: "class", extends: "LayoutObject", role: "Where a street crosses a railway track; its type by kind; it spans the tracks side by side there.", attributes: ["crossingType — getter: the CrossingType of its kind", "anywhere — static: on its street, which may span a gap between table modules"], operations: ["railCrossingInfo() — for the road network: where, which street and track, at street level or not", "railLevel() — the height of the rails (the module under the tracks)", "streetLevels(el) — the heights its street must keep (core/elevation.js)", "closed(t)", "room() — the street up to the next junction on each side (m)", "constraints()", "problems()", "card()", "draw(view)", "drawSelection(view) — the ramps along the street"] },
       { name: "CrossingType", file: "web/arail/objects/crossings.js", kind: "class", stereotype: "base class", role: "A type of railway crossing.", attributes: ["crossing: RailCrossing", "level — getter: at street level"], operations: ["closed(t)", "need(rails) — the street's height over the span: {min, max}", "span(g) — the stretch of the street it asks for", "constraints() — the rails, the street over the span, the clearance, the ramps beyond it and the room for them", "problems() — ramps that do not fit", "rows() — the clearance, the ramps", "draw(view, g)"] },
       { name: "OverTrack", file: "web/arail/objects/crossings.js", kind: "class", extends: "CrossingType", role: "The street on a bridge over the track (Straßenüberführung); the street draws its deck.", operations: ["need(rails) — at least the clearance over the rails and the deck"] },
@@ -183,7 +189,7 @@ export const STREETS = [
       id: "park", name: "A car parks at its aim",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Where to: a building for the purpose (work, shopping, a visit, home)", "TrafficSimulation._goals"],
+        ["a1", "action", "Where to: a building for the purpose (work, shopping in a shop or the shops on a ground floor, a visit, home)", "TrafficSimulation._goals"],
         ["a2", "action", "The facilities within 400 m of it that the driver may use, and their terms", "parkingTerms"],
         ["d1", "decision", "Any?"],
         ["a3", "action", "The best: the drive, the walk (× 1.5) and the fee (12 € an hour of time); a full one counts 10 min more", "planDrive"],
@@ -284,7 +290,7 @@ export const STREETS = [
   {
     id: "cycling", group: "transport", title: "Bikes and e-scooters",
     summary: "Riders on bikes and e-scooters on the streets, bike lanes and paths, on sidewalks where a sign allows it (or they break the rules); narrow lanes hold up the cars, narrow shared paths make people angry; bikes are locked at street lamps and bike stands.",
-    description: "Riders come in at the ends of the streets, ride to another end or to a building, where they lock the bike for a while. Where they ride follows ridingSurface: a bike lane or path if the street has one, else the road near the curb; the sidewalk only where a sign allows it, for children, or for rule-breakers. On streets where a car cannot pass them they are road users for the cars, which follow or overtake. Meeting people on foot on a shared path or a sidewalk, they slow down, and both may get angry (the street counts it).",
+    description: "Riders come in at the free ends of the streets (not at dead ends), ride to another end or to a building, where they lock the bike for a while. Where they ride follows ridingSurface: a bike lane or path if the street has one, else the road near the curb; the sidewalk only where a sign allows it, for children, or for rule-breakers. On streets where a car cannot pass them they are road users for the cars, which follow or overtake. Meeting people on foot on a shared path or a sidewalk, they slow down, and both may get angry (the street counts it).",
     files: ["web/arail/sims/cycling.js"],
     classes: [
       {
@@ -326,7 +332,7 @@ export const STREETS = [
     ],
     rules: [
       "Bike paths and shared paths with the signs 237, 240, 241 must be used (StVO § 2 Abs. 4); sidewalks only with 'Radverkehr frei' (bikes) or 'E-Scooter frei' (eKFV § 10).",
-      "Speeds: walking pace (7 km/h) on an allowed sidewalk, 11 km/h breaking the rules there, 15 km/h on a shared path, 5 km/h behind people on foot.",
+      "Speeds: walking pace (7 km/h) on an allowed sidewalk and in a pedestrian zone where bikes are allowed, 11 km/h breaking the rules on a sidewalk, 15 km/h on a shared path, 5 km/h behind people on foot.",
       "Cars follow a rider where they cannot pass at 1.5 m within their lane, and overtake after 2 s when the other lane is free for 60 m and no junction is near; not a rider who stands (in a queue, at a light), and not where they would still be on the other lane at the lights of a tram stop.",
       "Two bikes per street lamp; a rider locks the bike within 60 mm of the building and stays 20 to 240 clock minutes (children 30 to 120).",
     ],

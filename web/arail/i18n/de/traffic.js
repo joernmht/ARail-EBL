@@ -47,6 +47,7 @@ export const TEXTS = {
   "Rider": "Fahrer",
   "Riding": "Fährt",
   "on the shared path": "auf dem gemeinsamen Geh- und Radweg",
+  "in the pedestrian zone (allowed, at walking pace)": "in der Fußgängerzone (erlaubt, in Schrittgeschwindigkeit)",
   "on the bike lane or path": "auf dem Radfahrstreifen oder Radweg",
   "on the path": "auf dem Weg",
   "on the road": "auf der Fahrbahn",

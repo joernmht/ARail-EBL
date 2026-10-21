@@ -6,7 +6,7 @@ import test from "node:test";
 
 import {
   Camera, View, createWorld, registry, pointInPolygon, polygonArea, PALETTE, parseColor, parseRgba,
-  BuildingBase, PLATTENBAU_SERIES, defaultOccupancy, lightWindows, hash01, polygonNormal,
+  BuildingBase, PLATTENBAU_SERIES, defaultOccupancy, lightWindows, hash01, polygonNormal, hasShops, drawSign, drawStopSign,
 } from "../../web/arail/index.js";
 
 const TYPES = ["building", "plattenbau", "altbau-block", "house", "house-estate", "office", "school", "supermarket", "factory", "station-building"];
@@ -487,4 +487,74 @@ test("absurd sizes stay within the parameter ranges (a mistyped number must not 
   assert.deepEqual(out.floors, [30, 20, 2]);
   assert.ok(Math.abs(out.officeHeight - (20 * 3.6 + 0.9)) < 1e-6);
   assert.equal(out.down, false, "no faces turned inside out");
+});
+
+test("shops on the ground floor of houses and offices: shop windows, awnings, shoppers, and the town goes shopping there", () => {
+  const objects = [
+    { id: "p", type: "plattenbau", position: [0, 0], shops: "all" },
+    { id: "p0", type: "plattenbau", position: [0, 700] },
+    { id: "ps", type: "plattenbau", position: [0, 1400], shops: "some" },
+    { id: "a", type: "altbau-block", position: [1200, 0], shops: "all" },
+    { id: "a0", type: "altbau-block", position: [1200, 1000], shops: "none" },
+    { id: "as", type: "altbau-block", position: [1200, 2000] },
+    { id: "o", type: "office", position: [2400, 0], shops: "all" },
+    { id: "os", type: "office", position: [2400, 400], shops: "some" },
+    { id: "o0", type: "office", position: [2400, 800] },
+    { id: "b", type: "building", position: [3200, 0], width_m: 9, depth_m: 13, floors: 4, shops: "all" },
+    { id: "bs", type: "building", position: [3200, 400], use: "work", shops: "some" },
+    { id: "b0", type: "building", position: [3200, 800] },
+    { id: "m", type: "supermarket", position: [4300, 0] },
+    { id: "f", type: "factory", position: [4300, 800] },
+  ];
+  const world = createWorld({ objects });
+  const o = (id) => world.getObject(id), cap = (id) => o(id).capacity();
+  const shopWindows = (id) => o(id).geometry.windows.filter((w) => w.group === "shop").length;
+  // shop units: two beside each stairwell (every section, every other one), a shop in each house of the
+  // block, the office beside its hall; none where there are none
+  assert.deepEqual(["p", "ps", "p0", "a0", "o0", "b0", "m"].map((id) => o(id).shops()), [8, 4, 0, 0, 0, 0, 0]);
+  assert.equal(o("a").shops(), o("a").geometry.pieces);
+  assert.ok(o("as").shops() > 0 && o("as").shops() < o("as").geometry.pieces, "some, by default: the corners and some others");
+  assert.ok(o("o").shops() > o("os").shops() && o("os").shops() > 0);
+  assert.ok(o("b").shops() >= 1 && o("bs").shops() >= 1);
+  // shoppers on top of the homes or workplaces; the shops take room from them
+  for (const id of ["p", "ps", "a", "as", "o", "os", "b", "bs"]) {
+    assert.ok(cap(id).visitors > 0, `${id} has shoppers`);
+    assert.ok(shopWindows(id) > 0, `${id} has shop windows`);
+    assert.ok(hasShops(o(id)), id);
+  }
+  for (const id of ["p0", "a0", "o0", "b0", "f"]) {
+    assert.equal(cap(id).visitors, 0, `${id}: no shoppers`);
+    assert.equal(shopWindows(id), 0, `${id}: no shop windows`);
+    assert.equal(hasShops(o(id)), false, id);
+  }
+  assert.equal(hasShops(o("m")), true, "a supermarket is a shop");
+  assert.ok(cap("p").residents < cap("p0").residents && cap("p").residents > 0.8 * cap("p0").residents);
+  assert.ok(cap("o").jobs > 0 && cap("b").residents > 0 && cap("bs").jobs > 0 && cap("bs").residents === 0);
+  // awnings over the shop windows, on top (no face looks down); the card says so
+  for (const id of ["p", "a", "o", "b"]) {
+    const awnings = o(id).geometry.parts.filter((p) => p.after).flatMap((p) => p.faces).filter((f) => f.normal[2] > 0.2 && f.normal[2] < 0.95);
+    assert.ok(awnings.length > 0, `${id} has awnings`);
+    for (const part of o(id).geometry.parts) for (const f of part.faces) assert.ok(f.normal[2] > -0.5, `${id}: no face looks down`);
+  }
+  assert.equal(Object.fromEntries(o("p").card().rows).Shops, "8 on the ground floor");
+  // the town goes shopping there (not only in the supermarket)
+  const town = createWorld({ objects: [...objects, { id: "pl", type: "platform", from: [0, -400], to: [800, -400] }], simulations: [{ type: "passengers", base_rate: 0 }, { type: "town" }] }, { seed: 3 });
+  town.step(0.1);
+  const sim = town.simulations.find((s) => s.constructor.type === "town");
+  assert.deepEqual(sim.places.shop.map((x) => x.o.id).sort(), ["a", "as", "b", "bs", "m", "o", "os", "p", "ps"]);
+});
+
+test("a sign just in front of the camera, far to its side, is not drawn: it would cover the whole image", () => {
+  // the camera looks down at 45°; the stop sign stands 7 m to its side, a few centimetres in front of
+  // it: far outside the image, where the projection makes it huge
+  const camera = new Camera(1600, 900);
+  const arcs = [];
+  const { ctx } = fakeContext(1600, 900);
+  ctx.arc = (x, y, r) => arcs.push(r);
+  const view = new View({ ctx, camera, H: lookAt(camera, [0, 0, 1000], [0, 1000, 0]), scale: 87 });
+  drawStopSign(view, [7000, -927]);
+  drawSign(view, [7000, -935], "dead-end");
+  drawStopSign(view, [0, 400]); // and one in the image, as usual
+  view.render();
+  assert.ok(arcs.length > 0 && arcs.every((r) => r < 1600), JSON.stringify(arcs));
 });

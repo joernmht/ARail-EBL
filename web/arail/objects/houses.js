@@ -6,6 +6,8 @@
  * - `house` and `house-estate`: single-family houses and an estate of them (Einfamilienhaussiedlung),
  * - `office`, `school` (like the GDR "Typ Erfurt"), `supermarket` and `factory` (sawtooth roof)
  *   as places of work, learning and shopping for the town simulation.
+ * The Plattenbau, the Altbau block and the office building can have shops on the ground floor
+ * (`shops`: none, some, all along the street front).
  * Sizes are prototype metres; the front (street side) is the local −y side.
  * @module arail/objects/houses
  */
@@ -13,7 +15,7 @@ import { resolvePoints } from "../core/anchors.js";
 import { clamp, pointInPolygon, polygonCentroid } from "../core/math.js";
 import { PALETTE, grey } from "../core/colors.js";
 import {
-  BuildingBase, BuildingModel, Frame, TIER, TONES, axes, blockPiece, gableRoof, hipRoof, parapetRoof, sawtoothRoof,
+  BuildingBase, BuildingModel, Frame, TIER, TONES, axes, blockPiece, gableRoof, hipRoof, parapetRoof, sawtoothRoof, shopCapacity, shopFront, shopsOf, shopsParam,
 } from "./building-kit.js";
 
 const NAME = { key: "name", label: "Name", type: "text", default: "" };
@@ -49,7 +51,7 @@ export class Plattenbau extends BuildingBase {
   static type = "plattenbau";
   static label = "Plattenbau";
   static use = "residential";
-  static description = "GDR prefabricated slab block (WBS 70, QP 61, P2): panel joints, a stairwell per entrance, loggias on the garden side.";
+  static description = "GDR prefabricated slab block (WBS 70, QP 61, P2): panel joints, a stairwell per entrance, loggias on the garden side; shops on the ground floor if it has some.";
   static params = [
     NAME,
     ROTATION,
@@ -57,6 +59,7 @@ export class Plattenbau extends BuildingBase {
     { key: "sections", label: "Sections", type: "number", min: 1, max: 12, step: 1, default: 4, help: "Entrances (Aufgänge), about 12 m each" },
     { key: "floors", label: "Floors", type: "number", min: 2, max: 25, step: 1, help: "Leave empty for the series' number of floors" },
     { key: "balconies", label: "Loggias", type: "boolean", default: true },
+    shopsParam("none", { help: "On the entrance side, beside the stairwells: in every section, or in every other one." }),
   ];
 
   series() {
@@ -85,7 +88,10 @@ export class Plattenbau extends BuildingBase {
     const J = 0.1;
     const hJoint = (w, z, s0 = 0, s1 = w.length) => m.decal(w, s0, s1, z - J / 2, z + J / 2, jointTone, TIER.fine);
     const vJoint = (w, s, z0 = plinth, z1 = top) => m.decal(w, s - J / 2, s + J / 2, z0, z1, jointTone, TIER.fine);
-    const canopies = [], stacks = [], lifts = [];
+    const canopies = [], stacks = [], lifts = [], awnings = [];
+    // shops on the ground floor beside the stairwells: in every section, or in every other one
+    const shops = shopsOf(this.spec), shopIn = (i) => shops === "all" || (shops === "some" && i % 2 === 0);
+    let shopSections = 0;
     // entrance side: a stairwell per section with windows half a floor up, door and canopy
     for (let i = 0; i < n; i++) {
       const s0 = i * sec, sc = s0 + sec / 2, sw = 1.2;
@@ -95,9 +101,11 @@ export class Plattenbau extends BuildingBase {
         if (z + 1.2 <= H) m.window(front, sc - 0.6, sc + 0.6, z, z + 1.2);
         if (z - 0.25 < top - 0.3) hJoint(front, z - 0.25, sc - sw, sc + sw);
       }
+      if (shopIn(i)) shopSections++;
       for (const [a, b] of [[s0, sc - sw], [sc + sw, s0 + sec]]) {
+        if (shopIn(i)) awnings.push(...shopFront(m, front, { origin: [x0, y0], dir: [1, 0], out: [0, -1] }, a + 0.3, b - 0.3, { top: plinth + fh - 0.35, bay: 5 }).faces);
         for (const s of axes(b - a, 2.4, 0.3)) {
-          for (let f = 0; f < floors; f++) {
+          for (let f = shopIn(i) ? 1 : 0; f < floors; f++) {
             const z = plinth + f * fh + 0.95;
             m.window(front, a + s - 0.6, a + s + 0.6, z, z + 1.25);
           }
@@ -143,14 +151,18 @@ export class Plattenbau extends BuildingBase {
     m.part([...body.faces, roof]);
     if (stacks.length) m.part(stacks, { after: true, facing: back });
     m.part(canopies, { after: true, facing: front });
+    if (awnings.length) m.part(awnings, { after: true, facing: front });
     if (lifts.length) m.part(lifts, { after: true, facing: roof });
     m.shadow(m.rect(x0, y0, x1, y1), top + (S.lift ? 2.6 : 0));
+    // the shops take the ground floor of their sections
+    const shopArea = shopSections * sec * D, shop = shopCapacity(shopArea);
     return m.finish({
       footprint: m.rect(x0, y0, x1, y1),
       height: top + (S.lift ? 2.6 : 0),
-      capacity: { residents: Math.round((L * D * floors) / 30) },
+      capacity: { residents: Math.round((L * D * floors - shopArea) / 30), ...(shopArea ? shop : {}) },
       detail: { window: 1.2, fine: J },
       size: { length: L, depth: D, sections: n, floors },
+      shops: 2 * shopSections,
     });
   }
 }
@@ -214,6 +226,7 @@ export class AltbauBlock extends BuildingBase {
     { key: "form", label: "Form", type: "select", options: BLOCK_FORMS, default: "closed" },
     { key: "rear_wings", label: "Side wings in the courtyard", type: "boolean", default: false, help: "Seitenflügel and Hinterhäuser" },
     { key: "roof", label: "Roof", type: "select", options: [["mansard", "mansard"], ["pitched", "pitched"]], default: "mansard" },
+    shopsParam("some", { help: "On the street fronts: in the corner houses and some others, in every house, or in none." }),
     { key: "seed", label: "Random seed", type: "number", min: 1, max: 9999, step: 1, default: 1 },
   ];
 
@@ -263,7 +276,7 @@ export class AltbauBlock extends BuildingBase {
         for (const [a, b] of parcels(X0 + wd, X1 - wd, rng)) add(a, Y1 - wd, b, Y1, ["court", "joined", "street", "joined"], "back");
       }
     }
-    const rear = !!s.rear_wings;
+    const rear = !!s.rear_wings, shops = shopsOf(s, "some");
     for (const p of pieces) {
       p.fh = rng.uniform(3.3, 3.75);
       p.gf = rng.uniform(3.8, 4.4);
@@ -271,13 +284,15 @@ export class AltbauBlock extends BuildingBase {
       p.tone = rng.uniform(0.86, 0.97);
       p.roofTone = mansard ? rng.uniform(0.58, 0.68) : rng.uniform(0.6, 0.72);
       p.shop = rng.chance(p.kind === "corner" ? 0.85 : 0.5);
+      if (shops !== "some") p.shop = shops === "all";
       p.gate = p.kind !== "corner" && p.kind !== "side" && rng.chance(rear ? 0.6 : 0.4);
     }
 
-    let residents = 0, jobs = 0, height = 0;
+    let residents = 0, jobs = 0, visitors = 0, units = 0, height = 0;
     for (const p of pieces) {
       const r = blockPiece(m, { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, h: p.h, slope: p.sides.map((t) => t !== "joined"), inset, rise, wall: grey(p.tone), roof: grey(p.roofTone) });
       let entrance = null;
+      const awnings = [];
       for (let k = 0; k < 4; k++) {
         const t = p.sides[k];
         if (t === "joined") continue;
@@ -287,6 +302,10 @@ export class AltbauBlock extends BuildingBase {
         else {
           const f = streetFacade(m, w, p, floors, { shops: t === "street" && p.shop, gate: t === "street" && p.gate, door: t === "street" });
           ax = f.axes;
+          // an awning over each shop window
+          const o = corners(p)[k], u = SIDE_DIR[k], n = SIDE_OUT[k];
+          const at = (sa, out, z) => [o[0] + u[0] * sa + n[0] * out, o[1] + u[1] * sa + n[1] * out, z];
+          for (const sa of f.shops) awnings.push(m.face([at(sa - 1.15, 0, 3.4), at(sa - 1.15, 1.2, 2.95), at(sa + 1.15, 1.2, 2.95), at(sa + 1.15, 0, 3.4)], grey(0.76)));
           if (t === "street" && !entrance && f.doorAt != null) entrance = { k, s: f.doorAt };
         }
         // dormers in the mansard (or roof windows on the street side of a pitched roof)
@@ -302,6 +321,7 @@ export class AltbauBlock extends BuildingBase {
         }
       }
       m.part(r.faces);
+      if (awnings.length) m.part(awnings, { after: true });
       const chimneys = blockChimneys(m, p, r.top, mansard);
       if (chimneys.length) m.part(chimneys, { after: true });
       m.shadow(m.rect(p.x0, p.y0, p.x1, p.y1), r.top);
@@ -311,7 +331,12 @@ export class AltbauBlock extends BuildingBase {
       }
       const area = (p.x1 - p.x0) * (p.y1 - p.y0);
       residents += (area * (floors - (p.shop ? 1 : 0) + (mansard ? 0.6 : 0.3))) / 30;
-      if (p.shop) jobs += area / 40;
+      // a shop on the ground floor: its shoppers, and practices and workshops in the back
+      if (p.shop && p.sides.includes("street")) {
+        jobs += area / 40;
+        visitors += shopCapacity(area).visitors;
+        units++;
+      }
       height = Math.max(height, r.top);
     }
 
@@ -336,10 +361,11 @@ export class AltbauBlock extends BuildingBase {
     return m.finish({
       footprint: m.rect(X0, Y0, X1, Y1),
       height,
-      capacity: { residents: Math.round(residents), jobs: Math.round(jobs) },
+      capacity: { residents: Math.round(residents), jobs: Math.round(jobs), visitors: Math.round(visitors) },
       detail: { window: 1.25, fine: 0.2 },
       form,
       pieces: pieces.length,
+      shops: units,
     });
   }
 }
@@ -347,7 +373,8 @@ export class AltbauBlock extends BuildingBase {
 /**
  * Street facade of a parcel: darker ground floor, band and cornice, shop windows or a door,
  * a gateway (Tordurchfahrt) in some parcels, tall windows with lintels on the first floor.
- * @returns {{axes: number[], doorAt: number | null}} window axes and the door/gateway position
+ * @returns {{axes: number[], doorAt: number | null, shops: number[]}} window axes, the door/gateway
+ *   position and the axes of the shop windows
  */
 function streetFacade(m, w, p, floors, { shops, gate, door }) {
   const len = w.length, tone = p.tone;
@@ -363,10 +390,13 @@ function streetFacade(m, w, p, floors, { shops, gate, door }) {
     doorAt = ax[Math.floor((ax.length - 1) / 2)];
     m.decal(w, doorAt - 0.7, doorAt + 0.7, 0, 3.1, grey(TONES.door));
   }
+  const shopAxes = [];
   for (const s of ax) {
     if (doorAt != null && Math.abs(s - doorAt) < (gate ? 2.2 : 0.8)) continue;
-    if (shops) m.window(w, s - 1.15, s + 1.15, 0.45, 3.3, { group: "shop" });
-    else m.window(w, s - 0.6, s + 0.6, 1.3, 3.3);
+    if (shops) {
+      m.window(w, s - 1.15, s + 1.15, 0.45, 3.3, { group: "shop" });
+      shopAxes.push(s);
+    } else m.window(w, s - 0.6, s + 0.6, 1.3, 3.3);
   }
   for (let f = 1; f < floors; f++) {
     const z = p.gf + (f - 1) * p.fh + 0.85, zt = z + Math.min(2.25, p.fh - 1.2);
@@ -375,7 +405,7 @@ function streetFacade(m, w, p, floors, { shops, gate, door }) {
       if (f === 1) m.decal(w, s - 0.85, s + 0.85, zt + 0.12, zt + 0.32, grey(tone - 0.12), TIER.fine);
     }
   }
-  return { axes: ax, doorAt };
+  return { axes: ax, doorAt, shops: shopAxes };
 }
 
 /** Courtyard facade: plain, smaller windows, the gateway if the parcel has one. Returns the axes. */
@@ -716,13 +746,14 @@ export class Office extends BuildingBase {
   static type = "office";
   static label = "Office building";
   static use = "work";
-  static description = "Office building with ribbon windows and a flat roof.";
+  static description = "Office building with ribbon windows and a flat roof; shops on the ground floor if it has some.";
   static params = [
     NAME,
     ROTATION,
     { key: "width_m", label: "Width", type: "number", unit: "m", min: 10, max: 120, step: 1, default: 30 },
     { key: "depth_m", label: "Depth", type: "number", unit: "m", min: 8, max: 40, step: 1, default: 15 },
     { key: "floors", label: "Floors", type: "number", min: 1, max: 20, step: 1, default: 4 },
+    shopsParam("none"),
   ];
 
   computeGeometry() {
@@ -735,6 +766,19 @@ export class Office extends BuildingBase {
     const body = m.box(x0, y0, x1, y1, 0, top, { wall: m.wallTone([0.9, 0.97]) });
     const roof = parapetRoof(m, { x0, y0, x1, y1, z: top, parapet: 0.35 });
     const glass = grey(TONES.glass), hall = [w / 2 - 3.2, w / 2 + 3.2];
+    // shops on the ground floor of the front, beside the entrance hall: on both sides, or on its left
+    const shops = shopsOf(this.spec), awnings = [];
+    let bays = 0;
+    if (shops !== "none") {
+      const at = { origin: [x0, y0], dir: [1, 0], out: [0, -1] };
+      for (const [a, b] of shops === "all" ? [[0.4, hall[0] - 0.4], [hall[1] + 0.4, w - 0.4]] : [[0.4, hall[0] - 0.4]]) {
+        if (b - a < 3) continue;
+        const f = shopFront(m, body.walls[0], at, a, b, { top: 3.0, bay: 5 });
+        awnings.push(...f.faces);
+        bays += f.bays;
+      }
+    }
+    const shopArea = bays ? (shops === "all" ? w : hall[0]) * d : 0;
     body.walls.forEach((wall, side) => {
       const len = wall.length, n = Math.max(1, Math.round((len - 0.8) / 3)), bay = (len - 0.8) / n;
       for (let f = 0; f < floors; f++) {
@@ -744,6 +788,7 @@ export class Office extends BuildingBase {
         for (let i = 0; i < n; i++) {
           const a = 0.4 + i * bay, b = a + bay;
           if (entrance && b > hall[0] && a < hall[1]) continue;
+          if (entrance && bays && (shops === "all" || b <= hall[0])) continue; // the shop windows
           if (entrance) m.decal(wall, a + 0.1, b - 0.1, z0, z1, glass);
           m.window(wall, a + 0.1, b - 0.1, z0, z1, { colour: glass });
         }
@@ -751,12 +796,15 @@ export class Office extends BuildingBase {
       if (side === 0) m.decal(wall, hall[0], hall[1], 0, 3.2, glass);
     });
     m.part([...body.faces, roof]);
+    if (awnings.length) m.part(awnings, { after: true, facing: body.walls[0] });
     m.part(m.box(-3.5, y0 - 2.4, 3.5, y0, 3.35, 3.65, { wall: grey(0.88), top: grey(0.84), skip: [2] }).faces, { after: true, facing: body.walls[0] });
     const pw = Math.min(8, w * 0.3), pd = Math.min(5, d * 0.4);
     m.part(m.box(x1 - pw - 2, -pd / 2, x1 - 2, pd / 2, top, top + 2.4, { wall: grey(0.86), top: grey(0.78) }).faces, { after: true, facing: roof });
     m.shadow(m.rect(x0, y0, x1, y1), top);
     m.entrance(0, y0);
-    return m.finish({ footprint: m.rect(x0, y0, x1, y1), height: top, capacity: { jobs: Math.round((w * d * floors) / 25) }, detail: { window: 2 } });
+    const shop = shopCapacity(shopArea);
+    const capacity = { jobs: Math.round((w * d * floors - shopArea) / 25) + (bays ? shop.jobs : 0), visitors: bays ? shop.visitors : 0 };
+    return m.finish({ footprint: m.rect(x0, y0, x1, y1), height: top, capacity, detail: { window: 2 }, shops: bays ? Math.max(1, Math.round(shopArea / d / 10)) : 0 });
   }
 }
 

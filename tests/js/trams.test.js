@@ -408,7 +408,7 @@ test("traffic lights at an island in the street: people cross the car lane on re
   assert.ok(seen.red > 500 && seen.green > 4000, JSON.stringify(seen));
 });
 
-test("Bf Neustadt: two tram lines from loop to loop, curves of 25 m, every stop served, lights where people cross; none across the level crossing", () => {
+test("Bf Neustadt: two tram lines from loop to loop, line 2 through the pedestrian zone, curves of 25 m, every stop served, lights where people cross; none across the level crossing", () => {
   const json = readJSON("web/layouts/ebl-neustadt.json");
   for (const l of json.layers || []) l.enabled = false;
   json.simulations = json.simulations.filter((s) => s.type === "passengers");
@@ -430,7 +430,12 @@ test("Bf Neustadt: two tram lines from loop to loop, curves of 25 m, every stop 
   assert.ok(loops.every((o) => o.roadInfo().tramTracks === "single-oneway"));
   const xs1 = lines[0].circuit.points.map((p) => p[0]), ys2 = lines[1].circuit.points.map((p) => p[1]);
   assert.ok(Math.min(...xs1) < -3300 && Math.max(...xs1) > 4600, "line 1 from loop to loop");
-  assert.ok(Math.min(...ys2) < -1200, "line 2 round the Markt's loop");
+  assert.ok(Math.min(...ys2) < -1900, "line 2 round the Markt's loop, down to the Wall");
+  // line 2 runs through the pedestrian zone Marktstraße: two tracks through the curve from
+  // Bahnhofstraße, one past the Markt; no car drives there
+  const zone = ["road-marktstrasse", "road-marktstrasse-sued"].map((id) => w.getObject(id).roadInfo());
+  assert.deepEqual(zone.map((z) => [z.kind, z.car, z.tram, z.tramTracks]), [["pedestrian", false, "street", "double"], ["pedestrian", false, "street", "single"]]);
+  assert.ok(lines[1].circuit.points.some((p) => Math.abs(p[0] - 2550) < 1 && p[1] < -700 && p[1] > -1100), "line 2 along Marktstraße");
   // the rails run round: two rails a line, no crossovers
   for (const l of lines) assert.equal(tramRails(l, 1435 / 87, 230).length, 2);
   // Brückenstraße crosses the main line at street level (half barriers): no tram tracks over it
@@ -439,8 +444,8 @@ test("Bf Neustadt: two tram lines from loop to loop, curves of 25 m, every stop 
   assert.deepEqual(crossing.problems(), []);
   assert.equal(w.getObject(crossing.geometry.road).roadInfo().tram, "none");
   for (const o of w.objects.filter((x) => x.type === "tram-stop")) assert.deepEqual(o.problems(), [], o.id);
-  // no platform reaches into another street (the Markt's island, on the diagonal track by
-  // Bahnhofstraße, has one side only: the one away from Bahnhofstraße)
+  // no platform reaches into another street (the Markt's stop, on the single track of the
+  // pedestrian zone, has one side only)
   const streets = w.objects.filter((x) => x.type === "road" && x.roadInfo().car);
   for (const o of w.objects.filter((x) => x.type === "tram-stop")) {
     const g = o.geometry, h = g.W / 2;
@@ -455,8 +460,8 @@ test("Bf Neustadt: two tram lines from loop to loop, curves of 25 m, every stop 
   assert.deepEqual(w.getObject("tram-stop-markt").geometry.sides.map((sd) => sd.side), ["right"]);
   // everything at the track level, the loops on town modules of their own
   assert.equal(w.elevation.sync().flat, true);
-  // all kinds of stops are there
-  assert.deepEqual([...new Set(w.objects.filter((x) => x.type === "tram-stop").map((x) => x.kind()))].sort(), ["cape", "island", "raised", "road"]);
+  // the kinds of stops: on the road, raised roads, curb extensions (Brückenstraße, the Markt)
+  assert.deepEqual([...new Set(w.objects.filter((x) => x.type === "tram-stop").map((x) => x.kind()))].sort(), ["cape", "raised", "road"]);
   // lights at the stops where people cross the road to the tram: in Bahnhofstraße the car lane (3.5 m),
   // in Ringstraße the 1.1 m between the curb and the tram where bikes ride (the cars are on the tracks,
   // behind the tram); none at the curb extension and at the Markt (no cars)

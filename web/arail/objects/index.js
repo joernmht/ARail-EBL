@@ -25,9 +25,9 @@ import { Tabletop } from "./tabletop.js";
 
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, BusStop, BusLine, StationBuilding, Underpass };
 export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./tabletop.js";
-export { ROAD_KINDS, roadKind, offsetPolyline, slicePolyline, drawStreetLamp, stripColour, GAUGE_M } from "./road.js";
+export { ROAD_KINDS, DEAD_ENDS, TURNING_AREAS, TURNING_M, deadEnds, roadKind, offsetPolyline, slicePolyline, drawStreetLamp, stripColour, GAUGE_M } from "./road.js";
 export {
-  NORMS, STREET_PROFILES, PATH_PROFILES, TRAM_LAYOUTS, TRAM_TRACKS, PARKING_LAYOUTS, PASS_M, ROAD_RIDE_M, crossSection, profileOf, bikeDefault, bikeNorm,
+  NORMS, STREET_PROFILES, PATH_PROFILES, ZONE_PROFILE, TRAM_LAYOUTS, TRAM_TRACKS, PARKING_LAYOUTS, PASS_M, ROAD_RIDE_M, crossSection, profileOf, bikeDefault, bikeNorm,
   sharedConflict, widthChoices,
 } from "./street-profile.js";
 export { drawStopSign, drawSign, drawTrafficLight, STOP_SIGN, SIGN_COLOURS, ROAD_SIGNS } from "./signs.js";
@@ -39,7 +39,8 @@ export {
 } from "./crossings.js";
 export { Plattenbau, AltbauBlock, House, HouseEstate, Office, School, Supermarket, Factory, PLATTENBAU_SERIES, buildHouse } from "./houses.js";
 export {
-  BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
+  BuildingBase, BuildingModel, Frame, TONES, TIER, USE_OPTIONS, SHOP_OPTIONS, OCCUPANCY, LIGHTS_ON, defaultOccupancy, lightsOn, capacityFor,
+  shopsParam, shopsOf, shopCapacity, shopFront, hasShops,
   gableRoof, hipRoof, parapetRoof, blockPiece, sawtoothRoof, axes, drawModel, lightWindows, facesCamera, hashString, hash01, polygonNormal,
 } from "./building-kit.js";
 export { drawTree } from "./trees.js";

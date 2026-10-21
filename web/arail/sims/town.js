@@ -42,6 +42,7 @@ import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
 import { GROUPS, canDrive, carLegTime, drawProfile, mobilityOf, profileGroups, profileWords, walkingSpeed } from "../core/mobility.js";
 import { drawPerson, personLooks, profileRows } from "./passengers.js";
+import { hasShops } from "../objects/building-kit.js";
 
 /** Colours of people by the purpose of their trip (corporate design colours). */
 export const PURPOSE_COLOURS = {
@@ -305,7 +306,8 @@ export class TownSimulation extends Simulation {
       const use = typeof o.use === "function" ? o.use() : o.constructor.use;
       if (cap.jobs > 0) out.work.push({ o, cap });
       if (use === "school" && cap.pupils > 0) out.school.push({ o, cap });
-      if (use === "shop") out.shop.push({ o, cap });
+      // shops of their own, and the shops on the ground floor of houses and offices
+      if (hasShops(o) && cap.visitors > 0) out.shop.push({ o, cap });
     }
     return out;
   }

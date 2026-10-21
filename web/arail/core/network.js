@@ -6,9 +6,12 @@
  * marker map or the scale change:
  * - **nodes** at the vertices of streets, where street ends meet, where a street ends on another
  *   one (T junction: that street is split) and where streets cross (X junction: both are split);
- * - **edges** along the streets (`kind` "road", "path" for footpaths, "tram" for tram tracks of
- *   their own); who may use them (`car`, `bus`, `tram`, `bike`, `walk`) and where across the
- *   street each goes (`laneOffset`, `tramOffset`, `bikeOffset`, `walkOffset`);
+ * - **edges** along the streets (`kind` "road", "path" for footpaths and pedestrian zones, "tram"
+ *   for tram tracks of their own); who may use them (`car`, `bus`, `tram`, `bike`, `walk`) and where
+ *   across the street each goes (`laneOffset`, `tramOffset`, `bikeOffset`, `walkOffset`);
+ * - **street ends**: an end that meets no other street leads out of the layout (cars and bikes come
+ *   and go there, `boundaryNodes()`), unless the street is a dead end there (`deadEnd` of the node:
+ *   vehicles turn round in it);
  * - **places**: every building entrance and every access point of a stop area is connected to the
  *   nearest street or footpath (within 80 m) by a short footpath (`kind` "connector") that crosses
  *   no track; keys `"building:<objectId>:<i>"` and `"area:<areaId>:<i>"`;
@@ -64,7 +67,7 @@ import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylineProject,
  * @property {number} laneOffset centre of the right lane from the centre line (mm), 0 for single-lane roads
  * @property {number} tramOffset centre of the right track (mm), 0 for one track
  * @property {number} bikeOffset centre of the right bike lane or path, or where bikes ride on the road (mm)
- * @property {string} bikeWay what bikes get: "road", "advisory", "lane", "path", "shared", "none"
+ * @property {string} bikeWay what bikes get: "road", "advisory", "lane", "path", "shared", "zone" (a pedestrian zone, at walking pace), "none"
  * @property {Array<{s: number, width: number, obj: object}>} zebras zebra crossings (s from a, mm)
  * @property {Array<{s: number, crossing: object | null, level: boolean}>} rails where the edge crosses a track (s from a, mm)
  */
@@ -280,7 +283,7 @@ export class RoadNetwork {
     this.scale = world.scale;
     /**
      * @type {Array<{id: number, pos: number[], edges: number[], kind: string, key?: string, degree: number, carDegree: number,
-     *   tramDegree: number, vehDegree: number, rules?: Map<number, object>, turns?: Map<number, Set<string>>, signal?: object}>}
+     *   tramDegree: number, vehDegree: number, deadEnd?: boolean, rules?: Map<number, object>, turns?: Map<number, Set<string>>, signal?: object}>}
      */
     this.nodes = [];
     /** @type {Edge[]} */
@@ -479,7 +482,7 @@ export class RoadNetwork {
       const tram = !!info.tram && info.tram !== "none";
       const attrs = {
         road: r.id, kind: info.car ? "road" : info.kind === "tram" ? "tram" : "path", car: !!info.car, bus: !!info.car, tram,
-        bike: !!info.car || (info.kind === "path" && !!info.bike && info.bike !== "none"), walk: info.walk !== false, oneway: false,
+        bike: !!info.car || (info.kind !== "tram" && !!info.bike && info.bike !== "none"), walk: info.walk !== false, oneway: false,
         carDir: 0, tramDir: tram && info.tramTracks === "single-oneway" ? 1 : 0, singleTrack: tram && info.tramTracks === "single",
         speed: info.speed || 1.3, width: info.width, walkOffset: info.walkOffset || 0, laneOffset: info.laneOffset || 0,
         tramOffset: tram ? info.tramOffset || 0 : 0, tramWay: tram ? info.tram : "none", bikeOffset: info.bikeOffset || 0, bikeWidth: info.bikeWidth || 0,
@@ -503,6 +506,10 @@ export class RoadNetwork {
         last = { n, s: sp.s };
       }
       this.roadEdges.set(r.id, list);
+      // a dead end: nobody comes from beyond the layout there
+      (info.deadEnds || []).forEach((dead, k) => {
+        if (dead) this.nodes[node(r.ends[k])].deadEnd = true;
+      });
     }
     // connectors from the places to their street
     for (const pl of places) {
@@ -862,7 +869,9 @@ export class RoadNetwork {
   }
 
   _usable(e, mode) {
-    return mode === "walk" ? e.walk : mode === "bus" ? e.bus : mode === "tram" ? !!e.tram : mode === "bike" || mode === "scooter" ? !!e.bike : e.car;
+    // "Radverkehr frei" in a pedestrian zone is for bikes; e-scooters need "E-Scooter frei" (eKFV § 10)
+    if (mode === "scooter") return !!e.bike && e.bikeWay !== "zone";
+    return mode === "walk" ? e.walk : mode === "bus" ? e.bus : mode === "tram" ? !!e.tram : mode === "bike" ? !!e.bike : e.car;
   }
 
   /** May a vehicle of a mode go along an edge forward (a to b) or backward? One-way streets, one-way tracks, bus lanes. */
@@ -1009,9 +1018,9 @@ export class RoadNetwork {
     return walkOf(out, flags);
   }
 
-  /** Dead ends of the streets: where cars enter and leave the layout. */
+  /** Free ends of the streets: where cars enter and leave the layout (not the dead ends, `deadEnd`). */
   boundaryNodes() {
-    if (!this._boundary) this._boundary = this.nodes.filter((n) => n.carDegree === 1);
+    if (!this._boundary) this._boundary = this.nodes.filter((n) => n.carDegree === 1 && !n.deadEnd);
     return this._boundary;
   }
 
