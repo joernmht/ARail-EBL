@@ -654,6 +654,12 @@ class Live {
     $("hud").hidden = !on;
   }
 
+  /** H: the numbers shown or hidden, kept in the address like the other settings. */
+  toggleHud() {
+    this.showHud($("hud").hidden);
+    writeSettings(this.settings);
+  }
+
   /** The numbers in the corner. */
   updateHud() {
     if ($("hud").hidden) return;
@@ -785,7 +791,7 @@ class Live {
       const f = this.fit, step = e.shiftKey ? 10 : 2;
       const keys = {
         s: () => this.toggleSettings(),
-        h: () => this.showHud($("hud").hidden),
+        h: () => this.toggleHud(),
         f: () => this.toggleFullscreen(),
         c: () => this.setSetting("cache", !this.settings.cache),
         b: () => this.setSetting("bg", this.settings.bg === "camera" ? "black" : "camera"),

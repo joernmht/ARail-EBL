@@ -71,6 +71,7 @@ test("settings and keys: the address keeps them, the fit to the glasses moves th
   await expect(page.locator("#view")).toHaveAttribute("style", /translate\(0px, 0px\).*scale\(1\)/);
   await page.keyboard.press("h");
   await expect(page.locator("#hud")).toBeHidden();
+  await expect(page).toHaveURL(/hud=0/);
 });
 
 test("a video: its markers found in the worker, the town fitted to them", async ({ page }) => {
