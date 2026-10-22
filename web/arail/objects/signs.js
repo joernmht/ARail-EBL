@@ -4,8 +4,8 @@
  * railway crossings put up (Stop 206, give way 205, priority road 306, one-way street 220, the
  * mandatory directions 209–214, no stopping 283 and 286, parking 314, bike and footpath signs 237,
  * 239, 240, 241 with "Radverkehr frei" or "E-Scooter frei", pedestrian crossing 350, the St Andrew's
- * cross 201); the streets put up dead end 357 and pedestrian zone 242.1. Real-world signs keep their colours (`SIGN_COLOURS`, after RAL); they are only half as
- * dark at night (retroreflective).
+ * cross 201); the streets put up dead end 357 and pedestrian zone 242.1. Real-world signs keep
+ * their colours (`SIGN_COLOURS`, after RAL); they are only half as dark at night (retroreflective).
  * @module arail/objects/signs
  */
 import { FONT, grey, OVERLAY } from "../core/colors.js";

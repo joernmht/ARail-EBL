@@ -80,7 +80,7 @@ export class Building extends BuildingBase {
     m.shadow(m.rect(-w / 2, -d / 2, w / 2, d / 2), height);
     m.entrance(0, -d / 2);
     // the shops take a share of the ground floor (as deep as the building), the rest is the building's use
-    const shopArea = (shopTo / w) * w * d, capacity = capacityFor(this.use(), w * d * floors - shopArea);
+    const shopArea = shopTo * d, capacity = capacityFor(this.use(), w * d * floors - shopArea);
     if (shopArea > 0) {
       const c = shopCapacity(shopArea);
       capacity.jobs += c.jobs;
