@@ -40,9 +40,13 @@
       <option value="demo">Demo without a camera</option>
     </select>
   </label>
-  <label id="deviceRow" hidden>Camera
-    <select id="device"></select>
-  </label>
+  <div class="live-device" id="deviceRow" hidden>
+    <label for="device">Camera</label>
+    <div class="live-device-row">
+      <select id="device"></select>
+      <button class="btn small" id="deviceReload" type="button" title="Look for cameras again (the glasses plugged in or woken after the page started) and start the one chosen">Reload</button>
+    </div>
+  </div>
   <label>Layout
     <select id="layout">
       <option value="../layouts/ebl-neustadt.json">Bf Neustadt</option>

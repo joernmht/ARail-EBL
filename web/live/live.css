@@ -44,6 +44,10 @@ body.live {
 .live-settings label { display: grid; gap: 3px; }
 .live-settings label.check { display: flex; gap: 8px; align-items: center; }
 .live-settings select { padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); }
+.live-device { display: grid; gap: 3px; }
+.live-device[hidden] { display: none; }
+.live-device-row { display: flex; gap: 6px; }
+.live-device-row select { flex: 1; min-width: 0; }
 .live-settings fieldset { margin: 0; padding: 8px 10px 10px; display: grid; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius); }
 .live-settings legend { padding: 0 4px; font-weight: 600; }
 .live-settings output { font-variant-numeric: tabular-nums; }

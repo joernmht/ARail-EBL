@@ -322,7 +322,7 @@ class Live {
     this.layoutStage();
     this.applyBackground();
     $("source").value = source.kind;
-    $("deviceRow").hidden = source.kind !== "camera" || $("device").options.length < 2;
+    $("deviceRow").hidden = source.kind !== "camera";
     if (source.kind !== "demo") this.message("Looking for markers…");
   }
 
@@ -354,7 +354,10 @@ class Live {
     this.frameId = (this.frameId || 0) + 1;
   }
 
-  /** The cameras of the device (after the permission: with their names), to choose the glasses' own. */
+  /**
+   * The cameras of the device (after the permission: with their names), to choose the glasses' own; the
+   * one in use is selected. Says so when the camera chosen could not be used and another one runs.
+   */
   async listDevices(stream) {
     const sel = $("device");
     const devices = (await navigator.mediaDevices.enumerateDevices().catch(() => [])).filter((d) => d.kind === "videoinput");
@@ -366,7 +369,20 @@ class Live {
       o.selected = d.deviceId === current;
       return o;
     }));
-    $("deviceRow").hidden = devices.length < 2;
+    const chosen = store.get(DEVICE_KEY, null);
+    if (chosen && current && chosen !== current) {
+      // after the image's size is known: that shows "Looking for markers…", which this note replaces
+      const v = this.video;
+      if (v.srcObject === stream && v.readyState < 1) await new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true }));
+      if (v.srcObject !== stream) return;
+      this.message("The camera chosen is not available (unplugged, asleep or in use): another one runs. Settings → Camera → Reload looks again.", 8000);
+    }
+  }
+
+  /** Reload: look for cameras again and start the one chosen if it is there (else the device's back camera). */
+  reloadCameras() {
+    writeSettings(Object.assign(this.settings, { source: "camera" }));
+    return this.setSource("camera");
   }
 
   /* -------------------------------------------------------------- marker detection */
@@ -727,6 +743,7 @@ class Live {
       store.set(DEVICE_KEY, e.target.value);
       this.setSource("camera");
     });
+    $("deviceReload").addEventListener("click", () => this.reloadCameras());
     $("layout").value = s.layout;
     if ($("layout").value !== s.layout) $("layout").append(Object.assign(document.createElement("option"), { value: s.layout, textContent: s.layout, selected: true }));
     $("layout").addEventListener("change", async (e) => {
