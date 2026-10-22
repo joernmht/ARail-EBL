@@ -79,8 +79,14 @@ test("a dead end inside the layout is reported, one at its edge leads out of it"
   const [p, ...rest] = accessProblems(world);
   assert.equal(rest.length, 0);
   assert.equal(p.key, "dead:main:1");
-  assert.match(p.text, /dead end inside the layout/);
+  assert.match(p.text, /ends inside the layout/);
   assert.deepEqual(p.at, [500, 0]);
+  // the fix: a dead end there, where cars turn instead of appearing
+  assert.equal(p.fix.kind, "dead-end");
+  applyFix(world, p.fix);
+  assert.equal(world.getObject("main").spec.dead_end, "end");
+  assert.deepEqual(accessProblems(world), []);
+  assert.deepEqual(world.network().boundaryNodes().map((n) => n.pos), [[-3000, 0]]);
 });
 
 test("the edge of the layout is the edge of its table modules, not of the box around them", () => {
@@ -157,4 +163,17 @@ test("the example layouts: every error has a fix, and the fixes leave no error",
     assert.deepEqual(left.filter((p) => p.level === "error").map((p) => p.key), [], name);
     assert.ok(left.every((p) => !p.fix), name);
   }
+});
+
+test("a street that runs on past the end of another one, which ends on it, needs no joining", () => {
+  // Side Street ends on Main Street; Main Street runs on 10 m past it to the edge of the layout
+  const world = createWorld({
+    format: "arail-layout/1", scale: 87,
+    objects: [
+      { id: "table", type: "tabletop", position: [0, 0], width_mm: 6000, depth_mm: 4000 },
+      { id: "main", type: "road", name: "Main Street", points: [[0, 2000], [0, -2000]] },
+      { id: "side", type: "road", name: "Side Street", points: [[-3000, -1885], [0, -1885]] },
+    ],
+  });
+  assert.deepEqual(keys(world), []);
 });

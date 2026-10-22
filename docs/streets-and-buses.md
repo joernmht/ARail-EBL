@@ -9,7 +9,8 @@ vehicles stop, open their doors, let passengers get off and on, and go on. **Roa
 with drivers and passengers that come in where streets leave the layout and park near where they go;
 **bikes and e-scooters** ride on the streets, bike lanes and paths. **Traffic signs**, **traffic
 lights**, **zebra crossings** and **railway crossings** are objects of their own, and every vehicle
-obeys them.
+obeys them. A **pedestrian zone** is a street for people on foot, paved from house to house, that
+trams may run through; a street can be a **dead end** with a turning circle or hammer.
 
 ## Building it in the app
 
@@ -21,10 +22,12 @@ table modules (**Build → Table**): a tap beside them places nothing (see
    another street (about 12 px) snaps onto it, and a tap on another street puts the point on its
    centre line, so streets connect. Choose the kind in the inspector: *street* (50 km/h),
    *residential street* (30 km/h), *main road* (wider), *footpath* (people only, or shared with
-   bikes, or a bike path) or *tram track of its own* (no street, see [Trams](#trams)). The
-   inspector shows only the settings that fit: the **cross-section** and the widths (see
-   [Cross-sections](#cross-sections)), the lanes each way, tram tracks and street parking. The
-   widths offer the standard values of the guidelines to tap; any other can be typed in.
+   bikes, or a bike path), *pedestrian zone* (see [Pedestrian zones](#pedestrian-zones)) or *tram
+   track of its own* (no street, see [Trams](#trams)). The inspector shows only the settings that
+   fit: the **cross-section** and the widths (see [Cross-sections](#cross-sections)), the lanes
+   each way, tram tracks, street parking and whether it is a **dead end** (see
+   [Dead ends](#dead-ends)). The widths offer the standard values of the guidelines to tap; any
+   other can be typed in.
 2. **Bus stop**: tap on or next to a street. The stop goes to the nearest point of the street, on
    the **right side** seen in the direction the street was drawn. A line that runs back and forth
    needs stops on **both sides** (*Side: both sides*): buses on the right side drive in the
@@ -123,12 +126,41 @@ tram track of its own (`kind: "tram"`) has only its track bed.
 `parking_sides` (`both`, `right`, `left`), with a tariff (`parking_tariff`, `parking_price_eur`;
 see [Parking](#parking)). A yearly tariff makes it residents' parking.
 
+## Pedestrian zones
+
+A **pedestrian zone** (Fußgängerzone, Zeichen 242.1; `kind: "pedestrian"`) is one strip paved from
+house to house, `width_m` wide (12 m by default; 8, 10, 15 and 20 m to tap). No car and no bus
+drives there. People stroll along the shop windows, 2.50 m from the house fronts on each side, and
+cross wherever they like. Bikes ride through only where *Bikes allowed* (`bikes`, Radverkehr frei)
+is set, and then at walking pace (7 km/h); e-scooters go round it ("Radverkehr frei" is not
+"E-Scooter frei", eKFV § 10). Trams may run through it on tracks in the paving (`tram: "street"`,
+one or two tracks), at 20 km/h unless `speed_kmh` says otherwise; with trams the zone needs the
+tracks, a tram and a sidewalk's width on each side to walk beside them (11.05 m for two tracks,
+7.65 m for one), else it says so. A tram stop there is best a curb extension (no cars wait beside
+it, and no lights are needed). The zone is drawn in light paving with darker bands across it every
+8 m and a gutter down the middle (where no tram runs), lamps on both sides a metre from the houses,
+and the sign 242.1 with its "ZONE" plate where it begins at another street.
+
+## Dead ends
+
+A street's end that meets no other street leads **out of the layout**: cars and bikes come and go
+there, as if the street went on beyond the edge. A **dead end** (Sackgasse, `dead_end`) ends in the
+layout instead, at its last point (`end`), its first (`start`) or both: nobody comes in there, and
+vehicles turn round in it (buses and trams of a line that ends there too; see
+[How the buses run](#how-the-buses-run)). It has a **turning area** (`turning`): a turning circle
+(Wendekreis, the default) or a turning hammer (Wendehammer) `turning_m` across, curb to curb: 22 m
+by default, room for a three-axle refuse truck (a turning circle of about 20.5 m and its overhang);
+about 25 m for a bus, 12 m for cars only. The turning area is drawn where no other street for cars
+meets that end (a footpath may go on from it), with its curb and sidewalk; the sign 357 stands
+where the dead end begins. The builder's Problems tab offers *Make it a dead end* for a street
+that ends inside the layout.
+
 ## In the builder
 
 The [builder](world-builder.md) draws streets on a plan of the layout. Its street tools (street,
-residential street, main road, footpath or bike path, tram track) come with the settings of **the
-new street**: the cross-section, the widths with the standard values to click, the lanes, tram tracks
-and parking. They are kept for each kind on the device; *Standard street* goes back to the defaults.
+residential street, main road, footpath or bike path, pedestrian zone, tram track) come with the
+settings of **the new street**: the cross-section, the widths with the standard values to click, the
+lanes, bikes in a pedestrian zone, tram tracks and parking. They are kept for each kind on the device; *Standard street* goes back to the defaults.
 The Element tab shows the cross-section as a figure, its strips with their widths in words, and what
 is below the guidelines; so does a selected street.
 
@@ -137,7 +169,8 @@ street, signs beside it, traffic lights on a junction, zebra and railway crossin
 checks that everything people and vehicles come to has a street to it: bus and tram stops and
 platforms, the bus terminal's lane, the container terminal's truck lanes, the entrances of
 buildings, the ways in of parking lots and garages. It also flags streets on their own, street ends
-a few metres before another street, dead ends inside the layout, tram stops away from the tracks,
+a few metres before another street (not where the other street ends on this one, which runs on to
+the edge), street ends inside the layout that are no dead ends, tram stops away from the tracks,
 streets that cross a track without a railway crossing, and trams that would cross a railway at
 street level, each with a fix where one is plain (`accessProblems(world)` and `applyFix(world, fix)`
 in `web/arail/core/access.js`).
@@ -146,7 +179,7 @@ in `web/arail/core/access.js`).
 
 - The line's route goes over the road network through all stops, on the side of the street in
   the direction of travel. A line *back and forth* serves the stops in order and then in reverse;
-  at the ends it turns (a turning loop at a dead end, or round a block). A *loop* runs round.
+  at the ends it turns (in the turning circle of a dead end, or round a block). A *loop* runs round.
   A stop on one side only is served in that direction; the inspector says so.
 - At the first stop of each direction (the terminus) buses lay over with the doors open until
   their departure. A bus departs every `headway_s` simulated seconds × the time-of-day demand
@@ -340,7 +373,7 @@ Add the simulation to the layout (Settings shows nothing to set; edit the layout
 "simulations": [{ "type": "passengers" }, { "type": "traffic", "cars_per_km": 20 }]
 ```
 
-Cars enter where streets end (dead ends at the edge of the layout) and leave again there. Their
+Cars enter where streets end at the edge of the layout (their free ends, not the [dead ends](#dead-ends)) and leave again there. Their
 number is `cars_per_km` per kilometre of street at normal daytime traffic, more in the rush hours
 and few at night (`clock.demand("car")`). Every car has a **driver** and, by the purpose of the
 trip, **passengers** (MiD 2017: about 1.1 people per car to work, 1.5 for shopping and leisure), and
@@ -362,7 +395,7 @@ folded and the child in its seat 60 s, a wheelchair user into the seat 120 s.
 
 Cars keep to the right lane and the speed limit, keep their distance to the vehicle ahead (cars,
 buses, trams and the bikes they cannot pass), obey signs, lights, zebra crossings and level
-crossings, and give way at junctions as above. On streets without dead ends (a ring) cars appear on
+crossings, and give way at junctions as above. On streets without free ends (a ring) cars appear on
 the streets and drive from place to place. When the streets change (a street drawn or moved, a bus
 stop placed, the scale changed) the cars stay where they are on the new streets where they can;
 cars that would end up on top of others leave. A car's card shows its driver and passengers, the
@@ -404,8 +437,8 @@ Add the simulation to the layout:
 "simulations": [{ "type": "cycling", "riders_per_km": 8 }]
 ```
 
-Riders on bikes (14 to 22 km/h) and e-scooters (15 to 20 km/h, eKFV) come in at the ends of the
-streets and ride to another end, or to a building, where they lock the bike at a street lamp or bike
+Riders on bikes (14 to 22 km/h) and e-scooters (15 to 20 km/h, eKFV) come in at the free ends of
+the streets and ride to another end, or to a building, where they lock the bike at a street lamp or bike
 stand nearby for 20 to 240 minutes and ride on. A bike is drawn as a bike: two wheels, the frame,
 saddle and handlebar, its rider pedalling (children on smaller bikes), with its lamp lit at night;
 an e-scooter with its deck and stem, its rider standing on it. Where they ride:
@@ -413,7 +446,8 @@ an e-scooter with its deck and stem, its rider standing on it. Where they ride:
 - on the bike lane, advisory lane, bike path or shared path where the street has one (it must be
   used, StVO § 2 Abs. 4), else on the road near the curb;
 - on the sidewalk only where a sign allows it (*Radverkehr frei* for bikes, *E-Scooter frei* for
-  e-scooters, eKFV § 10), at walking pace; children under 10 may (under 8 must) ride on the
+  e-scooters, eKFV § 10), at walking pace; through a pedestrian zone only bikes, where they are
+  allowed, at walking pace; children under 10 may (under 8 must) ride on the
   sidewalk (StVO § 2 Abs. 5); rule-breakers (`rule_breakers`) ride on sidewalks where it is not
   allowed and now and then through a red light.
 
@@ -424,19 +458,33 @@ conflicts of the last hour and the bikes at its lamps.
 
 ## The example: Bf Neustadt
 
-The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. Two tram lines
-start at *Lindenstraße* and run along Ringstraße and Bahnhofstraße: line 1 to *Neustadt Bf* and the
-*Busbahnhof*, line 2 on a track of its own into the *Markt* (an island stop on the way into the
-loop, where the trams stop before they go round it). Both turn in loops at both ends, each on a town
-module of its own beyond a short single track: west of Lindenstraße, at the end of Bahnhofstraße
-past the Busbahnhof, and behind the Markt; their tracks bend in curves of 25 m and more. Behind them
-**Brückenstraße** crosses the main line at a level crossing with half barriers to Am Plattenring: no
-tram goes over it (BOStrab § 15), and everything lies at the track level. Both lines share the car
-lanes of Ringstraße with traffic lights at Brückenstraße and a zebra crossing at Am Park, and have
-their own lanes in the middle of Bahnhofstraße, where people cross the car lane to the trams at the
-lights of the stops. The stops are of all four kinds. Residents park on a lot with a yearly permit,
-travellers on the P+R by the day; a Stop sign and a no-stopping zone stand at the streets; bikes and
-e-scooters ride with the cars.
+The layout **EBL Bf Neustadt** (`web/layouts/ebl-neustadt.json`) shows most of it. In front of the
+table lies the town: Bahnhofstraße with the station, the bus station and the P+R; the **Altstadt**
+with its pedestrian zones (Marktstraße, Lange Straße and the Markt itself), the Rathaus, the church
+St. Marien and houses with shops on the ground floor; Gründerzeit blocks, the Stadtpark and the Wall
+round it; a garden town of single-family houses in the east. Behind the curve lies the high-rise
+estate **Am Plattenring**, with the Passage, a pedestrian zone between slabs of 11 floors with shops.
+
+Two tram lines start at *Lindenstraße* and run along Ringstraße and Bahnhofstraße: line 1 to
+*Neustadt Bf* and the *Busbahnhof*, line 2 through the pedestrian zone Marktstraße to the *Markt*:
+two tracks through the curve from Bahnhofstraße, one past the Markt (Bahnhofstraße is the passing
+loop), where it stops at a curb extension before it goes round the church. All three loops lie
+beyond a short single track; their tracks bend in curves of 25 m and more. The Markt's loop reaches
+the Wall: Wallstraße ends on both sides of it as a dead end with a turning circle, and the
+Wallanlagen, a footpath, lead round it. Behind the station **Brückenstraße** crosses the main line
+at a level crossing with half barriers to Am Plattenring: no tram goes over it (BOStrab § 15), and
+everything lies at the track level. So **buses** take the estate and the garden town: line 261 from
+Neustadt Bf over the level crossing round the estate to its turning circle *Am Wendekreis*, line 262
+from the tram's Busbahnhof through the garden town to its turning circle in *Drosselweg*; line 7
+goes round Am Bogen. Both tram lines share the car lanes of Ringstraße with traffic lights at
+Brückenstraße and a zebra crossing at Am Park, and have their own lanes in the middle of
+Bahnhofstraße, where people cross the car lane to the trams at the lights of the stops. The stops
+are on the road, at raised roads and at curb extensions. Some streets are dead ends with a turning
+circle or hammer (Brunnenstraße, Rathausstraße, the Terminalstraße to the container terminal,
+Pappelweg, Erlenweg, the Garagenhof, Amselweg, Rosenweg); cars come and go at Lindenhof, Schulstraße
+and Leipziger Straße. Residents park on lots with a yearly permit, travellers on the P+R by the day,
+shoppers in the Parkhaus am Wall by the hour; a Stop sign and a no-stopping zone stand at the
+streets; bikes and e-scooters ride with the cars, bikes also through Lange Straße and the Passage.
 
 ## Day and night
 
@@ -456,7 +504,8 @@ See [Layout file format](layout-format.md#road-street) for the parameters of `ro
 The widths, gradients and rules come from these German guidelines and laws:
 
 - **RASt 06**: Richtlinien für die Anlage von Stadtstraßen (FGSV 2006): car lanes, sidewalks,
-  gradients of streets.
+  gradients of streets, turning areas at dead ends (Wendeanlagen; the sizes a refuse truck needs as
+  the towns' guidance on access for refuse collection gives them).
 - **ERA 2010**: Empfehlungen für Radverkehrsanlagen (FGSV 2010): advisory and bike lanes, bike and
   shared paths, safety strips.
 - **EFA 2002**: Empfehlungen für Fußgängerverkehrsanlagen (FGSV 2002): sidewalks by the houses along
@@ -471,7 +520,8 @@ The widths, gradients and rules come from these German guidelines and laws:
   40 m as a rule, 25 m in exceptions).
 - **StVO**: Straßenverkehrs-Ordnung, §§ 2 (bike paths, children on sidewalks), 5 (passing at
   1.5 m), 11 (keep junctions clear), 12 (no parking), 20 (public transport at stops), 26 (zebra
-  crossings); **VwV-StVO** (the administrative rules on it); **eKFV** § 10 (e-scooters).
+  crossings), Zeichen 242.1 (pedestrian zone) and 357 (dead end); **VwV-StVO** (the administrative
+  rules on it); **eKFV** § 10 (e-scooters).
 - **EBO**: Eisenbahn-Bau- und Betriebsordnung, §§ 7 (gradients), 11 (level crossings); **EKrG** § 2
   (new crossings over or under the track); **RE-ING** (clearances of bridges).
 - **MiD 2017**: Mobilität in Deutschland (people per car by purpose).
@@ -481,22 +531,25 @@ The widths, gradients and rules come from these German guidelines and laws:
 - `accessProblems(world)` (`core/access.js`) lists what has no street to it and the streets that
   make no sense, each `{key, level, id, text, at, fix}`; `applyFix(world, fix)` carries a fix out (a
   street, footpath or underpass to the nearest street, a street end moved onto the street it almost
-  meets, a railway crossing where a street crosses a track, or another kind for a crossing).
+  meets, a dead end where a street ends inside the layout, a railway crossing where a street crosses
+  a track, or another kind for a crossing).
 - `world.network()` returns the road network (`core/network.js`), rebuilt when objects, the marker
-  map or the scale change. Nodes are at street corners and junctions; edges have `kind` ("road",
-  "path", "connector", "lane", "tram"), who may use them (`car`, `bus`, `tram`, `bike`, `walk`),
+  map or the scale change. Nodes are at street corners and junctions (`deadEnd` at the dead end of
+  a street); edges have `kind` ("road", "path" for footpaths and pedestrian zones, "connector",
+  "lane", "tram"), who may use them (`car`, `bus`, `tram`, `bike`, `walk`),
   `oneway`, `carDir` and `tramDir` (one-way streets and tracks), `speed` (m/s), `width`, where each
   goes across the street (`walkOffset`, `laneOffset`, `tramOffset`, `bikeOffset`, mm), `bikeWay`
-  ("road", "advisory", "lane", "path", "shared", "none"), `obstruct` (a bike holds up the cars),
+  ("road", "advisory", "lane", "path", "shared", "zone" in a pedestrian zone, "none"), `obstruct` (a bike holds up the cars),
   `conflict` (riders and people on foot), `zebras` and `rails` (where it crosses a track, at a
   railway crossing or not). Nodes have the traffic rules of signs and lights (`rules`, `turns`,
   `signal`). Building entrances (`entrances()`) and stop access points are connected to the nearest
   street within 80 m whose connector crosses no track: `place("building:<id>:<i>")`,
   `place("area:<areaId>:<i>")`. Further: `nearestNode(p, {mode})` (for walking only a node reached
-  in a straight line over no track), `route(a, b, {mode: "walk" | "car" | "bus" | "tram" | "bike"})`,
+  in a straight line over no track), `route(a, b, {mode: "walk" | "car" | "bus" | "tram" | "bike" | "scooter"})`,
   `distance(a, b, mode)`, `routeDirected(...)` (vehicles, with U-turn penalties), `drivingLine(path)`
   (the right lane, the track or the bike lane), `junctionsAlong(...)` and `crossingsAlong(...)` (the
-  junctions and zebra and railway crossings ahead), `boundaryNodes()` and `junctions()`. Without
+  junctions and zebra and railway crossings ahead), `boundaryNodes()` (the free ends of the streets,
+  where cars and bikes come and go; not the dead ends) and `junctions()`. Without
   streets the queries return null.
 - **Walks**: `walk(from, to, {fromKey, toKey})` → `{points, lengths, length, hidden, route}`, the
   line a pedestrian walks (`walkLine(route, from, to)`): each street on the sidewalk on the side
@@ -509,7 +562,7 @@ The widths, gradients and rules come from these German guidelines and laws:
   (`offstage`); without any streets it is straight (`straightWalk`), out of sight only over a track.
   The town, the journeys and the crews of the operations walk this way.
 - Objects take part through methods: `roadInfo()` (a street: points, width, cross-section, speed,
-  offsets), `entrances()` (doors of a building), `stopAreas()`, `busLane()` (a lane for buses),
+  offsets, `deadEnds`: its first and last point dead ends or not), `entrances()` (doors of a building), `stopAreas()`, `busLane()` (a lane for buses),
   `walkBarrier()` (a polyline people do not cross on their own; tracks have it), `trafficRule()`
   (signs and lights), `crossingInfo()` (zebra crossings), `railCrossingInfo()` (railway crossings),
   `parkingInfo()` (parking facilities: a street's strips, lots, garages), `bikeParking()` (street

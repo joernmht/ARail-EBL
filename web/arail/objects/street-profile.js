@@ -19,6 +19,11 @@
  * The widths (`NORMS`) are those of RASt 06 (Richtlinien für die Anlage von Stadtstraßen), ERA 2010
  * (Empfehlungen für Radverkehrsanlagen), EFA 2002 (Fußgängerverkehrsanlagen), EAR 05 (ruhender
  * Verkehr), the VwV-StVO and BOStrab; see docs/streets-and-buses.md for the sources.
+ *
+ * A **pedestrian zone** (Fußgängerzone, Zeichen 242.1, kind `pedestrian`) is one strip paved from
+ * house to house: people stroll along the shop windows on both sides, bikes ride through only where
+ * they are allowed (Radverkehr frei, at walking pace), and trams may run through it on tracks in the
+ * paving.
  * @module arail/objects/street-profile
  */
 
@@ -58,7 +63,15 @@ export const NORMS = {
    * a track bed of its own for two tracks or one (about 6 m and 3 m), the platform (BOStrab § 31).
    */
   tram: { vehicle: 2.65, spacing: 3.4, lane: 3.25, bedDouble: 6.6, bedSingle: 3.4, platform: 2.0, source: "BOStrab §§ 31, 34" },
+  /**
+   * A pedestrian zone from house to house; people stroll this far from the house fronts (the shop
+   * windows), and beside trams they keep a sidewalk's width on each side.
+   */
+  zone: { default: 12, values: [8, 10, 12, 15, 20], walk: 2.5 },
 };
+
+/** The profile of a pedestrian zone (kind `pedestrian`): one paved strip. */
+export const ZONE_PROFILE = "zone";
 
 /** Profiles of streets: label, whether there are sidewalks, what bikes get and at which level. */
 export const STREET_PROFILES = {
@@ -110,6 +123,7 @@ const positive = (v, fallback) => (Number(v) > 0 ? Number(v) : fallback);
 
 /** The profile of a street spec; old layouts have none: no sidewalks (`sidewalk_m` 0) means plain. */
 export function profileOf(spec = {}) {
+  if (spec.kind === "pedestrian") return ZONE_PROFILE;
   if (spec.kind === "path") return PATH_PROFILES[spec.profile] ? spec.profile : "plain";
   if (STREET_PROFILES[spec.profile]) return spec.profile;
   return spec.sidewalk_m !== undefined && !(Number(spec.sidewalk_m) > 0) ? "plain" : "sidewalks";
@@ -130,7 +144,7 @@ export function bikeNorm(profile, kind = "street") {
 /**
  * @typedef {object} Strip
  * @property {string} type "tram-bed" | "tram-lane" | "car-lane" | "advisory-lane" | "bike-lane" |
- *   "parking" | "buffer" | "curb" | "bike-path" | "shared-path" | "sidewalk" | "path"
+ *   "parking" | "buffer" | "curb" | "bike-path" | "shared-path" | "sidewalk" | "path" | "zone"
  * @property {-1 | 1} side -1 right, +1 left of the drawing direction (0: across the centre line)
  * @property {number} from distance of its inner edge from the centre line (m)
  * @property {number} to distance of its outer edge (m)
@@ -141,9 +155,10 @@ export function bikeNorm(profile, kind = "street") {
 /**
  * The cross-section of a street.
  * @param {object} spec the street's settings: `kind` ("street", "residential", "main", "path",
- *   "tram"), `profile`, `width_m` (car lanes; the path or track bed for paths and tram tracks),
- *   `lanes` (car lanes in each direction), `sidewalk_m`, `bike_m`, `tram`, `tram_tracks`, `parking`,
- *   `parking_sides` ("both", "right", "left")
+ *   "pedestrian", "tram"), `profile`, `width_m` (car lanes; the path, the pedestrian zone or track
+ *   bed for the others), `lanes` (car lanes in each direction), `sidewalk_m`, `bike_m`, `tram`,
+ *   `tram_tracks`, `parking`, `parking_sides` ("both", "right", "left"), `bikes` (a pedestrian zone:
+ *   bikes allowed)
  * @param {{width_m: number, car: boolean}} [kind] defaults of the kind: the width when `width_m` is empty, cars or not
  * @returns {object} {profile, strips, carriageway (curb to curb), half (the outer edge), carWidth,
  *   lanes, laneWidth, laneOffset, walkOffset, bike, bikeOffset, bikeWidth, sidewalk (outside the
@@ -163,6 +178,27 @@ export function crossSection(spec = {}, kind = { width_m: 7, car: true }) {
     for (const side of [-1, 1]) strips.push({ type, side, from, to: from + width, width, level });
     return from + width;
   };
+  // a pedestrian zone: one paved strip, people along the house fronts, trams in the middle
+  if (spec.kind === "pedestrian") {
+    const width = positive(spec.width_m, kind.width_m);
+    both("zone", 0, width / 2, "sidewalk");
+    out.half = width / 2;
+    out.carriageway = width;
+    out.walkOffset = Math.max(width / 4, width / 2 - NORMS.zone.walk);
+    if (spec.bikes === true) {
+      out.bike = "zone";
+      out.bikeWidth = width;
+      out.bikeOffset = width / 4;
+      out.conflict = sharedConflict(width);
+    }
+    if (TRAM_LAYOUTS[spec.tram] && spec.tram !== "none") {
+      out.tram = "street";
+      out.tramOffset = tracks === "double" ? NORMS.tram.spacing / 2 : 0;
+      const need = (tracks === "double" ? NORMS.tram.spacing : 0) + NORMS.tram.vehicle + 2 * NORMS.sidewalk.default;
+      if (width < need) warnings.push(`Pedestrian zone ${fmt(width)} m: trams need ${fmt(need)} m, with a sidewalk's width on each side to walk beside them`);
+    }
+    return out;
+  }
   // footpaths and tram tracks of their own: one strip
   if (spec.kind === "path" || spec.kind === "tram") {
     const tram = spec.kind === "tram";
@@ -321,6 +357,7 @@ export function widthChoices(key, spec = {}) {
   if (key === "bike_m") return bikeNorm(profile, spec.kind)?.values ?? [];
   if (key === "width_m") {
     if (spec.kind === "path") return [2.0, 2.5, 3.0, 4.0];
+    if (spec.kind === "pedestrian") return NORMS.zone.values;
     if (spec.kind === "tram") return [NORMS.tram.bedSingle, NORMS.tram.bedDouble];
     const lanes = Math.max(1, Math.round(Number(spec.lanes) || 1));
     if (lanes === 1) return NORMS.carriageway.values;

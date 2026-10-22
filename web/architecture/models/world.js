@@ -248,8 +248,13 @@ export const WORLD = [
       },
       { name: "UnknownObject", file: "web/arail/core/object.js", kind: "class", extends: "LayoutObject", role: "A type nobody registered: kept as it is." },
       {
-        name: "BuildingBase", file: "web/arail/objects/building-kit.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Base of the buildings: use, capacity, entrances, lit windows.",
-        operations: ["capacity()", "entrances()", "occupancy()", "litShare(darkness)", "model()", "pickHeight() — its roof", "card() — use, floors, people it holds and inside now"],
+        name: "BuildingBase", file: "web/arail/objects/building-kit.js", kind: "class", extends: "LayoutObject", stereotype: "base class", role: "Base of the buildings: use, capacity, entrances, lit windows, shops on the ground floor.",
+        operations: ["capacity()", "shops() — shops on the ground floor of a house or an office (0: none)", "entrances()", "occupancy()", "litShare(darkness)", "model()", "pickHeight() — its roof", "card() — use, floors, shops, people it holds and inside now"],
+      },
+      {
+        name: "building-kit", file: "web/arail/objects/building-kit.js", kind: "module", role: "Uses, tones and capacities of buildings; shops on the ground floor of houses and offices.",
+        attributes: ["USE_OPTIONS — residential, work, school, shop, other", "SHOP_OPTIONS — shops on the ground floor: none, some, all along the street front", "TONES — the greys of the white model"],
+        operations: ["capacityFor(use, floorArea)", "shopsParam(fallback, extra) — the `shops` parameter of a building type", "shopsOf(spec, fallback)", "shopCapacity(area) — jobs and shoppers of shops of this floor area", "shopFront(m, wall, at, s0, s1, opts) — shop windows lit while the shops are open, a band for their signs, an awning over each", "hasShops(o) — a shop, or shops on its ground floor: the town and the traffic go shopping there"],
       },
       {
         name: "BuildingModel", file: "web/arail/objects/building-kit.js", kind: "class", role: "A white model in prototype metres: boxes, windows, entrances; level of detail.",

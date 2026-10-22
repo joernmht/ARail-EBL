@@ -1,0 +1,1 @@
+- **Signs beside the camera** (`web/arail/objects/signs.js`): a road sign or traffic light just in front of the camera and far to the side no longer fills the whole flyover view.

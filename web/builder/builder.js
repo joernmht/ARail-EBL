@@ -45,6 +45,7 @@ const TOOLS = [
       { id: "road:residential", type: "road", kind: "residential", label: "Residential street" },
       { id: "road:main", type: "road", kind: "main", label: "Main road" },
       { id: "road:path", type: "road", kind: "path", label: "Footpath or bike path", key: "f" },
+      { id: "road:pedestrian", type: "road", kind: "pedestrian", label: "Pedestrian zone" },
       { id: "road:tram", type: "road", kind: "tram", label: "Tram track", key: "t" },
       { id: "underpass", type: "underpass" },
     ],
@@ -75,7 +76,7 @@ const TOOLS = [
 ];
 
 /** The settings of a new street the street tools offer (objects/road.js); the others keep their defaults. */
-const STREET_SETTINGS = ["profile", "width_m", "lanes", "sidewalk_m", "bike_m", "tram", "tram_tracks", "parking", "parking_sides"];
+const STREET_SETTINGS = ["profile", "width_m", "lanes", "sidewalk_m", "bike_m", "bikes", "tram", "tram_tracks", "parking", "parking_sides"];
 
 /** Placing hints by placement. */
 const HINTS = {
@@ -1222,7 +1223,7 @@ class Builder {
     morph(el,
       h("section", { class: "section" },
         h("h2", {}, "Street access"),
-        h("p", { class: "hint" }, "Everything people and vehicles come to needs a street to it: bus stops, bus terminals, truck lanes, the entrances of buildings. Streets join where they meet; a dead end inside the layout makes cars appear there."),
+        h("p", { class: "hint" }, "Everything people and vehicles come to needs a street to it: bus stops, bus terminals, truck lanes, the entrances of buildings. Streets join where they meet; a street that ends inside the layout is a dead end, or cars appear there."),
         h("p", { class: "counts" }, this.problems.length
           ? [h("span", {}, plural(errors.length, "error")), h("span", {}, plural(warnings.length, "warning"))]
           : h("span", { class: "ok" }, "Nothing to fix: every element has a street to it.")),

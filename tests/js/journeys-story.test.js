@@ -95,7 +95,7 @@ test("the journeys story of Bf Neustadt: a layer of the layout, its steps name t
   assert.ok(s instanceof JourneyStory && s.active);
   assert.equal(s.name, "Ada's journey");
   assert.deepEqual(JourneyStory.params.map((p) => [p.key, p.default]), [
-    ["traveller", "Ada"], ["home", "plattenbau-1"], ["track", "track-g1"], ["bus_terminal", "bus-terminal-1"], ["bus_street", "road-marktstrasse"], ["delay_min", 20],
+    ["traveller", "Ada"], ["home", "plattenbau-1"], ["track", "track-g1"], ["bus_terminal", "bus-terminal-1"], ["bus_street", "road-schulstrasse"], ["delay_min", 20],
   ]);
   assert.equal(s.home().id, "plattenbau-1");
   assert.equal(s.dock().dock.id, "platform-1:right");
@@ -126,7 +126,7 @@ test("the journeys story of Bf Neustadt: a layer of the layout, its steps name t
   void world;
 });
 
-test("her ways: walks over the sidewalks and through the underpass, the bus over the streets by Marktstraße", () => {
+test("her ways: walks over the sidewalks and through the underpass, the bus over the streets by Schulstraße", () => {
   const { s } = journeys();
   const p = s.places();
   const near = (a, b, mm = 2) => Math.hypot(a[0] - b[0], a[1] - b[1]) < mm;
@@ -144,9 +144,9 @@ test("her ways: walks over the sidewalks and through the underpass, the bus over
   const back = p.walks.bus;
   assert.ok(back.hidden[0][0] > 0, "she is seen walking back along the platform");
   assert.ok(near(back.points.at(-1), p.points.bay));
-  // the bus comes in and leaves by the end of Marktstraße at the edge of the layout
+  // the bus comes in and leaves by the end of Schulstraße at the edge of the layout
   const bus = s.busPath();
-  const end = [2250, -555];
+  const end = [5500, -2050];
   assert.ok(near(bus.points[0], end, 30) && near(bus.points.at(-1), end, 30), `${bus.points[0]} … ${bus.points.at(-1)}`);
   assert.ok(bus.stop > bus.bus && bus.stop < bus.length);
   assert.ok(near(polylinePoint(bus, bus.stop), bus.pose.front, 3), "it stops with its front at the front of the bay");
@@ -272,7 +272,7 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   world.demand = 10; // a busy day: the small town alone sends few people to the stops
   frames(world, 400); // people come to the platforms and the bus station
   const passengers = world.simulations.find((x) => x.constructor.type === "passengers");
-  const waiting = (id) => passengers.crowds.get(id).people.filter((p) => p.state === "waiting" || p.state === "arriving").length;
+  const waiting = (id) => passengers.crowds.get(id).people.filter((p) => p.state === "waiting" || p.state === "arriving");
   // a jump does not tell anything: only a step that runs on
   s.goTo(at("bus"));
   s.skip();
@@ -285,14 +285,16 @@ test("the story's train and bus tell the world when they stop and leave: passeng
   events.length = 0;
   s.goTo(at("train"));
   const before = waiting("platform-1");
-  assert.ok(before > 0, "people wait for the late train");
+  assert.ok(before.length > 0, "people wait for the late train");
   frames(world, 60);
   assert.deepEqual(events, ["vehicle.arriving train platform-1:right", "vehicle.arrived train platform-1:right"]);
   const boarding = passengers.crowds.get("platform-1").people.filter((p) => p.state === "boarding" || p.state === "onboard").length;
   assert.ok(boarding > 0, "they go to its doors, others get off");
   frames(world, 100);
   assert.deepEqual(events.slice(2), ["vehicle.departing train platform-1:right", "vehicle.departed train platform-1:right"]);
-  assert.ok(waiting("platform-1") < before, `${waiting("platform-1")} still waiting of ${before}`);
+  // those who waited have gone with it (others come for the next trains meanwhile)
+  const left = before.filter((p) => waiting("platform-1").includes(p)).length;
+  assert.ok(left < before.length, `${left} still waiting of ${before.length}`);
   // a jump while the train stands: it leaves with its step (nobody is left walking to its doors)
   events.length = 0;
   s.goTo(at("train"));

@@ -23,7 +23,13 @@
  *
  * `BuildingBase.draw` draws the parts far to near with level of detail (no windows when they
  * would be smaller than about 1.5 px), the windows lit at night by occupancy and a soft shadow
- * by day. The town simulation uses `use()`, `capacity()`, `entrances()` and `occupancy()`.
+ * by day. The town simulation uses `use()`, `capacity()`, `entrances()`, `occupancy()` and
+ * `shops()`.
+ *
+ * Residential and office buildings can have **shops on the ground floor** (Ladenlokale, the
+ * `shops` parameter): shop windows on the street front, lit while the shops are open, a band for
+ * their signs and an awning over each (`shopFront`). Their jobs and shoppers (`shopCapacity`) come
+ * on top of the building's homes or workplaces, and the town's people go shopping there.
  * @module arail/objects/building-kit
  */
 import { LayoutObject } from "../core/object.js";
@@ -34,6 +40,34 @@ import { profileAt } from "../core/clock.js";
 
 /** What a building is used for (the town simulation sends people there). */
 export const USE_OPTIONS = [["residential", "residential"], ["work", "work (offices, workshops)"], ["school", "school"], ["shop", "shop"], ["other", "other"]];
+
+/** Shops on the ground floor of a residential or office building: none, some of its front, along the whole street front. */
+export const SHOP_OPTIONS = [["none", "none"], ["some", "some"], ["all", "along the whole street front"]];
+
+/** The `shops` parameter of the building types that can have shops on the ground floor. */
+export function shopsParam(fallback = "none", extra = {}) {
+  return {
+    key: "shops", label: "Shops on the ground floor", type: "select", options: SHOP_OPTIONS, default: fallback,
+    help: "Shop windows on the street front; the town's people go shopping there.", ...extra,
+  };
+}
+
+/** The shops of a spec: "none", "some" or "all". */
+export function shopsOf(spec, fallback = "none") {
+  return SHOP_OPTIONS.some(([k]) => k === spec?.shops) ? spec.shops : fallback;
+}
+
+/** The jobs and shoppers of shops with this floor area (m²), as in a shop of its own (`capacityFor`). */
+export function shopCapacity(area) {
+  const c = capacityFor("shop", area);
+  return { jobs: c.jobs, visitors: c.visitors };
+}
+
+/** Does a building sell things: a shop, or shops on its ground floor? */
+export function hasShops(o) {
+  const use = typeof o?.use === "function" ? o.use() : o?.constructor?.use;
+  return use === "shop" || (typeof o?.shops === "function" && o.shops() > 0);
+}
 
 /**
  * Tones (0 = black ... 1 = white) of the white-model look. Ranges are picked per building or
@@ -97,6 +131,38 @@ export function capacityFor(use, floorArea) {
     case "shop": return { residents: 0, jobs: Math.max(1, Math.round(a / 90)), pupils: 0, visitors: Math.round(a / 12) };
     default: return { residents: 0, jobs: Math.round(a / 100), pupils: 0, visitors: Math.round(a / 50) };
   }
+}
+
+/**
+ * Shop fronts on the ground floor of a wall: from `s0` to `s1` (m along the wall) one shop window per
+ * bay of about `bay` m, glass from 0.4 m up to `top` (lit while the shops are open), a band for the
+ * shops' signs above, and an awning over each window. `at`: where the wall starts in the local frame
+ * ([x, y]), the direction it runs and the outward normal, so that the awnings stand in front of it.
+ * Keeps a metre clear on each side of `skip` (a door). Returns the awnings' faces (a part to add
+ * after the building, facing the wall) and the number of bays.
+ * @param {BuildingModel} m
+ * @param {object} wall a face of the model (a wall)
+ * @param {{origin: number[], dir: number[], out: number[]}} at
+ */
+export function shopFront(m, wall, at, s0, s1, { top = 3.3, bay = 4.5, skip = null } = {}) {
+  const n = Math.max(1, Math.round((s1 - s0) / bay)), w = (s1 - s0) / n, glass = grey(TONES.glass), faces = [];
+  m.decal(wall, s0, s1, top + 0.1, top + 0.65, grey(0.8), TIER.window);
+  let bays = 0;
+  for (let i = 0; i < n; i++) {
+    let a = s0 + i * w + 0.25, b = s0 + (i + 1) * w - 0.25;
+    // a window beside the door keeps the larger part of its bay
+    if (skip != null && b > skip - 1 && a < skip + 1) {
+      if (skip - 1 - a >= b - skip - 1) b = skip - 1;
+      else a = skip + 1;
+      if (b - a < 1.2) continue;
+    }
+    m.window(wall, a, b, 0.4, top, { group: "shop", colour: glass });
+    bays++;
+    // the awning: from the top of the window 1.3 m out, a little lower
+    const p = (s, o, z) => [at.origin[0] + at.dir[0] * s + at.out[0] * o, at.origin[1] + at.dir[1] * s + at.out[1] * o, z];
+    faces.push(m.face([p(a, 0, top + 0.05), p(a, 1.3, top - 0.45), p(b, 1.3, top - 0.45), p(b, 0, top + 0.05)], grey(i % 2 ? 0.72 : 0.8)));
+  }
+  return { faces, bays };
 }
 
 /** Deterministic 32-bit hash of a string (FNV-1a). */
@@ -744,6 +810,11 @@ export class BuildingBase extends LayoutObject {
     return this.geometry?.capacity ?? { residents: 0, jobs: 0, pupils: 0, visitors: 0 };
   }
 
+  /** Shops on the ground floor (Ladenlokale), 0 for none; a shop of its own (use "shop") is not counted here. */
+  shops() {
+    return this.geometry?.shops ?? 0;
+  }
+
   /** Doors on the street front: [{pos: [x, y] layout mm, dir: [ux, uy] outward unit normal}]. */
   entrances() {
     return this.geometry?.entrances ?? [];
@@ -773,6 +844,8 @@ export class BuildingBase extends LayoutObject {
     const word = USE_WORDS[use];
     if (word && !card.subtitle.toLowerCase().includes(word.replace(/s$/, ""))) card.subtitle = `${card.subtitle} · ${word}`;
     card.rows.push(["Floors", this.floorsCount()]);
+    const shops = this.shops();
+    if (shops > 0) card.rows.push(["Shops", `${shops} on the ground floor`]);
     const holds = [[c.residents, "residents"], [c.jobs, "jobs"], [c.pupils, "pupils"], [c.visitors, "visitors"]].filter(([n]) => n > 0).map(([n, w]) => `${Math.round(n)} ${w}`);
     if (holds.length) card.rows.push(["Holds", holds.join(" · ")]);
     const inside = this.world.occupancy?.get?.(this.id);

@@ -40,6 +40,7 @@ export const BUILDER_DE = {
   "Main road": "Hauptstraße",
   "Footpath": "Fußweg",
   "Footpath or bike path": "Fußweg oder Radweg",
+  "Pedestrian zone": "Fußgängerzone",
   "Tram track": "Straßenbahngleis",
   "On the street": "An der Straße",
   "Needs a street": "Braucht eine Straße",
@@ -113,7 +114,7 @@ export const BUILDER_DE = {
   "Reverse direction": "Richtung umkehren",
   // the Problems tab
   "Street access": "Anbindung an die Straßen",
-  "Everything people and vehicles come to needs a street to it: bus stops, bus terminals, truck lanes, the entrances of buildings. Streets join where they meet; a dead end inside the layout makes cars appear there.": "Alles, wohin Menschen und Fahrzeuge kommen, braucht eine Straße dorthin: Bushaltestellen, Busbahnhöfe, Lkw-Spuren, die Eingänge der Gebäude. Straßen werden verbunden, wo sie sich treffen; an einer Sackgasse in der Anlage tauchen Autos auf.",
+  "Everything people and vehicles come to needs a street to it: bus stops, bus terminals, truck lanes, the entrances of buildings. Streets join where they meet; a street that ends inside the layout is a dead end, or cars appear there.": "Alles, wohin Menschen und Fahrzeuge kommen, braucht eine Straße dorthin: Bushaltestellen, Busbahnhöfe, Lkw-Spuren, die Eingänge der Gebäude. Straßen werden verbunden, wo sie sich treffen; eine Straße, die in der Anlage endet, ist eine Sackgasse, oder dort tauchen Autos auf.",
   "Nothing to fix: every element has a street to it.": "Nichts zu beheben: zu jedem Element führt eine Straße.",
   "Carry out all {n} fixes": "Alle {n} Lösungen ausführen",
   "{n} fix done. Undo takes them back one by one.": "{n} Lösung ausgeführt. Rückgängig nimmt sie einzeln zurück.",

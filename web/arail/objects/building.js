@@ -1,12 +1,13 @@
 /**
- * Building: a generic house or other building, a box with windows and a flat or gable roof.
- * Greyscale by default (white-model look); the colour parameters are kept for existing layouts.
- * For typical German house types see objects/houses.js.
+ * Building: a generic house or other building, a box with windows and a flat or gable roof, with
+ * shops on the ground floor if it has some (`shops`). Narrower than deep, its gable faces the street
+ * (giebelständig, as in an old town). Greyscale by default (white-model look); the colour parameters
+ * are kept for existing layouts. For typical German house types see objects/houses.js.
  * @module arail/objects/building
  */
 import { grey } from "../core/colors.js";
 import { clamp } from "../core/math.js";
-import { BuildingBase, TONES, USE_OPTIONS, capacityFor, gableRoof } from "./building-kit.js";
+import { BuildingBase, TONES, USE_OPTIONS, capacityFor, gableRoof, shopCapacity, shopFront, shopsOf, shopsParam } from "./building-kit.js";
 
 export class Building extends BuildingBase {
   static type = "building";
@@ -22,6 +23,7 @@ export class Building extends BuildingBase {
     { key: "floor_height_m", label: "Floor height", type: "number", unit: "m", min: 2.4, max: 6, step: 0.1, default: 3 },
     { key: "roof", label: "Roof", type: "select", options: [["gable", "gable"], ["flat", "flat"]], default: "gable" },
     { key: "use", label: "Use", type: "select", options: USE_OPTIONS, default: "residential" },
+    shopsParam("none", { when: (v) => v.use !== "shop" }),
     { key: "color", label: "Wall colour", type: "color", default: "#f2f2f2" },
     { key: "roof_color", label: "Roof colour", type: "color", default: "#a6a6a6" },
     { key: "windows", label: "Windows", type: "boolean", default: true },
@@ -40,12 +42,24 @@ export class Building extends BuildingBase {
     const fh = clamp(+s.floor_height_m || 3, 2.4, 6), floors = this.floorsCount(), H = fh * floors;
     const wall = s.color || "#f2f2f2", roof = s.roof_color || "#a6a6a6";
     const flat = s.roof === "flat";
+    // shops on the ground floor of the front: all of it, or the half left of the door
+    const shops = this.use() === "shop" ? "none" : shopsOf(s), shopTo = shops === "all" ? w : shops === "some" ? w / 2 : 0;
     m.setAnchor(0, 0, H / 2, Math.hypot(w, d) / 2 + 1);
     const body = m.box(-w / 2, -d / 2, w / 2, d / 2, 0, H, { wall, top: flat ? grey(TONES.flatRoof) : null });
+    let front = null;
+    if (shopTo > 0) front = shopFront(m, body.walls[0], { origin: [-w / 2, -d / 2], dir: [1, 0], out: [0, -1] }, 0, shopTo, { top: Math.min(fh - 0.4, 3.3), bay: 4, skip: w / 2 });
     if (s.windows !== false) {
       for (const f of body.walls) {
         const len = f.length, n = Math.floor(len / 3.2);
         for (let fl = 0; fl < floors; fl++) {
+          if (front && fl === 0 && f === body.walls[0]) {
+            // the windows of the ground floor beside the shops
+            for (let i = 0; i < n; i++) {
+              const c = (len * (i + 0.5)) / n;
+              if (c - 0.65 > shopTo && Math.abs(c - w / 2) > 1) m.window(f, c - 0.65, c + 0.65, 0.9, Math.min(fh - 0.4, 2.2));
+            }
+            continue;
+          }
           const z0 = fl * fh + 0.9, z1 = fl * fh + Math.min(fh - 0.4, 2.2);
           for (let i = 0; i < n; i++) {
             const c = (len * (i + 0.5)) / n;
@@ -62,13 +76,22 @@ export class Building extends BuildingBase {
       height = r.ridgeZ;
     }
     m.part(faces);
+    if (front?.faces.length) m.part(front.faces, { after: true, facing: body.walls[0] });
     m.shadow(m.rect(-w / 2, -d / 2, w / 2, d / 2), height);
     m.entrance(0, -d / 2);
+    // the shops take a share of the ground floor (as deep as the building), the rest is the building's use
+    const shopArea = shopTo * d, capacity = capacityFor(this.use(), w * d * floors - shopArea);
+    if (shopArea > 0) {
+      const c = shopCapacity(shopArea);
+      capacity.jobs += c.jobs;
+      capacity.visitors += c.visitors;
+    }
     return m.finish({
       footprint: m.rect(-w / 2, -d / 2, w / 2, d / 2),
       height,
-      capacity: capacityFor(this.use(), w * d * floors),
+      capacity,
       detail: { window: 1.3 },
+      shops: front ? Math.max(1, Math.round(shopTo / 8)) : 0,
     });
   }
 }

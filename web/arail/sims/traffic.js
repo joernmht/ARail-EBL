@@ -9,10 +9,10 @@
  * drive, the walk from the space and what it costs (a supermarket is free for its customers, a
  * factory for its employees, residents' parking needs a permit; core/parking.js, objects/parking.js).
  *
- * - **Through traffic** enters where streets end at the edge of the layout (dead ends,
- *   `boundaryNodes()`), drives to another street end on the fastest route (sometimes with a detour)
- *   and leaves the layout again. On streets without dead ends (a ring) cars appear on the streets
- *   and drive from place to place.
+ * - **Through traffic** enters where streets end at the edge of the layout (their free ends,
+ *   `boundaryNodes()`; not the dead ends, where cars turn), drives to another street end on the
+ *   fastest route (sometimes with a detour) and leaves the layout again. On streets without free
+ *   ends (a ring) cars appear on the streets and drive from place to place.
  * - **Destination traffic** (`destinations`, a share of the cars coming in) drives to a building in
  *   the town: to work, shopping or a visit by the time of day. At the space the car parks and pays,
  *   its people walk to the building and come back after their stay; then the car leaves. A full
@@ -44,6 +44,7 @@ import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
 import { parkingTerms } from "../objects/parking.js";
+import { hasShops } from "../objects/building-kit.js";
 import { drawPerson, personLooks } from "./passengers.js";
 
 /** Muted CD colours, and many greys, white and black (most cars are). */
@@ -289,7 +290,7 @@ export class TrafficSimulation extends Simulation {
     for (const o of this.world.objects) {
       if (!o.geometry || typeof o.capacity !== "function" || typeof o.entrances !== "function" || !o.entrances().length) continue;
       const cap = o.capacity() || {}, use = typeof o.use === "function" ? o.use() : o.constructor.use;
-      if (use === "shop" && h >= 7.5 && h < 20.5) out.push({ id: o.id, name: o.name, purpose: "shopping", weight: 1 + (cap.visitors || 0) / 50 });
+      if (hasShops(o) && h >= 7.5 && h < 20.5) out.push({ id: o.id, name: o.name, purpose: "shopping", weight: 1 + (cap.visitors || 0) / 50 });
       if ((cap.jobs || 0) > 0 && h >= 5.5 && h < 10) out.push({ id: o.id, name: o.name, purpose: "work", weight: (cap.jobs || 0) / 10 });
       if (use === "residential" && h >= 9 && h < 22) out.push({ id: o.id, name: o.name, purpose: "visit", weight: 0.3 + (cap.residents || 0) / 100 });
       if (use === "residential" && h >= 15.5 && h < 21) out.push({ id: o.id, name: o.name, purpose: "home", weight: (cap.residents || 0) / 40 });
