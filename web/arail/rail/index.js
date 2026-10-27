@@ -21,7 +21,7 @@ export {
 } from "./systems.js";
 export { CHANGE_KINDS, SystemChange } from "./objects.js";
 export { BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows } from "./vehicles.js";
-export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
+export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, lineConsist, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
 export { LIVERIES, carsLength, drawTrain, turnCars } from "./draw.js";
 export { LOOKS, RAIL_TRAIN, STOP_MARGIN_M, carsOf, dockLine, trainDoors, trainOutline, trainPose } from "./stock.js";
 export { COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand } from "./compat.js";
@@ -29,7 +29,7 @@ export {
   G, MASS_FACTORS, STRAHL, RAIL_CONDITIONS, SANDING, SERVICE_BRAKE, MINDEN, BRAKE_FILL_S, BRAKE_SIGNAL_MPS, COUPLER_KN, START_RESISTANCE, ENERGY, SUPPLEMENT,
   trainModel, adhesion, tractiveEffort, slips, runningResistance, curveResistance, lineResistance, regenForce, brakingDistance, brakingSpeed,
   requiredBrakePercentage, fullBraking, serviceDeceleration, sectionAt, runProfile, receptivity, coastingRun, couplerForces, startingForces, runInForce, loadLimit,
-  approachFactor,
+  approachFactor, lineRunningTime, drivingStyles,
 } from "./dynamics.js";
 export { LOW_ADHESION, SLOW } from "./disruptions.js";
 export { PZB, PZB_RULES, ETCS_CURVES, REACTION_S, pzbType, pzb1000, pzb500, supervision, pzbApproach, etcsCurves } from "./protection.js";

@@ -2,6 +2,8 @@
 
 Every track of a layout is a **section** with its railway systems: the traction power, the train protection, ETCS, the lineside signals, the train radio, the gauge, the line category, the loading gauge, the line speed, its country and its infrastructure manager. They matter wherever trains cross from one system to another: at a border, at a system separation section, where ETCS starts. ARail shows them on the real table and in the flyover. This is the groundwork for cross-border operations in the lab ([#131](https://github.com/joernmht/ARail-EBL/issues/131)).
 
+Trains are technical objects too: their vehicles and figures, whether they may run on a section, and how they run: their [running dynamics](#running-dynamics), [braking and train protection](#braking-and-train-protection), [adhesion and the forces along them](#adhesion-and-forces) and the [energy they take](#energy-and-driving-style) ([#81](https://github.com/joernmht/ARail-EBL/issues/81)).
+
 ## The systems of a section
 
 | System | Values | RINF parameter |
@@ -97,7 +99,7 @@ Each type also says what it is equipped with: the traction power systems it runs
 - Brake percentage = the sum of the brake weights in the train's brake position / the train's mass × 100. A vehicle without a weight for that position brakes with the nearest slower one it has (a coach in a train braked in G with its P weight), else the nearest faster one; isolated brakes count 0. A wagon's mass and brake weight go from empty to loaded with its load (a load-dependent brake), so an empty freight train brakes better per tonne than a full one.
 - Brake position: as the consist says, else G for a freight train (only locomotives and wagons), else R when a vehicle has an R weight, else P.
 - Axle load = mass / axles, metre load = mass / length over buffers, as EN 15528 defines them for the line categories.
-- A track's `min_brake_percentage` (Build → Track: *Required brake percentage*, the Mindestbremshundertstel of the line's braking table) is compared with the train standing on it: *76 % · met*, or a warning that the permitted speed is lower. The speed that follows from the braking table, braking distances and train control curves are the next steps ([#85](https://github.com/joernmht/ARail-EBL/issues/85)).
+- A track's `min_brake_percentage` (Build → Track: *Required brake percentage*, the Mindestbremshundertstel of the line's braking table) is compared with the train standing on it: *76 % · met*, or a warning that the permitted speed is lower. The speed the line's braking distance allows, braking distances and the curves of train protection are under [Braking and train protection](#braking-and-train-protection).
 
 The lab example's RE 1 (BR 146 and four double-deck coaches: 144 % in R), RB 33 (two BR 642) and S-Bahn (ET 442) have consists.
 
@@ -120,12 +122,126 @@ A train may run on a section only when its vehicles fit the section's systems ([
 
 In the lab example's module *Border station*, RE 1 may run on G1 and G2 and not on the Czech track G3; a train hauled by a BR 193 (Vectron MS, multi-system with ETCS) may run on all three.
 
-What the check leaves out for now: the loading gauge of the vehicles and their loads, the length of the train against the platforms and passing loops, gradients and the hauling capacity of the locomotives, and the speed that follows from the braking table ([#85](https://github.com/joernmht/ARail-EBL/issues/85)).
+What the check leaves out for now: the loading gauge of the vehicles and their loads, and the length of the train against the platforms and passing loops. The hauling capacity of the locomotives on gradients (the load limit) and the speed of the braking table are on the train's card, see [Adhesion and forces](#adhesion-and-forces) and [Braking and train protection](#braking-and-train-protection).
+
+## Running dynamics
+
+How fast a train accelerates, how long it needs to the next station and where it reaches its top speed follows from its tractive effort and the resistances ([#84](https://github.com/joernmht/ARail-EBL/issues/84)). ARail works it out for every train whose consist it knows, on the track it stands on (`web/arail/rail/dynamics.js`, deterministic, without the DOM).
+
+**The model** (the methods of running-time calculations, simplified for teaching, with typical values):
+
+| Force | How |
+| --- | --- |
+| Tractive effort | the starting tractive effort (`tractive_kn`) up to the speed where the power (`power_kw`, at the wheel) is reached, then power / speed (the hyperbola of the tractive effort–speed diagram); never more than the adhesion carries on the driven axles (`driven_axles`, all of a locomotive's) |
+| Running resistance | Strahl's formula for every vehicle, w = 2.5 + k·((v + Δv)/10)² N/kN, v and Δv = 12 km/h of head wind in km/h; k = 0.025 for coaches with four axles and loaded wagons, 0.1 for empty wagons (mixed loads between), 0.05 for locomotives and 0.03 for units (typical values of the same form) |
+| Gradient | i ‰ = i N/kN of the train's weight, positive uphill |
+| Curves | Röckl's formula for standard gauge: 650/(r − 55) N/kN for r ≥ 300 m, 500/(r − 30) N/kN below |
+| Rotating masses | a mass factor per vehicle, averaged by mass: locomotives 1.15, multiple units and railcars 1.10, coaches and loaded wagons 1.04, empty wagons 1.08 (typical ranges: 1.15–1.30, 1.08–1.14, 1.02–1.04, 1.05–1.12) |
+| Braking for a run | the service brake: 0.3 m/s² in G, 0.5 in P, 0.6 in R, within what the brakes can do (the Minden formula below) and the adhesion |
+
+A **run** along a line is integrated in steps of distance: forward as fast as the tractive effort allows, backward from the stop and from every lower speed limit with the service brake, and the train runs the lower of both. A limit holds until the end of the train has passed it. The running time follows from the speeds; a train that cannot pull itself up a gradient stalls.
+
+**The vehicles' traction** (typical values, rounded):
+
+| Type | Power | Starting tractive effort | Driven axles | Regenerative brake | Auxiliary power |
+| --- | --- | --- | --- | --- | --- |
+| `br146`, `br185` (TRAXX) | 5600 kW | 300 kN | 4 | 150 kN | 30 kW |
+| `br193` (Vectron) | 6400 kW | 300 kN | 4 | 240 kN | 30 kW |
+| `cd380` | 6400 kW | 274 kN | 4 | 150 kN | 30 kW |
+| `eu07` | 2000 kW | 240 kN | 4 | none | 25 kW |
+| `br218` (diesel) | 1840 kW | 245 kN | 4 | none | 30 kW |
+| `et442` (4 cars) | 2880 kW | 200 kN | 6 of 10 | 180 kN | 100 kW |
+| `et442s` (2 cars) | 1440 kW | 110 kN | 4 of 6 | 100 kN | 50 kW |
+| `br642` (diesel) | 550 kW | 70 kN | 4 of 6 | none | 40 kW |
+| `dbpza`, `bpmz` (coaches) | – | – | – | – | 30, 25 kW |
+
+**On the info card of a train** (tap it, outside Build), in sections that fold:
+
+- **Run**: where to, the minimum running time and the timetable's with a running-time supplement of 5 %, where it reaches its top speed and starts braking, the starting tractive effort (and whether the adhesion limits it); charts of its **speed over distance** with the permitted speed, and of its **time over distance**. The dot is where the train is now.
+- A train at a platform runs **from its stop to the next one, 4 km on** (beyond the layout where its track ends; the chart marks *end of the layout*), at the line speed of its track (`max_speed_kmh`), else 120 km/h, at most its own top speed. Coming in, it is on the curve of its service braking to its stop; leaving, at the speed of its run where it is. A train of the control system runs from where it is reported, at its reported speed.
+
+**On the table**, while the card is open, the track ahead of the train is drawn on its track (and on the tracks that join it end to end) in the colour of its expected speed (Gelb slow, Türkis, Brillantblau fast), with marks where it reaches its top speed (*120 km/h*), starts *braking*, stops, and where to *coast from here*; where its track ends, *beyond the layout · 3.9 km more*. A train whose track is not known has no running dynamics.
+
+**The line data of a track** (Build → Track):
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `length_m` | its model length at the scale | the section's length in the prototype |
+| `gradient_permille` | level | gradient, rising towards its last point (negative: falling); a train running the other way has it the other way round |
+| `curve_radius_m` | straight | the curve radius in the prototype |
+| `rail_condition` | dry | `dry`, `wet`, `leaves`, `ice` (see [Adhesion and forces](#adhesion-and-forces)) |
+| `braking_distance_m` | 1000 | the braking distance of the line (Vorsignalabstand): 1000, 700 or 400 m |
+
+**Shortened distances.** Everything is worked out in prototype metres. On an H0 layout a distant signal 1000 m before its main signal would be 11.5 m of track, and the curves of a model railway are much tighter than the prototype's: so curve radii are the prototype's (`curve_radius_m`, not taken from the model), and a lab whose short tracks stand for longer sections sets their `length_m`: the track ahead is then drawn shortened the same way. Without it, a track is as long as it is at the layout's scale.
+
+```json
+{ "id": "track-w1", "type": "track", "track_id": "W1", "points": [[-2030, 410], [-350, 412]],
+  "length_m": 2400, "gradient_permille": -8, "curve_radius_m": 900, "max_speed_kmh": 120 }
+```
+
+**Running times of the rail operations**: a line of the [rail operations](operations.md) with `"run_min": "auto"` gets its running times from the running dynamics of its train, with its stops on the way and the supplement.
+
+## Braking and train protection
+
+Why is the distant signal 1000 m before the main signal, and why must a train with few brake hundredths run slower? On the card (section *Braking and train protection*) and on the track ahead of a train ([#85](https://github.com/joernmht/ARail-EBL/issues/85)):
+
+- **Full braking distance** by the Minden formula (Mindener Bremswegformel, after Sauthoff, for conventional brakes): s = 3.85·v² / (6.1·ψ·(1 + λ/10) + i) m, with v in km/h, λ the brake percentage, i the gradient in ‰ (negative downhill) and ψ ≈ 1 (0.9 to 1.1 by the kind of brake; 1 here). From 160 km/h a train needs about 152 brake hundredths to stop within 1000 m. On slippery rails the wheels cannot brake more than the adhesion allows (a magnetic track brake brakes on the rail itself): the distance grows, and the card says *the adhesion limits it*.
+- **The highest speed for the line's braking distance**: the Minden formula solved for v, the speed a braking table gives for the train's brake percentage (*156 km/h · with 144 %*); it is marked when it is lower than the line speed.
+- **On the table**: the braking distance from the train's front, in Orange, red where it reaches past the next main signal that faces the train (or past the line's braking distance where there is none ahead); standing, the distance from the line speed, dashed; *stops in 590 m · past the signal*.
+- **Signals** (Build → Infrastructure → Signal) have a `kind`: `main`, `distant`, or `combined` (a main signal that shows the distant aspect of the next); a signal applies to trains running along its rotation. **PZB magnets** are balises with `pzb_hz` (1000, 500, 2000 or 1000/2000 Hz); without placed ones, the signals imply them: 1000 Hz at a distant signal, 500 Hz 250 m before a main signal, 2000 Hz at it. They are drawn on the track ahead.
+
+**Which system supervises the train** on its track: ETCS where the section has it and the leading traction vehicle runs that level, LZB on a line with LZB for a vehicle with it, PZB where there is PZB; other national systems are named, not modelled.
+
+**PZB 90.** The train type follows from the brake percentage:
+
+| Train type | Brake percentage | Top speed | After 1000 Hz | After 500 Hz (over 153 m) |
+| --- | --- | --- | --- | --- |
+| O (upper) | from 111 | 165 km/h | 85 km/h within 23 s | 65 → 45 km/h |
+| M (middle) | 66–110 | 125 km/h | 70 km/h within 29 s | 50 → 35 km/h |
+| U (lower) | up to 65 | 105 km/h | 55 km/h within 38 s | 40 → 25 km/h |
+
+At a distant signal showing caution the 1000 Hz magnet asks the driver to acknowledge within 4 s; the permitted speed then falls with time and stays at the 1000 Hz speed for 1250 m; the 500 Hz magnet 250 m before the main signal lowers it over 153 m; the 2000 Hz magnet at a main signal showing stop brakes the train at once. In the restrictive mode (after the train stood or crept in the supervision) 45 km/h after 1000 Hz and 25 km/h after 500 Hz. The card's chart *PZB from the distant signal to the main signal* follows the train from the 1000 Hz magnet at the line speed: the driver acknowledges and brakes to stop at the signal (at least with the service brake); where the train is faster than a curve, PZB brakes it, and the card says after how many seconds.
+
+**ETCS and LZB** (simplified after the braking curves of ETCS, UNISIG SUBSET-026, chapter 3.13, without its safety margins and correction factors): from the end of authority back, the emergency brake deceleration curve (EBD) of the train's full braking, the emergency brake intervention (EBI) the brake build-up time earlier (G 12 s, P 4 s, R 3 s), the warning 2 s and the permitted speed 4 s before the intervention, and a release speed of 15 km/h near the end. The end of authority is the next main signal ahead (else the end of the tracks); the movement authority is a blue band on the table, and the curves are a chart on the card.
+
+## Adhesion and forces
+
+Two things limit trains in practice and are invisible from outside: the grip between wheel and rail, and the forces along the train ([#86](https://github.com/joernmht/ARail-EBL/issues/86)).
+
+**Adhesion** after Curtius and Kniffler, μ = 7.5/(v + 44) + 0.161 on dry, clean rails (v in km/h), and a share of it on the others (typical values):
+
+| Rails | Share | μ at a standstill |
+| --- | --- | --- |
+| dry | 1 | 0.33 |
+| wet | 0.6 | 0.20 |
+| leaves on the rails | 0.15 | 0.05 |
+| ice | 0.25 | 0.08 |
+
+Sand raises a low adhesion 1.6 times, at most to that of dry rails. The adhesion caps the tractive effort (wheel slip) and the braking of the wheels (wheel slide): on leaves a train starts slowly and its braking distance doubles or triples. A track has its `rail_condition`; **Slippery rails** (Interaction → Disruptions, `low-adhesion`) put wet rails, leaves or ice on one track of a platform for a while: its trains come in and leave slower, by as much as their running dynamics say, and their cards use the rails' condition.
+
+On the card (section *Adhesion and forces*):
+
+- **Rails**: the condition and the adhesion at a standstill, and with sand.
+- **Load limit** (Grenzlast): the heaviest train behind its traction vehicles that they can start and accelerate a little (0.02 m/s²) on the steepest gradient of the run (else 10 ‰): (the tractive effort at a standstill within the adhesion − what the traction vehicles need themselves) / what a tonne needs (g·(i + 4 N/kN of starting resistance) + 1.04 × 0.02 m/s²); and the heaviest the first coupling holds. A BR 185 can start about 1660 t on 10 ‰ on dry rails, under 200 t on leaves.
+- **Coupler force** when the train starts with its full tractive effort on that gradient: each coupling carries what the vehicles behind it need (quasi-static); the highest against the 450 kN a screw coupling may carry (DB InfraGO: 500 kN reinforced, 850 kN automatic couplers). The strip of the train's vehicles colours the coupling behind each vehicle: Türkis, Orange above 60 %, red above the limit (the coupling would break: train parting).
+- **Run-in force** when braking (a rough estimate): the brake signal travels along the brake pipe at about 250 m/s while the brake cylinders fill (about 22 s in G, 4 s in P), so for a while the back half of the train runs into the front; for a long freight train in P it is several times that in G, which is why long freight trains brake in G.
+
+## Energy and driving style
+
+Energy is a large cost of a railway undertaking, and how a train is driven changes it a lot ([#87](https://github.com/joernmht/ARail-EBL/issues/87)). On the card (section *Energy and driving style*), for the run to the next stop:
+
+- **Energy**: the work at the wheel (traction) ÷ 0.85 from the contact line, plus the auxiliary power over the running time, less what regenerative braking feeds back (0.8 of what the electric brake takes, within its force and power). AC lines take all of it back (the substations feed back), DC lines half (only another train can take it). Per train-km and per seat-km. For diesel traction the fuel: (traction ÷ 0.8 + auxiliaries) ÷ 0.36, in litres (9.9 kWh each) and CO₂ (2.64 kg per litre).
+- **Coasting before the stop** (Ausrollen): the train runs without traction from the earliest point that keeps the running time within the supplement of 5 %; the card says from where, how much longer and how much less energy it takes, and a chart compares it with the run as fast as possible. On the table the hint *coast from here* marks the point: a simple driver advisory.
+- **Driving styles compared**: as fast as possible, and coasting within 3 %, 5 % and 10 % supplement: their running times and energy (*Coasting within 5 % supplement · 3:08 min · 8.9 l · 26 % less*).
+
+The values are typical ones, simplified for teaching; the formulas name their methods. A real train's figures are in its data sheets, and real running-time calculations add more (train length on gradients, the brake build-up of each brake position, detailed tractive effort curves).
 
 ## For plugins
 
 `sectionSystems(spec)` gives the systems of a section (`{values, usual}`), `systemRows(spec)` the rows of its card, `systemValue(key, value)` the label, short text and colour of a value, `routeClassLimits("D4")` the axle and metre load of a line category, `systemChanges(tracks, key)` where neighbouring sections differ; the catalogues are `POWER`, `TRAIN_CONTROL`, `ETCS`, `SIGNALLING`, `RADIO`, `GAUGE`, `ROUTE_CLASS`, `LOADING_GAUGE`, `COUNTRIES` and `SYSTEMS` (`web/arail/rail/systems.js`).
 
 `new Consist({vehicles: [...]})` computes a train's figures (`length_m`, `mass_t`, `axles`, `brakePercentage`, `vmax`, `maxAxleLoad`, `maxMetreLoad`; `rail/vehicles.js`), `consistFor(world, {train, line, units})` finds the consist of a train the world shows, and `VEHICLE_TYPES` is the catalogue.
+
+`trainModel(consist, {power})` makes the figures of a train for its running dynamics, `runProfile(model, line)` its run along a line (`{length_m, sections: [{s0, s1, kmh, permille, radius_m, condition}], stop, power}`: samples of distance, time and speed, the running time, top speed, braking point and energy), `coastingRun`, `drivingStyles`, `lineRunningTime`; the forces `tractiveEffort`, `runningResistance`, `curveResistance`, `lineResistance`, `adhesion`, `couplerForces`, `runInForce`, `loadLimit`; braking `brakingDistance`, `brakingSpeed`, `requiredBrakePercentage`, `fullBraking` (`rail/dynamics.js`). `pzbType`, `pzb1000`, `pzb500`, `pzbApproach`, `etcsCurves` and `supervision` are the train protection (`rail/protection.js`); `trackAheadOf(world, hit)` gives everything about the track ahead of a train pointed at, `pathAhead` and `lineAlong` the path and line ahead of a point on a track (`rail/ahead.js`). With `world.trackAhead = {hit}` the tracks draw the track ahead of that train.
 
 `checkSection(consist, spec)` checks a train against a section (`{ok, problems: [{key, text}], notes}`, `key` naming the system), `checkTracks(consist, world)` against every track of a world, `compatibilitySection(consist, world)` makes the section of a card, `consistOfHit(world, hit)` finds the consist of a train pointed at (`rail/compat.js`, `rail/trains.js`). With `world.compatibilityTrain = {name, consist}` and `world.settings.trackSystems = "compatibility"` the tracks show where that train may run.

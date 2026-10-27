@@ -16,7 +16,7 @@ export const OPERATIONS = [
       },
       { name: "EventQueue", file: "web/arail/ops/util.js", kind: "class", role: "A binary heap by time, priority, sequence (also used by the infrastructure).", attributes: ["items: object[] — {t, prio, seq, type, data}"], operations: ["push(t, type, data, prio)", "pop()", "peekTime()"] },
       { name: "timetable", file: "web/arail/ops/timetable.js", kind: "module", role: "A day's trips, rotations and crew pieces.", operations: ["tripTemplates(model, wd) — out and back every takt", "planRotations(model, trips, depot)", "planPieces(model, rotations, tripsByKey, relief, base, depot)", "dayKind(model, wd)"] },
-      { name: "config", file: "web/arail/ops/config.js", kind: "module", role: "Defaults, the network from the platforms, validation, presets.", attributes: ["OPS_DEFAULTS"], operations: ["normalizeOps(config, layout)", "autoNetwork(layout) — lines from the platforms' line names", "validateOps(cfg, layout)"] },
+      { name: "config", file: "web/arail/ops/config.js", kind: "module", role: "Defaults, the network from the platforms, validation, presets.", attributes: ["OPS_DEFAULTS"], operations: ["normalizeOps(config, layout)", "autoNetwork(layout) — lines from the platforms' line names", "autoRunMinutes(l, n, layout) — run_min \"auto\": from the running dynamics of the line's train, with its stops and the supplement", "validateOps(cfg, layout)"] },
       { name: "util", file: "web/arail/ops/util.js", kind: "module", role: "Time, working hours, random streams.", attributes: ["DAY — 1440 minutes"], operations: ["stream(seed, ...parts) — random numbers per key", "lognormal(rng, median, sigma)", "isOpen(hours, t, startWeekday)", "nextOpen(hours, t, startWeekday)"] },
     ],
     relations: [

@@ -10,7 +10,7 @@
  */
 import { formatDistance, trackAheadOf } from "./ahead.js";
 import {
-  COUPLER_KN, RAIL_CONDITIONS, SUPPLEMENT, adhesion, brakingSpeed, coastingRun, loadLimit, runInForce, slips, startingForces, tractiveEffort,
+  COUPLER_KN, RAIL_CONDITIONS, SUPPLEMENT, adhesion, brakingSpeed, drivingStyles, loadLimit, runInForce, slips, startingForces, tractiveEffort,
 } from "./dynamics.js";
 import { PZB, PZB_RULES, pzbApproach } from "./protection.js";
 import { consistOfHit } from "./trains.js";
@@ -29,6 +29,8 @@ export function minutesSeconds(s) {
 const fig = (x) => (Math.abs(x) >= 100 ? String(Math.round(x)) : x.toFixed(1));
 /** A gradient: whole numbers without decimals. */
 const grade = (x) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+/** The energy of a run as people compare it: kWh from the contact line, or litres of diesel. */
+const amount = (e) => (e.electric ? `${fig(e.net_kwh)} kWh` : `${fig(e.fuel_l)} l`);
 /** A braking distance in metres, to 10 m. */
 const metres = (x) => (Number.isFinite(x) ? `${Math.round(x / 10) * 10} m` : "–");
 
@@ -41,10 +43,12 @@ function extras(a, hit) {
   if (kept?.extras) return kept.extras;
   const m = a.model, steepest = Math.max(0, ...a.line.sections.map((x) => x.permille || 0));
   const grade = steepest > 0 ? steepest : REFERENCE_GRADIENT;
-  // coasting for the run from a stop to the next (a train coming in or on the move has no such run)
+  // driving styles for the run from a stop to the next (a train coming in or on the move has no such run)
   const fromStop = a.on.phase === "standing" || a.on.phase === "departing";
+  const styles = fromStop && m.power_kw > 0 ? drivingStyles(m, a.line) : null;
   const out = {
-    coast: fromStop ? coastingRun(m, a.line) : { coast: null },
+    styles,
+    coast: styles?.styles.find((x) => x.supplement === SUPPLEMENT)?.run ?? { coast: null },
     pzb: a.pzb ? pzbApproach(m, { v0_kmh: Math.min(a.line_kmh, PZB[a.pzb].vmax_kmh), distant_m: a.spacing_m, permille: a.permille, condition: a.condition }) : null,
     start: startingForces(m, { permille: grade, condition: a.condition }),
     limit: loadLimit(m, grade, { condition: a.condition }),
@@ -182,7 +186,7 @@ function forcesSection(a, x) {
   const by = { adhesion: "by the adhesion", "tractive effort": "by its tractive effort", coupling: "by the coupling" }[x.limit.by];
   rows.push(["Load limit", `${Math.round(x.limit.limit_t)} t on ${grade(x.grade)} ‰ · ${by}`]);
   if (x.limitSand) rows.push(["Load limit with sand", `${Math.round(x.limitSand.limit_t)} t`]);
-  if (x.start.at >= 0) rows.push(["Coupler force", `${Math.round(x.start.max_kn)} kN at coupling ${x.start.at + 1} · starting on ${grade(x.grade)} ‰ · ${COUPLER_KN.screw} kN allowed`]);
+  if (x.start.at >= 0) rows.push(["Coupler force", `${Math.round(x.start.max_kn)} kN at coupling ${x.start.at + 1} · starting on ${grade(x.grade)} ‰ · ${COUPLER_KN.screw} kN allowed${x.start.max_kn > COUPLER_KN.screw ? " · the coupling would break (train parting)" : ""}`]);
   if (m.vehicles.length > 1) rows.push(["Run-in force", `when braking · ${Math.round(runInForce(m, { position: "G" }))} kN in G · ${Math.round(runInForce(m, { position: "P" }))} kN in P`]);
   return { title: "Adhesion and forces", collapsible: true, open: false, rows };
 }
@@ -200,14 +204,25 @@ function energySection(a, x) {
     rows.push(["Diesel for the run", `${fig(e.fuel_l)} l · ${fig(e.co2_kg)} kg CO₂`]);
     rows.push(["Per train-km", `${(e.fuel_l / km).toFixed(2)} l`]);
   }
-  const c = x.coast, charts = [];
+  const c = x.coast, charts = [], lines = [];
+  // the driving styles: as fast as possible, and coasting within more and more supplement
+  if (x.styles) {
+    const f = x.styles.fast;
+    lines.push(`As fast as possible · ${minutesSeconds(f.time_s)} · ${amount(f.energy)}`);
+    for (const st of x.styles.styles) {
+      const r = st.run;
+      if (!r.coast) continue;
+      lines.push(`Coasting within ${Math.round(st.supplement * 100)} % supplement · ${minutesSeconds(r.coast.time_s)} · ${amount(r.coast.energy)} · ${Math.round(r.saving_share * 100)} % less`);
+    }
+  }
   if (c.coast) {
-    rows.push(["Coasting", `from ${formatDistance(c.coast_m)} to the stop · ${Math.round(c.extra_s)} s longer · ${fig(c.saving_kwh)} kWh less (${Math.round(c.saving_share * 100)} %)`]);
+    const saved = a.model.electric ? `${fig(c.saving_kwh)} kWh` : `${fig(c.fast.energy.fuel_l - c.coast.energy.fuel_l)} l`;
+    rows.push(["Coasting", `from ${formatDistance(c.coast_m)} to the stop · ${Math.round(c.extra_s)} s longer · ${saved} less (${Math.round(c.saving_share * 100)} %)`]);
     charts.push({
       label: "As fast as possible and with coasting", x: { label: "Distance", unit: "m", max: a.line.length_m }, y: { label: "Speed", unit: "km/h", max: Math.max(10, c.fast.top_kmh) },
       series: [{ label: "As fast as possible", points: c.fast.samples.map((q) => [q.s, q.v]), tone: "muted" }, { label: "With coasting", points: c.coast.samples.map((q) => [q.s, q.v]), tone: "train" }],
       marks: [{ x: c.coast_m, label: "coast" }], now: null,
     });
   }
-  return { title: "Energy and driving style", collapsible: true, open: false, rows, charts };
+  return { title: "Energy and driving style", collapsible: true, open: false, rows, lines, charts };
 }

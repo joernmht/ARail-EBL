@@ -71,7 +71,7 @@ export const RAIL = [
       {
         name: "trains", file: "web/arail/rail/trains.js", kind: "module", role: "The consists of the world's trains and their card.",
         attributes: ["DEFAULT_FLEET — by the kind of a line: RE, RB, S, any other", "PEAK_DEMAND — the timetable's demand from which units run coupled"],
-        operations: ["vehicleTypes(world) — the catalogue and the layout's own", "consistFor(world, who) — by train number, line or units", "trainConsist(world, v) — of a train at a platform, kept on it; the default fleet; coupled in the rush hours", "fleetEntry(line) — by the letters the line begins with", "consistOfHit(world, hit) — of a train pointed at", "trainCard(world, hit, card) — card provider", "consistProblems(json) — layout check"],
+        operations: ["vehicleTypes(world) — the catalogue and the layout's own", "consistFor(world, who) — by train number, line or units", "trainConsist(world, v) — of a train at a platform, kept on it; the default fleet; coupled in the rush hours", "fleetEntry(line) — by the letters the line begins with", "lineConsist(layout, line) — the layout's for a line, else the default fleet (running times of the rail operations)", "consistOfHit(world, hit) — of a train pointed at", "trainCard(world, hit, card) — card provider", "consistProblems(json) — layout check"],
       },
       { name: "rail", file: "web/arail/rail/index.js", kind: "module", role: "The package's API.", operations: ["registerRail(registry) — the system change object, the trains at the platforms (RAIL_TRAIN), the train data and running dynamics cards, slippery rails as a disruption, the check of the consists"] },
     ],
@@ -209,6 +209,7 @@ export const RAIL = [
           "runProfile(model, line, options) — the run: samples, time, top speed, braking point, energy", "energyFigures(model, line, figures) — kWh, diesel, CO₂, per km and seat-km", "receptivity(power)",
           "coastingRun(model, line, options) — the coasting point within the supplement", "couplerForces(model, options) — quasi-static", "startingForces(model, options)", "runInForce(model, options) — a rough estimate, G against P",
           "loadLimit(model, permille, options) — by the adhesion, the tractive effort or the coupling", "approachFactor(model, condition, options) — how much slower on slippery rails",
+          "lineRunningTime(model, options) — between two stations in equal runs from stop to stop: minimum and with the supplement", "drivingStyles(model, line, options) — as fast as possible, and coasting within each supplement",
         ],
       },
       {

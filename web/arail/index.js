@@ -138,7 +138,7 @@ export {
   requiredBrakePercentage, fullBraking, serviceDeceleration, sectionAt, runProfile, receptivity, coastingRun, couplerForces, startingForces, runInForce, loadLimit,
   PZB, PZB_RULES, ETCS_CURVES, REACTION_S, pzbType, pzb1000, pzb500, supervision, pzbApproach, etcsCurves,
   LINE_PARAMS, NEXT_STOP_M, OPEN_LINE_KMH, trackLength, lineBrakingDistance, railCondition, pathAhead, pathPoint, lineAlong, signalsAhead, magnetsAhead,
-  trainOnTrack, trackAheadOf, speedAt, drawTrackAhead, formatDistance, REFERENCE_GRADIENT, minutesSeconds, runningCard, approachFactor, LOW_ADHESION, SLOW,
+  trainOnTrack, trackAheadOf, speedAt, drawTrackAhead, formatDistance, REFERENCE_GRADIENT, minutesSeconds, runningCard, approachFactor, lineRunningTime, drivingStyles, lineConsist, LOW_ADHESION, SLOW,
 } from "./rail/index.js";
 export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";

@@ -13,6 +13,7 @@ Disruptions change how vehicles run and how passengers behave. Start them in **I
 | `crowd` | Crowd surge | any stop | Passenger demand multiplied (default 4×), e.g. after a football match. |
 | `signal-failure` | Signal failure | platforms (all by default) | Trains are held; strong mood penalty. |
 | `track-closure` | Track closure | one track of a platform (`target`: its dock, e.g. `platform-2:left`) | No train stops at that track; the platform's other track runs as usual. The platform shows *Track G2 closed*; a red band with crosses lies along the track. The people waiting for that track go over to the other one. The maintenance story starts it for its repair and its renewal. |
+| `low-adhesion` | Slippery rails | one track of a platform (its dock) | Wet rails, leaves in autumn or ice (`condition`: `wet`, `leaves`, `ice`; `minutes`, 60): the wheels grip less, so trains start slower and need longer to brake. They come in and leave later, as much as the running dynamics of the train at that track say (a two-car Talent 2 on leaves takes about three times as long; a heavy freight train may not start at all), and the delays follow. A dashed band in Orange (Brillantblau for ice) lies along the track, the platform says *Leaves on the rails · trains run slower*, and the cards of its trains use the rails' condition: longer braking distances, a lower load limit. See [Adhesion and forces](rail-systems.md#adhesion-and-forces). |
 
 "Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. A target can also be one track of a platform or one bay of a bus terminal (its dock, e.g. `platform-1:right` in a scenario): a delay, cancellation or closure then acts on the vehicles at that track only (a closed track gets the red band), and the stop shows the message. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards. A closed track takes no train from the keys 1–9 or the Stops board either.
 
@@ -69,6 +70,7 @@ Each disruption type translates into a small set of *effects* per stop area; the
 | `leave` | yes/no | waiting passengers give up and leave |
 | `demand` | factor | passenger arrival rate (factors multiply) |
 | `frequency` | factor | vehicle frequency, > 1 = more often |
+| `slow` | factor | vehicles take this many times longer to come in and leave (slippery rails; the largest counts) |
 | `mood` | per second | extra change of passenger mood while waiting (negative = worse) |
 | `messages` | text | shown on the stop's sign and on the board |
 

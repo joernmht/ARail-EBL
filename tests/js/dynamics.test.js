@@ -10,6 +10,7 @@ import {
   Consist, G, adhesion, approachFactor, brakingDistance, brakingSpeed, coastingRun, couplerForces, curveResistance, fullBraking, loadLimit,
   requiredBrakePercentage, runInForce, runProfile, runningResistance, startingForces, tractiveEffort, trainModel,
 } from "../../web/arail/index.js";
+import { readJSON } from "./helpers.js";
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} is not ${b} ± ${tol}`);
 const model = (spec, options) => trainModel(new Consist(spec), options);
@@ -154,4 +155,27 @@ test("slippery rails make trains come in and leave slower", () => {
   assert.ok(wet >= 1 && leaves > wet && leaves < 10, `wet ${wet}, leaves ${leaves}`);
   // a train that cannot start on leaves at all: the most
   assert.equal(approachFactor(model(FREIGHT), "leaves"), 10);
+});
+
+test("running times of a line: from stop to stop with the dwells; the rail operations' run_min \"auto\"", async () => {
+  const { lineRunningTime, drivingStyles } = await import("../../web/arail/index.js");
+  const { normalizeOps, validateOps } = await import("../../web/arail/ops/config.js");
+  const re = model(RE);
+  const nonstop = lineRunningTime(re, { km: 30, kmh: 160 }), stopping = lineRunningTime(re, { km: 30, kmh: 160, stops: 5, dwell_s: 30 });
+  assert.ok(stopping.minimum_s > nonstop.minimum_s + 5 * 30, "stops cost more than their dwells");
+  near(stopping.planned_s - stopping.minimum_s, stopping.run_s * 6 * 0.05, 1e-6, "the supplement on the running");
+  // the lab's lines with their times from the running dynamics
+  const layout = readJSON("web/layouts/ebl-lab.json");
+  const cfg = {
+    stations: [{ id: "hbf", name: "Bahnhof", platforms: ["platform-1"] }, { id: "altstadt", name: "Altstadt" }],
+    lines: [{ id: "RE 1", route: ["hbf", "altstadt"], km: 59, run_min: "auto", vmax_kmh: 160, stops: 6 }, { id: "RB 33", route: ["hbf", "altstadt"], km: 34, run_min: "auto", stops: 9 }],
+  };
+  const lines = normalizeOps(cfg, layout).lines;
+  const [re1, rb33] = lines.map((l) => l.run_min[0]);
+  assert.ok(re1 > 25 && re1 < 45 && Number.isInteger(re1 * 2), `RE 1: ${re1} min`);
+  assert.ok(rb33 > 20 && rb33 < 45, `RB 33: ${rb33} min`);
+  assert.deepEqual(validateOps({ ...cfg, lines: [{ ...cfg.lines[0], km: undefined }] }, layout).filter((p) => /auto/.test(p)).length, 1, "auto needs km");
+  // driving styles: the more supplement, the more coasting saves
+  const styles = drivingStyles(model({ vehicles: [{ type: "et442s" }] }), flat(4000, 120)).styles.map((x) => x.run.saving_share);
+  assert.ok(styles[0] < styles[1] && styles[1] < styles[2], styles.join(", "));
 });

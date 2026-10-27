@@ -608,3 +608,31 @@ export function approachFactor(model, condition, { v_kmh = 60, sanding = false }
   if (!Number.isFinite(here)) return 10;
   return Math.max(1, dry > 0 ? here / dry : 1);
 }
+
+/**
+ * The running time of a line between two stations: its distance in equal runs from stop to stop
+ * (`stops` stops on the way, each with its dwell), each as fast as possible at the line speed; the
+ * minimum and the timetable's with the running-time supplement (s).
+ * @param {object} model
+ * @param {{km: number, kmh?: number, stops?: number, dwell_s?: number, supplement?: number, power?: string | null}} options
+ * @returns {{run_s: number, minimum_s: number, planned_s: number}} run_s: one run from stop to stop
+ */
+export function lineRunningTime(model, { km, kmh = 120, stops = 0, dwell_s = 30, supplement = SUPPLEMENT, power = null }) {
+  const n = Math.max(0, Math.round(Number(stops) || 0)) + 1, L = (Math.max(0.1, Number(km) || 0) * 1000) / n;
+  const one = runProfile(model, { length_m: L, sections: [{ s0: 0, s1: L, kmh }], power }, { samples: 2 });
+  return { run_s: one.time_s, minimum_s: one.time_s * n + dwell_s * (n - 1), planned_s: one.time_s * n * (1 + supplement) + dwell_s * (n - 1) };
+}
+
+/**
+ * Driving styles compared: as fast as possible, and coasting before the stop within each
+ * running-time supplement (the later the train must arrive, the earlier it coasts and the less
+ * energy it takes).
+ * @param {object} model
+ * @param {Line} line
+ * @param {{supplements?: number[]}} [options] shares of the minimum running time
+ * @returns {{fast: object, styles: Array<{supplement: number, run: ReturnType<typeof coastingRun>}>}}
+ */
+export function drivingStyles(model, line, { supplements = [0.03, SUPPLEMENT, 0.1] } = {}) {
+  const styles = supplements.map((supplement) => ({ supplement, run: coastingRun(model, line, { supplement }) }));
+  return { fast: styles[0]?.run.fast ?? runProfile(model, line), styles };
+}

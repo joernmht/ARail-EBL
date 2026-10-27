@@ -533,6 +533,14 @@ arrival plus `turn_min`), `vehicle` (a type id), `units` (1), `peak_units`, `pea
 dock ids of its platforms, e.g. `"platform-1:left"`; default: all of the station's) and `conductor`
 (true: trains need a conductor too).
 
+**Running times from the running dynamics**: with `"run_min": "auto"` the running time of each section
+is worked out from the [running dynamics](rail-systems.md#running-dynamics) of the line's train (the
+layout's `consists` entry for the line, else the default fleet of its kind): its `km` in equal runs
+from stop to stop with `stops` stops on the way (0; one number, or one per section) of `stop_dwell_s`
+each (30), at the line speed `vmax_kmh` (120), as fast as the train can, plus the running-time
+supplement of 5 %, rounded up to half minutes. On the lab's network the RE 1 (59 km, 6 stops,
+160 km/h) gets 35 min, the RB 33 with two diesel railcars (34 km, 9 stops) 33 min.
+
 **Vehicle types**: `id`, `name`, `seats`, `prefix` and `first_number` (unit numbers, `442 101`),
 `built` (`[from, to]`), `program` (its own maintenance programme) and `failure`:
 `hard_per_100k_km` (1.6), `soft_per_10k_km` (2), `wear_share` (0.6), `shape` (2), `infant` (0.8),

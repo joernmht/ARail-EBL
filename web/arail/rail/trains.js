@@ -55,6 +55,20 @@ function matches(entry, { train, line }) {
 }
 
 /**
+ * The consist of a line's trains in a layout file: the layout's own for the line (`consists`), else
+ * the default fleet for the kind of the line (for the running times of the rail operations).
+ * @param {object | null} layout a layout (file or normalized)
+ * @param {string} line
+ * @returns {Consist}
+ */
+export function lineConsist(layout, line) {
+  const own = layout?.vehicle_types && typeof layout.vehicle_types === "object" ? layout.vehicle_types : null;
+  const types = own && Object.keys(own).length ? { ...VEHICLE_TYPES, ...own } : VEHICLE_TYPES;
+  const entry = (layout?.consists || []).find((e) => matches(e, { line }));
+  return new Consist(entry ?? fleetEntry(line), types);
+}
+
+/**
  * The consist of a train the world shows, or null.
  * @param {import("../core/world.js").World} world
  * @param {{train?: string | null, line?: string | null, units?: Array<{type: string}> | null}} who its train
