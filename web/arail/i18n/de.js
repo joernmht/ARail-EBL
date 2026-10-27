@@ -12,6 +12,7 @@ import { TEXTS as TYPES } from "./de/types.js";
 import { TEXTS as SETTINGS } from "./de/settings.js";
 import { TEXTS as RAIL_SYSTEMS } from "./de/rail-systems.js";
 import { TEXTS as RAIL_TRAINS } from "./de/rail-trains.js";
+import { TEXTS as RAIL_DYNAMICS } from "./de/rail-dynamics.js";
 import { TEXTS as CARDS } from "./de/cards.js";
 import { TEXTS as TOWN } from "./de/town.js";
 import { TEXTS as ACCESS } from "./de/access.js";
@@ -30,6 +31,7 @@ export const DE_PARTS = {
   "web/arail/i18n/de/settings.js": SETTINGS,
   "web/arail/i18n/de/rail-systems.js": RAIL_SYSTEMS,
   "web/arail/i18n/de/rail-trains.js": RAIL_TRAINS,
+  "web/arail/i18n/de/rail-dynamics.js": RAIL_DYNAMICS,
   "web/arail/i18n/de/cards.js": CARDS,
   "web/arail/i18n/de/town.js": TOWN,
   "web/arail/i18n/de/access.js": ACCESS,

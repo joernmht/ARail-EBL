@@ -72,7 +72,7 @@ export const TRANSPORT = [
         ["m1", "merge"],
         ["a4", "action", "A new vehicle comes in", "ServiceManager._dispatch"],
         ["x2", "send", "vehicle.arriving"],
-        ["a5", "action", "After the approach it stands: doors open", "ServiceManager._advance"],
+        ["a5", "action", "After the approach (longer on slippery rails: the effect slow) it stands: doors open", "ServiceManager._advance"],
         ["x3", "send", "vehicle.arrived"],
         ["m2", "merge"],
         ["d2", "decision", "Dwell over and nobody in the doors (holdUntil), closed, or the train moves on?"],

@@ -2,7 +2,7 @@
 // was tapped, in the camera view and the flyover (the world's pick interface, core/pick.js).
 import { COMPATIBILITY, consistOfHit, FONT, OVERLAY, projectedHull, PICK_TOLERANCE, rgba } from "../arail/index.js";
 import { $, h, morph, mount, toast } from "./ui.js";
-import { tr } from "./i18n.js";
+import { i18n, tr } from "./i18n.js";
 
 /** A pointer that moves less than this (CSS px) between down and up taps rather than drags. */
 const TAP_PX = 6;
@@ -17,6 +17,8 @@ export class Inspector {
     this.open = null;
     /** The cross in the middle of the flyover shows where Enter points (after keys on the stage). */
     this.keyAim = false;
+    /** Collapsible sections of the cards opened or closed: title → open. */
+    this.folded = new Map();
     this._pending = null;
     this._tap = null;
     const stage = $("#stageWrap");
@@ -139,6 +141,8 @@ export class Inspector {
   /** Open the card of a pickable (and say what it is, for screen readers). */
   show(hit) {
     this.open = { key: hit.key, hit };
+    // a train: its track ahead on the table while its card is open (rail/ahead.js)
+    this.world.trackAhead = hit.kind === "train" ? { hit } : null;
     this.tip.hidden = true;
     const card = this.render();
     if (card) this.announce(`${tr(card.title)}${card.subtitle ? `, ${tr(card.subtitle)}` : ""}${card.status ? `. ${tr(card.status)}` : ""}`);
@@ -149,6 +153,7 @@ export class Inspector {
     if (!this.open) return false;
     const hadFocus = this.card.contains(document.activeElement);
     this.open = null;
+    this.world.trackAhead = null;
     this.card.hidden = true;
     if (hadFocus) this.app.canvas.focus?.({ preventScroll: true });
     return true;
@@ -196,14 +201,30 @@ export class Inspector {
       card.status || gone ? h("p", { class: `info-status ${card.tone || ""}` }, gone ? `${card.status ? `${card.status} · ` : ""}out of view` : card.status) : null,
       card.rows.length ? h("dl", { class: "info-rows" }, card.rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))])) : null,
       card.strip?.length ? consistStrip(card.strip) : null,
-      card.sections.map((s) => h("div", { class: "info-section" }, h("h3", {}, s.title),
-        s.rows?.length ? h("dl", { class: "info-rows" }, s.rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))])) : null,
-        s.lines?.length ? h("ul", {}, s.lines.map((l) => h("li", {}, l))) : null)),
+      card.sections.map((s) => this.section(s)),
       card.text ? h("p", { class: "info-text" }, card.text) : null,
       card.actions.length ? h("div", { class: "row" }, card.actions.map((a) => h("button", { class: "btn small", type: "button", onclick: () => this.act(a.id) }, a.label))) : null,
     );
     this.card.hidden = false;
     return card;
+  }
+
+  /**
+   * A section of a card: its rows, lines and charts; a collapsible one (`collapsible`) folds, open
+   * at first as it says (`open`) and then as it was left, also on the cards of other things.
+   */
+  section(s) {
+    const content = [
+      s.rows?.length ? h("dl", { class: "info-rows" }, s.rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, String(v))])) : null,
+      s.lines?.length ? h("ul", {}, s.lines.map((l) => h("li", {}, l))) : null,
+      (s.charts || []).map((c) => chart(c)),
+    ];
+    if (!s.collapsible) return h("div", { class: "info-section" }, h("h3", {}, s.title), content);
+    const open = this.folded.has(s.title) ? this.folded.get(s.title) : s.open !== false;
+    return h("details", {
+      class: "info-section", open,
+      ontoggle: (e) => this.folded.set(s.title, e.currentTarget.open),
+    }, h("summary", {}, h("h3", {}, s.title)), content);
   }
 
   /**
@@ -266,13 +287,90 @@ export class Inspector {
 
 /**
  * The vehicles of a train in order as a strip: each one as long as it is, coloured by its kind
- * (locomotive, multiple unit, coach, wagon); isolated brakes marked.
+ * (locomotive, multiple unit, coach, wagon); isolated brakes marked; the coupling behind a vehicle
+ * coloured by the force in it when the train starts (`pull`: low, mid, high: above what it may carry).
  */
 function consistStrip(strip) {
   const total = strip.reduce((s, v) => s + v.length_m, 0) || 1;
   return h("ol", { class: "consist-strip", "aria-label": "Vehicles in order" }, strip.map((v) => h("li", {
-    class: `kind-${v.kind}${v.isolated ? " isolated" : ""}`, style: { flexGrow: String(v.length_m / total) }, title: `${v.label}, ${Math.round(v.length_m)} m${v.isolated ? ", brakes isolated" : ""}`,
+    class: `kind-${v.kind}${v.isolated ? " isolated" : ""}${v.pull ? ` pull-${v.pull}` : ""}`, style: { flexGrow: String(v.length_m / total) },
+    title: `${v.label}, ${Math.round(v.length_m)} m${v.isolated ? ", brakes isolated" : ""}${v.pull_kn != null ? `, coupling behind it ${v.pull_kn} kN when starting` : ""}`,
   }, h("span", {}, v.label), v.isolated ? h("span", { class: "visually-hidden" }, ", brakes isolated") : null)));
+}
+
+/** Size of a card's chart (SVG units) and its margins for the axes. */
+const CHART = { w: 300, h: 128, left: 34, right: 10, top: 12, bottom: 18 };
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** An SVG element: like `h`, with attributes as they are (texts are translated where they are made). */
+function svg(tag, attrs = {}, ...children) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null && v !== false) el.setAttribute(k, String(v));
+  for (const c of children.flat(Infinity)) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
+  return el;
+}
+
+/**
+ * The marks of a chart: a dashed line each, its label above the plot, to the left of the line near
+ * the right edge; a label that would run into the one before goes one row down.
+ */
+function marks(list, X, top, ph, w) {
+  const out = [];
+  let lastEnd = -Infinity, row = 0;
+  for (const m of [...list].sort((a, b) => a.x - b.x)) {
+    const x = X(m.x), text = tr(m.label), width = text.length * 4.6 + 4;
+    const right = x > w - 70;
+    const start = right ? x - width : x + 2;
+    row = start < lastEnd ? row + 1 : 0;
+    lastEnd = start + width;
+    out.push(
+      svg("line", { class: "chart-mark", x1: x.toFixed(1), x2: x.toFixed(1), y1: top, y2: top + ph }),
+      svg("text", { class: "chart-tick", x: (right ? x - 2 : x + 2).toFixed(1), y: (top - 3 + row * 10).toFixed(1), "text-anchor": right ? "end" : "start" }, text),
+    );
+  }
+  return out;
+}
+
+/** A step of 1, 2 or 5 times a power of ten near `x`, for the ticks of an axis. */
+function niceStep(x) {
+  if (!(x > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(x)), f = x / p;
+  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+}
+
+/**
+ * A chart of a card's section (core/pick.js Chart): lines over a distance or a time, the limits
+ * stepped, marks along the x axis (signals, magnets, where the layout ends), the train now as a dot;
+ * the series named below it. The texts in it are translated here.
+ */
+function chart(c) {
+  const { w, h: ht, left, right, top, bottom } = CHART, pw = w - left - right, ph = ht - top - bottom;
+  const xmax = c.x.max > 0 ? c.x.max : 1, ymax = c.y.max > 0 ? c.y.max : 1;
+  const X = (x) => left + (pw * Math.max(0, Math.min(xmax, x))) / xmax;
+  const Y = (y) => top + ph - (ph * Math.max(0, Math.min(ymax, y))) / ymax;
+  const ticks = (max, n) => {
+    const step = niceStep(max / n), out = [];
+    for (let v = 0; v <= max + 1e-9 && out.length < 12; v += step) out.push(v);
+    return out;
+  };
+  const km = c.x.unit === "m" && xmax >= 2000;
+  const xLabel = (v) => (c.x.unit === "m" ? (km ? `${i18n.number(v / 1000, { maximumFractionDigits: 1 })} km` : `${Math.round(v)} m`) : `${i18n.number(v, { maximumFractionDigits: 1 })} ${c.x.unit}`);
+  const yt = ticks(ymax, 3);
+  const pts = (points) => points.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(" ");
+  const tone = (t) => `chart-${t || "train"}`;
+  const body = svg("svg", { class: "info-chart-plot", viewBox: `0 0 ${w} ${ht}`, role: "img", "aria-label": `${tr(c.label)} (${c.y.unit})` },
+    yt.map((v) => [
+      svg("line", { class: "chart-grid", x1: left, x2: w - right, y1: Y(v).toFixed(1), y2: Y(v).toFixed(1) }),
+      svg("text", { class: "chart-tick", x: left - 4, y: (Y(v) + 3).toFixed(1), "text-anchor": "end" }, `${i18n.number(v, { maximumFractionDigits: 1 })}${v === yt[yt.length - 1] ? ` ${c.y.unit}` : ""}`),
+    ]),
+    ticks(xmax, 4).map((v) => svg("text", { class: "chart-tick", x: X(v).toFixed(1), y: ht - 5, "text-anchor": v === 0 ? "start" : "middle" }, xLabel(v))),
+    marks(c.marks || [], X, top, ph, w),
+    c.series.map((s) => svg("polyline", { class: `chart-line ${tone(s.tone)}`, points: pts(s.points) })),
+    c.now ? svg("circle", { class: "chart-now", cx: X(c.now.x).toFixed(1), cy: Y(c.now.y).toFixed(1), r: 3.5 }) : null);
+  return h("figure", { class: "info-chart" },
+    h("figcaption", {}, c.label),
+    body,
+    h("ul", { class: "chart-legend" }, c.series.map((s) => h("li", {}, h("span", { class: `chart-swatch ${tone(s.tone)}`, "aria-hidden": "true" }), s.label))));
 }
 
 /** An outline in image px: the ground footprint of what lies flat, the hull of the projected box of what is tall. */

@@ -133,6 +133,12 @@ export {
   DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, trainConsist, LIVERIES, carsLength, drawTrain, turnCars,
   LOOKS, RAIL_TRAIN, STOP_MARGIN_M, carsOf, dockLine, trainDoors, trainOutline, trainPose,
   COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand,
+  G, MASS_FACTORS, STRAHL, RAIL_CONDITIONS, SANDING, SERVICE_BRAKE, MINDEN, BRAKE_FILL_S, BRAKE_SIGNAL_MPS, COUPLER_KN, START_RESISTANCE, ENERGY, SUPPLEMENT,
+  trainModel, adhesion, tractiveEffort, slips, runningResistance, curveResistance, lineResistance, regenForce, brakingDistance, brakingSpeed,
+  requiredBrakePercentage, fullBraking, serviceDeceleration, sectionAt, runProfile, receptivity, coastingRun, couplerForces, startingForces, runInForce, loadLimit,
+  PZB, PZB_RULES, ETCS_CURVES, REACTION_S, pzbType, pzb1000, pzb500, supervision, pzbApproach, etcsCurves,
+  LINE_PARAMS, NEXT_STOP_M, OPEN_LINE_KMH, trackLength, lineBrakingDistance, railCondition, pathAhead, pathPoint, lineAlong, signalsAhead, magnetsAhead,
+  trainOnTrack, trackAheadOf, speedAt, drawTrackAhead, formatDistance, REFERENCE_GRADIENT, minutesSeconds, runningCard, approachFactor, LOW_ADHESION, SLOW,
 } from "./rail/index.js";
 export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";

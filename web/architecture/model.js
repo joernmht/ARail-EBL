@@ -128,9 +128,9 @@ export const PACKAGES = [
   },
   {
     id: "rail", name: "rail", group: "framework", path: "web/arail/rail",
-    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures; whether a train may run on a section.",
-    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/stock.js", "web/arail/rail/draw.js", "web/arail/rail/compat.js"],
-    uses: ["core-math", "core-world", "core-transport", "core-drawing"],
+    summary: "Railway systems of the track sections (power, train protection, signals, radio, gauge, line category, country) and where they change; vehicles and the consists of trains with their figures; whether a train may run on a section; the running dynamics of trains (forces, runs, braking, adhesion, couplings, energy) and the train protection on the track ahead; slippery rails.",
+    files: ["web/arail/rail/index.js", "web/arail/rail/systems.js", "web/arail/rail/objects.js", "web/arail/rail/vehicles.js", "web/arail/rail/trains.js", "web/arail/rail/stock.js", "web/arail/rail/draw.js", "web/arail/rail/compat.js", "web/arail/rail/dynamics.js", "web/arail/rail/protection.js", "web/arail/rail/ahead.js", "web/arail/rail/running.js", "web/arail/rail/disruptions.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "core-disruptions"],
   },
   {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
@@ -141,7 +141,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -493,6 +493,7 @@ export const REGISTRY = {
     dis("crowd", "Crowd surge", "web/arail/core/disruptions.js", ["factor", "minutes"], "Many more passengers come."),
     dis("signal-failure", "Signal failure", "web/arail/core/disruptions.js", ["minutes"], "Trains held at the platforms."),
     dis("track-closure", "Track closure", "web/arail/core/disruptions.js", ["minutes"], "One track of a platform closed: no train stops there; the other track runs."),
+    { ...dis("low-adhesion", "Slippery rails", "web/arail/rail/disruptions.js", ["condition", "minutes"], "Wet rails, leaves or ice on one track of a platform: its trains come in and leave slower (from their running dynamics), and their cards use the rails' condition."), model: "dynamics" },
     { ...dis("story-train", "A story's vehicle", "web/arail/core/story.js", ["text", "waiting"], "A story's own train or bus holds one track or bay: no timetable vehicle comes there; the stop shows the story's message, a sign only with one (quiet); with waiting, the passengers keep waiting for the story's vehicle (started by stories, hidden in Disruptions)."), model: "stories" },
     dis("crew-sick", "Drivers call in sick", "web/arail/ops/disruptions.js", ["count", "notice_min"], "Sick calls to the operations' crew desk."),
     dis("unit-failure", "Unit failure", "web/arail/ops/disruptions.js", ["kind"], "A unit of a running train fails (hard or soft)."),

@@ -6,7 +6,7 @@ export const DISRUPTIONS = [
   {
     id: "disruptions", group: "disruptions", title: "Disruptions and their effects",
     summary: "A disruption is a registered definition started for a target: its effects, merged per stop area, are read in every sub-step by the timetable, the bus lines, the passengers and the planned trains until it expires or is stopped.",
-    description: "Disruptions are started in Interaction → Disruptions, by scenarios, by the control system's feed, or by simulations themselves (the infrastructure's faults). A definition says where it applies (any stop, platforms only, or nowhere: it acts once, like a driver calling in sick), its parameters, its duration and its effects: closed, hold, cancel, leave, demand, frequency, mood and messages. The types of all modules are listed under Extension points.",
+    description: "Disruptions are started in Interaction → Disruptions, by scenarios, by the control system's feed, or by simulations themselves (the infrastructure's faults). A definition says where it applies (any stop, platforms only, or nowhere: it acts once, like a driver calling in sick), its parameters, its duration and its effects: closed, hold, cancel, leave, demand, frequency, slow (vehicles come in and leave slower: slippery rails), mood and messages. The types of all modules are listed under Extension points.",
     files: ["web/arail/core/disruptions.js", "web/arail/ops/disruptions.js", "web/arail/infra/disruptions.js"],
     classes: [
       {
@@ -62,7 +62,7 @@ export const DISRUPTIONS = [
       ],
     },
     rules: [
-      "Merged effects: closed, hold, cancel and leave if any disruption says so; demand and frequency multiplied; mood summed; messages joined.",
+      "Merged effects: closed, hold, cancel and leave if any disruption says so; demand and frequency multiplied; slow the largest; mood summed; messages joined.",
       "A disruption whose target is one track of a platform or one bay (its dock, e.g. platform-1:left: the track closure; also a delay, cancellation or closure) acts on the vehicles at that track only; the platform shows its message.",
       "Timetable: due vehicles wait while closed or held; cancelled ones do not come; closed sends dwelling vehicles away.",
       "Bus lines: no departure while cancelled; a held bus stays; closed stops are passed.",

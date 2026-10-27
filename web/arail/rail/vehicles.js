@@ -35,57 +35,60 @@ export const VEHICLE_KINDS = {
  * service), `load_t` (the most a wagon carries; 0 for others), `axles`, `vmax_kmh`, `brake_t`
  * (brake weight per brake position, t; for wagons with a load-dependent brake `brake_loaded_t`
  * too), `seats`, `standing` (standing places, at about 4 people per m²), `cars` (the cars of a
- * multiple unit or railcar), `power_kw`; what it is equipped with (rail/systems.js keys): `power` (the
- * systems it runs on), `pantograph_mm` (heads fitted), `train_control` (class B systems),
- * `etcs` (the highest level it can run), `radio`, `gauge_mm`, `countries` (where it is
+ * multiple unit or railcar), `power_kw` (at the wheel); for its running dynamics (rail/dynamics.js)
+ * `tractive_kn` (starting tractive effort), `driven_axles` (default: all of a locomotive's),
+ * `regen_kn` (regenerative brake force, 0: none), `aux_kw` (auxiliary power: heating, air
+ * conditioning, the vehicle's own auxiliaries); what it is equipped with (rail/systems.js keys):
+ * `power` (the systems it runs on), `pantograph_mm` (heads fitted), `train_control` (class B
+ * systems), `etcs` (the highest level it can run), `radio`, `gauge_mm`, `countries` (where it is
  * authorised to run).
  */
 export const VEHICLE_TYPES = {
   /* ---------------------------------------------------------------- locomotives */
   br146: {
-    label: "BR 146.2 (TRAXX P160 AC2)", kind: "locomotive", length_m: 18.9, mass_t: 85, axles: 4, vmax_kmh: 160, power_kw: 5600,
+    label: "BR 146.2 (TRAXX P160 AC2)", kind: "locomotive", length_m: 18.9, mass_t: 85, axles: 4, vmax_kmh: 160, power_kw: 5600, tractive_kn: 300, regen_kn: 150, aux_kw: 30,
     brake_t: { G: 64, P: 105, R: 105 }, power: ["ac15"], pantograph_mm: [1950], train_control: ["pzb", "pzb_lzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
   },
   br185: {
-    label: "BR 185.2 (TRAXX F140 AC2)", kind: "locomotive", length_m: 18.9, mass_t: 85, axles: 4, vmax_kmh: 140, power_kw: 5600,
+    label: "BR 185.2 (TRAXX F140 AC2)", kind: "locomotive", length_m: 18.9, mass_t: 85, axles: 4, vmax_kmh: 140, power_kw: 5600, tractive_kn: 300, regen_kn: 150, aux_kw: 30,
     brake_t: { G: 64, P: 100, R: 100 }, power: ["ac15", "ac25"], pantograph_mm: [1950, 1450], train_control: ["pzb", "pzb_lzb", "zub"], etcs: "none", radio: ["gsmr"], countries: ["DE", "AT", "CH"],
   },
   br193: {
-    label: "BR 193 (Vectron MS)", kind: "locomotive", length_m: 19, mass_t: 90, axles: 4, vmax_kmh: 200, power_kw: 6400,
+    label: "BR 193 (Vectron MS)", kind: "locomotive", length_m: 19, mass_t: 90, axles: 4, vmax_kmh: 200, power_kw: 6400, tractive_kn: 300, regen_kn: 240, aux_kw: 30,
     brake_t: { G: 70, P: 115, R: 135 }, power: ["ac15", "ac25", "dc3", "dc1_5"], pantograph_mm: [1950, 1450], train_control: ["pzb", "pzb_lzb", "ls", "shp", "atb"], etcs: "l2", radio: ["gsmr"], countries: ["DE", "AT", "CZ", "PL", "NL"],
   },
   cd380: {
-    label: "ČD 380 (Škoda 109E)", kind: "locomotive", length_m: 20.8, mass_t: 87, axles: 4, vmax_kmh: 200, power_kw: 6400,
+    label: "ČD 380 (Škoda 109E)", kind: "locomotive", length_m: 20.8, mass_t: 87, axles: 4, vmax_kmh: 200, power_kw: 6400, tractive_kn: 274, regen_kn: 150, aux_kw: 30,
     brake_t: { G: 65, P: 110, R: 130 }, power: ["ac15", "ac25", "dc3"], pantograph_mm: [1950], train_control: ["ls", "pzb"], etcs: "l2", radio: ["gsmr"], countries: ["CZ", "AT", "DE"],
   },
   eu07: {
-    label: "EU07 (PKP)", kind: "locomotive", length_m: 15.9, mass_t: 80, axles: 4, vmax_kmh: 125, power_kw: 2000,
+    label: "EU07 (PKP)", kind: "locomotive", length_m: 15.9, mass_t: 80, axles: 4, vmax_kmh: 125, power_kw: 2000, tractive_kn: 240, regen_kn: 0, aux_kw: 25,
     brake_t: { G: 52, P: 80 }, power: ["dc3"], pantograph_mm: [1950], train_control: ["shp"], etcs: "none", radio: ["analogue", "gsmr"], countries: ["PL"],
   },
   br218: {
-    label: "BR 218 (diesel)", kind: "locomotive", length_m: 16.4, mass_t: 79, axles: 4, vmax_kmh: 140, power_kw: 1840,
+    label: "BR 218 (diesel)", kind: "locomotive", length_m: 16.4, mass_t: 79, axles: 4, vmax_kmh: 140, power_kw: 1840, tractive_kn: 245, regen_kn: 0, aux_kw: 30,
     brake_t: { G: 55, P: 85, R: 85 }, power: [], pantograph_mm: [], train_control: ["pzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
   },
   /* ---------------------------------------------------------------- multiple units and railcars */
   et442: {
-    label: "ET 442 Talent 2 (4 cars)", kind: "multiple-unit", length_m: 66, mass_t: 135, axles: 10, vmax_kmh: 160, power_kw: 2880, seats: 200, standing: 240, cars: 4,
+    label: "ET 442 Talent 2 (4 cars)", kind: "multiple-unit", length_m: 66, mass_t: 135, axles: 10, vmax_kmh: 160, power_kw: 2880, seats: 200, standing: 240, cars: 4, tractive_kn: 200, driven_axles: 6, regen_kn: 180, aux_kw: 100,
     brake_t: { R: 190, "R+Mg": 230 }, power: ["ac15"], pantograph_mm: [1950], train_control: ["pzb", "pzb_lzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
   },
   et442s: {
-    label: "ET 442 Talent 2 (2 cars)", kind: "multiple-unit", length_m: 42.6, mass_t: 82, axles: 6, vmax_kmh: 160, power_kw: 1440, seats: 96, standing: 120, cars: 2,
+    label: "ET 442 Talent 2 (2 cars)", kind: "multiple-unit", length_m: 42.6, mass_t: 82, axles: 6, vmax_kmh: 160, power_kw: 1440, seats: 96, standing: 120, cars: 2, tractive_kn: 110, driven_axles: 4, regen_kn: 100, aux_kw: 50,
     brake_t: { R: 115, "R+Mg": 140 }, power: ["ac15"], pantograph_mm: [1950], train_control: ["pzb", "pzb_lzb"], etcs: "none", radio: ["gsmr"], countries: ["DE"],
   },
   br642: {
-    label: "BR 642 Desiro Classic (diesel)", kind: "railcar", length_m: 41.7, mass_t: 69, axles: 6, vmax_kmh: 120, power_kw: 550, seats: 120, standing: 100, cars: 2,
+    label: "BR 642 Desiro Classic (diesel)", kind: "railcar", length_m: 41.7, mass_t: 69, axles: 6, vmax_kmh: 120, power_kw: 550, seats: 120, standing: 100, cars: 2, tractive_kn: 70, driven_axles: 4, regen_kn: 0, aux_kw: 40,
     brake_t: { R: 95, "R+Mg": 115 }, power: [], pantograph_mm: [], train_control: ["pzb"], etcs: "none", radio: ["gsmr"], countries: ["DE", "CZ", "PL"],
   },
   /* ---------------------------------------------------------------- coaches */
   dbpza: {
-    label: "DBpza (double-deck coach)", kind: "coach", length_m: 26.8, mass_t: 49, axles: 4, vmax_kmh: 160, seats: 120, standing: 80,
+    label: "DBpza (double-deck coach)", kind: "coach", length_m: 26.8, mass_t: 49, axles: 4, vmax_kmh: 160, seats: 120, standing: 80, aux_kw: 30,
     brake_t: { P: 55, R: 75 }, countries: ["DE"],
   },
   bpmz: {
-    label: "Bpmz (open coach)", kind: "coach", length_m: 26.4, mass_t: 47, axles: 4, vmax_kmh: 200, seats: 80, standing: 50,
+    label: "Bpmz (open coach)", kind: "coach", length_m: 26.4, mass_t: 47, axles: 4, vmax_kmh: 200, seats: 80, standing: 50, aux_kw: 25,
     brake_t: { P: 52, R: 74, "R+Mg": 96 }, countries: ["DE", "AT", "CH", "CZ", "PL", "NL"],
   },
   /* ---------------------------------------------------------------- freight wagons */

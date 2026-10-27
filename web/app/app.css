@@ -192,6 +192,14 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .info-rows dt { color: var(--board-muted); }
 .info-rows dd { margin: 0; overflow-wrap: anywhere; }
 .info-section ul { margin: 0; padding-left: 1.1em; display: grid; gap: 1px; }
+/* a section that folds (the running dynamics of a train): its title is the summary */
+details.info-section > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+details.info-section > summary::-webkit-details-marker { display: none; }
+details.info-section > summary::before { content: "▸"; color: var(--board-muted); font-size: .8rem; transition: transform .15s; }
+details.info-section[open] > summary::before { transform: rotate(90deg); }
+details.info-section > summary h3 { margin: 0; }
+details.info-section > summary:focus-visible { outline: 2px solid var(--overlay-ok); outline-offset: 2px; border-radius: 2px; }
+details.info-section[open] > summary { margin-bottom: 4px; }
 .info-text { margin: 0; color: var(--board-muted); font-size: .8rem; }
 .info-card .row .btn { background: var(--board-2); color: var(--board-text); border-color: var(--board-line); }
 /* the consist of a train: its vehicles in order, as long as they are */
@@ -203,6 +211,30 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .consist-strip .kind-coach { border-top-color: var(--board-muted); }
 .consist-strip .kind-wagon { border-top-color: var(--board-warn); }
 .consist-strip .isolated { outline: 2px dashed var(--overlay-bad); outline-offset: -2px; }
+/* the coupling behind a vehicle, by the force in it when the train starts */
+.consist-strip .pull-low { border-right: 3px solid var(--overlay-ok); }
+.consist-strip .pull-mid { border-right: 3px solid var(--board-warn); }
+.consist-strip .pull-high { border-right: 3px solid var(--overlay-bad); }
+/* charts of a card's sections (the running dynamics of a train): lines in the board's colours */
+.info-chart { margin: 6px 0 0; display: grid; gap: 2px; }
+.info-chart figcaption { font-size: .75rem; color: var(--board-muted); }
+.info-chart-plot { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-grid { stroke: var(--board-line); stroke-width: 1; }
+.chart-mark { stroke: var(--board-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-tick { fill: var(--board-muted); font-size: 9px; }
+.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-line.chart-train { stroke: var(--overlay-ok); }
+.chart-line.chart-limit { stroke: var(--board-muted); stroke-dasharray: 5 3; stroke-width: 1.5; }
+.chart-line.chart-warn { stroke: var(--board-warn); }
+.chart-line.chart-brake { stroke: var(--overlay-bad); }
+.chart-line.chart-muted { stroke: var(--board-muted); stroke-opacity: .55; }
+.chart-now { fill: var(--board-text); stroke: var(--board); stroke-width: 1.5; }
+.chart-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: .75rem; color: var(--board-muted); }
+.chart-swatch { display: inline-block; width: 14px; height: 0; margin-right: 4px; vertical-align: middle; border-top: 2px solid var(--overlay-ok); }
+.chart-swatch.chart-limit { border-top: 2px dashed var(--board-muted); }
+.chart-swatch.chart-warn { border-top-color: var(--board-warn); }
+.chart-swatch.chart-brake { border-top-color: var(--overlay-bad); }
+.chart-swatch.chart-muted { border-top-color: var(--board-muted); opacity: .55; }
 
 /* ------------------------------------------------------------------ panel */
 .panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; }

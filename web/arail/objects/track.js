@@ -4,7 +4,10 @@
  * used to place trains reported by the control system as "track + offset". A virtual camera (flyover) draws the track itself:
  * ballast, sleepers and rails. A track is a section with its railway systems (traction power, train
  * control, signals, radio, gauge, line category, country; see rail/systems.js): View → Track
- * systems colours the tracks by one of them, over the camera image too.
+ * systems colours the tracks by one of them, over the camera image too. It has its line data for
+ * the running dynamics of trains (rail/ahead.js): its length in the prototype, gradient, curve,
+ * rails and the braking distance of the line; while a train's card is open, the track ahead of it
+ * is drawn on the tracks it runs on.
  * @module arail/objects/track
  */
 import { LayoutObject } from "../core/object.js";
@@ -13,6 +16,8 @@ import { polylineAt, polylineLengths } from "../core/math.js";
 import { OVERLAY, rgba } from "../core/colors.js";
 import { SYSTEM_PARAMS, drawSystemBand, drawSystemChange, systemRows, worldSystemChanges } from "../rail/systems.js";
 import { COMPATIBILITY, drawCompatibilityBand } from "../rail/compat.js";
+import { LINE_PARAMS, drawTrackAhead, railCondition, trackLength } from "../rail/ahead.js";
+import { RAIL_CONDITIONS } from "../rail/dynamics.js";
 
 /** Prototype dimensions (m) and colours of the track drawn in the flyover. */
 const BED = { width_m: 4.2, color: "#8d8880" };
@@ -34,6 +39,7 @@ export class Track extends LayoutObject {
     { key: "virtual", label: "Virtual track", type: "boolean", default: false, help: "Not on the real layout (e.g. on a table module): drawn over the camera image too." },
     ...SYSTEM_PARAMS,
     { key: "min_brake_percentage", label: "Required brake percentage", type: "number", unit: "%", min: 0, max: 250, step: 1, help: "Mindestbremshundertstel: the brake percentage trains need here (from the line's braking table). Empty: not known." },
+    ...LINE_PARAMS,
   ];
 
   computeGeometry() {
@@ -48,8 +54,13 @@ export class Track extends LayoutObject {
     const card = super.card();
     const g = this.geometry;
     card.rows.push(["Track in the control system", this.spec.track_id || "–"]);
-    if (g) card.rows.push(["Length", `${Math.round(this.meters(g.total))} m (${Math.round(g.total)} mm on the model)`]);
+    if (g) card.rows.push(["Length", `${Math.round(trackLength(this))} m${+this.spec.length_m > 0 ? " in the prototype" : ""} (${Math.round(g.total)} mm on the model)`]);
     card.rows.push(["Real", this.spec.virtual ? "no, virtual" : "yes, a track of the layout"]);
+    const grade = Number(this.spec.gradient_permille) || 0, radius = Number(this.spec.curve_radius_m) || 0;
+    if (grade) card.rows.push(["Gradient", `${grade > 0 ? "rising" : "falling"} ${Math.abs(grade)} ‰ towards its last point`]);
+    if (radius > 0) card.rows.push(["Curve radius", `${Math.round(radius)} m`]);
+    const rails = railCondition(this.world, this);
+    if (rails !== "dry") card.rows.push(["Rails", RAIL_CONDITIONS[rails].label]);
     card.sections = [...(card.sections || []), { title: "Systems", lines: systemRows(this.spec).map(([k, v]) => `${k}: ${v}`) }];
     return card;
   }
@@ -81,6 +92,8 @@ export class Track extends LayoutObject {
       drawSystemBand(view, this, shown);
       for (const c of worldSystemChanges(this.world, shown)) if (c.a === this.id) drawSystemChange(view, c);
     }
+    // the track ahead of the train whose card is open
+    if (this.world.trackAhead) drawTrackAhead(view, this);
     if (!this.world.settings.showTracks) return;
     view.line(g.points, { stroke: rgba(OVERLAY.tracked, 0.85), width: 2, dash: [10, 6], order: 25 });
     const mid = polylineAt(g.points, g.total / 2, g.lengths).point;

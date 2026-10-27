@@ -307,7 +307,8 @@ export class ServiceManager {
   }
 
   _advance(st, v, dt, fx) {
-    const approach = Math.max(0.5, v.approach);
+    // slippery rails: coming in and leaving take longer (the effect `slow`)
+    const approach = Math.max(0.5, v.approach * (fx.slow > 1 ? fx.slow : 1));
     if (v.phase === "arriving") {
       v.progress += dt / approach;
       if (v.progress >= 1) {
