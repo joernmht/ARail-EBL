@@ -1,8 +1,9 @@
 // Running dynamics of trains (rail/dynamics.js): the forces (tractive effort within the adhesion,
 // Strahl's running resistance, gradients and Röckl's curve resistance), the Minden braking distance
 // and its inverses, a run along a line (limits for the whole train, braking for lower limits and the
-// stop, stalling on a gradient, slippery rails), its energy, coasting, coupler forces, the run-in
-// force, the load limit and how much slower slippery rails make a train.
+// stop, stalling on a gradient, slippery rails, a train without vehicles), its energy, coasting,
+// coupler forces, the run-in force, the load limit, how much slower slippery rails make a train, and
+// the rail operations' running times (also for a line whose train cannot run).
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -124,6 +125,20 @@ test("coasting before the stop: less energy within the running-time supplement",
   assert.ok(coastingRun(rb, flat(4000, 120), { supplement: 0.1 }).saving_kwh > c.saving_kwh);
   // no stop, no coasting
   assert.equal(coastingRun(rb, flat(4000, 120, { stop: false })).coast, null);
+  // the run as fast as possible, when it is known, is the one it compares with
+  const fast = runProfile(rb, flat(4000, 120));
+  const shared = coastingRun(rb, flat(4000, 120), { supplement: 0.05, fast });
+  assert.ok(shared.fast === fast);
+  near(shared.coast_m, c.coast_m, 1e-9, "the same coasting point");
+});
+
+test("a train without vehicles does not run, and has no energy", () => {
+  const empty = model({ vehicles: [{ type: "no-such-type" }] });
+  const p = runProfile(empty, flat(4000, 120));
+  assert.equal(p.time_s, Infinity);
+  assert.equal(p.stalled_at_m, 0);
+  for (const [k, v] of Object.entries(p.energy)) if (typeof v === "number") assert.equal(v, 0, `energy ${k}`);
+  assert.equal(coastingRun(empty, flat(4000, 120)).coast, null);
 });
 
 test("forces along the train: couplings, the run-in force in G and P, the load limit", () => {
@@ -175,6 +190,13 @@ test("running times of a line: from stop to stop with the dwells; the rail opera
   assert.ok(re1 > 25 && re1 < 45 && Number.isInteger(re1 * 2), `RE 1: ${re1} min`);
   assert.ok(rb33 > 20 && rb33 < 45, `RB 33: ${rb33} min`);
   assert.deepEqual(validateOps({ ...cfg, lines: [{ ...cfg.lines[0], km: undefined }] }, layout).filter((p) => /auto/.test(p)).length, 1, "auto needs km");
+  // a line whose train cannot run (a locomotive of the layout without power_kw): the distance at the
+  // line speed with the supplement, and the validation says so
+  const own = { ...layout, vehicle_types: { v100: { label: "V 100", kind: "locomotive", length_m: 12.1, mass_t: 62, axles: 4, vmax_kmh: 100, brake_t: { P: 50 } } }, consists: [...layout.consists, { id: "rb5", lines: ["RB 5"], vehicles: [{ type: "v100" }, { type: "bpmz", count: 2 }] }] };
+  const rb5 = { stations: cfg.stations, lines: [{ id: "RB 5", route: ["hbf", "altstadt"], km: 20, run_min: "auto" }] };
+  assert.deepEqual(normalizeOps(rb5, own).lines[0].run_min, [10.5], "20 km at 120 km/h and 5 %");
+  assert.match(validateOps(rb5, own).join("\n"), /RB 5.*its train cannot run/);
+  assert.deepEqual(normalizeOps(rb5, own).lines[0].energy, { electric: false, kwh_per_km: 0, diesel_l_per_km: 0 });
   // driving styles: the more supplement, the more coasting saves
   const styles = drivingStyles(model({ vehicles: [{ type: "et442s" }] }), flat(4000, 120)).styles.map((x) => x.run.saving_share);
   assert.ok(styles[0] < styles[1] && styles[1] < styles[2], styles.join(", "));

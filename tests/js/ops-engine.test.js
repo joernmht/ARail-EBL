@@ -341,3 +341,15 @@ test("energy per day from the running dynamics: coasting before the stops takes 
   assert.ok(coast.kpi.energyMWh < fast.kpi.energyMWh, `coasting ${coast.kpi.energyMWh} MWh, fast ${fast.kpi.energyMWh} MWh`);
   assert.equal(coast.kpi.trips, fast.kpi.trips, "the same timetable");
 });
+
+test("run_min \"auto\" for a line whose train cannot run: the day runs with the distance at the line speed", () => {
+  const layout = normalizeLayout({
+    ...readJSON("web/layouts/ebl-lab.json"),
+    vehicle_types: { v100: { label: "V 100", kind: "locomotive", length_m: 12.1, mass_t: 62, axles: 4, vmax_kmh: 100, brake_t: { P: 50 } } },
+  });
+  layout.consists.push({ id: "rb5", lines: ["RB 5"], vehicles: [{ type: "v100" }, { type: "bpmz", count: 2 }] });
+  const cfg = { stations: [{ id: "hbf", platforms: ["platform-1"] }, { id: "far" }], lines: [{ id: "RB 5", route: ["hbf", "far"], km: 20, run_min: "auto" }] };
+  const { kpi } = runOne(cfg, { layout, days: 1, seed: 1 });
+  assert.ok(kpi.trips > 0, `${kpi.trips} trips`);
+  assert.equal(kpi.energyMWh, 0, "no traction, no energy");
+});

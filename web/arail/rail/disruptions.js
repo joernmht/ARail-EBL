@@ -16,6 +16,9 @@ export const SLOW = { wet: 1.15, leaves: 2.2, ice: 1.6 };
 /** The colour of slippery rails on the table: Orange (wet rails, leaves), Brillantblau (ice). */
 const COLOUR = { wet: CD.orange, leaves: CD.orange, ice: CD.brillantblau };
 
+/** The factors of a consist by condition, worked out once (a train keeps its consist). */
+const FACTORS = new WeakMap();
+
 /**
  * How much slower the trains at a dock come in and leave on rails in a condition: from the running
  * dynamics of the train at it, else typical values.
@@ -24,7 +27,10 @@ function slowAt(world, dockId, condition) {
   const v = world.services?.docks.get(dockId)?.vehicle;
   const consist = v ? trainConsist(world, v) : null;
   if (!consist?.vehicles.length) return SLOW[condition] ?? 1;
-  return Math.min(10, approachFactor(trainModel(consist), condition));
+  let kept = FACTORS.get(consist);
+  if (!kept) FACTORS.set(consist, (kept = new Map()));
+  if (!kept.has(condition)) kept.set(condition, Math.min(10, approachFactor(trainModel(consist), condition)));
+  return kept.get(condition);
 }
 
 /** The disruption type: slippery rails on one track of a platform. */

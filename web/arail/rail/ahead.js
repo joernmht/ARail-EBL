@@ -73,6 +73,12 @@ export function railCondition(world, track) {
   return RAIL_CONDITIONS[track.spec.rail_condition] ? track.spec.rail_condition : "dry";
 }
 
+/** The direction (unit) from an end of a track into it (`end` 0: from its first point, 1: from its last). */
+function into(track, end) {
+  const g = track.geometry, d = polylineAt(g.points, end ? Math.max(0, g.total - 1) : Math.min(g.total, 1), g.lengths).dir;
+  return end ? [-d[0], -d[1]] : d;
+}
+
 /** The tracks whose end lies at an end of a track (`end` 0: its first point, 1: its last). */
 function joining(world, track, end) {
   const p = track.geometry.points, at = end ? p[p.length - 1] : p[0];
@@ -90,6 +96,8 @@ function joining(world, track, end) {
  * The path ahead of a point on a track in a direction: the parts of the tracks it runs on (from_mm
  * and to_mm along each track, its direction there, s0 and s1 in metres from the start), as far as
  * `length_m` reaches or the tracks do; `ends`: the tracks end before (the rest lies beyond the layout).
+ * Where several tracks join an end, it goes on along the one that turns least from the way the
+ * train runs (never back the way it came).
  * @param {import("../core/world.js").World} world
  * @param {object} track
  * @param {number} at_mm
@@ -106,7 +114,13 @@ export function pathAhead(world, track, at_mm, dir, length_m) {
     parts.push({ track: cur, from_mm: from, to_mm: from + (d * take) / k, dir: d, s0: s, s1: s + take });
     s += take;
     if (take < there - 1e-6) break;
-    const next = joining(world, cur, d > 0 ? 1 : 0).find((x) => !seen.has(x.track.id));
+    const out = d > 0 ? 1 : 0, way = into(cur, out).map((x) => -x);
+    let next = null, best = 0;
+    for (const x of joining(world, cur, out)) {
+      if (seen.has(x.track.id)) continue;
+      const v = into(x.track, x.end), dot = v[0] * way[0] + v[1] * way[1];
+      if (dot > best) [next, best] = [x, dot];
+    }
     if (!next) break;
     cur = next.track;
     d = next.end === 0 ? 1 : -1;
@@ -142,8 +156,8 @@ function stretch(path, s0, s1) {
 
 /**
  * The line of a run along a path (a rail/dynamics.js Line): a section per part with its track's line
- * speed, its gradient as the train runs, its curve and the rail's condition; then `beyond_m` of line
- * beyond the layout at `beyond_kmh` (else the last track's line speed, else {@link OPEN_LINE_KMH}).
+ * speed (else {@link OPEN_LINE_KMH}), its gradient as the train runs, its curve and the rail's
+ * condition; then `beyond_m` of line beyond the layout at `beyond_kmh` (else the last track's line speed).
  * @param {import("../core/world.js").World} world
  * @param {{parts: object[], length_m: number}} path
  * @param {{beyond_m?: number, beyond_kmh?: number | null, stop?: boolean}} [options]
@@ -152,7 +166,7 @@ export function lineAlong(world, path, { beyond_m = 0, beyond_kmh = null, stop =
   const sections = path.parts.map((p) => {
     const sp = p.track.spec, sys = sectionSystems(sp).values;
     return {
-      s0: p.s0, s1: p.s1, kmh: sys.max_speed_kmh ?? null, permille: (Number(sp.gradient_permille) || 0) * p.dir,
+      s0: p.s0, s1: p.s1, kmh: sys.max_speed_kmh ?? OPEN_LINE_KMH, permille: (Number(sp.gradient_permille) || 0) * p.dir,
       radius_m: Number(sp.curve_radius_m) > 0 ? Number(sp.curve_radius_m) : null, condition: railCondition(world, p.track), power: sys.power, track: p.track.id,
     };
   });
@@ -161,50 +175,62 @@ export function lineAlong(world, path, { beyond_m = 0, beyond_kmh = null, stop =
   return { length_m: L + beyond_m, sections, stop, power: sections[0]?.power ?? null };
 }
 
+/** Each signal and PZB magnet of the layout on its nearest track, where along it (mm) and how far from it; kept until the layout changes. */
+const BESIDE = new WeakMap();
+function besideTracks(world) {
+  const key = `${world.objectsVersion}:${world.map?.version}`, kept = BESIDE.get(world);
+  if (kept?.key === key) return kept.list;
+  const tracks = world.objects.filter((o) => o.type === "track" && o.geometry), list = [];
+  for (const o of world.objects) {
+    if (!o.geometry || !(o.type === "signal" || (o.type === "balise" && o.spec.pzb_hz))) continue;
+    let best = null;
+    for (const t of tracks) {
+      const g = t.geometry, pr = polylineProject(g.points, o.geometry.center, g.lengths);
+      if (!best || pr.distance < best.distance) best = { object: o, track: t, s_mm: pr.s, distance: pr.distance };
+    }
+    if (best) list.push(best);
+  }
+  BESIDE.set(world, { key, list });
+  return list;
+}
+
+/** Where objects beside their nearest track (signals, magnets, within `within_m`) lie along a path (m), with the part of it. */
+function alongPath(world, path, type, within_m) {
+  const out = [];
+  for (const b of besideTracks(world)) {
+    if (b.object.type !== type || b.distance > b.track.mm(within_m)) continue;
+    const p = path.parts.find((x) => x.track === b.track && b.s_mm >= Math.min(x.from_mm, x.to_mm) - 1e-6 && b.s_mm <= Math.max(x.from_mm, x.to_mm) + 1e-6);
+    if (p) out.push({ ...b, part: p, s: p.s0 + Math.abs(b.s_mm - p.from_mm) * metresPerMM(p.track) });
+  }
+  return out;
+}
+
 /**
- * The signals beside a path that apply to the train (their local x, the direction of the track they
- * face, along its direction of travel): where they are along the path (m) and their kind, nearest first.
+ * The signals beside a path that apply to the train: those of its tracks (each signal belongs to
+ * the track nearest to it, within 8 m) whose local x, the direction they face, points along its
+ * direction of travel; where they are along the path (m) and their kind, nearest first.
  * @param {import("../core/world.js").World} world
  * @param {{parts: object[]}} path
  * @returns {Array<{signal: object, s: number, kind: string}>}
  */
 export function signalsAhead(world, path) {
   const out = [];
-  for (const o of world.objects) {
-    if (o.type !== "signal" || !o.geometry) continue;
-    const c = o.geometry.center, ax = [Math.cos(o.geometry.angle), Math.sin(o.geometry.angle)];
-    for (const p of path.parts) {
-      const g = p.track.geometry, pr = polylineProject(g.points, c, g.lengths);
-      if (pr.distance > p.track.mm(8)) continue;
-      const lo = Math.min(p.from_mm, p.to_mm), hi = Math.max(p.from_mm, p.to_mm);
-      if (pr.s < lo - 1e-6 || pr.s > hi + 1e-6) continue;
-      const dir = polylineAt(g.points, pr.s, g.lengths).dir;
-      if ((dir[0] * ax[0] + dir[1] * ax[1]) * p.dir <= 0) continue; // it faces the other way
-      out.push({ signal: o, s: p.s0 + Math.abs(pr.s - p.from_mm) * metresPerMM(p.track), kind: o.spec.kind || "main" });
-      break;
-    }
+  for (const b of alongPath(world, path, "signal", 8)) {
+    const g = b.track.geometry, dir = polylineAt(g.points, b.s_mm, g.lengths).dir, a = b.object.geometry.angle;
+    if ((dir[0] * Math.cos(a) + dir[1] * Math.sin(a)) * b.part.dir <= 0) continue; // it faces the other way
+    out.push({ signal: b.object, s: b.s, kind: b.object.spec.kind || "main" });
   }
   return out.sort((a, b) => a.s - b.s);
 }
 
 /**
- * The PZB magnets along a path: the balises placed with a frequency (`pzb_hz`), and where none is
- * placed for a signal, those it implies: 1000 Hz at a distant signal (and at a main signal with a
- * distant signal for the next), 500 Hz 250 m before a main signal, 2000 Hz at it.
+ * The PZB magnets along a path: the balises placed on its tracks with a frequency (`pzb_hz`); where
+ * none is placed on the path, those its signals imply: 1000 Hz at a distant signal (and at a main
+ * signal with a distant signal for the next), 500 Hz 250 m before a main signal, 2000 Hz at it.
  * @returns {Array<{s: number, hz: string, placed: boolean}>}
  */
 export function magnetsAhead(world, path, signals = signalsAhead(world, path)) {
-  const out = [];
-  for (const o of world.objects) {
-    if (o.type !== "balise" || !o.geometry || !o.spec.pzb_hz) continue;
-    for (const p of path.parts) {
-      const g = p.track.geometry, pr = polylineProject(g.points, o.geometry.center, g.lengths);
-      const lo = Math.min(p.from_mm, p.to_mm), hi = Math.max(p.from_mm, p.to_mm);
-      if (pr.distance > p.track.mm(3) || pr.s < lo - 1e-6 || pr.s > hi + 1e-6) continue;
-      out.push({ s: p.s0 + Math.abs(pr.s - p.from_mm) * metresPerMM(p.track), hz: String(o.spec.pzb_hz), placed: true });
-      break;
-    }
-  }
+  const out = alongPath(world, path, "balise", 3).map((b) => ({ s: b.s, hz: String(b.object.spec.pzb_hz), placed: true }));
   if (!out.length) {
     for (const sg of signals) {
       if (sg.kind === "distant" || sg.kind === "combined") out.push({ s: sg.s, hz: "1000", placed: false });
@@ -242,14 +268,14 @@ export function trainOnTrack(world, hit) {
     const track = r?.path?.track;
     if (!track?.geometry || r.offset == null) return null;
     const consist = consistFor(world, { train: r.id, line: r.name });
-    if (!consist) return null;
+    if (!consist?.vehicles.length) return null;
     const kmh = ((world.trains?._speed?.(r) ?? 0) * world.scale * 3.6) / 1000;
     return { track, at_mm: r.offset - (+track.spec.offset_start_mm || 0), dir: (r.direction ?? 1) >= 0 ? 1 : -1, v_kmh: kmh, consist, phase: kmh > 1 ? "running" : "standing", stop_mm: null };
   }
   if (!r?.dock) return null;
   const track = trackById(world, r.dock.track), consist = trainConsist(world, r);
   const pose = track ? trainPose(world, r) : null;
-  if (!pose || !consist) return null;
+  if (!pose || !consist?.vehicles.length) return null;
   // it comes in over as far as it is long and 40 m more (rail/stock.js)
   return { track, at_mm: pose.head, dir: pose.dir, v_kmh: 0, consist, phase: r.phase === "arriving" ? "arriving" : r.phase === "departing" ? "departing" : "standing", stop_mm: pose.stop, approach_mm: (pose.length_m + 40) * pose.line.m };
 }
@@ -258,8 +284,8 @@ export function trainOnTrack(world, hit) {
  * Everything about the track ahead of a train pointed at: where it is, its run from there (to a stop
  * beyond the layout {@link NEXT_STOP_M} on, or for a train coming in to its stop), its speed now,
  * its full braking distance from it (from the line speed while it stands), the next main signal and
- * the braking distance of the line, the PZB magnets and the system that supervises it there.
- * Kept on the train's entry until it moves on.
+ * the braking distance of the line, the system that supervises it there and, where that is PZB or
+ * LZB, the PZB magnets. The run is kept on the train until it changes.
  * @param {import("../core/world.js").World} world
  * @param {import("../core/pick.js").Pickable} hit
  */
@@ -283,13 +309,17 @@ export function trackAheadOf(world, hit) {
   const condition = line.sections[0]?.condition ?? "dry";
   const permille = line.sections[0]?.permille ?? 0;
   // coming in, it is on the curve of its service braking to the stop
-  const v0 = on.phase === "arriving" ? Math.min(lineKmh, Math.sqrt(2 * serviceDeceleration(model, lineKmh, { condition }) * reach) * 3.6) : on.phase === "running" ? on.v_kmh : 0;
+  const decel = serviceDeceleration(model, lineKmh, { condition });
+  const onCurve = (m) => Math.min(lineKmh, Math.sqrt(2 * decel * Math.max(0, m)) * 3.6);
+  const v0 = on.phase === "arriving" ? onCurve(reach) : on.phase === "running" ? on.v_kmh : 0;
   const key = `${world.objectsVersion}|${consist.summary}|${consist.brakePercentage.toFixed(1)}|${Math.round(v0)}|${JSON.stringify(line.sections.map((x) => [Math.round(x.s0), Math.round(x.s1), x.kmh, x.permille, x.radius_m, x.condition]))}`;
   if (hit.ref.aheadRun?.key !== key) hit.ref.aheadRun = { key, profile: runProfile(model, line, { v0_kmh: v0 }) };
   const profile = hit.ref.aheadRun.profile;
-  // the speed now: where it is along its run (leaving its stop), on its braking curve, or as reported
-  const s = on.phase === "departing" || on.phase === "arriving" ? Math.abs(on.at_mm - from) * k : 0;
-  const v_kmh = on.phase === "departing" || on.phase === "arriving" ? speedAt(profile, s) : on.v_kmh;
+  // the speed now: where it is along its run (leaving its stop, coming in: on its braking curve,
+  // also while its front is still beyond the end of the track), or as reported
+  const moving = on.phase === "departing" || on.phase === "arriving";
+  const s = moving ? (on.at_mm - from) * on.dir * k : 0;
+  const v_kmh = on.phase === "arriving" && s < 0 ? onCurve(Math.abs(on.stop_mm - on.at_mm) * k) : moving ? speedAt(profile, s) : on.v_kmh;
   const reference = v_kmh > 1 ? v_kmh : lineKmh;
   const braking = fullBraking(model, reference, { permille, condition });
   // what lies ahead of the front: from where the train is now
@@ -298,14 +328,28 @@ export function trackAheadOf(world, hit) {
   const main = signals.find((x) => x.kind === "main" || x.kind === "combined") ?? null;
   const control = supervision(consist, track.spec);
   return {
-    on, model, line, profile, path, ahead, now_s: s, v_kmh, condition, permille, line_kmh: lineKmh,
+    on, model, line, profile, path, ahead, now_s: Math.max(0, s), v_kmh, condition, permille, line_kmh: lineKmh,
     braking: { from_kmh: reference, standing: !(v_kmh > 1), ...braking },
-    signals, main, magnets: magnetsAhead(world, ahead, signals), spacing_m: lineBrakingDistance(track),
+    // the PZB magnets where PZB supervises the train (on lines with LZB too)
+    signals, main, magnets: control.system === "pzb" || control.system === "lzb" ? magnetsAhead(world, ahead, signals) : [], spacing_m: lineBrakingDistance(track),
     // the speed the line's braking distance allows the train (its braking table)
     table_kmh: brakingSpeed(lineBrakingDistance(track), consist.brakePercentage, permille),
     control, pzb: control.system === "pzb" ? pzbType(consist.brakePercentage) : null,
     etcs: control.system === "etcs" || control.system === "lzb" ? etcsCurves(model, main ? main.s : ahead.length_m, { permille, condition, vmax_kmh: lineKmh }) : null,
   };
+}
+
+/**
+ * The pickable of a train as it is now, or null when it has gone. Its entry (`ref`) is kept up to
+ * date in place; a train of the control system reported anew under its number has a new one.
+ */
+function trainNow(world, hit) {
+  if (hit.key.startsWith("feed:")) {
+    const t = world.trains?.trains.get(hit.key.slice(5));
+    return !t ? null : t === hit.ref ? hit : { ...hit, ref: t };
+  }
+  if (hit.key.startsWith("vehicle:")) return world.services?.vehicles().includes(hit.ref) ? hit : null;
+  return null;
 }
 
 /** The speed (km/h) of a run at a distance (m), between its samples. */
@@ -342,12 +386,14 @@ function speedColour(kmh, top) {
 export function drawTrackAhead(view, track) {
   const world = track.world, want = world.trackAhead;
   if (!want?.hit) return;
-  // worked out once per frame, by the first track that draws
-  if (want.frame !== view.time || !want.result) {
-    const now = world.findPickable(view, want.hit.key);
+  // worked out once per frame (each frame draws with a new view) by the first track that draws,
+  // also while the simulation is paused (a train of the control system moves on), and not again
+  // when the train has gone
+  if (want.view !== view) {
+    want.view = view;
+    const now = trainNow(world, want.hit);
     if (now) want.hit = now;
     want.result = now ? trackAheadOf(world, now) : null;
-    want.frame = view.time;
   }
   const a = want.result;
   if (!a) return;

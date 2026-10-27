@@ -43,9 +43,10 @@ function extras(a, hit) {
   if (kept?.extras) return kept.extras;
   const m = a.model, steepest = Math.max(0, ...a.line.sections.map((x) => x.permille || 0));
   const grade = steepest > 0 ? steepest : REFERENCE_GRADIENT;
-  // driving styles for the run from a stop to the next (a train coming in or on the move has no such run)
+  // driving styles for the run from a stop to the next (a train coming in or on the move has no
+  // such run); as fast as possible, it is the run of the track ahead
   const fromStop = a.on.phase === "standing" || a.on.phase === "departing";
-  const styles = fromStop && m.power_kw > 0 ? drivingStyles(m, a.line) : null;
+  const styles = fromStop && m.power_kw > 0 ? drivingStyles(m, a.line, { fast: a.profile }) : null;
   const out = {
     styles,
     coast: styles?.styles.find((x) => x.supplement === SUPPLEMENT)?.run ?? { coast: null },
@@ -69,13 +70,15 @@ export function runningCard(world, hit, card) {
   if (hit.kind !== "train") return;
   const a = trackAheadOf(world, hit);
   if (!a) {
-    if (consistOfHit(world, hit)) card.sections.push({ title: "Running dynamics", lines: ["Not on a track of the layout: the running dynamics need the train on a track (its platform's, or the one the control system reports)."] });
+    if (consistOfHit(world, hit)?.vehicles.length) card.sections.push({ title: "Running dynamics", lines: ["Not on a track of the layout: the running dynamics need the train on a track (its platform's, or the one the control system reports)."] });
     return;
   }
   const x = extras(a, hit);
-  card.sections.push(runSection(a), brakingSection(a, x), forcesSection(a, x), energySection(a, x));
+  // a train that cannot draw power here does not run by itself: its run and its brakes only
+  const runs = a.model.power_kw > 0;
+  card.sections.push(runSection(a), brakingSection(a, x), ...(runs ? [forcesSection(a, x), energySection(a, x)] : []));
   // the forces in the couplings when it starts, on the strip of its vehicles
-  if (card.strip?.length === a.model.vehicles.length && x.start.forces.length) {
+  if (runs && card.strip?.length === a.model.vehicles.length && x.start.forces.length) {
     x.start.forces.forEach((f, i) => {
       card.strip[i].pull_kn = Math.round(f);
       card.strip[i].pull = f > COUPLER_KN.screw ? "high" : f > 0.6 * COUPLER_KN.screw ? "mid" : "low";

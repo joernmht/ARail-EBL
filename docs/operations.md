@@ -553,7 +553,9 @@ layout's `consists` entry for the line, else the default fleet of its kind): its
 from stop to stop with `stops` stops on the way (0; one number, or one per section) of `stop_dwell_s`
 each (30), at the line speed `vmax_kmh` (120), as fast as the train can, plus the running-time
 supplement of 5 %, rounded up to half minutes. On the lab's network the RE 1 (59 km, 6 stops,
-160 km/h) gets 35 min, the RB 33 with two diesel railcars (34 km, 9 stops) 33 min.
+160 km/h) gets 35 min, the RB 33 with two diesel railcars (34 km, 9 stops) 33 min. A train that
+cannot run by its dynamics (no traction vehicle with `power_kw`, or no vehicle type that is known)
+takes the distance at the line speed with the supplement, and the validation says so.
 
 **Vehicle types**: `id`, `name`, `seats`, `prefix` and `first_number` (unit numbers, `442 101`),
 `built` (`[from, to]`), `program` (its own maintenance programme) and `failure`:

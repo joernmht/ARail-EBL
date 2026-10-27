@@ -10,7 +10,7 @@
  * @module arail/ops/config
  */
 import { DAY, clockMinutes, deepMerge, hashKey, isObject, normalizeHours, num, weekdayIndex, weekdaySet } from "./util.js";
-import { lineRunningTime, runEnergyPerKm, trainModel } from "../rail/dynamics.js";
+import { SUPPLEMENT, lineRunningTime, runEnergyPerKm, trainModel } from "../rail/dynamics.js";
 import { lineConsist } from "../rail/trains.js";
 
 /** Maintenance levels of the default programme (ECM function 2: maintenance development). */
@@ -265,7 +265,8 @@ const segmentList = (v, n, fallback) => {
  * of the route its distance (`km`) with `stops` stops on the way of `stop_dwell_s` each, at the line
  * speed `vmax_kmh` (default 120 km/h), for the line's train (the layout's consist for the line, else
  * the default fleet of its kind); the timetable's time with the running-time supplement, rounded up to
- * half minutes.
+ * half minutes. A train that cannot run (no traction vehicle with power, no vehicles; validateOps
+ * reports it) takes the distance at the line speed.
  * @param {object} l the line's settings
  * @param {number} n the sections of its route
  * @param {object | null} layout
@@ -276,7 +277,17 @@ export function autoRunMinutes(l, n, layout) {
   const stops = Array.from({ length: n }, (_, i) => num(Array.isArray(l.stops) ? l.stops[i] ?? l.stops[l.stops.length - 1] : l.stops, 0, 0, 100));
   const model = trainModel(lineConsist(layout, String(l.id)));
   const kmh = num(l.vmax_kmh, 120, 20, 400), dwell = num(l.stop_dwell_s, 30, 0, 600);
-  return km.map((k, i) => Math.ceil(lineRunningTime(model, { km: k, kmh, stops: stops[i], dwell_s: dwell }).planned_s / 30) / 2);
+  return km.map((k, i) => {
+    const planned = lineRunningTime(model, { km: k, kmh, stops: stops[i], dwell_s: dwell }).planned_s;
+    const s = Number.isFinite(planned) ? planned : ((k * 3600) / kmh) * (1 + SUPPLEMENT) + dwell * stops[i];
+    return Math.ceil(s / 30) / 2;
+  });
+}
+
+/** Does the line's train run by its running dynamics (a traction vehicle with power that moves it)? */
+function lineTrainRuns(l, layout) {
+  const model = trainModel(lineConsist(layout, String(l.id)));
+  return Number.isFinite(lineRunningTime(model, { km: 1, kmh: num(l.vmax_kmh, 120, 20, 400) }).run_s);
 }
 
 /**
@@ -564,6 +575,7 @@ export function validateOps(cfg, layout) {
     for (const key of ["first", "last", "back_first"]) if (l[key] != null && clockMinutes(l[key]) == null) problems.push(`${name}: ${key} must be a time like "05:30"`);
     if (l.takt_min != null && !(Number(l.takt_min) >= 5)) problems.push(`${name}: takt_min must be at least 5`);
     if (l.run_min === "auto" && l.km == null) problems.push(`${name}: "run_min": "auto" needs km (the running times come from the running dynamics)`);
+    else if (l.run_min === "auto" && !lineTrainRuns(l, layout)) problems.push(`${name}: "run_min": "auto": its train cannot run (no traction vehicle with power_kw, or no vehicles); the distance at the line speed is taken`);
     if (l.vehicle != null && !types.has(l.vehicle)) problems.push(`${name}: no vehicle type "${l.vehicle}"`);
     if (l.days != null && !weekdaySet(l.days)) problems.push(`${name}: days must be like "mon-fri" or "sat,sun"`);
     if (isObject(l.docks)) {

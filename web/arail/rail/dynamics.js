@@ -364,6 +364,11 @@ function thin(points, n) {
  */
 export function runProfile(model, line, { v0_kmh = 0, coast_m = null, step_m = null, sanding = false, samples = 400 } = {}) {
   const L = Math.max(1, Number(line.length_m) || 1);
+  // a train without vehicles does not run
+  if (!(model.mass_t > 0)) {
+    const energy = energyFigures(model, line, { traction_kj: 0, braking_kj: 0, regen_kj: 0, aux_kj: 0, length_m: 0 });
+    return { length_m: L, time_s: Infinity, stalled_at_m: 0, top_kmh: 0, top_at_m: 0, brake_from_m: null, samples: [{ s: 0, t: 0, v: 0, phase: "traction" }], energy };
+  }
   const n = Math.max(2, Math.ceil(L / (step_m ?? clamp(L / 800, 1, 10)))), d = L / n;
   const xs = Array.from({ length: n + 1 }, (_, i) => i * d);
   const sec = xs.map((s) => sectionAt(line, Math.min(L - 1e-6, s)));
@@ -466,23 +471,27 @@ export function receptivity(power) {
 /**
  * Energy-efficient driving: the run as fast as possible and the run that coasts before the stop
  * from the earliest point that keeps the running time within the supplement (Ausrollen), found by
- * halving the distance; the coasting point is the driver advisory's hint.
+ * halving the distance (with runs in coarser steps, to about a metre); the coasting point is the
+ * driver advisory's hint.
  * @param {object} model
  * @param {Line} line
- * @param {{supplement?: number, v0_kmh?: number, sanding?: boolean}} [options]
+ * @param {{supplement?: number, v0_kmh?: number, sanding?: boolean, fast?: object | null}} [options]
+ *   fast: the run as fast as possible when it is known (runProfile with the same v0_kmh and sanding)
  * @returns {{fast: object, coast: object | null, coast_m: number | null, saving_kwh: number, saving_share: number, extra_s: number}}
  */
-export function coastingRun(model, line, { supplement = SUPPLEMENT, v0_kmh = 0, sanding = false } = {}) {
-  const fast = runProfile(model, line, { v0_kmh, sanding });
+export function coastingRun(model, line, { supplement = SUPPLEMENT, v0_kmh = 0, sanding = false, fast = null } = {}) {
+  fast ??= runProfile(model, line, { v0_kmh, sanding });
   const none = { fast, coast: null, coast_m: null, saving_kwh: 0, saving_share: 0, extra_s: 0 };
   if (!Number.isFinite(fast.time_s) || line.stop === false) return none;
-  const target = fast.time_s * (1 + Math.max(0, supplement));
+  // the search in coarser steps, against the time of the fast run in the same steps
+  const coarse = { v0_kmh, sanding, samples: 2, step_m: clamp(line.length_m / 200, 1, 25) };
+  const target = runProfile(model, line, coarse).time_s * (1 + Math.max(0, supplement));
   // the later the train coasts, the shorter the run: find the earliest point within the target
   let lo = 0, hi = fast.brake_from_m ?? line.length_m;
   if (!(hi > 0)) return none;
-  for (let k = 0; k < 22; k++) {
+  for (let k = 0; k < 14; k++) {
     const mid = (lo + hi) / 2;
-    const p = runProfile(model, line, { v0_kmh, sanding, coast_m: mid, samples: 2 });
+    const p = runProfile(model, line, { ...coarse, coast_m: mid });
     if (Number.isFinite(p.time_s) && p.time_s <= target) hi = mid;
     else lo = mid;
   }
@@ -629,12 +638,13 @@ export function lineRunningTime(model, { km, kmh = 120, stops = 0, dwell_s = 30,
  * energy it takes).
  * @param {object} model
  * @param {Line} line
- * @param {{supplements?: number[]}} [options] shares of the minimum running time
+ * @param {{supplements?: number[], fast?: object | null}} [options] supplements: shares of the
+ *   minimum running time; fast: the run as fast as possible from a standstill when it is known
  * @returns {{fast: object, styles: Array<{supplement: number, run: ReturnType<typeof coastingRun>}>}}
  */
-export function drivingStyles(model, line, { supplements = [0.03, SUPPLEMENT, 0.1] } = {}) {
-  const styles = supplements.map((supplement) => ({ supplement, run: coastingRun(model, line, { supplement }) }));
-  return { fast: styles[0]?.run.fast ?? runProfile(model, line), styles };
+export function drivingStyles(model, line, { supplements = [0.03, SUPPLEMENT, 0.1], fast = null } = {}) {
+  const run = fast ?? runProfile(model, line);
+  return { fast: run, styles: supplements.map((supplement) => ({ supplement, run: coastingRun(model, line, { supplement, fast: run }) })) };
 }
 
 /**
