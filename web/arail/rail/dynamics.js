@@ -66,7 +66,11 @@ export const SERVICE_BRAKE = { G: 0.3, P: 0.5, R: 0.6, "R+Mg": 0.6 };
  */
 export const MINDEN = { a: 3.85, b: 6.1, psi: 1 };
 
-/** Seconds the brake cylinders take to fill, by brake position (typical: G 18–30 s, P 3–5 s). */
+/**
+ * Seconds the brake cylinders take to fill, by brake position (typical: G 18–30 s, P 3–5 s), for
+ * the run-in force; the braking curves of ETCS take an equivalent build-up time instead
+ * (rail/protection.js `ETCS_CURVES.build_s`).
+ */
 export const BRAKE_FILL_S = { G: 22, P: 4, R: 3, "R+Mg": 3 };
 
 /** Speed (m/s) at which the brake signal travels along the brake pipe. */
@@ -471,8 +475,9 @@ export function receptivity(power) {
 /**
  * Energy-efficient driving: the run as fast as possible and the run that coasts before the stop
  * from the earliest point that keeps the running time within the supplement (Ausrollen), found by
- * halving the distance (with runs in coarser steps, to about a metre); the coasting point is the
- * driver advisory's hint.
+ * halving the distance with runs in coarser steps (to about a metre), then checked at full
+ * resolution and moved later where the run would take longer than the supplement allows; the
+ * coasting point is the driver advisory's hint.
  * @param {object} model
  * @param {Line} line
  * @param {{supplement?: number, v0_kmh?: number, sanding?: boolean, fast?: object | null}} [options]
@@ -495,7 +500,25 @@ export function coastingRun(model, line, { supplement = SUPPLEMENT, v0_kmh = 0, 
     if (Number.isFinite(p.time_s) && p.time_s <= target) hi = mid;
     else lo = mid;
   }
-  const coast = runProfile(model, line, { v0_kmh, sanding, coast_m: hi });
+  // at full resolution it may take a little longer than allowed: then coast later, doubling the
+  // step until it keeps within, and halve back between the last point over and the first within
+  const allowed = fast.time_s * (1 + Math.max(0, supplement)), end = fast.brake_from_m ?? line.length_m;
+  const at = (x) => runProfile(model, line, { v0_kmh, sanding, coast_m: x });
+  let coast = at(hi);
+  if (!(coast.time_s <= allowed)) {
+    let over = hi;
+    for (let step = coarse.step_m; ; step *= 2) {
+      hi = Math.min(end, over + step);
+      coast = at(hi);
+      if (coast.time_s <= allowed || hi >= end) break;
+      over = hi;
+    }
+    for (let k = 0; k < 4 && hi - over > 1; k++) {
+      const mid = (over + hi) / 2, p = at(mid);
+      if (p.time_s <= allowed) [hi, coast] = [mid, p];
+      else over = mid;
+    }
+  }
   if (!Number.isFinite(coast.time_s)) return none;
   const saving = fast.energy.net_kwh - coast.energy.net_kwh;
   return { fast, coast, coast_m: hi, saving_kwh: saving, saving_share: fast.energy.net_kwh > 0 ? saving / fast.energy.net_kwh : 0, extra_s: coast.time_s - fast.time_s };

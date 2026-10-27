@@ -344,15 +344,22 @@ stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty 
 ### Energy
 
 Every trip run counts its energy from the [running dynamics](rail-systems.md#energy-and-driving-style)
-of its line's train (the layout's consist for the line, else the default fleet of its kind), per unit:
-a run from stop to stop over each section of the route (`km` with `stops` stops on the way, at
-`vmax_kmh`), in kWh from the contact line or litres of diesel. The key figures **Traction energy**
-(MWh; diesel as the energy of its fuel, 9.9 kWh per litre) and **Energy cost** (`energy_kwh`, 0.20 €
-per kWh; `diesel_l`, 1.60 € per litre) follow. **How the drivers drive** is the setting `driving`:
-`fast` (as fast as possible) or `coasting` (coasting before every stop within the running-time
-supplement): the same timetable with less energy. Two setups that differ only in it compare the
-driving styles, e.g. `{"id": "coasting", "name": "Energy-efficient driving", "patch": {"driving":
-"coasting"}}`: on the lab's network a week takes about 8 % less energy, at the same punctuality.
+of its units: a unit of the line's vehicle type, once for each unit coupled (a trip runs with units
+of its line's type). **The vehicles of a unit** are its type's `vehicles`, else the vehicle type of the
+catalogue (or of the layout's `vehicle_types`) with the type's id (`et442` is an ET 442 Talent 2),
+else the line's train (the layout's consist for the line, else the default fleet of its kind) as one
+unit. The energy is that of a run from stop to stop over each section of the route (`km` with
+`stops` stops on the way, at `vmax_kmh`, on the line's `power`: on DC lines half of what the brakes
+feed back is taken back, AC lines take all of it), in kWh from the contact line or litres of diesel,
+worked out once for the same unit and line. The key figures **Energy from the contact line** (MWh),
+**Diesel** (litres) and **Energy cost** (`energy_kwh`, 0.20 € per kWh; `diesel_l`, 1.60 € per litre)
+follow; the energy from the contact line and the diesel are not added up, since a kWh from the
+contact line does about three times as much at the wheel as a kWh of diesel. **How the drivers drive**
+is the setting `driving`: `fast` (as fast as possible) or `coasting` (coasting before every stop within
+the running-time supplement): the same timetable with less energy. Two setups that differ only in it
+compare the driving styles, e.g. `{"id": "coasting", "name": "Energy-efficient driving", "patch":
+{"driving": "coasting"}}`: on the lab's network, run with ET 442 units, a week takes about 6 % less
+energy from the contact line, at the same punctuality.
 
 ## Railway undertaking → Operations on the game page
 
@@ -544,20 +551,24 @@ one per section), `dwell_min` (1), `turn_min` (8), `takt_min` (60), `first`, `la
 last departure from the first station), `back_first` (the first one back; default: the first
 arrival plus `turn_min`), `vehicle` (a type id), `units` (1), `peak_units`, `peak` (`[["06:00",
 "08:30"], ["15:30", "18:30"]]`), `days` (daily), `peak_days` (`"mon-fri"`), `docks` (station id →
-dock ids of its platforms, e.g. `"platform-1:left"`; default: all of the station's) and `conductor`
-(true: trains need a conductor too).
+dock ids of its platforms, e.g. `"platform-1:left"`; default: all of the station's), `conductor`
+(true: trains need a conductor too) and `power` (its traction power for the running dynamics:
+`ac15`, `ac25`, `dc3`, `dc1_5`, `dc0_75` or `none`; default: electrified, as AC).
 
 **Running times from the running dynamics**: with `"run_min": "auto"` the running time of each section
-is worked out from the [running dynamics](rail-systems.md#running-dynamics) of the line's train (the
-layout's `consists` entry for the line, else the default fleet of its kind): its `km` in equal runs
-from stop to stop with `stops` stops on the way (0; one number, or one per section) of `stop_dwell_s`
-each (30), at the line speed `vmax_kmh` (120), as fast as the train can, plus the running-time
-supplement of 5 %, rounded up to half minutes. On the lab's network the RE 1 (59 km, 6 stops,
-160 km/h) gets 35 min, the RB 33 with two diesel railcars (34 km, 9 stops) 33 min. A train that
-cannot run by its dynamics (no traction vehicle with `power_kw`, or no vehicle type that is known)
-takes the distance at the line speed with the supplement, and the validation says so.
+is worked out from the [running dynamics](rail-systems.md#running-dynamics) of a unit of the line's
+vehicle type (see *the vehicles of a unit* below): its `km` in equal runs from stop to stop with
+`stops` stops on the way (0; one number, or one per section) of `stop_dwell_s` each (30), at the
+line speed `vmax_kmh` (120) and on its `power`, as fast as the unit can, plus the running-time
+supplement of 5 %, rounded up to half minutes. With the default vehicle type and the lab's consists,
+the RE 1 (59 km, 6 stops, 160 km/h, a locomotive and four coaches) gets 35 min, the RB 33 with its
+two diesel railcars (34 km, 9 stops) 33 min. A train that cannot run by its dynamics (no traction
+vehicle with `power_kw` that can draw the line's power, or no vehicle type that is known) takes the
+distance at the line speed with the supplement, and the validation says so.
 
-**Vehicle types**: `id`, `name`, `seats`, `prefix` and `first_number` (unit numbers, `442 101`),
+**Vehicle types**: `id`, `name`, `seats`, `vehicles` (the vehicles of one unit, for its running
+dynamics, e.g. `[{"type": "br642"}]`; see below), `prefix` and `first_number` (unit numbers, `442 101`;
+give each type its own, or their units get the same numbers),
 `built` (`[from, to]`), `program` (its own maintenance programme) and `failure`:
 `hard_per_100k_km` (1.6), `soft_per_10k_km` (2), `wear_share` (0.6), `shape` (2), `infant` (0.8),
 `infant_years` (1), `ageing` (0.04 per year), `ageing_from` (12 years), `start_share` (0.15),

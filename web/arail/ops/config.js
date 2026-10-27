@@ -11,7 +11,8 @@
  */
 import { DAY, clockMinutes, deepMerge, hashKey, isObject, normalizeHours, num, weekdayIndex, weekdaySet } from "./util.js";
 import { SUPPLEMENT, lineRunningTime, runEnergyPerKm, trainModel } from "../rail/dynamics.js";
-import { lineConsist } from "../rail/trains.js";
+import { POWER } from "../rail/systems.js";
+import { layoutVehicleTypes, unitConsist } from "../rail/trains.js";
 
 /** Maintenance levels of the default programme (ECM function 2: maintenance development). */
 export const DEFAULT_PROGRAM = [
@@ -260,58 +261,75 @@ const segmentList = (v, n, fallback) => {
   return Array.from({ length: n }, () => num(v, fallback, 0.5));
 };
 
+/** The stops on the way of each section of a line's route (`stops`: one number, or one per section). */
+const stopsOf = (l, n) => Array.from({ length: n }, (_, i) => num(Array.isArray(l.stops) ? l.stops[i] ?? l.stops[l.stops.length - 1] : l.stops, 0, 0, 100));
+/** The traction power of a line (`power`, rail/systems.js POWER), or null: not known (electrified, AC). */
+const powerOf = (l) => (POWER[l.power] ? l.power : null);
+
 /**
  * Running times from the running dynamics (`"run_min": "auto"`, rail/dynamics.js): for each section
  * of the route its distance (`km`) with `stops` stops on the way of `stop_dwell_s` each, at the line
- * speed `vmax_kmh` (default 120 km/h), for the line's train (the layout's consist for the line, else
- * the default fleet of its kind); the timetable's time with the running-time supplement, rounded up to
- * half minutes. A train that cannot run (no traction vehicle with power, no vehicles; validateOps
- * reports it) takes the distance at the line speed.
+ * speed `vmax_kmh` (default 120 km/h) and on its traction power (`power`), for a unit of the line's
+ * vehicle type (rail/trains.js `unitConsist`: its vehicles, else the layout's consist for the line,
+ * else the default fleet of its kind); the timetable's time with the running-time supplement,
+ * rounded up to half minutes. A train that cannot run (no traction vehicle with power, no vehicles;
+ * validateOps reports it) takes the distance at the line speed.
  * @param {object} l the line's settings
  * @param {number} n the sections of its route
  * @param {object | null} layout
+ * @param {object | null} [type] the line's vehicle type of the fleet
  * @returns {number[]}
  */
-export function autoRunMinutes(l, n, layout) {
-  const km = segmentList(l.km, n, 30);
-  const stops = Array.from({ length: n }, (_, i) => num(Array.isArray(l.stops) ? l.stops[i] ?? l.stops[l.stops.length - 1] : l.stops, 0, 0, 100));
-  const model = trainModel(lineConsist(layout, String(l.id)));
+export function autoRunMinutes(l, n, layout, type = null) {
+  const km = segmentList(l.km, n, 30), stops = stopsOf(l, n), power = powerOf(l);
+  const model = trainModel(unitConsist(layout, String(l.id), type), { power });
   const kmh = num(l.vmax_kmh, 120, 20, 400), dwell = num(l.stop_dwell_s, 30, 0, 600);
   return km.map((k, i) => {
-    const planned = lineRunningTime(model, { km: k, kmh, stops: stops[i], dwell_s: dwell }).planned_s;
+    const planned = lineRunningTime(model, { km: k, kmh, stops: stops[i], dwell_s: dwell, power }).planned_s;
     const s = Number.isFinite(planned) ? planned : ((k * 3600) / kmh) * (1 + SUPPLEMENT) + dwell * stops[i];
     return Math.ceil(s / 30) / 2;
   });
 }
 
-/** Does the line's train run by its running dynamics (a traction vehicle with power that moves it)? */
-function lineTrainRuns(l, layout) {
-  const model = trainModel(lineConsist(layout, String(l.id)));
-  return Number.isFinite(lineRunningTime(model, { km: 1, kmh: num(l.vmax_kmh, 120, 20, 400) }).run_s);
+/** Does a unit of the line's vehicle type run by its running dynamics (a traction vehicle with power that moves it)? */
+function lineTrainRuns(l, layout, type) {
+  const model = trainModel(unitConsist(layout, String(l.id), type), { power: powerOf(l) });
+  return Number.isFinite(lineRunningTime(model, { km: 1, kmh: num(l.vmax_kmh, 120, 20, 400), power: powerOf(l) }).run_s);
 }
 
+/** The energies worked out before, by the train's figures and the line: the same come again for every setup and seed. */
+const ENERGY_KEPT = new Map();
+
 /**
- * The energy per km of a line's trains (rail/dynamics.js), per unit: over the sections of its route
- * (`km` with `stops` stops on the way, at `vmax_kmh`), as fast as possible or, with `driving`
- * "coasting", coasting before every stop within the running-time supplement.
+ * The energy per km of one unit of a line's vehicle type (rail/trains.js `unitConsist`; a trip
+ * counts it once for each of its units), from its running dynamics (rail/dynamics.js): over the
+ * sections of its route (`km` with `stops` stops on the way, at `vmax_kmh`, on its traction power
+ * `power`), as fast as possible or, with `driving` "coasting", coasting before every stop within the
+ * running-time supplement. Kept for the same train and line.
  * @param {object} l the line's settings
  * @param {number} n the sections of its route
  * @param {object | null} layout
  * @param {string} [driving] "fast" or "coasting"
+ * @param {object | null} [type] the line's vehicle type of the fleet
  * @returns {{electric: boolean, kwh_per_km: number, diesel_l_per_km: number}}
  */
-export function lineEnergy(l, n, layout, driving = "fast") {
-  const km = segmentList(l.km, n, 30);
-  const stops = Array.from({ length: n }, (_, i) => num(Array.isArray(l.stops) ? l.stops[i] ?? l.stops[l.stops.length - 1] : l.stops, 0, 0, 100));
-  const model = trainModel(lineConsist(layout, String(l.id)));
+export function lineEnergy(l, n, layout, driving = "fast", type = null) {
+  const km = segmentList(l.km, n, 30), stops = stopsOf(l, n), power = powerOf(l);
+  const model = trainModel(unitConsist(layout, String(l.id), type), { power });
   const kmh = num(l.vmax_kmh, 120, 20, 400), all = km.reduce((a, b) => a + b, 0) || 1;
+  const key = JSON.stringify([model, km, stops, kmh, power, driving]);
+  const kept = ENERGY_KEPT.get(key);
+  if (kept) return { ...kept };
   let kwh = 0, litres = 0;
   km.forEach((k, i) => {
-    const e = runEnergyPerKm(model, { km: k, kmh, stops: stops[i], coasting: driving === "coasting" });
+    const e = runEnergyPerKm(model, { km: k, kmh, stops: stops[i], coasting: driving === "coasting", power });
     kwh += e.kwh_per_km * k;
     litres += e.diesel_l_per_km * k;
   });
-  return { electric: model.electric, kwh_per_km: kwh / all, diesel_l_per_km: litres / all };
+  const out = { electric: model.electric, kwh_per_km: kwh / all, diesel_l_per_km: litres / all };
+  if (ENERGY_KEPT.size >= 500) ENERGY_KEPT.clear();
+  ENERGY_KEPT.set(key, out);
+  return { ...out };
 }
 
 /**
@@ -370,19 +388,20 @@ export function normalizeOps(config = {}, layout = null) {
       docks[sid] = wanted.length ? wanted : st.docks.slice();
     }
     const units = Math.round(num(l.units, 1, 1, 4));
+    const vehicle = typeIds.has(l.vehicle) ? l.vehicle : types[0].id, type = types.find((t) => t.id === vehicle);
     lines.push({
       id: String(l.id), name: String(l.name || l.id), route,
-      run_min: l.run_min === "auto" ? autoRunMinutes(l, n, layout) : segmentList(l.run_min, n, 30), km: segmentList(l.km, n, 30),
+      run_min: l.run_min === "auto" ? autoRunMinutes(l, n, layout, type) : segmentList(l.run_min, n, 30), km: segmentList(l.km, n, 30),
       dwell_min: num(l.dwell_min, 1, 0, 30), turn_min: num(l.turn_min, 8, 1, 120), takt_min: takt, first, last,
       back_first: l.back_first != null ? minutes(l.back_first, null) : null,
-      vehicle: typeIds.has(l.vehicle) ? l.vehicle : types[0].id,
+      vehicle, power: powerOf(l),
       units, peak_units: Math.max(units, Math.round(num(l.peak_units, units, 1, 4))),
       peak: list(l.peak ?? [["06:00", "08:30"], ["15:30", "18:30"]]).filter((p) => Array.isArray(p) && p.length === 2)
         .map(([a, b]) => [minutes(a, 0), minutes(b, 0)]).filter(([a, b]) => b > a),
       days: weekdaySet(l.days) ?? new Set([0, 1, 2, 3, 4, 5, 6]),
       peak_days: weekdaySet(l.peak_days ?? "mon-fri") ?? new Set([0, 1, 2, 3, 4]),
       docks, conductor: l.conductor === true,
-      energy: lineEnergy(l, n, layout, c.driving === "coasting" ? "coasting" : "fast"),
+      energy: lineEnergy(l, n, layout, c.driving === "coasting" ? "coasting" : "fast", type),
     });
   }
 
@@ -562,8 +581,14 @@ export function validateOps(cfg, layout) {
     }
   });
   const stationIds = stations ? ids : new Set(autoNetwork(layout).stations.map((s) => s.id));
-  const types = new Set(list(cfg.fleet?.types).filter(isObject).map((t) => t.id));
+  const typeList = list(cfg.fleet?.types).filter(isObject);
+  const types = new Set(typeList.map((t) => t.id));
   if (!types.size) types.add(DEFAULT_VEHICLE.id);
+  // the rail vehicles of a fleet type (for its running dynamics)
+  const known = layoutVehicleTypes(layout);
+  typeList.forEach((t, i) => {
+    for (const v of list(t.vehicles)) if (!isObject(v) || !known[v.type]) problems.push(`fleet.types[${i}] (${t.id}): no vehicle type "${isObject(v) ? v.type : v}"`);
+  });
   if (cfg.lines != null && !Array.isArray(cfg.lines)) problems.push("lines must be a list");
   list(cfg.lines).forEach((l, i) => {
     const name = `lines[${i}]${isObject(l) && l.id != null ? ` (${l.id})` : ""}`;
@@ -574,8 +599,10 @@ export function validateOps(cfg, layout) {
     if (new Set(route).size !== route.length) problems.push(`${name}: a station appears twice in the route`);
     for (const key of ["first", "last", "back_first"]) if (l[key] != null && clockMinutes(l[key]) == null) problems.push(`${name}: ${key} must be a time like "05:30"`);
     if (l.takt_min != null && !(Number(l.takt_min) >= 5)) problems.push(`${name}: takt_min must be at least 5`);
+    if (l.power != null && !POWER[l.power]) problems.push(`${name}: power must be one of ${Object.keys(POWER).join(", ")}`);
+    const lineType = typeList.find((t) => t.id === l.vehicle) ?? typeList[0] ?? DEFAULT_VEHICLE;
     if (l.run_min === "auto" && l.km == null) problems.push(`${name}: "run_min": "auto" needs km (the running times come from the running dynamics)`);
-    else if (l.run_min === "auto" && !lineTrainRuns(l, layout)) problems.push(`${name}: "run_min": "auto": its train cannot run (no traction vehicle with power_kw, or no vehicles); the distance at the line speed is taken`);
+    else if (l.run_min === "auto" && !lineTrainRuns(l, layout, lineType)) problems.push(`${name}: "run_min": "auto": its train cannot run (no traction vehicle with power_kw that can draw the line's power, or no vehicles); the distance at the line speed is taken`);
     if (l.vehicle != null && !types.has(l.vehicle)) problems.push(`${name}: no vehicle type "${l.vehicle}"`);
     if (l.days != null && !weekdaySet(l.days)) problems.push(`${name}: days must be like "mon-fri" or "sat,sun"`);
     if (isObject(l.docks)) {

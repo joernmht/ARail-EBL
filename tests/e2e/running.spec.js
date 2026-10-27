@@ -29,11 +29,15 @@ async function openRE1(page) {
     window.__ARail = await import("/arail/index.js");
     window.__arail.world.services.call("platform-1:right", { line: "RE 1" });
   });
-  // standing at the platform: its card opened
+  // standing at the platform: its card opened, and the train held there while the card is checked
+  // (paused: on a slow machine it would leave before; the card is still drawn anew)
   await page.waitForFunction(() => {
     const app = window.__arail;
     const hit = window.__ARail.movingPickables(app.world, app.lastView).find((p) => p.kind === "train" && p.ref.line === "RE 1" && p.ref.dock?.track === "G3" && p.ref.phase === "dwelling");
-    if (hit) app.inspector.show(hit);
+    if (hit) {
+      app.inspector.show(hit);
+      app.world.paused = true;
+    }
     return !!hit;
   }, null, { timeout: 30_000 });
   return page.locator("#infoCard");
@@ -67,6 +71,13 @@ for (const scheme of ["light", "dark"]) {
       await energy.locator("summary").click();
       await expect(energy).toContainText("kWh from the contact line");
       await expect(energy).toContainText(/Coasting within 5 % supplement · \d+:\d\d min/);
+      // opened just as the card is drawn anew (before the toggle event): it stays open
+      const forces = card.locator("details.info-section", { has: page.locator("summary", { hasText: "Adhesion and forces" }) });
+      await page.evaluate(() => {
+        [...document.querySelectorAll("#infoCard details.info-section summary")].find((x) => x.textContent.includes("Adhesion and forces")).click();
+        window.__arail.inspector.render();
+      });
+      await expect(forces).toHaveAttribute("open", "");
       // the couplings on the strip of its vehicles
       await expect(card.locator(".consist-strip li.pull-low").first()).toBeVisible();
       // the track ahead is drawn while the card is open

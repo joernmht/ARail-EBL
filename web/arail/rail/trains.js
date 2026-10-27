@@ -13,8 +13,7 @@ import { checkSection, compatibilitySection } from "./compat.js";
 
 /** The vehicle types of a world: the catalogue and the layout's own (`vehicle_types`). */
 export function vehicleTypes(world) {
-  const own = world.layout?.vehicle_types;
-  return own && Object.keys(own).length ? { ...VEHICLE_TYPES, ...own } : VEHICLE_TYPES;
+  return layoutVehicleTypes(world.layout);
 }
 
 /**
@@ -62,10 +61,30 @@ function matches(entry, { train, line }) {
  * @returns {Consist}
  */
 export function lineConsist(layout, line) {
-  const own = layout?.vehicle_types && typeof layout.vehicle_types === "object" ? layout.vehicle_types : null;
-  const types = own && Object.keys(own).length ? { ...VEHICLE_TYPES, ...own } : VEHICLE_TYPES;
   const entry = (layout?.consists || []).find((e) => matches(e, { line }));
-  return new Consist(entry ?? fleetEntry(line), types);
+  return new Consist(entry ?? fleetEntry(line), layoutVehicleTypes(layout));
+}
+
+/** The vehicle types of a layout (file or normalized): the catalogue and its own `vehicle_types`. */
+export function layoutVehicleTypes(layout) {
+  const own = layout?.vehicle_types && typeof layout.vehicle_types === "object" ? layout.vehicle_types : null;
+  return own && Object.keys(own).length ? { ...VEHICLE_TYPES, ...own } : VEHICLE_TYPES;
+}
+
+/**
+ * The consist of one unit of a vehicle type of the rail operations on a line (for its running
+ * times and its energy): the type's own `vehicles`, else the vehicle type of the catalogue (or of
+ * the layout's `vehicle_types`) with the type's id, else the line's train ({@link lineConsist}).
+ * @param {object | null} layout a layout (file or normalized)
+ * @param {string} line
+ * @param {{id?: string, name?: string, vehicles?: object[]} | null} type the fleet's vehicle type (ops/config.js)
+ * @returns {Consist}
+ */
+export function unitConsist(layout, line, type) {
+  const types = layoutVehicleTypes(layout);
+  if (Array.isArray(type?.vehicles) && type.vehicles.length) return new Consist({ name: type.name ?? type.id, vehicles: type.vehicles }, types);
+  if (type?.id && types[type.id]) return new Consist({ name: type.name ?? type.id, vehicles: [{ type: type.id }] }, types);
+  return lineConsist(layout, line);
 }
 
 /**

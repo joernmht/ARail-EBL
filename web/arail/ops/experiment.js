@@ -10,7 +10,6 @@
  *   }
  * @module arail/ops/experiment
  */
-import { ENERGY } from "../rail/dynamics.js";
 import { applySetup, setupsOf, stressOf } from "./config.js";
 import { OpsEngine } from "./engine.js";
 import { CAUSE_LABELS } from "./contracts.js";
@@ -45,7 +44,8 @@ export const KPIS = [
   ["penaltyAuthority", "Penalties to the authority", "€", "low"],
   ["crewCost", "Crew cost", "€", "low"],
   ["workshopCost", "Workshop cost", "€", "low"],
-  ["energyMWh", "Traction energy", "MWh", "low"],
+  ["energyMWh", "Energy from the contact line", "MWh", "low"],
+  ["dieselL", "Diesel", "l", "low"],
   ["energyCost", "Energy cost", "€", "low"],
 ];
 
@@ -86,8 +86,9 @@ export function kpis(engine, { from = engine.measureFrom, to = engine.today } = 
     penaltyAuthority: authority ? pen.byContract[authority] || 0 : 0,
     crewCost: (t.paidMin / 60) * (costs.driver_hour || 0) + (t.overtimeMin / 60) * (costs.driver_hour || 0) * Math.max(0, (costs.overtime_factor || 1) - 1),
     workshopCost: (t.workshopMin / 60) * (costs.workshop_hour || 0) + t.emptyKm * (costs.empty_km || 0),
-    // from the contact line, and the energy of the diesel (9.9 kWh per litre)
-    energyMWh: (t.energyKwh + t.dieselL * ENERGY.diesel.kwh_per_l) / 1000,
+    // each on its own: a kWh from the contact line does more at the wheel than one of diesel
+    energyMWh: t.energyKwh / 1000,
+    dieselL: t.dieselL,
     energyCost: t.energyKwh * (costs.energy_kwh || 0) + t.dieselL * (costs.diesel_l || 0),
     parties: pen.parties,
     penaltiesByContract: pen.byContract,

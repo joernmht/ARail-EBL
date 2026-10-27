@@ -11,7 +11,9 @@
  * again over 153 m (O 65 → 45, M 50 → 35, U 40 → 25 km/h); the 2000 Hz magnet at a main signal
  * showing stop brakes the train at once. In the restrictive mode (after the train stood or crept
  * in the supervision) 45 km/h after 1000 Hz and 25 km/h after 500 Hz. Exceeding a curve brakes the
- * train (forced braking).
+ * train (forced braking). Supervised here ({@link pzbApproach}): the 1000 Hz curve over time and the
+ * 500 Hz curve over distance; the acknowledging, how long the 1000 Hz supervision lasts, its release
+ * and the restrictive mode are named ({@link PZB_RULES}), not supervised.
  *
  * **ETCS** (and LZB, supervised the same way here): from the end of authority back, the emergency
  * brake deceleration curve (EBD) of the train's full braking, the emergency brake intervention
@@ -30,10 +32,20 @@ export const PZB = {
   U: { label: "U (lower)", from_percentage: 0, vmax_kmh: 105, v1000_kmh: 55, t1000_s: 38, v500_kmh: [40, 25] },
 };
 
-/** PZB 90: acknowledging, how long and how far the supervision lasts, where the magnets lie, the restrictive mode. */
+/**
+ * PZB 90: acknowledging, how long and how far the supervision lasts, where the magnets lie, the
+ * restrictive mode. Only `m500_before_m` and `curve500_m` are used ({@link pzbApproach}); the others
+ * name the rules for the card and the guide, not supervised here.
+ */
 export const PZB_RULES = { acknowledge_s: 4, m1000_m: 1250, release_m: 700, m500_before_m: 250, curve500_m: 153, restrictive_kmh: { 1000: 45, 500: 25 } };
 
-/** ETCS (and LZB) supervision, simplified: brake build-up time by brake position, warning and driver times, release speed. */
+/**
+ * ETCS (and LZB) supervision, simplified: brake build-up time by brake position, warning and driver
+ * times, release speed. `build_s` is the equivalent brake build-up time of the braking curves (the
+ * time after which full braking is taken to act at once, as the force builds up over the filling
+ * time): shorter than the brake cylinders' filling time (rail/dynamics.js `BRAKE_FILL_S`, G 22 s,
+ * for the run-in force) where the filling is slow.
+ */
 export const ETCS_CURVES = { build_s: { G: 12, P: 4, R: 3, "R+Mg": 3 }, warning_s: 2, driver_s: 4, release_kmh: 15 };
 
 /** Seconds a driver takes to react (and acknowledge) at a distant signal. */

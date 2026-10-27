@@ -224,7 +224,10 @@ export class Inspector {
     return h("details", {
       class: "info-section", open,
       ontoggle: (e) => this.folded.set(s.title, e.currentTarget.open),
-    }, h("summary", {}, h("h3", {}, s.title)), content);
+    }, h("summary", {
+      // kept at once: the card may be drawn anew before the toggle event comes, and would fold it back
+      onclick: (e) => this.folded.set(s.title, !e.currentTarget.parentElement.open),
+    }, h("h3", {}, s.title)), content);
   }
 
   /**

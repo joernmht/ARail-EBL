@@ -2,9 +2,9 @@
  * The running dynamics of a train on its info card: its run (speed over distance and time over
  * distance with the line's limits, the minimum running time and the timetable's with its
  * supplement), its braking distance against the line's and the train protection that supervises it
- * (PZB with its curves at a distant signal, the braking curves of ETCS and LZB), the adhesion and
- * the forces in its couplings (on the strip of its vehicles too), its energy and what coasting before
- * the stop saves. The figures come from rail/dynamics.js and rail/protection.js for the train on its
+ * (PZB with its curves at a distant signal, the braking curves of ETCS and LZB to an end of
+ * authority assumed at its next stop), the adhesion and the forces in its couplings (on the strip of
+ * its vehicles too), its energy and what coasting before the stop saves. The figures come from rail/dynamics.js and rail/protection.js for the train on its
  * track (rail/ahead.js); what takes long to work out is kept on the train until its run changes.
  * @module arail/rail/running
  */
@@ -87,7 +87,9 @@ export function runningCard(world, hit, card) {
   if (a.profile.stalled_at_m != null && a.model.power_kw > 0) {
     card.tone = "bad";
     card.status = `${card.status ? `${card.status} · ` : ""}stalls on the gradient`;
-  } else if (a.braking.distance_m > (a.main?.s ?? a.spacing_m) && !a.braking.standing) {
+  } else if (a.braking.distance_m > a.spacing_m && !a.braking.standing) {
+    // it cannot stop within the line's braking distance (from the distant signal to the main
+    // signal): faster than its braking table allows; what the signals show is not known
     card.tone = "bad";
     card.status = `${card.status ? `${card.status} · ` : ""}too fast for its brakes`;
   }
@@ -147,7 +149,9 @@ function brakingSection(a, x) {
   ];
   const v = brakingSpeed(a.spacing_m, lambda, a.permille);
   rows.push(["Highest speed for it", `${Math.floor(v)} km/h · with ${Math.round(lambda)} %${v < a.line_kmh ? ` · less than the line speed (${Math.round(a.line_kmh)} km/h)` : ""}`]);
-  rows.push(["Next main signal", a.main ? `${a.main.signal.name} · in ${metres(a.main.s)}` : "none ahead on the layout"]);
+  // information: what the signal shows is not known (if it showed stop, it would need to be farther)
+  const within = a.main && !b.standing && b.distance_m > a.main.s;
+  rows.push(["Next main signal", a.main ? `${a.main.signal.name} · in ${metres(a.main.s)}${within ? " · within its braking distance" : ""}` : "none ahead on the layout"]);
   rows.push(["Train protection here", a.control.name]);
   const charts = [];
   if (a.pzb && x.pzb) {
@@ -165,7 +169,7 @@ function brakingSection(a, x) {
     });
   } else if (a.etcs) {
     const e = a.etcs, last = e.points[e.points.length - 1]?.s ?? 0;
-    rows.push(["Movement authority", `${metres(last)} to its end${a.main ? "" : " · the end of the tracks"}`]);
+    rows.push(["Movement authority", `${metres(last)} to its end · assumed at ${a.on.phase === "arriving" ? "its stop" : "its next stop"}`]);
     rows.push(["Permitted here", `${Math.round(e.points[0]?.p ?? 0)} km/h · intervention at ${Math.round(e.points[0]?.ebi ?? 0)} km/h`]);
     charts.push({
       label: `${a.control.name}: braking curves to the end of authority`, x: { label: "Distance", unit: "m", max: last }, y: { label: "Speed", unit: "km/h", max: Math.max(20, ...e.points.map((q) => q.ebd)) },

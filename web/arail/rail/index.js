@@ -21,7 +21,7 @@ export {
 } from "./systems.js";
 export { CHANGE_KINDS, SystemChange } from "./objects.js";
 export { BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows } from "./vehicles.js";
-export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, lineConsist, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
+export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, layoutVehicleTypes, lineConsist, unitConsist, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
 export { LIVERIES, carsLength, drawTrain, turnCars } from "./draw.js";
 export { LOOKS, RAIL_TRAIN, STOP_MARGIN_M, carsOf, dockLine, trainDoors, trainOutline, trainPose } from "./stock.js";
 export { COMPATIBILITY, checkSection, checkTracks, compatibilitySection, drawCompatibilityBand } from "./compat.js";
@@ -34,7 +34,7 @@ export {
 export { LOW_ADHESION, SLOW } from "./disruptions.js";
 export { PZB, PZB_RULES, ETCS_CURVES, REACTION_S, pzbType, pzb1000, pzb500, supervision, pzbApproach, etcsCurves } from "./protection.js";
 export {
-  LINE_PARAMS, NEXT_STOP_M, OPEN_LINE_KMH, trackLength, lineBrakingDistance, railCondition, pathAhead, pathPoint, lineAlong, signalsAhead, magnetsAhead,
+  LINE_PARAMS, NEXT_STOP_M, OPEN_LINE_KMH, MAGNET_MATCH_M, trackLength, lineBrakingDistance, railCondition, pathAhead, pathPoint, lineAlong, signalsAhead, magnetsAhead,
   trainOnTrack, trackAheadOf, speedAt, drawTrackAhead, formatDistance,
 } from "./ahead.js";
 export { REFERENCE_GRADIENT, minutesSeconds, runningCard } from "./running.js";

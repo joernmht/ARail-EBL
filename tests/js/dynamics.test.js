@@ -120,11 +120,18 @@ test("coasting before the stop: less energy within the running-time supplement",
   const c = coastingRun(rb, flat(4000, 120), { supplement: 0.05 });
   assert.ok(c.coast && c.coast_m > 0 && c.coast_m < c.fast.brake_from_m, `coasts from ${c.coast_m} m`);
   assert.ok(c.saving_kwh > 0 && c.saving_share > 0.05, `saves ${c.saving_kwh} kWh`);
-  assert.ok(c.extra_s > 0 && c.extra_s <= c.fast.time_s * 0.05 + 1, `${c.extra_s} s longer`);
+  assert.ok(c.extra_s > 0 && c.extra_s <= c.fast.time_s * 0.05 + 1e-6, `${c.extra_s} s longer`);
   // more supplement, more saved
   assert.ok(coastingRun(rb, flat(4000, 120), { supplement: 0.1 }).saving_kwh > c.saving_kwh);
   // no stop, no coasting
   assert.equal(coastingRun(rb, flat(4000, 120, { stop: false })).coast, null);
+  // within the supplement at full resolution too (the search runs in coarser steps)
+  for (const [type, L, kmh] of [["et442s", 4000, 120], ["et442", 4000, 120], ["br642", 2500, 80], ["et442s", 1500, 80]]) {
+    for (const supplement of [0.03, 0.05, 0.1]) {
+      const r = coastingRun(model({ vehicles: [{ type }] }), flat(L, kmh), { supplement });
+      if (r.coast) assert.ok(r.extra_s <= r.fast.time_s * supplement + 1e-6, `${type}, ${L} m, ${supplement}: ${r.extra_s} s longer, ${r.fast.time_s * supplement} s allowed`);
+    }
+  }
   // the run as fast as possible, when it is known, is the one it compares with
   const fast = runProfile(rb, flat(4000, 120));
   const shared = coastingRun(rb, flat(4000, 120), { supplement: 0.05, fast });

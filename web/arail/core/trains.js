@@ -143,6 +143,11 @@ export class TrainRegistry {
     return this.clock - t.updated > this.quietAfter ? 0 : t.speedEst ?? 0;
   }
 
+  /** The speed (mm/s on the model) of a train of the feed, for the other parts (rail/ahead.js). */
+  speedOf(t) {
+    return this._speed(t);
+  }
+
   _remove(id) {
     const t = this.trains.get(id);
     if (!t) return;

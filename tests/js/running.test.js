@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  Camera, Consist, FlyCamera, PZB, View, createWorld, drawTrackAhead, etcsCurves, lineAlong, magnetsAhead, pathAhead, pzb1000, pzb500, pzbApproach, pzbType,
-  railCondition, registry, signalsAhead, speedAt, supervision, toRad, trackAheadOf, trackLength, trainModel, Translator,
+  Camera, Consist, FlyCamera, NEXT_STOP_M, PZB, View, createWorld, drawTrackAhead, etcsCurves, lineAlong, magnetsAhead, pathAhead, pzb1000, pzb500, pzbApproach,
+  pzbType, railCondition, registry, signalsAhead, speedAt, supervision, toRad, trackAheadOf, trackLength, trainModel, Translator,
 } from "../../web/arail/index.js";
 import { DE as APP_DE } from "../../web/app/lang/de.js";
 import { readJSON } from "./helpers.js";
@@ -137,6 +137,38 @@ test("signals and PZB magnets ahead: those that face the train, the magnets they
   assert.deepEqual(signalsAhead(world, pathAhead(world, t, 19000, -1, 2000)).map((x) => x.signal.id), ["back"]);
 });
 
+test("PZB magnets per signal: a placed magnet stands for the one a signal implies there, the other signals keep theirs", () => {
+  const world = createWorld({
+    scale: 87,
+    objects: [
+      { id: "t", type: "track", track_id: "T", points: [[0, 0], [20000, 0]] },
+      { id: "vs", type: "signal", name: "Distant signal", kind: "distant", position: [3000, -40], rotation_deg: 0 },
+      { id: "hs", type: "signal", name: "Main signal", kind: "main", position: [14500, -40], rotation_deg: 0 },
+      // the distant signal's magnet, placed 2 m before it
+      { id: "m1", type: "balise", position: [2977, 0], pzb_hz: "1000" },
+    ],
+  });
+  const p = pathAhead(world, world.getObject("t"), 1000, 1, 1500);
+  const g = magnetsAhead(world, p);
+  assert.deepEqual(g.map((x) => `${x.hz}${x.placed ? " placed" : ""}`), ["1000 placed", "500", "2000"]);
+});
+
+test("the braking distance on the gradient and the rails where the front is, not where the run begins", () => {
+  // the front at the end of a, on the way onto b, which falls 20 ‰ the way the train runs and is wet
+  const world = createWorld({
+    scale: 87,
+    consists: [{ lines: ["RE 1"], vehicles: [{ type: "br146" }, { type: "dbpza", count: 4 }] }],
+    objects: [
+      { id: "a", type: "track", track_id: "A", points: [[0, 0], [3000, 0]] },
+      { id: "b", type: "track", track_id: "B", points: [[3000, 0], [9000, 0]], gradient_permille: -20, rail_condition: "wet" },
+    ],
+  });
+  world.trains.apply({ type: "trains", trains: [{ id: "RE 1", name: "RE 1", track: "A", offset_mm: 3000, speed_mm_s: 300, direction: 1, length_mm: 1400 }] });
+  const a = trackAheadOf(world, { key: "feed:RE 1", kind: "train", label: "RE 1", outline: [], owner: world.trains, ref: world.trains.trains.get("RE 1") });
+  assert.equal(a.permille, -20);
+  assert.equal(a.condition, "wet");
+});
+
 test("a signal belongs to the track nearest to it: the signal of the next track is not this train's", () => {
   const world = createWorld({
     scale: 87,
@@ -181,6 +213,27 @@ test("PZB magnets on the track ahead only where PZB or LZB supervises the train"
   assert.equal(etcs.control.system, "etcs");
   assert.deepEqual(etcs.magnets, [], "ETCS: no magnets");
   assert.ok(etcs.etcs?.points.length, "its braking curves");
+});
+
+test("ETCS: the end of authority assumed at the train's next stop, not where the layout's tracks end", () => {
+  // a short track of the lab (87 m), the train at 47 km/h, a main signal ahead
+  const world = createWorld({
+    scale: 87,
+    consists: [{ lines: ["EC 1"], vehicles: [{ type: "br193" }, { type: "bpmz", count: 6 }] }],
+    objects: [
+      { id: "t", type: "track", track_id: "T", points: [[0, 0], [1000, 0]], etcs: "l2" },
+      { id: "hs", type: "signal", name: "Main signal", kind: "main", position: [600, -40], rotation_deg: 0 },
+    ],
+  });
+  world.trains.apply({ type: "trains", trains: [{ id: "EC 1", name: "EC 1", track: "T", offset_mm: 100, speed_mm_s: 150, direction: 1, length_mm: 1400 }] });
+  const hit = { key: "feed:EC 1", kind: "train", label: "EC 1", outline: [], owner: world.trains, ref: world.trains.trains.get("EC 1") };
+  const a = trackAheadOf(world, hit);
+  assert.ok(a.eoa_m >= NEXT_STOP_M - 1, `end of authority in ${a.eoa_m} m`);
+  const first = a.etcs.points[0], last = a.etcs.points.at(-1);
+  assert.ok(first.p >= a.v_kmh && first.ebi > a.v_kmh, `permitted ${first.p}, intervention ${first.ebi} km/h at ${a.v_kmh} km/h`);
+  near(last.s, a.eoa_m, 1, "the curves end at it");
+  const rows = Object.fromEntries(world.card(hit).sections.find((s) => s.title === "Braking and train protection").rows);
+  assert.match(rows["Movement authority"], /^\d+ m to its end · assumed at its next stop$/);
 });
 
 /** The lab example with RE 1 standing at track G3 of platform 1, and the hit of it. */
@@ -275,23 +328,34 @@ test("trains that cannot run: no running dynamics without vehicles; without trac
   assert.doesNotMatch(JSON.stringify(card), /NaN|Infinity/);
 });
 
-test("a train of the control system too fast for its brakes before a main signal: the card says so", () => {
+test("too fast for its brakes: the braking distance against the line's; a main signal ahead is information (its aspect is not known)", () => {
   const signal = { id: "sig", type: "signal", name: "Signal A", kind: "main", position: [1100, -60], rotation_deg: 1.5 };
-  const json = readJSON("web/layouts/ebl-lab.json");
-  for (const l of json.layers) l.enabled = false;
-  json.objects.push(signal);
-  const world = createWorld(json);
-  // RE 1 reported on G3, heading for its last point at 300 mm/s on the model (94 km/h)
-  world.trains.apply({ type: "trains", trains: [{ id: "RE 1", name: "RE 1", track: "G3", offset_mm: 800, speed_mm_s: 300, direction: 1, length_mm: 1400 }] });
-  const t = world.trains.trains.get("RE 1");
-  const hit = { key: "feed:RE 1", kind: "train", label: "RE 1", outline: [], owner: world.trains, ref: t };
-  const a = trackAheadOf(world, hit);
-  near(a.v_kmh, (300 * 87 * 3.6) / 1000, 1e-6, "its speed in the prototype");
-  assert.equal(a.main?.signal.id, "sig");
-  assert.ok(a.braking.distance_m > a.main.s, "it does not stop before the signal");
-  const card = world.card(hit);
-  assert.equal(card.tone, "bad");
-  assert.match(card.status, /too fast for its brakes/);
+  const reported = (speed_mm_s, braking_distance_m) => {
+    const json = readJSON("web/layouts/ebl-lab.json");
+    for (const l of json.layers) l.enabled = false;
+    json.objects.push(signal);
+    if (braking_distance_m) json.objects.find((o) => o.track_id === "G3").braking_distance_m = braking_distance_m;
+    const world = createWorld(json);
+    // RE 1 reported on G3, heading for its last point
+    world.trains.apply({ type: "trains", trains: [{ id: "RE 1", name: "RE 1", track: "G3", offset_mm: 800, speed_mm_s, direction: 1, length_mm: 1400 }] });
+    const hit = { key: "feed:RE 1", kind: "train", label: "RE 1", outline: [], owner: world.trains, ref: world.trains.trains.get("RE 1") };
+    return { world, hit, a: trackAheadOf(world, hit) };
+  };
+  // 94 km/h on a main line: it stops within its 1000 m; the signal 26 m ahead is within its braking distance, which is no fault
+  const main = reported(300);
+  near(main.a.v_kmh, (300 * 87 * 3.6) / 1000, 1e-6, "its speed in the prototype");
+  assert.equal(main.a.main?.signal.id, "sig");
+  assert.ok(main.a.braking.distance_m > main.a.main.s && main.a.braking.distance_m < main.a.spacing_m);
+  const card = main.world.card(main.hit);
+  assert.notEqual(card.tone, "bad");
+  assert.doesNotMatch(card.status, /too fast/);
+  assert.match(Object.fromEntries(card.sections.find((s) => s.title === "Braking and train protection").rows)["Next main signal"], /^Signal A · in \d+ m · within its braking distance$/);
+  // 125 km/h where the line's braking distance is 400 m: too fast for its brakes
+  const branch = reported(400, 400);
+  assert.ok(branch.a.braking.distance_m > 400, `${branch.a.braking.distance_m} m`);
+  const fast = branch.world.card(branch.hit);
+  assert.equal(fast.tone, "bad");
+  assert.match(fast.status, /too fast for its brakes/);
 });
 
 /** A view of the lab from above, as a frame draws with it. */

@@ -469,7 +469,7 @@ layout: over the camera image only its state is drawn).
 
 | Type | Asset | Parameters |
 | --- | --- | --- |
-| `signal` | signal | `interlocking` (an `interlocking` object; empty: the station's), `side`, `kind` (`main`, `distant`, `combined`: a main signal with the distant signal of the next); it applies to trains running along its rotation (see [Braking and train protection](rail-systems.md#braking-and-train-protection)) |
+| `signal` | signal | `interlocking` (an `interlocking` object; empty: the station's), `side`, `kind` (`main`, `distant`, `combined`: a main signal with the distant signal of the next); it belongs to the track nearest to it and applies to trains running along its rotation (see [Braking and train protection](rail-systems.md#braking-and-train-protection)) |
 | `switch` | switch | `interlocking`, `hand` (`left`, `right`), `length_m` (33) |
 | `balise` | balise | `pzb_hz`: a PZB magnet of `1000`, `500`, `2000` or `1000/2000` Hz (empty: an ETCS balise) |
 | `level-crossing` | level crossing | `interlocking`, `road_m` (7), `span_m` (0: one track; the distance between the outer tracks' centres), `road_owner` (`municipal` …) |

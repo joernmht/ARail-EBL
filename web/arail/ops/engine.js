@@ -841,7 +841,8 @@ export class OpsEngine {
     const day = trip.day;
     this.stat("tripsRun", 1, null, day);
     this.stat("kmRun", trip.km, null, day);
-    // its energy from the running dynamics of the line's train, per unit (ops/config.js lineEnergy)
+    // its energy from the running dynamics of a unit of the line's vehicle type (ops/config.js
+    // lineEnergy), once for each of its units: they are all of that type
     const energy = this.lines.get(trip.line)?.energy;
     if (energy) {
       const n = Math.max(1, trip.unitObjs?.length ?? 1);

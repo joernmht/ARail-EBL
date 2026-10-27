@@ -16,7 +16,7 @@ export const OPERATIONS = [
       },
       { name: "EventQueue", file: "web/arail/ops/util.js", kind: "class", role: "A binary heap by time, priority, sequence (also used by the infrastructure).", attributes: ["items: object[] — {t, prio, seq, type, data}"], operations: ["push(t, type, data, prio)", "pop()", "peekTime()"] },
       { name: "timetable", file: "web/arail/ops/timetable.js", kind: "module", role: "A day's trips, rotations and crew pieces.", operations: ["tripTemplates(model, wd) — out and back every takt", "planRotations(model, trips, depot)", "planPieces(model, rotations, tripsByKey, relief, base, depot)", "dayKind(model, wd)"] },
-      { name: "config", file: "web/arail/ops/config.js", kind: "module", role: "Defaults, the network from the platforms, validation, presets.", attributes: ["OPS_DEFAULTS"], operations: ["normalizeOps(config, layout)", "autoNetwork(layout) — lines from the platforms' line names", "autoRunMinutes(l, n, layout) — run_min \"auto\": from the running dynamics of the line's train, with its stops and the supplement; a train that cannot run takes the distance at the line speed", "lineTrainRuns(l, layout) — can the line's train run", "lineEnergy(l, n, layout, driving) — kWh or litres per km and unit, as fast as possible or coasting", "validateOps(cfg, layout) — also: run_min \"auto\" without km, or for a train that cannot run"] },
+      { name: "config", file: "web/arail/ops/config.js", kind: "module", role: "Defaults, the network from the platforms, validation, presets.", attributes: ["OPS_DEFAULTS"], operations: ["normalizeOps(config, layout)", "autoNetwork(layout) — lines from the platforms' line names", "autoRunMinutes(l, n, layout, type) — run_min \"auto\": from the running dynamics of a unit of the line's vehicle type, on the line's power, with its stops and the supplement; a train that cannot run takes the distance at the line speed", "lineTrainRuns(l, layout, type) — can a unit of the line's type run", "lineEnergy(l, n, layout, driving, type) — kWh or litres per km for one unit of the line's type, as fast as possible or coasting; kept for the same train and line", "validateOps(cfg, layout) — also: run_min \"auto\" without km or for a train that cannot run, a line's power, a fleet type's vehicles"] },
       { name: "util", file: "web/arail/ops/util.js", kind: "module", role: "Time, working hours, random streams.", attributes: ["DAY — 1440 minutes"], operations: ["stream(seed, ...parts) — random numbers per key", "lognormal(rng, median, sigma)", "isOpen(hours, t, startWeekday)", "nextOpen(hours, t, startWeekday)"] },
     ],
     relations: [
@@ -64,7 +64,7 @@ export const OPERATIONS = [
           ["d2", "decision", "On the way?"],
           ["a7", "action", "A defect: extra delay", "OpsEngine._softFailure", "units"],
           ["a8", "action", "A breakdown: limp on, or stranded and towed", "OpsEngine._hardFailure", "units"],
-          ["a9", "action", "Arrive: km run and its energy (the line's energy per km and unit), the units' next use, the crew free", "OpsEngine._arrive"],
+          ["a9", "action", "Arrive: km run and its energy (the line's energy per km for a unit of its type, times its units), the units' next use, the crew free", "OpsEngine._arrive"],
           ["a10", "action", "Cancel it (and the rest of the crew's piece)", "OpsEngine._cancel", "dispatcher"],
           ["a11", "action", "Book the incident: penalties down the contracts", "Ledger.book", "ledger"],
           ["e", "end"],
@@ -230,7 +230,7 @@ export const OPERATIONS = [
     summary: "Runs each setup (integrated or distributed ECM, crew buffers …) under a stress test for days and several seeds without the clock, and compares the key figures.",
     files: ["web/arail/ops/experiment.js", "web/arail/ops/config.js", "tools/ops-compare.mjs"],
     classes: [
-      { name: "experiment", file: "web/arail/ops/experiment.js", kind: "module", role: "Comparisons.", attributes: ["KPIS — 26 key figures, with the traction energy and its cost"], operations: ["runExperiment(opts) — an async generator", "runOne(config, opts)", "kpis(engine, opts)", "summarize(results, opts)", "toCSV(result)"] },
+      { name: "experiment", file: "web/arail/ops/experiment.js", kind: "module", role: "Comparisons.", attributes: ["KPIS — 27 key figures, with the energy from the contact line, the diesel (each on its own) and their cost"], operations: ["runExperiment(opts) — an async generator", "runOne(config, opts)", "kpis(engine, opts)", "summarize(results, opts)", "toCSV(result)"] },
       { name: "config", file: "web/arail/ops/config.js", kind: "module", role: "Presets.", attributes: ["PRESET_SETUPS", "PRESET_STRESS"], operations: ["applySetup(config, setup, stress)", "setupsOf(config)", "stressOf(config)"] },
     ],
     relations: [{ from: "experiment", to: "OpsEngine", kind: "creates", label: "per setup and seed" }, { from: "experiment", to: "config", kind: "depends" }],

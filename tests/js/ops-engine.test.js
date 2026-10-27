@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   OpsEngine, Ledger, addWork, autoNetwork, buildDuties, deadheadMin, expectedFailures, kpis, nextOpen, normalizeHours, normalizeOps,
   planPieces, planRotations, runExperiment, runOne, toCSV, tripTemplates, validateOps, workBetween, WORK_RULES, PRESET_SETUPS, PRESET_STRESS,
-  normalizeLayout,
+  normalizeLayout, Consist, lineConsist, runEnergyPerKm, trainModel,
 } from "../../web/arail/index.js";
 import { readJSON } from "./helpers.js";
 
@@ -332,7 +332,9 @@ test("comparisons: setups x seeds under a stress test, with means, the parties a
 });
 
 test("energy per day from the running dynamics: coasting before the stops takes less for the same timetable", () => {
-  const ops = LAB.simulations.find((s) => s.type === "operations") ?? LAB.layers?.flatMap((l) => l.simulations || []).find((s) => s.type === "operations") ?? {};
+  // the lab's own settings: ET 442 units on every line
+  const ops = readJSON("web/layouts/ebl-lab.json").layers.flatMap((l) => l.simulations || []).find((s) => s.type === "operations");
+  assert.ok(ops?.fleet?.types?.length, "the lab's rail operations");
   const fast = runOne(ops, { layout: LAB, days: 3, seed: 4 });
   const coast = runOne({ ...ops, driving: "coasting" }, { layout: LAB, days: 3, seed: 4 });
   const e = fast.engine.model.lines.find((l) => l.id === fast.engine.model.lines[0].id).energy;
@@ -352,4 +354,42 @@ test("run_min \"auto\" for a line whose train cannot run: the day runs with the 
   const { kpi } = runOne(cfg, { layout, days: 1, seed: 1 });
   assert.ok(kpi.trips > 0, `${kpi.trips} trips`);
   assert.equal(kpi.energyMWh, 0, "no traction, no energy");
+});
+
+test("energy per unit of the line's vehicle type and on the line's traction power; the contact line and diesel each on their own", () => {
+  const cfg = (types, lines) => ({ stations: [{ id: "hbf", platforms: ["platform-1"] }, { id: "far" }], ...(types ? { fleet: { types } } : {}), lines });
+  const re = { id: "RE 1", route: ["hbf", "far"], km: 59, stops: 6, vmax_kmh: 160 };
+  const rb = { id: "RB 33", route: ["hbf", "far"], km: 34, stops: 9 };
+  const perKm = (consist, l, power = null) => runEnergyPerKm(trainModel(consist, { power }), { km: l.km, kmh: l.vmax_kmh ?? 120, stops: l.stops, power });
+  // the lab's fleet: ET 442 units on every line: a unit is an ET 442, not the RE 1's locomotive and coaches
+  const ET442 = [{ id: "et442", seats: 200 }];
+  const [reE, rbE] = normalizeOps(cfg(ET442, [re, rb]), LAB).lines.map((l) => l.energy);
+  const one = perKm(new Consist({ vehicles: [{ type: "et442" }] }), re);
+  assert.ok(Math.abs(reE.kwh_per_km - one.kwh_per_km) < 1e-9, `${reE.kwh_per_km} kWh/km, an ET 442 ${one.kwh_per_km}`);
+  assert.ok(reE.kwh_per_km < perKm(lineConsist(LAB, "RE 1"), re).kwh_per_km, "less than the loco-hauled train of the layout");
+  assert.ok(rbE.electric, "the RB 33 runs with ET 442 units, not with the layout's diesel railcars");
+  // a type with its own vehicles; a type that names none takes the line's train (the layout's consist)
+  const dmu = normalizeOps(cfg([...ET442, { id: "dmu", vehicles: [{ type: "br642" }] }], [{ ...rb, vehicle: "dmu" }]), LAB).lines[0].energy;
+  assert.ok(!dmu.electric && dmu.diesel_l_per_km > 0, "diesel");
+  assert.equal(normalizeOps(cfg(null, [rb]), LAB).lines[0].energy.electric, false, "the default type: the layout's RB 33");
+  // a DC line takes back half of what the brakes feed back (a Vectron runs on both); an ET 442 cannot draw it
+  const EC = [{ id: "ec", vehicles: [{ type: "br193" }, { type: "bpmz", count: 6 }] }];
+  const [ac, dc] = normalizeOps(cfg(EC, [re, { ...re, id: "EC 2", power: "dc3" }]), LAB).lines;
+  assert.equal(dc.power, "dc3");
+  assert.ok(dc.energy.kwh_per_km > ac.energy.kwh_per_km, `DC ${dc.energy.kwh_per_km}, AC ${ac.energy.kwh_per_km} kWh/km`);
+  assert.equal(normalizeOps(cfg(ET442, [{ ...re, power: "dc3" }]), LAB).lines[0].energy.kwh_per_km, 0);
+  // kept: the same figures again, and what a caller changes stays its own
+  const again = normalizeOps(cfg(ET442, [re]), LAB).lines[0].energy;
+  assert.deepEqual(again, reE);
+  again.kwh_per_km = -1;
+  assert.deepEqual(normalizeOps(cfg(ET442, [re]), LAB).lines[0].energy, reE);
+  // the checks: a vehicle type that is not known, a traction power that is not known
+  const problems = validateOps(cfg([...ET442, { id: "x", vehicles: [{ type: "nope" }] }], [{ ...re, power: "dc9" }]), LAB).join("\n");
+  assert.match(problems, /fleet\.types\[1\] \(x\): no vehicle type "nope"/);
+  assert.match(problems, /RE 1.*power must be one of/);
+  // the key figures: the energy from the contact line and the diesel each on their own
+  const both = runOne(cfg([...ET442, { id: "dmu", prefix: "642 ", vehicles: [{ type: "br642" }] }], [re, { ...rb, vehicle: "dmu" }]), { layout: LAB, days: 1, seed: 3 }).kpi;
+  const electric = runOne(cfg(ET442, [re]), { layout: LAB, days: 1, seed: 3 }).kpi;
+  assert.ok(both.dieselL > 0 && electric.dieselL === 0, `${both.dieselL} l, ${electric.dieselL} l`);
+  assert.ok(Math.abs(both.energyMWh - electric.energyMWh) < 0.2 * electric.energyMWh, `the RE 1's ${electric.energyMWh} MWh, with the RB 33 ${both.energyMWh} MWh`);
 });

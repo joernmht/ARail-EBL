@@ -223,21 +223,27 @@ export function signalsAhead(world, path) {
   return out.sort((a, b) => a.s - b.s);
 }
 
+/** A placed magnet stands for a signal's when it has its frequency and lies within this many metres of its place. */
+export const MAGNET_MATCH_M = 30;
+
 /**
- * The PZB magnets along a path: the balises placed on its tracks with a frequency (`pzb_hz`); where
- * none is placed on the path, those its signals imply: 1000 Hz at a distant signal (and at a main
- * signal with a distant signal for the next), 500 Hz 250 m before a main signal, 2000 Hz at it.
+ * The PZB magnets along a path: the balises placed on its tracks with a frequency (`pzb_hz`), and
+ * those its signals imply where no placed one of that frequency lies within {@link MAGNET_MATCH_M}
+ * of their place: 1000 Hz at a distant signal (and at a main signal with a distant signal for the
+ * next), 500 Hz 250 m before a main signal, 2000 Hz at it.
  * @returns {Array<{s: number, hz: string, placed: boolean}>}
  */
 export function magnetsAhead(world, path, signals = signalsAhead(world, path)) {
   const out = alongPath(world, path, "balise", 3).map((b) => ({ s: b.s, hz: String(b.object.spec.pzb_hz), placed: true }));
-  if (!out.length) {
-    for (const sg of signals) {
-      if (sg.kind === "distant" || sg.kind === "combined") out.push({ s: sg.s, hz: "1000", placed: false });
-      if (sg.kind === "main" || sg.kind === "combined") {
-        out.push({ s: sg.s, hz: "2000", placed: false });
-        if (sg.s >= PZB_RULES.m500_before_m) out.push({ s: sg.s - PZB_RULES.m500_before_m, hz: "500", placed: false });
-      }
+  const placed = out.slice();
+  const imply = (s, hz) => {
+    if (!placed.some((g) => g.hz.split("/").includes(hz) && Math.abs(g.s - s) <= MAGNET_MATCH_M)) out.push({ s, hz, placed: false });
+  };
+  for (const sg of signals) {
+    if (sg.kind === "distant" || sg.kind === "combined") imply(sg.s, "1000");
+    if (sg.kind === "main" || sg.kind === "combined") {
+      imply(sg.s, "2000");
+      if (sg.s >= PZB_RULES.m500_before_m) imply(sg.s - PZB_RULES.m500_before_m, "500");
     }
   }
   return out.sort((a, b) => a.s - b.s);
@@ -269,7 +275,9 @@ export function trainOnTrack(world, hit) {
     if (!track?.geometry || r.offset == null) return null;
     const consist = consistFor(world, { train: r.id, line: r.name });
     if (!consist?.vehicles.length) return null;
-    const kmh = ((world.trains?._speed?.(r) ?? 0) * world.scale * 3.6) / 1000;
+    // its speed at the layout's scale (also on a track that stands for a longer one: shortened
+    // distances shorten the way, not the time)
+    const kmh = ((world.trains?.speedOf(r) ?? 0) * world.scale * 3.6) / 1000;
     return { track, at_mm: r.offset - (+track.spec.offset_start_mm || 0), dir: (r.direction ?? 1) >= 0 ? 1 : -1, v_kmh: kmh, consist, phase: kmh > 1 ? "running" : "standing", stop_mm: null };
   }
   if (!r?.dock) return null;
@@ -283,9 +291,11 @@ export function trainOnTrack(world, hit) {
 /**
  * Everything about the track ahead of a train pointed at: where it is, its run from there (to a stop
  * beyond the layout {@link NEXT_STOP_M} on, or for a train coming in to its stop), its speed now,
- * its full braking distance from it (from the line speed while it stands), the next main signal and
- * the braking distance of the line, the system that supervises it there and, where that is PZB or
- * LZB, the PZB magnets. The run is kept on the train until it changes.
+ * its full braking distance from it (from the line speed while it stands; on the gradient and rails
+ * where its front is), the next main signal and the braking distance of the line, the system that
+ * supervises it there and, where that is PZB or LZB, the PZB magnets; for ETCS and LZB the braking
+ * curves to an end of authority at the end of its run (its next stop: the route set is not known).
+ * The run is kept on the train until it changes.
  * @param {import("../core/world.js").World} world
  * @param {import("../core/pick.js").Pickable} hit
  */
@@ -306,8 +316,11 @@ export function trackAheadOf(world, hit) {
   } else if (on.stop_mm != null) from = on.stop_mm;
   const path = pathAhead(world, track, from, on.dir, reach);
   const line = lineAlong(world, path, { beyond_m: on.phase === "arriving" || !path.ends ? 0 : Math.max(0, reach - path.length_m) });
-  const condition = line.sections[0]?.condition ?? "dry";
-  const permille = line.sections[0]?.permille ?? 0;
+  // the gradient and the rails where its front is (its run may begin behind it: at its stop, or
+  // where it comes in from; leaving, its front may be on the next track)
+  const front = pathAhead(world, track, on.at_mm, on.dir, 1).parts.find((p) => p.s1 > p.s0);
+  const permille = front ? (Number(front.track.spec.gradient_permille) || 0) * front.dir : line.sections[0]?.permille ?? 0;
+  const condition = front ? railCondition(world, front.track) : line.sections[0]?.condition ?? "dry";
   // coming in, it is on the curve of its service braking to the stop
   const decel = serviceDeceleration(model, lineKmh, { condition });
   const onCurve = (m) => Math.min(lineKmh, Math.sqrt(2 * decel * Math.max(0, m)) * 3.6);
@@ -327,6 +340,9 @@ export function trackAheadOf(world, hit) {
   const signals = signalsAhead(world, ahead);
   const main = signals.find((x) => x.kind === "main" || x.kind === "combined") ?? null;
   const control = supervision(consist, track.spec);
+  // the end of the movement authority, assumed at the end of its run (its stop, or its next stop):
+  // the route set is not known, and under ETCS a lineside signal is not where it ends
+  const eoa = Math.max(1, line.length_m - Math.max(0, s));
   return {
     on, model, line, profile, path, ahead, now_s: Math.max(0, s), v_kmh, condition, permille, line_kmh: lineKmh,
     braking: { from_kmh: reference, standing: !(v_kmh > 1), ...braking },
@@ -335,7 +351,8 @@ export function trackAheadOf(world, hit) {
     // the speed the line's braking distance allows the train (its braking table)
     table_kmh: brakingSpeed(lineBrakingDistance(track), consist.brakePercentage, permille),
     control, pzb: control.system === "pzb" ? pzbType(consist.brakePercentage) : null,
-    etcs: control.system === "etcs" || control.system === "lzb" ? etcsCurves(model, main ? main.s : ahead.length_m, { permille, condition, vmax_kmh: lineKmh }) : null,
+    eoa_m: eoa,
+    etcs: control.system === "etcs" || control.system === "lzb" ? etcsCurves(model, eoa, { permille, condition, vmax_kmh: lineKmh }) : null,
   };
 }
 
@@ -377,9 +394,9 @@ function speedColour(kmh, top) {
 /**
  * Draw the track ahead of the train whose card is open (`world.trackAhead`: {hit}), on the tracks it
  * runs on: the band of its expected speed with the marks top speed, braking and stop, its braking
- * distance (red where it reaches past the next main signal), the PZB magnets, the movement authority,
- * and a mark where its run goes on beyond the layout. Called by the tracks (objects/track.js) for
- * themselves, so each draws its own part.
+ * distance (red where it is longer than the line's braking distance), the PZB magnets, the movement
+ * authority, and a mark where its run goes on beyond the layout. Called by the tracks
+ * (objects/track.js) for themselves, so each draws its own part.
  * @param {import("../core/view.js").View} view
  * @param {object} track
  */
@@ -425,17 +442,18 @@ export function drawTrackAhead(view, track) {
       if (at && rest > 1) view.label([at.point[0], at.point[1], m * 3], `beyond the layout · ${formatDistance(rest)} more`, { size: 10, background: OVERLAY.label, order: 3 });
     }
   }
-  // the braking distance from the train's front: red where it reaches past the next main signal
+  // the braking distance from the train's front: red where it is longer than the line's braking
+  // distance (the aspects of the signals are not known: the next main signal is no limit)
   const ahead = mine(a.ahead), b = a.braking;
   if (ahead.parts.length && Number.isFinite(b.distance_m)) {
-    const limit = a.main ? a.main.s : a.spacing_m;
+    const limit = a.spacing_m;
     const ok = Math.min(b.distance_m, limit), over = b.distance_m - limit;
     const style = { stroke: OVERLAY.selection, width: 3, order: 30, dash: b.standing ? [8, 6] : null };
     for (const pts of stretch(ahead, 0, ok)) view.line(pts, style);
     if (over > 0) for (const pts of stretch(ahead, limit, b.distance_m)) view.line(pts, { ...style, stroke: OVERLAY.danger, width: 4 });
     const end = pathPoint(a.ahead, Math.min(b.distance_m, a.ahead.length_m));
     if (end && ahead.parts.some((p) => Math.min(b.distance_m, a.ahead.length_m) <= p.s1 + 1e-6 && Math.min(b.distance_m, a.ahead.length_m) >= p.s0 - 1e-6)) {
-      const text = `${b.standing ? `from ${Math.round(b.from_kmh)} km/h · ` : ""}stops in ${formatDistance(b.distance_m)}${over > 0 ? (a.main ? " · past the signal" : " · longer than the braking distance") : ""}`;
+      const text = `${b.standing ? `from ${Math.round(b.from_kmh)} km/h · ` : ""}stops in ${formatDistance(b.distance_m)}${over > 0 ? " · longer than the braking distance" : ""}`;
       view.label([end.point[0], end.point[1], m * 4], text, { size: 10, background: over > 0 ? OVERLAY.dangerLabel : OVERLAY.label, order: 4 });
     }
   }
@@ -453,8 +471,8 @@ export function drawTrackAhead(view, track) {
     view.polygon([[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]], { fill: rgba(CD.gelb, 0.95), stroke: "#000000", width: 1, order: 31 });
     view.label([x, y, m * 1.5], `${g.hz} Hz`, { size: 9, background: OVERLAY.label, optional: true, order: 2 });
   }
-  // the movement authority of ETCS or LZB: a band to its end (the next main signal, else the tracks' end)
-  if (a.etcs) for (const pts of stretch(ahead, 0, a.main ? a.main.s : a.ahead.length_m)) view.ribbon(pts, m * 4.4, { fill: rgba(CD.brillantblau, 0.22), order: 27 });
+  // the movement authority of ETCS or LZB: a band along its run to its end (assumed at its next stop)
+  if (a.etcs) for (const pts of stretch(run, a.now_s, a.now_s + a.eoa_m)) view.ribbon(pts, m * 4.4, { fill: rgba(CD.brillantblau, 0.22), order: 27 });
 }
 
 /** A distance as people read it: "820 m", "1.4 km". */
