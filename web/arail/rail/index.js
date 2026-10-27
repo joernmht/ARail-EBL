@@ -29,7 +29,7 @@ export {
   G, MASS_FACTORS, STRAHL, RAIL_CONDITIONS, SANDING, SERVICE_BRAKE, MINDEN, BRAKE_FILL_S, BRAKE_SIGNAL_MPS, COUPLER_KN, START_RESISTANCE, ENERGY, SUPPLEMENT,
   trainModel, adhesion, tractiveEffort, slips, runningResistance, curveResistance, lineResistance, regenForce, brakingDistance, brakingSpeed,
   requiredBrakePercentage, fullBraking, serviceDeceleration, sectionAt, runProfile, receptivity, coastingRun, couplerForces, startingForces, runInForce, loadLimit,
-  approachFactor, lineRunningTime, drivingStyles,
+  approachFactor, lineRunningTime, drivingStyles, runEnergyPerKm,
 } from "./dynamics.js";
 export { LOW_ADHESION, SLOW } from "./disruptions.js";
 export { PZB, PZB_RULES, ETCS_CURVES, REACTION_S, pzbType, pzb1000, pzb500, supervision, pzbApproach, etcsCurves } from "./protection.js";

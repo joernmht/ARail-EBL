@@ -636,3 +636,20 @@ export function drivingStyles(model, line, { supplements = [0.03, SUPPLEMENT, 0.
   const styles = supplements.map((supplement) => ({ supplement, run: coastingRun(model, line, { supplement }) }));
   return { fast: styles[0]?.run.fast ?? runProfile(model, line), styles };
 }
+
+/**
+ * The energy a train takes per km on a line between two stations: one run from stop to stop (its
+ * distance in `stops` + 1 equal runs) at the line speed, as fast as possible or coasting before the
+ * stop within the running-time supplement.
+ * @param {object} model
+ * @param {{km: number, kmh?: number, stops?: number, coasting?: boolean, supplement?: number, power?: string | null}} options
+ * @returns {{electric: boolean, kwh_per_km: number, diesel_l_per_km: number}} kWh from the contact
+ *   line (electric) or litres of diesel per km
+ */
+export function runEnergyPerKm(model, { km, kmh = 120, stops = 0, coasting = false, supplement = SUPPLEMENT, power = null }) {
+  const n = Math.max(0, Math.round(Number(stops) || 0)) + 1, L = (Math.max(0.1, Number(km) || 0) * 1000) / n;
+  const line = { length_m: L, sections: [{ s0: 0, s1: L, kmh }], power };
+  const run = coasting ? coastingRun(model, line, { supplement }) : null;
+  const e = (run?.coast ?? runProfile(model, line, { samples: 2 })).energy;
+  return { electric: e.electric, kwh_per_km: e.electric ? e.net_kwh / (L / 1000) : 0, diesel_l_per_km: e.electric ? 0 : e.fuel_l / (L / 1000) };
+}

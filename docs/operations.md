@@ -341,6 +341,19 @@ The key figures also count costs: drivers' paid hours (`driver_hour`, overtime �
 stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty runs and transfers
 (`empty_km`). They are for comparing setups, not a budget.
 
+### Energy
+
+Every trip run counts its energy from the [running dynamics](rail-systems.md#energy-and-driving-style)
+of its line's train (the layout's consist for the line, else the default fleet of its kind), per unit:
+a run from stop to stop over each section of the route (`km` with `stops` stops on the way, at
+`vmax_kmh`), in kWh from the contact line or litres of diesel. The key figures **Traction energy**
+(MWh; diesel as the energy of its fuel, 9.9 kWh per litre) and **Energy cost** (`energy_kwh`, 0.20 €
+per kWh; `diesel_l`, 1.60 € per litre) follow. **How the drivers drive** is the setting `driving`:
+`fast` (as fast as possible) or `coasting` (coasting before every stop within the running-time
+supplement): the same timetable with less energy. Two setups that differ only in it compare the
+driving styles, e.g. `{"id": "coasting", "name": "Energy-efficient driving", "patch": {"driving":
+"coasting"}}`: on the lab's network a week takes about 8 % less energy, at the same punctuality.
+
 ## Railway undertaking → Operations on the game page
 
 With rail operations on the layout, the game page's case **Operations** (side Railway undertaking, `#ops`) works. Its views:
@@ -521,7 +534,8 @@ Times are `"HH:MM"` (up to `"47:59"` for the night after) or minutes; day sets a
 | `crew.contracts` | full time 38 h (70 %), part time 25 h (30 %) | `id`, `name`, `share`, `hours_week`, `max_duty_h`, `min_rest_h` (11), `max_days_row`, `overtime_accept`, `max_overtime_h_week` |
 | `crew.commute` | | `margin_min` (10), `late_p` (0.03), `late_min` (12), `car_min` (25), `walk_max_m` (500) |
 | `dispatch` | | `wait_unit_min` (20), `wait_crew_min` (15), `short_wait_min` (5), `pull_out_min` (15), `pull_in_min` (10), `stable_after_min` (40), `delays` (`p` 0.1, `median_min` 2.5, `sigma`, `max_min`), `recovery_min` (1) |
-| `costs` | | `driver_hour` (48 €), `overtime_factor` (1.3), `standby_factor` (0.6), `workshop_hour` (95 €), `empty_km` (6 €) |
+| `costs` | | `driver_hour` (48 €), `overtime_factor` (1.3), `standby_factor` (0.6), `workshop_hour` (95 €), `empty_km` (6 €), `energy_kwh` (0.20 €), `diesel_l` (1.60 €) |
+| `driving` | `"fast"` | how the drivers drive: `fast` or `coasting` (before the stops, within the supplement); the energy of the trips |
 | `setups` | the presets | `id`, `name`, `description`, `patch` (changes to this entry; lists are replaced, not merged) |
 | `stress` | the presets | `id`, `name`, `description`, `patch`, `events` |
 

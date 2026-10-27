@@ -330,3 +330,14 @@ test("comparisons: setups x seeds under a stress test, with means, the parties a
   assert.match(csv, /"Distributed ECM",penaltyAuthority/);
   assert.ok(kpis(runOne({}, { layout: LAB, days: 2, seed: 1 }).engine).days >= 2);
 });
+
+test("energy per day from the running dynamics: coasting before the stops takes less for the same timetable", () => {
+  const ops = LAB.simulations.find((s) => s.type === "operations") ?? LAB.layers?.flatMap((l) => l.simulations || []).find((s) => s.type === "operations") ?? {};
+  const fast = runOne(ops, { layout: LAB, days: 3, seed: 4 });
+  const coast = runOne({ ...ops, driving: "coasting" }, { layout: LAB, days: 3, seed: 4 });
+  const e = fast.engine.model.lines.find((l) => l.id === fast.engine.model.lines[0].id).energy;
+  assert.ok(e && (e.kwh_per_km > 0 || e.diesel_l_per_km > 0), "each line has its energy per km");
+  assert.ok(fast.kpi.energyMWh > 0 && fast.kpi.energyCost > 0, `${fast.kpi.energyMWh} MWh, ${fast.kpi.energyCost} €`);
+  assert.ok(coast.kpi.energyMWh < fast.kpi.energyMWh, `coasting ${coast.kpi.energyMWh} MWh, fast ${fast.kpi.energyMWh} MWh`);
+  assert.equal(coast.kpi.trips, fast.kpi.trips, "the same timetable");
+});

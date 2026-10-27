@@ -10,7 +10,7 @@
  * @module arail/ops/config
  */
 import { DAY, clockMinutes, deepMerge, hashKey, isObject, normalizeHours, num, weekdayIndex, weekdaySet } from "./util.js";
-import { lineRunningTime, trainModel } from "../rail/dynamics.js";
+import { lineRunningTime, runEnergyPerKm, trainModel } from "../rail/dynamics.js";
 import { lineConsist } from "../rail/trains.js";
 
 /** Maintenance levels of the default programme (ECM function 2: maintenance development). */
@@ -127,7 +127,9 @@ export const OPS_DEFAULTS = {
     wait_unit_min: 20, wait_crew_min: 15, short_wait_min: 5, pull_out_min: 15, pull_in_min: 10, stable_after_min: 40,
     delays: { p: 0.1, median_min: 2.5, sigma: 0.8, max_min: 45 }, recovery_min: 1,
   },
-  costs: { driver_hour: 48, overtime_factor: 1.3, standby_factor: 0.6, workshop_hour: 95, empty_km: 6 },
+  costs: { driver_hour: 48, overtime_factor: 1.3, standby_factor: 0.6, workshop_hour: 95, empty_km: 6, energy_kwh: 0.2, diesel_l: 1.6 },
+  /** How the drivers drive (the energy of the trips, rail/dynamics.js): "fast" as fast as possible, "coasting" coasting before the stops within the supplement. */
+  driving: "fast",
   setups: [],
   stress: [],
 };
@@ -278,6 +280,30 @@ export function autoRunMinutes(l, n, layout) {
 }
 
 /**
+ * The energy per km of a line's trains (rail/dynamics.js), per unit: over the sections of its route
+ * (`km` with `stops` stops on the way, at `vmax_kmh`), as fast as possible or, with `driving`
+ * "coasting", coasting before every stop within the running-time supplement.
+ * @param {object} l the line's settings
+ * @param {number} n the sections of its route
+ * @param {object | null} layout
+ * @param {string} [driving] "fast" or "coasting"
+ * @returns {{electric: boolean, kwh_per_km: number, diesel_l_per_km: number}}
+ */
+export function lineEnergy(l, n, layout, driving = "fast") {
+  const km = segmentList(l.km, n, 30);
+  const stops = Array.from({ length: n }, (_, i) => num(Array.isArray(l.stops) ? l.stops[i] ?? l.stops[l.stops.length - 1] : l.stops, 0, 0, 100));
+  const model = trainModel(lineConsist(layout, String(l.id)));
+  const kmh = num(l.vmax_kmh, 120, 20, 400), all = km.reduce((a, b) => a + b, 0) || 1;
+  let kwh = 0, litres = 0;
+  km.forEach((k, i) => {
+    const e = runEnergyPerKm(model, { km: k, kmh, stops: stops[i], coasting: driving === "coasting" });
+    kwh += e.kwh_per_km * k;
+    litres += e.diesel_l_per_km * k;
+  });
+  return { electric: model.electric, kwh_per_km: kwh / all, diesel_l_per_km: litres / all };
+}
+
+/**
  * The settings with all defaults, the network from the layout where it is missing, times in
  * minutes and day sets as sets. Never throws; what cannot be used is left out (validate reports it).
  * @param {object} config the simulation entry
@@ -345,6 +371,7 @@ export function normalizeOps(config = {}, layout = null) {
       days: weekdaySet(l.days) ?? new Set([0, 1, 2, 3, 4, 5, 6]),
       peak_days: weekdaySet(l.peak_days ?? "mon-fri") ?? new Set([0, 1, 2, 3, 4]),
       docks, conductor: l.conductor === true,
+      energy: lineEnergy(l, n, layout, c.driving === "coasting" ? "coasting" : "fast"),
     });
   }
 

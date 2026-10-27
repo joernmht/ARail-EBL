@@ -138,6 +138,7 @@ export const TEXTS = {
   "stops in {n} km": "hält nach {n} km",
   "past the signal": "hinter dem Signal",
   "longer than the braking distance": "länger als der Bremsweg",
+  "braking table: at most {n} km/h": "Bremstafel: höchstens {n} km/h",
   // ------------------------------------------------------------ the line data of tracks
   "Length in the prototype": "Länge im Vorbild",
   "Empty: its length on the model at the layout's scale. Larger where the track stands for a longer section (shortened distances).": "Leer: seine Länge auf dem Modell im Maßstab der Anlage. Größer, wo das Gleis für einen längeren Abschnitt steht (verkürzte Entfernungen).",

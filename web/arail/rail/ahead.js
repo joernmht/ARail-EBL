@@ -15,7 +15,7 @@
  */
 import { CD, OVERLAY, rgba } from "../core/colors.js";
 import { polylineAt, polylineProject } from "../core/math.js";
-import { RAIL_CONDITIONS, fullBraking, runProfile, serviceDeceleration, trainModel } from "./dynamics.js";
+import { RAIL_CONDITIONS, brakingSpeed, fullBraking, runProfile, serviceDeceleration, trainModel } from "./dynamics.js";
 import { PZB_RULES, etcsCurves, pzbType, supervision } from "./protection.js";
 import { trainPose } from "./stock.js";
 import { sectionSystems } from "./systems.js";
@@ -301,6 +301,8 @@ export function trackAheadOf(world, hit) {
     on, model, line, profile, path, ahead, now_s: s, v_kmh, condition, permille, line_kmh: lineKmh,
     braking: { from_kmh: reference, standing: !(v_kmh > 1), ...braking },
     signals, main, magnets: magnetsAhead(world, ahead, signals), spacing_m: lineBrakingDistance(track),
+    // the speed the line's braking distance allows the train (its braking table)
+    table_kmh: brakingSpeed(lineBrakingDistance(track), consist.brakePercentage, permille),
     control, pzb: control.system === "pzb" ? pzbType(consist.brakePercentage) : null,
     etcs: control.system === "etcs" || control.system === "lzb" ? etcsCurves(model, main ? main.s : ahead.length_m, { permille, condition, vmax_kmh: lineKmh }) : null,
   };
@@ -390,6 +392,11 @@ export function drawTrackAhead(view, track) {
       const text = `${b.standing ? `from ${Math.round(b.from_kmh)} km/h · ` : ""}stops in ${formatDistance(b.distance_m)}${over > 0 ? (a.main ? " · past the signal" : " · longer than the braking distance") : ""}`;
       view.label([end.point[0], end.point[1], m * 4], text, { size: 10, background: over > 0 ? OVERLAY.dangerLabel : OVERLAY.label, order: 4 });
     }
+  }
+  // where its brakes allow less than the line speed: the speed of the braking table, at its front
+  if (ahead.parts[0]?.s0 === 0 && a.table_kmh < a.line_kmh - 0.5) {
+    const at = pathPoint(a.ahead, 0);
+    if (at) view.label([at.point[0], at.point[1], m * 6], `braking table: at most ${Math.floor(a.table_kmh)} km/h`, { size: 10, background: OVERLAY.dangerLabel, order: 4 });
   }
   // the PZB magnets and the end of the movement authority
   for (const g of a.magnets) {

@@ -150,9 +150,10 @@ test("the card of a train: its run with charts, braking and PZB, adhesion and co
   assert.match(energy["Energy for the run"], /kWh from the contact line$/);
   assert.match(energy.Coasting, /^from .* to the stop · \d+ s longer · [\d.]+ kWh less \(\d+ %\)$/);
   // worked out once: the second card comes from what is kept on the train
-  const t0 = performance.now();
+  const kept = hit.ref.aheadRun;
+  assert.ok(kept?.profile && kept.extras, "the run and what takes long are kept on the train");
   world.card(hit);
-  assert.ok(performance.now() - t0 < 15, "the second card is quick");
+  assert.equal(hit.ref.aheadRun, kept, "the second card uses them");
   // the track ahead of it on the table: the run from its stop on, beyond the layout
   const a = trackAheadOf(world, hit);
   assert.equal(a.on.track.spec.track_id, "G3");

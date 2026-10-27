@@ -209,7 +209,7 @@ export const RAIL = [
           "runProfile(model, line, options) — the run: samples, time, top speed, braking point, energy", "energyFigures(model, line, figures) — kWh, diesel, CO₂, per km and seat-km", "receptivity(power)",
           "coastingRun(model, line, options) — the coasting point within the supplement", "couplerForces(model, options) — quasi-static", "startingForces(model, options)", "runInForce(model, options) — a rough estimate, G against P",
           "loadLimit(model, permille, options) — by the adhesion, the tractive effort or the coupling", "approachFactor(model, condition, options) — how much slower on slippery rails",
-          "lineRunningTime(model, options) — between two stations in equal runs from stop to stop: minimum and with the supplement", "drivingStyles(model, line, options) — as fast as possible, and coasting within each supplement",
+          "lineRunningTime(model, options) — between two stations in equal runs from stop to stop: minimum and with the supplement", "drivingStyles(model, line, options) — as fast as possible, and coasting within each supplement", "runEnergyPerKm(model, options) — of a run from stop to stop, fast or coasting (the rail operations' energy)",
         ],
       },
       {
@@ -348,7 +348,7 @@ export const RAIL = [
           ["d1", "decision", "A train's card open?"],
           ["a1", "action", "Where it is, its run and what lies ahead: once a frame", "trackAheadOf"],
           ["a2", "action", "On this track: its expected speed as a band; top speed, braking, stop, coast from here", "drawTrackAhead"],
-          ["a3", "action", "Its braking distance from the front, red past the next main signal", "drawTrackAhead"],
+          ["a3", "action", "Its braking distance from the front, red past the next main signal; the braking table's speed where it is lower than the line speed", "drawTrackAhead"],
           ["a4", "action", "PZB magnets; the movement authority of ETCS or LZB", "drawTrackAhead"],
           ["a5", "action", "Where the tracks end: how far the run goes on beyond the layout", "drawTrackAhead"],
           ["e", "end"],
