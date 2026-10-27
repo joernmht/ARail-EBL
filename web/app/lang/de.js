@@ -423,6 +423,10 @@ const APP_DE = {
   "Close (Esc)": "Schließen (Esc)",
   "out of view": "außer Sicht",
   "Vehicles in order": "Fahrzeuge in Reihenfolge",
+  "{name}, {n} m, brakes isolated": "{name}, {n} m, Bremsen ausgeschaltet",
+  ", brakes isolated": ", Bremsen ausgeschaltet",
+  "{name}, {n} m, coupling behind it {n2} kN when starting": "{name}, {n} m, Kupplung dahinter {n2} kN beim Anfahren",
+  "{name}, {n} m, brakes isolated, coupling behind it {n2} kN when starting": "{name}, {n} m, Bremsen ausgeschaltet, Kupplung dahinter {n2} kN beim Anfahren",
   "Nothing at the cross. Move the view with the arrow keys.": "Nichts am Kreuz. Bewegen Sie die Ansicht mit den Pfeiltasten.",
 };
 

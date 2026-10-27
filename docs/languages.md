@@ -74,3 +74,20 @@ The German terms follow the German rulebooks (EBO, Ril 408) and the names of the
 | control system | Leitsystem |
 | fast clock | Modellzeit |
 | rail replacement bus | Schienenersatzverkehr |
+| running dynamics | Fahrdynamik |
+| minimum running time / running-time supplement | Mindestfahrzeit / Fahrzeitzuschlag |
+| tractive effort / starting tractive effort | Zugkraft / Anfahrzugkraft |
+| running resistance / curve resistance | Laufwiderstand / Bogenwiderstand |
+| adhesion | Kraftschluss |
+| full braking / service braking | Schnellbremsung / Betriebsbremsung |
+| braking distance of the line | Bremsweg der Strecke (Vorsignalabstand) |
+| braking table | Bremstafel |
+| train type (PZB) | Zugart |
+| distant signal / main signal | Vorsignal / Hauptsignal |
+| forced braking | Zwangsbremsung |
+| movement authority / end of authority | Fahrerlaubnis / Ende der Fahrerlaubnis |
+| load limit | Grenzlast |
+| coupler force / run-in force | Kupplungskraft / Auflaufkraft |
+| train parting | Zugtrennung |
+| coasting | Ausrollen |
+| regenerative braking | Nutzbremsung (Rückspeisung) |

@@ -66,7 +66,6 @@ export const TEXTS = {
   "Label / sign": "Beschriftung / Schild",
   "Station name board or floating text.": "Stationsschild oder schwebender Text.",
   "Signal": "Signal",
-  "Light signal on a mast beside the track (an asset: its condition is known as well as its interlocking reports it).": "Lichtsignal an einem Mast neben dem Gleis (eine Anlage: ihr Zustand ist so gut bekannt, wie ihr Stellwerk ihn meldet).",
   "Switch": "Weiche",
   "A switch (turnout): its point machine reports to the interlocking as much as the interlocking can.": "Eine Weiche: ihr Weichenantrieb meldet dem Stellwerk so viel, wie das Stellwerk kann.",
   "Balise": "Balise",

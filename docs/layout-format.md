@@ -60,7 +60,7 @@ Positions are in the **layout frame**: millimetres on the layout, origin at the 
 | `scenarios` | `[]` | see [Disruptions and scenarios](disruptions-and-scenarios.md#scenarios) |
 | `plugins` | `[]` | URLs of plugin modules, relative to the layout file (same origin only), see [Extending](extending.md) |
 | `consists` | `[]` | the vehicles of trains, by line or train number: `{id, name, lines, trains, vehicles: [{type, count, loaded, isolated}], brake_position, peak}` (`peak`: coupled that many times in the rush hours); without one, a train of the timetable runs with the default fleet of its line, see [Railway systems](rail-systems.md#vehicles-and-trains) |
-| `vehicle_types` | `{}` | vehicle types of the layout's own, as in the catalogue (`{"my-wagon": {label, kind, length_m, mass_t, axles, vmax_kmh, brake_t: {P: 30}}}`) |
+| `vehicle_types` | `{}` | vehicle types of the layout's own, as in the catalogue (`{"my-wagon": {label, kind, length_m, mass_t, axles, vmax_kmh, brake_t: {P: 30}}}`); traction vehicles also `power_kw`, `tractive_kn`, `driven_axles`, `regen_kn`, and any vehicle `aux_kw` for its [running dynamics](rail-systems.md#running-dynamics) |
 | `layers` | `[]` | parts of the layout that can be switched on and off (the app's modules), see [Layers](#layers) |
 | `view.image` | | example image shown when the layout is opened (relative to the layout file) |
 | `view.image_covered` | | the same photo with the room painted over (walls, windows, the floor), shown instead of `view.image`; transparent parts show the lab floor. Made by hand and pushed with the [builder](world-builder.md#covered-photos) |
@@ -526,6 +526,13 @@ Geometry: `points` (polyline along the centre of a real track). Over the camera 
 | `im` | `""` | infrastructure manager (empty: the country's main one) |
 | `max_speed_kmh` | not known | line speed |
 | `min_brake_percentage` | not known | the brake percentage trains need here (Mindestbremshundertstel); the train card says whether a train meets it |
+| `length_m` | its model length at the scale | the section's length in the prototype: larger where a short track stands for a longer section (shortened distances); the running dynamics and the track ahead of a train use it |
+| `gradient_permille` | level | gradient in ‰, rising towards the last point (negative: falling) |
+| `curve_radius_m` | straight | curve radius in the prototype (m) |
+| `rail_condition` | `"dry"` | the rails: `dry`, `wet`, `leaves`, `ice` (the adhesion for starting and braking) |
+| `braking_distance_m` | `"1000"` | the braking distance of the line (Vorsignalabstand): `1000`, `700` or `400` m |
+
+See [Running dynamics](rail-systems.md#running-dynamics) for what the line data are used for.
 
 With an [infrastructure simulation](infrastructure.md) a track is an asset (a track section of the station's line); `name` and `built` (year) are then used too.
 

@@ -163,8 +163,11 @@ export class Signal extends AssetObject {
   static asset = "signal";
   static ring_m = 2.2;
   static pick_height_m = 5.7;
-  static description = "Light signal on a mast beside the track (an asset: its condition is known as well as its interlocking reports it).";
-  static params = [...COMMON, INTERLOCKING, { key: "side", label: "Side", type: "select", default: "right", options: [["right", "right of the track"], ["left", "left of the track"]] }];
+  static description = "Light signal on a mast beside the track (an asset: its condition is known as well as its interlocking reports it). It applies to trains running along its rotation.";
+  static params = [
+    ...COMMON, INTERLOCKING, { key: "side", label: "Side", type: "select", default: "right", options: [["right", "right of the track"], ["left", "left of the track"]] },
+    { key: "kind", label: "Kind", type: "select", default: "main", options: [["main", "main signal"], ["distant", "distant signal"], ["combined", "main signal with the distant signal of the next"]], help: "What it shows trains: where to stop (main), what the next main signal shows (distant), or both. With PZB a distant signal has a 1000 Hz magnet, a main signal 500 Hz 250 m before it and 2000 Hz at it." },
+  ];
 
   drawModel(view, { frame }) {
     const st = this.state();
@@ -222,7 +225,10 @@ export class Balise extends AssetObject {
   static ring_m = 1.6;
   static pick_height_m = 0.3;
   static description = "A balise or train protection magnet between the rails. It cannot report anything: its condition is known from tests.";
-  static params = [...COMMON];
+  static params = [
+    ...COMMON,
+    { key: "pzb_hz", label: "PZB magnet", type: "select", default: "", options: [["", "none (an ETCS balise)"], ["1000", "1000 Hz (at a distant signal)"], ["500", "500 Hz (250 m before a main signal)"], ["2000", "2000 Hz (at a main signal)"], ["1000/2000", "1000/2000 Hz (at a main signal with a distant signal)"]], help: "The frequency of a PZB track magnet; the track ahead of a train shows it." },
+  ];
 
   drawModel(view, { frame }) {
     solid(view, frame, box(frame, -0.25, -0.2, 0.25, 0.2, 0, 0.18, { side: shade(YELLOW, 0.8), top: YELLOW }), 0, 0, 0.1);

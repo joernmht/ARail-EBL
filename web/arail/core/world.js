@@ -98,6 +98,8 @@ export class World {
      * `{name, consist}`, or null.
      */
     this.compatibilityTrain = null;
+    /** The train whose track ahead the tracks draw while its card is open (rail/ahead.js): `{hit}`, or null. */
+    this.trackAhead = null;
     /** Incremented whenever an object is added, changed or removed (caches of derived data use it). */
     this.objectsVersion = 0;
     this.load(layout);
@@ -121,6 +123,7 @@ export class World {
     else this.map = new MarkerMap(markers);
     this.objects = [];
     this.compatibilityTrain = null;
+    this.trackAhead = null;
     this.time = 0;
     this.demand = 1;
     this.clock.configure(layout.clock);

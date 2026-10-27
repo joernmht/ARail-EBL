@@ -341,6 +341,26 @@ The key figures also count costs: drivers' paid hours (`driver_hour`, overtime �
 stand-by × `standby_factor`), the workshop's hours (`workshop_hour`) and empty runs and transfers
 (`empty_km`). They are for comparing setups, not a budget.
 
+### Energy
+
+Every trip run counts its energy from the [running dynamics](rail-systems.md#energy-and-driving-style)
+of its units: a unit of the line's vehicle type, once for each unit coupled (a trip runs with units
+of its line's type). **The vehicles of a unit** are its type's `vehicles`, else the vehicle type of the
+catalogue (or of the layout's `vehicle_types`) with the type's id (`et442` is an ET 442 Talent 2),
+else the line's train (the layout's consist for the line, else the default fleet of its kind) as one
+unit. The energy is that of a run from stop to stop over each section of the route (`km` with
+`stops` stops on the way, at `vmax_kmh`, on the line's `power`: on DC lines half of what the brakes
+feed back is taken back, AC lines take all of it), in kWh from the contact line or litres of diesel,
+worked out once for the same unit and line. The key figures **Energy from the contact line** (MWh),
+**Diesel** (litres) and **Energy cost** (`energy_kwh`, 0.20 € per kWh; `diesel_l`, 1.60 € per litre)
+follow; the energy from the contact line and the diesel are not added up, since a kWh from the
+contact line does about three times as much at the wheel as a kWh of diesel. **How the drivers drive**
+is the setting `driving`: `fast` (as fast as possible) or `coasting` (coasting before every stop within
+the running-time supplement): the same timetable with less energy. Two setups that differ only in it
+compare the driving styles, e.g. `{"id": "coasting", "name": "Energy-efficient driving", "patch":
+{"driving": "coasting"}}`: on the lab's network, run with ET 442 units, a week takes about 6 % less
+energy from the contact line, at the same punctuality.
+
 ## Railway undertaking → Operations on the game page
 
 With rail operations on the layout, the game page's case **Operations** (side Railway undertaking, `#ops`) works. Its views:
@@ -521,7 +541,8 @@ Times are `"HH:MM"` (up to `"47:59"` for the night after) or minutes; day sets a
 | `crew.contracts` | full time 38 h (70 %), part time 25 h (30 %) | `id`, `name`, `share`, `hours_week`, `max_duty_h`, `min_rest_h` (11), `max_days_row`, `overtime_accept`, `max_overtime_h_week` |
 | `crew.commute` | | `margin_min` (10), `late_p` (0.03), `late_min` (12), `car_min` (25), `walk_max_m` (500) |
 | `dispatch` | | `wait_unit_min` (20), `wait_crew_min` (15), `short_wait_min` (5), `pull_out_min` (15), `pull_in_min` (10), `stable_after_min` (40), `delays` (`p` 0.1, `median_min` 2.5, `sigma`, `max_min`), `recovery_min` (1) |
-| `costs` | | `driver_hour` (48 €), `overtime_factor` (1.3), `standby_factor` (0.6), `workshop_hour` (95 €), `empty_km` (6 €) |
+| `costs` | | `driver_hour` (48 €), `overtime_factor` (1.3), `standby_factor` (0.6), `workshop_hour` (95 €), `empty_km` (6 €), `energy_kwh` (0.20 €), `diesel_l` (1.60 €) |
+| `driving` | `"fast"` | how the drivers drive: `fast` or `coasting` (before the stops, within the supplement); the energy of the trips |
 | `setups` | the presets | `id`, `name`, `description`, `patch` (changes to this entry; lists are replaced, not merged) |
 | `stress` | the presets | `id`, `name`, `description`, `patch`, `events` |
 
@@ -530,10 +551,24 @@ one per section), `dwell_min` (1), `turn_min` (8), `takt_min` (60), `first`, `la
 last departure from the first station), `back_first` (the first one back; default: the first
 arrival plus `turn_min`), `vehicle` (a type id), `units` (1), `peak_units`, `peak` (`[["06:00",
 "08:30"], ["15:30", "18:30"]]`), `days` (daily), `peak_days` (`"mon-fri"`), `docks` (station id →
-dock ids of its platforms, e.g. `"platform-1:left"`; default: all of the station's) and `conductor`
-(true: trains need a conductor too).
+dock ids of its platforms, e.g. `"platform-1:left"`; default: all of the station's), `conductor`
+(true: trains need a conductor too) and `power` (its traction power for the running dynamics:
+`ac15`, `ac25`, `dc3`, `dc1_5`, `dc0_75` or `none`; default: electrified, as AC).
 
-**Vehicle types**: `id`, `name`, `seats`, `prefix` and `first_number` (unit numbers, `442 101`),
+**Running times from the running dynamics**: with `"run_min": "auto"` the running time of each section
+is worked out from the [running dynamics](rail-systems.md#running-dynamics) of a unit of the line's
+vehicle type (see *the vehicles of a unit* below): its `km` in equal runs from stop to stop with
+`stops` stops on the way (0; one number, or one per section) of `stop_dwell_s` each (30), at the
+line speed `vmax_kmh` (120) and on its `power`, as fast as the unit can, plus the running-time
+supplement of 5 %, rounded up to half minutes. With the default vehicle type and the lab's consists,
+the RE 1 (59 km, 6 stops, 160 km/h, a locomotive and four coaches) gets 35 min, the RB 33 with its
+two diesel railcars (34 km, 9 stops) 33 min. A train that cannot run by its dynamics (no traction
+vehicle with `power_kw` that can draw the line's power, or no vehicle type that is known) takes the
+distance at the line speed with the supplement, and the validation says so.
+
+**Vehicle types**: `id`, `name`, `seats`, `vehicles` (the vehicles of one unit, for its running
+dynamics, e.g. `[{"type": "br642"}]`; see below), `prefix` and `first_number` (unit numbers, `442 101`;
+give each type its own, or their units get the same numbers),
 `built` (`[from, to]`), `program` (its own maintenance programme) and `failure`:
 `hard_per_100k_km` (1.6), `soft_per_10k_km` (2), `wear_share` (0.6), `shape` (2), `infant` (0.8),
 `infant_years` (1), `ageing` (0.04 per year), `ageing_from` (12 years), `start_share` (0.15),

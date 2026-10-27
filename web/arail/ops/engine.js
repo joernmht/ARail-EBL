@@ -38,6 +38,7 @@ const COUNTERS = [
   "groundedUnits", "extensionRequests", "extensionsGranted", "shortfallRotations", "unitMinAvailable", "unitMinService", "unitMinWorkshop", "unitMinFailed",
   "unitMinTotal", "dutiesPlanned", "dutiesOpen", "dutiesUncovered", "sickCalls", "coveredByReserve", "coveredByCallIn", "coveredAdHoc", "reserveCalls",
   "lateSignOns", "lateSignOnMin", "overtimeMin", "paidMin", "standbyMin", "restConflicts", "longDuties", "noConductor", "comfortUnitDays",
+  "energyKwh", "dieselL",
 ];
 
 const mod = (a, n) => ((a % n) + n) % n;
@@ -840,6 +841,14 @@ export class OpsEngine {
     const day = trip.day;
     this.stat("tripsRun", 1, null, day);
     this.stat("kmRun", trip.km, null, day);
+    // its energy from the running dynamics of a unit of the line's vehicle type (ops/config.js
+    // lineEnergy), once for each of its units: they are all of that type
+    const energy = this.lines.get(trip.line)?.energy;
+    if (energy) {
+      const n = Math.max(1, trip.unitObjs?.length ?? 1);
+      if (energy.electric) this.stat("energyKwh", energy.kwh_per_km * trip.km * n, null, day);
+      else this.stat("dieselL", energy.diesel_l_per_km * trip.km * n, null, day);
+    }
     this.stat("delayMin", trip.delay, null, day);
     const threshold = this.ledger.authorityContract()?.penalties.late_threshold_min ?? 5;
     if (trip.delay < threshold) this.stat("onTime", 1, null, day);

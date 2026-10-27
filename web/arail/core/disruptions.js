@@ -27,6 +27,7 @@
  *   leave     (bool)    waiting passengers give up and leave
  *   demand    (factor)  passenger arrival rate
  *   frequency (factor)  vehicle frequency (> 1 = more often)
+ *   slow      (factor)  vehicles take longer to come in and leave (> 1; slippery rails)
  *   mood      (per s)   extra change of passenger mood per second (negative = worse)
  *   messages  (strings) shown on signs and boards
  * A disruption whose target is one track of a stop (a dock) acts on the vehicles at that track
@@ -232,7 +233,7 @@ export class DisruptionManager {
     const key = dock ? `${area.id}|${dock.id}` : area.id;
     let fx = this._cache.get(key);
     if (fx) return fx;
-    fx = { closed: false, reserved: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, mood: 0, messages: [], disruptions: [] };
+    fx = { closed: false, reserved: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, slow: 1, mood: 0, messages: [], disruptions: [] };
     for (const d of this.active) {
       if (!appliesTo(d, area, this.world)) continue;
       const e = d.def.effects ? d.def.effects(d, area, this.world) || {} : {};
@@ -244,6 +245,7 @@ export class DisruptionManager {
         fx.leave ||= !!e.leave;
         if (e.demand != null) fx.demand *= e.demand;
         if (e.frequency != null) fx.frequency *= e.frequency;
+        if (e.slow > fx.slow) fx.slow = e.slow;
         if (e.mood) fx.mood += e.mood;
       }
       if (e.messages) fx.messages.push(...e.messages);
