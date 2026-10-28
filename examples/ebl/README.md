@@ -31,7 +31,9 @@ and Ost, Flughafen, Grenzstraße, Ottendorf-Okrilla, Radeberg, Arnsdorf, Großr�
 Bischofswerda, Seitschen and Neukirch (Lausitz) exist only in the BEST interlocking simulation, which
 continues the NBS beyond Neustadt.
 
-**Light rail (Stadtbahn)** on the upper narrow deck, with its own track: Pirna (0.5) – Heidenau (1.5) –
+**Light rail (Stadtbahn)** on the upper narrow deck, with its own track (the deck is "upper" towards the NBS
+in front of it: along Bf Neustadt it lies at the station table's level with the NBS lower in front of it,
+and it rises towards Pirna; see [Lab session](../../docs/lab-session.md#the-s-bahns-strip-how-high-it-lies)): Pirna (0.5) – Heidenau (1.5) –
 Hauptbahnhof (2.5, depot) – Freiberger Straße (3.3) – Mitte (4.2), then on one branch Radebeul – Coswig – Sörnewitz –
 Meißen – Triebischtal (10.4), and on the other Freital – Tharandt (6.0). The yellow-framed table signs belong to
 these stops, not to the stations on the lower table.

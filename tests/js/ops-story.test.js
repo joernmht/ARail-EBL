@@ -87,6 +87,7 @@ test("a story's train holds its track: no timetable train comes, one there is ta
 
 test("a train taken away for a story's train: the people on their way to its doors missed it and wait at the other track", () => {
   const world = createWorld(NEUSTADT, { seed: 3 });
+  world.demand = 10; // a busy day: people board every train at platform 2, whatever else the layout has
   const area = world.getStopArea("platform-2");
   const sim = world.simulations.find((s) => s.constructor.type === "passengers");
   const boarding = (id) => (sim.crowds.get(area.id)?.people ?? []).filter((p) => p.state === "boarding" && p.dock === id);
