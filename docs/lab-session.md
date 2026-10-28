@@ -176,6 +176,17 @@ The layout of Bf Neustadt also covers **Waldhof south and Waldhof** (the marker 
 - **Waldhof's tracks** (1, 2, 4, 5 and the two platforms) and the NBS on both laps were drawn after the orthophotos of S10 and S11 and the kilometre tags (22.0 and 23.0 of the first lap lie on its track). In the south throat of Waldhof, where several decks overlap and the orthophoto shows glare, they are approximate (a few centimetres). The joined orthophoto of the flyover ends at Waldhof south (x ≈ 12.5 m); Waldhof itself is not in it yet.
 - **The town** of Bf Neustadt reached over the front of the Waldhof table: its table module now ends at x = 8.3 m, a second one (Gartenring) carries the east of the garden town, whose northern streets moved back from the table (two houses of Amselweg had no room left).
 
+### The S-Bahn's strip: how high it lies
+
+The lab's light rail (Stadtbahn, the S-Bahn of the lab software) runs on a narrow strip along the windows, right behind the white boards with the markers 84–87 and 147–150, with its stops Pirna and Heidenau there (their signs stand at the back of the strip). How high the decks lie was an open question of the [topology](../examples/ebl/README.md); it was estimated from the photos of 9 October 2026:
+
+- **The camera.** The photos of Bf Neustadt (1600 px) were taken with one camera: calibrated together on the layout's markers (one plane), its focal length is 1149 px (rms 1.9 px). The Waldhof photos (1200 px) are the same camera, scaled.
+- **Markers triangulated.** Seen from the front and from the back of the table, the markers on the strip lie at the table's level: 86, 87, 147 and 148 at −7 to +2 mm (the rays meet within 1–4 mm); the layout's own markers come out within 2 mm. At the Pirna end they rise: 149 at 16 mm, 150 at 31 mm, 85 at 58 mm.
+- **Plane sweep.** A photo from the front and one from the back, drawn onto a plane at a height h, agree best at the true height of what lies there: bands of the table across its depth gave 0 for the table and the strip along Bf Neustadt and Heidenau, about 50 mm on the strip at the Pirna end, and 130–250 mm further back: the window sill and the radiator covers, not a deck. Waldhof south has several decks (about 150–280 mm); there the window side is not seen from both sides, so the strip at Hauptbahnhof is not measured yet.
+- **The tracks** of the strip were read from the back photos drawn onto it at these heights (two tracks about 60 mm apart, which come nearer the front towards Heidenau); drawn into the front photos they lie on the rails within about 2 cm.
+
+The module *S-Bahn* of Bf Neustadt has the strip as table modules at these levels (level with the table, 18, 35 and 50 mm towards Pirna), its two tracks, island platforms at Pirna and Heidenau and the S 1, which runs on track 2 and turns at Heidenau. The town behind the curve now begins behind the strip (y = 990 mm).
+
 ## The photo map
 
 The [photo map](../web/lab-map/) (on the site at `lab-map/`) shows the photos of 9 October 2026 on a map of the lab: each dot is a photo, at the place on the table it looks at, with an arrow for the direction of view. A click opens the photo; where a layout of ARail covers that part of the table (Bf Neustadt, the hybrid container train), **Open with the digital layer** opens it in the app's [photo tour](getting-started.md#the-photo-tour) (`app/?photo=<id>`) with that layout, which tracks it like any photo; from there the arrows go on round the lab. `lab-map/?photo=<id>` opens a photo directly (the id is the time it was taken, `hhmmss`).

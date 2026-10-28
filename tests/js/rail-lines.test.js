@@ -152,6 +152,13 @@ test("the EBL layout: the RB 30 from Waldhof to Neustadt, Waldhof's platform its
   const map = readJSON("web/lab-map/data.json");
   const waldhof = map.photos.filter((p) => p.layer === "neustadt" && (p.group === "S10" || p.group === "S11")).map((p) => p.id);
   assert.ok(waldhof.length >= 10, waldhof.join(", "));
+  // the S-Bahn on its strip along the windows: Pirna and Heidenau, the strip raised at the Pirna end
+  const s1 = world.getObject("line-s1");
+  assert.deepEqual(s1.problems(), []);
+  assert.deepEqual(s1.route().stops[1].map((p) => p.dock.id), ["platform-pirna:right", "platform-heidenau:right"]);
+  assert.equal(world.services.docks.get("platform-pirna:right").mode, "line");
+  const lift = (x, y) => world.elevation.sync().ground(x, y);
+  assert.ok(Math.abs(lift(3500, 870)) < 1 && lift(600, 900) === 50, "the strip at the table's level, 50 mm at Pirna");
   // the exclusive modules show the station alone, as before
   const plan = createWorld(json, { seed: 2 });
   plan.setLayers(["plan"]);

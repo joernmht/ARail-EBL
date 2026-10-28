@@ -119,7 +119,7 @@ test("a layout without a marker map is surveyed from its photo", async ({ page }
 
 test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid container train", async ({ page }) => {
   const errors = await openApp(page, "/app/?example=neustadt");
-  await expect(page.locator("#layoutName")).toHaveText("EBL Bf Neustadt and terminal (example) · Waldhof"); // its module Waldhof is on
+  await expect(page.locator("#layoutName")).toHaveText("EBL Bf Neustadt and terminal (example) · S-Bahn · Waldhof"); // its modules S-Bahn and Waldhof are on
   await page.waitForFunction(() => window.__arail.tracker.state.used.length >= 6 && window.__arail.world.map.locked);
   // the same layout with the photo of the terminal: its own photo, the module Terminal on, its case shown
   await chooseExample(page, "crane-terminal");
