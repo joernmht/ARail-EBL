@@ -23,6 +23,7 @@ import { TEXTS as PARKING } from "./de/parking.js";
 import { TEXTS as TRAFFIC } from "./de/traffic.js";
 import { TEXTS as TRAMS } from "./de/trams.js";
 import { TEXTS as MOBILITY } from "./de/mobility.js";
+import { TEXTS as RAIL_LINES } from "./de/rail-lines.js";
 
 /** The parts by their file, for the checks of the catalogues. */
 export const DE_PARTS = {
@@ -42,6 +43,7 @@ export const DE_PARTS = {
   "web/arail/i18n/de/traffic.js": TRAFFIC,
   "web/arail/i18n/de/trams.js": TRAMS,
   "web/arail/i18n/de/mobility.js": MOBILITY,
+  "web/arail/i18n/de/rail-lines.js": RAIL_LINES,
 };
 
 /** The framework's German texts. */

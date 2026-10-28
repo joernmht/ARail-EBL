@@ -1453,6 +1453,11 @@ export function statusLines(world, area) {
   }
   if (lines.length) return lines;
   if (states.every((st) => st.mode === "feed")) return ["Waiting for the next train"];
+  // trains of a rail line (rail/lines.js): its next trains
+  if (states.some((st) => st.mode === "line")) {
+    const lined = world.objects.flatMap((o) => (typeof o.statusLines === "function" && o.servesArea?.(area) ? o.statusLines(area) : []));
+    if (lined.length || states.every((st) => st.mode !== "timetable")) return lined.length ? lined : ["Waiting for the next train"];
+  }
   // trains of a planner (the operations simulation): its next departures
   if (states.some((st) => st.mode === "plan")) {
     const planned = world.services.planner?.statusLines?.(area) || [];

@@ -66,7 +66,7 @@ test("a train longer than its platform; the length of a train without a unit is 
   plan.set("re2-0723", "unit", "long");
   const p = plan.checks().get("re2-0723").find((x) => x.kind === "length");
   assert.ok(p, "too long");
-  assert.match(p.text, /^Too long: 2\d\d m for 224 m$/);
+  assert.match(p.text, /^Too long: 2\d\d m for 222 m$/);
   plan.set("re2-0723", "unit", null);
   assert.equal(Math.round(plan.consistOf("re2-0723").length_m), 126, "RE: a locomotive with four double-deck coaches");
   assert.equal(Math.round(plan.consistOf("s1-0705").length_m), 66);

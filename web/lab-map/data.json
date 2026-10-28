@@ -5,7 +5,7 @@
  "layers": {
   "neustadt": {
    "layout": "../layouts/ebl-neustadt.json",
-   "label": "Bf Neustadt"
+   "label": "Bf Neustadt and Waldhof"
   },
   "container": {
    "layout": "../layouts/ebl-container-train.json",
@@ -1170,6 +1170,7 @@
    "heading": 121,
    "markers": 5,
    "approx": true,
+   "layer": "neustadt",
    "place": "Waldhof",
    "upper": "Freiberger Straße",
    "km": [
@@ -1186,6 +1187,7 @@
    "heading": 102,
    "markers": 4,
    "approx": true,
+   "layer": "neustadt",
    "place": "Waldhof",
    "upper": "Freiberger Straße",
    "km": [
@@ -1216,6 +1218,7 @@
    "heading": 105,
    "markers": 3,
    "approx": true,
+   "layer": "neustadt",
    "place": "Waldhof",
    "upper": "Freiberger Straße",
    "km": [
@@ -1234,6 +1237,7 @@
    "heading": 139,
    "markers": 4,
    "approx": true,
+   "layer": "neustadt",
    "place": "Waldhof",
    "upper": "Freiberger Straße",
    "km": [],
@@ -1264,6 +1268,7 @@
    "heading": 82,
    "markers": 3,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1278,6 +1283,7 @@
    "heading": 125,
    "markers": 5,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1921,6 +1927,7 @@
    "heading": -27,
    "markers": 5,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1935,6 +1942,7 @@
    "heading": -33,
    "markers": 3,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1949,6 +1957,7 @@
    "heading": -45,
    "markers": 3,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1977,6 +1986,7 @@
    "heading": -27,
    "markers": 5,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [],
@@ -1991,6 +2001,7 @@
    "heading": -17,
    "markers": 3,
    "approx": false,
+   "layer": "neustadt",
    "place": "Waldhof south",
    "upper": "Hauptbahnhof",
    "km": [
@@ -2007,6 +2018,7 @@
    "heading": -29,
    "markers": 4,
    "approx": true,
+   "layer": "neustadt",
    "place": "Waldhof",
    "upper": "Freiberger Straße",
    "km": [],

@@ -105,6 +105,7 @@ export default function register(arail) {
 | `params` | the editable parameters (below) |
 | `background` | `true`: picked only at its edges unless selected, so that a drag over it pans the flyover (table modules) |
 | `stopTypes` | for placement `stops`: the object types that can be tapped (default `["bus-stop", "bus-terminal"]`) |
+| `stopsKey`, `stopsHint` | for placement `stops`: the key the tapped ids are written to (default `stops`; a rail line's `tracks`) and the hint while tapping |
 
 | Placement | The user | The spec gets |
 | --- | --- | --- |
@@ -113,7 +114,7 @@ export default function register(arail) {
 | `polygon` | taps the corners, then Finish | `points` |
 | `polyline` | taps the points, then Finish | `points` |
 | `rect` | drags from one corner to the opposite one, or taps both | `position` (centre), `width_mm`, `depth_mm`, `rotation_deg: 0` |
-| `stops` | taps stop objects in order, then Finish | `stops: [objectId, ...]` |
+| `stops` | taps stop objects in order, then Finish | `stops: [objectId, ...]` (or the key in `stopsKey`) |
 
 The editor builds the settings form from `params`. Parameter types: `number`, `text`, `select` (with `options: [[value, label], ...]`), `boolean`, `color`, `marker` (a marker ID), `object` (an object ID, optionally filtered with `objectType`). Use unit suffixes in keys (`_mm`, `_m`, `_s`, `_deg`) and add `help` texts where a value needs explaining. A parameter called `rotation_deg` gives the object the rotate buttons and the keys R / Shift+R.
 

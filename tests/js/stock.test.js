@@ -72,7 +72,8 @@ test("a train at the platform: its front near the end it heads for, its doors al
   const front = area.fromLayout(polylineAt(pose.line.points, pose.head, pose.line.lengths).point)[0];
   const end = v.direction > 0 ? dock.s1 - STOP_MARGIN_M : dock.s0 + STOP_MARGIN_M;
   assert.ok(Math.abs(front - end) < 0.5, `${v.line}: its front ${front.toFixed(1)} m along the platform, the stop ${end.toFixed(1)} m`);
-  assert.equal(Math.round(pose.length_m), Math.round(trainConsist(world, v).length_m), "as long as its consist");
+  const consist = trainConsist(world, v);
+  assert.ok(Math.abs(pose.length_m - consist.length_m - (consist.vehicles.length - 1)) < 0.5, "as long as its consist, with a metre between two vehicles");
   const doors = trainDoors(world, v);
   assert.deepEqual(world.services.doors(v), doors, "the passengers use its doors");
   assert.ok(doors.length >= 4 && doors.every((s) => s >= dock.s0 && s <= dock.s1), `${doors.length} doors along the platform`);

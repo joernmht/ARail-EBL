@@ -84,7 +84,8 @@ export function facesStreet(cls) {
  * - point: `position`; a bus stop on the side of its street the point is on; a building with its
  *   front to the nearest street (within `reachMM`); a bus terminal along the nearest street;
  * - segment: `from`, `to`; rect: centre, `width_mm`, `depth_mm` (null if smaller than 5 mm);
- * - polyline (≥ 2 points), polygon (≥ 3): `points`; stops: `stops` (ids, ≥ 2).
+ * - polyline (≥ 2 points), polygon (≥ 3): `points`; stops: `stops` (ids, ≥ 2), or the class's
+ *   `stopsKey` (a rail line's `tracks`).
  * Returns null while there are not enough points.
  * @param {import("../arail/core/world.js").World} world
  * @param {typeof import("../arail/core/object.js").LayoutObject} cls
@@ -121,7 +122,7 @@ export function placeSpec(world, cls, points, { reachMM = Infinity } = {}) {
       return { ...spec, position: xy([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]), width_mm: w, depth_mm: d, rotation_deg: 0 };
     }
     case "stops":
-      return points.length >= 2 ? { ...spec, stops: points.slice() } : null;
+      return points.length >= 2 ? { ...spec, [cls.stopsKey || "stops"]: points.slice() } : null;
     case "polygon":
       return points.length >= 3 ? { ...spec, points: points.map(xy) } : null;
     default:

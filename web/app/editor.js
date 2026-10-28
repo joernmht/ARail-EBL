@@ -317,7 +317,7 @@ export class Editor {
     const types = this.placing.cls.stopTypes || ["bus-stop", "bus-terminal"];
     const tol = (10 * this.app.px()) / Math.max(1e-6, this.pxPerMM(p));
     const hit = this.world.objects.find((o) => types.includes(o.type) && o.geometry && o.contains(p, tol));
-    if (!hit) return toast(types.includes("bus-stop") ? "Tap a bus stop or a bus terminal." : "Tap a tram stop.");
+    if (!hit) return toast(types.includes("bus-stop") ? "Tap a bus stop or a bus terminal." : types.includes("track") ? "Tap a track." : "Tap a tram stop.");
     const points = this.placing.points;
     if (points[points.length - 1]?.id !== hit.id) points.push({ id: hit.id });
     this.renderPlacing();
@@ -363,8 +363,8 @@ export class Editor {
       }
       Object.assign(geo, { position: [round1((a[0] + b[0]) / 2), round1((a[1] + b[1]) / 2)], width_mm: w, depth_mm: d, rotation_deg: 0 });
     } else if (cls.placement === "stops") {
-      if (points.length < 2) return toast("Tap at least two stops.");
-      geo.stops = points.map((q) => q.id);
+      if (points.length < 2) return toast(cls.stopsKey === "tracks" ? "Tap at least two tracks." : "Tap at least two stops.");
+      geo[cls.stopsKey || "stops"] = points.map((q) => q.id);
     } else {
       const min = cls.placement === "polygon" ? 3 : 2;
       if (points.length < min) return toast(`Tap at least ${min} points.`);
@@ -615,7 +615,7 @@ export class Editor {
     // in the flyover the keyboard places too (see Flyover.key)
     const keys = this.app.mode === "flyover" ? ` Keyboard: the arrows on the stage move the view, Enter ${noun === "stop" ? "picks the stop" : "places a point"} at the cross in the middle.` : "";
     mount(bar,
-      h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement],
+      h("span", { class: "grow" }, h("strong", {}, replace ? `Redraw ${replace.name}: ` : `${cls.label}: `), cls.stopsHint || (cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement]),
         points.length ? ` (${points.length} ${noun}${points.length > 1 ? "s" : ""})` : "", grid, keys ? h("span", { class: "keys" }, keys) : null),
       multi ? h("button", { class: "btn small primary", type: "button", onclick: () => this.finish() }, "Finish") : null,
       points.length ? h("button", { class: "btn small", type: "button", onclick: () => { points.pop(); this.renderPlacing(); } }, `Undo ${noun}`) : null,
@@ -725,6 +725,10 @@ export class Editor {
       return h("div", { class: "fields" }, sel(0), sel(1));
     }
     if (Array.isArray(s.points)) return h("p", { class: "hint" }, `${s.points.length} points. Use “Redraw position” to change the outline.`);
+    if (Array.isArray(s.tracks) && o.constructor.stopsKey === "tracks") {
+      const names = s.tracks.map((id) => this.world.getObject(id)?.name || `${id} (missing)`);
+      return h("p", { class: "hint" }, `Tracks: ${names.join(" → ")}.`);
+    }
     if (Array.isArray(s.stops)) {
       const names = s.stops.map((id) => this.world.getObject(id)?.name || `${id} (missing)`);
       // a loop: which way round its buses go (the arrow on their signs)

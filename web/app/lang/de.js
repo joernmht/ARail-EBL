@@ -416,6 +416,9 @@ const APP_DE = {
   "Tap the tram stops in the order the trams serve them, then press Finish.": "Tippen Sie die Straßenbahnhaltestellen in der Reihenfolge an, in der die Straßenbahnen sie bedienen, und drücken Sie dann Fertig.",
   "Tap a bus stop or a bus terminal.": "Tippen Sie eine Bushaltestelle oder einen Busbahnhof an.",
   "Tap a tram stop.": "Tippen Sie eine Straßenbahnhaltestelle an.",
+  "Tap a track.": "Tippen Sie ein Gleis an.",
+  "Tap at least two tracks.": "Tippen Sie mindestens zwei Gleise an.",
+  "Tracks: {names}.": "Gleise: {names}.",
   "Build on a table module: houses, streets and the rest stand on table modules. Tap on one, or add a table module first.": "Bauen Sie auf einem Tischmodul: Häuser, Straßen und alles andere stehen auf Tischmodulen. Tippen Sie auf eines, oder legen Sie zuerst ein Tischmodul an.",
 
   // ------------------------------------------------------------ the info card
