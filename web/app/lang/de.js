@@ -153,6 +153,7 @@ const APP_DE = {
   "Move to": "Bewegen nach",
   "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it.": "Wählen Sie einen Container in der Liste oder auf der Anlage und seinen neuen Platz: Der Kran oder der Reachstacker bewegt ihn.",
   "The trains of this track are run by the rail operations (Operations panel)": "Die Züge dieses Gleises fährt der Bahnbetrieb (Bereich Betrieb)",
+  "Only the trains of its rail line stop at this track": "An diesem Gleis halten nur die Züge seiner Bahnlinie",
   "This track is kept for a story's train": "Dieses Gleis ist für den Zug einer Geschichte freigehalten",
   "This track is closed": "Dieses Gleis ist gesperrt",
   "Disruptions and scenarios": "Störungen und Szenarien",

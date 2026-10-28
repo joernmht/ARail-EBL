@@ -1434,8 +1434,9 @@ export function dockStatus(world, area) {
 /**
  * Status texts for the docks of an area, the most important first: a timetable vehicle at a dock
  * ("RE 1 boarding", "Bus 305 arriving"), the next bus of each bus line that stops here (asked from
- * `world.transit`; the bays of a bus terminal can serve several lines), else the next vehicle of
- * the timetable at the tracks that are open ("Next train in 25 s"; none when every track is closed).
+ * `world.transit`; the bays of a bus terminal can serve several lines), else the next trains of the
+ * rail lines that stop here ("RB 30 → Neustadt in 40 s") and the next vehicle of the timetable at the
+ * tracks that are open ("Next train in 25 s"; none when every track is closed), the soonest first.
  * @returns {string[]}
  */
 export function statusLines(world, area) {
@@ -1453,10 +1454,12 @@ export function statusLines(world, area) {
   }
   if (lines.length) return lines;
   if (states.every((st) => st.mode === "feed")) return ["Waiting for the next train"];
-  // trains of a rail line (rail/lines.js): its next trains
-  if (states.some((st) => st.mode === "line")) {
-    const lined = world.objects.flatMap((o) => (typeof o.statusLines === "function" && o.servesArea?.(area) ? o.statusLines(area) : []));
-    if (lined.length || states.every((st) => st.mode !== "timetable")) return lined.length ? lined : ["Waiting for the next train"];
+  // trains of the rail lines that stop here (rail/lines.js): their next ones; alone where they have the platforms to themselves
+  const seconds = (s) => Math.max(0, s / (world.speed || 1)).toFixed(0);
+  const rail = world.objects.flatMap((o) => (typeof o.nextTrains === "function" && o.servesArea?.(area) ? o.nextTrains(area) : []));
+  rail.sort((a, b) => a.s - b.s);
+  if (states.some((st) => st.mode === "line") && states.every((st) => st.mode !== "timetable")) {
+    return rail.length ? rail.slice(0, 2).map((x) => `${x.text} in ${seconds(x.s)} s`) : ["Waiting for the next train"];
   }
   // trains of a planner (the operations simulation): its next departures
   if (states.some((st) => st.mode === "plan")) {
@@ -1470,8 +1473,8 @@ export function statusLines(world, area) {
     return !fx.closed && !fx.reserved;
   });
   if (!open.length) return [];
-  const next = Math.min(...open.map((st) => st.timer)) / (world.speed || 1);
-  return [`Next ${noun.toLowerCase()} in ${Math.max(0, next).toFixed(0)} s`];
+  const next = { s: Math.min(...open.map((st) => st.timer)), text: `Next ${noun.toLowerCase()}` };
+  return [...rail, next].sort((a, b) => a.s - b.s).slice(0, 2).map((x) => `${x.text} in ${seconds(x.s)} s`);
 }
 
 /**

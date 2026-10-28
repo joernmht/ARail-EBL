@@ -355,8 +355,8 @@ export class Panels {
           // a closed track (a track closure, a story's train) takes no train, nor one kept for a story's own
           const fxd = w.disruptions.effectsFor(a, st.dock), closed = fxd.closed || fxd.reserved;
           return h("button", {
-            class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || closed,
-            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : fxd.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : null,
+            class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || st.mode === "line" || closed,
+            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : st.mode === "line" ? "Only the trains of its rail line stop at this track" : fxd.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : null,
             onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
           }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`);
         })),

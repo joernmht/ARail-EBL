@@ -300,6 +300,7 @@ export class App {
       const area = w.stopAreas()[Number(e.key) - 1];
       if (area && area.docks.length && area.docks.every((d) => d.managed)) toast(`${area.owner.name} is served by its bus lines.`);
       else if (area && area.docks.length && area.docks.every((d) => w.services.docks.get(d.id)?.mode === "plan")) toast(`${area.owner.name}: its trains run to the timetable of the rail operations.`);
+      else if (area && area.docks.length && area.docks.every((d) => w.services.docks.get(d.id)?.mode === "line")) toast(`${area.owner.name} is served by its rail line (${area.owner.spec.lines}).`);
       else if (area && !w.services.call(area.id)) toast(`${area.owner.name}: no free ${area.kind === "bus" ? "bay" : "track"} right now.`);
     } else if (e.key === "Escape") {
       if (this.terminal?.cancelPick()) return;

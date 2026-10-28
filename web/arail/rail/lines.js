@@ -10,15 +10,17 @@
  * reaches the point from which the platform's train comes in, it hands over to the services (the
  * dock's train comes in, the people get on and off, it leaves; rail/stock.js draws it), and runs on
  * from where that train left; while another train stands there it waits, and goes before the
- * timetable's next one. A platform that lists only
- * its line (`lines`) is its own (mode "line" of core/services.js): the timetable sends no trains
- * there; at the others the timetable's trains run as well. While a planner (the operations plan, the
- * journeys' trains) or the control system runs a platform, the line's trains pass it without stopping.
+ * timetable's next one. The dock's train has the source "rail-line". A platform whose `lines` name
+ * only rail lines that stop there is theirs (mode "line" of core/services.js): the timetable sends
+ * no trains there; at the others the timetable's trains run as well, but never as one of these lines
+ * (`ServiceManager._lineFor`). While a planner (the operations plan, the journeys' trains) or the
+ * control system runs a platform, the line's trains pass it without stopping.
  *
  * The tracks between two gaps (a stretch) are one track for both directions: a train enters a
- * stretch only when no train comes the other way on it, keeps its distance to the one ahead, and a
- * stretch where the trains turn takes one train at a time. Out of view any number of trains wait; one
- * waiting to enter goes before those that would enter the other way, the one that waited longest first.
+ * stretch only when no train comes the other way on it, and a stretch where the trains turn takes one
+ * train at a time. On a stretch a train brakes for its next stop and keeps `SPACING_M` behind the
+ * tail of the train ahead. Out of view any number of trains wait; one waiting to enter goes before
+ * those that would enter the other way, the one that waited longest first.
  * @module arail/rail/lines
  */
 import { LayoutObject } from "../core/object.js";
@@ -36,6 +38,26 @@ const ACCEL = 0.6, BRAKE = 0.7;
 const SPACING_M = 150;
 /** Metres beyond its length a train at a platform comes in from and leaves to (as rail/stock.js draws it). */
 const APPROACH_EXTRA_M = 40;
+/** The source of the dock's train a rail line calls (core/services.js). */
+export const LINE_SOURCE = "rail-line";
+
+const norm = (x) => String(x ?? "").trim().toLowerCase();
+
+/** The lines a platform's dock names (`lines` of its platform), normalised. */
+function platformLines(dock) {
+  return String(dock.area.owner?.spec?.lines ?? "").split(",").map(norm).filter(Boolean);
+}
+
+/**
+ * The numbers of the rail lines whose trains stop at a dock, normalised ("rb 30"): the timetable
+ * sends none of its own as these (core/services.js `_lineFor`).
+ * @param {object} world
+ * @param {object} dock
+ * @returns {Set<string>}
+ */
+export function railLinesAt(world, dock) {
+  return new Set(world.objects.filter((o) => o instanceof RailLine && o.onTracks(dock)).map((o) => norm(o.spec.number)));
+}
 
 export class RailLine extends LayoutObject {
   static type = "rail-line";
@@ -160,14 +182,14 @@ export class RailLine extends LayoutObject {
   }
 
   /**
-   * Is this dock the line's own: on its tracks, at a platform whose `lines` name only this line? Only
-   * its trains come there (core/services.js, mode "line").
+   * Is this dock the line's own: on its tracks, at a platform whose `lines` name this line and
+   * otherwise only rail lines that stop there too? Only their trains come there (core/services.js,
+   * mode "line").
    */
   servesDock(dock) {
     if (!this.onTracks(dock)) return false;
-    const norm = (x) => String(x ?? "").trim().toLowerCase();
-    const lines = String(dock.area.owner?.spec?.lines ?? "").split(",").map(norm).filter(Boolean);
-    return lines.length > 0 && lines.every((l) => l === norm(this.spec.number));
+    const lines = platformLines(dock), here = railLinesAt(this.world, dock);
+    return lines.includes(norm(this.spec.number)) && lines.every((l) => here.has(l));
   }
 
   /**
@@ -237,15 +259,47 @@ export class RailLine extends LayoutObject {
     // its consist: the layout's for the line, else the default fleet; coupled in the rush hours as far as the shortest platform takes it
     const docks = this.route().stops[1].map((s) => s.dock);
     const shortest = docks.length ? docks.reduce((a, b) => (b.s1 - b.s0 < a.s1 - a.s0 ? b : a)) : null;
-    const consist = trainConsist(this.world, { line: this.label(1), demand, dock: shortest, source: "line" });
+    const consist = trainConsist(this.world, { line: this.label(1), demand, dock: shortest, source: LINE_SOURCE });
     if (!consist?.vehicles.length) return;
     const cars = carsOf(consist);
     const t = {
-      id: `${this.id}-${this._next++}`, k: 0, x: 0, r: 1, v: (this.spec.speed_kmh / 3.6) * 0.6, state: "run",
+      id: `${this.id}-${this._next++}`, k: 0, x: 0, r: 1, v: this._vmax() * 0.6, state: "run",
       consist, cars, length_m: carsLength(cars), demand, done: new Set(), stop: null, vehicle: null, turned: false,
       spec: { name: consist.name, vehicles: consist.vehicles.map((x) => ({ type: x.type, loaded: x.loaded, isolated: x.isolated })) },
     };
     this.trains.push(t);
+    this._capSpeed(t);
+  }
+
+  /** Top speed of the line's trains (m/s). */
+  _vmax() {
+    return Math.max(1, (Number(this.spec.speed_kmh) || 120) / 3.6);
+  }
+
+  /**
+   * Metres a train on a stretch may run before it must stand: to the point from which its next
+   * platform's train comes in (`stop`, its `target`) and to `SPACING_M` behind the tail of the train
+   * ahead going the same way (`ahead`, that train `lead`). {stop, target, toStop, ahead, lead}
+   */
+  _gaps(t) {
+    const m = this.mm(1), route = this.route();
+    const stop = route.stops[t.r].find((p) => p.k === t.k && !t.done.has(p.dock.id) && (p.x - t.x) * t.r >= -1);
+    const target = stop ? stop.x - t.r * (t.length_m + APPROACH_EXTRA_M) * m : null;
+    const toStop = target == null ? Infinity : ((target - t.x) * t.r) / m;
+    let ahead = Infinity, lead = null;
+    for (const o of this.trains) {
+      if (o === t || o.k !== t.k || o.r !== t.r || o.state === "gone" || (o.x - t.x) * t.r <= 0) continue;
+      const d = ((o.x - t.x) * t.r) / m - o.length_m - SPACING_M;
+      if (d < ahead) [ahead, lead] = [d, o];
+    }
+    return { stop, target, toStop, ahead, lead };
+  }
+
+  /** A train that comes onto a stretch fast (a new one, one out of view, one leaving a platform) at most as fast as it can still stop. */
+  _capSpeed(t) {
+    if (this._stretchOf(t) < 0) return;
+    const { toStop, ahead } = this._gaps(t);
+    t.v = Math.min(t.v, Math.sqrt(2 * BRAKE * Math.max(0, Math.min(toStop, ahead))));
   }
 
   /** The stretch a train is on (index into the stretches), or -1 out of view. */
@@ -274,7 +328,7 @@ export class RailLine extends LayoutObject {
   }
 
   _run(t, dt, g, route) {
-    const m = this.mm(1), vmax = Math.max(1, (Number(this.spec.speed_kmh) || 120) / 3.6);
+    const m = this.mm(1), vmax = this._vmax();
     if (t.state === "dock") return this._atDock(t, route, m);
     const seg = g.segments[t.k];
     if (seg.kind === "hidden") {
@@ -286,15 +340,19 @@ export class RailLine extends LayoutObject {
       return;
     }
     const s = g.stretches[seg.i];
-    // the next stop on this stretch: the point from which the platform's train comes in
-    const stop = route.stops[t.r].find((p) => p.k === t.k && !t.done.has(p.dock.id) && (p.x - t.x) * t.r >= -1);
-    const travel = (t.length_m + APPROACH_EXTRA_M) * m;
-    const target = stop ? stop.x - t.r * travel : null;
-    const gap = target == null ? Infinity : ((target - t.x) * t.r) / m; // metres to it
-    if (target != null && gap <= Math.max(0.5, t.v * dt)) {
-      if (gap > 0) t.x = target; // (a train that came onto the stretch past it does not go back)
+    // the next stop on this stretch (the point from which the platform's train comes in), and the train ahead
+    const { stop, target, toStop, ahead, lead } = this._gaps(t);
+    if (target != null && toStop <= Math.max(0.5, t.v * dt) && toStop <= ahead) {
+      if (toStop > 0) t.x = target; // (a train that came onto the stretch past it does not go back)
       t.v = 0;
       this._arrive(t, stop);
+      return;
+    }
+    const gap = Math.min(toStop, ahead); // metres it may run
+    if (gap <= 0.5) {
+      // close behind the train ahead: it waits; for the platform that one stands at, before the timetable's next train
+      t.v = 0;
+      if (lead?.state === "dock" && stop && lead.stop.dock.id === stop.dock.id) this.world.services.defer(stop.dock.id, 2);
       return;
     }
     t.v = gap <= (t.v * t.v) / (2 * BRAKE) + 1 ? Math.max(2, t.v - BRAKE * dt) : Math.min(vmax, t.v + ACCEL * dt);
@@ -312,8 +370,8 @@ export class RailLine extends LayoutObject {
       return;
     }
     if (k >= g.segments.length) {
-      // the end of the route without a platform to turn at: it turns there
-      t.x = endX(seg);
+      // the end of the route without a platform to turn at: it turns there, its tail the new front
+      t.x = endX(seg) - t.r * t.length_m * (seg.kind === "hidden" ? 1 : this.mm(1));
       this._turn(t);
       return;
     }
@@ -328,6 +386,7 @@ export class RailLine extends LayoutObject {
     t.k = k;
     const startX = next.kind === "hidden" ? (t.r > 0 ? 0 : next.length_m) : t.r > 0 ? 0 : g.stretches[next.i].total;
     t.x = startX + t.r * (next.kind === "hidden" ? overshoot : overshoot * this.mm(1));
+    this._capSpeed(t);
   }
 
   _turn(t) {
@@ -348,7 +407,7 @@ export class RailLine extends LayoutObject {
       services.defer(stop.dock.id, 2); // another train is there: wait, before the timetable's next one
       return;
     }
-    const v = services.call(stop.dock.id, { source: "line", line: this.label(t.r), direction: stop.d });
+    const v = services.call(stop.dock.id, { source: LINE_SOURCE, line: this.label(t.r), direction: stop.d });
     if (!v) {
       t.done.add(stop.dock.id); // closed (a track closure): pass it
       return;
@@ -385,17 +444,55 @@ export class RailLine extends LayoutObject {
     t.vehicle = null;
     const travel = (t.length_m + APPROACH_EXTRA_M) * m;
     t.x = stop.x + t.r * travel;
-    t.v = Math.min((Number(this.spec.speed_kmh) || 120) / 3.6, travel / m / Math.max(1, this.world.layout.services.approach_s));
+    t.v = Math.min(this._vmax(), travel / m / Math.max(1, this.world.layout.services.approach_s));
     const s = this.geometry.stretches[this._stretchOf(t)];
     const out = t.r > 0 ? (t.x - s.total) / m : -t.x / m;
     if (out >= 0) this._leave(t, out, this.geometry);
+    else this._capSpeed(t);
   }
 
   /* ---------------------------------------------------------------- boards and cards */
 
-  /** Is a dock of a stop area the line's own (its board shows the line's trains)? */
+  /** Do the line's trains stop at a dock of a stop area (its board shows them)? */
   servesArea(area) {
-    return area.docks.some((d) => this.servesDock(d));
+    return area.docks.some((d) => this.onTracks(d));
+  }
+
+  /**
+   * The line's next trains at a stop area, the soonest first: {s (simulated seconds), text (its
+   * label)}. Estimated at top speed, with a stop at each platform on the way (and one standing at a
+   * platform now) taking the dwell and the run in and out; not the wait at the end of a stretch out of view.
+   * @returns {{s: number, text: string}[]}
+   */
+  nextTrains(area) {
+    const g = this.geometry;
+    if (!g) return [];
+    const route = this.route(), vmax = this._vmax(), svc = this.world.layout.services;
+    const stopS = (Number(svc.rail_dwell_s) || 0) + 2 * (Number(svc.approach_s) || 0);
+    const out = [];
+    for (const t of this.trains) {
+      // a train at a platform goes on from there (where the line turns, back)
+      const docked = t.state === "dock" && t.stop;
+      let seconds = 0, k = t.k, x = docked ? t.stop.x : t.x, r = t.r, done = docked ? new Set([...t.done, t.stop.dock.id]) : t.done, found = null;
+      if (docked) seconds += stopS / 2;
+      for (let pass = 0; pass < 2 && !found; pass++) {
+        for (const p of route.stops[r]) {
+          if (done.has(p.dock.id) || (p.k - k) * r < 0 || (p.k === k && (p.x - x) * r < 0)) continue;
+          seconds += this._between(k, x, p.k, p.x, r) / vmax;
+          [k, x] = [p.k, p.x];
+          if (p.dock.area.id === area.id) {
+            found = { r, seconds };
+            break;
+          }
+          seconds += stopS;
+        }
+        if (found || t.turned || r < 0) break;
+        r = -r;
+        done = new Set([route.turn?.dock.id]);
+      }
+      if (found) out.push({ s: found.seconds, text: this.label(found.r) });
+    }
+    return out.sort((a, b) => a.s - b.s);
   }
 
   /**
@@ -403,32 +500,7 @@ export class RailLine extends LayoutObject {
    * @returns {string[]}
    */
   statusLines(area) {
-    const g = this.geometry;
-    if (!g) return [];
-    const route = this.route(), vmax = Math.max(1, (Number(this.spec.speed_kmh) || 120) / 3.6);
-    const out = [];
-    for (const t of this.trains) {
-      if (t.state === "dock") continue;
-      // its next stops on this pass, then on the way back
-      let metres = 0, k = t.k, x = t.x, r = t.r, done = t.done, found = null;
-      for (let pass = 0; pass < 2 && !found; pass++) {
-        for (const p of route.stops[r]) {
-          if (done.has(p.dock.id) || (p.k - k) * r < 0 || (p.k === k && (p.x - x) * r < 0)) continue;
-          metres += this._between(k, x, p.k, p.x, r);
-          [k, x] = [p.k, p.x];
-          if (p.dock.area.id === area.id) {
-            found = { r, metres };
-            break;
-          }
-        }
-        if (found || t.turned || r < 0) break;
-        r = -r;
-        done = new Set([route.turn?.dock.id]);
-      }
-      if (found) out.push({ s: found.metres / vmax, text: this.label(found.r) });
-    }
-    out.sort((a, b) => a.s - b.s);
-    return out.slice(0, 2).map((x) => `${x.text} in ${Math.max(0, Math.round(x.s / (this.world.speed || 1)))} s`);
+    return this.nextTrains(area).slice(0, 2).map((x) => `${x.text} in ${Math.max(0, Math.round(x.s / (this.world.speed || 1)))} s`);
   }
 
   /** Metres along the route from (k, x) to (k2, x2) going r. */

@@ -207,7 +207,7 @@ export const TRANSPORT = [
       "Mood per s while waiting: −(0.002 + 0.005 × density + 0.006 after 60 s) plus the disruptions' mood; boarding +0.02; leaving +0.008 − 0.004 × density.",
       "Arrivals: Poisson(base_rate × demand × disruption demand × wave × L/25 × the hour's demand × dt); none while closed, out of service, or without others; at most 40 at a bus or tram stop in the street.",
       "A track of the stop closed on its own (dock closed): newcomers wait at the other tracks; those waiting for it go over to another one, or leave (0.25/s) when every track is closed.",
-      "The board's next train (statusLines): the soonest timer of the tracks that are open; none while every track is closed. At a rail line's own platform the line's next trains.",
+      "The board's next train (statusLines): the soonest timer of the tracks that are open; none while every track is closed. At a rail line's own platform the line's next trains; at a platform shared with the timetable both, the soonest first.",
       "A standing vehicle is boarded while it has more than 6 s to go (a real train always).",
       "Profiles of the others: a trip of 30 km at a station, 4 km at a bus or tram stop (their luggage); agents bring their owner's.",
       "Doors: one person after the other per vehicle and door (a door clock), the alighting first; those with an aid, a pram or bulky luggage through access_door of the vehicle type; a ramp or a lift once out serves the next wheelchair user.",
