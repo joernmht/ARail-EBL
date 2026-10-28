@@ -74,7 +74,7 @@ test("the stops in both directions, where the trains turn; a platform of its own
   assert.equal(world.services.docks.get("pb:right").mode, "timetable");
   assert.equal(world.services.call("pa:right", { source: "manual" }), null, "a platform of the line takes no other trains");
   // a train sent the other way
-  const v = world.services.call("pb:right", { source: "line", line: "RB 9 → A", direction: -1 });
+  const v = world.services.call("pb:right", { source: "rail-line", line: "RB 9 → A", direction: -1 });
   assert.equal(v.direction, -1);
   assert.equal(world.services.call("pb", { source: "manual" }), null, "taken");
   // without the line its platform goes back to the timetable
@@ -86,21 +86,46 @@ test("a train runs out, stops, turns at the last platform, runs back and leaves;
   const world = createWorld(layout(), { seed: 3 });
   const line = world.getObject("line");
   line.set({ headway_s: 60 });
-  const seen = [], timetable = [];
+  const seen = [], timetable = [], shared = new Set();
   world.events.on("vehicle.arrived", ({ vehicle, dock }) => {
     if (vehicle.lineTrain === "line-1") seen.push([vehicle.railLine, dock.id, vehicle.direction, vehicle.line]);
-    if (vehicle.source !== "line" && dock.id === "pa:right") timetable.push(vehicle.line);
+    if (vehicle.source !== "rail-line" && dock.id === "pa:right") timetable.push(vehicle.line);
+    if (vehicle.source !== "rail-line" && dock.id === "pb:right") shared.add(vehicle.line);
   });
-  let met = 0, most = 0;
+  const m = line.mm(1), speeds = new Map();
+  const sim = world.simulations.find((x) => x.constructor.type === "passengers"), keys = new Set();
+  let met = 0, most = 0, close = 0, dead = 0, waitingBoard = 0, sharedBoard = 0;
   run(world, 1500, () => {
     most = Math.max(most, line.trains.length);
-    // never two trains coming towards each other on a stretch
     for (const k of [0, 2]) {
-      const dirs = new Set(line.trains.filter((t) => t.k === k && t.state !== "gone").map((t) => t.r));
-      if (dirs.size > 1) met++;
+      const on = line.trains.filter((t) => t.k === k && t.state !== "gone");
+      // never two trains coming towards each other on a stretch
+      if (new Set(on.map((t) => t.r)).size > 1) met++;
+      // the one behind keeps its distance to the tail of the one ahead
+      for (const a of on) for (const b of on) if (a !== b && (b.x - a.x) * a.r > 0 && ((b.x - a.x) * a.r) / m - b.length_m < 149) close++;
     }
+    // nobody in view stops dead: from the running speed to standing only by braking (out of view they wait at its end)
+    for (const t of line.trains) {
+      const seen = t.state === "run" && line._stretchOf(t) >= 0;
+      if (seen && t.v === 0 && (speeds.get(t.id) ?? 0) > 3) dead++;
+      speeds.set(t.id, seen ? t.v : 0);
+    }
+    // while a train stands where the trains turn, the first platform's board shows it coming back
+    if (line.trains.some((t) => t.state === "dock" && t.stop.dock.id === "pb:right") && !world.services.docks.get("pa:right").vehicle) {
+      if (statusLines(world, world.getStopArea("pa"))[0] === "Waiting for the next train") waitingBoard++;
+    }
+    // the shared platform's board shows the line's trains with the timetable's
+    if (!world.services.docks.get("pb:right").vehicle && statusLines(world, world.getStopArea("pb")).some((l) => l.startsWith("RB 9 → "))) sharedBoard++;
+    // its trains at the platforms are the services' vehicles in the Overview
+    for (const x of sim.states().find((g) => g.id === "vehicles").items) if (x.name.startsWith("RB 9")) keys.add(x.key.split(":")[0]);
   });
   assert.equal(met, 0, "nobody comes the other way");
+  assert.equal(close, 0, "nobody closer than 150 m behind the one ahead");
+  assert.equal(dead, 0, "nobody stops dead");
+  assert.equal(waitingBoard, 0, "the board knows the train that turns");
+  assert.ok(sharedBoard > 0, "the shared platform's board shows the RB 9");
+  assert.deepEqual([...keys], ["vehicle"], "picked as the dock's vehicle");
+  assert.ok(shared.size && !shared.has("RB 9"), `the timetable sends no RB 9 of its own: ${[...shared]}`);
   assert.ok(most >= 2, "several trains on the line");
   assert.deepEqual(seen, [["line", "pa:right", 1, "RB 9 → B"], ["line", "pb:right", 1, "RB 9 → B"], ["line", "pa:right", -1, "RB 9 → A"]], "the first train");
   assert.deepEqual(timetable, [], "no timetable trains at the line's own platform");
@@ -119,9 +144,20 @@ test("a platform run by a planner is passed; the trains turn at the end of the r
   world.services.planner = { claims: (dock) => dock.id === "pb:right" };
   world.services.refreshModes();
   const docks = [];
-  world.events.on("vehicle.arrived", ({ vehicle, dock }) => vehicle.source === "line" && docks.push(dock.id));
+  world.events.on("vehicle.arrived", ({ vehicle, dock }) => vehicle.source === "rail-line" && docks.push(dock.id));
+  // it turns where it stands: its tail, near the end of the track, is its new front
+  const m = line.mm(1), end = line.geometry.stretches[1].total, before = new Map();
   let turned = false;
-  run(world, 900, () => (turned ||= line.trains.some((t) => t.turned)));
+  run(world, 900, () => {
+    for (const t of line.trains) {
+      if (t.turned && before.get(t.id) === false) {
+        turned = true;
+        assert.equal(t.r, -1);
+        assert.ok(Math.abs(t.x - (end - t.length_m * m)) < 5 * m, `${t.x} at ${end - t.length_m * m}`);
+      }
+      before.set(t.id, t.turned);
+    }
+  });
   assert.ok(turned, "the trains turned");
   assert.ok(docks.length && docks.every((d) => d === "pa:right"), docks.join(", "));
 });

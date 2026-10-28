@@ -128,7 +128,7 @@ export {
 export {
   POWER, PANTOGRAPH, TRAIN_CONTROL, ETCS, SIGNALLING, RADIO, GAUGE, AXLE_LOADS_T, METRE_LOADS_T, ROUTE_CLASS, LOADING_GAUGE, COUNTRIES,
   SYSTEMS, SYSTEM_OVERLAYS, SYSTEM_PARAMS, routeClassLimits, sectionSystems, systemValue, systemRows, systemChanges, worldSystemChanges,
-  drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail, MEET_MM, RailLine,
+  drawSystemBand, drawSystemChange, CHANGE_KINDS, SystemChange, registerRail, LINE_SOURCE, MEET_MM, RailLine, railLinesAt,
   BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows, vehicleTypes, layoutVehicleTypes, consistFor, consistOfHit, consistProblems, trainCard,
   DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, trainConsist, LIVERIES, carsLength, drawTrain, turnCars,
   LOOKS, RAIL_TRAIN, STOP_MARGIN_M, carsOf, dockLine, trainDoors, trainOutline, trainPose,

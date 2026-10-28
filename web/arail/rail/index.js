@@ -21,7 +21,7 @@ export {
   drawSystemBand, drawSystemChange,
 } from "./systems.js";
 export { CHANGE_KINDS, SystemChange } from "./objects.js";
-export { MEET_MM, RailLine } from "./lines.js";
+export { LINE_SOURCE, MEET_MM, RailLine, railLinesAt } from "./lines.js";
 export { BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows } from "./vehicles.js";
 export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, layoutVehicleTypes, lineConsist, unitConsist, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
 export { LIVERIES, carsLength, drawTrain, turnCars } from "./draw.js";

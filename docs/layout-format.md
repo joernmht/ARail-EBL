@@ -380,7 +380,7 @@ Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the i
 
 ### `rail-line`
 
-Trains that run along the tracks from platform to platform (see [Rail lines](rail-systems.md#rail-lines)). Geometry: `tracks`, the ids of the `track` objects in the order the trains run along them (in the editor: tap the tracks in order). Where two of them meet end to end (within 30 mm) the trains run on; where they do not, the trains run `hidden_km` out of view in between, e.g. where the line leaves the table and comes back. A train comes in at the start of the first track, stops at every platform on its tracks, turns at the last one, runs back and leaves where it came in. A platform whose `lines` name only this line is its own: the timetable sends no trains there.
+Trains that run along the tracks from platform to platform (see [Rail lines](rail-systems.md#rail-lines)). Geometry: `tracks`, the ids of the `track` objects in the order the trains run along them (in the editor: tap the tracks in order). Where two of them meet end to end (within 30 mm) the trains run on; where they do not, the trains run `hidden_km` out of view in between, e.g. where the line leaves the table and comes back. A train comes in at the start of the first track, stops at every platform on its tracks, turns at the last one, runs back and leaves where it came in. A platform whose `lines` name only this line (or only rail lines that all stop there) is its own: the timetable sends no trains there. At the others the timetable never sends a train of its own as a rail line that stops there. The dock's trains of a rail line have the source `rail-line`.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |

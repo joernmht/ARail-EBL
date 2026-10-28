@@ -90,7 +90,7 @@
     {"id": "yard-a", "type": "container-yard", "name": "Block A", "position": [475, 206], "width_mm": 635, "depth_mm": 67, "rotation_deg": 0, "tiers": 3},
     {"id": "crane-1", "type": "gantry-crane", "name": "Portal crane 1", "position": [450, 110], "width_mm": 1100, "depth_mm": 270, "rotation_deg": 0, "outreach_m": 4, "lift_m": 15},
     {"id": "platform-1", "type": "platform", "name": "Platform 1", "number": "1", "from": [1615, 438.4], "to": [4161.2, 393.2], "width_mm": 34, "sides": "right", "track_right": "G1", "lines": "RE 2"},
-    {"id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2", "from": [1615, 289.4], "to": [4219.2, 245.3], "width_mm": 72, "sides": "both", "track_left": "G2", "track_right": "G3", "lines": "S 1, RB 71", "canopy": true},
+    {"id": "platform-2", "type": "platform", "name": "Platform 2", "number": "2", "from": [1615, 289.4], "to": [4219.2, 245.3], "width_mm": 72, "sides": "both", "track_left": "G2", "track_right": "G3", "lines": "S 1, RB 71, RB 30", "canopy": true},
     {"id": "track-g1", "type": "track", "name": "Track G1", "track_id": "G1", "points": [[1200, 406.5], [1730, 400], [3319.7, 382.7], [4271.5, 357.1]]},
     {"id": "track-g2", "type": "track", "name": "Track G2", "track_id": "G2", "points": [[1200, 343.5], [1730, 341], [2620, 333], [3319.7, 323.2], [4271.7, 299.2]]},
     {"id": "track-g3", "type": "track", "name": "Track G3", "track_id": "G3", "points": [[1200, 235], [1730, 232.5], [2120, 229], [2620, 222.5], [3319.7, 215.3], [4272.1, 194.2]]},

@@ -11,7 +11,8 @@
  * runs) can take over rail docks: they are in mode
  * "plan", the timetable sends nothing there and the planner calls its trains with `call()`. The
  * platforms a rail line has as its own (`servesDock`, rail/lines.js) are in mode "line": only its
- * trains come there.
+ * trains come there (source "rail-line"); at the others the timetable never sends a train as one of
+ * the rail lines that stop there (`_lineFor`).
  * Docks without an interval of their own (`dock.auto`) run as often as the town needs
  * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
  *
@@ -191,7 +192,9 @@ export class ServiceManager {
 
   _lineFor(dock) {
     const owner = dock.area.owner;
-    const lines = String(owner?.spec?.lines || "").split(",").map((s) => s.trim()).filter(Boolean);
+    // never as a rail line that stops here (rail/lines.js): its trains are its own
+    const own = new Set(this.world.objects.filter((o) => o.type === "rail-line" && o.onTracks(dock)).map((o) => String(o.spec.number ?? "").trim().toLowerCase()));
+    const lines = String(owner?.spec?.lines || "").split(",").map((s) => s.trim()).filter((s) => s && !own.has(s.toLowerCase()));
     if (lines.length) return this.rng.pick(lines);
     return dock.kind === "bus" ? `Bus ${this.rng.pick([62, 64, 85, 87])}` : this.rng.pick(["RE 1", "RB 33", "S 2", "S 8"]);
   }
@@ -199,7 +202,7 @@ export class ServiceManager {
   /**
    * Send a vehicle to a dock now. Docks of the control system are never chosen, docks of a planner
    * (mode "plan") only by the planner (`source: "plan"`), docks of a rail line (mode "line") only by
-   * the line (`source: "line"`), closed docks (a track closure, a story's train) only by a planner.
+   * the line (`source: "rail-line"`), closed docks (a track closure, a story's train) only by a planner.
    * @param {string} target dock ID, stop area ID or object ID (a free dock is chosen)
    * @param {{line?: string, source?: string, side?: number, direction?: number}} [options] direction:
    *   +1 towards the platform's second end, -1 towards its first (default: by the side of the dock)
@@ -214,7 +217,7 @@ export class ServiceManager {
     // but a planner's (its trains leave again at once)
     const planned = options.source === "plan";
     const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || planned)
-      && (st.mode !== "line" || options.source === "line")
+      && (st.mode !== "line" || options.source === "rail-line")
       && (planned || !kept(this.world.disruptions.effectsFor(st.dock.area, st.dock))));
     if (!free.length) return null;
     const st = this.rng.pick(free);
@@ -432,7 +435,7 @@ export class ServiceManager {
     const v = hit.ref, dock = v.dock, area = dock.area;
     const def = this.world.registry.vehicles.get(v.kind);
     const noun = def?.label || (v.kind === "bus" ? "Bus" : "Train");
-    const source = { timetable: "timetable", manual: "called by hand", feed: "control system", plan: "planned" }[v.source] || v.source;
+    const source = { timetable: "timetable", manual: "called by hand", feed: "control system", plan: "planned", "rail-line": "rail line" }[v.source] || v.source;
     const doing = { arriving: "Arriving", dwelling: v.source === "feed" ? "Standing at the platform" : "Boarding", departing: "Departing" }[v.phase] || v.phase;
     const delay = Math.round(v.delayMin || 0);
     const where = [area.owner?.name, dock.label].filter(Boolean).join(", ");
