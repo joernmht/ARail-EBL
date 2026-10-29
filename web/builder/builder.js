@@ -454,7 +454,7 @@ class Builder {
     if (pl.cls.placement === "stops") {
       const types = pl.cls.stopTypes || ["bus-stop", "bus-terminal"];
       const hit = this.hitTest(p, (o) => types.includes(o.type));
-      if (!hit) return toast(types.includes("bus-stop") ? "Click a bus stop or a bus terminal." : "Click a tram stop.");
+      if (!hit) return toast(types.includes("bus-stop") ? "Click a bus stop or a bus terminal." : types.includes("track") ? "Click a track." : "Click a tram stop.");
       if (pl.points[pl.points.length - 1] !== hit.id) pl.points.push(hit.id);
     } else {
       const q = this._placePoint(p, e), last = pl.points[pl.points.length - 1];
@@ -1117,7 +1117,7 @@ class Builder {
       const cls = pl.cls;
       text = this._isStreet(cls) ? HINTS.street
         : TYPE_HINTS[cls.type] || (cls.placement === "point" ? (cls.type === "bus-stop" || facesStreet(cls) || cls.type === "bus-terminal" ? HINTS.needsStreet : HINTS.point)
-          : cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement] || HINTS.polyline);
+          : cls.stopsHint || (cls.placement === "stops" && !(cls.stopTypes || ["bus-stop"]).includes("bus-stop") ? HINTS.tramStops : HINTS[cls.placement] || HINTS.polyline));
       text = `${tr(cls.label)}${pl.kind ? ` (${tr(KIND_LABELS[pl.kind] || pl.kind)})` : ""}: ${tr(text)}`;
     }
     $("#hint").textContent = pl ? text : tr(text);

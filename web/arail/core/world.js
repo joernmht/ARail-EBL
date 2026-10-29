@@ -405,7 +405,8 @@ export class World {
    * A part of the world can be drawn on its own (the live page, web/live/, keeps the city in a
    * picture of its own and draws only what moves in every frame): `objects` are the layout objects
    * drawn (default: all of them), `moving` whether what moves is drawn (services, transit, parking,
-   * the control system's trains, the simulations, the disruptions).
+   * the control system's trains, the simulations, the disruptions, and what objects move themselves:
+   * `drawMoving`, the trains of the rail lines).
    * @param {import("./view.js").View} view
    * @param {{selected?: import("./object.js").LayoutObject | null, objects?: Iterable<import("./object.js").LayoutObject> | null,
    *   moving?: boolean}} [options]
@@ -436,6 +437,11 @@ export class World {
     for (const part of moving ? [this.services, this.transit, this.parking, this.trains, ...this.simulations, this.disruptions] : []) {
       view.lift = lift(part);
       part.draw(view);
+    }
+    for (const o of moving ? this.objects : []) {
+      if (typeof o.drawMoving !== "function" || !o.geometry) continue;
+      view.lift = lift(o);
+      o.drawMoving(view);
     }
     if (view.simple) view.flat = true;
     view.lift = lift(selected);

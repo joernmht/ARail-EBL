@@ -69,6 +69,7 @@ export const BUILDER_DE = {
   "Undo point": "Punkt zurück",
   "Click a bus stop or a bus terminal.": "Klicken Sie eine Bushaltestelle oder einen Busbahnhof an.",
   "Click a tram stop.": "Klicken Sie eine Straßenbahnhaltestelle an.",
+  "Click a track.": "Klicken Sie ein Gleis an.",
   "Build on a table module: houses, streets and the rest stand on table modules. Click on one, or add a table module first.": "Bauen Sie auf einem Tischmodul: Häuser, Straßen und alles andere stehen auf Tischmodulen. Klicken Sie auf eines, oder legen Sie zuerst ein Tischmodul an.",
   "Place at least {n} points.": "Setzen Sie mindestens {n} Punkte.",
   "A line needs at least {n} points.": "Eine Linie braucht mindestens {n} Punkte.",

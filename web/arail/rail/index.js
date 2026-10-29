@@ -9,6 +9,7 @@
  * @module arail/rail
  */
 import { SystemChange } from "./objects.js";
+import { RailLine } from "./lines.js";
 import { RAIL_TRAIN } from "./stock.js";
 import { consistProblems, trainCard } from "./trains.js";
 import { runningCard } from "./running.js";
@@ -20,6 +21,7 @@ export {
   drawSystemBand, drawSystemChange,
 } from "./systems.js";
 export { CHANGE_KINDS, SystemChange } from "./objects.js";
+export { LINE_SOURCE, MEET_MM, RailLine, railLinesAt } from "./lines.js";
 export { BRAKE_POSITIONS, VEHICLE_KINDS, VEHICLE_TYPES, Consist, consistRows } from "./vehicles.js";
 export { DEFAULT_FLEET, PEAK_DEMAND, fleetEntry, vehicleTypes, layoutVehicleTypes, lineConsist, unitConsist, consistFor, consistOfHit, consistProblems, trainCard, trainConsist } from "./trains.js";
 export { LIVERIES, carsLength, drawTrain, turnCars } from "./draw.js";
@@ -40,11 +42,12 @@ export {
 export { REFERENCE_GRADIENT, minutesSeconds, runningCard } from "./running.js";
 
 /**
- * Register the object types, the trains at the platforms (in place of core's), the train data and
+ * Register the object types (system changes, rail lines), the trains at the platforms (in place of core's), the train data and
  * the running dynamics of the info cards, slippery rails as a disruption and the check of the consists.
  */
 export function registerRail(registry) {
   registry.registerObject(SystemChange);
+  registry.registerObject(RailLine);
   registry.registerVehicle(RAIL_TRAIN);
   registry.registerCard("train-data", trainCard);
   registry.registerCard("train-running", runningCard);

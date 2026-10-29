@@ -221,6 +221,7 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`bus-line`](#bus-line) | Bus line (Transport) | `stops` |
 | [`tram-stop`](#tram-stop) | Tram stop (Transport) | `position` |
 | [`tram-line`](#tram-line) | Tram line (Transport) | `stops` |
+| [`rail-line`](#rail-line) | Rail line (Transport) | `tracks` |
 | [`traffic-sign`](#traffic-sign) | Traffic sign (Transport) | `position` |
 | [`traffic-light`](#traffic-light-traffic-lights) | Traffic lights (Transport) | `position` |
 | [`zebra-crossing`](#zebra-crossing) | Zebra crossing (Transport) | `position` |
@@ -376,6 +377,20 @@ Trams that run along the tram tracks from stop to stop. Geometry: `stops`, the i
 | `speed_kmh` | `50` | top speed |
 | `length_m` | `30` | length of a tram (15–60) |
 | `show_route` | `true` | draw the route (and the rails where it turns from one street into another) |
+
+### `rail-line`
+
+Trains that run along the tracks from platform to platform (see [Rail lines](rail-systems.md#rail-lines)). Geometry: `tracks`, the ids of the `track` objects in the order the trains run along them (in the editor: tap the tracks in order). Where two of them meet end to end (within 30 mm) the trains run on; where they do not, the trains run `hidden_km` out of view in between, e.g. where the line leaves the table and comes back. A train comes in at the start of the first track, stops at every platform on its tracks, turns at the last one, runs back and leaves where it came in. A platform whose `lines` name only this line (or only rail lines that all stop there) is its own: the timetable sends no trains there. At the others the timetable never sends a train of its own as a rail line that stops there. The dock's trains of a rail line have the source `rail-line`.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `number` | `"RB"` | the line on the trains and boards, e.g. `"RB 30"`; its letters choose the train (RE, RB, S) unless the layout's `consists` name one for the line |
+| `destination`, `origin` | `""` | where the trains go on the way out and back (shown after the line, *RB 30 → Neustadt*); empty: the platform where they turn, the first platform |
+| `color` | `"#0A777F"` | colour of the route |
+| `headway_s` | `600` | time between trains outside the rush hours (simulated seconds, 60–7200); more often in the rush hours, none at night |
+| `speed_kmh` | `120` | top speed |
+| `hidden_km` | `2` | kilometres of line out of view between two tracks that do not meet |
+| `show_route` | `false` | draw the route over the tracks |
 
 ### `traffic-sign`
 

@@ -40,11 +40,17 @@ test("the arrows go round the lab in the same perspective; with a digital layer 
   await expect.poll(() => shown(page)).toEqual(["132439", "front"]);
   await tracked(page);
   expect(page.url()).toMatch(/\?photo=132439$/);
-  // the key → (nothing focused): Waldhof south, which has no digital layer: the photo only, not tracked
+  // the key → (nothing focused): Waldhof south, with the same digital layer: tracked, the layout stays
   await page.locator("body").focus();
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press("ArrowRight");
-  await expect.poll(() => shown(page)).toEqual(["132418", "front"]);
+  await expect.poll(() => shown(page)).toEqual(["132409", "front"]);
+  await tracked(page);
+  await expect(page.locator("#hud")).not.toContainText("Photo only");
+  expect(await page.evaluate(() => window.__arail.world.layout.name)).toBe("EBL Bf Neustadt and terminal (example)");
+  // from the front left: a photo without a digital layer: the photo only, not tracked
+  await page.getByRole("button", { name: "From the front left" }).click();
+  await expect.poll(() => shown(page)).toEqual(["132434", "front-left"]);
   await expect(page.locator("#hud")).toContainText("Photo only: no digital layer for this part yet");
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => ({ H: !!window.__arail.tracker.state.H, untracked: window.__arail.source.untracked, layout: window.__arail.world.layout.name })))

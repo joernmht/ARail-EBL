@@ -153,6 +153,7 @@ const APP_DE = {
   "Move to": "Bewegen nach",
   "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it.": "Wählen Sie einen Container in der Liste oder auf der Anlage und seinen neuen Platz: Der Kran oder der Reachstacker bewegt ihn.",
   "The trains of this track are run by the rail operations (Operations panel)": "Die Züge dieses Gleises fährt der Bahnbetrieb (Bereich Betrieb)",
+  "Only the trains of its rail line stop at this track": "An diesem Gleis halten nur die Züge seiner Bahnlinie",
   "This track is kept for a story's train": "Dieses Gleis ist für den Zug einer Geschichte freigehalten",
   "This track is closed": "Dieses Gleis ist gesperrt",
   "Disruptions and scenarios": "Störungen und Szenarien",
@@ -416,6 +417,9 @@ const APP_DE = {
   "Tap the tram stops in the order the trams serve them, then press Finish.": "Tippen Sie die Straßenbahnhaltestellen in der Reihenfolge an, in der die Straßenbahnen sie bedienen, und drücken Sie dann Fertig.",
   "Tap a bus stop or a bus terminal.": "Tippen Sie eine Bushaltestelle oder einen Busbahnhof an.",
   "Tap a tram stop.": "Tippen Sie eine Straßenbahnhaltestelle an.",
+  "Tap a track.": "Tippen Sie ein Gleis an.",
+  "Tap at least two tracks.": "Tippen Sie mindestens zwei Gleise an.",
+  "Tracks: {names}.": "Gleise: {names}.",
   "Build on a table module: houses, streets and the rest stand on table modules. Tap on one, or add a table module first.": "Bauen Sie auf einem Tischmodul: Häuser, Straßen und alles andere stehen auf Tischmodulen. Tippen Sie auf eines, oder legen Sie zuerst ein Tischmodul an.",
 
   // ------------------------------------------------------------ the info card

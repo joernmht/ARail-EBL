@@ -9,7 +9,10 @@
  * manager (`core/transit.js`): no timetable vehicles, and `call()` does not send any. A planner
  * (`services.planner`: the operations simulation, the journeys' trains, the operations plan while it
  * runs) can take over rail docks: they are in mode
- * "plan", the timetable sends nothing there and the planner calls its trains with `call()`.
+ * "plan", the timetable sends nothing there and the planner calls its trains with `call()`. The
+ * platforms a rail line has as its own (`servesDock`, rail/lines.js) are in mode "line": only its
+ * trains come there (source "rail-line"); at the others the timetable never sends a train as one of
+ * the rail lines that stop there (`_lineFor`).
  * Docks without an interval of their own (`dock.auto`) run as often as the town needs
  * (`serviceInterval` of the town simulation, sims/town.js), else at the layout's default.
  *
@@ -32,7 +35,7 @@ const kept = (fx) => fx.closed || fx.reserved;
 let nextVehicleId = 1;
 
 export class Vehicle {
-  constructor({ kind, dock, line = "", source = "timetable", delayMin = 0, trainId = null, approach = 6 }) {
+  constructor({ kind, dock, line = "", source = "timetable", delayMin = 0, trainId = null, approach = 6, direction = null }) {
     this.id = `v${nextVehicleId++}`;
     this.kind = kind;
     /** @type {import("./stops.js").Dock} */
@@ -48,8 +51,9 @@ export class Vehicle {
     this.dwellLeft = dock.dwell;
     /** The doors stay open until this world time (s), while people are getting on and off (sims/passengers.js). */
     this.holdUntil = 0;
-    // trains on the left edge travel towards s = 0, on the right edge towards s = L; buses always forward
-    this.direction = kind === "bus" ? 1 : -dock.side;
+    // trains on the left edge travel towards s = 0, on the right edge towards s = L, unless sent the
+    // other way (a rail line's train turning at its end); buses always forward
+    this.direction = kind === "bus" ? 1 : direction === 1 || direction === -1 ? direction : -dock.side;
     /** The timetable's demand when it was sent (the clock's profile): in the rush hours trains run longer (rail/trains.js). */
     this.demand = 1;
     /** Share of its places taken when it comes in, 0…1. */
@@ -82,9 +86,14 @@ export class ServiceManager {
     this.planner = null;
   }
 
-  /** The mode of a dock while no control system is connected: "plan" where a planner runs the trains, else "timetable". */
+  /**
+   * The mode of a dock while no control system is connected: "plan" where a planner runs the trains,
+   * "line" where it is a rail line's own (its trains only), else "timetable".
+   */
   baseMode(dock) {
-    return dock.kind === "rail" && this.planner?.claims?.(dock) ? "plan" : "timetable";
+    if (dock.kind !== "rail") return "timetable";
+    if (this.planner?.claims?.(dock)) return "plan";
+    return this.world.objects.some((o) => o.servesDock?.(dock)) ? "line" : "timetable";
   }
 
   /** Apply the base modes again (after a planner came or went); docks under the control system keep it. */
@@ -154,6 +163,8 @@ export class ServiceManager {
         }
       }
     }
+    // a rail line added, changed or removed: its docks change between the timetable and the line
+    for (const st of this.docks.values()) if (st.mode === "timetable" || st.mode === "line") st.mode = this.baseMode(st.dock);
     for (const [id, st] of this.docks) {
       if (!seen.has(id)) {
         // a vehicle still coming in never stood at the dock: it just does not come
@@ -181,17 +192,20 @@ export class ServiceManager {
 
   _lineFor(dock) {
     const owner = dock.area.owner;
-    const lines = String(owner?.spec?.lines || "").split(",").map((s) => s.trim()).filter(Boolean);
+    // never as a rail line that stops here (rail/lines.js): its trains are its own
+    const own = new Set(this.world.objects.filter((o) => o.type === "rail-line" && o.onTracks(dock)).map((o) => String(o.spec.number ?? "").trim().toLowerCase()));
+    const lines = String(owner?.spec?.lines || "").split(",").map((s) => s.trim()).filter((s) => s && !own.has(s.toLowerCase()));
     if (lines.length) return this.rng.pick(lines);
     return dock.kind === "bus" ? `Bus ${this.rng.pick([62, 64, 85, 87])}` : this.rng.pick(["RE 1", "RB 33", "S 2", "S 8"]);
   }
 
   /**
    * Send a vehicle to a dock now. Docks of the control system are never chosen, docks of a planner
-   * (mode "plan") only by the planner (`source: "plan"`), closed docks (a track closure, a story's
-   * train) only by a planner.
+   * (mode "plan") only by the planner (`source: "plan"`), docks of a rail line (mode "line") only by
+   * the line (`source: "rail-line"`), closed docks (a track closure, a story's train) only by a planner.
    * @param {string} target dock ID, stop area ID or object ID (a free dock is chosen)
-   * @param {{line?: string, source?: string, side?: number}} [options]
+   * @param {{line?: string, source?: string, side?: number, direction?: number}} [options] direction:
+   *   +1 towards the platform's second end, -1 towards its first (default: by the side of the dock)
    * @returns {Vehicle | null}
    */
   call(target, options = {}) {
@@ -203,10 +217,22 @@ export class ServiceManager {
     // but a planner's (its trains leave again at once)
     const planned = options.source === "plan";
     const free = candidates.filter((st) => !st.vehicle && st.mode !== "feed" && (st.mode !== "plan" || planned)
+      && (st.mode !== "line" || options.source === "rail-line")
       && (planned || !kept(this.world.disruptions.effectsFor(st.dock.area, st.dock))));
     if (!free.length) return null;
     const st = this.rng.pick(free);
-    return this._dispatch(st, { source: options.source || "manual", line: options.line });
+    return this._dispatch(st, { source: options.source || "manual", line: options.line, direction: options.direction });
+  }
+
+  /**
+   * The timetable's next vehicle at a dock comes at least `seconds` later (simulated): a rail line's
+   * train waits for the dock and goes first.
+   * @param {string} dockId
+   * @param {number} seconds
+   */
+  defer(dockId, seconds) {
+    const st = this.docks.get(dockId);
+    if (st && st.mode === "timetable") st.timer = Math.max(st.timer, seconds);
   }
 
   /**
@@ -228,7 +254,7 @@ export class ServiceManager {
     return true;
   }
 
-  _dispatch(st, { source = "timetable", line, trainId = null } = {}) {
+  _dispatch(st, { source = "timetable", line, trainId = null, direction = null } = {}) {
     const dock = st.dock;
     const v = new Vehicle({
       kind: this._vehicleKind(dock),
@@ -238,6 +264,7 @@ export class ServiceManager {
       delayMin: st.heldFor / 60,
       trainId,
       approach: this.world.layout.services.approach_s,
+      direction,
     });
     // how full it comes in: by the time of day and the demand, its own share by its id (no random number of the world drawn)
     v.demand = this.world.clock.demand(dock.kind === "bus" ? "bus" : "rail");
@@ -408,7 +435,7 @@ export class ServiceManager {
     const v = hit.ref, dock = v.dock, area = dock.area;
     const def = this.world.registry.vehicles.get(v.kind);
     const noun = def?.label || (v.kind === "bus" ? "Bus" : "Train");
-    const source = { timetable: "timetable", manual: "called by hand", feed: "control system", plan: "planned" }[v.source] || v.source;
+    const source = { timetable: "timetable", manual: "called by hand", feed: "control system", plan: "planned", "rail-line": "rail line" }[v.source] || v.source;
     const doing = { arriving: "Arriving", dwelling: v.source === "feed" ? "Standing at the platform" : "Boarding", departing: "Departing" }[v.phase] || v.phase;
     const delay = Math.round(v.delayMin || 0);
     const where = [area.owner?.name, dock.label].filter(Boolean).join(", ");

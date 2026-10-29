@@ -45,7 +45,9 @@ test("example layouts are valid and load completely", () => {
     const json = readJSON(file);
     assert.deepEqual(validateLayout(json, registry), [], file);
     const world = createWorld(json);
-    assert.equal(world.objects.length, json.objects.length);
+    // and the new objects of the modules that are on (a patch of a base object has no type)
+    const added = (json.layers || []).filter((l) => l.enabled).flatMap((l) => (l.objects || []).filter((o) => o.type));
+    assert.equal(world.objects.length, json.objects.length + added.length);
     assert.ok(!world.objects.some((o) => o.constructor.name === "UnknownObject"), "all object types known");
   }
   const world = createWorld(LAB);
