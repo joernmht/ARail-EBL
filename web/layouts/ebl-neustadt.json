@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL Bf Neustadt and terminal (example)",
-  "description": "A bigger part of the lab table, surveyed on 9 October 2026: the station Bf Neustadt with its two platforms (and, in the module Waldhof, the next station Waldhof with the RB 30 to Neustadt) and, along the same tracks, a container terminal with a gantry crane over the three loading tracks, a truck lane and a yard block. In front of the table lies the town of Neustadt: the station building, Bahnhofstraße and the bus station, and the Altstadt with the Markt, the Rathaus and St. Marien, its pedestrian zones (Marktstraße, Lange Straße, the Markt) lined with houses with shops on the ground floor, Gründerzeit blocks round it, the Stadtpark and the Wall; in the east a garden town of single-family houses. Behind the curve lies the high-rise estate Am Plattenring: slabs of 6 and 11 floors, point towers, the Passage with shops, a school, Kitas, the Kaufhalle. Two tram lines run from Lindenstraße along Ringstraße and Bahnhofstraße, line 1 to Neustadt Bf and the Busbahnhof, line 2 through the pedestrian zone Marktstraße to the Markt and round St. Marien, in curves of 25 m, and turn in loops at both ends; where people cross the street to a tram, traffic lights hold the cars. Brückenstraße crosses the main line at a level crossing with half barriers, which trams never cross: bus 261 takes the estate from Neustadt Bf over it to its turning circle Am Wendekreis, bus 262 the garden town from the Busbahnhof to its turning circle in Drosselweg, bus 7 goes round Am Bogen. Some streets are dead ends with turning circles or hammers; cars come and go at Lindenhof, Schulstraße and Leipziger Straße; bikes, e-scooters and cars with parking share the streets. The marker map comes from arail-survey (three photos and a video); it is locked.",
+  "description": "A bigger part of the lab table, surveyed on 9 October 2026: the station Bf Neustadt with its two platforms (and, in the module Waldhof, the next station Waldhof with the RB 30 to Neustadt; in the module S-Bahn, the light rail S 10 from Pirna to Heidenau) and, along the same tracks, a container terminal with a gantry crane over the three loading tracks, a truck lane and a yard block. In front of the table lies the town of Neustadt: the station building, Bahnhofstraße and the bus station, and the Altstadt with the Markt, the Rathaus and St. Marien, its pedestrian zones (Marktstraße, Lange Straße, the Markt) lined with houses with shops on the ground floor, Gründerzeit blocks round it, the Stadtpark and the Wall; in the east a garden town of single-family houses. Behind the curve lies the high-rise estate Am Plattenring: slabs of 6 and 11 floors, point towers, the Passage with shops, a school, Kitas, the Kaufhalle. Two tram lines run from Lindenstraße along Ringstraße and Bahnhofstraße, line 1 to Neustadt Bf and the Busbahnhof, line 2 through the pedestrian zone Marktstraße to the Markt and round St. Marien, in curves of 25 m, and turn in loops at both ends; where people cross the street to a tram, traffic lights hold the cars. Brückenstraße crosses the main line at a level crossing with half barriers, which trams never cross: bus 261 takes the estate from Neustadt Bf over it to its turning circle Am Wendekreis, bus 262 the garden town from the Busbahnhof to its turning circle in Drosselweg, bus 7 goes round Am Bogen. Some streets are dead ends with turning circles or hammers; cars come and go at Lindenhof, Schulstraße and Leipziger Straße; bikes, e-scooters and cars with parking share the streets. The marker map comes from arail-survey (three photos and a video); it is locked.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -44,6 +44,8 @@
       "33": [740.0, 535.2, 1.43],
       "35": [-274.3, 524.7, 0.51],
       "37": [-1565.9, 536.7, -1.68],
+      "86": [4881.6, 754.9, 0.6],
+      "87": [5407.8, 745.8, -0.2],
       "88": [10029, 696.3, -0.82],
       "89": [10534.1, 697.4, 0.11],
       "90": [10028.5, 345.1, -2.11],
@@ -68,6 +70,8 @@
       "120": [14757.7, -924.6, -2.75],
       "121": [15389.8, -949.4, -1.69],
       "146": [7679.1, 354.7, -0.77],
+      "147": [2928.3, 803.9, -0.9],
+      "148": [3912.3, 781.8, -1.2],
       "163": [11848.6, -190.5, 86.87],
       "164": [12740.1, -197.9, -0.31],
       "212": [16350.9, 307.6, 96.53]
@@ -75,6 +79,7 @@
   },
   "services": {"rail_headway_s": 70, "rail_dwell_s": 24, "bus_headway_s": 90, "bus_dwell_s": 20, "approach_s": 6},
   "clock": {"start": "07:30"},
+  "consists": [{"id": "stadtbahn", "name": "Stadtbahn", "lines": ["S 10"], "vehicles": [{"type": "et442s"}]}],
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
     {"type": "town", "people_per_100": 25, "walk_max_m": 120, "bus_share": 0.6},
@@ -95,7 +100,7 @@
     {"id": "track-g2", "type": "track", "name": "Track G2", "track_id": "G2", "points": [[1200, 343.5], [1730, 341], [2620, 333], [3319.7, 323.2], [4271.7, 299.2]]},
     {"id": "track-g3", "type": "track", "name": "Track G3", "track_id": "G3", "points": [[1200, 235], [1730, 232.5], [2120, 229], [2620, 222.5], [3319.7, 215.3], [4272.1, 194.2]]},
     {"id": "label-neustadt", "type": "label", "text": "Neustadt", "position": [2250, 330], "height_m": 3},
-    {"id": "table-bogen-back", "type": "tabletop", "name": "Town module behind the curve", "position": [3700, 1900], "width_mm": 13000, "depth_mm": 2000},
+    {"id": "table-bogen-back", "type": "tabletop", "name": "Town module behind the curve", "position": [3700, 1945], "width_mm": 13000, "depth_mm": 1910},
     {"id": "road-am-bogen", "type": "road", "name": "Am Bogen", "kind": "residential", "points": [[-1700, 235], [-560, 235]]},
     {"id": "road-lindenstrasse", "type": "road", "name": "Lindenstraße", "points": [[-1700, 235], [-1700, -300]]},
     {"id": "road-brueckenstrasse", "type": "road", "name": "Brückenstraße", "points": [[-560, 235], [-560, -300]]},
@@ -556,7 +561,7 @@
     {"id": "hochhaus-ahornstrasse-1", "type": "plattenbau", "name": "Hochhaus Ahornstraße 1", "position": [5966, 1450], "rotation_deg": -90, "series": "qp61", "sections": 1, "floors": 14},
     {"id": "hochhaus-ahornstrasse-2", "type": "plattenbau", "name": "Hochhaus Ahornstraße 2", "position": [5966, 1800], "rotation_deg": -90, "series": "qp61", "sections": 1, "floors": 14},
     {"id": "area-sportplatz", "type": "area", "name": "Sports field", "kind": "grass", "points": [[4300, 1730], [5450, 1730], [5450, 2050], [4300, 2050]], "opacity": 0.8},
-    {"id": "area-gruenzug-bahndamm", "type": "area", "name": "Green strip", "kind": "grass", "points": [[3920, 905], [5780, 905], [5780, 1155], [3920, 1155]], "opacity": 0.5},
+    {"id": "area-gruenzug-bahndamm", "type": "area", "name": "Green strip", "kind": "grass", "points": [[3920, 990], [5780, 990], [5780, 1155], [3920, 1155]], "opacity": 0.5},
     {"id": "plattenbau-bahndamm-3", "type": "plattenbau", "name": "WBS 70 Am Bahndamm 3", "position": [6295, 1219], "rotation_deg": 0, "series": "wbs70", "sections": 5},
     {"id": "plattenbau-bahndamm-4", "type": "plattenbau", "name": "WBS 70 Am Bahndamm 4", "position": [7045, 1219], "rotation_deg": 0, "series": "wbs70", "sections": 5},
     {"id": "hochhaus-wendekreis-1", "type": "plattenbau", "name": "Hochhaus Am Wendekreis 1", "position": [6020, 2066], "rotation_deg": 180, "series": "wbs70-11", "sections": 1, "floors": 17},
@@ -644,6 +649,24 @@
     }
   ],
   "layers": [
+    {
+      "id": "sbahn",
+      "name": "S-Bahn",
+      "description": "The S-Bahn (the lab's light rail, Stadtbahn) on its strip along the windows, from Pirna to Heidenau: the S 10 runs on track 2 and turns at Heidenau. The strip lies at the level of the table along Bf Neustadt and Heidenau, above the NBS in front of it, and rises to about 55 mm at the Pirna end, here in steps (estimated from the photos); its tracks and platforms are drawn after them.",
+      "enabled": true,
+      "objects": [
+        {"id": "table-sbahn", "type": "tabletop", "name": "EBL table, light-rail strip", "kind": "physical", "position": [2800, 850], "width_mm": 6600, "depth_mm": 280},
+        {"id": "table-sbahn-pirna-1", "type": "tabletop", "name": "EBL table, light-rail strip at Pirna", "kind": "physical", "position": [65, 885], "width_mm": 1130, "depth_mm": 210, "level_mm": 56},
+        {"id": "table-sbahn-pirna-2", "type": "tabletop", "name": "EBL table, light-rail strip at Pirna (ramp)", "kind": "physical", "position": [965, 885], "width_mm": 670, "depth_mm": 210, "level_mm": 38},
+        {"id": "table-sbahn-pirna-3", "type": "tabletop", "name": "EBL table, light-rail strip at Pirna (ramp)", "kind": "physical", "position": [1600, 885], "width_mm": 600, "depth_mm": 210, "level_mm": 22},
+        {"id": "table-sbahn-pirna-4", "type": "tabletop", "name": "EBL table, light-rail strip at Pirna (ramp)", "kind": "physical", "position": [2100, 885], "width_mm": 400, "depth_mm": 210, "level_mm": 8},
+        {"id": "track-sb-1", "type": "track", "name": "S-Bahn, track 1", "track_id": "SB 1", "points": [[-450, 937], [300, 935], [1000, 930], [2000, 936], [2400, 938], [2800, 926], [3200, 909], [3600, 897], [4000, 885], [4400, 866], [4800, 860], [5200, 858], [5600, 849], [6100, 845]]},
+        {"id": "track-sb-2", "type": "track", "name": "S-Bahn, track 2", "track_id": "SB 2", "points": [[-450, 812], [-200, 803], [300, 803], [500, 812], [700, 838], [900, 866], [1100, 872], [2000, 876], [2400, 873], [2800, 862], [3200, 848], [3600, 836], [4000, 824], [4400, 817], [4800, 808], [5200, 799], [5600, 787], [6100, 776]]},
+        {"id": "platform-pirna", "type": "platform", "name": "Pirna", "from": [-245, 870], "to": [375, 868], "width_mm": 70, "sides": "right", "track_right": "SB 2", "lines": "S 10"},
+        {"id": "platform-heidenau", "type": "platform", "name": "Heidenau", "from": [4840, 755], "to": [5460, 748], "width_mm": 60, "sides": "left", "track_left": "SB 2", "lines": "S 10"},
+        {"id": "line-s10", "type": "rail-line", "name": "S 10 Pirna – Heidenau", "number": "S 10", "origin": "Pirna", "color": "#00965E", "headway_s": 300, "speed_kmh": 80, "tracks": ["track-sb-2"]}
+      ]
+    },
     {
       "id": "waldhof",
       "name": "Waldhof",

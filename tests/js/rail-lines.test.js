@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MEET_MM, RailLine, createWorld, registry } from "../../web/arail/index.js";
+import { MEET_MM, RailLine, createWorld, registry, trainConsist } from "../../web/arail/index.js";
 import { placeSpec } from "../../web/builder/place.js";
 import { statusLines } from "../../web/arail/sims/passengers.js";
 import { readJSON } from "./helpers.js";
@@ -188,6 +188,17 @@ test("the EBL layout: the RB 30 from Waldhof to Neustadt, Waldhof's platform its
   const map = readJSON("web/lab-map/data.json");
   const waldhof = map.photos.filter((p) => p.layer === "neustadt" && (p.group === "S10" || p.group === "S11")).map((p) => p.id);
   assert.ok(waldhof.length >= 10, waldhof.join(", "));
+  // the S-Bahn on its strip along the windows: Pirna and Heidenau, the strip raised at the Pirna end
+  const s10 = world.getObject("line-s10");
+  assert.deepEqual(s10.problems(), []);
+  assert.deepEqual(s10.route().stops[1].map((p) => p.dock.id), ["platform-pirna:right", "platform-heidenau:left"]);
+  // the platforms have their edge only on the line's track: the timetable sends no trains of its own there
+  assert.deepEqual(["platform-pirna", "platform-heidenau"].flatMap((id) => world.getStopArea(id).docks.map((d) => [d.id, world.services.docks.get(d.id).mode])),
+    [["platform-pirna:right", "line"], ["platform-heidenau:left", "line"]]);
+  assert.equal(trainConsist(world, { line: "S 10 → Heidenau", source: "rail-line" }).vehicles[0].type, "et442s", "the short unit the platforms take");
+  const lift = (x, y) => world.elevation.sync().ground(x, y);
+  assert.ok(Math.abs(lift(3500, 850)) < 1 && Math.abs(lift(5000, 760)) < 1, "the strip at the table's level along Bf Neustadt and Heidenau");
+  assert.ok(lift(-245, 870) === 56 && lift(375, 868) === 56, "Pirna's platform on one level, 56 mm up");
   // the exclusive modules show the station alone, as before
   const plan = createWorld(json, { seed: 2 });
   plan.setLayers(["plan"]);
