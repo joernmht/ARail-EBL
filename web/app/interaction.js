@@ -128,6 +128,7 @@ export class Interaction {
   /** The task of the case shown: what to do and how, its progress, Start or Start again. */
   _task(c) {
     const C = c.constructor, p = c.started ? c.progress() : null, pct = p?.of ? Math.round((100 * Math.min(p.done, p.of)) / p.of) : 0;
+    const figures = c.started ? c.figures() : null;
     const start = h("button", {
       class: `btn${c.started ? "" : " primary"}`, type: "button", id: "scenarioStart", disabled: !c.startable,
       onclick: () => this.app.startCase(c.id),
@@ -139,6 +140,7 @@ export class Interaction {
       p ? h("div", { class: "task-progress" },
         h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "scenarioName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(Math.min(p.done, p.of)), "aria-valuetext": `${Math.min(p.done, p.of)} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
         h("span", { class: "task-count" }, `${Math.min(p.done, p.of)} of ${p.of}`)) : null,
+      figures ? h("dl", { class: "task-figures" }, figures.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))) : null,
       c.done ? h("p", { class: "task-done", role: "status" }, "Done! Try another scenario, or start this one again.") : null,
       h("div", { class: "row" }, start, C.speed && c.started ? h("span", { class: "hint" }, `The clock runs ${C.speed} times as fast.`) : null));
   }

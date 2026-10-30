@@ -4,19 +4,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createWorld, registry, validateLayout, Camera, View } from "../../web/arail/index.js";
+import { createWorld, registry, validateLayout, withLayers, Camera, View } from "../../web/arail/index.js";
 import { TerminalSimulation, terminalOf } from "../../web/arail/terminal/operations.js";
 import { PathMover, trapezoid } from "../../web/arail/terminal/movers.js";
 import { CRANE, stackerReach } from "../../web/arail/terminal/handlers.js";
 import { drawReachStacker } from "../../web/arail/terminal/draw.js";
 import { TRUCK } from "../../web/arail/terminal/visits.js";
 import { createRng, toRad } from "../../web/arail/core/math.js";
-import { CARRIER_TYPES, makeBic } from "../../web/arail/terminal/model.js";
+import { CARRIER_TYPES, Container, makeBic } from "../../web/arail/terminal/model.js";
 import { encodeTag } from "../../web/arail/terminal/rolling.js";
 import { readJSON } from "./helpers.js";
 
 const EXAMPLE = readJSON("web/layouts/container-terminal.json");
 const LAB = readJSON("web/layouts/ebl-lab.json");
+const HYBRID = readJSON("web/layouts/ebl-container-train.json");
 const mm = (m) => (m * 1000) / 87;
 const ID = (n) => makeBic("TSTU", n);
 
@@ -1353,6 +1354,121 @@ test("units of model wagons (rolling_stock[].unit): unloaded and loaded as a who
   // names: 1 to 40 characters
   const problems = validateLayout(layout({ rolling_stock: [{ number: 4, unit: "" }, { number: 5, unit: 7 }, { number: 6, unit: "x".repeat(41) }, { number: 7, unit: "Truck" }] }), registry);
   assert.equal(problems.filter((p) => p.includes("unit must be")).length, 3);
+});
+
+/* ---------------------------------------------------------------- work orders */
+
+/** A canvas that accepts every call, and a view of the test layout from above (camera view, or the flyover). */
+function topView(opts = {}) {
+  const gradient = { addColorStop() {} };
+  const special = { measureText: () => ({ width: 10 }), createRadialGradient: () => gradient, createLinearGradient: () => gradient, getLineDash: () => [] };
+  const ctx = new Proxy({ canvas: { width: 1280, height: 720 } }, { get: (o, k) => (k in o ? o[k] : special[k] ?? (() => {})), set: (o, k, v) => ((o[k] = v), true) });
+  const camera = new Camera(1280, 720);
+  const { fx, cx, cy } = camera.intrinsics, d = 3000;
+  return new View({ ctx, camera, H: [fx, 0, cx * d, 0, -fx, cy * d, 0, 0, d], scale: 87, ...opts });
+}
+
+test("work orders: where each container goes (a place, a visit, a unit of model wagons, a kind), done while it stands there, what is on top", () => {
+  const orders = [
+    { container: ID(4), to: "K1" }, // in Block A, under ID(5): onto any wagon of the train K 1
+    { container: ID(5), to: "yard-b" }, // a place
+    { container: ID(7), to: "Model train" }, // from the barge onto a unit of model wagons
+    { container: ID(8), to: "barge" }, // any barge
+    { container: ID(1), to: "K1/1" }, // where it stands already
+    { container: ID(3), to: "nowhere" }, // a target there is not: never done
+  ];
+  const { world, sim, log } = setup({ rolling_stock: [{ number: 3, type: "sggrss80", unit: "Model train" }], orders });
+  const state = () => sim.orders().map((o) => [o.n, o.container, o.label, o.done, o.under, o.moving, o.missing]);
+  assert.deepEqual(state(), [
+    [1, ID(4), "K 1", false, 1, false, false], [2, ID(5), "Block B", false, 0, false, false], [3, ID(7), "Model train", false, 0, false, false],
+    [4, ID(8), "A barge", false, 0, false, false], [5, ID(1), sim.carrier("K1/1").label, true, 0, false, false], [6, ID(3), "nowhere", false, 0, false, false],
+  ]);
+  assert.deepEqual(sim.orders()[0].carriers, ["K1/1", "K1/2", "K1/3"]);
+  assert.deepEqual(sim.orders()[2].carriers, ["W3"]);
+  // the open ones are drawn: their container outlined, a badge with the number and where it goes
+  const labels = [], view = topView();
+  view.label = (at, text, style) => labels.push([text, style.badge]);
+  world.draw(view);
+  assert.deepEqual(labels.filter(([, badge]) => badge), [["K 1", "1"], ["Block B", "2"], ["Model train", "3"], ["A barge", "4"], ["nowhere", "6"]]);
+  // the one on top first; on its way, then done
+  const m5 = sim.request(ID(5), { carrier: "yard-b" }).move;
+  assert.equal(sim.orders()[1].moving, true);
+  finish(world, sim, log, m5);
+  assert.deepEqual(state().slice(0, 2).map((o) => [o[3], o[4]]), [[false, 0], [true, 0]]);
+  finish(world, sim, log, sim.request(ID(4), { carrier: "K1/2" }).move);
+  assert.equal(sim.orders()[0].done, true);
+  // a unit of model wagons: done on a wagon of it once seen
+  sim.observe({ [encodeTag(3, 0, 4)]: { center: [700, 228.7], heading: 0, edge_mm: 20 } }, 0, { still: true });
+  finish(world, sim, log, sim.request(ID(7), { carrier: "W3" }).move);
+  assert.equal(sim.orders()[2].done, true);
+  // a container that left the terminal is missing; reset brings the start state back
+  sim.inventory.remove(ID(8));
+  assert.deepEqual(state()[3].slice(3), [false, 0, false, true]);
+  sim.reset();
+  assert.deepEqual(sim.orders().map((o) => o.done), [false, false, false, false, true, false]);
+  // without orders: none, and nothing drawn for them
+  assert.deepEqual(setup().sim.orders(), []);
+});
+
+test("validate: work orders need a container of the list, one order each, and a target there is", () => {
+  const orders = [
+    { container: ID(1), to: "yard-a" }, { container: ID(1), to: "K1" }, { to: "yard-a" }, { container: "TSTU 999999 0", to: "yard-a" },
+    { container: ID(2), to: "Narnia" }, { container: ID(3) }, { container: ID(4), to: "W7" }, { container: ID(5), to: "Model wagons" },
+    { container: ID(6), to: "train" }, { container: ID(7), to: "B1" },
+  ];
+  const problems = validateLayout(layout({ orders }), registry).map((p) => p.replace("simulations[0] (terminal): ", ""));
+  assert.deepEqual(problems, [
+    `orders[1] (${ID(1)}): the container has an order already`,
+    "orders[2] has no container",
+    "orders[3] (TSTU 999999 0): no such container in containers",
+    `orders[4] (${ID(2)}): unknown target "Narnia"`,
+    `orders[5] (${ID(3)}): no target: give a place, a visit, a unit of model wagons, or yard, wagon, truck or barge`,
+  ]);
+  assert.deepEqual(validateLayout(layout({ orders: {} }), registry), ["simulations[0] (terminal): orders must be a list"]);
+});
+
+test("the loading task of the hybrid container train: a full yard and train, buried containers, a big one without a place; done in 11 moves", () => {
+  const json = withLayers(HYBRID, ["task"]);
+  assert.deepEqual(validateLayout(HYBRID, registry), []);
+  assert.deepEqual(validateLayout(json, registry), []);
+  const world = createWorld(json, { seed: 1 });
+  world.speed = 20;
+  const sim = terminalOf(world);
+  // the real wagons and the truck where the camera finds them in the example's photo
+  const POSES = { W1: [[427.78, 214.9], 3.1363], W4: [[-253.16, 326.89], -3.1412], W6: [[-17.2, 325.94], -3.134], W7: [[216.4, 318.75], -3.1266], W8: [[454.02, 322.31], -3.1266], W9: [[679.18, 325.69], -3.1266] };
+  for (const [id, [center, heading]] of Object.entries(POSES)) Object.assign(sim.carrier(id), { pose: { center, heading }, present: true, available: true, tracked: "standing" });
+  sim._changed();
+  const orders = sim.orders(), [A, B, C, X, D, E] = orders.map((o) => o.container);
+  assert.deepEqual(orders.map((o) => [o.label, o.under]), [["Container train", 2], ["Container train", 1], ["Container train", 0], ["Block A", 0], ["Truck", 0], ["Truck", 1]]);
+  // the yard: every bay holds a container, no stack higher than 3, the 40 ft stacks full
+  const yard = sim.carrier("yard-a"), inv = sim.inventory;
+  assert.equal(yard.tiers, 3);
+  for (let row = 0; row < yard.rows; row++) for (let bay = 0; bay < yard.bays; bay++) assert.ok(inv.at("yard-a", row, bay, 0), `bay ${bay + 1}, row ${row + 1} holds a container`);
+  for (const c of inv.on("yard-a")) if (c.bays === 2) assert.equal(inv.top("yard-a", c.at.row, c.at.bay), 3, `${c.id}: its stack is full`);
+  // the big one has no place in the yard; the real train has two free spots, the truck one
+  assert.deepEqual(sim.targets(X).ok.filter((t) => t.carrier === "yard-a"), []);
+  const free = (id) => inv.freeSlots(new Container({ id: "probe", size: "20" }), id).length;
+  assert.deepEqual(["W4", "W6", "W7", "W8", "W9", "W1"].map(free), [0, 0, 1, 1, 0, 1]);
+  assert.match(sim.targets(A).refused[0].reason, /^Blocked by .* on top/);
+  // the shortest way: 11 moves
+  const top = (bay, row) => inv.at("yard-a", row, bay, inv.top("yard-a", row, bay) - 1).id;
+  const plan = [
+    () => [C, { carrier: "W7", bay: 1 }], () => [D, { carrier: "W1", bay: 0 }], () => [top(12, 1), { carrier: "yard-a", bay: 6, row: 1 }], () => [E, { carrier: "W1", bay: 1 }],
+    () => [top(9, 1), { carrier: "yard-a", bay: 2, row: 1 }], () => [B, { carrier: "W8", bay: 2 }], () => [top(8, 1), { carrier: "yard-a", bay: 11, row: 1 }],
+    () => [X, { carrier: "yard-a", bay: 8, row: 1 }], () => [top(4, 0), { carrier: "yard-a", bay: 6, row: 0 }], () => [top(4, 0), { carrier: "yard-a", bay: 13, row: 0 }],
+    () => [A, { carrier: "W6", bay: 0 }],
+  ];
+  const t0 = world.time;
+  for (const step of plan) {
+    const [id, to] = step(), r = sim.request(id, to);
+    assert.ok(r.move, `${id}: ${r.error}`);
+    runUntil(world, () => r.move.state === "done", 600);
+  }
+  assert.deepEqual(sim.orders().map((o) => o.done), [true, true, true, true, true, true]);
+  assert.equal(sim.moves.filter((m) => m.state === "done").length, 11);
+  const minutes = (world.time - t0) / 60;
+  assert.ok(minutes > 12 && minutes < 30, `${minutes.toFixed(1)} min on the terminal's clock`);
+  assert.deepEqual(inv.check(), []);
 });
 
 /* ---------------------------------------------------------------- validation */

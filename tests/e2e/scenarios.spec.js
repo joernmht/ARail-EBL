@@ -2,7 +2,8 @@
 // pills; the Introduction, a film of the layout that the app opens with (app/intro.js); the Sandbox
 // with the modules, the infrastructure aging and the colour of people (app/sandbox.js); and
 // scenarios with a task: Start sets up the stage (its module, the example it plays in, its view) and
-// the task counts from then (the operations plan, a story, the hybrid container train).
+// the task counts from then (the operations plan, a story, the loading task at the hybrid container
+// train with its work orders, time and moves).
 import { expect, test } from "@playwright/test";
 import { expectCase, startScenario } from "./ui.js";
 
@@ -119,28 +120,46 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   expect(errors).toEqual([]);
 });
 
-test("Load the hybrid train: Start opens the hybrid container train with its photo; three containers on the real train finish the task", async ({ page }) => {
+test("Load the hybrid train: Start opens the loading task at the hybrid container train; the work orders, the time and the moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await open(page);
   await startScenario(page, "terminal");
-  expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.mode, window.__arail.world.speed])).toEqual(["ebl-container-train.json", "camera", 10]);
-  await expect(task(page)).toContainText("Task: Load 3 containers onto the real container train with the crane.");
-  await expect(task(page)).toContainText("0 of 3");
+  expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.layersOn(), window.__arail.mode, window.__arail.world.speed]))
+    .toEqual(["ebl-container-train.json", ["task"], "camera", 10]);
+  await expect(task(page)).toContainText("Task: Carry out the work orders");
+  await expect(task(page)).toContainText("0 of 6");
+  await expect(task(page).locator(".task-figures")).toContainText(/Time\s*\d+:\d\d min\s*Moves\s*0/);
   await expect(task(page)).toContainText("The clock runs 10 times as fast.");
-  // the camera finds the real wagons by their tags in the photo
+  // the camera finds the real wagons and the truck by their tags in the photo
   await page.waitForFunction(() => window.__arail.terminal.sim.carriers().filter((c) => c.number != null && c.present).length >= 5, null, { timeout: 30_000 });
-  // three containers from the barge, each to a free place on the real train: chosen in the list and in "Move to"
-  for (const id of ["TUDU 600023 0", "ARLU 600024 3", "EBLU 600025 2"]) {
-    await page.locator("#termList button", { hasText: id }).click();
-    const slot = await page.evaluate((id) => {
-      const app = window.__arail, t = app.terminal.sim, to = t.targets(id).ok.find((x) => app.caseById("terminal").loads(t, x.carrier)).at;
-      return `${to.carrier}|${to.bay}|${to.row ?? 0}|${to.tier ?? 0}`;
-    }, id);
-    await page.locator("#termTarget").selectOption(slot);
-    await page.locator("#termMove").click();
-  }
-  await expect(task(page)).toContainText("3 of 3", { timeout: 120_000 });
-  await expect(task(page)).toContainText("Done!");
+  // the work orders, numbered as on the stage, with what is on top of each
+  const orders = page.locator(".term-orders li");
+  await expect(orders).toHaveCount(6);
+  await expect(orders.nth(0)).toContainText("Container train");
+  await expect(orders.nth(0)).toContainText("under 2 containers");
+  await expect(orders.nth(3)).toContainText("Block A");
+  await page.evaluate(() => (window.__arail.world.speed = 60)); // the crane quicker for the test
+  // the truck's container: choosing its order chooses it, with a place on the real train first
+  await page.locator("#term-order-3").click();
+  expect(await page.locator("#termTarget").inputValue()).toMatch(/^W[78]\|/);
+  await page.locator("#termMove").click();
+  await expect(task(page)).toContainText("1 of 6", { timeout: 60_000 });
+  await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*1/);
+  await expect(orders.nth(2)).toContainText("done");
+  // a buried one: the container on top is offered first; it goes to another stack
+  await page.locator("#term-order-1").click();
+  await expect(page.locator("#termMoveError")).toContainText("on top: move that first");
+  await page.locator("#termTop").click();
+  const top = await page.evaluate(() => window.__arail.caseById("terminal").panel.selected);
+  expect(top).not.toBe(await page.evaluate(() => window.__arail.terminal.sim.orders()[0].container));
+  await page.locator("#termMove").click();
+  await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*2/, { timeout: 60_000 });
+  await expect(orders.nth(0)).toContainText("under 1 container");
+  // Start again: the terminal as the layout has it, the time and the moves from 0
+  await page.locator("#scenarioStart").click();
+  await expect(task(page)).toContainText("0 of 6");
+  await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*0/);
+  await expect(orders.nth(0)).toContainText("under 2 containers");
   // back to the list: the scenario stops, the clock runs as before
   await page.locator("#scenariosBack").click();
   expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([2, false]);

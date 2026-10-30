@@ -42,6 +42,7 @@ Where a photo has a **digital layer** (Bf Neustadt and Waldhof, the goods yard w
 | **Example: Bf Neustadt, video** | `ebl-neustadt.json` | a clip panning from the terminal to the station | the same layout over a moving camera |
 | **Example: terminal at the crane** | `ebl-neustadt.json` | a photo of the terminal tracks | the container terminal on the real terminal tracks (module Terminal on, the terminal's panel shown in Interaction) |
 | **Example: hybrid container train** | `ebl-container-train.json` | a frame of a clip of the tagged train | real wagons and a real truck with AprilTag labels carry virtual containers, grey placeholders on their free spots; a crane over the four tracks, a yard, and a harbour in front of the table, shown below the photo (`view.extend_below`); Railway undertaking → Terminal loads and unloads the real train and truck |
+| **Example: loading task at the hybrid container train** | `ebl-container-train.json` | the same | the same layout with its module *Loading task*: a full yard and train and the crane's work orders, the scenario **Load the hybrid train** |
 | **Example: container terminal (virtual)** | `container-terminal.json` | none (flyover) | a terminal of its own, also a module of the lab example |
 | **Example: Beta 0.1 (EBL lab photo, older)** | `ebl-lab.json` | the lab photo of 30 September 2026, the first example | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal, whose games are on the game page |
 
@@ -133,7 +134,7 @@ The **scenarios** to start, as cards in a list. Pills above it filter the list: 
 | Infrastructure | **A signal fails** | the maintenance story to its end: a signal fails and is exchanged, a worn track is renewed (module Infrastructure) |
 | Railway undertaking | **Units and drivers** | every train of the same morning with a unit that has enough places and a driver on shift (module Operations) |
 | Railway undertaking | **A train breaks down** | the operations story to its end: a train breaks down at the platform, the spare unit takes over (module Breakdown) |
-| Railway undertaking, Freight | **Load the hybrid train** | 3 containers onto the real container train with the crane: Start opens the example *hybrid container train* with its photo, where the camera finds the tagged model wagons, and runs the clock 10 times as fast |
+| Railway undertaking, Freight | **Load the hybrid train** | the crane's six work orders in a full terminal: three containers onto the real container train (one from the bottom of a stack, one from the real truck), a big one off it into the yard, two onto the real truck; the time and the moves count. Start opens the example *hybrid container train* with its module *Loading task* and its photo, where the camera finds the tagged model wagons, and runs the clock 10 times as fast |
 | Railway undertaking, Passengers | **A traveller's journey** | the journeys story to its end: a traveller's train is late (module Journeys) |
 | Tools | **Build**, **Disruptions** | none: the tools of the layout (see below) |
 
@@ -201,9 +202,10 @@ Connect to a control-system bridge (WebSocket address), or start the simulated c
 
 ### Load the hybrid train (the container terminal)
 
-The scenario plays in the example *hybrid container train*: Start opens it with its photo, where the camera finds the real model wagons by their tags; the containers on them and the crane are virtual. Its task: 3 containers onto the real container train. Shown by a link (`#terminal`), the panel works with any layout that has a container terminal (Bf Neustadt's module **Terminal**, **Settings → View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
+The scenario plays in the example *hybrid container train* with its module *Loading task*: Start opens it with its photo, where the camera finds the real model wagons by their tags; the containers on them and the crane are virtual. The yard is full (its stacks at most three high), the train too, and the crane has six work orders: three containers onto the real container train, one of them from the bottom of a stack and one from the real truck; the big 40 ft container off the train into the yard, where it has no place until the crane clears two bays side by side; two containers onto the real truck. The task box counts the time on the terminal's clock and the moves; the best is 11 moves (see [The loading task](container-terminal.md#the-loading-task)). Shown by a link (`#terminal`), the panel works with any layout that has a container terminal (Bf Neustadt's module **Terminal**, **Settings → View → Examples → Example: terminal at the crane**, or the virtual **Example: container terminal**; see [Container terminal](container-terminal.md)): the containers on the trains, trucks and barges and in the yard, moved one by one by the cranes and reach stackers.
 
 - The terminal's state, **Reset terminal** and **Save as start state**.
+- *Work orders* (in the loading task): numbered as on the stage, with where each container goes and how many containers are on top of it; choosing one chooses its container, with the order's place first in **Move to**, or offers the container on top that has to go first.
 - *Containers*: choose a container, then its place in **Move to** (or a quick button such as **To the yard**) and press **Move**; while it moves, the line of its job, and **Cancel** before the crane locks it.
 - *Model wagons* (with rolling-stock markers): the wagons seen by their deck cards, and links to print their cards, one per wagon type.
 
@@ -312,7 +314,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | Parameter | Effect |
 | --- | --- |
 | `layout=<url>` | load a layout file (relative to the app); without it the app opens the last layout, or Bf Neustadt (the game page: the lab example Beta 0.1) |
-| `example=<id>` | open an example (Settings → View → Examples; the game page: its Layouts menu) with its photo or clip, its modules and case: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `terminal`, `lab` |
+| `example=<id>` | open an example (Settings → View → Examples; the game page: its Layouts menu) with its photo or clip, its modules and case: `neustadt`, `neustadt-video`, `crane-terminal`, `container-train`, `container-task`, `terminal`, `lab` |
 | `photo=<id>` | the app: a photo of the [photo tour](#the-photo-tour) by its id (the time it was taken, `hhmmss`, as on the photo map), with the layout of its digital layer |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |

@@ -71,7 +71,7 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await expect(page.locator("#casePanel")).toContainText("Umsehen");
   await page.evaluate(() => window.__arail.selectTab("terminal"));
   await expect(page.locator("#casePanel")).toContainText("Echte Modellwagen mit Markern");
-  await expect(page.locator("#scenarioTask")).toContainText("Laden Sie 3 Container");
+  await expect(page.locator("#scenarioTask")).toContainText("Erledigen Sie die Arbeitsaufträge");
   await page.evaluate(() => window.__arail.selectTab("view"));
   // the card of RE 1 at the Czech track G3: its train data and where it may run, in German
   await page.evaluate(() => window.__arail.world.services.call("platform-1:right", { line: "RE 1" }));

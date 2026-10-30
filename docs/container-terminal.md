@@ -28,7 +28,9 @@ Three examples have a terminal:
   ARail puts virtual containers on the labels, and a virtual crane moves containers between the
   real wagons, the real truck, the virtual train KT 61 Rostock, road trucks, a yard block and the
   barge MS Elbe 7 in a harbour on a virtual module below the table edge. The scenario **Loading the
-  real train** does that. How the labels sit on the wagons is described in
+  real train** does that. Its module **Loading task** (`app/?example=container-task`) makes the
+  terminal full and gives the crane work orders; the app's scenario **Load the hybrid train** plays
+  it (see [The loading task](#the-loading-task)). How the labels sit on the wagons is described in
   [Labels where they fit](#labels-where-they-fit).
 - **Example: container terminal (virtual)**, below: a terminal of its own, in the flyover.
 
@@ -371,18 +373,20 @@ film the survey video.
 ## The terminal's panel, step by step
 
 The app's scenario **Load the hybrid train** (Interaction, pills Railway undertaking and Freight,
-`#terminal` in the app URL) plays in the hybrid container train: Start opens that example with its
-photo, where the camera finds the real model wagons by their tags, runs the clock 10 times as fast,
-and gives the task to load 3 containers onto the real container train (only containers set down on
-a wagon of its unit *Container train* count; the truck's trailers do not). Shown by a link, its panel
-runs the terminal of any layout that has one (Bf Neustadt: its module **Terminal**). The game page's
-case **Terminal** has no such task. On a layout without a terminal, the case offers **Switch on
+`#terminal` in the app URL) plays the [loading task](#the-loading-task) of the hybrid container
+train. Shown by a link, its panel runs the terminal of any layout that has one (Bf Neustadt: its
+module **Terminal**). The game page's case **Terminal** has no task. On a layout without a terminal, the case offers **Switch on
 “Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab example) or **Open the
 example**, and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), the speed (1×, 2×, 5×, 10×, 30×), **Reset terminal** (back to the start
    state) and **Save as start state**.
+   **Work orders** (where the terminal has `orders`) lists them numbered as on the stage: the
+   container, where it goes and where it stands (*free to lift*, *under 2 containers*, *on its
+   way*, *done*). Choosing an order chooses its container, with the order's place first in **Move
+   to**; a container that is buried offers the one at the top of its stack (**Choose … on top
+   first**).
 2. **Arrivals.** A card per train, barge and truck: its state (*away*, *approaching Loading track
    2*, *at Loading track 1*, *at the gate*, *at position 2*, *at the quay*, *departing*), how full it
    is (TEU used of its capacity) and **Call** or **Depart**. A train or barge at the terminal also
@@ -416,11 +420,39 @@ outlined; a tap on an outlined place (or on another container, or on a carrier) 
 row 1 · tier 1*. Esc or **Cancel** stops the pick. This works over the camera image and in the flyover. In the flyover
 a drag pans the view in this tab; with the keyboard, move the view so that the cross in the middle
 lies on a container and press **Enter**, then the same for the place. Over the camera image the
-empty spots of model wagons are outlined while the tab is open.
+empty spots of model wagons are outlined while the tab is open. The containers of open work orders
+are outlined in Orange with their number and where they go, also one deep in a stack.
 
 **Save as start state** makes the current containers, trains and barges the layout's start state
 (saved in the browser like every change; **Export layout** to keep it). Moves in progress, trucks
 and the yard fill are not saved: the fill is replaced by the containers it put there.
+
+### The loading task
+
+The module **Loading task** of the hybrid container train (`"layers"` in
+[`web/layouts/ebl-container-train.json`](../web/layouts/ebl-container-train.json)) patches its
+terminal (`"patch": true`): no random fill, its own containers and six work orders.
+
+- **The yard is full.** Block A has 15 bays in 2 rows, its stacks at most 3 high (the yard's
+  *Stack height*); every bay holds a container, and the 40 ft stacks are full to the top, so a
+  40 ft container has no place in it. A 20 ft container goes onto a 20 ft stack that is not full;
+  a 40 or 45 ft one needs two free bays side by side, or a 40 or 45 ft stack that is not full.
+- **The train is full too.** Of the real wagons in the photo only two 20 ft spots are free (W7 and
+  W8); W6 carries a 40 ft high cube over two spots.
+- **The orders.** Three containers onto the real container train: one from the bottom of a stack
+  (two on top of it), one from under another, one from the real truck. The 40 ft high cube off the
+  train into Block A. Two containers onto the real truck, one of them from under another; the truck
+  has two spots, and one carries the container that goes to the train.
+
+So the order matters: the truck's container has to leave before both containers for the truck
+fit on it, the high cube leaves the train before the third container can go on it, and it needs a
+place in the yard that the crane has to clear first (two neighbouring bays emptied, e.g. one where
+a container for the train came from). It can be done in 11 moves, about 19 minutes on the
+terminal's clock. Start (the scenario **Load the hybrid train**) opens the example with the module
+on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
+clock (from Start until the last order is done) and the moves the crane finished; **Start again**
+begins anew. Every container of the task is in the photo; the barge and the yard's outer bays are
+not (the flyover shows them).
 
 ## Building a terminal in Build
 
@@ -473,7 +505,8 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
   "barges": [ { "id": "BG1", "name": "MS Elbe 7", "quay": "quay-1", "length_m": 55, "tiers": 2, "start": "away" } ],
   "trucks": { "lane": "lane-1" },
   "containers": [ { "id": "ARLU 100001 9", "size": "40", "high": true, "at": { "carrier": "KT41/1", "bay": 0 } } ],
-  "fill": { "yard-a": 0.3 }
+  "fill": { "yard-a": 0.3 },
+  "orders": [ { "container": "ARLU 100001 9", "to": "yard-a" } ]
 }
 ```
 
@@ -487,6 +520,7 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
 | `trucks.lane` | the first truck lane | id of the `truck-lane` object |
 | `containers` | `[]` | the start state: `id`, `size` (`"20"`, `"40"`, `"45"`), `high`, `colour`, `label`, `at` (`carrier`, `bay`, `row` and `tier` from 0; for 40 and 45 ft the first bay) |
 | `fill` | `{}` | yard id → share (0–1) of empty stacks filled with random containers, the same for the same layout every time |
+| `orders` | `[]` | work orders: `container` (one of `containers`) and `to`, where it goes: a carrier id (as in `at.carrier`), a visit id, the name of a unit of model wagons (`rolling_stock[].unit`, e.g. `"Truck"`), or `yard`, `wagon`, `truck` or `barge` for any of that kind. An order is done while its container stands there; the case Terminal lists them, the stage marks the open ones |
 
 Carrier ids in `at.carrier`: `<train id>/<k>` for a train's wagon k (from 1, counted from the
 head), the barge id, the yard object's id, and `W<number>` for model wagons. Visit ids must be

@@ -1,5 +1,5 @@
 // The scenarios of the Interaction chapter, a class each (a "case"): examples to start, each with a
-// small task to try ("Load 3 containers onto the real container train") and its progress, and a view of the stage
+// small task to try ("Carry out the work orders of the crane") and its progress, and a view of the stage
 // chosen for it (the flyover at the terminal, the camera following a story), so that what it is
 // about is in the picture at once. A case belongs to a side, the infrastructure manager ("infra")
 // or the railway undertaking (EVU, "evu"), or it is a first step (the Introduction, the Sandbox) or
@@ -41,7 +41,7 @@ export class Case {
   static description = "";
   /** The filter pills it is listed under (TAGS); null: its side, else "tools". */
   static tags = null;
-  /** Its task, in one line ("Load 3 containers onto the real container train"); "" for none (a tool, the Sandbox). */
+  /** Its task, in one line ("Carry out the work orders: …"); "" for none (a tool, the Sandbox). */
   static task = "";
   /** How to do it, in one line. */
   static how = "";
@@ -165,6 +165,11 @@ export class Case {
 
   /** How far its task is ({done, of}), or null: it has none, or it was not started. */
   progress() {
+    return null;
+  }
+
+  /** Figures of its task while it runs, e.g. [["Time", "4:10 min"], ["Moves", "7"]], or null. */
+  figures() {
     return null;
   }
 
@@ -303,45 +308,45 @@ export class PlanCase extends Case {
   }
 }
 
+/** Minutes and seconds of a time on the clock: 1062 → "17:42 min". */
+const minutes = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")} min`;
+
 /**
- * The container terminal: containers moved one by one. In the app it plays in the hybrid container
- * train (`opens`): real model wagons with tags in the photo, virtual containers on them, a virtual
- * crane; on the game page with its visits (`full`).
+ * The container terminal: containers moved one by one. In the app it plays the loading task of the
+ * hybrid container train (`opens`): real model wagons with tags in the photo, a full yard, and the
+ * terminal's work orders (`orders`), timed on the terminal's clock and counted in moves; on the game
+ * page with its visits (`full`), without a task.
  */
 export class TerminalCase extends Case {
   static id = "terminal";
   static side = "evu";
   static label = "Load the hybrid train";
-  static description = "Real model wagons with tags, virtual containers: load the train with the crane";
+  static description = "Real model wagons with tags and a full yard: work orders for the crane, against the clock";
   static tags = ["evu", "freight"];
-  static task = "Load 3 containers onto the real container train with the crane.";
-  static how = "Tap a container in the yard or on the barge, then a free place on a wagon of the real train: the crane takes it there.";
+  static task = "Carry out the work orders: three containers onto the real container train, a big one off it into the yard, two onto the real truck.";
+  static how = "Choose an order or a container, then its place: the crane takes it there. Stacks are at most three high; a 40 ft container needs two free bays side by side, or a 40 ft container below.";
   static speed = 10;
   static icon = "terminal";
   static needs = "terminal";
   static example = "terminal";
-  static opens = "container-train";
+  static opens = "container-task";
   /** With the visits, new arrivals, crane jobs and the speed. */
   static full = false;
-  /** How many containers the task loads (the example's photo shows four free places on the train). */
-  static goal = 3;
-  /** The unit of model wagons the task loads (its name in the layout), or null: any wagon. */
-  static unit = "Container train";
 
   constructor(app) {
     super(app);
-    /** Containers set down on a wagon of the task since the case was started. */
-    this.loaded = 0;
-    app.world.events.on(TERMINAL_EVENTS.containerMoved, (e) => {
-      if (this.started && e.terminal && this.loads(e.terminal, e.to?.carrier)) this.loaded++;
+    /** The world's time at Start (or when the terminal was reset since). */
+    this.since = 0;
+    /** The time and the moves when the work orders were done, or null. */
+    this.result = null;
+    app.world.events.on(TERMINAL_EVENTS.reset, () => {
+      if (!this.started) return;
+      this.since = this.app.world.time;
+      this.result = null;
     });
-  }
-
-  /** Does the task load this carrier: a wagon (of the unit of model wagons `unit`, where the terminal has it)? */
-  loads(terminal, id) {
-    if (terminal.carrier(id)?.kind !== "wagon") return false;
-    const units = terminal.modelUnits(), unit = this.constructor.unit;
-    return !unit || !units.some((u) => u.name === unit) || units.some((u) => u.name === unit && u.carriers.some((c) => c.id === id));
+    app.world.events.on(TERMINAL_EVENTS.containerMoved, (e) => {
+      if (this.started && !this.result && this.done) this.result = { time: this.app.world.time - this.since, moves: this._moves(e.terminal) };
+    });
   }
 
   makePanel() {
@@ -353,17 +358,38 @@ export class TerminalCase extends Case {
   }
 
   begin() {
-    this.loaded = 0;
-    const app = this.app;
+    const app = this.app, t = terminalOf(app.world);
+    // the task from the start: the terminal as the layout has it, no move made (without a task, as it is)
+    if (this.task && t) {
+      this.panel.cancelPick();
+      this.panel.select(null);
+      t.reset();
+    }
+    this.since = app.world.time;
+    this.result = null;
     // real model wagons with their tags: the photo of the layout, where the camera finds them
     if (app.world.layout.markers.rolling && app.world.layout.view?.image) return app.flyover.leave();
     // else the crane, the yard and the loading tracks in the flyover
     app.showPlace(boundsOf(app.world.objects.filter((o) => o.constructor.category === "Terminal" && o.geometry), 0.12));
   }
 
+  /** The moves the crane (and the reach stackers) finished since the terminal was reset. */
+  _moves(terminal) {
+    return terminal.moves.filter((m) => m.state === "done").length;
+  }
+
+  /** The work orders done. */
   progress() {
-    const goal = this.constructor.goal;
-    return this.task && terminalOf(this.app.world) ? { done: Math.min(goal, this.loaded), of: goal } : null;
+    const orders = this.task ? terminalOf(this.app.world)?.orders() : null;
+    return orders?.length ? { done: orders.filter((o) => o.done).length, of: orders.length } : null;
+  }
+
+  /** The time on the terminal's clock since Start and the moves, until the work orders are done. */
+  figures() {
+    const t = terminalOf(this.app.world);
+    if (!this.started || !t || !this.progress()) return null;
+    const { time, moves } = this.result ?? { time: this.app.world.time - this.since, moves: this._moves(t) };
+    return [["Time", minutes(time)], ["Moves", String(moves)]];
   }
 }
 

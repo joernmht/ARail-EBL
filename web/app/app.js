@@ -163,7 +163,7 @@ export class App {
     // a link to a case of a module of the app (Build, Disruptions) switches it on
     const linked = this.caseFor(tab)?.constructor.appModule;
     if (linked) this.setAppModule(linked, true);
-    if (tab) this.selectTab(tab);
+    if (tab) this.selectTab(tab, { address: tab !== this.page.start });
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -373,9 +373,10 @@ export class App {
   /**
    * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
    * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
-   * list of scenarios ("scenarios"). The case shown until then stops.
+   * list of scenarios ("scenarios"). The case shown until then stops. The address links to it,
+   * except for the chapter the page starts with (`address` false): a first visit keeps its address.
    */
-  selectTab(name) {
+  selectTab(name, { address = true } = {}) {
     if (TAB_VIEWS[name]) {
       this.panels.settingsView = TAB_VIEWS[name][1];
       storage.set("arail.settingsView", TAB_VIEWS[name][1]);
@@ -404,7 +405,7 @@ export class App {
     this._scrollTabIntoView($(`#tab-${name}`));
     this.renderPanel(name);
     // Settings is linked by its view (#view, #simulate, #control), Interaction by its case (#terminal, #modules)
-    history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name === "interaction" ? this.activeCase : name}`);
+    if (address) history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name === "interaction" ? this.activeCase : name}`);
   }
 
   /**
@@ -549,10 +550,12 @@ export class App {
     return this.openLayout(l.layout, [l.layer]);
   }
 
-  /** Is the layout of this example (its id) the one open? */
+  /** Is this example (its id) open: its layout, with the modules it names on and no others? */
   exampleOpen(id) {
     const x = this.page.examples.find((e) => e.id === id);
-    return !!x && !!this.layoutUrl && new URL(x.layout, location.href).href === this.layoutUrl;
+    if (!x || !this.layoutUrl || new URL(x.layout, location.href).href !== this.layoutUrl) return false;
+    const on = this.layersOn();
+    return !x.layers || (x.layers.length === on.length && x.layers.every((l) => on.includes(l)));
   }
 
   /** The photo or clip of an example (shown over the camera image, not in the flyover). */

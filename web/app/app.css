@@ -247,7 +247,7 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .chart-swatch.chart-muted { border-top-color: var(--board-muted); opacity: .55; }
 
 /* ------------------------------------------------------------------ panel */
-.panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; }
+.panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; scroll-padding-top: 52px; } /* what gets the focus is scrolled in below the sticky tabs */
 /* long words (German compounds) break, with a hyphen where the browser knows the language's rules */
 .panel, .info-card, .tooltip, .hud { overflow-wrap: break-word; hyphens: auto; }
 .palette button > small, .module-name { overflow-wrap: anywhere; }
@@ -290,6 +290,10 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .task-count { font-weight: 600; font-size: .86rem; font-variant-numeric: tabular-nums; }
 .task-done { margin: 0; font-weight: 700; color: var(--accent-ink); }
+.task-figures { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: .86rem; }
+.task-figures div { display: flex; gap: 6px; }
+.task-figures dt { color: var(--text-2); }
+.task-figures dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 /* the introduction: the scene with its kind as a badge (real: Türkis, virtual: Orange, both: Dunkelblau) and its figures */
 .intro-now { gap: 6px; border-left: 4px solid var(--accent); padding-left: 12px; }
 .intro-now h3 { margin: 0; font-size: 1.12rem; line-height: 1.3; }
@@ -474,6 +478,12 @@ details[open] summary { margin-bottom: 8px; }
 .term-form .row .grow { flex: 1 1 150px; }
 /* the list keeps the Move form close: it scrolls on its own */
 .term-list { max-height: 340px; overflow-y: auto; padding-right: 2px; overscroll-behavior: contain; }
+/* work orders: numbered like their badges on the stage (Orange: open, Türkis: done) */
+.term-orders button { justify-content: flex-start; }
+.term-orders button > span:nth-child(2) { flex: 1; min-width: 0; }
+.term-order-n { display: inline-grid; place-items: center; flex: none; min-width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--warn); color: var(--warn-text); font-weight: 700; font-size: .78rem; }
+.term-orders li.done .term-order-n { background: var(--accent); color: var(--accent-text); }
+.term-orders li.done button { color: var(--text-2); }
 .term-list h3 { margin: 10px 0 5px; }
 .term-list h3:first-child { margin-top: 0; }
 .term-list h3 .meta { color: var(--text-2); font-weight: 400; }

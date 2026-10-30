@@ -56,7 +56,6 @@ class TerminalGame extends TerminalCase {
   static how = "";
   static speed = null;
   static opens = null;
-  static unit = null;
   static full = true;
 }
 
@@ -87,7 +86,7 @@ const PAGE = {
     { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
     { id: "neustadt", label: "Example: Bf Neustadt and its terminal", layout: NEUSTADT, layers: ["terminal"] },
     { id: "crane-terminal", label: "Example: terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal", layers: ["terminal"] },
-    { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal" },
+    { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
   ],
   exampleLayers: {
     operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" }, journeys: { layout: LAB, layer: "journeys" },

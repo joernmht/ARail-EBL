@@ -1311,13 +1311,21 @@ function slice(points, lengths, s0, s1) {
 /* ---------------------------------------------------------------- highlights and picking */
 
 /**
- * The selected container, possible targets and empty slots (overlay layer, never darkened).
+ * The selected container, possible targets, empty slots and the containers of open work orders: a
+ * dashed outline on top, the order's number and where it goes (overlay layer, never darkened; a
+ * container deep in a stack shows through).
  * @param {import("../core/view.js").View} view
- * @param {{selected?: import("./types.js").Box | null, targets?: import("./types.js").Box[], empties?: import("./types.js").Box[]}} [options]
+ * @param {{selected?: import("./types.js").Box | null, targets?: import("./types.js").Box[], empties?: import("./types.js").Box[],
+ *   orders?: {box: import("./types.js").Box, n: number, label: string}[]}} [options]
  */
-export function drawHighlights(view, { selected = null, targets = [], empties = [] } = {}) {
+export function drawHighlights(view, { selected = null, targets = [], empties = [], orders = [] } = {}) {
   for (const b of empties || []) {
     view.polygon(boxCorners(b).slice(0, 4), { z: b.z0, stroke: rgba(OVERLAY.tracked, 0.8), width: 1.5, layer: "overlay", order: 30 });
+  }
+  for (const { box: b, n, label } of orders || []) {
+    const top = b.z0 + b.height;
+    view.polygon(boxCorners(b).slice(4), { z: top, stroke: OVERLAY.selection, width: 2, dash: [5, 3], layer: "overlay", order: 80 });
+    view.label([b.center[0], b.center[1], top], label, { size: 10, badge: String(n), badgeColor: OVERLAY.selection, anchor: "bottom", order: 80 });
   }
   for (const b of targets || []) {
     view.polygon(boxCorners(b).slice(0, 4), { z: b.z0, stroke: OVERLAY.tracked, fill: rgba(OVERLAY.tracked, 0.16), width: 2, dash: [6, 4], layer: "overlay", order: 90 });
