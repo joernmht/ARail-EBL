@@ -3,7 +3,7 @@
 // plans on the layout, "Show" following one in the flyover, the results and their CSV, the
 // travellers kept with the layout, and the module offered in Settings → Simulation.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, openCase, openModules } from "./ui.js";
 
 const PATH = "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys";
 
@@ -40,7 +40,7 @@ async function make(page, { name = "", from, to, leave, transfer = null, pick = 
 test("make travellers, choose their plans, follow them and compare the arrivals", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await open(page);
-  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "journeys");
   await expect(page.locator("#casePanel h2").first()).toHaveText("Journeys");
   // the town's residents stay at home; the box brings them back and takes them away again
   await expect(page.locator("#journeysCrowd")).not.toBeChecked();
@@ -141,7 +141,7 @@ test("the generated people can come back; the case offers the module while it is
   await page.waitForFunction(() => /ebl-neustadt/.test(window.__arail.layoutUrl) && window.__arail.world.objects.length);
   await page.locator("#caseAdd").click();
   await page.waitForFunction(() => window.__arail.journeys.sim);
-  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "journeys");
   await expect(page.locator("#journeyFrom option").first()).toBeAttached();
   expect(errors).toEqual([]);
 });

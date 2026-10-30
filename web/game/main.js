@@ -1,10 +1,11 @@
 // The ARail game page: the games and exercises on the lab's layout, beside the app (../app/), which
-// presents the modules as stories. Its cases in Interaction, by side: Infrastructure, asset management
-// with roles, decisions and budget years; Railway undertaking, the operations (fleet, workshop and
-// crews, setups compared under stress tests), the container terminal with its visits and the journeys
-// (travellers with travel plans for a class). It is the app's shell (stage, flyover, Build, Settings).
+// presents the modules as examples. Its cases in Interaction, listed with the app's filter pills: the
+// Sandbox (the modules to switch on and off); Infrastructure, asset management with roles, decisions
+// and budget years; Railway undertaking, the operations (fleet, workshop and crews, setups compared
+// under stress tests), the container terminal with its visits and the journeys (travellers with
+// travel plans for a class). It is the app's shell (stage, flyover, Build, Settings).
 import { App } from "../app/app.js";
-import { BuildCase, Case, DisruptionsCase, TerminalCase } from "../app/cases.js";
+import { BuildCase, Case, DisruptionsCase, SandboxCase, TerminalCase } from "../app/cases.js";
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
@@ -47,8 +48,15 @@ class OperationsGame extends Case {
   }
 }
 
-/** Railway undertaking → Terminal, with its visits, new arrivals and crane jobs. */
+/** Railway undertaking → Terminal, with its visits, new arrivals and crane jobs (no example task). */
 class TerminalGame extends TerminalCase {
+  static label = "Terminal";
+  static description = "Container trains, trucks and barges: move the containers with the crane";
+  static task = "";
+  static how = "";
+  static speed = null;
+  static opens = null;
+  static unit = null;
   static full = true;
 }
 
@@ -73,7 +81,7 @@ class JourneysGame extends Case {
 /** @type {import("../app/app.js").Page} */
 const PAGE = {
   id: "game",
-  cases: [AssetsGame, OperationsGame, TerminalGame, JourneysGame, BuildCase, DisruptionsCase],
+  cases: [SandboxCase, AssetsGame, OperationsGame, TerminalGame, JourneysGame, BuildCase, DisruptionsCase],
   examples: [
     { id: "lab", label: "Example: the lab with its games (Beta 0.1)", layout: LAB },
     { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },

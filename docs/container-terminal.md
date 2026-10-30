@@ -368,12 +368,17 @@ The tags never enter the marker map. Still, set `markers.dictionary` to the layo
 "auto") when rolling-stock markers are used*. Or take the tagged wagons off the layout while you
 film the survey video.
 
-## Railway undertaking → Terminal, step by step
+## The terminal's panel, step by step
 
-The case **Terminal** of Interaction (side Railway undertaking, `#terminal` in the app URL) runs the
-terminal when the layout has one (Bf Neustadt: its module **Terminal**). On a layout without one, the
-case offers **Switch on “Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab
-example) or **Open the example**, and **Add to this layout**.
+The app's scenario **Load the hybrid train** (Interaction, pills Railway undertaking and Freight,
+`#terminal` in the app URL) plays in the hybrid container train: Start opens that example with its
+photo, where the camera finds the real model wagons by their tags, runs the clock 10 times as fast,
+and gives the task to load 3 containers onto the real container train (only containers set down on
+a wagon of its unit *Container train* count; the truck's trailers do not). Shown by a link, its panel
+runs the terminal of any layout that has one (Bf Neustadt: its module **Terminal**). The game page's
+case **Terminal** has no such task. On a layout without a terminal, the case offers **Switch on
+“Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab example) or **Open the
+example**, and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), the speed (1×, 2×, 5×, 10×, 30×), **Reset terminal** (back to the start
@@ -433,7 +438,8 @@ Loading tracks are **Infrastructure → Track**, drawn along the real track (or 
 flyover). Cranes and quays are picked at their edges unless selected, so the yard and the tracks
 under them stay selectable. Then:
 
-1. In **Railway undertaking → Terminal** press **Add to this layout**: the case shows the new terminal.
+1. Show the terminal's case (`#terminal`; on the game page Railway undertaking → **Terminal**) and press
+   **Add to this layout**: the case shows the new terminal.
 2. Call trains (choose the loading track), barges and trucks with **New arrival**, and move
    containers into the yard.
 3. **Save as start state**, then **Export layout**. Fine-tune the result in the layout file (below):

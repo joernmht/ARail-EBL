@@ -120,6 +120,11 @@ export class Tabletop extends LayoutObject {
     return this.spec.kind === "physical";
   }
 
+  /** The outline of a real table is real; a virtual extension is not. */
+  get real() {
+    return this.physical;
+  }
+
   draw(view) {
     if (this.physical && !view.virtual) return; // the real table is in the camera image
     const g = this.geometry, level = this.groundLevel(), el = this.world.elevation.sync();

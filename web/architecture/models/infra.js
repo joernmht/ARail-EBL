@@ -311,7 +311,7 @@ export const INFRA = [
     files: ["web/arail/infra/story.js"],
     classes: [{
       name: "MaintenanceStory", file: "web/arail/infra/story.js", kind: "class", extends: "Story", role: "The maintenance case, step by step.",
-      attributes: ["static STEPS — 12 steps: normal, fault, close, drive, repair, exchange, reopen, possession, arrive, remove, build, done"],
+      attributes: ["static STEPS — 12 steps: normal, fault, close, drive, repair, exchange, reopen, possession, arrive, remove, build, done", "year: number — of the story and of the assets' age: its year, later by the world's setting ageYears (the Sandbox ages the assets)"],
       operations: ["states() — the station's assets by type, by their condition at this step", "signal()", "dock() — the signal's platform track", "renewal()", "renewalDock()", "base()", "compose(index, k)", "ageGrade(o) — the condition by the age", "assetView(id) — as the infrastructure simulation's", "vanPath() — the drive and the walk", "works() — where the renewal works are", "vanAt()", "trainAt()", "diggerAt()", "tamperAt()", "view()", "draw(view)", "drawBase(view, base)"],
     }],
     relations: [

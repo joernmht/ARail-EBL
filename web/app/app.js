@@ -5,19 +5,22 @@
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
-import { Interaction } from "./interaction.js";
+import { Interaction, LIST } from "./interaction.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
 import { TourNav } from "./tour-nav.js";
-import { $, h, morph, mount, storage, toast } from "./ui.js";
+import { $, h, morph, mount, pageLayout, stageMaxHeight, storage, toast } from "./ui.js";
 import { addTexts, chooseLanguage, i18n, setLanguage, tr } from "./i18n.js";
 
 const params = new URLSearchParams(location.search);
 /**
  * A page with a stage (the app, the game page):
  * - `id`: "app" or "game" (the game page keeps what it remembers in the browser apart);
- * - `cases`: the classes of its cases in Interaction (cases.js), in their order: by side, then the tools;
+ * - `cases`: the classes of its cases in Interaction (cases.js): its scenarios, in the order of their list;
+ * - `defaultCase`: the case Interaction shows until another one is chosen (the app: the Introduction),
+ *   else the list of scenarios;
+ * - `start`: the chapter shown when the link names none (the app: Interaction), else the Overview;
  * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, layers?, home?}` (`home`: the
  *   layout it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the case or
  *   chapter shown; `layers`: the modules switched on), the first one opened when nothing else was;
@@ -25,7 +28,7 @@ const params = new URLSearchParams(location.search);
  * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
  *   choose what is shown, and the examples are listed in Settings → View; a page without it has the
  *   list of layouts (Layouts…) in its bar.
- * @typedef {{id: string, cases: Array<typeof import("./cases.js").Case>, examples: object[],
+ * @typedef {{id: string, cases: Array<typeof import("./cases.js").Case>, defaultCase?: string, start?: string, examples: object[],
  *   exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
  */
 /** Former example files that are layers of the lab example now (old links keep working). */
@@ -47,6 +50,8 @@ const APP_MODULES = [
     description: "Delays, signal failures, cancellations, closures and replacement buses at the stops, and the scenarios of the layout: timelines of disruptions for an exercise.",
   },
 ];
+/** Pitch of the flyover's camera when a scenario shows its place (from above at an angle). */
+const PLACE_PITCH = ARail.toRad(48);
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
@@ -58,8 +63,10 @@ export class App {
     this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
     /** The cases of Interaction (cases.js), in the page's order. @type {import("./cases.js").Case[]} */
     this.cases = [];
-    /** What Interaction shows: a case's id, or "modules". */
-    this.activeCase = "modules";
+    /** What Interaction shows: a case's id, or the list of scenarios ("scenarios"). */
+    this.activeCase = page.defaultCase ?? LIST;
+    /** How much of what the app draws is shown over the camera image (0…1; the introduction fades it). */
+    this.fade = 1;
     this.canvas = $("#stage");
     this.ctx = this.canvas.getContext("2d");
     this.proc = document.createElement("canvas");
@@ -119,7 +126,7 @@ export class App {
     this.cases = this.page.cases.map((C) => new C(this));
     this.interaction = new Interaction(this);
     const kept = storage.get(this.key("case"));
-    if (this.caseById(kept)) this.activeCase = kept;
+    if (kept === LIST || this.caseFor(kept)) this.activeCase = kept === LIST ? LIST : this.caseFor(kept).id;
     this.inspector = new Inspector(this);
     /** The photo tour on the stage (the app), or null (the game page). */
     this.tourNav = this.page.tour && $("#tour") ? new TourNav(this, this.page.tour) : null;
@@ -152,7 +159,7 @@ export class App {
         else toast(`This layout has no scenario “${scenario}” (see Interaction → Disruptions).`, 7000);
       }, 500);
     }
-    const tab = linkedTab || example?.tab || "";
+    const tab = linkedTab || example?.tab || this.page.start || "";
     // a link to a case of a module of the app (Build, Disruptions) switches it on
     const linked = this.caseFor(tab)?.constructor.appModule;
     if (linked) this.setAppModule(linked, true);
@@ -365,7 +372,8 @@ export class App {
 
   /**
    * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
-   * or a case of Interaction: its id, a former tab name (build, terminal, ops, …), or "modules".
+   * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
+   * list of scenarios ("scenarios"). The case shown until then stops.
    */
   selectTab(name) {
     if (TAB_VIEWS[name]) {
@@ -374,10 +382,12 @@ export class App {
       name = TAB_VIEWS[name][0];
     }
     const c = this.caseFor(name);
-    if (c || name === "modules") {
-      const id = c?.id ?? "modules";
-      if (c?.side) this.interaction.last.set(c.side, id);
-      if (id !== this.activeCase) this._scrollPanelToTop();
+    if (c || name === LIST) {
+      const id = c?.id ?? LIST;
+      if (id !== this.activeCase) {
+        this.caseById(this.activeCase)?.stop();
+        this._scrollPanelToTop();
+      }
       this.activeCase = id;
       storage.set(this.key("case"), id);
       name = "interaction";
@@ -395,6 +405,38 @@ export class App {
     this.renderPanel(name);
     // Settings is linked by its view (#view, #simulate, #control), Interaction by its case (#terminal, #modules)
     history.replaceState(null, "", `${location.pathname}${location.search}#${name === "settings" ? this.panels.settingsView : name === "interaction" ? this.activeCase : name}`);
+  }
+
+  /**
+   * Start a scenario (a case of Interaction): it is shown, what it needs is switched on, its task
+   * starts and the stage shows its view; started already, it starts again. From the list, its name
+   * takes the keyboard focus.
+   * @returns {Promise<boolean>} whether it started
+   */
+  async startCase(name) {
+    const c = this.caseFor(name);
+    if (!c) return false;
+    const fromList = this.activeCase !== c.id || this.activeTab !== "interaction";
+    this.selectTab(c.id);
+    if (c.started) c.stop();
+    const ok = await c.start();
+    if (this.activeTab === "interaction" && this.activeCase === c.id) {
+      this.renderPanel("interaction");
+      if (fromList) $("#scenarioName")?.focus();
+    }
+    return ok;
+  }
+
+  /**
+   * Show a place of the layout in the flyover (a scenario's view): these bounds (layout mm; null:
+   * the whole layout), from above at an angle.
+   * @param {number[] | null} bounds
+   */
+  showPlace(bounds) {
+    const fly = this.flyover, c = this.canvas;
+    if (!fly.active) fly.enter();
+    fly.following = null;
+    fly.move((k) => k.set({ pitch: PLACE_PITCH }).fit(bounds ?? fly.sceneBounds(), c.width / Math.max(1, c.height), 0.08), 900);
   }
 
   /** Show a chapter or a case after an action elsewhere (e.g. a terminal added): its heading takes the keyboard focus. */
@@ -436,12 +478,17 @@ export class App {
     return typeof p?.stepped === "function" ? p : null;
   }
 
-  /** Draw a chapter anew (the one shown). */
+  /**
+   * Draw a chapter anew (the one shown). It stays where it was scrolled to: while it is drawn its
+   * content is gone for a moment, and the panel would jump to its top (selectTab scrolls to the top
+   * before, when another chapter or case is shown).
+   */
   renderPanel(name) {
-    const el = $(`#panel-${name}`);
+    const el = $(`#panel-${name}`), panel = $("#panel"), top = panel.scrollTop;
     if (name === "overview") this.overview.render(el);
     else if (name === "settings") this.panels.renderSettings(el);
     else this.interaction.render(el);
+    if (panel.scrollTop !== top) panel.scrollTop = top;
     this._syncShown();
   }
 
@@ -500,6 +547,12 @@ export class App {
     // the layout is open already: switch the module on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
     return this.openLayout(l.layout, [l.layer]);
+  }
+
+  /** Is the layout of this example (its id) the one open? */
+  exampleOpen(id) {
+    const x = this.page.examples.find((e) => e.id === id);
+    return !!x && !!this.layoutUrl && new URL(x.layout, location.href).href === this.layoutUrl;
   }
 
   /** The photo or clip of an example (shown over the camera image, not in the flyover). */
@@ -1075,8 +1128,7 @@ export class App {
     const wrap = $("#stageWrap");
     const W = this.canvas.width, H = this.canvas.height;
     const maxW = wrap.clientWidth;
-    const narrow = window.innerWidth < 1000;
-    const maxH = document.fullscreenElement ? window.innerHeight : narrow ? window.innerHeight * 0.72 : wrap.clientHeight;
+    const maxH = document.fullscreenElement ? window.innerHeight : pageLayout() === "side" ? wrap.clientHeight : stageMaxHeight();
     const k = Math.min(maxW / W, maxH / H);
     this.canvas.style.width = `${Math.floor(W * k)}px`;
     this.canvas.style.height = `${Math.floor(H * k)}px`;
@@ -1227,7 +1279,7 @@ export class App {
     const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
-      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity, time: this.world.time, labelScale, translate: tr });
+      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr });
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
@@ -1235,6 +1287,7 @@ export class App {
       this.editor.drawOverlay(ctx, view);
       this.terminal?.drawOverlay(ctx, view);
       this.lastView = view;
+      this.interaction.drawFocus(ctx, view);
       this.inspector.drawOverlay(ctx, view);
     }
     if (this.display.markers) this._drawMarkers(ctx);

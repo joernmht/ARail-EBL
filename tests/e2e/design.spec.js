@@ -38,7 +38,7 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       const box = await logo.boundingBox();
       expect(box.height).toBeGreaterThanOrEqual(30);
       expect(await style(page, "body", "fontFamily")).toMatch(/^"Noto Sans"/);
-      expect(await style(page, "#tab-overview", "borderBottomColor")).toBe(expected.accent); // selected tab
+      expect(await style(page, "#tab-interaction", "borderBottomColor")).toBe(expected.accent); // the chapter selected: the app opens with the Introduction
       expect(await page.locator('meta[name="theme-color"]').count()).toBe(2);
     });
 

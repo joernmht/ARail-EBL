@@ -117,7 +117,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, Settings → Simulation → Stops has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default)." },
+      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, Settings → Simulation → Stops has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default); ageYears: years added to the age of the infrastructure's assets in the maintenance story (Interaction → Sandbox, not kept)." },
     ],
     events: {
       emits: [
@@ -164,7 +164,7 @@ export const WORLD = [
     ],
     activities: [{
       id: "module", name: "Switching a module",
-      description: "Interaction → Modules: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
+      description: "Interaction → Sandbox (the module boxes), or the Start of a scenario whose module is off: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
       nodes: [
         ["s", "start"],
         ["d0", "decision", "A module of the app (Build, Disruptions)?"],
@@ -243,7 +243,7 @@ export const WORLD = [
     classes: [
       {
         name: "LayoutObject", file: "web/arail/core/object.js", kind: "class", stereotype: "base class", role: "Base of all objects.",
-        attributes: ["type: string — static, the key in the registry", "params: object[] — static, the inspector's fields", "spec: object — as in the layout file", "id: string", "world: World"],
+        attributes: ["type: string — static, the key in the registry", "params: object[] — static, the inspector's fields", "spec: object — as in the layout file", "id: string", "world: World", "real: boolean — a real thing of the lab, in the camera image (spec.real; tracks, platforms and real tables say so themselves): drawn only for a virtual camera"],
         operations: ["defaults() — static", "computeGeometry()", "set(patch)", "footprint()", "contains(p, toleranceMM)", "pickHeight() — pointed at up to this height (0: on the ground)", "card() — its info card", "translate(dx, dy)", "stopAreas()", "update(dt)", "draw(view)", "toJSON()"],
       },
       { name: "UnknownObject", file: "web/arail/core/object.js", kind: "class", extends: "LayoutObject", role: "A type nobody registered: kept as it is." },
@@ -260,9 +260,9 @@ export const WORLD = [
         name: "BuildingModel", file: "web/arail/objects/building-kit.js", kind: "class", role: "A white model in prototype metres: boxes, windows, entrances; level of detail.",
         operations: ["box(x0, y0, x1, y1, z0, z1, opts)", "window(face, s0, s1, t0, t1, opts)", "entrance(x, y, nx, ny)", "finish(opts)"],
       },
-      { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges; its height and the help of its staff for wheelchair users.", operations: ["stopAreas() — with its height and the staff's help", "height() — above the rails (0.76 m by default)", "card() — number, length, tracks, lines, height"] },
+      { name: "Platform", file: "web/arail/objects/platform.js", kind: "class", extends: "LayoutObject", role: "A platform with its tracks: rail docks on both edges; its height and the help of its staff for wheelchair users.", attributes: ["real: boolean — always: the platform of the lab is in the camera image"], operations: ["stopAreas() — with its height and the staff's help", "height() — above the rails (0.76 m by default)", "card() — number, length, tracks, lines, height"] },
       { name: "Road", file: "web/arail/objects/road.js", kind: "class", extends: "LayoutObject", role: "A street or footpath of the road network.", operations: ["roadInfo()"] },
-      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own; a section with its railway systems.", operations: ["at(offsetMM)", "walkBarrier()", "card() — also its systems, its length in the prototype, gradient, curve and rails", "draw(view) — the track, a band by its system (View → Colour the tracks by), the track ahead of a train whose card is open"] },
+      { name: "Track", file: "web/arail/objects/track.js", kind: "class", extends: "LayoutObject", role: "The centre line of a real (or virtual) track: train positions by track and offset; people do not cross it on their own; a section with its railway systems.", attributes: ["real: boolean — unless spec.virtual"], operations: ["at(offsetMM)", "walkBarrier()", "card() — also its systems, its length in the prototype, gradient, curve and rails", "draw(view) — the track, a band by its system (View → Colour the tracks by), the track ahead of a train whose card is open"] },
       { name: "BusStop", file: "web/arail/objects/bus-stop.js", kind: "class", extends: "LayoutObject", role: "A bus stop by the street: managed bus docks; its kerb height.", operations: ["stopAreas() — with the kerb height", "noParking(road, side) — the stop and 15 m on each side", "card() — street, lines, kerb height"] },
       { name: "House", file: "web/arail/objects/houses.js", kind: "class", extends: "BuildingBase", role: "One of the house types (also Plattenbau, office, school …)." },
     ],
@@ -457,7 +457,7 @@ export const WORLD = [
         attributes: ["CROSSING_NORMS — clearances 4.70 m (street) and 5.70 m (electrified railway, 4.90 m without), decks 1.0 and 1.5 m, gradients 8 % (with trams and on footpaths 6 %) and 12.5 ‰"],
         operations: ["streetGradient(info) — the steepest a street climbs", "spread(S, z, g, dir) — heights spread at most at gradient g", "hull(S, z, base, dir) — straight from where it stands on the ground to where it stands again", "deck(road, pts, cum, S, z, ground, half)", "deckHeight(d, x, y)", "interpolate(X, Y, v)"],
       },
-      { name: "Tabletop", file: "web/arail/objects/tabletop.js", kind: "class", extends: "LayoutObject", role: "A table module at its level: a real table or a virtual extension.", operations: ["groundLevel() — the height of its top above the track level", "card() — kind, size, level", "draw(view) — its top at its level, its edges down to the module beside it or its thickness"] },
+      { name: "Tabletop", file: "web/arail/objects/tabletop.js", kind: "class", extends: "LayoutObject", role: "A table module at its level: a real table or a virtual extension.", attributes: ["physical: boolean — kind physical, a real table", "real: boolean — a real table"], operations: ["groundLevel() — the height of its top above the track level", "card() — kind, size, level", "draw(view) — its top at its level, its edges down to the module beside it or its thickness"] },
     ],
     relations: [
       { from: "Elevation", to: "Tabletop", kind: "uses", label: "groundLevel()" },

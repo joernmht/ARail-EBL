@@ -4,7 +4,7 @@
 // the spare unit to the depot, no timetable train where the story's trains are, and the game page
 // keeping its Operations game.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase } from "./ui.js";
+import { caseReady, expectCase, openCase } from "./ui.js";
 
 const STORY = "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops";
 
@@ -33,7 +33,7 @@ test("Railway undertaking → Disruption switches on the module Breakdown of Bf 
   await expect(on).toHaveText("Switch on “Breakdown”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "ops-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#case-evu-disruption")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "evu-disruption");
   await expect(page.locator("#casePanel h2").first()).toHaveText("A breakdown at Bf Neustadt");
   await expect(title(page)).toHaveText("RB 31 to Talsee boards at track G3");
   await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 10");
@@ -51,7 +51,7 @@ test("Railway undertaking → Disruption switches on the module Breakdown of Bf 
 
 test("the operations story: Next and Back, the platform's message, the list of steps, a clicker, Start again", async ({ page }) => {
   const errors = await open(page, STORY);
-  await expect(page.locator("#case-evu-disruption")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "evu-disruption");
   await expect(title(page)).toHaveText("RB 31 to Talsee boards at track G3");
   await expect(page.locator("#opsStoryBack")).toBeDisabled();
   // both tracks of platform 2 held for the story's trains, quietly: no disruption in the HUD

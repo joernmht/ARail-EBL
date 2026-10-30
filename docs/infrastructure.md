@@ -14,7 +14,8 @@ The infrastructure comes in two forms:
 of the lab survey of 9 October 2026) with its module **Infrastructure**: the exit signals N1–N3 of the
 electronic interlocking at the masts on the platforms, the displays, the interlocking building
 (ESTW Neustadt) and a maintenance base on a table module at the end of Bahnhofstraße. The
-**Infrastructure** tab tells the story in twelve steps:
+scenario **A signal fails** (Interaction, pill Infrastructure; its Start switches the module on)
+tells the story in twelve steps:
 
 | Step | What happens on the layout |
 | --- | --- |
@@ -55,6 +56,11 @@ The signal names in the layout (N1–N3) and their years are invented for the st
 the interlocking building. The repair van needs streets from the maintenance base to the station; the
 construction train needs a track of at least about 60 m. The track closure is a disruption of its own
 (see [Disruptions](disruptions-and-scenarios.md)); the layer's scenario *Track G2 closed* starts one.
+
+**How the assets age.** The app's **Sandbox** (Interaction) shows the station years ahead: its slider
+*Infrastructure aging* adds up to 50 years to the story's year (the world setting `ageYears`, not kept
+in the layout), so the rings turn from Türkis to Rot as the assets age without renewals, and the
+Overview's condition of the assets follows. The story's texts then speak of that year too.
 
 ## The asset management game
 
@@ -105,7 +111,7 @@ a fraction of a second).
 
 ## The example
 
-The module **Infrastructure** of the lab example Beta 0.1 on the game page (Interaction → Modules, or
+The module **Infrastructure** of the lab example Beta 0.1 on the game page (Interaction → Sandbox, or
 `game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
