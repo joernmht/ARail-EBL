@@ -149,7 +149,7 @@ export const PACKAGES = [
     id: "plan", name: "plan", group: "framework", path: "web/arail/plan",
     summary: "The infrastructure as rail-infra/1 data (the exchange format shared with the EBL's digital twin), drawn as a plan sheet (SVG at a scale, frame, title block) and as DXF.",
     files: ["web/arail/plan/infra.js", "web/arail/plan/drawing.js", "web/arail/plan/dxf.js"],
-    uses: ["core-world", "core-drawing"],
+    uses: ["core-world", "core-drawing", "objects", "infra"],
   },
   {
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,

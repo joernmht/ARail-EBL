@@ -2,11 +2,11 @@
 // twin writes its track plan and its hall plan as such), drawn as a plan sheet (arail/plan/drawing.js)
 // to print at its true size, or to download as SVG, DXF or rail-infra data. `?layout=` opens a
 // layout, `?src=` a layout or rail-infra file by its URL (e.g. the twin's /api/infra), `?paper=`,
-// `?scale=` and `?sheet=` choose the sheet.
+// `?scale=` (1:n, or mm per lane for a schematic plan) and `?sheet=` choose the sheet.
 import { composeLayout, normalizeLayers } from "../arail/core/layers.js";
-import { DRAWING_LAYERS, LANE_SCALES, PAPERS, SCALES, drawSheet } from "../arail/plan/drawing.js";
+import { DRAWING_LAYERS, LANE_SCALES, MAX_SHEETS, PAPERS, SCALES, drawSheet, fitScale, sheetLayout } from "../arail/plan/drawing.js";
 import { toDXF } from "../arail/plan/dxf.js";
-import { INFRA_FORMAT, layoutToInfra, infraProblems } from "../arail/plan/infra.js";
+import { INFRA_FORMAT, cleanInfra, infraBounds, infraProblems, layoutToInfra } from "../arail/plan/infra.js";
 import { chooseLanguage, i18n, t, tr, translateDocument } from "../app/i18n.js";
 
 const $ = (s) => document.querySelector(s);
@@ -51,14 +51,29 @@ function fillPaper() {
   s.value = PAPERS[params.get("paper")] ? params.get("paper") : "A3";
 }
 
-/** The scales that suit the frame: 1:n for mm, mm per lane for a schematic plan. */
+/** The frame's unit of the document shown: "mm" or "lane". */
+const unitOf = (doc) => (doc?.frame?.unit === "lane" ? "lane" : "mm");
+/** The ?scale= of the address, for the first document only. */
+let scaleParam = params.get("scale");
+
+/**
+ * The scales that suit the frame: 1:n for mm, mm per lane for a schematic plan (the values carry
+ * the unit, so a scale is never taken over from a plan in the other unit). A scale that needs more
+ * than MAX_SHEETS sheets on the paper chosen is greyed out.
+ */
 function fillScales() {
-  const s = $("#scale"), old = s.value || params.get("scale") || "auto";
+  const s = $("#scale"), unit = unitOf(state.doc);
+  const old = scaleParam ? `${unit}:${scaleParam}` : s.value || "auto";
+  scaleParam = null;
   s.replaceChildren();
   option(s, "auto", tr("Auto"));
-  if (state.doc?.frame?.unit === "lane") for (const v of LANE_SCALES) option(s, String(v), t("{mm} mm per lane", { mm: v }));
-  else for (const v of SCALES) option(s, String(v), `1:${v}`);
-  s.value = [...s.options].some((o) => o.value === old) ? old : "auto";
+  const bounds = infraBounds(cleanInfra(state.doc)) || [0, 0, 1000, 1000], layout = sheetLayout($("#paper").value);
+  for (const v of unit === "lane" ? LANE_SCALES : SCALES) {
+    const o = option(s, `${unit}:${v}`, unit === "lane" ? t("{mm} mm per lane", { mm: v }) : `1:${v}`);
+    const { cols, rows } = fitScale(bounds, layout, unit, v);
+    o.disabled = cols * rows > MAX_SHEETS;
+  }
+  s.value = [...s.options].some((o) => o.value === old && !o.disabled) ? old : "auto";
 }
 
 function fillLayers() {
@@ -114,12 +129,15 @@ function convert() {
     const layers = (Array.isArray(f.layers) ? f.layers : []).map((l) => ({ ...l, enabled: state.modules.has(l.id) }));
     state.doc = layoutToInfra(composeLayout({ ...f, layers }).layout, { file: state.name, date: new Date().toISOString().slice(0, 10) });
   }
-  const problems = infraProblems(state.doc);
+  // a file with mistakes is drawn as far as it can be, and its problems are shown
+  const problems = infraProblems(state.doc), clean = cleanInfra(state.doc);
+  const unplaced = Number(state.doc.source?.unplaced) || 0;
   const st = $("#status");
   st.classList.toggle("bad", problems.length > 0);
   st.textContent = problems.length
     ? t("{n} problems in the data, e.g.: {first}", { n: problems.length, first: problems[0] })
-    : t("{tracks} tracks, {elements} elements, {platforms} platforms", { tracks: state.doc.tracks?.length ?? 0, elements: state.doc.elements?.length ?? 0, platforms: state.doc.platforms?.length ?? 0 });
+    : t("{tracks} tracks, {elements} elements, {platforms} platforms", { tracks: clean.tracks.length, elements: clean.elements.length, platforms: clean.platforms.length });
+  if (unplaced) st.textContent += ` ${unplaced === 1 ? tr("Not on the plan: 1 object whose marker is not in the marker map (a moving marker).") : t("Not on the plan: {n} objects whose markers are not in the marker map (moving markers).", { n: unplaced })}`;
   fillScales();
 }
 
@@ -156,10 +174,14 @@ function titleOverrides() {
   return out;
 }
 
+/** A number in the language shown, with so many digits after the point if given. */
+const number = (v, digits) => i18n.number(v, digits == null ? { maximumFractionDigits: 2, useGrouping: false } : { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false });
+
 function draw() {
   if (!state.doc) return;
-  const scale = $("#scale").value === "auto" ? "auto" : Number($("#scale").value);
-  const r = drawSheet(state.doc, { paper: $("#paper").value, scale, sheet: state.sheet, layers: state.layers, title: titleOverrides(), tr, date: new Date().toISOString().slice(0, 10) });
+  const [unit, value] = $("#scale").value.split(":");
+  const scale = unit === unitOf(state.doc) ? Number(value) : "auto";
+  const r = drawSheet(state.doc, { paper: $("#paper").value, scale, sheet: state.sheet, layers: state.layers, title: titleOverrides(), tr, number, date: new Date().toISOString().slice(0, 10) });
   state.result = r;
   state.sheet = r.sheet;
   const box = $("#sheet");
@@ -215,7 +237,12 @@ $("#file").addEventListener("change", async () => {
     $("#status").textContent = t("Could not load {name}: {error}", { name: f.name, error: err.message });
   }
 });
-for (const id of ["#paper", "#scale"]) $(id).addEventListener("change", () => {
+$("#paper").addEventListener("change", () => {
+  state.sheet = 1;
+  fillScales();
+  draw();
+});
+$("#scale").addEventListener("change", () => {
   state.sheet = 1;
   draw();
 });

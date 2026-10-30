@@ -10,7 +10,7 @@
  * @module arail/plan/drawing
  */
 import { CD, FONT, grey } from "../core/colors.js";
-import { ELEMENT_TYPES, infraBounds } from "./infra.js";
+import { ELEMENT_TYPES, cleanInfra, infraBounds } from "./infra.js";
 
 /** Trimmed ISO sheets, landscape: width and height in mm. */
 export const PAPERS = { A4: [297, 210], A3: [420, 297], A2: [594, 420], A1: [841, 594], A0: [1189, 841] };
@@ -23,6 +23,15 @@ export const LANE_SCALES = [2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20];
 
 /** Paper mm per lane of a schematic plan that needs more than one sheet, unless chosen. */
 export const LANE_AUTO_MM = 4;
+
+/** Neighbouring sheets overlap by this much (paper mm); the match line runs in the middle of it. */
+export const OVERLAP_MM = 10;
+
+/** Room kept free round the plan at the scale chosen automatically (paper mm), for symbols and names at its edge. */
+export const FIT_PAD_MM = 4;
+
+/** At most this many sheets: a scale that would need more is not offered (the plan documents grey it out). */
+export const MAX_SHEETS = 100;
 
 /** The layers of the drawing, which can be switched on and off. */
 export const DRAWING_LAYERS = [
@@ -44,8 +53,11 @@ const MARGIN = { left: 20, right: 10, top: 10, bottom: 10 };
 const TITLE_W = 180, TITLE_H = 40, PAD = 4;
 
 const f2 = (v) => (Math.round(v * 100) / 100).toString();
-const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// soft hyphens (from the translations) do nothing in SVG text, but some programs draw them
+const esc = (s) => String(s ?? "").replace(/\u00ad/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const deg = (a) => (a * 180) / Math.PI;
+/** A text without soft hyphens. */
+const plain = (s) => String(s ?? "").replace(/\u00ad/g, "");
 
 /**
  * Where the parts of a sheet are on the paper (mm): the frame, the title block, the legend and the
@@ -63,8 +75,9 @@ export function sheetLayout(paper = "A3") {
 
 /**
  * The scale of the plan and how many sheets it needs: `k` is paper mm per unit of the frame.
- * "auto" chooses the largest standard scale at which the plan fits one sheet; a schematic plan
- * that would be too small for that keeps its lanes readable and is cut into sheets along x.
+ * "auto" chooses the largest standard scale at which the plan, with {@link FIT_PAD_MM} round it,
+ * fits one sheet; a schematic plan that would be too small for that keeps its lanes readable and
+ * is cut into sheets along x. Neighbouring sheets overlap by {@link OVERLAP_MM}.
  * @param {number[]} bounds [x0, y0, x1, y1] in the frame's unit
  * @param {ReturnType<typeof sheetLayout>} layout
  * @param {string} unit "mm" or "lane"
@@ -76,16 +89,18 @@ export function fitScale(bounds, layout, unit, scale = "auto") {
   const w = Math.max(1e-9, bounds[2] - bounds[0]), h = Math.max(1e-9, bounds[3] - bounds[1]);
   let s = Number(scale);
   if (!(s > 0)) {
-    const fit = Math.min(vw / w, vh / h); // paper mm per unit at which it just fits
+    const fit = Math.min((vw - 2 * FIT_PAD_MM) / w, (vh - 2 * FIT_PAD_MM) / h); // paper mm per unit at which it just fits
     if (unit === "lane") {
       const fits = LANE_SCALES.filter((x) => x <= fit);
       // readable lanes: never below the smallest; too long for one sheet: cut into sheets along x
       // at LANE_AUTO_MM, or less where the height would not fit
-      s = fits.length ? fits[fits.length - 1] : LANE_SCALES.filter((x) => x <= Math.min(LANE_AUTO_MM, vh / h)).pop() ?? LANE_SCALES[0];
+      s = fits.length ? fits[fits.length - 1] : LANE_SCALES.filter((x) => x <= Math.min(LANE_AUTO_MM, (vh - 2 * FIT_PAD_MM) / h)).pop() ?? LANE_SCALES[0];
     } else s = SCALES.find((n) => 1 / n <= fit) ?? SCALES[SCALES.length - 1];
   }
   const k = unit === "lane" ? s : 1 / s;
-  return { k, scale: s, cols: Math.max(1, Math.ceil((w * k) / vw - 1e-9)), rows: Math.max(1, Math.ceil((h * k) / vh - 1e-9)) };
+  // sheets along a side: the first holds v, each further one v − OVERLAP_MM more
+  const along = (len, v) => (len <= v + 1e-9 ? 1 : Math.ceil((len - OVERLAP_MM) / (v - OVERLAP_MM) - 1e-9));
+  return { k, scale: s, cols: along(w * k + 2 * FIT_PAD_MM, vw), rows: along(h * k + 2 * FIT_PAD_MM, vh) };
 }
 
 /** A nice step (1, 2 or 5 × 10^n) of at least `min`. */
@@ -109,20 +124,25 @@ class Clearance {
 }
 
 /** The approximate width of a text in mm (Noto Sans: about 0.56 of its height per letter). */
-const textWidth = (s, size) => String(s).length * size * 0.56;
+const textWidth = (s, size) => plain(s).length * size * 0.56;
 
 /**
- * One sheet of the plan as SVG.
+ * One sheet of the plan as SVG. A document with mistakes is drawn as far as it can be (see
+ * `cleanInfra`); only what lies on the sheet is in it.
  * @param {object} doc a `rail-infra/1` document
  * @param {{paper?: string, scale?: number|"auto", sheet?: number, layers?: Iterable<string>,
- *   title?: Record<string, string>, tr?: (s: string) => string, date?: string}} [options]
+ *   title?: Record<string, string>, tr?: (s: string) => string, number?: (v: number, digits?: number) => string,
+ *   date?: string}} [options]
  *   `sheet` counts from 1; `layers` the ids of {@link DRAWING_LAYERS} to draw (all by default);
  *   `title` fields of the title block over those from the document (owner, title, subtitle, type,
- *   status, number, revision, author); `tr` translates the sheet's own texts
+ *   status, number, revision, author); `tr` translates the sheet's own texts, `number` writes a
+ *   number in the language shown (with so many digits after the point, if given)
  * @returns {{svg: string, sheet: number, sheets: number, scale: number, k: number, scaleText: string, paper: string, legend: string[]}}
  */
 export function drawSheet(doc, options = {}) {
   const tr = options.tr || ((s) => s);
+  const num = options.number || ((v, digits) => (digits == null ? f2(v) : v.toFixed(digits)));
+  doc = cleanInfra(doc);
   const layout = sheetLayout(options.paper);
   const unit = doc.frame?.unit === "lane" ? "lane" : "mm";
   const on = new Set(options.layers ?? DRAWING_LAYERS.map((l) => l.id));
@@ -131,11 +151,21 @@ export function drawSheet(doc, options = {}) {
   const { k, cols, rows } = fit;
   const sheets = cols * rows, sheet = Math.min(sheets, Math.max(1, Math.round(options.sheet || 1)));
   const [vx0, vy0, vx1, vy1] = layout.viewport, vw = vx1 - vx0, vh = vy1 - vy0;
-  // the window of this sheet in the frame: the plan centred on all the sheets together
+  // the window of this sheet in the frame: the plan centred on all the sheets together, which overlap
   const col = (sheet - 1) % cols, row = Math.floor((sheet - 1) / cols);
   const cx = (bounds[0] + bounds[2]) / 2, cy = (bounds[1] + bounds[3]) / 2;
-  const wx0 = cx - (cols * vw) / k / 2 + (col * vw) / k, wy1 = cy + (rows * vh) / k / 2 - (row * vh) / k;
+  const totalW = cols * vw - (cols - 1) * OVERLAP_MM, totalH = rows * vh - (rows - 1) * OVERLAP_MM;
+  const wx0 = cx - totalW / k / 2 + (col * (vw - OVERLAP_MM)) / k, wy1 = cy + totalH / k / 2 - (row * (vh - OVERLAP_MM)) / k;
   const P = (p) => [vx0 + (p[0] - wx0) * k, vy0 + (wy1 - p[1]) * k];
+  // what lies on the sheet (with 5 mm round it): the rest is left out of its SVG
+  const m = 5 / k, win = [wx0 - m, wy1 - vh / k - m, wx0 + vw / k + m, wy1 + m];
+  const onSheet = (pts) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+    }
+    return x0 <= win[2] && x1 >= win[0] && y0 <= win[3] && y1 >= win[1];
+  };
   const scaleText = unit === "lane" ? tr("Schematic, not to scale") : `1:${fit.scale}`;
   const clear = new Clearance();
   const used = new Set();
@@ -166,39 +196,40 @@ export function drawSheet(doc, options = {}) {
     const gx0 = Math.ceil(wx0 / step) * step, gy0 = Math.ceil((wy1 - vh / k) / step) * step;
     for (let x = gx0; x <= wx0 + vw / k; x += step) add(`<path d="M${f2(P([x, 0])[0])} ${vy0}V${vy1}"/>`);
     for (let y = gy0; y <= wy1; y += step) add(`<path d="M${vx0} ${f2(P([0, y])[1])}H${vx1}"/>`);
-    add(`</g><g font-size="1.8" fill="${grey(0.4)}">`);
-    for (let x = gx0; x <= wx0 + vw / k; x += step) add(text(P([x, 0])[0] + 0.6, vy1 - 0.8, f2(x)));
-    for (let y = gy0; y <= wy1; y += step) add(text(vx0 + 0.8, P([0, y])[1] - 0.6, f2(y)));
+    add(`</g><g fill="${grey(0.4)}">`);
+    for (let x = gx0; x <= wx0 + vw / k; x += step) add(text(P([x, 0])[0] + 0.6, vy1 - 0.8, num(x), 1.8));
+    for (let y = gy0; y <= wy1; y += step) add(text(vx0 + 0.8, P([0, y])[1] - 0.6, num(y), 1.8));
     add(`</g>`);
   }
   if (on.has("areas")) {
-    for (const a of doc.areas || []) {
-      if (!(a.points?.length > 2)) continue;
+    for (const a of doc.areas) {
+      if (!onSheet(a.points)) continue;
       const holes = (a.holes || []).filter((h) => h?.length > 2).map((h) => path(h, true)).join("");
       add(`<path d="${path(a.points, true)}${holes}" fill-rule="evenodd" fill="${a.kind === "room" ? "none" : SHADE}" stroke="${a.virtual ? VIRTUAL : INK}" stroke-width="${LINE_MM.thin}"${a.virtual ? ' stroke-dasharray="3 1.5"' : ""}/>`);
       used.add(a.kind === "room" ? "@room" : "@table");
     }
   }
   if (on.has("platforms")) {
-    for (const p of doc.platforms || []) {
-      if (!(p.points?.length > 2)) continue;
+    for (const p of doc.platforms) {
+      if (!onSheet(p.points)) continue;
       add(`<path d="${path(p.points, true)}" fill="url(#hatch)" stroke="${INK}" stroke-width="${LINE_MM.narrow}"/>`);
       used.add("@platform");
     }
   }
   if (on.has("tracks")) {
-    for (const t of doc.tracks || []) {
-      if (!(t.points?.length > 1)) continue;
+    for (const t of doc.tracks) {
+      if (!onSheet(t.points)) continue;
       const dashed = t.virtual || t.hidden;
       add(`<path d="${path(t.points)}" fill="none" stroke="${dashed ? VIRTUAL : INK}" stroke-width="${t.kind === "link" ? LINE_MM.medium : LINE_MM.wide}"${dashed ? ' stroke-dasharray="2.5 1"' : ""}/>`);
       used.add(dashed ? "@virtual" : "@track");
     }
   }
-  if (on.has("km")) drawKilometres(doc, P, k, add, label, tr, used);
+  if (on.has("km")) drawKilometres(doc, P, k, add, label, num, used, onSheet);
   const names = []; // the elements' names, placed after the more important ones
   if (on.has("elements")) {
-    for (const e of doc.elements || []) {
-      if (e.points?.length > 1) {
+    for (const e of doc.elements) {
+      if (e.points) {
+        if (!onSheet(e.points)) continue;
         const style = e.type === "catenary" ? `stroke-dasharray="4 1 0.5 1"` : e.type === "swing-bridge" ? `stroke-opacity="0.35" stroke-width="2.4"` : `stroke-dasharray="1.5 1"`;
         add(`<path d="${path(e.points)}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.thin}" ${style}/>`);
         used.add(e.type);
@@ -219,8 +250,9 @@ export function drawSheet(doc, options = {}) {
     }
   }
   if (on.has("names")) {
-    for (const o of doc.operating_points || []) {
+    for (const o of doc.operating_points) {
       const at = o.at || (o.box ? [(o.box[0] + o.box[2]) / 2, (o.box[1] + o.box[3]) / 2] : null);
+      if (!onSheet(o.box ? [[o.box[0], o.box[1]], [o.box[2], o.box[3]]] : at ? [at] : [])) continue;
       if (o.box) {
         const [a, b] = [P([o.box[0], o.box[3]]), P([o.box[2], o.box[1]])];
         add(`<rect x="${f2(a[0])}" y="${f2(a[1])}" width="${f2(b[0] - a[0])}" height="${f2(b[1] - a[1])}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.thin}" stroke-dasharray="6 1.5 1 1.5"/>`);
@@ -231,12 +263,13 @@ export function drawSheet(doc, options = {}) {
         label(x, y - 1.6, o.id && o.name && o.id !== o.name ? `${o.name} (${o.id})` : o.name || o.id, 3.5, { anchor: "middle", weight: "700" });
       }
     }
-    for (const l of doc.labels || []) {
+    for (const l of doc.labels) {
+      if (!onSheet([l.at])) continue;
       const [x, y] = P(l.at);
       label(x, y, l.text, 2.5, { anchor: "middle", weight: "600" });
     }
-    for (const t of doc.tracks || []) {
-      if (t.kind === "link" || !t.name || !(t.points?.length > 1)) continue;
+    for (const t of doc.tracks) {
+      if (t.kind === "link" || !t.name || !onSheet(t.points)) continue;
       const [a, b] = longestSegment(t.points);
       const pa = P(a), pb = P(b), len = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
       if (len < textWidth(t.name, 2) + 4) continue;
@@ -251,23 +284,38 @@ export function drawSheet(doc, options = {}) {
     for (const [x, y, n] of names) label(x + 1.6, y - 1.6, n, 1.8) || label(x + 1.6, y + 3.2, n, 1.8);
   }
   add(`</g>`);
-  // where the plan goes on: the neighbouring sheets at the viewport's edges
+  // where the plan goes on: a match line in the middle of the overlap with each neighbouring sheet
   if (sheets > 1) {
-    add(`<g font-size="2.2" fill="${INK}">`);
     const next = (dc, dr) => (col + dc >= 0 && col + dc < cols && row + dr >= 0 && row + dr < rows ? row * cols + col + 1 + dr * cols + dc : 0);
     const cont = (n) => tr("continued on sheet {n}").replace("{n}", n);
-    if (next(-1, 0)) add(text(vx0 + 1, (vy0 + vy1) / 2, `← ${cont(next(-1, 0))}`, 2.2));
-    if (next(1, 0)) add(text(vx1 - 1, (vy0 + vy1) / 2, `${cont(next(1, 0))} →`, 2.2, ` text-anchor="end"`));
-    if (next(0, -1)) add(text((vx0 + vx1) / 2, vy0 + 3, `↑ ${cont(next(0, -1))}`, 2.2, ` text-anchor="middle"`));
-    if (next(0, 1)) add(text((vx0 + vx1) / 2, vy1 - 1, `↓ ${cont(next(0, 1))}`, 2.2, ` text-anchor="middle"`));
-    add(`</g>`);
+    const half = OVERLAP_MM / 2, my = (vy0 + vy1) / 2, mx = (vx0 + vx1) / 2;
+    const lines = [], texts = [];
+    if (next(-1, 0)) {
+      lines.push(`M${f2(vx0 + half)} ${vy0}V${vy1}`);
+      texts.push(text(vx0 + half + 1.2, my, `← ${cont(next(-1, 0))}`, 2.2));
+    }
+    if (next(1, 0)) {
+      lines.push(`M${f2(vx1 - half)} ${vy0}V${vy1}`);
+      texts.push(text(vx1 - half - 1.2, my, `${cont(next(1, 0))} →`, 2.2, ` text-anchor="end"`));
+    }
+    if (next(0, -1)) {
+      lines.push(`M${vx0} ${f2(vy0 + half)}H${vx1}`);
+      texts.push(text(mx, vy0 + half + 3, `↑ ${cont(next(0, -1))}`, 2.2, ` text-anchor="middle"`));
+    }
+    if (next(0, 1)) {
+      lines.push(`M${vx0} ${f2(vy1 - half)}H${vx1}`);
+      texts.push(text(mx, vy1 - half - 1.2, `↓ ${cont(next(0, 1))}`, 2.2, ` text-anchor="middle"`));
+    }
+    add(`<path d="${lines.join("")}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.wide}" stroke-dasharray="8 1.5 1 1.5"/>`);
+    add(`<g font-size="2.2" fill="${INK}" font-weight="600">${texts.join("")}</g>`);
+    used.add("@match");
   }
 
   // ---------------------------------------------------------------- the sheet: frame, zones, title block, legend
   add(sheetFrame(layout));
   const legend = legendEntries(used, tr);
   add(drawLegend(layout, legend, tr));
-  add(scaleBar(layout, unit, k, doc, tr));
+  add(scaleBar(layout, unit, k, doc, tr, num));
   const t = { ...titleFields(doc, tr, options.date), ...(options.title || {}) };
   add(titleBlock(layout, t, { scaleText, sheet, sheets, frame: frameText(doc, tr) }, tr));
   add(`</svg>`);
@@ -290,8 +338,8 @@ function longestSegment(pts) {
 }
 
 /** Kilometre ticks along the tracks that know their kilometres (`kms`, one per point), labelled where there is room. */
-function drawKilometres(doc, P, k, add, label, tr, used) {
-  const tracks = (doc.tracks || []).filter((t) => t.kind !== "link" && Array.isArray(t.kms) && t.kms.length === t.points?.length);
+function drawKilometres(doc, P, k, add, label, num, used, onSheet) {
+  const tracks = doc.tracks.filter((t) => t.kind !== "link" && t.kms && onSheet(t.points));
   if (!tracks.length) return;
   // paper mm per km, from the tracks themselves
   let mm = 0, km = 0;
@@ -311,12 +359,14 @@ function drawKilometres(doc, P, k, add, label, tr, used) {
       if (k0 === k1) continue;
       const lo = Math.min(k0, k1), hi = Math.max(k0, k1);
       for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) {
+        // a tick at a point between two segments: drawn with the next one
+        if (i < t.points.length - 1 && Math.abs(v - k1) < 1e-9) continue;
         const f = (v - k0) / (k1 - k0);
         const p = P([t.points[i - 1][0] + (t.points[i][0] - t.points[i - 1][0]) * f, t.points[i - 1][1] + (t.points[i][1] - t.points[i - 1][1]) * f]);
         const a = P(t.points[i - 1]), b = P(t.points[i]), len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const n = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len];
         add(`<path d="M${f2(p[0] - n[0])} ${f2(p[1] - n[1])}L${f2(p[0] + n[0])} ${f2(p[1] + n[1])}"/>`);
-        label(p[0] + 0.5, p[1] + 2.6, v.toFixed(step < 1 ? 1 : 0), 1.6);
+        label(p[0] + 0.5, p[1] + 2.6, num(v, step < 1 ? 1 : 0), 1.6);
         used.add("@km");
       }
     }
@@ -337,8 +387,9 @@ function symbol(type, e, x, y, a, k, doc) {
   const circle = (p, r, fill) => `<circle cx="${f2(p[0])}" cy="${f2(p[1])}" r="${f2(r)}" fill="${fill}" ${sw}/>`;
   switch (type) {
     case "signal": {
+      // the foot reaches from the mast to the track: to the left of a signal on the right of it
       const side = e.side === "left" ? -1 : 1, foot = at(0, 0), top = at(2.6, 0), head = at(3.5, 0);
-      let g = `<path d="${M([at(0, -0.8 * side), at(0, 0.8 * side)])}${M([foot, top])}" fill="none" ${sw}/>`;
+      let g = `<path d="${M([foot, at(0, -1.6 * side)])}${M([foot, top])}" fill="none" ${sw}/>`;
       const kind = e.kind || "main";
       if (kind === "main" || kind === "block") g += circle(head, 0.9, INK);
       if (kind === "block") g += circle(head, 1.4, "none");
@@ -349,7 +400,7 @@ function symbol(type, e, x, y, a, k, doc) {
     }
     case "switch": {
       // the frog side: a filled wedge at the switch's toe, opening to its branch
-      const len = e.length_m && doc.frame?.unit === "mm" ? Math.max(2.5, Math.min(12, ((e.length_m * 1000) / (doc.frame.scale || 87)) * k)) : 3.5;
+      const len = e.length_m > 0 && doc.frame?.unit === "mm" ? Math.max(2.5, Math.min(12, ((e.length_m * 1000) / (doc.frame.scale || 87)) * k)) : 3.5;
       // its branch to the left or the right; not known: both sides
       const tip = e.hand === "right" ? [0, 0.42] : e.hand === "left" ? [-0.42, 0] : [-0.21, 0.21];
       return `<path d="${M([at(0, 0), at(len, len * tip[0]), at(len, len * tip[1])])}Z" fill="${INK}" stroke="none"/>`;
@@ -395,7 +446,7 @@ function symbol(type, e, x, y, a, k, doc) {
 
 /** The legend's entries: what the sheet shows, in a fixed order. */
 function legendEntries(used, tr) {
-  const fixed = [["@track", "Track"], ["@virtual", "Track not on the real layout (virtual, hidden)"], ["@platform", "Platform"], ["@table", "Table module"], ["@room", "Room (outline)"], ["@op", "Operating point (station limits)"], ["@km", "Line kilometre"]];
+  const fixed = [["@match", "Match line between sheets"], ["@track", "Track"], ["@virtual", "Track not on the real layout (virtual, hidden)"], ["@platform", "Platform"], ["@table", "Table module"], ["@room", "Room (outline)"], ["@op", "Operating point (station limits)"], ["@km", "Line kilometre"]];
   const kinds = { main: "Main signal", distant: "Distant signal", combined: "Main signal with distant signal", shunting: "Shunting signal", block: "Block signal" };
   const out = fixed.filter(([id]) => used.has(id)).map(([id, l]) => ({ id, label: tr(l) }));
   for (const [kind, l] of Object.entries(kinds)) if (used.has(`signal:${kind}`)) out.push({ id: `signal:${kind}`, label: tr(l) });
@@ -403,20 +454,37 @@ function legendEntries(used, tr) {
   return out;
 }
 
-/** The legend in the band left of the title block, in as many columns as fit. */
+/** Room kept at the right of the legend band for the scale bar (mm). */
+const SCALE_BAR_W = 48;
+
+/**
+ * The legend in the band left of the title block, in as many columns as fit beside the scale bar;
+ * a label too long for its column is cut short, and when not all entries fit, the last place says
+ * how many are left out.
+ */
 function drawLegend(layout, entries, tr) {
   const [x0, y0, x1, y1] = layout.legend;
   const g = [`<g><path d="M${x0} ${y0}H${x1}V${y1}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.medium}"/>`];
   g.push(`<text x="${x0 + 2}" y="${y0 + 4}" font-size="2.5" font-weight="700">${esc(tr("Legend"))}</text>`);
-  const colW = 64, rowH = 4.6, perCol = Math.max(1, Math.floor((y1 - y0 - 7) / rowH));
-  const room = Math.max(1, Math.floor((x1 - x0 - 46) / colW)); // keep room for the scale bar at the right
-  const shown = entries.slice(0, room * perCol);
+  const avail = x1 - x0 - 3 - SCALE_BAR_W, rowH = 4.6, perCol = Math.max(1, Math.floor((y1 - y0 - 7) / rowH));
+  const cols = Math.max(1, Math.floor(avail / 64)), colW = avail / cols;
+  const fit = (text) => {
+    const s = plain(text), max = Math.floor((colW - 11) / (2 * 0.56));
+    return s.length > max ? `${s.slice(0, Math.max(1, max - 1)).trimEnd()}…` : s;
+  };
+  const room = cols * perCol;
+  const shown = entries.length > room ? entries.slice(0, room - 1) : entries;
+  const place = (i) => [x0 + 3 + Math.floor(i / perCol) * colW, y0 + 9 + (i % perCol) * rowH];
   shown.forEach((en, i) => {
-    const cx = x0 + 3 + Math.floor(i / perCol) * colW, cy = y0 + 9 + (i % perCol) * rowH;
+    const [cx, cy] = place(i);
     g.push(legendSymbol(en.id, cx + 4, cy - 0.9));
-    g.push(`<text x="${f2(cx + 10)}" y="${f2(cy)}" font-size="2">${esc(en.label)}</text>`);
+    g.push(`<text x="${f2(cx + 10)}" y="${f2(cy)}" font-size="2">${esc(fit(en.label))}</text>`);
   });
-  if (shown.length < entries.length) g.push(`<text x="${x0 + 3}" y="${y1 - 1.5}" font-size="1.8">${esc(tr("{n} more symbols").replace("{n}", entries.length - shown.length))}</text>`);
+  const more = entries.length - shown.length;
+  if (more) {
+    const [cx, cy] = place(shown.length);
+    g.push(`<text x="${f2(cx + 10)}" y="${f2(cy)}" font-size="2" font-style="italic">${esc(fit(more === 1 ? tr("1 more symbol") : tr("{n} more symbols").replace("{n}", more)))}</text>`);
+  }
   g.push(`</g>`);
   return g.join("");
 }
@@ -431,6 +499,7 @@ function legendSymbol(id, x, y) {
     case "@table": return `<rect x="${f2(x - 3.5)}" y="${f2(y - 1.2)}" width="7" height="2.4" fill="${SHADE}" stroke="${INK}" stroke-width="${LINE_MM.thin}"/>`;
     case "@room": return `<rect x="${f2(x - 3.5)}" y="${f2(y - 1.2)}" width="7" height="2.4" fill="none" stroke="${INK}" stroke-width="${LINE_MM.thin}"/>`;
     case "@op": return `<rect x="${f2(x - 3.5)}" y="${f2(y - 1.2)}" width="7" height="2.4" fill="none" stroke="${INK}" stroke-width="${LINE_MM.thin}" stroke-dasharray="3 1 0.5 1"/>`;
+    case "@match": return line(`stroke="${INK}" stroke-width="${LINE_MM.wide}" stroke-dasharray="3 0.8 0.5 0.8"`);
     case "@km": return line(`stroke="${INK}" stroke-width="${LINE_MM.wide}"`) + `<path d="M${f2(x)} ${f2(y - 1)}V${f2(y + 1)}" stroke="${INK}" stroke-width="${LINE_MM.thin}"/>`;
     default: {
       const [type, kind] = id.split(":");
@@ -469,15 +538,15 @@ function sheetFrame(layout) {
 }
 
 /** A scale bar at the right of the legend band (mm frames): a nice length in five parts, also in the prototype. */
-function scaleBar(layout, unit, k, doc, tr) {
+function scaleBar(layout, unit, k, doc, tr, num) {
   const [, y0, x1] = layout.legend;
-  const x = x1 - 44, y = y0 + 14;
+  const x = x1 - SCALE_BAR_W + 4, y = y0 + 14;
   if (unit === "lane") {
     const lane = doc.frame?.lane_mm;
     const s = [`<g><text x="${f2(x)}" y="${f2(y - 6)}" font-size="2" font-weight="700">${esc(tr("Scale"))}</text>`];
     s.push(`<text x="${f2(x)}" y="${f2(y - 1.5)}" font-size="2">${esc(tr("Schematic, not to scale"))}</text>`);
-    s.push(`<text x="${f2(x)}" y="${f2(y + 2.5)}" font-size="2">${esc(tr("1 lane = {mm} mm on the sheet").replace("{mm}", f2(k)))}</text>`);
-    if (lane) s.push(`<text x="${f2(x)}" y="${f2(y + 6.5)}" font-size="2">${esc(tr("1 lane = {mm} mm on the layout").replace("{mm}", f2(lane)))}</text>`);
+    s.push(`<text x="${f2(x)}" y="${f2(y + 2.5)}" font-size="2">${esc(tr("1 lane = {mm} mm on the sheet").replace("{mm}", num(k)))}</text>`);
+    if (lane) s.push(`<text x="${f2(x)}" y="${f2(y + 6.5)}" font-size="2">${esc(tr("1 lane = {mm} mm on the layout").replace("{mm}", num(lane)))}</text>`);
     s.push(`</g>`);
     return s.join("");
   }
@@ -485,12 +554,12 @@ function scaleBar(layout, unit, k, doc, tr) {
   const mm = len * k, parts = 5;
   const g = [`<g><text x="${f2(x)}" y="${f2(y - 6)}" font-size="2" font-weight="700">${esc(tr("Scale"))}</text>`];
   for (let i = 0; i < parts; i++) g.push(`<rect x="${f2(x + (i * mm) / parts)}" y="${f2(y - 3.6)}" width="${f2(mm / parts)}" height="1.4" fill="${i % 2 ? PAPER_COLOUR : INK}" stroke="${INK}" stroke-width="${LINE_MM.fine}"/>`);
-  const fmt = (v) => (v >= 1000 ? `${f2(v / 1000)} m` : `${f2(v)} mm`);
+  const fmt = (v) => (v >= 1000 ? `${num(v / 1000)} m` : `${num(v)} mm`);
   g.push(`<text x="${f2(x)}" y="${f2(y + 0.6)}" font-size="1.8">0</text><text x="${f2(x + mm)}" y="${f2(y + 0.6)}" font-size="1.8" text-anchor="middle">${esc(fmt(len))}</text>`);
   const model = Number(doc.frame?.scale);
   if (model > 1) {
     const proto = (len * model) / 1000;
-    g.push(`<text x="${f2(x)}" y="${f2(y + 4.4)}" font-size="1.8">${esc(tr("model scale 1:{n}, {m} m in the prototype").replace("{n}", model).replace("{m}", f2(proto)))}</text>`);
+    g.push(`<text x="${f2(x)}" y="${f2(y + 4.4)}" font-size="1.8">${esc(tr("model scale 1:{n}, {m} m in the prototype").replace("{n}", model).replace("{m}", num(proto)))}</text>`);
   }
   g.push(`</g>`);
   return g.join("");

@@ -49,7 +49,7 @@ ARail's camera image directly.
 | --- | --- |
 | `format` | `"rail-infra/1"` |
 | `name` | the title of the plan |
-| `source` | where it came from: `generator` (`arail`, `ebl_twin`), `owner`, `file`, `date`, and optionally `number` and `revision` (the drawing number and its revision in the title block) |
+| `source` | where it came from: `generator` (`arail`, `ebl_twin`), `owner`, `file`, `date`, and optionally `number` and `revision` (the drawing number and its revision in the title block); `unplaced`: how many objects of the source could not be placed (ARail: objects on markers that are not in the marker map, such as moving markers) |
 | `frame` | the coordinate system of all points: `id`, `unit` (`mm`, or `lane` for a schematic plan: one lane is the distance of two tracks), `scale` (the model scale, 87 for H0, when the unit is model mm), `lane_mm` (what a lane is on the layout, if anything), `note` |
 | `operating_points` | stations, block posts, halts: `id`, `name`, `kind`, `km` ([from, to]), `at` (a point) or `box` ([x0, y0, x1, y1], the station limits), `interlocking` |
 | `tracks` | `id` (unique), `name`, `track` (the name in the control system; pieces of one track share it), `points` (the centre line), `kms` (the line kilometre of each point, if known), `kind` (`link`: a switch connection), `virtual` (not on the real layout), `hidden` (under the table, e.g. the staging yard), `level` |
@@ -80,11 +80,12 @@ windows). Every `id` is unique in the file, across all lists.
 | `swing-bridge` | | Drehbrücke |
 | `system-change` | where traction power or train protection change | Systemwechsel |
 | `interlocking`, `passenger-display`, `gsmr-mast`, `lift`, `maintenance-base` | buildings and equipment | Stellwerk, Zugzielanzeiger, GSM-R-Mast, Aufzug, Instandhaltungsstützpunkt |
-| `catenary`, `cable-route` | linear (`points`) | Oberleitung, Kabeltrasse |
+| `catenary`, `cable-route` | linear (`points`) | Oberleitung, Kabelkanal |
 | `other` | anything else | Sonstiges |
 
 A new type is added in both places: `ELEMENT_TYPES` in `web/arail/plan/infra.js` (with its symbol in
-`drawing.js` and its German label) and `ELEMENT_OF` in the twin's `ebl_twin/infra.py`.
+`drawing.js` and its German label in `web/arail/i18n/de/plan.js`, which the German column above
+follows) and `ELEMENT_OF` in the twin's `ebl_twin/infra.py`.
 
 ## What ARail and the twin write
 
@@ -98,5 +99,8 @@ A new type is added in both places: `ELEMENT_TYPES` in `web/arail/plan/infra.js`
 | operating points | – | stations (with their limits) and block posts | stations, block posts and the S-Bahn's stops |
 
 `infraProblems(doc)` (ARail) and `infra.check(doc)` (twin) check a file by the same rules: the
-format, the frame's unit, unique ids, points that are numbers, element types of the vocabulary, and
-that every `track` an element names is a track of the file.
+format, the frame's unit, lists of objects with unique ids, points and an element's numbers (`km`,
+`heading_deg`, `length_m`, `speed_kmh`) that are numbers, an operating point's `km` as [from, to], `kms` with one number per point, element types of the
+vocabulary, and that every `track` an element names is a track of the file. They never throw,
+whatever the file holds. `cleanInfra(doc)` is what of a file can be drawn: the plan sheet and the DXF
+draw that, so a file with mistakes is drawn as far as it can be.

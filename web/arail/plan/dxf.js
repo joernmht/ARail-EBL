@@ -4,7 +4,7 @@
  * one layer per kind of thing, so a CAD user can switch them, restyle them and draw on.
  * @module arail/plan/dxf
  */
-import { ELEMENT_TYPES } from "./infra.js";
+import { ELEMENT_TYPES, cleanInfra, infraBounds } from "./infra.js";
 
 /** The DXF layers: name, ACI colour (7: black/white), line type. */
 export const DXF_LAYERS = {
@@ -16,25 +16,39 @@ export const DXF_LAYERS = {
 const n = (v) => (Math.round(v * 1000) / 1000).toString();
 
 /**
+ * A text for R12, which knows no UTF-8: the file says it is ANSI_1252 ($DWGCODEPAGE), and every
+ * character beyond ASCII is written as \U+XXXX (AutoCAD, BricsCAD, LibreCAD and ezdxf read it).
+ * Soft hyphens are left out, line breaks become spaces.
+ */
+export function dxfText(s) {
+  let out = "";
+  for (const ch of String(s ?? "").replace(/\u00ad/g, "").replace(/[\r\n]+/g, " ")) {
+    const c = ch.codePointAt(0);
+    out += c < 0x80 ? ch : c > 0xffff ? "?" : `\\U+${c.toString(16).toUpperCase().padStart(4, "0")}`;
+  }
+  return out;
+}
+
+/**
  * The DXF text of a document.
  * @param {object} doc
  * @param {{text_mm?: number}} [options] text height in model mm (by default 1/150 of the plan's width)
  * @returns {string}
  */
 export function toDXF(doc, { text_mm } = {}) {
-  const f = doc.frame?.unit === "lane" ? Number(doc.frame.lane_mm) || 10 : 1;
+  doc = cleanInfra(doc);
+  const f = doc.frame.unit === "lane" ? Number(doc.frame.lane_mm) || 10 : 1;
   const P = (p) => [p[0] * f, p[1] * f];
   const out = [];
   const g = (code, value) => out.push(String(code), String(value));
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const t of doc.tracks || []) for (const p of t.points || []) {
-    x0 = Math.min(x0, p[0] * f); x1 = Math.max(x1, p[0] * f); y0 = Math.min(y0, p[1] * f); y1 = Math.max(y1, p[1] * f);
-  }
-  if (!Number.isFinite(x0)) [x0, y0, x1, y1] = [0, 0, 1000, 1000];
-  const h = text_mm || Math.max(1, (x1 - x0) / 150);
+  // the extents of everything in it: tracks, rooms and tables, platforms, elements, names
+  const b = infraBounds(doc) || [0, 0, 1000, 1000];
+  const [x0, y0, x1, y1] = b.map((v) => v * f);
+  const h = text_mm || Math.max(1, Math.max(x1 - x0, y1 - y0) / 150);
 
   g(0, "SECTION"); g(2, "HEADER");
   g(9, "$ACADVER"); g(1, "AC1009");
+  g(9, "$DWGCODEPAGE"); g(3, "ANSI_1252");
   g(9, "$EXTMIN"); g(10, n(x0)); g(20, n(y0));
   g(9, "$EXTMAX"); g(10, n(x1)); g(20, n(y1));
   g(0, "ENDSEC");
@@ -70,16 +84,16 @@ export function toDXF(doc, { text_mm } = {}) {
   };
   const text = (layer, p, s, size = h, rot = 0) => {
     if (!s) return;
-    g(0, "TEXT"); g(8, layer); g(10, n(p[0])); g(20, n(p[1])); g(30, 0); g(40, n(size)); g(1, String(s).replace(/[\r\n]+/g, " "));
+    g(0, "TEXT"); g(8, layer); g(10, n(p[0])); g(20, n(p[1])); g(30, 0); g(40, n(size)); g(1, dxfText(s));
     if (rot) g(50, n(rot));
   };
 
-  for (const a of doc.areas || []) {
+  for (const a of doc.areas) {
     polyline("AREAS", a.points, true);
     for (const hole of a.holes || []) polyline("AREAS", hole, true);
   }
-  for (const p of doc.platforms || []) polyline("PLATFORMS", p.points, true);
-  for (const t of doc.tracks || []) {
+  for (const p of doc.platforms) polyline("PLATFORMS", p.points, true);
+  for (const t of doc.tracks) {
     polyline(t.kind === "link" ? "LINKS" : t.virtual || t.hidden ? "TRACKS_HIDDEN" : "TRACKS", t.points);
     if (t.name && t.kind !== "link" && t.points?.length > 1) {
       const i = Math.floor((t.points.length - 1) / 2), a = P(t.points[i]), b = P(t.points[i + 1]);
@@ -89,7 +103,7 @@ export function toDXF(doc, { text_mm } = {}) {
       text("NAMES", [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + h * 0.4], t.name, h * 0.8, rot);
     }
   }
-  for (const e of doc.elements || []) {
+  for (const e of doc.elements) {
     const layer = e.type === "signal" ? "SIGNALS" : e.type === "switch" ? "SWITCHES" : "ELEMENTS";
     if (e.points?.length > 1) {
       polyline(layer, e.points);
@@ -99,7 +113,8 @@ export function toDXF(doc, { text_mm } = {}) {
     const c = P(e.at), a = ((e.heading_deg || 0) * Math.PI) / 180, u = [Math.cos(a), Math.sin(a)];
     const at = (s, v = 0) => [c[0] + u[0] * s * h + u[1] * v * h, c[1] + u[1] * s * h - u[0] * v * h];
     if (e.type === "signal") {
-      line(layer, at(0, -0.5), at(0, 0.5));
+      // the foot reaches from the mast to the track: to the left of a signal on the right of it
+      line(layer, at(0), at(0, e.side === "left" ? 1 : -1));
       line(layer, at(0), at(1.5));
       circle(layer, at(2), h * 0.5);
     } else if (e.type === "switch") {
@@ -108,14 +123,14 @@ export function toDXF(doc, { text_mm } = {}) {
     } else circle(layer, c, h * 0.35);
     const label = e.name || ELEMENT_TYPES[e.type]?.label || "";
     text("NAMES", [c[0] + h * 0.6, c[1] + h * 0.6], label, h * 0.7);
-    if (e.km != null) text("KM", [c[0] + h * 0.6, c[1] - h * 0.6], `km ${Number(e.km).toFixed(3)}`, h * 0.5);
+    if (Number.isFinite(e.km)) text("KM", [c[0] + h * 0.6, c[1] - h * 0.6], `km ${Number(e.km).toFixed(3)}`, h * 0.5);
   }
-  for (const o of doc.operating_points || []) {
+  for (const o of doc.operating_points) {
     if (o.box) polyline("OPERATING_POINTS", [[o.box[0], o.box[1]], [o.box[2], o.box[1]], [o.box[2], o.box[3]], [o.box[0], o.box[3]]], true);
     const at = o.at || (o.box ? [(o.box[0] + o.box[2]) / 2, o.box[3]] : null);
     if (at) text("OPERATING_POINTS", P(at), o.name ? `${o.name} (${o.id})` : o.id, h * 1.6);
   }
-  for (const l of doc.labels || []) text("NAMES", P(l.at), l.text, h * 1.2);
+  for (const l of doc.labels) text("NAMES", P(l.at), l.text, h * 1.2);
   g(0, "ENDSEC");
   g(0, "EOF");
   return out.join("\n") + "\n";

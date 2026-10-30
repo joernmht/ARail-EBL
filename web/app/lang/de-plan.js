@@ -35,6 +35,8 @@ export const PLAN_DE = {
   "{n} problems in the data, e.g.: {first}": "{n} Probleme in den Daten, z. B.: {first}",
   "{tracks} tracks, {elements} elements, {platforms} platforms": "{tracks} Gleise, {elements} Elemente, {platforms} Bahnsteige",
   "Plan sheet {sheet} of {sheets}, {scale}, {paper}": "Planblatt {sheet} von {sheets}, {scale}, {paper}",
+  "Not on the plan: 1 object whose marker is not in the marker map (a moving marker).": "Nicht im Plan: 1 Objekt, dessen Marker nicht in der Markerkarte ist (ein bewegter Marker).",
+  "Not on the plan: {n} objects whose markers are not in the marker map (moving markers).": "Nicht im Plan: {n} Objekte, deren Marker nicht in der Markerkarte sind (bewegte Marker).",
   "Bf Neustadt": "Bf Neustadt",
   "EBL lab, Beta 0.1": "EBL-Labor, Beta 0.1",
   "Hybrid container train": "Hybrider Containerzug",

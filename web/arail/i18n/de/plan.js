@@ -14,6 +14,8 @@ export const TEXTS = {
   "1 lane = {mm} mm on the layout": "1 Gleisabstand = {mm} mm auf der Anlage",
   "model scale 1:{n}, {m} m in the prototype": "Modellmaßstab 1:{n}, {m} m im Vorbild",
   "{n} more symbols": "{n} weitere Symbole",
+  "1 more symbol": "1 weiteres Symbol",
+  "Match line between sheets": "Anschlusslinie zwischen den Blättern",
   "Untitled plan": "Unbenannter Plan",
   "Site plan": "Lageplan",
   "Track plan": "Spurplan",

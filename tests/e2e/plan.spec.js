@@ -22,12 +22,44 @@ test("paper and scale: a larger sheet, a larger scale cut into sheets, from shee
   await page.goto("/plan/?paper=A2");
   await ready(page);
   await expect(page.locator("#sheet svg")).toHaveAttribute("width", "594mm");
-  await page.locator("#scale").selectOption("20");
+  await page.locator("#scale").selectOption("mm:20");
   await expect.poll(() => page.evaluate(() => window.__plan.result.sheets)).toBeGreaterThan(1);
   await expect(page.locator("#prev")).toBeDisabled();
   await page.locator("#next").click();
   await expect(page.locator("#sheetNo")).toHaveValue("2");
   await expect(page.locator("#sheet svg text", { hasText: /continued on sheet 1/ })).toHaveCount(1);
+});
+
+test("a scale needing more than 100 sheets is not offered; a scale is not taken over into another unit", async ({ page }) => {
+  await page.goto("/plan/");
+  await ready(page);
+  await expect(page.locator('#scale option[value="mm:1"]')).toHaveJSProperty("disabled", true);
+  await expect(page.locator('#scale option[value="mm:100"]')).toHaveJSProperty("disabled", false);
+  // a schematic plan at 5 mm per lane, then a layout: 1:5 would be the same number, but it is auto
+  const doc = {
+    format: "rail-infra/1", name: "Track plan", frame: { id: "t", unit: "lane" },
+    tracks: [{ id: "a", name: "Strecke 11", track: "11", points: [[0, 0], [400, 0]], kms: [20, 30] }],
+  };
+  await page.locator("#file").setInputFiles({ name: "plan.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(doc)) });
+  await page.locator("#scale").selectOption("lane:5");
+  await expect.poll(() => page.evaluate(() => window.__plan.result.scaleText)).toBe("Schematic, not to scale");
+  await page.locator("#source").selectOption("../layouts/ebl-neustadt.json");
+  await expect.poll(() => page.evaluate(() => window.__plan.result.scaleText)).toBe("1:100");
+  await expect(page.locator("#scale")).toHaveValue("auto");
+});
+
+test("a file with mistakes: its problems shown, what can be drawn drawn, and the page keeps working", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/plan/");
+  await ready(page);
+  const doc = { format: "rail-infra/1", frame: { unit: "mm" }, tracks: [null, { id: "t", points: [[0, 0], [2000, 0]] }], elements: { id: "x" } };
+  await page.locator("#file").setInputFiles({ name: "bad.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(doc)) });
+  await expect(page.locator("#status")).toContainText("2 problems in the data, e.g.: tracks[0]: not an object");
+  await expect(page.locator("#status")).toHaveClass(/bad/);
+  await page.locator("#paper").selectOption("A2");
+  await expect(page.locator("#sheet svg")).toHaveAttribute("width", "594mm");
+  expect(errors).toEqual([]);
 });
 
 test("drawing layers switch off; the true size; the downloads", async ({ page }) => {

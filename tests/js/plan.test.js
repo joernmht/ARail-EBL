@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { Translator, composeLayout, registry } from "../../web/arail/index.js";
-import { DRAWING_LAYERS, LANE_AUTO_MM, PAPERS, drawSheet, fitScale, sheetLayout } from "../../web/arail/plan/drawing.js";
-import { DXF_LAYERS, toDXF } from "../../web/arail/plan/dxf.js";
-import { ELEMENT_TYPES, INFRA_FORMAT, infraBounds, infraProblems, layoutToInfra } from "../../web/arail/plan/infra.js";
+import { DRAWING_LAYERS, FIT_PAD_MM, LANE_AUTO_MM, OVERLAP_MM, PAPERS, drawSheet, fitScale, sheetLayout } from "../../web/arail/plan/drawing.js";
+import { DXF_LAYERS, dxfText, toDXF } from "../../web/arail/plan/dxf.js";
+import { ELEMENT_TYPES, INFRA_FORMAT, cleanInfra, infraBounds, infraProblems, layoutToInfra } from "../../web/arail/plan/infra.js";
 import { readJSON } from "./helpers.js";
 
 /** Bf Neustadt with its module Infrastructure (the signals, the interlocking). */
@@ -76,6 +76,7 @@ test("a layout as rail-infra/1: points given relative to a marker are placed by 
   });
   assert.deepEqual(doc.tracks[0].points, [[1000, 500], [1000, 600]]);
   assert.deepEqual(doc.elements.map((e) => [e.id, e.at]), [["s", [1020, 500]]]);
+  assert.equal(doc.source.unplaced, 1, "the signal on marker 9 is not on the plan, and counted");
   assert.deepEqual(infraProblems(doc), []);
 });
 
@@ -181,4 +182,83 @@ test("DXF: R12 with a layer for each kind of thing, the plan at its true size, a
   const lane = toDXF(everything());
   assert.ok(lane.includes("\n10\n10500\n20\n0\n"), "lane 300 at 10.5 m");
   assert.ok(lane.includes("Neustadt (IN)"));
+});
+
+test("a file with mistakes: the checks never throw, the sheet and the DXF draw what they can", () => {
+  const base = { format: INFRA_FORMAT, frame: { unit: "mm" } };
+  const cases = [
+    [{ ...base, tracks: {} }, "tracks must be a list"],
+    [{ ...base, elements: [null] }, "elements[0]: not an object"],
+    [{ ...base, tracks: [null, { id: "t", points: [[0, 0], [1000, 0]], kms: [1] }] }, "tracks[0]: not an object"],
+    [{ ...base, elements: [{ id: "w", type: "switch", at: [0, 0], length_m: "long", km: "x" }] }, "elements[0] (w): length_m is not a number"],
+  ];
+  for (const [doc, want] of cases) {
+    const p = infraProblems(doc);
+    assert.ok(p.includes(want), `${want} in ${p.join("; ")}`);
+    const r = drawSheet(doc);
+    assert.ok(!r.svg.includes("NaN"), "no NaN in the sheet");
+    assert.ok(!toDXF(doc).includes("NaN"), "no NaN in the DXF");
+  }
+  assert.ok(infraProblems(cases[2][0]).includes("tracks (t): kms must be one number per point"));
+  assert.deepEqual(cleanInfra(cases[2][0]).tracks.map((t) => [t.id, t.kms]), [["t", undefined]]);
+});
+
+test("DXF: umlauts as \\U+ escapes of a file that says it is ANSI_1252; the extents of everything", () => {
+  const doc = { format: INFRA_FORMAT, frame: { unit: "mm" }, tracks: [{ id: "t", name: "Gleis Süd", points: [[0, 0], [3000, 0]] }], labels: [{ id: "l", text: "Bahn­übergang", at: [0, 0] }], areas: [{ id: "r", kind: "room", points: [[-500, -500], [3500, -500], [3500, 800]] }] };
+  const dxf = toDXF(doc);
+  assert.ok(dxf.includes("\n9\n$DWGCODEPAGE\n3\nANSI_1252\n"));
+  assert.ok(dxf.includes("\n1\nGleis S\\U+00FCd\n") && dxf.includes("\n1\nBahn\\U+00FCbergang\n"));
+  assert.ok(/^[\x00-\x7f]*$/.test(dxf), "only ASCII in the file");
+  assert.equal(dxfText("Weiche W60 → Gleis 5"), "Weiche W60 \\U+2192 Gleis 5");
+  assert.ok(dxf.includes("$EXTMIN\n10\n-500\n20\n-500\n") && dxf.includes("$EXTMAX\n10\n3500\n20\n800\n"), "the room is inside the extents");
+});
+
+test("the legend on A4: in its column beside the scale bar, and the last place for what is left out", () => {
+  const long = { ...everything(), tracks: [...everything().tracks, { id: "v", points: [[0, 3], [300, 3]], virtual: true }] };
+  const r = drawSheet(long, { paper: "A4", scale: 2 });
+  const { legend: [x0, y0, x1, y1] } = sheetLayout("A4");
+  const texts = [...r.svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" font-size="2"(?: font-style="italic")?>([^<]*)<\/text>/g)]
+    .map((m) => ({ x: +m[1], y: +m[2], s: m[3] })).filter((t) => t.x > x0 && t.x < x1 && t.y > y0 && t.y < y1);
+  const bar = x1 - 44;
+  for (const t of texts) if (t.x < bar) assert.ok(t.x + t.s.length * 2 * 0.56 <= bar, `"${t.s}" runs into the scale bar`);
+  const places = texts.filter((t) => t.x < bar).map((t) => `${t.x},${t.y}`);
+  assert.equal(new Set(places).size, places.length, "no text on top of another");
+  assert.ok(texts.some((t) => /^\d+ more symbols$/.test(t.s)), "how many are left out");
+  assert.ok(texts.some((t) => t.s.endsWith("…")), "a long label cut short");
+  assert.ok(drawSheet(long, { paper: "A4", scale: 2, tr: (s) => (s === "Level crossing" ? "Bahn­übergang" : s) }).svg.indexOf("­") < 0, "no soft hyphens");
+});
+
+test("the sheets overlap, with a match line; each holds only what lies on it; auto keeps room round the plan", () => {
+  const doc = neustadt();
+  const one = drawSheet(doc), first = drawSheet(doc, { scale: 20, sheet: 1 });
+  assert.ok(first.svg.includes('stroke-dasharray="8 1.5 1 1.5"'), "the match line");
+  assert.ok(first.legend.includes("Match line between sheets"));
+  const paths = (svg) => (svg.match(/<path /g) || []).length;
+  assert.ok(paths(first.svg) < paths(one.svg) - 10, `${paths(first.svg)} paths on sheet 1 of 6, ${paths(one.svg)} on the whole plan`);
+  // at 1:20 the windows of neighbouring sheets overlap by 10 mm of paper: 200 mm of the layout
+  const a3 = sheetLayout("A3"), vw = a3.viewport[2] - a3.viewport[0];
+  assert.equal(OVERLAP_MM, 10);
+  assert.equal(fitScale([0, 0, (2 * vw - OVERLAP_MM - 2 * FIT_PAD_MM) * 20, 1000], a3, "mm", 20).cols, 2);
+  assert.equal(fitScale([0, 0, (2 * vw - OVERLAP_MM - 2 * FIT_PAD_MM) * 20 + 40, 1000], a3, "mm", 20).cols, 3);
+  // auto: the plan with FIT_PAD_MM round it fits
+  const b = [0, 0, (vw - 2) * 100, 1000];
+  assert.equal(fitScale(b, a3, "mm").scale, 200, "too tight for 1:100 with room round it");
+});
+
+test("symbols: a signal's foot towards its track; kilometre ticks once at a point; numbers in the language shown", () => {
+  const sig = (side) => drawSheet({ format: INFRA_FORMAT, frame: { unit: "lane" }, elements: [{ id: "s", type: "signal", side, at: [0, 0], heading_deg: 0 }] }, { layers: ["elements"] }).svg;
+  assert.notEqual(sig("left"), sig("right"));
+  const doc = { format: INFRA_FORMAT, frame: { unit: "lane" }, tracks: [{ id: "t", points: [[0, 0], [10, 0], [20, 0]], kms: [0, 0.5, 1] }] };
+  const r = drawSheet(doc, { layers: ["km"], scale: 20, number: (v, d) => v.toFixed(d).replace(".", ",") });
+  const ticks = [...r.svg.matchAll(/<path d="(M[\d.]+ [\d.]+L[\d.]+ [\d.]+)"\/>/g)].map((m) => m[1]);
+  assert.ok(ticks.length >= 3);
+  assert.equal(new Set(ticks).size, ticks.length, "no tick twice");
+  assert.ok(r.svg.includes(">0,5<"), "0,5 in German");
+});
+
+test("a layout's table modules take the app's defaults; objects on markers not in the map are counted", () => {
+  const doc = layoutToInfra({ objects: [{ id: "t", type: "tabletop", position: [0, 0] }, { id: "m", type: "signal", position: { marker: 40, offset: [0, 0] } }] });
+  const [a, b, c] = doc.areas[0].points;
+  assert.deepEqual([b[0] - a[0], c[1] - b[1]], [1000, 600]);
+  assert.equal(doc.source.unplaced, 1);
 });
