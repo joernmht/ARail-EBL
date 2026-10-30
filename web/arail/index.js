@@ -140,6 +140,10 @@ export {
   LINE_PARAMS, NEXT_STOP_M, OPEN_LINE_KMH, MAGNET_MATCH_M, trackLength, lineBrakingDistance, railCondition, pathAhead, pathPoint, lineAlong, signalsAhead, magnetsAhead,
   trainOnTrack, trackAheadOf, speedAt, drawTrackAhead, formatDistance, REFERENCE_GRADIENT, minutesSeconds, runningCard, approachFactor, lineRunningTime, drivingStyles, runEnergyPerKm, lineConsist, unitConsist, LOW_ADHESION, SLOW,
 } from "./rail/index.js";
+// plans: the infrastructure as rail-infra/1 data (shared with the EBL's digital twin), plan sheets and DXF
+export { INFRA_FORMAT, FRAME_UNITS, ELEMENT_TYPES, markerMapOf, layoutToInfra, infraProblems, cleanInfra, infraBounds } from "./plan/infra.js";
+export { PAPERS, SCALES, LANE_SCALES, LANE_AUTO_MM, OVERLAP_MM, FIT_PAD_MM, MAX_SHEETS, DRAWING_LAYERS, LINE_MM, sheetLayout, fitScale, drawSheet } from "./plan/drawing.js";
+export { DXF_LAYERS, dxfText, toDXF } from "./plan/dxf.js";
 export { Translator, UI_LANGUAGES, placeholders } from "./i18n/index.js";
 export { WebSocketFeed } from "./feeds/websocket.js";
 export { MockFeed } from "./feeds/mock.js";

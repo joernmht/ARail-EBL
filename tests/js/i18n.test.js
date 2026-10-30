@@ -113,7 +113,7 @@ test("the catalogues: every translation keeps the placeholders of its English te
 
 test("every text the code asks for by name has a German translation", () => {
   const t = appTranslator();
-  const files = ["web/app", "web/builder"].flatMap((dir) => readdirSync(join(ROOT, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`));
+  const files = ["web/app", "web/builder", "web/plan"].flatMap((dir) => readdirSync(join(ROOT, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`));
   const asked = new Set();
   for (const f of files) {
     const src = read(f);
@@ -148,6 +148,18 @@ test("the builder's own markup (bar, plan buttons, tabs) is translated", () => {
   for (const m of body.matchAll(/>([^<>]+)</g)) texts.add(m[1].trim());
   for (const m of body.matchAll(/\b(?:aria-label|title|alt|placeholder)="([^"]+)"/g)) texts.add(m[1]);
   const BRAND = new Set(["AR", "ail"]);
+  const untranslated = [...texts].filter((s) => s && /[A-Za-z]{2}/.test(s) && !BRAND.has(s) && !t.has(s) && t.translate(s) === s);
+  assert.deepEqual(untranslated, []);
+});
+
+test("the plan documents' own markup (bar, settings, sheet buttons) is translated", () => {
+  const t = appTranslator();
+  const html = read("web/plan/index.html");
+  const body = html.slice(html.indexOf("<body>"), html.indexOf("</main>"));
+  const texts = new Set();
+  for (const m of body.matchAll(/>([^<>]+)</g)) texts.add(m[1].trim());
+  for (const m of body.matchAll(/\b(?:aria-label|title|alt|placeholder)="([^"]+)"/g)) texts.add(m[1]);
+  const BRAND = new Set(["AR", "ail", "EBL"]);
   const untranslated = [...texts].filter((s) => s && /[A-Za-z]{2}/.test(s) && !BRAND.has(s) && !t.has(s) && t.translate(s) === s);
   assert.deepEqual(untranslated, []);
 });

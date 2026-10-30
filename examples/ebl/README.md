@@ -10,7 +10,8 @@ file's own format, and none of the lab software's files are copied. Format: `ebl
 
 The digital twin of the lab software ([ebl](https://github.com/joernmht/ebl), `5 Digitaler Zwilling`)
 reads the survey part of this file for its hall plan: the tracks of the lab files placed where they
-stand in the lab.
+stand in the lab. It also writes the lab's infrastructure (its track plan and its hall plan) in
+[rail-infra/1](../../docs/rail-infra-format.md), which the [plan documents](../../docs/plan-documents.md) draw as plan sheets.
 
 ## The network
 
