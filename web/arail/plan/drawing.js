@@ -182,6 +182,43 @@ export function drawSheet(doc, options = {}) {
     return true;
   };
 
+  // where the plan goes on: a match line in the middle of the overlap with each neighbouring sheet,
+  // its text along the line near its start; placed first, so that the plan's labels keep clear of it
+  let matchLines = null;
+  if (sheets > 1) {
+    const next = (dc, dr) => (col + dc >= 0 && col + dc < cols && row + dr >= 0 && row + dr < rows ? row * cols + col + 1 + dr * cols + dc : 0);
+    const cont = (n) => tr("continued on sheet {n}").replace("{n}", n);
+    const half = OVERLAP_MM / 2, lines = [], texts = [];
+    const vertical = (X, s, side) => {
+      // read from bottom to top, ending 4 mm below the viewport's top; the letters beside the line
+      const w = textWidth(s, 2.2), x = side > 0 ? X + 3 : X - 0.8, y = vy0 + 4 + w;
+      clear.take([x - 2.5, vy0 + 3.5, x + 0.3, y + 0.5]);
+      texts.push(text(x, y, s, 2.2, ` transform="rotate(-90 ${f2(x)} ${f2(y)})"`));
+    };
+    const horizontal = (Y, s, below) => {
+      const w = textWidth(s, 2.2), x = vx0 + 20, y = below ? Y + 3 : Y - 1.2;
+      clear.take([x - 0.3, y - 2.4, x + w + 0.3, y + 0.6]);
+      texts.push(text(x, y, s, 2.2));
+    };
+    if (next(-1, 0)) {
+      lines.push(`M${f2(vx0 + half)} ${vy0}V${vy1}`);
+      vertical(vx0 + half, `${cont(next(-1, 0))} ↑`, 1); // turned with the text: ↑ points left
+    }
+    if (next(1, 0)) {
+      lines.push(`M${f2(vx1 - half)} ${vy0}V${vy1}`);
+      vertical(vx1 - half, `${cont(next(1, 0))} ↓`, -1); // and ↓ right
+    }
+    if (next(0, -1)) {
+      lines.push(`M${vx0} ${f2(vy0 + half)}H${vx1}`);
+      horizontal(vy0 + half, `↑ ${cont(next(0, -1))}`, true);
+    }
+    if (next(0, 1)) {
+      lines.push(`M${vx0} ${f2(vy1 - half)}H${vx1}`);
+      horizontal(vy1 - half, `↓ ${cont(next(0, 1))}`, false);
+    }
+    matchLines = { paths: lines.join(""), texts };
+  }
+
   add(`<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}mm" height="${layout.height}mm" viewBox="0 0 ${layout.width} ${layout.height}" font-family='${FONT}' fill="${INK}">`);
   add(`<title>${esc(options.title?.title || doc.name || "")}</title><desc>${esc(`${tr("Plan sheet")} ${sheet}/${sheets}, ${scaleText}, ${layout.paper}`)}</desc>`);
   add(`<defs><pattern id="hatch" width="1.2" height="1.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.2" stroke="${INK}" stroke-width="${LINE_MM.fine}"/></pattern>`
@@ -224,7 +261,7 @@ export function drawSheet(doc, options = {}) {
       used.add(dashed ? "@virtual" : "@track");
     }
   }
-  if (on.has("km")) drawKilometres(doc, P, k, add, label, num, used, onSheet);
+  if (on.has("km")) drawKilometres(doc, P, k, add, label, num, used, onSheet, layout.viewport);
   const names = []; // the elements' names, placed after the more important ones
   if (on.has("elements")) {
     for (const e of doc.elements) {
@@ -284,30 +321,9 @@ export function drawSheet(doc, options = {}) {
     for (const [x, y, n] of names) label(x + 1.6, y - 1.6, n, 1.8) || label(x + 1.6, y + 3.2, n, 1.8);
   }
   add(`</g>`);
-  // where the plan goes on: a match line in the middle of the overlap with each neighbouring sheet
-  if (sheets > 1) {
-    const next = (dc, dr) => (col + dc >= 0 && col + dc < cols && row + dr >= 0 && row + dr < rows ? row * cols + col + 1 + dr * cols + dc : 0);
-    const cont = (n) => tr("continued on sheet {n}").replace("{n}", n);
-    const half = OVERLAP_MM / 2, my = (vy0 + vy1) / 2, mx = (vx0 + vx1) / 2;
-    const lines = [], texts = [];
-    if (next(-1, 0)) {
-      lines.push(`M${f2(vx0 + half)} ${vy0}V${vy1}`);
-      texts.push(text(vx0 + half + 1.2, my, `← ${cont(next(-1, 0))}`, 2.2));
-    }
-    if (next(1, 0)) {
-      lines.push(`M${f2(vx1 - half)} ${vy0}V${vy1}`);
-      texts.push(text(vx1 - half - 1.2, my, `${cont(next(1, 0))} →`, 2.2, ` text-anchor="end"`));
-    }
-    if (next(0, -1)) {
-      lines.push(`M${vx0} ${f2(vy0 + half)}H${vx1}`);
-      texts.push(text(mx, vy0 + half + 3, `↑ ${cont(next(0, -1))}`, 2.2, ` text-anchor="middle"`));
-    }
-    if (next(0, 1)) {
-      lines.push(`M${vx0} ${f2(vy1 - half)}H${vx1}`);
-      texts.push(text(mx, vy1 - half - 1.2, `↓ ${cont(next(0, 1))}`, 2.2, ` text-anchor="middle"`));
-    }
-    add(`<path d="${lines.join("")}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.wide}" stroke-dasharray="8 1.5 1 1.5"/>`);
-    add(`<g font-size="2.2" fill="${INK}" font-weight="600">${texts.join("")}</g>`);
+  if (matchLines) {
+    add(`<path d="${matchLines.paths}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.wide}" stroke-dasharray="8 1.5 1 1.5"/>`);
+    add(`<g font-size="2.2" fill="${INK}" font-weight="600">${matchLines.texts.join("")}</g>`);
     used.add("@match");
   }
 
@@ -338,12 +354,12 @@ function longestSegment(pts) {
 }
 
 /** Kilometre ticks along the tracks that know their kilometres (`kms`, one per point), labelled where there is room. */
-function drawKilometres(doc, P, k, add, label, num, used, onSheet) {
-  const tracks = doc.tracks.filter((t) => t.kind !== "link" && t.kms && onSheet(t.points));
+function drawKilometres(doc, P, k, add, label, num, used, onSheet, [vx0, vy0, vx1, vy1]) {
+  const all = doc.tracks.filter((t) => t.kind !== "link" && t.kms), tracks = all.filter((t) => onSheet(t.points));
   if (!tracks.length) return;
-  // paper mm per km, from the tracks themselves
+  // paper mm per km, from all the tracks: the same step on every sheet
   let mm = 0, km = 0;
-  for (const t of tracks) {
+  for (const t of all) {
     for (let i = 1; i < t.points.length; i++) {
       const a = P(t.points[i - 1]), b = P(t.points[i]);
       mm += Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -363,6 +379,7 @@ function drawKilometres(doc, P, k, add, label, num, used, onSheet) {
         if (i < t.points.length - 1 && Math.abs(v - k1) < 1e-9) continue;
         const f = (v - k0) / (k1 - k0);
         const p = P([t.points[i - 1][0] + (t.points[i][0] - t.points[i - 1][0]) * f, t.points[i - 1][1] + (t.points[i][1] - t.points[i - 1][1]) * f]);
+        if (p[0] < vx0 - 5 || p[0] > vx1 + 5 || p[1] < vy0 - 5 || p[1] > vy1 + 5) continue; // not on this sheet
         const a = P(t.points[i - 1]), b = P(t.points[i]), len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
         const n = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len];
         add(`<path d="M${f2(p[0] - n[0])} ${f2(p[1] - n[1])}L${f2(p[0] + n[0])} ${f2(p[1] + n[1])}"/>`);
@@ -446,7 +463,7 @@ function symbol(type, e, x, y, a, k, doc) {
 
 /** The legend's entries: what the sheet shows, in a fixed order. */
 function legendEntries(used, tr) {
-  const fixed = [["@match", "Match line between sheets"], ["@track", "Track"], ["@virtual", "Track not on the real layout (virtual, hidden)"], ["@platform", "Platform"], ["@table", "Table module"], ["@room", "Room (outline)"], ["@op", "Operating point (station limits)"], ["@km", "Line kilometre"]];
+  const fixed = [["@match", "Match line"], ["@track", "Track"], ["@virtual", "Virtual or hidden track"], ["@platform", "Platform"], ["@table", "Table module"], ["@room", "Room (outline)"], ["@op", "Operating point (station limits)"], ["@km", "Line kilometre"]];
   const kinds = { main: "Main signal", distant: "Distant signal", combined: "Main signal with distant signal", shunting: "Shunting signal", block: "Block signal" };
   const out = fixed.filter(([id]) => used.has(id)).map(([id, l]) => ({ id, label: tr(l) }));
   for (const [kind, l] of Object.entries(kinds)) if (used.has(`signal:${kind}`)) out.push({ id: `signal:${kind}`, label: tr(l) });
@@ -505,7 +522,9 @@ function legendSymbol(id, x, y) {
       const [type, kind] = id.split(":");
       const e = { type, kind, hand: "left", side: "right" };
       const sx = type === "signal" ? x - 2.5 : type === "switch" ? x - 1.7 : x;
-      return (type === "signal" || type === "switch" ? line(`stroke="${INK}" stroke-width="${LINE_MM.wide}"`) : "") + symbol(type, e, sx, y, 0, 1, { frame: { unit: "lane" } });
+      // a signal on the right of its track: the track where its foot ends
+      const track = (dy) => `<path d="M${f2(x - 3.5)} ${f2(y + dy)}H${f2(x + 3.5)}" fill="none" stroke="${INK}" stroke-width="${LINE_MM.wide}"/>`;
+      return (type === "signal" ? track(-1.6) : type === "switch" ? track(0) : "") + symbol(type, e, sx, y, 0, 1, { frame: { unit: "lane" } });
     }
   }
 }

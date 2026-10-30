@@ -232,7 +232,7 @@ test("the sheets overlap, with a match line; each holds only what lies on it; au
   const doc = neustadt();
   const one = drawSheet(doc), first = drawSheet(doc, { scale: 20, sheet: 1 });
   assert.ok(first.svg.includes('stroke-dasharray="8 1.5 1 1.5"'), "the match line");
-  assert.ok(first.legend.includes("Match line between sheets"));
+  assert.ok(first.legend.includes("Match line"));
   const paths = (svg) => (svg.match(/<path /g) || []).length;
   assert.ok(paths(first.svg) < paths(one.svg) - 10, `${paths(first.svg)} paths on sheet 1 of 6, ${paths(one.svg)} on the whole plan`);
   // at 1:20 the windows of neighbouring sheets overlap by 10 mm of paper: 200 mm of the layout
@@ -261,4 +261,26 @@ test("a layout's table modules take the app's defaults; objects on markers not i
   const [a, b, c] = doc.areas[0].points;
   assert.deepEqual([b[0] - a[0], c[1] - b[1]], [1000, 600]);
   assert.equal(doc.source.unplaced, 1);
+});
+
+test("second review: only what would be on the plan is counted; null for a number not known; km ticks per sheet; match texts along their line", () => {
+  // a tree, a building and a wagon on markers not in the map are no infrastructure: not counted
+  const lost = { marker: 77, offset: [0, 0] };
+  const j = { objects: [{ id: "a", type: "tree", position: lost }, { id: "b", type: "building", position: lost }, { id: "c", type: "wagon", position: lost }, { id: "s", type: "signal", position: lost }] };
+  assert.equal(layoutToInfra(j).source.unplaced, 1);
+  // null: a number not known
+  assert.deepEqual(infraProblems({ format: INFRA_FORMAT, frame: { unit: "lane" }, tracks: [{ id: "t", track: "1", points: [[0, 0], [1, 0]], kms: null }], elements: [{ id: "e", type: "signal", track: "1", km: null, at: [0, 0] }], operating_points: [{ id: "IN", km: null, at: [0, 0] }] }), []);
+  // a 0–10 km line on several sheets: each sheet has only its own ticks, at the same step
+  const line = { format: INFRA_FORMAT, frame: { unit: "lane" }, tracks: [{ id: "t", name: "Strecke 1", points: [[0, 0], [1000, 0]], kms: [0, 10] }] };
+  const labels = (sheet) => [...drawSheet(line, { sheet, layers: ["km", "tracks"], scale: 2 }).svg.matchAll(/font-size="1.6">([\d.]+)</g)].map((m) => +m[1]);
+  const one = labels(1), two = labels(2);
+  assert.ok(one.length > 3 && two.length > 3);
+  assert.ok(one.length < 101 / 2, `${one.length} ticks on sheet 1`);
+  assert.ok(Math.max(...one) < Math.min(...two) + 1, "sheet 2 goes on where sheet 1 ends");
+  const steps = (v) => new Set(v.slice(1).map((x, i) => Math.round((x - v[i]) * 10)));
+  assert.deepEqual(steps(one), steps(two), "the same step on both sheets");
+  // the match line's text runs along the line, near its top, not across the track in the middle
+  const svg = drawSheet(line, { sheet: 2, scale: 2 }).svg;
+  assert.ok(/<text [^>]*transform="rotate\(-90 [^"]+\)">continued on sheet 1 ↑<\/text>/.test(svg));
+  assert.ok(/<text [^>]*transform="rotate\(-90 [^"]+\)">continued on sheet 3 ↓<\/text>/.test(svg));
 });

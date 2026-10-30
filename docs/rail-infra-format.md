@@ -59,7 +59,8 @@ ARail's camera image directly.
 | `labels` | `id`, `text`, `at` |
 
 Points are `[x, y]` in the frame's unit, `y` pointing up (in the hall frame of the survey: towards the
-windows). Every `id` is unique in the file, across all lists.
+windows). Every `id` is unique in the file, across all lists. A number that is not known (an element's `km`, a
+track's `kms`, …) is left out or written as `null`.
 
 ### Element types
 

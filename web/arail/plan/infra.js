@@ -102,7 +102,8 @@ export function layoutToInfra(json, { name, file = "", date = "" } = {}) {
   };
   for (const o of objects) {
     const at = o.position ? resolvePoint(map, o.position) : null;
-    if (o.position && !at) unplaced++;
+    // only what would be on the plan is counted when its marker is not in the map
+    const lost = o.position && !at;
     if (o.type === "track") {
       const points = resolvePoints(map, o.points);
       if (!points) unplaced++;
@@ -125,12 +126,14 @@ export function layoutToInfra(json, { name, file = "", date = "" } = {}) {
         points: [side(p0, -1), side(p1, -1), side(p1, 1), side(p0, 1)].map(pt),
       });
     } else if (o.type === "tabletop") {
+      if (lost) unplaced++;
       if (at) {
         const w = +o.width_mm || defaultOf(Tabletop, "width_mm"), d = +o.depth_mm || defaultOf(Tabletop, "depth_mm");
         doc.areas.push({ id: o.id, kind: "table", name: o.name || "", points: rectangle(at, w, d, +o.rotation_deg || 0), ...(o.kind === "physical" ? {} : { virtual: true }) });
       }
-    } else if (o.type === "label" && at) {
-      doc.labels.push({ id: o.id, text: String(o.text ?? ""), at: pt(at) });
+    } else if (o.type === "label") {
+      if (lost) unplaced++;
+      if (at) doc.labels.push({ id: o.id, text: String(o.text ?? ""), at: pt(at) });
     } else if (FROM_LAYOUT[o.type]) {
       const type = FROM_LAYOUT[o.type];
       const el = { id: o.id, type, name: o.name || "" };
@@ -140,6 +143,7 @@ export function layoutToInfra(json, { name, file = "", date = "" } = {}) {
         if (!points || points.length < 2) continue;
         el.points = points.map(pt);
       } else {
+        if (lost) unplaced++;
         if (!at) continue;
         el.at = pt(at);
         el.heading_deg = r1(+o.rotation_deg || 0);
@@ -167,8 +171,9 @@ export function infraProblems(doc) {
   if (doc.format !== INFRA_FORMAT) out.push(`format is ${JSON.stringify(doc.format)}, not "${INFRA_FORMAT}"`);
   if (!FRAME_UNITS.includes(doc.frame?.unit)) out.push(`frame.unit must be one of ${FRAME_UNITS.join(", ")}`);
   const ids = new Set();
+  // a number not known may be left out or written as null
   const number = (x, key, where) => {
-    if (x[key] !== undefined && !Number.isFinite(x[key])) out.push(`${where}: ${key} is not a number`);
+    if (x[key] != null && !Number.isFinite(x[key])) out.push(`${where}: ${key} is not a number`);
   };
   for (const key of LISTS) {
     if (doc[key] === undefined) continue;
@@ -189,13 +194,13 @@ export function infraProblems(doc) {
       if (x.points !== undefined && (!Array.isArray(x.points) || !x.points.every(finite))) out.push(`${where}: points are not [[x, y], …]`);
       if (x.holes !== undefined && (!Array.isArray(x.holes) || !x.holes.every((h) => Array.isArray(h) && h.every(finite)))) out.push(`${where}: holes are not [[[x, y], …], …]`);
       if (key === "elements") for (const k of ["km", "heading_deg", "length_m", "speed_kmh"]) number(x, k, where);
-      if (key === "operating_points" && x.km !== undefined && !(Array.isArray(x.km) && x.km.length === 2 && x.km.every(Number.isFinite))) out.push(`${where}: km is not [from, to]`);
+      if (key === "operating_points" && x.km != null && !(Array.isArray(x.km) && x.km.length === 2 && x.km.every(Number.isFinite))) out.push(`${where}: km is not [from, to]`);
     }
   }
   const tracks = new Set(entries(doc.tracks).map((t) => t.track).filter(Boolean).map(String));
   for (const t of entries(doc.tracks)) {
     if (!(Array.isArray(t.points) && t.points.length >= 2)) out.push(`tracks (${t.id}): fewer than two points`);
-    if (t.kms !== undefined && (!Array.isArray(t.kms) || t.kms.length !== t.points?.length || !t.kms.every(Number.isFinite))) out.push(`tracks (${t.id}): kms must be one number per point`);
+    if (t.kms != null && (!Array.isArray(t.kms) || t.kms.length !== t.points?.length || !t.kms.every(Number.isFinite))) out.push(`tracks (${t.id}): kms must be one number per point`);
   }
   for (const e of entries(doc.elements)) {
     if (!ELEMENT_TYPES[e.type]) out.push(`elements (${e.id}): unknown type ${JSON.stringify(e.type)}`);
