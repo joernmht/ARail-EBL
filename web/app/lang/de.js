@@ -4,6 +4,7 @@
  * the panels of the cases (the stories' steps, the terminal's lists; they stay English).
  */
 import { BUILDER_DE } from "./de-builder.js";
+import { PLAN_DE } from "./de-plan.js";
 
 const APP_DE = {
   // ------------------------------------------------------------ the page: bar, stage, tabs
@@ -438,6 +439,7 @@ const APP_DE = {
 export const DE_PARTS = {
   "web/app/lang/de.js": APP_DE,
   "web/app/lang/de-builder.js": BUILDER_DE,
+  "web/app/lang/de-plan.js": PLAN_DE,
 };
 
 export const DE = Object.assign({}, ...Object.values(DE_PARTS));

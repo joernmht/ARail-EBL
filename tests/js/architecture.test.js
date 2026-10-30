@@ -36,7 +36,7 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** The source files the page has to cover. */
 const SOURCES = [
-  ...["web/arail", "web/app", "web/game", "web/builder", "web/live", "web/markers", "web/plugins", "web/architecture"].flatMap((d) => walk(d, (p) => p.endsWith(".js"))),
+  ...["web/arail", "web/app", "web/game", "web/builder", "web/live", "web/markers", "web/plugins", "web/architecture", "web/plan"].flatMap((d) => walk(d, (p) => p.endsWith(".js"))),
   ...walk("tools/arail_tools", (p) => p.endsWith(".py")),
   ...readdirSync(join(ROOT, "tools")).filter((f) => f.endsWith(".mjs")).map((f) => `tools/${f}`),
 ].sort();

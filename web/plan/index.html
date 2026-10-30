@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARail Plan Documents</title>
+<meta name="description" content="The railway infrastructure of a layout, or of the EBL's digital twin, drawn as a plan sheet: a CAD drawing at a scale, with a title block, to print or to download as SVG and DXF.">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../app/app.css">
+<style id="pageSize">@page { size: 420mm 297mm; margin: 0; }</style>
+<style>
+  body { background: var(--bg); }
+  .skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: var(--surface); color: var(--text); padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+  .skip-link:focus { top: 12px; }
+  .page { display: grid; grid-template-columns: minmax(250px, 320px) 1fr; gap: 14px; padding: 14px 16px 32px; max-width: 1800px; margin: 0 auto; }
+  .controls { display: grid; gap: 12px; align-content: start; }
+  .controls fieldset { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 8px 12px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+  .controls legend { font-weight: 700; padding: 0 4px; color: var(--text); }
+  .controls .checks { display: grid; gap: 4px; font-size: .88rem; color: var(--text); }
+  .controls .checks label { display: flex; gap: 6px; align-items: center; }
+  .controls .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .intro h1 { margin: 0 0 4px; font-size: 1.25rem; font-stretch: 80%; }
+  .intro p { margin: 0; color: var(--text-2); font-size: .88rem; }
+  .status { font-size: .85rem; color: var(--text-2); margin: 0; }
+  .status.bad { color: var(--danger); }
+  .preview { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .preview-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .preview-tools .spacer { flex: 1; }
+  .sheet-box { overflow: auto; background: var(--stage, #3c3c3c); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; max-height: calc(100vh - 150px); }
+  .sheet-box svg { display: block; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); margin: 0 auto; }
+  .sheet-box.fit svg { width: 100%; height: auto; }
+  .site-foot { max-width: 1800px; margin: 0 auto; padding: 0 16px 32px; color: var(--text-2); font-size: .85rem; }
+  .site-foot a { color: inherit; }
+  @media (max-width: 800px) { .page { grid-template-columns: 1fr; } }
+  @media print {
+    body > *:not(main), .controls, .preview-tools, .intro, .status { display: none !important; }
+    body, .page, .preview, .sheet-box { background: #fff !important; padding: 0 !important; margin: 0 !important; border: 0 !important; max-height: none !important; overflow: visible !important; display: block !important; }
+    .sheet-box svg { box-shadow: none; width: auto !important; height: auto !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#sheet">Skip to the sheet</a>
+<header class="bar" id="bar">
+  <a class="brand" href="../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>EBL</small></a>
+  <span class="layout-name">Plan documents</span>
+  <span class="spacer"></span>
+  <a class="btn" href="../builder/">Builder</a>
+  <a class="btn" href="../app/">Open the app</a>
+</header>
+<main class="page" id="main">
+  <form class="controls" id="controls" aria-label="Plan settings">
+    <section class="intro" id="intro" aria-labelledby="title">
+      <h1 id="title">Plan documents</h1>
+      <p>The infrastructure as a plan sheet: tracks, platforms, signals and switches at a scale, with a title block. Print it, or download it as SVG, as DXF for CAD, or as rail-infra data.</p>
+    </section>
+    <fieldset>
+      <legend>Source</legend>
+      <label class="field"><span>Layout or file</span>
+        <select id="source"></select>
+      </label>
+      <label class="field"><span>Open a file (an ARail layout or rail-infra data)</span>
+        <input type="file" id="file" accept=".json,application/json">
+      </label>
+      <div class="checks" id="modules" role="group" aria-label="Modules of the layout"></div>
+      <p class="status" id="status" role="status"></p>
+    </fieldset>
+    <fieldset>
+      <legend>Sheet</legend>
+      <label class="field"><span>Paper</span>
+        <select id="paper"></select>
+      </label>
+      <label class="field"><span>Scale</span>
+        <select id="scale"></select>
+      </label>
+      <label class="field"><span>Sheet</span>
+        <select id="sheetNo"></select>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>Drawing layers</legend>
+      <div class="checks" id="layers"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Title block</legend>
+      <label class="field"><span>Title</span><input type="text" id="tTitle"></label>
+      <label class="field"><span>Drawing number</span><input type="text" id="tNumber"></label>
+      <label class="field"><span>Created by</span><input type="text" id="tAuthor"></label>
+      <label class="field"><span>Revision</span><input type="text" id="tRevision"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Export</legend>
+      <div class="acts">
+        <button class="btn primary" type="button" id="print">Print</button>
+        <button class="btn" type="button" id="svg">SVG</button>
+        <button class="btn" type="button" id="dxf">DXF</button>
+        <button class="btn" type="button" id="data">rail-infra data</button>
+      </div>
+    </fieldset>
+  </form>
+  <section class="preview" aria-label="The sheet">
+    <div class="preview-tools" id="tools">
+      <button class="btn small" type="button" id="prev">Previous sheet</button>
+      <button class="btn small" type="button" id="next">Next sheet</button>
+      <span class="spacer"></span>
+      <button class="btn small" type="button" id="zoom" aria-pressed="false">True size</button>
+    </div>
+    <div class="sheet-box fit" id="sheet" tabindex="0" role="img" aria-label="Plan sheet"></div>
+  </section>
+</main>
+<footer class="site-foot"><p><a href="../impressum/" lang="de">Impressum</a> (legal notice) · <a href="../datenschutz/" lang="de">Datenschutz</a> (privacy)</p></footer>
+<script type="module" src="plan.js"></script>
+</body>
+</html>

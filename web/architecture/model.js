@@ -23,6 +23,7 @@ import { INFRA } from "./models/infra.js";
 import { JOURNEYS } from "./models/journeys.js";
 import { OPERATIONS } from "./models/operations.js";
 import { PAGES } from "./models/pages.js";
+import { PLAN } from "./models/plan.js";
 import { RAIL } from "./models/rail.js";
 import { STREETS } from "./models/streets.js";
 import { TERMINAL } from "./models/terminal.js";
@@ -141,19 +142,25 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js"],
     uses: [],
+  },
+  {
+    id: "plan", name: "plan", group: "framework", path: "web/arail/plan",
+    summary: "The infrastructure as rail-infra/1 data (the exchange format shared with the EBL's digital twin), drawn as a plan sheet (SVG at a scale, frame, title block) and as DXF.",
+    files: ["web/arail/plan/infra.js", "web/arail/plan/drawing.js", "web/arail/plan/dxf.js"],
+    uses: ["core-world", "core-drawing"],
   },
   {
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail", "i18n"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail", "plan", "i18n"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
     summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panel's three chapters (Overview; Interaction with the modules and their cases by side, infrastructure and railway undertaking, and the tools Build and Disruptions; Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js"],
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {
@@ -175,6 +182,12 @@ export const PACKAGES = [
     uses: ["core-math", "core-tracking", "core-world", "core-transport", "core-drawing", "objects", "sims"], links: [["vendor", "run by the worker"]],
   },
   {
+    id: "plan-page", name: "plan documents", group: "pages", path: "web/plan",
+    summary: "Plan documents: a layout or rail-infra data (the EBL's track plan and hall plan) as a plan sheet to print, or as SVG, DXF and data.",
+    files: ["web/plan/plan.js"],
+    uses: ["core-world", "plan", "app"],
+  },
+  {
     id: "markers", name: "markers", group: "pages", path: "web/markers",
     summary: "The marker sheets, label sheets and deck cards for model wagons (print pages).",
     files: ["web/markers/markers.js", "web/markers/label-sheets.js", "web/markers/deck-cards.js"],
@@ -183,7 +196,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js", "web/architecture/models/plan.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -255,6 +268,8 @@ export const DATA_FLOW = {
     { id: "results", kind: "store", no: "D4", label: "Results and saved games" },
     { id: "calibration", kind: "store", no: "D5", label: "Calibration file" },
     { id: "photos", kind: "store", no: "D6", label: "Photo map of the lab" },
+    { id: "plan", kind: "process", no: "P15", label: "Draw a plan sheet", files: ["web/plan/plan.js", "web/arail/plan/infra.js", "web/arail/plan/drawing.js", "web/arail/plan/dxf.js"] },
+    { id: "twin", kind: "external", label: "EBL digital twin (ebl_twin)" },
   ],
   flows: [
     { from: "camera", to: "detect", label: "frames" },
@@ -294,6 +309,9 @@ export const DATA_FLOW = {
     { from: "tour", to: "detect", label: "the photo (with a digital layer)" },
     { from: "photos", to: "mosaic", label: "orthophotos of the linked groups" },
     { from: "mosaic", to: "layouts", label: "one orthophoto of the table" },
+    { from: "layouts", to: "plan", label: "layout JSON: infrastructure, modules" },
+    { from: "twin", to: "plan", label: "rail-infra/1: track plan, hall plan" },
+    { from: "plan", to: "people", label: "plan sheet: print, SVG, DXF, rail-infra data" },
   ],
 };
 
@@ -312,11 +330,12 @@ export const MODEL_GROUPS = [
   { id: "rail", name: "Railway systems and trains", intro: "What the track sections are equipped with, where a system changes, and the vehicles and consists of the trains." },
   { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the role catalogue, the game core the games share, and the first of them, the signaller." },
   { id: "control", name: "The control system" },
+  { id: "plans", name: "Plans and data exchange", intro: "The infrastructure as data in the exchange format rail-infra/1, shared with the EBL's digital twin, and as plan sheets: drawings at a scale with a title block, SVG and DXF." },
   { id: "pages", name: "The app and the pages" },
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...GAMES, ...CONTROL, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...GAMES, ...CONTROL, ...PLAN, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
