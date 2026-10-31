@@ -17,6 +17,7 @@
 | [Roles of the railway](roles.md) | The role catalogue: the roles of the German railway system from the politician to the cleaning staff, each with its decisions, means, limits, personal risks, ways in and a mini game; the qualifications of the sector with their prerequisites (written from `web/game/roles/roles.json`) |
 | [Languages](languages.md) | The app in English or German: choosing the language, how texts are translated, adding texts (also for plugins), the glossary of railway terms |
 | [Railway systems and trains](rail-systems.md) | What each track section is equipped with (traction power, train protection, ETCS, signals, radio, gauge, line category, country); colouring the tracks by a system; where systems change (borders, separation sections); vehicles, consists and the train data (brake percentage, axle loads); where a train may run; its running dynamics (run, running time, braking distance, PZB and ETCS curves, adhesion, coupler forces, energy and coasting) on its card and on the track ahead |
+| [Plan documents](plan-documents.md) | The infrastructure as a plan sheet like a CAD drawing: a layout, or the EBL's track plan and hall plan from its digital twin, at a standard scale on ISO paper with the drawing frame, the title block and a legend; sheets for long plans; printing at true size, SVG, DXF for CAD |
 | [Live AR on XR glasses](live-ar.md) | ARail Live: the town and its moving cars, live on XR glasses (camera image or see-through) or a phone; the town drawn once and fitted to the camera, markers found in a worker; the numbers of the performance test, settings and links |
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
@@ -29,6 +30,7 @@
 | --- | --- |
 | [Layout file format](layout-format.md) | The JSON file describing a layout, with its layers (the app's modules) and all built-in object types and simulations |
 | [Using ARail for research](research.md) | Applying a model or an algorithm of your own to the simulated railway: the ways in (plugin, planner, control-system feed, Node, scenarios), the browser workbench, what you can leave aside (the role games) |
+| [rail-infra/1](rail-infra-format.md) | The exchange format for railway infrastructure that ARail and the EBL's digital twin share: tracks, platforms, signals, switches and operating points, the keys that tie them to the control system (track and kilometre), the element types |
 | [Control-system interface](control-system-interface.md) | Feed protocol, bridge and adapters |
 | [Extending ARail](extending.md) | Plugins: object types (also buildings), simulations, disruptions and vehicles; the drawing, clock, road and transit APIs |
 | [Architecture](architecture.md) | Modules, data flow, coordinate systems, tracking maths, rendering, simulation and tests; the whole architecture in UML on the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) (classes and activities of every model) |

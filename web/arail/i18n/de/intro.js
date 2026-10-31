@@ -43,10 +43,8 @@ export const TEXTS = {
   "Your turn": "Sie sind dran",
   "Tap anything on the stage to see what it is.": "Tippen Sie im Bild auf etwas, um zu sehen, was es ist.",
   "Then start a scenario: each one gives you a small task to try.": "Dann starten Sie ein Szenario: Jedes gibt Ihnen eine kleine Aufgabe zum Ausprobieren.",
-  // the figures of the scenes
-  "Scale": "Maßstab",
+  // the figures of the scenes ("Scale" and "Platforms" are the plan sheet's: plan.js)
   "Tables": "Tische",
-  "Platforms": "Bahnsteige",
   "Markers": "Marker",
   "Streets": "Straßen",
   "Trees": "Bäume",

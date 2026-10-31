@@ -62,6 +62,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Setting up a lab](docs/lab-setup.md) | Markers (also on model wagons), printing, placement, cameras, the marker map |
 | [Lab session](docs/lab-session.md) | Stickers on the whole layout, one video, `arail-survey`: a fixed layout and an orthophoto |
 | [The builder](docs/world-builder.md) | Editing a layout as a plan: streets that join, bus stops, truck lanes and buildings at a street, the street access check with its fixes, covered photos, a push to GitHub |
+| [Plan documents](docs/plan-documents.md) | The infrastructure as a plan sheet like a CAD drawing (a layout, or the EBL's track plan and hall plan), to print or as SVG and DXF; the exchange format [rail-infra/1](docs/rail-infra-format.md) shared with the EBL's digital twin |
 | [Live AR on XR glasses](docs/live-ar.md) | ARail Live: the town and its moving cars live on XR glasses or a phone, drawn once and fitted to the camera; a performance test |
 | [Day and night](docs/day-and-night.md) | The fast clock, lighting, demand over the day, the town simulation |
 | [Streets, trams, buses and road traffic](docs/streets-and-buses.md) | The road network and its cross-sections, bus and tram lines, cars and parking, bikes and e-scooters, signs, lights and railway crossings |
