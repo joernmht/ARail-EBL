@@ -152,7 +152,7 @@ for comparisons over weeks (in the game page's Compare view or with [`tools/ops-
 
 ## The example
 
-The module **Rail operations** of the lab example on the game page (Interaction → Modules, or Railway undertaking →
+The module **Rail operations** of the lab example on the game page (Interaction → Sandbox, or Railway undertaking →
 Operations → Switch on “Rail operations”, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 

@@ -1,10 +1,10 @@
 // Modules of a layout on the game page (its layers; the app has the same shell): the lab example with its modules Rail operations,
-// Infrastructure, Journeys and Container terminal, switched by clicking their boxes in Interaction → Modules
+// Infrastructure, Journeys and Container terminal, switched by clicking their boxes in Interaction → Sandbox
 // and from a case that is off, kept per layout, old links to the former example files, new objects
 // in a module, and the container terminal: a layout of its own, chosen alone, and the way back. The
 // app's modules Build and Disruptions, the three chapters, and Settings with its views Simulation and Control system.
 import { expect, test } from "@playwright/test";
-import { caseReady, moduleBox, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, moduleBox, openCase, openModules } from "./ui.js";
 
 const LAB = "/game/?layout=../layouts/ebl-lab.json";
 
@@ -29,7 +29,7 @@ async function open(page, path) {
 const on = (page) => page.evaluate(() => window.__arail.layersOn());
 const box = moduleBox;
 
-test("Interaction → Modules switches the modules of the lab example by clicking their boxes; the choice is kept", async ({ page }) => {
+test("Interaction → Sandbox switches the modules of the lab example by clicking their boxes; the choice is kept (#modules opens it)", async ({ page }) => {
   const errors = await open(page, `${LAB}#modules`);
   await expect(page.locator(".modules").getByRole("button")).toHaveCount(7); // the lab's five, the app's Build and Disruptions
   const ops = box(page, "Rail operations"), infra = box(page, "Infrastructure");
@@ -67,8 +67,7 @@ test("Interaction → Modules switches the modules of the lab example by clickin
 
 test("a case whose module is off offers to switch it on; old links open the lab with that module", async ({ page }) => {
   const errors = await open(page, `${LAB}#ops`);
-  await expect(page.locator("#strip-evu")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "ops");
   await expect(page.locator("#caseOn")).toHaveText("Switch on “Rail operations”");
   await page.locator("#caseOn").click();
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
@@ -232,18 +231,18 @@ test("with the browser's storage blocked, the module Disruptions still switches 
 test("Build is a module, on until switched off: off, the tool says so and placing stops; kept per layout; a link to #build switches it on", async ({ page }) => {
   const errors = await open(page, `${LAB}#build`);
   const build = () => box(page, "Build");
-  await expect(page.locator("#strip-build")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "build");
   await page.locator(".palette").getByRole("button", { name: /^Tree/ }).click();
   await expect(page.locator("#placing")).toBeVisible();
   await openModules(page);
-  await expect(page.locator("#placing")).toBeHidden(); // another entry of the strip: placing stops
+  await expect(page.locator("#placing")).toBeHidden(); // another scenario shown: placing stops
   await expect(build()).toHaveAttribute("aria-pressed", "true");
   await expect(build()).toHaveAccessibleDescription(/Place and edit the objects of the layout/);
   await build().click();
   await expect(build()).toHaveAttribute("aria-pressed", "false");
   await expect(build()).toBeFocused();
   expect(await page.evaluate(() => [window.__arail.editor.placing, window.__arail.caseFor("build").ready])).toEqual([null, false]);
-  // the tool says it is off; the strip and the chapters stay
+  // the tool says it is off; the chapters stay
   await openCase(page, "build");
   await expect(page.locator("#caseOn")).toHaveText("Switch on");
   await expect(page.locator(".palette")).toHaveCount(0);
@@ -261,7 +260,7 @@ test("Build is a module, on until switched off: off, the tool says so and placin
   await page.goto("about:blank");
   await page.goto(`${LAB}#build`);
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));
-  await expect(page.locator("#strip-build")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "build");
   await expect(page.locator(".palette")).toBeVisible();
   expect(errors).toEqual([]);
 });

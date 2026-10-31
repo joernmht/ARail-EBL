@@ -5,7 +5,8 @@
  *
  * Runtime state never enters object specs; `toJSON()` returns the configured start state.
  * Requests arrive as method calls (from the app) or as `terminal.request.*` events (from
- * scenarios); see types.js for the events.
+ * scenarios); see types.js for the events. Work orders (`orders`) say which container goes where;
+ * `orders()` tells which are done, and the open ones are marked on the stage.
  *
  * The infrastructure comes from the layout's objects (container yards, gantry cranes, reach
  * stackers, tracks, quays, truck lanes) and is read again whenever objects, the marker map or the
@@ -46,6 +47,8 @@ const TRUCK_LEAVE_S = 3;
 const TOPS_M = { loco: 4.2, truck: 3.8, barge: 6.0 };
 /** Target kinds of `request(…, {kind})`, with the word for messages. */
 const KINDS = { wagon: "wagon", truck: "truck", barge: "barge", yard: "yard block" };
+/** What a work order's `to` says for a kind of carrier (`orders`). */
+const ORDER_KINDS = { wagon: "A wagon", truck: "A truck", barge: "A barge", yard: "The yard" };
 /** Carrier kinds a reach stacker serves. */
 const GROUND = new Set(["wagon", "truck", "yard"]);
 /** Words for the end states of a move. */
@@ -527,6 +530,58 @@ export class TerminalSimulation extends Simulation {
   /** Is a visit leaving, or will it leave once the crane working on it is done? */
   _leaving(v) {
     return v?.state === "departing" || !!v?.leaveWhenDone;
+  }
+
+  /* ---------------------------------------------------------------- work orders */
+
+  /**
+   * The work orders (`orders` of the terminal entry, e.g. `{"container": "ARLU 600024 3", "to":
+   * "Container train"}`) in their order: which container goes where, and whether it is there. `to`
+   * names a place (a yard block, a wagon, a barge, a model wagon), a visit, a unit of model wagons
+   * or a kind of carrier (yard, wagon, truck, barge); `carriers` are the ids of those carriers. An
+   * order is done while its container stands there; `under` counts the containers on top of it.
+   * @returns {import("./types.js").WorkOrder[]}
+   */
+  orders() {
+    this._syncInfra();
+    return this._orderEntries().map((o, i) => {
+      const c = this.inventory.get(o.container), to = this._orderTarget(o.to);
+      return {
+        n: i + 1, container: o.container, to: o.to, label: to.label, carriers: [...to.carriers], done: !!c?.at && to.carriers.has(c.at.carrier),
+        at: c?.at ? { ...c.at } : null, under: c?.at ? this._above(c) : 0, moving: !!c && (c.move != null || c.handler != null), missing: !c,
+      };
+    });
+  }
+
+  /** The well-formed entries of `orders`. */
+  _orderEntries() {
+    return (Array.isArray(this.config.orders) ? this.config.orders : []).filter((o) => isObject(o) && typeof o.container === "string" && o.container && typeof o.to === "string" && o.to);
+  }
+
+  /** The carriers a work order's `to` names, and its name: a place, a visit, a unit of model wagons or a kind. */
+  _orderTarget(to) {
+    const ids = (list) => new Set(list.map((c) => c.id));
+    const c = this.carrier(to);
+    if (c) return { label: c.label, carriers: ids([c]) };
+    const v = this.visits.get(to);
+    if (v) return { label: v.name, carriers: ids(v.carriers) };
+    const u = this.modelUnits().find((x) => x.name === to);
+    if (u) return { label: u.name, carriers: ids(u.carriers) };
+    const kind = to === "train" ? "wagon" : to;
+    if (Object.hasOwn(ORDER_KINDS, kind)) return { label: ORDER_KINDS[kind], carriers: ids(this.carriers().filter((x) => x.kind === kind)) };
+    return { label: to, carriers: new Set() };
+  }
+
+  /** How many containers stand on top of a stored container. */
+  _above(c) {
+    const { carrier, row, bay, tier } = slotRef(c.at), seen = new Set();
+    for (let t = tier + 1; t < (this.carrier(carrier)?.tiers ?? 0); t++) {
+      for (let k = 0; k < c.bays; k++) {
+        const x = this.inventory.at(carrier, row, bay + k, t);
+        if (x) seen.add(x.id);
+      }
+    }
+    return seen.size;
   }
 
   /* ---------------------------------------------------------------- visits */
@@ -1585,7 +1640,10 @@ export class TerminalSimulation extends Simulation {
     return hit.stacks;
   }
 
-  /** The selected container, the boxes of its targets and (camera view) the empty slots of model wagons. */
+  /**
+   * The selected container, the boxes of its targets, (camera view) the empty slots of model wagons
+   * and the containers of open work orders, with their numbers.
+   */
   _drawHighlights(view, flyover) {
     const hl = this.highlight;
     const c = hl.selected ? this.inventory.get(hl.selected) : null;
@@ -1605,7 +1663,12 @@ export class TerminalSimulation extends Simulation {
         for (let bay = 0; bay < w.bays; bay++) if (!this.inventory.at(w.id, 0, bay, 0)) empties.push(this._slotBox({ carrier: w.id, bay }, probe));
       }
     }
-    if (selected || targets.length || empties.length) drawHighlights(view, { selected, targets, empties: empties.filter(Boolean) });
+    const orders = [];
+    for (const o of this.config.orders ? this.orders() : []) {
+      const box = !o.done && o.at ? this._slotBox(o.at, this.inventory.get(o.container)) : null;
+      if (box) orders.push({ box, n: o.n, label: o.label });
+    }
+    if (selected || targets.length || empties.length || orders.length) drawHighlights(view, { selected, targets, empties: empties.filter(Boolean), orders });
   }
 
   /** Deliberately empty: "Clear passengers" must not empty the terminal. */
@@ -1637,7 +1700,8 @@ const CHECKED = new WeakMap();
 
 /**
  * Problems of a terminal entry (§5.9): list shapes, visit ids, the objects it refers to, types and
- * values, the containers (placed in file order on a scratch inventory), the fill and the rolling stock.
+ * values, the containers (placed in file order on a scratch inventory), the work orders, the fill and
+ * the rolling stock.
  * @param {object} cfg
  * @param {object} layout normalized layout
  * @returns {string[]}
@@ -1781,6 +1845,26 @@ function validateTerminal(cfg, layout) {
     }
     const reason = inv.add(new Container({ id: e.id, size, high: e.high === true }), slotRef(e.at));
     if (reason) out.push(`${p}: ${reason}`);
+  });
+
+  // work orders: a container of the list, to a place, a visit, a unit of model wagons or a kind
+  const units = new Set(stock.filter((w) => isObject(w) && Number.isInteger(w.number) && w.number >= 1).map((w) => unitName(w.unit) ?? MODEL_UNIT));
+  const ordered = new Set();
+  list("orders").forEach((o, i) => {
+    if (!isObject(o) || typeof o.container !== "string" || !o.container) {
+      out.push(`orders[${i}] has no container`);
+      return;
+    }
+    const p = `orders[${i}] (${o.container})`;
+    if (!seen.has(o.container)) out.push(`${p}: no such container in containers`);
+    else if (ordered.has(o.container)) out.push(`${p}: the container has an order already`);
+    ordered.add(o.container);
+    if (typeof o.to !== "string" || !o.to) {
+      out.push(`${p}: no target: give a place, a visit, a unit of model wagons, or yard, wagon, truck or barge`);
+      return;
+    }
+    wagonCarrier(o.to);
+    if (!inv.carriers.has(o.to) && !visitIds.has(o.to) && !units.has(o.to) && !Object.hasOwn(ORDER_KINDS, o.to === "train" ? "wagon" : o.to)) out.push(`${p}: unknown target "${o.to}"`);
   });
 
   // fill

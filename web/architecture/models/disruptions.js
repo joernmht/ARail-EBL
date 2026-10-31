@@ -122,9 +122,9 @@ export const DISRUPTIONS = [
   },
   {
     id: "stories", group: "disruptions", title: "Stories to click through",
-    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's module tabs show them with Back, Next, Play and Start again (Operations: the operations story; Infrastructure: the maintenance story; Journeys: the journeys story).",
-    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure, the operations story and the journeys story are scripted stories.",
-    files: ["web/arail/core/story.js"],
+    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's scenarios show them with Back, Next, Play and Start again (A train breaks down: the operations story; A signal fails: the maintenance story; A traveller's journey: the journeys story). The introduction of a layout is a film of scenes made from the layout itself.",
+    description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure, the operations story and the journeys story are scripted stories. The introduction (introScenes) is no simulation: its scenes are made from any layout, what is real in the lab (real tables, tracks and platforms, the markers) and what the app adds (the town, streets and lines, people, table modules, the terminal, the modules), each with its place, the objects it is about and its figures; the app plays them as a film (app/intro.js).",
+    files: ["web/arail/core/story.js", "web/arail/core/intro.js"],
     classes: [
       {
         name: "Story", file: "web/arail/core/story.js", kind: "class", extends: "Simulation", stereotype: "base class", role: "Steps to click through, and the picture of each moment.",
@@ -132,11 +132,18 @@ export const DISRUPTIONS = [
         operations: ["goTo(i)", "next()", "back()", "restart()", "skip() — the step's animation to its end", "play(on)", "step(dt)", "refresh() — compose the scene, the disruptions in line with it", "compose(index, k) — the picture (subclasses)", "reset() — replay stories: back to the start", "enter(index) — replay stories: a step begins", "settle(index) — replay stories: a step run to its end at once", "view() — where to look (flyover)", "state() — what the panel shows", "clear() — stops playing; the scene's disruptions start again with the next step"],
       },
       { name: "story", file: "web/arail/core/story.js", kind: "module", role: "Finding the layout's story; the disruption with which a story holds a track for its own train.", attributes: ["STORY_PAUSE_S — the pause between steps while playing", "STORY_DISRUPTIONS — story-train: a track held for a story's train (hidden, quiet)"], operations: ["storyOf(world, type)"] },
+      {
+        name: "intro", file: "web/arail/core/intro.js", kind: "module", role: "The introduction of a layout: its scenes, made from the layout as it is (a scene without anything to show is left out).",
+        attributes: ["SCENE_SECONDS — how long a scene is shown while the film plays: at least, at most, per word"],
+        operations: ["introScenes(world, options) — welcome, what is real (the photo alone), what the app adds, tracks and platforms, signals and the interlocking, virtual table modules, the town, streets and lines, people, the terminal, model wagons, the modules, your turn: each with its kind (real, virtual, both), text, figures, the objects it is about, its place and view", "sceneSeconds(text)", "boundsOf(objects, grow) — the outline around their footprints"],
+      },
     ],
     relations: [
       { from: "Story", to: "DisruptionManager", kind: "uses", label: "the scene's disruptions" },
       { from: "Story", to: "EventBus", kind: "uses", label: "story.step, story.play" },
       { from: "story", to: "ServiceManager", kind: "uses", label: "free (story-train)" },
+      { from: "intro", to: "World", kind: "uses", label: "objects, layers, markers" },
+      { from: "IntroPanel", to: "intro", kind: "uses", label: "introScenes (the app's film)" },
     ],
     activities: [{
       id: "goto", name: "Going to a step (Story.goTo)",

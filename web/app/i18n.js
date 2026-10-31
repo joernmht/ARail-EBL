@@ -38,7 +38,7 @@ export function chooseLanguage() {
 }
 
 /** The attributes that hold texts people read or hear. */
-export const TEXT_ATTRIBUTES = ["aria-label", "title", "alt", "placeholder"];
+export const TEXT_ATTRIBUTES = ["aria-label", "aria-valuetext", "title", "alt", "placeholder"];
 
 /** The English texts of the page's own markup (index.html), for switching back. */
 const originals = new WeakMap();

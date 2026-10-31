@@ -1,6 +1,6 @@
 # Disruptions and scenarios
 
-Disruptions change how vehicles run and how passengers behave. Start them in **Interaction → Disruptions** (switch on the module **Disruptions** in Interaction → Modules; it is offered for every layout), from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
+Disruptions change how vehicles run and how passengers behave. Start them in **Interaction → Disruptions** (switch on the module **Disruptions** in Interaction → Sandbox; it is offered for every layout), from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
 
 ## Built-in disruptions
 

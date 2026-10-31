@@ -138,16 +138,26 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
   .sources select { flex: 1 1 120px; min-width: 0; }
 }
 
-.main { display: grid; gap: 0; min-height: 0; }
-@media (min-width: 1000px) {
-  .main { grid-template-columns: minmax(0, 1fr) 390px; height: calc(100dvh - var(--bar-h, 60px)); }
+/* The stage stays where it is while the panel scrolls (ui.js, pageLayout: the same queries). Wide
+   screens, and tablets and phones held sideways: the stage at the left, the panel at the right.
+   Phones and tablets held upright: the stage at the top, the panel below it. On a short screen the
+   two are stacked and the page scrolls. */
+.main { display: grid; gap: 0; min-height: 0; --panel-w: 390px; }
+@media (min-width: 1000px), (min-width: 600px) and (orientation: landscape) {
+  .main { grid-template-columns: minmax(0, 1fr) var(--panel-w); height: calc(100dvh - var(--bar-h, 60px)); }
   .panel { overflow-y: auto; border-left: 1px solid var(--line); }
+}
+@media (max-width: 999px) and (min-width: 600px) and (orientation: landscape) { .main { --panel-w: min(360px, 46vw); } }
+@media (max-width: 999px) and (orientation: portrait) and (min-height: 500px), (max-width: 599px) and (min-height: 500px) {
+  .app { height: 100dvh; min-height: 0; }
+  .main { grid-template-rows: auto minmax(0, 1fr); }
+  .panel { overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); }
 }
 
 /* ------------------------------------------------------------------ stage */
 .stage { position: relative; background: var(--stage); display: grid; place-items: center; min-height: 240px; overflow: hidden; }
 .stage :focus-visible { outline-color: #ffffff; }
-@media (max-width: 999px) { .stage { max-height: 72dvh; } }
+@media (max-width: 999px) and (orientation: portrait), (max-width: 599px) { .stage { max-height: 72dvh; } }
 .stage canvas { display: block; touch-action: manipulation; }
 .stage canvas.editing { touch-action: none; cursor: crosshair; }
 .stage canvas.dragging { cursor: grabbing; }
@@ -237,7 +247,7 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .chart-swatch.chart-muted { border-top-color: var(--board-muted); opacity: .55; }
 
 /* ------------------------------------------------------------------ panel */
-.panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; }
+.panel { position: relative; background: var(--surface); min-width: 0; container: panel / inline-size; scroll-padding-top: 52px; } /* what gets the focus is scrolled in below the sticky tabs */
 /* long words (German compounds) break, with a hyphen where the browser knows the language's rules */
 .panel, .info-card, .tooltip, .hud { overflow-wrap: break-word; hyphens: auto; }
 .palette button > small, .module-name { overflow-wrap: anywhere; }
@@ -251,20 +261,54 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 @media (max-width: 640px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 @container panel (max-width: 480px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
-/* Interaction: the strip at its side (Modules, the sides, the tools; its labels read upwards) and the cases of a side as tabs */
-.interaction { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; margin-left: -10px; }
-.strip { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 56px; align-self: start; padding-right: 4px; border-right: 1px solid var(--line); }
-.strip-item { writing-mode: vertical-rl; transform: rotate(180deg); display: flex; align-items: center; gap: 7px; padding: 11px 6px; border: 0; border-left: 3px solid transparent; background: none; color: var(--text-2); font: inherit; font-weight: 600; font-size: .82rem; line-height: 1.2; cursor: pointer; white-space: nowrap; }
-.strip-item:hover { color: var(--text); }
-.strip-item[aria-selected="true"] { color: var(--accent-ink); border-left-color: var(--accent); }
-.strip-item.first-tool { margin-top: 14px; }
-.strip-icon { width: 20px; height: 20px; transform: rotate(180deg); flex: none; }
-.strip-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.interaction-body { min-width: 0; display: grid; align-content: start; }
-.case-tabs { display: flex; flex-wrap: wrap; gap: 0 2px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
-.case-tabs button { border: 0; background: none; padding: 7px 8px 6px; font: inherit; font-weight: 500; font-size: .88rem; color: var(--text-2); border-bottom: 3px solid transparent; cursor: pointer; }
-.case-tabs button:hover { color: var(--text); }
-.case-tabs button[aria-selected="true"] { color: var(--accent-ink); border-bottom-color: var(--accent); }
+/* Interaction: the scenarios as cards to click, with filter pills above them; a scenario shown: the
+   way back to the list, its name, its task with the progress and Start, then its panel */
+.scenarios { display: grid; gap: 14px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 5px 12px; min-height: 32px; font: inherit; font-size: .84rem; font-weight: 500; cursor: pointer; }
+.pill:hover { border-color: var(--accent); }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.scenario-card { width: 100%; height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 2px 10px; text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface-2); color: var(--text); padding: 10px 12px 11px; font: inherit; cursor: pointer; }
+.scenario-card:hover { border-color: var(--accent); }
+.scenario-card[aria-current="true"] { border-color: var(--warn); border-left-color: var(--warn); }
+.scenario-card.off { border-left-color: var(--line); }
+.scenario-card > span { grid-column: 2; }
+.scenario-card > .scenario-icon { grid-column: 1; grid-row: 1 / span 3; width: 26px; height: 26px; margin-top: 3px; color: var(--accent-ink); }
+.scenario-icon svg, .module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.scenario-tag, .scenario-side { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.scenario-card .scenario-name { font-weight: 700; font-size: .98rem; line-height: 1.25; overflow-wrap: anywhere; }
+.scenario-card.off .scenario-name { color: var(--text-2); }
+.scenario-text { color: var(--text-2); font-size: .84rem; line-height: 1.35; }
+.scenario-state { color: var(--accent-ink); font-weight: 600; }
+.interaction { display: grid; align-content: start; }
+.scenario-head { display: grid; gap: 2px; justify-items: start; margin-bottom: 12px; }
+.scenario-head .scenario-side { margin: 10px 0 0; }
+.scenario-head h2 { margin: 0; font-size: 1.3rem; line-height: 1.25; }
+.scenario-task { display: grid; gap: 8px; margin-bottom: 18px; padding: 12px; border: 1px solid var(--accent); border-left-width: 5px; border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.task-line { margin: 0; font-size: .95rem; }
+.task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.task-count { font-weight: 600; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.task-done { margin: 0; font-weight: 700; color: var(--accent-ink); }
+.task-figures { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: .86rem; }
+.task-figures div { display: flex; gap: 6px; }
+.task-figures dt { color: var(--text-2); }
+.task-figures dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* the introduction: the scene with its kind as a badge (real: Türkis, virtual: Orange, both: Dunkelblau) and its figures */
+.intro-now { gap: 6px; border-left: 4px solid var(--accent); padding-left: 12px; }
+.intro-now h3 { margin: 0; font-size: 1.12rem; line-height: 1.3; }
+.intro-now p { margin: 0; line-height: 1.5; }
+.intro-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.intro-kind { padding: 1px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; }
+.intro-kind.real { background: var(--accent); color: var(--accent-text); }
+.intro-kind.virtual { background: var(--warn); color: var(--warn-text); }
+.intro-kind.both { background: var(--board); color: var(--board-text); }
+.intro-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
+.intro-facts div { display: flex; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); font-size: .8rem; }
+.intro-facts dt { color: var(--text-2); }
+.intro-facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* the Sandbox: what it shows, in groups */
+.sandbox-sub { margin: 6px 0 0; font-size: .88rem; font-weight: 600; }
 .case-panel { display: grid; gap: 18px; align-content: start; min-width: 0; }
 .section { display: grid; gap: 8px; }
 .section > h2 { margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
@@ -314,7 +358,6 @@ input[type="range"] { width: 100%; }
 .module:hover { border-color: var(--accent); }
 .module.exclusive { border-style: dashed; }
 .module-icon { width: 24px; height: 24px; color: var(--accent-ink); }
-.module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .module-name { font-weight: 700; font-size: .92rem; line-height: 1.25; }
 /* on or off: the box's colour says it; a module that opens alone says so */
 .module-state { grid-column: 2; color: var(--text-2); font-size: .8rem; }
@@ -435,6 +478,12 @@ details[open] summary { margin-bottom: 8px; }
 .term-form .row .grow { flex: 1 1 150px; }
 /* the list keeps the Move form close: it scrolls on its own */
 .term-list { max-height: 340px; overflow-y: auto; padding-right: 2px; overscroll-behavior: contain; }
+/* work orders: numbered like their badges on the stage (Orange: open, Türkis: done) */
+.term-orders button { justify-content: flex-start; }
+.term-orders button > span:nth-child(2) { flex: 1; min-width: 0; }
+.term-order-n { display: inline-grid; place-items: center; flex: none; min-width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--warn); color: var(--warn-text); font-weight: 700; font-size: .78rem; }
+.term-orders li.done .term-order-n { background: var(--accent); color: var(--accent-text); }
+.term-orders li.done button { color: var(--text-2); }
 .term-list h3 { margin: 10px 0 5px; }
 .term-list h3:first-child { margin-top: 0; }
 .term-list h3 .meta { color: var(--text-2); font-weight: 400; }
