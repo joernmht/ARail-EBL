@@ -60,7 +60,7 @@ export class PlanPanel {
       h("div", { class: "row" },
         r ? h("button", { class: "btn", type: "button", id: id("Stop"), onclick: () => this.stop() }, "Stop")
           : h("button", { class: "btn primary", type: "button", id: id("Run"), disabled: !plan.canRun, title: "Play the plan on the layout", onclick: () => this.run() }, "Run"),
-        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Start again"),
+        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Restart"),
         h("p", { class: `plan-status${!r && problems ? " bad" : ""}`, id: id("Status"), "aria-live": "polite" },
           r ? `Running · ${gone} of ${plan.trains.length}` : problems ? plural(problems, "problem") : "No problems")),
       res && !r ? h("div", { class: "ops-tiles plan-result", id: id("Result"), role: "group", "aria-label": "Last run" },

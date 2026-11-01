@@ -36,10 +36,10 @@ at 08:10 to Altstadt, there at 08:46.
 | 10. Ada in Altstadt: her journey in numbers | Her whole way on the layout (walked dashed, by bus solid) and a card: planned 07:42 → 08:46, real 07:48 → 08:58 by bus (12 minutes late), had she waited 08:02 → 09:46 (60 minutes late). |
 | 11. Her rights as a passenger | The card of the passenger rights (Fahrgastrechte): what counts is the delay at the destination, a missed connection included; from 20 minutes another train, from 60 minutes 25 % of the fare back, from 120 minutes 50 %, paid from 4 €; had she waited, 25 %. The transport association's mobility guarantee (Mobilitätsgarantie): from 20 minutes a taxi, up to 30 €. |
 
-**Back**, **Next**, a step on the bar of the steps (a segment per step; below it only the step
-shown), **Play** and **Start again**; a presenter's clicker works too
-(Page Down, Page Up). Every step looks the same each time it is shown. **Camera follows** opens the
-flyover and keeps its camera with Ada, her bus and the late train, and shows her whole way at the
+**Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
+shown), **Play** and **Restart**; a presenter's clicker works too
+(Page Down, Page Up). Every step looks the same each time it is shown. While the scenario runs, the
+flyover's camera always follows the story: with Ada, her bus and the late train, and shows her whole way at the
 end; her walk from home it sees from the street, facing her front door (from the other side the
 houses would hide her), everything else facing the station's front. Each step sets the clock to its
 time when the clock is more than five minutes away (07:30 when she leaves, 08:00 when the late train

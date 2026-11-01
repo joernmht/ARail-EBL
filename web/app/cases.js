@@ -286,14 +286,14 @@ export class SandboxCase extends Case {
   }
 }
 
-/** A story to click through (core/story.js) in a StoryPanel; the flyover's camera follows it. */
+/** A story to click through (core/story.js) in a StoryPanel; while it runs, the flyover's camera follows it. */
 export class StoryCase extends Case {
   /** The prefix of the panel's ids ("infra": #infraStoryNext). */
   static prefix = "";
   static steps = true;
 
   makePanel() {
-    return new StoryPanel(this.app, { prefix: this.constructor.prefix, type: this.constructor.needs });
+    return new StoryPanel(this.app, { prefix: this.constructor.prefix, type: this.constructor.needs, owner: this });
   }
 
   get story() {
@@ -301,8 +301,9 @@ export class StoryCase extends Case {
   }
 
   begin() {
+    // the camera follows it from the start
     this.story?.restart();
-    this.panel.setFollow(true);
+    this.panel.stepped();
   }
 
   progress() {

@@ -1,6 +1,6 @@
 // End-to-end tests of the operations story in the app (Chromium): Bf Neustadt's module Breakdown
 // switched on in Settings (alone: Infrastructure takes its place), the story clicked through (the tracks its trains hold, the platform's
-// message, the bar of the steps, a presenter's clicker, Start again), the flyover's camera following
+// message, the bar of the steps, a presenter's clicker, Restart), the flyover's camera following
 // the spare unit to the depot, no timetable train where the story's trains are, and the game page
 // keeping its Operations game.
 import { expect, test } from "@playwright/test";
@@ -49,7 +49,7 @@ test("Railway undertaking → Disruption switches on the module Breakdown of Bf 
   expect(errors).toEqual([]);
 });
 
-test("the operations story: Next and Back, the platform's message, the bar of the steps, a clicker, Start again", async ({ page }) => {
+test("the operations story: Next and Back, the platform's message, the bar of the steps, a clicker, Restart", async ({ page }) => {
   const errors = await open(page, STORY);
   await expectCase(page, "evu-disruption");
   await expect(title(page)).toHaveText("RB 31 to Talsee boards at track G3");
@@ -84,7 +84,7 @@ test("the operations story: Next and Back, the platform's message, the bar of th
   await expect(page.locator("#casePanel .story-now")).toContainText("2 × 40 € = 80 €");
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText("442 101 runs empty to the workshop");
-  // Start again: the train boards again, both tracks held without a message
+  // Restart: the train boards again, both tracks held without a message
   await page.locator("#opsStoryRestart").click();
   await expect(title(page)).toHaveText("RB 31 to Talsee boards at track G3");
   expect(await held(page)).toEqual(["story-train@platform-2:left", "story-train@platform-2:right"]);
@@ -92,12 +92,11 @@ test("the operations story: Next and Back, the platform's message, the bar of th
   expect(errors).toEqual([]);
 });
 
-test("Camera follows the spare unit out of the depot and in at track G2", async ({ page }) => {
+test("the camera follows the spare unit out of the depot and in at track G2", async ({ page }) => {
   const errors = await open(page, STORY);
-  const follow = page.locator("#opsStoryFollow");
-  await follow.click();
+  // Start: the flyover, its camera on the story (always, there is no switch)
+  await page.locator("#scenarioStart").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(follow).toHaveAttribute("aria-pressed", "true");
   const distance = () => page.evaluate(() => {
     const a = window.__arail, at = a.operations.story.view().at, t = a.flyover.cam.target;
     return Math.round(Math.hypot(t[0] - at[0], t[1] - at[1]));

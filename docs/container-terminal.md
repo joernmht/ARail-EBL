@@ -382,7 +382,7 @@ example**, and **Add to this layout**.
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
    state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage. In the
-   loading task the panel is light in text: only **Start again** (the terminal as the task starts),
+   loading task the panel is light in text: only **Restart** (the terminal as the task starts),
    the work orders, the containers and the move; the bar above the panel counts the orders done,
    with the time and the moves.
    **Work orders** (where the terminal has `orders`) lists them numbered as on the stage: the
@@ -458,7 +458,7 @@ clock, and no fewer will do: the six containers of the orders move, and the four
 the yard; and with all of these gone the yard still has no place for the big one (no two empty bays
 side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the scenario **Load the hybrid train**) opens the example with the module
 on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
-clock (from Start until the last order is done) and the moves the crane finished; **Start again**
+clock (from Start until the last order is done) and the moves the crane finished; **Restart**
 begins anew. Every container of the task is in the photo; the barge and the yard's outer bays are
 not (the flyover shows them).
 

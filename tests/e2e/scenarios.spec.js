@@ -71,7 +71,7 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   });
   await page.locator("#scenarioStart").click();
   await expect.poll(film).toMatchObject({ index: 0, id: "welcome", playing: true, active: true, mode: "camera", fade: 1 });
-  // started: Start is gone (Start again is the film's), nothing but the film's controls, its bar and its scene
+  // started: Start is gone (Restart is the film's), nothing but the film's scene, its bar and its controls
   await expect(page.locator("#scenarioStart")).toHaveCount(0);
   await expect(task(page)).toBeHidden();
   await expect(page.locator("#scenarioName")).toBeFocused();
@@ -202,7 +202,7 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await page.locator("#termMove").click();
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*2/, { timeout: 60_000 });
   await expect(orders.nth(0)).toContainText("under 1 container");
-  // Start again: the terminal as the layout has it, the time and the moves from 0
+  // Restart: the terminal as the layout has it, the time and the moves from 0
   await page.locator("#termReset").click();
   await expect(task(page)).toContainText("0 of 6");
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*0/);
@@ -228,7 +228,7 @@ test("Trains on tracks: Start switches on the plan, alone, and shows the platfor
   await expect(task(page)).toContainText("4 of 6");
   await page.locator("#plan-infra-s1-0725-track").selectOption("G2");
   await expect(task(page)).toContainText("5 of 6");
-  // Start again: the plan as the layout has it
+  // Restart: the plan as the layout has it
   await page.locator("#infraPlanReset").click();
   await expect(task(page)).toContainText("4 of 6");
   await expect(page.locator("#plan-infra-s1-0725-track")).toHaveValue("G3");
@@ -240,7 +240,7 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   const errors = await open(page);
   await startScenario(page, "evu-disruption");
   expect(await page.evaluate(() => [window.__arail.layersOn(), window.__arail.mode])).toEqual([["operations"], "flyover"]);
-  await expect(page.locator("#opsStoryFollow")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#opsStoryFollow")).toHaveCount(0); // the camera always follows: no switch
   const n = await page.evaluate(() => window.__arail.caseById("evu-disruption").story.steps.length);
   const done = () => page.evaluate(() => window.__arail.caseById("evu-disruption").progress().done);
   // the bar of its steps is in the story's panel, nothing above it

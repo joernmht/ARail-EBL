@@ -93,7 +93,7 @@ test("the journeys story: Next and Back, the bar of the steps, a clicker; her tr
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText("Ada in Altstadt: her journey in numbers");
 
-  // Start again: Ada at home, nothing kept free, the clock back at 07:30
+  // Restart: Ada at home, nothing kept free, the clock back at 07:30
   await page.locator("#journeysStoryRestart").click();
   await expect(title(page)).toHaveText("Ada sets off");
   expect(await storyDisruptions(page)).toEqual([]);
@@ -110,12 +110,11 @@ test("the journeys story: Next and Back, the bar of the steps, a clicker; her tr
   expect(errors).toEqual([]);
 });
 
-test("Camera follows: the flyover goes with Ada through the town and with her bus", async ({ page }) => {
+test("the camera follows: the flyover goes with Ada through the town and with her bus", async ({ page }) => {
   const errors = await open(page, STORY);
-  const follow = page.locator("#journeysStoryFollow");
-  await follow.click();
+  // Start: the flyover, its camera on the story (always, there is no switch)
+  await page.locator("#scenarioStart").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(follow).toHaveAttribute("aria-pressed", "true");
   /** Where the camera looks from above (degrees). */
   const yaw = () => page.evaluate(() => Math.round((window.__arail.flyover.cam.yaw * 180) / Math.PI));
   // her walk from home is seen from the street, facing her front door; the station from its front

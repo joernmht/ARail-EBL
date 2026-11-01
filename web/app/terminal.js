@@ -3,7 +3,7 @@
 // targets on the canvas, in the camera view and the flyover. Every canvas action is also in the
 // panel: choose a container in the list and a place in "Move to". The app keeps it to moving
 // containers one by one; in a task (the terminal's work orders, the loading task of the hybrid
-// container train) it is light in text: Start again, the work orders, the containers and the move.
+// container train) it is light in text: Restart, the work orders, the containers and the move.
 import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
 import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
@@ -238,7 +238,7 @@ export class TerminalPanel {
 
   _head(sim) {
     // a task: its time and moves are above the panel, the crane on the stage; saving would change the task
-    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.resetTerminal() }, "Start again"));
+    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.resetTerminal() }, "Restart"));
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [

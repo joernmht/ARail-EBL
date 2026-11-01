@@ -45,7 +45,7 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
   expect(errors).toEqual([]);
 });
 
-test("the maintenance story: Next and Back, the bar of the steps, Start again and a clicker", async ({ page }) => {
+test("the maintenance story: Next and Back, the bar of the steps, Restart and a clicker", async ({ page }) => {
   const errors = await open(page, STORY);
   await expectCase(page, "infra-disruption");
   await expect(title(page)).toHaveText("The station in normal service");
@@ -93,7 +93,7 @@ test("the maintenance story: Next and Back, the bar of the steps, Start again an
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText(/^A planned renewal/);
 
-  // Start again: the station in normal service, nothing disrupted
+  // Restart: the station in normal service, nothing disrupted
   await page.locator("#infraStoryRestart").click();
   await expect(title(page)).toHaveText("The station in normal service");
   expect(await storyDisruptions(page)).toEqual([]);
@@ -120,23 +120,26 @@ test("the maintenance story plays step after step until Play is released", async
   expect(errors).toEqual([]);
 });
 
-test("Camera follows opens the flyover and goes where the story happens", async ({ page }) => {
+test("the camera always follows the story once it runs: a step chosen before Start starts it, in the flyover", async ({ page }) => {
   const errors = await open(page, STORY);
-  const follow = page.locator("#infraStoryFollow");
-  await expect(follow).toHaveAttribute("aria-pressed", "false"); // the camera view of the photo
-  await follow.click();
-  await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(follow).toHaveAttribute("aria-pressed", "true");
+  // shown by its link, not started: the stage stays as it is; there is no switch for the camera
+  expect(await page.evaluate(() => window.__arail.mode)).toBe("camera");
+  await expect(page.locator("#infraStoryFollow")).toHaveCount(0);
+  // a step chosen on the bar starts the scenario first: the flyover, its camera on the signal
   await page.locator('#casePanel .step-seg[title="The team repairs the signal"]').click();
-  // the camera's target comes to the signal
-  await expect.poll(() => page.evaluate(() => {
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText("The team repairs the signal");
+  const off = () => page.evaluate(() => {
     const a = window.__arail, at = a.infra.story.view().at, t = a.flyover.cam.target;
     return Math.round(Math.hypot(t[0] - at[0], t[1] - at[1]));
-  }), { timeout: 15_000 }).toBeLessThan(50);
-  // off: the camera stays where it is
-  await follow.click();
-  await expect(follow).toHaveAttribute("aria-pressed", "false");
-  expect(await page.evaluate(() => window.__arail.flyover.following)).toBeNull();
+  });
+  await expect.poll(off, { timeout: 15_000 }).toBeLessThan(50);
+  // the photo chosen by hand: the next step takes the camera back to the story
+  await page.evaluate(() => window.__arail.flyover.leave());
+  await page.waitForFunction(() => window.__arail.mode === "camera");
+  await page.locator("#infraStoryNext").click();
+  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await expect.poll(off, { timeout: 15_000 }).toBeLessThan(80);
   expect(errors).toEqual([]);
 });
 
