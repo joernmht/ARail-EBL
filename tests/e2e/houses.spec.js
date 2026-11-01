@@ -84,14 +84,15 @@ test("buildings: place a Plattenbau, change its series and see its windows lit a
 
   // by day the windows are grey; at night they light up warm (the camera image gets darker)
   const lit = () => page.evaluate(() => window.__arail.editor.selected.geometry.windows.filter((w) => w.d.emissive).length);
+  // (setTime: the town's people are where their plans say then, at 21:30 at home)
   await page.evaluate(() => {
     const w = window.__arail.world;
-    w.clock.set("12:00");
+    w.setTime("12:00");
     w.clock.frozen = true;
   });
   await warmPixels(page, 300, 560);
   expect(await lit()).toBe(0);
-  await page.evaluate(() => window.__arail.world.clock.set("21:30"));
+  await page.evaluate(() => window.__arail.world.setTime("21:30"));
   expect(await warmPixels(page, 300, 560)).toBeGreaterThan(200);
   expect(await lit()).toBeGreaterThan(20);
   expect(errors).toEqual([]);
