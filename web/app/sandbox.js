@@ -3,6 +3,7 @@
 // the infrastructure ages (its assets in the colour of their condition, years ahead without
 // renewals), the people (coloured by the purpose of their trip or by their mood, their walking
 // trails, the room they take), the signs and boards, the tracks by one of their railway systems.
+// Light in text: what it is about is said in the list of scenarios; here only its controls.
 import { boundsOf, SYSTEM_OVERLAYS, storyOf } from "../arail/index.js";
 import { icon } from "./icons.js";
 import { h, morph, mount } from "./ui.js";
@@ -54,9 +55,6 @@ export class SandboxPanel {
         h("button", { class: "btn small", type: "button", id: "sandboxFlyover", "aria-pressed": fly.active ? "true" : "false", onclick: () => (fly.active ? fly.leave() : fly.enter()) }, "Flyover"),
         h("button", { class: "btn small", type: "button", id: "sandboxFit", onclick: () => this.fit() }, "Whole layout"),
         photo ? h("button", { class: "btn small", type: "button", id: "sandboxPhoto", "aria-pressed": fly.active ? "false" : "true", onclick: () => fly.leave() }, "Photo") : null),
-      h("p", { class: "hint" }, fly.active
-        ? "Drag on the stage to turn the view, pinch or scroll to zoom; the buttons on the stage turn, tilt and zoom too."
-        : "The arrows at the edges of the photo go round the lab; the Flyover lets you fly over the layout."),
     ];
   }
 
@@ -94,7 +92,6 @@ export class SandboxPanel {
         h("label", { class: "field", for: "sandboxTrackSystems" }, h("span", {}, "Colour the tracks by"),
           h("select", { id: "sandboxTrackSystems", onchange: (ev) => set("trackSystems", ev.target.value) },
             [["", "nothing"], ...SYSTEM_OVERLAYS].map(([v, t]) => h("option", { value: v, selected: (s.trackSystems || "") === v }, t))))),
-      h("p", { class: "hint" }, "More in Settings → View."),
     ];
   }
 
@@ -107,8 +104,7 @@ export class SandboxPanel {
     const head = h("h3", { class: "sandbox-sub" }, "Infrastructure aging");
     if (!story) {
       const m = app.modules().find((x) => !x.app && x.simulations?.includes(AGEING));
-      return m ? [head, h("p", { class: "hint" }, "The signals, tracks and platforms of the station in the colour of their condition, years ahead."),
-        h("button", { class: "btn small", type: "button", id: "sandboxAgeing", onclick: () => this.showAgeing(m.id) }, `Switch on “${m.name}”`)] : [];
+      return m ? [head, h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "sandboxAgeing", onclick: () => this.showAgeing(m.id) }, `Switch on “${m.name}”`))] : [];
     }
     const years = Math.max(0, Math.min(AGE_MAX, +s.ageYears || 0));
     return [
@@ -121,8 +117,7 @@ export class SandboxPanel {
             this.update();
           },
         })),
-      h("p", { class: "hint" }, "The rings on the ground show the condition of each asset by its age, from grade 1 (Türkis: as new) to grade 5 (Rot: deficient). Tap one to see its age. Leaving the Sandbox brings the station back to today."),
-      h("button", { class: "btn small", type: "button", id: "sandboxAssets", onclick: () => this.showAssets() }, "Go to the assets"),
+      h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "sandboxAssets", onclick: () => this.showAssets() }, "Go to the assets")),
     ];
   }
 

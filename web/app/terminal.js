@@ -2,7 +2,8 @@
 // on the game page also its visits, new arrivals and crane jobs) and picking containers and their
 // targets on the canvas, in the camera view and the flyover. Every canvas action is also in the
 // panel: choose a container in the list and a place in "Move to". The app keeps it to moving
-// containers one by one.
+// containers one by one; in a task (the terminal's work orders, the loading task of the hybrid
+// container train) it is light in text: Start again, the work orders, the containers and the move.
 import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
 import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
@@ -96,6 +97,11 @@ export class TerminalPanel {
     c.addEventListener("pointercancel", () => (this._tap = null));
   }
 
+  /** Does it play a task (the app's terminal with work orders)? Then only what the task needs is shown. */
+  _task(sim) {
+    return !this.full && sim.orders().length > 0;
+  }
+
   /** The layout's container terminal, or null. @returns {import("../arail/terminal/operations.js").TerminalSimulation | null} */
   get sim() {
     const sim = terminalOf(this.app.world);
@@ -131,8 +137,8 @@ export class TerminalPanel {
     const e = this.el;
     mount(el, e.head, e.orders, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
-    // a control that is not there any more hands the focus to the panel's heading
-    if (focused) (document.getElementById(focused) || e.head.querySelector("h2"))?.focus();
+    // a control that is not there any more hands the focus to the panel's heading (in a task, the scenario's)
+    if (focused) (document.getElementById(focused) || e.head.querySelector("h2") || document.getElementById("scenarioName"))?.focus();
   }
 
   /** Refresh the panel in place (every 400 ms while it is shown, and after every action). */
@@ -166,7 +172,7 @@ export class TerminalPanel {
       const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
       if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
-      this._show(e.wagons, sim.rollingConfig() ? this._wagons(sim) : null);
+      this._show(e.wagons, sim.rollingConfig() && !this._task(sim) ? this._wagons(sim) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {
@@ -231,6 +237,8 @@ export class TerminalPanel {
   }
 
   _head(sim) {
+    // a task: its time and moves are above the panel, the crane on the stage; saving would change the task
+    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.resetTerminal() }, "Start again"));
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [
@@ -253,7 +261,8 @@ export class TerminalPanel {
     this.refused = null;
     sim.reset();
     this.update();
-    toast("Terminal reset to its start state.");
+    // in a task its bar says it: back to the start
+    if (!this._task(sim)) toast("Terminal reset to its start state.");
   }
 
   /** Save where the containers are now as the terminal's start state, in the layout stored in this browser. */
@@ -277,7 +286,8 @@ export class TerminalPanel {
     if (!orders.length) return null;
     const done = orders.filter((o) => o.done).length;
     return [
-      h("h2", {}, "Work orders ", h("span", { class: "count" }, `(${done} of ${orders.length} done)`)),
+      // in a task its bar counts them
+      h("h2", {}, "Work orders", this._task(sim) ? null : [" ", h("span", { class: "count" }, `(${done} of ${orders.length} done)`)]),
       h("ol", { class: "list term-orders" }, orders.map((o) => h("li", { class: o.done ? "done" : null },
         h("button", {
           type: "button", id: `term-order-${o.n}`, disabled: !o.at, "aria-current": o.container === this.selected ? "true" : "false",
@@ -465,7 +475,7 @@ export class TerminalPanel {
           h("select", { id: "termFilter", onchange: (e) => { this.filter = e.target.value; this.update(); } },
             FILTERS.map(([v, t]) => h("option", { value: v, selected: v === this.filter }, t))))),
       list,
-      h("p", { class: "hint" }, "Choose a container, or tap one on the layout; then tap a highlighted place or choose one under Move."),
+      this._task(sim) ? null : h("p", { class: "hint" }, "Choose a container, or tap one on the layout; then tap a highlighted place or choose one under Move."),
     ];
   }
 

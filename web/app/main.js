@@ -18,7 +18,6 @@ class InfraOperations extends PlanCase {
   static side = "infra";
   static label = "Trains on tracks";
   static description = "Put the trains of the morning on the tracks of the station";
-  static task = "Give every train of the morning a track that is free and long enough.";
   static icon = "plan";
   static photoParts = STATION;
 }
@@ -29,7 +28,6 @@ class EvuOperations extends PlanCase {
   static side = "evu";
   static label = "Units and drivers";
   static description = "Put a unit and a driver on each train of the morning";
-  static task = "Give every train of the morning a unit with enough places and a driver on shift.";
   static icon = "plan";
   static photoParts = STATION;
 }

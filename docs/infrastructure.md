@@ -32,7 +32,8 @@ tells the story in twelve steps:
 | 11. The new track goes in | New sleepers and rails behind the excavator, then a tamping machine. |
 | 12. Acceptance: track G3 reopens | The supervision accepts the works; the train leaves, the track reopens: grade 1. |
 
-**Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
+**Back**, **Next**, a step on the bar of the steps (a segment per step; below it only the step
+shown), **Play** (each step to its end, a pause, the next one) and
 **Start again**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
 time it is shown, so a presenter can go back and forth. **Camera follows** opens the flyover and keeps
 its camera where the story happens: the van on its way, the signal from above, the works on track G3.

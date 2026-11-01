@@ -1,7 +1,8 @@
 // Story panel: a story of the layout (arail/core/story.js) as steps to click through, the panel of a
 // case of Interaction (the app: the infrastructure's disruption, the maintenance story; the railway
-// undertaking's, the operations story; the journeys story). The current step with its text and how far
-// its animation has run; Back, Next, Play and Start again; the list of all steps to jump to. A
+// undertaking's, the operations story; the journeys story). Light in text: Back, Next, Play, Start
+// again and Camera follows; the bar of the steps (a segment per step, filled as far as the story has
+// run; a click on one goes to its step); below it only the step it is at, its title and text. A
 // presenter's clicker (Page Down, Page Up) goes on and back while the case is shown. In the flyover the
 // camera follows the story (the story's `view()`: the spare unit on its way, the van, the signal, the
 // works; the traveller, her bus, her train), from the side the story says, if it says one.
@@ -10,6 +11,36 @@ import { h, morph, mount, storage } from "./ui.js";
 
 /** How long the flyover's camera takes to fly to where a step of the story happens (ms): soft, not a jump. */
 const AIM_MS = 1000;
+
+/**
+ * The steps of a story or a film as a bar: a segment per step, full for those before, filled as far as
+ * the one it is at has run. It is one slider: a click on a segment goes to its step (its title is the
+ * segment's tooltip), the arrow keys, Home and End step along it. Then where it is ("Step 3 of 12").
+ * @param {{titles: string[], index: number, part: number, active?: boolean, word?: string, go: (i: number) => void}} o
+ *   the steps' titles, the step it is at and how far it has run (0…1), whether it runs (else nothing
+ *   is filled), "Step" or "Scene", and what a click or a key does
+ */
+export function stepBar({ titles, index, part, active = true, word = "Step", go }) {
+  const n = titles.length, at = Math.min(index + 1, n);
+  const fill = (i) => (!active ? 0 : i < index ? 1 : i === index ? Math.max(0, Math.min(1, part)) : 0);
+  const keys = { ArrowLeft: index - 1, ArrowDown: index - 1, ArrowRight: index + 1, ArrowUp: index + 1, Home: 0, End: n - 1 };
+  return h("div", { class: "step-bar" },
+    h("div", {
+      class: "step-segs", role: "slider", tabindex: "0", "aria-label": `${word}s`, "aria-valuemin": "1", "aria-valuemax": String(n), "aria-valuenow": String(at),
+      "aria-valuetext": `${word} ${at} of ${n}: ${titles[index] ?? ""}`,
+      onclick: (e) => {
+        const seg = e.target.closest?.(".step-seg");
+        if (seg) go(Number(seg.dataset.i));
+      },
+      onkeydown: (e) => {
+        if (!(e.key in keys)) return;
+        e.preventDefault();
+        go(Math.max(0, Math.min(n - 1, keys[e.key])));
+      },
+    }, titles.map((title, i) => h("span", { class: `step-seg${active && i === index ? " now" : ""}`, "data-i": String(i), title },
+      h("i", { style: `--fill: ${Math.round(fill(i) * 100)}%` })))),
+    h("span", { class: "step-count", "aria-hidden": "true" }, `${word} ${at} of ${n}`));
+}
 
 export class StoryPanel {
   /**
@@ -33,8 +64,11 @@ export class StoryPanel {
 
   /** Draw the panel anew. @param {HTMLElement} el the tab's panel */
   render(el) {
-    this.el = { root: el, head: h("div", { class: "section" }), now: h("div", { class: "section story-now", "aria-live": "polite" }), steps: h("div", { class: "section" }) };
-    mount(el, this.el.head, this.el.now, this.el.steps);
+    this.el = {
+      root: el, controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Story" }),
+      bar: h("div", {}), now: h("div", { class: "story-now", "aria-live": "polite" }),
+    };
+    mount(el, this.el.controls, this.el.bar, this.el.now);
     this.stepped();
   }
 
@@ -44,38 +78,22 @@ export class StoryPanel {
     if (!e?.root.isConnected) return;
     const story = this.story;
     if (!story) {
-      morph(e.head);
-      morph(e.now);
-      morph(e.steps);
+      for (const k of ["controls", "bar", "now"]) morph(e[k]);
       return;
     }
     const st = story.state(), id = (x) => `${this.prefix}Story${x}`;
     // pressed while the flyover follows; in the camera view, a press opens the flyover
     const following = this.follow && this.app.mode === "flyover";
-    morph(e.head,
-      h("h2", { tabindex: "-1" }, story.name),
-      h("p", { class: "hint" }, story.constructor.description),
-      h("div", { class: "row story-controls", role: "group", "aria-label": "Story" },
-        h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, onclick: () => this.back() }, "Back"),
-        h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),
-        h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
-        h("button", { class: "btn", type: "button", id: id("Restart"), disabled: st.index === 0 && st.progress >= 1 && !st.playing, onclick: () => this.restart() }, "Start again"),
-        h("button", { class: "btn", type: "button", id: id("Follow"), "aria-pressed": following ? "true" : "false", onclick: () => this.setFollow(!following) }, "Camera follows")),
-      h("p", { class: "hint" }, this.app.mode === "flyover" ? "The flyover's camera goes where the story happens." : "Some steps happen beside the table: Camera follows opens the flyover and goes there."),
-    );
-    const pct = Math.round(st.progress * 100);
+    morph(e.controls,
+      h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
+      h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),
+      h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
+      h("button", { class: "btn", type: "button", id: id("Restart"), disabled: st.index === 0 && st.progress >= 1 && !st.playing, onclick: () => this.restart() }, "Start again"),
+      h("button", { class: "btn", type: "button", id: id("Follow"), "aria-pressed": following ? "true" : "false", title: "The flyover's camera goes where the story happens.", onclick: () => this.setFollow(!following) }, "Camera follows"));
+    morph(e.bar, stepBar({ titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
     morph(e.now,
-      h("p", { class: "story-count" }, `Step ${st.index + 1} of ${st.count}`),
       h("h3", { id: id("Title") }, st.step.title),
-      h("p", {}, st.step.text),
-      st.step.seconds > 0 ? h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": id("Title"), "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) }, h("i", { style: { width: `${pct}%` } })) : null,
-    );
-    morph(e.steps,
-      h("h2", {}, "All steps"),
-      h("ol", { class: "story-steps" }, st.steps.map((s, i) => h("li", { class: i < st.index ? "done" : i === st.index ? "now" : "" },
-        h("button", { class: "link", type: "button", "aria-current": i === st.index ? "step" : null, onclick: () => this.goTo(i) }, s.title)))),
-      h("p", { class: "hint" }, "A presenter's clicker works too: Page Down for the next step, Page Up for the one before."),
-    );
+      h("p", {}, st.step.text));
   }
 
   next() {
@@ -136,7 +154,6 @@ export class StoryPanel {
   goTo(i) {
     this.story?.goTo(i);
     this.stepped();
-    this.el?.now.querySelector("h3")?.scrollIntoView?.({ block: "nearest" });
   }
 
   /**

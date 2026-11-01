@@ -3,7 +3,8 @@
 // with the modules, the infrastructure aging and the colour of people (app/sandbox.js); and
 // scenarios with a task: Start sets up the stage (its module, the example it plays in, its view) and
 // the task counts from then (the operations plan, a story, the loading task at the hybrid container
-// train with its work orders, time and moves).
+// train with its work orders, time and moves). A scenario shown is light in text: its name, Start or
+// the bar of its task, and its panel; a story and the film have the bar of their steps in their panel.
 import { expect, test } from "@playwright/test";
 import { expectCase, startScenario } from "./ui.js";
 
@@ -23,6 +24,9 @@ async function open(page, path = "/app/") {
 }
 
 const task = (page) => page.locator("#scenarioTask");
+/** The bar of the steps of a story or the film (story.js, stepBar): where it is, and its segments. */
+const stepCount = (page) => page.locator("#casePanel .step-count");
+const segments = (page) => page.locator("#casePanel .step-seg");
 
 test("the app opens with the Introduction; the scenarios in a list with filter pills, the pill kept", async ({ page }) => {
   const errors = await open(page);
@@ -67,7 +71,10 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   });
   await page.locator("#scenarioStart").click();
   await expect.poll(film).toMatchObject({ index: 0, id: "welcome", playing: true, active: true, mode: "camera", fade: 1 });
-  await expect(page.locator("#scenarioStart")).toHaveText("Start again");
+  // started: Start is gone (Start again is the film's), nothing but the film's controls, its bar and its scene
+  await expect(page.locator("#scenarioStart")).toHaveCount(0);
+  await expect(task(page)).toBeHidden();
+  await expect(page.locator("#scenarioName")).toBeFocused();
   await expect(page.locator("#introPlay")).toHaveAttribute("aria-pressed", "true");
   // it goes on by itself: what is real, the photo alone with the real things outlined
   await expect.poll(async () => (await film()).id, { timeout: 15_000 }).toBe("real");
@@ -82,11 +89,17 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   // then each kind of thing in the flyover
   await page.locator("#introNext").click();
   expect(await film()).toMatchObject({ id: "station", mode: "flyover" });
-  await expect(task(page)).toContainText(`4 of ${(await film()).count}`);
-  // the list of scenes jumps; the last one: back to the photo, the task is done
-  await page.locator(".story-steps li button").last().click();
+  const count = (await film()).count;
+  await expect(stepCount(page)).toHaveText(`Scene 4 of ${count}`);
+  await expect(segments(page)).toHaveCount(count);
+  await expect(segments(page).nth(3)).toHaveClass(/\bnow\b/);
+  // the bar is one slider: it says the scene shown
+  await expect(page.locator("#casePanel [role=slider]")).toHaveAttribute("aria-valuenow", "4");
+  // the bar of the scenes jumps; the last one: back to the photo, the task is done
+  await segments(page).last().click();
   expect(await film()).toMatchObject({ id: "end", mode: "camera" });
-  await expect(task(page)).toContainText("Done!");
+  await expect(stepCount(page)).toHaveText(`Scene ${count} of ${count}`);
+  expect(await page.evaluate(() => window.__arail.caseById("intro").done)).toBe(true);
   await expect(page.locator("#introNext")).toBeDisabled();
   // back to the list: the film stops, the photo shows everything; the card says it was done
   await page.locator("#scenariosBack").click();
@@ -115,7 +128,7 @@ test("the Introduction's Play, Next and scenes work before Start: they start it"
   await expect.poll(film).toMatchObject({ started: true, id: "real", playing: false, active: true });
   await page.locator("#scenariosBack").click();
   await page.evaluate(() => window.__arail.selectTab("intro"));
-  await page.locator(".story-steps li button").nth(2).click();
+  await segments(page).nth(2).click();
   await expect.poll(film).toMatchObject({ started: true, id: "virtual", playing: false, active: true });
   expect(errors).toEqual([]);
 });
@@ -125,7 +138,7 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   const errors = await open(page);
   await startScenario(page, "sandbox");
   expect(await page.evaluate(() => window.__arail.mode)).toBe("flyover");
-  await expect(task(page)).not.toContainText("Task"); // no task: free to look around
+  await expect(task(page)).toBeHidden(); // no task: free to look around, its controls only
   await expect(page.locator(".modules").getByRole("button", { name: "Waldhof", exact: true })).toHaveAttribute("aria-pressed", "true");
   // aging: the module with the story of the infrastructure switched on, then the years ahead
   await page.locator("#sandboxAgeing").click();
@@ -159,10 +172,12 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await startScenario(page, "terminal");
   expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.layersOn(), window.__arail.mode, window.__arail.world.speed]))
     .toEqual(["ebl-container-train.json", ["task"], "camera", 10]);
-  await expect(task(page)).toContainText("Task: Carry out the work orders");
+  // light in text: the bar of the work orders with the time and the moves, no task text, no Save
   await expect(task(page)).toContainText("0 of 6");
   await expect(task(page).locator(".task-figures")).toContainText(/Time\s*\d+:\d\d min\s*Moves\s*0/);
-  await expect(task(page)).toContainText("The clock runs 10 times as fast.");
+  await expect(page.locator("#scenarioStart")).toHaveCount(0);
+  await expect(page.locator("#termSave")).toHaveCount(0);
+  await expect(page.locator("#termStatus")).toHaveCount(0);
   // the camera finds the real wagons and the truck by their tags in the photo
   await page.waitForFunction(() => window.__arail.terminal.sim.carriers().filter((c) => c.number != null && c.present).length >= 5, null, { timeout: 30_000 });
   // the work orders, numbered as on the stage, with what is on top of each
@@ -188,7 +203,7 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*2/, { timeout: 60_000 });
   await expect(orders.nth(0)).toContainText("under 1 container");
   // Start again: the terminal as the layout has it, the time and the moves from 0
-  await page.locator("#scenarioStart").click();
+  await page.locator("#termReset").click();
   await expect(task(page)).toContainText("0 of 6");
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*0/);
   await expect(orders.nth(0)).toContainText("under 2 containers");
@@ -214,7 +229,7 @@ test("Trains on tracks: Start switches on the plan, alone, and shows the platfor
   await page.locator("#plan-infra-s1-0725-track").selectOption("G2");
   await expect(task(page)).toContainText("5 of 6");
   // Start again: the plan as the layout has it
-  await page.locator("#scenarioStart").click();
+  await page.locator("#infraPlanReset").click();
   await expect(task(page)).toContainText("4 of 6");
   await expect(page.locator("#plan-infra-s1-0725-track")).toHaveValue("G3");
   expect(errors).toEqual([]);
@@ -227,10 +242,15 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   expect(await page.evaluate(() => [window.__arail.layersOn(), window.__arail.mode])).toEqual([["operations"], "flyover"]);
   await expect(page.locator("#opsStoryFollow")).toHaveAttribute("aria-pressed", "true");
   const n = await page.evaluate(() => window.__arail.caseById("evu-disruption").story.steps.length);
-  await expect(task(page)).toContainText(`0 of ${n}`);
+  const done = () => page.evaluate(() => window.__arail.caseById("evu-disruption").progress().done);
+  // the bar of its steps is in the story's panel, nothing above it
+  await expect(task(page)).toBeHidden();
+  await expect(stepCount(page)).toHaveText(`Step 1 of ${n}`);
+  expect(await done()).toBe(0);
   await page.locator("#opsStoryNext").click();
   await page.locator("#opsStoryNext").click();
-  await expect(task(page)).toContainText(`2 of ${n}`);
+  await expect(stepCount(page)).toHaveText(`Step 3 of ${n}`);
+  expect(await done()).toBe(2);
   expect(errors).toEqual([]);
 });
 

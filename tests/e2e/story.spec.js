@@ -1,5 +1,5 @@
 // End-to-end tests of the app as a presentation (Chromium): the maintenance story on Bf Neustadt to
-// click through (buttons, the list of steps, a presenter's clicker, Play, the camera that follows it),
+// click through (buttons, the bar of the steps, a presenter's clicker, Play, the camera that follows it),
 // the reduced Terminal tab, and the game page with the games on the lab's layout.
 import { expect, test } from "@playwright/test";
 import { caseReady, expectCase, openCase } from "./ui.js";
@@ -40,16 +40,20 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
   await expectCase(page, "infra-disruption");
-  await expect(page.locator("#casePanel h2").first()).toHaveText("Maintenance at Bf Neustadt");
+  await expect(page.locator("#scenarioName")).toHaveText("A signal fails");
   await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
 });
 
-test("the maintenance story: Next and Back, the list of steps, Start again and a clicker", async ({ page }) => {
+test("the maintenance story: Next and Back, the bar of the steps, Start again and a clicker", async ({ page }) => {
   const errors = await open(page, STORY);
   await expectCase(page, "infra-disruption");
   await expect(title(page)).toHaveText("The station in normal service");
-  await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 12");
+  await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 12");
+  // light in text: the controls, the bar of the steps and the step it is at, no story name or hints
+  await expect(page.locator("#casePanel .step-seg")).toHaveCount(12);
+  await expect(page.locator("#casePanel h2")).toHaveCount(0);
+  await expect(page.locator("#casePanel .hint")).toHaveCount(0);
   await expect(page.locator("#infraStoryBack")).toBeDisabled();
   expect(await storyDisruptions(page)).toEqual([]);
 
@@ -66,10 +70,20 @@ test("the maintenance story: Next and Back, the list of steps, Start again and a
   await expect(title(page)).toHaveText(/fails$/);
   expect(await storyDisruptions(page)).toEqual(["infra-fault@platform-2:left"]);
 
-  // a jump in the list of steps: the construction train on the renewed track
-  await page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" }).click();
+  // a jump on the bar of the steps: the construction train on the renewed track
+  const segment = page.locator('#casePanel .step-seg[title="The construction train arrives"]');
+  await segment.click();
   await expect(title(page)).toHaveText("The construction train arrives");
-  await expect(page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" })).toHaveAttribute("aria-current", "step");
+  await expect(segment).toHaveClass(/\bnow\b/);
+  // the bar is one slider: it says where the story is, and its arrow keys step along it
+  const bar = page.getByRole("slider", { name: "Steps" });
+  await expect(bar).toHaveAttribute("aria-valuetext", /^Step 9 of 12: The construction train arrives$/);
+  await bar.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(title(page)).toHaveText(/^A planned renewal/);
+  await expect(bar).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(title(page)).toHaveText("The construction train arrives");
   expect(await storyDisruptions(page)).toEqual(["track-closure@platform-2:right"]); // track G3
 
   // a presenter's clicker: Page Down and Page Up
@@ -113,7 +127,7 @@ test("Camera follows opens the flyover and goes where the story happens", async 
   await follow.click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   await expect(follow).toHaveAttribute("aria-pressed", "true");
-  await page.locator("#casePanel .story-steps button", { hasText: "The team repairs the signal" }).click();
+  await page.locator('#casePanel .step-seg[title="The team repairs the signal"]').click();
   // the camera's target comes to the signal
   await expect.poll(() => page.evaluate(() => {
     const a = window.__arail, at = a.infra.story.view().at, t = a.flyover.cam.target;
@@ -133,7 +147,7 @@ test("the app's case Terminal moves containers; the visits are on the game page"
   await expect(panel).toBeVisible();
   await expect(panel.locator("h2", { hasText: "Containers" })).toBeVisible();
   for (const name of ["Arrivals", "New arrival", "Crane jobs"]) await expect(panel.locator("h2", { hasText: name })).toHaveCount(0);
-  await expect(panel).toContainText("Choose a container, in the list or on the layout, and its new place");
+  await expect(panel).toContainText("Choose a container, in the list or on the layout, and its new place"); // no task: the hint stays
   // a move: choose a container and a place in the yard
   const id = "ARLU 100001 9";
   await page.locator("#termList button", { hasText: id }).click();

@@ -381,7 +381,10 @@ example**, and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
-   state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage.
+   state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage. In the
+   loading task the panel is light in text: only **Start again** (the terminal as the task starts),
+   the work orders, the containers and the move; the bar above the panel counts the orders done,
+   with the time and the moves.
    **Work orders** (where the terminal has `orders`) lists them numbered as on the stage: the
    container, where it goes and where it stands (*free to lift*, *under 2 containers*, *on its
    way*, *done*). Choosing an order chooses its container, with the order's place first in **Move
@@ -406,7 +409,8 @@ example**, and **Add to this layout**.
 6. **Watch it.** Crane jobs lists the last moves: the container, from → to, the machine and the
    state (*queued*, *waiting for …*, the crane's phase, *done*, *failed: …*). A move that has not
    locked its container yet can be cancelled.
-7. **Model wagons** (with `markers.rolling` only): a card per unit, the real train and the real
+7. **Model wagons** (with `markers.rolling` only; not in the loading task, where Settings → View →
+   Camera → Tracking details still lists them): a card per unit, the real train and the real
    truck (`rolling_stock[].unit`; wagons without one form the unit *Model wagons*), with its
    wagons seen, how full it is and **Unload to yard** and **Load from yard**, like a train at the
    terminal: they work on the unit's wagons that are seen standing. Then each wagon with its type,

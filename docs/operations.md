@@ -71,7 +71,8 @@ story of a railway undertaking (EVU) whose train breaks down, in ten steps:
 | 9. In the workshop: diagnosis and repair | Two fitters (in orange) read the fault memory: a burnt-out power module (IGBT) of the converter, exchanged in about 6 hours: the old module (dark grey) is lifted off the roof of the rear car, a new one (Dunkelblau) put on. What the breakdown cost: RB 31 and its trip back more than 5 minutes late, 2 × 40 € = 80 € to the transport authority (Aufgabenträger); without the spare both trips would have been cancelled, 44 train-km × 12 € = 528 €. |
 | 10. Back to normal service | The next morning 442 101 runs RB 31 again, on time; 442 108 waits in the depot as the spare unit. |
 
-**Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
+**Back**, **Next**, a step on the bar of the steps (a segment per step; below it only the step
+shown), **Play** (each step to its end, a pause, the next one) and
 **Start again**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
 time it is shown. **Camera follows** opens the flyover and looks at a slant along the platform (from
 straight in front, the train at track G3 would hide the passengers), then goes with the spare unit

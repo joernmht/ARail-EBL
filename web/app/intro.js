@@ -2,12 +2,14 @@
 // scenes (arail/core/intro.js) about what is real in the lab and what the app adds. Each scene
 // takes the stage to its place, the photo alone, the photo with what the app draws over it, or the
 // flyover over the place, outlines what it is about (real things in Türkis, virtual ones in
-// Orange) and says it in a few sentences with its figures. Play goes on from scene to scene by
-// itself, the camera turning slowly as in a film; Back and Next step, the list jumps, and a
+// Orange) and says it in a few sentences with its figures. The panel is light in text: Back, Play,
+// Next and Start again; the bar of the scenes (a click on a segment jumps there); below it only the
+// scene shown. Play goes on from scene to scene by itself, the camera turning slowly as in a film; a
 // presenter's clicker (Page Down, Page Up) steps too. While the card of something tapped on the
 // stage is open, the film waits.
 import { introScenes, objectPickable, OVERLAY, toRad } from "../arail/index.js";
 import { outline } from "./inspect.js";
+import { stepBar } from "./story.js";
 import { h, morph, mount } from "./ui.js";
 
 /** How long the stage takes to go to a scene's place, and to fade what the app draws in or out (ms). */
@@ -74,10 +76,10 @@ export class IntroPanel {
   /** Draw the panel anew. @param {HTMLElement} el the case's place */
   render(el) {
     this.el = {
-      root: el, now: h("div", { class: "section intro-now", "aria-live": "polite" }),
-      controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Film" }), scenes: h("div", { class: "section" }),
+      root: el, controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Film" }),
+      bar: h("div", {}), now: h("div", { class: "story-now intro-now", "aria-live": "polite" }),
     };
-    mount(el, this.el.now, this.el.controls, this.el.scenes);
+    mount(el, this.el.controls, this.el.bar, this.el.now);
     this.update();
   }
 
@@ -87,26 +89,21 @@ export class IntroPanel {
     if (!e?.root.isConnected) return;
     const scenes = this.scenes, s = scenes[this.index];
     if (!s) return;
-    const pct = this.playing ? Math.round(100 * Math.min(1, (performance.now() - this._t0) / (s.seconds * 1000))) : null;
+    const last = this.index >= scenes.length - 1;
+    morph(e.controls,
+      h("button", { class: "btn", type: "button", id: "introBack", disabled: !this.active || this.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
+      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
+      h("button", { class: "btn", type: "button", id: "introNext", disabled: this.active && last, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, "Next"),
+      h("button", { class: "btn", type: "button", id: "introRestart", disabled: !this.active || (this.index === 0 && !this.playing), onclick: () => this.restart({ play: false }) }, "Start again"),
+    );
+    // the scene shown is full, unless the film plays: then as far as its time has run
+    const part = this.playing ? (performance.now() - this._t0) / (s.seconds * 1000) : 1;
+    morph(e.bar, stepBar({ titles: scenes.map((x) => x.title), index: this.index, part, active: this.active, word: "Scene", go: (i) => this.goTo(i) }));
     morph(e.now,
-      h("p", { class: "intro-meta" }, h("span", { class: `intro-kind ${s.kind}` }, KINDS[s.kind]), h("span", { class: "story-count" }, `Scene ${this.index + 1} of ${scenes.length}`)),
+      h("p", { class: "intro-meta" }, h("span", { class: `intro-kind ${s.kind}` }, KINDS[s.kind])),
       h("h3", { id: "introTitle" }, s.title),
       s.text.map((t) => h("p", {}, t)),
       s.facts.length ? h("dl", { class: "intro-facts" }, s.facts.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, String(v))))) : null,
-      pct != null ? h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "introTitle", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) }, h("i", { style: { width: `${pct}%` } })) : null,
-    );
-    const last = this.index >= scenes.length - 1;
-    morph(e.controls,
-      h("button", { class: "btn", type: "button", id: "introBack", disabled: !this.active || this.index === 0, onclick: () => this.back() }, "Back"),
-      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
-      h("button", { class: "btn", type: "button", id: "introNext", disabled: this.active && last, onclick: () => this.next() }, "Next"),
-      h("button", { class: "btn", type: "button", id: "introRestart", disabled: !this.active || (this.index === 0 && !this.playing), onclick: () => this.restart({ play: false }) }, "Start again"),
-    );
-    morph(e.scenes,
-      h("h2", {}, "All scenes"),
-      h("ol", { class: "story-steps" }, scenes.map((x, i) => h("li", { class: !this.active ? "" : i < this.index ? "done" : i === this.index ? "now" : "" },
-        h("button", { class: "link", type: "button", "aria-current": this.active && i === this.index ? "step" : null, onclick: () => this.goTo(i) }, x.title)))),
-      h("p", { class: "hint" }, "A presenter's clicker works too: Page Down for the next scene, Page Up for the one before."),
     );
   }
 
