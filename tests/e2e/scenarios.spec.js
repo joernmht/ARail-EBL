@@ -261,11 +261,15 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   await expect(page.locator("#tour .tour-step").first()).toBeVisible();
   // a scenario at the station switches its module on and flies into the flyover; its photos are Bf Neustadt's
   await startScenario(page, "infra-disruption");
-  const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing]);
-  const runs = [true, ["sbahn", "waldhof", "infrastructure"], "flyover", false];
+  // running: its module, the flyover, no way home, and the tour of its task's photos
+  const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing, window.__arail.tourNav.scope?.key ?? null]);
+  const scope = await page.evaluate(() => window.__arail.tourNav.scope?.key ?? null);
+  expect(scope).toMatch(/^infra-disruption\|/);
+  const runs = [true, ["sbahn", "waldhof", "infrastructure"], "flyover", false, scope];
   expect(await running()).toEqual(runs);
   expect(await page.evaluate(() => window.__arail.tourNav.tour.parts.map((p) => p.name))).toEqual(["Neustadt", "Neustadt", "Neustadt", "Neustadt"]);
-  // the other chapters leave it running, its stage as it is: the Overview, and the time in the corner (Settings → Simulation)
+  // the other chapters leave it running, its stage and its tour as they are (a photo of another layout
+  // would end it): the Overview, and the time in the corner (Settings → Simulation)
   await page.locator("#tab-overview").click();
   expect(await running()).toEqual(runs);
   await page.locator("#simTime").click();

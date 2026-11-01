@@ -588,11 +588,15 @@ export class App {
     requestAnimationFrame(step);
   }
 
-  /** The photo tour offers the photos of the scenario that runs (those of its task), else all (TourNav#setScope). */
+  /**
+   * The photo tour offers the photos of the scenario that runs (those of its task), else all
+   * (TourNav#setScope). Also while another chapter is shown: the scenario runs on there, and a photo
+   * of another layout would end it.
+   */
   _syncTour() {
     const t = this.tourNav;
     if (!t?.all) return;
-    const c = this.activeTab === "interaction" ? this.caseById(this.activeCase) : null;
+    const c = this.caseById(this.activeCase);
     t.setScope(c?.started ? c.photoScope(t) : null);
   }
 
