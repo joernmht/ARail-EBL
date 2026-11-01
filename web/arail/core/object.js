@@ -83,6 +83,14 @@ export class LayoutObject {
     return this.spec.name || this.id;
   }
 
+  /**
+   * Is it a real thing of the lab, in the camera image (a table, a track, a platform, a signal with
+   * `real`)? A real thing is drawn only for a virtual camera; the rest is virtual, drawn over the image.
+   */
+  get real() {
+    return !!this.spec.real;
+  }
+
   /** Model scale helpers: prototype metres <-> model millimetres. */
   mm(meters) {
     return (meters * 1000) / this.world.scale;

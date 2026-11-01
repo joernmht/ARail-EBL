@@ -52,8 +52,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations and stories, the step, the clock, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
+    summary: "The loaded layout: objects, simulations and stories, the scenes of a layout's introduction, the step, the clock, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/intro.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -142,7 +142,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -159,8 +159,8 @@ export const PACKAGES = [
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
-    summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panel's three chapters (Overview; Interaction with the modules and their cases by side, infrastructure and railway undertaking, and the tools Build and Disruptions; Settings), the flyover, tooltips and info cards, in the language chosen; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js"],
+    summary: "The app, an interactive presentation: sources, frame loop, HUD, the photo tour of the lab (from photo to photo, as in Street View), the panel's three chapters (Overview; Interaction with its scenarios to start, filtered by pills: the Introduction, a film of the layout, the Sandbox, examples with a small task by side, infrastructure and railway undertaking, and the tools Build and Disruptions; Settings), the flyover, tooltips and info cards, in the language chosen; the stage stays in place while the panel scrolls; its shell is the game page's too.",
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/icons.js", "web/app/intro.js", "web/app/sandbox.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {

@@ -377,7 +377,7 @@ function chart(c) {
 }
 
 /** An outline in image px: the ground footprint of what lies flat, the hull of the projected box of what is tall. */
-function outline(ctx, view, p, colour, width, dash = []) {
+export function outline(ctx, view, p, colour, width, dash = []) {
   const flat = (p.z1 ?? 0) <= (p.z0 ?? 0);
   const pts = flat ? view.projectAll(p.outline.map((q) => [q[0], q[1], p.z0 ?? 0])) : projectedHull(view, p);
   if (!pts || pts.length < 2) return;

@@ -75,13 +75,13 @@ export const TERMINAL = [
   {
     id: "terminal-operations", group: "terminal", title: "The terminal at work",
     summary: "Moves from a request to done: checked, reserved, given to a free crane or reach stacker, carried through the machine's phases; trains, barges and trucks come and go.",
-    description: "TerminalSimulation re-reads its objects whenever they, the marker map or the scale change, keeping its machines by object id. Each step it moves its trains, barges and trucks along their paths (a 1-D mover each), starts queued moves on idle machines whose carriers are ready, and advances the machines through their phases. Its random numbers are a stream of its own, so a terminal changes nothing in the other simulations. The case Terminal and scenarios (terminal.request.* events) give it its work.",
+    description: "TerminalSimulation re-reads its objects whenever they, the marker map or the scale change, keeping its machines by object id. Each step it moves its trains, barges and trucks along their paths (a 1-D mover each), starts queued moves on idle machines whose carriers are ready, and advances the machines through their phases. Its random numbers are a stream of its own, so a terminal changes nothing in the other simulations. The case Terminal and scenarios (terminal.request.* events) give it its work. Work orders (orders) say which container goes where: a place, a visit, a unit of model wagons or a kind of carrier; orders() tells which are done and what is on top of the others, and the open ones are marked on the stage with their numbers, a container deep in a stack showing through.",
     files: ["web/arail/terminal/operations.js", "web/arail/terminal/handlers.js", "web/arail/terminal/visits.js", "web/arail/terminal/movers.js", "web/arail/terminal/types.js", "web/arail/terminal/draw.js", "web/app/terminal.js"],
     classes: [
       {
         name: "TerminalSimulation", file: "web/arail/terminal/operations.js", kind: "class", extends: "Simulation", role: "The terminal: its moves, machines and visits.",
         attributes: ["inventory: Inventory", "moves: object[] — {id, container, from, to, handler, state, reason, waiting}", "handlers: Map — machines by object id", "visits: Map — trains, barges, trucks", "rolling: RollingStock | null — model wagons", "highlight: object — what the panel shows on the stage"],
-        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts) — a visit or a unit of model wagons", "load(visitId, opts)", "modelUnits() — the model wagons by rolling_stock[].unit", "_group(id) — a visit or a unit, with why not now", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "tagCount(number) — the tags of a model wagon", "_tagAlongMM(number, slot)", "_tagTurn(number, slot)", "_wagonCarrierType(number) — with rolling_stock[].spots_mm", "_drawSpotCovers(view, c) — grey placeholders on the container spots and labels of a model wagon (setting coverMarkers)", "step(dt)", "saveStart()", "pickables(view) — containers, wagons, trucks, barges", "card(hit)"],
+        operations: ["request(containerId, to, opts) — a move", "targets(containerId) — where it may go", "orders() — the work orders: where each container goes, done or not, how many on top", "_orderEntries() — the well-formed entries of orders", "_orderTarget(to) — the carriers an order names, and their name", "_above(c) — the containers on top of one", "_drawHighlights(view, flyover) — the selected container, its targets, empty spots, the open orders", "call(visitId)", "depart(visitId, opts)", "sendTruck(opts)", "addTrain(opts)", "unload(visitId, opts) — a visit or a unit of model wagons", "load(visitId, opts)", "modelUnits() — the model wagons by rolling_stock[].unit", "_group(id) — a visit or a unit, with why not now", "cancel(moveId)", "observe(observations, time, opts) — tags of model wagons", "tagCount(number) — the tags of a model wagon", "_tagAlongMM(number, slot)", "_tagTurn(number, slot)", "_wagonCarrierType(number) — with rolling_stock[].spots_mm", "_drawSpotCovers(view, c) — grey placeholders on the container spots and labels of a model wagon (setting coverMarkers)", "step(dt)", "saveStart()", "pickables(view) — containers, wagons, trucks, barges", "card(hit)"],
       },
       {
         name: "HandlerBase", file: "web/arail/terminal/handlers.js", kind: "class", stereotype: "base class", role: "A machine: one move at a time, in eased phases.",
@@ -100,7 +100,7 @@ export const TERMINAL = [
       { name: "TruckVisit", file: "web/arail/terminal/visits.js", kind: "class", role: "A truck with a chassis: pickup or delivery.", attributes: ["purpose: string — pickup or delivery", "state: string — waiting, approaching, positioned, departing"] },
       { name: "PathMover", file: "web/arail/terminal/movers.js", kind: "class", role: "A deterministic 1-D mover: accelerate, cruise, brake.", attributes: ["s: number — position along the path", "v: number — speed"], operations: ["setTarget(s)", "arrived()", "step(dt, opts)"] },
       { name: "visits", file: "web/arail/terminal/visits.js", kind: "module", role: "The truck lane's traffic.", operations: ["stepTrucks(trucks, lane, dt, host)", "departTruck(t, host)"] },
-      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The case Terminal (Railway undertaking): moves from the panel and on the stage; on the game page (full) also the visits, new arrivals and crane jobs.", attributes: ["full: boolean — the game page's panel"], operations: ["render(el)", "update()", "addTerminal()", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
+      { name: "TerminalPanel", file: "web/app/terminal.js", kind: "class", role: "The case Terminal (Railway undertaking): the work orders, moves from the panel and on the stage; on the game page (full) also the visits, new arrivals and crane jobs.", attributes: ["full: boolean — the game page's panel"], operations: ["render(el)", "update()", "addTerminal()", "_orders(sim) — the work orders, numbered as on the stage: choosing one chooses its container", "_move(sim, targets) — Move: the place of its work order first; a buried container offers the one on top", "_topOf(sim, c) — the container at the top of its stack", "_unitCard(sim, u) — Unload to yard and Load from yard for a unit of model wagons"] },
     ],
     relations: [
       { from: "TerminalSimulation", to: "Inventory", kind: "composes", label: "inventory" },
@@ -114,6 +114,25 @@ export const TERMINAL = [
       { from: "TerminalPanel", to: "TerminalSimulation", kind: "uses" },
     ],
     activities: [
+      {
+        id: "orders", name: "Working off the work orders (the loading task)",
+        description: "The scenario Load the hybrid train: the crane's work orders in a full terminal, the time on its clock and the moves counted until the last one is done.",
+        nodes: [
+          ["s", "start"],
+          ["a1", "action", "Start: the example with its module Loading task, the terminal reset, the time and the moves from 0", "TerminalCase.begin"],
+          ["m1", "merge"],
+          ["a2", "action", "Choose an open order (or its container on the stage)", "TerminalPanel._orders", "person"],
+          ["d1", "decision", "Containers on top of it?"],
+          ["a3", "action", "Choose the one at the top of its stack first", "TerminalPanel._topOf", "person"],
+          ["m2", "merge"],
+          ["a4", "action", "Move to: the order's place first (another for one on top); Move", "TerminalPanel._move", "person"],
+          ["a5", "action", "The crane moves it (a move from request to done)", "TerminalSimulation.request"],
+          ["d2", "decision", "Every order done (its container where it goes)?"],
+          ["a6", "action", "The time and the moves kept", "TerminalCase.figures"],
+          ["e", "end"],
+        ],
+        edges: [["s", "a1"], ["a1", "m1"], ["m1", "a2"], ["a2", "d1"], ["d1", "a3", "yes"], ["d1", "m2", "no"], ["a3", "m2"], ["m2", "a4"], ["a4", "a5"], ["a5", "d2"], ["d2", "m1", "no"], ["d2", "a6", "yes"], ["a6", "e"]],
+      },
       {
         id: "move", name: "A move from request to done",
         nodes: [
@@ -203,6 +222,7 @@ export const TERMINAL = [
       { key: "barges", default: "[]", meaning: "Inland barges: quay, length, tiers." },
       { key: "trucks.lane", default: "the first lane", meaning: "Where trucks come in." },
       { key: "containers, fill", default: "[], {}", meaning: "The start state: containers, and yards filled at random." },
+      { key: "orders", default: "[]", meaning: "Work orders: {container, to}, to a place (a yard block, a wagon, a barge, a model wagon), a visit, a unit of model wagons or yard, wagon, truck, barge; done while the container stands there." },
       { key: "default_wagon", default: "sgns60", meaning: "Wagon type of trains without their own." },
     ],
     rules: [

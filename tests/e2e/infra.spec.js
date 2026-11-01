@@ -3,7 +3,7 @@
 // year's end, saving), faults on the layout, adding infrastructure to a layout from Settings →
 // Simulation, and the tabs on a phone.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, openCase, openModules } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra";
 
@@ -28,8 +28,7 @@ async function openInfra(page, path = EXAMPLE) {
 
 test("Infrastructure → Assets shows the district: overview, line map, assets, decisions, projects, staff, results", async ({ page }) => {
   const errors = await openInfra(page);
-  await expect(page.locator("#strip-infra")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "infra");
   expect(await caseReady(page, "terminal")).toBe(false);
   expect(await caseReady(page, "ops")).toBe(false);
   await expect(page.locator("#casePanel h2").first()).toHaveText("Infrastructure district Bahnhof");
@@ -136,7 +135,7 @@ test("adding infrastructure to a layout from the case Assets while it is off", a
   expect(await caseReady(page, "infra")).toBe(false);
   await expect(page.locator("#caseOn")).toHaveText("Switch on “Infrastructure”");
   await page.locator("#caseAdd").click();
-  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "infra");
   await expect.poll(() => page.evaluate(() => window.__arail.infra.sim?.engine?.assets.size ?? 0)).toBeGreaterThan(100);
   expect(errors).toEqual([]);
 });
@@ -144,7 +143,7 @@ test("adding infrastructure to a layout from the case Assets while it is off", a
 test("Infrastructure → Assets on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openInfra(page);
-  await expect(page.locator("#case-infra")).toBeVisible();
+  await expectCase(page, "infra");
   for (const v of ["map", "assets", "decisions", "projects", "staff", "results", "overview"]) {
     await page.locator(`#infraView-${v}`).click();
     await expect(page.locator(`#infraView-${v}`)).toHaveAttribute("aria-pressed", "true");

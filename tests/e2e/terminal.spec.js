@@ -1,7 +1,7 @@
 // The container terminal in the app: the Terminal tab, moves from the panel and by picking on the
 // canvas (pointer and keyboard), arrivals, trucks, the start state, scenarios, phones.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, openCase, openModules } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/container-terminal.json#terminal";
 
@@ -78,7 +78,7 @@ test("the example terminal opens in the flyover; leaving it shows that the layou
     return { kt41: sim.visits.get("KT41").state, bg1: sim.visits.get("BG1").state, kt52: sim.visits.get("KT52").state, yard: sim.carrier("yard-a")?.present };
   });
   expect(state).toEqual({ kt41: "positioned", bg1: "positioned", kt52: "away", yard: true });
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "terminal");
   await expect(page.locator("#casePanel h2").first()).toHaveText("KV terminal");
   await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("at Loading track 1");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("at the quay");
@@ -371,11 +371,11 @@ test("a layout without a terminal: the case Terminal adds one or switches on the
   await page.evaluate(() => localStorage.clear());
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal");
   await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "terminal");
   expect(await caseReady(page, "terminal")).toBe(false);
   // adding one: the panel of an (empty) terminal
   await page.locator("#caseAdd").click();
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "terminal");
   await expect(page.locator("#casePanel h2").first()).toHaveText("Container terminal");
   // the layout as it came: the case is off again; the lab's module opens the example terminal
   await page.evaluate(() => window.__arail.resetLayout());
@@ -448,10 +448,10 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the three chapters, the strip and the terminal's case fit, also at 300 px", async ({ page }) => {
+test("on a phone the three chapters, the scenarios and the terminal's case fit, also at 300 px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button, .strip-item, .case-tabs button, #termList button")].filter((x) => x.getClientRects().length)
+  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button, .pill, .scenario-card, #scenarioStart, #scenariosBack, #termList button")].filter((x) => x.getClientRects().length)
     .every((x) => {
       const r = x.getBoundingClientRect();
       return r.left >= 0 && r.right <= innerWidth + 0.5;
@@ -459,7 +459,7 @@ test("on a phone the three chapters, the strip and the terminal's case fit, also
   expect(await page.locator(".tabs button").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(["overview", "interaction", "settings"]);
   for (const width of [390, 300]) {
     await page.setViewportSize({ width, height: 760 });
-    for (const tab of ["overview", "settings", "modules", "build", "terminal"]) {
+    for (const tab of ["overview", "settings", "scenarios", "sandbox", "build", "terminal"]) {
       await page.evaluate((t) => window.__arail.selectTab(t), tab);
       expect(await fits(), `${tab} at ${width} px`).toBe(true);
     }

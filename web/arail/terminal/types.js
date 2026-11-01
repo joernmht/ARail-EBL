@@ -43,6 +43,13 @@
  *   where: string|null, purpose: "pickup"|"delivery"|null, runtime: boolean, leaveWhenDone: boolean}} Visit
  */
 /** @typedef {{id: string, kind: "crane"|"reach-stacker", name: string, phase: string, move: string|null}} Handler */
+/**
+ * A work order (`orders` of the terminal entry) and its state: done while the container stands on one
+ * of the `carriers` that `to` names (`label`: their name); `under` containers on top of it, `moving`
+ * on its way, `missing` not in the terminal.
+ * @typedef {{n: number, container: string, to: string, label: string, carriers: string[], done: boolean,
+ *   at: SlotRef|null, under: number, moving: boolean, missing: boolean}} WorkOrder
+ */
 /** @typedef {{center: number[]|null, heading: number|null, edge_mm: number|null}} TagObservation  lifted to the deck plane */
 
 /** Names of the events the terminal emits. */

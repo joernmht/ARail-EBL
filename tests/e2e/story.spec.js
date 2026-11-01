@@ -2,7 +2,7 @@
 // click through (buttons, the list of steps, a presenter's clicker, Play, the camera that follows it),
 // the reduced Terminal tab, and the game page with the games on the lab's layout.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase } from "./ui.js";
+import { caseReady, expectCase, openCase } from "./ui.js";
 
 const STORY = "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra";
 
@@ -39,7 +39,7 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
   await expect(on).toHaveText("Switch on “Infrastructure”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#case-infra-disruption")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "infra-disruption");
   await expect(page.locator("#casePanel h2").first()).toHaveText("Maintenance at Bf Neustadt");
   await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
@@ -47,7 +47,7 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
 
 test("the maintenance story: Next and Back, the list of steps, Start again and a clicker", async ({ page }) => {
   const errors = await open(page, STORY);
-  await expect(page.locator("#case-infra-disruption")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "infra-disruption");
   await expect(title(page)).toHaveText("The station in normal service");
   await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 12");
   await expect(page.locator("#infraStoryBack")).toBeDisabled();
@@ -160,7 +160,7 @@ test("the game page opens the lab with its games", async ({ page }) => {
   // the game cases: their modules are layers of the lab, switched on in Interaction or by the URL
   await open(page, "/game/?layers=infrastructure#infra");
   await page.waitForFunction(() => window.__arail.infra?.sim, null, { timeout: 60_000 });
-  await expect(page.locator("#case-infra")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "infra");
   expect(await page.evaluate(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"))).toBe(false);
   expect(errors).toEqual([]);
 });

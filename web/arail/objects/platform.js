@@ -51,6 +51,11 @@ export class Platform extends LayoutObject {
     },
   ];
 
+  /** A platform is real: the one of the lab is in the camera image (its surface is drawn for a virtual camera). */
+  get real() {
+    return true;
+  }
+
   computeGeometry() {
     const seg = resolveSegment(this.world.map, this.spec);
     if (!seg) return null;

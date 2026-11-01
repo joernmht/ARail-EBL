@@ -80,6 +80,7 @@ export class World {
       peopleColour: "auto", // colour of people: "auto" (town people by trip purpose, passengers by mood) | "purpose" | "mood"
       coverMarkers: true, // grey plates with their numbers over the markers and the labels of model wagons (camera view)
       trackSystems: "", // colour the tracks by one of their railway systems ("power", "train_control", …; rail/systems.js), "" = off
+      ageYears: 0, // years added to the age of the infrastructure's assets (the maintenance story): how they age without renewals
     };
     /** Time of day (fast clock), see core/clock.js. */
     this.clock = new Clock();

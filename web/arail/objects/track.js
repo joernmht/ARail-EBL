@@ -42,6 +42,11 @@ export class Track extends LayoutObject {
     ...LINE_PARAMS,
   ];
 
+  /** A track of the layout is real; a `virtual` one (on a table module) is drawn over the camera image. */
+  get real() {
+    return !this.spec.virtual;
+  }
+
   computeGeometry() {
     const pts = resolvePoints(this.world.map, this.spec.points);
     if (!pts || pts.length < 2) return null;

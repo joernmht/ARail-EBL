@@ -2,7 +2,7 @@
 // the crews, the penalties, a comparison of setups), its trains at the platforms, adding rail
 // operations to a layout from Settings → Simulation, the tabs on a phone and with the keyboard.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase } from "./ui.js";
+import { caseReady, expectCase, openCase } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/ebl-lab.json&layers=operations#ops";
 
@@ -28,8 +28,7 @@ async function openOperations(page, path = EXAMPLE) {
 
 test("Railway undertaking → Operations shows the day, the fleet, the workshop, the crews and the penalties", async ({ page }) => {
   const errors = await openOperations(page);
-  await expect(page.locator("#strip-evu")).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "ops");
   expect(await caseReady(page, "terminal")).toBe(false); // the layout has rail operations and no terminal
   await expect(page.locator("#casePanel h2").first()).toHaveText("EBL regional network");
   // Today: key figures and short-term changes
@@ -131,11 +130,11 @@ test("the case Operations adds rail operations to a layout while it is off; in t
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.world.objects.length, null, { timeout: 30_000 });
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "ops");
   expect(await caseReady(page, "ops")).toBe(false);
   expect(await caseReady(page, "terminal")).toBe(false); // the lab has no terminal
   await page.locator("#caseAdd").click();
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "ops");
   await expect(page.locator("#casePanel h2").first()).toBeFocused();
   expect(await caseReady(page, "terminal")).toBe(false);
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
@@ -148,16 +147,16 @@ test("the case Operations adds rail operations to a layout while it is off; in t
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });
   expect(await caseReady(page, "terminal")).toBe(true);
   expect(await caseReady(page, "ops")).toBe(false);
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "ops");
   await expect(page.locator("#caseOn")).toHaveText("Switch on “Rail operations”");
   expect(errors).toEqual([]);
 });
 
-test("on a phone the three chapters and the strip fit; the arrow keys go along the strip", async ({ page }) => {
+test("on a phone the three chapters, the filter pills, the scenarios and a case fit; Enter on a card starts it", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // a link to the tool Disruptions switches its module on
   const errors = await openOperations(page, "/game/?layout=../layouts/ebl-lab.json&layers=operations#disrupt");
-  await expect(page.locator("#strip-disrupt")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "disrupt");
   const fits = (sel) => page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((x) => x.getClientRects().length).every((x) => {
     const r = x.getBoundingClientRect();
     return r.left >= 0 && r.right <= innerWidth + 0.5;
@@ -168,16 +167,19 @@ test("on a phone the three chapters and the strip fit; the arrow keys go along t
     expect(await fits(".tabs button"), `#tab-${tab} at 390 px`).toBe(true);
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // the list: the game page's pills and scenarios (the Sandbox first)
   await page.locator("#tab-interaction").click();
-  await page.locator("#strip-disrupt").focus();
-  await page.keyboard.press("ArrowUp");
-  await expect(page.locator("#strip-build")).toBeFocused();
-  await page.keyboard.press("ArrowUp");
-  await expect(page.locator("#strip-evu")).toBeFocused();
-  await expect(page.locator("#case-ops")).toHaveAttribute("aria-selected", "true");
-  expect(await fits(".strip-item, .case-tabs button, #casePanel .ops-views button"), "the strip and the case at 390 px").toBe(true);
-  await page.keyboard.press("ArrowDown");
-  await expect(page.locator("#strip-build")).toBeFocused();
+  await page.locator("#scenariosBack").click();
+  expect(await page.locator(".pill").allTextContents()).toEqual(["All", "First steps", "Infrastructure", "Railway undertaking", "Freight", "Tools"]);
+  expect(await page.locator(".scenario-card .scenario-name").allTextContents()).toEqual(["Sandbox", "Assets", "Operations", "Terminal", "Journeys", "Build", "Disruptions"]);
+  expect(await fits(".pill, .scenario-card"), "the pills and the scenarios at 390 px").toBe(true);
+  await page.locator("#pill-evu").click();
+  await expect(page.locator(".scenario-card")).toHaveCount(3);
+  await page.locator("#scenario-ops").focus();
+  await page.keyboard.press("Enter");
+  await expectCase(page, "ops");
+  await expect(page.locator("#scenarioName")).toBeFocused();
+  expect(await fits("#casePanel .ops-views button, #scenarioStart, #scenariosBack"), "the case at 390 px").toBe(true);
   expect(errors).toEqual([]);
 });
 

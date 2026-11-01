@@ -3,7 +3,7 @@
 // platform track and the bus bay kept free, the clock, the camera that follows Ada and her bus); the
 // game page keeps the journeys exercise.
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, openCase, openModules } from "./ui.js";
 
 const STORY = "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys";
 
@@ -39,7 +39,7 @@ test("the app opens Bf Neustadt; the case Journeys switches on the journeys stor
   await expect(on).toHaveText("Switch on “Journeys”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
-  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "journeys");
   await expect(page.locator("#casePanel h2").first()).toHaveText("Ada's journey");
   await expect(title(page)).toHaveText("Ada sets off");
   await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 11");
@@ -48,7 +48,7 @@ test("the app opens Bf Neustadt; the case Journeys switches on the journeys stor
 
 test("the journeys story: Next and Back, the list of steps, a clicker; her track and her bay kept free; the clock", async ({ page }) => {
   const errors = await open(page, STORY);
-  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "journeys");
   await expect(title(page)).toHaveText("Ada sets off");
   await expect(page.locator("#journeysStoryBack")).toBeDisabled();
   expect(await storyDisruptions(page)).toEqual([]);
@@ -143,7 +143,7 @@ test("Camera follows: the flyover goes with Ada through the town and with her bu
 test("the game page keeps the journeys exercise in its case Journeys", async ({ page }) => {
   const errors = await open(page, "/game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys");
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys"), null, { timeout: 30_000 });
-  await expect(page.locator("#case-journeys")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "journeys");
   await expect(page.locator("#casePanel h2", { hasText: "New traveller" })).toBeVisible();
   expect(await page.evaluate(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"))).toBe(false);
   expect(errors).toEqual([]);

@@ -15,7 +15,7 @@
  *   earlier layer) is a **patch**: its keys are merged into that object (e.g. `{"id": "track-g1",
  *   "built": 1994}`). A patch of an object that is not there does nothing.
  * - simulations, scenarios and plugins are added (a scenario with an id that is already there
- *   replaces it). A simulation entry with `"patch": true` is a patch of the simulation of its type
+ *   replaces it while the layer is on). A simulation entry with `"patch": true` is a patch of the simulation of its type
  *   that is already there: its keys are merged into it (e.g. `{"type": "town", "patch": true,
  *   "enabled": false}`).
  *
@@ -27,7 +27,8 @@
  * {@link decomposeLayout} is the way back: the composed layout as edited (objects moved, added,
  * removed; settings of simulations) is split into the base and the layers again. An object goes
  * back to the layer it came from, the keys a layer patched go back to that layer's patch (of an
- * object or a simulation), and a new object goes to the given layer (by default the base). Layers
+ * object or a simulation), a scenario that a layer replaced goes back to where it came from (and
+ * the layer keeps its own), and a new object goes to the given layer (by default the base). Layers
  * that are off stay as they were.
  * @module arail/core/layers
  */
@@ -128,9 +129,11 @@ export function layoutPlugins(json) {
  * @param {object} json layout file contents (with or without `layers`)
  * @returns {{layout: object, layers: object[], origin: {objects: Map<string, object>, simulations: (string|null)[],
  *   simulationPatches: Map<number, {base: object, patches: Array<{layer: string, keys: object}>}>,
- *   scenarios: (string|null)[]}, basePlugins: string[]}} `layout`: a plain layout without `layers`; `layers`: the
- *   normalised layers (all of them); `origin`: where each object, simulation and scenario of `layout` came from
- *   (layer id or null for the base) and which layers patched which simulation (by its index), for {@link decomposeLayout}
+ *   scenarios: (string|null)[], replacedScenarios: Map<number, Array<{layer: string|null, scenario: object}>>},
+ *   basePlugins: string[]}} `layout`: a plain layout without `layers`; `layers`: the normalised layers (all of
+ *   them); `origin`: where each object, simulation and scenario of `layout` came from (layer id or null for the
+ *   base), which layers patched which simulation, and the scenarios that layers replaced (by index, with where
+ *   they came from), for {@link decomposeLayout}
  */
 export function composeLayout(json) {
   const j = isObject(json) ? json : {};
@@ -138,7 +141,7 @@ export function composeLayout(json) {
   const { layers: _, ...base } = j;
   const layout = clone(base);
   const objects = list(layout.objects);
-  const origin = { objects: new Map(), simulations: [], simulationPatches: new Map(), scenarios: [] };
+  const origin = { objects: new Map(), simulations: [], simulationPatches: new Map(), scenarios: [], replacedScenarios: new Map() };
   const index = new Map();
   objects.forEach((o, i) => {
     if (typeof o.id === "string" && !index.has(o.id)) index.set(o.id, i);
@@ -183,6 +186,9 @@ export function composeLayout(json) {
     for (const s of l.scenarios) {
       const i = s.id != null ? scenarios.findIndex((x) => x.id === s.id) : -1;
       if (i >= 0) {
+        // the one it replaces is kept: decomposeLayout gives it back to where it came from
+        if (!origin.replacedScenarios.has(i)) origin.replacedScenarios.set(i, []);
+        origin.replacedScenarios.get(i).push({ layer: origin.scenarios[i], scenario: scenarios[i] });
         scenarios[i] = clone(s);
         origin.scenarios[i] = l.id;
       } else {
@@ -272,7 +278,12 @@ export function decomposeLayout(flat, composed, { newObjects = null, simulationO
     bucket.get(owner).simulations.push(split.own);
     for (const q of split.patches) bucket.get(q.layer).simulations.push(q.entry);
   });
-  list(flat.scenarios).forEach((s, i) => bucket.get(on.has(origin.scenarios[i]) ? origin.scenarios[i] : null).scenarios.push(s));
+  const replaced = origin.replacedScenarios || new Map();
+  list(flat.scenarios).forEach((s, i) => {
+    // a scenario that a layer replaced goes back to where it came from; the layer keeps its own
+    for (const r of replaced.get(i) ?? []) bucket.get(on.has(r.layer) ? r.layer : null).scenarios.push(r.scenario);
+    bucket.get(on.has(origin.scenarios[i]) ? origin.scenarios[i] : null).scenarios.push(s);
+  });
   const { layers: _, ...rest } = flat;
   const base = bucket.get(null);
   return {

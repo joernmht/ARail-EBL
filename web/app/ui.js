@@ -6,7 +6,7 @@ export const $ = (sel, root = document) => root.querySelector(sel);
 /**
  * Create an element: h("button", {class: "btn", onclick: fn}, "Label", child, ...).
  * Attributes with null/false are skipped; `true` sets an empty attribute. Its texts and the
- * attributes people read or hear (aria-label, title, alt, placeholder) are shown in the language
+ * attributes people read or hear (aria-label, aria-valuetext, title, alt, placeholder) are shown in the language
  * chosen (i18n.js), unless it has `translate: "no"` (names, what people typed).
  */
 export function h(tag, attrs = {}, ...children) {
@@ -91,9 +91,35 @@ export function toast(text, ms = 4500, { minor = false } = {}) {
   toastTimer = setTimeout(() => (el.hidden = true), ms);
 }
 
+/** The media queries of the page's layouts (app.css says the same). */
+const SIDE_BY_SIDE = "(min-width: 1000px), (min-width: 600px) and (orientation: landscape)";
+const STACKED = "(max-width: 999px) and (orientation: portrait) and (min-height: 500px), (max-width: 599px) and (min-height: 500px)";
+
 /**
- * Scroll the stage into view when its placing bar is out of view (on narrow screens the panel is
- * below the stage): what to tap on the stage must be seen.
+ * How the page lays out the stage and the panel on this screen: "side" (the panel at the right of
+ * the stage: wide screens, tablets and phones held sideways), "stacked" (held upright: the stage
+ * stays at the top, the panel below it scrolls on its own) or "scroll" (a short screen: stacked,
+ * the page scrolls).
+ * @returns {"side" | "stacked" | "scroll"}
+ */
+export function pageLayout() {
+  if (matchMedia(SIDE_BY_SIDE).matches) return "side";
+  return matchMedia(STACKED).matches ? "stacked" : "scroll";
+}
+
+/**
+ * The highest the stage may be (CSS px) where the panel is below it: on a phone held upright the
+ * panel keeps at least a third of the screen, else (the page scrolls) the stage takes up to 72 %.
+ */
+export function stageMaxHeight() {
+  const bar = $("#bar")?.offsetHeight ?? 60;
+  if (pageLayout() !== "stacked") return innerHeight * 0.72;
+  return Math.max(160, Math.min(innerHeight * 0.72, innerHeight - bar - Math.max(200, innerHeight * 0.36)));
+}
+
+/**
+ * Scroll the stage into view when its placing bar is out of view (on a short screen the panel is
+ * below the stage and the page scrolls): what to tap on the stage must be seen.
  */
 export function revealStage() {
   const stage = $("#stageWrap"), bar = $("#placing");

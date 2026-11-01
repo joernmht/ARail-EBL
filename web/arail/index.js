@@ -63,6 +63,7 @@ export { ParkingSpaces, PARKED_CAR } from "./core/parking.js";
 export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from "./core/disruptions.js";
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
+export { introScenes, sceneSeconds, boundsOf, SCENE_SECONDS } from "./core/intro.js";
 export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";

@@ -8,13 +8,16 @@ const PAGES = [
   ["marker sheets", "/markers/"],
   ["app, Overview", "/app/?layout=../layouts/ebl-lab.json#overview"],
   ["app, Settings: view", "/app/?layout=../layouts/ebl-lab.json#view"],
-  ["app, Interaction: modules", "/app/?layout=../layouts/ebl-neustadt.json#modules"],
+  ["app, Interaction: the Introduction (the app's start)", "/app/?layout=../layouts/ebl-neustadt.json"],
+  ["app, Interaction: the scenarios", "/app/?layout=../layouts/ebl-neustadt.json#scenarios"],
+  ["app, Interaction: the Sandbox (#modules)", "/app/?layout=../layouts/ebl-neustadt.json#modules"],
   ["app, Interaction: a case whose module is off", "/app/?layout=../layouts/ebl-neustadt.json#evu-disruption"],
   ["app, Build panel", "/app/?layout=../layouts/ebl-lab.json#build"],
   ["app, Settings: simulation", "/app/?layout=../layouts/ebl-lab.json#simulate"],
   ["app, Disruptions panel", "/app/?layout=../layouts/ebl-lab.json#disrupt"],
   ["app, Settings: control system", "/app/?layout=../layouts/ebl-lab.json#control"],
   ["app, Terminal panel", "/app/?layout=../layouts/container-terminal.json#terminal"],
+  ["app, Interaction: the loading task with its work orders", "/app/?layout=../layouts/ebl-container-train.json&layers=task#terminal"],
   ["app, Railway undertaking: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations"],
   ["app, Infrastructure: Operations", "/app/?layout=../layouts/ebl-neustadt.json&layers=plan#infra-operations"],
   ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
@@ -64,6 +67,9 @@ async function openSimulation(page) {
 
 /** Violations on the page now, labelled with the state they were found in. */
 async function violations(page, state, include = null) {
+  // the panel from its top, as it opens: scrolled by the clicks before, a control half under its
+  // sticky tabs would count as too small a target
+  await page.evaluate(() => document.querySelector("#panel")?.scrollTo(0, 0));
   let axe = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]);
   if (include) axe = axe.include(include);
   const results = await axe.analyze();

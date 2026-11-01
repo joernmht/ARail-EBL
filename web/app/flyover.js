@@ -8,7 +8,7 @@
 import {
   CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, surfacePoint, toRad,
 } from "../arail/index.js";
-import { $, storage, toast } from "./ui.js";
+import { $, pageLayout, stageMaxHeight, storage, toast } from "./ui.js";
 import { tr } from "./i18n.js";
 
 /** The canvas's accessible name in the language shown (kept in English for a switch of language). */
@@ -194,10 +194,9 @@ export class Flyover {
   /** Canvas size: the whole stage, at the device's resolution (at most MAX_WIDTH wide). */
   resize() {
     const app = this.app, c = app.canvas, wrap = $("#stageWrap");
-    const narrow = window.innerWidth < 1000;
     const cssW = Math.max(200, Math.floor(wrap.clientWidth));
     const cssH = document.fullscreenElement ? window.innerHeight
-      : narrow ? Math.round(Math.min(window.innerHeight * 0.72, Math.max(260, cssW * 0.75)))
+      : pageLayout() !== "side" ? Math.round(Math.min(stageMaxHeight(), Math.max(260, cssW * 0.75)))
         : Math.max(200, Math.floor(wrap.clientHeight));
     const k = Math.min(window.devicePixelRatio || 1, MAX_WIDTH / cssW);
     const w = Math.max(2, Math.round(cssW * k)), h = Math.max(2, Math.round(cssH * k));
@@ -673,6 +672,7 @@ export class Flyover {
     app.editor.drawOverlay(ctx, view);
     app.terminal.drawOverlay(ctx, view);
     app.lastView = view;
+    app.interaction.drawFocus(ctx, view);
     app.inspector.drawOverlay(ctx, view);
   }
 

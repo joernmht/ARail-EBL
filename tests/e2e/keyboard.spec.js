@@ -3,7 +3,7 @@
 // are not hidden behind the placing bar (WCAG 2.2: 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.11
 // Focus Not Obscured).
 import { expect, test } from "@playwright/test";
-import { openCase } from "./ui.js";
+import { expectCase, openCase } from "./ui.js";
 
 async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   const errors = [];
@@ -105,13 +105,19 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-interaction")).toBeFocused();
   await expect(page.locator("#panel-interaction")).toBeVisible();
-  // the strip: Tab to its entry chosen (Modules), the arrows go down to Build
-  await tabTo(page, "#strip-modules");
-  for (const id of ["infra", "evu", "build"]) {
-    await page.keyboard.press("ArrowDown");
-    await expect(page.locator(`#strip-${id}`)).toBeFocused();
-  }
-  await expect(page.locator("#strip-build")).toHaveAttribute("aria-selected", "true");
+  // the scenarios: from the Introduction (shown first) back to the list, the pill Tools, the card Build
+  await tabTo(page, "#scenariosBack");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#scenario-intro")).toBeFocused(); // the scenario left
+  await tabTo(page, "#pill-tools", { back: true });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#pill-tools")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#pill-tools")).toBeFocused();
+  await expect(page.locator(".scenario-card")).toHaveCount(2); // Build and Disruptions
+  await tabTo(page, "#scenario-build");
+  await page.keyboard.press("Enter");
+  await expectCase(page, "build");
+  await expect(page.locator("#scenarioName")).toBeFocused();
   // pick the tree in the palette
   const tree = page.locator(".palette").getByRole("button", { name: /^Tree/ });
   await tabTo(page, ".palette button[title='A single tree.']");
@@ -192,7 +198,7 @@ test("keyboard placing in the flyover: a bus line picks the stop under the cross
   expect(errors).toEqual([]);
 });
 
-test("keyboard only: the chapter Interaction, the side Railway undertaking, its case Terminal; a container moved from the list", async ({ page }) => {
+test("keyboard only: the chapter Interaction, the pill Freight, the scenario Load the hybrid train; a container moved from the list", async ({ page }) => {
   const path = "/app/?layout=../layouts/container-terminal.json#simulate";
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -200,26 +206,34 @@ test("keyboard only: the chapter Interaction, the side Railway undertaking, its 
   await page.evaluate(() => localStorage.clear());
   await page.goto(path);
   await page.waitForFunction(() => window.__arail?.mode === "flyover" && window.__arail.terminal.sim, null, { timeout: 30_000 });
-  // the arrows: Settings → Interaction; down the strip to the railway undertaking, its first case that is on (Terminal)
+  // the arrows: Settings → Interaction (the Introduction); back to the list, the pill Freight, its scenario
   await page.locator("#tab-settings").focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#tab-interaction")).toBeFocused();
   await expect(page.locator("#panel-interaction")).toBeVisible();
-  await tabTo(page, "#strip-modules");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await expect(page.locator("#strip-evu")).toBeFocused();
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
-  // the cases of the side: left and right
-  await tabTo(page, "#case-terminal");
-  await page.keyboard.press("ArrowLeft");
-  await expect(page.locator("#case-evu-disruption")).toBeFocused();
-  await expect(page.locator("#caseExample")).toBeVisible(); // its module is not in this layout: the example that has it
-  await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#case-terminal")).toBeFocused();
+  await tabTo(page, "#scenariosBack");
+  await page.keyboard.press("Enter");
+  await tabTo(page, "#pill-freight", { back: true });
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".scenario-card")).toHaveCount(1);
+  await tabTo(page, "#scenario-terminal");
+  // Enter starts it: the loading task at the hybrid container train opens with its photo
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.__arail.caseById("terminal").started && /ebl-container-train\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
+  await expectCase(page, "terminal");
+  await expect(page.locator("#scenarioName")).toBeFocused();
+  await expect(page.locator("#scenarioTask")).toContainText("0 of 6");
   await expect(page.locator("#termList")).toBeVisible();
-  // a container in the list, a place in "Move to", the Move button
-  const item = page.locator("#termList button", { hasText: "ARLU 100004 5" });
+  // a work order: Move follows the orders, with the order's place first (a place on the real train)
+  await tabTo(page, "#term-order-3");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#term-order-3")).toHaveAttribute("aria-current", "true");
+  await tabTo(page, "#termTarget", { max: 12 });
+  expect(await page.locator("#termTarget").inputValue()).toMatch(/^W[78]\|/);
+  await tabTo(page, "#termMoveCancel");
+  await page.keyboard.press("Enter");
+  // a container in the list (one on top of a stack in the yard), a place in "Move to", the Move button
+  const item = page.locator("#termList button", { hasText: "TUDU 601005 3" });
   await tabTo(page, `#${await item.getAttribute("id")}`);
   await page.keyboard.press("Enter");
   await expect(item).toHaveAttribute("aria-current", "true");
@@ -233,7 +247,7 @@ test("keyboard only: the chapter Interaction, the side Railway undertaking, its 
   await page.keyboard.press("Enter");
   await expect(page.locator("#toast")).toContainText("Move M1 queued");
   const move = await page.evaluate(() => window.__arail.terminal.sim.moves[0]);
-  expect(move.container).toBe("ARLU 100004 5");
+  expect(move.container).toBe("TUDU 601005 3");
   expect(`${move.to.carrier}|${move.to.bay}|${move.to.row}|${move.to.tier}`).toBe(chosen);
   expect(errors).toEqual([]);
 });
@@ -261,7 +275,7 @@ test("keyboard: after Depart the focus stays on the arrival cards; an added term
   // a terminal added to a layout without one (the case, off): the case shows it, its heading has the focus
   await page.goto("/game/?layout=../layouts/ebl-lab.json#terminal"); // the terminal is a module of it, off
   await page.waitForFunction(() => window.__arail?.world && !window.__arail.terminal.sim, null, { timeout: 30_000 });
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true"); // the link's case, with the way to it
+  await expectCase(page, "terminal"); // the link's case, with the way to it
   await expect(page.locator("#caseOn")).toHaveText("Switch on “Container terminal”");
   await page.locator("#caseAdd").focus();
   await page.keyboard.press("Enter");

@@ -4,7 +4,7 @@
 // chart over the hour; Run plays the plan on the layout and tells how it went; in German too.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { caseReady, openCase } from "./ui.js";
+import { caseReady, expectCase, openCase } from "./ui.js";
 
 const PLAN = "/app/?layout=../layouts/ebl-neustadt.json&layers=plan";
 
@@ -30,7 +30,7 @@ test("Railway undertaking → Operations switches on the module Operations and s
   await expect(on).toHaveText("Switch on “Operations”");
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "ops-plan"), null, { timeout: 30_000 });
-  await expect(page.locator("#case-evu-operations")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "evu-operations");
   await expect(page.locator("#casePanel h2").first()).toHaveText("A morning at Bf Neustadt");
   await expect(page.locator("#evuPlanStatus")).toHaveText("4 problems");
   await expect(page.locator(".plan-train")).toHaveCount(6);
@@ -98,7 +98,8 @@ test("the draft runs with a delay, cancelled trains on the board and people left
 
 test("the plan in German", async ({ page }) => {
   const errors = await open(page, `${PLAN}&lang=de#evu-operations`);
-  await expect(page.locator("#case-evu-operations")).toHaveText("Betrieb");
+  await expect(page.locator("#scenarioName")).toHaveText("Fahrzeuge und Fahrer");
+  await expect(page.locator("#scenarioTask")).toContainText("Aufgabe: Geben Sie jedem Zug des Morgens ein Fahrzeug");
   await expect(page.locator("#evuPlanStatus")).toHaveText("4 Probleme");
   await expect(page.locator("#evuPlanRun")).toHaveText("Fahren");
   await expect(page.locator(".plan-problems li").first()).toHaveText("Zu wenige Plätze: 216 für 420");

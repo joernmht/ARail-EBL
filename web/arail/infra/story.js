@@ -162,10 +162,15 @@ export class MaintenanceStory extends Story {
     return this.world.objects.find((o) => o.type === "maintenance-base" && o.geometry) ?? null;
   }
 
+  /** The year of the story, and of the age of the assets: its `year`, later by the world's setting `ageYears`. */
+  get year() {
+    return (+this.config.year || 2026) + Math.max(0, +this.world.settings.ageYears || 0);
+  }
+
   /** The steps with the names of the layout's objects in their texts. */
   get steps() {
     const sig = this.signal(), d = this.dock(), ren = this.renewal(), rd = this.renewalDock(), base = this.base();
-    const year = +this.config.year || 2026;
+    const year = this.year;
     const name = (o, fallback) => o?.spec?.name || o?.name || fallback;
     const trackName = (o) => (o?.spec?.track_id ? `track ${o.spec.track_id}` : lower(name(o, "the track")));
     const track = d ? trackName(d.track) : "its track", renewal = ren ? trackName(ren) : "the track";
@@ -231,7 +236,7 @@ export class MaintenanceStory extends Story {
     const type = ASSET_TYPES[ASSET_OBJECTS[o?.type]];
     const built = +o?.spec?.built;
     if (!type || !built) return null;
-    const h = healthAtAge(Math.max(0, (+this.config.year || 2026) - built), type.life_y);
+    const h = healthAtAge(Math.max(0, this.year - built), type.life_y);
     return 1 + 4.99 * (1 - h);
   }
 

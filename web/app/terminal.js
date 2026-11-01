@@ -1,7 +1,8 @@
-// Terminal panel: the container terminal of the layout (its containers and model wagons; on the game
-// page also its visits, new arrivals and crane jobs) and picking containers and their targets on the
-// canvas, in the camera view and the flyover. Every canvas action is also in the panel: choose a
-// container in the list and a place in "Move to". The app keeps it to moving containers one by one.
+// Terminal panel: the container terminal of the layout (its work orders, containers and model wagons;
+// on the game page also its visits, new arrivals and crane jobs) and picking containers and their
+// targets on the canvas, in the camera view and the flyover. Every canvas action is also in the
+// panel: choose a container in the list and a place in "Move to". The app keeps it to moving
+// containers one by one.
 import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
 import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
@@ -34,6 +35,8 @@ const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const slotKey = (at) => `${at.carrier}|${at.bay}|${at.row ?? 0}|${at.tier ?? 0}`;
 /** Element id of a container's button in the list. */
 const listId = (id) => `term-c-${String(id).replace(/\W+/g, "-")}`;
+/** Where a work order stands, in words. */
+const orderState = (o) => (o.done ? "done" : o.missing ? "not in the terminal" : o.moving ? "on its way" : o.under ? `under ${plural(o.under, "container")}` : "free to lift");
 
 /** `type` if it is a wagon type, else null. */
 const deckType = (type) => (typeof type === "string" && CARRIER_TYPES[type]?.kind === "wagon" ? type : null);
@@ -62,6 +65,8 @@ export class TerminalPanel {
     this.full = full;
     /** Id of the selected container, or null. */
     this.selected = null;
+    /** Where it was chosen: "orders" (the Move form follows the work orders), else "list". */
+    this.chosenIn = "list";
     /** null, or "target" while the place for the selected container is picked on the canvas. */
     this.stage = null;
     /** Error of the Move form (shown under it). */
@@ -120,12 +125,12 @@ export class TerminalPanel {
   render(el) {
     const focused = el.contains(document.activeElement) ? document.activeElement.id : null;
     this.el = {
-      root: el, head: h("div", { class: "section" }), arrivals: h("div", { class: "section" }), add: h("div", { class: "section" }),
-      containers: h("div", { class: "section" }), move: h("div", { class: "section term-move" }), jobs: h("div", { class: "section" }),
-      wagons: h("div", { class: "section" }),
+      root: el, head: h("div", { class: "section" }), orders: h("div", { class: "section" }), arrivals: h("div", { class: "section" }),
+      add: h("div", { class: "section" }), containers: h("div", { class: "section" }), move: h("div", { class: "section term-move" }),
+      jobs: h("div", { class: "section" }), wagons: h("div", { class: "section" }),
     };
     const e = this.el;
-    mount(el, e.head, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
+    mount(el, e.head, e.orders, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
     // a control that is not there any more hands the focus to the panel's heading
     if (focused) (document.getElementById(focused) || e.head.querySelector("h2"))?.focus();
@@ -148,21 +153,25 @@ export class TerminalPanel {
     const cards = card ? [...e.arrivals.querySelectorAll(".stop[data-id]")].map((x) => x.dataset.id) : null;
     if (!sim) {
       this._show(e.head, this._noTerminal());
-      for (const k of ["arrivals", "add", "containers", "move", "jobs", "wagons"]) this._show(e[k]);
+      for (const k of ["orders", "arrivals", "add", "containers", "move", "jobs", "wagons"]) this._show(e[k]);
     } else {
       const targets = this.selected ? sim.targets(this.selected) : null;
       this.syncHighlight(targets);
       this._show(e.head, this._head(sim));
+      this._show(e.orders, this._orders(sim));
       this._show(e.arrivals, this.full ? this._arrivals(sim) : null);
       this._show(e.add, this.full ? this._newArrival(sim) : null);
       this._show(e.containers, this._containers(sim));
       this._show(e.move, this.selected ? this._move(sim, targets) : null);
+      // Move follows where the container was chosen: a keyboard does not pass the whole list
+      const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
+      if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
       this._show(e.wagons, sim.rollingConfig() ? this._wagons(sim) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {
-      const next = (active.id && document.getElementById(active.id)) || $("#termMoveCancel") || this._listButton(this.selected ?? this._previous) || $("#termFilter");
+      const next = (active.id && document.getElementById(active.id)) || $("#termMoveCancel") || this._chosenButton(this.selected ?? this._previous) || $("#termFilter");
       next?.focus({ preventScroll: true });
     }
   }
@@ -183,6 +192,12 @@ export class TerminalPanel {
   /** The button of a container in the list (null if it is not listed). */
   _listButton(id) {
     return id ? document.getElementById(listId(id)) : null;
+  }
+
+  /** The button a container was chosen with: its work order's, else its button in the list. */
+  _chosenButton(id) {
+    const order = id && this.chosenIn === "orders" ? this.sim?.orders().find((o) => o.container === id) : null;
+    return (order && document.getElementById(`term-order-${order.n}`)) || this._listButton(id);
   }
 
   /** Morph a section box; an empty one is hidden. */
@@ -253,6 +268,29 @@ export class TerminalPanel {
     this.app.saveLayout();
     const n = sim.config.containers?.length ?? 0;
     toast(`Start state saved: ${plural(n, "container")} where they are now. Build → Reset to original restores the file.`, 6000);
+  }
+
+  /* ---------------------------------------------------------------- work orders */
+
+  /**
+   * The terminal's work orders (`orders`), numbered as on the stage: the container (choosing it opens
+   * Move with the order's place chosen), where it goes and where it stands (under how many containers).
+   */
+  _orders(sim) {
+    const orders = sim.orders();
+    if (!orders.length) return null;
+    const done = orders.filter((o) => o.done).length;
+    return [
+      h("h2", {}, "Work orders ", h("span", { class: "count" }, `(${done} of ${orders.length} done)`)),
+      h("ol", { class: "list term-orders" }, orders.map((o) => h("li", { class: o.done ? "done" : null },
+        h("button", {
+          type: "button", id: `term-order-${o.n}`, disabled: !o.at, "aria-current": o.container === this.selected ? "true" : "false",
+          onclick: () => this.select(o.container === this.selected ? null : o.container, { chosenIn: "orders" }),
+        },
+        h("span", { class: "term-order-n", "aria-hidden": "true" }, o.done ? "✓" : String(o.n)),
+        h("span", {}, h("span", { translate: "no" }, o.container), " → ", o.label),
+        h("span", { class: "meta" }, orderState(o)))))),
+    ];
   }
 
   /* ---------------------------------------------------------------- arrivals */
@@ -447,8 +485,11 @@ export class TerminalPanel {
   /**
    * Select a container (null: none). A pick on the canvas in progress ends.
    * @param {string | null} id
+   * @param {{chosenIn?: "orders" | "list"}} [options] where it was chosen: Move follows the work orders, else the list
+   *   (none chosen: as before, so that the focus goes back there)
    */
-  select(id) {
+  select(id, { chosenIn = "list" } = {}) {
+    if (id) this.chosenIn = chosenIn;
     if (id !== this.selected) {
       this.stage = null;
       this.error = "";
@@ -479,7 +520,12 @@ export class TerminalPanel {
     const ok = targets?.ok || [], refused = targets?.refused || [];
     const where = c.at ? sim.describe(c.at, c) : c.handler ? `on ${sim.handlers.get(c.handler)?.name ?? c.handler}` : "";
     const lift = !ok.length && refused.length === 1 && refused[0].label === c.id ? refused[0].reason : null;
-    if (!ok.some((t) => slotKey(t.at) === this.targetKey)) this.targetKey = ok[0] ? slotKey(ok[0].at) : null;
+    // a work order's container: its place first
+    const order = sim.orders().find((o) => o.container === c.id && !o.done);
+    if (!ok.some((t) => slotKey(t.at) === this.targetKey)) {
+      const first = (order && ok.find((t) => order.carriers.includes(t.carrier))) || ok[0];
+      this.targetKey = first ? slotKey(first.at) : null;
+    }
     const groups = new Map();
     for (const t of ok) {
       if (!groups.has(t.carrier)) groups.set(t.carrier, []);
@@ -489,6 +535,7 @@ export class TerminalPanel {
     const head = [
       h("h2", {}, `Move ${c.id}`),
       h("p", { class: "hint" }, `${c.size} ft${c.high ? " high cube" : ""}${where ? ` · ${where}` : ""}`),
+      order ? h("p", { class: "hint" }, `Work order ${order.n}: to ${order.label}`) : null,
     ];
     const done = h("button", { class: "btn small", type: "button", id: "termMoveCancel", onclick: () => this.select(null) }, "Done");
     const job = c.move ? sim.moves.find((m) => m.id === c.move) : null;
@@ -500,7 +547,12 @@ export class TerminalPanel {
         h("div", { class: "row" }, cancellable ? h("button", { class: "btn small", type: "button", id: "termJobCancel", onclick: () => this._act(sim.cancel(job.id)) }, `Cancel ${job.id}`) : null, done)];
     }
     const status = h("p", { class: "hint error", role: "status", id: "termMoveError" }, this.error || lift || "");
-    if (lift) return [...head, status, h("div", { class: "row" }, done)];
+    if (lift) {
+      // buried: the container at the top of its stack comes first
+      const top = c.at && !c.move ? this._topOf(sim, c) : null;
+      const dig = top ? h("button", { class: "btn small", type: "button", id: "termTop", onclick: () => this.select(top.id, { chosenIn: this.chosenIn }) }, `Choose ${top.id} on top first`) : null;
+      return [...head, status, h("div", { class: "row" }, dig, done)];
+    }
     return [
       ...head,
       h("label", { class: "field", for: "termTarget" }, h("span", {}, "Move to"),
@@ -519,6 +571,18 @@ export class TerminalPanel {
       ),
       status,
     ];
+  }
+
+  /** The container at the top of the stack a stored container is in, if it is not that one. */
+  _topOf(sim, c) {
+    let top = c;
+    for (let next = c; next; ) {
+      const { carrier, row = 0, bay, tier = 0 } = next.at;
+      next = null;
+      for (let k = 0; k < top.bays && !next; k++) next = sim.inventory.at(carrier, row, bay + k, tier + 1);
+      if (next) top = next;
+    }
+    return top === c ? null : top;
   }
 
   /** First target of a kind, on another carrier than the container's own if there is one. */

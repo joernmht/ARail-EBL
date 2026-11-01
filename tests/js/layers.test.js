@@ -75,8 +75,8 @@ test("decompose: edits go back where they came from; new objects to the active l
   assert.equal(x.objects[1].length_m, 50);
   assert.deepEqual(x.simulations.map((s) => s.type), ["traffic"]);
   assert.deepEqual(json.simulations.map((s) => s.type), ["passengers"]);
-  assert.deepEqual(x.scenarios.map((s) => s.id), ["b", "c"]);
-  assert.deepEqual(json.scenarios.map((s) => s.id), ["a"]);
+  assert.deepEqual(x.scenarios.map((s) => s.name ?? s.id), ["Other b", "c"]);
+  assert.deepEqual(json.scenarios.map((s) => s.name ?? s.id), ["a", "b"], "the scenario the layer replaced goes back to the base");
   assert.deepEqual(json.plugins, ["one.js"]);
   assert.deepEqual(x.plugins, ["two.js"]);
   assert.deepEqual(y, { id: "y", name: "Off", enabled: false, objects: [{ id: "f", type: "tree", position: [5, 5] }], simulations: [{ type: "town" }] }, "a layer that is off stays as it was");
@@ -84,6 +84,16 @@ test("decompose: edits go back where they came from; new objects to the active l
   const again = createWorld(json);
   assert.equal(again.getObject("t").spec.built, 2001);
   assert.equal(again.layerOf("new1"), "x");
+  assert.deepEqual(again.scenarios.scenarios.map((s) => s.name ?? s.id), ["a", "Other b", "c"]);
+  // the layer switched off again: the base's own scenario is back
+  again.load(withLayers(again.toJSON(), []));
+  assert.deepEqual(again.scenarios.scenarios.map((s) => s.name ?? s.id), ["a", "b"]);
+  // two layers replacing the same scenario: each keeps its own
+  const chain = composeLayout({ scenarios: [{ id: "s", name: "base" }], layers: [
+    { id: "p", enabled: true, scenarios: [{ id: "s", name: "p" }] }, { id: "q", enabled: true, scenarios: [{ id: "s", name: "q" }] }] });
+  assert.deepEqual(chain.layout.scenarios.map((s) => s.name), ["q"]);
+  const split = decomposeLayout(chain.layout, chain);
+  assert.deepEqual([split.scenarios, split.layers[0].scenarios, split.layers[1].scenarios].map((l) => l.map((s) => s.name)), [["base"], ["p"], ["q"]]);
   // a patch that a later layer overrides keeps its own value
   const two = composeLayout({ objects: [{ id: "o", type: "tree", position: [0, 0], height_m: 5 }], layers: [
     { id: "a", enabled: true, objects: [{ id: "o", height_m: 8 }] }, { id: "b", enabled: true, objects: [{ id: "o", height_m: 9 }] }] });

@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { SCENE, SCENE_VIDEO, atPath, hasScene, routeScene } from "./scene.js";
+import { expectCase } from "./ui.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -124,7 +125,7 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
   // the same layout with the photo of the terminal: its own photo, the module Terminal on, its case shown
   await chooseExample(page, "crane-terminal");
   await page.waitForFunction(() => window.__arail.source?.name === "terminal at the crane" && window.__arail.tracker.state.used.includes(5));
-  await expect(page.locator("#case-terminal")).toHaveAttribute("aria-selected", "true");
+  await expectCase(page, "terminal");
   expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["terminal"]);
   await expect(page.locator("#casePanel")).toContainText("KV terminal Neustadt");
   // the hybrid container train: model wagons from the tags in its photo, a harbour below the table
@@ -279,33 +280,49 @@ test("editing offset X and then offset Y keeps both", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("another chapter or case opens at its top, also when the panel was scrolled down; on a phone the page scrolls back to the tabs", async ({ page }) => {
+test("another chapter or scenario opens at its top, also when the panel was scrolled down; on a phone the stage stays while the panel scrolls", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#build");
+  const top = () => page.locator("#panel").evaluate((p) => p.scrollTop);
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
-  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBeGreaterThan(200);
+  expect(await top()).toBeGreaterThan(200);
   await page.locator("#tab-overview").click();
-  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
+  expect(await top()).toBe(0);
   await expect(page.locator("#stateSearch")).toBeInViewport();
-  // another entry of the strip opens at its top too
+  // back to the list: the scenario left has the focus, in view; another scenario opens at its top
   await page.locator("#tab-interaction").click();
+  await page.locator("#scenariosBack").click();
+  await expect(page.locator("#scenario-build")).toBeFocused();
+  await expect(page.locator("#scenario-build")).toBeInViewport();
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
-  await page.locator("#strip-modules").click();
-  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(0);
-  // the same case again (e.g. its panel drawn anew) stays where it is
-  await page.locator("#strip-build").click();
-  await page.locator("#panel").evaluate((p) => (p.scrollTop = 300));
-  await page.evaluate(() => window.__arail.selectTab("build"));
-  expect(await page.locator("#panel").evaluate((p) => p.scrollTop)).toBe(300);
-  // a phone: the page scrolls, the tabs stick to the top
+  expect(await top()).toBeGreaterThan(100);
+  await page.locator("#scenario-sandbox").click();
+  await expectCase(page, "sandbox");
+  expect(await top()).toBe(0);
+  // the same scenario again (e.g. its panel drawn anew) stays where it is
+  await page.locator("#panel").evaluate((p) => (p.scrollTop = 200));
+  const kept = await top();
+  expect(kept).toBeGreaterThan(100);
+  await page.evaluate(() => window.__arail.selectTab("sandbox"));
+  expect(await top()).toBe(kept);
+  // a phone held upright: the page does not scroll; the stage stays at the top, the panel below it scrolls, its tabs stick to its top
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#tab-interaction").click();
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const tabsTop = await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top);
-  expect(tabsTop).toBeLessThan(0);
-  await page.locator("#tab-settings").click(); // opens at its view shown last (View)
-  // back to the tabs (at the top, or lower where the page is too short to scroll that far)
-  expect(Math.round(await page.locator("#panel").evaluate((p) => p.getBoundingClientRect().top))).toBeGreaterThanOrEqual(0);
+  const stageTop = () => page.locator("#stageWrap").evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await stageTop();
+  await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
+  expect(await top()).toBeGreaterThan(200);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  expect(await stageTop()).toBe(before);
+  await expect(page.locator("#stage")).toBeInViewport();
   await expect(page.locator(".tabs")).toBeInViewport();
+  // the panel keeps at least a third of the screen
+  expect(await page.locator("#panel").evaluate((p) => p.clientHeight)).toBeGreaterThan(844 / 3);
+  await page.locator("#tab-settings").click(); // opens at its top
+  expect(await top()).toBe(0);
+  // held sideways: the stage and the panel side by side, the panel scrolls on its own
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector(".main")).gridTemplateColumns.split(" ").length)).toBe(2);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
 
