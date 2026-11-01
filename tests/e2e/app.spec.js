@@ -298,7 +298,9 @@ test("another chapter or scenario opens at its top, also when the panel was scro
   await page.locator("#scenario-sandbox").click();
   await expectCase(page, "sandbox");
   expect(await top()).toBe(0);
-  // the same scenario again (e.g. its panel drawn anew) stays where it is
+  // the same scenario again (e.g. its panel drawn anew) stays where it is; in a short window, so
+  // that the Sandbox's panel, light in text, is taller than it
+  await page.setViewportSize({ width: 1440, height: 500 });
   await page.locator("#panel").evaluate((p) => (p.scrollTop = 200));
   const kept = await top();
   expect(kept).toBeGreaterThan(100);
