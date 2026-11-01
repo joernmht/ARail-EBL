@@ -796,6 +796,10 @@ export class TownSimulation extends Simulation {
     a.next = i;
     if (at.kind === "away") this._setAway(a);
     else this._setInside(a, this._resolveBuilding(a, at));
+    // placed, not arrived: it has been there since its plan said so, and leaves when its next step is
+    // due (a stay from now held everybody in for five clock minutes after loading or setting the
+    // time, and then sent them all off at once)
+    a.stayUntil = 0;
   }
 
   /* ================================================================ places and ways */

@@ -59,6 +59,13 @@ export class Case {
   static example = null;
   /** The example it plays in (the hybrid container train): Start opens it, unless its layout is open. */
   static opens = null;
+  /**
+   * The parts of the table where its task happens, by their names in the photo map ("Neustadt"): the
+   * photo tour offers their photos while it runs (`photoScope`); null: wherever its layout is.
+   */
+  static photoParts = null;
+  /** Does the photo tour offer all photos while it runs (the Sandbox, to look around freely)? */
+  static allPhotos = false;
 
   /** @param {import("./app.js").App} app */
   constructor(app) {
@@ -169,6 +176,23 @@ export class Case {
   /** What stops with it (a film that plays). */
   end() {}
 
+  /**
+   * The photos of the photo tour that show its task, the only ones the tour offers while it runs
+   * (TourNav#setScope): the photos of the digital layer of the layout open (the one it plays in), on
+   * its parts of the table (`photoParts`, where they have such photos); none when the tour has no
+   * photo of its layout. Null for the Sandbox and the tools: all photos.
+   * @param {import("./tour-nav.js").TourNav} tour
+   * @returns {{key: string, only: (photo: object) => boolean} | null}
+   */
+  photoScope(tour) {
+    const C = this.constructor;
+    if (C.allPhotos || this.tags.includes("tools")) return null;
+    const layers = tour.layersShowing(this.app.layoutUrl), ofLayout = (p) => !!p.layer && layers.includes(p.layer);
+    const parts = C.photoParts, onPart = (p) => ofLayout(p) && parts.includes(tour.partName(p));
+    const narrow = !!parts && (tour.data?.photos || []).some(onPart);
+    return { key: `${this.id}|${layers.join(",")}|${narrow ? parts.join(",") : ""}`, only: narrow ? onPart : ofLayout };
+  }
+
   /** How far its task is ({done, of}), or null: it has none, or it was not started. */
   progress() {
     return null;
@@ -250,6 +274,7 @@ export class SandboxCase extends Case {
   static how = "Drag on the stage to turn the view, pinch or scroll to zoom; tap anything to see what it is.";
   static aliases = ["modules"];
   static icon = "sandbox";
+  static allPhotos = true;
 
   makePanel() {
     return new SandboxPanel(this.app);

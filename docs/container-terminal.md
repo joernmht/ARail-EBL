@@ -380,8 +380,8 @@ module **Terminal**). The game page's case **Terminal** has no task. On a layout
 example**, and **Add to this layout**.
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
-   what the crane is doing), the speed (1×, 2×, 5×, 10×, 30×), **Reset terminal** (back to the start
-   state) and **Save as start state**.
+   what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
+   state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage.
    **Work orders** (where the terminal has `orders`) lists them numbered as on the stage: the
    container, where it goes and where it stands (*free to lift*, *under 2 containers*, *on its
    way*, *done*). Choosing an order chooses its container, with the order's place first in **Move
@@ -421,7 +421,9 @@ row 1 · tier 1*. Esc or **Cancel** stops the pick. This works over the camera i
 a drag pans the view in this tab; with the keyboard, move the view so that the cross in the middle
 lies on a container and press **Enter**, then the same for the place. Over the camera image the
 empty spots of model wagons are outlined while the tab is open. The containers of open work orders
-are outlined in Orange with their number and where they go, also one deep in a stack.
+glow in Gelb, the task's colour (`OVERLAY.task`, apart from the Orange of the container chosen and
+the Türkis of the places): the whole container filled and edged over Dunkelblau, pulsing (steady
+with *reduce motion*), with a badge of its number and where it goes, also one deep in a stack.
 
 **Save as start state** makes the current containers, trains and barges the layout's start state
 (saved in the browser like every change; **Export layout** to keep it). Moves in progress, trucks

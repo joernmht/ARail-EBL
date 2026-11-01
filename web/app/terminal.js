@@ -7,7 +7,6 @@ import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../a
 import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
 
-const SPEEDS = [1, 2, 5, 10, 30];
 /** A pointer that moves less than this (CSS px) between down and up taps (picks) rather than drags. */
 const TAP_PX = 6;
 /** How many crane jobs the table shows (the most recent ones). */
@@ -232,7 +231,6 @@ export class TerminalPanel {
   }
 
   _head(sim) {
-    const w = this.world;
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [
@@ -240,8 +238,6 @@ export class TerminalPanel {
       h("p", { class: "term-status", id: "termStatus" }, [plural(open, "move"), ...busy].join(" · ")),
       this.full ? null : h("p", { class: "hint" }, "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it."),
       h("div", { class: "row" },
-        this.full ? h("div", { class: "seg", role: "group", "aria-label": "Speed" },
-          SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.app.panels.updateSimulateControls(); this.update(); } }, `${s}×`))) : null,
         h("button", { class: "btn small", type: "button", id: "termReset", onclick: () => this.resetTerminal() }, "Reset terminal"),
         h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state"),
       ),

@@ -59,8 +59,10 @@ test("the layout reduced to its town and road traffic: city objects of the base,
   assert.ok(json.objects.every((o) => CITY_TYPES.has(o.type)), "only the town's types");
   for (const type of ["platform", "bus-stop", "tram-line", "gantry-crane", "container-yard"]) assert.ok(!json.objects.some((o) => o.type === type), `no ${type}`);
   assert.equal(json.layers, undefined, "no modules");
-  assert.deepEqual(json.simulations, [{ type: "traffic", cars_per_km: 18 }], "the layout's own traffic settings");
-  assert.deepEqual(liveLayout(NEUSTADT, { simulations: ["traffic", "cycling", "terminal"], cars: 60 }).simulations, [{ type: "traffic", cars_per_km: 60 }, { type: "cycling" }]);
+  const own = (type) => NEUSTADT.simulations.find((s) => s.type === type);
+  assert.ok(own("traffic") && own("cycling"));
+  assert.deepEqual(json.simulations, [own("traffic")], "the layout's own traffic settings");
+  assert.deepEqual(liveLayout(NEUSTADT, { simulations: ["traffic", "cycling", "terminal"], cars: 60 }).simulations, [{ ...own("traffic"), cars_per_km: 60 }, own("cycling")]);
   const registry = liveRegistry();
   assert.deepEqual([...registry.simulations.keys()].sort(), ["cycling", "traffic"], "only the live page's simulations");
   assert.ok(registry.objects.has("plattenbau") && registry.objects.has("road"));

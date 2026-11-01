@@ -108,6 +108,8 @@ export const OVERLAY = {
   trackedFill: "rgba(10,119,127,0.36)", // Türkis 1, fill of control-system trains
   danger: CD.rot, // disruption areas
   dangerLabel: "rgba(84,4,26,0.9)", // background of disruption labels: dark Rot
+  task: CD.gelb, // what a task asks to be done (the containers of open work orders): a glow that pulses
+  taskText: CD.dunkelblau, // text on the task's Gelb (the number of a work order)
 };
 
 /** A neutral grey: 0 = black ... 1 = white (buildings are greyscale, like a white model). */

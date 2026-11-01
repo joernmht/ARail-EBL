@@ -8,7 +8,7 @@
 import {
   CD, CD_LIGHT, FONT, OVERLAY, PITCH_MAX, Camera, FlyCamera, SimpleView, View, applyH, defaultTableBounds, drawTable, gridLines, hasPhysicalTable, inv3, orthoOf, rgba, surfacePoint, toRad,
 } from "../arail/index.js";
-import { $, pageLayout, stageMaxHeight, storage, toast } from "./ui.js";
+import { $, pageLayout, pulse, reducedMotion, stageMaxHeight, storage, toast } from "./ui.js";
 import { tr } from "./i18n.js";
 
 /** The canvas's accessible name in the language shown (kept in English for a switch of language). */
@@ -35,8 +35,6 @@ export const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", fl
 /** ... and its night colours (the view darkens both further). */
 const SKY_NIGHT = { top: "#020a24", horizon: "#16284f", floorFar: "#1b2438", floorNear: "#0b1122" };
 
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
 export class Flyover {
   constructor(app) {
     this.app = app;
@@ -62,10 +60,18 @@ export class Flyover {
     else this.enter();
   }
 
-  /** Switch the stage to the virtual camera (video processing pauses, the source is kept). */
-  enter() {
+  /**
+   * Switch the stage to the virtual camera (video processing pauses, the source is kept); the stage
+   * fades over. The camera is where it was last on this layout, or with `fromPhoto` where the camera
+   * of the photo shown stands (its tracked pose): a scenario then takes it on to its place, so the
+   * view goes on from the photo instead of jumping.
+   * @param {{fromPhoto?: boolean}} [options]
+   */
+  enter({ fromPhoto = false } = {}) {
     if (this.active) return;
     const app = this.app, c = app.canvas;
+    const start = fromPhoto ? this.photoCamera() : null;
+    app.crossfade();
     this.active = true;
     app.mode = "flyover";
     const src = app.source;
@@ -82,6 +88,7 @@ export class Flyover {
     $("#btnFreeze").hidden = true;
     this.resize();
     this._restoreCamera();
+    if (start) this.cam.set(start.state());
     // switched on with the key F (nothing focused): the stage takes the keys; a focused button keeps the focus
     if (!document.activeElement || document.activeElement === document.body) {
       this._entering = true; // not a keyboard user's focus: no aim cross yet
@@ -91,10 +98,11 @@ export class Flyover {
     this._modeChanged();
   }
 
-  /** Back to the camera view with the source that was shown before. */
+  /** Back to the camera view with the source that was shown before; the stage fades over. */
   leave() {
     if (!this.active) return;
     const app = this.app, c = app.canvas;
+    app.crossfade();
     this.active = false;
     app.mode = "camera";
     this.gesture = null;
@@ -132,6 +140,17 @@ export class Flyover {
     $("#btnFreeze").hidden = !src || src.kind === "image";
     app.fitCanvas();
     this._modeChanged();
+  }
+
+  /**
+   * The orbit camera that sees what the photo (or clip, or live camera) shown sees: its pose as last
+   * tracked (FlyCamera.fromPose, `app.photoView`), or null in the flyover, without a tracked picture,
+   * or looking up.
+   */
+  photoCamera() {
+    const app = this.app, s = app.source, v = app.photoView;
+    if (this.active || !s || s.stale || !v || v.el !== s.el) return null;
+    return FlyCamera.fromPose(v.pose, v.focal, v.height);
   }
 
   /** Is the stage drawn in the simple view (flat layout, moving things as blocks)? */
@@ -660,7 +679,7 @@ export class Flyover {
     this._background(ctx, W, H, night);
     const view = new (simple ? SimpleView : View)({
       ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: app.px(), time: world.time,
-      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true, translate: tr,
+      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night, virtual: true, translate: tr, pulse: pulse(),
     });
     view.placed.push(...app.hudRects); // the labels keep clear of the HUD
     const table = this._defaultTable(); // table modules draw themselves (world.draw)

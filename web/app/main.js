@@ -9,6 +9,8 @@ import { App } from "./app.js";
 import { BuildCase, DisruptionsCase, IntroCase, PlanCase, SandboxCase, StoryCase, TerminalCase } from "./cases.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
+/** The parts of the lab table that show Bf Neustadt (its photos, while a scenario at the station runs). */
+const STATION = ["Neustadt"];
 
 /** Infrastructure → Operations: the trains of the operations plan on the tracks of the station. */
 class InfraOperations extends PlanCase {
@@ -18,6 +20,7 @@ class InfraOperations extends PlanCase {
   static description = "Put the trains of the morning on the tracks of the station";
   static task = "Give every train of the morning a track that is free and long enough.";
   static icon = "plan";
+  static photoParts = STATION;
 }
 
 /** Railway undertaking → Operations: a unit and a driver on each train of the operations plan. */
@@ -28,6 +31,7 @@ class EvuOperations extends PlanCase {
   static description = "Put a unit and a driver on each train of the morning";
   static task = "Give every train of the morning a unit with enough places and a driver on shift.";
   static icon = "plan";
+  static photoParts = STATION;
 }
 
 /** Infrastructure → Disruption: the maintenance story (a signal fails and is exchanged; a worn track is renewed). */
@@ -41,6 +45,7 @@ class InfraDisruption extends StoryCase {
   static needs = "maintenance-story";
   static example = "infrastructure";
   static prefix = "infra";
+  static photoParts = STATION;
 }
 
 /** Railway undertaking → Disruption: the operations story (a train breaks down, the spare unit takes over). */
@@ -54,6 +59,7 @@ class EvuDisruption extends StoryCase {
   static needs = "ops-story";
   static example = "operations";
   static prefix = "ops";
+  static photoParts = STATION;
 }
 
 /** Railway undertaking → Journeys: the journeys story (a traveller's train is late). */
@@ -67,6 +73,7 @@ class JourneysStory extends StoryCase {
   static needs = "journeys-story";
   static example = "journeys";
   static prefix = "journeys";
+  static photoParts = STATION;
 }
 
 /** @type {import("./app.js").Page} */
@@ -88,6 +95,8 @@ const PAGE = {
   exampleLayers: { plan: { layout: NEUSTADT, layer: "plan" }, operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
   // the photos of the lab as a Street View: they choose what the stage shows (the examples are in Settings → View)
   tour: { data: "../lab-map/data.json" },
+  // leaving a scenario: back to the town, the photo of Bf Neustadt
+  home: "neustadt",
 };
 
 new App(PAGE).init();

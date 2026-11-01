@@ -99,3 +99,24 @@ test("the lab: at most six photos per part, the parts in the order of the ring",
   assert.equal(t.parts[t.step(home, "front", 1)].id, "S04");
   assert.equal(t.parts[t.step(home, "front", -1)].id, "S02");
 });
+
+test("a scenario's tour: only its photos, the parts without one left out, the hall and the perspectives as in the whole tour", () => {
+  const all = new PhotoTour(DATA);
+  // the loading task at the hybrid container train: the photos of its digital layer
+  const container = new PhotoTour(DATA, { only: (p) => p.layer === "container" });
+  assert.deepEqual(container.parts.map((p) => p.id), ["S12"]);
+  assert.deepEqual(container.hall, all.hall, "the hall of all photos");
+  const s12 = all.parts.find((p) => p.id === "S12");
+  assert.equal(container.parts[0].front, s12.front, "the part's front as in the whole tour");
+  assert.ok(Object.values(container.parts[0].views).every((p) => p.layer === "container"));
+  for (const [v, p] of Object.entries(container.parts[0].views)) assert.equal(perspectiveOf(p.heading - s12.front), v);
+  // the station's scenarios: the photos of Bf Neustadt's parts, in the order of the ring
+  const station = new PhotoTour(DATA, { only: (p) => p.layer === "neustadt" && DATA.groups[p.group]?.name === "Neustadt" });
+  assert.deepEqual(station.parts.map((p) => p.id), all.parts.filter((p) => ["S01", "S02", "S03", "S04"].includes(p.id)).map((p) => p.id));
+  // left and right stay among them, the ring closed
+  const first = station.parts[0].id, back = station.step(station.step(0, "front", 1), "front", -1);
+  assert.equal(station.parts[back].id, first);
+  assert.equal(station.step(station.parts.length - 1, "front", 1), 0);
+  // nothing left: no parts
+  assert.equal(new PhotoTour(DATA, { only: () => false }).parts.length, 0);
+});

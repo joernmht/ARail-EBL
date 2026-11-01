@@ -25,7 +25,6 @@
     </div>
     <span class="layout-name" id="layoutName"></span>
     <span class="spacer"></span>
-    <button class="bar-clock" id="barClock" type="button" title="Time and speed (Settings → Simulation)"></button>
     <a class="btn game-link" href="roles/">Roles</a>
     <a class="btn game-link" href="career/">Career</a>
     <a class="btn game-link" href="signaller/">Signaller game</a>
@@ -47,6 +46,7 @@
       <canvas id="stage" width="1280" height="720" role="img" aria-label="Camera image with augmented reality"></canvas>
       <div class="empty-stage" id="emptyStage" hidden></div>
       <div class="hud" id="hud"></div>
+      <div class="sim-clock" id="simClock" role="group" aria-label="Time and speed"></div>
       <div class="fly-nav" id="flyNav" role="group" aria-label="Flyover camera" hidden>
         <button class="btn" type="button" data-fly="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
         <button class="btn" type="button" data-fly="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
@@ -70,7 +70,7 @@
       <nav class="tabs" role="tablist" aria-label="Panels">
         <button role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" title="The state of assets and people">Overview</button>
         <button role="tab" id="tab-interaction" aria-controls="panel-interaction" aria-selected="false" title="Scenarios to start: an introduction, a sandbox and examples with a small task">Interaction</button>
-        <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" title="View, simulation (time, speed, demand, stops) and the control system">Settings</button>
+        <button role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" title="View, simulation (time of day, demand, stops) and the control system">Settings</button>
       </nav>
       <section class="tabpanel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview"></section>
       <section class="tabpanel" role="tabpanel" id="panel-interaction" aria-labelledby="tab-interaction" hidden></section>

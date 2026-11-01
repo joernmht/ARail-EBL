@@ -160,18 +160,18 @@ export const TRACKING = [
   {
     id: "flycam", group: "tracking", title: "The flyover's camera",
     summary: "A virtual orbit camera that gives the same homography and pose as a real one, so everything draws without video.",
-    description: "FlyCamera describes its image like a real camera's: H = K [r₁ r₂ t] for a pinhole camera of focal length f, so the View, the editor and the simulations work unchanged. The app's Flyover drives it (orbit, pan, zoom, twist, fit, following a traveller) and draws the table, the orthophoto, the grid and the markers under the world.",
+    description: "FlyCamera describes its image like a real camera's: H = K [r₁ r₂ t] for a pinhole camera of focal length f, so the View, the editor and the simulations work unchanged; the other way round, FlyCamera.fromPose gives the orbit camera that sees what a real camera's pose sees (a tracked photo's), so a scenario's flyover can start from the photo. The app's Flyover drives it (orbit, pan, zoom, twist, fit, following a traveller) and draws the table, the orthophoto, the grid and the markers under the world.",
     files: ["web/arail/core/flycam.js", "web/app/flyover.js"],
     classes: [
       {
         name: "FlyCamera", file: "web/arail/core/flycam.js", kind: "class", role: "Orbit camera: state, projection, navigation.",
         attributes: ["target: number[] — the point looked at (mm)", "distance: number — mm", "yaw: number — rad", "pitch: number — rad, 8° … 90° (plan view)", "fovY: number — rad"],
-        operations: ["set(view) — target, distance, yaw, pitch, fovY", "homography(width, height) — {H, Hinv, focal, pose}", "groundPoint(u, v, width, height, maxRange, z) — on the layout plane or at height z", "orbit(dYaw, dPitch)", "pan(dx, dy, width, height, at)", "zoomAt(factor, px, py, width, height)", "fit(bounds, aspect, margin)"],
+        operations: ["set(view) — target, distance, yaw, pitch, fovY", "homography(width, height) — {H, Hinv, focal, pose}", "static fromPose(pose, focal, height) — the orbit camera of a real camera's pose: the point in the middle of its view, its distance, direction, tilt and field of view (no roll); null when it does not look down", "groundPoint(u, v, width, height, maxRange, z) — on the layout plane or at height z", "orbit(dYaw, dPitch)", "pan(dx, dy, width, height, at)", "zoomAt(factor, px, py, width, height)", "fit(bounds, aspect, margin)"],
       },
       {
         name: "Flyover", file: "web/app/flyover.js", kind: "class", role: "The app's flyover: input, background, orthophoto, grid, markers, following.",
         attributes: ["cam: FlyCamera", "camera: Camera — with the virtual focal length", "active: boolean", "following: object | null — what the camera follows"],
-        operations: ["enter()", "leave()", "pose() — the virtual camera's pose", "groundPoint(u, v, z)", "surfacePoint(u, v) — under a pixel, on raised modules and bridges (editor)", "step(dt)", "render()", "follow(where)"],
+        operations: ["enter(options) — the stage fades over; fromPhoto: the camera starts where the photo's camera stands", "leave() — back to the source; the stage fades over", "photoCamera() — the orbit camera of the picture shown, as last tracked (App.photoView)", "pose() — the virtual camera's pose", "groundPoint(u, v, z)", "surfacePoint(u, v) — under a pixel, on raised modules and bridges (editor)", "step(dt)", "render()", "follow(where)"],
       },
     ],
     relations: [

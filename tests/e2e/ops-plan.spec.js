@@ -64,7 +64,7 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
   await page.locator("#infraPlanRun").click();
   await expect(page.locator("#infraPlanStatus")).toContainText("Running");
   await expect(choice(page, "infra", "s1-0705", "track")).toBeDisabled();
-  await page.getByRole("group", { name: "Speed" }).getByRole("button", { name: "30×" }).click();
+  await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "30×" }).click();
   // its trains at the platforms, with their units and drivers
   await page.waitForFunction(() => window.__arail.world.services.vehicles().some((v) => v.plan?.unit === "442 101" && v.phase === "dwelling"), null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.world.services.vehicles().find((v) => v.plan)?.info?.[0])).toBe("442 101 · Becker");
@@ -79,7 +79,7 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
 test("the draft runs with a delay, cancelled trains on the board and people left behind; Start again", async ({ page }) => {
   const errors = await open(page, `${PLAN}#evu-operations`);
   await page.locator("#evuPlanRun").click();
-  await page.getByRole("group", { name: "Speed" }).getByRole("button", { name: "30×" }).click();
+  await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "30×" }).click();
   // while it runs: no accessibility violations (the chips, the time in the chart)
   await page.waitForFunction(() => window.__arail.world.clock.minutes > 7 * 60 + 25, null, { timeout: 30_000 });
   const results = await new AxeBuilder({ page }).include("#casePanel").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();

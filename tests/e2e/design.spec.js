@@ -63,10 +63,11 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.locator("#tab-settings").click();
       await page.locator("#settingsView-simulate").click();
       await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-      await page.getByRole("button", { name: "Pause" }).click();
-      await expect(page.getByRole("button", { name: "Resume" })).toHaveAttribute("aria-pressed", "true");
-      expect(await style(page, "#panel-settings .settings-body .btn[aria-pressed='true']", "backgroundColor")).toBe(scheme === "light" ? "rgb(200, 80, 0)" : "rgb(240, 146, 46)");
-      expect(await contrastViolations(page, ["#panel-settings", "#hud"])).toEqual([]);
+      // Pause and the speeds in the upper right corner of the stage: pressed in Orange, on the overlay
+      await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "Pause" }).click();
+      await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
+      expect(await style(page, "#simPause", "backgroundColor")).toBe(scheme === "light" ? "rgb(200, 80, 0)" : "rgb(240, 146, 46)");
+      expect(await contrastViolations(page, ["#panel-settings", "#hud", "#simClock"])).toEqual([]);
 
       await page.locator("#tab-settings").click();
       await page.locator("#settingsView-simulate").click();

@@ -109,6 +109,31 @@ test("town: setting the clock re-places everybody; runs are deterministic", () =
   assert.equal([...pax.crowds.values()].flatMap((c) => c.people).filter((p) => p.agent).length, 0);
 });
 
+test("town: after loading or setting the clock, people leave when their plan says, not all at once later", () => {
+  // loaded at 07:00, and set to 07:00 from earlier: the morning's departures go on at once, one by one
+  for (const set of [false, true]) {
+    const world = townWorld({ clock: { start: set ? "05:00" : "07:00", factor: 12 } });
+    world.step(0.1);
+    if (set) {
+      world.setTime("07:00");
+      world.step(0.1);
+    }
+    const t = town(world), start = world.clock.minutes, left = [];
+    let inside = new Set(t.agents.filter((a) => a.state === "inside"));
+    while (world.clock.minutes < start + 10) {
+      world.step(0.1);
+      const now = new Set(t.agents.filter((a) => a.state === "inside"));
+      left.push({ at: world.clock.minutes - start, n: [...inside].filter((a) => !now.has(a)).length });
+      inside = now;
+    }
+    const total = left.reduce((s, x) => s + x.n, 0), early = left.filter((x) => x.at < 4).reduce((s, x) => s + x.n, 0);
+    const most = Math.max(...left.map((x) => x.n));
+    assert.ok(total >= 6, `${total} people left in ten minutes`);
+    assert.ok(early > 0, `nobody left in the first four minutes ${set ? "after setting the clock" : "after loading"}`);
+    assert.ok(most <= Math.max(3, total / 4), `${most} of ${total} left in one step ${set ? "after setting the clock" : "after loading"}`);
+  }
+});
+
 test("town: the occupancy of a building is the people inside, also after the clock was set", () => {
   const world = townWorld();
   const t = town(world);

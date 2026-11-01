@@ -53,11 +53,14 @@ function cost(photo, part, ideal) {
 export class PhotoTour {
   /**
    * @param {{photos: object[], groups?: object, layers?: object}} data the photo map (arail-lab-map/1)
+   * @param {{only?: ((photo: object) => boolean) | null}} [options] only: the photos the tour may show
+   *   (a scenario's, see TourNav#setScope); the parts without one are left out. The hall, the parts'
+   *   middles and their fronts stay those of all photos, so a perspective stays the same.
    */
-  constructor(data) {
+  constructor(data, { only = null } = {}) {
     this.layers = data.layers || {};
     const groups = data.groups || {};
-    const photos = (data.photos || []).filter((p) => Number.isFinite(p.heading) && Number.isFinite(p.x) && Number.isFinite(p.y));
+    const photos = (data.photos || []).filter((p) => Number.isFinite(p.heading) && Number.isFinite(p.x) && Number.isFinite(p.y) && (!only || only(p)));
     const all = data.photos || [];
     // the hall: the middle line of its ring of tables (the long axis, shortened by half the width at both ends)
     const xs = all.map((p) => p.x), ys = all.map((p) => p.y);

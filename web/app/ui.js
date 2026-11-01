@@ -117,6 +117,17 @@ export function stageMaxHeight() {
   return Math.max(160, Math.min(innerHeight * 0.72, innerHeight - bar - Math.max(200, innerHeight * 0.36)));
 }
 
+/** Does the person ask for less motion (the system's setting)? Then the stage cuts instead of fading, and nothing pulses. */
+export const reducedMotion = () => !!globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** Seconds of one beat of the stage's pulsing highlights (the containers of open work orders). */
+const PULSE_S = 1.2;
+
+/** The beat of the stage's pulsing highlights now (0 … 1, `View` option `pulse`), or null: steady (less motion). */
+export function pulse() {
+  return reducedMotion() ? null : 0.5 + 0.5 * Math.sin((2 * Math.PI * performance.now()) / (PULSE_S * 1000));
+}
+
 /**
  * Scroll the stage into view when its placing bar is out of view (on a short screen the panel is
  * below the stage and the page scrolls): what to tap on the stage must be seen.

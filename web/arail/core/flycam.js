@@ -15,6 +15,7 @@
  * the layout origin is in front of the camera (in the flyover it may be behind).
  * @module arail/core/flycam
  */
+import { cameraCentre } from "./geometry.js";
 import { clamp, inv3, toDeg, toRad, wrapAngle } from "./math.js";
 
 /** Lowest and highest pitch: the camera never looks along the table nor beyond the vertical. */
@@ -260,6 +261,32 @@ export class FlyCamera {
       this.pan(W / 2 - mx, H / 2 - my, W, H, [mx, my]);
     }
     return this;
+  }
+
+  /**
+   * The orbit camera that sees about what a real camera sees, e.g. the tracked pose of a photo: it
+   * looks at the point of the layout plane in the middle of the view, from as far away, in the same
+   * direction and with the same tilt and field of view. It cannot roll (the horizon stays level), so
+   * a photo taken askew is seen level. Null when the camera does not look down at the layout.
+   * @param {{a1: number[], a2: number[], a3: number[], n: number[]}} pose as `poseFromHomography` gives it
+   * @param {number} focal the camera's focal length (px, vertical)
+   * @param {number} height the height of its image (px)
+   * @returns {FlyCamera | null}
+   */
+  static fromPose(pose, focal, height) {
+    const eye = pose ? cameraCentre(pose) : null;
+    if (!eye || !(focal > 0) || !(height > 0)) return null;
+    // the viewing direction in the layout frame: the camera's z axis (the third rows of a1, a2, n)
+    const f = [pose.a1[2], pose.a2[2], pose.n[2]], l = Math.hypot(...f);
+    if (!(l > 0) || !(f[2] < -1e-6) || !(eye[2] > 0)) return null;
+    const fwd = f.map((v) => v / l), s = -eye[2] / fwd[2];
+    return new FlyCamera({
+      target: [eye[0] + s * fwd[0], eye[1] + s * fwd[1]],
+      distance: s,
+      yaw: Math.atan2(fwd[1], fwd[0]),
+      pitch: Math.asin(Math.min(1, -fwd[2])),
+      fovY: 2 * Math.atan(height / 2 / focal),
+    });
   }
 
   /* ---------------------------------------------------------------- animation and files */

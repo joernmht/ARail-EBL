@@ -619,6 +619,33 @@ test("terminal draw: highlights are overlays in the CD roles and are never darke
   assert.ok(texts.includes(sel.id) && texts.includes("W3 not visible"));
 });
 
+test("terminal draw: a work order's container glows in the task's Gelb, beating with the view's pulse, its number dark on Gelb", () => {
+  const sc = exampleScene();
+  const box = sc.wagons[0].boxes[0], sel = sc.wagons[1].boxes[0];
+  const glow = (pulse) => {
+    const { ctx, ops } = stateContext();
+    const view = topView(ctx, { night: 1, pulse });
+    drawHighlights(view, { selected: sel, orders: [{ box, n: 3, label: "Container train" }] });
+    assert.ok(view.items.every((it) => it.layer === 2), "overlay layer, never darkened");
+    view.render();
+    const fill = ops.find((o) => o.op === "fill" && String(o.fillStyle).startsWith("rgba(255,199,0,"));
+    assert.ok(fill, "filled in Gelb");
+    // the whole container as seen from above: its outline, not only its top
+    const xs = fill.path[0].pts.map((p) => p[0]);
+    assert.ok(fill.path[0].closed && fill.path[0].pts.length >= 4 && Math.max(...xs) - Math.min(...xs) > 5);
+    const edges = ops.filter((o) => o.op === "stroke" && o.path[0]?.pts.length === fill.path[0].pts.length);
+    assert.deepEqual(edges.map((o) => o.strokeStyle), [OVERLAY.label, OVERLAY.task], "Gelb over a dark edge");
+    assert.ok(ops.some((o) => o.op === "stroke" && o.strokeStyle === OVERLAY.selection), "the selected container stays Orange");
+    const badge = ops.find((o) => o.op === "fillText" && o.text === "3");
+    assert.equal(badge.fillStyle, OVERLAY.taskText, "the order's number dark on Gelb");
+    return parseRgba(fill.fillStyle)[3];
+  };
+  assert.equal(OVERLAY.task, CD.gelb);
+  const low = glow(0), high = glow(1), steady = glow(null);
+  assert.ok(high > low + 0.2, `the glow beats: ${low} … ${high}`);
+  assert.ok(steady > low && steady < high, "steady without a pulse (less motion): between the two");
+});
+
 test("terminal draw: ground: concrete yard, one batched path of cell lines, lanes, rails and water", () => {
   const sc = exampleScene();
   const view = topView(stateContext().ctx);
