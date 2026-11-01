@@ -140,7 +140,7 @@ export const WORLD = [
   {
     id: "layout", group: "world", title: "Layout files and modules",
     summary: "Pure functions: layers (the app's modules) merged into a flat layout and split again, defaults filled in, problems found.",
-    description: "A layout file has a base and layers. composeLayout merges the layers that are on into the base (an object with a known id patches it, a simulation entry with patch: true changes the base's simulation of that type); decomposeLayout puts edits back where they came from. A layer can be exclusive, or a layout of its own (the container terminal), which the app opens instead. Points can be given relative to a marker (anchors).",
+    description: "A layout file has a base and layers. composeLayout merges the layers that are on into the base (an object with a known id patches it, a simulation entry with patch: true changes the base's simulation of that type, a scenario with a known id replaces it); decomposeLayout puts edits back where they came from, and a replaced scenario back where it was. A layer can be exclusive, or a layout of its own (the container terminal), which the app opens instead. Points can be given relative to a marker (anchors).",
     files: ["web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js"],
     classes: [
       {
@@ -150,7 +150,7 @@ export const WORLD = [
       },
       {
         name: "layers", file: "web/arail/core/layers.js", kind: "module", role: "Switchable parts of one layout: the app's modules.",
-        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "layoutPlugins(json)", "layerProblems(json)"],
+        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from; a scenario a layer replaced back where it was", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "layoutPlugins(json)", "layerProblems(json)"],
       },
       {
         name: "anchors", file: "web/arail/core/anchors.js", kind: "module", role: "Points as [x, y] or {marker, offset}, through the marker map.",

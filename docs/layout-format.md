@@ -102,7 +102,7 @@ One layout can carry several setups of the same lab: the base (the table, the to
 | `enabled` | `false` | on when the layout is opened (unless the browser remembers another choice) |
 | `objects` | `[]` | objects the layer adds. An entry whose `id` is already there (in the base or an earlier layer) is a **patch**: its fields are merged into that object, e.g. the year a track was built |
 | `simulations` | `[]` | added to those of the base. An entry with `"patch": true` is a **patch** of the simulation of its `type` that is already there (in the base or an earlier layer): its settings are merged into it, e.g. `{"type": "town", "patch": true, "enabled": false}` switches the town off while the layer is on. A patch of a simulation that is not there does nothing. |
-| `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it |
+| `scenarios`, `plugins` | `[]` | added to those of the base; a scenario with an id that is already there replaces it while the layer is on (the one it replaced stays in the file: switched off, it is back) |
 | `exclusive` | `false` | the layer is not combined with others: switching it on switches the others off, and switching on another one switches it off (the app marks its box "alone") |
 | `layout` | | a **layout of its own** (a path relative to this file): the module opens that layout instead of adding to this one. It is always exclusive, and has no objects, simulations, scenarios or plugins of its own. In that layout, Interaction → Sandbox shows the modules of this one, so that clicking any of them comes back. |
 

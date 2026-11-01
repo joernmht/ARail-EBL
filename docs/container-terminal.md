@@ -458,7 +458,8 @@ not (the flyover shows them).
 
 The module brings its own version of the layout's scenario **Loading the real train**
 (Interaction → Disruptions): with the module on, it replaces the layout's own (the same id), whose
-containers stand elsewhere in the task. It shows one way to do the task: the crane works off the
+containers stand elsewhere in the task; switched off again, or saved with the module on, the
+layout's own is kept. It shows one way to do the task: the crane works off the
 six orders in 11 moves, one every 150 s, with a message at each step.
 
 ## Building a terminal in Build

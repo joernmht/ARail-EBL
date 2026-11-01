@@ -1495,10 +1495,18 @@ test("the loading task of the hybrid container train: a full yard and train, bur
   assert.deepEqual(inv.check(), []);
 });
 
-test("the loading task's own scenario Loading the real train works off the orders in 11 moves; the layout's own one stays without the module", () => {
+test("the loading task's own scenario Loading the real train works off the orders in 11 moves; the layout's own one is back without the module", () => {
   // the module's version replaces the layout's (the same id): its containers stand elsewhere there
-  const base = createWorld(HYBRID, { seed: 1 });
-  assert.match(base.scenarios.scenarios.find((x) => x.id === "hybrid-shift").description, /free spots of the real wagons/);
+  const own = (w) => w.scenarios.scenarios.find((x) => x.id === "hybrid-shift").description;
+  assert.match(own(createWorld(HYBRID, { seed: 1 })), /free spots of the real wagons/);
+  // and gives it back: the module switched off again (as the app does it), or the layout saved with it on
+  const round = createWorld(withLayers(HYBRID, ["task"]), { seed: 1 });
+  assert.match(own(round), /loading task done by the crane/);
+  const saved = round.toJSON();
+  assert.match(saved.scenarios.find((x) => x.id === "hybrid-shift").description, /free spots of the real wagons/);
+  assert.match(saved.layers[0].scenarios[0].description, /loading task done by the crane/);
+  round.load(withLayers(saved, []));
+  assert.match(own(round), /free spots of the real wagons/);
   const { world, sim } = loadingTask();
   const said = [];
   world.events.on("scenario.message", (p) => said.push(p.text));
