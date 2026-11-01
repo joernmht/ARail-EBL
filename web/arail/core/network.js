@@ -98,6 +98,8 @@ const UTURN_S = 600;
 const LANE_SPEED = 20 / 3.6;
 /** Size of the cache of shortest-path trees. */
 const TREE_CACHE = 400;
+/** Points whose nearest node is kept (see `nearestNode`). */
+const NEAREST_MEMO = 4000;
 
 /**
  * Where a bus stands at a dock: front and rear point (layout mm) on its centre line, the
@@ -894,21 +896,42 @@ export class RoadNetwork {
    */
   nearestNode(p, { mode = "walk" } = {}) {
     if (!p) return null;
-    const usable = this.nodes.filter((n) => n.edges.some((id) => this._usable(this.edges[id], mode)));
-    if (mode !== "walk" || !this.barriers.length) {
-      let best = null, bd = Infinity;
-      for (const n of usable) {
-        const d = dist2(p, n.pos);
-        if (d < bd) {
-          bd = d;
-          best = n;
-        }
+    // the same points come again and again (entrances, the ends of platforms): the answer is kept
+    const memo = (this._nearestMemo ||= new Map()), key = `${mode}:${p[0]}:${p[1]}`;
+    if (memo.has(key)) return memo.get(key);
+    const node = this._nearestNode(p, mode);
+    memo.set(key, node);
+    if (memo.size > NEAREST_MEMO) memo.delete(memo.keys().next().value);
+    return node;
+  }
+
+  _nearestNode(p, mode) {
+    const usable = this._usableNodes(mode);
+    let best = null, bd = Infinity;
+    for (const n of usable) {
+      const d = dist2(p, n.pos);
+      if (d < bd) {
+        bd = d;
+        best = n;
       }
-      return best;
     }
+    if (mode !== "walk" || !this.barriers.length) return best;
+    // walking: mostly the nearest node is in reach; else the nearest one that is (a stable sort: of
+    // equally near nodes the first, as the scan above)
+    if (best && !this.crossesBarrier(p, best.pos)) return best;
     const byDistance = usable.map((n) => [dist2(p, n.pos), n]).sort((a, b) => a[0] - b[0]);
     for (const [, n] of byDistance) if (!this.crossesBarrier(p, n.pos)) return n;
     return null;
+  }
+
+  /** The nodes a mode can use (the network does not change once built: worked out once per mode). */
+  _usableNodes(mode) {
+    let list = (this._usableByMode ||= new Map()).get(mode);
+    if (!list) {
+      list = this.nodes.filter((n) => n.edges.some((id) => this._usable(this.edges[id], mode)));
+      this._usableByMode.set(mode, list);
+    }
+    return list;
   }
 
   /** Does the straight line from a to b cross a barrier (a track)? */

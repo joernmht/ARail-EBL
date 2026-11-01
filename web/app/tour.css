@@ -22,6 +22,8 @@
 .tour-views .btn { width: 36px; height: 32px; }
 .tour-views svg { stroke-width: 2.2; }
 .tour-views .btn.missing:not([aria-pressed="true"]) { opacity: .5; }
+/* while a scenario runs, the sides it has no photo from are off (TourNav#setScope) */
+.tour-views .btn:disabled { opacity: .3; }
 .tour-table { grid-column: 1 / -1; height: 4px; margin: 1px 3px; border-radius: 2px; background: var(--overlay-text); opacity: .7; }
 
 /* the arrows: at the left and right edges of the stage */

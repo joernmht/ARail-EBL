@@ -82,9 +82,9 @@
   "consists": [{"id": "stadtbahn", "name": "Stadtbahn", "lines": ["S 10"], "vehicles": [{"type": "et442s"}]}],
   "simulations": [
     {"type": "passengers", "base_rate": 0.5, "max_per_area": 160},
-    {"type": "town", "people_per_100": 25, "walk_max_m": 120, "bus_share": 0.6},
-    {"type": "traffic", "cars_per_km": 18},
-    {"type": "cycling"}
+    {"type": "town", "people_per_100": 25, "max_people": 3000, "walk_max_m": 120, "bus_share": 0.6},
+    {"type": "traffic", "cars_per_km": 8},
+    {"type": "cycling", "riders_per_km": 4}
   ],
   "objects": [
     {"id": "table-lab", "type": "tabletop", "name": "EBL table, front level", "kind": "physical", "position": [1800, 290], "width_mm": 8400, "depth_mm": 700},

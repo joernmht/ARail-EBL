@@ -68,8 +68,10 @@ export class View {
    *   layout origin is in front of the camera
    * @param {((text: string) => string) | null} [options.translate] the texts of labels in the language shown
    *   (arail/i18n); null: as they are (English)
+   * @param {number | null} [options.pulse] the beat of highlights that pulse to catch the eye (0 … 1, from
+   *   the app's clock in real time, not the simulation's); null: they stay steady (reduced motion, Node)
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null, pulse = null }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -83,6 +85,8 @@ export class View {
     this.darken = darken;
     /** Texts of labels in the language shown (arail/i18n `translate`); English as they are without. */
     this.translate = translate;
+    /** The beat of pulsing highlights (0 … 1), or null: steady. */
+    this.pulse = Number.isFinite(pulse) ? Math.min(1, Math.max(0, pulse)) : null;
     /**
      * [xmin, ymin, xmax, ymax] (mm) of a photo of the real table drawn under everything else (the
      * flyover's orthophoto): there the real lab is visible as in the camera view, see `showsReal`.
@@ -628,7 +632,7 @@ export class View {
    * @param {number[]} at [x, y, z] in mm
    * @param {string | string[]} text one or more lines
    * @param {{size?: number, color?: string, background?: string, anchor?: "center" | "bottom" | "left",
-   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, bar?: number, barColor?: string,
+   *   padding?: number, bold?: boolean, badge?: string, badgeColor?: string, badgeText?: string, bar?: number, barColor?: string,
    *   order?: number, optional?: boolean, fit?: boolean, compact?: {text: string | string[], style?: object}}} [style]
    */
   label(at, text, style = {}) {
@@ -768,7 +772,7 @@ function drawLabel(ctx, p, lines, style, px, W, H, placed = [], compact = null) 
     ctx.fillStyle = style.badgeColor || OVERLAY.sign;
     roundRect(ctx, x, y, badgeW, h, 4 * px);
     ctx.fill();
-    ctx.fillStyle = OVERLAY.labelText;
+    ctx.fillStyle = style.badgeText || OVERLAY.labelText;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(style.badge, x + badgeW / 2, y + h / 2);

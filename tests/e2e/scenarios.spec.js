@@ -143,9 +143,12 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   // people by their mood
   await page.locator("#sandboxPeopleColour").selectOption("mood");
   expect(await page.evaluate(() => window.__arail.world.settings.peopleColour)).toBe("mood");
-  // leaving the Sandbox brings the station back to today: the other scenarios play in its own year
+  // leaving the Sandbox brings the station back to today (the other scenarios play in its own year)
+  // and the stage back to the town's photo; the modules switched in it stay
   await page.locator("#scenariosBack").click();
   expect(await page.evaluate(() => window.__arail.world.settings.ageYears)).toBe(0);
+  await page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera", null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof", "infrastructure"]);
   expect(await condition()).toBeCloseTo(today, 6);
   expect(errors).toEqual([]);
 });
@@ -228,5 +231,104 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   await page.locator("#opsStoryNext").click();
   await page.locator("#opsStoryNext").click();
   await expect(task(page)).toContainText(`2 of ${n}`);
+  expect(errors).toEqual([]);
+});
+
+test("leaving a scenario for the list takes the stage back to the town, other chapters leave it running; while it runs, the photo tour has its task's photos only", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = await open(page);
+  const stage = () => page.evaluate(() => {
+    const a = window.__arail;
+    return { layout: a.layoutUrl.replace(/.*\//, ""), layers: a.layersOn(), mode: a.mode, photo: a.source?.el?.src?.replace(/.*\//, "") ?? null, stale: !!a.source?.stale };
+  });
+  const town = { layout: "ebl-neustadt.json", layers: ["sbahn", "waldhof"], mode: "camera", photo: "ebl-neustadt.jpg", stale: false };
+  const home = () => page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera" && /ebl-neustadt\.jpg$/.test(window.__arail.source?.el?.src || ""), null, { timeout: 30_000 });
+  expect(await stage()).toEqual(town);
+  // the loading task at the hybrid train: the tour offers its photos only, from the front left and the front, and no arrows
+  await startScenario(page, "terminal");
+  await page.waitForFunction(() => window.__arail.tourNav.scope);
+  expect(await page.locator("#tour [data-view]").evaluateAll((bs) => bs.filter((b) => !b.disabled).map((b) => b.dataset.view))).toEqual(["front-left", "front"]);
+  await expect(page.locator("#tour .tour-step").first()).toBeHidden();
+  await page.locator('#tour [data-view="front-left"]').click();
+  await page.waitForFunction(() => window.__arail.tourNav.showing() && window.__arail.tourNav.at.perspective === "front-left", null, { timeout: 30_000 });
+  // its photos are of its layout: the scenario goes on
+  expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.caseById("terminal").started, /photo=/.test(location.search)])).toEqual(["ebl-container-train.json", true, true]);
+  // ← Scenarios: back to the town with its photo, all photos again, the address without the photo
+  await page.locator("#scenariosBack").click();
+  await home();
+  expect(await stage()).toEqual(town);
+  expect(await page.evaluate(() => [window.__arail.tourNav.scope, window.__arail.tourNav.tour.parts.length > 10, location.search])).toEqual([null, true, ""]);
+  await expect(page.locator("#tour .tour-step").first()).toBeVisible();
+  // a scenario at the station switches its module on and flies into the flyover; its photos are Bf Neustadt's
+  await startScenario(page, "infra-disruption");
+  // running: its module, the flyover, no way home, and the tour of its task's photos
+  const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing, window.__arail.tourNav.scope?.key ?? null]);
+  const scope = await page.evaluate(() => window.__arail.tourNav.scope?.key ?? null);
+  expect(scope).toMatch(/^infra-disruption\|/);
+  const runs = [true, ["sbahn", "waldhof", "infrastructure"], "flyover", false, scope];
+  expect(await running()).toEqual(runs);
+  expect(await page.evaluate(() => window.__arail.tourNav.tour.parts.map((p) => p.name))).toEqual(["Neustadt", "Neustadt", "Neustadt", "Neustadt"]);
+  // the other chapters leave it running, its stage and its tour as they are (a photo of another layout
+  // would end it): the Overview, and the time in the corner (Settings → Simulation)
+  await page.locator("#tab-overview").click();
+  expect(await running()).toEqual(runs);
+  await page.locator("#simTime").click();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  expect(await running()).toEqual(runs);
+  await page.locator("#tab-interaction").click();
+  await expectCase(page, "infra-disruption");
+  expect(await running()).toEqual(runs);
+  // ← Scenarios ends it: the town as it was, without the scenario's module
+  await page.locator("#scenariosBack").click();
+  await home();
+  expect(await stage()).toEqual(town);
+  expect(await page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.tourNav.scope])).toEqual([false, null]);
+  expect(errors).toEqual([]);
+});
+
+test("the stage fades from picture to picture (cuts with less motion); a scenario's flyover starts where the photo's camera stands", async ({ page }) => {
+  const errors = await open(page);
+  // the flyover and back: a still of the stage over it, fading out
+  const toggle = () => page.evaluate(() => {
+    window.__arail.flyover.toggle();
+    const still = document.querySelector("#stageWrap > canvas.stage-fade");
+    return still ? { opacity: Number(still.style.opacity), hidden: still.getAttribute("aria-hidden"), pointer: getComputedStyle(still).pointerEvents } : null;
+  });
+  expect(await toggle()).toEqual({ opacity: 1, hidden: "true", pointer: "none" });
+  await page.waitForFunction(() => !document.querySelector(".stage-fade"), null, { timeout: 5000 });
+  expect(await toggle()).not.toBeNull();
+  await page.waitForFunction(() => !document.querySelector(".stage-fade") && window.__arail.tracker.state.H, null, { timeout: 30_000 });
+  // a place shown from the photo: the flyover's flight starts at the photo's camera
+  const flight = await page.evaluate(() => {
+    const a = window.__arail, start = a.flyover.photoCamera();
+    a.showPlace(null);
+    const from = a.flyover.anim?.from;
+    return start && from ? [start.yaw - from.yaw, start.pitch - from.pitch, start.distance / from.distance] : null;
+  });
+  expect(flight[0]).toBeCloseTo(0, 6);
+  expect(flight[1]).toBeCloseTo(0, 6);
+  expect(flight[2]).toBeCloseTo(1, 6);
+  // with less motion the stage cuts
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForFunction(() => !document.querySelector(".stage-fade"), null, { timeout: 5000 });
+  expect(await toggle()).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("a scenario only shown, not started, leaves the stage as it is when it is left", async ({ page }) => {
+  const errors = await open(page, "/app/?layout=../layouts/ebl-lab.json");
+  await expectCase(page, "intro");
+  await page.evaluate(() => {
+    const a = window.__arail, home = a.showHome.bind(a);
+    window.__homes = 0;
+    a.showHome = () => {
+      window.__homes++;
+      return home();
+    };
+  });
+  await page.locator("#tab-overview").click();
+  await page.locator("#tab-interaction").click();
+  await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => [window.__homes, window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.mode])).toEqual([0, "ebl-lab.json", "camera"]);
   expect(errors).toEqual([]);
 });

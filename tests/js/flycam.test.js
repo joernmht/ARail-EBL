@@ -115,6 +115,32 @@ test("poseFromHomography recovers the flyover pose, also with the origin behind 
   assert.ok(view.project(1400, 0, 50)[1] < view.project(1400, 0, 0)[1]);
 });
 
+test("the orbit camera of a real camera's pose sees what it sees (a photo's view, the flyover starting there)", () => {
+  for (const [target, distance, yaw, pitch, fov] of [[[300, 200], 1800, 70, 40, 45], [[-2500, 900], 2600, -120, 62, 38], [[0, 0], 900, 180, 88, 60]]) {
+    const cam = new FlyCamera({ target, distance, yaw: toRad(yaw), pitch: toRad(pitch), fovY: toRad(fov) });
+    const { H: hom, focal } = cam.homography(W, H);
+    // as the app has it: the pose recovered from the photo's homography and the camera's focal length
+    const pose = poseFromHomography(hom, { fx: focal, fy: focal, cx: W / 2, cy: H / 2 });
+    const back = FlyCamera.fromPose(pose, focal, H);
+    close(back.target[0], target[0], 1e-3, "target x");
+    close(back.target[1], target[1], 1e-3, "target y");
+    close(back.distance, distance, 1e-3, "distance");
+    close(Math.cos(back.yaw - toRad(yaw)), 1, 1e-9, "yaw");
+    close(back.pitch, toRad(pitch), 1e-9, "pitch");
+    close(back.fovY, toRad(fov), 1e-9, "field of view");
+    for (const p of [[target[0] + 200, target[1] - 100, 0], [target[0] - 150, target[1] + 300, 40]]) {
+      const a = cam.project(p, W, H), b = back.project(p, W, H);
+      close(a[0], b[0], 1e-3);
+      close(a[1], b[1], 1e-3);
+    }
+  }
+  // a camera that does not look down at the layout has none
+  const up = new FlyCamera({ target: [0, 0], distance: 1000, pitch: toRad(30) });
+  const pose = up.pose(), flipped = { ...pose, a1: pose.a1.map((v, i) => (i === 2 ? -v : v)), a2: pose.a2.map((v, i) => (i === 2 ? -v : v)), n: pose.n.map((v, i) => (i === 2 ? -v : v)) };
+  assert.equal(FlyCamera.fromPose(flipped, 800, H), null);
+  assert.equal(FlyCamera.fromPose(pose, 0, H), null);
+});
+
 test("ground points: the inverse of the projection, nothing above the horizon", () => {
   const cam = new FlyCamera({ target: [100, -50], distance: 1200, yaw: toRad(120), pitch: toRad(15) });
   for (const p of [[100, -50], [300, 100], [-200, -300]]) {

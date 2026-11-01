@@ -337,22 +337,39 @@ test("periodic panel updates keep keyboard focus on buttons", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
-test("the clock in the bar: the time with the speed or Paused; it opens Settings → Simulation, which says night after sunset", async ({ page }) => {
+test("the time and speed in the upper right corner of the stage: Pause, the speeds, the time; it opens Settings → Simulation, which says night after sunset", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
-  const clock = page.locator("#barClock");
+  const control = page.getByRole("group", { name: "Time and speed" }), clock = page.locator("#simTime");
+  // in the stage's upper right corner, over the picture
+  const [stage, box] = await Promise.all([page.locator("#stageWrap").boundingBox(), control.boundingBox()]);
+  expect(stage.x + stage.width - (box.x + box.width)).toBeLessThan(20);
+  expect(box.y - stage.y).toBeLessThan(20);
   await page.evaluate(() => {
     const a = window.__arail;
     a.world.setTime("22:30");
-    a.world.speed = 2;
     a.updateHud();
   });
-  await expect(clock).toHaveText(/^22:3\d · ×2$/);
+  await control.getByRole("group", { name: "Speed", exact: true }).getByRole("button", { name: "5×" }).click();
+  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(5);
+  await expect(control.getByRole("button", { name: "5×" })).toHaveAttribute("aria-pressed", "true");
+  await expect(control.getByRole("button", { name: "2×" })).toHaveAttribute("aria-pressed", "false");
+  await expect(clock).toHaveText(/^22:3\d$/);
+  // a speed none of the buttons has (a scenario's own) is said beside the time
   await page.evaluate(() => {
     const a = window.__arail;
-    a.world.paused = true;
+    a.world.speed = 3;
     a.updateHud();
   });
+  await expect(clock).toHaveText(/^22:3\d · ×3$/);
+  await control.getByRole("button", { name: "Pause" }).click();
+  expect(await page.evaluate(() => window.__arail.world.paused)).toBe(true);
+  await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
   await expect(clock).toHaveText(/^22:3\d · Paused$/);
+  // Space, with nothing focused, goes on
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press("Space");
+  expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false);
+  await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "false");
   await clock.click();
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright

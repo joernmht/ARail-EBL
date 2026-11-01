@@ -8,6 +8,9 @@
 import { storyOf } from "../arail/index.js";
 import { h, morph, mount, storage } from "./ui.js";
 
+/** How long the flyover's camera takes to fly to where a step of the story happens (ms): soft, not a jump. */
+const AIM_MS = 1000;
+
 export class StoryPanel {
   /**
    * @param {object} app the ARail app (app.js)
@@ -103,7 +106,7 @@ export class StoryPanel {
     const fly = this.app.flyover;
     fly.follow(() => (this.story === story ? story.view()?.at ?? null : null));
     const rad = (deg) => (Number.isFinite(deg) ? (deg * Math.PI) / 180 : undefined);
-    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: rad(v.pitch_deg), yaw: rad(v.yaw_deg) }));
+    fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: rad(v.pitch_deg), yaw: rad(v.yaw_deg) }), AIM_MS);
   }
 
   /** Let the flyover's camera follow the story or not; on, it opens the flyover. */
@@ -111,7 +114,8 @@ export class StoryPanel {
     this.follow = on;
     storage.set("arail.storyFollow", on);
     if (on) {
-      if (this.app.mode !== "flyover") this.app.flyover.enter();
+      // from the photo the flyover starts where its camera stands, and flies to the story
+      if (this.app.mode !== "flyover") this.app.flyover.enter({ fromPhoto: true });
       this.aim();
     } else this.app.flyover.following = null;
     this.update();

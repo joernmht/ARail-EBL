@@ -101,8 +101,12 @@ test("a full train: nobody else gets on, the people left behind are counted", ()
   assert.match(rows["Left behind"], /^\d+ \(full\)$/);
   assert.match(rows["On board"], /^\d+ of \d+ \(\d+ %\)$/);
   assert.match(card.status, /· full$/);
-  // a train that is not full takes them: room for the people on the platform
+  // a train that is not full takes them: room for the people on the platform (every train comes in
+  // empty; at the morning peak one that comes in nearly full may fill up at the busy platforms)
   const free = createWorld(readJSON("web/layouts/ebl-neustadt.json"), { seed: 5 });
+  free.events.on("vehicle.arriving", ({ vehicle }) => {
+    if (free.services.capacityOf(vehicle) != null) vehicle.onboard = 0;
+  });
   const came = [];
   free.events.on("vehicle.arrived", ({ vehicle }) => came.push(vehicle));
   run(free, 30 * 60);

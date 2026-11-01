@@ -9,8 +9,9 @@ import { Interaction, LIST } from "./interaction.js";
 import { drawGrid, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
+import { SpeedControl } from "./speed.js";
 import { TourNav } from "./tour-nav.js";
-import { $, h, morph, mount, pageLayout, stageMaxHeight, storage, toast } from "./ui.js";
+import { $, h, morph, mount, pageLayout, pulse, reducedMotion, stageMaxHeight, storage, toast } from "./ui.js";
 import { addTexts, chooseLanguage, i18n, setLanguage, tr } from "./i18n.js";
 
 const params = new URLSearchParams(location.search);
@@ -27,9 +28,11 @@ const params = new URLSearchParams(location.search);
  * - `exampleLayers`: examples that are a module (layer) of another example, opened with it on;
  * - `tour`: the photo tour of the lab ({data: the photo map's data.json}): its buttons on the stage
  *   choose what is shown, and the examples are listed in Settings → View; a page without it has the
- *   list of layouts (Layouts…) in its bar.
+ *   list of layouts (Layouts…) in its bar;
+ * - `home`: the example the stage goes back to when a scenario is left (the app: the town, Bf
+ *   Neustadt, with its photo; see `showHome`); a page without it leaves the stage as it is.
  * @typedef {{id: string, cases: Array<typeof import("./cases.js").Case>, defaultCase?: string, start?: string, examples: object[],
- *   exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}}} Page
+ *   exampleLayers: Object<string, {layout: string, layer: string}>, tour?: {data: string}, home?: string}} Page
  */
 /** Former example files that are layers of the lab example now (old links keep working). */
 const LEGACY = { "layouts/ebl-operations.json": "operations", "layouts/ebl-infrastructure.json": "infrastructure" };
@@ -52,6 +55,12 @@ const APP_MODULES = [
 ];
 /** Pitch of the flyover's camera when a scenario shows its place (from above at an angle). */
 const PLACE_PITCH = ARail.toRad(48);
+/** How long the flyover's camera takes to fly to a scenario's place (ms). */
+const PLACE_MS = 1200;
+/** How long the stage fades from one picture to the next: another photo, the flyover, another layout (ms). */
+const FADE_MS = 700;
+/** Ease in and out (0 … 1). */
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
 const PROC_RANGE = [480, 1600], PROC_RANGE_ROLLING = [1280, 1600];
 
@@ -81,6 +90,8 @@ export class App {
     this.rollingDetections = {};
     /** The View of the last frame drawn (null while the layout is not tracked): for picking on the canvas. */
     this.lastView = null;
+    /** Where the camera of the picture shown stood when it was last tracked ({el, pose, focal, height}), or null. */
+    this.photoView = null;
     this.procMax = 960;
     this.frozen = false;
     this.fps = 0;
@@ -98,6 +109,12 @@ export class App {
     this._loadToken = 0;
     /** Where the HUD's chips lie over the canvas (canvas px, measured with the HUD): the stage's labels keep clear of them. */
     this.hudRects = [];
+    /** The modules the home layout had when a scenario was started: they come back when it is left. */
+    this._homeLayers = null;
+    /** The way back home after a scenario, while it loads (a promise), else null. */
+    this._homing = null;
+    /** The still that fades out over the stage (crossfade), or null. */
+    this._veil = null;
   }
 
   /* ---------------------------------------------------------------- start */
@@ -122,6 +139,8 @@ export class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
+    /** The time and speed in the upper right corner of the stage. */
+    this.speed = new SpeedControl(this, $("#simClock"));
     this.overview = new Overview(this);
     this.cases = this.page.cases.map((C) => new C(this));
     this.interaction = new Interaction(this);
@@ -222,8 +241,6 @@ export class App {
         await this.openExample(id);
       });
     }
-    // the clock in the bar opens the time and speed
-    $("#barClock")?.addEventListener("click", () => this.openTab("simulate"));
     $("#btnFreeze").addEventListener("click", () => this.setFrozen(!this.frozen));
     $("#btnFullscreen").addEventListener("click", () => {
       const el = $("#stageWrap");
@@ -300,8 +317,7 @@ export class App {
     } else if ((e.key === "r" || e.key === "R") && this.showing("build") && this.editor.selected) {
       if (this.editor.rotateSelected(e.shiftKey ? 90 : 15)) e.preventDefault();
     } else if (e.key === " ") {
-      w.paused = !w.paused;
-      this.panels.updateSimulateControls();
+      this.speed.setPaused(!w.paused);
       e.preventDefault();
     } else if (/^[1-9]$/.test(e.key)) {
       const area = w.stopAreas()[Number(e.key) - 1];
@@ -373,8 +389,11 @@ export class App {
   /**
    * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
    * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
-   * list of scenarios ("scenarios"). The case shown until then stops. The address links to it,
-   * except for the chapter the page starts with (`address` false): a first visit keeps its address.
+   * list of scenarios ("scenarios"). The case shown until then stops. On a page with a home (the
+   * app), a scenario that was started and is left for the list or another scenario takes the stage
+   * back to the town (`showHome`); another chapter (Overview, Settings) leaves it running, its stage
+   * as it is, and one only shown, not started, leaves the stage as it is too. The address links to
+   * it, except for the chapter the page starts with (`address` false): a first visit keeps its address.
    */
   selectTab(name, { address = true } = {}) {
     if (TAB_VIEWS[name]) {
@@ -383,10 +402,13 @@ export class App {
       name = TAB_VIEWS[name][0];
     }
     const c = this.caseFor(name);
+    let home = false;
     if (c || name === LIST) {
       const id = c?.id ?? LIST;
       if (id !== this.activeCase) {
-        this.caseById(this.activeCase)?.stop();
+        const left = this.caseById(this.activeCase);
+        home = !!this._scenario(left)?.started;
+        left?.stop();
         this._scrollPanelToTop();
       }
       this.activeCase = id;
@@ -394,6 +416,7 @@ export class App {
       name = "interaction";
     }
     if (!this.tabNames.includes(name)) name = "overview";
+    if (home) this.showHome();
     // another chapter opens at its top: the chapters share one scrolling column (on a phone, the page)
     if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
@@ -411,15 +434,19 @@ export class App {
   /**
    * Start a scenario (a case of Interaction): it is shown, what it needs is switched on, its task
    * starts and the stage shows its view; started already, it starts again. From the list, its name
-   * takes the keyboard focus.
+   * takes the keyboard focus. The way back home from the scenario before ends first.
    * @returns {Promise<boolean>} whether it started
    */
   async startCase(name) {
     const c = this.caseFor(name);
     if (!c) return false;
-    const fromList = this.activeCase !== c.id || this.activeTab !== "interaction";
+    const fromList = this.activeCase !== c.id || this.activeTab !== "interaction", again = c.started;
     this.selectTab(c.id);
     if (c.started) c.stop();
+    await this._homing;
+    if (this.activeCase !== c.id) return false;
+    // its first Start: the town's modules now come back when it is left (Start again keeps them)
+    if (!again && this._scenario(c)) this._noteHome(c);
     const ok = await c.start();
     if (this.activeTab === "interaction" && this.activeCase === c.id) {
       this.renderPanel("interaction");
@@ -430,14 +457,147 @@ export class App {
 
   /**
    * Show a place of the layout in the flyover (a scenario's view): these bounds (layout mm; null:
-   * the whole layout), from above at an angle.
+   * the whole layout), from above at an angle. From the photo, the flyover starts where its camera
+   * stands and flies there.
    * @param {number[] | null} bounds
    */
   showPlace(bounds) {
     const fly = this.flyover, c = this.canvas;
-    if (!fly.active) fly.enter();
+    if (!fly.active) fly.enter({ fromPhoto: true });
     fly.following = null;
-    fly.move((k) => k.set({ pitch: PLACE_PITCH }).fit(bounds ?? fly.sceneBounds(), c.width / Math.max(1, c.height), 0.08), 900);
+    fly.move((k) => k.set({ pitch: PLACE_PITCH }).fit(bounds ?? fly.sceneBounds(), c.width / Math.max(1, c.height), 0.08), PLACE_MS);
+  }
+
+  /** The case if it is a scenario that sets up the stage (not a tool of the layout) on a page with a home, else null. */
+  _scenario(c) {
+    return this.page.home && c && !c.tags.includes("tools") ? c : null;
+  }
+
+  /** The address of the home example's layout (absolute), or null: the page has none. */
+  _homeUrl() {
+    const x = this.page.home ? this.page.examples.find((e) => e.id === this.page.home) : null;
+    return x ? new URL(x.layout, location.href).href : null;
+  }
+
+  /**
+   * A scenario starts: the modules of the home layout, if it is open, come back when it is left (not
+   * while the way home loads); those switched in the Sandbox (`keepModules`) stay.
+   * @param {import("./cases.js").Case} c
+   */
+  _noteHome(c) {
+    if (this._homing) return;
+    this._homeLayers = !c.constructor.keepModules && this._homeUrl() === this.layoutUrl ? this.layersOn() : null;
+  }
+
+  /** Is the source the live camera, or a photo or clip the person opened (it stays when a scenario is left)? */
+  _ownSource() {
+    const s = this.source;
+    return !!s && !s.stale && (s.kind === "live" || !!s.objectUrl);
+  }
+
+  /** The layout's own photo (its covered version, if it has one) as an address, or null. */
+  _layoutImage() {
+    const v = this.world.layout.view, img = v?.image_covered || v?.image;
+    return img && this.layoutUrl ? new URL(img, this.layoutUrl).href : null;
+  }
+
+  /**
+   * Back to the town after a scenario: the page's home example (the app: Bf Neustadt), its layout
+   * opened again if the scenario opened another one, with the modules it had when the scenario was
+   * started, in the camera view with the layout's own photo, unless the stage shows the live camera
+   * or a photo or clip the person opened: that stays. The stage fades over; the address drops the
+   * photo or example it named. A picture chosen while it loads (a photo of the tour, a file) stays.
+   * A scenario started meanwhile waits for it (`startCase`).
+   * @returns {Promise<void>} when the stage is there
+   */
+  showHome() {
+    const url = this._homeUrl(), layers = this._homeLayers;
+    if (!url) return Promise.resolve();
+    const before = this._homing;
+    const run = async () => {
+      await before;
+      // another picture asked for while the layout loads (loadImage, loadVideo count it) wins
+      const token = this._loadToken;
+      if (url !== this.layoutUrl) {
+        this.stopLive();
+        // the photo or clip shown until now belongs to the scenario's layout
+        if (this.source) this.source.stale = true;
+        await this.loadLayoutFromUrl(url, { withImage: false, layers });
+      } else if (layers && (layers.length !== this.layersOn().length || layers.some((l) => !this.layersOn().includes(l)))) {
+        await this.chooseModules(layers);
+      }
+      if (this._loadToken !== token) return;
+      const img = this._layoutImage();
+      if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example");
+      this._autoFlyover = false;
+      this.flyover.leave();
+      const q = new URLSearchParams(location.search), drop = ["photo", "image", "example", "layout", "layers", "camera"].filter((k) => q.has(k));
+      for (const k of drop) q.delete(k);
+      if (drop.length) history.replaceState(null, "", `${location.pathname}${q.size ? `?${q}` : ""}${location.hash}`);
+    };
+    const p = run().catch((err) => console.warn("The way back to the town failed:", err)).finally(() => {
+      if (this._homing === p) this._homing = null;
+    });
+    this._homing = p;
+    return p;
+  }
+
+  /**
+   * Fade the stage softly from what it shows now to what comes next (another photo, the flyover,
+   * another layout or its modules): a still of the stage as it is seen lies over the canvas and fades
+   * out while the next picture is drawn under it; a fade still running is taken into the still. With
+   * less motion (the system's setting) the stage cuts.
+   */
+  crossfade() {
+    const wrap = $("#stageWrap"), c = this.canvas;
+    if (reducedMotion() || !wrap || c.hidden || !c.width || !c.clientWidth) return;
+    const r = wrap.getBoundingClientRect(), cr = c.getBoundingClientRect(), k = Math.min(2, window.devicePixelRatio || 1);
+    const still = document.createElement("canvas");
+    still.width = Math.max(1, Math.round(r.width * k));
+    still.height = Math.max(1, Math.round(r.height * k));
+    const g = still.getContext("2d");
+    g.fillStyle = getComputedStyle(wrap).backgroundColor;
+    g.fillRect(0, 0, still.width, still.height);
+    try {
+      g.drawImage(c, (cr.left - r.left) * k, (cr.top - r.top) * k, cr.width * k, cr.height * k);
+      const old = this._veil;
+      if (old?.isConnected) {
+        g.globalAlpha = Number(old.style.opacity) || 0;
+        g.drawImage(old, 0, 0, still.width, still.height);
+      }
+    } catch {
+      return; // a canvas that cannot be read: the stage cuts
+    }
+    this._veil?.remove();
+    still.className = "stage-fade";
+    still.setAttribute("aria-hidden", "true");
+    still.style.opacity = "1";
+    c.after(still);
+    this._veil = still;
+    const t0 = performance.now();
+    const step = (t) => {
+      if (this._veil !== still) return;
+      const x = Math.min(1, (t - t0) / FADE_MS);
+      still.style.opacity = String(1 - easeInOut(x));
+      if (x < 1) requestAnimationFrame(step);
+      else {
+        still.remove();
+        this._veil = null;
+      }
+    };
+    requestAnimationFrame(step);
+  }
+
+  /**
+   * The photo tour offers the photos of the scenario that runs (those of its task), else all
+   * (TourNav#setScope). Also while another chapter is shown: the scenario runs on there, and a photo
+   * of another layout would end it.
+   */
+  _syncTour() {
+    const t = this.tourNav;
+    if (!t?.all) return;
+    const c = this.caseById(this.activeCase);
+    t.setScope(c?.started ? c.photoScope(t) : null);
   }
 
   /** Show a chapter or a case after an action elsewhere (e.g. a terminal added): its heading takes the keyboard focus. */
@@ -505,6 +665,7 @@ export class App {
     this.terminal?.syncHighlight();
     document.querySelector(".main")?.classList.remove("wide");
     this.shownCase?.panel?.syncWidth?.();
+    this._syncTour();
   }
 
   /** Periodic refresh of live figures in the chapter shown. */
@@ -837,6 +998,7 @@ export class App {
     const settings = { ...this.world.settings, ...storage.get("arail.settings", {}) };
     this.editor.reset();
     this.inspector?.reset();
+    this.crossfade(); // another layout or other modules: the stage fades over
     const previous = this.world.toJSON();
     try {
       this.world.load(json);
@@ -928,6 +1090,7 @@ export class App {
     setLanguage(lang, { keep: true });
     this.showLayoutName();
     this.renderPanel(this.activeTab);
+    this.speed.render();
     if (focused) document.getElementById(focused)?.focus();
     this.updateHud();
     this.inspector.render();
@@ -992,6 +1155,8 @@ export class App {
    *   (a photo of the photo tour without a digital layer: `source.untracked`)
    */
   setSource(el, kind, nw, nh, name, objectUrl = null, { track = true } = {}) {
+    // in the flyover the new source is shown when leaving it (that fades over then)
+    if (!this.flyover.active) this.crossfade();
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
@@ -1018,17 +1183,25 @@ export class App {
    * @param {string} name shown in the app
    * @param {string | null} [objectUrl] object URL to revoke when the source is replaced
    * @param {{track?: boolean}} [options] track: false shows it without looking for markers (see setSource)
+   * @returns {Promise<boolean>} once it is shown (true), or not: another source was asked for, or it failed
    */
   loadImage(src, name, objectUrl = null, { track = true } = {}) {
     const token = ++this._loadToken;
     const img = new Image();
     img.crossOrigin = "anonymous"; // images from other sites must allow it, or the canvas cannot be read
-    img.onload = () => {
-      if (token === this._loadToken) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track });
-      else if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-    img.onerror = () => token === this._loadToken && toast(`The image ${name} could not be loaded.`);
-    img.src = src;
+    return new Promise((resolve) => {
+      img.onload = () => {
+        const current = token === this._loadToken;
+        if (current) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track });
+        else if (objectUrl) URL.revokeObjectURL(objectUrl);
+        resolve(current);
+      };
+      img.onerror = () => {
+        if (token === this._loadToken) toast(`The image ${name} could not be loaded.`);
+        resolve(false);
+      };
+      img.src = src;
+    });
   }
 
   loadVideo(url, name, stream = null, objectUrl = null) {
@@ -1285,7 +1458,7 @@ export class App {
     const { H } = this.pose();
     if (H) {
       const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
-      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr });
+      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr, pulse: pulse() });
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
@@ -1295,6 +1468,10 @@ export class App {
       this.lastView = view;
       this.interaction.drawFocus(ctx, view);
       this.inspector.drawOverlay(ctx, view);
+      // where the camera of this picture stood: the flyover can start there (also while the
+      // layout loads again with other modules and the markers are looked for anew)
+      const pv = (this.photoView ||= {});
+      Object.assign(pv, { el: source.el, pose: view.pose, focal: this.camera.intrinsics.fy, height: this.camera.height });
     }
     if (this.display.markers) this._drawMarkers(ctx);
   }
@@ -1367,7 +1544,7 @@ export class App {
 
   /**
    * The chips on the stage say only what needs attention (no image, no markers, a photo without a
-   * digital layer, disruptions, recording); the clock with the speed is in the bar.
+   * digital layer, disruptions, recording); the time and the speed are in its upper right corner.
    */
   updateHud() {
     const st = this.tracker.state, chips = [];
@@ -1384,7 +1561,8 @@ export class App {
     if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
     if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
-    this._updateBarClock();
+    this.speed.update();
+    this._syncTour();
     this.tourNav?.sync();
     const hud = $("#hud");
     morph(hud, chips.map(([k, t]) => h("span", { class: `chip ${k}` }, t)));
@@ -1392,17 +1570,8 @@ export class App {
     // edge of the picture, a depot's board out of view, goes below the chips; a stop board under a
     // button becomes a badge)
     const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
-    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-views, #tour:not([hidden]) .tour-step, .stage-tools .btn, #flyNav:not([hidden]) .btn");
+    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-views, #tour:not([hidden]) .tour-step, #simClock, .stage-tools .btn, #flyNav:not([hidden]) .btn");
     this.hudRects = [...hud.children, ...controls].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
-  }
-
-  /** The clock in the bar: the time of day, the speed when it is not 1×, Paused. */
-  _updateBarClock() {
-    const el = $("#barClock");
-    if (!el) return;
-    const w = this.world;
-    const text = [w.clock.label(), w.paused ? tr("Paused") : w.speed !== 1 ? `×${w.speed}` : null].filter(Boolean).join(" · ");
-    if (el.textContent !== text) el.textContent = text;
   }
 
   /* ---------------------------------------------------------------- recording */

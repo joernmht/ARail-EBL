@@ -19,6 +19,8 @@
   --accent-ink: #0A777F; /* Türkis as text and lines on surfaces */
   --warn: #C85000; /* Orange 1: pressed toggles, placing, attention */
   --warn-text: #ffffff;
+  --task: #FFC700; /* Gelb: what a task asks to be done (the work orders' containers glow in it on the stage) */
+  --task-text: #001450;
   --danger: #D20F41; /* Rot 1 */
   --ok: #0A777F;
   --bar: #0A777F;
@@ -106,10 +108,6 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    wrapping the bar onto a second row (that would cost the stage height on tablets) */
 .layout-name { flex: 1000 1 0; color: var(--bar-muted); font-size: .9rem; min-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
 .bar .spacer { flex: 1; }
-/* the clock (time of day, speed): plain figures in the bar; it opens Settings → Simulation */
-.bar-clock { border: 0; background: none; color: var(--bar-text); font: 500 1rem var(--mono); font-variant-numeric: tabular-nums; padding: 4px 2px; cursor: pointer; white-space: nowrap; }
-.bar-clock:hover { text-decoration: underline; }
-.bar-clock:empty { display: none; }
 .sources { display: flex; gap: 8px; flex-wrap: wrap; }
 /* closed, the list reads "Layouts…": as narrow as that, whatever the names of the examples */
 .sources select { max-width: 11rem; }
@@ -155,13 +153,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 }
 
 /* ------------------------------------------------------------------ stage */
-.stage { position: relative; background: var(--stage); display: grid; place-items: center; min-height: 240px; overflow: hidden; }
+.stage { position: relative; background: var(--stage); display: grid; place-items: center; min-height: 240px; overflow: hidden; container: stage / inline-size; }
 .stage :focus-visible { outline-color: #ffffff; }
 @media (max-width: 999px) and (orientation: portrait), (max-width: 599px) { .stage { max-height: 72dvh; } }
 .stage canvas { display: block; touch-action: manipulation; }
+/* the stage as it was, fading out over the next picture (app.js crossfade): under the controls, not in the way */
+.stage canvas.stage-fade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .stage canvas.editing { touch-action: none; cursor: crosshair; }
 .stage canvas.dragging { cursor: grabbing; }
-.hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+/* the chips keep clear of the time and speed in the upper right corner (its width: --clock-w, speed.js) */
+.hud { position: absolute; top: 10px; left: 10px; right: calc(20px + var(--clock-w, 0px)); display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 500; background: var(--overlay); color: var(--overlay-text); backdrop-filter: blur(4px); }
 .chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .9; }
 .chip.ok { color: var(--overlay-ok); }
@@ -169,6 +170,33 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .chip.bad { color: var(--overlay-bad); }
 .chip.info::before { display: none; }
 .stage-tools { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+/* the time and speed in the upper right corner (speed.js), as the photo tour's perspectives in the
+   upper left: controls on the Dunkelblau overlay, the speed chosen and Pause pressed in Orange; on a
+   narrow stage the speeds wrap below the time. Taps between its buttons reach the stage; while
+   something is placed or picked on the stage (the placing bar) it steps aside, so that a tap in the
+   corner places or picks there. */
+.sim-clock {
+  position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px;
+  padding: 5px; border-radius: var(--radius); background: rgba(0, 20, 80, .5); pointer-events: none;
+}
+.stage:has(> .placing:not([hidden])) > .sim-clock { display: none; }
+.sim-clock .btn {
+  pointer-events: auto;
+  height: 32px; min-width: 32px; padding: 0 8px; border-radius: var(--radius); font-size: .82rem; font-weight: 600;
+  background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22);
+}
+.sim-clock .btn:hover { border-color: var(--overlay-text); }
+.sim-clock .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
+.sim-clock .sim-time { font: 500 .95rem var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 4.4em; }
+.sim-clock .sim-pause { padding: 0; }
+.sim-clock svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.sim-speeds { display: flex; gap: 3px; }
+@container stage (max-width: 620px) {
+  .sim-clock { max-width: 190px; gap: 3px; padding: 4px; }
+  .sim-clock .btn { height: 28px; min-width: 28px; padding: 0 5px; font-size: .78rem; }
+  .sim-clock .sim-time { font-size: .86rem; }
+}
+@media (forced-colors: active) { .sim-clock .btn[aria-pressed="true"] { border-width: 3px; } }
 .stage-tools .btn { background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22); padding: 6px 10px; font-size: .82rem; }
 .stage-tools .btn:hover { border-color: var(--overlay-text); }
 .stage-tools .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
@@ -481,8 +509,9 @@ details[open] summary { margin-bottom: 8px; }
 /* work orders: numbered like their badges on the stage (Orange: open, Türkis: done) */
 .term-orders button { justify-content: flex-start; }
 .term-orders button > span:nth-child(2) { flex: 1; min-width: 0; }
-.term-order-n { display: inline-grid; place-items: center; flex: none; min-width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--warn); color: var(--warn-text); font-weight: 700; font-size: .78rem; }
-.term-orders li.done .term-order-n { background: var(--accent); color: var(--accent-text); }
+/* the number of an open work order, as its badge on the stage: Gelb (the task), edged so that it reads on white */
+.term-order-n { display: inline-grid; place-items: center; flex: none; min-width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--task); color: var(--task-text); box-shadow: inset 0 0 0 1.5px var(--task-text); font-weight: 700; font-size: .78rem; }
+.term-orders li.done .term-order-n { background: var(--accent); color: var(--accent-text); box-shadow: none; }
 .term-orders li.done button { color: var(--text-2); }
 .term-list h3 { margin: 10px 0 5px; }
 .term-list h3:first-child { margin-top: 0; }

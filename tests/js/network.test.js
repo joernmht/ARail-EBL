@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { Camera, createWorld, dot2, hiddenAt, LayoutObject, polylineAt, Registry, registerBuiltins, rectFootprint, resolvePoint, straightWalk, View, World } from "../../web/arail/index.js";
+import { readJSON } from "./helpers.js";
 
 const K = 1000 / 87; // model mm per prototype metre (H0)
 
@@ -292,6 +293,29 @@ test("network: people do not cross tracks on their own; where streets do not con
   assert.deepEqual(open.points, [[0, 0], [100, 0]]);
   assert.equal(hiddenAt(open, 50), false);
   assert.equal(hiddenAt(straightWalk([0, 0], [100, 0], true), 50), true);
+});
+
+test("network: the nearest node of a point is kept, and is the one a full search finds (also past tracks)", () => {
+  const w = createWorld(readJSON("web/layouts/ebl-neustadt.json"), { seed: 5 }), net = w.network();
+  assert.ok(net.barriers.length > 5, "the station's tracks are barriers");
+  // as it was worked out before it was kept: every node of the mode, by distance (stable), the first a person reaches without crossing a track
+  const reference = (p, mode) => {
+    const usable = net.nodes.filter((n) => n.edges.some((id) => net._usable(net.edges[id], mode)));
+    const byDistance = usable.map((n) => [Math.hypot(p[0] - n.pos[0], p[1] - n.pos[1]), n]).sort((a, b) => a[0] - b[0]);
+    if (mode !== "walk") return byDistance[0]?.[1] ?? null;
+    return byDistance.find(([, n]) => !net.crossesBarrier(p, n.pos))?.[1] ?? null;
+  };
+  const points = [];
+  for (let x = -2500; x <= 12500; x += 1250) for (let y = -400; y <= 2800; y += 400) points.push([x, y]);
+  // the ends of the platforms, between the tracks
+  for (const a of w.stopAreas()) for (const e of a.access) points.push(a.toLayout(e.s, e.t));
+  for (const mode of ["walk", "car", "bike"]) {
+    for (const p of points) {
+      const want = reference(p, mode);
+      assert.equal(net.nearestNode(p, { mode }), want, `${mode} at ${p.map((v) => v.toFixed(0))}`);
+      assert.equal(net.nearestNode(p, { mode }), want, `${mode} at ${p.map((v) => v.toFixed(0))}, kept`);
+    }
+  }
 });
 
 test("network: without streets every query returns null; the network is rebuilt when objects change", () => {

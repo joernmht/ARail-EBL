@@ -7,7 +7,6 @@
 import { PLAN_KEYS, PLAN_SIDES, formatTime, planOf } from "../arail/index.js";
 import { h, morph, mount } from "./ui.js";
 
-const SPEEDS = [1, 2, 5, 10, 30];
 /** The names of a train's choices. */
 const LABELS = { unit: "Unit", driver: "Driver", track: "Track" };
 const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
@@ -55,7 +54,7 @@ export class PlanPanel {
   }
 
   _head(plan, problems) {
-    const w = this.app.world, r = plan.running, res = plan.result, id = (x) => `${this.side}Plan${x}`;
+    const r = plan.running, res = plan.result, id = (x) => `${this.side}Plan${x}`;
     const gone = r ? [...plan.progress().values()].filter((s) => s === "done" || s === "cancelled").length : 0;
     return [
       h("h2", { tabindex: "-1" }, plan.name),
@@ -65,9 +64,7 @@ export class PlanPanel {
       h("div", { class: "row" },
         r ? h("button", { class: "btn", type: "button", id: id("Stop"), onclick: () => this.stop() }, "Stop")
           : h("button", { class: "btn primary", type: "button", id: id("Run"), disabled: !plan.canRun, title: "Play the plan on the layout", onclick: () => this.run() }, "Run"),
-        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Start again"),
-        r ? h("div", { class: "seg", role: "group", "aria-label": "Speed" },
-          SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => this.setSpeed(s) }, `${s}×`))) : null),
+        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Start again")),
       res && !r ? h("div", { class: "ops-tiles plan-result", id: id("Result"), role: "group", "aria-label": "Last run" },
         [["On time", res.onTime], ["Late", res.late], ["Cancelled", res.cancelled], ["Left behind", res.leftBehind]].map(([label, n]) =>
           h("div", { class: "tile" }, h("span", { class: "label" }, label), h("span", { class: "value" }, String(n))))) : null,
@@ -170,12 +167,6 @@ export class PlanPanel {
   /** The plan as the layout has it. */
   reset() {
     this.plan?.reset();
-    this.update();
-  }
-
-  setSpeed(s) {
-    this.app.world.speed = s;
-    this.app.panels.updateSimulateControls();
     this.update();
   }
 }

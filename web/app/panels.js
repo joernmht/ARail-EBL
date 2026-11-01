@@ -1,9 +1,7 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
 import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { download, h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
-import { tr } from "./i18n.js";
 
-const SPEEDS = [1, 2, 5, 10, 30];
 /** Fast-clock ratios offered in Settings → Simulation. */
 const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
 const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
@@ -181,7 +179,7 @@ export class Panels {
 
   /* ================================================================ Settings */
 
-  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, speed, demand, stops) and Control system. */
+  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, demand, stops) and Control system. */
   renderSettings(el) {
     this.settingsBody = h("div", { class: "settings-body" });
     mount(el,
@@ -191,7 +189,7 @@ export class Panels {
       this.settingsBody,
     );
     // the other views' controls are gone: their live figures are not refreshed
-    this.viewInfo = this.board = this.clockFace = this.townBox = this.speedSeg = this.feedStatus = null;
+    this.viewInfo = this.board = this.clockFace = this.townBox = this.feedStatus = null;
     if (this.settingsView === "control") this.renderControl(this.settingsBody);
     else if (this.settingsView === "view") this.renderView(this.settingsBody);
     else this.renderSimulate(this.settingsBody);
@@ -221,8 +219,6 @@ export class Panels {
   renderSimulate(el) {
     const w = this.world;
     this.board = h("div", { class: "board stops-board", "aria-live": "off" });
-    this.speedSeg = h("div", { class: "seg", role: "group", "aria-label": "Speed" });
-    this.pauseBtn = h("button", { class: "btn", type: "button", onclick: () => { w.paused = !w.paused; this.updateSimulateControls(); } });
     const demand = h("input", { type: "range", id: "demandRange", "aria-label": "Passenger demand", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
       oninput: (e) => { w.demand = 2 ** Number(e.target.value); demandOut.textContent = `× ${w.demand.toFixed(2)}`; } });
     const demandOut = h("output", { for: "demandRange", class: "mono" }, `× ${w.demand.toFixed(2)}`);
@@ -250,13 +246,12 @@ export class Panels {
       ),
       hasTown ? section("Town", this.townBox) : null,
       section("Speed",
-        h("div", { class: "row" }, this.pauseBtn, this.speedSeg,
-          h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
+        h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage, the time beside them."),
+        h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
       section("Stops", this.board),
     );
-    this.updateSimulateControls();
     this.updateClock();
     this.updateTown();
     this.updateBoard();
@@ -319,12 +314,9 @@ export class Panels {
       h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)")));
   }
 
+  /** The time and speed on the stage after the speed or Pause changed (app/speed.js). */
   updateSimulateControls() {
-    if (!this.speedSeg) return;
-    const w = this.world;
-    this.pauseBtn.textContent = tr(w.paused ? "Resume" : "Pause");
-    this.pauseBtn.setAttribute("aria-pressed", w.paused ? "true" : "false");
-    morph(this.speedSeg, SPEEDS.map((s) => h("button", { type: "button", "aria-pressed": w.speed === s ? "true" : "false", onclick: () => { w.speed = s; this.updateSimulateControls(); } }, `${s}×`)));
+    this.app.speed?.update();
   }
 
   /** The stops of Settings → Simulation: people waiting, mood, the next vehicles; a button to call one (keys 1–9). */

@@ -3,7 +3,9 @@
 // arrows at the left and right edges of the stage (and the keys ← and →) go to the next part of the
 // table, in the same perspective where it has one. A photo with a digital layer opens with the
 // layout of that layer, which tracks it; the others are shown as photos only. A photo with a
-// covered version (`covered`, made in the builder's Photos tab) is shown covered.
+// covered version (`covered`, made in the builder's Photos tab) is shown covered. While a scenario
+// runs, the tour offers only the photos of its task (`setScope`): the other perspectives are off,
+// and without another part to go to the arrows are hidden.
 import { PERSPECTIVES, PhotoTour, perspectiveOf } from "./tour.js";
 import { $, h, mount } from "./ui.js";
 
@@ -39,6 +41,10 @@ export class TourNav {
     this.tour = null;
     /** All photos of the photo map, by id (?photo= may name one that is not in the tour). */
     this.byId = new Map();
+    /** The photo map's data, the tour of all its photos, and the photos offered now (a scenario's, or null: all). */
+    this.data = null;
+    this.all = null;
+    this.scope = null;
     /** The perspective chosen with the buttons (kept while a part does not have it). */
     this.perspective = "front";
     /** The photo the tour shows ({part, photo, perspective, exact, src}), or null. */
@@ -53,7 +59,8 @@ export class TourNav {
       const res = await fetch(this.dataUrl);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const data = await res.json();
-      this.tour = new PhotoTour(data);
+      this.data = data;
+      this.all = this.tour = new PhotoTour(data);
       for (const p of data.photos || []) this.byId.set(p.id, p);
     } catch (err) {
       console.warn("The photo tour could not be loaded:", err);
@@ -88,9 +95,17 @@ export class TourNav {
     return !!this.at && !!s && !s.stale && s.kind === "image" && s.el?.src === this.at.src;
   }
 
-  /** The part the tour is at: the one shown, else where the layout's digital layer is shown best, else the first. */
+  /** Are there photos to go to (none: a scenario whose layout has no photos in the tour)? */
+  get open() {
+    return !!this.tour?.parts.length;
+  }
+
+  /**
+   * The part the tour is at: the one shown, else where the layout's digital layer is shown best, else
+   * the first (of the scenario's parts while one runs).
+   */
   here() {
-    if (this.showing()) return this.at.part;
+    if (this.showing() && this.at.part != null) return this.at.part;
     const url = this.app.layoutUrl;
     for (const [id, l] of Object.entries(this.tour.layers)) {
       if (url && new URL(l.layout, this.dataUrl).href === url && this.tour.home(id) >= 0) return this.tour.home(id);
@@ -100,16 +115,44 @@ export class TourNav {
 
   /** To the next part on the left (-1) or the right (1), in the perspective chosen. */
   go(dir) {
-    if (!this.tour) return;
+    if (!this.open) return;
     const part = this.tour.step(this.here(), this.perspective, dir);
     return this._open(this.tour.view(part, this.perspective));
   }
 
-  /** Look at the part from another side. */
+  /** Look at the part from another side (while a scenario runs, only a side it has a photo from). */
   choose(perspective) {
-    if (!this.tour) return;
+    if (!this.open) return;
+    if (this.scope && !this.tour.parts[this.here()].views[perspective]) return;
     this.perspective = perspective;
     return this._open(this.tour.view(this.here(), perspective));
+  }
+
+  /** The ids of the photo map's digital layers that show a layout (absolute URL). */
+  layersShowing(url) {
+    return Object.entries(this.all?.layers || {}).filter(([, l]) => url && new URL(l.layout, this.dataUrl).href === url).map(([id]) => id);
+  }
+
+  /** The name of the part of the table a photo belongs to (its group's, else its place). */
+  partName(photo) {
+    return this.data?.groups?.[photo.group]?.name || photo.place || photo.group;
+  }
+
+  /**
+   * Offer only the photos of a scenario's task, or all again (null). The photo shown stays; in the
+   * scenario's tour it keeps its place if it is one of them, and the buttons follow.
+   * @param {{key: string, only: (photo: object) => boolean} | null} scope key: what the scope is (the same key: nothing changes)
+   */
+  setScope(scope) {
+    if (!this.all || (scope?.key ?? null) === (this.scope?.key ?? null)) return;
+    this.scope = scope ?? null;
+    this.tour = scope ? new PhotoTour(this.data, { only: scope.only }) : this.all;
+    if (this.at) {
+      // a photo of the map that is not one of the tour's stands for its part, as with ?photo= (not in a scenario's tour)
+      const found = this.tour.find(this.at.photo.id), group = scope ? -1 : this.tour.parts.findIndex((p) => p.id === this.at.photo.group);
+      this.at = { ...this.at, part: found ? found.part : group >= 0 ? group : null };
+    }
+    this.sync();
   }
 
   /**
@@ -156,21 +199,26 @@ export class TourNav {
   }
 
   /**
-   * The buttons as the stage is now: hidden in the flyover; the perspective shown pressed; the
-   * perspectives the part has no photo for dimmed (choosing one shows the nearest it has).
+   * The buttons as the stage is now: hidden in the flyover (and while a scenario runs whose layout has
+   * no photos); the perspective shown pressed; the perspectives the part has no photo for dimmed
+   * (choosing one shows the nearest it has), and off while a scenario runs; the arrows hidden without
+   * another part to go to.
    */
   sync() {
     if (!this.el || !this.tour) return;
-    const hidden = this.app.flyover.active;
+    const hidden = this.app.flyover.active || !this.open;
     if (this.el.hidden !== hidden) this.el.hidden = hidden;
-    const showing = this.showing(), part = this.tour.parts[this.here()];
+    if (!this.open) return;
+    const showing = this.showing() && this.at.part != null, part = this.tour.parts[this.here()];
     for (const b of this.el.querySelectorAll("[data-view]")) {
       const v = b.dataset.view;
       b.setAttribute("aria-pressed", showing && this.at.perspective === v ? "true" : "false");
       b.classList.toggle("missing", !part.views[v]);
-      if (part.views[v]) b.removeAttribute("aria-describedby");
+      b.disabled = !!this.scope && !part.views[v];
+      if (part.views[v] || this.scope) b.removeAttribute("aria-describedby");
       else b.setAttribute("aria-describedby", "tourMissing");
     }
+    for (const b of this.el.querySelectorAll(".tour-step")) b.hidden = this.tour.parts.length < 2;
     // the HUD and a message while placing keep clear of the buttons
     $("#stageWrap")?.style.setProperty("--tour-w", `${this.el.querySelector(".tour-views")?.offsetWidth || 0}px`);
   }
@@ -183,7 +231,7 @@ export class TourNav {
 
   /** ← and → on the stage (or with nothing focused) go round the lab; returns true if the key was used. */
   key(e) {
-    if (!this.tour || this.app.flyover.active || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return false;
+    if (!this.open || this.tour.parts.length < 2 || this.app.flyover.active || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return false;
     const t = e.target;
     if (t !== document.body && t !== document.documentElement && !t.closest?.("#stageWrap")) return false;
     this.go(e.key === "ArrowLeft" ? -1 : 1);

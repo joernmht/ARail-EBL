@@ -992,7 +992,9 @@ export class PassengerSimulation extends Simulation {
     }
     if (shut) {
       for (const p of c.people) {
-        if ((p.state !== "waiting" && p.state !== "arriving") || p.dock == null || open.some((d) => d.id === p.dock)) continue;
+        if (p.state !== "waiting" && p.state !== "arriving") continue;
+        // waiting for any track (a resident going to the train): only when none is open is there nothing to wait for
+        if (p.dock == null ? open.length > 0 : open.some((d) => d.id === p.dock)) continue;
         if (open.length) {
           p.dock = rng.pick(open).id;
           p.target = this._waitingSpot(c, p.dock);

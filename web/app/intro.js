@@ -121,7 +121,8 @@ export class IntroPanel {
   restart({ play = true } = {}) {
     this._photo = this._hasPhoto();
     this._key = null; // the scenes as the stage is now
-    this._yaw = this.app.flyover.cam.yaw;
+    // the film looks the way the photo does (its flights start from it), else as the flyover last did
+    this._yaw = this.app.flyover.photoCamera()?.yaw ?? this.app.flyover.cam.yaw;
     this.active = true;
     this.playing = play && this.scenes.length > 1;
     this.seen = 0;
@@ -215,7 +216,8 @@ export class IntroPanel {
       return;
     }
     this._fade(1);
-    if (!fly.active) fly.enter();
+    // from the photo the flyover starts where its camera stands, and flies to the scene's place
+    if (!fly.active) fly.enter({ fromPhoto: true });
     fly.following = null;
     const c = app.canvas, aspect = c.width / Math.max(1, c.height);
     // each scene a little from another side, as a camera would go round the layout

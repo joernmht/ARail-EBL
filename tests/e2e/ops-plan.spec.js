@@ -64,7 +64,7 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
   await page.locator("#infraPlanRun").click();
   await expect(page.locator("#infraPlanStatus")).toContainText("Running");
   await expect(choice(page, "infra", "s1-0705", "track")).toBeDisabled();
-  await page.getByRole("group", { name: "Speed" }).getByRole("button", { name: "30×" }).click();
+  await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "30×" }).click();
   // its trains at the platforms, with their units and drivers
   await page.waitForFunction(() => window.__arail.world.services.vehicles().some((v) => v.plan?.unit === "442 101" && v.phase === "dwelling"), null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.world.services.vehicles().find((v) => v.plan)?.info?.[0])).toBe("442 101 · Becker");
@@ -79,14 +79,21 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
 test("the draft runs with a delay, cancelled trains on the board and people left behind; Start again", async ({ page }) => {
   const errors = await open(page, `${PLAN}#evu-operations`);
   await page.locator("#evuPlanRun").click();
-  await page.getByRole("group", { name: "Speed" }).getByRole("button", { name: "30×" }).click();
+  await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "30×" }).click();
   // while it runs: no accessibility violations (the chips, the time in the chart)
   await page.waitForFunction(() => window.__arail.world.clock.minutes > 7 * 60 + 25, null, { timeout: 30_000 });
   const results = await new AxeBuilder({ page }).include("#casePanel").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   await expect(page.locator(".plan-now").first()).toBeVisible();
   await expect(page.locator("#evuPlanResult")).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator("#evuPlanResult .tile .value")).toHaveText(["3", "1", "2", "204"]);
+  // on time, late, cancelled; left behind: the 204 the draft's units have no places for, and those of
+  // the busy platform who could not get on the full trains too, at most as many as a stop holds
+  const tiles = page.locator("#evuPlanResult .tile .value");
+  await expect(tiles).toHaveText(["3", "1", "2", /^\d+$/]);
+  const left = Number(await tiles.nth(3).textContent());
+  const crowd = await page.evaluate(() => window.__arail.world.simulations.find((s) => s.constructor.type === "passengers").config.max_per_area);
+  expect(left).toBeGreaterThanOrEqual(204);
+  expect(left).toBeLessThanOrEqual(204 + crowd);
   await expect(page.locator(".plan-chip")).toHaveText(["on time", "on time", "on time", "+4 min", "cancelled", "cancelled"]);
   // Start again: the plan as the layout has it
   await choice(page, "evu", "s1-0725", "unit").selectOption("442 102");

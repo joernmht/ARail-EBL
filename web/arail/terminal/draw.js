@@ -1311,9 +1311,11 @@ function slice(points, lengths, s0, s1) {
 /* ---------------------------------------------------------------- highlights and picking */
 
 /**
- * The selected container, possible targets, empty slots and the containers of open work orders: a
- * dashed outline on top, the order's number and where it goes (overlay layer, never darkened; a
- * container deep in a stack shows through).
+ * The selected container, possible targets, empty slots and the containers of open work orders
+ * (overlay layer, never darkened). A container a work order asks to move glows in Gelb
+ * (`OVERLAY.task`, apart from the selection's Orange and the places' Türkis): the whole container
+ * filled and outlined over a dark edge, beating with `view.pulse` (steady without), and a label
+ * above it with the order's number and where it goes; deep in a stack it shows through.
  * @param {import("../core/view.js").View} view
  * @param {{selected?: import("./types.js").Box | null, targets?: import("./types.js").Box[], empties?: import("./types.js").Box[],
  *   orders?: {box: import("./types.js").Box, n: number, label: string}[]}} [options]
@@ -1324,8 +1326,8 @@ export function drawHighlights(view, { selected = null, targets = [], empties = 
   }
   for (const { box: b, n, label } of orders || []) {
     const top = b.z0 + b.height;
-    view.polygon(boxCorners(b).slice(4), { z: top, stroke: OVERLAY.selection, width: 2, dash: [5, 3], layer: "overlay", order: 80 });
-    view.label([b.center[0], b.center[1], top], label, { size: 10, badge: String(n), badgeColor: OVERLAY.selection, anchor: "bottom", order: 80 });
+    drawTaskGlow(view, b);
+    view.label([b.center[0], b.center[1], top], label, { size: 10, badge: String(n), badgeColor: OVERLAY.task, badgeText: OVERLAY.taskText, anchor: "bottom", order: 80 });
   }
   for (const b of targets || []) {
     view.polygon(boxCorners(b).slice(0, 4), { z: b.z0, stroke: OVERLAY.tracked, fill: rgba(OVERLAY.tracked, 0.16), width: 2, dash: [6, 4], layer: "overlay", order: 90 });
@@ -1335,6 +1337,38 @@ export function drawHighlights(view, { selected = null, targets = [], empties = 
     view.polygon(boxCorners(selected).slice(4), { z: top, stroke: OVERLAY.selection, width: 2.5, layer: "overlay", order: 100 });
     view.label([selected.center[0], selected.center[1], top], selected.id, { size: 11, background: OVERLAY.label, anchor: "bottom", order: 100 });
   }
+}
+
+/** How strongly a task's glow fills its container: between the low and the high of the beat (steady: between them). */
+const GLOW_ALPHA = [0.22, 0.6];
+
+/**
+ * A container a task asks to move, as one glowing shape: the outline of its eight corners as seen
+ * (its silhouette) filled with the task's Gelb and edged in Gelb over Dunkelblau, so that it reads
+ * on a light yard and on a dark photo alike. The fill beats with `view.pulse`.
+ * @param {import("../core/view.js").View} view
+ * @param {import("./types.js").Box} box
+ */
+function drawTaskGlow(view, box) {
+  const img = view.projectAll(boxCorners(box));
+  if (!img) return;
+  const hull = convexHull(img);
+  if (hull.length < 3 || view.offImage(hull, 8 * view.px)) return;
+  const beat = view.pulse ?? 0.5, alpha = GLOW_ALPHA[0] + (GLOW_ALPHA[1] - GLOW_ALPHA[0]) * beat;
+  view.overlay((ctx) => {
+    ctx.beginPath();
+    hull.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    ctx.fillStyle = rgba(OVERLAY.task, alpha);
+    ctx.fill();
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 4.5 * view.px;
+    ctx.strokeStyle = OVERLAY.label;
+    ctx.stroke();
+    ctx.lineWidth = 2.5 * view.px;
+    ctx.strokeStyle = OVERLAY.task;
+    ctx.stroke();
+  }, 80);
 }
 
 /**

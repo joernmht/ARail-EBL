@@ -7,8 +7,8 @@ again, on foot, by bus and by train.
 
 ## The clock
 
-Movement (trains, buses, cars, people) runs in *simulated seconds*: the Speed buttons in
-Settings → Simulation set how many simulated seconds pass per real second (1×–30×). The clock shows a
+Movement (trains, buses, cars, people) runs in *simulated seconds*: the speeds in the upper right
+corner of the stage set how many simulated seconds pass per real second (1×–30×). The clock shows a
 time of day that runs `factor` times faster than the simulation, 12 by default: one clock hour
 per five simulated minutes. A walk of 150 m (about two simulated minutes) takes 25 clock minutes,
 and at 10× a whole day passes in twelve minutes.
@@ -181,7 +181,7 @@ those without a licence or a car; **Download the trips (CSV)** gives every trip 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `people_per_100` | 12 | people shown per 100 residents |
-| `max_people` | 300 | upper limit (phones); scales residents and visitors alike |
+| `max_people` | 300 | upper limit (phones); scales residents and visitors alike. Bf Neustadt sets 3000, so that its 25 per 100 of 9,300 residents are all shown (with 300, one in forty was) |
 | `walk_max_m` | 150 | longest walk (prototype metres) before the bus is preferred |
 | `bus_share` | 0.8 | share of long ways taken by bus when a line fits |
 | `car_share` | 0.3 | of the people with a driving licence and a car, the share who drive their long ways in the town that day |
