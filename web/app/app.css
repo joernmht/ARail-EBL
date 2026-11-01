@@ -172,12 +172,16 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .stage-tools { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
 /* the time and speed in the upper right corner (speed.js), as the photo tour's perspectives in the
    upper left: controls on the Dunkelblau overlay, the speed chosen and Pause pressed in Orange; on a
-   narrow stage the speeds wrap below the time */
+   narrow stage the speeds wrap below the time. Taps between its buttons reach the stage; while
+   something is placed or picked on the stage (the placing bar) it steps aside, so that a tap in the
+   corner places or picks there. */
 .sim-clock {
   position: absolute; top: 10px; right: 10px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px;
-  padding: 5px; border-radius: var(--radius); background: rgba(0, 20, 80, .5);
+  padding: 5px; border-radius: var(--radius); background: rgba(0, 20, 80, .5); pointer-events: none;
 }
+.stage:has(> .placing:not([hidden])) > .sim-clock { display: none; }
 .sim-clock .btn {
+  pointer-events: auto;
   height: 32px; min-width: 32px; padding: 0 8px; border-radius: var(--radius); font-size: .82rem; font-weight: 600;
   background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22);
 }
@@ -200,7 +204,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 /* the placing bar sits above the stage tools (Flyover, Full screen stay visible and can be pressed);
    a message shown while placing goes to the top of the stage */
 .placing { position: absolute; left: 10px; right: 10px; bottom: calc(32px + 1rem); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--overlay); color: var(--overlay-text); border-left: 5px solid var(--warn); padding: 8px 10px; border-radius: var(--radius); font-size: .88rem; }
-.placing:not([hidden]) ~ .toast { bottom: auto; top: calc(16px + var(--clock-h, 42px)); }
+.placing:not([hidden]) ~ .toast { bottom: auto; top: 48px; }
 .placing strong { font-weight: 700; }
 .placing .grow { flex: 1; min-width: 12ch; }
 /* on phones the text takes the whole width (the buttons go below it), and touch screens skip the keyboard hint */
