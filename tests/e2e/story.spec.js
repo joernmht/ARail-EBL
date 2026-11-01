@@ -97,10 +97,12 @@ test("the maintenance story plays step after step until Play is released", async
   await expect(title(page)).toHaveText(/fails$/, { timeout: 15_000 });
   await page.locator("#infraStoryPlay").click();
   await expect(page.locator("#infraStoryPlay")).toHaveAttribute("aria-pressed", "false");
-  // released: the step's animation runs to its end, the story stays at that step
+  // released: the step's animation runs to its end, the story stays at that step (the one it was at
+  // when the click came: a click can take as long as the pause between steps on a slow machine)
+  const at = await title(page).textContent();
   await page.waitForFunction(() => window.__arail.infra.story.state().progress >= 1, null, { timeout: 15_000 });
   await page.waitForTimeout(2000); // 10 simulated seconds, more than the pause between steps
-  await expect(title(page)).toHaveText(/fails$/);
+  await expect(title(page)).toHaveText(at);
   expect(errors).toEqual([]);
 });
 
