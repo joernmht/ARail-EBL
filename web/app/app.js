@@ -390,10 +390,10 @@ export class App {
    * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
    * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
    * list of scenarios ("scenarios"). The case shown until then stops. On a page with a home (the
-   * app), leaving a scenario that runs (for the list, another scenario or another chapter) ends it,
-   * and the stage goes back to the town (`showHome`); one only shown, not started, leaves the stage
-   * as it is. The address links to it, except for the chapter the page starts with (`address`
-   * false): a first visit keeps its address.
+   * app), a scenario that was started and is left for the list or another scenario takes the stage
+   * back to the town (`showHome`); another chapter (Overview, Settings) leaves it running, its stage
+   * as it is, and one only shown, not started, leaves the stage as it is too. The address links to
+   * it, except for the chapter the page starts with (`address` false): a first visit keeps its address.
    */
   selectTab(name, { address = true } = {}) {
     if (TAB_VIEWS[name]) {
@@ -401,12 +401,14 @@ export class App {
       storage.set("arail.settingsView", TAB_VIEWS[name][1]);
       name = TAB_VIEWS[name][0];
     }
-    const left = this._scenarioShown(), ran = !!left?.started;
     const c = this.caseFor(name);
+    let home = false;
     if (c || name === LIST) {
       const id = c?.id ?? LIST;
       if (id !== this.activeCase) {
-        this.caseById(this.activeCase)?.stop();
+        const left = this.caseById(this.activeCase);
+        home = !!this._scenario(left)?.started;
+        left?.stop();
         this._scrollPanelToTop();
       }
       this.activeCase = id;
@@ -414,12 +416,7 @@ export class App {
       name = "interaction";
     }
     if (!this.tabNames.includes(name)) name = "overview";
-    const entered = name === "interaction" ? this._scenario(this.caseById(this.activeCase)) : null;
-    if (left && left !== entered && ran) {
-      // another chapter: the scenario ends there too (the list and another scenario ended it above)
-      if (left.started) left.stop();
-      this.showHome();
-    }
+    if (home) this.showHome();
     // another chapter opens at its top: the chapters share one scrolling column (on a phone, the page)
     if (name !== this.activeTab) this._scrollPanelToTop();
     this.activeTab = name;
@@ -449,7 +446,7 @@ export class App {
     await this._homing;
     if (this.activeCase !== c.id) return false;
     // its first Start: the town's modules now come back when it is left (Start again keeps them)
-    if (!again && this._scenario(c)) this._noteHome();
+    if (!again && this._scenario(c)) this._noteHome(c);
     const ok = await c.start();
     if (this.activeTab === "interaction" && this.activeCase === c.id) {
       this.renderPanel("interaction");
@@ -476,21 +473,20 @@ export class App {
     return this.page.home && c && !c.tags.includes("tools") ? c : null;
   }
 
-  /** The scenario shown in Interaction (see `_scenario`), or null. */
-  _scenarioShown() {
-    return this.activeTab === "interaction" ? this._scenario(this.caseById(this.activeCase)) : null;
-  }
-
   /** The address of the home example's layout (absolute), or null: the page has none. */
   _homeUrl() {
     const x = this.page.home ? this.page.examples.find((e) => e.id === this.page.home) : null;
     return x ? new URL(x.layout, location.href).href : null;
   }
 
-  /** A scenario starts: the modules of the home layout, if it is open, come back when it is left (not while the way home loads). */
-  _noteHome() {
+  /**
+   * A scenario starts: the modules of the home layout, if it is open, come back when it is left (not
+   * while the way home loads); those switched in the Sandbox (`keepModules`) stay.
+   * @param {import("./cases.js").Case} c
+   */
+  _noteHome(c) {
     if (this._homing) return;
-    this._homeLayers = this._homeUrl() === this.layoutUrl ? this.layersOn() : null;
+    this._homeLayers = !c.constructor.keepModules && this._homeUrl() === this.layoutUrl ? this.layersOn() : null;
   }
 
   /** Is the source the live camera, or a photo or clip the person opened (it stays when a scenario is left)? */
@@ -510,7 +506,8 @@ export class App {
    * opened again if the scenario opened another one, with the modules it had when the scenario was
    * started, in the camera view with the layout's own photo, unless the stage shows the live camera
    * or a photo or clip the person opened: that stays. The stage fades over; the address drops the
-   * photo or example it named. A scenario started meanwhile waits for it (`startCase`).
+   * photo or example it named. A picture chosen while it loads (a photo of the tour, a file) stays.
+   * A scenario started meanwhile waits for it (`startCase`).
    * @returns {Promise<void>} when the stage is there
    */
   showHome() {
@@ -519,6 +516,8 @@ export class App {
     const before = this._homing;
     const run = async () => {
       await before;
+      // another picture asked for while the layout loads (loadImage, loadVideo count it) wins
+      const token = this._loadToken;
       if (url !== this.layoutUrl) {
         this.stopLive();
         // the photo or clip shown until now belongs to the scenario's layout
@@ -527,6 +526,7 @@ export class App {
       } else if (layers && (layers.length !== this.layersOn().length || layers.some((l) => !this.layersOn().includes(l)))) {
         await this.chooseModules(layers);
       }
+      if (this._loadToken !== token) return;
       const img = this._layoutImage();
       if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example");
       this._autoFlyover = false;

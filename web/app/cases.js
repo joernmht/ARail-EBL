@@ -66,6 +66,11 @@ export class Case {
   static photoParts = null;
   /** Does the photo tour offer all photos while it runs (the Sandbox, to look around freely)? */
   static allPhotos = false;
+  /**
+   * Do the modules switched while it ran stay when it is left (the Sandbox, where they are switched)?
+   * Else the town gets back the modules it had at Start (App.showHome).
+   */
+  static keepModules = false;
 
   /** @param {import("./app.js").App} app */
   constructor(app) {
@@ -275,6 +280,7 @@ export class SandboxCase extends Case {
   static aliases = ["modules"];
   static icon = "sandbox";
   static allPhotos = true;
+  static keepModules = true;
 
   makePanel() {
     return new SandboxPanel(this.app);

@@ -144,13 +144,11 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   await page.locator("#sandboxPeopleColour").selectOption("mood");
   expect(await page.evaluate(() => window.__arail.world.settings.peopleColour)).toBe("mood");
   // leaving the Sandbox brings the station back to today (the other scenarios play in its own year)
-  // and the town as it was: the module it switched on is off again, the photo in the camera view
+  // and the stage back to the town's photo; the modules switched in it stay
   await page.locator("#scenariosBack").click();
   expect(await page.evaluate(() => window.__arail.world.settings.ageYears)).toBe(0);
   await page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera", null, { timeout: 30_000 });
-  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof"]);
-  await page.evaluate(() => window.__arail.switchOnModule("infrastructure"));
-  await page.waitForFunction(() => window.__arail.layersOn().includes("infrastructure"), null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof", "infrastructure"]);
   expect(await condition()).toBeCloseTo(today, 6);
   expect(errors).toEqual([]);
 });
@@ -236,7 +234,7 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   expect(errors).toEqual([]);
 });
 
-test("leaving a scenario takes the stage back to the town; while one runs, the photo tour has the photos of its task only", async ({ page }) => {
+test("leaving a scenario for the list takes the stage back to the town, other chapters leave it running; while it runs, the photo tour has its task's photos only", async ({ page }) => {
   test.setTimeout(120_000);
   const errors = await open(page);
   const stage = () => page.evaluate(() => {
@@ -263,10 +261,21 @@ test("leaving a scenario takes the stage back to the town; while one runs, the p
   await expect(page.locator("#tour .tour-step").first()).toBeVisible();
   // a scenario at the station switches its module on and flies into the flyover; its photos are Bf Neustadt's
   await startScenario(page, "infra-disruption");
-  expect(await page.evaluate(() => [window.__arail.layersOn(), window.__arail.mode, window.__arail.tourNav.tour.parts.map((p) => p.name)]))
-    .toEqual([["sbahn", "waldhof", "infrastructure"], "flyover", ["Neustadt", "Neustadt", "Neustadt", "Neustadt"]]);
-  // another chapter ends it too: the town as it was, without the scenario's module
+  const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing]);
+  const runs = [true, ["sbahn", "waldhof", "infrastructure"], "flyover", false];
+  expect(await running()).toEqual(runs);
+  expect(await page.evaluate(() => window.__arail.tourNav.tour.parts.map((p) => p.name))).toEqual(["Neustadt", "Neustadt", "Neustadt", "Neustadt"]);
+  // the other chapters leave it running, its stage as it is: the Overview, and the time in the corner (Settings → Simulation)
   await page.locator("#tab-overview").click();
+  expect(await running()).toEqual(runs);
+  await page.locator("#simTime").click();
+  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  expect(await running()).toEqual(runs);
+  await page.locator("#tab-interaction").click();
+  await expectCase(page, "infra-disruption");
+  expect(await running()).toEqual(runs);
+  // ← Scenarios ends it: the town as it was, without the scenario's module
+  await page.locator("#scenariosBack").click();
   await home();
   expect(await stage()).toEqual(town);
   expect(await page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.tourNav.scope])).toEqual([false, null]);
