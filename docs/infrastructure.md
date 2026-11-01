@@ -35,8 +35,8 @@ tells the story in twelve steps:
 **Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
 shown), **Play** (each step to its end, a pause, the next one) and
 **Restart**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
-time it is shown, so a presenter can go back and forth. While the scenario runs, the flyover's camera
-always follows the story where it happens: the van on its way, the signal from above, the works on track G3.
+time it is shown, so a presenter can go back and forth. Start opens the flyover, and while the scenario runs its
+camera always follows the story (a photo chosen by hand stays) where it happens: the van on its way, the signal from above, the works on track G3.
 Over the photo of the station (the camera view) the story is drawn on the real table, but the van and
 the base are beside it.
 

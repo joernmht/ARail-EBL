@@ -301,9 +301,10 @@ export class StoryCase extends Case {
   }
 
   begin() {
-    // the camera follows it from the start
+    // the flyover, its camera on the story from the start (from the photo it starts where the photo's camera stands)
     this.story?.restart();
-    this.panel.stepped();
+    this.panel.update();
+    this.panel.aim();
   }
 
   progress() {
@@ -382,7 +383,7 @@ export class TerminalCase extends Case {
   }
 
   makePanel() {
-    return new TerminalPanel(this.app, { full: this.constructor.full });
+    return new TerminalPanel(this.app, { full: this.constructor.full, owner: this });
   }
 
   add() {

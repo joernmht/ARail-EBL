@@ -120,25 +120,38 @@ test("the maintenance story plays step after step until Play is released", async
   expect(errors).toEqual([]);
 });
 
-test("the camera always follows the story once it runs: a step chosen before Start starts it, in the flyover", async ({ page }) => {
+test("the camera always follows the story once it runs; the bar starts it before Start and keeps the focus; a photo chosen by hand stays", async ({ page }) => {
   const errors = await open(page, STORY);
+  const mode = () => page.evaluate(() => window.__arail.mode);
   // shown by its link, not started: the stage stays as it is; there is no switch for the camera
-  expect(await page.evaluate(() => window.__arail.mode)).toBe("camera");
+  expect(await mode()).toBe("camera");
   await expect(page.locator("#infraStoryFollow")).toHaveCount(0);
-  // a step chosen on the bar starts the scenario first: the flyover, its camera on the signal
-  await page.locator('#casePanel .step-seg[title="The team repairs the signal"]').click();
+  // the keyboard on the bar before Start: the scenario starts in the flyover, the bar keeps the focus
+  const bar = page.locator("#infraStoryBar");
+  await bar.focus();
+  await page.keyboard.press("ArrowRight");
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText(/fails$/);
+  await expect(bar).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(title(page)).toHaveText(/^The signaller closes/);
+  // a step chosen on the bar: the camera on the signal
+  await page.locator('#casePanel .step-seg[title="The team repairs the signal"]').click();
   await expect(title(page)).toHaveText("The team repairs the signal");
   const off = () => page.evaluate(() => {
     const a = window.__arail, at = a.infra.story.view().at, t = a.flyover.cam.target;
     return Math.round(Math.hypot(t[0] - at[0], t[1] - at[1]));
   });
   await expect.poll(off, { timeout: 15_000 }).toBeLessThan(50);
-  // the photo chosen by hand: the next step takes the camera back to the story
+  // the photo chosen by hand stays (the story drawn on the real table) while the story goes on
   await page.evaluate(() => window.__arail.flyover.leave());
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await page.locator("#infraStoryNext").click();
-  await page.waitForFunction(() => window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText(/exchanges the old signal$/);
+  expect(await mode()).toBe("camera");
+  // the flyover again: the next step takes its camera to the story
+  await page.evaluate(() => window.__arail.flyover.enter());
+  await page.locator("#infraStoryNext").click();
   await expect.poll(off, { timeout: 15_000 }).toBeLessThan(80);
   expect(errors).toEqual([]);
 });

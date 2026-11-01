@@ -382,7 +382,7 @@ example**, and **Add to this layout**.
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
    state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage. In the
-   loading task the panel is light in text: only **Restart** (the terminal as the task starts),
+   loading task, once it is started, the panel is light in text: only **Restart** (the terminal as the task starts),
    the work orders, the containers and the move; the bar above the panel counts the orders done,
    with the time and the moves.
    **Work orders** (where the terminal has `orders`) lists them numbered as on the stage: the

@@ -203,9 +203,12 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*2/, { timeout: 60_000 });
   await expect(orders.nth(0)).toContainText("under 1 container");
   // Restart: the terminal as the layout has it, the time and the moves from 0
+  const before = await page.evaluate(() => window.__arail.world.time - window.__arail.caseById("terminal").since);
+  expect(before).toBeGreaterThan(60);
   await page.locator("#termReset").click();
   await expect(task(page)).toContainText("0 of 6");
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*0/);
+  expect(await page.evaluate(() => window.__arail.world.time - window.__arail.caseById("terminal").since)).toBeLessThan(30);
   await expect(orders.nth(0)).toContainText("under 2 containers");
   // back to the list: the scenario stops, the clock runs as before
   await page.locator("#scenariosBack").click();
@@ -217,6 +220,23 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await page.evaluate(() => window.__arail.openExample("neustadt"));
   await page.waitForFunction(() => /ebl-neustadt\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
   expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([5, false]);
+  expect(errors).toEqual([]);
+});
+
+test("the loading task's layout shown, its scenario not started: the terminal's whole panel, the task's after Start", async ({ page }) => {
+  const errors = await open(page, "/app/?layout=../layouts/ebl-container-train.json&layers=task#terminal");
+  await page.waitForFunction(() => window.__arail.terminal.sim?.orders().length, null, { timeout: 30_000 });
+  await expect(page.locator("#scenarioStart")).toHaveText("Start");
+  // not started: no task yet, the terminal as a tool (its state, Reset terminal, Save as start state)
+  await expect(page.locator("#termReset")).toHaveText("Reset terminal");
+  await expect(page.locator("#termSave")).toBeVisible();
+  await expect(page.locator("#termStatus")).toBeVisible();
+  // started: only what the task needs
+  await page.locator("#scenarioStart").click();
+  await page.waitForFunction(() => window.__arail.caseById("terminal").started, null, { timeout: 30_000 });
+  await expect(page.locator("#termReset")).toHaveText("Restart");
+  await expect(page.locator("#termSave")).toHaveCount(0);
+  await expect(page.locator("#termStatus")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

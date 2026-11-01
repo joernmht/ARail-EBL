@@ -74,7 +74,7 @@ story of a railway undertaking (EVU) whose train breaks down, in ten steps:
 **Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
 shown), **Play** (each step to its end, a pause, the next one) and
 **Restart**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
-time it is shown. While the scenario runs, the flyover's camera always follows the story, at a slant
+time it is shown. Start opens the flyover, and while the scenario runs its camera always follows the story (a photo chosen by hand stays), at a slant
 along the platform (from
 straight in front, the train at track G3 would hide the passengers), then goes with the spare unit
 out of the depot and in at track G2, and with the broken unit to the workshop. Over the photo of the

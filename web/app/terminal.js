@@ -56,13 +56,15 @@ function numberList(numbers, prefix = "") {
 export class TerminalPanel {
   /**
    * @param {object} app the ARail app (app.js)
-   * @param {{full?: boolean}} [options] full: with the visits (call, depart, unload, load), new arrivals,
-   *   the crane jobs and the speed (the game page); else the containers, their moves and the model
-   *   wagons only (the app)
+   * @param {{full?: boolean, owner?: import("./cases.js").Case}} [options] full: with the visits (call,
+   *   depart, unload, load), new arrivals, the crane jobs and the speed (the game page); else the
+   *   containers, their moves and the model wagons only (the app); owner: the case it is the panel of
+   *   (its task runs once it is started)
    */
-  constructor(app, { full = false } = {}) {
+  constructor(app, { full = false, owner = null } = {}) {
     this.app = app;
     this.full = full;
+    this.owner = owner;
     /** Id of the selected container, or null. */
     this.selected = null;
     /** Where it was chosen: "orders" (the Move form follows the work orders), else "list". */
@@ -97,9 +99,12 @@ export class TerminalPanel {
     c.addEventListener("pointercancel", () => (this._tap = null));
   }
 
-  /** Does it play a task (the app's terminal with work orders)? Then only what the task needs is shown. */
+  /**
+   * Does it play a task (the app's terminal with work orders, its scenario started)? Then only what the
+   * task needs is shown.
+   */
   _task(sim) {
-    return !this.full && sim.orders().length > 0;
+    return !this.full && (this.owner?.started ?? true) && sim.orders().length > 0;
   }
 
   /** The layout's container terminal, or null. @returns {import("../arail/terminal/operations.js").TerminalSimulation | null} */

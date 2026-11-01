@@ -3,10 +3,11 @@
 // undertaking's, the operations story; the journeys story). Light in text: the step it is at, its
 // title and text; below it the bar of the steps (a segment per step, filled as far as the story has
 // run; a click on one goes to its step); then Back, Next, Play and Restart in one row. A presenter's
-// clicker (Page Down, Page Up) goes on and back while the case is shown. Once the scenario runs, the
-// flyover's camera always follows the story (the story's `view()`: the spare unit on its way, the van,
-// the signal, the works; the traveller, her bus, her train), from the side the story says, if it says
-// one; a control used before Start starts the scenario first.
+// clicker (Page Down, Page Up) goes on and back while the case is shown. Start opens the flyover, and
+// while the scenario runs its camera always follows the story (the story's `view()`: the spare unit on
+// its way, the van, the signal, the works; the traveller, her bus, her train), from the side the story
+// says, if it says one; the photo chosen by hand stays (the story drawn on the real table). A control
+// used before Start starts the scenario first.
 import { storyOf } from "../arail/index.js";
 import { h, morph, mount } from "./ui.js";
 
@@ -17,17 +18,18 @@ const AIM_MS = 1000;
  * The steps of a story or a film as a bar: a segment per step, full for those before, filled as far as
  * the one it is at has run. It is one slider: a click on a segment goes to its step (its title is the
  * segment's tooltip), the arrow keys, Home and End step along it. Then where it is ("Step 3 of 12").
- * @param {{titles: string[], index: number, part: number, active?: boolean, word?: string, go: (i: number) => void}} o
- *   the steps' titles, the step it is at and how far it has run (0…1), whether it runs (else nothing
- *   is filled), "Step" or "Scene", and what a click or a key does
+ * @param {{id: string, titles: string[], index: number, part: number, active?: boolean, word?: string, go: (i: number) => void}} o
+ *   the slider's id (the panel drawn anew gives it the focus back), the steps' titles, the step it is
+ *   at and how far it has run (0…1), whether it runs (else nothing is filled), "Step" or "Scene", and
+ *   what a click or a key does
  */
-export function stepBar({ titles, index, part, active = true, word = "Step", go }) {
+export function stepBar({ id, titles, index, part, active = true, word = "Step", go }) {
   const n = titles.length, at = Math.min(index + 1, n);
   const fill = (i) => (!active ? 0 : i < index ? 1 : i === index ? Math.max(0, Math.min(1, part)) : 0);
   const keys = { ArrowLeft: index - 1, ArrowDown: index - 1, ArrowRight: index + 1, ArrowUp: index + 1, Home: 0, End: n - 1 };
   return h("div", { class: "step-bar" },
     h("div", {
-      class: "step-segs", role: "slider", tabindex: "0", "aria-label": `${word}s`, "aria-valuemin": "1", "aria-valuemax": String(n), "aria-valuenow": String(at),
+      id, class: "step-segs", role: "slider", tabindex: "0", "aria-label": `${word}s`, "aria-valuemin": "1", "aria-valuemax": String(n), "aria-valuenow": String(at),
       "aria-valuetext": `${word} ${at} of ${n}: ${titles[index] ?? ""}`,
       onclick: (e) => {
         const seg = e.target.closest?.(".step-seg");
@@ -93,7 +95,7 @@ export class StoryPanel {
     morph(e.now,
       h("h3", { id: id("Title") }, st.step.title),
       h("p", {}, st.step.text));
-    morph(e.bar, stepBar({ titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
+    morph(e.bar, stepBar({ id: id("Bar"), titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
     morph(e.controls,
       h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
       h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),
@@ -132,10 +134,13 @@ export class StoryPanel {
     });
   }
 
-  /** After a step began (here, by Play, a clicker or a scenario): the panel, and while it runs the camera. */
+  /**
+   * After a step began (here, by Play, a clicker or a scenario): the panel, and while it runs the
+   * flyover's camera; the photo chosen by hand stays (Start opens the flyover: StoryCase.begin).
+   */
   stepped() {
     this.update();
-    if (this.running) this.aim();
+    if (this.running && this.app.mode === "flyover") this.aim();
   }
 
   /**

@@ -38,8 +38,8 @@ at 08:10 to Altstadt, there at 08:46.
 
 **Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
 shown), **Play** and **Restart**; a presenter's clicker works too
-(Page Down, Page Up). Every step looks the same each time it is shown. While the scenario runs, the
-flyover's camera always follows the story: with Ada, her bus and the late train, and shows her whole way at the
+(Page Down, Page Up). Every step looks the same each time it is shown. Start opens the flyover, and while the scenario runs
+its camera always follows the story (a photo chosen by hand stays): with Ada, her bus and the late train, and shows her whole way at the
 end; her walk from home it sees from the street, facing her front door (from the other side the
 houses would hide her), everything else facing the station's front. Each step sets the clock to its
 time when the clock is more than five minutes away (07:30 when she leaves, 08:00 when the late train
