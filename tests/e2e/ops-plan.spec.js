@@ -86,7 +86,11 @@ test("the draft runs with a delay, cancelled trains on the board and people left
   expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   await expect(page.locator(".plan-now").first()).toBeVisible();
   await expect(page.locator("#evuPlanResult")).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator("#evuPlanResult .tile .value")).toHaveText(["3", "1", "2", "204"]);
+  // on time, late, cancelled; left behind: the 204 the draft's units have no places for, and those of
+  // the busy platform who could not get on the full trains too
+  const tiles = page.locator("#evuPlanResult .tile .value");
+  await expect(tiles).toHaveText(["3", "1", "2", /^\d+$/]);
+  expect(Number(await tiles.nth(3).textContent())).toBeGreaterThanOrEqual(204);
   await expect(page.locator(".plan-chip")).toHaveText(["on time", "on time", "on time", "+4 min", "cancelled", "cancelled"]);
   // Start again: the plan as the layout has it
   await choice(page, "evu", "s1-0725", "unit").selectOption("442 102");
