@@ -102,15 +102,16 @@ export class Interaction {
   }
 
   /**
-   * A scenario as a card to click: its icon, its side or kind, its name and what it is about; its
-   * task, or that it is done. Its accessible name is its side and name, what it is about describes it.
+   * A scenario as a card to click: its icon, its side or kind, its name and what it is about, and
+   * that it was done (one scenario runs at a time: going back to the list ends it). Its accessible
+   * name is its side and name, what it is about describes it.
    */
   _card(c) {
-    const id = `scenario-${c.id}`, p = c.started ? c.progress() : null;
-    const state = c.done ? "Done" : p ? `${p.done} of ${p.of}` : !c.startable ? "Not in this layout" : null;
+    const id = `scenario-${c.id}`;
+    const state = c.completed ? "Done" : !c.startable ? "Not in this layout" : null;
     return h("button", {
       type: "button", class: `scenario-card${c.startable ? "" : " off"}`, id, "aria-labelledby": `${id}-tag ${id}-name`, "aria-describedby": `${id}-text`,
-      "aria-current": c.started ? "true" : null, onclick: () => this.app.startCase(c.id),
+      onclick: () => this.app.startCase(c.id),
     },
     icon(c.constructor.icon, "scenario-icon"),
     h("span", { class: "scenario-tag", id: `${id}-tag` }, this._tagText(c)),

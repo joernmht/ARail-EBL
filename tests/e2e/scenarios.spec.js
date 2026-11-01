@@ -88,9 +88,35 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   expect(await film()).toMatchObject({ id: "end", mode: "camera" });
   await expect(task(page)).toContainText("Done!");
   await expect(page.locator("#introNext")).toBeDisabled();
-  // another scenario: the film stops, the photo shows everything
+  // back to the list: the film stops, the photo shows everything; the card says it was done
   await page.locator("#scenariosBack").click();
   expect(await film()).toMatchObject({ active: false, playing: false, fade: 1 });
+  await expect(page.locator("#scenario-intro .scenario-state")).toHaveText("Done");
+  await expect(page.locator("#scenario-sandbox .scenario-state")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("the Introduction's Play, Next and scenes work before Start: they start it", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const errors = await open(page);
+  const film = () => page.evaluate(() => {
+    const app = window.__arail, c = app.caseById("intro"), p = c.panel;
+    return { started: c.started, id: p.scenes[p.index].id, playing: p.playing, active: p.active };
+  });
+  // shown, not started: Play starts the film from its first scene, playing
+  expect(await film()).toMatchObject({ started: false, active: false });
+  await page.locator("#introPlay").click();
+  await expect.poll(film).toMatchObject({ started: true, id: "welcome", playing: true, active: true });
+  // shown again by its link, not started: Next starts it at the second scene, which waits; a scene of the list too
+  await page.locator("#scenariosBack").click();
+  await page.evaluate(() => window.__arail.selectTab("intro"));
+  expect(await film()).toMatchObject({ started: false, active: false });
+  await page.locator("#introNext").click();
+  await expect.poll(film).toMatchObject({ started: true, id: "real", playing: false, active: true });
+  await page.locator("#scenariosBack").click();
+  await page.evaluate(() => window.__arail.selectTab("intro"));
+  await page.locator(".story-steps li button").nth(2).click();
+  await expect.poll(film).toMatchObject({ started: true, id: "virtual", playing: false, active: true });
   expect(errors).toEqual([]);
 });
 
@@ -117,6 +143,10 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   // people by their mood
   await page.locator("#sandboxPeopleColour").selectOption("mood");
   expect(await page.evaluate(() => window.__arail.world.settings.peopleColour)).toBe("mood");
+  // leaving the Sandbox brings the station back to today: the other scenarios play in its own year
+  await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => window.__arail.world.settings.ageYears)).toBe(0);
+  expect(await condition()).toBeCloseTo(today, 6);
   expect(errors).toEqual([]);
 });
 
@@ -138,7 +168,6 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await expect(orders.nth(0)).toContainText("Container train");
   await expect(orders.nth(0)).toContainText("under 2 containers");
   await expect(orders.nth(3)).toContainText("Block A");
-  await page.evaluate(() => (window.__arail.world.speed = 60)); // the crane quicker for the test
   // the truck's container: choosing its order chooses it, with a place on the real train first
   await page.locator("#term-order-3").click();
   expect(await page.locator("#termTarget").inputValue()).toMatch(/^W[78]\|/);
@@ -163,6 +192,13 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   // back to the list: the scenario stops, the clock runs as before
   await page.locator("#scenariosBack").click();
   expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([2, false]);
+  // started again: a speed chosen meanwhile stays when it ends; another layout ends it
+  await startScenario(page, "terminal");
+  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(10);
+  await page.evaluate(() => (window.__arail.world.speed = 5));
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
+  await page.waitForFunction(() => /ebl-neustadt\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
+  expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([5, false]);
   expect(errors).toEqual([]);
 });
 

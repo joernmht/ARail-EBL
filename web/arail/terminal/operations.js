@@ -538,7 +538,7 @@ export class TerminalSimulation extends Simulation {
    * The work orders (`orders` of the terminal entry, e.g. `{"container": "ARLU 600024 3", "to":
    * "Container train"}`) in their order: which container goes where, and whether it is there. `to`
    * names a place (a yard block, a wagon, a barge, a model wagon), a visit, a unit of model wagons
-   * or a kind of carrier (yard, wagon, truck, barge); `carriers` are the ids of those carriers. An
+   * or a kind of carrier (yard, wagon or train, truck, barge); `carriers` are the ids of those carriers. An
    * order is done while its container stands there; `under` counts the containers on top of it.
    * @returns {import("./types.js").WorkOrder[]}
    */
@@ -1860,11 +1860,13 @@ function validateTerminal(cfg, layout) {
     else if (ordered.has(o.container)) out.push(`${p}: the container has an order already`);
     ordered.add(o.container);
     if (typeof o.to !== "string" || !o.to) {
-      out.push(`${p}: no target: give a place, a visit, a unit of model wagons, or yard, wagon, truck or barge`);
+      out.push(`${p}: no target: give a place, a visit, a unit of model wagons, or yard, wagon (or train), truck or barge`);
       return;
     }
-    wagonCarrier(o.to);
-    if (!inv.carriers.has(o.to) && !visitIds.has(o.to) && !units.has(o.to) && !Object.hasOwn(ORDER_KINDS, o.to === "train" ? "wagon" : o.to)) out.push(`${p}: unknown target "${o.to}"`);
+    // a model wagon only as the terminal knows it from the start: in rolling_stock, or with a container on it
+    const wagon = MODEL_WAGON.exec(o.to);
+    const known = inv.carriers.has(o.to) || (wagon && numbers.has(Number(wagon[1]))) || visitIds.has(o.to) || units.has(o.to);
+    if (!known && !Object.hasOwn(ORDER_KINDS, o.to === "train" ? "wagon" : o.to)) out.push(`${p}: unknown target "${o.to}"${wagon ? ` (a model wagon needs its rolling_stock entry)` : ""}`);
   });
 
   // fill

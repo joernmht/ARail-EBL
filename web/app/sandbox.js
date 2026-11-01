@@ -121,7 +121,7 @@ export class SandboxPanel {
             this.update();
           },
         })),
-      h("p", { class: "hint" }, "The rings on the ground show the condition of each asset by its age, from grade 1 (Türkis: as new) to grade 5 (Rot: deficient). Tap one to see its age."),
+      h("p", { class: "hint" }, "The rings on the ground show the condition of each asset by its age, from grade 1 (Türkis: as new) to grade 5 (Rot: deficient). Tap one to see its age. Leaving the Sandbox brings the station back to today."),
       h("button", { class: "btn small", type: "button", id: "sandboxAssets", onclick: () => this.showAssets() }, "Go to the assets"),
     ];
   }

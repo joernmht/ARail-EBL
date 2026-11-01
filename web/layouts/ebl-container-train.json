@@ -208,6 +208,32 @@
             {"container": "ARLU 601006 7", "to": "Truck"}
           ]
         }
+      ],
+      "scenarios": [
+        {
+          "id": "hybrid-shift",
+          "name": "Loading the real train",
+          "description": "The loading task done by the crane, one way to do it: the six work orders in 11 moves, one every 150 s. With this module on, it takes the place of the layout's own scenario, whose containers stand elsewhere here.",
+          "steps": [
+            {"at": 0, "message": "The crane works off the loading task. First the truck's container goes onto the real train, so that the truck has room for its two."},
+            {"at": 0, "emit": {"name": "terminal.request.move", "payload": {"container": "DBCU 601003 7", "to": {"carrier": "W7", "bay": 1}}}},
+            {"at": 150, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 601005 3", "to": {"carrier": "W1", "bay": 0}}}},
+            {"at": 300, "message": "The truck's second container lies under another: that one goes onto a stack that is not full."},
+            {"at": 300, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 602072 6", "to": {"carrier": "yard-a", "bay": 6, "row": 1}}}},
+            {"at": 450, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 601006 7", "to": {"carrier": "W1", "bay": 1}}}},
+            {"at": 600, "message": "The same for a container for the train, under one other."},
+            {"at": 600, "emit": {"name": "terminal.request.move", "payload": {"container": "DBCU 602067 3", "to": {"carrier": "yard-a", "bay": 2, "row": 1}}}},
+            {"at": 750, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 601002 5", "to": {"carrier": "W8", "bay": 2}}}},
+            {"at": 900, "message": "The big container needs two free bays side by side: the one just emptied, and the one next to it once its container has gone."},
+            {"at": 900, "emit": {"name": "terminal.request.move", "payload": {"container": "ARLU 602066 1", "to": {"carrier": "yard-a", "bay": 11, "row": 1}}}},
+            {"at": 1050, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 601004 0", "to": {"carrier": "yard-a", "bay": 8, "row": 1}}}},
+            {"at": 1200, "message": "Now the container from the bottom of its stack: the two on top of it go first, then it takes the big one's place on the train."},
+            {"at": 1200, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 602029 9", "to": {"carrier": "yard-a", "bay": 6, "row": 0}}}},
+            {"at": 1350, "emit": {"name": "terminal.request.move", "payload": {"container": "EBLU 602028 5", "to": {"carrier": "yard-a", "bay": 13, "row": 0}}}},
+            {"at": 1500, "emit": {"name": "terminal.request.move", "payload": {"container": "TUDU 601001 1", "to": {"carrier": "W6", "bay": 0}}}},
+            {"at": 1650, "message": "All six orders done, in 11 moves: no fewer will do."}
+          ]
+        }
       ]
     }
   ],

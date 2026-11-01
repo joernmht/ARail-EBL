@@ -60,7 +60,9 @@ construction train needs a track of at least about 60 m. The track closure is a 
 **How the assets age.** The app's **Sandbox** (Interaction) shows the station years ahead: its slider
 *Infrastructure aging* adds up to 50 years to the story's year (the world setting `ageYears`, not kept
 in the layout), so the rings turn from Türkis to Rot as the assets age without renewals, and the
-Overview's condition of the assets follows. The story's texts then speak of that year too.
+Overview's condition of the assets follows. The story's texts then speak of that year too, as long
+as the Sandbox is shown: leaving it brings the station back to today, so that the scenario *A signal
+fails* plays in the story's own year.
 
 ## The asset management game
 

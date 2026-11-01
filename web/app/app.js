@@ -740,6 +740,9 @@ export class App {
     if (own) return this._openModuleLayout(own, { url: absolute, name: json.name || "Layout", layers: fileLayers });
     // its modules that are layouts of their own know their home (for the way back)
     for (const l of fileLayers) if (l.layout) storage.set(`arail.moduleHome:${new URL(l.layout, absolute).href}`, moduleHomeRecord({ url: absolute, name: json.name || "Layout", layers: fileLayers }, l.id));
+    // another layout: the scenario shown (or started) ends with the one before (Start opens the
+    // example it plays in before it starts)
+    if (this.layoutUrl && absolute !== this.layoutUrl) for (const c of this.cases ?? []) if (c.started || c.id === this.activeCase) c.stop();
     this.layoutUrl = absolute;
     this.originalLayout = json;
     storage.set(this.key("lastLayout"), url);

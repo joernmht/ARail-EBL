@@ -65,6 +65,8 @@ export class Case {
     this.app = app;
     /** Whether it was started (Start): its task counts from then. */
     this.started = false;
+    /** Whether its task was done when it was last stopped: the list shows it as Done. */
+    this.completed = false;
     /** The world's speed before it was started, while it runs at its own (static speed). */
     this._speed = null;
     /** Its panel: `render(el)`, `update()`, optionally `key(e)`, `syncWidth()`, `stepped()`, `drawFocus(ctx, view)`. */
@@ -152,9 +154,13 @@ export class Case {
   /** Its task from the start and its view (Start, Start again). */
   begin() {}
 
-  /** Stop it (another case is shown, or the list): the world's speed as before. */
+  /**
+   * Stop it (another case is shown, the list, or another layout): the world's speed as before,
+   * unless someone chose another meanwhile; a task that was done is remembered.
+   */
   stop() {
-    if (this._speed != null) this.app.world.speed = this._speed;
+    if (this.done) this.completed = true;
+    if (this._speed != null && this.app.world.speed === this.constructor.speed) this.app.world.speed = this._speed;
     this._speed = null;
     this.started = false;
     this.end();
@@ -218,7 +224,7 @@ export class IntroCase extends Case {
   static icon = "intro";
 
   makePanel() {
-    return new IntroPanel(this.app);
+    return new IntroPanel(this.app, this);
   }
 
   begin() {
@@ -251,6 +257,11 @@ export class SandboxCase extends Case {
 
   begin() {
     this.app.showPlace(null);
+  }
+
+  /** Left: the infrastructure is as old as it is again (the years ahead are the Sandbox's). */
+  end() {
+    this.app.world.settings.ageYears = 0;
   }
 }
 
@@ -339,11 +350,14 @@ export class TerminalCase extends Case {
     this.since = 0;
     /** The time and the moves when the work orders were done, or null. */
     this.result = null;
-    app.world.events.on(TERMINAL_EVENTS.reset, () => {
-      if (!this.started) return;
-      this.since = this.app.world.time;
-      this.result = null;
-    });
+    // the terminal reset, or the layout loaded again (its clock from 0): the task starts anew
+    for (const name of [TERMINAL_EVENTS.reset, "layout.loaded"]) {
+      app.world.events.on(name, () => {
+        if (!this.started) return;
+        this.since = this.app.world.time;
+        this.result = null;
+      });
+    }
     app.world.events.on(TERMINAL_EVENTS.containerMoved, (e) => {
       if (this.started && !this.result && this.done) this.result = { time: this.app.world.time - this.since, moves: this._moves(e.terminal) };
     });
@@ -389,7 +403,7 @@ export class TerminalCase extends Case {
     const t = terminalOf(this.app.world);
     if (!this.started || !t || !this.progress()) return null;
     const { time, moves } = this.result ?? { time: this.app.world.time - this.since, moves: this._moves(t) };
-    return [["Time", minutes(time)], ["Moves", String(moves)]];
+    return [["Time", minutes(Math.max(0, time))], ["Moves", String(moves)]];
   }
 }
 

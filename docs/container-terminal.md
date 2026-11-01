@@ -447,12 +447,19 @@ terminal (`"patch": true`): no random fill, its own containers and six work orde
 So the order matters: the truck's container has to leave before both containers for the truck
 fit on it, the high cube leaves the train before the third container can go on it, and it needs a
 place in the yard that the crane has to clear first (two neighbouring bays emptied, e.g. one where
-a container for the train came from). It can be done in 11 moves, about 19 minutes on the
-terminal's clock. Start (the scenario **Load the hybrid train**) opens the example with the module
+a container for the train came from). It takes 11 moves, about 19 minutes on the terminal's
+clock, and no fewer will do: the six containers of the orders move, and the four on top of them in
+the yard; and with all of these gone the yard still has no place for the big one (no two empty bays
+side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the scenario **Load the hybrid train**) opens the example with the module
 on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
 clock (from Start until the last order is done) and the moves the crane finished; **Start again**
 begins anew. Every container of the task is in the photo; the barge and the yard's outer bays are
 not (the flyover shows them).
+
+The module brings its own version of the layout's scenario **Loading the real train**
+(Interaction → Disruptions): with the module on, it replaces the layout's own (the same id), whose
+containers stand elsewhere in the task. It shows one way to do the task: the crane works off the
+six orders in 11 moves, one every 150 s, with a message at each step.
 
 ## Building a terminal in Build
 
@@ -520,7 +527,7 @@ The terminal is an entry of the layout's `simulations` (every key except `type` 
 | `trucks.lane` | the first truck lane | id of the `truck-lane` object |
 | `containers` | `[]` | the start state: `id`, `size` (`"20"`, `"40"`, `"45"`), `high`, `colour`, `label`, `at` (`carrier`, `bay`, `row` and `tier` from 0; for 40 and 45 ft the first bay) |
 | `fill` | `{}` | yard id → share (0–1) of empty stacks filled with random containers, the same for the same layout every time |
-| `orders` | `[]` | work orders: `container` (one of `containers`) and `to`, where it goes: a carrier id (as in `at.carrier`), a visit id, the name of a unit of model wagons (`rolling_stock[].unit`, e.g. `"Truck"`), or `yard`, `wagon`, `truck` or `barge` for any of that kind. An order is done while its container stands there; the case Terminal lists them, the stage marks the open ones |
+| `orders` | `[]` | work orders: `container` (one of `containers`) and `to`, where it goes: a carrier id (as in `at.carrier`; a model wagon `W<n>` with its `rolling_stock` entry or a container on it), a visit id, the name of a unit of model wagons (`rolling_stock[].unit`, e.g. `"Truck"`), or `yard`, `wagon` (also `train`), `truck` or `barge` for any of that kind. An order is done while its container stands there; the case Terminal lists them, the stage marks the open ones |
 
 Carrier ids in `at.carrier`: `<train id>/<k>` for a train's wagon k (from 1, counted from the
 head), the barge id, the yard object's id, and `W<number>` for model wagons. Visit ids must be

@@ -176,7 +176,7 @@ const APP_DE = {
   "In {n}: {n2} years older, without renewals": "Im Jahr {n}: {n2} Jahre älter, ohne Erneuerungen",
   "Today ({n})": "Heute ({n})",
   "{n} years ahead": "{n} Jahre voraus",
-  "The rings on the ground show the condition of each asset by its age, from grade 1 (Türkis: as new) to grade 5 (Rot: deficient). Tap one to see its age.": "Die Ringe am Boden zeigen den Zustand jeder Anlage nach ihrem Alter, von Note 1 (Türkis: wie neu) bis Note 5 (Rot: mangelhaft). Tippen Sie auf eine, um ihr Alter zu sehen.",
+  "The rings on the ground show the condition of each asset by its age, from grade 1 (Türkis: as new) to grade 5 (Rot: deficient). Tap one to see its age. Leaving the Sandbox brings the station back to today.": "Die Ringe am Boden zeigen den Zustand jeder Anlage nach ihrem Alter, von Note 1 (Türkis: wie neu) bis Note 5 (Rot: mangelhaft). Tippen Sie auf eine, um ihr Alter zu sehen. Wer den Sandkasten verlässt, holt den Bahnhof ins Heute zurück.",
   "Go to the assets": "Zu den Anlagen",
   "Assets": "Anlagen",
   "Asset management as a game: roles, decisions and budget years": "Anlagenmanagement als Spiel: Rollen, Entscheidungen und Haushaltsjahre",
