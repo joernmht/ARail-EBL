@@ -1,7 +1,8 @@
 // The Interaction chapter: the scenarios to start (cases.js), as a list with filter pills (First
 // steps, the sides Infrastructure and Railway undertaking, Passengers, Freight, Tools), and the
-// scenario shown: the way back to the list, its name, its task with the progress and Start (or
-// Start again), and its panel. Start sets up the stage for it (its module, its view).
+// scenario shown, light in text: the way back to the list, its name, Start until it is started, then
+// the bar of its task (and its figures), and its panel. What a scenario is about is said in the list.
+// Start sets up the stage for it (its module, its view).
 import { SIDES, TAGS } from "./cases.js";
 import { icon } from "./icons.js";
 import { h, morph, mount, storage } from "./ui.js";
@@ -49,18 +50,18 @@ export class Interaction {
       return;
     }
     const panel = h("div", { class: "case-panel", id: "casePanel" });
-    this.taskBox = h("div", { class: "scenario-task", id: "scenarioTask", role: "group", "aria-labelledby": "scenarioName" });
+    this.taskBox = h("div", { class: "scenario-task", id: "scenarioTask" });
     mount(el, h("div", { class: "interaction", "data-case": shown.id },
       h("div", { class: "scenario-head" },
         h("button", { class: "btn small scenario-back", type: "button", id: "scenariosBack", onclick: () => this.back() },
           h("span", { "aria-hidden": "true" }, "← "), "Scenarios"),
-        h("p", { class: "scenario-side" }, this._tagText(shown)),
         h("h2", { class: "scenario-name", id: "scenarioName", tabindex: "-1" }, shown.label)),
       this.taskBox,
       panel));
     this._task(shown);
     shown.render(panel);
-    if (focused) document.getElementById(focused)?.focus();
+    // Start is gone once started: its name takes the focus
+    if (focused) (document.getElementById(focused) ?? document.getElementById("scenarioName"))?.focus();
   }
 
   /** Draw the chapter again if it is shown (a module switched). */
@@ -126,23 +127,29 @@ export class Interaction {
 
   /* ---------------------------------------------------------------- the task */
 
-  /** The task of the case shown: what to do and how, its progress, Start or Start again. */
+  /**
+   * The task of the case shown: Start until it is started; then the bar of its progress with how far
+   * it is (Done at its end) and its figures (the time, the moves). A case whose panel shows its steps
+   * on a bar of its own (a story, the film: `steps`) has none here.
+   */
   _task(c) {
-    const C = c.constructor, p = c.started ? c.progress() : null, pct = p?.of ? Math.round((100 * Math.min(p.done, p.of)) / p.of) : 0;
-    const figures = c.started ? c.figures() : null;
-    const start = h("button", {
-      class: `btn${c.started ? "" : " primary"}`, type: "button", id: "scenarioStart", disabled: !c.startable,
-      onclick: () => this.app.startCase(c.id),
-    }, c.started ? "Start again" : "Start");
-    // in place: Start keeps the focus while the progress changes
+    const C = c.constructor;
+    if (!c.started) {
+      this.taskBox.hidden = false;
+      // in place: Start keeps the focus
+      morph(this.taskBox, h("div", { class: "row" },
+        h("button", { class: "btn primary", type: "button", id: "scenarioStart", disabled: !c.startable, onclick: () => this.app.startCase(c.id) }, "Start")));
+      return;
+    }
+    const p = C.steps ? null : c.progress(), figures = c.figures();
+    this.taskBox.hidden = !p && !figures;
+    const n = p ? Math.min(p.done, p.of) : 0, pct = p?.of ? Math.round((100 * n) / p.of) : 0;
     morph(this.taskBox,
-      C.task ? h("p", { class: "task-line" }, h("strong", {}, "Task"), ": ", C.task) : h("p", { class: "task-line" }, C.description),
-      C.how ? h("p", { class: "hint" }, C.how) : null,
       p ? h("div", { class: "task-progress" },
-        h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "scenarioName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(Math.min(p.done, p.of)), "aria-valuetext": `${Math.min(p.done, p.of)} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
-        h("span", { class: "task-count" }, `${Math.min(p.done, p.of)} of ${p.of}`)) : null,
-      figures ? h("dl", { class: "task-figures" }, figures.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))) : null,
-      c.done ? h("p", { class: "task-done", role: "status" }, "Done! Try another scenario, or start this one again.") : null,
-      h("div", { class: "row" }, start, C.speed && c.started ? h("span", { class: "hint" }, `The clock runs ${C.speed} times as fast.`) : null));
+        h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "scenarioName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(n), "aria-valuetext": `${n} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
+        h("span", { class: "task-count" }, `${n} of ${p.of}`),
+        // always there, so that Done is announced when it comes (and not every count)
+        h("span", { class: "task-done", role: "status" }, c.done ? "Done" : "")) : null,
+      figures ? h("dl", { class: "task-figures" }, figures.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))) : null);
   }
 }

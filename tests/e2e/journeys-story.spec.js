@@ -1,5 +1,5 @@
 // End-to-end tests of the journeys story (Chromium): the app's Journeys tab on Bf Neustadt, a
-// traveller's journey to click through (buttons, the list of steps, a presenter's clicker, the
+// traveller's journey to click through (buttons, the bar of the steps, a presenter's clicker, the
 // platform track and the bus bay kept free, the clock, the camera that follows Ada and her bus); the
 // game page keeps the journeys exercise.
 import { expect, test } from "@playwright/test";
@@ -29,7 +29,7 @@ const storyDisruptions = (page) => page.evaluate(() => window.__arail.world.disr
   .filter((d) => d.id.startsWith("story:")).map((d) => `${d.type}@${d.target}`).sort());
 
 const title = (page) => page.locator("#journeysStoryTitle");
-const step = (page, name) => page.locator("#casePanel .story-steps button", { hasText: name });
+const step = (page, name) => page.locator(`#casePanel .step-seg[title="${name}"]`);
 
 test("the app opens Bf Neustadt; the case Journeys switches on the journeys story", async ({ page }) => {
   const errors = await open(page, "/app/#overview");
@@ -40,13 +40,13 @@ test("the app opens Bf Neustadt; the case Journeys switches on the journeys stor
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
   await expectCase(page, "journeys");
-  await expect(page.locator("#casePanel h2").first()).toHaveText("Ada's journey");
+  await expect(page.locator("#scenarioName")).toHaveText("A traveller's journey");
   await expect(title(page)).toHaveText("Ada sets off");
-  await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 11");
+  await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 11");
   expect(errors).toEqual([]);
 });
 
-test("the journeys story: Next and Back, the list of steps, a clicker; her track and her bay kept free; the clock", async ({ page }) => {
+test("the journeys story: Next and Back, the bar of the steps, a clicker; her track and her bay kept free; the clock", async ({ page }) => {
   const errors = await open(page, STORY);
   await expectCase(page, "journeys");
   await expect(title(page)).toHaveText("Ada sets off");
@@ -73,10 +73,10 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   await expect(page.locator("#hud")).toContainText("1 disruption");
   await expect(page.locator("#toast")).not.toContainText("Kept free");
 
-  // a jump in the list of steps: the bus; the bus station's bays are kept free too, silently
+  // a jump on the bar of the steps: the bus; the bus station's bays are kept free too, silently
   await step(page, "Bus 270 leaves with Ada").click();
   await expect(title(page)).toHaveText("Bus 270 leaves with Ada");
-  await expect(step(page, "Bus 270 leaves with Ada")).toHaveAttribute("aria-current", "step");
+  await expect(step(page, "Bus 270 leaves with Ada")).toHaveClass(/\bnow\b/);
   expect(await storyDisruptions(page)).toEqual(["story-train@bus-terminal-1:bay1", "story-train@bus-terminal-1:bay2", "story-train@platform-1:right"]);
   await expect(page.locator("#hud")).toContainText("1 disruption");
   // a presenter's clicker: Page Down and Page Up
@@ -93,7 +93,7 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText("Ada in Altstadt: her journey in numbers");
 
-  // Start again: Ada at home, nothing kept free, the clock back at 07:30
+  // Restart: Ada at home, nothing kept free, the clock back at 07:30
   await page.locator("#journeysStoryRestart").click();
   await expect(title(page)).toHaveText("Ada sets off");
   expect(await storyDisruptions(page)).toEqual([]);
@@ -110,12 +110,11 @@ test("the journeys story: Next and Back, the list of steps, a clicker; her track
   expect(errors).toEqual([]);
 });
 
-test("Camera follows: the flyover goes with Ada through the town and with her bus", async ({ page }) => {
+test("the camera follows: the flyover goes with Ada through the town and with her bus", async ({ page }) => {
   const errors = await open(page, STORY);
-  const follow = page.locator("#journeysStoryFollow");
-  await follow.click();
+  // Start: the flyover, its camera on the story (always, there is no switch)
+  await page.locator("#scenarioStart").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(follow).toHaveAttribute("aria-pressed", "true");
   /** Where the camera looks from above (degrees). */
   const yaw = () => page.evaluate(() => Math.round((window.__arail.flyover.cam.yaw * 180) / Math.PI));
   // her walk from home is seen from the street, facing her front door; the station from its front

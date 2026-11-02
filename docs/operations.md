@@ -27,7 +27,7 @@ for both sides of Interaction.
 A unit and its driver are out from the train's arrival until they are back (S 1: 20 minutes after
 the departure, RB 71: 30, RE 2: 60). The plan comes as drafted, with four problems for the railway
 undertaking and two for the infrastructure; a chart per side shows the plan over the hour, red
-where it does not work. **Start again** brings back the draft.
+where it does not work. **Restart** brings back the draft.
 
 **Run** sets the clock to 07:00, takes the platform tracks over from the timetable and plays the
 plan: each train comes to its track with its unit (drawn as long as it is), the unit and driver on
@@ -71,9 +71,11 @@ story of a railway undertaking (EVU) whose train breaks down, in ten steps:
 | 9. In the workshop: diagnosis and repair | Two fitters (in orange) read the fault memory: a burnt-out power module (IGBT) of the converter, exchanged in about 6 hours: the old module (dark grey) is lifted off the roof of the rear car, a new one (Dunkelblau) put on. What the breakdown cost: RB 31 and its trip back more than 5 minutes late, 2 × 40 € = 80 € to the transport authority (Aufgabenträger); without the spare both trips would have been cancelled, 44 train-km × 12 € = 528 €. |
 | 10. Back to normal service | The next morning 442 101 runs RB 31 again, on time; 442 108 waits in the depot as the spare unit. |
 
-**Back**, **Next**, a step from the list, **Play** (each step to its end, a pause, the next one) and
-**Start again**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
-time it is shown. **Camera follows** opens the flyover and looks at a slant along the platform (from
+**Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
+shown), **Play** (each step to its end, a pause, the next one) and
+**Restart**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
+time it is shown. Start opens the flyover, and while the scenario runs its camera always follows the story (a photo chosen by hand stays), at a slant
+along the platform (from
 straight in front, the train at track G3 would hide the passengers), then goes with the spare unit
 out of the depot and in at track G2, and with the broken unit to the workshop. Over the photo of the
 station (the camera view) the trains and people are drawn on the real table; the depot is beside it.

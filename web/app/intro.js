@@ -2,12 +2,14 @@
 // scenes (arail/core/intro.js) about what is real in the lab and what the app adds. Each scene
 // takes the stage to its place, the photo alone, the photo with what the app draws over it, or the
 // flyover over the place, outlines what it is about (real things in Türkis, virtual ones in
-// Orange) and says it in a few sentences with its figures. Play goes on from scene to scene by
-// itself, the camera turning slowly as in a film; Back and Next step, the list jumps, and a
+// Orange) and says it in a few sentences with its figures. The panel is light in text: the scene
+// shown; below it the bar of the scenes (a click on a segment jumps there); then Back, Next, Play and
+// Restart in one row, as in a story. Play goes on from scene to scene by itself, the camera turning slowly as in a film; a
 // presenter's clicker (Page Down, Page Up) steps too. While the card of something tapped on the
 // stage is open, the film waits.
 import { introScenes, objectPickable, OVERLAY, toRad } from "../arail/index.js";
 import { outline } from "./inspect.js";
+import { stepBar } from "./story.js";
 import { h, morph, mount } from "./ui.js";
 
 /** How long the stage takes to go to a scene's place, and to fade what the app draws in or out (ms). */
@@ -74,10 +76,10 @@ export class IntroPanel {
   /** Draw the panel anew. @param {HTMLElement} el the case's place */
   render(el) {
     this.el = {
-      root: el, now: h("div", { class: "section intro-now", "aria-live": "polite" }),
-      controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Film" }), scenes: h("div", { class: "section" }),
+      root: el, now: h("div", { class: "story-now intro-now", "aria-live": "polite" }), bar: h("div", {}),
+      controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Film" }),
     };
-    mount(el, this.el.now, this.el.controls, this.el.scenes);
+    mount(el, h("div", { class: "story" }, this.el.now, this.el.bar, this.el.controls));
     this.update();
   }
 
@@ -87,26 +89,21 @@ export class IntroPanel {
     if (!e?.root.isConnected) return;
     const scenes = this.scenes, s = scenes[this.index];
     if (!s) return;
-    const pct = this.playing ? Math.round(100 * Math.min(1, (performance.now() - this._t0) / (s.seconds * 1000))) : null;
+    const last = this.index >= scenes.length - 1;
+    morph(e.controls,
+      h("button", { class: "btn", type: "button", id: "introBack", disabled: !this.active || this.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
+      h("button", { class: "btn", type: "button", id: "introNext", disabled: this.active && last, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, "Next"),
+      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
+      h("button", { class: "btn", type: "button", id: "introRestart", disabled: !this.active || (this.index === 0 && !this.playing), title: "The film from its beginning", onclick: () => this.restart({ play: false }) }, "Restart"),
+    );
+    // the scene shown is full, unless the film plays: then as far as its time has run
+    const part = this.playing ? (performance.now() - this._t0) / (s.seconds * 1000) : 1;
+    morph(e.bar, stepBar({ id: "introBar", done: this.active && this.seen >= scenes.length, titles: scenes.map((x) => x.title), index: this.index, part, active: this.active, word: "Scene", go: (i) => this.goTo(i) }));
     morph(e.now,
-      h("p", { class: "intro-meta" }, h("span", { class: `intro-kind ${s.kind}` }, KINDS[s.kind]), h("span", { class: "story-count" }, `Scene ${this.index + 1} of ${scenes.length}`)),
+      h("p", { class: "intro-meta" }, h("span", { class: `intro-kind ${s.kind}` }, KINDS[s.kind])),
       h("h3", { id: "introTitle" }, s.title),
       s.text.map((t) => h("p", {}, t)),
       s.facts.length ? h("dl", { class: "intro-facts" }, s.facts.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, String(v))))) : null,
-      pct != null ? h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "introTitle", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) }, h("i", { style: { width: `${pct}%` } })) : null,
-    );
-    const last = this.index >= scenes.length - 1;
-    morph(e.controls,
-      h("button", { class: "btn", type: "button", id: "introBack", disabled: !this.active || this.index === 0, onclick: () => this.back() }, "Back"),
-      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
-      h("button", { class: "btn", type: "button", id: "introNext", disabled: this.active && last, onclick: () => this.next() }, "Next"),
-      h("button", { class: "btn", type: "button", id: "introRestart", disabled: !this.active || (this.index === 0 && !this.playing), onclick: () => this.restart({ play: false }) }, "Start again"),
-    );
-    morph(e.scenes,
-      h("h2", {}, "All scenes"),
-      h("ol", { class: "story-steps" }, scenes.map((x, i) => h("li", { class: !this.active ? "" : i < this.index ? "done" : i === this.index ? "now" : "" },
-        h("button", { class: "link", type: "button", "aria-current": this.active && i === this.index ? "step" : null, onclick: () => this.goTo(i) }, x.title)))),
-      h("p", { class: "hint" }, "A presenter's clicker works too: Page Down for the next scene, Page Up for the one before."),
     );
   }
 
@@ -169,10 +166,14 @@ export class IntroPanel {
     this.update();
   }
 
-  /** The film stops (its case is left): the stage keeps where it is, the photo shows everything again. */
+  /**
+   * The film stops (its case is left): the stage keeps where it is, the photo shows everything again;
+   * shown again, the panel shows the first scene, where Start begins.
+   */
   stop() {
     this.active = false;
     this.playing = false;
+    this.index = 0;
     clearTimeout(this._timer);
     clearTimeout(this._drift);
     this._photo = null;
@@ -272,6 +273,8 @@ export class IntroPanel {
    */
   key(e) {
     if ((e.key !== "PageDown" && e.key !== "PageUp") || e.target.closest?.("#stageWrap")) return false;
+    // before Start there is no scene before the first (Back is off): Page Up does nothing either
+    if (e.key === "PageUp" && !this.active) return false;
     if (e.key === "PageDown") this.next();
     else this.back();
     return true;

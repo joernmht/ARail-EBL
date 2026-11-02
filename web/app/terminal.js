@@ -2,7 +2,8 @@
 // on the game page also its visits, new arrivals and crane jobs) and picking containers and their
 // targets on the canvas, in the camera view and the flyover. Every canvas action is also in the
 // panel: choose a container in the list and a place in "Move to". The app keeps it to moving
-// containers one by one.
+// containers one by one; in a task (the terminal's work orders, the loading task of the hybrid
+// container train) it is light in text: Restart, the work orders, the containers and the move.
 import { applyH, CARRIER_TYPES, PHASE_LABELS, pickBoxes, terminalOf } from "../arail/index.js";
 import { aimCross } from "./inspect.js";
 import { $, h, morph, mount, revealStage, toast } from "./ui.js";
@@ -55,13 +56,15 @@ function numberList(numbers, prefix = "") {
 export class TerminalPanel {
   /**
    * @param {object} app the ARail app (app.js)
-   * @param {{full?: boolean}} [options] full: with the visits (call, depart, unload, load), new arrivals,
-   *   the crane jobs and the speed (the game page); else the containers, their moves and the model
-   *   wagons only (the app)
+   * @param {{full?: boolean, owner?: import("./cases.js").Case}} [options] full: with the visits (call,
+   *   depart, unload, load), new arrivals, the crane jobs and the speed (the game page); else the
+   *   containers, their moves and the model wagons only (the app); owner: the case it is the panel of
+   *   (its task runs once it is started)
    */
-  constructor(app, { full = false } = {}) {
+  constructor(app, { full = false, owner = null } = {}) {
     this.app = app;
     this.full = full;
+    this.owner = owner;
     /** Id of the selected container, or null. */
     this.selected = null;
     /** Where it was chosen: "orders" (the Move form follows the work orders), else "list". */
@@ -77,6 +80,11 @@ export class TerminalPanel {
     this.refused = null;
     /** Values of the New arrival forms. */
     this.draft = { track: "", wagonType: "sgns60", wagons: "random", load: "random", quay: "", purpose: "pickup", size: "" };
+    /**
+     * The picture (app.source) in which a model wagon was seen since the task's Start, or null: in it
+     * the task needs no Model wagons section any more.
+     */
+    this.wagonsSeenIn = null;
     /** The cross in the middle of the flyover shows where Enter picks (after keys on the stage). */
     this.keyAim = false;
     this._sim = null;
@@ -96,6 +104,14 @@ export class TerminalPanel {
     c.addEventListener("pointercancel", () => (this._tap = null));
   }
 
+  /**
+   * Does it play a task (the app's terminal with work orders, its scenario started)? Then only what the
+   * task needs is shown.
+   */
+  _task(sim) {
+    return !this.full && (this.owner?.started ?? true) && sim.orders().length > 0;
+  }
+
   /** The layout's container terminal, or null. @returns {import("../arail/terminal/operations.js").TerminalSimulation | null} */
   get sim() {
     const sim = terminalOf(this.app.world);
@@ -106,6 +122,7 @@ export class TerminalPanel {
       this.stage = null;
       this.error = "";
       this.refused = null;
+      this.wagonsSeenIn = null;
       this.renderPlacing();
     }
     return sim;
@@ -131,8 +148,8 @@ export class TerminalPanel {
     const e = this.el;
     mount(el, e.head, e.orders, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
-    // a control that is not there any more hands the focus to the panel's heading
-    if (focused) (document.getElementById(focused) || e.head.querySelector("h2"))?.focus();
+    // a control that is not there any more hands the focus to the panel's heading (in a task, the scenario's)
+    if (focused) (document.getElementById(focused) || e.head.querySelector("h2") || document.getElementById("scenarioName"))?.focus();
   }
 
   /** Refresh the panel in place (every 400 ms while it is shown, and after every action). */
@@ -166,7 +183,13 @@ export class TerminalPanel {
       const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
       if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
-      this._show(e.wagons, sim.rollingConfig() ? this._wagons(sim) : null);
+      // in a task only until a model wagon was seen in the picture shown (since Start): the way to print
+      // their deck cards; a moment without any (a hand over the camera) does not bring it back, another
+      // picture (the live camera) or Restart does
+      const task = this._task(sim), source = this.app.source ?? null;
+      if (sim.carriers().some((c) => c.number != null && c.present)) this.wagonsSeenIn = source;
+      const seen = !!source && this.wagonsSeenIn === source;
+      this._show(e.wagons, sim.rollingConfig() && !(task && seen) ? this._wagons(sim, task) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {
@@ -231,6 +254,8 @@ export class TerminalPanel {
   }
 
   _head(sim) {
+    // a task: its time and moves are above the panel, the crane on the stage; saving would change the task
+    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.restartTask() }, "Restart"));
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [
@@ -239,9 +264,19 @@ export class TerminalPanel {
       this.full ? null : h("p", { class: "hint" }, "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it."),
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", id: "termReset", onclick: () => this.resetTerminal() }, "Reset terminal"),
-        h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state"),
+        // the app's terminal with work orders: saving would change the task's start (also before its Start)
+        this.full || !sim.orders().length ? h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state") : null,
       ),
     ];
+  }
+
+  /**
+   * Restart the task: its scenario started again (App.startCase), as Start did: the terminal as the
+   * task starts, the time and the moves from 0, the task's speed and its view.
+   */
+  restartTask() {
+    this.wagonsSeenIn = null;
+    return this.owner ? this.app.startCase(this.owner.id) : this.resetTerminal();
   }
 
   /** Reset the terminal to its start state; a pick and the selection end. */
@@ -253,7 +288,8 @@ export class TerminalPanel {
     this.refused = null;
     sim.reset();
     this.update();
-    toast("Terminal reset to its start state.");
+    // in a task its bar says it: back to the start
+    if (!this._task(sim)) toast("Terminal reset to its start state.");
   }
 
   /** Save where the containers are now as the terminal's start state, in the layout stored in this browser. */
@@ -277,7 +313,8 @@ export class TerminalPanel {
     if (!orders.length) return null;
     const done = orders.filter((o) => o.done).length;
     return [
-      h("h2", {}, "Work orders ", h("span", { class: "count" }, `(${done} of ${orders.length} done)`)),
+      // in a task its bar counts them
+      h("h2", {}, "Work orders", this._task(sim) ? null : [" ", h("span", { class: "count" }, `(${done} of ${orders.length} done)`)]),
       h("ol", { class: "list term-orders" }, orders.map((o) => h("li", { class: o.done ? "done" : null },
         h("button", {
           type: "button", id: `term-order-${o.n}`, disabled: !o.at, "aria-current": o.container === this.selected ? "true" : "false",
@@ -465,7 +502,7 @@ export class TerminalPanel {
           h("select", { id: "termFilter", onchange: (e) => { this.filter = e.target.value; this.update(); } },
             FILTERS.map(([v, t]) => h("option", { value: v, selected: v === this.filter }, t))))),
       list,
-      h("p", { class: "hint" }, "Choose a container, or tap one on the layout; then tap a highlighted place or choose one under Move."),
+      this._task(sim) ? null : h("p", { class: "hint" }, "Choose a container, or tap one on the layout; then tap a highlighted place or choose one under Move."),
     ];
   }
 
@@ -654,8 +691,20 @@ export class TerminalPanel {
 
   /* ---------------------------------------------------------------- model wagons */
 
-  _wagons(sim) {
+  /**
+   * The model wagons: per unit its card (the game page), per wagon its type, the tags seen, its state
+   * and containers, and the links that print their deck cards. In a task (no wagon seen yet) only the
+   * hint and the links.
+   */
+  _wagons(sim, task = false) {
     const wagons = sim.markerWagons(), units = sim.modelUnits();
+    if (task) {
+      return [
+        h("h2", {}, "Model wagons"),
+        h("p", { class: "hint" }, "No model wagons seen yet. Show the camera a wagon with its deck card."),
+        h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ", ...this._deckLinks(sim)),
+      ];
+    }
     return [
       h("h2", {}, "Model wagons"),
       // the real train and the real truck: unloaded and loaded as a whole, like a visit

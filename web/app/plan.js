@@ -3,7 +3,7 @@
 // The railway undertaking puts a unit and a driver on each train, the infrastructure manager puts it
 // on a track; each train says at once what does not work, and a chart shows the plan over the hour
 // (the units and drivers, or the tracks). Run plays the plan on the layout; the panel then tells how
-// it went.
+// it went. Light in text: what the scenario is about is said in the list of scenarios.
 import { PLAN_KEYS, PLAN_SIDES, formatTime, planOf } from "../arail/index.js";
 import { h, morph, mount } from "./ui.js";
 
@@ -57,14 +57,12 @@ export class PlanPanel {
     const r = plan.running, res = plan.result, id = (x) => `${this.side}Plan${x}`;
     const gone = r ? [...plan.progress().values()].filter((s) => s === "done" || s === "cancelled").length : 0;
     return [
-      h("h2", { tabindex: "-1" }, plan.name),
-      h("p", { class: "hint" }, this.side === "evu" ? "Put a unit and a driver on each train." : "Put each train on a track."),
-      h("p", { class: `plan-status${!r && problems ? " bad" : ""}`, id: id("Status"), "aria-live": "polite" },
-        r ? `Running · ${gone} of ${plan.trains.length}` : problems ? plural(problems, "problem") : "No problems"),
       h("div", { class: "row" },
         r ? h("button", { class: "btn", type: "button", id: id("Stop"), onclick: () => this.stop() }, "Stop")
           : h("button", { class: "btn primary", type: "button", id: id("Run"), disabled: !plan.canRun, title: "Play the plan on the layout", onclick: () => this.run() }, "Run"),
-        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Start again")),
+        h("button", { class: "btn", type: "button", id: id("Reset"), disabled: !!r, title: "The plan as the layout has it", onclick: () => this.reset() }, "Restart"),
+        h("p", { class: `plan-status${!r && problems ? " bad" : ""}`, id: id("Status"), "aria-live": "polite" },
+          r ? `Running · ${gone} of ${plan.trains.length}` : problems ? plural(problems, "problem") : "No problems")),
       res && !r ? h("div", { class: "ops-tiles plan-result", id: id("Result"), role: "group", "aria-label": "Last run" },
         [["On time", res.onTime], ["Late", res.late], ["Cancelled", res.cancelled], ["Left behind", res.leftBehind]].map(([label, n]) =>
           h("div", { class: "tile" }, h("span", { class: "label" }, label), h("span", { class: "value" }, String(n))))) : null,
@@ -137,7 +135,6 @@ export class PlanPanel {
     for (let m = from; m <= to; m += to - from > 60 ? 30 : 15) ticks.push(h("span", { style: { left: x(m) } }, formatTime(m)));
     return [
       h("h2", {}, evu ? "Units and drivers" : "Tracks"),
-      h("p", { class: "hint" }, evu ? "A unit and its driver are out from the train's arrival until they are back." : "A track is taken from the train's arrival until a little after it left."),
       h("div", { class: "plan-chart" }, h("div", { class: "plan-axis", "aria-hidden": "true" }, ticks), rows),
     ];
   }

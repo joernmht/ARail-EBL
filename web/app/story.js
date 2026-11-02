@@ -1,29 +1,74 @@
 // Story panel: a story of the layout (arail/core/story.js) as steps to click through, the panel of a
 // case of Interaction (the app: the infrastructure's disruption, the maintenance story; the railway
-// undertaking's, the operations story; the journeys story). The current step with its text and how far
-// its animation has run; Back, Next, Play and Start again; the list of all steps to jump to. A
-// presenter's clicker (Page Down, Page Up) goes on and back while the case is shown. In the flyover the
-// camera follows the story (the story's `view()`: the spare unit on its way, the van, the signal, the
-// works; the traveller, her bus, her train), from the side the story says, if it says one.
+// undertaking's, the operations story; the journeys story). Light in text: the step it is at, its
+// title and text; below it the bar of the steps (a segment per step, filled as far as the story has
+// run; a click on one goes to its step); then Back, Next, Play and Restart in one row. A presenter's
+// clicker (Page Down, Page Up) goes on and back while the case is shown. Start opens the flyover, and
+// while the scenario runs its camera always follows the story (the story's `view()`: the spare unit on
+// its way, the van, the signal, the works; the traveller, her bus, her train), from the side the story
+// says, if it says one; the photo chosen by hand stays (the story drawn on the real table). A control
+// used before Start starts the scenario first.
 import { storyOf } from "../arail/index.js";
-import { h, morph, mount, storage } from "./ui.js";
+import { h, morph, mount } from "./ui.js";
 
 /** How long the flyover's camera takes to fly to where a step of the story happens (ms): soft, not a jump. */
 const AIM_MS = 1000;
 
+/**
+ * The steps of a story or a film as a bar: a segment per step, full for those before, filled as far as
+ * the one it is at has run. It is one slider: a click on a segment goes to its step (its title is the
+ * segment's tooltip), the arrow keys, Home and End step along it; the step shown stays as it is (going
+ * there would start it again, and a finished story would not be done any more). Then where it is ("Step 3 of 12"),
+ * and Done at its end (a status: screen readers say it).
+ * @param {{id: string, titles: string[], index: number, part: number, active?: boolean, done?: boolean, word?: string, go: (i: number) => void}} o
+ *   the slider's id (the panel drawn anew gives it the focus back), the steps' titles, the step it is
+ *   at and how far it has run (0…1), whether it runs (else nothing is filled), whether its task is
+ *   done, "Step" or "Scene", and what a click or a key does
+ */
+export function stepBar({ id, titles, index, part, active = true, done = false, word = "Step", go }) {
+  const n = titles.length, at = Math.min(index + 1, n);
+  const fill = (i) => (!active ? 0 : i < index ? 1 : i === index ? Math.max(0, Math.min(1, part)) : 0);
+  const keys = { ArrowLeft: index - 1, ArrowDown: index - 1, ArrowRight: index + 1, ArrowUp: index + 1, Home: 0, End: n - 1 };
+  return h("div", { class: "step-bar" },
+    h("div", {
+      id, class: "step-segs", role: "slider", tabindex: "0", "aria-label": `${word}s`, "aria-valuemin": "1", "aria-valuemax": String(n), "aria-valuenow": String(at),
+      "aria-valuetext": `${word} ${at} of ${n}: ${titles[index] ?? ""}`,
+      onclick: (e) => {
+        const seg = e.target.closest?.(".step-seg"), i = Number(seg?.dataset.i);
+        if (seg && !(active && i === index)) go(i);
+      },
+      onkeydown: (e) => {
+        if (!(e.key in keys)) return;
+        e.preventDefault();
+        // at either end a key stays where it is (before it runs, any key starts it)
+        const to = Math.max(0, Math.min(n - 1, keys[e.key]));
+        if (!active || to !== index) go(to);
+      },
+    }, titles.map((title, i) => h("span", { class: `step-seg${active && i === index ? " now" : ""}`, "data-i": String(i), title },
+      h("i", { style: `--fill: ${Math.round(fill(i) * 100)}%` })))),
+    h("span", { class: "step-count" }, h("span", { "aria-hidden": "true" }, `${word} ${at} of ${n}`),
+      // always there, so that its text is announced when it comes
+      h("span", { class: "step-done", role: "status" }, done ? "Done" : "")));
+}
+
 export class StoryPanel {
   /**
    * @param {object} app the ARail app (app.js)
-   * @param {{prefix: string, type: string}} o the prefix of the panel's ids ("infra": #infraStoryNext)
-   *   and the story's simulation type
+   * @param {{prefix: string, type: string, owner?: import("./cases.js").Case}} o the prefix of the panel's
+   *   ids ("infra": #infraStoryNext), the story's simulation type, and the case it is the panel of (its
+   *   controls start it first; the camera follows the story while it runs)
    */
-  constructor(app, { prefix, type }) {
+  constructor(app, { prefix, type, owner = null }) {
     this.app = app;
     this.prefix = prefix;
     this.type = type;
-    /** Whether the flyover's camera follows the story. */
-    this.follow = storage.get("arail.storyFollow", true) !== false;
+    this.owner = owner;
     this.el = null;
+  }
+
+  /** Does its scenario run (or has it none)? Then the camera follows the story. */
+  get running() {
+    return !this.owner || this.owner.started;
   }
 
   /** The layout's story, or null. */
@@ -33,9 +78,14 @@ export class StoryPanel {
 
   /** Draw the panel anew. @param {HTMLElement} el the tab's panel */
   render(el) {
-    this.el = { root: el, head: h("div", { class: "section" }), now: h("div", { class: "section story-now", "aria-live": "polite" }), steps: h("div", { class: "section" }) };
-    mount(el, this.el.head, this.el.now, this.el.steps);
-    this.stepped();
+    this.el = {
+      root: el, now: h("div", { class: "story-now", "aria-live": "polite" }), bar: h("div", {}),
+      controls: h("div", { class: "row story-controls", role: "group", "aria-label": "Story" }),
+    };
+    mount(el, h("div", { class: "story" }, this.el.now, this.el.bar, this.el.controls));
+    this.update();
+    // drawn again (another chapter, a module switched): the camera back on the story, in the flyover
+    if (this.running && this.app.mode === "flyover") this.aim();
   }
 
   /** Refresh in place (every 400 ms while shown, and after a step). */
@@ -44,99 +94,98 @@ export class StoryPanel {
     if (!e?.root.isConnected) return;
     const story = this.story;
     if (!story) {
-      morph(e.head);
-      morph(e.now);
-      morph(e.steps);
+      for (const k of ["now", "bar", "controls"]) morph(e[k]);
       return;
     }
     const st = story.state(), id = (x) => `${this.prefix}Story${x}`;
-    // pressed while the flyover follows; in the camera view, a press opens the flyover
-    const following = this.follow && this.app.mode === "flyover";
-    morph(e.head,
-      h("h2", { tabindex: "-1" }, story.name),
-      h("p", { class: "hint" }, story.constructor.description),
-      h("div", { class: "row story-controls", role: "group", "aria-label": "Story" },
-        h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, onclick: () => this.back() }, "Back"),
-        h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),
-        h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
-        h("button", { class: "btn", type: "button", id: id("Restart"), disabled: st.index === 0 && st.progress >= 1 && !st.playing, onclick: () => this.restart() }, "Start again"),
-        h("button", { class: "btn", type: "button", id: id("Follow"), "aria-pressed": following ? "true" : "false", onclick: () => this.setFollow(!following) }, "Camera follows")),
-      h("p", { class: "hint" }, this.app.mode === "flyover" ? "The flyover's camera goes where the story happens." : "Some steps happen beside the table: Camera follows opens the flyover and goes there."),
-    );
-    const pct = Math.round(st.progress * 100);
+    // before Start the panel shows the first step, where Start begins (the story itself is left as it
+    // is: the world's clock, the tracks it holds); no step is the one shown on the bar, a click or a
+    // key starts the scenario
+    const run = this.running, index = run ? st.index : 0, step = st.steps[index];
     morph(e.now,
-      h("p", { class: "story-count" }, `Step ${st.index + 1} of ${st.count}`),
-      h("h3", { id: id("Title") }, st.step.title),
-      h("p", {}, st.step.text),
-      st.step.seconds > 0 ? h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": id("Title"), "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) }, h("i", { style: { width: `${pct}%` } })) : null,
-    );
-    morph(e.steps,
-      h("h2", {}, "All steps"),
-      h("ol", { class: "story-steps" }, st.steps.map((s, i) => h("li", { class: i < st.index ? "done" : i === st.index ? "now" : "" },
-        h("button", { class: "link", type: "button", "aria-current": i === st.index ? "step" : null, onclick: () => this.goTo(i) }, s.title)))),
-      h("p", { class: "hint" }, "A presenter's clicker works too: Page Down for the next step, Page Up for the one before."),
-    );
+      h("h3", { id: id("Title") }, step.title),
+      h("p", {}, step.text));
+    morph(e.bar, stepBar({ id: id("Bar"), active: run, done: run && st.finished, titles: st.steps.map((s) => s.title), index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
+    morph(e.controls,
+      h("button", { class: "btn", type: "button", id: id("Back"), disabled: index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
+      h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: run && st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, index === st.count - 1 ? "To the end" : "Next"),
+      h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": run && st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
+      h("button", { class: "btn", type: "button", id: id("Restart"), disabled: !run || (st.index === 0 && st.progress >= 1 && !st.playing), title: "The story from its beginning", onclick: () => this.restart() }, "Restart"));
+  }
+
+  /**
+   * A control used before its scenario was started starts it first (the story from its beginning, the
+   * camera on it), then does what it asked.
+   */
+  async _act(fn) {
+    const c = this.owner;
+    if (c && !c.started && (!(await this.app.startCase(c.id)) || !c.started)) return;
+    fn();
   }
 
   next() {
-    this.story?.next();
-    this.stepped();
+    return this._act(() => {
+      this.story?.next();
+      this.stepped();
+    });
   }
 
   back() {
-    this.story?.back();
-    this.stepped();
+    return this._act(() => {
+      this.story?.back();
+      this.stepped();
+    });
   }
 
   restart() {
-    this.story?.restart();
-    this.stepped();
+    return this._act(() => {
+      this.story?.restart();
+      this.stepped();
+    });
   }
 
-  /** After a step began (here, by Play, a clicker or a scenario): the panel, and the camera if it follows. */
+  /**
+   * After a step began (here, by Play, a clicker or a scenario): the panel, and while it runs the
+   * flyover's camera; the photo chosen by hand stays (Start opens the flyover: StoryCase.begin).
+   */
   stepped() {
     this.update();
-    if (this.follow && this.app.mode === "flyover") this.aim();
+    if (this.running && this.app.mode === "flyover") this.aim();
   }
 
-  /** The flyover's camera goes to where the story happens and follows it there. */
+  /**
+   * The flyover's camera goes to where the story happens and follows it there; from the photo the
+   * flyover starts where its camera stands.
+   */
   aim() {
-    const story = this.story, v = story?.view();
+    const story = this.story, v = story?.view(), fly = this.app.flyover;
+    // the flyover opens even when the step has no place of its own (Start)
+    if (!fly.active) fly.enter({ fromPhoto: true });
     if (!v?.at) return;
-    const fly = this.app.flyover;
     fly.follow(() => (this.story === story ? story.view()?.at ?? null : null));
     const rad = (deg) => (Number.isFinite(deg) ? (deg * Math.PI) / 180 : undefined);
     fly.move((k) => k.set({ target: v.at, distance: v.distance, pitch: rad(v.pitch_deg), yaw: rad(v.yaw_deg) }), AIM_MS);
   }
 
-  /** Let the flyover's camera follow the story or not; on, it opens the flyover. */
-  setFollow(on) {
-    this.follow = on;
-    storage.set("arail.storyFollow", on);
-    if (on) {
-      // from the photo the flyover starts where its camera stands, and flies to the story
-      if (this.app.mode !== "flyover") this.app.flyover.enter({ fromPhoto: true });
-      this.aim();
-    } else this.app.flyover.following = null;
-    this.update();
-  }
-
   play() {
-    const s = this.story;
-    if (!s) return;
-    s.play();
-    // the story only goes on while the world runs
-    if (s.playing && this.app.world.paused) {
-      this.app.world.paused = false;
-      this.app.panels.updateSimulateControls();
-    }
-    this.update();
+    return this._act(() => {
+      const s = this.story;
+      if (!s) return;
+      s.play();
+      // the story only goes on while the world runs
+      if (s.playing && this.app.world.paused) {
+        this.app.world.paused = false;
+        this.app.panels.updateSimulateControls();
+      }
+      this.update();
+    });
   }
 
   goTo(i) {
-    this.story?.goTo(i);
-    this.stepped();
-    this.el?.now.querySelector("h3")?.scrollIntoView?.({ block: "nearest" });
+    return this._act(() => {
+      this.story?.goTo(i);
+      this.stepped();
+    });
   }
 
   /**
@@ -145,6 +194,8 @@ export class StoryPanel {
    */
   key(e) {
     if (!this.story || (e.key !== "PageDown" && e.key !== "PageUp") || e.target.closest?.("#stageWrap")) return false;
+    // before Start there is no step before the first (Back is off): Page Up does nothing either
+    if (e.key === "PageUp" && !this.running) return false;
     if (e.key === "PageDown") this.next();
     else this.back();
     return true;

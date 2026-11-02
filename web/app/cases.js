@@ -1,7 +1,7 @@
 // The scenarios of the Interaction chapter, a class each (a "case"): examples to start, each with a
-// small task to try ("Carry out the work orders of the crane") and its progress, and a view of the stage
-// chosen for it (the flyover at the terminal, the camera following a story), so that what it is
-// about is in the picture at once. A case belongs to a side, the infrastructure manager ("infra")
+// small task to try (the work orders of the crane, the steps of a story) and its progress, and a view
+// of the stage chosen for it (the flyover at the terminal, the camera following a story), so that
+// what it is about is in the picture at once. A case belongs to a side, the infrastructure manager ("infra")
 // or the railway undertaking (EVU, "evu"), or it is a first step (the Introduction, the Sandbox) or
 // a tool of the layout (Build, Disruptions); its tags are the filter pills it is listed under. It
 // may need a simulation of the layout (a story, the operations plan, the terminal) or a module of
@@ -37,14 +37,12 @@ export class Case {
   static side = null;
   /** Its name in the list of scenarios. */
   static label = "";
-  /** What it is about, in one line (in the list, and the text while it is off). */
+  /** What it is about, in one line: its card in the list says it (the scenario shown does not again). */
   static description = "";
   /** The filter pills it is listed under (TAGS); null: its side, else "tools". */
   static tags = null;
-  /** Its task, in one line ("Carry out the work orders: …"); "" for none (a tool, the Sandbox). */
-  static task = "";
-  /** How to do it, in one line. */
-  static how = "";
+  /** Does its panel show the steps of its task on a bar of its own (a story, the film)? Else Interaction shows its progress. */
+  static steps = false;
   /** The world's speed while it runs (the clock runs this many times as fast), or null: as it is. */
   static speed = null;
   /** The icon in the list (interaction.js, ICONS). */
@@ -100,11 +98,6 @@ export class Case {
   /** The filter pills it is listed under. */
   get tags() {
     return this.constructor.tags ?? [this.side ?? "tools"];
-  }
-
-  /** Its task in one line, or "". */
-  get task() {
-    return this.constructor.task;
   }
 
   /** The panel of the case (null: it has none). */
@@ -225,20 +218,19 @@ export class Case {
     if (this.ready) this.panel?.update?.();
   }
 
-  /** Without what it needs: its name, what it does, and the way to it. */
+  /** Without what it needs: the way to it (its name is above, what it is about in the list). */
   renderOff(el) {
     const C = this.constructor, app = this.app, m = this.module();
+    // until it is started, Start (which switches it on too) is the first thing to do
+    const cls = this.started ? "btn primary" : "btn";
     const on = C.appModule
-      ? h("button", { class: "btn primary", type: "button", id: "caseOn", onclick: () => app.setAppModule(C.appModule, true) }, "Switch on")
-      : m ? h("button", { class: "btn primary", type: "button", id: "caseOn", onclick: () => app.toggleModule(m.id) }, `Switch on “${m.name}”`)
+      ? h("button", { class: cls, type: "button", id: "caseOn", onclick: () => app.setAppModule(C.appModule, true) }, "Switch on")
+      : m ? h("button", { class: cls, type: "button", id: "caseOn", onclick: () => app.toggleModule(m.id) }, `Switch on “${m.name}”`)
         : C.opens || C.example ? h("button", { class: "btn", type: "button", id: "caseExample", onclick: () => app.openExample(C.opens || C.example) }, "Open the example") : null;
     const add = !C.appModule && this.constructor.prototype.add !== Case.prototype.add
       ? h("button", { class: "btn", type: "button", id: "caseAdd", onclick: () => this.add() }, "Add to this layout") : null;
     mount(el,
-      h("div", { class: "section case-off" },
-        h("h2", { tabindex: "-1" }, C.label),
-        C.description ? h("p", { class: "hint" }, C.description) : null,
-        on || add ? h("div", { class: "row" }, on, add) : null));
+      on || add ? h("div", { class: "row case-off" }, on, add) : null);
   }
 }
 
@@ -248,8 +240,7 @@ export class IntroCase extends Case {
   static label = "Introduction";
   static description = "The layout in a short film: what is real in the lab, and what the app adds";
   static tags = ["explore"];
-  static task = "Watch the film: Play runs it, Next and Back go from scene to scene.";
-  static how = "Tap anything on the stage to see what it is; the film waits while its card is open.";
+  static steps = true;
   static icon = "intro";
 
   makePanel() {
@@ -276,7 +267,6 @@ export class SandboxCase extends Case {
   static label = "Sandbox";
   static description = "Look around freely: switch the modules on and off, show how the infrastructure ages and what people do";
   static tags = ["explore"];
-  static how = "Drag on the stage to turn the view, pinch or scroll to zoom; tap anything to see what it is.";
   static aliases = ["modules"];
   static icon = "sandbox";
   static allPhotos = true;
@@ -296,15 +286,14 @@ export class SandboxCase extends Case {
   }
 }
 
-/** A story to click through (core/story.js) in a StoryPanel; the flyover's camera follows it. */
+/** A story to click through (core/story.js) in a StoryPanel; while it runs, the flyover's camera follows it. */
 export class StoryCase extends Case {
   /** The prefix of the panel's ids ("infra": #infraStoryNext). */
   static prefix = "";
-  static task = "Follow the story to its end: Next goes on, Play runs it by itself.";
-  static how = "The camera follows the story; tap a vehicle or a person to see what it does.";
+  static steps = true;
 
   makePanel() {
-    return new StoryPanel(this.app, { prefix: this.constructor.prefix, type: this.constructor.needs });
+    return new StoryPanel(this.app, { prefix: this.constructor.prefix, type: this.constructor.needs, owner: this });
   }
 
   get story() {
@@ -312,8 +301,21 @@ export class StoryCase extends Case {
   }
 
   begin() {
+    // the flyover, its camera on the story from the start (from the photo it starts where the photo's camera stands)
     this.story?.restart();
-    this.panel.setFollow(true);
+    this.panel.update();
+    this.panel.aim();
+  }
+
+  /**
+   * Left after it was started: its story back at its beginning, not playing, so that the stage and the
+   * panel (which shows the first step until Start) agree. A story only shown is left as it is (the
+   * world's clock, the tracks it holds).
+   */
+  stop() {
+    const ran = this.started;
+    super.stop();
+    if (ran) this.story?.restart();
   }
 
   progress() {
@@ -327,7 +329,6 @@ export class PlanCase extends Case {
   static label = "Operations";
   static needs = "ops-plan";
   static example = "plan";
-  static how = "Each train says what does not work; choose another track, unit or driver until none does. Run plays the plan.";
 
   makePanel() {
     return new PlanPanel(this.app, { side: this.constructor.side });
@@ -365,14 +366,12 @@ export class TerminalCase extends Case {
   static label = "Load the hybrid train";
   static description = "Real model wagons with tags and a full yard: work orders for the crane, against the clock";
   static tags = ["evu", "freight"];
-  static task = "Carry out the work orders: three containers onto the real container train, a big one off it into the yard, two onto the real truck.";
-  static how = "Choose an order or a container, then its place: the crane takes it there. Stacks are at most three high; a 40 ft container needs two free bays side by side, or a 40 ft container below.";
   static speed = 10;
   static icon = "terminal";
   static needs = "terminal";
   static example = "terminal";
   static opens = "container-task";
-  /** With the visits, new arrivals, crane jobs and the speed. */
+  /** With the visits, new arrivals, crane jobs and the speed, and no task (the game page). */
   static full = false;
 
   constructor(app) {
@@ -395,7 +394,7 @@ export class TerminalCase extends Case {
   }
 
   makePanel() {
-    return new TerminalPanel(this.app, { full: this.constructor.full });
+    return new TerminalPanel(this.app, { full: this.constructor.full, owner: this });
   }
 
   add() {
@@ -405,7 +404,7 @@ export class TerminalCase extends Case {
   begin() {
     const app = this.app, t = terminalOf(app.world);
     // the task from the start: the terminal as the layout has it, no move made (without a task, as it is)
-    if (this.task && t) {
+    if (!this.constructor.full && t) {
       this.panel.cancelPick();
       this.panel.select(null);
       t.reset();
@@ -425,7 +424,7 @@ export class TerminalCase extends Case {
 
   /** The work orders done. */
   progress() {
-    const orders = this.task ? terminalOf(this.app.world)?.orders() : null;
+    const orders = this.constructor.full ? null : terminalOf(this.app.world)?.orders();
     return orders?.length ? { done: orders.filter((o) => o.done).length, of: orders.length } : null;
   }
 

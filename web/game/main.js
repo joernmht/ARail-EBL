@@ -52,8 +52,6 @@ class OperationsGame extends Case {
 class TerminalGame extends TerminalCase {
   static label = "Terminal";
   static description = "Container trains, trucks and barges: move the containers with the crane";
-  static task = "";
-  static how = "";
   static speed = null;
   static opens = null;
   static full = true;

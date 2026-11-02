@@ -1,5 +1,5 @@
 // End-to-end tests of the app as a presentation (Chromium): the maintenance story on Bf Neustadt to
-// click through (buttons, the list of steps, a presenter's clicker, Play, the camera that follows it),
+// click through (buttons, the bar of the steps, a presenter's clicker, Play, the camera that follows it),
 // the reduced Terminal tab, and the game page with the games on the lab's layout.
 import { expect, test } from "@playwright/test";
 import { caseReady, expectCase, openCase } from "./ui.js";
@@ -40,16 +40,20 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
   await expectCase(page, "infra-disruption");
-  await expect(page.locator("#casePanel h2").first()).toHaveText("Maintenance at Bf Neustadt");
+  await expect(page.locator("#scenarioName")).toHaveText("A signal fails");
   await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
 });
 
-test("the maintenance story: Next and Back, the list of steps, Start again and a clicker", async ({ page }) => {
+test("the maintenance story: Next and Back, the bar of the steps, Restart and a clicker", async ({ page }) => {
   const errors = await open(page, STORY);
   await expectCase(page, "infra-disruption");
   await expect(title(page)).toHaveText("The station in normal service");
-  await expect(page.locator("#casePanel .story-count")).toHaveText("Step 1 of 12");
+  await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 12");
+  // light in text: the controls, the bar of the steps and the step it is at, no story name or hints
+  await expect(page.locator("#casePanel .step-seg")).toHaveCount(12);
+  await expect(page.locator("#casePanel h2")).toHaveCount(0);
+  await expect(page.locator("#casePanel .hint")).toHaveCount(0);
   await expect(page.locator("#infraStoryBack")).toBeDisabled();
   expect(await storyDisruptions(page)).toEqual([]);
 
@@ -66,10 +70,20 @@ test("the maintenance story: Next and Back, the list of steps, Start again and a
   await expect(title(page)).toHaveText(/fails$/);
   expect(await storyDisruptions(page)).toEqual(["infra-fault@platform-2:left"]);
 
-  // a jump in the list of steps: the construction train on the renewed track
-  await page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" }).click();
+  // a jump on the bar of the steps: the construction train on the renewed track
+  const segment = page.locator('#casePanel .step-seg[title="The construction train arrives"]');
+  await segment.click();
   await expect(title(page)).toHaveText("The construction train arrives");
-  await expect(page.locator("#casePanel .story-steps button", { hasText: "The construction train arrives" })).toHaveAttribute("aria-current", "step");
+  await expect(segment).toHaveClass(/\bnow\b/);
+  // the bar is one slider: it says where the story is, and its arrow keys step along it
+  const bar = page.getByRole("slider", { name: "Steps" });
+  await expect(bar).toHaveAttribute("aria-valuetext", /^Step 9 of 12: The construction train arrives$/);
+  await bar.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(title(page)).toHaveText(/^A planned renewal/);
+  await expect(bar).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(title(page)).toHaveText("The construction train arrives");
   expect(await storyDisruptions(page)).toEqual(["track-closure@platform-2:right"]); // track G3
 
   // a presenter's clicker: Page Down and Page Up
@@ -79,7 +93,7 @@ test("the maintenance story: Next and Back, the list of steps, Start again and a
   await page.keyboard.press("PageUp");
   await expect(title(page)).toHaveText(/^A planned renewal/);
 
-  // Start again: the station in normal service, nothing disrupted
+  // Restart: the station in normal service, nothing disrupted
   await page.locator("#infraStoryRestart").click();
   await expect(title(page)).toHaveText("The station in normal service");
   expect(await storyDisruptions(page)).toEqual([]);
@@ -106,23 +120,107 @@ test("the maintenance story plays step after step until Play is released", async
   expect(errors).toEqual([]);
 });
 
-test("Camera follows opens the flyover and goes where the story happens", async ({ page }) => {
+test("the camera always follows the story once it runs; the bar starts it before Start and keeps the focus; a photo chosen by hand stays", async ({ page }) => {
   const errors = await open(page, STORY);
-  const follow = page.locator("#infraStoryFollow");
-  await expect(follow).toHaveAttribute("aria-pressed", "false"); // the camera view of the photo
-  await follow.click();
-  await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(follow).toHaveAttribute("aria-pressed", "true");
-  await page.locator("#casePanel .story-steps button", { hasText: "The team repairs the signal" }).click();
-  // the camera's target comes to the signal
-  await expect.poll(() => page.evaluate(() => {
+  const mode = () => page.evaluate(() => window.__arail.mode);
+  // shown by its link, not started: the stage stays as it is; there is no switch for the camera
+  expect(await mode()).toBe("camera");
+  await expect(page.locator("#infraStoryFollow")).toHaveCount(0);
+  // the keyboard on the bar before Start: the scenario starts in the flyover, the bar keeps the focus
+  const bar = page.locator("#infraStoryBar");
+  await bar.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText(/fails$/);
+  await expect(bar).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(title(page)).toHaveText(/^The signaller closes/);
+  // a step chosen on the bar: the camera on the signal
+  await page.locator('#casePanel .step-seg[title="The team repairs the signal"]').click();
+  await expect(title(page)).toHaveText("The team repairs the signal");
+  const off = () => page.evaluate(() => {
     const a = window.__arail, at = a.infra.story.view().at, t = a.flyover.cam.target;
     return Math.round(Math.hypot(t[0] - at[0], t[1] - at[1]));
-  }), { timeout: 15_000 }).toBeLessThan(50);
-  // off: the camera stays where it is
-  await follow.click();
-  await expect(follow).toHaveAttribute("aria-pressed", "false");
-  expect(await page.evaluate(() => window.__arail.flyover.following)).toBeNull();
+  });
+  await expect.poll(off, { timeout: 15_000 }).toBeLessThan(50);
+  // the photo chosen by hand stays (the story drawn on the real table) while the story goes on
+  await page.evaluate(() => window.__arail.flyover.leave());
+  await page.waitForFunction(() => window.__arail.mode === "camera");
+  await page.locator("#infraStoryNext").click();
+  await expect(title(page)).toHaveText(/exchanges the old signal$/);
+  expect(await mode()).toBe("camera");
+  // the flyover again: the next step takes its camera to the story
+  await page.evaluate(() => window.__arail.flyover.enter());
+  await page.locator("#infraStoryNext").click();
+  await expect.poll(off, { timeout: 15_000 }).toBeLessThan(80);
+  expect(errors).toEqual([]);
+});
+
+test("before Start no step is the one shown: Home on the bar, or its first segment, starts the scenario", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await expect(page.locator("#casePanel .step-seg.now")).toHaveCount(0);
+  // Page Up has no step before the first, as Back: it does not start the scenario
+  await page.locator("#infraStoryNext").focus();
+  await page.keyboard.press("PageUp");
+  expect(await page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.mode])).toEqual([false, "camera"]);
+  const bar = page.locator("#infraStoryBar");
+  await bar.focus();
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText("The station in normal service");
+  await expect(bar).toBeFocused();
+  await expect(page.locator("#casePanel .step-seg.now")).toHaveCount(1);
+  // started, a click on the first segment (the step shown) leaves it as it is
+  const t0 = await page.evaluate(() => window.__arail.infra.story.t);
+  await page.locator("#casePanel .step-seg").first().click();
+  expect(await page.evaluate(() => window.__arail.infra.story.t)).toBeGreaterThanOrEqual(t0);
+  expect(errors).toEqual([]);
+});
+
+test("left and shown again, a story's panel shows the step Start begins with", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await page.locator("#scenarioStart").click();
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started);
+  for (let i = 0; i < 3; i++) await page.locator("#infraStoryNext").click();
+  await expect(page.locator("#casePanel .step-count")).toHaveText("Step 4 of 12");
+  await page.locator("#infraStoryPlay").click();
+  // left: the story that ran goes back to its beginning and stops playing (stage and panel agree)
+  await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => { const s = window.__arail.infra.story; return [s.index, s.playing]; })).toEqual([0, false]);
+  await page.waitForFunction(() => !window.__arail._homing, null, { timeout: 30_000 });
+  await page.evaluate(() => window.__arail.selectTab("infra-disruption"));
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").ready, null, { timeout: 30_000 });
+  await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 12");
+  await expect(page.locator("#infraStoryBack")).toBeDisabled();
+  // Next starts it and goes on from there: step 2
+  await page.locator("#infraStoryNext").click();
+  await expect(title(page)).toHaveText(/fails$/);
+  expect(errors).toEqual([]);
+});
+
+test("a story only shown, not started, is left as it is when the list is shown (the journeys story keeps the clock)", async ({ page }) => {
+  const errors = await open(page, "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys");
+  await page.waitForFunction(() => window.__arail.journeys?.story, null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.caseById("journeys").started)).toBe(false);
+  await page.evaluate(() => window.__arail.world.setTime("17:00"));
+  await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => window.__arail.world.clock.minutes)).toBeGreaterThanOrEqual(17 * 60);
+  expect(errors).toEqual([]);
+});
+
+test("Start opens the flyover also when the story's first step has no place of its own", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await page.evaluate(() => (window.__arail.infra.story.view = () => null));
+  await page.locator("#scenarioStart").click();
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover", null, { timeout: 15_000 });
+  expect(errors).toEqual([]);
+});
+
+test("the first segment clicked before Start starts the scenario at its first step", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await page.locator("#casePanel .step-seg").first().click();
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
 });
 
@@ -133,7 +231,7 @@ test("the app's case Terminal moves containers; the visits are on the game page"
   await expect(panel).toBeVisible();
   await expect(panel.locator("h2", { hasText: "Containers" })).toBeVisible();
   for (const name of ["Arrivals", "New arrival", "Crane jobs"]) await expect(panel.locator("h2", { hasText: name })).toHaveCount(0);
-  await expect(panel).toContainText("Choose a container, in the list or on the layout, and its new place");
+  await expect(panel).toContainText("Choose a container, in the list or on the layout, and its new place"); // no task: the hint stays
   // a move: choose a container and a place in the yard
   const id = "ARLU 100001 9";
   await page.locator("#termList button", { hasText: id }).click();
