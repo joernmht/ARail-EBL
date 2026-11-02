@@ -285,6 +285,10 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   for (const key of ["End", "ArrowRight", "ArrowUp"]) await page.keyboard.press(key);
   await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
   expect(await done()).toBe(n);
+  // a click on the step shown too (it would start it again)
+  await page.locator("#casePanel .step-seg.now").click();
+  await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
+  expect(await done()).toBe(n);
   // and at its start: Home and ← do not start the first step again
   await page.keyboard.press("Home");
   await expect(stepCount(page)).toHaveText(`Step 1 of ${n}`);

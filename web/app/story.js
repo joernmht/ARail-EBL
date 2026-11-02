@@ -17,7 +17,8 @@ const AIM_MS = 1000;
 /**
  * The steps of a story or a film as a bar: a segment per step, full for those before, filled as far as
  * the one it is at has run. It is one slider: a click on a segment goes to its step (its title is the
- * segment's tooltip), the arrow keys, Home and End step along it. Then where it is ("Step 3 of 12"),
+ * segment's tooltip), the arrow keys, Home and End step along it; the step shown stays as it is (going
+ * there would start it again, and a finished story would not be done any more). Then where it is ("Step 3 of 12"),
  * and Done at its end (a status: screen readers say it).
  * @param {{id: string, titles: string[], index: number, part: number, active?: boolean, done?: boolean, word?: string, go: (i: number) => void}} o
  *   the slider's id (the panel drawn anew gives it the focus back), the steps' titles, the step it is
@@ -33,13 +34,13 @@ export function stepBar({ id, titles, index, part, active = true, done = false, 
       id, class: "step-segs", role: "slider", tabindex: "0", "aria-label": `${word}s`, "aria-valuemin": "1", "aria-valuemax": String(n), "aria-valuenow": String(at),
       "aria-valuetext": `${word} ${at} of ${n}: ${titles[index] ?? ""}`,
       onclick: (e) => {
-        const seg = e.target.closest?.(".step-seg");
-        if (seg) go(Number(seg.dataset.i));
+        const seg = e.target.closest?.(".step-seg"), i = Number(seg?.dataset.i);
+        if (seg && !(active && i === index)) go(i);
       },
       onkeydown: (e) => {
         if (!(e.key in keys)) return;
         e.preventDefault();
-        // at either end a key stays where it is: going to the step shown would start it again (and a finished story would not be done any more)
+        // at either end a key stays where it is
         const to = Math.max(0, Math.min(n - 1, keys[e.key]));
         if (to !== index) go(to);
       },
