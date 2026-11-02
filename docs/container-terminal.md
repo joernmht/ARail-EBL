@@ -461,7 +461,7 @@ the yard; and with all of these gone the yard still has no place for the big one
 side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the scenario **Load the hybrid train**) opens the example with the module
 on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
 clock (from Start until the last order is done) and the moves the crane finished; **Restart**
-begins anew. Every container of the task is in the photo; the barge and the yard's outer bays are
+begins anew, as Start does (the clock 10 times as fast again). Every container of the task is in the photo; the barge and the yard's outer bays are
 not (the flyover shows them).
 
 The module brings its own version of the layout's scenario **Loading the real train**

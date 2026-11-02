@@ -40,9 +40,9 @@ export function stepBar({ id, titles, index, part, active = true, done = false, 
       onkeydown: (e) => {
         if (!(e.key in keys)) return;
         e.preventDefault();
-        // at either end a key stays where it is
+        // at either end a key stays where it is (before it runs, any key starts it)
         const to = Math.max(0, Math.min(n - 1, keys[e.key]));
-        if (to !== index) go(to);
+        if (!active || to !== index) go(to);
       },
     }, titles.map((title, i) => h("span", { class: `step-seg${active && i === index ? " now" : ""}`, "data-i": String(i), title },
       h("i", { style: `--fill: ${Math.round(fill(i) * 100)}%` })))),
@@ -101,7 +101,8 @@ export class StoryPanel {
     morph(e.now,
       h("h3", { id: id("Title") }, st.step.title),
       h("p", {}, st.step.text));
-    morph(e.bar, stepBar({ id: id("Bar"), done: st.finished, titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
+    // before Start nothing runs yet: no step is the one shown, a click or a key starts the scenario
+    morph(e.bar, stepBar({ id: id("Bar"), active: this.running, done: this.running && st.finished, titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
     morph(e.controls,
       h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
       h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),

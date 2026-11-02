@@ -156,6 +156,31 @@ test("the camera always follows the story once it runs; the bar starts it before
   expect(errors).toEqual([]);
 });
 
+test("before Start no step is the one shown: Home on the bar, or its first segment, starts the scenario", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await expect(page.locator("#casePanel .step-seg.now")).toHaveCount(0);
+  const bar = page.locator("#infraStoryBar");
+  await bar.focus();
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText("The station in normal service");
+  await expect(bar).toBeFocused();
+  await expect(page.locator("#casePanel .step-seg.now")).toHaveCount(1);
+  // started, a click on the first segment (the step shown) leaves it as it is
+  const t0 = await page.evaluate(() => window.__arail.infra.story.t);
+  await page.locator("#casePanel .step-seg").first().click();
+  expect(await page.evaluate(() => window.__arail.infra.story.t)).toBeGreaterThanOrEqual(t0);
+  expect(errors).toEqual([]);
+});
+
+test("the first segment clicked before Start starts the scenario at its first step", async ({ page }) => {
+  const errors = await open(page, STORY);
+  await page.locator("#casePanel .step-seg").first().click();
+  await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover");
+  await expect(title(page)).toHaveText("The station in normal service");
+  expect(errors).toEqual([]);
+});
+
 test("the app's case Terminal moves containers; the visits are on the game page", async ({ page }) => {
   const errors = await open(page, "/app/?layout=../layouts/container-terminal.json#terminal");
   await page.waitForFunction(() => window.__arail.terminal.sim, null, { timeout: 30_000 });

@@ -245,7 +245,7 @@ export class TerminalPanel {
 
   _head(sim) {
     // a task: its time and moves are above the panel, the crane on the stage; saving would change the task
-    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.resetTerminal() }, "Restart"));
+    if (this._task(sim)) return h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "termReset", title: "The terminal as the task starts", onclick: () => this.restartTask() }, "Restart"));
     const open = sim.moves.filter((m) => m.state === "queued" || m.state === "active").length;
     const busy = [...sim.handlers.values()].map((x) => `${x.name}: ${PHASE_LABELS[x.phase] ?? x.phase}`);
     return [
@@ -258,6 +258,14 @@ export class TerminalPanel {
         this.full || !sim.orders().length ? h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state") : null,
       ),
     ];
+  }
+
+  /**
+   * Restart the task: its scenario started again (App.startCase), as Start did: the terminal as the
+   * task starts, the time and the moves from 0, the task's speed and its view.
+   */
+  restartTask() {
+    return this.owner ? this.app.startCase(this.owner.id) : this.resetTerminal();
   }
 
   /** Reset the terminal to its start state; a pick and the selection end. */

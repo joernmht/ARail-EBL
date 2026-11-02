@@ -205,17 +205,20 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await page.locator("#termMove").click();
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*2/, { timeout: 60_000 });
   await expect(orders.nth(0)).toContainText("under 1 container");
-  // Restart: the terminal as the layout has it, the time and the moves from 0
+  // Restart: the terminal as the layout has it, the time and the moves from 0, the task's speed again
   const before = await page.evaluate(() => window.__arail.world.time - window.__arail.caseById("terminal").since);
   expect(before).toBeGreaterThan(60);
+  await page.evaluate(() => (window.__arail.world.speed = 1)); // slowed down to watch a move
   await page.locator("#termReset").click();
   await expect(task(page)).toContainText("0 of 6");
   await expect(task(page).locator(".task-figures")).toContainText(/Moves\s*0/);
   expect(await page.evaluate(() => window.__arail.world.time - window.__arail.caseById("terminal").since)).toBeLessThan(30);
+  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(10);
+  await expect(page.locator("#termReset")).toBeFocused();
   await expect(orders.nth(0)).toContainText("under 2 containers");
-  // back to the list: the scenario stops, the clock runs as before
+  // back to the list: the scenario stops, the clock runs as before its (re)start
   await page.locator("#scenariosBack").click();
-  expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([2, false]);
+  expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([1, false]);
   // started again: a speed chosen meanwhile stays when it ends; another layout ends it
   await startScenario(page, "terminal");
   expect(await page.evaluate(() => window.__arail.world.speed)).toBe(10);
