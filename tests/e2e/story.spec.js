@@ -173,7 +173,7 @@ test("before Start no step is the one shown: Home on the bar, or its first segme
   expect(errors).toEqual([]);
 });
 
-test("left, a story goes back to its beginning: shown again, it shows the step Start begins with", async ({ page }) => {
+test("left and shown again, a story's panel shows the step Start begins with", async ({ page }) => {
   const errors = await open(page, STORY);
   await page.locator("#scenarioStart").click();
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started);
@@ -188,6 +188,16 @@ test("left, a story goes back to its beginning: shown again, it shows the step S
   // Next starts it and goes on from there: step 2
   await page.locator("#infraStoryNext").click();
   await expect(title(page)).toHaveText(/fails$/);
+  expect(errors).toEqual([]);
+});
+
+test("a story only shown, not started, is left as it is when the list is shown (the journeys story keeps the clock)", async ({ page }) => {
+  const errors = await open(page, "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys");
+  await page.waitForFunction(() => window.__arail.journeys?.story, null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.caseById("journeys").started)).toBe(false);
+  await page.evaluate(() => window.__arail.world.setTime("17:00"));
+  await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => window.__arail.world.clock.minutes)).toBeGreaterThanOrEqual(17 * 60);
   expect(errors).toEqual([]);
 });
 

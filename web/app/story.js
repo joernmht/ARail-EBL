@@ -98,16 +98,19 @@ export class StoryPanel {
       return;
     }
     const st = story.state(), id = (x) => `${this.prefix}Story${x}`;
+    // before Start the panel shows the first step, where Start begins (the story itself is left as it
+    // is: the world's clock, the tracks it holds); no step is the one shown on the bar, a click or a
+    // key starts the scenario
+    const run = this.running, index = run ? st.index : 0, step = st.steps[index];
     morph(e.now,
-      h("h3", { id: id("Title") }, st.step.title),
-      h("p", {}, st.step.text));
-    // before Start nothing runs yet: no step is the one shown, a click or a key starts the scenario
-    morph(e.bar, stepBar({ id: id("Bar"), active: this.running, done: this.running && st.finished, titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
+      h("h3", { id: id("Title") }, step.title),
+      h("p", {}, step.text));
+    morph(e.bar, stepBar({ id: id("Bar"), active: run, done: run && st.finished, titles: st.steps.map((s) => s.title), index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
     morph(e.controls,
-      h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
-      h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),
-      h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
-      h("button", { class: "btn", type: "button", id: id("Restart"), disabled: st.index === 0 && st.progress >= 1 && !st.playing, title: "The story from its beginning", onclick: () => this.restart() }, "Restart"));
+      h("button", { class: "btn", type: "button", id: id("Back"), disabled: index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
+      h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: run && st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, index === st.count - 1 ? "To the end" : "Next"),
+      h("button", { class: "btn", type: "button", id: id("Play"), "aria-pressed": run && st.playing ? "true" : "false", title: "Go on from step to step by itself", onclick: () => this.play() }, "Play"),
+      h("button", { class: "btn", type: "button", id: id("Restart"), disabled: !run || (st.index === 0 && st.progress >= 1 && !st.playing), title: "The story from its beginning", onclick: () => this.restart() }, "Restart"));
   }
 
   /**

@@ -307,11 +307,6 @@ export class StoryCase extends Case {
     this.panel.aim();
   }
 
-  /** Left: its story back at its beginning, so that the scenario shown again shows the step Start begins with. */
-  end() {
-    this.story?.restart();
-  }
-
   progress() {
     const st = this.story?.state();
     return st ? { done: st.finished ? st.count : st.index, of: st.count } : null;
