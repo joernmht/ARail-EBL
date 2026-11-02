@@ -80,8 +80,11 @@ export class TerminalPanel {
     this.refused = null;
     /** Values of the New arrival forms. */
     this.draft = { track: "", wagonType: "sgns60", wagons: "random", load: "random", quay: "", purpose: "pickup", size: "" };
-    /** Whether a model wagon was seen on this layout: then the task needs no Model wagons section. */
-    this.wagonsSeen = false;
+    /**
+     * The picture (app.source) in which a model wagon was seen since the task's Start, or null: in it
+     * the task needs no Model wagons section any more.
+     */
+    this.wagonsSeenIn = null;
     /** The cross in the middle of the flyover shows where Enter picks (after keys on the stage). */
     this.keyAim = false;
     this._sim = null;
@@ -119,7 +122,7 @@ export class TerminalPanel {
       this.stage = null;
       this.error = "";
       this.refused = null;
-      this.wagonsSeen = false;
+      this.wagonsSeenIn = null;
       this.renderPlacing();
     }
     return sim;
@@ -180,11 +183,13 @@ export class TerminalPanel {
       const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
       if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
-      // in a task only until a model wagon was seen (on this layout): the way to print their deck cards;
-      // a moment without any (a hand over the camera) does not bring it back
-      const task = this._task(sim);
-      if (sim.carriers().some((c) => c.number != null && c.present)) this.wagonsSeen = true;
-      this._show(e.wagons, sim.rollingConfig() && !(task && this.wagonsSeen) ? this._wagons(sim, task) : null);
+      // in a task only until a model wagon was seen in the picture shown (since Start): the way to print
+      // their deck cards; a moment without any (a hand over the camera) does not bring it back, another
+      // picture (the live camera) or Restart does
+      const task = this._task(sim), source = this.app.source ?? null;
+      if (sim.carriers().some((c) => c.number != null && c.present)) this.wagonsSeenIn = source;
+      const seen = !!source && this.wagonsSeenIn === source;
+      this._show(e.wagons, sim.rollingConfig() && !(task && seen) ? this._wagons(sim, task) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {
@@ -270,6 +275,7 @@ export class TerminalPanel {
    * task starts, the time and the moves from 0, the task's speed and its view.
    */
   restartTask() {
+    this.wagonsSeenIn = null;
     return this.owner ? this.app.startCase(this.owner.id) : this.resetTerminal();
   }
 

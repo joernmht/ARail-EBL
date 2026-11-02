@@ -200,12 +200,17 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
     const wagons = sim.carriers().filter((c) => c.number != null), was = wagons.map((c) => c.present);
     for (const c of wagons) c.present = false;
     p.update();
-    const shown = [...document.querySelectorAll("#casePanel h2")].some((h) => h.textContent.includes("Model wagons"));
+    const has = () => [...document.querySelectorAll("#casePanel h2")].some((h) => h.textContent.includes("Model wagons"));
+    const shown = has();
+    // in another picture (the live camera) without wagons, the hint and the deck cards' links come back
+    p.wagonsSeenIn = {};
+    p.update();
+    const other = has();
     // seen again (the photo is still: the tracker would not say it again by itself)
     wagons.forEach((c, i) => (c.present = was[i]));
     p.update();
-    return shown;
-  })).toBe(false);
+    return [shown, other, has()];
+  })).toEqual([false, true, false]);
   // the work orders, numbered as on the stage, with what is on top of each
   const orders = page.locator(".term-orders li");
   await expect(orders).toHaveCount(6);
