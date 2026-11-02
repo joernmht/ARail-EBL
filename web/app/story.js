@@ -39,7 +39,9 @@ export function stepBar({ id, titles, index, part, active = true, done = false, 
       onkeydown: (e) => {
         if (!(e.key in keys)) return;
         e.preventDefault();
-        go(Math.max(0, Math.min(n - 1, keys[e.key])));
+        // at either end a key stays where it is: going to the step shown would start it again (and a finished story would not be done any more)
+        const to = Math.max(0, Math.min(n - 1, keys[e.key]));
+        if (to !== index) go(to);
       },
     }, titles.map((title, i) => h("span", { class: `step-seg${active && i === index ? " now" : ""}`, "data-i": String(i), title },
       h("i", { style: `--fill: ${Math.round(fill(i) * 100)}%` })))),

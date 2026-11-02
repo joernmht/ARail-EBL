@@ -280,6 +280,18 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   await page.locator("#opsStoryNext").click(); // To the end
   await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
   expect(await done()).toBe(n);
+  // the keys at the end of the bar stay there: the story stays done
+  await page.locator("#opsStoryBar").focus();
+  for (const key of ["End", "ArrowRight", "ArrowUp"]) await page.keyboard.press(key);
+  await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
+  expect(await done()).toBe(n);
+  // and at its start: Home and ← do not start the first step again
+  await page.keyboard.press("Home");
+  await expect(stepCount(page)).toHaveText(`Step 1 of ${n}`);
+  await page.waitForFunction(() => window.__arail.caseById("evu-disruption").story.progress >= 0.3, null, { timeout: 30_000 });
+  const t = await page.evaluate(() => window.__arail.caseById("evu-disruption").story.t);
+  for (const key of ["Home", "ArrowLeft", "ArrowDown"]) await page.keyboard.press(key);
+  expect(await page.evaluate(() => window.__arail.caseById("evu-disruption").story.t)).toBeGreaterThanOrEqual(t);
   expect(errors).toEqual([]);
 });
 
