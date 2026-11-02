@@ -3,8 +3,8 @@
 // takes the stage to its place, the photo alone, the photo with what the app draws over it, or the
 // flyover over the place, outlines what it is about (real things in Türkis, virtual ones in
 // Orange) and says it in a few sentences with its figures. The panel is light in text: the scene
-// shown; below it the bar of the scenes (a click on a segment jumps there); then Back, Play, Next and
-// Restart in one row. Play goes on from scene to scene by itself, the camera turning slowly as in a film; a
+// shown; below it the bar of the scenes (a click on a segment jumps there); then Back, Next, Play and
+// Restart in one row, as in a story. Play goes on from scene to scene by itself, the camera turning slowly as in a film; a
 // presenter's clicker (Page Down, Page Up) steps too. While the card of something tapped on the
 // stage is open, the film waits.
 import { introScenes, objectPickable, OVERLAY, toRad } from "../arail/index.js";
@@ -92,8 +92,8 @@ export class IntroPanel {
     const last = this.index >= scenes.length - 1;
     morph(e.controls,
       h("button", { class: "btn", type: "button", id: "introBack", disabled: !this.active || this.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
-      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
       h("button", { class: "btn", type: "button", id: "introNext", disabled: this.active && last, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, "Next"),
+      h("button", { class: "btn primary", type: "button", id: "introPlay", "aria-pressed": this.playing ? "true" : "false", title: "Go on from scene to scene by itself", onclick: () => this.play() }, "Play"),
       h("button", { class: "btn", type: "button", id: "introRestart", disabled: !this.active || (this.index === 0 && !this.playing), title: "The film from its beginning", onclick: () => this.restart({ play: false }) }, "Restart"),
     );
     // the scene shown is full, unless the film plays: then as far as its time has run

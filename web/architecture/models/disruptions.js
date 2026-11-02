@@ -122,7 +122,7 @@ export const DISRUPTIONS = [
   },
   {
     id: "stories", group: "disruptions", title: "Stories to click through",
-    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's scenarios show them with Back, Next, Play and Start again (A train breaks down: the operations story; A signal fails: the maintenance story; A traveller's journey: the journeys story). The introduction of a layout is a film of scenes made from the layout itself.",
+    summary: "A story is a simulation with steps (a title, a text, the seconds its animation runs) that a presenter clicks through: the app's scenarios show only the step they are at, the bar of the steps, and Back, Next, Play and Restart (the flyover's camera following) (A train breaks down: the operations story; A signal fails: the maintenance story; A traveller's journey: the journeys story). The introduction of a layout is a film of scenes made from the layout itself.",
     description: "What the world shows is a function of the step and of how far its animation has run: a scripted story composes that picture (`compose`) and draws it, and starts and stops the disruptions of the picture, so Back, Next and a jump always show the same. A story that drives the engine of a simulation instead (`replay`) starts again and replays the steps before the one it goes to. `view()` tells the app's flyover where to look, and may say from which side (`yaw_deg`). The maintenance story of the infrastructure, the operations story and the journeys story are scripted stories. The introduction (introScenes) is no simulation: its scenes are made from any layout, what is real in the lab (real tables, tracks and platforms, the markers) and what the app adds (the town, streets and lines, people, table modules, the terminal, the modules), each with its place, the objects it is about and its figures; the app plays them as a film (app/intro.js).",
     files: ["web/arail/core/story.js", "web/arail/core/intro.js"],
     classes: [
@@ -149,11 +149,11 @@ export const DISRUPTIONS = [
       id: "goto", name: "Going to a step (Story.goTo)",
       nodes: [
         ["s", "start"],
-        ["a1", "action", "Next, Back, a step chosen, Play, a clicker", "Story.goTo", "presenter"],
+        ["a1", "action", "Next, Back, a step chosen on the bar, Play, a clicker", "Story.goTo", "presenter"],
         ["d1", "decision", "A story that drives an engine?"],
         ["d2", "decision", "The very next step?"],
         ["a2", "action", "Run the step shown to its end", "Story.settle"],
-        ["a3", "action", "Start again; replay the steps before, each begun and run to its end", "Story.reset"],
+        ["a3", "action", "From the engine's start: replay the steps before, each begun and run to its end", "Story.reset"],
         ["m1", "merge"],
         ["a4", "action", "Begin the step", "Story.enter"],
         ["m2", "merge"],

@@ -179,7 +179,10 @@ test("left and shown again, a story's panel shows the step Start begins with", a
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started);
   for (let i = 0; i < 3; i++) await page.locator("#infraStoryNext").click();
   await expect(page.locator("#casePanel .step-count")).toHaveText("Step 4 of 12");
+  await page.locator("#infraStoryPlay").click();
+  // left: the story that ran goes back to its beginning and stops playing (stage and panel agree)
   await page.locator("#scenariosBack").click();
+  expect(await page.evaluate(() => { const s = window.__arail.infra.story; return [s.index, s.playing]; })).toEqual([0, false]);
   await page.waitForFunction(() => !window.__arail._homing, null, { timeout: 30_000 });
   await page.evaluate(() => window.__arail.selectTab("infra-disruption"));
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").ready, null, { timeout: 30_000 });

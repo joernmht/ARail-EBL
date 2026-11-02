@@ -307,6 +307,17 @@ export class StoryCase extends Case {
     this.panel.aim();
   }
 
+  /**
+   * Left after it was started: its story back at its beginning, not playing, so that the stage and the
+   * panel (which shows the first step until Start) agree. A story only shown is left as it is (the
+   * world's clock, the tracks it holds).
+   */
+  stop() {
+    const ran = this.started;
+    super.stop();
+    if (ran) this.story?.restart();
+  }
+
   progress() {
     const st = this.story?.state();
     return st ? { done: st.finished ? st.count : st.index, of: st.count } : null;
