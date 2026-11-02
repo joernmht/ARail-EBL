@@ -159,6 +159,10 @@ test("the camera always follows the story once it runs; the bar starts it before
 test("before Start no step is the one shown: Home on the bar, or its first segment, starts the scenario", async ({ page }) => {
   const errors = await open(page, STORY);
   await expect(page.locator("#casePanel .step-seg.now")).toHaveCount(0);
+  // Page Up has no step before the first, as Back: it does not start the scenario
+  await page.locator("#infraStoryNext").focus();
+  await page.keyboard.press("PageUp");
+  expect(await page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.mode])).toEqual([false, "camera"]);
   const bar = page.locator("#infraStoryBar");
   await bar.focus();
   await page.keyboard.press("Home");

@@ -166,10 +166,14 @@ export class IntroPanel {
     this.update();
   }
 
-  /** The film stops (its case is left): the stage keeps where it is, the photo shows everything again. */
+  /**
+   * The film stops (its case is left): the stage keeps where it is, the photo shows everything again;
+   * shown again, the panel shows the first scene, where Start begins.
+   */
   stop() {
     this.active = false;
     this.playing = false;
+    this.index = 0;
     clearTimeout(this._timer);
     clearTimeout(this._drift);
     this._photo = null;
@@ -269,6 +273,8 @@ export class IntroPanel {
    */
   key(e) {
     if ((e.key !== "PageDown" && e.key !== "PageUp") || e.target.closest?.("#stageWrap")) return false;
+    // before Start there is no scene before the first (Back is off): Page Up does nothing either
+    if (e.key === "PageUp" && !this.active) return false;
     if (e.key === "PageDown") this.next();
     else this.back();
     return true;

@@ -194,6 +194,8 @@ export class StoryPanel {
    */
   key(e) {
     if (!this.story || (e.key !== "PageDown" && e.key !== "PageUp") || e.target.closest?.("#stageWrap")) return false;
+    // before Start there is no step before the first (Back is off): Page Up does nothing either
+    if (e.key === "PageUp" && !this.running) return false;
     if (e.key === "PageDown") this.next();
     else this.back();
     return true;

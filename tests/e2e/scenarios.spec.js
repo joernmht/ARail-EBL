@@ -127,6 +127,11 @@ test("the Introduction's Play, Next and scenes work before Start: they start it"
   await page.locator("#scenariosBack").click();
   await page.evaluate(() => window.__arail.selectTab("intro"));
   expect(await film()).toMatchObject({ started: false, active: false });
+  // shown again, the panel shows the first scene, where Start begins; Page Up does nothing before Start
+  await expect(stepCount(page)).toHaveText(/^Scene 1 of /);
+  await page.locator("#introNext").focus();
+  await page.keyboard.press("PageUp");
+  expect(await film()).toMatchObject({ started: false, active: false });
   await page.locator("#introNext").click();
   await expect.poll(film).toMatchObject({ started: true, id: "real", playing: false, active: true });
   await page.locator("#scenariosBack").click();
