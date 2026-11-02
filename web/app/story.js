@@ -17,13 +17,14 @@ const AIM_MS = 1000;
 /**
  * The steps of a story or a film as a bar: a segment per step, full for those before, filled as far as
  * the one it is at has run. It is one slider: a click on a segment goes to its step (its title is the
- * segment's tooltip), the arrow keys, Home and End step along it. Then where it is ("Step 3 of 12").
- * @param {{id: string, titles: string[], index: number, part: number, active?: boolean, word?: string, go: (i: number) => void}} o
+ * segment's tooltip), the arrow keys, Home and End step along it. Then where it is ("Step 3 of 12"),
+ * and Done at its end (a status: screen readers say it).
+ * @param {{id: string, titles: string[], index: number, part: number, active?: boolean, done?: boolean, word?: string, go: (i: number) => void}} o
  *   the slider's id (the panel drawn anew gives it the focus back), the steps' titles, the step it is
- *   at and how far it has run (0…1), whether it runs (else nothing is filled), "Step" or "Scene", and
- *   what a click or a key does
+ *   at and how far it has run (0…1), whether it runs (else nothing is filled), whether its task is
+ *   done, "Step" or "Scene", and what a click or a key does
  */
-export function stepBar({ id, titles, index, part, active = true, word = "Step", go }) {
+export function stepBar({ id, titles, index, part, active = true, done = false, word = "Step", go }) {
   const n = titles.length, at = Math.min(index + 1, n);
   const fill = (i) => (!active ? 0 : i < index ? 1 : i === index ? Math.max(0, Math.min(1, part)) : 0);
   const keys = { ArrowLeft: index - 1, ArrowDown: index - 1, ArrowRight: index + 1, ArrowUp: index + 1, Home: 0, End: n - 1 };
@@ -42,7 +43,9 @@ export function stepBar({ id, titles, index, part, active = true, word = "Step",
       },
     }, titles.map((title, i) => h("span", { class: `step-seg${active && i === index ? " now" : ""}`, "data-i": String(i), title },
       h("i", { style: `--fill: ${Math.round(fill(i) * 100)}%` })))),
-    h("span", { class: "step-count", "aria-hidden": "true" }, `${word} ${at} of ${n}`));
+    h("span", { class: "step-count" }, h("span", { "aria-hidden": "true" }, `${word} ${at} of ${n}`),
+      // always there, so that its text is announced when it comes
+      h("span", { class: "step-done", role: "status" }, done ? "Done" : "")));
 }
 
 export class StoryPanel {
@@ -95,7 +98,7 @@ export class StoryPanel {
     morph(e.now,
       h("h3", { id: id("Title") }, st.step.title),
       h("p", {}, st.step.text));
-    morph(e.bar, stepBar({ id: id("Bar"), titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
+    morph(e.bar, stepBar({ id: id("Bar"), done: st.finished, titles: st.steps.map((s) => s.title), index: st.index, part: st.step.seconds > 0 ? st.progress : 1, go: (i) => this.goTo(i) }));
     morph(e.controls,
       h("button", { class: "btn", type: "button", id: id("Back"), disabled: st.index === 0, title: "Page Up", "aria-keyshortcuts": "PageUp", onclick: () => this.back() }, "Back"),
       h("button", { class: "btn primary", type: "button", id: id("Next"), disabled: st.finished, title: "Page Down", "aria-keyshortcuts": "PageDown", onclick: () => this.next() }, st.index === st.count - 1 ? "To the end" : "Next"),

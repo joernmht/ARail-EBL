@@ -90,15 +90,17 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   await page.locator("#introNext").click();
   expect(await film()).toMatchObject({ id: "station", mode: "flyover" });
   const count = (await film()).count;
-  await expect(stepCount(page)).toHaveText(`Scene 4 of ${count}`);
+  await expect(stepCount(page)).toHaveText(`Scene 4 of ${count}`); // not done yet: no Done
   await expect(segments(page)).toHaveCount(count);
   await expect(segments(page).nth(3)).toHaveClass(/\bnow\b/);
   // the bar is one slider: it says the scene shown
   await expect(page.locator("#casePanel [role=slider]")).toHaveAttribute("aria-valuenow", "4");
-  // the bar of the scenes jumps; the last one: back to the photo, the task is done
+  // the bar of the scenes jumps; the last one: back to the photo, the task is done, and Done says so
+  await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("");
   await segments(page).last().click();
   expect(await film()).toMatchObject({ id: "end", mode: "camera" });
-  await expect(stepCount(page)).toHaveText(`Scene ${count} of ${count}`);
+  await expect(stepCount(page)).toHaveText(`Scene ${count} of ${count}Done`);
+  await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
   expect(await page.evaluate(() => window.__arail.caseById("intro").done)).toBe(true);
   await expect(page.locator("#introNext")).toBeDisabled();
   // back to the list: the film stops, the photo shows everything; the card says it was done
@@ -178,8 +180,9 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await expect(page.locator("#scenarioStart")).toHaveCount(0);
   await expect(page.locator("#termSave")).toHaveCount(0);
   await expect(page.locator("#termStatus")).toHaveCount(0);
-  // the camera finds the real wagons and the truck by their tags in the photo
+  // the camera finds the real wagons and the truck by their tags in the photo; seen, the task needs no model wagons section
   await page.waitForFunction(() => window.__arail.terminal.sim.carriers().filter((c) => c.number != null && c.present).length >= 5, null, { timeout: 30_000 });
+  await expect(page.locator("#casePanel h2", { hasText: "Model wagons" })).toHaveCount(0);
   // the work orders, numbered as on the stage, with what is on top of each
   const orders = page.locator(".term-orders li");
   await expect(orders).toHaveCount(6);
@@ -227,10 +230,11 @@ test("the loading task's layout shown, its scenario not started: the terminal's 
   const errors = await open(page, "/app/?layout=../layouts/ebl-container-train.json&layers=task#terminal");
   await page.waitForFunction(() => window.__arail.terminal.sim?.orders().length, null, { timeout: 30_000 });
   await expect(page.locator("#scenarioStart")).toHaveText("Start");
-  // not started: no task yet, the terminal as a tool (its state, Reset terminal, Save as start state)
+  // not started: no task yet, the terminal as a tool (its state, Reset terminal), but no Save as start
+  // state: it would change the task's start
   await expect(page.locator("#termReset")).toHaveText("Reset terminal");
-  await expect(page.locator("#termSave")).toBeVisible();
   await expect(page.locator("#termStatus")).toBeVisible();
+  await expect(page.locator("#termSave")).toHaveCount(0);
   // started: only what the task needs
   await page.locator("#scenarioStart").click();
   await page.waitForFunction(() => window.__arail.caseById("terminal").started, null, { timeout: 30_000 });
@@ -271,6 +275,11 @@ test("A train breaks down: Start switches on its module, the camera follows the 
   await page.locator("#opsStoryNext").click();
   await expect(stepCount(page)).toHaveText(`Step 3 of ${n}`);
   expect(await done()).toBe(2);
+  // its last step to the end: Done beside the bar, a status
+  await page.locator("#casePanel .step-seg").last().click();
+  await page.locator("#opsStoryNext").click(); // To the end
+  await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("Done");
+  expect(await done()).toBe(n);
   expect(errors).toEqual([]);
 });
 

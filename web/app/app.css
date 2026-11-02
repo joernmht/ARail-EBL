@@ -674,7 +674,9 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent-ink);
 .step-seg > i { display: block; flex: 1; height: 6px; border-radius: 3px; background: linear-gradient(var(--accent), var(--accent)) left / var(--fill, 0%) 100% no-repeat, var(--line); transition: background-size .3s linear; }
 .step-seg.now > i { height: 9px; }
 .step-seg:hover > i { box-shadow: 0 0 0 1px var(--accent); }
-.step-count { color: var(--text-2); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step-count { display: flex; gap: 6px; color: var(--text-2); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.step-done { color: var(--accent-ink); font-weight: 700; }
+.step-done:empty { display: none; }
 @media (forced-colors: active) {
   .step-seg > i { forced-color-adjust: none; border: 1px solid CanvasText; background: linear-gradient(Highlight, Highlight) left / var(--fill, 0%) 100% no-repeat, Canvas; }
 }

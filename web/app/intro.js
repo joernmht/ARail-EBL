@@ -98,7 +98,7 @@ export class IntroPanel {
     );
     // the scene shown is full, unless the film plays: then as far as its time has run
     const part = this.playing ? (performance.now() - this._t0) / (s.seconds * 1000) : 1;
-    morph(e.bar, stepBar({ id: "introBar", titles: scenes.map((x) => x.title), index: this.index, part, active: this.active, word: "Scene", go: (i) => this.goTo(i) }));
+    morph(e.bar, stepBar({ id: "introBar", done: this.active && this.seen >= scenes.length, titles: scenes.map((x) => x.title), index: this.index, part, active: this.active, word: "Scene", go: (i) => this.goTo(i) }));
     morph(e.now,
       h("p", { class: "intro-meta" }, h("span", { class: `intro-kind ${s.kind}` }, KINDS[s.kind])),
       h("h3", { id: "introTitle" }, s.title),

@@ -177,7 +177,9 @@ export class TerminalPanel {
       const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
       if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
-      this._show(e.wagons, sim.rollingConfig() && !this._task(sim) ? this._wagons(sim) : null);
+      // in a task only while no model wagon is seen: then the way to print their deck cards
+      const task = this._task(sim), seen = task && sim.carriers().some((c) => c.number != null && c.present);
+      this._show(e.wagons, sim.rollingConfig() && !seen ? this._wagons(sim, task) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {
@@ -252,7 +254,8 @@ export class TerminalPanel {
       this.full ? null : h("p", { class: "hint" }, "Choose a container, in the list or on the layout, and its new place: the crane or the reach stacker moves it."),
       h("div", { class: "row" },
         h("button", { class: "btn small", type: "button", id: "termReset", onclick: () => this.resetTerminal() }, "Reset terminal"),
-        h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state"),
+        // the app's terminal with work orders: saving would change the task's start (also before its Start)
+        this.full || !sim.orders().length ? h("button", { class: "btn small", type: "button", id: "termSave", onclick: () => this.saveStart() }, "Save as start state") : null,
       ),
     ];
   }
@@ -669,8 +672,20 @@ export class TerminalPanel {
 
   /* ---------------------------------------------------------------- model wagons */
 
-  _wagons(sim) {
+  /**
+   * The model wagons: per unit its card (the game page), per wagon its type, the tags seen, its state
+   * and containers, and the links that print their deck cards. In a task (no wagon seen yet) only the
+   * hint and the links.
+   */
+  _wagons(sim, task = false) {
     const wagons = sim.markerWagons(), units = sim.modelUnits();
+    if (task) {
+      return [
+        h("h2", {}, "Model wagons"),
+        h("p", { class: "hint" }, "No model wagons seen yet. Show the camera a wagon with its deck card."),
+        h("p", { class: "hint" }, "Model wagons are recognised by the tags of their deck cards. ", ...this._deckLinks(sim)),
+      ];
+    }
     return [
       h("h2", {}, "Model wagons"),
       // the real train and the real truck: unloaded and loaded as a whole, like a visit
