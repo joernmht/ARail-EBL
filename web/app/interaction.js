@@ -147,7 +147,9 @@ export class Interaction {
     morph(this.taskBox,
       p ? h("div", { class: "task-progress" },
         h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "scenarioName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(n), "aria-valuetext": `${n} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
-        h("span", { class: "task-count", role: "status" }, c.done ? "Done" : `${n} of ${p.of}`)) : null,
+        h("span", { class: "task-count" }, `${n} of ${p.of}`),
+        // always there, so that Done is announced when it comes (and not every count)
+        h("span", { class: "task-done", role: "status" }, c.done ? "Done" : "")) : null,
       figures ? h("dl", { class: "task-figures" }, figures.map(([k, v]) => h("div", {}, h("dt", {}, k), h("dd", {}, v)))) : null);
   }
 }

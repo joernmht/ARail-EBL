@@ -176,6 +176,9 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
     .toEqual(["ebl-container-train.json", ["task"], "camera", 10]);
   // light in text: the bar of the work orders with the time and the moves, no task text, no Save
   await expect(task(page)).toContainText("0 of 6");
+  // only Done is announced, not every count
+  await expect(task(page).locator(".task-count")).not.toHaveAttribute("role", "status");
+  await expect(task(page).locator(".task-done[role=status]")).toHaveText("");
   await expect(task(page).locator(".task-figures")).toContainText(/Time\s*\d+:\d\d min\s*Moves\s*0/);
   await expect(page.locator("#scenarioStart")).toHaveCount(0);
   await expect(page.locator("#termSave")).toHaveCount(0);

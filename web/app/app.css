@@ -313,8 +313,10 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .scenario-head { display: grid; gap: 10px; justify-items: start; margin-bottom: 14px; }
 .scenario-head h2 { margin: 0; font-size: 1.3rem; line-height: 1.25; }
 .scenario-task { display: grid; gap: 6px; margin-bottom: 18px; }
-.task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
 .task-count { font-weight: 600; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.task-done { font-weight: 700; font-size: .86rem; color: var(--accent-ink); }
+.task-done:empty { display: none; }
 .task-figures { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: .86rem; }
 .task-figures div { display: flex; gap: 6px; }
 .task-figures dt { color: var(--text-2); }
