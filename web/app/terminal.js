@@ -80,6 +80,8 @@ export class TerminalPanel {
     this.refused = null;
     /** Values of the New arrival forms. */
     this.draft = { track: "", wagonType: "sgns60", wagons: "random", load: "random", quay: "", purpose: "pickup", size: "" };
+    /** Whether a model wagon was seen on this layout: then the task needs no Model wagons section. */
+    this.wagonsSeen = false;
     /** The cross in the middle of the flyover shows where Enter picks (after keys on the stage). */
     this.keyAim = false;
     this._sim = null;
@@ -117,6 +119,7 @@ export class TerminalPanel {
       this.stage = null;
       this.error = "";
       this.refused = null;
+      this.wagonsSeen = false;
       this.renderPlacing();
     }
     return sim;
@@ -177,9 +180,11 @@ export class TerminalPanel {
       const anchor = this.chosenIn === "orders" && !e.orders.hidden ? e.orders : e.containers;
       if (e.move.previousElementSibling !== anchor) anchor.after(e.move);
       this._show(e.jobs, this.full ? this._jobs(sim) : null);
-      // in a task only while no model wagon is seen: then the way to print their deck cards
-      const task = this._task(sim), seen = task && sim.carriers().some((c) => c.number != null && c.present);
-      this._show(e.wagons, sim.rollingConfig() && !seen ? this._wagons(sim, task) : null);
+      // in a task only until a model wagon was seen (on this layout): the way to print their deck cards;
+      // a moment without any (a hand over the camera) does not bring it back
+      const task = this._task(sim);
+      if (sim.carriers().some((c) => c.number != null && c.present)) this.wagonsSeen = true;
+      this._show(e.wagons, sim.rollingConfig() && !(task && this.wagonsSeen) ? this._wagons(sim, task) : null);
     }
     if (card && (!active.isConnected || active.closest(".stop[data-id]")?.dataset.id !== card)) this._focusCard(cards, card);
     else if (inside && !active.isConnected) {

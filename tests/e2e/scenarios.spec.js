@@ -97,6 +97,7 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   await expect(page.locator("#casePanel [role=slider]")).toHaveAttribute("aria-valuenow", "4");
   // the bar of the scenes jumps; the last one: back to the photo, the task is done, and Done says so
   await expect(page.locator("#casePanel .step-done[role=status]")).toHaveText("");
+  expect(await page.locator("#casePanel .step-done").evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
   await segments(page).last().click();
   expect(await film()).toMatchObject({ id: "end", mode: "camera" });
   await expect(stepCount(page)).toHaveText(`Scene ${count} of ${count}Done`);
@@ -179,6 +180,8 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   // only Done is announced, not every count
   await expect(task(page).locator(".task-count")).not.toHaveAttribute("role", "status");
   await expect(task(page).locator(".task-done[role=status]")).toHaveText("");
+  // empty, it is hidden but stays in the accessibility tree, so that Done is announced
+  expect(await task(page).locator(".task-done").evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
   await expect(task(page).locator(".task-figures")).toContainText(/Time\s*\d+:\d\d min\s*Moves\s*0/);
   await expect(page.locator("#scenarioStart")).toHaveCount(0);
   await expect(page.locator("#termSave")).toHaveCount(0);
@@ -186,6 +189,18 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   // the camera finds the real wagons and the truck by their tags in the photo; seen, the task needs no model wagons section
   await page.waitForFunction(() => window.__arail.terminal.sim.carriers().filter((c) => c.number != null && c.present).length >= 5, null, { timeout: 30_000 });
   await expect(page.locator("#casePanel h2", { hasText: "Model wagons" })).toHaveCount(0);
+  // a moment without any wagon (a hand over the camera) does not bring the section back
+  expect(await page.evaluate(() => {
+    const a = window.__arail, sim = a.terminal.sim, p = a.caseById("terminal").panel;
+    const wagons = sim.carriers().filter((c) => c.number != null), was = wagons.map((c) => c.present);
+    for (const c of wagons) c.present = false;
+    p.update();
+    const shown = [...document.querySelectorAll("#casePanel h2")].some((h) => h.textContent.includes("Model wagons"));
+    // seen again (the photo is still: the tracker would not say it again by itself)
+    wagons.forEach((c, i) => (c.present = was[i]));
+    p.update();
+    return shown;
+  })).toBe(false);
   // the work orders, numbered as on the stage, with what is on top of each
   const orders = page.locator(".term-orders li");
   await expect(orders).toHaveCount(6);

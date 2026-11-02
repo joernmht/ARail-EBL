@@ -316,7 +316,8 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 .task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
 .task-count { font-weight: 600; font-size: .86rem; font-variant-numeric: tabular-nums; }
 .task-done { font-weight: 700; font-size: .86rem; color: var(--accent-ink); }
-.task-done:empty { display: none; }
+/* empty, the status stays in the accessibility tree (so that Done is announced when it comes), only hidden */
+.task-done:empty, .step-done:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .task-figures { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: .86rem; }
 .task-figures div { display: flex; gap: 6px; }
 .task-figures dt { color: var(--text-2); }
@@ -678,7 +679,6 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent-ink);
 .step-seg:hover > i { box-shadow: 0 0 0 1px var(--accent); }
 .step-count { display: flex; gap: 6px; color: var(--text-2); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .step-done { color: var(--accent-ink); font-weight: 700; }
-.step-done:empty { display: none; }
 @media (forced-colors: active) {
   .step-seg > i { forced-color-adjust: none; border: 1px solid CanvasText; background: linear-gradient(Highlight, Highlight) left / var(--fill, 0%) 100% no-repeat, Canvas; }
 }
