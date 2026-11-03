@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import { LANGUAGES, OPS_DEFAULTS, Person, Population, createRng, makeStaff, normalizeOps, pickHome } from "../../web/arail/index.js";
+import { ROOT } from "./helpers.js";
 
 test("people: names are two birds of one language (shown as S. Fink), stable for a seed and key, unique in a population", () => {
   assert.equal(LANGUAGES.reduce((s, l) => s + l.weight, 0), 100, "the weights are per cent");
@@ -62,4 +65,54 @@ test("people: crews of all roles come from one population", () => {
   assert.ok(staff.every((p) => p instanceof Person));
   assert.equal(new Set(staff.map((p) => p.name)).size, 60, "names unique over the roles");
   assert.equal(pop.size, 60);
+});
+
+/** Is it a name made of birds: "S. Fink", "M. van Kraai" or a bare "Fink", initial and family of one language? */
+function isBirdName(name) {
+  const m = /^(?:(\p{L})\. )?(?:(\p{L}+) )?(\p{L}+)$/u.exec(name);
+  if (!m) return false;
+  const [, initial, particle, family] = m;
+  return LANGUAGES.some((l) => l.birds.includes(family)
+    && (!particle || particle in (l.particles ?? {}))
+    && (!initial || l.birds.some((b) => b[0] === initial && b !== family)));
+}
+
+/** The JSON files of a folder and its subfolders. */
+const jsonFiles = (dir) => readdirSync(join(ROOT, dir), { recursive: true }).filter((f) => f.endsWith(".json")).map((f) => join(dir, f));
+
+/** The names of the people in some JSON: the `name` of each entry of an array under a key for people. */
+function peopleNames(value, out = [], key = "") {
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      if (PEOPLE_KEYS.has(key) && v && typeof v === "object" && typeof v.name === "string") out.push(v.name);
+      peopleNames(v, out);
+    }
+  } else if (value && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) peopleNames(v, out, k);
+  }
+  return out;
+}
+const PEOPLE_KEYS = new Set(["drivers", "conductors", "crew", "crews", "staff", "people", "persons", "residents", "members", "workers"]);
+
+test("people: names written by hand (layouts, examples, the guides) are birds too, so nobody resembles a real person", () => {
+  assert.ok(isBirdName("S. Fink") && isBirdName("M. van Kraai") && isBirdName("W. Sokół") && isBirdName("Fink"));
+  assert.ok(!isBirdName("Weber") && !isBirdName("A. Berg") && !isBirdName("A. van Fink"), "real names, or a particle of another language");
+  const found = [];
+  for (const f of [...jsonFiles("web/layouts"), ...jsonFiles("examples")]) {
+    for (const name of peopleNames(JSON.parse(readFileSync(join(ROOT, f), "utf8")))) found.push([f, name]);
+  }
+  for (const f of readdirSync(join(ROOT, "docs")).filter((x) => x.endsWith(".md"))) {
+    for (const [, block] of readFileSync(join(ROOT, "docs", f), "utf8").matchAll(/```json\n([\s\S]*?)```/g)) {
+      let data;
+      try {
+        data = JSON.parse(block);
+      } catch {
+        continue;
+      }
+      for (const name of peopleNames(data)) found.push([`docs/${f}`, name]);
+    }
+  }
+  assert.ok(found.some(([f]) => f.endsWith("ebl-neustadt.json")), "the drivers of the operations plan are checked");
+  const wrong = found.filter(([, name]) => !isBirdName(name));
+  assert.deepEqual(wrong, [], "use bird names of one language (LANGUAGES in core/people.js), e.g. \"S. Fink\"");
 });

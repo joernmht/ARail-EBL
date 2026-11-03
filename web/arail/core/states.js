@@ -11,7 +11,7 @@ export const STATE_BINS = 10;
 
 /**
  * @typedef {object} StateItem
- * @property {string} name what people read and search for ("Signal N2", "A. Berg")
+ * @property {string} name what people read and search for ("Signal N2", "A. Fink")
  * @property {number} score 0 (worst) … 1 (best)
  * @property {string} [text] the state in words ("grade 4.9", "mood 70 %")
  * @property {string} [key] the key of its pickable (core/pick.js), to open its card

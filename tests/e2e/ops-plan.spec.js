@@ -34,7 +34,7 @@ test("Railway undertaking → Operations switches on the module Operations and s
   await expect(page.locator("#scenarioName")).toHaveText("Units and drivers");
   await expect(page.locator("#evuPlanStatus")).toHaveText("4 problems");
   await expect(page.locator(".plan-train")).toHaveCount(6);
-  await expect(page.locator(".plan-problems li")).toHaveText(["Too few places: 216 for 420", "Weber is still out until 07:45", "442 201 is still out until 07:52", "Outside the shift of Becker (05:30–08:10)"]);
+  await expect(page.locator(".plan-problems li")).toHaveText(["Too few places: 216 for 420", "L. Specht is still out until 07:45", "442 201 is still out until 07:52", "Outside the shift of D. Amsel (05:30–08:10)"]);
   // the chart: the units and the drivers, red where it does not work
   await expect(page.locator(".plan-row")).toHaveCount(9);
   await expect(page.locator(".plan-span.bad")).not.toHaveCount(0);
@@ -47,9 +47,9 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
   const errors = await open(page, `${PLAN}#evu-operations`);
   await expect(page.locator("#evuPlanStatus")).toHaveText("4 problems");
   await choice(page, "evu", "s1-0725", "unit").selectOption("442 102");
-  await choice(page, "evu", "s1-0745", "driver").selectOption("becker");
+  await choice(page, "evu", "s1-0745", "driver").selectOption("amsel");
   await choice(page, "evu", "rb71-0752", "unit").selectOption("442 202");
-  await choice(page, "evu", "rb71-0752", "driver").selectOption("weber");
+  await choice(page, "evu", "rb71-0752", "driver").selectOption("specht");
   await expect(page.locator("#evuPlanStatus")).toHaveText("No problems");
   await expect(page.locator(".plan-problems")).toHaveCount(0);
   // the same trains on the other side: their tracks
@@ -67,7 +67,7 @@ test("both sides fix the plan; Run plays it on the layout and tells how it went"
   await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "30×" }).click();
   // its trains at the platforms, with their units and drivers
   await page.waitForFunction(() => window.__arail.world.services.vehicles().some((v) => v.plan?.unit === "442 101" && v.phase === "dwelling"), null, { timeout: 30_000 });
-  expect(await page.evaluate(() => window.__arail.world.services.vehicles().find((v) => v.plan)?.info?.[0])).toBe("442 101 · Becker");
+  expect(await page.evaluate(() => window.__arail.world.services.vehicles().find((v) => v.plan)?.info?.[0])).toBe("442 101 · D. Amsel");
   await expect(page.locator("#infraPlanResult")).toBeVisible({ timeout: 60_000 });
   await expect(page.locator("#infraPlanResult .tile .value")).toHaveText(["6", "0", "0", "0"]);
   await expect(page.locator(".plan-chip")).toHaveText(Array(6).fill("on time"));
@@ -110,7 +110,7 @@ test("the plan in German", async ({ page }) => {
   await expect(page.locator("#evuPlanStatus")).toHaveText("4 Probleme");
   await expect(page.locator("#evuPlanRun")).toHaveText("Fahren");
   await expect(page.locator(".plan-problems li").first()).toHaveText("Zu wenige Plätze: 216 für 420");
-  await expect(page.locator(".plan-problems li").nth(1)).toHaveText("Weber ist bis 07:45 unterwegs");
+  await expect(page.locator(".plan-problems li").nth(1)).toHaveText("L. Specht ist bis 07:45 unterwegs");
   await expect(choice(page, "evu", "s1-0705", "unit").locator("option:checked")).toHaveText("442 101 · 440 Plätze");
   await openCase(page, "infra-operations");
   await expect(page.locator(".plan-problems li")).toHaveText(["Gleis G3 ist bis 07:24 von RB 71 belegt", "Kein Gleis"]);
