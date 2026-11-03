@@ -22,8 +22,8 @@ const kinds = (plan) => Object.fromEntries([...plan.checks()].filter(([, ps]) =>
 /** The plan that works: every problem of the draft solved. */
 function solve(plan) {
   plan.set("s1-0725", "unit", "442 102").set("s1-0725", "track", "G2");
-  plan.set("s1-0745", "driver", "becker").set("s1-0745", "track", "G3");
-  plan.set("rb71-0752", "unit", "442 202").set("rb71-0752", "driver", "weber");
+  plan.set("s1-0745", "driver", "amsel").set("s1-0745", "track", "G3");
+  plan.set("rb71-0752", "unit", "442 202").set("rb71-0752", "driver", "specht");
   return plan;
 }
 
@@ -45,9 +45,9 @@ test("the checks: what does not work, for the railway undertaking and for the in
   const texts = [...plan.checks().values()].flat().map((p) => p.text);
   assert.ok(texts.includes("Too few places: 216 for 420"), texts.join("\n"));
   assert.ok(texts.includes("Track G3 is taken by RB 71 until 07:24"));
-  assert.ok(texts.includes("Weber is still out until 07:45"));
+  assert.ok(texts.includes("L. Specht is still out until 07:45"));
   assert.ok(texts.includes("442 201 is still out until 07:52"));
-  assert.ok(texts.includes("Outside the shift of Becker (05:30–08:10)"));
+  assert.ok(texts.includes("Outside the shift of D. Amsel (05:30–08:10)"));
   assert.equal(plan.problems("evu").length, 4);
   assert.equal(plan.problems("infra").length, 2);
   solve(plan);
@@ -83,8 +83,8 @@ test("the run's schedule: a train waits for its track, unit and driver; without 
   solve(plan);
   for (const [id, x] of plan.schedule()) assert.deepEqual([id, x.delay, x.cancelled], [id, 0, null]);
   // a driver still out: the train waits until the driver is back
-  plan.set("s1-0745", "driver", "weber");
-  assert.equal(plan.schedule().get("s1-0745").delay, 5, "Weber is back at 07:45: in at 07:45, out at 07:50");
+  plan.set("s1-0745", "driver", "specht");
+  assert.equal(plan.schedule().get("s1-0745").delay, 5, "L. Specht is back at 07:45: in at 07:45, out at 07:50");
 });
 
 test("Run plays the plan on the layout: its trains, the boards, the result; the tracks go back to the timetable", () => {
@@ -107,11 +107,11 @@ test("Run plays the plan on the layout: its trains, the boards, the result; the 
   ]);
   const s1 = came[3];
   assert.equal(s1.consistSpec.name, "442 202", "with its unit");
-  assert.deepEqual(s1.info, ["442 202 · Weber", "+4 min"]);
+  assert.deepEqual(s1.info, ["442 202 · L. Specht", "+4 min"]);
   assert.equal(world.services.capacityOf(s1), 216);
   const card = Object.fromEntries(world.services.card({ ref: s1 }).rows);
   assert.equal(card.Unit, "442 202");
-  assert.equal(card.Driver, "Weber");
+  assert.equal(card.Driver, "L. Specht");
   assert.equal(card.Delay, "+4 min");
   assert.ok(boards.has("S 1 07:45 cancelled") && boards.has("S 1 → Talsee 07:25 +4"), [...boards].join("\n"));
   assert.deepEqual({ ...plan.result, trains: undefined }, { trains: undefined, onTime: 3, late: 1, cancelled: 2, leftBehind: 204 });
@@ -145,7 +145,7 @@ test("the layout file keeps the plan as it is; the check names what is missing",
   const json = world.toJSON();
   const entry = json.layers.find((l) => l.id === "plan").simulations[0];
   const s1 = entry.trains.find((t) => t.id === "s1-0745");
-  assert.deepEqual([s1.unit, s1.driver, s1.track], ["442 101", "becker", "G3"]);
+  assert.deepEqual([s1.unit, s1.driver, s1.track], ["442 101", "amsel", "G3"]);
   // loaded again: the plan works
   const again = createWorld(json, { seed: 2 });
   again.setLayers(["plan"]);

@@ -43,12 +43,13 @@ The plan is the simulation `ops-plan` (`web/arail/ops/plan.js`) in the layer's `
 {"type": "ops-plan", "name": "A morning at Bf Neustadt", "start": "07:00", "margin_min": 2,
  "lines": {"S 1": {"to": "Talsee", "away_min": 20}},
  "units": [{"id": "442 101", "type": "et442"}, {"id": "146 210", "vehicles": [{"type": "br146"}, {"type": "dbpza", "count": 4}]}],
- "drivers": [{"id": "becker", "name": "Becker", "from": "05:30", "to": "08:10"}],
- "trains": [{"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "becker", "track": "G2"}]}
+ "drivers": [{"id": "amsel", "name": "D. Amsel", "from": "05:30", "to": "08:10"}],
+ "trains": [{"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "amsel", "track": "G2"}]}
 ```
 
 `unit`, `driver` and `track` of a train are the draft (any may be missing); a layout saved after
-changes keeps the plan as it is then. The tracks are the platform tracks of the layout.
+changes keeps the plan as it is then. Drivers get bird names like all people in ARail ("D. Amsel", see
+[Contributing](../CONTRIBUTING.md)). The tracks are the platform tracks of the layout.
 
 ## The operations story
 

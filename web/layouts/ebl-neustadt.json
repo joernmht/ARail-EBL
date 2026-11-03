@@ -748,18 +748,18 @@
             {"id": "146 210", "name": "146 210 + 4 DBpza", "vehicles": [{"type": "br146"}, {"type": "dbpza", "count": 4}]}
           ],
           "drivers": [
-            {"id": "becker", "name": "Becker", "from": "05:30", "to": "08:10"},
-            {"id": "kaya", "name": "Kaya", "from": "06:30", "to": "14:30"},
-            {"id": "novak", "name": "Novak", "from": "07:00", "to": "15:00"},
-            {"id": "weber", "name": "Weber", "from": "07:15", "to": "15:15"}
+            {"id": "amsel", "name": "D. Amsel", "from": "05:30", "to": "08:10"},
+            {"id": "kartal", "name": "S. Kartal", "from": "06:30", "to": "14:30"},
+            {"id": "sokol", "name": "W. Sokół", "from": "07:00", "to": "15:00"},
+            {"id": "specht", "name": "L. Specht", "from": "07:15", "to": "15:15"}
           ],
           "trains": [
-            {"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "becker", "track": "G2"},
-            {"id": "rb71-0722", "line": "RB 71", "arr": "07:17", "dep": "07:22", "passengers": 150, "unit": "442 201", "driver": "kaya", "track": "G3"},
-            {"id": "re2-0723", "line": "RE 2", "arr": "07:19", "dep": "07:23", "passengers": 520, "unit": "146 210", "driver": "novak", "track": "G1"},
-            {"id": "s1-0725", "line": "S 1", "arr": "07:20", "dep": "07:25", "passengers": 420, "unit": "442 202", "driver": "weber", "track": "G3"},
-            {"id": "s1-0745", "line": "S 1", "arr": "07:40", "dep": "07:45", "passengers": 300, "unit": "442 101", "driver": "weber"},
-            {"id": "rb71-0752", "line": "RB 71", "arr": "07:47", "dep": "07:52", "passengers": 120, "unit": "442 201", "driver": "becker", "track": "G2"}
+            {"id": "s1-0705", "line": "S 1", "arr": "07:02", "dep": "07:05", "passengers": 380, "unit": "442 101", "driver": "amsel", "track": "G2"},
+            {"id": "rb71-0722", "line": "RB 71", "arr": "07:17", "dep": "07:22", "passengers": 150, "unit": "442 201", "driver": "kartal", "track": "G3"},
+            {"id": "re2-0723", "line": "RE 2", "arr": "07:19", "dep": "07:23", "passengers": 520, "unit": "146 210", "driver": "sokol", "track": "G1"},
+            {"id": "s1-0725", "line": "S 1", "arr": "07:20", "dep": "07:25", "passengers": 420, "unit": "442 202", "driver": "specht", "track": "G3"},
+            {"id": "s1-0745", "line": "S 1", "arr": "07:40", "dep": "07:45", "passengers": 300, "unit": "442 101", "driver": "specht"},
+            {"id": "rb71-0752", "line": "RB 71", "arr": "07:47", "dep": "07:52", "passengers": 120, "unit": "442 201", "driver": "amsel", "track": "G2"}
           ]
         }
       ]

@@ -19,6 +19,14 @@ model its classes, activities, settings, events and rules. Whenever you change c
    changed (`docs/*.md`).
 4. Documentation that does not match the code: fix it. If the code looks wrong instead, say so.
 
+## People get bird names
+
+Every simulated person is named with birds, so nobody resembles a real person: both parts from one language of
+`LANGUAGES` in `web/arail/core/people.js`, shown as "S. Fink". Make people with a `Population`; when you write a person
+by hand (a driver in a layout, an example in a guide, a test, a story), pick the name from that list too, never a common
+real name like "Weber" or "Müller". `tests/js/people.test.js` checks the JSON of layouts, examples and guides; for
+names in code and prose, check yourself.
+
 ## Checks
 
 - `npm test`: the Node tests, the architecture check among them.
