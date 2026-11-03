@@ -73,7 +73,7 @@ function isBirdName(name) {
   if (!m) return false;
   const [, initial, particle, family] = m;
   return LANGUAGES.some((l) => l.birds.includes(family)
-    && (!particle || particle in (l.particles ?? {}))
+    && (!particle || Object.hasOwn(l.particles ?? {}, particle))
     && (!initial || l.birds.some((b) => b[0] === initial && b !== family)));
 }
 
@@ -92,27 +92,49 @@ function peopleNames(value, out = [], key = "") {
   }
   return out;
 }
+
+/** The names of the people in JSON text, also a fragment: each `"name"` in an array under a key for people. */
+function peopleNamesInText(text) {
+  const out = [];
+  for (const m of text.matchAll(/"([a-z]+)"\s*:\s*\[/g)) {
+    if (!PEOPLE_KEYS.has(m[1])) continue;
+    // the array up to its closing bracket (brackets inside strings skipped)
+    let depth = 0, end = text.length, inString = false;
+    for (let i = m.index + m[0].length - 1; i < text.length; i++) {
+      const c = text[i];
+      if (inString) {
+        if (c === "\\") i++;
+        else if (c === '"') inString = false;
+      } else if (c === '"') inString = true;
+      else if (c === "[") depth++;
+      else if (c === "]" && --depth === 0) {
+        end = i;
+        break;
+      }
+    }
+    for (const n of text.slice(m.index, end).matchAll(/"name"\s*:\s*"([^"]*)"/g)) out.push(n[1]);
+  }
+  return out;
+}
 const PEOPLE_KEYS = new Set(["drivers", "conductors", "crew", "crews", "staff", "people", "persons", "residents", "members", "workers"]);
 
 test("people: names written by hand (layouts, examples, the guides) are birds too, so nobody resembles a real person", () => {
   assert.ok(isBirdName("S. Fink") && isBirdName("M. van Kraai") && isBirdName("W. Sokół") && isBirdName("Fink"));
   assert.ok(!isBirdName("Weber") && !isBirdName("A. Berg") && !isBirdName("A. van Fink"), "real names, or a particle of another language");
+  assert.ok(!isBirdName("D. constructor Amsel") && !isBirdName("S. toString Kartal"), "only the language's own particles");
+  assert.deepEqual(peopleNamesInText('"drivers": [{"name": "D. Amsel"}, ...],\r\n "trains": [{"name": "S 1"}]'), ["D. Amsel"], "fragments too");
   const found = [];
   for (const f of [...jsonFiles("web/layouts"), ...jsonFiles("examples")]) {
     for (const name of peopleNames(JSON.parse(readFileSync(join(ROOT, f), "utf8")))) found.push([f, name]);
   }
+  // the JSON in the guides is often a fragment that does not parse, so its people are read from the text
   for (const f of readdirSync(join(ROOT, "docs")).filter((x) => x.endsWith(".md"))) {
-    for (const [, block] of readFileSync(join(ROOT, "docs", f), "utf8").matchAll(/```json\n([\s\S]*?)```/g)) {
-      let data;
-      try {
-        data = JSON.parse(block);
-      } catch {
-        continue;
-      }
-      for (const name of peopleNames(data)) found.push([`docs/${f}`, name]);
+    for (const [, block] of readFileSync(join(ROOT, "docs", f), "utf8").matchAll(/```json\r?\n([\s\S]*?)```/g)) {
+      for (const name of peopleNamesInText(block)) found.push([`docs/${f}`, name]);
     }
   }
   assert.ok(found.some(([f]) => f.endsWith("ebl-neustadt.json")), "the drivers of the operations plan are checked");
+  assert.ok(found.some(([f]) => f === "docs/operations.md"), "the drivers in the guide to operations are checked");
   const wrong = found.filter(([, name]) => !isBirdName(name));
   assert.deepEqual(wrong, [], "use bird names of one language (LANGUAGES in core/people.js), e.g. \"S. Fink\"");
 });
