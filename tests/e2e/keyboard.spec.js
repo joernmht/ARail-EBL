@@ -74,8 +74,8 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tab
     await expect(page.locator("#placing")).toBeVisible();
     await page.locator("#stageWrap").scrollIntoViewIfNeeded();
     expect(await hiddenStageButtons(page), "camera view").toEqual([]);
-    // the Flyover button can be pressed while placing (with the mouse, too)
-    await page.locator("#btnFlyover").click();
+    // the view button can be pressed while placing (with the mouse, too): the photo → the flyover
+    await page.locator("#btnView").click();
     await page.waitForFunction(() => window.__arail.mode === "flyover");
     await expect(page.locator("#placing")).toBeVisible();
     await page.locator("#stageWrap").scrollIntoViewIfNeeded();

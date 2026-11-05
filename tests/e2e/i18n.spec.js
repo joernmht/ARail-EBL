@@ -39,7 +39,9 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("tab", { name: "Übersicht" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Einstellungen" })).toBeVisible();
-  await expect(page.locator("#btnFlyover")).toHaveText("Überflug");
+  await expect(page.locator("#btnView")).toHaveText("Foto");
+  await expect(page.locator("#btnView")).toHaveAttribute("title", "Nächste Ansicht: Überflug (F)");
+  await expect(page.locator("#btnFullscreen")).toHaveAccessibleName("Vollbild");
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", "Kamerabild mit erweiterter Realität");
   // the app opens with the Introduction: Start and the scenes of the film
   await expect(page.locator("#scenarioName")).toHaveText("Einführung");

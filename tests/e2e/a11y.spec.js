@@ -112,11 +112,11 @@ for (const [scheme, device, viewport] of STATES) {
     await page.locator(".palette").getByRole("button", { name: /^Street/ }).click();
     await expect(page.locator("#placing")).toBeVisible();
     found.push(...(await violations(page, "placing a street")));
-    await page.locator("#btnFlyover").click();
+    await page.locator("#btnView").click(); // the photo → the flyover
     await page.waitForFunction(() => window.__arail.mode === "flyover");
     found.push(...(await violations(page, "placing in the flyover")));
     await page.keyboard.press("Escape");
-    await page.locator("#btnFlyover").click(); // back to the camera view (the flyover draws a lot)
+    await page.evaluate(() => window.__arail.flyover.showView("photo")); // back to the camera view (the flyover draws a lot)
     await page.waitForFunction(() => window.__arail.mode === "camera");
     for (const type of ["plattenbau", "altbau-block", "house-estate", "office", "school", "supermarket", "factory", "road", "bus-stop", "bus-line", "tabletop"]) {
       await page.evaluate((t) => window.__arail.editor.select(window.__arail.world.objects.find((o) => o.type === t)), type);

@@ -3,7 +3,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { SCENE, SCENE_NAME, SCENE_VIDEO, hasScene, routeScene } from "./scene.js";
-import { openCase } from "./ui.js";
+import { openCase, viewTo } from "./ui.js";
 
 /** Collect uncaught page errors (console noise such as blocked web fonts is ignored). */
 function trackErrors(page) {
@@ -21,11 +21,11 @@ async function openApp(page, path = "/app/?layout=../layouts/ebl-lab.json") {
   return errors;
 }
 
-/** Switch the flyover on with the stage button and wait until it is drawn. */
+/** Switch the flyover on with the stage's view button and wait until it is drawn. */
 async function enterFlyover(page) {
-  await page.locator("#btnFlyover").click();
+  await viewTo(page, "flyover");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#btnView")).toHaveAccessibleName("View: Flyover");
 }
 
 /** Put the flyover camera into a known place (no animation). */
@@ -67,7 +67,7 @@ test("flyover: switch on, it draws the layout, keyboard zoom, back to the camera
   const before = await page.evaluate(() => ({ w: window.__arail.canvas.width, h: window.__arail.canvas.height, H: window.__arail.tracker.state.H }));
   await enterFlyover(page);
   await expect(page.locator("#flyNav")).toBeVisible();
-  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#btnView")).toHaveAttribute("data-view", "flyover");
   expect(await canvasColours(page)).toBeGreaterThan(20);
   // the canvas fills the stage
   const box = await page.locator("#stage").boundingBox(), stage = await page.locator("#stageWrap").boundingBox();
@@ -307,9 +307,7 @@ test("the outline of a real table is picked in the flyover only (over the camera
 
 test("Settings → View: grid spacing and snapping, markers; the camera view shows the grid on request", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
-  await page.locator("#btnFlyover").click();
-  await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
+  await enterFlyover(page);
   await page.selectOption("#gridSize", "25");
   expect(await page.evaluate(() => window.__arail.world.layout.grid.size_mm)).toBe(25);
   await page.locator("#optSnap").uncheck();
@@ -317,7 +315,7 @@ test("Settings → View: grid spacing and snapping, markers; the camera view sho
   await page.locator("#flyNav").getByRole("button", { name: "Zoom in" }).click();
   await page.locator("#optFlyMarkers").uncheck();
   expect(await page.evaluate(() => window.__arail.display.flyMarkers)).toBe(false);
-  await page.locator("#btnFlyover").click();
+  await viewTo(page, "photo");
   await page.waitForFunction(() => window.__arail.mode === "camera");
   // grid over the camera image: snapping works there too
   expect(await page.evaluate(() => window.__arail.gridVisible())).toBe(false);
@@ -489,16 +487,21 @@ test("a broken orthophoto entry does not stop the flyover from drawing", async (
   expect(errors).toEqual([]);
 });
 
-test("keyboard: the Flyover toggle on the stage and the rotate buttons keep the focus", async ({ page }) => {
+test("keyboard: the view button on the stage and the rotate buttons keep the focus", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
-  await page.locator("#btnFlyover").focus();
+  const view = page.locator("#btnView");
+  await view.focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  await expect(page.locator("#btnFlyover")).toBeFocused();
-  await expect(page.locator("#btnFlyover")).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Enter");
+  await expect(view).toBeFocused();
+  await expect(view).toHaveAttribute("data-view", "flyover");
+  // round the views: the map, 2.5D, the photo again; the focus stays
+  for (const v of ["map", "3d", "photo"]) {
+    await page.keyboard.press("Enter");
+    await expect(view).toHaveAttribute("data-view", v);
+  }
   await page.waitForFunction(() => window.__arail.mode === "camera");
-  await expect(page.locator("#btnFlyover")).toBeFocused();
+  await expect(view).toBeFocused();
   // Build: turn the selected house twice with the keyboard
   await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("building-1")));
@@ -540,7 +543,7 @@ test("without an image, the message of the empty stage comes back after the flyo
   await page.evaluate(() => window.__arail.showEmpty("No image yet: take a photo or open a file."));
   await enterFlyover(page);
   await expect(page.locator("#emptyStage")).toBeHidden();
-  await page.locator("#btnFlyover").click();
+  await viewTo(page, "photo");
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await expect(page.locator("#emptyStage")).toBeVisible();
   expect(errors).toEqual([]);

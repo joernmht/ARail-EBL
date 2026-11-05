@@ -88,7 +88,7 @@ Measure the platform widths with a ruler and enter them (`width_mm`); the exampl
 
 - **Phones and tablets**: open the app over https (GitHub Pages) and use **Live camera**; the rear camera is chosen. For editing, take photos.
 - **Webcams** on a lab PC: 1080p webcams work well. Open the app in the browser on that PC (https, or `npm start` and <http://localhost:8000/app/>).
-- **Fixed installations** (a webcam on a stand, output on a monitor or projector): use **Full screen**. A fixed camera gives the steadiest picture; consider [calibrating](calibration.md) wide-angle webcams.
+- **Fixed installations** (a webcam on a stand, output on a monitor or projector): use full screen (the button with four corners at the bottom right of the stage; a photo with a digital layer then fills the screen with its virtual surroundings). A fixed camera gives the steadiest picture; consider [calibrating](calibration.md) wide-angle webcams.
 - **Light**: even, bright light without reflections on the markers. Motion blur is the most common reason for lost tracking with handheld cameras.
 
 ## Connecting the control system

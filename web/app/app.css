@@ -196,6 +196,11 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 }
 @media (forced-colors: active) { .sim-clock .btn[aria-pressed="true"] { border-width: 3px; } }
 .stage-tools .btn { background: var(--overlay); color: var(--overlay-text); border-color: rgba(255, 255, 255, .22); padding: 6px 10px; font-size: .82rem; }
+/* the view button keeps its width while its name changes (Photo, Flyover, Map, 2.5D) */
+.stage-tools #btnView { min-width: 6.2em; justify-content: center; }
+/* full screen: the usual icon, four corners */
+.stage-tools .btn.icon { padding: 0; width: 34px; justify-content: center; }
+.stage-tools svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .stage-tools .btn:hover { border-color: var(--overlay-text); }
 .stage-tools .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
 .toast { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); max-width: min(560px, calc(100% - 32px)); background: var(--board); color: var(--board-text); border-left: 5px solid var(--warn); padding: 10px 14px; border-radius: var(--radius); font-weight: 500; box-shadow: 0 6px 24px rgba(0, 6, 26, .4); }

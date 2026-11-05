@@ -54,14 +54,13 @@ Photos are the easiest way to start: detection runs once at full resolution, and
 
 | Button | What it does |
 | --- | --- |
-| **Flyover** | A virtual camera instead of the camera image (key F), see below. |
-| **Map**, **2.5D** | The simple view of the whole layout in the flyover: from straight above (Shift+S) or tilted (S), see below. Press the button again for the full flyover. |
+| **View** (it shows the view: *Photo*, *Flyover*, *Map*, *2.5D*) | Each click the next view: the camera image (named after its source: *Photo*, *Video* or *Camera*), the [flyover](#the-flyover) with a virtual camera (key F), its [simple view](#the-simple-view-map-and-25d) from straight above (*Map*, Shift+S) and tilted (*2.5D*, S), then the camera image again. Its title says where the next click goes. |
 | **Freeze** | Keeps the current video frame for editing (videos and the live camera only). |
-| **Full screen** | The stage alone, e.g. for a projector. |
+| Full screen (the icon with four corners) | The stage alone, e.g. for a projector; in full screen the corners point in, to leave it. A photo with a digital layer fills the screen: the bands above and below it (on a tablet or phone held upright) or at its sides (on a wide screen) show the lab around it as its camera sees it, the real table going on from the layout's orthophoto and the virtual parts of the layout (the hybrid container train's harbour below the table, the town around Bf Neustadt). The live camera and a photo without a digital layer keep their shape. |
 
 ## The flyover
 
-**Flyover** (button or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where there is no table the lab is blank), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
+**Flyover** (the view button, or key F) replaces the camera image by a virtual camera that flies around the layout. You see the lab floor, the table, its photo from above (the orthophoto in `view.ortho`, if the layout has one; for Bf Neustadt one solid orthophoto of the table of all the linked parts of the lab, from the curve to Waldhof south, its outline in straight lines, see [Lab session](lab-session.md#one-orthophoto-of-the-linked-parts); where there is no table the lab is blank), a grid, the marker stickers with their IDs and everything virtual, by day and by night. Video processing pauses meanwhile; press F again to return to the camera image (or video) you had before. The camera position is kept per layout in the browser.
 
 | Input | Mouse and keyboard | Touch |
 | --- | --- | --- |
@@ -80,7 +79,7 @@ In Build, everything works as on the camera image, and placed points, the corner
 
 ### The simple view: Map and 2.5D
 
-For running operations quickly, **Map** and **2.5D** (buttons next to Flyover, or the keys Shift+S and S) draw the flyover with little detail. Everything on the layout is flat: each object is its footprint in one colour per kind (tables, streets, platforms, tracks, buildings, trees, areas, yard blocks, …), bus lines show their route. Everything that moves is a plain block: trains, buses, cars, people, cranes, containers, wagons, trucks, barges and vans are the outline of each part, extruded from its lowest to its highest point, without windows, doors or wheels. There are no lights and no night, and the orthophoto is left out. Boards and signs stay.
+For running operations quickly, **Map** and **2.5D** (the view button after Flyover, or the keys Shift+S and S; pressed again, the key goes back to the full flyover) draw the flyover with little detail. Everything on the layout is flat: each object is its footprint in one colour per kind (tables, streets, platforms, tracks, buildings, trees, areas, yard blocks, …), bus lines show their route. Everything that moves is a plain block: trains, buses, cars, people, cranes, containers, wagons, trucks, barges and vans are the outline of each part, extruded from its lowest to its highest point, without windows, doors or wheels. There are no lights and no night, and the orthophoto is left out. Boards and signs stay.
 
 **Map** looks straight down: a map of the layout. **2.5D** tilts the view, so the moving things stand up from the flat layout. All camera controls work as in the flyover (the plan-view button switches between the two), and so do Build (placing, selecting, dragging, snapping) and picking in the Terminal panel. The choice is kept in the browser.
 

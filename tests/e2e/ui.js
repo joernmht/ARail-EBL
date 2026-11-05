@@ -54,3 +54,10 @@ export async function speedTo(page, label) {
   for (let i = 0; i < 6 && (await speed.textContent()) !== label; i++) await speed.click();
   await expect(speed).toHaveText(label);
 }
+
+/** Click the view button of the stage until it shows this view (photo, flyover, map, 3d; once round at most). */
+export async function viewTo(page, view) {
+  const button = page.locator("#btnView");
+  for (let i = 0; i < 4 && (await button.getAttribute("data-view")) !== view; i++) await button.click();
+  await expect(button).toHaveAttribute("data-view", view);
+}
