@@ -229,12 +229,14 @@ export class TourNav {
 
   /**
    * The photo on the stage, when it is one of the tour's but the tour did not open it (a layout
-   * opened with its own photo, which is on the photo map: the hybrid container train's): the tour is
-   * there, so that a change of perspective can come back to it.
+   * opened with its own photo, which is on the photo map: the hybrid container train's), or the tour's
+   * own photo stayed because the next one could not be shown: the tour is there, so that a change of
+   * perspective can come back to it. Not while the tour's photo is on its way (`_current`).
    */
   _adopt() {
     const s = this.app.source;
     if (!s || s.stale || s.kind !== "image" || !s.el?.src || this.showing()) return;
+    if (this._from !== undefined && s.el === this._from) return;
     for (const [i, part] of this.tour.parts.entries()) {
       for (const [v, p] of Object.entries(part.views)) {
         if (this._src(p) !== s.el.src) continue;
@@ -254,8 +256,11 @@ export class TourNav {
     const part = this.tour.parts[view.part], label = PERSPECTIVES.find((v) => v.id === view.perspective).label;
     app.flyover.leave(); // a photo is shown in the camera view
     const layout = this.layoutOf(p.id);
-    await app.openPhoto(src, `${part.name} · ${label}`, { layout, track: !!layout, current: () => token === this._token });
+    const shown = await app.openPhoto(src, `${part.name} · ${label}`, { layout, track: !!layout, current: () => token === this._token });
     if (token !== this._token) return;
+    // on the stage now, or it could not be shown: no longer on its way (sync adopts the photo on the stage)
+    this._from = undefined;
+    if (!shown) return this.sync();
     // the address opens this photo again
     const q = new URLSearchParams(location.search);
     for (const k of ["layout", "layers", "image", "example", "camera"]) q.delete(k);

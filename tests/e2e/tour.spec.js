@@ -83,6 +83,40 @@ test("the arrows go round the lab in the same perspective; with a digital layer 
   expect(errors).toEqual([]);
 });
 
+test("two quick clicks on the perspective button go two sides on, also while the first photo still loads", async ({ page }) => {
+  const errors = await openApp(page, "/app/?photo=132409");
+  await tracked(page);
+  // the next side's photo comes late: the second click comes while it is on its way (and the HUD refreshes)
+  let send;
+  await page.route("**/lab-map/photos/132413.jpg", async (route) => {
+    await new Promise((resolve) => (send = resolve));
+    await route.continue();
+  });
+  await page.locator("#tourView").click(); // → from the front right (on its way)
+  await expect.poll(() => typeof send).toBe("function");
+  await page.waitForTimeout(600);
+  await expect(page.locator("#tourView")).toHaveAccessibleName("Perspective: From the front right");
+  await page.locator("#tourView").click(); // → from the back left
+  send();
+  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["132826", "back-left"]);
+  expect(errors).toEqual([]);
+});
+
+test("a photo that cannot be loaded: the stage and the perspective button stay at the photo shown", async ({ page }) => {
+  const errors = await openApp(page, "/app/?photo=132409");
+  await tracked(page);
+  await page.route("**/lab-map/photos/132413.jpg", (route) => route.abort());
+  // the next side of Waldhof south, from the front right, fails to load
+  await page.locator("#tourView").click();
+  await expect(page.locator("#toast")).toContainText("could not be loaded");
+  // the tour is at the photo still shown: the button names it, and the next click goes to that side again
+  await page.waitForFunction(() => window.__arail.tourNav.showing());
+  expect(await shown(page)).toEqual(["132409", "front"]);
+  await expect(page.locator("#tourView")).toHaveAccessibleName("Perspective: From the front");
+  await expect(page.locator("#tourView")).toHaveAccessibleDescription("Next perspective: From the front right");
+  expect(errors).toEqual([]);
+});
+
 test("a photo of the container train opens its layout; the examples in Settings → View open theirs", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132257");
   await expect(page.locator("#layoutName")).toHaveText("EBL hybrid container train (example)");

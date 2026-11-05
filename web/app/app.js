@@ -770,6 +770,7 @@ export class App {
    * @param {string} name
    * @param {{layout?: string | null, track?: boolean, current?: () => boolean}} [options] current:
    *   false once another photo was asked for (while the layout loaded)
+   * @returns {Promise<boolean>} once it is shown (true), or not: another picture was asked for, or it failed
    */
   async openPhoto(src, name, { layout = null, track = true, current = () => true } = {}) {
     this.stopLive();
@@ -777,13 +778,13 @@ export class App {
       // the photo or clip shown until now belongs to the previous layout
       if (this.source) this.source.stale = true;
       await this.loadLayoutFromUrl(layout, { withImage: false });
-      if (!current()) return;
+      if (!current()) return false;
     }
     if (this._autoFlyover) {
       this._autoFlyover = false;
       this.flyover.leave();
     }
-    this.loadImage(src, name, null, { track });
+    return this.loadImage(src, name, null, { track });
   }
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
@@ -1194,7 +1195,8 @@ export class App {
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track };
+    // registered: the layout was found in it (tracked once): in full screen it then fills the screen (fillsScreen)
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: false };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();
@@ -1379,11 +1381,20 @@ export class App {
 
   /**
    * Does the picture fill the screen around it with its virtual surroundings? In full screen, a photo
-   * or video with a digital layer (one the layout tracks), not the live camera, nor a photo only.
+   * or video the layout was found in (a digital layer: `registered`), not the live camera, nor a photo
+   * only, nor a picture of one's own the layout finds no markers in.
    */
   fillsScreen() {
     const s = this.source;
-    return !!document.fullscreenElement && !!s && !s.stale && !s.untracked && s.kind !== "live";
+    return !!document.fullscreenElement && !!s && !s.stale && !s.untracked && s.kind !== "live" && !!s.registered;
+  }
+
+  /** The layout was found in the picture shown (once is enough): in full screen it fills the screen from now on. */
+  _registered() {
+    const s = this.source;
+    if (!s || s.registered || !this.tracker.state.H) return;
+    s.registered = true;
+    this.sizeCanvas();
   }
 
   /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
@@ -1454,6 +1465,7 @@ export class App {
         return;
       }
       const st = this.tracker.update(this.detections, this.clock, this.camera, { still: true });
+      this._registered();
       this._observeRolling(true);
       const n = Object.keys(this.detections).length;
       if (!n) toast("No markers found. Get closer, look from above at an angle, use good light, and check the marker type in Build → Layout.", 7000);
@@ -1485,6 +1497,7 @@ export class App {
     const [lo, hi] = this.detector.rolling ? PROC_RANGE_ROLLING : PROC_RANGE;
     this.procMax = ms > 45 ? Math.max(lo, this.procMax * 0.9) : ms < 20 ? Math.min(hi, this.procMax * 1.05) : this.procMax;
     this.tracker.update(this.detections, this.clock, this.camera);
+    this._registered();
     this._observeRolling(false);
   }
 
@@ -1538,9 +1551,11 @@ export class App {
     const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
     const view = H ? new ARail.View({ ctx, camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr, pulse: pulse() }) : null;
     if (W > source.w || Hc > source.h) {
-      this._drawSurroundings(ctx, view?.pose ?? null, camera.intrinsics);
-      // around a still photo the real table goes on: the layout's orthophoto, as in the flyover
-      if (view && source.kind === "image") this._drawOrthoAround(ctx, view);
+      // the floor (the band of view.extend_below, as ever); filling the screen also the sky and, around a
+      // still photo, the real table going on: the layout's orthophoto, as in the flyover
+      const filling = this.fillsScreen();
+      this._drawSurroundings(ctx, filling ? view?.pose ?? null : null, camera.intrinsics);
+      if (filling && view && source.kind === "image") this._drawOrthoAround(ctx, view);
     }
     // behind a covered photo's transparent parts: the floor, as below the photo
     if (source.kind === "image") {

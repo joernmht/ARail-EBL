@@ -19,14 +19,31 @@ const stage = (page) => page.evaluate(() => {
   return { full: !!document.fullscreenElement, canvas: [c.width, c.height], css: [r.width, r.height], at: { ...a.pictureAt }, photo: [a.source.w, a.source.h], screen: [innerWidth, innerHeight] };
 });
 
-/** The layout point under the middle of the photo: picked on the canvas, and straight from the tracking. */
+/**
+ * The layout point under the middle of the photo: picked on the canvas (a tap, and the terminal's pick
+ * of a carrier on the ground), and straight from the tracking.
+ */
 const middle = (page) => page.evaluate(() => {
   const a = window.__arail, c = a.canvas, r = c.getBoundingClientRect(), s = a.source;
   const u = a.pictureAt.x + s.w / 2, v = a.pictureAt.y + s.h / 2;
   const picked = a.eventToLayout({ clientX: r.left + (u * r.width) / c.width, clientY: r.top + (v * r.height) / c.height });
+  const ground = a.terminal?.sim ? a.terminal._groundPoint(u, v) : picked;
   const h = a.tracker.state.Hinv, d = h[6] * (s.w / 2) + h[7] * (s.h / 2) + h[8];
   const tracked = [(h[0] * (s.w / 2) + h[1] * (s.h / 2) + h[2]) / d, (h[3] * (s.w / 2) + h[4] * (s.h / 2) + h[5]) / d];
-  return [picked, tracked].map((p) => p.map((x) => Math.round(x)));
+  return [picked, ground, tracked].map((p) => p.map((x) => Math.round(x)));
+});
+
+/** How often a frame drew the orthophoto around the photo (counted over a few frames). */
+const orthoAround = (page) => page.evaluate(async () => {
+  const a = window.__arail, f = a._drawOrthoAround;
+  let n = 0;
+  a._drawOrthoAround = (...args) => {
+    n++;
+    return f.apply(a, args);
+  };
+  await new Promise((r) => setTimeout(r, 300));
+  a._drawOrthoAround = f;
+  return n;
 });
 
 test("full screen: the usual icon; a photo with virtual surroundings fills a tablet held upright, above and below it", async ({ page }) => {
@@ -39,6 +56,9 @@ test("full screen: the usual icon; a photo with virtual surroundings fills a tab
   await expect(button.locator("svg")).toHaveCount(1);
   const before = await stage(page);
   expect(before.at).toEqual({ x: 0, y: 0 });
+  // outside full screen the band below the photo (view.extend_below) is the floor, as ever: no orthophoto
+  await page.waitForFunction(() => window.__arail.flyover.orthophoto());
+  expect(await orthoAround(page)).toBe(0);
   await button.click();
   await expect(button).toHaveAccessibleName("Leave full screen");
   await page.waitForFunction(() => window.__arail.pictureAt.y > 0);
@@ -54,9 +74,12 @@ test("full screen: the usual icon; a photo with virtual surroundings fills a tab
   const corner = await page.evaluate(() => [...window.__arail.ctx.getImageData(4, 4, 1, 1).data]);
   expect(corner[3]).toBe(255);
   expect(corner.slice(0, 3)).not.toEqual([0, 0, 0]);
-  // taps find the layout under them as before
-  const [picked, tracked] = await middle(page);
+  // the real table goes on around the photo
+  expect(await orthoAround(page)).toBeGreaterThan(0);
+  // taps find the layout under them as before, also the terminal's pick of a carrier on the ground
+  const [picked, ground, tracked] = await middle(page);
   expect(picked).toEqual(tracked);
+  expect(ground).toEqual(tracked);
   // leaving full screen: the photo's own shape again
   await button.click();
   await page.waitForFunction(() => !document.fullscreenElement && window.__arail.pictureAt.y === 0);
@@ -74,7 +97,7 @@ test("full screen on a wide screen: the bands at the photo's sides are filled; a
   expect(Math.abs(s.css[0] - s.screen[0])).toBeLessThan(2);
   expect(Math.abs(s.css[1] - s.screen[1])).toBeLessThan(2);
   expect(s.at.y).toBe(0);
-  const [picked, tracked] = await middle(page);
+  const [picked, , tracked] = await middle(page);
   expect(picked).toEqual(tracked);
   // the photo only (no digital layer, nothing virtual around it): its own shape, in full screen too
   await page.evaluate(() => window.__arail.tourNav.showPhoto("132434"));
@@ -83,5 +106,20 @@ test("full screen on a wide screen: the bands at the photo's sides are filled; a
   expect(only.full).toBe(true);
   expect(only.at).toEqual({ x: 0, y: 0 });
   expect(only.canvas).toEqual(only.photo);
+  expect(errors).toEqual([]);
+});
+
+test("full screen: a photo of one's own the layout finds no markers in keeps its shape", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
+  await page.locator("#fileOpen").setInputFiles("web/assets/town-day.jpg");
+  await page.waitForFunction(() => window.__arail.source?.name === "town-day.jpg", null, { timeout: 30_000 });
+  await page.waitForTimeout(500); // the markers looked for
+  expect(await page.evaluate(() => [!!window.__arail.tracker.state.H, window.__arail.source.registered])).toEqual([false, false]);
+  await page.locator("#btnFullscreen").click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.waitForTimeout(300);
+  const s = await stage(page);
+  expect(s.at).toEqual({ x: 0, y: 0 });
+  expect(s.canvas).toEqual(s.photo);
   expect(errors).toEqual([]);
 });
