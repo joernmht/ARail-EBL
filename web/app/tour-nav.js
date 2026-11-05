@@ -292,7 +292,7 @@ export class TourNav {
     $("#stageWrap")?.style.setProperty("--tour-w", `${this.button?.offsetWidth || 0}px`);
   }
 
-  /** The chip of the HUD: that the photo has no digital layer (the pressed button says where it was taken). */
+  /** The chip of the HUD: that the photo has no digital layer (the perspective button says where it was taken). */
   hudChips() {
     if (!this.showing() || this.layoutOf(this.at.photo.id)) return [];
     return [["warn", "Photo only: no digital layer for this part yet"]];

@@ -241,7 +241,7 @@ export class Flyover {
     const b = $("#btnView");
     if (!b) return;
     const v = this.view(), next = this.nextView(v), name = tr(this.viewName(v));
-    const key = `${v}|${name}|${next}`;
+    const key = `${v}|${name}|${tr(this.viewName(next))}`; // the source's name, in the language shown
     if (this._viewShown === key) return;
     this._viewShown = key;
     b.textContent = name;
@@ -818,7 +818,6 @@ export class Flyover {
     return [b[0] - m, b[1] - m, b[2] + m, b[3] + m];
   }
 
-  /** The orthophoto of the table, in perspective, as a mesh of small affine pieces. */
   /**
    * The layout's orthophoto, once it is loaded ({url, img, levels, ok}: its uncovered parts made
    * transparent, with its mipmaps), else null: it loads now (said once if it cannot), or the layout
@@ -856,6 +855,7 @@ export class Flyover {
     return this.ortho.ok ? this.ortho : null;
   }
 
+  /** The orthophoto of the table, in perspective, as a mesh of small affine pieces. */
   _drawOrtho(view, night) {
     const o = orthoOf(this.app.world.layout), entry = this.orthophoto();
     if (!entry) return;
