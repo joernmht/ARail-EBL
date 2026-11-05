@@ -7,8 +7,9 @@ again, on foot, by bus and by train.
 
 ## The clock
 
-Movement (trains, buses, cars, people) runs in *simulated seconds*: the speeds in the upper right
-corner of the stage set how many simulated seconds pass per real second (1×–30×). The clock shows a
+Movement (trains, buses, cars, people) runs in *simulated seconds*: the speed button in the upper
+right corner of the stage sets how many simulated seconds pass per real second (each click faster,
+1×–30×). The clock shows a
 time of day that runs `factor` times faster than the simulation, 12 by default: one clock hour
 per five simulated minutes. A walk of 150 m (about two simulated minutes) takes 25 clock minutes,
 and at 10× a whole day passes in twelve minutes.

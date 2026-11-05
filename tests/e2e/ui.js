@@ -47,3 +47,10 @@ export const moduleBox = (page, name) => page.locator(".modules").getByRole("but
 
 /** Does the layout have what a case needs (its simulation, its app module)? */
 export const caseReady = (page, name) => page.evaluate((name) => !!window.__arail.caseFor(name)?.ready, name);
+
+/** Click the speed button in the stage's upper right corner until it shows this speed ("30×"). */
+export async function speedTo(page, label) {
+  const speed = page.locator("#simSpeed");
+  for (let i = 0; i < 6 && (await speed.textContent()) !== label; i++) await speed.click();
+  await expect(speed).toHaveText(label);
+}

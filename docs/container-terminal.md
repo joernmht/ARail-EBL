@@ -388,7 +388,7 @@ The tour does the same while the scenario is shown with its example open, before
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
-   state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage. In the
+   state**; the speed is in the upper right corner of the stage (each click faster: 1×, 2×, 5×, 10×, 30×). In the
    loading task, once it is started, the panel is light in text: only **Restart** (the terminal as the task starts),
    the work orders, the containers and the move (and until a model wagon is seen in the picture
    shown, the links that print their deck cards); the bar above the panel counts the orders done, with the time and the

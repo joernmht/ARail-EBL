@@ -339,41 +339,51 @@ test("periodic panel updates keep keyboard focus on buttons", async ({ page }) =
   expect(errors).toEqual([]);
 });
 
-test("the time and speed in the upper right corner of the stage: Pause, the speeds, the time; it opens Settings → Simulation, which says night after sunset", async ({ page }) => {
+test("Pause and the speed in the upper right corner of the stage: each click on the speed goes faster, then back to 1×; no time, no box", async ({ page }) => {
   const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
-  const control = page.getByRole("group", { name: "Time and speed" }), clock = page.locator("#simTime");
-  // in the stage's upper right corner, over the picture
+  const control = page.getByRole("group", { name: "Speed", exact: true }), speed = page.locator("#simSpeed");
+  // in the stage's upper right corner, over the picture: two buttons, no box around them, no time
   const [stage, box] = await Promise.all([page.locator("#stageWrap").boundingBox(), control.boundingBox()]);
   expect(stage.x + stage.width - (box.x + box.width)).toBeLessThan(20);
   expect(box.y - stage.y).toBeLessThan(20);
-  await page.evaluate(() => {
-    const a = window.__arail;
-    a.world.setTime("22:30");
-    a.updateHud();
-  });
-  await control.getByRole("group", { name: "Speed", exact: true }).getByRole("button", { name: "5×" }).click();
-  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(5);
-  await expect(control.getByRole("button", { name: "5×" })).toHaveAttribute("aria-pressed", "true");
-  await expect(control.getByRole("button", { name: "2×" })).toHaveAttribute("aria-pressed", "false");
-  await expect(clock).toHaveText(/^22:3\d$/);
-  // a speed none of the buttons has (a scenario's own) is said beside the time
+  await expect(control.getByRole("button")).toHaveCount(2);
+  expect(await page.locator("#simClock").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await expect(page.locator("#simTime")).toHaveCount(0);
+  // each click: the next speed, after the fastest the slowest again
+  await page.evaluate(() => window.__arail.speed.setSpeed(1));
+  await expect(speed).toHaveText("1×");
+  await expect(speed).toHaveAccessibleName("Speed 1×");
+  await expect(speed).toHaveAttribute("title", "Faster: 2×");
+  for (const s of [2, 5, 10, 30]) {
+    await speed.click();
+    expect(await page.evaluate(() => window.__arail.world.speed)).toBe(s);
+    await expect(speed).toHaveText(`${s}×`);
+  }
+  await expect(speed).toHaveAttribute("title", "Back to 1×");
+  await speed.click();
+  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(1);
+  // a speed of its own (a scenario's) is shown as it is and goes on to the next one above it
   await page.evaluate(() => {
     const a = window.__arail;
     a.world.speed = 3;
     a.updateHud();
   });
-  await expect(clock).toHaveText(/^22:3\d · ×3$/);
+  await expect(speed).toHaveText("3×");
+  await speed.click();
+  expect(await page.evaluate(() => window.__arail.world.speed)).toBe(5);
+  // Pause, pressed while paused
   await control.getByRole("button", { name: "Pause" }).click();
   expect(await page.evaluate(() => window.__arail.world.paused)).toBe(true);
   await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
-  await expect(clock).toHaveText(/^22:3\d · Paused$/);
   // Space, with nothing focused, goes on
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press("Space");
   expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false);
   await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "false");
-  await clock.click();
-  await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  // the time of day is in Settings → Simulation, which says night after sunset
+  await page.evaluate(() => window.__arail.world.setTime("22:30"));
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright
   await expect(page.locator(".clockface")).toContainText("night");
   await page.getByRole("button", { name: "Noon 12:00" }).click();

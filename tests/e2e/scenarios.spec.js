@@ -373,10 +373,11 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   expect(await running()).toEqual(runs);
   expect(await page.evaluate(() => window.__arail.tourNav.tour.parts.map((p) => p.name))).toEqual(["Neustadt", "Neustadt", "Neustadt", "Neustadt"]);
   // the other chapters leave it running, its stage and its tour as they are (a photo of another layout
-  // would end it): the Overview, and the time in the corner (Settings → Simulation)
+  // would end it): the Overview, and Settings → Simulation with the time of day
   await page.locator("#tab-overview").click();
   expect(await running()).toEqual(runs);
-  await page.locator("#simTime").click();
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
   expect(await running()).toEqual(runs);
   await page.locator("#tab-interaction").click();

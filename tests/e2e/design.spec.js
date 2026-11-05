@@ -63,8 +63,8 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.locator("#tab-settings").click();
       await page.locator("#settingsView-simulate").click();
       await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-      // Pause and the speeds in the upper right corner of the stage: pressed in Orange, on the overlay
-      await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "Pause" }).click();
+      // Pause and the speed in the upper right corner of the stage: pressed in Orange, on the overlay
+      await page.getByRole("group", { name: "Speed", exact: true }).getByRole("button", { name: "Pause" }).click();
       await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
       expect(await style(page, "#simPause", "backgroundColor")).toBe(scheme === "light" ? "rgb(200, 80, 0)" : "rgb(240, 146, 46)");
       expect(await contrastViolations(page, ["#panel-settings", "#hud", "#simClock"])).toEqual([]);

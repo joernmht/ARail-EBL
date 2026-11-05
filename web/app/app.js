@@ -139,7 +139,7 @@ export class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
-    /** The time and speed in the upper right corner of the stage. */
+    /** Pause and the speed in the upper right corner of the stage. */
     this.speed = new SpeedControl(this, $("#simClock"));
     this.overview = new Overview(this);
     this.cases = this.page.cases.map((C) => new C(this));
@@ -1545,7 +1545,7 @@ export class App {
 
   /**
    * The chips on the stage say only what needs attention (no image, no markers, a photo without a
-   * digital layer, disruptions, recording); the time and the speed are in its upper right corner.
+   * digital layer, disruptions, recording); Pause and the speed are in its upper right corner.
    */
   updateHud() {
     const st = this.tracker.state, chips = [];

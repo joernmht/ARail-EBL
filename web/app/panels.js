@@ -246,7 +246,7 @@ export class Panels {
       ),
       hasTown ? section("Town", this.townBox) : null,
       section("Speed",
-        h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage, the time beside them."),
+        h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage: each click on the speed makes the simulation faster."),
         h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
       ),
       section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),

@@ -1,7 +1,8 @@
-// The time and the speed of the simulation, in the upper right corner of the stage (over the camera
-// image and the flyover alike, also in full screen; the photo tour's perspectives are in the upper
-// left corner): the time of day, which opens Settings → Simulation, Pause, and the speeds 1× to 30×.
-// The speed chosen is pressed (Orange, as the stage's other toggles); Space pauses too.
+// The speed of the simulation, in the upper right corner of the stage (over the camera image and
+// the flyover alike, also in full screen; the photo tour's perspective is in the upper left corner):
+// Pause, and one button with the speed, which goes faster with each click (1× to 30×, then back to
+// 1×). Paused, Pause is pressed (Orange, as the stage's other toggles); Space pauses too. The time of
+// day is in Settings → Simulation.
 import { h, mount } from "./ui.js";
 import { tr } from "./i18n.js";
 
@@ -9,6 +10,15 @@ import { tr } from "./i18n.js";
 export const SPEEDS = [1, 2, 5, 10, 30];
 
 const PAUSE_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4.5v11M13 4.5v11"/></svg>';
+
+/**
+ * The speed a click on the speed button chooses: the next one offered above this one (a scenario's
+ * own speed, not one of SPEEDS, goes on to the next above it); after the fastest, the slowest again.
+ * @param {number} speed
+ */
+export function nextSpeed(speed) {
+  return SPEEDS.find((s) => s > speed) ?? SPEEDS[0];
+}
 
 export class SpeedControl {
   /**
@@ -24,13 +34,12 @@ export class SpeedControl {
   /** Make its buttons (again, in the language shown). */
   render() {
     const app = this.app;
-    this.el.setAttribute("aria-label", tr("Time and speed"));
-    this.time = h("button", { class: "btn sim-time", type: "button", id: "simTime", title: "Time and speed (Settings → Simulation)", onclick: () => app.openTab("simulate") });
+    this.el.setAttribute("aria-label", tr("Speed"));
     this.pause = h("button", { class: "btn sim-pause", type: "button", id: "simPause", "aria-label": "Pause", title: "Pause (Space)", "aria-pressed": "false", onclick: () => this.setPaused(!app.world.paused) });
     this.pause.innerHTML = PAUSE_ICON;
-    this.speeds = h("div", { class: "sim-speeds", role: "group", "aria-label": "Speed" },
-      SPEEDS.map((s) => h("button", { class: "btn", type: "button", "data-speed": String(s), "aria-pressed": "false", onclick: () => this.setSpeed(s) }, `${s}×`)));
-    mount(this.el, this.time, this.pause, this.speeds);
+    this.faster = h("button", { class: "btn sim-speed", type: "button", id: "simSpeed", onclick: () => this.setSpeed(nextSpeed(app.world.speed)) });
+    this._shown = null;
+    mount(this.el, this.pause, this.faster);
     this.update();
   }
 
@@ -47,15 +56,19 @@ export class SpeedControl {
   }
 
   /**
-   * As the world is now (with the HUD every 400 ms, and after a change): the time, Paused, a speed
-   * none of the buttons has (a scenario's own); the button of the speed pressed.
+   * As the world is now (with the HUD every 400 ms, and after a change): Pause pressed while paused;
+   * the speed on its button, whose name says it ("Speed 10×") and whose title what a click does.
    */
   update() {
-    const w = this.app.world;
-    const text = [w.clock.label(), w.paused ? tr("Paused") : !SPEEDS.includes(w.speed) ? `×${w.speed}` : null].filter(Boolean).join(" · ");
-    if (this.time.textContent !== text) this.time.textContent = text;
+    const w = this.app.world, s = w.speed, next = nextSpeed(s);
     this.pause.setAttribute("aria-pressed", w.paused ? "true" : "false");
-    for (const b of this.speeds.children) b.setAttribute("aria-pressed", Number(b.dataset.speed) === w.speed ? "true" : "false");
+    const key = `${s}|${tr("Speed")}`; // the language shown, too
+    if (this._shown !== key) {
+      this._shown = key;
+      this.faster.textContent = `${s}×`;
+      this.faster.setAttribute("aria-label", tr(`Speed ${s}×`));
+      this.faster.title = tr(next > s ? `Faster: ${next}×` : `Back to ${next}×`);
+    }
     // the HUD's chips and a message keep clear of it (its size: --clock-w, --clock-h)
     const stage = this.el.parentElement;
     stage?.style.setProperty("--clock-w", `${this.el.offsetWidth}px`);
