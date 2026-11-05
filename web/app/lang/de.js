@@ -37,8 +37,8 @@ const APP_DE = {
   "Example: container terminal (virtual)": "Beispiel: Containerterminal (virtuell)",
   "Camera image with augmented reality": "Kamerabild mit erweiterter Realität",
   "Flyover of the layout with a virtual camera. Drag to turn, Shift-drag or right-drag to pan, scroll to zoom. Keys: arrows pan, plus and minus zoom, Q and E rotate, Page Up and Page Down tilt; in Build, while placing, Enter places a point in the middle. In Terminal, Enter picks the container or place in the middle; elsewhere Enter shows the info card of what is in the middle.": "Überflug der Anlage mit einer virtuellen Kamera. Ziehen dreht, Umschalt-Ziehen oder Rechts-Ziehen verschiebt, Scrollen zoomt. Tasten: Pfeile verschieben, Plus und Minus zoomen, Q und E drehen, Bild auf und Bild ab neigen; in Bauen setzt Enter beim Platzieren einen Punkt in der Mitte. In Terminal wählt Enter den Container oder Platz in der Mitte; sonst zeigt Enter die Infokarte dessen, was in der Mitte ist.",
-  "No image yet: take a photo, start the camera or open a file.": "Noch kein Bild: Nehmen Sie ein Foto auf, starten Sie die Kamera oder öffnen Sie eine Datei.",
-  "This layout is virtual: take a photo or start the camera to see it over the real layout.": "Diese Anlage ist virtuell: Nehmen Sie ein Foto auf oder starten Sie die Kamera, um sie über der echten Anlage zu sehen.",
+  "No image yet: take a photo, start the camera or open a file in Settings → View → Image source.": "Noch kein Bild: Nehmen Sie unter Einstellungen → Ansicht → Bildquelle ein Foto auf, starten Sie die Kamera oder öffnen Sie eine Datei.",
+  "This layout is virtual: take a photo or start the camera (Settings → View → Image source) to see it over the real layout.": "Diese Anlage ist virtuell: Nehmen Sie ein Foto auf oder starten Sie die Kamera (Einstellungen → Ansicht → Bildquelle), um sie über der echten Anlage zu sehen.",
   // the photo tour (tour-nav.js): the photos of the lab as a Street View, the places of the photo map
   "Photo tour of the lab": "Fotorundgang durch das Labor",
   "Perspective": "Blickrichtung",

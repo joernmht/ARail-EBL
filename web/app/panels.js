@@ -27,7 +27,7 @@ export class Panels {
 
   /* ================================================================ View (a view of Settings) */
 
-  /** Settings → View: the examples, what is shown, the grid, the camera, recording, the language. */
+  /** Settings → View: the image source, the examples, what is shown, the grid, the camera, recording, the language. */
   renderView(el) {
     const app = this.app, s = app.world.settings, d = app.display, g = app.world.layout.grid;
     // a control that had the focus (e.g. the box of a module just switched) gets it back in the new panel
@@ -38,7 +38,19 @@ export class Panels {
     const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
     this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
+    // the image sources: the live camera (where the browser can open it: https), a photo or video taken
+    // with the device's camera app, or a file
+    const file = (id, label, accept, capture) => [
+      h("label", { class: "btn small", for: id }, label),
+      h("input", { class: "visually-hidden", type: "file", id, accept, capture, onchange: (e) => app.openSourceFile(e.target) }),
+    ];
     mount(el,
+      section("Image source",
+        h("div", { class: "row image-sources" },
+          app.liveAvailable ? h("button", { class: "btn small primary", type: "button", id: "btnLive", onclick: () => app.openLive() }, "Live camera") : null,
+          file("filePhoto", "Take photo", "image/*", "environment"),
+          file("fileVideo", "Record video", "video/*", "environment"),
+          file("fileOpen", "Open file", "image/*,video/*", null))),
       // the app: the photo tour on the stage chooses what is shown; the examples with a clip, a tab or a layout of their own are here
       app.tourNav ? section("Examples",
         h("div", { class: "row examples" }, app.page.examples.map((x) => h("button", { class: "btn small", type: "button", id: `example-${x.id}`, onclick: () => app.openExample(x.id) }, x.label)))) : null,

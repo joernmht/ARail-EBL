@@ -186,6 +186,9 @@ test("a layout chosen from the examples while a video plays is not tracked in th
   test.skip(!hasScene(), "run `npm run fixtures` first");
   await routeScene(page);
   const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
+  // Settings → View → Image source: Record video (here a file)
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
   await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
   await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
   // the lab photo comes later: meanwhile the video of the test scene (markers 0–7) is still shown
@@ -388,6 +391,23 @@ test("Pause and the speed in the upper right corner of the stage: each click on 
   await expect(page.locator(".clockface")).toContainText("night");
   await page.getByRole("button", { name: "Noon 12:00" }).click();
   await expect(page.locator(".clockface")).not.toContainText("night");
+  expect(errors).toEqual([]);
+});
+
+test("the image sources are in Settings → View, not in the bar: a photo chosen there is shown at once, in the camera view", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
+  await expect(page.locator("#bar #btnLive, #bar input[type=file], #bar label.btn")).toHaveCount(0);
+  await page.evaluate(() => window.__arail.flyover.enter()); // the flyover: what is chosen is shown in the camera view
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
+  // the first section of the view: the live camera (here, on localhost, the browser can open it), a photo, a video, a file
+  const sources = page.locator("#panel-settings .settings-body > .section").first();
+  await expect(sources.locator("h2")).toHaveText("Image source");
+  await expect(sources.getByRole("button", { name: "Live camera" })).toBeVisible();
+  for (const name of ["Take photo", "Record video", "Open file"]) await expect(sources.locator("label.btn", { hasText: name })).toBeVisible();
+  await expect(page.locator("#filePhoto")).toHaveAttribute("capture", "environment");
+  await page.locator("#fileOpen").setInputFiles("web/media/ebl-lab.jpg");
+  await page.waitForFunction(() => window.__arail.mode === "camera" && window.__arail.source?.name === "ebl-lab.jpg" && !!window.__arail.source.objectUrl, null, { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
 

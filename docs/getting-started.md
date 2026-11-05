@@ -12,11 +12,11 @@ The app wears the corporate design of the Chair of Railway Operations (TU Dresde
 
 ## Image sources
 
-The top bar chooses what the app looks at:
+**Settings → View → Image source** chooses what the app looks at, besides the photo tour and the examples (the top bar keeps only the chair's logo, ARail and the layout's name). What you choose there is shown at once, in the camera view:
 
 | Button | What it does |
 | --- | --- |
-| **Live camera** | Uses the rear camera (phones) or the default webcam. Keeps the screen awake. |
+| **Live camera** | Uses the rear camera (phones) or the default webcam. Keeps the screen awake. Offered where the browser can open the camera (over https). |
 | **Take photo** | Opens the camera app of a phone; the photo is analysed once at high resolution. |
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
@@ -48,7 +48,7 @@ Where a photo has a **digital layer** (Bf Neustadt and Waldhof, the goods yard w
 | **Example: container terminal (virtual)** | `container-terminal.json` | none (flyover) | a terminal of its own, also a module of the lab example |
 | **Example: Beta 0.1 (EBL lab photo, older)** | `ebl-lab.json` | the lab photo of 30 September 2026, the first example | two platforms, the town on table modules in front of the table, and the modules rail operations, infrastructure, journeys and container terminal, whose games are on the game page |
 
-The clips play in a loop; in browsers that cannot play MP4 (H.264) use **Open file** with your own video. The original photos and clips are in [`examples/media`](../examples/media) (see [examples/README.md](../examples/README.md)): open them with **Open file** over any of these layouts. The layouts of Bf Neustadt and the hybrid train come from `arail-survey` (see [Lab session](lab-session.md#the-examples-of-9-october-2026)); their marker maps are locked.
+The clips play in a loop; in browsers that cannot play MP4 (H.264) use **Open file** (Settings → View → Image source) with your own video. The original photos and clips are in [`examples/media`](../examples/media) (see [examples/README.md](../examples/README.md)): open them with **Open file** over any of these layouts. The layouts of Bf Neustadt and the hybrid train come from `arail-survey` (see [Lab session](lab-session.md#the-examples-of-9-october-2026)); their marker maps are locked.
 
 Photos are the easiest way to start: detection runs once at full resolution, and objects can be placed precisely. The buttons at the bottom right of the stage:
 
@@ -189,6 +189,7 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 **View**
 
+- *Image source*: **Live camera**, **Take photo**, **Record video** and **Open file** (see [Image sources](#image-sources)).
 - *Examples* (the app): the examples with a clip, a case or a layout of their own (see [The examples](#the-examples)); what the stage shows is otherwise chosen by the [photo tour](#the-photo-tour).
 - *Show*: signs and boards, the departure boards at the stops (off: badges), walking trails, *The room people take* (off by default: a circle on the ground whose area is the space a person takes, larger with a pram, a wheelchair or a suitcase, and over each vehicle at a stop its load in spaces; see [Day and night](day-and-night.md#passenger-mobility)), marker outlines (key M; markers used for the pose light Türkis, the others Orange), *Cover the markers* (on by default: a grey plate with its number over each marker of the map and over the labels of model wagons, so the stickers vanish from the picture; switch it off to see them), tracks (the `track` objects over the camera image), the opacity of virtual objects, **Colour the tracks by** one of their railway systems (traction power, train protection, ETCS, signals, radio, gauge, line category, loading gauge, country, infrastructure manager), or where a train may run (after *Show where it may run* on its card), with a legend (see [Railway systems](rail-systems.md)), and **Colour of people** (town people by purpose and passengers by mood, or everybody by purpose or by mood).
 - *Grid*: see [The flyover](#the-flyover).

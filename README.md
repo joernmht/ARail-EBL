@@ -41,7 +41,7 @@ Under the hood: square markers ([ArUco or AprilTag](docs/lab-setup.md#markers)) 
 
 1. Print markers from the [marker sheet page](https://joernmht.github.io/ARail-EBL/markers/) (ArUco Original, 30 mm) and check the scale with a ruler.
 2. Put one marker at each end of every platform and more across the layout, flat and with their white border visible.
-3. Open the app, import your own layout or start from an example (**Settings → View → Examples**), then **Take photo** or **Live camera**. Markers the layout does not know yet are surveyed automatically (Build → Marker map → **Measure again** starts with an empty map).
+3. Open the app, import your own layout or start from an example (**Settings → View → Examples**), then **Take photo** or **Live camera** (**Settings → View → Image source**). Markers the layout does not know yet are surveyed automatically (Build → Marker map → **Measure again** starts with an empty map).
 4. In **Build**, add platforms (tap the two markers at its ends), streets, bus stops and lines, buildings and scenery, in the camera view or in the flyover on the grid. **Export layout** saves the result as a JSON file.
 
 For a fixed layout of a whole table, follow the [lab-session guide](docs/lab-session.md): stickers all over the table, one video, `arail-survey`, then build in the flyover. See [Getting started](docs/getting-started.md) and [Setting up a lab](docs/lab-setup.md) for details. The live camera needs https (GitHub Pages) or `localhost`.

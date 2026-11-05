@@ -113,10 +113,8 @@ test.describe("layout of the app bar and the tabs", () => {
     await expect(page.locator("#layoutName")).toBeVisible();
     const name = await page.locator("#layoutName").evaluate((el) => ({ width: el.clientWidth, full: el.scrollWidth <= el.clientWidth }));
     expect(name.full, `layout name shown in full (${name.width} px)`).toBe(true);
-    for (const id of ["#btnLive", "label[for=fileOpen]"]) {
-      const box = await page.locator(id).boundingBox();
-      expect(box.y + box.height, `${id} in the first row`).toBeLessThan(bar.y + 70);
-    }
+    // the image sources are in Settings → View, not in the bar
+    await expect(page.locator("#bar #btnLive, #bar input[type=file], #bar label.btn")).toHaveCount(0);
     const stage = await page.locator("#stageWrap").boundingBox();
     expect(stage.height).toBeGreaterThan(768 - 80);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);

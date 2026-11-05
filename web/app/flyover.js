@@ -137,8 +137,8 @@ export class Flyover {
       app.ctx.clearRect(0, 0, c.width, c.height);
       if (!this._emptyShown) {
         $("#emptyStage").textContent = tr(app.world.layout.view?.start === "flyover"
-          ? "This layout is virtual: take a photo or start the camera to see it over the real layout."
-          : "No image yet: take a photo, start the camera or open a file.");
+          ? "This layout is virtual: take a photo or start the camera (Settings → View → Image source) to see it over the real layout."
+          : "No image yet: take a photo, start the camera or open a file in Settings → View → Image source.");
         c.hidden = true;
       }
       $("#emptyStage").hidden = false;

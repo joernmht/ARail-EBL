@@ -243,24 +243,7 @@ export class App {
       this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
-    // sources
-    const onFile = (e) => {
-      const f = e.target.files && e.target.files[0];
-      e.target.value = "";
-      if (!f) return;
-      this.flyover.leave(); // show what was just chosen
-      const url = URL.createObjectURL(f);
-      if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
-      else this.loadImage(url, f.name, url);
-    };
-    for (const id of ["filePhoto", "fileVideo", "fileOpen"]) $(`#${id}`).addEventListener("change", onFile);
-    if (navigator.mediaDevices?.getUserMedia && window.isSecureContext) {
-      $("#btnLive").hidden = false;
-      $("#btnLive").addEventListener("click", () => {
-        this.flyover.leave();
-        this.startLive();
-      });
-    }
+    // the image sources are in Settings → View (Panels.renderView: openSourceFile, openLive)
     // the list of layouts in the bar (the game page; the app has the photo tour and its examples in Settings → View)
     const sel = $("#exampleSelect");
     if (sel) {
@@ -1274,6 +1257,32 @@ export class App {
       v.play().catch(() => toast("The video cannot be played here. Take a photo instead."));
     };
     v.onerror = () => token === this._loadToken && toast("The video cannot be played here. Take a photo instead.");
+  }
+
+  /**
+   * A photo or video chosen in Settings → View → Image source (a file, or one the device's camera app
+   * just took): shown at once, in the camera view.
+   * @param {HTMLInputElement} input
+   */
+  openSourceFile(input) {
+    const f = input.files && input.files[0];
+    input.value = "";
+    if (!f) return;
+    this.flyover.leave(); // show what was just chosen
+    const url = URL.createObjectURL(f);
+    if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
+    else this.loadImage(url, f.name, url);
+  }
+
+  /** Can the live camera be opened here (a browser with a camera, over https)? */
+  get liveAvailable() {
+    return !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+  }
+
+  /** The live camera, chosen in Settings → View → Image source: shown at once, in the camera view. */
+  openLive() {
+    this.flyover.leave();
+    this.startLive();
   }
 
   /** Stop a source that is replaced: camera stream, video decoding, object URL. */

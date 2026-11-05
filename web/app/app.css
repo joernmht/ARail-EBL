@@ -108,6 +108,7 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    wrapping the bar onto a second row (that would cost the stage height on tablets) */
 .layout-name { flex: 1000 1 0; color: var(--bar-muted); font-size: .9rem; min-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch; }
 .bar .spacer { flex: 1; }
+/* the game page's list of layouts in its bar (the image sources are in Settings → View) */
 .sources { display: flex; gap: 8px; flex-wrap: wrap; }
 /* closed, the list reads "Layouts…": as narrow as that, whatever the names of the examples */
 .sources select { max-width: 11rem; }
@@ -118,16 +119,8 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .bar select:hover { background: var(--bar-hover); border-color: var(--bar-text); }
 .bar select option { background: var(--surface); color: var(--text); }
 
-.bar .short { display: none; }
-@media (max-width: 1099px) {
-  /* the chair logo needs room: short labels keep the bar in one row on tablets (1024 px) */
-  .bar .long { display: none; }
-  .bar .short { display: inline; }
-}
 @media (max-width: 640px) {
   .bar { gap: 8px; padding-block: 8px 7px; }
-  .bar .long { display: none; }
-  .bar .short { display: inline; }
   .bar .btn, .bar select { padding: 6px 9px; font-size: .84rem; }
   .cro-logo { --h: 32px; }
   .identity { gap: 10px; }
