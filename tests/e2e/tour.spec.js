@@ -102,6 +102,25 @@ test("two quick clicks on the perspective button go two sides on, also while the
   expect(errors).toEqual([]);
 });
 
+test("the hybrid train's layout reopened with its own photo, no scenario: the tour knows the photo, and a change of perspective comes back to it", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-container-train.json#scenarios");
+  await page.waitForFunction(() => window.__arail.tourNav.showing(), null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.tourNav.scope)).toBeNull();
+  expect(await shown(page)).toEqual(["terminal-wagons", "front"]);
+  await page.locator("#tourView").click(); // the next side of the goods yard
+  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["141017", "front-right"]);
+  await turnTo(page, "front"); // once round the table
+  expect(await page.evaluate(() => window.__arail.source.el.src.replace(/.*\//, ""))).toBe("ebl-container-train.jpg");
+  expect(errors).toEqual([]);
+});
+
+test("a link with a photo and the hybrid train's example: the photo chooses the layout, the scenario's photos are not offered", async ({ page }) => {
+  const errors = await openApp(page, "/app/?photo=132526&example=container-task");
+  await tracked(page);
+  expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.activeCase, window.__arail.caseById("terminal").opened, window.__arail.tourNav.scope])).toEqual(["ebl-neustadt.json", "terminal", false, null]);
+  expect(errors).toEqual([]);
+});
+
 test("a photo that cannot be loaded: the stage and the perspective button stay at the photo shown", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132409");
   await tracked(page);
@@ -162,7 +181,7 @@ test("the hybrid train's scenario only selected (not started, its example not op
   await page.locator('[data-step="1"]').click();
   await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["132345", "front"]);
   await page.locator('[data-step="1"]').click();
-  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["132257", "front"]);
+  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["terminal-wagons", "front"]);
   await page.waitForFunction(() => /ebl-container-train\.json$/.test(window.__arail.layoutUrl));
   await page.waitForTimeout(500); // the HUD's refresh (it sets the tour's photos)
   expect(await page.evaluate(() => [window.__arail.tourNav.scope, window.__arail.tourNav.tour.parts.length > 10])).toEqual([null, true]);

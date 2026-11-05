@@ -135,7 +135,10 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
    two are stacked and the page scrolls. */
 .main { display: grid; gap: 0; min-height: 0; --panel-w: 390px; }
 @media (min-width: 1000px), (min-width: 600px) and (orientation: landscape) {
-  .main { grid-template-columns: minmax(0, 1fr) var(--panel-w); height: calc(100dvh - var(--bar-h, 60px)); }
+  /* exactly one screen: the bar its own height, the stage and the panel the rest. In CSS alone, so that
+     it fits at once when the bar's height changes (a phone turned: its logo grows) */
+  .app { height: 100dvh; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+  .main { grid-template-columns: minmax(0, 1fr) var(--panel-w); }
   .panel { overflow-y: auto; border-left: 1px solid var(--line); }
 }
 @media (max-width: 999px) and (min-width: 600px) and (orientation: landscape) { .main { --panel-w: min(360px, 46vw); } }

@@ -99,6 +99,21 @@ test("full screen on a wide screen: the bands at the photo's sides are filled; a
   expect(s.at.y).toBe(0);
   const [picked, , tracked] = await middle(page);
   expect(picked).toEqual(tracked);
+  // to the next part: the canvas keeps the screen's shape all the way (no step back to the photo's own shape)
+  const aspect = s.screen[0] / s.screen[1];
+  await page.evaluate(() => {
+    const a = window.__arail, size = a.sizeCanvas.bind(a);
+    window.__shapes = [];
+    a.sizeCanvas = () => {
+      size();
+      window.__shapes.push(a.canvas.width / a.canvas.height);
+    };
+  });
+  await page.locator('#tour [data-step="1"]').click();
+  await page.waitForFunction(() => window.__arail.tourNav.showing() && window.__arail.tourNav.at.photo.id === "132439" && window.__arail.tracker.state.H, null, { timeout: 30_000 });
+  const shapes = await page.evaluate(() => window.__shapes);
+  expect(shapes.length).toBeGreaterThan(0);
+  for (const k of shapes) expect(Math.abs(k - aspect)).toBeLessThan(0.01);
   // the photo only (no digital layer, nothing virtual around it): its own shape, in full screen too
   await page.evaluate(() => window.__arail.tourNav.showPhoto("132434"));
   await page.waitForFunction(() => window.__arail.source?.untracked && window.__arail.source.el.src.endsWith("132434.jpg"), null, { timeout: 30_000 });

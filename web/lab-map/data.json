@@ -9,7 +9,8 @@
   },
   "container": {
    "layout": "../layouts/ebl-container-train.json",
-   "label": "Hybrid container train"
+   "label": "Hybrid container train",
+   "photo": "terminal-wagons"
   }
  },
  "groups": {

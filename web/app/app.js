@@ -745,13 +745,14 @@ export class App {
   }
 
   /**
-   * An example opened for the case of its tab (Settings → View → Examples, ?example=): when it is the
-   * example that case plays in (`opens`), or another of its layout (the hybrid container train), the
-   * photo tour offers the case's photos before Start (Case#opened), until the case is stopped.
+   * An example opened for the case of its tab (Settings → View → Examples, ?example=): when the layout
+   * open now is that of the example the case plays in (`opens`; the hybrid container train, with or
+   * without its task), the photo tour offers the case's photos before Start (Case#opened), until the
+   * case is stopped. A link whose photo (?photo=) chose another layout opens none.
    */
   _openedFor(x) {
     const c = x?.tab ? this.caseFor(x.tab) : null, own = c?.constructor.opens ? this.page.examples.find((e) => e.id === c.constructor.opens) : null;
-    if (c && own && new URL(own.layout, location.href).href === new URL(x.layout, location.href).href) c.opened = true;
+    if (c && own && new URL(own.layout, location.href).href === this.layoutUrl) c.opened = true;
   }
 
   /** Is this example (its id) open: its layout, with the modules it names on and no others? */
@@ -1206,8 +1207,10 @@ export class App {
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
-    // registered: the layout was found in it (tracked once): in full screen it then fills the screen (fillsScreen)
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: false };
+    // registered: the layout is found in it, so that in full screen it fills the screen (fillsScreen): a
+    // picture the app comes with (a photo of the tour with a digital layer, a layout's own photo or clip) at
+    // once, without a jump from one photo to the next; a file of one's own once it is tracked (_registered)
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && !objectUrl };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();
@@ -1410,7 +1413,6 @@ export class App {
 
   /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
   fitCanvas() {
-    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
     if (this.flyover?.active) return this.flyover.resize();
     const wrap = $("#stageWrap");
     const W = this.canvas.width, H = this.canvas.height;

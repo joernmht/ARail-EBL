@@ -19,6 +19,7 @@ test("the hybrid container train's own photo is a photo of its digital layer on 
   assert.equal(map, layout);
   assert.equal(own.layer, "container");
   assert.equal(DATA.layers[own.layer].layout, "../layouts/ebl-container-train.json");
+  assert.equal(DATA.layers[own.layer].photo, "terminal-wagons", "the layer's own photo, first from its side");
   assert.equal(own.group, "S12");
 });
 
@@ -43,6 +44,19 @@ test("the loading task's tour: the photos of its layer with model wagons, its ow
   // its perspectives are those of the whole tour's part
   const s12 = all.parts.find((p) => p.id === "S12");
   assert.equal(perspectiveOf(photo("terminal-wagons").heading - s12.front), "front");
-  // the whole tour keeps its photos: the part's front is still the one from above
-  assert.equal(s12.views.front.id, "132257");
+  // the whole tour too: the layer's own photo first from its side, the others as they were
+  assert.equal(s12.views.front.id, "terminal-wagons");
+  assert.equal(s12.views["front-left"].id, "141012");
+});
+
+test("a layer's own photo comes first from its side, before a closer match of the same layer", () => {
+  const photo = (id, heading, x, extra = {}) => ({ id, group: "P", x, y: 1000, heading, markers: 6, layer: "a", ...extra });
+  const data = {
+    layers: { a: { layout: "a.json", label: "A" } },
+    groups: { P: { name: "Part" }, Q: { name: "Other" } },
+    photos: [photo("near", 90, 3000), photo("own", 105, 3600, { markers: 2 }), { id: "q", group: "Q", x: 3000, y: -3000, heading: -90, markers: 4 }],
+  };
+  assert.equal(new PhotoTour(data).parts.find((p) => p.id === "P").views.front.id, "near");
+  data.layers.a.photo = "own";
+  assert.equal(new PhotoTour(data).parts.find((p) => p.id === "P").views.front.id, "own");
 });
