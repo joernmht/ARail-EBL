@@ -1571,7 +1571,7 @@ export class App {
     // edge of the picture, a depot's board out of view, goes below the chips; a stop board under a
     // button becomes a badge)
     const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
-    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-views, #tour:not([hidden]) .tour-step, #simClock, .stage-tools .btn, #flyNav:not([hidden]) .btn");
+    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-view, #tour:not([hidden]) .tour-step, #simClock, .stage-tools .btn, #flyNav:not([hidden]) .btn");
     this.hudRects = [...hud.children, ...controls].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 

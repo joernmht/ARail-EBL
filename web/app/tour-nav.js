@@ -1,26 +1,34 @@
 // The photo tour on the stage (tour.js): walk round the lab from photo to photo, as in Street View.
-// The perspective buttons in the upper left corner choose the side the photos are taken from, the
-// arrows at the left and right edges of the stage (and the keys ← and →) go to the next part of the
-// table, in the same perspective where it has one. A photo with a digital layer opens with the
-// layout of that layer, which tracks it; the others are shown as photos only. A photo with a
-// covered version (`covered`, made in the builder's Photos tab) is shown covered. While a scenario
-// runs, the tour offers only the photos of its task (`setScope`): the other perspectives are off,
-// and without another part to go to the arrows are hidden.
+// The perspective button in the upper left corner switches to the next side the part has a photo
+// from, round the table; its icon shows where the camera stands. The arrows at the left and right
+// edges of the stage (and the keys ← and →) go to the next part of the table, in the same
+// perspective where it has one. A photo with a digital layer opens with the layout of that layer,
+// which tracks it; the others are shown as photos only. A photo with a covered version (`covered`,
+// made in the builder's Photos tab) is shown covered. While a scenario runs, the tour offers only
+// the photos of its task (`setScope`): the button goes only to their sides, and without another part
+// to go to the arrows are hidden.
 import { PERSPECTIVES, PhotoTour, perspectiveOf } from "./tour.js";
 import { $, h, mount } from "./ui.js";
+import { tr } from "./i18n.js";
 
 /**
- * The icon of a perspective: an arrow from where the camera stands towards the table, which lies
- * between the back row of the buttons and the front row.
+ * The perspectives in the order the button goes through them: round the table, clockwise seen from
+ * above, from the front to the right, along the back and back to the front on the left.
  */
-const ARROWS = {
-  "back-left": [4.5, 4.5, 14.5, 14.5], back: [10, 3, 10, 16.5], "back-right": [15.5, 4.5, 5.5, 14.5],
-  "front-left": [4.5, 15.5, 14.5, 5.5], front: [10, 17, 10, 3.5], "front-right": [15.5, 15.5, 5.5, 5.5],
+export const ROUND = ["front", "front-right", "back-right", "back", "back-left", "front-left"];
+
+/**
+ * The icon of a perspective, seen from above: the table (its front below) and the camera, a dot with
+ * its view towards the table, where it stands: [x, y] of the camera and the direction it looks in.
+ */
+const CAMERAS = {
+  "back-left": [3, 2.5, 45], back: [10, 2, 90], "back-right": [17, 2.5, 135],
+  "front-left": [3, 17.5, -45], front: [10, 18, -90], "front-right": [17, 17.5, -135],
 };
-function perspectiveIcon(id) {
-  const [x0, y0, x1, y1] = ARROWS[id], a = Math.atan2(y1 - y0, x1 - x0), k = 5.5;
-  const head = [a + 2.4, a - 2.4].map((b) => `${(x1 + k * Math.cos(b)).toFixed(2)} ${(y1 + k * Math.sin(b)).toFixed(2)}`);
-  return `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M${x0} ${y0}L${x1} ${y1}M${head[0]}L${x1} ${y1}L${head[1]}"/></svg>`;
+export function perspectiveIcon(id) {
+  const [x, y, deg] = CAMERAS[id] ?? CAMERAS.front, r = Math.PI / 180, len = deg % 90 ? 7 : 5.8;
+  const tip = (d) => `${(x + len * Math.cos((deg + d) * r)).toFixed(2)} ${(y + len * Math.sin((deg + d) * r)).toFixed(2)}`;
+  return `<svg viewBox="0 0 20 20" aria-hidden="true"><rect class="tour-table" x="4.5" y="7.4" width="11" height="5.2" rx="1"/><path class="tour-cone" d="M${x} ${y}L${tip(-30)}L${tip(30)}Z"/><circle class="tour-camera" cx="${x}" cy="${y}" r="1.8"/></svg>`;
 }
 
 const STEP_ICONS = {
@@ -45,7 +53,7 @@ export class TourNav {
     this.data = null;
     this.all = null;
     this.scope = null;
-    /** The perspective chosen with the buttons (kept while a part does not have it). */
+    /** The perspective chosen with the button (kept while a part does not have it). */
     this.perspective = "front";
     /** The photo the tour shows ({part, photo, perspective, exact, src}), or null. */
     this.at = null;
@@ -72,27 +80,30 @@ export class TourNav {
   }
 
   _render() {
-    const views = h("div", { class: "tour-views", role: "group", "aria-label": "Perspective" },
-      PERSPECTIVES.map((p) => {
-        const b = h("button", { class: "btn", type: "button", "data-view": p.id, "aria-label": p.label, title: p.label, "aria-pressed": "false", onclick: () => this.choose(p.id) });
-        b.innerHTML = perspectiveIcon(p.id);
-        return b;
-      }));
-    // the table between the cameras at its back (above) and at its front (below)
-    views.insertBefore(h("span", { class: "tour-table", "aria-hidden": "true" }), views.children[3]);
+    /** The perspective button: its icon, name and title follow the photo shown (sync). */
+    this.button = h("button", { class: "btn tour-view", type: "button", id: "tourView", onclick: () => this.turn() });
+    this._shown = null;
     const step = (dir, label) => {
       const b = h("button", { class: "btn tour-step", type: "button", "data-step": String(dir), "aria-label": label, title: label, onclick: () => this.go(dir) });
       b.innerHTML = STEP_ICONS[dir];
       return b;
     };
-    mount(this.el, views, step(-1, "Next part to the left (←)"), step(1, "Next part to the right (→)"),
-      h("span", { class: "visually-hidden", id: "tourMissing" }, "No photo from this side here: the nearest one is shown."));
+    mount(this.el, this.button, step(-1, "Next part to the left (←)"), step(1, "Next part to the right (→)"));
   }
 
   /** Is the photo of the tour on the stage (not another photo, a video or the camera)? */
   showing() {
     const s = this.app.source;
     return !!this.at && !!s && !s.stale && s.kind === "image" && s.el?.src === this.at.src;
+  }
+
+  /**
+   * Is the tour at its photo: on the stage, or on its way there (the stage still shows what it showed
+   * when the tour began to open it), so that a second click goes on from it?
+   */
+  _current() {
+    if (!this.at || this.at.part == null) return false;
+    return this.showing() || (this._from !== undefined && (this.app.source?.el ?? null) === this._from);
   }
 
   /** Are there photos to go to (none: a scenario whose layout has no photos in the tour)? */
@@ -105,7 +116,7 @@ export class TourNav {
    * the first (of the scenario's parts while one runs).
    */
   here() {
-    if (this.showing() && this.at.part != null) return this.at.part;
+    if (this._current()) return this.at.part;
     const url = this.app.layoutUrl;
     for (const [id, l] of Object.entries(this.tour.layers)) {
       if (url && new URL(l.layout, this.dataUrl).href === url && this.tour.home(id) >= 0) return this.tour.home(id);
@@ -126,6 +137,36 @@ export class TourNav {
     if (this.scope && !this.tour.parts[this.here()].views[perspective]) return;
     this.perspective = perspective;
     return this._open(this.tour.view(this.here(), perspective));
+  }
+
+  /** The sides the part the tour is at has a photo from, in the button's order (ROUND). */
+  perspectivesHere() {
+    if (!this.open) return [];
+    const part = this.tour.parts[this.here()];
+    return ROUND.filter((v) => part.views[v]);
+  }
+
+  /**
+   * What the button shows: the perspective of the tour's photo on the stage, else the one chosen, and
+   * where a click goes: the next side round the table the part has a photo from (with no photo of the
+   * tour on the stage, the side chosen, or the next one it has); null with nowhere else to go.
+   * @returns {{now: string, next: string | null}}
+   */
+  turning() {
+    const have = this.perspectivesHere(), showing = this._current();
+    const now = showing ? this.at.perspective : this.perspective, i = Math.max(0, ROUND.indexOf(now));
+    let next = null;
+    for (let k = showing ? 1 : 0; k < ROUND.length && !next; k++) {
+      const v = ROUND[(i + k) % ROUND.length];
+      if (have.includes(v)) next = v;
+    }
+    return { now, next };
+  }
+
+  /** The button: to the next side of the part (`turning`). */
+  turn() {
+    const { next } = this.turning();
+    if (next) return this.choose(next);
   }
 
   /** The ids of the photo map's digital layers that show a layout (absolute URL). */
@@ -199,6 +240,7 @@ export class TourNav {
         if (this._src(p) !== s.el.src) continue;
         this.at = { part: i, photo: p, perspective: v, exact: true, src: s.el.src };
         this.perspective = v;
+        this._from = undefined;
         return;
       }
     }
@@ -208,6 +250,7 @@ export class TourNav {
     const app = this.app, token = ++this._token, p = view.photo;
     const src = this._src(p);
     this.at = { ...view, src };
+    this._from = app.source?.el ?? null; // what the stage shows until the photo is there
     const part = this.tour.parts[view.part], label = PERSPECTIVES.find((v) => v.id === view.perspective).label;
     app.flyover.leave(); // a photo is shown in the camera view
     const layout = this.layoutOf(p.id);
@@ -223,9 +266,9 @@ export class TourNav {
 
   /**
    * The buttons as the stage is now: hidden in the flyover (and while a scenario runs whose layout has
-   * no photos); the perspective shown pressed; the perspectives the part has no photo for dimmed
-   * (choosing one shows the nearest it has), and off while a scenario runs; the arrows hidden without
-   * another part to go to.
+   * no photos). The perspective button shows the side of the photo shown (its icon and name, "From
+   * the front left"), its title where a click goes; with no other side to go to it is off. The arrows
+   * are hidden without another part to go to.
    */
   sync() {
     if (!this.el || !this.tour) return;
@@ -233,18 +276,20 @@ export class TourNav {
     if (this.el.hidden !== hidden) this.el.hidden = hidden;
     if (!this.open) return;
     this._adopt();
-    const showing = this.showing() && this.at.part != null, part = this.tour.parts[this.here()];
-    for (const b of this.el.querySelectorAll("[data-view]")) {
-      const v = b.dataset.view;
-      b.setAttribute("aria-pressed", showing && this.at.perspective === v ? "true" : "false");
-      b.classList.toggle("missing", !part.views[v]);
-      b.disabled = !!this.scope && !part.views[v];
-      if (part.views[v] || this.scope) b.removeAttribute("aria-describedby");
-      else b.setAttribute("aria-describedby", "tourMissing");
+    const { now, next } = this.turning(), label = (id) => PERSPECTIVES.find((v) => v.id === id)?.label ?? id;
+    const key = `${now}|${next}|${tr("Perspective")}`; // the language shown, too
+    if (this._shown !== key) {
+      this._shown = key;
+      const b = this.button;
+      b.innerHTML = perspectiveIcon(now);
+      b.dataset.view = now;
+      b.setAttribute("aria-label", tr(`Perspective: ${label(now)}`));
+      b.title = tr(next ? `Next perspective: ${label(next)}` : "No other perspective here");
+      b.disabled = !next;
     }
     for (const b of this.el.querySelectorAll(".tour-step")) b.hidden = this.tour.parts.length < 2;
-    // the HUD and a message while placing keep clear of the buttons
-    $("#stageWrap")?.style.setProperty("--tour-w", `${this.el.querySelector(".tour-views")?.offsetWidth || 0}px`);
+    // the HUD and a message while placing keep clear of the button
+    $("#stageWrap")?.style.setProperty("--tour-w", `${this.button?.offsetWidth || 0}px`);
   }
 
   /** The chip of the HUD: that the photo has no digital layer (the pressed button says where it was taken). */

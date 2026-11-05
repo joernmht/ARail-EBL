@@ -1,6 +1,7 @@
 // The photo tour of the app (web/app/tour-nav.js): the lab's photos as a Street View. The arrows go
-// to the next part in the same perspective, the buttons in the upper left corner choose it; a photo
-// with a digital layer opens with its layout and is tracked, the others are shown as photos only.
+// to the next part in the same perspective, the button in the upper left corner switches to the next
+// side; a photo with a digital layer opens with its layout and is tracked, the others are shown as
+// photos only.
 import { expect, test } from "@playwright/test";
 
 function trackErrors(page) {
@@ -26,15 +27,29 @@ const shown = (page) => page.evaluate(() => {
 
 const tracked = (page) => page.waitForFunction(() => window.__arail.tourNav.showing() && window.__arail.tracker.state.H, null, { timeout: 30_000 });
 
+/** Click the perspective button until the tour shows its photo from that side (at most once round). */
+async function turnTo(page, perspective) {
+  for (let i = 0; i < 6; i++) {
+    const was = await shown(page);
+    if (was?.[1] === perspective) return;
+    await page.locator("#tourView").click();
+    await page.waitForFunction((id) => window.__arail.tourNav.showing() && window.__arail.tourNav.at.photo.id !== id, was?.[0] ?? null, { timeout: 30_000 });
+  }
+  expect((await shown(page))?.[1]).toBe(perspective);
+}
+
 test("the arrows go round the lab in the same perspective; with a digital layer the photo is tracked, without it is the photo only", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132526");
   // Bf Neustadt, its platforms from the front: tracked, no chip on the stage, the address keeps the photo
   await tracked(page);
   expect(await shown(page)).toEqual(["132526", "front"]);
   await expect(page.locator("#hud")).toBeEmpty();
-  await expect(page.locator('[data-view="front"]')).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator('[data-view="back"]')).toHaveClass(/missing/); // no photo from straight behind here
-  await expect(page.locator('[data-view="back"]')).toHaveAccessibleDescription(/nearest one is shown/);
+  // one perspective button: the side of the photo shown, and where a click goes (the part's next side round the table)
+  const view = page.locator("#tourView");
+  await expect(page.locator("#tour button:not(.tour-step)")).toHaveCount(1);
+  await expect(view).toHaveAccessibleName("Perspective: From the front");
+  await expect(view).toHaveAccessibleDescription("Next perspective: From the front right");
+  expect(await page.evaluate(() => window.__arail.tourNav.perspectivesHere())).toEqual(["front", "front-right", "back-left"]);
   // → : the next part towards Waldhof, again from the front
   await page.locator('[data-step="1"]').click();
   await expect.poll(() => shown(page)).toEqual(["132439", "front"]);
@@ -48,15 +63,18 @@ test("the arrows go round the lab in the same perspective; with a digital layer 
   await tracked(page);
   await expect(page.locator("#hud")).not.toContainText("Photo only");
   expect(await page.evaluate(() => window.__arail.world.layout.name)).toBe("EBL Bf Neustadt and terminal (example)");
-  // from the front left: a photo without a digital layer: the photo only, not tracked
-  await page.getByRole("button", { name: "From the front left" }).click();
+  // round the table to the front left (the front right and the back left on the way): a photo without
+  // a digital layer, the photo only, not tracked
+  await page.locator("#tourView").click();
+  await expect.poll(() => shown(page)).toEqual(["132413", "front-right"]);
+  await turnTo(page, "front-left");
   await expect.poll(() => shown(page)).toEqual(["132434", "front-left"]);
   await expect(page.locator("#hud")).toContainText("Photo only: no digital layer for this part yet");
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => ({ H: !!window.__arail.tracker.state.H, untracked: window.__arail.source.untracked, layout: window.__arail.world.layout.name })))
     .toEqual({ H: false, untracked: true, layout: "EBL Bf Neustadt and terminal (example)" });
   // from the back left; → from the back goes the other way round: back to Bf Neustadt, tracked again
-  await page.getByRole("button", { name: "From the back left" }).click();
+  await turnTo(page, "back-left");
   await expect.poll(() => shown(page)).toEqual(["132826", "back-left"]);
   await page.locator('[data-step="1"]').click();
   await expect.poll(() => shown(page)).toEqual(["132809", "back-left"]);
@@ -77,8 +95,9 @@ test("a photo of the container train opens its layout; the examples in Settings 
   await page.locator("#example-neustadt").click();
   await page.waitForFunction(() => window.__arail.world.layout.name === "EBL Bf Neustadt and terminal (example)" && window.__arail.tracker.state.H);
   expect(await shown(page)).toBeNull(); // the layout's own photo, not one of the tour's
-  // the tour goes on from the part of Bf Neustadt with the platforms
-  await page.locator('[data-view="front"]').click();
+  // the tour goes on from the part of Bf Neustadt with the platforms: the button opens its photo from
+  // the side chosen (the front)
+  await page.locator("#tourView").click();
   await expect.poll(() => shown(page)).toEqual(["132526", "front"]);
   expect(errors).toEqual([]);
 });

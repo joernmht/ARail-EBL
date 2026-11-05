@@ -1,6 +1,6 @@
 /* The photo tour (web/app/tour-nav.js): walking round the lab from photo to photo. Uses the tokens
    of app.css (corporate design of the Chair of Railway Operations): controls over the photo on the
-   Dunkelblau overlay, as the flyover's camera buttons; the perspective shown in Orange (pressed). */
+   Dunkelblau overlay, as the flyover's camera buttons. */
 
 /* the controls lie over the stage; the stage under them stays clickable */
 .tour { position: absolute; inset: 0; pointer-events: none; }
@@ -12,19 +12,16 @@
 .tour .btn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--warn-text); }
 .tour svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-/* the perspectives in the upper left corner: the cameras at the back of the table (above it) and
-   at its front (below), left and right as seen from the front; a part without a photo from a side
-   has that button dimmed */
-.tour-views {
-  position: absolute; top: 10px; left: 10px; display: grid; grid-template-columns: repeat(3, 36px); gap: 4px;
-  padding: 5px; border-radius: var(--radius); background: rgba(0, 20, 80, .5);
-}
-.tour-views .btn { width: 36px; height: 32px; }
-.tour-views svg { stroke-width: 2.2; }
-.tour-views .btn.missing:not([aria-pressed="true"]) { opacity: .5; }
-/* while a scenario runs, the sides it has no photo from are off (TourNav#setScope) */
-.tour-views .btn:disabled { opacity: .3; }
-.tour-table { grid-column: 1 / -1; height: 4px; margin: 1px 3px; border-radius: 2px; background: var(--overlay-text); opacity: .7; }
+/* the perspective in the upper left corner: one button, each click the next side round the table;
+   its icon shows the table from above (its front below) and the camera, a dot with its view towards
+   the table. With no other side to go to (one photo of the part, or of a scenario's) it is off, and
+   shows where the photo was taken */
+.tour-view { position: absolute; top: 10px; left: 10px; width: 44px; height: 40px; }
+.tour-view svg { width: 30px; height: 30px; stroke-width: 1.7; }
+.tour-view .tour-table { fill: currentColor; fill-opacity: .25; }
+.tour-view .tour-cone { fill: currentColor; fill-opacity: .6; stroke: none; }
+.tour-view .tour-camera { fill: currentColor; stroke: none; }
+.tour-view:disabled { opacity: .6; cursor: default; }
 
 /* the arrows: at the left and right edges of the stage */
 .tour-step { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; }
@@ -32,22 +29,21 @@
 .tour-step[data-step="1"] { right: 10px; }
 .tour-step svg { width: 26px; height: 26px; stroke-width: 2.4; }
 
-/* the HUD's chips beside the perspectives, and a message while placing (at the top of the stage,
-   above where one taps) in the room right of them (their width is measured by tour-nav.js: --tour-w) */
-.tour:not([hidden]) ~ .hud { left: calc(20px + var(--tour-w, 122px)); }
+/* the HUD's chips beside the perspective, and a message while placing (at the top of the stage,
+   above where one taps) in the room right of it (its width is measured by tour-nav.js: --tour-w) */
+.tour:not([hidden]) ~ .hud { left: calc(20px + var(--tour-w, 44px)); }
 .tour:not([hidden]) ~ .placing:not([hidden]) ~ .toast {
-  left: calc(50% + (20px + var(--tour-w, 122px)) / 2);
-  max-width: min(560px, calc(100% - 52px - var(--tour-w, 122px)));
+  left: calc(50% + (20px + var(--tour-w, 44px)) / 2);
+  max-width: min(560px, calc(100% - 52px - var(--tour-w, 44px)));
 }
 
 @media (max-width: 640px) {
-  .tour-views { grid-template-columns: repeat(3, 32px); gap: 3px; padding: 4px; }
-  .tour-views .btn { width: 32px; height: 28px; }
+  .tour-view { width: 40px; height: 36px; }
+  .tour-view svg { width: 24px; height: 24px; }
   .tour-step { width: 36px; height: 52px; }
   /* a phone's stage has no room for them beside the placing bar (Build): they make room while it is shown */
   .stage:has(> .placing:not([hidden])) .tour-step { display: none; }
 }
 @media (forced-colors: active) {
-  .tour-table { background: CanvasText; }
   .tour .btn[aria-pressed="true"] { border-width: 3px; }
 }
