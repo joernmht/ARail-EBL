@@ -181,9 +181,32 @@ export class TourNav {
     return l ? new URL(l.layout, this.dataUrl).href : null;
   }
 
+  /** The address of a photo of the map as the stage shows it: its covered version, where it has one. */
+  _src(photo) {
+    return new URL(photo.covered || photo.image, this.dataUrl).href;
+  }
+
+  /**
+   * The photo on the stage, when it is one of the tour's but the tour did not open it (a layout
+   * opened with its own photo, which is on the photo map: the hybrid container train's): the tour is
+   * there, so that a change of perspective can come back to it.
+   */
+  _adopt() {
+    const s = this.app.source;
+    if (!s || s.stale || s.kind !== "image" || !s.el?.src || this.showing()) return;
+    for (const [i, part] of this.tour.parts.entries()) {
+      for (const [v, p] of Object.entries(part.views)) {
+        if (this._src(p) !== s.el.src) continue;
+        this.at = { part: i, photo: p, perspective: v, exact: true, src: s.el.src };
+        this.perspective = v;
+        return;
+      }
+    }
+  }
+
   async _open(view) {
     const app = this.app, token = ++this._token, p = view.photo;
-    const src = new URL(p.covered || p.image, this.dataUrl).href; // its covered photo, where it has one
+    const src = this._src(p);
     this.at = { ...view, src };
     const part = this.tour.parts[view.part], label = PERSPECTIVES.find((v) => v.id === view.perspective).label;
     app.flyover.leave(); // a photo is shown in the camera view
@@ -209,6 +232,7 @@ export class TourNav {
     const hidden = this.app.flyover.active || !this.open;
     if (this.el.hidden !== hidden) this.el.hidden = hidden;
     if (!this.open) return;
+    this._adopt();
     const showing = this.showing() && this.at.part != null, part = this.tour.parts[this.here()];
     for (const b of this.el.querySelectorAll("[data-view]")) {
       const v = b.dataset.view;

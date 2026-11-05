@@ -83,6 +83,19 @@ test("a photo of the container train opens its layout; the examples in Settings 
   expect(errors).toEqual([]);
 });
 
+test("the hybrid container train's example with its scenario shown: the tour offers the photos with the terminal and the train, its own photo among them", async ({ page }) => {
+  const errors = await openApp(page, "/app/?example=container-task");
+  await page.waitForFunction(() => /ebl-container-train\.jpg$/.test(window.__arail.source?.el?.src || "") && window.__arail.tourNav.showing(), null, { timeout: 30_000 });
+  // not started, but its example is open: the scenario's photos only, the photo shown is their front
+  expect(await page.evaluate(() => [window.__arail.activeCase, window.__arail.caseById("terminal").started, window.__arail.tourNav.scope?.key])).toEqual(["terminal", false, "terminal|container||wagons"]);
+  expect(await shown(page)).toEqual(["terminal-wagons", "front"]);
+  expect(await page.evaluate(() => window.__arail.tourNav.tour.photos().map((p) => p.id))).toEqual(["141012", "terminal-wagons"]);
+  // the list of scenarios: all photos again
+  await page.locator("#scenariosBack").click();
+  await page.waitForFunction(() => !window.__arail.tourNav.scope);
+  expect(errors).toEqual([]);
+});
+
 test("the flyover hides the tour and shows the joined orthophoto of the linked parts of the table", async ({ page }) => {
   const errors = await openApp(page, "/app/?photo=132526");
   await tracked(page);

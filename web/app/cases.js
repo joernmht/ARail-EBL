@@ -175,6 +175,18 @@ export class Case {
   end() {}
 
   /**
+   * Does the photo tour offer only the photos of its task now (`photoScope`)? While it runs; one that
+   * plays in an example of its own (`opens`: the hybrid container train) also while it is shown, not
+   * started yet, with that example's layout open (opened from Settings → View → Examples or a link),
+   * so that a change of perspective stays with its task.
+   */
+  get scopesTour() {
+    if (this.started) return true;
+    const x = this.constructor.opens ? this.app.page.examples.find((e) => e.id === this.constructor.opens) : null;
+    return !!x && !!this.app.layoutUrl && new URL(x.layout, location.href).href === this.app.layoutUrl;
+  }
+
+  /**
    * The photos of the photo tour that show its task, the only ones the tour offers while it runs
    * (TourNav#setScope): the photos of the digital layer of the layout open (the one it plays in), on
    * its parts of the table (`photoParts`, where they have such photos); none when the tour has no
@@ -415,6 +427,19 @@ export class TerminalCase extends Case {
     if (app.world.layout.markers.rolling && app.world.layout.view?.image) return app.flyover.leave();
     // else the crane, the yard and the loading tracks in the flyover
     app.showPlace(boundsOf(app.world.objects.filter((o) => o.constructor.category === "Terminal" && o.geometry), 0.12));
+  }
+
+  /**
+   * The photos of its task: with model wagons (the layout's `markers.rolling`, the hybrid container
+   * train), those of its layout in which the app reads them (`wagons` on the photo map), so the
+   * terminal and the real train are in the picture, the layout's own photo among them; without model
+   * wagons, or without such photos, those of its layout (Case#photoScope).
+   */
+  photoScope(tour) {
+    const scope = super.photoScope(tour);
+    if (!scope || !this.app.world.layout.markers?.rolling) return scope;
+    const only = (p) => scope.only(p) && p.wagons?.length > 0;
+    return (tour.data?.photos || []).some(only) ? { key: `${scope.key}|wagons`, only } : scope;
   }
 
   /** The moves the crane (and the reach stackers) finished since the terminal was reset. */

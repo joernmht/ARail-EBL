@@ -340,13 +340,21 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   const town = { layout: "ebl-neustadt.json", layers: ["sbahn", "waldhof"], mode: "camera", photo: "ebl-neustadt.jpg", stale: false };
   const home = () => page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera" && /ebl-neustadt\.jpg$/.test(window.__arail.source?.el?.src || ""), null, { timeout: 30_000 });
   expect(await stage()).toEqual(town);
-  // the loading task at the hybrid train: the tour offers its photos only, from the front left and the front, and no arrows
+  // the loading task at the hybrid train: the tour offers its photos only, those with the terminal and
+  // the real train (from the front left and the front), and no arrows; the photo it opens with is its front
   await startScenario(page, "terminal");
-  await page.waitForFunction(() => window.__arail.tourNav.scope);
+  await page.waitForFunction(() => window.__arail.tourNav.scope && window.__arail.tourNav.showing(), null, { timeout: 30_000 });
+  const tourAt = () => page.evaluate(() => [window.__arail.tourNav.at.photo.id, window.__arail.tourNav.at.perspective, window.__arail.source.el.src.replace(/.*\//, "")]);
+  expect(await tourAt()).toEqual(["terminal-wagons", "front", "ebl-container-train.jpg"]);
   expect(await page.locator("#tour [data-view]").evaluateAll((bs) => bs.filter((b) => !b.disabled).map((b) => b.dataset.view))).toEqual(["front-left", "front"]);
   await expect(page.locator("#tour .tour-step").first()).toBeHidden();
   await page.locator('#tour [data-view="front-left"]').click();
   await page.waitForFunction(() => window.__arail.tourNav.showing() && window.__arail.tourNav.at.perspective === "front-left", null, { timeout: 30_000 });
+  expect(await tourAt()).toEqual(["141012", "front-left", "141012.jpg"]);
+  // and back: the photo it opened with
+  await page.locator('#tour [data-view="front"]').click();
+  await page.waitForFunction(() => window.__arail.tourNav.showing() && window.__arail.tourNav.at.perspective === "front", null, { timeout: 30_000 });
+  expect(await tourAt()).toEqual(["terminal-wagons", "front", "ebl-container-train.jpg"]);
   // its photos are of its layout: the scenario goes on
   expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.caseById("terminal").started, /photo=/.test(location.search)])).toEqual(["ebl-container-train.json", true, true]);
   // ← Scenarios: back to the town with its photo, all photos again, the address without the photo

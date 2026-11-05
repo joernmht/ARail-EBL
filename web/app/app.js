@@ -591,13 +591,14 @@ export class App {
   /**
    * The photo tour offers the photos of the scenario that runs (those of its task), else all
    * (TourNav#setScope). Also while another chapter is shown: the scenario runs on there, and a photo
-   * of another layout would end it.
+   * of another layout would end it. A scenario that plays in an example of its own does so already
+   * while it is shown with that example open (Case#scopesTour: the hybrid container train).
    */
   _syncTour() {
     const t = this.tourNav;
     if (!t?.all) return;
     const c = this.caseById(this.activeCase);
-    t.setScope(c?.started ? c.photoScope(t) : null);
+    t.setScope(c?.scopesTour ? c.photoScope(t) : null);
   }
 
   /** Show a chapter or a case after an action elsewhere (e.g. a terminal added): its heading takes the keyboard focus. */

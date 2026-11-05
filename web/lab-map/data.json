@@ -1114,7 +1114,6 @@
    "heading": 25,
    "markers": 8,
    "approx": true,
-   "layer": "container",
    "place": "Waldhof north and goods yard",
    "upper": "Mitte, Radebeul",
    "km": [
@@ -2164,6 +2163,10 @@
    "y": -629,
    "heading": 31,
    "markers": 3,
+   "wagons": [
+    3,
+    4
+   ],
    "approx": true,
    "layer": "container",
    "place": "Waldhof north and goods yard",
@@ -2181,6 +2184,10 @@
    "y": -706,
    "heading": 160,
    "markers": 1,
+   "wagons": [
+    10,
+    11
+   ],
    "approx": true,
    "place": "Waldhof north and goods yard",
    "upper": "Mitte, Radebeul",
@@ -2200,6 +2207,28 @@
    "upper": "Mitte, Radebeul",
    "km": [],
    "image": "photos/141024.jpg"
+  },
+  {
+   "id": "terminal-wagons",
+   "time": "video frame",
+   "group": "S12",
+   "x": 15424,
+   "y": -666,
+   "heading": 103,
+   "markers": 2,
+   "wagons": [
+    1,
+    4,
+    6,
+    7,
+    8,
+    9
+   ],
+   "approx": true,
+   "layer": "container",
+   "place": "Waldhof north and goods yard",
+   "km": [],
+   "image": "../media/ebl-container-train.jpg"
   }
  ]
 }

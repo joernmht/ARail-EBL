@@ -379,6 +379,13 @@ module **Terminal**). The game page's case **Terminal** has no task. On a layout
 “Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab example) or **Open the
 example**, and **Add to this layout**.
 
+**Start** opens the example with its photo, the real wagons close up. The photo tour then offers only
+the pictures with the terminal and the real train: those in which the app reads the model wagons'
+tags, which are this photo (from the front) and one along the train (from the front left). A
+change of perspective switches between them and comes back to the photo the scenario opened with.
+The tour does the same while the scenario is shown with its example open, before Start (see
+[The photo tour](getting-started.md#the-photo-tour)).
+
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
    what the crane is doing), **Reset terminal** (back to the start state) and **Save as start
    state**; the speed (1×, 2×, 5×, 10×, 30×) is in the upper right corner of the stage. In the
