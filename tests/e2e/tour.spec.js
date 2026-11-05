@@ -146,6 +146,27 @@ test("the hybrid container train's example with its scenario shown: the tour off
   // the list of scenarios: all photos again
   await page.locator("#scenariosBack").click();
   await page.waitForFunction(() => !window.__arail.tourNav.scope);
+  // the example opened again from Settings → View: its scenario shown, its photos only
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
+  await page.locator("#example-container-task").click();
+  await page.waitForFunction(() => window.__arail.activeCase === "terminal" && window.__arail.tourNav.scope?.key === "terminal|container||wagons", null, { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test("the hybrid train's scenario only selected (not started, its example not opened): the tour walks into its part with all photos and the arrows", async ({ page }) => {
+  const errors = await openApp(page, "/app/?photo=132409#terminal");
+  await tracked(page);
+  expect(await page.evaluate(() => [window.__arail.activeCase, window.__arail.caseById("terminal").started])).toEqual(["terminal", false]);
+  // → from the front: Waldhof, then the goods yard, whose photo from the front opens the hybrid train's layout
+  await page.locator('[data-step="1"]').click();
+  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["132345", "front"]);
+  await page.locator('[data-step="1"]').click();
+  await expect.poll(() => shown(page), { timeout: 30_000 }).toEqual(["132257", "front"]);
+  await page.waitForFunction(() => /ebl-container-train\.json$/.test(window.__arail.layoutUrl));
+  await page.waitForTimeout(500); // the HUD's refresh (it sets the tour's photos)
+  expect(await page.evaluate(() => [window.__arail.tourNav.scope, window.__arail.tourNav.tour.parts.length > 10])).toEqual([null, true]);
+  await expect(page.locator("#tour .tour-step").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

@@ -77,6 +77,11 @@ export class Case {
     this.started = false;
     /** Whether its task was done when it was last stopped: the list shows it as Done. */
     this.completed = false;
+    /**
+     * Whether the example it plays in was opened for it (Settings → View → Examples, a link: App#_openedFor),
+     * so that before Start the photo tour offers its photos (`scopesTour`); until it is stopped.
+     */
+    this.opened = false;
     /** The world's speed before it was started, while it runs at its own (static speed). */
     this._speed = null;
     /** Its panel: `render(el)`, `update()`, optionally `key(e)`, `syncWidth()`, `stepped()`, `drawFocus(ctx, view)`. */
@@ -168,6 +173,7 @@ export class Case {
     if (this._speed != null && this.app.world.speed === this.constructor.speed) this.app.world.speed = this._speed;
     this._speed = null;
     this.started = false;
+    this.opened = false;
     this.end();
   }
 
@@ -176,14 +182,13 @@ export class Case {
 
   /**
    * Does the photo tour offer only the photos of its task now (`photoScope`)? While it runs; one that
-   * plays in an example of its own (`opens`: the hybrid container train) also while it is shown, not
-   * started yet, with that example's layout open (opened from Settings → View → Examples or a link),
-   * so that a change of perspective stays with its task.
+   * plays in an example of its own (`opens`: the hybrid container train) also before Start once that
+   * example was opened for it (`opened`: Settings → View → Examples, a link), so that a change of
+   * perspective stays with its task. Only selected, with its layout reached otherwise (the photo
+   * tour's arrows), it leaves the tour alone.
    */
   get scopesTour() {
-    if (this.started) return true;
-    const x = this.constructor.opens ? this.app.page.examples.find((e) => e.id === this.constructor.opens) : null;
-    return !!x && !!this.app.layoutUrl && new URL(x.layout, location.href).href === this.app.layoutUrl;
+    return this.started || this.opened;
   }
 
   /**

@@ -383,7 +383,7 @@ example**, and **Add to this layout**.
 the pictures with the terminal and the real train: those in which the app reads the model wagons'
 tags, which are this photo (from the front) and one along the train (from the front left). A
 change of perspective switches between them and comes back to the photo the scenario opened with.
-The tour does the same while the scenario is shown with its example open, before Start (see
+The tour does the same when the scenario's example is opened (Settings → View → Examples, or a link), before Start (see
 [The photo tour](getting-started.md#the-photo-tour)).
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,

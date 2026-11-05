@@ -214,6 +214,7 @@ export class App {
     const linked = this.caseFor(tab)?.constructor.appModule;
     if (linked) this.setAppModule(linked, true);
     if (tab) this.selectTab(tab, { address: tab !== this.page.start });
+    if (example && tab === example.tab) this._openedFor(example);
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -735,12 +736,22 @@ export class App {
       this._loadExampleMedia(x);
     } else if (x) await this.openLayout(x.layout, x.layers ?? null);
     if (x?.tab) this.selectTab(x.tab);
-    if (x) return;
+    if (x) return this._openedFor(x);
     const l = this.page.exampleLayers[id];
     if (!l) return;
     // the layout is open already: switch the module on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
     return this.openLayout(l.layout, [l.layer]);
+  }
+
+  /**
+   * An example opened for the case of its tab (Settings → View → Examples, ?example=): when it is the
+   * example that case plays in (`opens`), or another of its layout (the hybrid container train), the
+   * photo tour offers the case's photos before Start (Case#opened), until the case is stopped.
+   */
+  _openedFor(x) {
+    const c = x?.tab ? this.caseFor(x.tab) : null, own = c?.constructor.opens ? this.page.examples.find((e) => e.id === c.constructor.opens) : null;
+    if (c && own && new URL(own.layout, location.href).href === new URL(x.layout, location.href).href) c.opened = true;
   }
 
   /** Is this example (its id) open: its layout, with the modules it names on and no others? */
