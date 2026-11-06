@@ -13,10 +13,13 @@ const photo = (id) => DATA.photos.find((p) => p.id === id);
 test("the hybrid container train's own photo is a photo of its digital layer on the photo map", () => {
   const own = photo("terminal-wagons");
   assert.ok(own, "the frame of the tagged train's clip");
-  // the same file as the layout's own photo, each address relative to its own file
-  const map = new URL(own.image, "https://x/web/lab-map/data.json").href;
-  const layout = new URL(LAYOUT.view.image, "https://x/web/layouts/ebl-container-train.json").href;
+  // the same file as the layout's own photo, as each side shows it (the tour a covered version where the photo
+  // has one, the layout its image_covered): each address relative to its own file; one covered alone would
+  // make the tour miss the photo the scenario opens with
+  const map = new URL(own.covered || own.image, "https://x/web/lab-map/data.json").href;
+  const layout = new URL(LAYOUT.view.image_covered || LAYOUT.view.image, "https://x/web/layouts/ebl-container-train.json").href;
   assert.equal(map, layout);
+  assert.equal(!!own.covered, !!LAYOUT.view.image_covered, "covered on both sides or on neither");
   assert.equal(own.layer, "container");
   assert.equal(DATA.layers[own.layer].layout, "../layouts/ebl-container-train.json");
   assert.equal(DATA.layers[own.layer].photo, "terminal-wagons", "the layer's own photo, first from its side");

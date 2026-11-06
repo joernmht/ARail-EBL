@@ -1408,11 +1408,17 @@ export class App {
     return !!document.fullscreenElement && !!s && !s.stale && !s.untracked && s.kind !== "live" && !!s.registered;
   }
 
-  /** The layout was found in the picture shown (once is enough): in full screen it fills the screen from now on. */
-  _registered() {
+  /**
+   * Whether the layout is found in the picture shown: in full screen a picture it is found in fills the
+   * screen. Found once is enough (a video keeps it when its markers are hidden for a moment); a still
+   * photo, looked at once (`redetect`), is not found when its markers are not, also one the app comes with
+   * (a layout from a link whose own photo does not track keeps its shape).
+   * @param {boolean} [found] the layout was found (default: the tracker has a pose)
+   */
+  _registered(found = !!this.tracker.state.H) {
     const s = this.source;
-    if (!s || s.registered || !this.tracker.state.H) return;
-    s.registered = true;
+    if (!s || s.registered === found || (!found && s.kind !== "image")) return;
+    s.registered = found;
     this.sizeCanvas();
   }
 
@@ -1483,7 +1489,8 @@ export class App {
         return;
       }
       const st = this.tracker.update(this.detections, this.clock, this.camera, { still: true });
-      this._registered();
+      // a still photo is looked at once: the layout found in it or not decides whether it fills the screen
+      this._registered(!!st.H);
       this._observeRolling(true);
       const n = Object.keys(this.detections).length;
       if (!n) toast("No markers found. Get closer, look from above at an angle, use good light, and check the marker type in Build → Layout.", 7000);
@@ -1564,8 +1571,8 @@ export class App {
     const W = this.canvas.width, Hc = this.canvas.height, { x: ox, y: oy } = this.pictureAt;
     const { H: Hs } = this.pose();
     // the picture on a larger canvas (view.extend_below, full screen): the virtual lab around it
-    const shifted = !!(ox || oy) && !!Hs, camera = shifted ? shiftedCamera(this.camera, ox, oy, W, Hc) : this.camera;
-    const H = shifted ? shiftedH(Hs, ox, oy) : Hs;
+    const shifted = !!(ox || oy), camera = shifted ? shiftedCamera(this.camera, ox, oy, W, Hc) : this.camera;
+    const H = shifted && Hs ? shiftedH(Hs, ox, oy) : Hs;
     const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
     const view = H ? new ARail.View({ ctx, camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr, pulse: pulse() }) : null;
     if (W > source.w || Hc > source.h) {

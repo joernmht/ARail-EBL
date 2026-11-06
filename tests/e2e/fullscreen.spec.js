@@ -164,3 +164,24 @@ test("full screen: one's own photo the layout is found in fills the screen once 
   expect(link.canvas).toEqual(link.photo);
   expect(errors).toEqual([]);
 });
+
+test("full screen: a layout's own photo the layout is not found in keeps its shape", async ({ page }) => {
+  // the lab's layout with another photo of its own, one without its markers (a layout from a link whose photo does not track)
+  await page.route((url) => url.pathname.endsWith("/layouts/ebl-lab.json"), async (route) => {
+    const res = await route.fetch(), json = await res.json();
+    json.view = { ...json.view, image: "../assets/town-day.jpg" };
+    delete json.view.image_covered;
+    await route.fulfill({ response: res, json });
+  });
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
+  await page.waitForFunction(() => /town-day\.jpg$/.test(window.__arail?.source?.el?.src || ""), null, { timeout: 30_000 });
+  // the app comes with it, but its markers are not found: not registered once it was looked at
+  await page.waitForFunction(() => window.__arail.source.registered === false, null, { timeout: 10_000 });
+  await page.locator("#btnFullscreen").click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.waitForTimeout(300);
+  const s = await stage(page);
+  expect(s.at).toEqual({ x: 0, y: 0 });
+  expect(s.canvas).toEqual(s.photo);
+  expect(errors).toEqual([]);
+});
