@@ -256,10 +256,14 @@ export class TourNav {
     const part = this.tour.parts[view.part], label = PERSPECTIVES.find((v) => v.id === view.perspective).label;
     app.flyover.leave(); // a photo is shown in the camera view
     const layout = this.layoutOf(p.id);
-    const shown = await app.openPhoto(src, `${part.name} · ${label}`, { layout, track: !!layout, current: () => token === this._token });
+    let shown = false;
+    try {
+      shown = await app.openPhoto(src, `${part.name} · ${label}`, { layout, track: !!layout, current: () => token === this._token });
+    } finally {
+      // on the stage now, or it could not be shown: no longer on its way (sync adopts the photo on the stage)
+      if (token === this._token) this._from = undefined;
+    }
     if (token !== this._token) return;
-    // on the stage now, or it could not be shown: no longer on its way (sync adopts the photo on the stage)
-    this._from = undefined;
     if (!shown) return this.sync();
     // the address opens this photo again
     const q = new URLSearchParams(location.search);

@@ -146,10 +146,9 @@ test("flyover navigation: drag to orbit, Shift-drag to pan, wheel to zoom, pinch
   c = await cam();
   expect(c.distance_mm).toBeLessThan(d1 * 0.85);
   expect(Math.abs(((c.yaw_deg - yaw1 + 540) % 360) - 180)).toBeGreaterThan(20);
-  // the camera is kept for this layout
-  await page.waitForTimeout(600);
-  const saved = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("arail.flycam:")));
-  expect(saved.length).toBe(1);
+  // the camera is kept for this layout: 400 ms after its last move, which can be the end of the wheel's
+  // eased zoom after the pinch, so the save is waited for rather than a fixed time
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("arail.flycam:")).length)).toBe(1);
   expect(errors).toEqual([]);
 });
 

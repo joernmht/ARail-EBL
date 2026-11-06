@@ -138,3 +138,29 @@ test("full screen: a photo of one's own the layout finds no markers in keeps its
   expect(s.canvas).toEqual(s.photo);
   expect(errors).toEqual([]);
 });
+
+test("full screen: one's own photo the layout is found in fills the screen once tracked; an image from a link without markers keeps its shape", async ({ page }) => {
+  // a photo of one's own (here the lab's) in which the layout is found
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
+  await page.locator("#fileOpen").setInputFiles("web/media/ebl-lab.jpg");
+  await page.waitForFunction(() => window.__arail.source?.name === "ebl-lab.jpg" && window.__arail.tracker.state.H, null, { timeout: 30_000 });
+  expect(await page.evaluate(() => window.__arail.source.registered)).toBe(true);
+  await page.locator("#btnFullscreen").click();
+  await page.waitForFunction(() => !!document.fullscreenElement && window.__arail.pictureAt.x + window.__arail.pictureAt.y > 0);
+  const own = await stage(page);
+  expect(Math.abs(own.canvas[0] / own.canvas[1] - own.screen[0] / own.screen[1])).toBeLessThan(0.01);
+  await page.evaluate(() => document.exitFullscreen());
+  await page.waitForFunction(() => !document.fullscreenElement);
+  // an image named by a link (?image=) in which the layout finds no markers: its own shape, in full screen too
+  await page.goto("/app/?layout=../layouts/ebl-lab.json&image=../assets/town-day.jpg#view");
+  await page.waitForFunction(() => /town-day\.jpg$/.test(window.__arail?.source?.el?.src || ""), null, { timeout: 30_000 });
+  await page.waitForTimeout(500); // the markers looked for
+  expect(await page.evaluate(() => [!!window.__arail.tracker.state.H, window.__arail.source.registered])).toEqual([false, false]);
+  await page.locator("#btnFullscreen").click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.waitForTimeout(300);
+  const link = await stage(page);
+  expect(link.at).toEqual({ x: 0, y: 0 });
+  expect(link.canvas).toEqual(link.photo);
+  expect(errors).toEqual([]);
+});

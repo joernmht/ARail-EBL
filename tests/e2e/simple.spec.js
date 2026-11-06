@@ -60,6 +60,27 @@ test("one view button: the photo, the flyover, the map and 2.5D in turn, then th
   expect(errors).toEqual([]);
 });
 
+test("the view button's title names a key only where it leads: after Shift+S and F, F opens the map, so no key for the flyover", async ({ page }) => {
+  const errors = await openApp(page);
+  const view = page.locator("#btnView");
+  await page.locator("#stage").focus();
+  await page.keyboard.press("Shift+S"); // the map
+  await page.waitForFunction(() => window.__arail.flyover.simple && window.__arail.mode === "flyover");
+  await page.keyboard.press("f"); // back to the photo: the simple view stays chosen for F
+  await page.waitForFunction(() => window.__arail.mode === "camera");
+  await expect(view).toHaveText("Photo");
+  await expect(view).toHaveAttribute("title", "Next view: Flyover");
+  // the button goes to the full flyover, and from there its title names keys again
+  await view.click();
+  await page.waitForFunction(() => window.__arail.mode === "flyover" && !window.__arail.flyover.simple);
+  await expect(view).toHaveAttribute("title", "Next view: Map (Shift+S)");
+  await view.click();
+  await view.click();
+  await view.click(); // the photo again, the simple view left by the button
+  await expect(view).toHaveAttribute("title", "Next view: Flyover (F)");
+  expect(errors).toEqual([]);
+});
+
 test("Build works in the map: tapping an object selects it", async ({ page }) => {
   const errors = await openApp(page);
   await viewTo(page, "map");

@@ -235,19 +235,22 @@ export class Flyover {
 
   /**
    * The view button as the stage is now: the view shown (its name; the camera view after its source),
-   * and in its title the view a click goes to, with the key that leads there too.
+   * and in its title the view a click goes to, with the key that leads there too (none for the full
+   * flyover while F opens the simple view).
    */
   syncView() {
     const b = $("#btnView");
     if (!b) return;
     const v = this.view(), next = this.nextView(v), name = tr(this.viewName(v));
-    const key = `${v}|${name}|${tr(this.viewName(next))}`; // the source's name, in the language shown
+    // the key that leads there too; while the simple view is chosen, F opens it, not the full flyover
+    const k = next === "flyover" && this.simple ? null : VIEW_KEYS[next];
+    const key = `${v}|${name}|${tr(this.viewName(next))}|${k}`; // the source's name, in the language shown
     if (this._viewShown === key) return;
     this._viewShown = key;
     b.textContent = name;
     b.dataset.view = v;
     b.setAttribute("aria-label", tr(`View: ${this.viewName(v)}`));
-    b.title = tr(`Next view: ${this.viewName(next)} (${VIEW_KEYS[next]})`);
+    b.title = tr(k ? `Next view: ${this.viewName(next)} (${k})` : `Next view: ${this.viewName(next)}`);
   }
 
   /** Does the camera look straight down, or will it when its move ends? */

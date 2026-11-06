@@ -82,6 +82,7 @@ const APP_DE = {
   "2.5D": "2,5D",
   "View: {name}": "Ansicht: {name}",
   "Next view: {name} ({key})": "Nächste Ansicht: {name} ({key})",
+  "Next view: {name}": "Nächste Ansicht: {name}",
   "Shift+S": "Umschalt+S",
   "Simple 2.5D": "Einfach 2,5D",
   "Keep the current frame (for editing)": "Das aktuelle Bild festhalten (zum Bearbeiten)",

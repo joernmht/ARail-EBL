@@ -560,7 +560,7 @@ export class App {
       }
       if (this._loadToken !== token) return;
       const img = this._layoutImage();
-      if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example");
+      if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example", null, { known: true });
       this._autoFlyover = false;
       this.flyover.leave();
       const q = new URLSearchParams(location.search), drop = ["photo", "image", "example", "layout", "layers", "camera"].filter((k) => q.has(k));
@@ -770,8 +770,8 @@ export class App {
       this.flyover.leave();
     }
     const src = new URL(x.video || x.image, location.href).href;
-    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""));
-    else this.loadImage(src, x.label.replace(/^Example: /, ""));
+    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""), null, null, { known: true });
+    else this.loadImage(src, x.label.replace(/^Example: /, ""), null, { known: true });
   }
 
   /**
@@ -796,7 +796,7 @@ export class App {
       this._autoFlyover = false;
       this.flyover.leave();
     }
-    return this.loadImage(src, name, null, { track });
+    return this.loadImage(src, name, null, { track, known: true });
   }
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
@@ -995,7 +995,7 @@ export class App {
       this._autoFlyover = false;
       this.flyover.leave();
     }
-    if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
+    if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example", null, { known: true });
   }
 
   _layoutKey() {
@@ -1198,19 +1198,22 @@ export class App {
   /* ---------------------------------------------------------------- sources */
 
   /**
-   * @param {{track?: boolean}} [options] track: false shows a photo without looking for its markers
-   *   (a photo of the photo tour without a digital layer: `source.untracked`)
+   * @param {{track?: boolean, known?: boolean}} [options] track: false shows a photo without looking for
+   *   its markers (a photo of the photo tour without a digital layer: `source.untracked`); known: a picture
+   *   the app comes with for its layout (a photo of the tour, a layout's own photo or clip), in which the
+   *   layout is found (`source.registered` at once)
    */
-  setSource(el, kind, nw, nh, name, objectUrl = null, { track = true } = {}) {
+  setSource(el, kind, nw, nh, name, objectUrl = null, { track = true, known = false } = {}) {
     // in the flyover the new source is shown when leaving it (that fades over then)
     if (!this.flyover.active) this.crossfade();
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
     // registered: the layout is found in it, so that in full screen it fills the screen (fillsScreen): a
-    // picture the app comes with (a photo of the tour with a digital layer, a layout's own photo or clip) at
-    // once, without a jump from one photo to the next; a file of one's own once it is tracked (_registered)
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && !objectUrl };
+    // picture the app comes with (`known`: a photo of the tour with a digital layer, a layout's own photo or
+    // clip) at once, without a jump from one photo to the next; any other (a file of one's own, an image of
+    // a link) once it is tracked (_registered)
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && known };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();
@@ -1232,17 +1235,18 @@ export class App {
    * @param {string} src URL
    * @param {string} name shown in the app
    * @param {string | null} [objectUrl] object URL to revoke when the source is replaced
-   * @param {{track?: boolean}} [options] track: false shows it without looking for markers (see setSource)
+   * @param {{track?: boolean, known?: boolean}} [options] track: false shows it without looking for markers;
+   *   known: a picture the app comes with for its layout (see setSource)
    * @returns {Promise<boolean>} once it is shown (true), or not: another source was asked for, or it failed
    */
-  loadImage(src, name, objectUrl = null, { track = true } = {}) {
+  loadImage(src, name, objectUrl = null, { track = true, known = false } = {}) {
     const token = ++this._loadToken;
     const img = new Image();
     img.crossOrigin = "anonymous"; // images from other sites must allow it, or the canvas cannot be read
     return new Promise((resolve) => {
       img.onload = () => {
         const current = token === this._loadToken;
-        if (current) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track });
+        if (current) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track, known });
         else if (objectUrl) URL.revokeObjectURL(objectUrl);
         resolve(current);
       };
@@ -1254,7 +1258,8 @@ export class App {
     });
   }
 
-  loadVideo(url, name, stream = null, objectUrl = null) {
+  /** @param {{known?: boolean}} [options] known: a clip the app comes with for its layout (see setSource) */
+  loadVideo(url, name, stream = null, objectUrl = null, { known = false } = {}) {
     const token = ++this._loadToken;
     const v = document.createElement("video");
     v.muted = true;
@@ -1265,7 +1270,7 @@ export class App {
     else v.src = url;
     v.onloadedmetadata = () => {
       if (token !== this._loadToken) return this._release({ el: v, kind: stream ? "live" : "video", objectUrl });
-      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl);
+      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl, { known });
       if (this.flyover.active && !stream) {
         this.flyover.resumeVideoOnLeave(); // shown (and played) when leaving the flyover
         return;
