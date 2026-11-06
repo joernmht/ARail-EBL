@@ -1,6 +1,7 @@
 // Full screen (web/app/app.js): the button is the usual icon, and a photo with a digital layer fills
-// the screen with its virtual surroundings: the canvas takes the screen's shape, the photo in its
-// middle, the lab and the layout's virtual parts around it; taps still find the layout under them.
+// the screen with its virtual surroundings: the canvas takes the screen's shape, the photo at its top
+// (on a wide screen in its middle), the lab and the layout's virtual parts below it (or at its sides);
+// taps still find the layout under them.
 import { expect, test } from "@playwright/test";
 
 async function openApp(page, path) {
@@ -46,7 +47,7 @@ const orthoAround = (page) => page.evaluate(async () => {
   return n;
 });
 
-test("full screen: the usual icon; a photo with virtual surroundings fills a tablet held upright, above and below it", async ({ page }) => {
+test("full screen: the usual icon; a photo with virtual surroundings fills a tablet held upright downwards, the photo at the top", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   const errors = await openApp(page, "/app/?example=container-task");
   await page.waitForFunction(() => window.__arail.tracker.state.H, null, { timeout: 30_000 });
@@ -61,17 +62,24 @@ test("full screen: the usual icon; a photo with virtual surroundings fills a tab
   expect(await orthoAround(page)).toBe(0);
   await button.click();
   await expect(button).toHaveAccessibleName("Leave full screen");
-  await page.waitForFunction(() => window.__arail.pictureAt.y > 0);
+  await page.waitForFunction(() => {
+    const c = window.__arail.canvas;
+    return !!document.fullscreenElement && Math.abs(c.width / c.height - innerWidth / innerHeight) < 0.01;
+  });
   const s = await stage(page);
   expect(s.full).toBe(true);
-  // the canvas has the screen's shape and fills it; the photo lies in its middle, the bands above and below it
+  // the canvas has the screen's shape and fills it; the photo stays at its top (no empty sky above it),
+  // the canvas goes on below it, beyond the band of view.extend_below
   expect(Math.abs(s.css[0] - s.screen[0])).toBeLessThan(2);
   expect(Math.abs(s.css[1] - s.screen[1])).toBeLessThan(2);
   expect(s.canvas[0]).toBe(s.photo[0]);
-  expect(s.at.x).toBe(0);
-  expect(s.at.y).toBeGreaterThan(100);
-  // the bands are drawn (the lab around the photo), not the stage's background
-  const corner = await page.evaluate(() => [...window.__arail.ctx.getImageData(4, 4, 1, 1).data]);
+  expect(s.at).toEqual({ x: 0, y: 0 });
+  expect(s.canvas[1]).toBeGreaterThan(before.canvas[1] + 100);
+  // the room below is drawn (the lab in front of the table), not the stage's background
+  const corner = await page.evaluate(() => {
+    const c = window.__arail.canvas;
+    return [...window.__arail.ctx.getImageData(4, c.height - 4, 1, 1).data];
+  });
   expect(corner[3]).toBe(255);
   expect(corner.slice(0, 3)).not.toEqual([0, 0, 0]);
   // the real table goes on around the photo
@@ -82,7 +90,7 @@ test("full screen: the usual icon; a photo with virtual surroundings fills a tab
   expect(ground).toEqual(tracked);
   // leaving full screen: the photo's own shape again
   await button.click();
-  await page.waitForFunction(() => !document.fullscreenElement && window.__arail.pictureAt.y === 0);
+  await page.waitForFunction((h) => !document.fullscreenElement && window.__arail.canvas.height === h, before.canvas[1]);
   expect((await stage(page)).canvas).toEqual(before.canvas);
   await expect(button).toHaveAccessibleName("Full screen");
   expect(errors).toEqual([]);

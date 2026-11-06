@@ -66,8 +66,8 @@ const FULLSCREEN_ICONS = {
 };
 /**
  * The camera of the picture shown, its pixels moved by (dx, dy) within a larger canvas (in full
- * screen the photo lies in its middle): what a View needs of a Camera, its size, intrinsics and
- * projection, in the canvas's pixels.
+ * screen on a wide display the photo lies in its middle): what a View needs of a Camera, its size,
+ * intrinsics and projection, in the canvas's pixels.
  */
 function shiftedCamera(camera, dx, dy, width, height) {
   return {
@@ -1370,27 +1370,25 @@ export class App {
    * layout extends the picture by (`view.extend_below`, not for the live camera). The camera stays
    * the source's, so the virtual parts of the layout in front of the table are drawn below it. In
    * full screen a picture with virtual surroundings (`fillsScreen`) fills the screen: the canvas takes
-   * the screen's shape, the picture in its middle (`pictureAt`), and the bands above and below it (or at
-   * its sides) show the lab around it as its camera sees it.
+   * the screen's shape and shows the lab around the picture as its camera sees it (`pictureAt`). On a
+   * screen taller than the picture (a tablet or phone held upright) the picture stays at the top and the
+   * canvas goes on below it, in front of the table; on a wider one it lies in the middle, the lab at
+   * its sides.
    */
   sizeCanvas() {
     const s = this.source;
     if (!s || this.flyover.active) return;
     const below = s.kind === "live" ? 0 : Math.round(s.h * ARail.extendBelowOf(this.world.layout));
-    let W = s.w, H = s.h + below, x = 0, y = 0;
+    let W = s.w, H = s.h + below, x = 0;
     if (this.fillsScreen()) {
       const aspect = $("#stageWrap").clientWidth / Math.max(1, window.innerHeight);
       if (W / H < aspect) {
         const wide = Math.round(H * aspect);
         x = Math.round((wide - W) / 2);
         W = wide;
-      } else {
-        const tall = Math.round(W / aspect);
-        y = Math.round((tall - H) / 2);
-        H = tall;
-      }
+      } else H = Math.round(W / aspect); // filled downwards: no empty sky above the picture
     }
-    this.pictureAt = { x, y };
+    this.pictureAt = { x, y: 0 };
     if (this.canvas.width !== W || this.canvas.height !== H) {
       this.canvas.width = W;
       this.canvas.height = H;
