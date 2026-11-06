@@ -1210,10 +1210,10 @@ export class App {
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
     // registered: the layout is found in it, so that in full screen it fills the screen (fillsScreen): a
-    // picture the app comes with (`known`: a photo of the tour with a digital layer, a layout's own photo or
-    // clip) at once, without a jump from one photo to the next; any other (a file of one's own, an image of
-    // a link) once it is tracked (_registered)
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && known };
+    // photo the app comes with (`known`: a photo of the tour with a digital layer, a layout's own photo) at
+    // once, without a jump from one photo to the next, until its one look for markers finds none; any other
+    // (a clip, a file of one's own, an image of a link) once it is tracked (_registered)
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && known && kind === "image" };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();

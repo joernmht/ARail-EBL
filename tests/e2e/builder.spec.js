@@ -279,6 +279,30 @@ test("a wrong token is refused with a hint", async ({ page }) => {
   await expect(page.locator("#pushDialog")).toContainText("GitHub did not accept the token");
 });
 
+test("the hybrid container train's photo, also on the photo map: one entry, its covered photo linked on both sides", async ({ page }) => {
+  const TRAIN_TEXT = readFileSync(new URL("../../web/layouts/ebl-container-train.json", import.meta.url), "utf8");
+  const MAP_TEXT = readFileSync(new URL("../../web/lab-map/data.json", import.meta.url), "utf8");
+  const gh = await fakeGitHub(page, { files: { "web/layouts/ebl-container-train.json": TRAIN_TEXT, "web/lab-map/data.json": MAP_TEXT } });
+  const errors = await openBuilder(page, "/builder/?layout=../layouts/ebl-container-train.json");
+  await page.locator("#tab-photos").click();
+  // the layout's own photo once, not a second time as a photo of the map
+  await expect(page.locator("#panel-photos")).toContainText("The layout's photo, also on the photo map (terminal-wagons)");
+  await expect(page.locator("#panel-photos .photo").filter({ hasText: "terminal-wagons" })).toHaveCount(1);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.locator("#panel-photos input[type=file]").first().setInputFiles({ name: "train.png", mimeType: "image/png", buffer: png });
+  await page.locator("#btnPush").click();
+  const dialog = page.locator("#pushDialog");
+  await page.locator("#ghToken").fill("test-token");
+  await dialog.getByRole("button", { name: "Push to main" }).click();
+  await expect(dialog).toContainText("Pushed.");
+  // one covered file, linked by the layout and by the photo map, each from where it lies
+  expect(gh.trees[0].tree.map((e) => e.path).sort()).toEqual(["web/lab-map/data.json", "web/layouts/ebl-container-train.json", "web/media/ebl-container-train-covered.png"]);
+  const blob = (path) => gh.blobs[gh.trees[0].tree.find((e) => e.path === path).sha].toString("utf8");
+  expect(JSON.parse(blob("web/layouts/ebl-container-train.json")).view.image_covered).toBe("../media/ebl-container-train-covered.png");
+  expect(JSON.parse(blob("web/lab-map/data.json")).photos.find((p) => p.id === "terminal-wagons").covered).toBe("../media/ebl-container-train-covered.png");
+  expect(errors).toEqual([]);
+});
+
 test("the app shows a layout's covered photo instead of the photo", async ({ page }) => {
   const errors = trackErrors(page);
   await page.route((url) => url.pathname === "/layouts/ebl-lab.json", async (route) => {

@@ -1291,7 +1291,10 @@ class Builder {
 
   /* ---------------------------------------------------------------- covered photos */
 
-  /** The photos of this layout: its own (view.image) and those of the photo map with its digital layer. */
+  /**
+   * The photos of this layout: its own (view.image) and those of the photo map with its digital layer; the
+   * layout's own photo is one entry also when the photo map has it (the layer's own photo).
+   */
   async photosOfLayout() {
     const out = [], view = this.world.layout.view || {};
     if (view.image) {
@@ -1323,6 +1326,14 @@ class Builder {
       const layers = Object.entries(data.layers || {}).filter(([, l]) => new URL(l.layout, base).href === new URL(this.doc.url).href).map(([id]) => id);
       for (const p of (data.photos || []).filter((x) => layers.includes(x.layer))) {
         const url = new URL(p.image, base).href;
+        // the layout's own photo on the photo map too (its layer's own photo: the hybrid container train's):
+        // one entry, whose covered photo is linked on both sides (view.image_covered and the map's covered),
+        // so that the photo tour still knows the photo the layout opens with
+        const own = out.find((x) => x.key === "layout" && x.url === url);
+        if (own) {
+          Object.assign(own, { label: `${own.label}, also on the photo map (${p.id})`, photo: p.id, mapRel: (file) => coveredName(p.image, file) });
+          continue;
+        }
         out.push({
           key: `map:${p.id}`, label: `Photo map: ${data.groups?.[p.group]?.name || p.place || p.group || ""} (${p.id})`, url,
           covered: p.covered ? new URL(p.covered, base).href : null, path: repoPathOf(url), photo: p.id,
@@ -1363,7 +1374,7 @@ class Builder {
     if (!path) return toast("This photo is not in the repository: its covered photo cannot be pushed.");
     const old = this.covers.get(ph.key);
     if (old?.url) URL.revokeObjectURL(old.url);
-    this.covers.set(ph.key, { ...ph, rel, path, bytes, url: URL.createObjectURL(file) });
+    this.covers.set(ph.key, { ...ph, rel, mapRel: ph.mapRel ? ph.mapRel(file) : null, path, bytes, url: URL.createObjectURL(file) });
     this.renderPhotos($("#panel-photos"));
     this.renderBar();
   }
@@ -1429,7 +1440,7 @@ class Builder {
       const json = structuredClone(this.photoMap.json);
       for (const c of mapCovers) {
         const p = json.photos.find((x) => x.id === c.photo);
-        if (p) p.covered = c.rel;
+        if (p) p.covered = c.mapRel ?? c.rel; // the layout's own photo: its address seen from the photo map
       }
       files.push({ path: PHOTO_MAP, content: stringifyLike(this.photoMap.text, json), original: this.photoMap.text });
     }

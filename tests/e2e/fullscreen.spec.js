@@ -185,3 +185,21 @@ test("full screen: a layout's own photo the layout is not found in keeps its sha
   expect(s.canvas).toEqual(s.photo);
   expect(errors).toEqual([]);
 });
+test("full screen: a clip the app comes with fills the screen only once the layout is found in it", async ({ page }) => {
+  const errors = await openApp(page, "/app/?photo=132526#view");
+  // a clip of the app (known) in which nothing is found yet (here one without frames): not registered, so
+  // in full screen it keeps its shape; a photo of the app is registered at once
+  const registered = await page.evaluate(() => {
+    const a = window.__arail, photo = a.source.registered;
+    a.setSource(document.createElement("video"), "video", 640, 360, "clip", null, { known: true });
+    return [photo, a.source.registered];
+  });
+  expect(registered).toEqual([true, false]);
+  await page.locator("#btnFullscreen").click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.waitForTimeout(300);
+  const s = await stage(page);
+  expect(s.at).toEqual({ x: 0, y: 0 });
+  expect(s.canvas).toEqual([640, 360]);
+  expect(errors).toEqual([]);
+});

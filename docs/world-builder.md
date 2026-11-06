@@ -150,6 +150,11 @@ In the **Photos** tab, choose a covered photo for:
   photo in `web/lab-map/photos/` and linked as `covered` in `web/lab-map/data.json`. The photo tour
   then shows them covered.
 
+When the photo map has the layout's own photo too (its layer's own photo: the hybrid container
+train's), the tab lists it once, as the layout's photo, also on the photo map: its covered photo is
+linked on both sides (`view.image_covered` and `covered`), so that the photo tour still knows the
+photo the layout opens with.
+
 ## Push to GitHub
 
 **Push to GitHub** shows the files of the push: the layout (if it changed), the covered photos, and
