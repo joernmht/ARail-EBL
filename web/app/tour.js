@@ -41,13 +41,15 @@ export function perspectiveOf(relative) {
 
 /**
  * How well a photo shows its part in a perspective (lower is better): one with a digital layer
- * first (the app tracks it), then the one looking most nearly that way, near the middle of the
- * part, with more markers.
+ * first (the app tracks it), its layer's own photo (`layers[…].photo`: the one its layout opens with)
+ * before the others, then the one looking most nearly that way, near the middle of the part, with
+ * more markers.
+ * @param {Set<string>} own the layers' own photos
  */
-function cost(photo, part, ideal) {
+function cost(photo, part, ideal, own) {
   const off = Math.abs(wrap(photo.heading - part.front - ideal));
   const dist = Math.hypot(photo.x - part.x, photo.y - part.y);
-  return (photo.layer ? 0 : 1000) + off + dist / 50 - 2 * (photo.markers || 0);
+  return (photo.layer ? 0 : 1000) - (own.has(photo.id) ? 500 : 0) + off + dist / 50 - 2 * (photo.markers || 0);
 }
 
 export class PhotoTour {
@@ -59,6 +61,8 @@ export class PhotoTour {
    */
   constructor(data, { only = null } = {}) {
     this.layers = data.layers || {};
+    /** The layers' own photos (the ones their layouts open with): first from their side. */
+    const own = new Set(Object.values(this.layers).map((l) => l.photo).filter(Boolean));
     const groups = data.groups || {};
     const photos = (data.photos || []).filter((p) => Number.isFinite(p.heading) && Number.isFinite(p.x) && Number.isFinite(p.y) && (!only || only(p)));
     const all = data.photos || [];
@@ -93,7 +97,7 @@ export class PhotoTour {
       for (const p of ps) if (p.layer) part.layers[p.layer] = (part.layers[p.layer] || 0) + 1;
       const best = {};
       for (const p of photos.filter((q) => q.group === id)) {
-        const v = perspectiveOf(p.heading - part.front), c = cost(p, part, BY_ID.get(v).angle);
+        const v = perspectiveOf(p.heading - part.front), c = cost(p, part, BY_ID.get(v).angle, own);
         if (!best[v] || c < best[v].c) best[v] = { p, c };
       }
       for (const v of PERSPECTIVES) if (best[v.id]) part.views[v.id] = best[v.id].p;

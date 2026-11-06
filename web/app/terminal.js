@@ -844,12 +844,12 @@ export class TerminalPanel {
     return false;
   }
 
-  /** Layout point (z = 0) under a canvas pixel, or null. */
+  /** Layout point (z = 0) under a canvas pixel, or null (in full screen the photo lies at App.pictureAt on the canvas). */
   _groundPoint(u, v) {
     const app = this.app;
     if (app.flyover.active) return app.flyover.groundPoint(u, v);
     const Hinv = app.tracker.state.Hinv;
-    const p = Hinv ? applyH(Hinv, [u, v]) : null;
+    const p = Hinv ? applyH(Hinv, [u - app.pictureAt.x, v - app.pictureAt.y]) : null;
     return p && p.every(Number.isFinite) ? p : null;
   }
 

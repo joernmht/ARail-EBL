@@ -106,7 +106,7 @@ test("Build keeps its taps: a click selects for editing and opens no card; the t
 
 test("the flyover: a tap opens the card of a stop with its next buses; Enter at the cross with the keyboard", async ({ page }) => {
   const errors = await openApp(page);
-  await page.locator("#btnFlyover").click();
+  await page.locator("#btnView").click(); // the photo → the flyover
   await page.waitForFunction(() => window.__arail.mode === "flyover" && !window.__arail.flyover.anim);
   await page.waitForTimeout(300);
   // not where a car drives past just then (a bus comes only every so often); nothing moves between

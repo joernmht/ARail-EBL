@@ -63,8 +63,8 @@ for (const [scheme, expected] of Object.entries(MODES)) {
       await page.locator("#tab-settings").click();
       await page.locator("#settingsView-simulate").click();
       await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-      // Pause and the speeds in the upper right corner of the stage: pressed in Orange, on the overlay
-      await page.getByRole("group", { name: "Time and speed" }).getByRole("button", { name: "Pause" }).click();
+      // Pause and the speed in the upper right corner of the stage: pressed in Orange, on the overlay
+      await page.getByRole("group", { name: "Speed", exact: true }).getByRole("button", { name: "Pause" }).click();
       await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "true");
       expect(await style(page, "#simPause", "backgroundColor")).toBe(scheme === "light" ? "rgb(200, 80, 0)" : "rgb(240, 146, 46)");
       expect(await contrastViolations(page, ["#panel-settings", "#hud", "#simClock"])).toEqual([]);
@@ -113,10 +113,8 @@ test.describe("layout of the app bar and the tabs", () => {
     await expect(page.locator("#layoutName")).toBeVisible();
     const name = await page.locator("#layoutName").evaluate((el) => ({ width: el.clientWidth, full: el.scrollWidth <= el.clientWidth }));
     expect(name.full, `layout name shown in full (${name.width} px)`).toBe(true);
-    for (const id of ["#btnLive", "label[for=fileOpen]"]) {
-      const box = await page.locator(id).boundingBox();
-      expect(box.y + box.height, `${id} in the first row`).toBeLessThan(bar.y + 70);
-    }
+    // the image sources are in Settings → View, not in the bar
+    await expect(page.locator("#bar #btnLive, #bar input[type=file], #bar label.btn")).toHaveCount(0);
     const stage = await page.locator("#stageWrap").boundingBox();
     expect(stage.height).toBeGreaterThan(768 - 80);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);

@@ -77,6 +77,11 @@ export class Case {
     this.started = false;
     /** Whether its task was done when it was last stopped: the list shows it as Done. */
     this.completed = false;
+    /**
+     * Whether the example it plays in was opened for it (Settings → View → Examples, a link: App#_openedFor),
+     * so that before Start the photo tour offers its photos (`scopesTour`); until it is stopped.
+     */
+    this.opened = false;
     /** The world's speed before it was started, while it runs at its own (static speed). */
     this._speed = null;
     /** Its panel: `render(el)`, `update()`, optionally `key(e)`, `syncWidth()`, `stepped()`, `drawFocus(ctx, view)`. */
@@ -168,11 +173,23 @@ export class Case {
     if (this._speed != null && this.app.world.speed === this.constructor.speed) this.app.world.speed = this._speed;
     this._speed = null;
     this.started = false;
+    this.opened = false;
     this.end();
   }
 
   /** What stops with it (a film that plays). */
   end() {}
+
+  /**
+   * Does the photo tour offer only the photos of its task now (`photoScope`)? While it runs; one that
+   * plays in an example of its own (`opens`: the hybrid container train) also before Start once that
+   * example was opened for it (`opened`: Settings → View → Examples, a link), so that a change of
+   * perspective stays with its task. Only selected, with its layout reached otherwise (the photo
+   * tour's arrows), it leaves the tour alone.
+   */
+  get scopesTour() {
+    return this.started || this.opened;
+  }
 
   /**
    * The photos of the photo tour that show its task, the only ones the tour offers while it runs
@@ -415,6 +432,19 @@ export class TerminalCase extends Case {
     if (app.world.layout.markers.rolling && app.world.layout.view?.image) return app.flyover.leave();
     // else the crane, the yard and the loading tracks in the flyover
     app.showPlace(boundsOf(app.world.objects.filter((o) => o.constructor.category === "Terminal" && o.geometry), 0.12));
+  }
+
+  /**
+   * The photos of its task: with model wagons (the layout's `markers.rolling`, the hybrid container
+   * train), those of its layout in which the app reads them (`wagons` on the photo map), so the
+   * terminal and the real train are in the picture, the layout's own photo among them; without model
+   * wagons, or without such photos, those of its layout (Case#photoScope).
+   */
+  photoScope(tour) {
+    const scope = super.photoScope(tour);
+    if (!scope || !this.app.world.layout.markers?.rolling) return scope;
+    const only = (p) => scope.only(p) && p.wagons?.length > 0;
+    return (tour.data?.photos || []).some(only) ? { key: `${scope.key}|wagons`, only } : scope;
   }
 
   /** The moves the crane (and the reach stackers) finished since the terminal was reset. */

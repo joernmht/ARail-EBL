@@ -10,7 +10,7 @@
 .stage canvas.flyover:focus-visible { outline: 3px solid var(--overlay-ok); outline-offset: -3px; }
 
 /* camera buttons: a column at the right edge of the stage, like the controls of a map; it keeps clear
-   of the time and speed above it (their height: --clock-h, speed.js) and wraps into two columns */
+   of Pause and the speed above it (their height: --clock-h, speed.js) and wraps into two columns */
 .fly-nav {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
   display: flex; flex-direction: column; flex-wrap: wrap-reverse; gap: 6px; max-height: calc(100% - max(110px, 2 * var(--clock-h, 42px) + 32px)); align-content: flex-start;

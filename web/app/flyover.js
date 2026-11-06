@@ -30,6 +30,13 @@ const ORBIT_RAD_PER_PX = 0.0075;
 /** Table drawn when a layout has nothing on it yet (mm). */
 const EMPTY_TABLE = [-500, -300, 500, 300];
 
+/** The views of the stage, in the order the view button goes through them. */
+export const VIEWS = ["photo", "flyover", "map", "3d"];
+/** The names of the views on the view button (the camera view after its source: Camera, Video, Photo). */
+const VIEW_NAMES = { flyover: "Flyover", map: "Map", "3d": "2.5D" };
+/** The key that also leads to a view (in the button's title). */
+const VIEW_KEYS = { photo: "F", flyover: "F", map: "Shift+S", "3d": "S" };
+
 /** Background of the flyover by day: sky above the horizon, the lab floor below. */
 export const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", floorNear: "#9ba5aa" };
 /** ... and its night colours (the view darkens both further). */
@@ -51,6 +58,7 @@ export class Flyover {
     /** Followed by the camera: () => layout point or null (a traveller of the journeys), or null. */
     this.following = null;
     this._wire();
+    this.syncView();
   }
 
   /* ---------------------------------------------------------------- mode */
@@ -129,8 +137,8 @@ export class Flyover {
       app.ctx.clearRect(0, 0, c.width, c.height);
       if (!this._emptyShown) {
         $("#emptyStage").textContent = tr(app.world.layout.view?.start === "flyover"
-          ? "This layout is virtual: take a photo or start the camera to see it over the real layout."
-          : "No image yet: take a photo, start the camera or open a file.");
+          ? "This layout is virtual: take a photo or start the camera (Settings → View → Image source) to see it over the real layout."
+          : "No image yet: take a photo, start the camera or open a file in Settings → View → Image source.");
         c.hidden = true;
       }
       $("#emptyStage").hidden = false;
@@ -174,14 +182,75 @@ export class Flyover {
     app.updateHud();
   }
 
-  /** The Map and 2.5D buttons (`data-simple="map"` and `"3d"`): pressed for the view that is shown. */
+  /** The canvas in the simple view, and the view button. */
   _syncSimple() {
-    const on = this.simple && this.active, plan = this.planTarget();
-    for (const b of document.querySelectorAll("[data-simple]")) {
-      const pressed = on && (b.dataset.simple === "map" ? plan : !plan);
-      b.setAttribute("aria-pressed", pressed ? "true" : "false");
+    this.app.canvas.classList.toggle("simple", this.simple && this.active);
+    this.syncView();
+  }
+
+  /**
+   * The view the stage shows: the camera image ("photo": the photo, the video or the live camera), the
+   * flyover, its map (the simple view from straight above) or its 2.5D view (tilted).
+   * @returns {"photo" | "flyover" | "map" | "3d"}
+   */
+  view() {
+    if (!this.active) return "photo";
+    if (!this.simple) return "flyover";
+    return this.planTarget() ? "map" : "3d";
+  }
+
+  /** The view after this one on the view button: the photo, the flyover, the map, 2.5D, the photo again. */
+  nextView(v = this.view()) {
+    return VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
+  }
+
+  /** The name of a view on the button: the camera view after its source (Camera, Video, Photo). */
+  viewName(v) {
+    if (v !== "photo") return VIEW_NAMES[v];
+    return { live: "Camera", video: "Video" }[this.app.source?.kind] ?? "Photo";
+  }
+
+  /**
+   * Show a view: the camera image, the full flyover, its map or its 2.5D view. The photo and the
+   * flyover leave the simple view, so that the button goes on round from there.
+   * @param {"photo" | "flyover" | "map" | "3d"} v
+   */
+  showView(v) {
+    const app = this.app;
+    if (v === "map" || v === "3d") return this.setSimple(true, { plan: v === "map" });
+    if (this.simple) {
+      app.display.simple = false;
+      app.savePrefs();
     }
-    this.app.canvas.classList.toggle("simple", on);
+    if (v === "photo") this.leave();
+    else this.enter();
+    this._syncSimple();
+    app.updateHud();
+  }
+
+  /** The view button: the next view. */
+  cycleView() {
+    this.showView(this.nextView());
+  }
+
+  /**
+   * The view button as the stage is now: the view shown (its name; the camera view after its source),
+   * and in its title the view a click goes to, with the key that leads there too (none for the full
+   * flyover while F opens the simple view).
+   */
+  syncView() {
+    const b = $("#btnView");
+    if (!b) return;
+    const v = this.view(), next = this.nextView(v), name = tr(this.viewName(v));
+    // the key that leads there too; while the simple view is chosen, F opens it, not the full flyover
+    const k = next === "flyover" && this.simple ? null : VIEW_KEYS[next];
+    const key = `${v}|${name}|${tr(this.viewName(next))}|${k}`; // the source's name, in the language shown
+    if (this._viewShown === key) return;
+    this._viewShown = key;
+    b.textContent = name;
+    b.dataset.view = v;
+    b.setAttribute("aria-label", tr(`View: ${this.viewName(v)}`));
+    b.title = tr(k ? `Next view: ${this.viewName(next)} (${k})` : `Next view: ${this.viewName(next)}`);
   }
 
   /** Does the camera look straight down, or will it when its move ends? */
@@ -189,7 +258,7 @@ export class Flyover {
     return this.anim ? this.anim.to.pitch > PITCH_MAX - toRad(0.5) : this.cam.isPlan;
   }
 
-  /** A Map or 2.5D button: that simple view, or back to the full flyover when it is shown already. */
+  /** The keys Shift+S and S: the map or the 2.5D view, or back to the full flyover when it is shown already. */
   simpleButton(which) {
     const pressed = this.simple && this.active && (which === "map") === this.planTarget();
     if (pressed) this.setSimple(false);
@@ -203,7 +272,6 @@ export class Flyover {
 
   _modeChanged() {
     const app = this.app;
-    $("#btnFlyover").setAttribute("aria-pressed", this.active ? "true" : "false");
     this._syncSimple();
     app.updateHud();
     if (app.showing("build")) app.editor.renderPlacing();
@@ -507,11 +575,7 @@ export class Flyover {
       const [x, y] = this._point(e), W = c.width, H = c.height;
       this.move((k) => k.zoomAt(2, x, y, W, H));
     });
-    $("#btnFlyover").addEventListener("click", () => this.toggle());
-    document.addEventListener("click", (e) => {
-      const b = e.target.closest?.("[data-simple]");
-      if (b) this.simpleButton(b.dataset.simple);
-    });
+    $("#btnView")?.addEventListener("click", () => this.cycleView());
     document.addEventListener("click", (e) => {
       const b = e.target.closest?.("[data-fly]");
       if (b && this.active) this.command(b.dataset.fly);
@@ -757,19 +821,23 @@ export class Flyover {
     return [b[0] - m, b[1] - m, b[2] + m, b[3] + m];
   }
 
-  /** The orthophoto of the table, in perspective, as a mesh of small affine pieces. */
-  _drawOrtho(view, night) {
+  /**
+   * The layout's orthophoto, once it is loaded ({url, img, levels, ok}: its uncovered parts made
+   * transparent, with its mipmaps), else null: it loads now (said once if it cannot), or the layout
+   * has none. The flyover draws it, and the camera view around a photo on a larger canvas.
+   */
+  orthophoto() {
     const app = this.app, o = orthoOf(app.world.layout);
-    if (!o) return;
+    if (!o) return null;
     const failed = () => toast(`The photo of the table (${o.image}) could not be loaded.`);
     let url;
     try {
       url = new URL(o.image, app.layoutUrl || location.href).href;
     } catch {
-      // not a valid URL: the flyover is drawn without the photo (and says so once)
+      // not a valid URL: drawn without the photo (and said so once)
       if (this.ortho?.url !== o.image) failed();
       this.ortho = { url: o.image, ok: false };
-      return;
+      return null;
     }
     if (this.ortho?.url !== url) {
       const img = new Image();
@@ -787,8 +855,14 @@ export class Flyover {
       };
       img.src = url;
     }
-    if (!this.ortho.ok) return;
-    const entry = this.ortho, b = o.bounds_mm;
+    return this.ortho.ok ? this.ortho : null;
+  }
+
+  /** The orthophoto of the table, in perspective, as a mesh of small affine pieces. */
+  _drawOrtho(view, night) {
+    const o = orthoOf(this.app.world.layout), entry = this.orthophoto();
+    if (!entry) return;
+    const b = o.bounds_mm;
     view.groundPhoto = b;
     // Drawn into a canvas of its own and kept while the camera stands still: roughly (three
     // pixels) while the camera moves, exactly once it stops.

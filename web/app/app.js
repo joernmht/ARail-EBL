@@ -6,7 +6,7 @@ import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
 import { Interaction, LIST } from "./interaction.js";
-import { drawGrid, Flyover, SKY } from "./flyover.js";
+import { drawGrid, drawGroundImage, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
 import { SpeedControl } from "./speed.js";
@@ -59,6 +59,35 @@ const PLACE_PITCH = ARail.toRad(48);
 const PLACE_MS = 1200;
 /** How long the stage fades from one picture to the next: another photo, the flyover, another layout (ms). */
 const FADE_MS = 700;
+/** The full-screen button's icons: the usual corners, pointing out (full screen) and in (leave it). */
+const FULLSCREEN_ICONS = {
+  enter: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg>',
+  leave: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3.5v4h-4M16.5 7.5h-4v-4M12.5 16.5v-4h4M3.5 12.5h4v4"/></svg>',
+};
+/**
+ * The camera of the picture shown, its pixels moved by (dx, dy) within a larger canvas (in full
+ * screen the photo lies in its middle): what a View needs of a Camera, its size, intrinsics and
+ * projection, in the canvas's pixels.
+ */
+function shiftedCamera(camera, dx, dy, width, height) {
+  return {
+    width, height,
+    get intrinsics() {
+      const k = camera.intrinsics;
+      return { ...k, cx: k.cx + dx, cy: k.cy + dy };
+    },
+    project(X) {
+      const p = camera.project(X);
+      return p && [p[0] + dx, p[1] + dy];
+    },
+  };
+}
+
+/** A homography (layout mm → photo px) followed by a shift of (dx, dy) px: its pose stays the same. */
+function shiftedH(H, dx, dy) {
+  return [H[0] + dx * H[6], H[1] + dx * H[7], H[2] + dx * H[8], H[3] + dy * H[6], H[4] + dy * H[7], H[5] + dy * H[8], H[6], H[7], H[8]];
+}
+
 /** Ease in and out (0 … 1). */
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 /** Lowest and highest resolution (px) of the video frames searched for markers; rolling-stock tags are small. */
@@ -92,6 +121,8 @@ export class App {
     this.lastView = null;
     /** Where the camera of the picture shown stood when it was last tracked ({el, pose, focal, height}), or null. */
     this.photoView = null;
+    /** Where the picture lies on the canvas (canvas px): beside it, in full screen, its virtual surroundings (sizeCanvas). */
+    this.pictureAt = { x: 0, y: 0 };
     this.procMax = 960;
     this.frozen = false;
     this.fps = 0;
@@ -139,7 +170,7 @@ export class App {
     this.flyover = new Flyover(this);
     this.editor = new Editor(this);
     this.panels = new Panels(this);
-    /** The time and speed in the upper right corner of the stage. */
+    /** Pause and the speed in the upper right corner of the stage. */
     this.speed = new SpeedControl(this, $("#simClock"));
     this.overview = new Overview(this);
     this.cases = this.page.cases.map((C) => new C(this));
@@ -183,6 +214,7 @@ export class App {
     const linked = this.caseFor(tab)?.constructor.appModule;
     if (linked) this.setAppModule(linked, true);
     if (tab) this.selectTab(tab, { address: tab !== this.page.start });
+    if (example && tab === example.tab) this._openedFor(example);
     let last = performance.now(), failing = false;
     const loop = (t) => {
       requestAnimationFrame(loop); // first, so that an error in one frame does not stop the app
@@ -212,24 +244,7 @@ export class App {
       this.selectTab(tabs[(i + tabs.length) % tabs.length]);
       $(`#tab-${this.activeTab}`).focus();
     });
-    // sources
-    const onFile = (e) => {
-      const f = e.target.files && e.target.files[0];
-      e.target.value = "";
-      if (!f) return;
-      this.flyover.leave(); // show what was just chosen
-      const url = URL.createObjectURL(f);
-      if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
-      else this.loadImage(url, f.name, url);
-    };
-    for (const id of ["filePhoto", "fileVideo", "fileOpen"]) $(`#${id}`).addEventListener("change", onFile);
-    if (navigator.mediaDevices?.getUserMedia && window.isSecureContext) {
-      $("#btnLive").hidden = false;
-      $("#btnLive").addEventListener("click", () => {
-        this.flyover.leave();
-        this.startLive();
-      });
-    }
+    // the image sources are in Settings → View (Panels.renderView: openSourceFile, openLive)
     // the list of layouts in the bar (the game page; the app has the photo tour and its examples in Settings → View)
     const sel = $("#exampleSelect");
     if (sel) {
@@ -247,10 +262,27 @@ export class App {
       if (document.fullscreenElement) document.exitFullscreen?.();
       else el.requestFullscreen?.().catch(() => toast("Full screen is not available here."));
     });
-    window.addEventListener("resize", () => this.fitCanvas());
-    document.addEventListener("fullscreenchange", () => this.fitCanvas());
+    window.addEventListener("resize", () => {
+      this.sizeCanvas(); // in full screen the picture fills the screen's shape
+      this.fitCanvas();
+    });
+    document.addEventListener("fullscreenchange", () => {
+      this._syncFullscreen();
+      this.sizeCanvas();
+      this.fitCanvas();
+    });
     new ResizeObserver(() => this.fitCanvas()).observe($("#stageWrap"));
     document.addEventListener("keydown", (e) => this._key(e));
+  }
+
+  /** The full-screen button: its corners pointing out (Full screen), in full screen pointing in (Leave full screen). */
+  _syncFullscreen() {
+    const b = $("#btnFullscreen"), on = !!document.fullscreenElement;
+    if (!b) return;
+    b.innerHTML = FULLSCREEN_ICONS[on ? "leave" : "enter"];
+    const label = tr(on ? "Leave full screen" : "Full screen");
+    b.setAttribute("aria-label", label);
+    b.title = label;
   }
 
   _wireEvents() {
@@ -528,7 +560,7 @@ export class App {
       }
       if (this._loadToken !== token) return;
       const img = this._layoutImage();
-      if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example");
+      if (!this._ownSource() && img && !(this.source && !this.source.stale && this.source.el?.src === img)) await this.loadImage(img, this.world.layout.name || "Example", null, { known: true });
       this._autoFlyover = false;
       this.flyover.leave();
       const q = new URLSearchParams(location.search), drop = ["photo", "image", "example", "layout", "layers", "camera"].filter((k) => q.has(k));
@@ -591,13 +623,14 @@ export class App {
   /**
    * The photo tour offers the photos of the scenario that runs (those of its task), else all
    * (TourNav#setScope). Also while another chapter is shown: the scenario runs on there, and a photo
-   * of another layout would end it.
+   * of another layout would end it. A scenario that plays in an example of its own does so already
+   * while it is shown with that example open (Case#scopesTour: the hybrid container train).
    */
   _syncTour() {
     const t = this.tourNav;
     if (!t?.all) return;
     const c = this.caseById(this.activeCase);
-    t.setScope(c?.started ? c.photoScope(t) : null);
+    t.setScope(c?.scopesTour ? c.photoScope(t) : null);
   }
 
   /** Show a chapter or a case after an action elsewhere (e.g. a terminal added): its heading takes the keyboard focus. */
@@ -703,12 +736,23 @@ export class App {
       this._loadExampleMedia(x);
     } else if (x) await this.openLayout(x.layout, x.layers ?? null);
     if (x?.tab) this.selectTab(x.tab);
-    if (x) return;
+    if (x) return this._openedFor(x);
     const l = this.page.exampleLayers[id];
     if (!l) return;
     // the layout is open already: switch the module on
     if (this.world.layers().some((y) => y.id === l.layer)) return this.switchOnModule(l.layer);
     return this.openLayout(l.layout, [l.layer]);
+  }
+
+  /**
+   * An example opened for the case of its tab (Settings → View → Examples, ?example=): when the layout
+   * open now is that of the example the case plays in (`opens`; the hybrid container train, with or
+   * without its task), the photo tour offers the case's photos before Start (Case#opened), until the
+   * case is stopped. A link whose photo (?photo=) chose another layout opens none.
+   */
+  _openedFor(x) {
+    const c = x?.tab ? this.caseFor(x.tab) : null, own = c?.constructor.opens ? this.page.examples.find((e) => e.id === c.constructor.opens) : null;
+    if (c && own && new URL(own.layout, location.href).href === this.layoutUrl) c.opened = true;
   }
 
   /** Is this example (its id) open: its layout, with the modules it names on and no others? */
@@ -726,8 +770,8 @@ export class App {
       this.flyover.leave();
     }
     const src = new URL(x.video || x.image, location.href).href;
-    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""));
-    else this.loadImage(src, x.label.replace(/^Example: /, ""));
+    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""), null, null, { known: true });
+    else this.loadImage(src, x.label.replace(/^Example: /, ""), null, { known: true });
   }
 
   /**
@@ -738,6 +782,7 @@ export class App {
    * @param {string} name
    * @param {{layout?: string | null, track?: boolean, current?: () => boolean}} [options] current:
    *   false once another photo was asked for (while the layout loaded)
+   * @returns {Promise<boolean>} once it is shown (true), or not: another picture was asked for, or it failed
    */
   async openPhoto(src, name, { layout = null, track = true, current = () => true } = {}) {
     this.stopLive();
@@ -745,13 +790,13 @@ export class App {
       // the photo or clip shown until now belongs to the previous layout
       if (this.source) this.source.stale = true;
       await this.loadLayoutFromUrl(layout, { withImage: false });
-      if (!current()) return;
+      if (!current()) return false;
     }
     if (this._autoFlyover) {
       this._autoFlyover = false;
       this.flyover.leave();
     }
-    this.loadImage(src, name, null, { track });
+    return this.loadImage(src, name, null, { track, known: true });
   }
 
   /** The module (layer, off) of this layout that opens an example (e.g. "terminal": the lab's container terminal), or null. */
@@ -950,7 +995,7 @@ export class App {
       this._autoFlyover = false;
       this.flyover.leave();
     }
-    if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example");
+    if (withImage && img) this.loadImage(new URL(img, this.layoutUrl).href, json.name || "Example", null, { known: true });
   }
 
   _layoutKey() {
@@ -1091,6 +1136,8 @@ export class App {
     this.showLayoutName();
     this.renderPanel(this.activeTab);
     this.speed.render();
+    this._syncFullscreen();
+    this.flyover.syncView();
     if (focused) document.getElementById(focused)?.focus();
     this.updateHud();
     this.inspector.render();
@@ -1151,16 +1198,22 @@ export class App {
   /* ---------------------------------------------------------------- sources */
 
   /**
-   * @param {{track?: boolean}} [options] track: false shows a photo without looking for its markers
-   *   (a photo of the photo tour without a digital layer: `source.untracked`)
+   * @param {{track?: boolean, known?: boolean}} [options] track: false shows a photo without looking for
+   *   its markers (a photo of the photo tour without a digital layer: `source.untracked`); known: a picture
+   *   the app comes with for its layout (a photo of the tour, a layout's own photo or clip), in which the
+   *   layout is found (`source.registered` at once)
    */
-  setSource(el, kind, nw, nh, name, objectUrl = null, { track = true } = {}) {
+  setSource(el, kind, nw, nh, name, objectUrl = null, { track = true, known = false } = {}) {
     // in the flyover the new source is shown when leaving it (that fades over then)
     if (!this.flyover.active) this.crossfade();
     const old = this.source;
     if (old?.kind === "live" && kind !== "live") this.stopLive();
     const s = Math.min(1, (kind === "image" ? 1600 : 1280) / Math.max(nw, nh));
-    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track };
+    // registered: the layout is found in it, so that in full screen it fills the screen (fillsScreen): a
+    // photo the app comes with (`known`: a photo of the tour with a digital layer, a layout's own photo) at
+    // once, without a jump from one photo to the next, until its one look for markers finds none; any other
+    // (a clip, a file of one's own, an image of a link) once it is tracked (_registered)
+    this.source = { el, kind, nw, nh, w: Math.round(nw * s), h: Math.round(nh * s), name, objectUrl, untracked: !track, registered: track && known && kind === "image" };
     if (old && old.el !== el) this._release(old);
     // in the flyover the canvas belongs to the virtual camera: the new source is shown when leaving it
     if (!this.flyover.active) this.sizeCanvas();
@@ -1182,17 +1235,18 @@ export class App {
    * @param {string} src URL
    * @param {string} name shown in the app
    * @param {string | null} [objectUrl] object URL to revoke when the source is replaced
-   * @param {{track?: boolean}} [options] track: false shows it without looking for markers (see setSource)
+   * @param {{track?: boolean, known?: boolean}} [options] track: false shows it without looking for markers;
+   *   known: a picture the app comes with for its layout (see setSource)
    * @returns {Promise<boolean>} once it is shown (true), or not: another source was asked for, or it failed
    */
-  loadImage(src, name, objectUrl = null, { track = true } = {}) {
+  loadImage(src, name, objectUrl = null, { track = true, known = false } = {}) {
     const token = ++this._loadToken;
     const img = new Image();
     img.crossOrigin = "anonymous"; // images from other sites must allow it, or the canvas cannot be read
     return new Promise((resolve) => {
       img.onload = () => {
         const current = token === this._loadToken;
-        if (current) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track });
+        if (current) this.setSource(img, "image", img.naturalWidth, img.naturalHeight, name, objectUrl, { track, known });
         else if (objectUrl) URL.revokeObjectURL(objectUrl);
         resolve(current);
       };
@@ -1204,7 +1258,8 @@ export class App {
     });
   }
 
-  loadVideo(url, name, stream = null, objectUrl = null) {
+  /** @param {{known?: boolean}} [options] known: a clip the app comes with for its layout (see setSource) */
+  loadVideo(url, name, stream = null, objectUrl = null, { known = false } = {}) {
     const token = ++this._loadToken;
     const v = document.createElement("video");
     v.muted = true;
@@ -1215,7 +1270,7 @@ export class App {
     else v.src = url;
     v.onloadedmetadata = () => {
       if (token !== this._loadToken) return this._release({ el: v, kind: stream ? "live" : "video", objectUrl });
-      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl);
+      this.setSource(v, stream ? "live" : "video", v.videoWidth, v.videoHeight, name, objectUrl, { known });
       if (this.flyover.active && !stream) {
         this.flyover.resumeVideoOnLeave(); // shown (and played) when leaving the flyover
         return;
@@ -1223,6 +1278,32 @@ export class App {
       v.play().catch(() => toast("The video cannot be played here. Take a photo instead."));
     };
     v.onerror = () => token === this._loadToken && toast("The video cannot be played here. Take a photo instead.");
+  }
+
+  /**
+   * A photo or video chosen in Settings → View → Image source (a file, or one the device's camera app
+   * just took): shown at once, in the camera view.
+   * @param {HTMLInputElement} input
+   */
+  openSourceFile(input) {
+    const f = input.files && input.files[0];
+    input.value = "";
+    if (!f) return;
+    this.flyover.leave(); // show what was just chosen
+    const url = URL.createObjectURL(f);
+    if (f.type.startsWith("video")) this.loadVideo(url, f.name, null, url);
+    else this.loadImage(url, f.name, url);
+  }
+
+  /** Can the live camera be opened here (a browser with a camera, over https)? */
+  get liveAvailable() {
+    return !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+  }
+
+  /** The live camera, chosen in Settings → View → Image source: shown at once, in the camera view. */
+  openLive() {
+    this.flyover.leave();
+    this.startLive();
   }
 
   /** Stop a source that is replaced: camera stream, video decoding, object URL. */
@@ -1287,22 +1368,62 @@ export class App {
   /**
    * The canvas for the source: the photo or video, and below it the share of its height that the
    * layout extends the picture by (`view.extend_below`, not for the live camera). The camera stays
-   * the source's, so the virtual parts of the layout in front of the table are drawn below it.
+   * the source's, so the virtual parts of the layout in front of the table are drawn below it. In
+   * full screen a picture with virtual surroundings (`fillsScreen`) fills the screen: the canvas takes
+   * the screen's shape, the picture in its middle (`pictureAt`), and the bands above and below it (or at
+   * its sides) show the lab around it as its camera sees it.
    */
   sizeCanvas() {
     const s = this.source;
     if (!s || this.flyover.active) return;
     const below = s.kind === "live" ? 0 : Math.round(s.h * ARail.extendBelowOf(this.world.layout));
-    if (this.canvas.width !== s.w || this.canvas.height !== s.h + below) {
-      this.canvas.width = s.w;
-      this.canvas.height = s.h + below;
+    let W = s.w, H = s.h + below, x = 0, y = 0;
+    if (this.fillsScreen()) {
+      const aspect = $("#stageWrap").clientWidth / Math.max(1, window.innerHeight);
+      if (W / H < aspect) {
+        const wide = Math.round(H * aspect);
+        x = Math.round((wide - W) / 2);
+        W = wide;
+      } else {
+        const tall = Math.round(W / aspect);
+        y = Math.round((tall - H) / 2);
+        H = tall;
+      }
+    }
+    this.pictureAt = { x, y };
+    if (this.canvas.width !== W || this.canvas.height !== H) {
+      this.canvas.width = W;
+      this.canvas.height = H;
       this.fitCanvas();
     }
   }
 
+  /**
+   * Does the picture fill the screen around it with its virtual surroundings? In full screen, a photo
+   * or video the layout was found in (a digital layer: `registered`), not the live camera, nor a photo
+   * only, nor a picture of one's own the layout finds no markers in.
+   */
+  fillsScreen() {
+    const s = this.source;
+    return !!document.fullscreenElement && !!s && !s.stale && !s.untracked && s.kind !== "live" && !!s.registered;
+  }
+
+  /**
+   * Whether the layout is found in the picture shown: in full screen a picture it is found in fills the
+   * screen. Found once is enough (a video keeps it when its markers are hidden for a moment); a still
+   * photo, looked at once (`redetect`), is not found when its markers are not, also one the app comes with
+   * (a layout from a link whose own photo does not track keeps its shape).
+   * @param {boolean} [found] the layout was found (default: the tracker has a pose)
+   */
+  _registered(found = !!this.tracker.state.H) {
+    const s = this.source;
+    if (!s || s.registered === found || (!found && s.kind !== "image")) return;
+    s.registered = found;
+    this.sizeCanvas();
+  }
+
   /** Fit the canvas into the stage while keeping its aspect ratio (the flyover fills the stage). */
   fitCanvas() {
-    document.documentElement.style.setProperty("--bar-h", `${$("#bar").offsetHeight}px`);
     if (this.flyover?.active) return this.flyover.resize();
     const wrap = $("#stageWrap");
     const W = this.canvas.width, H = this.canvas.height;
@@ -1333,8 +1454,8 @@ export class App {
     const Hinv = this.tracker.state.Hinv;
     if (!Hinv) return null;
     const view = this.lastView;
-    if (view && view.H === this.tracker.state.H) return ARail.surfacePoint(this.world, view, [u, v]);
-    const p = ARail.applyH(Hinv, [u, v]);
+    if (view && view.sourceH === this.tracker.state.H) return ARail.surfacePoint(this.world, view, [u, v]);
+    const p = ARail.applyH(Hinv, [u - this.pictureAt.x, v - this.pictureAt.y]);
     return p.every(Number.isFinite) ? p : null;
   }
 
@@ -1368,6 +1489,8 @@ export class App {
         return;
       }
       const st = this.tracker.update(this.detections, this.clock, this.camera, { still: true });
+      // a still photo is looked at once: the layout found in it or not decides whether it fills the screen
+      this._registered(!!st.H);
       this._observeRolling(true);
       const n = Object.keys(this.detections).length;
       if (!n) toast("No markers found. Get closer, look from above at an angle, use good light, and check the marker type in Build → Layout.", 7000);
@@ -1399,6 +1522,7 @@ export class App {
     const [lo, hi] = this.detector.rolling ? PROC_RANGE_ROLLING : PROC_RANGE;
     this.procMax = ms > 45 ? Math.max(lo, this.procMax * 0.9) : ms < 20 ? Math.min(hi, this.procMax * 1.05) : this.procMax;
     this.tracker.update(this.detections, this.clock, this.camera);
+    this._registered();
     this._observeRolling(false);
   }
 
@@ -1444,21 +1568,28 @@ export class App {
     this.lastView = null;
     const { ctx, source } = this;
     if (!source || source.stale) return;
-    if (this.canvas.height > source.h) {
-      // the picture extended below the source (view.extend_below): only virtual things there
-      ctx.fillStyle = SKY.floorNear; // the lab floor of the flyover
-      ctx.fillRect(0, source.h, this.canvas.width, this.canvas.height - source.h);
+    const W = this.canvas.width, Hc = this.canvas.height, { x: ox, y: oy } = this.pictureAt;
+    const { H: Hs } = this.pose();
+    // the picture on a larger canvas (view.extend_below, full screen): the virtual lab around it
+    const shifted = !!(ox || oy), camera = shifted ? shiftedCamera(this.camera, ox, oy, W, Hc) : this.camera;
+    const H = shifted && Hs ? shiftedH(Hs, ox, oy) : Hs;
+    const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
+    const view = H ? new ARail.View({ ctx, camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr, pulse: pulse() }) : null;
+    if (W > source.w || Hc > source.h) {
+      // the floor (the band of view.extend_below, as ever); filling the screen also the sky and, around a
+      // still photo, the real table going on: the layout's orthophoto, as in the flyover
+      const filling = this.fillsScreen();
+      this._drawSurroundings(ctx, filling ? view?.pose ?? null : null, camera.intrinsics);
+      if (filling && view && source.kind === "image") this._drawOrthoAround(ctx, view);
     }
     // behind a covered photo's transparent parts: the floor, as below the photo
     if (source.kind === "image") {
       ctx.fillStyle = SKY.floorNear;
-      ctx.fillRect(0, 0, source.w, source.h);
+      ctx.fillRect(ox, oy, source.w, source.h);
     }
-    ctx.drawImage(this.frozenFrame || source.el, 0, 0, source.w, source.h);
-    const { H } = this.pose();
-    if (H) {
-      const labelScale = Math.min(1, Math.max(0.72, this.canvas.clientWidth / 1000));
-      const view = new ARail.View({ ctx, camera: this.camera, H, scale: this.world.scale, px: this.px(), opacity: this.display.opacity * this.fade, time: this.world.time, labelScale, translate: tr, pulse: pulse() });
+    ctx.drawImage(this.frozenFrame || source.el, ox, oy, source.w, source.h);
+    if (view) {
+      view.sourceH = Hs; // the tracker's homography (photo px): picking compares it
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD
       if (this.display.gridInCamera) drawGrid(view, this._cameraGridBounds(), this.world.layout.grid.size_mm, { onImage: true });
       if (this.world.settings.coverMarkers) this._drawMarkerCovers(view);
@@ -1473,7 +1604,60 @@ export class App {
       const pv = (this.photoView ||= {});
       Object.assign(pv, { el: source.el, pose: view.pose, focal: this.camera.intrinsics.fy, height: this.camera.height });
     }
-    if (this.display.markers) this._drawMarkers(ctx);
+    if (this.display.markers) {
+      ctx.save();
+      ctx.translate(ox, oy); // the markers found are in the photo's pixels
+      this._drawMarkers(ctx);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * The layout's orthophoto (view.ortho) on the table around a still photo on a larger canvas, under
+   * the photo, so that the real table goes on beyond its edges; drawn once for each pose.
+   */
+  _drawOrthoAround(ctx, view) {
+    const o = ARail.orthoOf(this.world.layout), entry = o && this.flyover.orthophoto();
+    if (!entry) return;
+    const c = this.canvas, key = `${view.H.map((v) => v.toPrecision(8)).join(",")}|${c.width}x${c.height}|${o.bounds_mm.join(",")}|${entry.url}`;
+    const cache = (this._orthoAround ||= { canvas: document.createElement("canvas"), key: null });
+    if (cache.key !== key) {
+      cache.canvas.width = c.width;
+      cache.canvas.height = c.height;
+      const g = cache.canvas.getContext("2d");
+      g.clearRect(0, 0, c.width, c.height);
+      drawGroundImage(g, view, entry.img, o.bounds_mm, entry.levels, 0.5);
+      cache.key = key;
+    }
+    ctx.drawImage(cache.canvas, 0, 0);
+  }
+
+  /**
+   * The lab around the picture where the canvas is larger than it (view.extend_below, full screen):
+   * the floor of the flyover, and the sky above the horizon of the picture's camera where that lies on
+   * the canvas (its pose and intrinsics in canvas px; without a pose, the floor).
+   */
+  _drawSurroundings(ctx, pose, K) {
+    const W = this.canvas.width, H = this.canvas.height;
+    ctx.fillStyle = SKY.floorNear; // the lab floor of the flyover
+    ctx.fillRect(0, 0, W, H);
+    // the horizon: the pixels whose rays run parallel to the table (n · ray = 0), the sky above it
+    const n = pose?.n;
+    if (!n || !(n[1] < -1e-6)) return;
+    const at = (u) => K.cy - (K.fy * (n[2] + (n[0] * (u - K.cx)) / K.fx)) / n[1];
+    const yl = at(0), yr = at(W), low = Math.max(yl, yr);
+    if (!(low > 0)) return;
+    const sky = ctx.createLinearGradient(0, 0, 0, low);
+    sky.addColorStop(0, SKY.top);
+    sky.addColorStop(1, SKY.horizon);
+    ctx.fillStyle = sky;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(W, 0);
+    ctx.lineTo(W, Math.min(H, yr));
+    ctx.lineTo(0, Math.min(H, yl));
+    ctx.closePath();
+    ctx.fill();
   }
 
   /**
@@ -1544,7 +1728,7 @@ export class App {
 
   /**
    * The chips on the stage say only what needs attention (no image, no markers, a photo without a
-   * digital layer, disruptions, recording); the time and the speed are in its upper right corner.
+   * digital layer, disruptions, recording); Pause and the speed are in its upper right corner.
    */
   updateHud() {
     const st = this.tracker.state, chips = [];
@@ -1562,6 +1746,7 @@ export class App {
     if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
     this.speed.update();
+    this.flyover.syncView(); // the camera view is named after its source
     this._syncTour();
     this.tourNav?.sync();
     const hud = $("#hud");
@@ -1570,7 +1755,7 @@ export class App {
     // edge of the picture, a depot's board out of view, goes below the chips; a stop board under a
     // button becomes a badge)
     const c = this.canvas.getBoundingClientRect(), s = this.canvas.width / Math.max(1, c.width);
-    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-views, #tour:not([hidden]) .tour-step, #simClock, .stage-tools .btn, #flyNav:not([hidden]) .btn");
+    const controls = document.querySelectorAll("#tour:not([hidden]) .tour-view, #tour:not([hidden]) .tour-step, #simClock, .stage-tools .btn, #flyNav:not([hidden]) .btn");
     this.hudRects = [...hud.children, ...controls].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: (r.left - c.left) * s, y: (r.top - c.top) * s, w: r.width * s, h: r.height * s }));
   }
 

@@ -43,10 +43,10 @@ const hiddenStageButtons = (page) => page.evaluate(() => {
 test("the buttons that open files show the keyboard focus", async ({ page }) => {
   await openApp(page, "/app/?layout=../layouts/ebl-lab.json#view");
   const outline = (id) => page.locator(`label[for="${id}"]`).evaluate((el) => getComputedStyle(el).outlineStyle);
-  // header: Take photo, Record video, Open file (labels of hidden file inputs)
-  await page.locator(".brand").focus();
+  // Settings → View → Image source: Take photo, Record video, Open file (labels of hidden file inputs)
+  await page.locator("#settingsView-view").focus();
   for (const id of ["filePhoto", "fileVideo", "fileOpen"]) {
-    await tabTo(page, `#${id}`, { max: 4 });
+    await tabTo(page, `#${id}`, { max: 6 });
     expect(await outline(id), `focus ring on the “${id}” button`).not.toBe("none");
   }
   // Settings → View: Load calibration
@@ -74,8 +74,8 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tab
     await expect(page.locator("#placing")).toBeVisible();
     await page.locator("#stageWrap").scrollIntoViewIfNeeded();
     expect(await hiddenStageButtons(page), "camera view").toEqual([]);
-    // the Flyover button can be pressed while placing (with the mouse, too)
-    await page.locator("#btnFlyover").click();
+    // the view button can be pressed while placing (with the mouse, too): the photo → the flyover
+    await page.locator("#btnView").click();
     await page.waitForFunction(() => window.__arail.mode === "flyover");
     await expect(page.locator("#placing")).toBeVisible();
     await page.locator("#stageWrap").scrollIntoViewIfNeeded();

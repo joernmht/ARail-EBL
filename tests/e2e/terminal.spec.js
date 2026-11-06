@@ -1,7 +1,7 @@
 // The container terminal in the app: the Terminal tab, moves from the panel and by picking on the
 // canvas (pointer and keyboard), arrivals, trucks, the start state, scenarios, phones.
 import { expect, test } from "@playwright/test";
-import { caseReady, expectCase, openCase, openModules } from "./ui.js";
+import { caseReady, expectCase, openCase, openModules, viewTo } from "./ui.js";
 
 const EXAMPLE = "/game/?layout=../layouts/container-terminal.json#terminal";
 
@@ -82,7 +82,7 @@ test("the example terminal opens in the flyover; leaving it shows that the layou
   await expect(page.locator("#casePanel h2").first()).toHaveText("KV terminal");
   await expect(page.locator(".term-board .stop[data-id=KT41] .status")).toHaveText("at Loading track 1");
   await expect(page.locator(".term-board .stop[data-id=BG1] .status")).toHaveText("at the quay");
-  await page.locator("#btnFlyover").click();
+  await viewTo(page, "photo");
   await page.waitForFunction(() => window.__arail.mode === "camera");
   await expect(page.locator("#emptyStage")).toBeVisible();
   await expect(page.locator("#emptyStage")).toContainText("This layout is virtual");

@@ -24,16 +24,7 @@
       <a class="brand" href="../" title="About ARail-EBL"><span class="sign" translate="no">AR</span><span translate="no">ail</span> <small translate="no">EBL</small></a>
     </div>
     <span class="layout-name" id="layoutName"></span>
-    <span class="spacer"></span>
-    <div class="sources" role="group" aria-label="Image source">
-      <button class="btn primary" id="btnLive" type="button" hidden><span class="long">Live camera</span><span class="short">Camera</span></button>
-      <label class="btn" for="filePhoto"><span class="long">Take photo</span><span class="short">Photo</span></label>
-      <input class="visually-hidden" type="file" id="filePhoto" accept="image/*" capture="environment">
-      <label class="btn" for="fileVideo"><span class="long">Record video</span><span class="short">Video</span></label>
-      <input class="visually-hidden" type="file" id="fileVideo" accept="video/*" capture="environment">
-      <label class="btn" for="fileOpen"><span class="long">Open file</span><span class="short">File</span></label>
-      <input class="visually-hidden" type="file" id="fileOpen" accept="image/*,video/*">
-    </div>
+    <!-- the image sources (live camera, photo, video, file) are in Settings → View -->
   </header>
 
   <div class="main">
@@ -42,21 +33,20 @@
       <div class="empty-stage" id="emptyStage" hidden></div>
       <div class="tour" id="tour" role="group" aria-label="Photo tour of the lab" hidden></div>
       <div class="hud" id="hud"></div>
-      <div class="sim-clock" id="simClock" role="group" aria-label="Time and speed"></div>
+      <div class="sim-clock" id="simClock" role="group" aria-label="Speed"></div>
       <div class="fly-nav" id="flyNav" role="group" aria-label="Flyover camera" hidden>
         <button class="btn" type="button" data-fly="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>
         <button class="btn" type="button" data-fly="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
         <button class="btn" type="button" data-fly="rotate-left" aria-label="Rotate left" title="Rotate left (Q)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.2 7.5A6 6 0 1 1 4.6 13"/><path d="M4.5 3.5v4.4h4.4"/></svg></button>
         <button class="btn" type="button" data-fly="rotate-right" aria-label="Rotate right" title="Rotate right (E)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14.8 7.5A6 6 0 1 0 15.4 13"/><path d="M15.5 3.5v4.4h-4.4"/></svg></button>
         <button class="btn" type="button" data-fly="plan" aria-label="Plan view" aria-pressed="false" title="Plan view: look straight down (Page Up and Page Down tilt)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="1"/><path d="M3.5 10h13M10 3.5v13"/></svg></button>
-        <button class="btn" type="button" data-fly="fit" aria-label="Show the whole layout" title="Show the whole layout (Home)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg></button>
+        <button class="btn" type="button" data-fly="fit" aria-label="Show the whole layout" title="Show the whole layout (Home)"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.6 12.6 17 17"/><rect x="5.6" y="6.6" width="5.8" height="3.8" rx=".6"/></svg></button>
       </div>
       <div class="stage-tools">
-        <button class="btn" id="btnFlyover" type="button" aria-pressed="false" title="Look at and edit the layout with a virtual camera (F)">Flyover</button>
-        <button class="btn" id="btnMap" type="button" data-simple="map" aria-pressed="false" title="Map: the whole layout from above, simple and fast (Shift+S)">Map</button>
-        <button class="btn" id="btnSimple3d" type="button" data-simple="3d" aria-pressed="false" title="Simple 2.5D view: a flat layout, moving things as blocks (S)">2.5D</button>
+        <!-- the view: each click the next one (photo, flyover, map, 2.5D); its name and title are set by flyover.js -->
+        <button class="btn" id="btnView" type="button"></button>
         <button class="btn" id="btnFreeze" type="button" aria-pressed="false" title="Keep the current frame (for editing)">Freeze</button>
-        <button class="btn" id="btnFullscreen" type="button" title="Full screen">Full screen</button>
+        <button class="btn icon" id="btnFullscreen" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 7.5v-4h4M12.5 3.5h4v4M16.5 12.5v4h-4M7.5 16.5h-4v-4"/></svg></button>
       </div>
       <div class="placing" id="placing" hidden></div>
       <div class="toast" id="toast" role="status" hidden></div>
