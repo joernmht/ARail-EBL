@@ -24,7 +24,7 @@ function run(g, seconds, each = null, dt = 1) {
  */
 function careful(g) {
   for (const d of g.open) {
-    if (d.id.startsWith("quiz-")) g.decide(d.id, d.options[0].id);
+    if (d.id.startsWith("quiz-")) g.decide(d.id, g.rightAnswer(d.id));
     else if (d.id === "report") g.decide("report", "now");
   }
   if (g.team.state === "waiting") g.closeTrack("G2");
@@ -245,7 +245,7 @@ test("a careful signaller passes with a high score; a careless one fails; the sa
   // careless: Zs 1 without checks, the failure not reported, the questions wrong
   const careless = new SignallerGame({ level: "normal" });
   run(careless, 2600, (x) => {
-    for (const d of x.open) x.decide(d.id, d.id === "report" ? "later" : d.options[1].id);
+    for (const d of x.open) x.decide(d.id, d.id === "report" ? "later" : d.id.startsWith("quiz-") ? d.options.find((o) => o.id !== x.rightAnswer(d.id)).id : d.options[1].id);
     for (const sig of Object.keys(x.signals)) {
       if (!x.signals[sig].failed || x.signals[sig].zs1) continue;
       const tr = x.trains.find((t) => t.state === "dwelling" && x.nextSignal(t) === sig && x.t >= t.dep);

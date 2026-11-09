@@ -1,20 +1,45 @@
 /**
- * The game core: what the role games of ARail have in common (a first, small form of issue #103).
+ * The game core: what the role games of ARail have in common (issue #103).
  *
  * A game is one role of the railway system (an id of the role catalogue, docs/roles.md) at work: a
  * clock in simulated seconds, resources (money, time, staff, counters), decisions with options, a
- * deadline and a default, rules that are kept or broken, objectives with weights, and a log. Its
- * result (score, rules broken, what was decided) is what a round gives to the career mode (one
- * person's working life through roles) and to the big game (the roles together).
+ * deadline and a default, moves the player may make at any time, rules that are kept or broken,
+ * objectives with weights, and a log. Its result (score, rules broken, what was decided) is what a
+ * round gives to the career mode (one person's working life through roles) and to the big game (the
+ * roles together).
+ *
+ * A game has ports: the flows it takes from other roles and the flows it gives them (flows.js). On
+ * its own, a game plays the other side of its ports itself (the signaller's own repair team); in a
+ * session (session.js) the ports are wired to the games of the other roles, and what no role gives
+ * comes from the mission. So every game works alone and joins the big game. See docs/game-core.md.
  *
  * Games run in Node and in the browser, without the DOM, and are deterministic: the same seed and the
  * same moves at the same times give the same game. A page draws them and passes the player's moves.
  * @module arail/game/core
  */
 import { createRng, hashKey } from "../core/math.js";
+import { flowOf } from "./flows.js";
 
 /** How a game is played: a right answer exists, a simulation answers, or both. */
 export const GAME_KINDS = ["knowledge", "simulation", "both"];
+
+/** The time of day (HH:MM) of a game time: `t` seconds after `start` (seconds after midnight; a shift begins at 08:00). */
+export const clockAt = (t, start = 8 * 3600) => {
+  const s = Math.max(0, Math.floor((start + t) / 60));
+  return `${String(Math.floor(s / 60) % 24).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
+
+/**
+ * A computer player: plays a seat nobody sits on. `think` is called before every tick of a shift and
+ * at the start of a turn, and makes its moves with `game.act`. This one takes every open decision's
+ * fallback (or, without one, its first option) at once; a game names a better one in `static player`.
+ */
+export class Player {
+  /** @param {Game} game */
+  think(game) {
+    for (const d of game.open) game.act("decide", d.id, d.fallback ?? d.options[0].id);
+  }
+}
 
 export class Game {
   /** Unique id of the game. */
@@ -25,11 +50,33 @@ export class Game {
   /** @type {"knowledge" | "simulation" | "both"} */
   static kind = "simulation";
   static description = "";
+  /** The rhythm of its decisions (flows.js, SCALES): seconds to hours are played in shifts, days to years in turns. */
+  static scale = "minutes";
+  /**
+   * The flows it takes from other roles and gives them. `from` and `to` name the roles (ids of the
+   * catalogue) it exchanges them with; without them, any role.
+   * @type {Array<{flow: string, from?: string[]}>}
+   */
+  static takes = [];
+  /** @type {Array<{flow: string, to?: string[]}>} */
+  static gives = [];
+  /** The moves a player may make at any time: the name of the method, and a label. `act` makes them. */
+  static actions = { decide: { label: "Decide" } };
+  /** The computer player for a seat nobody sits on. */
+  static player = Player;
 
-  /** @param {{seed?: number, level?: string}} [options] */
-  constructor({ seed = 1, level = "normal" } = {}) {
+  /**
+   * @param {object} [options]
+   * @param {number} [options.seed]
+   * @param {string} [options.level]
+   * @param {Record<string, object>} [options.conditions] what holds when the game begins: the latest of each state flow it takes, by flow id
+   * @param {Iterable<string>} [options.wired] the flows another seat of the session takes or gives; the other flows the game plays itself
+   */
+  constructor({ seed = 1, level = "normal", conditions = {}, wired = [] } = {}) {
     this.seed = seed;
     this.level = level;
+    this.conditions = { ...conditions };
+    this.wired = new Set(wired);
     /** Simulated time (s) since the start. */
     this.t = 0;
     /** Why the game is over, or null while it runs. */
@@ -42,6 +89,11 @@ export class Game {
     this.violations = [];
     /** @type {Array<{t: number, text: string, kind: string}>} */
     this.logs = [];
+    /** The flows received and given: `{flow, from, to, t, payload}`. */
+    this.inbox = [];
+    this.outbox = [];
+    /** The moves made with `act`: `{t, name, args}`. */
+    this.moves = [];
     this._handlers = new Map();
     this._listeners = new Set();
   }
@@ -53,7 +105,7 @@ export class Game {
     return r;
   }
 
-  /** Listen to the game's events (`log`, `decision`, `decided`, `violation`, `over`, and the game's own). */
+  /** Listen to the game's events (`log`, `decision`, `decided`, `violation`, `move`, `give`, `receive`, `over`, and the game's own). */
   on(fn) {
     this._listeners.add(fn);
     return () => this._listeners.delete(fn);
@@ -92,8 +144,8 @@ export class Game {
 
   /**
    * Ask the player to decide. Without a decision by the deadline (simulated s from now), the
-   * fallback option is taken.
-   * @param {{id: string, title: string, text?: string, options: Array<{id: string, label: string}>, within?: number | null, fallback?: string | null, then?: (option: string, decision: object) => void}} spec
+   * fallback option is taken; in a turn, at the end of the turn.
+   * @param {{id: string, title: string, text?: string, options: Array<{id: string, label: string, hint?: string}>, within?: number | null, fallback?: string | null, then?: (option: string, decision: object) => void}} spec
    */
   ask({ id, title, text = "", options, within = null, fallback = null, then = null }) {
     const d = { id, title, text, options, deadline: within == null ? null : this.t + within, fallback, made: null, at: null };
@@ -126,6 +178,59 @@ export class Game {
     fn?.(option, d);
     return true;
   }
+
+  /**
+   * Make a move: one of the game's `static actions`, by its name. The move is kept (`moves`), so a
+   * session can record a game and play it again; pages and computer players move through here.
+   * @returns what the move's method returns (`{ok, reason}` or a boolean)
+   */
+  act(name, ...args) {
+    if (!Object.hasOwn(this.constructor.actions, name) || typeof this[name] !== "function") throw new Error(`${this.constructor.id}: no move "${name}"`);
+    if (this.over) return { ok: false, reason: "The game is over." };
+    const move = { t: this.t, name, args: structuredClone(args) };
+    this.moves.push(move);
+    const result = this[name](...args);
+    this.emit("move", { ...move, result });
+    return result;
+  }
+
+  /** Whether another seat of the session is at the other end of a flow (else the game plays that end itself). */
+  isWired(flow) {
+    return this.wired.has(flow);
+  }
+
+  /**
+   * Give a flow to other roles (one of `static gives`). In a session it goes to the games that take
+   * it; alone, it is only kept (`outbox`).
+   * @param {string} flow
+   * @param {object} [payload]
+   * @param {{to?: string[] | null}} [options] only to these roles
+   * @returns {{flow: string, from: string, to: string[] | null, t: number, payload: object}}
+   */
+  give(flow, payload = {}, { to = null } = {}) {
+    if (!this.constructor.gives.some((g) => g.flow === flow)) throw new Error(`${this.constructor.id} does not give "${flow}" (static gives)`);
+    const msg = { flow, from: this.constructor.role, to, t: this.t, payload };
+    this.outbox.push(msg);
+    this.emit("give", msg);
+    return msg;
+  }
+
+  /** A flow arrives from another role or from the mission. A state flow replaces what held before. */
+  receive(msg) {
+    this.inbox.push(msg);
+    if (flowOf(msg.flow)?.kind === "state") this.conditions[msg.flow] = msg.payload;
+    this.emit("receive", msg);
+    this.take(msg);
+  }
+
+  /** What the game does with a flow it receives (to override). */
+  take(msg) {}
+
+  /** A phase of a session begins for this game: a turn's decisions are asked here (to override). @param {{round: number, rounds: number, phase: object}} ctx */
+  begin(ctx) {}
+
+  /** A phase ends: a turn's decisions take effect, reports are given (to override). @param {{round: number, rounds: number, phase: object}} ctx */
+  finish(ctx) {}
 
   /** A rule was broken (severity 1: a slip, 2: a breach, 3: a danger to people). */
   violate(rule, text, severity = 2) {
@@ -168,6 +273,16 @@ export class Game {
     const w = parts.reduce((s, p) => s + p.weight, 0) || 1;
     const total = Math.round((100 * parts.reduce((s, p) => s + p.weight * Math.max(0, Math.min(1, p.value)), 0)) / w);
     return { total, parts };
+  }
+
+  /**
+   * What a page shows of the game without knowing it: key figures, tables, and the moves that can be
+   * made now, each with the fields to fill (to override). The generic role view of the play page
+   * (game/play/) draws any game from this; a game's own page may draw more.
+   * @returns {{figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad"}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
+   */
+  view() {
+    return { figures: [...this.resources.values()].map((r) => ({ label: r.label, value: r.value, unit: r.unit })), tables: [], actions: [] };
   }
 
   /** What a round gives to the career mode and the big game. */
