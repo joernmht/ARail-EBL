@@ -7,25 +7,34 @@
 export const GAMES = [
   {
     id: "game-core", group: "games", title: "The game core",
-    summary: "What the role games share: a role at work with a clock, resources, decisions with a deadline and a default, rules kept or broken, objectives with weights, a log; and the result that a round gives to the career mode and the big game.",
-    description: "A first, small form of the common game core (issue #103). A game is one role of the role catalogue (docs/roles.md). It runs without the world and without the DOM, in Node and the browser, and is deterministic: random numbers come from streams keyed by the seed and what they are for. A page draws it and passes the player's moves; the game's events (log, decision, decided, violation, over) tell the page what happened.",
+    summary: "What the role games share: a role at work with a clock, resources, decisions with a deadline and a default, moves by name, rules kept or broken, objectives with weights, a log; the ports to other roles (the flows it takes and gives); a view for a page that does not know the game; a computer player; and the result that a round gives to the career mode and the big game.",
+    description: "The common game core (issue #103). A game is one role of the role catalogue (docs/roles.md). It runs without the world and without the DOM, in Node and the browser, and is deterministic: random numbers come from streams keyed by the seed and what they are for. A page draws it and passes the player's moves by `act`, which keeps them; the game's events (log, decision, decided, violation, move, give, receive, over) tell the page what happened. A game has ports: the flows it takes from other roles and gives them. Alone, it plays the other end of its ports itself; in a session the ports are wired to the other roles' games, and what holds when it begins (its conditions) comes from them or from the mission. See docs/game-core.md.",
     files: ["web/arail/game/core.js", "web/arail/game/index.js"],
     classes: [{
       name: "game index", file: "web/arail/game/index.js", kind: "module", role: "The role games' entry, apart from the framework's: what the game pages, tools and tests import.",
     }, {
-      name: "Game", file: "web/arail/game/core.js", kind: "class", role: "A role's game: clock, resources, decisions, rules, objectives, score.",
-      attributes: ["static id, title, role, kind — the game, its role in the catalogue, knowledge, simulation or both", "t: number — simulated seconds since the start", "over: string | null — why it ended", "resources: Map — money, time, counters", "decisions: object[] — asked, with options, deadline and fallback", "violations: object[] — rules broken, with their severity", "logs: object[]"],
-      operations: ["rng(...parts) — a random stream for one purpose", "on(fn)", "emit(name, payload)", "log(text, kind)", "resource(id, label, value, unit)", "add(id, v)", "value(id)", "ask(spec) — a decision with options, a deadline and a fallback", "decide(id, option) — the player's or, at the deadline, the fallback", "violate(rule, text, severity) — 1 a slip, 2 a breach, 3 a danger to people", "step(dt) — deadlines, then tick", "tick(dt) — the game's own step", "end(reason)", "objectives() — weighted, each reached 0–1", "score() — 0–100", "result() — for the career mode: score, rules broken, passed, decisions"],
+      name: "Game", file: "web/arail/game/core.js", kind: "class", role: "A role's game: clock, resources, decisions, moves, rules, objectives, score, ports.",
+      attributes: ["static id, title, role, kind — the game, its role in the catalogue, knowledge, simulation or both", "static scale: string — the rhythm of its decisions: seconds to hours are played in shifts, days to years in turns", "static takes, gives: object[] — its ports: the flows it takes from and gives to other roles", "static actions: object — the moves a player may make, by the name of their method", "static player — the computer player for a seat nobody sits on", "t: number — simulated seconds since the start", "over: string | null — why it ended", "conditions: object — what holds when it begins: the latest of each state flow it takes", "wired: Set — the flows another seat is at the other end of", "resources: Map — money, time, counters", "decisions: object[] — asked, with options, deadline and fallback", "violations: object[] — rules broken, with their severity", "inbox, outbox: object[] — the flows received and given", "moves: object[] — the moves made with act", "logs: object[]"],
+      operations: ["rng(...parts) — a random stream for one purpose", "on(fn)", "emit(name, payload)", "log(text, kind)", "resource(id, label, value, unit)", "add(id, v)", "value(id)", "ask(spec) — a decision with options, a deadline and a fallback", "decide(id, option) — the player's or, at the deadline, the fallback", "act(name, ...args) — a move by its name, kept for playing the game again", "isWired(flow) — is another seat at the other end?", "give(flow, payload) — a flow to the roles that take it", "receive(msg) — a flow arrives; a state replaces what held", "take(msg) — what the game does with it", "begin(ctx) — a phase of a session begins: a turn's decisions are asked", "finish(ctx) — a phase ends: decisions take effect, reports are given", "violate(rule, text, severity) — 1 a slip, 2 a breach, 3 a danger to people", "step(dt) — deadlines, then tick", "tick(dt) — the game's own step", "end(reason)", "objectives() — weighted, each reached 0–1", "score() — 0–100", "view() — figures, tables and the moves with their fields, for the play page", "result() — for the career mode: score, rules broken, passed, decisions"],
+    }, {
+      name: "Player", file: "web/arail/game/core.js", kind: "class", role: "A computer player: makes a seat's moves before every tick of a shift and at the start of a turn. This one takes every decision's fallback.",
+      operations: ["think(game)"],
+    }, {
+      name: "core", file: "web/arail/game/core.js", kind: "module", role: "Constants and the time of day of a game time.",
+      attributes: ["GAME_KINDS — knowledge, simulation, both"],
+      operations: ["clockAt(t, start) — HH:MM of a game time; a shift begins at 08:00"],
     }],
-    relations: [],
+    relations: [
+      { from: "Game", to: "Player", kind: "uses", label: "static player" },
+    ],
     activities: [{
       id: "decision", name: "A decision (Game.ask, Game.step, Game.decide)",
       nodes: [
         ["s", "start"],
         ["a1", "action", "The game asks: title, options, a deadline and a fallback", "Game.ask"],
         ["d1", "decision", "Decided before the deadline?"],
-        ["a2", "action", "The player's option is taken", "Game.decide", "player"],
-        ["a3", "action", "At the deadline the fallback is taken", "Game.step", "game"],
+        ["a2", "action", "The player's option is taken (a move: decide)", "Game.act", "player"],
+        ["a3", "action", "At the deadline (in a turn: at its end) the fallback is taken", "Game.step", "game"],
         ["m1", "merge"],
         ["a4", "action", "What the option does (the game's handler)", "Game.decide"],
         ["a5", "action", "Recorded for the result: option, time, by default or not", "Game.result"],
@@ -36,6 +45,137 @@ export const GAMES = [
     rules: [
       "Score = the objectives' values (0–1) weighted by their weights, 0–100.",
       "A round is passed with a score of at least 50 and no danger to people (no rule broken with severity 3).",
+      "A game may give only the flows of its `static gives`, and be moved only by the methods of its `static actions`.",
+      "Every input of a game has three possible sources: another role's game (wired), the mission (a condition or an inject), or the game itself (its defaults and its own counterpart).",
+    ],
+  },
+  {
+    id: "game-flows", group: "games", title: "The flows between roles",
+    summary: "What the roles of the railway give each other, as types with a name: a budget, a timetable, a train path, a fault report, a work order, a penalty. Role games are wired by them, and the role catalogue says with them who gives what to whom.",
+    description: "A flow is an event or a state. Events are single messages or handovers that queue up at the receiver (a fault report, an order, an invoice). A state is a standing arrangement that holds until it is replaced (a budget, a timetable, a contract, a staff plan): the receiver always works with the latest. A flow's scale says how often it typically passes; the same scales sort the role games into those played in shifts (seconds to hours) and those played in turns (days to years). The parties are the organisations and groups the roles belong to.",
+    files: ["web/arail/game/flows.js"],
+    classes: [{
+      name: "flows", file: "web/arail/game/flows.js", kind: "module", role: "The catalogue of flows, scales and parties, and its checks.",
+      attributes: ["SCALES — seconds, minutes, hours, days, months, years", "SCALE_S — their length in seconds", "FLOW_KINDS — event, state", "FLOW_GROUPS — what flows are about: money, law and supervision, contracts, planning, operations, maintenance, vehicles, staff, passengers and freight, safety, knowledge", "PARTY_KINDS", "PARTIES — the organisations and groups the roles belong to", "FLOWS — id, name, German term, kind, scale, group, what is handed over"],
+      operations: ["playedIn(scale) — shift or turn", "flowOf(id)", "validateFlows(flows, parties) — unique kebab-case ids, known kinds, scales and groups, every text"],
+    }],
+    relations: [],
+    rules: ["Scales up to hours are played in shifts (a clock runs, the roles act at the same time), from days on in turns.", "A state flow holds until it is replaced; an event flow is one message."],
+  },
+  {
+    id: "game-session", group: "games", title: "Sessions and missions: the big game",
+    summary: "Several role games played together: a mission seats roles (each a person's or the computer's), the session wires their games by their ports and runs them in phases, round after round: turns for the slow roles, shifts on one clock for the fast ones. Missions are data; the people's moves are recorded, so a session can be played again.",
+    description: "A flow one game gives goes to every seated game that takes it (from that role, if the port names roles); what no seat gives comes from the mission (conditions that hold, injects at a time), and what nobody takes, a game plays itself. Roles decide at different rhythms: in a turn the slow roles decide without a clock; in a shift the fast roles work at the same time, in fixed ticks. State flows carry a turn's decisions into the shifts that follow; the shifts' reports carry what happened back into the next turn: a shift is a sample of its period. A shift is a new game each time; a slow role's game lives through the rounds. Flows travel at tick boundaries in the order they were given, and every move of a person is recorded with its phase and tick: the games being deterministic, the session can be rebuilt from its seed and its record, for saving, for the debrief, and for several devices that exchange only their moves. A mission (format arail-mission/1, web/game/missions/) names the seats, the phases and the rounds, what the mission gives, a briefing and the debrief's questions; its test run seats the computer everywhere.",
+    files: ["web/arail/game/session.js", "web/arail/game/mission.js", "web/arail/game/games.js"],
+    classes: [{
+      name: "Session", file: "web/arail/game/session.js", kind: "class", role: "The seats, the phases, the flows on their way, the record of the people's moves.",
+      attributes: ["mission: object", "seed: number", "seats: Map — id → role, game class, who plays, the game, its computer player, mail, results", "seated: object — who sat where at the start", "plan: object[] — the phases of all rounds in their order", "index: number — the current phase in the plan", "phase: object", "active: object[] — the seats of the current phase", "t: number — simulated seconds since the phase began", "ticks: number", "queue: object[] — flows on their way", "flows: object[] — every flow delivered, with phase, round, time, giver and receivers", "record: object[] — the people's moves: phase, tick, seat, name, arguments", "over: boolean", "round", "rounds", "waiting — does the phase wait for a person?", "ready — has every person of a turn decided?"],
+      operations: ["on(fn)", "emit(name, payload)", "seat(id)", "wiredOf(seat) — the flows another seat is at the other end of", "start()", "run() — play on while no person is needed", "step(dt) — a shift goes on, in the mission's fixed ticks", "act(seatId, name, ...args) — a person's move, recorded", "next() — end a turn (open decisions by their fallback), or cut a shift short", "sit(seatId, by) — a seat changes hands", "result() — every seat's rounds and score, the score of the whole, how often each flow passed", "save() — mission, seed, seats, moves, where it stands", "static replay(mission, saved, options) — the session again from what save gives", "_begin(i) — a phase begins: new games for a shift, mail, conditions, the turn's computer players", "_tick(h) — injects, flows, computer players, the games' step", "_deliver() — flows reach the games that take them, or wait as mail", "_injects()", "_think()", "_close() — fallbacks, finish, results; the next phase or the end", "_auto() — turns without a person end by themselves"],
+    }, {
+      name: "session", file: "web/arail/game/session.js", kind: "module", role: "Who can play a seat; how a flow finds its receivers.",
+      attributes: ["SEATS — human, computer", "MISSION — the sender of what the mission gives"],
+      operations: ["reaches(msg, give, seat) — the receiver takes it from that role, the giver gives it to that role, it is not addressed elsewhere"],
+    }, {
+      name: "mission", file: "web/arail/game/mission.js", kind: "module", role: "Missions as data: defaults, checks, where each port is connected, the test run.",
+      attributes: ["MISSION_FORMAT — arail-mission/1", "MISSION_MODES — solo, cooperative, competitive", "TICK_S — 0.5", "SHIFT_S — 2400"],
+      operations: ["normalizeMission(doc, games) — defaults: seats' ids, a plan turn, a shift and a review turn by the games' scales, tick and length", "validateMission(doc, games) — format and texts, seats with a game of their role, phases that fit the games' rhythms, conditions and injects of flows a seated game takes", "wiring(mission, games) — each port of each seat: other seats, the mission, or itself", "testRun(doc, games, options) — the computer on every seat"],
+    }, {
+      name: "games", file: "web/arail/game/games.js", kind: "module", role: "The role games that can be seated, by their id.",
+      attributes: ["GAMES: Map"],
+      operations: ["gameOfRole(role)", "play(mission, options) — a session of a mission with ARail's games"],
+    }],
+    relations: [
+      { from: "Session", to: "Game", kind: "composes", label: "seats" },
+      { from: "Session", to: "Player", kind: "creates", label: "computer seats" },
+    ],
+    activities: [{
+      id: "phases", name: "A session: turns and shifts, round after round (Session)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "Seat the roles of the mission: a person or the computer each", "Session.start", "session"],
+        ["m1", "merge"],
+        ["a2", "action", "The phase begins: a new game for each seat of a shift, with what holds now (state flows, the mission's conditions) and its mail", "Session._begin", "session"],
+        ["d1", "decision", "The phase"],
+        ["a3", "action", "A turn: the games ask their decisions; computer players decide at once", "Game.begin", "game"],
+        ["a4", "action", "People decide and move; End the turn", "Session.next", "player"],
+        ["m2", "merge"],
+        ["a5", "action", "A tick: injects and flows arrive, computer players move, every game steps", "Session._tick", "session"],
+        ["a6", "action", "People move between ticks; each move is recorded with phase and tick", "Session.act", "player"],
+        ["d2", "decision", "The shift's time over, or every game?"],
+        ["m3", "merge"],
+        ["a7", "action", "The phase ends: open decisions by their fallback, the games give their reports, a shift's results are kept", "Session._close", "session"],
+        ["d3", "decision", "Another phase?"],
+        ["a8", "action", "The result: every seat's rounds, the score of the whole, the flows", "Session.result", "session"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "m1"], ["m1", "a2"], ["a2", "d1"], ["d1", "a3", "turn"], ["a3", "a4"], ["a4", "m3"], ["d1", "m2", "shift"], ["m2", "a5"], ["a5", "a6"], ["a6", "d2"], ["d2", "m2", "no"], ["d2", "m3", "yes"], ["m3", "a7"], ["a7", "d3"], ["d3", "m1", "yes"], ["d3", "a8", "no"], ["a8", "e"]],
+    }, {
+      id: "flow", name: "A flow from one role to another (Game.give, Session._deliver)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "A game gives a flow of its ports", "Game.give", "giver"],
+        ["a2", "action", "It waits for the next tick boundary, in the order given", "Session._tick", "session"],
+        ["a3", "action", "The receivers: seated games that take the flow from this role", "reaches", "session"],
+        ["d1", "decision", "The receiver's game at work?"],
+        ["a4", "action", "It receives the flow; a state replaces what held", "Game.receive", "receiver"],
+        ["a5", "action", "A state is kept as what holds when the game begins; an event waits as mail", "Session._deliver", "session"],
+        ["m1", "merge"],
+        ["a6", "action", "Kept in the session's flows, for the page and the debrief", "Session._deliver", "session"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "d1"], ["d1", "a4", "yes"], ["d1", "a5", "no"], ["a4", "m1"], ["a5", "m1"], ["m1", "a6"], ["a6", "e"]],
+    }],
+    rules: [
+      "A shift runs in ticks of 0.5 s whatever the page's steps are; flows given in a tick arrive at the start of the next.",
+      "A seat's score is the mean of its rounds' scores; the score of the whole is the seats' scores by their weights; the whole is passed when every seat passed all its rounds.",
+      "The seed of a shift's game is drawn from the session's seed, the seat and the round; of a slow role's game from the seed and the seat.",
+      "A mission is sound when its test run ends, and winnable when the computer passes it on every seat (checked for the missions of the site).",
+    ],
+  },
+  {
+    id: "maintenance-game", group: "games", title: "The maintenance dispatcher's game",
+    summary: "Fault Night: a shift in the maintenance control centre of the district around Bf Neustadt. Faults come in by their report paths; the dispatcher ranks them, sends the emergency teams, asks the signaller for a closure before a team works in the track, and decides whether to call the technician on call.",
+    description: "The district is line 6250 from Bergheim via Bf Neustadt to Talsee and the branch to Waldau, with the maintenance base at Bf Neustadt. A team sent to a fault drives there; where the work is in a track, it waits for the closure, which the dispatcher asks of the signaller (after 90 s the team asks itself); then it works and reports. A team sent into the track without a closure is a danger to people. In a session the signaller's fault report arrives as a flow, the team's steps go back as the repair status, the closure is asked of the signaller's game and comes back as a track closure; the staff plan sets the teams, the condition of the assets how many faults the shift brings. Alone, the game brings the signaller's fault itself and its own signallers close the tracks.",
+    files: ["web/arail/game/maintenance.js"],
+    classes: [{
+      name: "MaintenanceGame", file: "web/arail/game/maintenance.js", kind: "class", extends: "Game", role: "The faults, the teams, the closures and the score.",
+      attributes: ["length: number — the shift (s)", "teams: object[] — ready, driving, waiting for the closure, working; where; on which fault", "onCall: string — none, available, called, in", "faults: object[] — coming, open, assigned, on site, working, done; the closure asked or closed"],
+      operations: ["fault(id)", "eta(team, fault) — seconds on the road", "send(teamId, faultId) — a free team to an open fault", "callIn() — the technician on call, as overtime", "take(msg) — a fault report; a track closed or opened", "tick()", "finish() — the shift's account", "stats() — reported, done, open, minutes to restore", "objectives()", "view()", "_report(f)", "_arrive(tm, f) — on site: start, or wait for the closure", "_askClosure(tm, f)", "_work(tm, f)", "_done(tm, f)"],
+    }, {
+      name: "MaintenancePlayer", file: "web/arail/game/maintenance.js", kind: "class", extends: "Player", role: "The computer's dispatcher: the fault that matters most first, the nearest free team, the closure asked for, the technician on call when teams are short.",
+      operations: ["think(g)"],
+    }, {
+      name: "maintenance", file: "web/arail/game/maintenance.js", kind: "module", role: "The district, its roads, the faults a shift can bring, the levels.",
+      attributes: ["DISTRICT — the places and their kilometres by road from the base", "DRIVE — a van's time on the road", "ON_CALL — ready after 600 s, 4 h paid", "RESTORE_MIN — full marks within 12 min, none beyond 32", "FAULTS — asset, kind, place, report path, trains held, the track the work is in", "LEVELS — teams, on call, faults"],
+      operations: ["driveTime(from, to, atBase)"],
+    }],
+    relations: [
+      { from: "MaintenanceGame", to: "MaintenancePlayer", kind: "uses", label: "static player" },
+    ],
+    activities: [{
+      id: "fault", name: "A fault from the report to the repair (MaintenanceGame)",
+      nodes: [
+        ["s", "start"],
+        ["a1", "action", "A fault is reported: by the signaller's flow, or by the game's own report paths", "MaintenanceGame.take", "game"],
+        ["a2", "action", "The dispatcher sends a free team; the repair status says it is on its way", "MaintenanceGame.send", "player"],
+        ["a3", "action", "The team arrives", "MaintenanceGame._arrive", "team"],
+        ["d1", "decision", "The work is in a track that is not closed?"],
+        ["d2", "decision", "The dispatcher's decision"],
+        ["a4", "action", "Ask the signaller for the closure (after 90 s the team asks itself)", "MaintenanceGame._askClosure", "player"],
+        ["a5", "action", "The track is closed: by the signaller's flow, or by the game's own signaller", "MaintenanceGame.take", "signaller"],
+        ["a6", "action", "Sent in at once: a danger to people, the shift fails", "Game.violate", "game"],
+        ["m1", "merge"],
+        ["a7", "action", "The team works; the repair status says how long", "MaintenanceGame._work", "team"],
+        ["a8", "action", "Repaired: the team reports and is free at that place", "MaintenanceGame._done", "team"],
+        ["e", "end"],
+      ],
+      edges: [["s", "a1"], ["a1", "a2"], ["a2", "a3"], ["a3", "d1"], ["d1", "m1", "no"], ["d1", "d2", "yes"], ["d2", "a4", "ask"], ["d2", "a6", "start at once"], ["a4", "a5"], ["a5", "m1"], ["a6", "m1"], ["m1", "a7"], ["a7", "a8"], ["a8", "e"]],
+    }],
+    rules: [
+      "On the road: 300 s from the base to an asset at Bf Neustadt, 120 s within a place, else 180 s and 40 s for each kilometre by road (the places lie on different roads out of Bf Neustadt).",
+      "Objectives: trains running again 40 (per fault that holds trains: full marks when restored within 12 min of its report, none beyond 32 min, weighted by the trains held; one without a team counts nothing), safety 30, faults dealt with 15, overtime 15.",
+      "A team sent into a track without a closure: severity 3.",
+      "With a grade of the assets from a slower role, the shift brings round((grade − 1.5) × 1.6) faults beside the signaller's; else the level's number.",
     ],
   },
   {
@@ -89,8 +229,17 @@ export const GAMES = [
     classes: [
       {
         name: "SignallerGame", file: "web/arail/game/signaller.js", kind: "class", extends: "Game", role: "The interlocking, the trains, the failure, the repair team and the score.",
-        attributes: ["points: object — position, target, until when it moves", "signals: object — failed, substitute signal lit", "routes: Map — set or locked, the train on it, its sections not yet released", "closed: Map — closed tracks", "trains: Train[]", "failure: object | null — the failed signal: when, reported, repaired", "team: object — the repair team: driving, waiting, working, done, left", "answers: Map — the short questions, right or not"],
-        operations: ["occupancy() — sections and their trains", "lockOf(section)", "routeFrom(signal) — the route no train has passed yet", "aspect(id) — proceed or stop", "blocked(routeId) — why not, or null", "routesFrom(signal)", "setRoute(routeId)", "cancelRoute(routeId) — unless a train approaches on it", "substitute(signal, checks) — Zs 1 with the checks and the reason", "reportFault()", "closeTrack(track)", "openTrack(track)", "tick(dt)", "nextSignal(tr)", "distanceTo(tr, signal)", "report() — the trains and their delays", "connections()", "objectives()", "state() — what the page draws"],
+        attributes: ["points: object — position, target, until when it moves", "signals: object — failed, substitute signal lit", "routes: Map — set or locked, the train on it, its sections not yet released", "closed: Map — closed tracks", "trains: Train[]", "failure: object | null — the failed signal: when, reported, repaired", "team: object — the repair team: called, driving, waiting, working, done, left; remote when a maintenance dispatcher is seated", "holds: Map — trains to hold for a connection, as the undertaking asked", "answers: Map — the short questions, right or not"],
+        operations: ["occupancy() — sections and their trains", "lockOf(section)", "routeFrom(signal) — the route no train has passed yet", "aspect(id) — proceed or stop", "blocked(routeId) — why not, or null", "routesFrom(signal)", "setRoute(routeId)", "cancelRoute(routeId) — unless a train approaches on it", "substitute(signal, checks) — Zs 1 with the checks and the reason", "zs1(signal, routeChecked, trackChecked, reason) — the same, as a form gives it", "reportFault() — the fault report, as a flow", "closeTrack(track)", "openTrack(track)", "take(msg) — the maintenance dispatcher's team (repair status, closure request), the undertaking's wish (connection request)", "tick(dt)", "finish() — the shift's account", "nextSignal(tr)", "distanceTo(tr, signal)", "rightAnswer(decisionId)", "report() — the trains and their delays", "connections()", "objectives()", "view() — for the play page", "state() — what the page draws"],
+      },
+      {
+        name: "SignallerAutopilot", file: "web/arail/game/signaller.js", kind: "class", extends: "Player", role: "The computer's signaller, careful and by the book: routes as planned, the next train to a signal first, a freight train after the trains planned before it, a connection held on request, the failure reported, Zs 1 with its checks, the closure for the team.",
+        operations: ["think(g)"],
+      },
+      {
+        name: "signaller", file: "web/arail/game/signaller.js", kind: "module", role: "The station, the timetable, the levels and the constants.",
+        attributes: ["STATION — sections, points, signals, routes", "TIMETABLE", "CONNECTIONS", "LEVELS", "ZS1_REASONS"],
+        operations: ["failureChance(grade) — how likely the signal fails in a shift, by the condition of the assets", "clockOf(t)"],
       },
       {
         name: "Train", file: "web/arail/game/signaller.js", kind: "class", role: "A train of the timetable: its path as far as its routes go, the head and the speed.",
@@ -99,6 +248,7 @@ export const GAMES = [
     ],
     relations: [
       { from: "SignallerGame", to: "Train", kind: "composes", label: "trains" },
+      { from: "SignallerGame", to: "SignallerAutopilot", kind: "uses", label: "static player" },
     ],
     activities: [
       {
@@ -128,7 +278,7 @@ export const GAMES = [
           ["a1", "action", "Signal N2 shows no proceed aspect; the game asks for a fault report", "SignallerGame.tick", "game"],
           ["d1", "decision", "Reported?"],
           ["a2", "action", "Asked again three minutes later", "SignallerGame.tick", "game"],
-          ["a3", "action", "The repair team drives out from the maintenance base", "SignallerGame.reportFault", "player"],
+          ["a3", "action", "The fault report goes out; the repair team drives out (the game's own, or the maintenance dispatcher's)", "SignallerGame.reportFault", "player"],
           ["a4", "action", "The team asks for track G2 to be closed", "SignallerGame.tick", "game"],
           ["a5", "action", "The player closes G2 once it is clear", "SignallerGame.closeTrack", "player"],
           ["a6", "action", "The team works, then reports that it has left the track", "SignallerGame.tick", "game"],
@@ -147,6 +297,8 @@ export const GAMES = [
       "A connection holds when the second train leaves at least 30 s (same platform) or 150 s (the other platform) after the first arrived.",
       "Objectives: punctuality 35 (0 at 6 min average delay, weighted by kind of train), safety 30, connections and platforms 15, the failure 10 (reported within 2 min: full), questions 10.",
       "Rules broken: Zs 1 without a locked route or into an occupied section, and opening the track with the repair team on it: severity 3; Zs 1 without the checks: 2; no or the wrong reason recorded: 1.",
+      "In a session: with a grade of the assets from a slower role, the signal fails with a chance of (grade − 2) / 1.5, between 5 % and 95 %; a delay of a minute or more is told to the undertaking (on approach, waiting two minutes beyond the time, at departure or passing).",
+      "The short questions show their options in a drawn order.",
     ],
   },
   {

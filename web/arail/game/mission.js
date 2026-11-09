@@ -27,8 +27,10 @@ import { SEATS, Session } from "./session.js";
 export const MISSION_FORMAT = "arail-mission/1";
 /** How a mission is meant to be played: one role alone, the roles with each other, or against each other. */
 export const MISSION_MODES = ["solo", "cooperative", "competitive"];
-/** The tick of a shift (s) and its length (s) where a mission gives none. */
-export const TICK_S = 0.5, SHIFT_S = 2400;
+/** The tick of a shift (s) where a mission gives none. */
+export const TICK_S = 0.5;
+/** The length of a shift (s) where a mission gives none. */
+export const SHIFT_S = 2400;
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 

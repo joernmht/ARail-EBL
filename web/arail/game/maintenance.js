@@ -327,18 +327,32 @@ export class MaintenanceGame extends Game {
 
   objectives() {
     const st = this.stats(), rep = this.faults.filter((f) => f.reported != null);
-    const restore = st.restore_min == null ? 1 : 1 - (st.restore_min - RESTORE_MIN.good) / (RESTORE_MIN.bad - RESTORE_MIN.good);
+    const end = Math.min(this.t, this.length);
+    // how well each fault that holds trains was restored: by the minutes from its report to the repair; one still
+    // open counts by the minutes it will have taken at the best (a team at work), or not at all (no team sent)
+    const mark = (min) => Math.max(0, Math.min(1, 1 - (min - RESTORE_MIN.good) / (RESTORE_MIN.bad - RESTORE_MIN.good)));
+    const restored = (f) => {
+      if (f.done != null) return mark((f.done - f.reported) / 60);
+      if (f.state === "open") return 0;
+      const tm = this.teams.find((x) => x.fault === f.id);
+      const left = f.state === "working" ? Math.max(0, (tm?.until ?? end) - end) : f.work_s + (tm?.state === "driving" ? Math.max(0, tm.until - end) : 0);
+      return mark((end - f.reported + left) / 60);
+    };
+    // a fault reported in the last minutes of the shift is the next shift's
+    const hold = rep.filter((f) => (f.holds > 0 || f.safety) && (f.done != null || end - f.reported >= 180));
+    const hw = hold.reduce((a, f) => a + (f.holds || 1), 0);
+    const restore = hw ? hold.reduce((a, f) => a + (f.holds || 1) * restored(f), 0) / hw : 1;
     const sev = this.violations.reduce((s, v) => s + (v.severity >= 3 ? 1 : v.severity === 2 ? 0.5 : 0.15), 0);
-    // a fault that came in late cannot be done by the end: it counts by how far it got
     const part = (f) => (f.done != null ? 1 : f.state === "working" ? 0.7 : f.state === "open" ? 0 : 0.4);
     const w = rep.reduce((a, f) => a + (f.holds || f.safety ? 1 : 0.5), 0);
     const closed = w ? rep.reduce((a, f) => a + (f.holds || f.safety ? 1 : 0.5) * part(f), 0) / w : 1;
     const hours = this.value("overtime"), needed = rep.filter((f) => f.holds > 0 || f.safety).length > this.teams.filter((tm) => !tm.overtime).length;
+    const idle = rep.filter((f) => f.state === "open" && (f.holds > 0 || f.safety)).length;
     return [
-      { id: "restore", label: "Trains running again", weight: 40, value: restore, note: st.restore_min == null ? "no fault held trains" : `${st.restore_min} min from the report to the repair, on average` },
+      { id: "restore", label: "Trains running again", weight: 40, value: restore, note: st.restore_min == null ? "no fault held trains" : `${st.restore_min} min from the report to the repair (or to now), on average` },
       { id: "safety", label: "Safety", weight: 30, value: this.violations.some((v) => v.severity >= 3) ? 0 : 1 - sev - 0.25 * st.danger, note: `${this.violations.length} rules broken${st.danger ? `, ${st.danger} danger${st.danger === 1 ? "" : "s"} left without a team` : ""}` },
       { id: "faults", label: "Faults dealt with", weight: 15, value: closed, note: `${st.done} of ${st.reported} repaired` },
-      { id: "cost", label: "Overtime", weight: 15, value: hours === 0 ? 1 : needed ? 0.8 : 0.4, note: hours ? `${hours} h${needed ? "" : ", with teams enough on shift"}` : "none" },
+      { id: "cost", label: "Overtime", weight: 15, value: hours === 0 ? (idle ? 0.5 : 1) : needed ? 0.8 : 0.4, note: hours ? `${hours} h${needed ? "" : ", with teams enough on shift"}` : idle ? "none, with faults waiting for a team" : "none" },
     ];
   }
 

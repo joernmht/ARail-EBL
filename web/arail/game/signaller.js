@@ -291,7 +291,8 @@ export class SignallerAutopilot extends Player {
       if (tr.stops && (tr.state !== "dwelling" || g.t < tr.dep - 20)) continue;
       // a connection asked for: until the other train's passengers have changed, or the time agreed is over
       const hold = g.holds.get(tr.id), other = hold && by.get(hold.for);
-      if (hold && g.t < hold.until && (!other || other.arrived == null || g.t < other.arrived + TRANSFER_OTHER_S)) continue;
+      const change = other?.track && tr.track && STATION.sections[TRACKS[other.track]].platform === STATION.sections[TRACKS[tr.track]].platform ? TRANSFER_SAME_S : TRANSFER_OTHER_S;
+      if (hold && g.t < hold.until && (!other || other.arrived == null || g.t < other.arrived + change)) continue;
       set(`${sig}-${tr.dir > 0 ? "T" : "B"}`);
     }
   }
