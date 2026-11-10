@@ -529,9 +529,15 @@ export class SignallerGame extends Game {
     if (lock) return { ok: false, reason: `${track} is locked by route ${lock.id}.` };
     this.closed.set(sec, this.t);
     this.log(`${clockOf(this.t)} Track ${track} closed.`, "closure");
-    this.give("track-closure", { place: STATION.name, track, closed: true, fault: this.failure?.started ? this.failure.signal : null });
+    this.give("track-closure", { place: STATION.name, track, closed: true, fault: this._faultOf(track) });
     if (this.team.state === "waiting" && track === "G2") this._teamStarts();
     return { ok: true };
+  }
+
+  /** The failed signal whose track this is, or null: a track closed for another reason is not the failure's closure. */
+  _faultOf(track) {
+    const f = this.failure;
+    return f?.started && STATION.sections[STATION.signals[f.signal].section].track === track ? f.signal : null;
   }
 
   /** Open a closed track again. With the repair team still on it, it is a danger to them. */
@@ -542,7 +548,7 @@ export class SignallerGame extends Game {
     this.closed.delete(sec);
     if (track === "G2" && this.team.state === "done") this.team.state = "left";
     this.log(`${clockOf(this.t)} Track ${track} open.`, "closure");
-    this.give("track-closure", { place: STATION.name, track, closed: false, fault: this.failure?.started ? this.failure.signal : null });
+    this.give("track-closure", { place: STATION.name, track, closed: false, fault: this._faultOf(track) });
     return { ok: true };
   }
 

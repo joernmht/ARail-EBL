@@ -61,7 +61,7 @@ function after(kind, th) {
  * @returns {Array<{fault: string, asset: string, place: string | null, track: string | null, round: number, phase: number, from: number, to: number, state: "repaired" | "provisional" | "open", relapses: number, steps: object[], stretches: object[], out_s: number, by: object, effects: string[]}>}
  */
 export function threads(flows, { endOf = null } = {}) {
-  const by = new Map();
+  const by = new Map(), before = new Map();
   for (const line of flows) {
     const kind = stepOf(line), p = line.payload ?? {};
     // what a game says a fault did in its world (its account of the shift)
@@ -70,8 +70,15 @@ export function threads(flows, { endOf = null } = {}) {
       continue;
     }
     if (!kind) continue;
-    const key = `${line.phase}|${p.fault}`;
+    const key = `${line.phase}|${p.fault}`, closure = line.flow === "track-closure" || line.flow === "closure-request";
     let th = by.get(key);
+    // a closure of another track is not this fault's, whatever it is tagged with
+    if (th && closure && th.track && p.track && p.track !== th.track) continue;
+    if (!th && closure) {
+      // closed before the fault was reported or a team sent: the thread begins with that, the track as it is then
+      if (line.flow === "track-closure") before.set(key, { track: p.track ?? null, closed: !!p.closed });
+      continue;
+    }
     if (!th) {
       th = {
         fault: p.fault, asset: p.asset ?? String(p.fault), place: p.place ?? null, track: null, round: line.round, phase: line.phase, from: line.t - (p.since_s ?? 0), to: line.t,
@@ -79,8 +86,10 @@ export function threads(flows, { endOf = null } = {}) {
         roles: { reporter: null, dispatcher: null, signaller: null }, closed: false, known: false, last: null,
       };
       by.set(key, th);
+      const was = before.get(key);
+      if (was && (!p.track || !was.track || was.track === p.track)) th.closed = was.closed;
     }
-    if (p.track) th.track = p.track;
+    if (p.track && !th.track) th.track = p.track;
     if (line.flow === "fault-report") Object.assign(th.roles, { reporter: line.seat, dispatcher: th.roles.dispatcher ?? line.to?.[0] ?? null });
     else if (line.flow === "repair-status" || line.flow === "closure-request") th.roles.dispatcher = line.seat;
     else if (line.flow === "track-closure") th.roles.signaller = line.seat;

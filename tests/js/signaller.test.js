@@ -321,3 +321,23 @@ test("the panel as a sketch: sections in the colours of their state, a signal wi
   assert.deepEqual([note(n).text, note(n).tone], ["N2: repaired", "ok"]);
   check(n.view().sketch);
 });
+
+test("a track closure names the failure only on the failed signal's own track", () => {
+  const g = new SignallerGame({ level: "normal" });
+  const closure = () => g.outbox.filter((m) => m.flow === "track-closure").at(-1).payload;
+  // before the failure: no closure is the failure's
+  assert.deepEqual(g.closeTrack("G2"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: null });
+  g.openTrack("G2");
+  run(g, 790, careful);
+  assert.equal(g.failure.started, true);
+  // N2 has failed: G3 closed for another reason is not its closure; G2 is
+  const free = (t) => !g.occupancy().has(t.toLowerCase()) && !g.lockOf(t.toLowerCase());
+  while (!free("G3")) run(g, 1, careful);
+  assert.deepEqual(g.closeTrack("G3"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G3", closed: true, fault: null });
+  assert.deepEqual(g.openTrack("G3"), { ok: true });
+  assert.equal(closure().fault, null);
+  while (!g.closed.has("g2")) run(g, 1, careful);
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: "N2" });
+});

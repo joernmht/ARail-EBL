@@ -407,6 +407,14 @@ test("what led to what: a fault's thread from the flows, each stretch of its tim
   // the other fault: no report as a flow, the first team after forty seconds; no track, so the team looks at once
   assert.deepEqual(list[0].stretches.map((x) => [x.from, x.to, x.kind, x.by, x.open]), [[60, 100, "unsent", D, false], [100, 400, "road", "road", false], [400, 2400, "finding", "team", true]]);
   assert.deepEqual(list[0].stretches[0].meanwhile, []);
+  // a closure of another track is not the fault's, whatever it is tagged with: the thread stays as it is
+  const stray = [...flows, line(300, "track-closure", S, { fault: "N2", track: "G3", closed: true }), line(900, "track-closure", S, { fault: "N2", track: "G3", closed: false }), line(590, "closure-request", D, { fault: "N2", track: "G1" })].sort((a, b) => a.t - b.t);
+  const same = threads(stray, { endOf: () => 2400 })[1];
+  assert.deepEqual([same.track, same.stretches, same.by], [n2.track, n2.stretches, n2.by]);
+  // the track closed before the fault was reported: the thread begins with the report, the track closed; nothing is asked or waited for
+  const early = threads([line(120, "track-closure", S, { fault: "N2", track: "G2", closed: true }), ...flows.filter((f) => f.payload.fault === "N2" && f.flow !== "track-closure" && f.t <= 800)], { endOf: () => 900 })[0];
+  assert.deepEqual([early.from, early.track, early.steps[0].kind], [100, "G2", "reported"]);
+  assert.deepEqual(early.stretches.map((x) => [x.from, x.to, x.kind]), [[100, 160, "unreported"], [160, 280, "unsent"], [280, 580, "road"], [580, 760, "finding"], [760, 800, "undecided"], [800, 900, "repair"]]);
   // nothing that names a fault: no threads; a phase of its own per thread
   assert.deepEqual(threads([line(5, "budget", "mp", { eur: 1 })]), []);
   assert.deepEqual(threads([...flows, { ...flows[1], phase: 3, round: 2 }]).map((th) => [th.phase, th.fault]), [[0, "x"], [0, "N2"], [3, "N2"]]);
@@ -521,4 +529,36 @@ test("a game whose world is elsewhere: the shift closes only when it has caught 
   await again.runWith();
   assert.equal(again.over, true);
   assert.deepEqual(again.result(), s.result());
+});
+
+test("a seat handed to the computer in a turn: the computer decides, not the fallbacks", () => {
+  /** A treasurer whose computer player always takes the full budget (the fallback is the lean one). */
+  class Planner extends Treasurer {
+    static id = "planner";
+    static player = class extends Player {
+      think(g) {
+        for (const d of g.open) g.act("decide", d.id, "full");
+      }
+    };
+  }
+  const mine = new Map([...games, [Planner.id, Planner]]);
+  const doc = { ...BIG, rounds: 1, roles: [{ role: "asset-manager", game: "planner", seat: "human" }, ...BIG.roles.slice(1)] };
+  const s = new Session(normalizeMission(doc, mine), { games: mine }).start();
+  assert.deepEqual([s.phase.id, s.waiting], ["plan", true]);
+  // the person leaves the seat in the plan turn: the turn ends by itself, with the computer's decision
+  s.sit("asset-manager", "computer");
+  const g = s.seat("asset-manager").game;
+  assert.deepEqual(g.decisions.map((d) => [d.made, !!d.auto]), [["full", false]]);
+  assert.deepEqual(s.flows.filter((f) => f.flow === "budget").map((f) => f.payload.maintenance_eur), [20]);
+  assert.equal(s.phase.id, "shift");
+  s.run();
+  assert.ok(s.over);
+  // played again from its record, the same
+  const again = Session.replay(normalizeMission(doc, mine), s.save(), { games: mine });
+  assert.deepEqual(again.result(), s.result());
+  assert.deepEqual(again.seat("asset-manager").game.decisions.map((d) => d.made), ["full"]);
+  // a person who stays decides themselves; a turn left open takes the fallback
+  const t = new Session(normalizeMission(doc, mine), { games: mine }).start();
+  t.next();
+  assert.deepEqual(t.seat("asset-manager").game.decisions.map((d) => [d.made, !!d.auto]), [["lean", true]]);
 });

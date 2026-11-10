@@ -297,7 +297,7 @@ export class LabGame extends Game {
     if (this.closed.has(n)) return { ok: false, reason: `Track ${n} is already closed.` };
     this.closed.add(n);
     this._out.push({ kind: "closeTrack", station: this.station, track: n });
-    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: true, fault: this.failure?.started ? this.failure.signal : null });
+    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: true, fault: this._faultOf(n) });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} closed.`, "closure");
     if (this.failure?.track === n && this.team.state === "waiting") this.team.state = "working";
     return { ok: true };
@@ -310,7 +310,7 @@ export class LabGame extends Game {
     if (this.failure?.track === n && this.team.state === "working") this.violate("closure-workers", `${clockAt(this.t, this.start)} Track ${n} opened while the repair team works on it.`, 3);
     this.closed.delete(n);
     this._out.push({ kind: "openTrack", station: this.station, track: n });
-    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: false, fault: this.failure?.started ? this.failure.signal : null });
+    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: false, fault: this._faultOf(n) });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} open.`, "closure");
     if (this.failure?.track === n && this.team.state === "done") this.team.state = "left";
     return { ok: true };
@@ -373,6 +373,12 @@ export class LabGame extends Game {
         if (o === "close") this.closeTrack(f.track);
       },
     });
+  }
+
+  /** The failed signal whose track this is, or null: a track closed for another reason is not the failure's closure. */
+  _faultOf(n) {
+    const f = this.failure;
+    return f?.started && Number(f.track) === Number(n) ? f.signal : null;
   }
 
   /** A provisional repair did not hold: the signal fails again in the lab; the maintenance dispatcher knows. */

@@ -231,7 +231,8 @@ period's decisions.
 
 - **Seats.** Each seat is a role's game with who plays it: `human` or `computer`. A seat can change
   hands while the session runs (`sit`): a person takes over a computer's seat, the computer takes
-  over when somebody leaves.
+  over when somebody leaves. In a turn the computer then decides at once what is open, by its own
+  rules, before the turn can end; in a shift it thinks with every tick.
 - **Wiring.** A flow a game gives goes to every seated game that takes it, from that role if the
   port names roles. What no seat gives comes from the mission; what nobody takes, the game plays
   itself. `wiring(mission, games)` lists every port of every seat with what is at its other end:
@@ -337,6 +338,9 @@ which failed again. `Session.threads()` (`chain.js`) reads this from the flows a
 - A flow that names a fault (`payload.fault`) is a step of that fault's **thread**: the fault
   report, the repair status (dispatched, arrived, diagnosed, working, done, secured, left,
   relapsed), the closure request, the track closed and opened.
+- A track closure names a fault only when the track is the fault's own (the failed signal's
+  track): a signaller who closes another track for another reason has not closed it for the
+  repair. The chain takes a closure of another track for no step of the fault.
 - Between two steps lies a **stretch** of time, and somebody or something was waited for: the
   reporter, the dispatcher (a team to send, the closure to ask for, the word on what to do), the
   signaller (the track to close, to open again), the road, the team's work. Each stretch has

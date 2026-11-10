@@ -409,6 +409,8 @@ export class Session {
       return true;
     }
     this.record.push({ phase: this.index, tick: this.ticks, seat: seatId, name: "@seat", args: [by] });
+    // handed to the computer in a turn: it decides now, before the turn ends by itself (in a shift it thinks with every tick)
+    if (by === "computer" && this.phase?.kind === "turn" && this.active.includes(seat) && seat.game && !seat.game.over) seat.player.think(seat.game, this);
     this._auto();
     return true;
   }

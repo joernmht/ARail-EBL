@@ -294,6 +294,23 @@ test("a provisional repair that does not hold: the signal fails again in the lab
   assert.deepEqual(g.violations, []);
 });
 
+test("a track closure names the failure only on the failed signal's own track", async () => {
+  const lab = new SmallLab();
+  const g = new LabGame({ api: lab, failure: FAILURE, length: 2400, wired: ["repair-status"] });
+  while (g.t < 800) {
+    await g.sync();
+    if (!g.holding) g.step(0.5);
+  }
+  assert.equal(g.failure.started, true);
+  const closure = () => g.outbox.filter((m) => m.flow === "track-closure").at(-1).payload;
+  g.closeTrack(3);
+  assert.deepEqual([closure().closed, closure().fault], [true, null]);
+  g.openTrack(3);
+  assert.deepEqual([closure().closed, closure().fault], [false, null]);
+  g.closeTrack("2");
+  assert.deepEqual([closure().closed, closure().fault], [true, "ASig N2"]);
+});
+
 test("a lab that does not answer: the seat says so and the shift goes on without it; without an address there is no lab", async () => {
   const dead = { create: async () => { throw new Error("connection refused"); } };
   const g = await alone(new LabGame({ api: dead, length: 60 }));
