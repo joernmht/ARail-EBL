@@ -176,10 +176,14 @@ class PlayPage {
     $("#tabs").addEventListener("keydown", (e) => this.tabKey(e));
     document.addEventListener("keydown", (e) => this.key(e));
     addEventListener("popstate", () => this.route());
-    addEventListener("pagehide", (e) => {
+    addEventListener("pagehide", () => {
       this.save();
-      // a page kept for "back" goes on with its session; one that is closed leaves it
-      if (!e.persisted) this.leave();
+      // also a page the browser keeps for "back": it may be thrown away later without another word, and what a
+      // game holds elsewhere (the lab's instance) must be given back before
+      this.leave();
+    });
+    addEventListener("pageshow", (e) => {
+      if (e.persisted) this.back();
     });
   }
 
@@ -213,6 +217,7 @@ class PlayPage {
 
   /** Choose a mission (null: back to the list of missions); the address follows. */
   choose(id) {
+    this.note = "";
     const doc = this.missions.find((m) => m.id === id) ?? null;
     const url = new URL(location.href);
     if (doc) url.searchParams.set("mission", doc.id);
@@ -408,6 +413,20 @@ class PlayPage {
   /** The session shown is dropped (another begins, the missions are shown, the page is closed): its games give back what they hold elsewhere. */
   leave() {
     this.session?.leave().catch(() => {});
+  }
+
+  /**
+   * The page is shown again from the browser's cache ("back"). A session all of whose games are here goes on as it
+   * was. One with a seat whose world is elsewhere cannot: that world was given back when the page was left, so the
+   * mission is shown again from its start, with a note.
+   */
+  back() {
+    const s = this.session;
+    if (!s || s.over || Session.replayable(s.mission, this.games)) return;
+    this.note = "The session ended when this page was left: the world of one of its seats is elsewhere and was given back. Start begins a new one.";
+    this.open(this.doc);
+    this.say(this.note);
+    $("#setupTitle")?.focus();
   }
 
   /** The mission chosen as a session plays it, each seat's game told what was entered for it (as options of its seat). */

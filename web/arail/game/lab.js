@@ -203,7 +203,8 @@ export class LabGame extends Game {
 
   /** The clock waits while the lab is not there yet or lags too far behind. */
   get holding() {
-    if (!this.api || this.link.state === "lost") return false;
+    // a game that was left exchanges nothing more: it does not hold the clock either
+    if (!this.api || this._left || this.link.state === "lost") return false;
     if (this.instance == null) return true;
     // at the end of the shift the lab is brought up to it, and what was ordered last is sent
     if (this.t >= this.length) return Math.floor(this.length - this.labT) > 0 || this._out.length > 0;

@@ -235,11 +235,14 @@ test("a session given up: its lab instance is deleted; a lab without that reques
   await s.leave();
   await s.leave();
   assert.deepEqual(lab.requests.filter((r) => r[0] === "remove"), [["remove", "sim-1"]]);
-  // a game that was left exchanges nothing more with the lab
-  const n = lab.requests.length;
-  s.step(40);
-  await s.sync();
+  // a game that was left exchanges nothing more with the lab, and does not hold the clock for it
+  const n = lab.requests.length, t0 = s.t;
+  for (let i = 0; i < 20; i++) {
+    s.step(10);
+    await s.sync();
+  }
   assert.equal(lab.requests.length, n);
+  assert.deepEqual([s.holding, s.t], [false, t0 + 200]);
   // left before the lab was ever asked: nothing to give back, and no instance is made afterwards
   const quiet = new SmallLab();
   const early = new LabGame({ api: quiet, length: 60 });

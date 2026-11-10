@@ -576,10 +576,32 @@ test("a seat whose game must be told its world: the fields before Start; the key
     p.save();
   });
   expect(await page.evaluate(() => localStorage.getItem("arail.play.lab-morning"))).toBeNull();
-  // the morning without the lab is kept as before
+  // the page is left for another, and the browser keeps it for "back": the lab's world is given back all the same
+  // (the browser may throw the page away without another word)
+  const left = () => page.evaluate(() => window.__play.session?.seat("train-dispatcher").game._left ?? null);
+  expect(await left()).toBe(false);
+  await page.evaluate(() => dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })));
+  expect(await left()).toBe(true);
+  // shown again from the cache, the session cannot go on: the mission from its start, with the reason
+  await page.evaluate(() => dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+  expect(await page.evaluate(() => [window.__play.session, window.__play.screen])).toEqual([null, "choose"]);
+  await expect(page.locator("#setup .hint.error")).toContainText("The session ended when this page was left");
+  await expect(page.locator("#setupTitle")).toBeFocused();
+  await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+  // the morning without the lab is kept as before, and goes on when the page comes back from the cache
   await page.goto(MORNING);
   await page.waitForFunction(() => window.__play?.ready);
   await expect(page.locator("#noResume")).toHaveCount(0);
+  await expect(page.locator("#setup .hint.error")).toHaveCount(0);
+  await page.getByRole("button", { name: "Start" }).click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.evaluate(() => {
+    dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+    dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+  });
+  expect(await page.evaluate(() => [!!window.__play.session, window.__play.screen])).toEqual([true, "play"]);
+  await run(page, 30);
+  expect(await page.evaluate(() => window.__play.session.t)).toBeGreaterThanOrEqual(30);
   expect(errors.filter((e) => !/fetch|Failed to load|ERR_CONNECTION|NetworkError/i.test(e))).toEqual([]);
 });
 
