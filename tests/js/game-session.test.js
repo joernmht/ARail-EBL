@@ -562,3 +562,107 @@ test("a seat handed to the computer in a turn: the computer decides, not the fal
   t.next();
   assert.deepEqual(t.seat("asset-manager").game.decisions.map((d) => [d.made, !!d.auto]), [["lean", true]]);
 });
+
+test("the game core: a decision whose occasion has passed is taken back; nobody decided it", () => {
+  const g = new Game();
+  const seen = [];
+  g.on((name, payload) => seen.push([name, payload.decision?.id]));
+  let answered = null;
+  g.ask({ id: "open", title: "Open the track?", options: [{ id: "yes", label: "Yes" }, { id: "no", label: "No" }], within: 10, fallback: "yes", then: (o) => (answered = o) });
+  g.ask({ id: "other", title: "Another", options: [{ id: "a", label: "A" }] });
+  assert.equal(g.withdraw("open"), true);
+  assert.deepEqual(g.open.map((d) => d.id), ["other"]);
+  assert.deepEqual(seen.at(-1), ["withdrawn", "open"]);
+  // not answered now, not at its deadline, and not by a late click
+  assert.equal(g.decide("open", "yes"), false);
+  g.step(11);
+  assert.equal(answered, null);
+  assert.equal(g.withdraw("open"), false);
+  assert.equal(g.withdraw("nothing"), false);
+  // a decision that was made stays in the record
+  g.decide("other", "a");
+  assert.equal(g.withdraw("other"), false);
+  assert.deepEqual(g.decisions.map((d) => [d.id, d.made]), [["other", "a"]]);
+  // asked again later, it is a new question
+  g.ask({ id: "open", title: "Open the track?", options: [{ id: "yes", label: "Yes" }], then: (o) => (answered = o) });
+  g.decide("open", "yes");
+  assert.equal(answered, "yes");
+});
+
+test("people who play at random: every move a page offers, in any order; the morning ends, no question is stale, the chain adds up, and the record plays it again", () => {
+  const doc = JSON.parse(readFileSync(join(ROOT, "web", "game", "missions", "neustadt-morning.json"), "utf8"));
+  const mission = () => normalizeMission(doc, GAMES);
+  const SIG = "signaller-relay", MT = "maintenance-dispatcher";
+  let moves = 0, refused = 0, relapses = 0;
+  for (let seed = 1; seed <= 10; seed++) {
+    // a small generator of its own: the same people for the same seed
+    let x = seed * 2654435761 % 4294967296;
+    const rnd = () => (x = (x * 1664525 + 1013904223) % 4294967296) / 4294967296;
+    const pick = (list) => list[Math.floor(rnd() * list.length)];
+    const s = new Session(mission(), { games: GAMES, seed, seats: { [SIG]: "human", [MT]: "human" } }).start();
+    const act = (seat, name, ...args) => {
+      const res = s.act(seat, name, ...args);
+      moves++;
+      if (res === false || res?.ok === false) refused++;
+    };
+    while (!s.over) {
+      for (const seat of [...s.active]) {
+        const g = seat.game;
+        if (!g || g.over) continue;
+        const v = g.view(), k = rnd();
+        // what the page would draw is well formed
+        for (const a of v.actions) assert.ok(Object.hasOwn(seat.Game.actions, a.name), `${seat.id}: ${a.name}`);
+        for (const it of v.sketch?.items ?? []) for (const m of it.menu ?? []) assert.ok(it.id && Object.hasOwn(seat.Game.actions, m.name), `${seat.id}: ${it.id} ${m.name}`);
+        if (k < 0.3 && g.open.length) {
+          // a question answered, with any of its options
+          const d = pick(g.open);
+          act(seat.id, "decide", d.id, pick(d.options).id);
+        } else if (k < 0.5) {
+          // a move from its form: any choice of every field
+          const a = pick(v.actions.filter((y) => !y.disabled));
+          if (a) act(seat.id, a.name, ...(a.args ?? []), ...(a.fields ?? []).map((f) => (f.options ? pick(f.options)?.id ?? null : f.type === "check" ? rnd() < 0.5 : f.type === "number" ? f.min ?? 0 : "x")));
+        } else if (k < 0.65) {
+          // a move from the picture: any entry of any menu that is not disabled
+          const it = pick((v.sketch?.items ?? []).filter((y) => y.menu?.length));
+          const m = it && pick(it.menu);
+          if (m && !m.disabled) act(seat.id, m.name, ...(m.args ?? []));
+        }
+      }
+      // no question outlives its occasion
+      const sig = s.seat(SIG).game, mt = s.seat(MT).game;
+      const ids = sig.open.map((d) => d.id), g2 = sig.closed.has("g2");
+      if (ids.includes("report")) assert.ok(sig.failure.started && sig.failure.reported == null, `seed ${seed}: report`);
+      if (ids.includes("closure")) assert.ok(sig.team.state === "waiting" && !g2, `seed ${seed}: closure, the team is ${sig.team.state}`);
+      if (ids.includes("reopen")) assert.ok(sig.team.state === "done" && g2, `seed ${seed}: reopen, the team is ${sig.team.state}`);
+      for (const d of mt.open) {
+        const [kind, ...rest] = d.id.split("-"), f = mt.fault(rest.join("-"));
+        const tm = mt.teams.find((y) => y.fault === f?.id && y.state === (kind === "plan" ? "deciding" : "waiting"));
+        assert.ok(f && tm, `seed ${seed}: ${d.id} without a team that waits for it`);
+      }
+      // a team is where its fault says, and a fault with a team has that team
+      for (const tm of mt.teams) assert.equal(tm.state === "ready", tm.fault == null, `seed ${seed}: ${tm.name} ${tm.state} ${tm.fault}`);
+      s.step(5);
+    }
+    // the morning ended, with a result for both
+    const res = s.result();
+    assert.ok(res.over && res.seats.length === 2 && res.seats.every((y) => Number.isFinite(y.score) && y.score >= 0 && y.score <= 100), `seed ${seed}`);
+    // what led to what: stretches in their order within the shift, the minutes by whose they were add up
+    for (const th of s.threads()) {
+      let at = 0;
+      for (const y of th.stretches) {
+        assert.ok(y.from >= at - 1e-6 && y.to > y.from && y.to <= 2400 + 1e-6 && Object.hasOwn(STRETCHES, y.kind), `seed ${seed}, ${th.fault}: ${JSON.stringify(th.stretches.map((z) => [z.from, z.to, z.kind]))}`);
+        at = y.to;
+      }
+      assert.ok(Math.abs(Object.values(th.by).reduce((a, b) => a + b, 0) - th.out_s) < 1e-6);
+      assert.ok(th.out_s <= 2400 && ["open", "provisional", "repaired"].includes(th.state));
+      relapses += th.relapses;
+    }
+    // the same people again, from the record: the same morning
+    const again = Session.replay(mission(), s.save(), { games: GAMES });
+    assert.deepEqual(again.result(), res, `seed ${seed}`);
+    assert.equal(again.flows.length, s.flows.length);
+  }
+  // the people did play: many moves, some refused, and the hard paths were reached
+  assert.ok(moves > 1500 && refused > 100 && refused < moves, `${moves} moves, ${refused} refused`);
+  assert.ok(relapses >= 1, "a provisional repair that did not hold was among them");
+});

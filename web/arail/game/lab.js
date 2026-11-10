@@ -300,6 +300,7 @@ export class LabGame extends Game {
     this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: true, fault: this._faultOf(n) });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} closed.`, "closure");
     if (this.failure?.track === n && this.team.state === "waiting") this.team.state = "working";
+    this._tidy();
     return { ok: true };
   }
 
@@ -313,6 +314,7 @@ export class LabGame extends Game {
     this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: false, fault: this._faultOf(n) });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} open.`, "closure");
     if (this.failure?.track === n && this.team.state === "done") this.team.state = "left";
+    this._tidy();
     return { ok: true };
   }
 
@@ -357,6 +359,7 @@ export class LabGame extends Game {
     } else if (msg.flow === "closure-request" && f?.started && (p.fault == null || p.fault === f.signal)) {
       this._teamArrived();
     }
+    this._tidy();
   }
 
   _teamArrived() {
@@ -373,6 +376,17 @@ export class LabGame extends Game {
         if (o === "close") this.closeTrack(f.track);
       },
     });
+  }
+
+  /**
+   * Questions whose occasion has passed are taken back: nobody is asked to report what is reported, to close the
+   * track for a team that does not wait for it, or to open it when it is open or a team is on it.
+   */
+  _tidy() {
+    const f = this.failure, team = this.team.state, closed = !!f && this.closed.has(f.track);
+    if (!(f?.started && f.reported == null)) this.withdraw("report");
+    if (team !== "waiting" || closed) this.withdraw("closure");
+    if (team !== "done" || !closed) this.withdraw("reopen");
   }
 
   /** The failed signal whose track this is, or null: a track closed for another reason is not the failure's closure. */
@@ -430,6 +444,7 @@ export class LabGame extends Game {
       if (this.team.state === "working" && this.t >= this._workUntil) this._teamDone();
     }
     for (const [id, until] of this.holds) if (this.t >= until) this.holds.delete(id);
+    this._tidy();
     // with the lab behind, the shift ends in `sync`, once the lab is brought up to its end
     if (this.t >= this.length && !this.holding) this.end(`${clockAt(this.length, this.start)}: the shift is over.`);
   }

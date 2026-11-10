@@ -168,6 +168,21 @@ export class Game {
   }
 
   /**
+   * Take back a decision that is still open, because its occasion has passed (the team it was about
+   * has gone, the track it asked to open is open). Nobody decided it: its handler is not called, its
+   * fallback not taken. A game keeps its open decisions true to its state with this.
+   * @returns {boolean} whether one was open
+   */
+  withdraw(id) {
+    const d = this.decisions.find((x) => x.id === id && !x.made);
+    if (!d) return false;
+    this.decisions = this.decisions.filter((x) => x !== d);
+    this._handlers.delete(id);
+    this.emit("withdrawn", { decision: d });
+    return true;
+  }
+
+  /**
    * Take a decision.
    * @returns {boolean} whether there was such an open decision with that option
    */

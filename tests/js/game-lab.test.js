@@ -294,6 +294,49 @@ test("a provisional repair that does not hold: the signal fails again in the lab
   assert.deepEqual(g.violations, []);
 });
 
+test("questions whose occasion has passed are taken back: after a repair that did not hold, nobody is asked to open the track under the new team", async () => {
+  const lab = new SmallLab();
+  // a person at the seat: nobody answers the questions for them
+  const g = new LabGame({ api: lab, failure: FAILURE, length: 2400, wired: ["repair-status"] });
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: g.t, payload: { fault: "ASig N2", state, ...more } });
+  const open = () => g.open.map((d) => d.id);
+  const run = async (s) => {
+    const end = g.t + s;
+    while (g.t < end) {
+      await g.sync();
+      if (!g.holding) g.step(0.5);
+    }
+    await g.sync();
+  };
+  await run(781);
+  assert.deepEqual(open(), ["report"]);
+  g.reportFault();
+  status("dispatched");
+  status("arrived");
+  assert.deepEqual([g.team.state, open()], ["waiting", ["closure"]]);
+  // closed by the move, not by the question
+  g.closeTrack(2);
+  assert.deepEqual([g.team.state, open()], ["working", []]);
+  status("working", { provisional: true });
+  status("done", { provisional: true });
+  assert.deepEqual([g.team.state, open()], ["done", ["reopen"]]);
+  await run(60);
+  status("relapsed");
+  assert.deepEqual([g.team.state, open()], ["called", []]);
+  assert.equal(g.decide("reopen", "open"), false);
+  status("dispatched");
+  status("arrived");
+  status("working");
+  await run(60);
+  assert.deepEqual([g.team.state, g.closed.has(2), open(), g.violations], ["working", true, [], []]);
+  // the track was closed once and never opened in the lab
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["failSignal", "closeTrack", "repairSignal", "failSignal"]);
+  status("done");
+  assert.deepEqual(open(), ["reopen"]);
+  g.openTrack(2);
+  assert.deepEqual([g.team.state, open()], ["left", []]);
+});
+
 test("a track closure names the failure only on the failed signal's own track", async () => {
   const lab = new SmallLab();
   const g = new LabGame({ api: lab, failure: FAILURE, length: 2400, wired: ["repair-status"] });

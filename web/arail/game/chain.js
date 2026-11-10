@@ -41,16 +41,19 @@ function stepOf(line) {
   return null;
 }
 
-/** What is waited for after a step (the next step may say it more exactly), for a thread whose track is closed or not. */
-function after(kind, th) {
-  if (kind === "reported" || kind === "relapsed" || kind === "left" || kind === "secured") return "unsent";
-  if (kind === "dispatched") return "road";
-  if (kind === "arrived") return th.track && !th.closed ? "unasked" : th.known ? "undecided" : "finding";
-  if (kind === "asked") return "unclosed";
-  if (kind === "closed") return th.known ? "undecided" : "finding";
-  if (kind === "diagnosed") return "undecided";
-  if (kind === "working") return "repair";
-  if (kind === "done") return th.closed ? "unopened" : "held";
+/**
+ * What a fault waits for now, by where its repair stands (the last step of the repair: reported, a team sent,
+ * there, the cause found, at work, done, left, secured, failed again) and its track (closed or not, the closure
+ * asked for or not).
+ */
+function waiting(th) {
+  const s = th.stage;
+  if (s === "reported" || s === "relapsed" || s === "left" || s === "secured") return "unsent";
+  if (s === "dispatched") return "road";
+  if (s === "arrived") return th.track && !th.closed ? (th.asked ? "unclosed" : "unasked") : th.known ? "undecided" : "finding";
+  if (s === "diagnosed") return "undecided";
+  if (s === "working") return "repair";
+  if (s === "done") return th.closed ? "unopened" : "held";
   return "held";
 }
 
@@ -83,7 +86,7 @@ export function threads(flows, { endOf = null } = {}) {
       th = {
         fault: p.fault, asset: p.asset ?? String(p.fault), place: p.place ?? null, track: null, round: line.round, phase: line.phase, from: line.t - (p.since_s ?? 0), to: line.t,
         state: "open", relapses: 0, steps: [], stretches: [], out_s: 0, by: {}, effects: [],
-        roles: { reporter: null, dispatcher: null, signaller: null }, closed: false, known: false, last: null,
+        roles: { reporter: null, dispatcher: null, signaller: null }, stage: null, closed: false, asked: false, known: false, provisional: false, now: null,
       };
       by.set(key, th);
       const was = before.get(key);
@@ -93,36 +96,43 @@ export function threads(flows, { endOf = null } = {}) {
     if (line.flow === "fault-report") Object.assign(th.roles, { reporter: line.seat, dispatcher: th.roles.dispatcher ?? line.to?.[0] ?? null });
     else if (line.flow === "repair-status" || line.flow === "closure-request") th.roles.dispatcher = line.seat;
     else if (line.flow === "track-closure") th.roles.signaller = line.seat;
-    // the time before the first step: from the failure to its report, or from the report to the first team
-    if (!th.last && !th.steps.length && p.since_s > 0) stretch(th, th.from, line.t, kind === "reported" ? "unreported" : "unsent");
-    // a closure asked for when the track is closed already is no step
-    if (kind === "asked" && th.closed) continue;
-    const prev = th.last;
-    if (prev) {
-      const what = after(prev.kind, th);
-      // the looking for the cause took its own time, at the end of the wait before it
-      const own = kind === "diagnosed" && p.since_s > 0 && what !== "finding" ? Math.min(p.since_s, line.t - prev.t) : 0;
-      stretch(th, prev.t, line.t - own, what === "unasked" && kind !== "asked" ? "unclosed" : what);
-      if (own) stretch(th, line.t - own, line.t, "finding");
+    // what was waited for until this step
+    const was = th.now;
+    if (!was) {
+      // the time before the first step: from the failure to its report, or from the report to the first team
+      if (p.since_s > 0) stretch(th, th.from, line.t, kind === "reported" ? "unreported" : "unsent");
     }
+    // the step: where the repair stands now, and the track
     if (kind === "closed") th.closed = true;
     else if (kind === "opened") th.closed = false;
-    else if (kind === "diagnosed") th.known = true;
-    else if (kind === "relapsed") th.relapses += 1;
-    if (kind === "done") th.state = p.provisional ? "provisional" : "repaired";
-    else if (kind === "relapsed") th.state = "open";
-    const step = { t: line.t, kind, flow: line.flow, seat: line.seat, team: p.team ?? null, cause: p.cause ?? null, provisional: !!p.provisional };
-    th.steps.push(step);
-    th.last = step;
+    else if (kind === "asked") th.asked = !th.closed;
+    else {
+      th.stage = kind;
+      if (kind === "arrived") th.asked = false;
+      else if (kind === "diagnosed") th.known = true;
+      else if (kind === "relapsed") th.relapses += 1;
+      if (kind === "done") th.state = p.provisional ? "provisional" : "repaired";
+      else if (kind === "relapsed") th.state = "open";
+    }
+    const next = waiting(th);
+    if (was && (next !== was.kind || kind === "diagnosed" || kind === "working")) {
+      // the looking for the cause took its own time, at the end of the wait before it
+      const own = kind === "diagnosed" && p.since_s > 0 && was.kind !== "finding" ? Math.min(p.since_s, line.t - was.from) : 0;
+      // a track closed without being asked for: the signaller knew of the team, the time was theirs
+      stretch(th, was.from, line.t - own, was.kind === "unasked" && kind === "closed" ? "unclosed" : was.kind);
+      if (own) stretch(th, line.t - own, line.t, "finding");
+    }
+    if (kind === "working") th.provisional = !!p.provisional;
+    if (!was || next !== was.kind || kind === "diagnosed" || kind === "working") th.now = { kind: next, from: line.t };
+    th.steps.push({ t: line.t, kind, flow: line.flow, seat: line.seat, team: p.team ?? null, cause: p.cause ?? null, provisional: !!p.provisional });
     th.to = line.t;
   }
   const list = [...by.values()].sort((a, b) => a.phase - b.phase || a.from - b.from);
   for (const th of list) {
     // what was still open when the phase ended
     const end = endOf?.(th.phase) ?? th.to;
-    if (th.last && end > th.last.t) {
-      const what = after(th.last.kind, th);
-      if (what !== "held") stretch(th, th.last.t, end, what, true);
+    if (th.now && end > th.now.from) {
+      if (th.now.kind !== "held") stretch(th, th.now.from, end, th.now.kind, true);
       th.to = Math.max(th.to, end);
     }
     for (const s of th.stretches) {
@@ -131,9 +141,7 @@ export function threads(flows, { endOf = null } = {}) {
       const who = s.by ?? "others";
       th.by[who] = (th.by[who] ?? 0) + s.to - s.from;
     }
-    delete th.last;
-    delete th.closed;
-    delete th.known;
+    for (const k of ["stage", "closed", "asked", "known", "provisional", "now"]) delete th[k];
   }
   // while a fault waited for a team: where the teams were
   const busy = list.flatMap((th) => engagements(th));
@@ -152,13 +160,14 @@ function stretch(th, from, to, kind, open = false) {
   const role = STRETCHES[kind].by;
   const who = role === "road" || role === "team" ? role : role ? th.roles[role] ?? "others" : null;
   const last = th.stretches.at(-1);
+  const provisional = kind === "repair" && th.provisional;
   // the same wait goes on (a step in between did not end it)
-  if (last && last.kind === kind && last.by === who && Math.abs(last.to - from) < 1e-6) {
+  if (last && last.kind === kind && last.by === who && last.provisional === provisional && Math.abs(last.to - from) < 1e-6) {
     last.to = to;
     last.open = open;
     return;
   }
-  th.stretches.push({ from, to, kind, text: STRETCHES[kind].text, by: who, open, provisional: kind === "repair" && !!th.last?.provisional });
+  th.stretches.push({ from, to, kind, text: STRETCHES[kind].text, by: who, open, provisional });
 }
 
 /** When each team was bound by a thread's fault: from being sent until it was done there or left; one that secures the place, until the repair begins. */

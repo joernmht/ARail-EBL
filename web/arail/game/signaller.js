@@ -531,6 +531,7 @@ export class SignallerGame extends Game {
     this.log(`${clockOf(this.t)} Track ${track} closed.`, "closure");
     this.give("track-closure", { place: STATION.name, track, closed: true, fault: this._faultOf(track) });
     if (this.team.state === "waiting" && track === "G2") this._teamStarts();
+    this._tidy();
     return { ok: true };
   }
 
@@ -549,6 +550,7 @@ export class SignallerGame extends Game {
     if (track === "G2" && this.team.state === "done") this.team.state = "left";
     this.log(`${clockOf(this.t)} Track ${track} open.`, "closure");
     this.give("track-closure", { place: STATION.name, track, closed: false, fault: this._faultOf(track) });
+    this._tidy();
     return { ok: true };
   }
 
@@ -778,6 +780,19 @@ export class SignallerGame extends Game {
       }
     }
     for (const [id, hold] of this.holds) if (this.t >= hold.until) this.holds.delete(id);
+    this._tidy();
+  }
+
+  /**
+   * Questions whose occasion has passed are taken back: nobody is asked to report what is reported, to close G2
+   * for a team that does not wait for it, or to open G2 when it is open or a team is on it (after a provisional
+   * repair that did not hold, the next team works on the track that the old question would open).
+   */
+  _tidy() {
+    const f = this.failure, team = this.team.state, closed = this.closed.has("g2");
+    if (!(f?.started && f.reported == null)) this.withdraw("report");
+    if (team !== "waiting" || closed) this.withdraw("closure");
+    if (team !== "done" || !closed) this.withdraw("reopen");
   }
 
   /** The repair team is at the signal and asks for the closure. */
@@ -898,6 +913,7 @@ export class SignallerGame extends Game {
       this.holds.set(tr.id, { for: p.for ?? null, until });
       this.log(`${clockOf(this.t)} ${msg.flow === "dispatching-order" ? "The dispatcher orders" : "The undertaking's operations control asks"}: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
     }
+    this._tidy();
   }
 
   /** The shift's account for those who steer and pay: delays, connections, the failure and its repair. */

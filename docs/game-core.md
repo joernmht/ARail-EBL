@@ -501,7 +501,9 @@ the same ports would be its full form.
 3. **Make it work alone.** For every flow it takes: what does the game do when nobody gives it
    (a default, an event of its own, a counterpart it plays itself)? `isWired(flow)` tells.
 4. **Everything a player does is a move** in `static actions`, with plain arguments; decisions
-   have a fallback, in a shift a deadline.
+   have a fallback, in a shift a deadline. A question stays open only while its occasion lasts:
+   when the state it asked about has passed (the team has gone, the track is open), take it back
+   (`withdraw`), or a person will answer it into a state it was not asked in.
 5. **Rules have a severity.** What must never happen in this role is severity 3: the round fails
    whatever the score.
 6. **Objectives are what the railway would value** (punctuality, safety, cost, passengers), with
@@ -521,8 +523,8 @@ the same ports would be its full form.
 11. **Deterministic**: `this.rng("purpose", key)`, never `Math.random`; no clock of the computer.
 12. Add the game to `games.js` and `index.js`, a mission that seats it (alone, and with the roles
     it exchanges flows with), tests (alone with its computer player on every level; a careless
-    player; that the choices matter; each flow it takes and gives; in a session), and its model
-    on the architecture page. Give its faults and what they did as flows that name the fault, so
+    player; people who play at random, with what must hold whatever they do; that the choices
+    matter; each flow it takes and gives; in a session), and its model on the architecture page. Give its faults and what they did as flows that name the fault, so
     that the result can say what led to what.
 13. People in a game get bird names (see [CONTRIBUTING](../CONTRIBUTING.md)).
 
