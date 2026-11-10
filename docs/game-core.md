@@ -404,7 +404,12 @@ A game whose world is elsewhere cannot answer within a tick. It has an asynchron
 creates the lab's instance (the timetable, the shift's window, the failure scripted at its time),
 sends the interventions that are waiting, advances the lab to the game's time and reads its events.
 A page calls `session.sync()` between its steps, and the session's clock waits (`holding`) while
-the lab is more than 30 s behind; `session.runWith()` plays a session of computers this way. A
+the lab is more than 30 s behind; `session.runWith()` plays a session of computers this way. The
+end of a shift waits too: when its time is up, the session takes no more ticks and moves, and
+closes the shift only after the exchange that brought the lab up to the shift's end and sent the
+last interventions, so that the account has the shift's last trains. A game that is left
+(`leave()`: its shift is over, or the session is given up) gives back what it holds elsewhere:
+the lab seat deletes its instance, of which a key has only a few. A
 seat says what it must be told first in `static settings` (the address and a key of the API): the
 play page asks for them. A lab that does not answer is said so, and the shift goes on without it.
 

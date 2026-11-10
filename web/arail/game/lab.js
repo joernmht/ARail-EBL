@@ -50,10 +50,10 @@ export class EblApi {
    * One request; the answer's JSON, or an error with the API's message. When the API's limit of
    * requests per second is reached (429 with Retry-After), it waits and tries again.
    */
-  async request(method, path, body = null) {
+  async request(method, path, body = null, init = {}) {
     for (let i = 1; ; i++) {
       const res = await this.fetch(`${this.url}/v1${path}`, {
-        method, headers: { ...(this.key ? { Authorization: `Bearer ${this.key}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...init, method, headers: { ...(this.key ? { Authorization: `Bearer ${this.key}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
         body: body ? JSON.stringify(body) : undefined,
       });
       const data = await res.json().catch(() => ({}));
@@ -97,8 +97,9 @@ export class EblApi {
     return this.request("GET", `/instances/${id}/results`);
   }
 
+  /** Delete the instance (a key has only a few). The request outlives the page that sends it. */
   remove(id) {
-    return this.request("DELETE", `/instances/${id}`);
+    return this.request("DELETE", `/instances/${id}`, null, { keepalive: true });
   }
 }
 
@@ -196,7 +197,11 @@ export class LabGame extends Game {
 
   /** The clock waits while the lab is not there yet or lags too far behind. */
   get holding() {
-    return !!this.api && this.link.state !== "lost" && (this.instance == null || this.t - this.labT > LAG_S);
+    if (!this.api || this.link.state === "lost") return false;
+    if (this.instance == null) return true;
+    // at the end of the shift the lab is brought up to it, and what was ordered last is sent
+    if (this.t >= this.length) return Math.floor(this.length - this.labT) > 0 || this._out.length > 0;
+    return this.t - this.labT > LAG_S;
   }
 
   /** Send the interventions, advance the lab to the game's time, read what happened there. */
@@ -219,7 +224,7 @@ export class LabGame extends Game {
         await this.api.commands(this.instance, list);
         this.add("commands", list.length);
       }
-      const due = Math.floor(this.t - this.labT);
+      const due = Math.floor(Math.min(this.t, this.length) - this.labT);
       if (due >= CHUNK_S || (this.t >= this.length && due > 0)) {
         const res = await this.api.step(this.instance, due);
         this.labT += res.advancedS ?? due;
@@ -233,6 +238,22 @@ export class LabGame extends Game {
       this.log(`${clockAt(this.t, this.start)} The lab's simulation does not answer: ${e.message}`, "fault");
     } finally {
       this._busy = false;
+    }
+    // the shift's time was up and the lab has caught up (or does not answer any more): now the shift is over
+    if (this.t >= this.length && !this.over && !this.holding) {
+      this.end(`${clockAt(this.length, this.start)}: the shift is over.`);
+      await this.leave();
+    }
+  }
+
+  /** The shift is over or given up: the instance is deleted at the lab (a key has only a few). */
+  async leave() {
+    if (!this.api?.remove || this.instance == null || this._left) return;
+    this._left = true;
+    try {
+      await this.api.remove(this.instance);
+    } catch {
+      // the lab does not answer: its instance ends by itself when it has not been used for a day
     }
   }
 
@@ -403,7 +424,8 @@ export class LabGame extends Game {
       if (this.team.state === "working" && this.t >= this._workUntil) this._teamDone();
     }
     for (const [id, until] of this.holds) if (this.t >= until) this.holds.delete(id);
-    if (this.t >= this.length) this.end(`${clockAt(this.length, this.start)}: the shift is over.`);
+    // with the lab behind, the shift ends in `sync`, once the lab is brought up to its end
+    if (this.t >= this.length && !this.holding) this.end(`${clockAt(this.length, this.start)}: the shift is over.`);
   }
 
   /** The shift's account. */

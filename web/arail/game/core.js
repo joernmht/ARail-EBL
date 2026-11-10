@@ -240,10 +240,20 @@ export class Game {
    */
   async sync() {}
 
-  /** Whether the session's clock must wait for this game: its world has not caught up (to override). */
+  /**
+   * Whether the session's clock must wait for this game: its world has not caught up (to override).
+   * At the end of a shift too: the session closes the shift only when no game holds any more.
+   */
   get holding() {
     return false;
   }
+
+  /**
+   * The game is left for good: its shift or its session is over, or the session was given up. A game
+   * whose world is elsewhere gives back what it holds there (to override; called more than once).
+   * @returns {Promise<void>}
+   */
+  async leave() {}
 
   /** A phase of a session begins for this game: a turn's decisions are asked here (to override). @param {{round: number, rounds: number, year: number, phase: object}} ctx */
   begin(ctx) {}

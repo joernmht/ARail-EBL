@@ -176,7 +176,11 @@ class PlayPage {
     $("#tabs").addEventListener("keydown", (e) => this.tabKey(e));
     document.addEventListener("keydown", (e) => this.key(e));
     addEventListener("popstate", () => this.route());
-    addEventListener("pagehide", () => this.save());
+    addEventListener("pagehide", (e) => {
+      this.save();
+      // a page kept for "back" goes on with its session; one that is closed leaves it
+      if (!e.persisted) this.leave();
+    });
   }
 
   /* ---------------------------------------------------------------- 1: missions and seats */
@@ -221,6 +225,7 @@ class PlayPage {
   /** Show the first screen with a mission chosen (or none). A session that runs is saved and left. */
   open(doc) {
     if (this.session && !this.session.over) this.save();
+    this.leave();
     this.session = null;
     this.mission = null;
     this.doc = doc;
@@ -396,6 +401,11 @@ class PlayPage {
 
   /* ---------------------------------------------------------------- a session begins, goes on, ends */
 
+  /** The session shown is dropped (another begins, the missions are shown, the page is closed): its games give back what they hold elsewhere. */
+  leave() {
+    this.session?.leave().catch(() => {});
+  }
+
   /** The mission chosen as a session plays it, each seat's game told what was entered for it (as options of its seat). */
   told() {
     const m = normalizeMission(this.doc, this.games);
@@ -435,6 +445,7 @@ class PlayPage {
 
   /** Take a session: build its tabs and panels, show the play screen. */
   begin(session) {
+    if (this.session !== session) this.leave();
     this.session = session;
     this.mission = session.mission;
     this.index = -1;

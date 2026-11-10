@@ -445,3 +445,80 @@ test("what led to what in a played morning: the threads add up to the games' own
   assert.ok(n2.stretches.at(-1).meanwhile.length >= 1);
   assert.deepEqual(n2.effects, ["RB 33 left G2 on the substitute signal Zs 1, 1 min late", "GZ 49 ran through G3 instead of G2", "the connection from RB 33 to RB 34 was kept"]);
 });
+
+test("a game whose world is elsewhere: the shift closes only when it has caught up; a game is left when its shift is over or the session is given up", async () => {
+  const made = [];
+  /** A role whose world is behind at the end of the shift, until the next exchange with it. */
+  class Remote extends Game {
+    static id = "remote";
+    static role = "train-dispatcher";
+    static scale = "minutes";
+    static gives = [{ flow: "performance-report" }];
+    static actions = { ...Game.actions, wave: { label: "Wave" } };
+
+    constructor(options = {}) {
+      super(options);
+      Object.assign(this, { caught: false, left: 0, exchanges: 0 });
+      made.push(this);
+    }
+
+    wave() {
+      return { ok: true };
+    }
+
+    get holding() {
+      return this.t >= 5 && !this.caught;
+    }
+
+    async sync() {
+      this.exchanges++;
+      if (this.t >= 5) this.caught = true;
+    }
+
+    async leave() {
+      this.left++;
+    }
+
+    finish() {
+      this.give("performance-report", { caught: this.caught, t: this.t });
+    }
+  }
+  const mine = new Map([[Remote.id, Remote]]);
+  const doc = {
+    format: MISSION_FORMAT, id: "remote", title: "Remote", text: "A test.", rounds: 2, roles: [{ role: "train-dispatcher", game: "remote" }],
+    phases: [{ id: "shift", kind: "shift", roles: ["train-dispatcher"], length: 5, tick: 0.5 }],
+  };
+  const make = (options = {}) => new Session(normalizeMission(doc, mine), { games: mine, ...options });
+  // without the exchange the session stops where the world is waited for: the time is up, the shift not closed
+  const s = make().run();
+  assert.deepEqual([s.over, s.round, s.t, s.ticks, s.holding, s.flows.length], [false, 1, 5, 10, true, 0]);
+  s.step(3);
+  s.run();
+  assert.deepEqual([s.t, s.ticks, made[0].t], [5, 10, 5]);
+  assert.deepEqual(s.act("train-dispatcher", "wave"), { ok: false, reason: "The shift is over." });
+  assert.equal(s.record.length, 0);
+  // the exchange: the world has caught up, the shift closes with its account, the next round begins
+  await s.sync();
+  assert.deepEqual([s.round, s.t, s.holding, s.flows.map((f) => [f.round, f.payload.caught, f.payload.t])], [2, 0, false, [[1, true, 5]]]);
+  assert.deepEqual(made.map((g) => [g.over, g.left]), [["The shift is over.", 1], [null, 0]]);
+  assert.deepEqual(s.act("train-dispatcher", "wave"), { ok: true });
+  // to the end with the exchanges between the ticks
+  await s.runWith();
+  assert.deepEqual([s.over, s.flows.length, made.map((g) => g.left)], [true, 2, [1, 1]]);
+  assert.ok(s.result().seats[0].rounds.length === 2);
+  // a session given up in a shift: its game is left; one that throws there does not stop the others
+  const t = make().start();
+  t.step(2);
+  await t.leave();
+  assert.equal(made.at(-1).left, 1);
+  made.at(-1).leave = async () => {
+    throw new Error("no answer");
+  };
+  await t.leave();
+  // played again from its record, it stops where the world is waited for and goes on with the exchange
+  const again = Session.replay(normalizeMission(doc, mine), s.save(), { games: mine });
+  assert.deepEqual([again.over, again.round, again.t, again.holding], [false, 1, 5, true]);
+  await again.runWith();
+  assert.equal(again.over, true);
+  assert.deepEqual(again.result(), s.result());
+});

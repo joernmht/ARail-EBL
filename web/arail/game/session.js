@@ -82,6 +82,8 @@ export class Session {
     this.t = 0;
     this.ticks = 0;
     this._acc = 0;
+    /** A shift's time is up, but a game's world has not caught up yet: it closes when it has (`_settle`). */
+    this._settling = false;
     /** Flows on their way, and every flow delivered: `{n, phase, round, t, flow, from, seat, to, payload}`. */
     this.queue = [];
     this.flows = [];
@@ -242,8 +244,10 @@ export class Session {
   run() {
     this.start();
     while (!this.over && !this.waiting) {
-      if (this.phase.kind === "shift") this._tick(this.phase.tick);
-      else this._close();
+      if (this.phase.kind !== "shift") this._close();
+      // a game whose world is elsewhere must be exchanged with first: that is `runWith`
+      else if (this._settling ? !this._settle() : this.holding) break;
+      else if (!this._settling) this._tick(this.phase.tick);
     }
     return this;
   }
@@ -253,10 +257,11 @@ export class Session {
    * the next call): flows arrive, the computer players move, the games step.
    */
   step(dt) {
-    if (this.over || this.phase?.kind !== "shift" || !(dt > 0) || this.holding) return;
+    if (this._settling) this._settle();
+    if (this.over || this.phase?.kind !== "shift" || !(dt > 0) || this.holding || this._settling) return;
     this._acc += dt;
     const index = this.index;
-    while (this._acc >= this.phase.tick - 1e-9 && !this.over && this.index === index) {
+    while (this._acc >= this.phase.tick - 1e-9 && !this.over && this.index === index && !this._settling) {
       this._acc -= this.phase.tick;
       this._tick(this.phase.tick);
     }
@@ -275,6 +280,16 @@ export class Session {
    */
   async sync() {
     await Promise.all(this.active.filter((s) => s.game && !s.game.over).map((s) => s.game.sync()));
+    this._settle();
+  }
+
+  /**
+   * The session is given up or over: every game is left (a game whose world is elsewhere gives back
+   * what it holds there). A page calls it when it drops a session.
+   * @returns {Promise<void>}
+   */
+  async leave() {
+    await Promise.all([...this.seats.values()].map((s) => Promise.resolve(s.game?.leave()).catch(() => {})));
   }
 
   /**
@@ -286,13 +301,15 @@ export class Session {
     this.start();
     while (!this.over && !this.waiting) {
       await this.sync();
+      if (this.over || this.waiting) break;
       if (this.phase.kind !== "shift") this._close();
-      else if (!this.holding) this._tick(this.phase.tick);
+      else if (!this.holding && !this._settling) this._tick(this.phase.tick);
     }
     return this;
   }
 
   _tick(h) {
+    if (this._settling) return;
     this._injects();
     this._deliver();
     this._think();
@@ -300,14 +317,27 @@ export class Session {
     this.ticks++;
     this.t = this.ticks * h;
     if (this.t >= this.phase.length - 1e-9 || this.active.every((s) => s.game.over)) {
-      this._close();
-      this._auto();
+      // the shift's time is up: a game whose world has not caught up is waited for (`sync`), then the shift closes
+      if (this.holding) this._settling = true;
+      else {
+        this._close();
+        this._auto();
+      }
     }
+  }
+
+  /** A shift whose time is up closes once no game's world is waited for any more. @returns {boolean} whether it closed */
+  _settle() {
+    if (!this._settling || this.holding) return false;
+    this._close();
+    this._auto();
+    return true;
   }
 
   /** End the current phase and begin the next (or end the session). */
   _close() {
     const ph = this.phase, ctx = this._ctx();
+    this._settling = false;
     this._deliver();
     for (const seat of this.active) {
       const g = seat.game;
@@ -318,6 +348,8 @@ export class Session {
         g.end("The shift is over.");
         seat.results.push({ round: ph.round, phase: ph.id, ...g.result() });
         seat.live = false;
+        // a shift's game is not played on: what it holds elsewhere is given back
+        Promise.resolve(g.leave()).catch(() => {});
       }
     }
     this._deliver();
@@ -331,7 +363,11 @@ export class Session {
     }
     if (last) {
       this.over = true;
-      for (const seat of this.seats.values()) if (seat.game && seat.live) seat.game.end("The session is over.");
+      for (const seat of this.seats.values()) {
+        if (!seat.game || !seat.live) continue;
+        seat.game.end("The session is over.");
+        Promise.resolve(seat.game.leave()).catch(() => {});
+      }
       this.emit("over", { result: this.result() });
       return;
     }
@@ -347,6 +383,7 @@ export class Session {
   act(seatId, name, ...args) {
     const seat = this.seats.get(seatId);
     if (!seat || !seat.live || !this.active.includes(seat) || this.over) return { ok: false, reason: "This role is not at work now." };
+    if (this._settling) return { ok: false, reason: "The shift is over." };
     if (!Object.hasOwn(seat.Game.actions, name)) throw new Error(`${seat.Game.id}: no move "${name}"`);
     this.record.push({ phase: this.index, tick: this.ticks, seat: seatId, name, args: structuredClone(args) });
     const result = seat.game.act(name, ...args);
@@ -442,7 +479,8 @@ export class Session {
         if (m.name === "@next") s.next();
         else if (m.name === "@seat") s.sit(m.seat, m.args[0]);
         else s.act(m.seat, m.name, ...m.args);
-      } else if (s.phase.kind === "shift" && (m || (at && (s.index < at.phase || (s.index === at.phase && s.ticks < at.tick))))) s._tick(s.phase.tick); // time passes
+      } else if (s._settling) break; // the shift's time is up and a game's world is waited for: the page's exchange goes on from here
+      else if (s.phase.kind === "shift" && (m || (at && (s.index < at.phase || (s.index === at.phase && s.ticks < at.tick))))) s._tick(s.phase.tick); // time passes
       else break; // where it stood; or a turn the record never ended
     }
     return s;

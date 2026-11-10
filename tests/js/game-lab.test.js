@@ -1,7 +1,9 @@
 // The lab as a seat (web/arail/game/lab.js): the EBL's simulation behind its API as the world of a
 // shift. A small lab of its own stands in for the API here: the requests the seat sends (the
 // instance with the scripted failure, steps, interventions), the lab's events as flows, the flows
-// of other roles as interventions, the clock that waits for the lab, a lab that does not answer.
+// of other roles as interventions, the clock that waits for the lab (also at the end of the shift:
+// the lab is brought up to it before the shift closes), the instance deleted when the shift is over
+// or given up, a lab that does not answer.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -72,6 +74,11 @@ class SmallLab {
     for (const c of list) this.apply(c);
     return { applied: list };
   }
+
+  async remove(id) {
+    this.requests.push(["remove", id]);
+    return {};
+  }
 }
 
 const FAILURE = { signal: "ASig N2", track: 2, at: 780 };
@@ -84,7 +91,6 @@ async function alone(g, player = new LabPlayer()) {
     player.think(g);
     g.step(0.5);
   }
-  await g.sync();
   return g;
 }
 
@@ -97,6 +103,10 @@ test("alone: the instance with the scripted failure, the lab stepped along, late
   assert.ok(lab.requests.filter((r) => r[0] === "step").every((r) => r[1] >= 1 && r[1] <= LAG_S + CHUNK_S));
   assert.equal(lab.t, T0 + 2400);
   assert.equal(g.labT, 2400);
+  // the shift ended in the exchange that brought the lab up to it; then the instance was deleted, once
+  assert.deepEqual(lab.requests.at(-1), ["remove", "sim-1"]);
+  await g.leave();
+  assert.equal(lab.requests.filter((r) => r[0] === "remove").length, 1);
   // the computer reported the failure; the game's own team came, the track was closed, the signal repaired, the track opened
   assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["failSignal", "closeTrack", "repairSignal", "openTrack"]);
   assert.equal(g.failure.reported, 780);
@@ -163,6 +173,77 @@ test("in a session with the maintenance dispatcher: the lab's failure sends the 
   assert.ok(lab.failed.size === 0 && lab.closed.size === 0);
   assert.ok(s.result().passed, JSON.stringify(s.result().seats.map((x) => [x.seat, x.score])));
   assert.deepEqual(s.flows.filter((f) => f.flow === "performance-report").map((f) => f.payload.kind), ["operations", "maintenance"]);
+  // the lab ran to the end of the shift before the shift closed, and its instance was deleted
+  assert.deepEqual([g.labT, lab.t], [2400, T0 + 2400]);
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "remove"), [["remove", "sim-1"]]);
+});
+
+test("in a session, the end of the shift: the lab is brought up to it before the shift closes; a train of the last seconds and a move of the last tick count", async () => {
+  const lab = new SmallLab();
+  // a train that leaves five seconds before the end of the shift
+  lab.plan.push({ train: "9999", track: 1, dep: T0 + 2395, done: false });
+  const mission = normalizeMission({
+    format: MISSION_FORMAT, id: "lab", title: "Lab", text: "A test.", roles: [{ role: "train-dispatcher", game: "lab", seat: "human", options: {} }],
+    phases: [{ id: "shift", kind: "shift", roles: ["train-dispatcher"], length: 2400 }],
+  }, GAMES);
+  mission.roles[0].options.api = lab;
+  const s = new Session(mission, { games: GAMES, seed: 1 }).start();
+  const g = s.seat("train-dispatcher").game;
+  // a page's loop: exchange with the lab, then a tick, until the shift's time is up
+  while (s.t < 2400 - 0.5) {
+    await s.sync();
+    if (!s.holding) s.step(0.5);
+  }
+  // the last tick: the person closes track 3, with no exchange before the time is up
+  assert.deepEqual(s.act("train-dispatcher", "closeTrack", 3), { ok: true });
+  s.step(0.5);
+  // the time is up, the lab is behind: the shift is not closed, nothing more is taken or stepped
+  assert.deepEqual([s.t, s.over, s.holding, g.over], [2400, false, true, null]);
+  assert.ok(g.labT < 2400 && lab.t < T0 + 2400);
+  assert.equal(g.trains.has("9999"), false);
+  assert.equal(lab.closed.has(3), false);
+  assert.equal(s.flows.some((f) => f.flow === "performance-report"), false);
+  assert.deepEqual(s.act("train-dispatcher", "openTrack", 3), { ok: false, reason: "The shift is over." });
+  s.step(5);
+  assert.equal(s.t, 2400);
+  // the exchange: the move goes out, the lab runs to the end, its last events come in; then the shift closes
+  await s.sync();
+  assert.deepEqual([s.over, !!g.over, g.labT, lab.t], [true, true, 2400, T0 + 2400]);
+  assert.equal(lab.closed.has(3), true);
+  assert.equal(g.trains.has("9999"), true);
+  const report = s.flows.find((f) => f.flow === "performance-report").payload;
+  assert.equal(report.trains, 7);
+  assert.deepEqual(lab.requests.slice(-1), [["remove", "sim-1"]]);
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["closeTrack"]);
+});
+
+test("a session given up: its lab instance is deleted; a lab without that request, or one that does not answer it, is left alone", async () => {
+  const lab = new SmallLab();
+  const mission = normalizeMission({ format: MISSION_FORMAT, id: "lab", title: "Lab", text: "A test.", roles: [{ role: "train-dispatcher", game: "lab", seat: "human", options: {} }] }, GAMES);
+  mission.roles[0].options.api = lab;
+  const s = new Session(mission, { games: GAMES, seed: 1 }).start();
+  // before the lab is there, nothing is to be given back
+  await s.leave();
+  assert.equal(lab.requests.length, 0);
+  await s.sync();
+  s.step(20);
+  await s.leave();
+  await s.leave();
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "remove"), [["remove", "sim-1"]]);
+  // the request outlives the page that sends it
+  const sent = [];
+  const api = new EblApi({ url: "https://lab.example", key: "k", fetch: async (url, init) => (sent.push([url, init.method, init.keepalive]), { ok: true, status: 200, json: async () => ({}) }) });
+  await api.remove("sim-7");
+  assert.deepEqual(sent, [["https://lab.example/v1/instances/sim-7", "DELETE", true]]);
+  // a lab that refuses: the game is left all the same
+  const deaf = new SmallLab();
+  deaf.remove = async () => {
+    throw new Error("gone");
+  };
+  const g = new LabGame({ api: deaf, length: 60 });
+  await g.sync();
+  await g.leave();
+  assert.equal(g.link.state, "ok");
 });
 
 test("a provisional repair that does not hold: the signal fails again in the lab, and is repaired again", async () => {
