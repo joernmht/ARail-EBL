@@ -414,10 +414,10 @@ test("three years of Neustadt: the computer's turn, your turn, the shift skipped
   await expect(page.locator("#by-bundestag-budget-mp-computer")).toBeChecked();
   await page.getByRole("button", { name: "Start" }).click();
   // the rapporteur's turn was the computer's: the session waits in the asset manager's
-  await expect(page.locator("#where")).toHaveText("Round 1 of 3 · The district's plan for the year");
+  await expect(page.locator("#where")).toHaveText("Round 1 of 3 · The plans for the year");
   await expect(page.locator("#phases li")).toHaveCount(4);
-  await expect(page.locator('#phases li[aria-current="step"]')).toHaveText("The district's plan for the year (turn)");
-  await expect(page.getByRole("tab")).toHaveCount(4);
+  await expect(page.locator('#phases li[aria-current="step"]')).toHaveText("The plans for the year (turn)");
+  await expect(page.getByRole("tab")).toHaveCount(6);
   await expect(page.locator("#tab-asset-manager")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#tab-signaller-relay")).toContainText("not at work");
   const flows = page.locator("#flowList li"), filter = page.locator("#flowFilter");
@@ -437,21 +437,23 @@ test("three years of Neustadt: the computer's turn, your turn, the shift skipped
   await expect(page.locator("#clock")).toHaveText(/^08:00:\d\d$/);
   await filter.selectOption("staff-plan");
   await expect(flows).toHaveCount(1);
-  await expect(flows).toContainText(["Round 1 · The district's plan for the year"]);
+  await expect(flows).toContainText(["Round 1 · The plans for the year"]);
   await expect(flows).toContainText(["Asset manager → Maintenance and fault dispatcher"]);
   await expect(flows).toContainText(["teams: 2 · on call: yes"]);
   await expect(page.locator("#seat-signaller-relay h3")).toHaveText("Signaller at Bf Neustadt");
   await page.getByRole("button", { name: "Skip to the end of the shift" }).click();
   // the account: the morning's reports have come up
-  await expect(page.locator("#where")).toHaveText("Round 1 of 3 · The year's account");
+  await expect(page.locator("#where")).toHaveText("Round 1 of 3 · The year's accounts");
   await expect(page.locator("#tab-asset-manager")).toHaveAttribute("aria-selected", "true");
   await filter.selectOption("performance-report");
-  await expect(flows.filter({ hasText: "Round 1 · 08:40:00" }).filter({ hasText: "→ Asset manager" })).toHaveCount(2);
+  // the signaller's, the maintenance dispatcher's and the undertaking's accounts of the morning
+  await expect(flows.filter({ hasText: "Round 1 · 08:40:00" }).filter({ hasText: "→ Asset manager" })).toHaveCount(3);
+  await expect(flows.filter({ hasText: "Round 1 · 08:40:00" }).filter({ hasText: "kind: undertaking" })).toContainText("Transport authority contract manager");
   await expect(flows.filter({ hasText: "Signaller in a relay interlocking → Asset manager" })).toContainText("kind: operations");
   await expect(page.locator("#flowCounts li").filter({ hasText: await flowName(page, "budget") }).first()).toBeVisible();
   // the next year begins with the next budget
   await page.locator("#endTurn").click();
-  await expect(page.locator("#where")).toHaveText("Round 2 of 3 · The district's plan for the year");
+  await expect(page.locator("#where")).toHaveText("Round 2 of 3 · The plans for the year");
   await filter.selectOption("budget");
   await expect(flows.first()).toContainText("Round 2 · The night session: the rail budget");
   expect(errors).toEqual([]);

@@ -154,11 +154,7 @@ simpler than the railway, it says so: the undertaking's wish to hold a train goe
 infrastructure manager's dispatcher, who orders the signaller; a mission without a dispatcher lets
 the wish reach the signaller directly.
 
-The flows of the first games and what they carry: the contract between the games. The games of
-the budget rapporteur, the asset manager, the signaller, the maintenance dispatcher and the lab's
-seat keep to it today; the rows of the contract manager and the undertaking's operations control
-are the contract for their games, which are not written yet (the signaller's game already gives
-the delay notices and takes the connection requests).
+The flows of the first games and what they carry: the contract between the games.
 
 | Flow | Kind | From → to | Payload |
 | --- | --- | --- | --- |
@@ -192,14 +188,13 @@ seconds, and it does not reduce a shift to a dice roll. It plays both, each at i
   begun with what holds now.
 
 A mission lays the phases out for a **round** (a budget year) and says how many rounds are played.
-The round of the mission `neustadt-years` (the contract manager and the operations control will
-join it when their games are written):
+The round of the mission `neustadt-years`:
 
 ```mermaid
 flowchart LR
-  budget["Turn: the night session<br>budget rapporteur"] -- "budget" --> plan["Turn: the district's plan<br>asset manager"]
-  plan -- "staff plan,<br>asset condition" --> shift["Shift: a morning at Bf Neustadt<br>signaller, maintenance dispatcher"]
-  shift -- "performance reports" --> review["Turn: the year's account<br>asset manager, budget rapporteur"]
+  budget["Turn: the night session<br>budget rapporteur"] -- "budget" --> plan["Turn: the plans for the year<br>asset manager, contract manager"]
+  plan -- "staff plan, asset condition,<br>transport contract" --> shift["Shift: a morning at Bf Neustadt<br>signaller, maintenance dispatcher,<br>operations control"]
+  shift -- "performance reports" --> review["Turn: the year's accounts<br>asset manager, contract manager,<br>budget rapporteur"]
   review -- "next year" --> budget
 ```
 
@@ -404,7 +399,9 @@ the desks as requests, not to the layout.
 | `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails |
 | `maintenance` (Fault Night) | Maintenance and fault dispatcher | shifts (minutes) | staff plan, asset condition, fault report, track closure | repair status, closure request, performance report | the signaller's fault (exit signal N2), and the signallers who close the tracks |
 | `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
+| `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
 | `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
+| `contract` (Malus Month) | Transport authority's contract manager | turns (months) | performance report (undertaking, operations) | transport contract, penalty, payment, performance report (contract) | the operator: its incident list by the usual rates, its finances and its learning |
 | `budget` (The Night Session) | Budget committee's rail rapporteur | turns (years) | performance report (infrastructure) | budget, funding decision | the district's year (each line spends what its projects can build with) |
 
 Seated together:
@@ -414,15 +411,18 @@ Seated together:
   the closure lets the team work, and its report repairs the signal: the half hour of the
   signaller's game with the repair time in another player's hands. A dispatcher who never sends a
   team leaves the signaller with the failure for the whole shift.
-- **`neustadt-years`** (budget rapporteur, asset manager, signaller, maintenance dispatcher; three
-  years): the rapporteur's budget is the district's money; the asset manager's staff plan is the
-  number of teams the dispatcher has that morning, and the condition of the assets decides whether
-  the signal fails and how many other faults the district brings; the morning's reports give the
-  minutes one fault costs, which the asset manager's year multiplies by the faults of the year; the
-  district's account goes back to the rapporteur.
+- **`neustadt-years`** (budget rapporteur, asset manager, contract manager, signaller, maintenance
+  dispatcher, operations control; three years): the rapporteur's budget is the district's money;
+  the asset manager's staff plan is the number of teams the dispatcher has that morning, and the
+  condition of the assets decides whether the signal fails and how many other faults the district
+  brings; the contract manager's penalty catalogue is what a late or cancelled train costs the
+  undertaking's dispatcher, who asks for a connecting train to be held when a feeder is announced
+  late; the morning's reports give the minutes one fault costs, which the asset manager's year
+  multiplies by the faults of the year, and the undertaking's cancelled and late trains, which
+  shape the contract's incident list; the district's account goes back to the rapporteur.
 - **`lab-morning`** (the lab's dispatcher, maintenance dispatcher; one shift on the lab's
   timetable): see above.
-- Alone: `fault-night`, `budget-years`, `night-session`.
+- Alone: `fault-night`, `transportleitung`, `budget-years`, `malus-month`, `night-session`.
 
 ## The parked games
 
@@ -475,9 +475,10 @@ the same ports would be its full form.
 
 ## What comes next
 
-- The undertaking's operations control (Transportleitung) and the transport authority's contract
-  manager (Malus Month) on the contract above: the delay notices, connection requests, the
-  transport contract and its penalties then join `neustadt-years`.
+- The money between the games: the contract manager's penalties and payments are given, and no
+  game takes them yet (the undertaking's managing director and its contract manager would); the
+  performance regime between the infrastructure manager and the undertakings is only a number in
+  the asset manager's year.
 - The play page for several devices: a relay for the record (#106), a facilitator's view with the
   flows and the injects (#96), the debrief with a timeline (#101).
 - A mission editor (#105): seats, phases, conditions and injects on a timeline; content packs.

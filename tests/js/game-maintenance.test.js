@@ -198,7 +198,7 @@ test("the signaller's ports alone: delays told, a train held on request, the acc
   const g = late();
   // the undertaking asks to hold RB 32 for RB 31
   g.receive({ flow: "connection-request", from: "ru-control-dispatcher", t: 0, payload: { hold: "RB 32", for: "RB 31", minutes: 8 } });
-  assert.deepEqual(g.state().holds, [{ train: "RB 32", for: "RB 31", until: 480 }]);
+  assert.deepEqual(g.state().holds, [{ train: "RB 32", for: "RB 31", until: 210 + 480 }]); // up to 8 min beyond its departure at 08:03:30
   while (!g.over) {
     p.think(g);
     g.step(0.5);

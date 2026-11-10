@@ -155,10 +155,12 @@ and the fast ones in shifts, a turn's decisions reach the shift as state (a staf
 condition of the assets), and the shift's reports reach the next turn; a shift is a sample of its
 period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
 computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
-of its district for a morning (the mission `neustadt-morning`), and with the asset manager and the
-budget committee's rapporteur for three budget years (`neustadt-years`): the budget is the
-district's money, the district's plan is the dispatcher's teams and the signal's chance to fail,
-and the morning's reports are the year's delay minutes. On the lab's own timetable the operations
+of its district for a morning (the mission `neustadt-morning`), and with the undertaking's
+operations control, the asset manager, the transport authority's contract manager and the budget
+committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
+money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
+is what a late train costs the undertaking, and the morning's reports are the year's delay minutes
+and the contract's incident list. On the lab's own timetable the operations
 are the EBL's simulation (`lab-morning`). All of them are played on the play page (`game/play/`).
 
 ## The signaller of Bf Neustadt
@@ -228,7 +230,7 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 | Page | What |
 | --- | --- |
 | `game/` | The game page: the games and exercises that were in the app, on the lab's layout (infrastructure asset management, rail operations, journeys, the full terminal) |
-| `game/play/` | The play page of the big game: choose a mission and the seats (you or the computer), play its turns and shifts, watch what the roles give each other, read the result and the debrief. Missions: a morning at Bf Neustadt (signaller and maintenance dispatcher), three years of Neustadt (with the asset manager and the budget rapporteur), Fault Night, Budget Years and The Night Session alone, a morning in the lab (on the EBL's simulation API) |
+| `game/play/` | The play page of the big game: choose a mission and the seats (you or the computer), play its turns and shifts, watch what the roles give each other, read the result and the debrief. Missions: a morning at Bf Neustadt (signaller and maintenance dispatcher), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), Fault Night, Transportleitung, Budget Years, Malus Month and The Night Session alone, a morning in the lab (on the EBL's simulation API) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
 | `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |
@@ -236,9 +238,9 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 ## What comes next
 
 - The role games of the catalogue, one by one, each on the game core and with its ports, so that it
-  joins a mission with the others; next the undertaking's operations control and the transport
-  authority's contract manager, whose flows the first games already speak (delay notices,
-  connection requests, the transport contract), then the passenger with the journeys.
+  joins a mission with the others; next those whose flows the first games already speak: the
+  infrastructure manager's train dispatcher between the undertaking and the signaller, the
+  undertaking's managers who take the contract's penalties, then the passenger with the journeys.
 - The career mode on the planner's model: each step a round of the role's game, applications and
   elections that can fail, pay, reputation and stress (#146); qualifications earned by exams, quizzes
   and practical rounds in the role's game (#158); starting points as people, such as a wheelchair user

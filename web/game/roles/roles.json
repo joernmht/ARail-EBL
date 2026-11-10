@@ -5791,7 +5791,8 @@
      "disruptions"
     ],
     "bigGame": "Takes: the monthly results of the railway undertaking from the economics simulator and the operations roles. Gives: payments and penalties into the undertaking's profit and loss, emergency awards, quality pressure.",
-    "effort": "small"
+    "effort": "small",
+    "page": "play/?mission=malus-month"
    }
   },
   {
@@ -19980,7 +19981,8 @@
      "streets and buses"
     ],
     "bigGame": "Takes the roster from the crew planner, rotations from the rotation planner, units from the fleet, and disruptions from the IM (network controller, faults). Its decisions set the day's penalties for the contract managers, the messages for the information dispatcher, the claims for the passenger rights desk, and the reports for the operations manager.",
-    "effort": "medium"
+    "effort": "medium",
+    "page": "play/?mission=transportleitung"
    }
   },
   {

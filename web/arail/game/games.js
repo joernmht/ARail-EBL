@@ -5,18 +5,22 @@
  */
 import { AssetManagerGame } from "./asset-manager.js";
 import { BudgetGame } from "./budget.js";
+import { ContractGame } from "./contract-manager.js";
 import { LabGame } from "./lab.js";
 import { MaintenanceGame } from "./maintenance.js";
 import { normalizeMission } from "./mission.js";
 import { Session } from "./session.js";
 import { SignallerGame } from "./signaller.js";
+import { TransportControlGame } from "./transport-control.js";
 
 /** @type {Map<string, Function>} */
 export const GAMES = new Map([
   SignallerGame,
   MaintenanceGame,
   LabGame,
+  TransportControlGame,
   AssetManagerGame,
+  ContractGame,
   BudgetGame,
 ].map((G) => [G.id, G]));
 

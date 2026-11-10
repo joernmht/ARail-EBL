@@ -148,6 +148,8 @@ export const ZS1_REASONS = [
 const TEAM_DRIVE_S = 300, TEAM_WORK_S = 360;
 /** A delay is told to the undertaking from this many seconds on. */
 const NOTICE_S = 60;
+/** A late train is announced by the neighbouring station this long before its planned time on the panel (s). */
+const FORECAST_S = 120;
 /**
  * How likely an exit signal fails in a shift, by the condition grade of the assets (1 very good …
  * 6 unusable): hardly below grade 2, nearly always from grade 3.5.
@@ -581,7 +583,6 @@ export class SignallerGame extends Game {
       tr.v = Math.min(tr.vmax, 22);
       tr.came = now;
       this.log(`${clockOf(now)} ${tr.id} (${tr.label.toLowerCase()}) is coming from ${tr.dir > 0 ? STATION.west : STATION.east}${tr.enterAt > tr.enter ? `, ${Math.round((tr.enterAt - tr.enter) / 60)} min late` : ""}.`, "train");
-      if (tr.enterAt - tr.enter >= NOTICE_S) this._notice(tr, "approaching", tr.enterAt - tr.enter);
     }
     this._extend(tr);
     if (tr.state === "dwelling") {
@@ -755,8 +756,12 @@ export class SignallerGame extends Game {
     if (!team.remote && team.state === "driving" && this.t >= team.at) this._teamArrived();
     if (team.state === "waiting") team.waited = this.t - team.since;
     if (!team.remote && team.state === "working" && this.t >= team.at) this._teamDone();
-    // a train that stands at its platform beyond its time: told to the undertaking once
+    // a train that comes late: told when the neighbouring station announces it; one that stands at its platform beyond its time: told once
     for (const tr of this.trains) {
+      if (tr.state === "coming" && !tr.forecast && tr.enterAt - tr.enter >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
+        tr.forecast = true;
+        this._notice(tr, "approaching", tr.enterAt - tr.enter);
+      }
       if (tr.state === "dwelling" && !tr.noticed && this.t - tr.dep >= 2 * NOTICE_S) {
         tr.noticed = true;
         this._notice(tr, "waiting", this.t - tr.dep);
@@ -850,7 +855,8 @@ export class SignallerGame extends Game {
     } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
       const tr = this.trains.find((x) => x.id === p.hold);
       if (!tr || tr.state === "gone") return;
-      const until = this.t + (p.minutes ?? 3) * 60;
+      // up to so many minutes beyond the train's own time
+      const until = Math.max(this.t, tr.dep ?? this.t) + (p.minutes ?? 3) * 60;
       this.holds.set(tr.id, { for: p.for ?? null, until });
       this.log(`${clockOf(this.t)} ${msg.flow === "dispatching-order" ? "The dispatcher orders" : "The undertaking's operations control asks"}: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
     }
