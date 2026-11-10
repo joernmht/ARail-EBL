@@ -458,6 +458,7 @@ class PlayPage {
     this.savedAs = "";
     this.drafts.clear();
     this.refused.clear();
+    this.picked.clear();
     this.setSpeed(1);
     // what happens in the session is drawn with the next frame
     session.on(() => {

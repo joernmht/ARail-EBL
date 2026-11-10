@@ -170,6 +170,9 @@ export class LabGame extends Game {
     this.labT = 0;
     this._seq = 0;
     this._busy = false;
+    /** The game was left (`leave`): nothing more is exchanged; the instance was deleted at the lab (`_remove`). */
+    this._left = false;
+    this._removed = false;
     /** The link to the lab: "none" (no address) | "connecting" | "ok" | "lost", with the last error. */
     this.link = { state: this.api ? "connecting" : "none", error: this.api ? "" : "No address of the lab's simulation was given." };
     /** Interventions on their way to the lab. */
@@ -207,7 +210,7 @@ export class LabGame extends Game {
 
   /** Send the interventions, advance the lab to the game's time, read what happened there. */
   async sync() {
-    if (!this.api || this._busy || this.link.state === "lost") return;
+    if (!this.api || this._busy || this._left || this.link.state === "lost") return;
     this._busy = true;
     try {
       if (this.instance == null) {
@@ -217,24 +220,31 @@ export class LabGame extends Game {
           commands: f ? [{ kind: "failSignal", signal: f.signal, station: this.station, at: hms(this.start + f.at) }] : [],
         });
         this.instance = made.id;
+        // left while the lab was making the instance: it is given back at once
+        if (this._left) return void (await this._remove());
         this.link = { state: "ok", error: "" };
         this.log(`${clockAt(this.t, this.start)} Connected to the lab's simulation (instance ${made.id}).`);
       }
       if (this._out.length) {
         const list = this._out.splice(0);
         await this.api.commands(this.instance, list);
+        if (this._left) return;
         this.add("commands", list.length);
       }
       const due = Math.floor(Math.min(this.t, this.length) - this.labT);
       if (due >= CHUNK_S || (this.t >= this.length && due > 0)) {
         const res = await this.api.step(this.instance, due);
+        if (this._left) return;
         this.labT += res.advancedS ?? due;
         const ev = await this.api.events(this.instance, this._seq);
+        if (this._left) return;
         for (const e of ev.events ?? []) this._event(e);
         if (ev.last != null) this._seq = ev.last;
         else if (ev.events?.length) this._seq = ev.events.at(-1).seq;
       }
     } catch (e) {
+      // a game that was left meanwhile has deleted its instance: what was still on its way fails, and says nothing
+      if (this._left) return;
       this.link = { state: "lost", error: e.message };
       this.log(`${clockAt(this.t, this.start)} The lab's simulation does not answer: ${e.message}`, "fault");
     } finally {
@@ -247,10 +257,20 @@ export class LabGame extends Game {
     }
   }
 
-  /** The shift is over or given up: the instance is deleted at the lab (a key has only a few). */
+  /**
+   * The shift is over or given up: nothing more is exchanged with the lab, and the instance is deleted there (a
+   * key has only a few). Left while the instance is still being made, it is deleted as soon as it is there (`sync`).
+   */
   async leave() {
-    if (!this.api?.remove || this.instance == null || this._left) return;
+    if (this._left) return;
     this._left = true;
+    await this._remove();
+  }
+
+  /** Delete the instance at the lab, once. */
+  async _remove() {
+    if (!this.api?.remove || this.instance == null || this._removed) return;
+    this._removed = true;
     try {
       await this.api.remove(this.instance);
     } catch {

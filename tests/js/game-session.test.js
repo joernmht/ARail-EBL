@@ -709,3 +709,67 @@ test("a move that fails inside the game is kept in the record: played again, the
   assert.equal(again.seat("maintenance-dispatcher").game.value("money"), 30);
   assert.deepEqual([again.ticks, again.record.length], [s.ticks, 2]);
 });
+
+test("people who play at random, on every mission of the site: no move a page offers makes a game fail, every session ends and plays again the same", () => {
+  const dir = join(ROOT, "web", "game", "missions");
+  const index = JSON.parse(readFileSync(join(dir, "missions.json"), "utf8"));
+  let played = 0, moves = 0;
+  for (const file of index.missions) {
+    const doc = JSON.parse(readFileSync(join(dir, file), "utf8"));
+    const mission = () => normalizeMission(doc, GAMES);
+    // a session whose world is elsewhere cannot be played here
+    if (!Session.replayable(mission(), GAMES)) continue;
+    for (let seed = 1; seed <= 3; seed++) {
+      let x = (seed * 2654435761 + file.length * 40503) % 4294967296;
+      const rnd = () => (x = (x * 1664525 + 1013904223) % 4294967296) / 4294967296;
+      const pick = (list) => list[Math.floor(rnd() * list.length)];
+      const value = (f) => {
+        if (f.options) return pick(f.options)?.id ?? null;
+        if (f.type === "check") return rnd() < 0.5;
+        if (f.type !== "number") return "x";
+        const lo = f.min ?? 0, hi = f.max ?? lo + 10, step = f.step ?? 1;
+        return Math.min(hi, lo + Math.round((rnd() * (hi - lo)) / step) * step);
+      };
+      const s = new Session(mission(), { games: GAMES, seed, seats: Object.fromEntries(mission().roles.map((r) => [r.id, "human"])) }).start();
+      const act = (seat, what, name, ...args) => {
+        const res = s.act(seat, name, ...args);
+        moves++;
+        // refused is fine; failing inside the game on what its own view offered is not
+        assert.equal(res?.error, undefined, `${file}, seed ${seed}, ${seat}: ${what} ${name}(${JSON.stringify(args)}) failed: ${res?.error?.stack}`);
+      };
+      const people = () => {
+        for (const seat of [...s.active]) {
+          const g = seat.game;
+          if (!g || g.over) continue;
+          const v = g.view(), k = rnd();
+          for (const a of v.actions) assert.ok(Object.hasOwn(seat.Game.actions, a.name), `${file}, ${seat.id}: ${a.name}`);
+          if (k < 0.35 && g.open.length) {
+            const d = pick(g.open);
+            act(seat.id, "decision", "decide", d.id, pick(d.options).id);
+          } else if (k < 0.7) {
+            const a = pick(v.actions.filter((y) => !y.disabled));
+            if (a) act(seat.id, "form", a.name, ...(a.args ?? []), ...(a.fields ?? []).map(value));
+          } else if (k < 0.8) {
+            const it = pick((v.sketch?.items ?? []).filter((y) => y.menu?.length));
+            const m = it && pick(it.menu);
+            if (m && !m.disabled) act(seat.id, "menu", m.name, ...(m.args ?? []));
+          }
+        }
+      };
+      for (let guard = 0; !s.over && guard < 20000; guard++) {
+        people();
+        if (s.phase.kind === "shift") s.step(10);
+        // in a turn the people make a few moves, then end it (what is open takes its fallback)
+        else if (rnd() < 0.3) s.next();
+      }
+      const res = s.result();
+      assert.ok(res.over, `${file}, seed ${seed}: the session ends`);
+      assert.ok(res.seats.every((y) => Number.isFinite(y.score) && y.score >= 0 && y.score <= 100), `${file}, seed ${seed}: ${JSON.stringify(res.seats.map((y) => [y.seat, y.score]))}`);
+      s.threads();
+      const again = Session.replay(mission(), s.save(), { games: GAMES });
+      assert.deepEqual(again.result(), res, `${file}, seed ${seed}: played again`);
+      played++;
+    }
+  }
+  assert.ok(played >= 18 && moves > 2000, `${played} sessions, ${moves} moves`);
+});

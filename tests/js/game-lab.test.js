@@ -222,14 +222,54 @@ test("a session given up: its lab instance is deleted; a lab without that reques
   const mission = normalizeMission({ format: MISSION_FORMAT, id: "lab", title: "Lab", text: "A test.", roles: [{ role: "train-dispatcher", game: "lab", seat: "human", options: {} }] }, GAMES);
   mission.roles[0].options.api = lab;
   const s = new Session(mission, { games: GAMES, seed: 1 }).start();
-  // before the lab is there, nothing is to be given back
-  await s.leave();
-  assert.equal(lab.requests.length, 0);
   await s.sync();
   s.step(20);
   await s.leave();
   await s.leave();
   assert.deepEqual(lab.requests.filter((r) => r[0] === "remove"), [["remove", "sim-1"]]);
+  // a game that was left exchanges nothing more with the lab
+  const n = lab.requests.length;
+  s.step(40);
+  await s.sync();
+  assert.equal(lab.requests.length, n);
+  // left before the lab was ever asked: nothing to give back, and no instance is made afterwards
+  const quiet = new SmallLab();
+  const early = new LabGame({ api: quiet, length: 60 });
+  await early.leave();
+  await early.sync();
+  assert.deepEqual([quiet.requests.length, early.instance], [0, null]);
+  // left while the lab is still making the instance (the page is closed right after Start): deleted as soon as it is there
+  const slow = new SmallLab();
+  let answer = null;
+  const create = slow.create.bind(slow);
+  slow.create = (spec) => new Promise((done) => (answer = () => done(create(spec))));
+  const g2 = new LabGame({ api: slow, failure: FAILURE, length: 60 });
+  const pending = g2.sync();
+  await g2.leave();
+  assert.deepEqual(slow.requests, []);
+  answer();
+  await pending;
+  assert.deepEqual(slow.requests.map((r) => r[0]), ["create", "command", "remove"]);
+  assert.deepEqual(slow.requests.at(-1), ["remove", "sim-1"]);
+  // nothing was stepped, nothing said of a lost lab, and it is deleted once
+  assert.deepEqual([g2.labT, g2.link.state, g2.logs.some((l) => /does not answer/.test(l.text))], [0, "connecting", false]);
+  await g2.leave();
+  await g2.sync();
+  assert.equal(slow.requests.filter((r) => r[0] === "remove").length, 1);
+  // left while a step is on its way: the answer that comes later is not taken, and nothing is said of a lost lab
+  const busy = new SmallLab();
+  const g3 = new LabGame({ api: busy, length: 600 });
+  await g3.sync();
+  g3.step(20);
+  let finish = null;
+  const step = busy.step.bind(busy);
+  busy.step = (id, sec) => new Promise((done) => (finish = () => done(step(id, sec))));
+  const running = g3.sync();
+  await g3.leave();
+  finish();
+  await running;
+  assert.deepEqual([g3.labT, g3.link.state], [0, "ok"]);
+  assert.deepEqual(busy.requests.filter((r) => r[0] === "remove"), [["remove", "sim-1"]]);
   // the request outlives the page that sends it
   const sent = [];
   const api = new EblApi({ url: "https://lab.example", key: "k", fetch: async (url, init) => (sent.push([url, init.method, init.keepalive]), { ok: true, status: 200, json: async () => ({}) }) });
