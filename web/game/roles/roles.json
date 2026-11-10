@@ -4638,7 +4638,8 @@
     ],
     "bigGame": "Gives: the year's money and its conditions to the minister's programme, the funding officer and the infrastructure manager's budget years. Takes: audit findings from the federal auditor, money spent and overruns from the infrastructure projects, lobby pressure.",
     "effort": "medium",
-    "page": "play/?mission=night-session"
+    "page": "play/?mission=night-session",
+    "first": "A first form is playable: six rail lines and DB's capital need under one ceiling, year after year, with qualified blocks, a grant or equity and the coalition partner; the infrastructure simulation behind it is the asset manager's compact game."
    }
   },
   {
@@ -5792,7 +5793,8 @@
     ],
     "bigGame": "Takes: the monthly results of the railway undertaking from the economics simulator and the operations roles. Gives: payments and penalties into the undertaking's profit and loss, emergency awards, quality pressure.",
     "effort": "small",
-    "page": "play/?mission=malus-month"
+    "page": "play/?mission=malus-month",
+    "first": "A first form is playable: six accounting periods with the incident list by classes, the operator's objections and its finances; the list is drawn, or follows a sampled morning, not the operations engine."
    }
   },
   {
@@ -10604,7 +10606,8 @@
     ],
     "bigGame": "Takes the timetable (timetable-planner), possessions, faults and the RUs' wishes, and gives its orders to the signaller games. Gives delay minutes with their codes to the performance regime (payments between IM and RUs, settled by track-access-sales), passenger delays to the transport authorities' penalties, and big events to the network controller.",
     "effort": "medium",
-    "page": "play/?mission=lab-morning"
+    "page": "play/?mission=lab-morning",
+    "first": "A first form is playable at the lab's seat: on the lab's own timetable (the EBL's simulation API), report a failed signal, close and open a station track for the repair team, hold trains; without the time-distance diagram and the order of trains."
    }
   },
   {
@@ -13854,7 +13857,8 @@
     ],
     "bigGame": "Takes LuFV and federal money from the funding officer and the budget committee MPs, and the track access charges the railway undertakings pay. Gives the network condition, speed restrictions and delay minutes to the operations simulator and the railway undertakings, posts and budgets to the maintenance district managers, renewal orders to planners and contractors, and possession requests to the possession planner.",
     "effort": "small",
-    "page": "play/?mission=budget-years"
+    "page": "play/?mission=budget-years",
+    "first": "A first form is playable: a compact model of the district's budget years (the maintenance strategy, the renewals, the emergency teams, the ALV's proposal), without the infrastructure engine's assets and projects."
    }
   },
   {
@@ -14289,7 +14293,8 @@
     ],
     "bigGame": "Takes faults from the infrastructure simulation and the control system, and the available staff from the maintenance district managers. Gives repair times and delay minutes to the operations simulator and the railway undertakings, overtime costs to the asset manager, and closure requests to the signaller.",
     "effort": "medium",
-    "page": "play/?mission=fault-night"
+    "page": "play/?mission=fault-night",
+    "first": "A first form is playable: a morning shift of 40 minutes in the district around Bf Neustadt, as tables and forms without the map: faults by their report paths, two teams and a technician on call, the closure asked of the signaller."
    }
   },
   {
@@ -19982,7 +19987,8 @@
     ],
     "bigGame": "Takes the roster from the crew planner, rotations from the rotation planner, units from the fleet, and disruptions from the IM (network controller, faults). Its decisions set the day's penalties for the contract managers, the messages for the information dispatcher, the claims for the passenger rights desk, and the reports for the operations manager.",
     "effort": "medium",
-    "page": "play/?mission=transportleitung"
+    "page": "play/?mission=transportleitung",
+    "first": "A first form is playable: the morning of the signaller's game for the regional trains RB 31 to RB 36: a connecting train held or let go, passenger information, a sick call and a unit with a defect; without the operations engine's rotations and rosters."
    }
   },
   {

@@ -93,7 +93,7 @@ export function rolesMarkdown(cat) {
       out.push(`- **Works with:** ${r.interacts?.length ? r.interacts.map(ref).join(", ") : "–"}.`);
       if (r.gives?.length) out.push(`- **Gives:** ${r.gives.map((g) => `${fref(g.flow)} (${cell(g.what)}) to ${g.to.map(ref).join(", ")}`).join("; ")}.`);
       if (takes.get(r.id)?.length) out.push(`- **Takes:** ${takes.get(r.id).map((t) => `${fref(t.flow)} from ${t.from.map(ref).join(", ")}`).join("; ")}.`);
-      out.push(`- **Mini game, ${cell(g.title)}** (${KIND[g.kind] ?? g.kind}, effort ${g.effort}${g.page ? `, playable: \`game/${g.page}\`` : ""}): ${cell(g.loop)} *Success:* ${cell(g.win)} *Knowledge:* ${cell(g.knowledge)} *Builds on:* ${(g.arail || []).map(cell).join(", ")}. *In the big game:* ${cell(g.bigGame)}`);
+      out.push(`- **Mini game, ${cell(g.title)}** (${KIND[g.kind] ?? g.kind}, effort ${g.effort}${g.page ? `, playable: \`game/${g.page}\`` : ""}): ${cell(g.loop)} *Success:* ${cell(g.win)} *Knowledge:* ${cell(g.knowledge)} *Builds on:* ${(g.arail || []).map(cell).join(", ")}. *In the big game:* ${cell(g.bigGame)}${g.first ? ` *Playable now:* ${cell(g.first)}` : ""}`);
       out.push("");
     }
   }

@@ -13,7 +13,7 @@
  * words, the typical moves `from` and `to`, `chances`), `access` (how one gets in: `job`, `selection`,
  * `age_min`, `fitness`, `routes` of qualifications and experience, `gains`; see career.js), `kpis`,
  * `timescale`, `interacts`, `game` (`title`, `kind`, `loop`, `win`, `knowledge`, `arail`, `bigGame`,
- * `effort`, and `page` where it can be played); since format 3 its `party` (the organisation or
+ * `effort`, `page` where it can be played and `first`, what the playable first form has); since format 3 its `party` (the organisation or
  * group it belongs to, an id of PARTIES in flows.js), its `scale` and `horizon` (the rhythm of its
  * routine decisions and how far they reach, of SCALES), and its `gives`: the flows (flows.js) it
  * hands to other roles, each `{flow, to: [roles], what}`; what a role takes is what the others give
