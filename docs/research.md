@@ -13,8 +13,8 @@ ARail you can leave aside.
   and in Node, without a build step.
 - **Layouts**, `web/layouts/`: the lab (Beta 0.1), Bf Neustadt from the lab survey, the container
   terminal; or your own (see [Layout file format](layout-format.md)).
-- Not needed: the **role games** (`web/arail/game/`, the pages `game/signaller/`, `game/roles/`,
-  `game/career/`). They have their own entry (`web/arail/game/index.js`), and no part of the
+- Not needed: the **role games** (`web/arail/game/`, the pages `game/signaller/`, `game/play/`,
+  `game/roles/`, `game/career/`). They have their own entry (`web/arail/game/index.js`), and no part of the
   framework imports them (a test checks it), so a layout, a simulation or a plugin loads none of
   their code. The app's **stories** (the maintenance, operations and journeys stories) only run
   when a layout's story module is switched on.
