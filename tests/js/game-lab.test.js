@@ -165,6 +165,54 @@ test("in a session with the maintenance dispatcher: the lab's failure sends the 
   assert.deepEqual(s.flows.filter((f) => f.flow === "performance-report").map((f) => f.payload.kind), ["operations", "maintenance"]);
 });
 
+test("a provisional repair that does not hold: the signal fails again in the lab, and is repaired again", async () => {
+  const lab = new SmallLab();
+  const g = new LabGame({ api: lab, failure: FAILURE, length: 2400, wired: ["repair-status"] });
+  const player = new LabPlayer();
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: g.t, payload: { fault: "ASig N2", state, ...more } });
+  const run = async (done) => {
+    while (!g.over && !done()) {
+      await g.sync();
+      if (g.holding) continue;
+      player.think(g);
+      g.step(0.5);
+    }
+    await g.sync();
+  };
+  await run(() => g.failure.reported != null);
+  status("dispatched");
+  status("arrived");
+  await run(() => g.closed.has(2));
+  status("diagnosed", { cause: "water in the housing" });
+  status("working", { provisional: true });
+  assert.equal(g.team.state, "working");
+  const t1 = g.t + 240;
+  await run(() => g.t >= t1);
+  status("done", { provisional: true });
+  await run(() => g.t >= t1 + 60);
+  assert.deepEqual([lab.failed.size, lab.closed.size, g.team.state], [0, 0, "left"]);
+  // it does not hold
+  status("relapsed");
+  assert.deepEqual([g.failure.repaired, g.team.state], [null, "called"]);
+  assert.match(g.logs.at(-1).text, /does not clear again: the provisional repair did not hold/);
+  await run(() => g.t >= t1 + 120);
+  assert.ok(lab.failed.has("ASig N2"));
+  // a team of the other trade comes, looks and leaves; then the repair for good
+  status("dispatched");
+  status("arrived");
+  await run(() => g.closed.has(2));
+  status("left", { needs: "signalling" });
+  assert.equal(g.team.state, "called");
+  status("dispatched");
+  status("arrived");
+  status("working");
+  status("done");
+  await run(() => g.t >= t1 + 300);
+  assert.deepEqual([lab.failed.size, lab.closed.size, g.team.state], [0, 0, "left"]);
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["failSignal", "closeTrack", "repairSignal", "openTrack", "failSignal", "closeTrack", "repairSignal", "openTrack"]);
+  assert.deepEqual(g.violations, []);
+});
+
 test("a lab that does not answer: the seat says so and the shift goes on without it; without an address there is no lab", async () => {
   const dead = { create: async () => { throw new Error("connection refused"); } };
   const g = await alone(new LabGame({ api: dead, length: 60 }));

@@ -360,7 +360,7 @@ export class LabGame extends Game {
     if (f.repaired == null) return;
     f.repaired = null;
     this.team.state = "called";
-    this._out.push({ kind: "failSignal", signal: f.signal, station: this.station });
+    this._out.push({ kind: "failSignal", signal: f.signal, station: this.station, at: hms(this.start + this.t) });
     this.log(`${clockAt(this.t, this.start)} ${f.signal} does not clear again: the provisional repair did not hold.`, "fault");
   }
 
