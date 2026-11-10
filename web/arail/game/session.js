@@ -386,7 +386,14 @@ export class Session {
     if (this._settling) return { ok: false, reason: "The shift is over." };
     if (!Object.hasOwn(seat.Game.actions, name)) throw new Error(`${seat.Game.id}: no move "${name}"`);
     this.record.push({ phase: this.index, tick: this.ticks, seat: seatId, name, args: structuredClone(args) });
-    const result = seat.game.act(name, ...args);
+    let result;
+    try {
+      result = seat.game.act(name, ...args);
+    } catch (e) {
+      // a move that fails inside the game stays in the record: it may have changed the game before it failed, and
+      // played again it fails at the same point, so that the session played again is the same
+      result = { ok: false, reason: e.message, error: e };
+    }
     this.emit("move", { seat: seatId, name, args, result });
     return result;
   }

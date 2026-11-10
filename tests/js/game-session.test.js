@@ -666,3 +666,46 @@ test("people who play at random: every move a page offers, in any order; the mor
   assert.ok(moves > 1500 && refused > 100 && refused < moves, `${moves} moves, ${refused} refused`);
   assert.ok(relapses >= 1, "a provisional repair that did not hold was among them");
 });
+
+test("a move that fails inside the game is kept in the record: played again, the session is the same", () => {
+  /** A role whose move changes the game and then fails. */
+  class Clumsy extends Game {
+    static id = "clumsy";
+    static role = "maintenance-dispatcher";
+    static scale = "minutes";
+    static actions = { ...Game.actions, spend: { label: "Spend" } };
+
+    constructor(options = {}) {
+      super(options);
+      this.resource("money", "Money", 100, "€");
+    }
+
+    spend(n) {
+      this.add("money", -n);
+      if (n > 50) throw new Error("that was too much");
+      return { ok: true };
+    }
+  }
+  const mine = new Map([[Clumsy.id, Clumsy]]);
+  const doc = { format: MISSION_FORMAT, id: "clumsy", title: "Clumsy", text: "A test.", roles: [{ role: "maintenance-dispatcher", game: "clumsy", seat: "human" }], phases: [{ id: "shift", kind: "shift", roles: ["maintenance-dispatcher"], length: 20, tick: 0.5 }] };
+  const s = new Session(normalizeMission(doc, mine), { games: mine }).start();
+  const seen = [];
+  s.on((name, payload) => name === "move" && seen.push([payload.name, payload.result.ok, payload.result.reason ?? ""]));
+  s.step(2);
+  assert.deepEqual(s.act("maintenance-dispatcher", "spend", 10), { ok: true });
+  s.step(2);
+  // the move fails after it has taken the money: a refusal with the reason, and it stays in the record
+  const res = s.act("maintenance-dispatcher", "spend", 60);
+  assert.deepEqual([res.ok, res.reason, res.error instanceof Error], [false, "that was too much", true]);
+  assert.equal(s.seat("maintenance-dispatcher").game.value("money"), 30);
+  assert.deepEqual(s.record.map((m) => [m.tick, m.name, ...m.args]), [[4, "spend", 10], [8, "spend", 60]]);
+  assert.deepEqual(seen, [["spend", true, ""], ["spend", false, "that was too much"]]);
+  // a move the game does not have is the caller's mistake: thrown, and not recorded
+  assert.throws(() => s.act("maintenance-dispatcher", "steal", 5), /no move "steal"/);
+  assert.equal(s.record.length, 2);
+  s.step(3);
+  // played again from the record: the same money, the same session
+  const again = Session.replay(normalizeMission(doc, mine), s.save(), { games: mine });
+  assert.equal(again.seat("maintenance-dispatcher").game.value("money"), 30);
+  assert.deepEqual([again.ticks, again.record.length], [s.ticks, 2]);
+});

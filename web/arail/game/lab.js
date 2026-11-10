@@ -349,7 +349,8 @@ export class LabGame extends Game {
   take(msg) {
     const p = msg.payload ?? {}, f = this.failure;
     if (msg.flow === "connection-request") {
-      this.hold(p.hold, p.minutes ?? 3);
+      const res = this.hold(p.hold, p.minutes ?? 3);
+      if (!res.ok) this.log(`${clockAt(this.t, this.start)} A request to hold ${p.hold ?? "a train"}${p.minutes != null ? ` for ${p.minutes} min` : ""} was not followed: ${res.reason}`, "request");
     } else if (msg.flow === "repair-status" && f?.started && (p.fault == null || p.fault === f.signal)) {
       if (p.state === "dispatched" && this.team.state === "called") this.team.state = "driving";
       else if (p.state === "arrived") this._teamArrived();

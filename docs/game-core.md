@@ -309,7 +309,8 @@ assets), the injects (more disruptions), and which seats the computer plays.
 Games are deterministic: random numbers come from streams keyed by the seed and what they are for,
 a shift runs in fixed ticks whatever the page's frame rate is, and flows travel in a fixed order.
 A session records every move of a person with its phase and tick; the computer players need no
-record, they decide the same again.
+record, they decide the same again. A move that fails inside a game is recorded too: it may have
+changed the game before it failed, and played again it fails at the same point.
 
 - `session.save()` gives `{format: "arail-session/1", mission, seed, seats, record, at}`.
 - `Session.replay(mission, saved, {games})` rebuilds the session from it, up to where it stood, and
@@ -340,8 +341,11 @@ faults), five went by on the road, two until the track was closed, four for a pr
 which failed again. `Session.threads()` (`chain.js`) reads this from the flows alone:
 
 - A flow that names a fault (`payload.fault`) is a step of that fault's **thread**: the fault
-  report, the repair status (dispatched, arrived, diagnosed, working, done, secured, left,
-  relapsed), the closure request, the track closed and opened.
+  report, the repair status (reported, dispatched, arrived, diagnosed, working, done, secured,
+  left, relapsed), the closure request, the track closed and opened. A fault has a thread from
+  the first flow that names it: the dispatcher's game tells a fault of its own report paths as
+  a repair status "reported", so that a fault no team is ever sent to is told too, with all of
+  its time the dispatcher's.
 - A track closure names a fault only when the track is the fault's own (the failed signal's
   track): a signaller who closes another track for another reason has not closed it for the
   repair. The chain takes a closure of another track for no step of the fault.

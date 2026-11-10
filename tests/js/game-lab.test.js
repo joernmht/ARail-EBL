@@ -399,6 +399,24 @@ test("a closure request is the failure's only with its fault, or without one for
   assert.equal(g.team.state, "waiting");
 });
 
+test("a connection request that cannot be followed is said at the seat", async () => {
+  const lab = new SmallLab();
+  const g = new LabGame({ api: lab, length: 1200 });
+  await g.sync();
+  const ask = (payload) => g.receive({ flow: "connection-request", from: "ru-control-dispatcher", t: g.t, payload });
+  ask({ hold: "4914", for: "26611", minutes: 45 });
+  assert.equal(g.holds.size, 0);
+  assert.deepEqual(g.logs.at(-1), { ...g.logs.at(-1), kind: "request", text: "08:00 A request to hold 4914 for 45 min was not followed: Hold a train for 1 to 30 minutes." });
+  ask({ minutes: 3 });
+  assert.match(g.logs.at(-1).text, /A request to hold a train for 3 min was not followed: Which train\?/);
+  // one that can be followed is, as before
+  ask({ hold: "4914", minutes: 5 });
+  assert.deepEqual([...g.holds.keys()], ["4914"]);
+  assert.match(g.logs.at(-1).text, /4914 is held at Neustadt until 08:05/);
+  await g.sync();
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["hold"]);
+});
+
 test("a lab that does not answer: the seat says so and the shift goes on without it; without an address there is no lab", async () => {
   const dead = { create: async () => { throw new Error("connection refused"); } };
   const g = await alone(new LabGame({ api: dead, length: 60 }));

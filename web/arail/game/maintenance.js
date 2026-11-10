@@ -430,6 +430,9 @@ export class MaintenanceGame extends Game {
     const from = likely(f).map((x) => `${tradeText(x.trade)} ${Math.round(x.p * 100)} %`).join(", ");
     this.log(`${clockAt(this.t)} ${f.path} reports: ${f.asset} at ${f.place}, ${f.kind}${f.safety ? " (a danger while nobody is there)" : f.holds ? ` (holds about ${f.holds} trains an hour)` : ""}. From experience a case for: ${from}.`, "fault");
     this.emit("fault", { fault: f });
+    // a fault of the district's own report paths has no fault report as a flow: its story begins with this status,
+    // so that a fault no team is ever sent to is told too (the signaller's begins with the signaller's report)
+    if (!f.remote) this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "reported", safety: f.safety, holds: f.holds });
   }
 
   /** A team is free again, where it is. */

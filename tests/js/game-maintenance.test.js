@@ -128,7 +128,9 @@ test("a team in the track: the closure is asked for first, then the team looks f
   g.step(f.cause.work_s);
   assert.equal(f.state, "done");
   assert.deepEqual(g.violations, []);
-  assert.deepEqual(g.outbox.filter((m) => m.payload.fault === "N2").map((m) => m.payload.state ?? m.flow), ["dispatched", "arrived", "closure-request", "diagnosed", "working", "done"]);
+  assert.deepEqual(g.outbox.filter((m) => m.payload.fault === "N2").map((m) => m.payload.state ?? m.flow), ["reported", "dispatched", "arrived", "closure-request", "diagnosed", "working", "done"]);
+  // the district's own fault is a status from its report on: its story has a beginning also when no team is ever sent
+  assert.deepEqual(g.outbox.find((m) => m.payload.fault === "N2").payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "reported", safety: false, holds: 4 });
   assert.deepEqual(g.outbox.find((m) => m.payload.state === "diagnosed").payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "diagnosed", cause: "the lamp is burnt out", trade: "signalling", eta_s: 240, team: "Team M. Specht", since_s: DIAGNOSE_S });
   // the account of the shift names what the fault did
   g.finish();
@@ -404,6 +406,19 @@ test("wired: a dispatcher who never sends a team leaves the signaller with the f
   const s = play(MORNING, { seed: 1, seats: { "maintenance-dispatcher": "human" } }).start();
   while (!s.over) s.step(10);
   const sig = s.seat("signaller-relay").game;
+  // what led to what tells every fault, also those no team was ever sent to: all of their time was the dispatcher's
+  const mt0 = s.seat("maintenance-dispatcher").game, told = s.threads();
+  assert.deepEqual(told.map((th) => th.fault).sort(), mt0.faults.filter((f) => f.reported != null).map((f) => f.id).sort());
+  assert.ok(told.length >= 3);
+  for (const th of told) {
+    const f = mt0.fault(th.fault);
+    assert.equal(th.state, "open");
+    assert.deepEqual(th.stretches.map((x) => [x.kind, x.by, x.open, x.to]), [["unsent", "maintenance-dispatcher", true, 2400]], th.fault);
+    assert.ok(Math.abs(th.out_s - mt0.outage(f, 2400)) < 2 || f.remote, `${th.fault}: ${th.out_s}`);
+    if (!f.remote) assert.ok(th.effects.includes("not repaired when the shift ended"), th.fault);
+    if (!f.remote && f.safety) assert.ok(th.effects.some((e) => /^a danger without anybody there for \d+ min$/.test(e)), th.fault);
+    if (!f.remote && f.holds) assert.ok(th.effects.some((e) => /^held or slowed about \d+ trains?/.test(e)), th.fault);
+  }
   assert.equal(sig.team.state, "called");
   assert.equal(sig.failure.repaired, null);
   assert.equal(sig.signals.N2.failed, true);

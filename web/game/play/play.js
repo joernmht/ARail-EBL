@@ -901,13 +901,12 @@ class PlayPage {
 
   /* ---------------------------------------------------------------- the people's moves */
 
-  /** A person's move at a seat, through the session. What a game throws is a refusal too, and is not kept in the record. */
+  /** A person's move at a seat, through the session (which keeps it, also when it fails inside the game). What the session itself throws is a refusal too. */
   act(seatId, name, ...args) {
-    const s = this.session, n = s.record.length;
     try {
-      return s.act(seatId, name, ...args);
+      return this.session.act(seatId, name, ...args);
     } catch (e) {
-      s.record.length = n;
+      // not a move of the game, or arguments that cannot be kept: nothing was recorded, nothing changed
       return { ok: false, reason: e.message };
     }
   }
