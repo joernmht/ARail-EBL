@@ -1124,6 +1124,15 @@ export class SignallerGame extends Game {
       const late = st.t > tr.due + 60;
       items.push({ kind: "tag", x: X(x1 + (x2 - x1) * f), y: Y(y1 + (y2 - y1) * f), text: `${tr.dir > 0 ? "" : "← "}${tr.id}${tr.dir > 0 ? " →" : ""}`, anchor: tr.dir > 0 ? "end" : "start", tone: late ? "warn" : "train" });
     }
+    // the failure and where its repair stands, as the panel's note
+    const f = st.failure;
+    if (f?.started) {
+      const plan = this.team.plan, team = st.team.state;
+      const note = f.repaired != null ? (f.provisional ? "repaired provisionally: it may fail again" : "repaired")
+        : team === "none" ? "failed, not reported" : team === "called" ? (f.relapses ? "failed again: no team yet" : "failed: reported, no team yet") : team === "driving" ? "failed: the team is on its way"
+          : team === "waiting" ? "failed: the team waits for G2 to be closed" : plan?.until != null ? `the team repairs it${plan.provisional ? " provisionally" : ""} until about ${clockOf(plan.until).slice(0, 5)}` : "the team is at work";
+      items.push({ kind: "text", x: X(28), y: 24, text: `${f.signal}: ${note}`, anchor: "end", tone: f.repaired != null && !f.provisional ? "ok" : "warn" });
+    }
     return { title: "The panel", width: 1180, height: 250, label: `Track diagram of ${STATION.name}: the line from ${STATION.west} on the left, the platform tracks G1, G2 and G3, the line to ${STATION.east} on the right`, items };
   }
 

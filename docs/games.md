@@ -163,6 +163,19 @@ is what a late train costs the undertaking, and the morning's reports are the ye
 and the contract's incident list. On the lab's own timetable the operations
 are the EBL's simulation (`lab-morning`). All of them are played on the play page (`game/play/`).
 
+The morning is the mission worked out furthest, as the model for the others:
+
+- **Pictures.** The signaller works on the track panel, the dispatcher on a map of the district
+  with the vans; what is chosen in the picture offers its moves.
+- **Choices that give something up.** The dispatcher's teams are of two trades, a fault's cause
+  is known only when a team has looked, a quick repair may not hold, a team that guards a danger
+  repairs nothing, a technician on call costs overtime. The computer's dispatcher plays by simple
+  rules and can be beaten.
+- **What led to what.** The result shows every fault on the time line of the shift: whose each
+  stretch of its time out of order was (the signaller's, the dispatcher's, the road, the work),
+  where the teams were while it waited, and what it did to the trains
+  ([The game core](game-core.md#what-led-to-what)).
+
 ## The signaller of Bf Neustadt
 
 `game/signaller/` is the first role game: the signaller (Fahrdienstleiter) of Bf Neustadt in a relay

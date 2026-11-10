@@ -308,4 +308,16 @@ test("the panel as a sketch: sections in the colours of their state, a signal wi
   sk = check(g.view().sketch);
   assert.ok(sk.items.some((it) => it.kind === "tag" && it.text.includes("RB 31")));
   assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "occupied"));
+  // the failure and where its repair stands, as the panel's note
+  const note = (x) => x.view().sketch.items.find((it) => it.kind === "text" && it.text.startsWith("N2: "));
+  assert.equal(note(g), undefined);
+  const n = new SignallerGame({ seed: 1, level: "normal" });
+  run(n, 781);
+  assert.deepEqual([note(n).text, note(n).tone], ["N2: failed, not reported", "warn"]);
+  n.reportFault();
+  assert.equal(note(n).text, "N2: failed: the team is on its way");
+  assert.equal(n.view().sketch.items.find((it) => it.id === "signal-N2").tone, "failed");
+  run(n, 1400, careful);
+  assert.deepEqual([note(n).text, note(n).tone], ["N2: repaired", "ok"]);
+  check(n.view().sketch);
 });

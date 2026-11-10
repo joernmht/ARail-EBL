@@ -85,6 +85,8 @@ main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
 .play-board text { fill: var(--board-text); font-family: var(--font); font-size: 13px; font-weight: 600; }
 .play-board text.small { font-size: 11px; }
 .play-board text.t-muted { fill: var(--board-muted); font-weight: 500; }
+.play-board text.t-warn { fill: var(--board-warn); }
+.play-board text.t-ok { fill: var(--overlay-ok); }
 .play-board line { stroke: var(--board-muted); stroke-width: 6; stroke-linecap: round; }
 .play-board line.thin { stroke-width: 2; }
 .play-board line.faint { opacity: .22; }
