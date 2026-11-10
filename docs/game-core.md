@@ -144,10 +144,15 @@ what is handed over and what the receiver does with it.
   contract, a staff plan. The receiver always works with the latest (`conditions[flow]`); a game
   that begins later begins with what holds then.
 
-The role catalogue uses the same flows to say who gives what to whom: every role has its `gives`
-(the flow and the roles it goes to), and what a role takes follows from what the others give it
-(see [Roles](roles.md)). The catalogue's graph is the wiring diagram of the whole railway; a
-mission seats a part of it.
+The role catalogue uses the same flows to say who gives what to whom: every one of its 176 roles
+has its party, its scale and its `gives` (the flow, what exactly is handed over, and the roles it
+goes to), and what a role takes follows from what the others give it (see [Roles](roles.md): about
+2,900 flows from one role to another). The catalogue's graph is the wiring diagram of the whole
+railway; a mission seats a part of it, and a game's ports are a part of its role's flows (a test
+checks that a game gives and takes nothing its role does not in the catalogue). Where a game is
+simpler than the railway, it says so: the undertaking's wish to hold a train goes to the
+infrastructure manager's dispatcher, who orders the signaller; a mission without a dispatcher lets
+the wish reach the signaller directly.
 
 The flows of the first games and what they carry: the contract between the games. The games of
 the budget rapporteur, the asset manager, the signaller, the maintenance dispatcher and the lab's
@@ -165,8 +170,9 @@ the delay notices and takes the connection requests).
 | `repair-status` | event | maintenance dispatcher → signaller | `fault`, `state` (dispatched, arrived, working, done), `eta_s`, `team` |
 | `closure-request` | event | maintenance dispatcher → signaller | `fault`, `place`, `track`, `team` |
 | `track-closure` | event | signaller → maintenance dispatcher | `place`, `track`, `closed`, `fault` |
-| `delay-notice` | event | signaller → operations control | `train`, `kind`, `place`, `stage`, `delay_min`, `connection`, `cause` |
-| `connection-request` | event | operations control → signaller | `hold`, `for`, `minutes` |
+| `delay-notice` | event | signaller, dispatcher → dispatcher, operations control | `train`, `kind`, `place`, `stage`, `delay_min`, `connection`, `cause` |
+| `connection-request` | event | operations control → the dispatcher (without one seated: the signaller) | `hold`, `for`, `minutes` |
+| `dispatching-order` | event | dispatcher → signaller | `hold`, `for`, `minutes` (a train to hold) |
 | `passenger-information` | event | operations control → passengers | `train`, `text`, `delay_min` |
 | `penalty`, `payment` | event | contract manager → undertaking | `year`, `eur`, `for` |
 | `performance-report` | event | every game, at the end of its period | `scope`, `kind`, the period's numbers, `score` |

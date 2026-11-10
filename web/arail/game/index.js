@@ -11,7 +11,7 @@ export { FLOWS, FLOW_GROUPS, FLOW_KINDS, PARTIES, PARTY_KINDS, SCALES, SCALE_S, 
 export { MISSION, SEATS, Session } from "./session.js";
 export { MISSION_FORMAT, MISSION_MODES, SHIFT_S, TICK_S, normalizeMission, testRun, validateMission, wiring } from "./mission.js";
 export { GAMES, gameOfRole, play } from "./games.js";
-export { ROLE_SETTINGS, GAME_EFFORTS, validateRoles, careerGraph, roleCounts } from "./roles.js";
+export { ROLE_SETTINGS, GAME_EFFORTS, validateRoles, careerGraph, flowGraph, roleCounts, takesOf } from "./roles.js";
 export {
   SELECTIONS, QUALIFICATION_KINDS, qualificationsOf, startPoints, createCareer, ageOf, yearsIn, canStart, routeStatus, roleStatus, options as careerOptions,
   takeRole, study, work, missingText, prerequisiteTree, reachable,

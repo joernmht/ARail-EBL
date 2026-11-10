@@ -119,8 +119,9 @@ export class LabGame extends Game {
   static scale = "minutes";
   static takes = [
     { flow: "repair-status", from: ["maintenance-dispatcher"] },
-    { flow: "closure-request", from: ["maintenance-dispatcher"] },
-    { flow: "connection-request" },
+    // the seat also stands for the lab's signal boxes, which grant a closure
+    { flow: "closure-request" },
+    { flow: "connection-request", from: ["ru-control-dispatcher"] },
   ];
   static gives = [
     { flow: "fault-report", to: ["maintenance-dispatcher"] },

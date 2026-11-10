@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
-const careers = JSON.parse(readFileSync(new URL("../../web/game/roles/roles.json", import.meta.url), "utf8")).format === "arail-roles/2";
+const careers = JSON.parse(readFileSync(new URL("../../web/game/roles/roles.json", import.meta.url), "utf8")).format !== "arail-roles/1";
 test.skip(!careers, "the catalogue has no careers yet (format 1)");
 
 /** Open the planner with nothing stored. */

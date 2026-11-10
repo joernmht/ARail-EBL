@@ -19,8 +19,9 @@
  *
  * In a session (session.js) the game is wired to other roles: the fault report goes to the
  * maintenance dispatcher, whose team comes, asks for the closure and reports back (instead of the
- * game's own repair team); delays go to the undertaking's operations control, which may ask to hold
- * a train for a connection; the condition of the assets decides whether the signal fails at all.
+ * game's own repair team); delays are told (to the dispatcher, the undertaking's operations
+ * control), and a train is held for a connection on the dispatcher's order or the undertaking's
+ * wish; the condition of the assets decides whether the signal fails at all.
  * @module arail/game/signaller
  */
 import { Game, Player } from "./core.js";
@@ -309,7 +310,9 @@ export class SignallerGame extends Game {
     { flow: "asset-condition" },
     { flow: "repair-status", from: ["maintenance-dispatcher"] },
     { flow: "closure-request", from: ["maintenance-dispatcher"] },
-    { flow: "connection-request", from: ["ru-control-dispatcher"] },
+    // a train to hold: the dispatcher's order; in a mission without a dispatcher between them, the undertaking's wish itself
+    { flow: "dispatching-order", from: ["train-dispatcher"] },
+    { flow: "connection-request" },
   ];
   static gives = [
     { flow: "fault-report", to: ["maintenance-dispatcher"] },
@@ -844,12 +847,12 @@ export class SignallerGame extends Game {
       } else if (p.state === "done") this._teamDone();
     } else if (msg.flow === "closure-request" && f?.started) {
       this._teamArrived();
-    } else if (msg.flow === "connection-request") {
+    } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
       const tr = this.trains.find((x) => x.id === p.hold);
       if (!tr || tr.state === "gone") return;
       const until = this.t + (p.minutes ?? 3) * 60;
       this.holds.set(tr.id, { for: p.for ?? null, until });
-      this.log(`${clockOf(this.t)} The undertaking's operations control asks: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
+      this.log(`${clockOf(this.t)} ${msg.flow === "dispatching-order" ? "The dispatcher orders" : "The undertaking's operations control asks"}: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
     }
   }
 

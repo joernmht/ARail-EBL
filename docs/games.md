@@ -53,6 +53,13 @@ often comes from and goes, pay, and its **ways in** (below); what the role is **
 **rhythm** of its decisions (seconds to a legislature); the roles it **works with or against**; and a
 **mini game** for it.
 
+Each role also has its **party** (the infrastructure manager, a railway undertaking, a transport
+authority, …), its **scale** (the rhythm of its routine decisions) and what it **gives** to other
+roles: typed flows such as a budget, a train path, a possession, a fault report, a penalty, each
+with what exactly is handed over and the roles it goes to; what a role **takes** is what the
+others give it. Across the catalogue these are about 2,900 flows from one role to another: the
+wiring diagram of the railway, and of the big game ([The game core](game-core.md#flows)).
+
 Next to the roles the catalogue holds the **qualifications** that the ways in need: school
 certificates, apprenticeships (such as Eisenbahner/in im Betriebsdienst), degrees and state exams,
 function trainings for career changers, licences (the train driver's licence), certificates and
