@@ -336,7 +336,7 @@ export class MaintenanceGame extends Game {
     Object.assign(tm, { state: "driving", fault: f.id, from: tm.place, left: this.t, until: this.t + eta });
     Object.assign(f, { state: "assigned", team: tm.id });
     this.log(`${clockAt(this.t)} ${tm.name} drives to ${f.asset} (${f.place}), about ${minutes(eta)} min.`, "team");
-    this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "dispatched", eta_s: eta, team: tm.name });
+    this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "dispatched", eta_s: eta, team: tm.name, since_s: Math.round(this.t - f.since) });
     return { ok: true };
   }
 
@@ -488,7 +488,7 @@ export class MaintenanceGame extends Game {
     f.known = true;
     const c = f.cause;
     this.log(`${clockAt(this.t)} ${tm.name} at ${f.asset}: ${c.text}. ${c.trade === "any" ? "Any team can do that" : `A case for a ${c.trade} team`}, about ${minutes(c.work_s)} min.`, "team");
-    this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "diagnosed", cause: c.text, trade: c.trade, eta_s: c.work_s, team: tm.name });
+    this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "diagnosed", cause: c.text, trade: c.trade, eta_s: c.work_s, team: tm.name, since_s: DIAGNOSE_S });
     this._plan(tm, f);
   }
 
@@ -561,8 +561,26 @@ export class MaintenanceGame extends Game {
     const st = this.stats();
     this.give("performance-report", {
       scope: DISTRICT.name, kind: "maintenance", faults: st.reported, done: st.done, open: st.open, provisional: st.provisional, relapses: st.relapses, restore_min: st.restore_min, exposed_min: st.exposed_min,
-      overtime_h: this.value("overtime"), teams: this.teams.filter((tm) => !tm.overtime).length, violations: this.violations.length, score: this.score().total,
+      overtime_h: this.value("overtime"), teams: this.teams.filter((tm) => !tm.overtime).length, violations: this.violations.length, score: this.score().total, effects: this.effects(),
     });
+  }
+
+  /**
+   * What each of the district's own faults did, in words (the signaller's failure is the signaller's to tell): the
+   * trains held or slowed while it was out of order, a danger without anybody there, a repair left for the day shift.
+   * @returns {Array<{fault: string, text: string}>}
+   */
+  effects() {
+    const out = [];
+    for (const f of this.faults) {
+      if (f.reported == null || f.remote) continue;
+      const min = this.outage(f) / 60;
+      if (f.holds) out.push({ fault: f.id, text: `held or slowed about ${Math.max(1, Math.round((f.holds * min) / 60))} train${Math.round((f.holds * min) / 60) > 1 ? "s" : ""} (${f.holds} an hour, for ${Math.round(min)} min)` });
+      if (f.exposed_s >= 60) out.push({ fault: f.id, text: `a danger without anybody there for ${Math.round(f.exposed_s / 60)} min` });
+      if (f.done != null && f.provisional) out.push({ fault: f.id, text: "repaired provisionally: for the day shift to do again" });
+      else if (f.done == null) out.push({ fault: f.id, text: "not repaired when the shift ended" });
+    }
+    return out;
   }
 
   /* ---------------------------------------------------------------- the score */

@@ -9,6 +9,7 @@
 export { Game, GAME_KINDS, Player, clockAt } from "./core.js";
 export { FLOWS, FLOW_GROUPS, FLOW_KINDS, PARTIES, PARTY_KINDS, SCALES, SCALE_S, flowOf, playedIn, validateFlows } from "./flows.js";
 export { MISSION, SEATS, Session } from "./session.js";
+export { STRETCHES, threads } from "./chain.js";
 export { MISSION_FORMAT, MISSION_MODES, SHIFT_S, TICK_S, normalizeMission, testRun, validateMission, wiring } from "./mission.js";
 export { GAMES, gameOfRole, play } from "./games.js";
 export { ROLE_SETTINGS, GAME_EFFORTS, validateRoles, careerGraph, flowGraph, roleCounts, takesOf } from "./roles.js";

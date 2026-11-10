@@ -112,7 +112,7 @@ test("a team in the track: the closure is asked for first, then the team looks f
   assert.deepEqual(g.act("send", "T1", "N2"), { ok: true });
   assert.match(g.act("send", "T1", "N2").reason, /on the road/);
   assert.match(g.act("send", "T2", "N2").reason, /already has a team/);
-  assert.deepEqual(g.outbox.at(-1).payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "dispatched", eta_s: 300, team: "Team M. Specht" });
+  assert.deepEqual(g.outbox.at(-1).payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "dispatched", eta_s: 300, team: "Team M. Specht", since_s: 0 });
   g.step(301);
   // on site, the work is in G2: a decision; nobody decides: after 90 s the team asks itself
   assert.equal(g.teams[0].state, "waiting");
@@ -129,7 +129,10 @@ test("a team in the track: the closure is asked for first, then the team looks f
   assert.equal(f.state, "done");
   assert.deepEqual(g.violations, []);
   assert.deepEqual(g.outbox.filter((m) => m.payload.fault === "N2").map((m) => m.payload.state ?? m.flow), ["dispatched", "arrived", "closure-request", "diagnosed", "working", "done"]);
-  assert.deepEqual(g.outbox.find((m) => m.payload.state === "diagnosed").payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "diagnosed", cause: "the lamp is burnt out", trade: "signalling", eta_s: 240, team: "Team M. Specht" });
+  assert.deepEqual(g.outbox.find((m) => m.payload.state === "diagnosed").payload, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", state: "diagnosed", cause: "the lamp is burnt out", trade: "signalling", eta_s: 240, team: "Team M. Specht", since_s: DIAGNOSE_S });
+  // the account of the shift names what the fault did
+  g.finish();
+  assert.deepEqual(g.outbox.at(-1).payload.effects.filter((e) => e.fault === "N2"), [{ fault: "N2", text: `held or slowed about 1 train (4 an hour, for ${Math.round(g.outage(f) / 60)} min)` }]);
 
   const rash = new MaintenanceGame({ seed: 1, level: "training" });
   rash.step(800);

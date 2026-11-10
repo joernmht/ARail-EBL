@@ -2,7 +2,7 @@
 // railway, each seat one role's game, played by a person at this device or by the computer; the games
 // are wired by flows (what one role gives another). The page lets a person choose a mission and the
 // seats, play it in hot seat (the tabs are the seats), watch what the roles give each other, and
-// read the result. It knows no game by name: every game is drawn from its view (a sketch of its world
+// read the result, with what led to what: each fault's time out of order and whose it was. It knows no game by name: every game is drawn from its view (a sketch of its world
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
@@ -1022,11 +1022,57 @@ class PlayPage {
           h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file"),
           h("button", { class: "btn", type: "button", onclick: () => this.choose(null) }, "Other missions"))),
       h("div", { class: "play-result-seats" }, r.seats.map(seat)),
+      this.chain(s.threads()),
       h("div", { class: "game-card" },
         h("h3", {}, "What the roles gave each other"),
         flows.length ? h("ul", { class: "play-counts" }, flows.map(([id, n]) => h("li", {}, flowOf(id)?.name ?? id, " ", h("span", { class: "tag" }, String(n))))) : h("p", { class: "hint" }, "Nothing passed between the roles.")),
       m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null);
     this.fit($("#result"));
+  }
+
+  /**
+   * What led to what: every fault of the shifts on one time line, from its failure to its repair, each stretch of
+   * its time out of order in the colour of whose it was (a seat, the road, the team's work, somebody outside the
+   * game), what the teams did while it waited, and what it did in the games' worlds; and the minutes by whose they were.
+   */
+  chain(threads) {
+    if (!threads.length) return null;
+    const s = this.session, seats = [...s.seats.keys()];
+    const min = (sec) => `${num(sec / 60)} min`;
+    const who = (by) => (by === "road" ? "on the road" : by === "team" ? "the team's work" : by === "others" ? "somebody outside this game" : by ? this.seatName(by) : "");
+    const tone = (by) => (by === "road" || by === "team" || by === "others" ? `by-${by}` : by ? `by-seat-${seats.indexOf(by) % 4}` : "by-none");
+    const total = new Map();
+    for (const th of threads) for (const [by, sec] of Object.entries(th.by)) total.set(by, (total.get(by) ?? 0) + sec);
+    const order = [...seats.filter((id) => total.has(id)), ...["road", "team", "others"].filter((k) => total.has(k))];
+    const all = [...total.values()].reduce((a, b) => a + b, 0);
+    const phases = [...new Set(threads.map((th) => th.phase))];
+    const thread = (th) => {
+      const ph = s.plan[th.phase], length = ph.length || Math.max(1, th.to), at = (t) => clockOf(ph.clock, t).slice(0, 5);
+      const pct = (t) => `${Math.round((1000 * Math.max(0, Math.min(length, t))) / length) / 10}%`;
+      const state = th.state === "repaired" ? ["ok", "repaired"] : th.state === "provisional" ? ["warn", "repaired provisionally"] : ["bad", "not repaired"];
+      const parts = Object.entries(th.by).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(([by, sec]) => `${who(by)} ${min(sec)}`).join(", ");
+      const sum = `Out of order for ${min(th.out_s)}${th.relapses ? `, failed again ${th.relapses === 1 ? "once" : `${th.relapses} times`}` : ""}`;
+      return h("section", { class: "play-thread" },
+        h("h4", {}, `${th.asset}${th.place ? `, ${th.place}` : ""} `, h("span", { class: `tag ${state[0]}` }, state[1])),
+        h("p", {}, `${sum}: ${parts}.`),
+        h("div", { class: "play-line", role: "img", "aria-label": `${th.asset}: ${sum}, from ${at(th.from)} to ${at(th.to)}` },
+          th.stretches.map((x) => h("i", { class: `${tone(x.by)}${x.kind === "held" ? " held" : ""}`, title: `${at(x.from)}–${at(x.to)}: ${x.text}`, style: { left: pct(x.from), width: `calc(${pct(x.to)} - ${pct(x.from)})` } }))),
+        h("div", { class: "play-line-ends", "aria-hidden": "true" }, h("span", {}, at(0)), h("span", {}, at(length))),
+        h("ol", { class: "play-stretches" }, th.stretches.map((x) => h("li", {},
+          h("span", { class: "when" }, `${at(x.from)}–${at(x.to)}`),
+          h("span", { class: `key ${tone(x.by)}${x.kind === "held" ? " held" : ""}`, "aria-hidden": "true" }),
+          h("span", {}, h("strong", {}, min(x.to - x.from)), ` ${x.text}${x.provisional ? " (provisional)" : ""}${x.open ? ", to the end of the shift" : ""}`, x.by && x.by !== "road" && x.by !== "team" ? [": ", h("em", {}, who(x.by))] : null,
+            x.meanwhile?.length ? h("span", { class: "hint" }, ` Meanwhile: ${x.meanwhile.map((m) => `${m.team} at ${m.asset}`).join(", ")}.`) : null)))),
+        th.effects.length ? [h("p", { class: "play-effects-title" }, "What it did:"), h("ul", { class: "play-effects" }, th.effects.map((e) => h("li", {}, sentence(e[0].toUpperCase() + e.slice(1)))))] : null);
+    };
+    return h("div", { class: "game-card play-chain" },
+      h("h3", {}, "What led to what"),
+      h("p", { class: "hint" }, "Every fault from its failure to its repair, on the time line of the shift: whose each stretch of its time out of order was."),
+      h("ul", { class: "play-keys" }, order.map((by) => h("li", {}, h("span", { class: `key ${tone(by)}`, "aria-hidden": "true" }), `${who(by)}: `, h("strong", {}, min(total.get(by))), all ? ` (${Math.round((100 * total.get(by)) / all)} %)` : ""))),
+      phases.map((i) => [
+        phases.length > 1 ? h("h4", { class: "play-chain-phase" }, `Round ${s.plan[i].round} · ${s.plan[i].title}`) : null,
+        threads.filter((th) => th.phase === i).map(thread),
+      ]));
   }
 
   /** The mission once more with the same seats: with the same seed, or a new one. */

@@ -21,6 +21,7 @@
  * @module arail/game/session
  */
 import { hashKey } from "../core/math.js";
+import { threads } from "./chain.js";
 import { flowOf } from "./flows.js";
 
 /** Who plays a seat. */
@@ -376,6 +377,18 @@ export class Session {
   }
 
   /* ---------------------------------------------------------------- results, saving */
+
+  /**
+   * What led to what (chain.js): the story of each fault of the session's shifts, read from the
+   * flows: every stretch of its time out of order with whose it was, and what it did.
+   */
+  threads() {
+    const endOf = (i) => {
+      const length = this.plan[i]?.length ?? this.t;
+      return i < this.index || this.over ? length : Math.min(this.t, length);
+    };
+    return threads(this.flows, { endOf });
+  }
 
   /**
    * The result: each seat with the results of its rounds and their mean as its score; the score of

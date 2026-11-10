@@ -318,6 +318,21 @@ test("nobody of the people at work: the shift is skipped to its end; the result 
   await expect(seats.first()).toContainText("Punctuality (35)");
   await expect(seats.nth(1)).toContainText("Fault Night, played by the computer.");
   await expect(page.locator("#result .play-counts")).toContainText(await flowName(page, "repair-status"));
+  // what led to what: the faults of the shift on its time line, whose their minutes were, what the failure did
+  const chain = page.locator("#result .play-chain");
+  await expect(chain.locator("h3")).toHaveText("What led to what");
+  const n2 = chain.locator(".play-thread").filter({ has: page.locator("h4", { hasText: "Exit signal N2, Bf Neustadt" }) });
+  await expect(n2.locator("h4 .tag")).toHaveText(/^(repaired|repaired provisionally|not repaired)$/);
+  await expect(n2.locator("p").first()).toHaveText(/^Out of order for [\d.]+ min.*: .*Maintenance and fault dispatcher [\d.]+ min.*\.$/);
+  await expect(n2.locator(".play-line")).toHaveAttribute("aria-label", /^Exit signal N2: Out of order for [\d.]+ min.*, from 08:13 to 08:\d\d$/);
+  expect(await n2.locator(".play-line i").count()).toBeGreaterThan(2);
+  await expect(n2.locator(".play-stretches li").first()).toContainText("until a team was sent: Maintenance and fault dispatcher");
+  await expect(n2.locator(".play-stretches li").filter({ hasText: "on the road" })).toHaveCount(1);
+  await expect(n2.locator(".play-effects li").first()).toContainText("on the substitute signal Zs 1");
+  expect(await chain.locator(".play-thread").count()).toBeGreaterThan(1);
+  await expect(chain.locator(".play-keys li").filter({ hasText: "Maintenance and fault dispatcher" })).toHaveText(/: [\d.]+ min \(\d+ %\)$/);
+  // the bars of the faults share the shift's time line: none sticks out
+  expect(await chain.evaluate((el) => [...el.querySelectorAll(".play-line i")].every((i) => i.offsetLeft >= 0 && i.offsetLeft + i.offsetWidth <= i.parentElement.clientWidth + 1))).toBe(true);
   await expect(page.locator("#result .play-debrief li")).toHaveCount(4);
   await expect(page.locator("#result .play-debrief li").first()).toContainText("How long did the trains of track G2 wait");
   // finishing removes the save

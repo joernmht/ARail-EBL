@@ -326,6 +326,35 @@ This is the base of three things:
   session, the devices as views) uses the same record and suits online play. The engine does not
   decide between the two; the choice (#106) can be made per mode.
 
+## What led to what
+
+A session's result says how each seat scored. It does not say why. In a shift with several roles,
+the why lies between them: a signal was out of order for twenty minutes, and of these the
+signaller took one to report it, the dispatcher eight to send a team (both teams were at other
+faults), five went by on the road, two until the track was closed, four for a provisional repair,
+which failed again. `Session.threads()` (`chain.js`) reads this from the flows alone:
+
+- A flow that names a fault (`payload.fault`) is a step of that fault's **thread**: the fault
+  report, the repair status (dispatched, arrived, diagnosed, working, done, secured, left,
+  relapsed), the closure request, the track closed and opened.
+- Between two steps lies a **stretch** of time, and somebody or something was waited for: the
+  reporter, the dispatcher (a team to send, the closure to ask for, the word on what to do), the
+  signaller (the track to close, to open again), the road, the team's work. Each stretch has
+  whose it was (a seat's id, `road`, `team`, or `others` for somebody who is not seated).
+  While a repair held, the fault was not out of order.
+- While a fault waited for a team, the thread says where the teams were (**meanwhile**): that is
+  the price of the dispatcher's order of work, in the open.
+- What the fault did in a game's own world, the game says in its account: a
+  `performance-report` may carry `effects` (`{fault, text}`): "RB 33 left G2 on the substitute
+  signal Zs 1, 1 min late", "held or slowed about 2 trains".
+
+A game that wants its faults in the chain gives these flows with the fault's id; `since_s` on a
+thread's first step says how long the fault stood before it (from the failure to its report, from
+the report to the first team), and on the cause found how long the looking took. The play page
+draws the threads on the result screen: every fault on the time line of the shift, each stretch in
+the colour of whose it was, the minutes by whose they were, and what it did. This is what the
+debrief starts from.
+
 ## Modes and difficulty
 
 How the modes of #104 map onto the engine:
@@ -484,7 +513,8 @@ the same ports would be its full form.
 12. Add the game to `games.js` and `index.js`, a mission that seats it (alone, and with the roles
     it exchanges flows with), tests (alone with its computer player on every level; a careless
     player; that the choices matter; each flow it takes and gives; in a session), and its model
-    on the architecture page.
+    on the architecture page. Give its faults and what they did as flows that name the fault, so
+    that the result can say what led to what.
 13. People in a game get bird names (see [CONTRIBUTING](../CONTRIBUTING.md)).
 
 ## What comes next

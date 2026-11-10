@@ -8,7 +8,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  FLOWS, GAMES, Game, MISSION_FORMAT, Player, SCALES, Session, clockAt, flowOf, gameOfRole, normalizeMission, play, playedIn, testRun, validateFlows, validateMission, wiring,
+  FLOWS, GAMES, Game, MISSION_FORMAT, Player, SCALES, STRETCHES, Session, clockAt, flowOf, gameOfRole, normalizeMission, play, playedIn, testRun, threads, validateFlows, validateMission, wiring,
 } from "../../web/arail/game/index.js";
 import { ROOT } from "./helpers.js";
 
@@ -355,4 +355,93 @@ test("the missions of the site: listed, sound, their roles in the catalogue, and
     const s = play(doc);
     assert.deepEqual([...s.seats.values()].map((x) => x.by), doc.roles.map((r) => r.seat ?? "computer"));
   }
+});
+
+test("what led to what: a fault's thread from the flows, each stretch of its time with whose it was", () => {
+  // the flows of a made-up shift: a failure reported after a minute, a team sent after two more, the road, the
+  // closure asked for and given, the cause, the word, a provisional repair that fails again, a second team to the end
+  const line = (t, flow, seat, payload, to = []) => ({ phase: 0, round: 1, t, flow, seat, to, payload });
+  const S = "signaller", D = "dispatcher";
+  const flows = [
+    line(100, "repair-status", D, { fault: "x", asset: "Point X", place: "Waldau", state: "dispatched", team: "Team A", since_s: 40 }),
+    line(160, "fault-report", S, { fault: "N2", asset: "Exit signal N2", place: "Bf Neustadt", track: "G2", since_s: 60 }, [D]),
+    line(280, "repair-status", D, { fault: "N2", state: "dispatched", team: "Team B", since_s: 120 }),
+    line(400, "repair-status", D, { fault: "x", state: "arrived", team: "Team A" }),
+    line(580, "repair-status", D, { fault: "N2", state: "arrived", team: "Team B" }),
+    line(610, "closure-request", D, { fault: "N2", track: "G2" }),
+    line(700, "track-closure", S, { fault: "N2", track: "G2", closed: true }),
+    line(760, "repair-status", D, { fault: "N2", state: "diagnosed", cause: "water", team: "Team B", since_s: 60 }),
+    line(800, "repair-status", D, { fault: "N2", state: "working", provisional: true, team: "Team B" }),
+    line(1040, "repair-status", D, { fault: "N2", state: "done", provisional: true, team: "Team B" }),
+    line(1100, "track-closure", S, { fault: "N2", track: "G2", closed: false }),
+    line(1500, "repair-status", D, { fault: "N2", state: "relapsed" }),
+    line(1700, "repair-status", D, { fault: "N2", state: "dispatched", team: "Team B" }),
+    line(2400, "performance-report", S, { effects: [{ fault: "N2", text: "RB 33 left on Zs 1" }, { fault: "nothing", text: "not a fault of the shift" }] }),
+    line(2400, "delay-notice", S, { train: "RB 33" }),
+  ];
+  const list = threads(flows, { endOf: () => 2400 });
+  assert.deepEqual(list.map((th) => [th.fault, th.asset, th.place, th.track, th.state, th.relapses]), [["x", "Point X", "Waldau", null, "open", 0], ["N2", "Exit signal N2", "Bf Neustadt", "G2", "open", 1]]);
+  const n2 = list[1];
+  assert.deepEqual(n2.stretches.map((x) => [x.from, x.to, x.kind, x.by]), [
+    [100, 160, "unreported", S],
+    [160, 280, "unsent", D],
+    [280, 580, "road", "road"],
+    [580, 610, "unasked", D],
+    [610, 700, "unclosed", S],
+    [700, 760, "finding", "team"],
+    [760, 800, "undecided", D],
+    [800, 1040, "repair", "team"],
+    [1040, 1100, "unopened", S],
+    [1100, 1500, "held", null],
+    [1500, 1700, "unsent", D],
+    [1700, 2400, "road", "road"],
+  ]);
+  assert.deepEqual(n2.stretches.filter((x) => x.provisional || x.open).map((x) => [x.kind, x.provisional, x.open]), [["repair", true, false], ["road", false, true]]);
+  // the minutes out of order (not while the repair held), by whose they were
+  assert.equal(n2.out_s, 2400 - 100 - 400);
+  assert.deepEqual(n2.by, { [S]: 60 + 90 + 60, [D]: 120 + 30 + 40 + 200, road: 300 + 700, team: 60 + 240 });
+  assert.deepEqual([n2.from, n2.to], [100, 2400]);
+  assert.deepEqual(n2.effects, ["RB 33 left on Zs 1"]);
+  // while N2 waited for a team, the other team was at Point X (to the end: it was never done there)
+  assert.deepEqual(n2.stretches.filter((x) => x.kind === "unsent").map((x) => x.meanwhile), [[{ team: "Team A", asset: "Point X" }], [{ team: "Team A", asset: "Point X" }]]);
+  // the other fault: no report as a flow, the first team after forty seconds; no track, so the team looks at once
+  assert.deepEqual(list[0].stretches.map((x) => [x.from, x.to, x.kind, x.by, x.open]), [[60, 100, "unsent", D, false], [100, 400, "road", "road", false], [400, 2400, "finding", "team", true]]);
+  assert.deepEqual(list[0].stretches[0].meanwhile, []);
+  // nothing that names a fault: no threads; a phase of its own per thread
+  assert.deepEqual(threads([line(5, "budget", "mp", { eur: 1 })]), []);
+  assert.deepEqual(threads([...flows, { ...flows[1], phase: 3, round: 2 }]).map((th) => [th.phase, th.fault]), [[0, "x"], [0, "N2"], [3, "N2"]]);
+  for (const k of Object.values(STRETCHES)) assert.ok(k.text && (k.by === null || ["reporter", "dispatcher", "signaller", "road", "team"].includes(k.by)));
+});
+
+test("what led to what in a played morning: the threads add up to the games' own minutes, and name what the failure did", () => {
+  for (const seed of [1, 4, 35]) {
+    const s = play({ format: MISSION_FORMAT, id: "morning", title: "Morning", text: "A test.", roles: [{ role: "signaller-relay", game: "signaller" }, { role: "maintenance-dispatcher", game: "maintenance" }] }, { seed }).run();
+    const sig = s.seat("signaller-relay").game, mt = s.seat("maintenance-dispatcher").game, list = s.threads();
+    // a thread for every fault that got a team, and for the signaller's
+    const got = mt.faults.filter((f) => f.reported != null && (f.remote || s.flows.some((x) => x.flow === "repair-status" && x.payload.fault === f.id)));
+    assert.deepEqual(list.map((th) => th.fault).sort(), got.map((f) => f.id).sort(), `seed ${seed}`);
+    for (const th of list) {
+      const f = mt.fault(th.fault);
+      // the stretches follow each other without a gap, from the failure to the last step or the end of the shift
+      for (const [i, x] of th.stretches.entries()) assert.ok(x.to > x.from && (i === 0 || Math.abs(x.from - th.stretches[i - 1].to) < 6), `seed ${seed}, ${th.fault}: ${JSON.stringify(th.stretches.map((y) => [y.from, y.to, y.kind]))}`);
+      // out of order as long as the dispatcher's game says (the signaller's: from the failure, and until the track is open again)
+      if (!f.remote) assert.ok(Math.abs(th.out_s - mt.outage(f, 2400)) < 12, `seed ${seed}, ${th.fault}: ${th.out_s} against ${mt.outage(f, 2400)}`);
+      assert.equal(th.state, f.done == null ? "open" : f.provisional ? "provisional" : "repaired");
+      assert.equal(th.relapses, f.relapses);
+      assert.equal(Object.values(th.by).reduce((a, b) => a + b, 0), th.out_s);
+      for (const who of Object.keys(th.by)) assert.ok(["road", "team", "others", "signaller-relay", "maintenance-dispatcher"].includes(who), who);
+    }
+    const n2 = list.find((th) => th.fault === "N2");
+    assert.ok(n2.effects.length >= 1 && n2.effects.every((e) => typeof e === "string"), `seed ${seed}`);
+    assert.deepEqual(n2.effects, sig.effects().map((e) => e.text));
+    assert.ok(Math.abs(n2.from - sig.failure.at) < 2, `${n2.from} against ${sig.failure.at}`);
+  }
+  // seed 35: the provisional repair of N2 did not hold; the trains that paid for the failure are named
+  const s = play({ format: MISSION_FORMAT, id: "morning", title: "Morning", text: "A test.", roles: [{ role: "signaller-relay", game: "signaller" }, { role: "maintenance-dispatcher", game: "maintenance" }] }, { seed: 35 }).run();
+  const n2 = s.threads().find((th) => th.fault === "N2");
+  assert.deepEqual(n2.stretches.map((x) => x.kind), ["unsent", "road", "finding", "repair", "held", "unsent"]);
+  assert.equal(n2.stretches[3].provisional, true);
+  assert.equal(n2.stretches.at(-1).open, true);
+  assert.ok(n2.stretches.at(-1).meanwhile.length >= 1);
+  assert.deepEqual(n2.effects, ["RB 33 left G2 on the substitute signal Zs 1, 1 min late", "GZ 49 ran through G3 instead of G2", "the connection from RB 33 to RB 34 was kept"]);
 });

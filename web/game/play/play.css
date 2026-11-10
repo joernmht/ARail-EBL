@@ -148,4 +148,31 @@ main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
 .play-result .game-card > h3 { font-size: 1.05rem; }
 .play-result .game-card > h4 { font-size: .95rem; margin-top: 14px; }
 .play-debrief { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+/* what led to what: a time line per fault, its stretches in the colour of whose they were */
+.play-chain { display: grid; gap: 10px; }
+.play-chain .play-chain-phase { margin-top: 6px; }
+.play-keys { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .9rem; }
+.play-keys li { display: flex; align-items: center; gap: 6px; }
+.play-chain .key { display: inline-block; width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.play-thread { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; }
+.play-thread h4 { font-size: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.play-line { position: relative; height: 18px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.play-line i { position: absolute; top: 0; bottom: 0; min-width: 2px; box-shadow: inset -1px 0 0 var(--surface); }
+.play-line-ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: .74rem; color: var(--text-2); margin-top: -4px; }
+.play-chain .by-seat-0 { background: var(--accent); }
+.play-chain .by-seat-1 { background: var(--warn); }
+.play-chain .by-seat-2 { background: var(--danger); }
+.play-chain .by-seat-3 { background: var(--board-line); }
+.play-chain .by-road { background: repeating-linear-gradient(135deg, var(--text-2) 0 4px, transparent 4px 8px); }
+.play-chain .by-team { background: var(--text-2); }
+.play-chain .by-others { background: var(--board); }
+.play-chain .held, .play-chain .by-none { background: none; border: 1px dashed var(--text-2); box-shadow: none; }
+.play-stretches { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: .9rem; }
+.play-stretches li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 8px; align-items: baseline; }
+.play-stretches .when { font-family: var(--mono); font-size: .8rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.play-stretches .key { align-self: center; }
+.play-stretches em { font-style: normal; font-weight: 600; }
+.play-effects-title { font-weight: 600; margin-top: 4px; }
+.play-effects { margin: 0; padding-left: 1.2em; font-size: .9rem; }
+@media (forced-colors: active) { .play-line i, .play-chain .key { forced-color-adjust: none; } }
 @media (forced-colors: active) { .play-progress i, .score-parts .meter i { forced-color-adjust: none; background: CanvasText; } }

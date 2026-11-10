@@ -503,7 +503,7 @@ export class SignallerGame extends Game {
     if (!f?.started || f.reported != null) return false;
     f.reported = this.t;
     const track = STATION.sections[STATION.signals[f.signal].section].track;
-    this.give("fault-report", { fault: f.signal, asset: `Exit signal ${f.signal}`, kind: "lamp failure", place: STATION.name, track, holds: this.trains.filter((tr) => tr.state !== "gone" && tr.plan === track).length });
+    this.give("fault-report", { fault: f.signal, asset: `Exit signal ${f.signal}`, kind: "lamp failure", place: STATION.name, track, holds: this.trains.filter((tr) => tr.state !== "gone" && tr.plan === track).length, since_s: Math.round(this.t - f.at) });
     if (this.team.remote) {
       this.team = { ...this.team, state: "called", at: null, waited: 0 };
       this.log(`${clockOf(this.t)} Fault of ${f.signal} reported to the maintenance dispatcher.`, "fault");
@@ -712,6 +712,7 @@ export class SignallerGame extends Game {
     if (!r || r.train || !this._mayPass(tr, sig)) return;
     r.train = tr.id;
     r.zs1 = this.signals[sig].zs1;
+    if (r.zs1) tr.zs1 = sig;
     tr.routes.push(r);
     tr.path.push(...r.def.sections);
   }
@@ -901,8 +902,34 @@ export class SignallerGame extends Game {
       delay_min: Math.round(rep.reduce((a, r) => a + r.delay, 0) * 10) / 10, late: rep.filter((r) => r.delay >= 3).length,
       connections: cons.length, connections_kept: cons.filter((c) => c.kept).length,
       faults: f?.started ? 1 : 0, restore_min: f?.repaired != null ? Math.round((f.repaired - f.at) / 6) / 10 : null,
-      violations: this.violations.length, score: this.score().total,
+      violations: this.violations.length, score: this.score().total, effects: this.effects(),
     });
+  }
+
+  /**
+   * What the failed signal did to the trains, in words: who left on the substitute signal, who used another
+   * track, who did not get away, and what became of the connections of those trains.
+   * @returns {Array<{fault: string, text: string}>}
+   */
+  effects() {
+    const f = this.failure;
+    if (!f?.started) return [];
+    const track = STATION.sections[STATION.signals[f.signal].section].track, rep = new Map(this.report().map((r) => [r.id, r]));
+    const late = (tr) => (rep.get(tr.id).delay >= 1 ? `, ${Math.round(rep.get(tr.id).delay)} min late` : "");
+    const hit = new Set(), out = [];
+    for (const tr of this.trains) {
+      const seen = tr.arrived ?? tr.passed ?? tr.departed;
+      let text = null;
+      if (tr.zs1 === f.signal) text = `${tr.id} left ${track} on the substitute signal Zs 1${late(tr)}`;
+      else if (tr.plan === track && tr.track && tr.track !== track && seen != null && seen >= f.at) text = `${tr.id} ${tr.stops ? "stopped at" : "ran through"} ${tr.track} instead of ${track}${late(tr)}`;
+      else if (tr.plan === track && tr.state !== "gone" && tr.due >= f.at) text = `${tr.id} did not get away`;
+      if (!text) continue;
+      hit.add(tr.id);
+      out.push(text);
+    }
+    for (const c of this.connections()) if (c.kept != null && (hit.has(c.from) || hit.has(c.to))) out.push(`the connection from ${c.from} to ${c.to} was ${c.kept ? "kept" : "lost"}`);
+    if (!out.length) out.push("no train was planned through it while it was out of order");
+    return out.map((text) => ({ fault: f.signal, text }));
   }
 
   /** The right answer to a short question (a decision `quiz-…`), for computer players and tests. */

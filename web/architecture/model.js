@@ -123,8 +123,8 @@ export const PACKAGES = [
   },
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
-    summary: "The role games, apart from the framework (their own entry, game/index.js; no framework package imports them): the game core (a role at work: clock, resources, decisions, moves, rules, objectives, score, ports), the flows between roles, sessions and missions (the big game: roles wired by their flows, in turns and shifts), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the role games.",
-    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js", "web/arail/game/lab.js", "web/arail/game/transport-control.js", "web/arail/game/asset-manager.js", "web/arail/game/contract-manager.js", "web/arail/game/budget.js"],
+    summary: "The role games, apart from the framework (their own entry, game/index.js; no framework package imports them): the game core (a role at work: clock, resources, decisions, moves, rules, objectives, score, ports), the flows between roles, sessions and missions (the big game: roles wired by their flows, in turns and shifts; what led to what, read from the flows), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the role games.",
+    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/chain.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js", "web/arail/game/lab.js", "web/arail/game/transport-control.js", "web/arail/game/asset-manager.js", "web/arail/game/contract-manager.js", "web/arail/game/budget.js"],
     uses: ["core-math"],
   },
   {
