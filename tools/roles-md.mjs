@@ -108,6 +108,13 @@ export function rolesMarkdown(cat) {
       for (const f of fs) out.push(`| <a id="flow-${f.id}"></a>${cell(f.name)} | ${cell(f.name_de)} | ${f.kind} | ${f.scale} | ${fg.flows.get(f.id)?.gives.size ?? 0} | ${fg.flows.get(f.id)?.takes.size ?? 0} | ${cell(f.text)} |`);
       out.push("");
     }
+    if (cat.flow_notes?.length) {
+      out.push('<a id="flow-notes"></a>', "", "### Where the flows are stretched", "", "Notes from writing down who gives what to whom: what two roles exchange that no flow fits well, with the flow used instead. They are the open points of the catalogue of flows, to be settled when the flows are reviewed.", "");
+      for (const f of cat.families) {
+        const ns = cat.flow_notes.filter((n) => n.family === f.id);
+        if (ns.length) out.push(`**${cell(f.name)}**`, "", ...ns.map((n) => `- ${cell(n.text)}`), "");
+      }
+    }
     out.push('<a id="parties"></a>', "", "## Parties", "", "The organisations and groups the roles belong to.", "", "| Party | German | Roles |", "| --- | --- | --- |");
     for (const p of PARTIES) {
       const rs = cat.roles.filter((r) => r.party === p.id);

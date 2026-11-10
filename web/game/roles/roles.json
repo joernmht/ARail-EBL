@@ -34,6 +34,372 @@
    "name": "Corporate functions, safety, education and research"
   }
  ],
+ "flow_notes": [
+  {
+   "family": "politics",
+   "text": "bundestag-transport-mp -> federal-transport-minister: parliamentary questions (written question, Kleine Anfrage) and the ministry's answer; used political-demand"
+  },
+  {
+   "family": "politics",
+   "text": "bundestag-budget-mp -> federal-audit-officer: request for an advisory report (§ 88 (2) BHO), a request to an independent court, not an order; used work-order"
+  },
+  {
+   "family": "politics",
+   "text": "eba-planning-approval-officer -> major-project-manager, hoai-planner: documents declared incomplete, EIA or plan change required during the procedure; used supervisory-order. eba-authorisation-officer and era-officer -> applicants and assessors: issues raised on a file (issue log); used audit-finding"
+  },
+  {
+   "family": "politics",
+   "text": "eba-authorisation-officer <-> era-officer: the national part of an application passed to the EBA (used application) and the EBA's assessment of it back (used expert-report)"
+  },
+  {
+   "family": "politics",
+   "text": "transport-authority-contract-manager -> ru-operations-manager, ru-control-dispatcher, rail-replacement-coordinator: contractual consent to an emergency timetable or replacement buses; used approval"
+  },
+  {
+   "family": "politics",
+   "text": "transport-authority-planner -> timetable-planner (and asset-manager): request to the infrastructure manager for an infrastructure measure (passing loop, faster junction); folded into service-concept"
+  },
+  {
+   "family": "politics",
+   "text": "state-transport-minister -> spatial-planning-officer, state-railway-supervisor: the decision to reactivate a line; used service-concept"
+  },
+  {
+   "family": "politics",
+   "text": "eu-commission-officer -> applicants: CEF call for proposals (a grant call, answered by applications, not bids); used tender. State aid view or clearance (DG COMP decides); used approval"
+  },
+  {
+   "family": "politics",
+   "text": "mayor -> property-manager, station-manager, retail-tenant, resident: municipal development plan (Bebauungsplan); used planning-approval. mayor -> district-administrator: district levy (Kreisumlage); used payment"
+  },
+  {
+   "family": "politics",
+   "text": "beu-investigator -> emergency-manager: securing of evidence and release of the accident site; used supervisory-order. train-driver, signaller-relay -> beu-investigator: interviews of the staff involved; used incident-report"
+  },
+  {
+   "family": "politics",
+   "text": "district-administrator -> rescue-incident-commander, emergency-manager: disaster declaration and the crisis staff's orders; used supervisory-order"
+  },
+  {
+   "family": "politics",
+   "text": "federal-shareholder-officer -> DB companies: the owner's votes on the supervisory board (business plan, investments, board contracts); folded into targets"
+  },
+  {
+   "family": "politics",
+   "text": "accident-insurance-inspector -> companies: accident prevention regulations of the insurers (DGUV Vorschriften); used legislation. Its advice without an order has no flow"
+  },
+  {
+   "family": "politics",
+   "text": "federal-audit-officer -> BMV, EBA, DB: request for documents for an audit; no flow, only the records back (performance-report)"
+  },
+  {
+   "family": "im-operations",
+   "text": "signaller-mechanical <-> block-crossing-keeper (points box): the command and consent through the station block (Befehlsabgabe, Zustimmung) have no flow of their own; used train-report"
+  },
+  {
+   "family": "im-operations",
+   "text": "block-crossing-keeper -> resident, mayor: road waiting time at the closed barriers is no flow; covered by complaint taken from them"
+  },
+  {
+   "family": "im-operations",
+   "text": "emergency-manager -> train-driver: the on-site decision to evacuate or tow a stranded train has no flow (an instruction to a train crew at an incident); only incident-report taken from the driver"
+  },
+  {
+   "family": "im-operations",
+   "text": "emergency-manager -> railway-psychologist: the call for care after an accident; used work-order"
+  },
+  {
+   "family": "im-operations",
+   "text": "timetable-planner -> bnetza-regulator: the notice of an intended path rejection or congestion declaration is no application in the strict sense; used application"
+  },
+  {
+   "family": "im-operations",
+   "text": "track-access-sales, im-operations-manager -> legal-counsel: no flow for a request for legal advice or a legal opinion; used claim and incident-report"
+  },
+  {
+   "family": "im-operations",
+   "text": "alv, maintenance-district-manager -> im-operations-manager: an internal request to deviate from company rules; used application, the approval is part of operating-rule"
+  },
+  {
+   "family": "im-operations",
+   "text": "operations-district-manager -> hr-recruiter: the vacancies and training places to fill (a recruitment request); used staff-plan"
+  },
+  {
+   "family": "im-operations",
+   "text": "federal-police-officer -> station-manager: joint crowd planning for events; used situation-report"
+  },
+  {
+   "family": "im-operations",
+   "text": "signaller-electronic -> platform-dispatcher: a platform change; used dispatching-order"
+  },
+  {
+   "family": "im-operations",
+   "text": "branch-line-controller -> siding-owner: a trip to the siding accepted or refused; used dispatching-order"
+  },
+  {
+   "family": "im-operations",
+   "text": "im-executive -> press-officer: the board's line for public statements (internal briefing of the press office); used press-report"
+  },
+  {
+   "family": "im-assets",
+   "text": "lookout -> foreman, track-worker, track-machine-operator, technicians, rail-welder: the warning of an approaching train (Ro 1 to Ro 3) and the all-clear; no flow for a warning, used safety-plan"
+  },
+  {
+   "family": "im-assets",
+   "text": "train-driver, freight-train-driver -> lookout: only the whistle (Zp 1) passes; no flow, covered by the lookout's emergency-call (stop signal) the other way"
+  },
+  {
+   "family": "im-assets",
+   "text": "asset-manager, major-project-manager -> procurement-manager: the procurement need (requisition with lots and award proposal); used work-order"
+  },
+  {
+   "family": "im-assets",
+   "text": "alv -> maintenance-district-manager: the inspection plan of infrastructure assets (intervals; maintenance-programme is for vehicle types); used work-order"
+  },
+  {
+   "family": "im-assets",
+   "text": "safety-supervisor, construction-supervisor -> foreman, site-manager: the order to stop work on site; used corrective-action (lookout's stop: repair-status)"
+  },
+  {
+   "family": "im-assets",
+   "text": "ot-security-officer -> signalling-industry-engineer: release of remote maintenance access or of a patch by the company, not an authority; used approval. The BSI (receiver of the KRITIS report) is no role"
+  },
+  {
+   "family": "im-assets",
+   "text": "crossing-law-manager -> mayor, district-administrator, state-transport-minister: the crossing agreement (EKrG § 5) between crossing partners, with cost shares; used service-contract and claim"
+  },
+  {
+   "family": "im-assets",
+   "text": "legal-counsel -> crossing-law-manager: in-house legal advice; used expert-report"
+  },
+  {
+   "family": "im-assets",
+   "text": "major-project-manager -> timetable-planner: commissioning date and new capacity; used design-documents. major-project-manager -> asset-manager: handover of the finished installation to the operator; used acceptance"
+  },
+  {
+   "family": "im-assets",
+   "text": "maintenance-district-manager -> hr-recruiter: request for posts and apprentices; used staff-plan"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "ru-operations-manager to crew-planner and rotation-planner: the internal safety sign-off of a roster and the route compatibility clearance of a vehicle type; used approval, which the catalogue defines as an authority's"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "ru-operations-manager to ru-managing-director: the request for a safety budget; used performance-report (no flow for a budget request)"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "ru-control-dispatcher to network-controller: the wish for a different order of trains or an extra stop; used connection-request"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "crew-planner and driver-team-leader to driver-instructor, occupational-physician and railway-psychologist: staff sent for training, a fitness check or care after an accident; used work-order (no flow for a training or examination order)"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "bid-manager to service-planner, rotation-planner and crew-planner: the operating concept promised in the bid; used service-concept, which the catalogue defines as the authority's"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "security-officer to commuter and student-traveller: a station ban or removal under house rights (Hausverbot), likewise the exclusion from travel by train-manager and conductor; no flow, noted under passenger-information for the security officer"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "conductor to passengers: the increased fare (erhöhtes Beförderungsentgelt); used claim"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "onboard-caterer: stock ordered at a supply point and food sold on board; no catering supply role and no flow for goods sold, only payment from passengers"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "mobility-service-agent from three-s-centre-operator and station-manager: lifts out of order; used asset-condition, because fault-report runs towards the repairer"
+  },
+  {
+   "family": "ru-passenger",
+   "text": "train-cleaner and transport-authority-contract-manager: no direct exchange in practice; used audit-finding for the authority's testers' cleanliness scores"
+  },
+  {
+   "family": "freight",
+   "text": "forwarder, shipper, freight-customer-service-agent -> customs-officer: a customs or transit declaration (T1, CIM note as transit data) lodged for clearance; no flow for a declaration, used application (and approval / consignment-handover back)"
+  },
+  {
+   "family": "freight",
+   "text": "dangerous-goods-adviser -> rescue-incident-commander (also freight-train-driver -> emergency-manager): substance data, UN number and wagon list handed over on site; no flow for specialist advice in an incident, used situation-report"
+  },
+  {
+   "family": "freight",
+   "text": "freight-managing-director, shipper -> lobby-representative: a member company's position handed to its association (not yet a demand to politicians); used political-demand"
+  },
+  {
+   "family": "freight",
+   "text": "hump-operator -> yard-master, crane-operator -> terminal-dispatcher, shunter -> yard-master: the report that a handling order is done (tracks sorted, moves done, train loaded); no own flow, used train-report"
+  },
+  {
+   "family": "freight",
+   "text": "finance-controller -> freight-sales-manager: cost rates for the calculation of a bid; no fitting flow, only the reverse performance-report is entered"
+  },
+  {
+   "family": "freight",
+   "text": "freight-customer-service-agent -> shipper, forwarder: demurrage (Standgeld) is a tariff charge rather than a contract penalty; used penalty (its text names a late release)"
+  },
+  {
+   "family": "freight",
+   "text": "freight-sales-manager -> production (dispatcher, planner): the request to confirm locomotive, driver and path for a quote, and the confirmation back; used transport-order one way, nothing back"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "fleet-manager -> maintenance-development-engineer: the request for a one-off interval extension (an internal request for a release, not to an authority); used application, the answer is in maintenance-programme"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "ecm-manager, maintenance-development-engineer, homologation-manager, safety-manager -> conformity-assessor / safety-assessor: the commission of an assessment body and the evidence file handed to it; used work-order (commission), design-documents (evidence) and application (ECM certification); the body's offer is bid"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "homologation-manager / manufacturer-project-manager -> vehicle-procurement-manager, industry-sales-manager: a project schedule notice (authorisation date slipped, delivery re-baselined); no flow for a schedule forecast outside train running; used approval and vehicle-delivery"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "workshop-manager -> hr-recruiter and works-council-member: posts to fill (labour demand) and a shift model submitted for consent; used staff-plan"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "signalling-industry-engineer -> signaller-electronic, signaller-digital: the handover of a commissioned interlocking with its known errors and operating restrictions; used asset-condition"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "vehicle-procurement-manager -> bid-manager: vehicle prices and delivery dates passed on inside the undertaking for the bid calculation (not a binding offer); used bid"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "rail-contractor-estimator <-> site-manager: the working estimate handed to the site (used budget) and the daily site reports that back a claim (used performance-report)"
+  },
+  {
+   "family": "rolling-stock",
+   "text": "rolling-stock-assembler -> test-engineer: a finished unit passed from the plant to testing inside the manufacturer; used repair-status (vehicle-delivery is the handover to the operator)"
+  },
+  {
+   "family": "stations-public",
+   "text": "three-s-centre-operator, federal-police-officer, station-service-staff -> station-mission-worker: a helpless, lost or stranded person handed over for care (no flow for a social referral); used assistance-booking"
+  },
+  {
+   "family": "stations-public",
+   "text": "bus-driver -> taxi-driver: a taxi called for a passenger at night (Taxiruf), which replaces no train; used replacement-transport-order"
+  },
+  {
+   "family": "stations-public",
+   "text": "student-traveller -> hr-recruiter: a job or apprenticeship application (the flow application is meant for authorities and funders); used application"
+  },
+  {
+   "family": "stations-public",
+   "text": "engineering-student -> student-traveller: study and career advice from student to pupil (the catalogue's career link, no real handover); used qualification"
+  },
+  {
+   "family": "stations-public",
+   "text": "resident, environmental-association, union-official <-> lobby-representative and each other: alliances and joint campaigns (no flow for a coalition); used political-demand"
+  },
+  {
+   "family": "stations-public",
+   "text": "journalist -> press-officer, federal-police-officer, union-official, beu-investigator: the press inquiry (Presseanfrage) has no flow; only the answer is modelled, as press-report in takes"
+  },
+  {
+   "family": "stations-public",
+   "text": "train-driver, conductor -> works-council-member, union-official and works-council-member -> management: employee grievances (§§ 84, 85 BetrVG); used complaint, which the catalogue defines for passengers, customers, tenants and residents"
+  },
+  {
+   "family": "stations-public",
+   "text": "works-council-member -> ru-managing-director: reconciliation of interests and social plan; used claim. union-official: bargaining demands and the employer's offer have no flow; folded into collective-agreement"
+  },
+  {
+   "family": "stations-public",
+   "text": "commuter, leisure-traveller, student-traveller -> transport-authority-planner, revenue-manager: demand and mode choice (ridership) are not a flow; only payment, complaint and political-demand are given"
+  },
+  {
+   "family": "stations-public",
+   "text": "taxi-driver, retail-tenant, bus-driver -> travellers: the service itself (a ride, food) has no flow; modelled as payment from the traveller"
+  },
+  {
+   "family": "stations-public",
+   "text": "rescue-incident-commander -> emergency-manager: request for the railway's rescue train or for dangerous goods experts (TUIS); no flow, folded into situation-report"
+  },
+  {
+   "family": "stations-public",
+   "text": "train-cleaner -> station-cleaner: waste and dirt left on the platform after train cleaning; used fault-report (the ru-passenger file has work-order for the same pair)"
+  },
+  {
+   "family": "stations-public",
+   "text": "station-mission-worker -> district-administrator: report of a risk to a child's welfare to the youth office; used incident-report"
+  },
+  {
+   "family": "stations-public",
+   "text": "three-s-centre-operator -> federal-police-officer: video footage released as evidence on a lawful request; used incident-report"
+  },
+  {
+   "family": "corporate",
+   "text": "hr-recruiter -> train-driver, freight-train-driver, rail-apprentice: a job offer and the employment or apprenticeship contract; used service-contract"
+  },
+  {
+   "family": "corporate",
+   "text": "hr-recruiter, occupational-physician -> occupational-physician, railway-psychologist, driver-instructor: a person referred for an examination or a course; used work-order"
+  },
+  {
+   "family": "corporate",
+   "text": "engineering-student, rail-apprentice -> hr-recruiter, consultant, timetable-planner, professor: a job, internship or apprenticeship application (no authority involved); used application"
+  },
+  {
+   "family": "corporate",
+   "text": "professor, researcher, signaller-instructor -> engineering-student, rail-apprentice: teaching itself (curriculum, lectures, lab sessions); only its result has a flow (qualification); used work-order and timetable for the lab"
+  },
+  {
+   "family": "corporate",
+   "text": "timetable-planner, asset-manager -> researcher: operating and asset data for research under a non-disclosure agreement; used timetable and asset-condition"
+  },
+  {
+   "family": "corporate",
+   "text": "legal-counsel -> finance-controller, major-project-manager, press-officer, passenger-rights-agent, compliance-officer, procurement-manager: in-house legal advice and litigation reserves; used expert-report although the adviser is not independent"
+  },
+  {
+   "family": "corporate",
+   "text": "finance-controller -> bid-manager: the internal cost calculation and price of a bid; used bid"
+  },
+  {
+   "family": "corporate",
+   "text": "asset-manager, major-project-manager, vehicle-procurement-manager -> procurement-manager: a purchase requisition; used work-order"
+  },
+  {
+   "family": "corporate",
+   "text": "construction-supervisor, site-manager, industry-sales-manager, rail-contractor-estimator -> compliance-officer: a whistleblower report; used complaint"
+  },
+  {
+   "family": "corporate",
+   "text": "environmental-manager -> vegetation-winter-coordinator, possession-planner, site-manager: environmental conditions on works (breeding season, night noise); used operating-rule"
+  },
+  {
+   "family": "corporate",
+   "text": "digital-rail-programme-manager -> im-operations-manager, timetable-planner, signaller-digital: a newly commissioned section handed to operations; used asset-condition"
+  },
+  {
+   "family": "corporate",
+   "text": "digital-rail-programme-manager -> vehicle-procurement-manager, fleet-manager, rosco-manager: the ETCS retrofit deadline per line; used access-terms"
+  },
+  {
+   "family": "corporate",
+   "text": "property-manager <-> major-project-manager, mayor, siding-owner, terminal-manager: land itself (acquired, sold, leased, released from railway purposes); used work-order, bid, service-contract, application and approval"
+  },
+  {
+   "family": "corporate",
+   "text": "transport-authority-planner, state-transport-minister, district-administrator -> property-manager: the consultation before a release from railway purposes; used objection (statement)"
+  },
+  {
+   "family": "corporate",
+   "text": "safety-manager, legal-counsel, compliance-officer -> finance-controller: costs of measures, reserves and recovered damages; no flow for an internal cost transfer, used expert-report or audit-finding or none"
+  },
+  {
+   "family": "corporate",
+   "text": "press-officer -> ru-managing-director, im-executive: the media picture and interview briefing for the board; used situation-report"
+  }
+ ],
  "qualifications": [
   {
    "id": "hauptschulabschluss",

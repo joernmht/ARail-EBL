@@ -17,7 +17,8 @@
  * group it belongs to, an id of PARTIES in flows.js), its `scale` and `horizon` (the rhythm of its
  * routine decisions and how far they reach, of SCALES), and its `gives`: the flows (flows.js) it
  * hands to other roles, each `{flow, to: [roles], what}`; what a role takes is what the others give
- * it (`takesOf`). The catalogue's `qualifications`: school
+ * it (`takesOf`); the catalogue's `flow_notes` (`{family, text}`) say where a flow was stretched to
+ * fit. The catalogue's `qualifications`: school
  * certificates, apprenticeships, degrees, trainings, licences, certificates and exams, each with
  * `kind`, `months`, `requires` (alternatives of sets), `while_working`, `provider`, `note`.
  * @module arail/game/roles
