@@ -8,7 +8,8 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
 - [The idea](#the-idea): every role, from the politician to the cleaning staff
 - [The roles](#the-roles): the role catalogue
 - [A mini game](#a-mini-game): what each role's game has
-- [The game core](#the-game-core): what the games share in the code
+- [The game core](#the-game-core): what the games share in the code, and the engine that joins
+  them ([The game core: one engine for every role](game-core.md))
 - [Two ways to play them together](#two-ways-to-play-them-together): the career mode (a graph of
   possibilities, with the career planner), the railway undertaking's simulator, and the big game
 - [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game
@@ -77,9 +78,10 @@ Every role's game has the same parts, so that it can stand alone and join the bi
 
 ## The game core
 
-`web/arail/game/core.js` is a first, small form of the common game core (#103). The role games have
-their own entry, `web/arail/game/index.js` (the core, the catalogue's checks, the career model, the
-signaller's game): the framework's entry `web/arail/index.js` does not export them, and no part of
+`web/arail/game/core.js` is the common game core (#103); [The game core: one engine for every
+role](game-core.md) describes it and what is built on it: the flows between roles, sessions in turns
+and shifts, missions as data. The role games have their own entry, `web/arail/game/index.js` (the
+core, the flows, sessions and missions, the catalogue's checks, the career model, the role games): the framework's entry `web/arail/index.js` does not export them, and no part of
 the framework imports them, so a layout, a simulation or a plugin loads none of their code (see
 [Using ARail for research](research.md)). A **game** (`class Game`) is one role at work:
 
@@ -87,9 +89,14 @@ the framework imports them, so a layout, a simulation or a plugin loads none of 
 - **resources** (`resource`, `add`, `value`): money, time, staff, counters;
 - **decisions** (`ask`, `decide`, `open`): a title, options, a deadline and a fallback taken at the
   deadline; what an option does is the game's handler;
+- **moves** (`act`): everything a player does, by the name of its method, kept so that a game can
+  be played again;
+- **ports** (`takes`, `gives`, `give`, `take`): the flows a role takes from other roles and gives
+  them; alone, a game plays the other end itself;
 - **rules** (`violate`): a rule broken, with its severity: 1 a slip, 2 a breach, 3 a danger to people;
 - **objectives** (`objectives`) with weights, and the **score** (`score`, 0–100);
-- a **log** and **events** for the page (`log`, `decision`, `decided`, `violation`, `over`);
+- a **log** and **events** for the page (`log`, `decision`, `decided`, `violation`, `move`, `give`,
+  `receive`, `over`), and a **view** (`view`) from which a page can draw a game it does not know;
 - the **result** of a round (`result`): score, rules broken, passed or not, the decisions taken. A
   round is passed with a score of at least 50 and no danger to people. The result is what the career
   mode and the big game take from a round.
@@ -97,7 +104,7 @@ the framework imports them, so a layout, a simulation or a plugin loads none of 
 Games run without the world and without the DOM, in Node and in the browser, and are deterministic:
 the same seed and the same moves at the same times give the same game (random numbers come from
 streams keyed by the seed and their purpose). They can be tested and replayed, and later played by
-computer players for roles nobody plays.
+computer players for roles nobody plays (a game's `static player`).
 
 ## Two ways to play them together
 
@@ -136,8 +143,12 @@ government and the Länder flows to the infrastructure manager and the transport
 tenders and timetables to the railway undertakings; the undertakings' trains to the signallers and
 dispatchers; their delays and faults back to maintenance, customer service and, in the end, to
 politics. The roles run on different time scales (seconds for a signaller, years for a minister); the
-big game couples them by the events between them (#104). Roles nobody plays are played by the
-computer, with the defaults of their decisions.
+big game couples them by what they give each other (#104): a session plays the slow roles in turns
+and the fast ones in shifts, a turn's decisions reach the shift as state (a staff plan, the
+condition of the assets), and the shift's reports reach the next turn; a shift is a sample of its
+period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
+computer. The first two roles are joined: the signaller of Bf Neustadt and the maintenance
+dispatcher of its district (the mission `neustadt-morning`).
 
 ## The signaller of Bf Neustadt
 
