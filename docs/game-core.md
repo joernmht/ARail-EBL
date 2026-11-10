@@ -289,7 +289,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | --- | --- |
 | `roles[]` | The seats: `role` (catalogue id), `game` (the game's id), `seat` (`human` or `computer`, the suggestion; the players choose), `level`, `options` (passed to the game), `weight` (in the score of the whole), `id` (the role unless given; two seats of one role need ids) |
 | `rounds` | How often the phases are played |
-| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (its start, for the display); `rounds` (only in these rounds) |
+| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound); `rounds` (only in these rounds) |
 | `conditions` | What holds and no seat gives: state flows by their id, with their payload |
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
@@ -408,7 +408,8 @@ the other roles' games need not know whether ARail's small station or the lab is
 
 | A flow to the seat | As an intervention in the lab |
 | --- | --- |
-| `connection-request`, or the move *Hold a train* | `hold` the train at the station until a time |
+| `connection-request` | `delay`: the train waits at the station up to the minutes asked beyond its own departure |
+| the move *Hold a train* | `hold` the train at the station until a time, from now |
 | `closure-request`, granted at the seat | `closeTrack`: no route is set into the track; trains due there are sent to another |
 | `repair-status` done | `repairSignal`; then `openTrack` at the seat |
 

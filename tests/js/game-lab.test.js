@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CHUNK_S, EblApi, GAMES, LAG_S, LabGame, LabPlayer, MISSION_FORMAT, normalizeMission, Session } from "../../web/arail/game/index.js";
+import { CHUNK_S, EblApi, GAMES, LAG_S, LabGame, LabPlayer, MISSION_FORMAT, normalizeMission, Session, validateMission } from "../../web/arail/game/index.js";
 
 const T0 = 8 * 3600;
 const hms = (s) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -34,7 +34,16 @@ class SmallLab {
 
   apply(c) {
     this.requests.push(["command", c.kind, c.train ?? c.signal ?? c.track]);
-    if (c.kind === "hold") this.holds.set(c.train, sec(c.until));
+    if (c.kind === "hold" || c.kind === "delay") {
+      const p = this.plan.find((y) => y.train === c.train);
+      // the API refuses what it does not know: nothing is applied
+      if (!p) throw Object.assign(new Error(`the commands have errors; none was applied (no train ${c.train})`), { status: 422 });
+      if (c.kind === "delay") {
+        this.holds.set(c.train, p.dep + c.seconds);
+        return { ...c, ok: true, station: "IN", until: hms(p.dep + c.seconds) };
+      }
+      this.holds.set(c.train, sec(c.until));
+    }
     else if (c.kind === "release") this.holds.delete(c.train);
     else if (c.kind === "failSignal") this.failed.set(c.signal, sec(c.at));
     else if (c.kind === "repairSignal") this.failed.delete(c.signal);
@@ -71,8 +80,7 @@ class SmallLab {
   }
 
   async commands(id, list) {
-    for (const c of list) this.apply(c);
-    return { applied: list };
+    return { applied: list.map((c) => this.apply(c) ?? { ...c, ok: true }) };
   }
 
   async remove(id) {
@@ -138,13 +146,13 @@ test("the player's moves become interventions; a held train leaves late and is t
   assert.match(g.act("openTrack", 3).reason, /not closed/);
   assert.deepEqual(g.act("closeTrack", "3"), { ok: true });
   assert.match(g.act("closeTrack", 3).reason, /already closed/);
-  // a connection asked for by an undertaking is a hold too
+  // a connection asked for by an undertaking: the train waits beyond its own departure (the lab's "delay")
   g.receive({ flow: "connection-request", from: "ru-control-dispatcher", t: 0, payload: { hold: "26611", for: "4914", minutes: 8 } });
   await alone(g, { think() {} });
-  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => [r[1], r[2]]), [["hold", "4914"], ["closeTrack", 3], ["hold", "26611"]]);
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => [r[1], r[2]]), [["hold", "4914"], ["closeTrack", 3], ["delay", "26611"]]);
   assert.equal(g.trains.get("4914").delay_s, 0); // held from 08:00 for 5 min, due at 08:10
-  assert.equal(g.trains.get("26611").delay_s, 180); // due at 08:05, held until 08:08
-  assert.deepEqual(g.outbox.filter((m) => m.flow === "delay-notice").map((m) => [m.payload.train, m.payload.delay_min]), [["26611", 3]]);
+  assert.equal(g.trains.get("26611").delay_s, 480); // due at 08:05, waits up to 8 min beyond it: until 08:13
+  assert.deepEqual(g.outbox.filter((m) => m.flow === "delay-notice").map((m) => [m.payload.train, m.payload.delay_min]), [["26611", 8]]);
   assert.equal(g.value("commands"), 3);
 });
 
@@ -439,7 +447,7 @@ test("a closure request is the failure's only with its fault, or without one for
   assert.equal(g.team.state, "waiting");
 });
 
-test("a connection request that cannot be followed is said at the seat", async () => {
+test("a connection request: the train waits beyond its own departure; one that cannot be followed is said at the seat", async () => {
   const lab = new SmallLab();
   const g = new LabGame({ api: lab, length: 1200 });
   await g.sync();
@@ -449,12 +457,76 @@ test("a connection request that cannot be followed is said at the seat", async (
   assert.deepEqual(g.logs.at(-1), { ...g.logs.at(-1), kind: "request", text: "08:00 A request to hold 4914 for 45 min was not followed: Hold a train for 1 to 30 minutes." });
   ask({ minutes: 3 });
   assert.match(g.logs.at(-1).text, /A request to hold a train for 3 min was not followed: Which train\?/);
-  // one that can be followed is, as before
-  ask({ hold: "4914", minutes: 5 });
-  assert.deepEqual([...g.holds.keys()], ["4914"]);
-  assert.match(g.logs.at(-1).text, /4914 is held at Neustadt until 08:05/);
+  // asked at 08:00 for 3 minutes: 4914 (departure 08:10) waits until 08:13, as at the signaller's, not until 08:03
+  ask({ hold: "4914", for: "26611", minutes: 3 });
+  assert.match(g.logs.at(-1).text, /^08:00 4914 waits at Neustadt up to 3 min beyond its departure, for the passengers of 26611\.$/);
+  assert.deepEqual([...g.holds], [["4914", Infinity]]);
+  assert.match(g.view().tables.find((t) => t.id === "interventions").rows[0][1], /beyond its departure, as asked/);
   await g.sync();
-  assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["hold"]);
+  assert.deepEqual(lab.requests.filter((r) => r[0] === "command"), [["command", "delay", "4914"]]);
+  assert.deepEqual([...g.holds], [["4914", 600 + 180]]);
+  assert.match(g.view().tables.find((t) => t.id === "interventions").rows[0][1], /^until 08:13$/);
+  // a train the lab does not know: refused there, said here; the link holds, and the next intervention goes out
+  ask({ hold: "RB 32", minutes: 3 });
+  g.closeTrack(3);
+  await g.sync();
+  assert.deepEqual([g.link.state, g.holds.has("RB 32"), lab.closed.has(3)], ["ok", false, true]);
+  assert.ok(g.logs.some((l) => /The lab did not take "delay" for RB 32: the commands have errors; none was applied \(no train RB 32\)/.test(l.text)));
+  // the dispatcher's own hold is from now, as before
+  assert.deepEqual(g.act("hold", "4915", 5), { ok: true });
+  assert.deepEqual(g.holds.get("4915"), g.t + 300);
+  // the train leaves at 08:13, three minutes beyond its time
+  while (g.t < 900) {
+    await g.sync();
+    if (!g.holding) g.step(0.5);
+  }
+  await g.sync();
+  assert.equal(g.trains.get("4914").delay_s, 180);
+  assert.equal(g.holds.has("4914"), false);
+});
+
+test("the shift's clock reaches the lab: a mission that begins at 09:00 runs the lab from 09:00", async () => {
+  const lab = new SmallLab();
+  const mission = normalizeMission({
+    format: MISSION_FORMAT, id: "lab", title: "Lab", text: "A test.",
+    roles: [{ role: "train-dispatcher", game: "lab", options: { failure: FAILURE } }, { role: "maintenance-dispatcher", game: "maintenance" }],
+    phases: [{ id: "shift", kind: "shift", roles: ["train-dispatcher", "maintenance-dispatcher"], length: 1200, clock: "09:00" }],
+  }, GAMES);
+  mission.roles[0].options.api = lab;
+  assert.deepEqual(validateMission(mission, GAMES), []);
+  const seen = [];
+  const create = lab.create.bind(lab);
+  lab.create = async (spec) => (seen.push(spec), create(spec));
+  const s = new Session(mission, { games: GAMES, seed: 1 });
+  s.start();
+  await s.sync();
+  // the instance covers the shift as the page shows it, and the scripted failure comes at its time of that day
+  assert.deepEqual([seen[0].start, seen[0].end, seen[0].commands[0].at], ["09:00:00", "09:20:00", "09:13:00"]);
+  const g = s.seat("train-dispatcher").game, mt = s.seat("maintenance-dispatcher").game;
+  assert.equal(g.start, 9 * 3600);
+  assert.match(g.logs[0].text, /^09:00 The shift begins/);
+  // the dispatcher's game tells the time by the same clock
+  assert.equal(mt.start, 9 * 3600);
+  assert.match(mt.logs[0].text, /^09:00 The shift begins/);
+  await s.leave();
+});
+
+test("the API's refusal says what was wrong, and is told apart from a lab that does not answer", async () => {
+  const answer = (status, body) => async () => ({ ok: false, status, json: async () => body });
+  const refused = new EblApi({ url: "https://lab.example", key: "k", fetch: answer(422, { error: { code: "bad_commands", message: "the commands have errors; none was applied", details: [{ index: 0, error: "no train RB 32" }] } }) });
+  await assert.rejects(refused.commands("sim-1", [{ kind: "delay", train: "RB 32" }]), (e) => e.status === 422 && e.message === "the commands have errors; none was applied (no train RB 32)");
+  const gone = new EblApi({ url: "https://lab.example", key: "k", fetch: answer(404, { error: { code: "not_found", message: "no instance sim-1" } }) });
+  await assert.rejects(gone.step("sim-1", 10), (e) => e.status === 404 && e.message === "no instance sim-1");
+  // an instance that is gone is a lost lab, not a refused intervention
+  const lab = new SmallLab();
+  const g = new LabGame({ api: lab, length: 600 });
+  await g.sync();
+  lab.commands = async () => {
+    throw Object.assign(new Error("no instance sim-1"), { status: 404 });
+  };
+  g.closeTrack(3);
+  await g.sync();
+  assert.deepEqual(g.link, { state: "lost", error: "no instance sim-1" });
 });
 
 test("a lab that does not answer: the seat says so and the shift goes on without it; without an address there is no lab", async () => {

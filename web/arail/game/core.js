@@ -29,6 +29,9 @@ export const clockAt = (t, start = 8 * 3600) => {
   return `${String(Math.floor(s / 60) % 24).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
+/** Seconds after midnight of a time of day, "HH:MM" or "HH:MM:SS". */
+export const secondsOf = (clock) => String(clock).split(":").reduce((a, x, i) => a + Number(x) * [3600, 60, 1][i], 0);
+
 /**
  * A computer player: plays a seat nobody sits on. `think` is called before every tick of a shift and
  * at the start of a turn, and makes its moves with `game.act`. This one takes every open decision's
@@ -76,6 +79,13 @@ export class Game {
    * in it at its time would all arrive at once, and the world would run differently.
    */
   static replays = true;
+  /**
+   * The time of day ("HH:MM") a shift of this game begins, where the game is bound to one (a
+   * timetable of its own). A session tells every game of a shift the shift's `clock` as an option;
+   * a mission whose shift begins at another time than such a game's is not sound (`validateMission`).
+   * @type {string | null}
+   */
+  static clock = null;
 
   /**
    * @param {object} [options]

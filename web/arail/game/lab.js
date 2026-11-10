@@ -8,19 +8,21 @@
  *
  * To the other roles the seat looks like any game: what happens in the lab goes out as flows (a
  * late train as a delay notice, the failed signal as a fault report, the track closed), and the
- * flows that come in become interventions in the lab (a connection request holds a train, the
- * repair team's report repairs the signal). The game's world is elsewhere: `sync` sends the
+ * flows that come in become interventions in the lab (a connection request lets a train wait beyond
+ * its departure, the repair team's report repairs the signal). The game's world is elsewhere: `sync` sends the
  * interventions and reads the lab's events between the session's ticks, and the session's clock
  * waits (`holding`) while the lab has not caught up.
  * @module arail/game/lab
  */
-import { Game, Player, clockAt } from "./core.js";
+import { Game, Player, clockAt, secondsOf } from "./core.js";
 
 /** How far the lab may lag behind the session's clock before the clock waits (s), and the step it is advanced by (s). */
 export const LAG_S = 30;
 export const CHUNK_S = 10;
 /** How often a request is tried again when the API says that its limit of requests per second is reached. */
 const TRIES = 6;
+/** What the API answers when it refuses a request for what it says (an unknown train, a state that does not fit), as against not answering. */
+const REFUSED = [400, 409, 422];
 /** A delay is told to the undertakings from this many seconds on. */
 const NOTICE_S = 60;
 /** Lateness that counts nothing in the score (min), and the mean lateness at which nothing is left. */
@@ -31,8 +33,6 @@ const hms = (s) => {
   const t = Math.max(0, Math.round(s));
   return `${String(Math.floor(t / 3600) % 24).padStart(2, "0")}:${String(Math.floor(t / 60) % 60).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 };
-/** Seconds after midnight of "HH:MM" or "HH:MM:SS". */
-const seconds = (text) => String(text).split(":").reduce((a, x, i) => a + Number(x) * [3600, 60, 1][i], 0);
 
 /**
  * The API of the EBL's timetable simulation, as far as the lab's seat needs it: an instance of a
@@ -63,7 +63,9 @@ export class EblApi {
         await new Promise((done) => setTimeout(done, wait * 1000));
         continue;
       }
-      throw new Error(data?.error?.message ?? `The lab's API answered ${res.status}.`);
+      // what exactly was wrong (the first of the errors it lists), where the API says
+      const detail = data?.error?.details?.[0]?.error;
+      throw Object.assign(new Error(detail ? `${data.error.message} (${detail})` : data?.error?.message ?? `The lab's API answered ${res.status}.`), { status: res.status });
     }
   }
 
@@ -163,7 +165,7 @@ export class LabGame extends Game {
     this.stationName = options.stationName ?? "Neustadt";
     this.timetable = options.timetable ?? { version: 5, day: 1 };
     /** The start of the shift (s after midnight) and its length (s). */
-    this.start = seconds(options.clock ?? "08:00");
+    this.start = secondsOf(options.clock ?? "08:00");
     this.length = options.length ?? 2400;
     /** The lab's instance, how far it has run (s into the shift), the last event read. */
     this.instance = null;
@@ -225,11 +227,25 @@ export class LabGame extends Game {
         this.link = { state: "ok", error: "" };
         this.log(`${clockAt(this.t, this.start)} Connected to the lab's simulation (instance ${made.id}).`);
       }
-      if (this._out.length) {
-        const list = this._out.splice(0);
-        await this.api.commands(this.instance, list);
+      // one by one: an intervention the lab refuses (a train it does not know) is said, and does not take the others with it
+      while (this._out.length) {
+        const c = this._out.shift();
+        let res;
+        try {
+          res = await this.api.commands(this.instance, [c]);
+        } catch (e) {
+          if (this._left || !REFUSED.includes(e.status)) throw e;
+          this._refused(c, e.message);
+          continue;
+        }
         if (this._left) return;
-        this.add("commands", list.length);
+        this.add("commands", 1);
+        const rec = (res?.applied ?? [])[0];
+        // a train asked to wait: the lab says until when (its departure and the minutes asked), or that it is later already
+        if (c.kind === "delay" && this.holds.has(c.train)) {
+          if (rec?.ok === false || rec?.note) this._refused(c, rec.error ?? rec.note);
+          else if (rec?.until) this.holds.set(c.train, secondsOf(rec.until) - this.start);
+        }
       }
       const due = Math.floor(Math.min(this.t, this.length) - this.labT);
       if (due >= CHUNK_S || (this.t >= this.length && due > 0)) {
@@ -255,6 +271,12 @@ export class LabGame extends Game {
       this.end(`${clockAt(this.length, this.start)}: the shift is over.`);
       await this.leave();
     }
+  }
+
+  /** The lab did not take an intervention: said at the seat, and what the game kept of it is taken back. */
+  _refused(c, why) {
+    if ((c.kind === "hold" || c.kind === "delay") && this.holds.has(c.train)) this.holds.delete(c.train);
+    this.log(`${clockAt(this.t, this.start)} The lab did not take "${c.kind}"${c.train ? ` for ${c.train}` : c.track ? ` for track ${c.track}` : ""}: ${why}`, "request");
   }
 
   /**
@@ -340,7 +362,23 @@ export class LabGame extends Game {
   }
 
   /**
-   * Hold a train at the station for some minutes: it gets no route out until then.
+   * A connection asked for: the train waits at the station up to some minutes beyond its own departure (as the
+   * signaller's game holds it), not from now. The lab knows the departure and says until when (`sync`).
+   * @returns {{ok: boolean, reason?: string}}
+   */
+  _wait(train, minutes = 3, forTrain = null) {
+    const id = String(train ?? "").trim(), min = Number(minutes);
+    if (!id) return { ok: false, reason: "Which train?" };
+    if (!(min > 0 && min <= 30)) return { ok: false, reason: "Hold a train for 1 to 30 minutes." };
+    // until the lab has said when: no end known
+    this.holds.set(id, Infinity);
+    this._out.push({ kind: "delay", train: id, station: this.station, seconds: Math.round(min * 60) });
+    this.log(`${clockAt(this.t, this.start)} ${id} waits at ${this.stationName} up to ${min} min beyond its departure${forTrain ? `, for the passengers of ${forTrain}` : ""}.`, "request");
+    return { ok: true };
+  }
+
+  /**
+   * Hold a train at the station for some minutes from now: it gets no route out until then.
    * @returns {{ok: boolean, reason?: string}}
    */
   hold(train, minutes = 3) {
@@ -369,7 +407,7 @@ export class LabGame extends Game {
   take(msg) {
     const p = msg.payload ?? {}, f = this.failure;
     if (msg.flow === "connection-request") {
-      const res = this.hold(p.hold, p.minutes ?? 3);
+      const res = this._wait(p.hold, p.minutes ?? 3, p.for ?? null);
       if (!res.ok) this.log(`${clockAt(this.t, this.start)} A request to hold ${p.hold ?? "a train"}${p.minutes != null ? ` for ${p.minutes} min` : ""} was not followed: ${res.reason}`, "request");
     } else if (msg.flow === "repair-status" && f?.started && (p.fault == null || p.fault === f.signal)) {
       if (p.state === "dispatched" && this.team.state === "called") this.team.state = "driving";
@@ -518,7 +556,7 @@ export class LabGame extends Game {
       ],
       tables: [
         { id: "trains", title: `Trains at ${this.stationName}`, columns: ["Train", "Last", "Planned", "Actual", "Late"], empty: "No train yet.", rows: rows.map((r) => [r.train, r.last, r.planned, r.actual, r.delay_s >= 60 ? `+${Math.round(r.delay_s / 60)}` : "–"]) },
-        { id: "interventions", title: "Interventions", columns: ["", "State"], empty: "None.", rows: [...[...this.closed].map((n) => [`Track ${n}`, "closed"]), ...[...this.holds].map(([id, until]) => [`Hold ${id}`, `until ${clockAt(until, this.start)}`])] },
+        { id: "interventions", title: "Interventions", columns: ["", "State"], empty: "None.", rows: [...[...this.closed].map((n) => [`Track ${n}`, "closed"]), ...[...this.holds].map(([id, until]) => [`Hold ${id}`, Number.isFinite(until) ? `until ${clockAt(until, this.start)}` : "beyond its departure, as asked"])] },
       ],
       actions: [
         ...(f?.started && f.reported == null ? [{ name: "reportFault", label: `Report the failure of ${f.signal}`, primary: true }] : []),

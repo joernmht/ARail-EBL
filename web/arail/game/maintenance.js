@@ -22,7 +22,7 @@
  * of the assets how many faults the shift brings. Alone, the game plays those roles itself.
  * @module arail/game/maintenance
  */
-import { Game, Player, clockAt } from "./core.js";
+import { Game, Player, clockAt as timeAt, secondsOf } from "./core.js";
 
 /**
  * The district: line 6250 from Bergheim via Bf Neustadt to Talsee and the branch to Waldau, with the
@@ -238,11 +238,12 @@ export class MaintenanceGame extends Game {
   };
   static player = MaintenancePlayer;
 
-  /** @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, length?: number}} [options] */
+  /** @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, length?: number, clock?: string}} [options] `clock`: when the shift begins ("HH:MM") */
   constructor(options = {}) {
     super({ ...options, level: LEVELS[options.level] ? options.level : "normal" });
     const lv = LEVELS[this.level];
-    /** The length of the shift (s). */
+    /** The start of the shift (s after midnight) and its length (s). */
+    this.start = secondsOf(options.clock ?? "08:00");
     this.length = options.length ?? 2400;
     // the staff plan of the asset manager, or the level's
     const plan = this.conditions["staff-plan"] ?? {};
@@ -269,7 +270,12 @@ export class MaintenanceGame extends Game {
     this.faults.sort((a, b) => a.at - b.at);
     this.resource("overtime", "Overtime", 0, "h");
     const on = TRADES.filter((trade) => this.onCall[trade] === "available");
-    this.log(`${clockAt(0)} The shift begins: ${this.teams.map((tm) => `${tm.name} (${tm.trade})`).join(" and ")} on shift${on.length ? `, a technician on call for ${on.join(" and for ")}` : ""}.`);
+    this.log(`${this.at(0)} The shift begins: ${this.teams.map((tm) => `${tm.name} (${tm.trade})`).join(" and ")} on shift${on.length ? `, a technician on call for ${on.join(" and for ")}` : ""}.`);
+  }
+
+  /** The time of day of a game time (now, if none is given), by the shift's clock. */
+  at(t = this.t) {
+    return timeAt(t, this.start);
   }
 
   _team(name, trade, overtime) {
@@ -335,7 +341,7 @@ export class MaintenanceGame extends Game {
     const eta = this.eta(tm, f);
     Object.assign(tm, { state: "driving", fault: f.id, from: tm.place, left: this.t, until: this.t + eta });
     Object.assign(f, { state: "assigned", team: tm.id });
-    this.log(`${clockAt(this.t)} ${tm.name} drives to ${f.asset} (${f.place}), about ${minutes(eta)} min.`, "team");
+    this.log(`${this.at()} ${tm.name} drives to ${f.asset} (${f.place}), about ${minutes(eta)} min.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "dispatched", eta_s: eta, team: tm.name, since_s: Math.round(this.t - f.since) });
     return { ok: true };
   }
@@ -351,7 +357,7 @@ export class MaintenanceGame extends Game {
     this.onCall[trade] = "called";
     this._onCallAt[trade] = this.t + ON_CALL.ready_s;
     this.add("overtime", ON_CALL.hours);
-    this.log(`${clockAt(this.t)} The ${trade} technician on call, ${TECHNICIANS[trade]}, is called: at the base in ${minutes(ON_CALL.ready_s)} min (${ON_CALL.hours} h of overtime).`, "team");
+    this.log(`${this.at()} The ${trade} technician on call, ${TECHNICIANS[trade]}, is called: at the base in ${minutes(ON_CALL.ready_s)} min (${ON_CALL.hours} h of overtime).`, "team");
     return { ok: true };
   }
 
@@ -367,7 +373,7 @@ export class MaintenanceGame extends Game {
     this._free(tm);
     f.secured = null;
     if (f.state === "secured") f.state = "open";
-    this.log(`${clockAt(this.t)} ${tm.name} is called off from ${f.asset}: nobody guards it now.`, "team");
+    this.log(`${this.at()} ${tm.name} is called off from ${f.asset}: nobody guards it now.`, "team");
     return { ok: true };
   }
 
@@ -389,7 +395,7 @@ export class MaintenanceGame extends Game {
         const tm = this.teams.find((x) => x.fault === f.id && x.state !== "driving" && x.state !== "securing");
         if (p.closed && tm?.state === "waiting") this._look(tm, f);
         // the signaller opened the track with the team on it: their rule broken, the team's danger
-        else if (!p.closed && tm && tm.state !== "waiting") this.log(`${clockAt(this.t)} The signaller has opened ${f.track} while ${tm.name} is at ${f.asset}.`, "violation");
+        else if (!p.closed && tm && tm.state !== "waiting") this.log(`${this.at()} The signaller has opened ${f.track} while ${tm.name} is at ${f.asset}.`, "violation");
       }
     }
   }
@@ -407,7 +413,7 @@ export class MaintenanceGame extends Game {
       if (this.onCall[trade] !== "called" || now < this._onCallAt[trade]) continue;
       this.onCall[trade] = "in";
       this.teams.push(this._team(TECHNICIANS[trade], trade, true));
-      this.log(`${clockAt(now)} ${TECHNICIANS[trade]} (${trade}) is at the base and ready.`, "team");
+      this.log(`${this.at(now)} ${TECHNICIANS[trade]} (${trade}) is at the base and ready.`, "team");
     }
     for (const tm of this.teams) {
       const f = tm.fault ? this.fault(tm.fault) : null;
@@ -416,19 +422,19 @@ export class MaintenanceGame extends Game {
         // the game's own signaller has closed the track
         f.closure = "closed";
         f.closed = true;
-        this.log(`${clockAt(now)} ${f.path} has closed ${f.track}.`, "closure");
+        this.log(`${this.at(now)} ${f.path} has closed ${f.track}.`, "closure");
         this._look(tm, f);
       } else if (tm.state === "diagnosing" && now >= tm.until) this._diagnosed(tm, f);
       else if (tm.state === "working" && now >= tm.until) this._done(tm, f);
     }
-    if (now >= this.length) this.end(`${clockAt(this.length)}: the shift is over.`);
+    if (now >= this.length) this.end(`${this.at(this.length)}: the shift is over.`);
   }
 
   _report(f) {
     f.state = "open";
     f.reported = f.since = this.t;
     const from = likely(f).map((x) => `${tradeText(x.trade)} ${Math.round(x.p * 100)} %`).join(", ");
-    this.log(`${clockAt(this.t)} ${f.path} reports: ${f.asset} at ${f.place}, ${f.kind}${f.safety ? " (a danger while nobody is there)" : f.holds ? ` (holds about ${f.holds} trains an hour)` : ""}. From experience a case for: ${from}.`, "fault");
+    this.log(`${this.at()} ${f.path} reports: ${f.asset} at ${f.place}, ${f.kind}${f.safety ? " (a danger while nobody is there)" : f.holds ? ` (holds about ${f.holds} trains an hour)` : ""}. From experience a case for: ${from}.`, "fault");
     this.emit("fault", { fault: f });
     // a fault of the district's own report paths has no fault report as a flow: its story begins with this status,
     // so that a fault no team is ever sent to is told too (the signaller's begins with the signaller's report)
@@ -445,12 +451,12 @@ export class MaintenanceGame extends Game {
     f.state = "on site";
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "arrived", team: tm.name });
     if (!f.track || f.closure === "closed") {
-      this.log(`${clockAt(this.t)} ${tm.name} is at ${f.asset}.`, "team");
+      this.log(`${this.at()} ${tm.name} is at ${f.asset}.`, "team");
       this._look(tm, f);
       return;
     }
     tm.state = "waiting";
-    this.log(`${clockAt(this.t)} ${tm.name} is at ${f.asset}: the work is in ${f.track}.`, "team");
+    this.log(`${this.at()} ${tm.name} is at ${f.asset}: the work is in ${f.track}.`, "team");
     this.ask({
       id: `closure-${f.id}`, title: `${tm.name} is at ${f.asset}. The work is in ${f.track}.`,
       text: "Nobody goes into a track that trains can still run on: the signaller closes it first.",
@@ -459,7 +465,7 @@ export class MaintenanceGame extends Game {
       then: (o) => {
         if (o === "ask") this._askClosure(tm, f);
         else {
-          this.violate("track-without-closure", `${clockAt(this.t)} ${tm.name} was sent into ${f.track} without a closure.`, 3);
+          this.violate("track-without-closure", `${this.at()} ${tm.name} was sent into ${f.track} without a closure.`, 3);
           this._look(tm, f);
         }
       },
@@ -470,10 +476,10 @@ export class MaintenanceGame extends Game {
     if (f.closure === "closed") return;
     f.closure = "asked";
     this.give("closure-request", { fault: f.id, asset: f.asset, place: f.place, track: f.track, team: tm.name });
-    if (f.remote) this.log(`${clockAt(this.t)} The signaller is asked to close ${f.track}.`, "closure");
+    if (f.remote) this.log(`${this.at()} The signaller is asked to close ${f.track}.`, "closure");
     else {
       f.closeAt = this.t + Math.round(this.rng("closure", f.id, f.relapses).uniform(...CLOSURE_S));
-      this.log(`${clockAt(this.t)} ${f.path} is asked to close ${f.track}.`, "closure");
+      this.log(`${this.at()} ${f.path} is asked to close ${f.track}.`, "closure");
     }
   }
 
@@ -483,14 +489,14 @@ export class MaintenanceGame extends Game {
     if (d) this.decide(d.id, "ask");
     if (f.known) return this._plan(tm, f);
     Object.assign(tm, { state: "diagnosing", until: this.t + DIAGNOSE_S });
-    this.log(`${clockAt(this.t)} ${tm.name} looks for the cause at ${f.asset}.`, "team");
+    this.log(`${this.at()} ${tm.name} looks for the cause at ${f.asset}.`, "team");
   }
 
   /** The cause is found: told to everybody, and the dispatcher is asked what to do. */
   _diagnosed(tm, f) {
     f.known = true;
     const c = f.cause;
-    this.log(`${clockAt(this.t)} ${tm.name} at ${f.asset}: ${c.text}. ${c.trade === "any" ? "Any team can do that" : `A case for a ${c.trade} team`}, about ${minutes(c.work_s)} min.`, "team");
+    this.log(`${this.at()} ${tm.name} at ${f.asset}: ${c.text}. ${c.trade === "any" ? "Any team can do that" : `A case for a ${c.trade} team`}, about ${minutes(c.work_s)} min.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "diagnosed", cause: c.text, trade: c.trade, eta_s: c.work_s, team: tm.name, since_s: DIAGNOSE_S });
     this._plan(tm, f);
   }
@@ -521,13 +527,13 @@ export class MaintenanceGame extends Game {
     if (o === "secure") {
       Object.assign(tm, { state: "securing", until: null });
       Object.assign(f, { state: "secured", secured: tm.id, team: null });
-      this.log(`${clockAt(this.t)} ${tm.name} stays at ${f.asset} to ${f.secure}; a ${f.cause.trade} team must repair it.`, "team");
+      this.log(`${this.at()} ${tm.name} stays at ${f.asset} to ${f.secure}; a ${f.cause.trade} team must repair it.`, "team");
       this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "secured", needs: f.cause.trade, team: tm.name });
       return;
     }
     this._free(tm);
     Object.assign(f, { state: f.secured ? "secured" : "open", team: null });
-    this.log(`${clockAt(this.t)} ${tm.name} leaves ${f.asset}${f.track ? ` and ${f.track}` : ""}: a ${f.cause.trade} team must repair it.`, "team");
+    this.log(`${this.at()} ${tm.name} leaves ${f.asset}${f.track ? ` and ${f.track}` : ""}: a ${f.cause.trade} team must repair it.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "left", needs: f.cause.trade, team: tm.name });
   }
 
@@ -538,7 +544,7 @@ export class MaintenanceGame extends Game {
     if (guard) this._free(guard);
     Object.assign(tm, { state: "working", until: this.t + work });
     Object.assign(f, { state: "working", team: tm.id, started: this.t, quick, secured: null });
-    this.log(`${clockAt(this.t)} ${tm.name} starts on ${f.asset}${quick ? ", provisionally" : ""}: about ${minutes(work)} min.`, "team");
+    this.log(`${this.at()} ${tm.name} starts on ${f.asset}${quick ? ", provisionally" : ""}: about ${minutes(work)} min.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "working", eta_s: work, provisional: quick, team: tm.name });
   }
 
@@ -546,7 +552,7 @@ export class MaintenanceGame extends Game {
     this._free(tm);
     Object.assign(f, { state: "done", done: this.t, out_s: f.out_s + this.t - f.since, provisional: f.quick, team: null, by: tm.id });
     if (f.quick && this.rng("relapse", f.id, f.relapses).next() < f.cause.quick.relapse) f.relapseAt = this.t + Math.round(this.rng("relapse-at", f.id, f.relapses).uniform(...RELAPSE_S));
-    this.log(`${clockAt(this.t)} ${tm.name} reports: ${f.asset} ${f.quick ? "repaired provisionally" : "repaired"}${f.track ? `, everybody has left ${f.track}` : ""}.`, "team");
+    this.log(`${this.at()} ${tm.name} reports: ${f.asset} ${f.quick ? "repaired provisionally" : "repaired"}${f.track ? `, everybody has left ${f.track}` : ""}.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "done", provisional: f.quick, team: tm.name });
   }
 
@@ -554,7 +560,7 @@ export class MaintenanceGame extends Game {
   _relapse(f) {
     Object.assign(f, { state: "open", since: this.t, done: null, started: null, relapseAt: null, relapses: f.relapses + 1, provisional: false, quick: false });
     if (f.track && !f.remote) Object.assign(f, { closure: "none", closed: false });
-    this.log(`${clockAt(this.t)} ${f.asset} at ${f.place} has failed again: the provisional repair did not hold.`, "fault");
+    this.log(`${this.at()} ${f.asset} at ${f.place} has failed again: the provisional repair did not hold.`, "fault");
     this.emit("fault", { fault: f });
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "relapsed" });
   }
@@ -660,7 +666,7 @@ export class MaintenanceGame extends Game {
       tables: [
         {
           id: "faults", title: "Faults", columns: ["Asset", "Place", "Fault", "Since", "Matters", "Cause", "Work", "State"], empty: "No fault reported.",
-          rows: this.faults.filter((f) => f.reported != null).map((f) => [f.asset, f.place, f.kind, clockAt(f.since), f.safety ? "a danger" : f.holds ? `${f.holds} trains an hour` : "comfort", cause(f), work(f), this._state(f)]),
+          rows: this.faults.filter((f) => f.reported != null).map((f) => [f.asset, f.place, f.kind, this.at(f.since), f.safety ? "a danger" : f.holds ? `${f.holds} trains an hour` : "comfort", cause(f), work(f), this._state(f)]),
         },
         { id: "teams", title: "Teams", columns: ["Team", "Trade", "Doing"], rows: this.teams.map((tm) => [tm.name, tm.trade, this._doing(tm)]) },
       ],
@@ -686,7 +692,7 @@ export class MaintenanceGame extends Game {
     if (f.state === "open") return `${f.relapses ? "failed again, " : ""}waits for ${f.known && f.cause.trade !== "any" ? `a ${f.cause.trade} team` : "a team"}`;
     if (f.state === "secured") return `secured by ${guard?.name ?? "a team"}, waits for a ${f.cause.trade} team`;
     if (f.state === "assigned") return `${tm.name} is on the way${guarded}`;
-    if (f.state === "working") return `${tm.name} repairs it${f.quick ? " provisionally" : ""} until ${clockAt(tm.until)}`;
+    if (f.state === "working") return `${tm.name} repairs it${f.quick ? " provisionally" : ""} until ${this.at(tm.until)}`;
     return `${tm.name} ${tm.state === "waiting" ? `waits for the closure of ${f.track}` : tm.state === "deciding" ? "waits for your word" : "looks for the cause"}${guarded}`;
   }
 
@@ -694,12 +700,12 @@ export class MaintenanceGame extends Game {
   _doing(tm) {
     const f = tm.fault ? this.fault(tm.fault) : null;
     if (tm.state === "ready") return `ready${tm.base ? " at the base" : ` at ${tm.place}`}`;
-    if (tm.state === "driving") return `drives to ${f.asset}, there at ${clockAt(tm.until)}`;
+    if (tm.state === "driving") return `drives to ${f.asset}, there at ${this.at(tm.until)}`;
     if (tm.state === "waiting") return `waits at ${f.asset} for the closure`;
     if (tm.state === "diagnosing") return `looks for the cause at ${f.asset}`;
     if (tm.state === "deciding") return `waits at ${f.asset} for your word`;
     if (tm.state === "securing") return `secures ${f.asset}`;
-    return `works on ${f.asset} until ${clockAt(tm.until)}`;
+    return `works on ${f.asset} until ${this.at(tm.until)}`;
   }
 
   /** Where a team is on the map: at its place, or on the road from the place it left by way of Bf Neustadt. */

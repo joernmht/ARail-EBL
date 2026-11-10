@@ -128,6 +128,7 @@ export function validateMission(doc, games) {
       const r = seats.get(id), G = r && games.get(r.game);
       if (!r) out.push(`${at}: no seat "${id}"`);
       else if (G && playedIn(G.scale) !== p.kind) out.push(`${at}: ${id} decides in ${G.scale} and is played in a ${playedIn(G.scale)}, not in a ${p.kind}`);
+      else if (G?.clock && p.kind === "shift" && (p.clock ?? "08:00") !== G.clock) out.push(`${at}: the shift begins at ${p.clock}, but ${id}'s game ("${G.id}") begins at ${G.clock}`);
       played.add(id);
     }
   }

@@ -162,7 +162,7 @@ export class Session {
           if (v !== undefined) conditions[tk.flow] = structuredClone(v);
         }
         const seed = hashKey(this.seed, seat.id, ph.kind === "shift" ? ph.round : 0);
-        seat.game = new seat.Game({ ...seat.options, ...(ph.options?.[seat.id] ?? {}), seed, level: seat.level, conditions, wired: this.wiredOf(seat), ...(ph.kind === "shift" ? { length: ph.length } : {}) });
+        seat.game = new seat.Game({ ...seat.options, ...(ph.options?.[seat.id] ?? {}), seed, level: seat.level, conditions, wired: this.wiredOf(seat), ...(ph.kind === "shift" ? { length: ph.length, clock: ph.clock } : {}) });
         seat.game.on((name, payload) => {
           if (name === "give") this.queue.push({ ...payload, seat: seat.id });
         });

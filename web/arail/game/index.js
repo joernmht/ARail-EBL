@@ -6,7 +6,7 @@
  * the framework's math).
  * @module arail/game
  */
-export { Game, GAME_KINDS, Player, clockAt } from "./core.js";
+export { Game, GAME_KINDS, Player, clockAt, secondsOf } from "./core.js";
 export { FLOWS, FLOW_GROUPS, FLOW_KINDS, PARTIES, PARTY_KINDS, SCALES, SCALE_S, flowOf, playedIn, validateFlows } from "./flows.js";
 export { MISSION, SEATS, Session } from "./session.js";
 export { STRETCHES, threads } from "./chain.js";

@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  DIAGNOSE_S, DISTRICT, FAULTS, GAMES, MAINTENANCE_LEVELS, MISSION_FORMAT, MaintenanceGame, MaintenancePlayer, ON_CALL, SignallerAutopilot, SignallerGame, TRADES, driveTime, failureChance, likely, normalizeMission, play,
+  DIAGNOSE_S, DISTRICT, FAULTS, GAMES, MAINTENANCE_LEVELS, MISSION_FORMAT, MaintenanceGame, MaintenancePlayer, ON_CALL, SignallerAutopilot, SignallerGame, TRADES, driveTime, failureChance, likely, normalizeMission, play, validateMission,
 } from "../../web/arail/game/index.js";
 
 /** Play a game alone to its end with a player's `think` before every half second. */
@@ -553,4 +553,26 @@ test("the district as a sketch: a fault that waits has the free teams as its men
   hard.act("send", "T1", open()[0].id);
   until(hard, () => open().length > 0);
   assert.equal(hard.view().sketch.items.find((it) => it.id === `fault-${open()[0].id}`).menu[0].disabled, "No team is free.");
+});
+
+test("the shift's clock: the dispatcher's game tells the time by it; a mission cannot move the signaller's morning", () => {
+  const night = alone(new MaintenanceGame({ seed: 2, level: "training", clock: "02:30" }));
+  assert.equal(night.start, 2.5 * 3600);
+  assert.match(night.logs[0].text, /^02:30 The shift begins/);
+  assert.match(night.logs.at(-1).text, /^03:10: the shift is over\.$/);
+  assert.ok(night.logs.every((l) => /^0[23]:\d\d/.test(l.text)), night.logs.find((l) => !/^0[23]:\d\d/.test(l.text))?.text);
+  assert.match(night.view().tables[0].rows[0][3], /^0[23]:\d\d$/);
+  // without one, 08:00 as before
+  assert.match(new MaintenanceGame({ seed: 2 }).logs[0].text, /^08:00 /);
+  // in a session the clock is the phase's
+  const doc = { format: MISSION_FORMAT, id: "night", title: "Night", text: "A test.", roles: [{ role: "maintenance-dispatcher", game: "maintenance" }], phases: [{ id: "shift", kind: "shift", roles: ["maintenance-dispatcher"], length: 600, clock: "22:15" }] };
+  assert.deepEqual(validateMission(doc, GAMES), []);
+  const s = play(doc, { seed: 1 }).run();
+  assert.match(s.seat("maintenance-dispatcher").game.logs[0].text, /^22:15 The shift begins/);
+  // the signaller's timetable is the morning's: a shift with it at another time is not sound
+  assert.equal(SignallerGame.clock, "08:00");
+  const late = { ...MORNING, phases: [{ id: "shift", kind: "shift", roles: ["signaller-relay", "maintenance-dispatcher"], length: 2400, clock: "09:00" }] };
+  assert.deepEqual(validateMission(late, GAMES), ['phase shift: the shift begins at 09:00, but signaller-relay\'s game ("signaller") begins at 08:00']);
+  assert.deepEqual(validateMission({ ...late, phases: [{ ...late.phases[0], clock: "08:00" }] }, GAMES), []);
+  assert.deepEqual(validateMission(MORNING, GAMES), []);
 });

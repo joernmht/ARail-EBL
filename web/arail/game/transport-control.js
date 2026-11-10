@@ -84,6 +84,8 @@ export class TransportControlGame extends Game {
   static kind = "simulation";
   static description = "The morning from the railway undertaking's side: hold a connection or let the train go, tell the passengers of every delay, and find a lawful way out when a driver calls in sick or a unit reports a defect.";
   static scale = "minutes";
+  // the morning's trains through Bf Neustadt are bound to it
+  static clock = "08:00";
   static takes = [
     { flow: "delay-notice" },
     { flow: "transport-contract" },
