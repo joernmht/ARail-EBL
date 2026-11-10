@@ -24,4 +24,4 @@ export { BudgetGame, BudgetPlayer, LEVELS as BUDGET_LEVELS, LINES as BUDGET_LINE
 export { CLASSES as CONTRACT_CLASSES, ContractGame, ContractPlayer, LEVELS as CONTRACT_LEVELS, consequence, ruleFor } from "./contract-manager.js";
 export { LEVELS as TRANSPORT_CONTROL_LEVELS, TransportControlGame, TransportControlPlayer } from "./transport-control.js";
 export { CHUNK_S, EblApi, LAG_S, LATE_MIN, LabGame, LabPlayer } from "./lab.js";
-export { DISTRICT, DRIVE, FAULTS, LEVELS as MAINTENANCE_LEVELS, MaintenanceGame, MaintenancePlayer, ON_CALL, RESTORE_MIN, driveTime } from "./maintenance.js";
+export { DIAGNOSE_S, DISTRICT, DRIVE, EXPOSED_MIN, FAULTS, LEVELS as MAINTENANCE_LEVELS, MaintenanceGame, MaintenancePlayer, ON_CALL, RESTORE_MIN, TRADES, driveTime, likely } from "./maintenance.js";

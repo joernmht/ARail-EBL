@@ -157,7 +157,7 @@ test("in a session with the maintenance dispatcher: the lab's failure sends the 
   const g = s.seat("train-dispatcher").game, mt = s.seat("maintenance-dispatcher").game;
   assert.equal(mt.fault("ASig N2").remote, true);
   const steps = s.flows.filter((f) => f.payload.fault === "ASig N2" || f.payload.track === "IN 2").map((f) => `${f.flow}${f.payload.state ? `:${f.payload.state}` : f.payload.closed != null ? `:${f.payload.closed}` : ""}`);
-  assert.deepEqual(steps, ["fault-report", "repair-status:dispatched", "repair-status:arrived", "track-closure:true", "closure-request", "repair-status:working", "repair-status:done", "track-closure:false"]);
+  assert.deepEqual(steps, ["fault-report", "repair-status:dispatched", "repair-status:arrived", "track-closure:true", "closure-request", "repair-status:diagnosed", "repair-status:working", "repair-status:done", "track-closure:false"]);
   assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["failSignal", "closeTrack", "repairSignal", "openTrack"]);
   assert.equal(g.failure.repaired, mt.fault("ASig N2").done);
   assert.ok(lab.failed.size === 0 && lab.closed.size === 0);

@@ -554,7 +554,10 @@ export class SignallerGame extends Game {
     const t0 = this.t - dt;
     for (let i = 1; i <= n; i++) this._step(t0 + i * h, h);
     this._events();
-    if (this.t >= END_S || this.trains.every((tr) => tr.state === "gone")) this.end(this.t >= END_S ? `${clockOf(END_S).slice(0, 5)}: the shift is over.` : `${clockOf(this.t)} All trains have left.`);
+    // with a maintenance dispatcher in the session, the shift goes on while the failure is theirs to end: the team
+    // needs the closure, the track is to be opened after it, and a provisional repair may not hold
+    const f = this.failure, pending = this.team.remote && f?.started && (f.repaired == null || f.provisional || this.team.state === "done");
+    if (this.t >= END_S || (!pending && this.trains.every((tr) => tr.state === "gone"))) this.end(this.t >= END_S ? `${clockOf(END_S).slice(0, 5)}: the shift is over.` : `${clockOf(this.t)} All trains have left.`);
   }
 
   _step(now, h) {
@@ -788,19 +791,21 @@ export class SignallerGame extends Game {
         }
       },
     });
-    this._quiz("closure");
+    if (!this.answers.has("closure")) this._quiz("closure");
     // closed before the team came: it can start at once
     if (this.closed.has("g2")) this._teamStarts();
   }
 
-  /** The repair is done and the team has left the track. */
-  _teamDone() {
+  /** The repair is done (for good, or provisionally: then it may fail again) and the team has left the track. */
+  _teamDone(provisional = false) {
     const team = this.team, f = this.failure;
     if (!f || team.state === "done" || team.state === "left") return;
     team.state = "done";
+    team.plan = null;
     f.repaired = this.t;
+    f.provisional = !!provisional;
     this.signals[f.signal].failed = false;
-    this.log(`${clockOf(this.t)} The repair team reports: signal ${f.signal} repaired, everybody has left track G2.`, "fault");
+    this.log(`${clockOf(this.t)} The repair team reports: signal ${f.signal} repaired${provisional ? " provisionally (it may fail again)" : ""}, everybody has left track G2.`, "fault");
     if (!this.closed.has("g2")) {
       team.state = "left";
       return;
@@ -812,7 +817,26 @@ export class SignallerGame extends Game {
         if (o === "open") this.openTrack("G2");
       },
     });
-    this._quiz("reopen");
+    if (!this.answers.has("reopen")) this._quiz("reopen");
+  }
+
+  /** The team has left the track without a repair: it is not of the trade the fault needs. */
+  _teamLeft(needs) {
+    const team = this.team, f = this.failure;
+    if (!f || f.repaired != null || !["waiting", "working"].includes(team.state)) return;
+    Object.assign(team, { state: "called", at: null, plan: null });
+    this.log(`${clockOf(this.t)} The team has left track G2 without a repair: signal ${f.signal} needs a ${needs ?? "signalling"} team, which the maintenance dispatcher has yet to send.`, "fault");
+  }
+
+  /** A provisional repair did not hold: the signal has failed again, and the maintenance dispatcher knows. */
+  _relapsed() {
+    const team = this.team, f = this.failure;
+    if (!f || f.repaired == null) return;
+    f.repaired = null;
+    f.relapses = (f.relapses ?? 0) + 1;
+    this.signals[f.signal].failed = true;
+    Object.assign(team, { state: "called", at: null, plan: null });
+    this.log(`${clockOf(this.t)} Signal ${f.signal} shows no proceed aspect again: the provisional repair did not hold. The maintenance dispatcher knows.`, "fault");
   }
 
   _teamStarts() {
@@ -842,15 +866,22 @@ export class SignallerGame extends Game {
         team.at = p.eta_s != null ? this.t + p.eta_s : null;
         this.log(`${clockOf(this.t)} The maintenance dispatcher: a repair team is on its way to ${f.signal}${p.eta_s != null ? `, about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
       } else if (p.state === "arrived") this._teamArrived();
-      else if (p.state === "working" && team.state !== "working") {
-        // the team went onto the track: with the closure this is `_teamStarts`; without it, the dispatcher's risk
+      else if (p.state === "diagnosed") {
+        // the team is on the track (with the closure, or without it at the dispatcher's risk) and has found the cause
         if (team.state === "waiting" && this.closed.has("g2")) this._teamStarts();
-        else {
-          team.state = "working";
-          team.at = Infinity;
-        }
-      } else if (p.state === "done") this._teamDone();
-    } else if (msg.flow === "closure-request" && f?.started) {
+        else if (team.state !== "working") Object.assign(team, { state: "working", at: Infinity });
+        team.cause = p.cause ?? null;
+        this.log(`${clockOf(this.t)} The repair team at ${f.signal}: ${p.cause ?? "the cause is found"}${p.eta_s != null ? `; a repair for good takes about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
+      } else if (p.state === "working") {
+        if (team.state === "waiting" && this.closed.has("g2")) this._teamStarts();
+        else if (team.state !== "working") Object.assign(team, { state: "working", at: Infinity });
+        team.plan = { until: p.eta_s != null ? this.t + p.eta_s : null, provisional: !!p.provisional };
+        this.log(`${clockOf(this.t)} The team repairs ${f.signal}${p.provisional ? " provisionally" : " for good"}${p.eta_s != null ? `: about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
+      } else if (p.state === "left") this._teamLeft(p.needs);
+      else if (p.state === "done") this._teamDone(p.provisional);
+      else if (p.state === "relapsed") this._relapsed();
+    } else if (msg.flow === "closure-request" && f?.started && (p.fault == null || p.fault === f.signal)) {
+      // the dispatcher asks for other signallers' tracks too: only the closure for this station's failure is meant here
       this._teamArrived();
     } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
       const tr = this.trains.find((x) => x.id === p.hold);
@@ -957,7 +988,8 @@ export class SignallerGame extends Game {
     const set = st.routes.filter((r) => !r.train).map((r) => ({ id: r.id, label: `${r.from} → ${r.to}` }));
     const stopped = Object.keys(STATION.signals).filter((id) => st.signals[id].aspect === "stop" && !st.signals[id].zs1 && (st.signals[id].failed || st.trains.some((tr) => tr.next === id && tr.speed === 0)));
     const tracks = Object.keys(TRACKS), closed = tracks.filter((t) => st.sections[TRACKS[t]].closed);
-    const team = { none: "", called: "reported, no team yet", driving: "on its way", waiting: "waits for the track closure", working: "at work on G2", done: "has finished", left: "has left" }[st.team.state];
+    const plan = this.team.plan;
+    const team = { none: "", called: f?.relapses ? "failed again, no team yet" : "reported, no team yet", driving: "on its way", waiting: "waits for the track closure", working: plan?.until != null ? `at work on G2 until about ${clockOf(plan.until).slice(0, 5)}${plan.provisional ? " (provisionally)" : ""}` : "at work on G2", done: "has finished", left: "has left" }[st.team.state];
     const late = rep.filter((r) => r.delay >= 1).length;
     return {
       sketch: this._sketch(st),
@@ -965,7 +997,7 @@ export class SignallerGame extends Game {
         { label: "Trains through", value: `${st.trains.filter((tr) => tr.state === "gone").length} of ${st.trains.length}` },
         { label: "Late now", value: late, tone: late ? "warn" : "ok" },
         { label: "Substitute signals", value: st.counters.zs1 },
-        ...(f?.started ? [{ label: `Signal ${f.signal}`, value: f.repaired != null ? "repaired" : `failed${team ? `; team ${team}` : ""}`, tone: f.repaired != null ? "ok" : "bad" }] : []),
+        ...(f?.started ? [{ label: `Signal ${f.signal}`, value: f.repaired != null ? (f.provisional ? "repaired provisionally" : "repaired") : `failed${team ? `; team ${team}` : ""}`, tone: f.repaired != null ? (f.provisional ? "warn" : "ok") : "bad" }] : []),
       ],
       tables: [
         {
@@ -1090,7 +1122,7 @@ export class SignallerGame extends Game {
       }),
       team: { ...this.team },
       holds: [...this.holds].map(([train, hold]) => ({ train, for: hold.for, until: hold.until })),
-      failure: this.failure ? { signal: this.failure.signal, started: this.failure.started, reported: this.failure.reported, repaired: this.failure.repaired } : null,
+      failure: this.failure ? { signal: this.failure.signal, started: this.failure.started, reported: this.failure.reported, repaired: this.failure.repaired, provisional: !!this.failure.provisional, relapses: this.failure.relapses ?? 0 } : null,
       counters: { zs1: this.value("zs1"), cancel: this.value("cancel") },
       decisions: this.open,
     };

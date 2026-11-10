@@ -2,7 +2,7 @@
  "format": "arail-mission/1",
  "id": "neustadt-morning",
  "title": "A morning at Bf Neustadt",
- "text": "08:00 to 08:40 at Bf Neustadt and in its district. The signaller sets the routes of nine trains; at some point a signal fails. The maintenance dispatcher has two emergency teams and more faults than the signaller's. What one of them does is what the other has to work with: the fault report, the team on its way, the track closure, the track opened again.",
+ "text": "08:00 to 08:40 at Bf Neustadt and in its district. The signaller sets the routes of nine trains; at some point a signal fails. The maintenance dispatcher has two emergency teams of two trades and more faults than the signaller's; what is behind a fault is known only when a team has looked, and a quick repair may not hold. What one of them does is what the other has to work with: the fault report, the team on its way, the track closure, the track opened again.",
  "mode": "cooperative",
  "seed": 1,
  "roles": [
@@ -16,6 +16,7 @@
  "debrief": [
   "How long did the trains of track G2 wait, from the failure to the repair? Which part of that time was the signaller's, which the maintenance dispatcher's?",
   "The team asked for the closure of G2. What would have happened to a train routed into G2 a minute earlier?",
-  "Which fault did the dispatcher send a team to first, and what did the others cost meanwhile?"
+  "Which fault did the dispatcher send a team to first, and what did the others cost meanwhile?",
+  "The team found the cause at N2. A repair for good or a provisional one: what did the signaller need to know, and who should decide?"
  ]
 }

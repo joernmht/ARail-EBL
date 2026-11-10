@@ -211,7 +211,7 @@ test("the picture of a game: a signal chosen on the panel, its route from its me
   await expect(fault).toHaveAttribute("aria-label", /waits for a team$/);
   await fault.click();
   const send = page.locator(`${MAINTENANCE} .play-pick`).getByRole("button").first();
-  await expect(send).toHaveText(/^Send Team .+ \(\d+ min\)$/);
+  await expect(send).toHaveText(/^Send Team .+ \((signalling|track), \d+ min\)$/);
   await send.click();
   await expect(map.locator(".tag.t-train")).toHaveCount(1);
   expect(await page.evaluate(() => window.__play.session.record.at(-1).name)).toBe("send");
@@ -243,10 +243,16 @@ test("the failure: decisions are announced and answered; the fault report and th
   await expect(fault).toContainText("08:13:10");
   await expect(fault).toContainText("Signaller in a relay interlocking → Maintenance and fault dispatcher");
   await expect(fault).toContainText("fault: N2 · asset: Exit signal N2 · kind: lamp failure · place: Bf Neustadt · track: G2");
+  // the dispatcher sends a signalling team as soon as one is free
+  await page.evaluate(() => {
+    const p = window.__play;
+    for (let i = 0; i < 1500 && !p.session.flows.some((f) => f.flow === "repair-status" && f.payload.fault === "N2"); i++) p.session.step(1);
+    p.draw(true);
+  });
   const sent = flows.filter({ hasText: status$ }).filter({ hasText: "fault: N2" });
   await expect(sent).toHaveCount(1);
   await expect(sent).toContainText("Maintenance and fault dispatcher → Signaller in a relay interlocking");
-  await expect(sent).toContainText("state: dispatched · eta: 300 s");
+  await expect(sent).toContainText(/state: dispatched · eta: \d+ s · team: /);
   // the newest first; counts per flow; the list by flow
   await expect(flows.first()).toContainText(status$);
   await expect(page.locator("#flowCounts li").filter({ hasText: report$ })).toContainText("1");
@@ -274,15 +280,20 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await expect(send.getByRole("button", { name: "Send a team" })).toHaveAttribute("aria-disabled", "true");
   await send.getByRole("button", { name: "Send a team" }).click({ force: true }); // disabled, but a click tells why
   await expect(send.getByRole("status")).toHaveText("No fault waits for a team.");
-  await move(page, MAINTENANCE, "Call the technician on call (4 h of overtime)").getByRole("button").click();
+  // a technician on call of one of the two trades
+  const call = move(page, MAINTENANCE, "Call a technician on call");
+  await expect(call).toContainText("4 h of overtime; ready at the base after 10 min.");
+  await call.getByLabel("Trade").selectOption("track");
+  await call.getByRole("button", { name: "Call a technician on call" }).click();
   await expect(panel.locator(".play-figures")).toContainText("4 h");
+  await expect(panel.locator(".play-log li").first()).toContainText("The track technician on call, J. Sokół, is called");
   // the button stays where it was, with the focus
   const back = panel.getByRole("button", { name: "Hand to the computer" });
   await back.focus();
   await back.click();
   await expect(panel.getByRole("button", { name: "Take over" })).toBeFocused();
   await expect(panel.locator(".play-move")).toHaveCount(0);
-  expect(await page.evaluate(() => window.__play.session.record.map((m) => m.name))).toEqual(["@seat", "callIn", "@seat"]);
+  expect(await page.evaluate(() => window.__play.session.record.map((m) => [m.name, ...m.args.slice(0, 1)]))).toEqual([["@seat", "human"], ["callIn", "track"], ["@seat", "computer"]]);
   expect(errors).toEqual([]);
 });
 
@@ -307,7 +318,7 @@ test("nobody of the people at work: the shift is skipped to its end; the result 
   await expect(seats.first()).toContainText("Punctuality (35)");
   await expect(seats.nth(1)).toContainText("Fault Night, played by the computer.");
   await expect(page.locator("#result .play-counts")).toContainText(await flowName(page, "repair-status"));
-  await expect(page.locator("#result .play-debrief li")).toHaveCount(3);
+  await expect(page.locator("#result .play-debrief li")).toHaveCount(4);
   await expect(page.locator("#result .play-debrief li").first()).toContainText("How long did the trains of track G2 wait");
   // finishing removes the save
   expect(await page.evaluate(() => localStorage.getItem("arail.play.neustadt-morning"))).toBeNull();

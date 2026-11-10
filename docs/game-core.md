@@ -472,14 +472,20 @@ the same ports would be its full form.
    else. Where the role works on a picture (a panel, a map, a timetable graph), give it as the
    view's `sketch`, with the moves of a thing in its menu: a person should act on the thing, not
    look it up in a list.
-8. **A computer player** that plays by the book and passes every level; a mission needs it for
+8. **Every choice gives something up.** A decision with a right answer is a quiz. Give the role
+   less than it needs (teams, time, money), and let it decide before it knows (a cause that only
+   shows on site, a repair that may not hold): then two players decide differently, and both have
+   reasons. The dispatcher's game does this with trades, causes and provisional repairs.
+9. **A computer player** that plays by simple rules, breaks none and passes nearly every shift,
+   and that a person with judgment can beat; a mission needs it for
    the seats nobody takes and for its test run.
-9. **`finish()` gives the account** of the period as a `performance-report`.
-10. **Deterministic**: `this.rng("purpose", key)`, never `Math.random`; no clock of the computer.
-11. Add the game to `games.js` and `index.js`, a mission that seats it (alone, and with the roles
+10. **`finish()` gives the account** of the period as a `performance-report`.
+11. **Deterministic**: `this.rng("purpose", key)`, never `Math.random`; no clock of the computer.
+12. Add the game to `games.js` and `index.js`, a mission that seats it (alone, and with the roles
     it exchanges flows with), tests (alone with its computer player on every level; a careless
-    player; each flow it takes and gives; in a session), and its model on the architecture page.
-12. People in a game get bird names (see [CONTRIBUTING](../CONTRIBUTING.md)).
+    player; that the choices matter; each flow it takes and gives; in a session), and its model
+    on the architecture page.
+13. People in a game get bird names (see [CONTRIBUTING](../CONTRIBUTING.md)).
 
 ## What comes next
 

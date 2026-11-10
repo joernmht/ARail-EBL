@@ -413,7 +413,7 @@ test("in a session with the maintenance dispatcher and the signaller: the staff 
   };
   const one = shift("normal", 1), three = shift("normal", 3), old = shift("hard", 1);
   // the staff plan sets the dispatcher's teams
-  assert.deepEqual([one.at.teams, one.at.onCall, three.at.teams], [1, "none", 3]);
+  assert.deepEqual([one.at.teams, one.at.onCall, three.at.teams], [1, { signalling: "none", track: "none" }, 3]);
   // the condition of the assets sets the faults of the shift
   assert.deepEqual([one.at.grade, old.at.grade], [3, 3.4]);
   assert.ok(old.at.faults > one.at.faults, `${old.at.faults} faults at grade 3.4, ${one.at.faults} at 3.0`);

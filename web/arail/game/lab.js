@@ -329,9 +329,11 @@ export class LabGame extends Game {
     } else if (msg.flow === "repair-status" && f?.started && (p.fault == null || p.fault === f.signal)) {
       if (p.state === "dispatched" && this.team.state === "called") this.team.state = "driving";
       else if (p.state === "arrived") this._teamArrived();
-      else if (p.state === "working") this.team.state = "working";
+      else if (p.state === "diagnosed" || p.state === "working") this.team.state = "working";
+      else if (p.state === "left" && f.repaired == null) this.team.state = "called";
       else if (p.state === "done") this._teamDone();
-    } else if (msg.flow === "closure-request" && f?.started) {
+      else if (p.state === "relapsed") this._relapsed();
+    } else if (msg.flow === "closure-request" && f?.started && (p.fault == null || p.fault === f.signal)) {
       this._teamArrived();
     }
   }
@@ -350,6 +352,16 @@ export class LabGame extends Game {
         if (o === "close") this.closeTrack(f.track);
       },
     });
+  }
+
+  /** A provisional repair did not hold: the signal fails again in the lab; the maintenance dispatcher knows. */
+  _relapsed() {
+    const f = this.failure;
+    if (f.repaired == null) return;
+    f.repaired = null;
+    this.team.state = "called";
+    this._out.push({ kind: "failSignal", signal: f.signal, station: this.station });
+    this.log(`${clockAt(this.t, this.start)} ${f.signal} does not clear again: the provisional repair did not hold.`, "fault");
   }
 
   _teamDone() {

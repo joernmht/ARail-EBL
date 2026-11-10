@@ -14294,7 +14294,7 @@
     "bigGame": "Takes faults from the infrastructure simulation and the control system, and the available staff from the maintenance district managers. Gives repair times and delay minutes to the operations simulator and the railway undertakings, overtime costs to the asset manager, and closure requests to the signaller.",
     "effort": "medium",
     "page": "play/?mission=fault-night",
-    "first": "A first form is playable: a morning shift of 40 minutes in the district around Bf Neustadt, as tables and forms without the map: faults by their report paths, two teams and a technician on call, the closure asked of the signaller."
+    "first": "A first form is playable: a shift of 40 minutes in the district around Bf Neustadt, on a sketch of the district with the vans: faults by their report paths with causes that only a team on site finds, two teams of two trades and a technician of each on call, the closure asked of the signaller, and the choice between a repair for good and a quick one that may not hold."
    }
   },
   {
