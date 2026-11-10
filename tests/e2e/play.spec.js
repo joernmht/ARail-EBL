@@ -561,7 +561,26 @@ test("a seat whose game must be told its world: the fields before Start; the key
   await expect(address).toHaveValue("http://127.0.0.1:8096");
   await expect(key).toHaveValue("");
   expect(await page.evaluate(() => Object.values(localStorage).join(" ").includes("a-secret-key"))).toBe(false);
-  expect(errors).toEqual([]);
+  // a session with the lab cannot be played again from its record: it is not kept, and Resume is not offered
+  await expect(page.locator("#noResume")).toContainText("cannot be taken up again once this page is closed");
+  await page.evaluate(() => localStorage.setItem("arail.play.lab-morning", JSON.stringify({ format: "arail-session/1", mission: "lab-morning", seed: 1, seats: {}, record: [], at: { phase: 0, tick: 40 } })));
+  await page.reload();
+  await page.waitForFunction(() => window.__play?.ready);
+  await expect(page.getByRole("button", { name: "Resume" })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("arail.play.lab-morning"))).toBeNull();
+  // started (no lab answers at this address: the shift goes on without it), it is not saved
+  await page.getByRole("button", { name: "Start" }).click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.save();
+  });
+  expect(await page.evaluate(() => localStorage.getItem("arail.play.lab-morning"))).toBeNull();
+  // the morning without the lab is kept as before
+  await page.goto(MORNING);
+  await page.waitForFunction(() => window.__play?.ready);
+  await expect(page.locator("#noResume")).toHaveCount(0);
+  expect(errors.filter((e) => !/fetch|Failed to load|ERR_CONNECTION|NetworkError/i.test(e))).toEqual([]);
 });
 
 /** A mission with turns: an asset manager plans two years; each year a short morning at Bf Neustadt shows what the plan was worth. */

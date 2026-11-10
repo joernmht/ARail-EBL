@@ -319,7 +319,10 @@ class PlayPage {
     const el = $("#setup"), doc = this.doc, c = this.choice;
     el.hidden = !doc || !c;
     if (el.hidden) return void mount(el);
-    const m = normalizeMission(doc, this.games), saved = this.saved(doc.id);
+    const m = normalizeMission(doc, this.games), again = Session.replayable(m, this.games);
+    // a session that cannot be played again from its record is not kept (one kept by an earlier version goes)
+    if (!again) storage.remove(saveKey(doc.id));
+    const saved = again ? this.saved(doc.id) : null;
     mount(el,
       h("h2", { id: "setupTitle", tabindex: "-1" }, m.title),
       h("p", {}, m.text),
@@ -359,6 +362,7 @@ class PlayPage {
         saved ? h("button", { class: "btn primary", type: "button", id: "resume", onclick: () => this.resume() }, "Resume") : null,
         h("button", { class: `btn${saved ? "" : " primary"}`, type: "submit", id: "start" }, "Start")),
       saved ? h("p", { class: "hint" }, `A session of this mission is saved in this browser (${this.standing(m, saved)}). Start begins a new one and replaces it.`) : null,
+      again ? null : h("p", { class: "hint", id: "noResume" }, "A session of this mission cannot be taken up again once this page is closed: the world of one of its seats is elsewhere and would start anew."),
       this.note ? h("p", { class: "hint error" }, this.note) : null),
       this.wiringTable(doc, m));
   }
@@ -504,7 +508,7 @@ class PlayPage {
   save() {
     const s = this.session;
     this.lastSave = performance.now();
-    if (!s || s.over || s.index < 0) return;
+    if (!s || s.over || s.index < 0 || !Session.replayable(s.mission, this.games)) return;
     const as = `${s.index}|${s.ticks}|${s.record.length}`;
     if (as === this.savedAs) return;
     this.savedAs = as;

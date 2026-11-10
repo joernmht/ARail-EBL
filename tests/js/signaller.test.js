@@ -398,3 +398,26 @@ test("questions whose occasion has passed are taken back: after a repair that di
   tell("diagnosed", { cause: "the lamp is burnt out" });
   assert.deepEqual([h.team.state, h.open.some((d) => d.id === "closure")], ["working", false]);
 });
+
+test("a closure request is the failure's only with its fault, or without one for its own track", () => {
+  const start = () => {
+    const g = new SignallerGame({ level: "normal", wired: ["repair-status"] });
+    run(g, 781, (x) => careful(x, { team: false }));
+    g.reportFault();
+    return g;
+  };
+  const ask = (g, payload) => g.receive({ flow: "closure-request", from: "maintenance-dispatcher", t: g.t, payload });
+  let g = start();
+  ask(g, { fault: "w12", track: "Bergheim track 2" });
+  ask(g, { track: "G3" });
+  ask(g, { fault: "azs", track: "G2" });
+  assert.deepEqual([g.team.state, g.open.some((d) => d.id === "closure")], ["called", false]);
+  ask(g, { fault: "N2", track: "G2" });
+  assert.deepEqual([g.team.state, g.open.some((d) => d.id === "closure")], ["waiting", true]);
+  g = start();
+  ask(g, { track: "G2" });
+  assert.equal(g.team.state, "waiting");
+  g = start();
+  ask(g, {});
+  assert.equal(g.team.state, "waiting");
+});

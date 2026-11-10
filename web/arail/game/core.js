@@ -70,6 +70,12 @@ export class Game {
    * @type {Array<{id: string, label: string, type?: "text" | "password", value?: string, hint?: string}>}
    */
   static settings = [];
+  /**
+   * Whether a session with this game can be played again from its record alone (`Session.replay`).
+   * Not a game whose world is elsewhere and starts anew there (the lab's simulation): what was done
+   * in it at its time would all arrive at once, and the world would run differently.
+   */
+  static replays = true;
 
   /**
    * @param {object} [options]

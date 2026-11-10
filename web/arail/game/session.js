@@ -459,16 +459,24 @@ export class Session {
     return { format: "arail-session/1", mission: this.mission.id, seed: this.seed, seats: { ...this.seated }, record: structuredClone(this.record), at: { phase: this.index, tick: this.ticks } };
   }
 
+  /** Whether a session of a mission can be played again from its record: every game seated in it can (`Game.replays`). */
+  static replayable(mission, games) {
+    return mission.roles.every((r) => games.get(r.game)?.replays !== false);
+  }
+
   /**
    * Play a session again from what `save` gives: the same mission, seed and seats, the people's
    * moves at their phase and tick, and on to where it stood (`at`; without it, to the last move).
-   * A saved session goes on from there.
+   * A saved session goes on from there. A mission with a game that cannot be played again
+   * (`replayable`) is refused.
    * @param {object} mission
    * @param {{seed: number, seats: Record<string, string>, record: object[], at?: {phase: number, tick: number}}} saved
    * @param {{games: Map<string, Function>}} options
    * @returns {Session}
    */
   static replay(mission, saved, { games }) {
+    const not = mission.roles.map((r) => games.get(r.game)).find((G) => G?.replays === false);
+    if (not) throw new Error(`a session with "${not.title}" cannot be played again from its record: its world is elsewhere and starts anew`);
     const s = new Session(mission, { games, seed: saved.seed, seats: saved.seats });
     const record = saved.record ?? [], at = saved.at ?? null;
     s.start();

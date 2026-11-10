@@ -314,6 +314,10 @@ record, they decide the same again.
 - `session.save()` gives `{format: "arail-session/1", mission, seed, seats, record, at}`.
 - `Session.replay(mission, saved, {games})` rebuilds the session from it, up to where it stood, and
   it goes on from there.
+- A game whose world is elsewhere and starts anew there cannot be rebuilt from a record: what was
+  done in the lab at its time would all reach a new instance at once. Such a game says so
+  (`static replays = false`), `Session.replayable(mission, games)` tells, `replay` refuses, and
+  the play page neither keeps such a session nor offers to resume it.
 
 This is the base of three things:
 

@@ -354,6 +354,51 @@ test("a track closure names the failure only on the failed signal's own track", 
   assert.deepEqual([closure().closed, closure().fault], [true, "ASig N2"]);
 });
 
+test("a session with the lab cannot be played again from its record, and says so", async () => {
+  assert.equal(LabGame.replays, false);
+  const lab = new SmallLab();
+  const mission = normalizeMission({ format: MISSION_FORMAT, id: "lab", title: "Lab", text: "A test.", roles: [{ role: "train-dispatcher", game: "lab", seat: "human", options: {} }, { role: "maintenance-dispatcher", game: "maintenance" }] }, GAMES);
+  mission.roles[0].options.api = lab;
+  assert.equal(Session.replayable(mission, GAMES), false);
+  const s = new Session(mission, { games: GAMES, seed: 1 }).start();
+  await s.sync();
+  s.step(30);
+  s.act("train-dispatcher", "closeTrack", 3);
+  // what was done in the lab at its time would all arrive at once in a new instance: refused, not guessed
+  assert.throws(() => Session.replay(mission, s.save(), { games: GAMES }), /a session with "The lab's morning" cannot be played again from its record: its world is elsewhere and starts anew/);
+  await s.leave();
+  // the missions without the lab can
+  const morning = normalizeMission({ format: MISSION_FORMAT, id: "m", title: "M", text: "A test.", roles: [{ role: "signaller-relay", game: "signaller" }, { role: "maintenance-dispatcher", game: "maintenance" }] }, GAMES);
+  assert.equal(Session.replayable(morning, GAMES), true);
+});
+
+test("a closure request is the failure's only with its fault, or without one for its own track", async () => {
+  const start = async () => {
+    const g = new LabGame({ api: new SmallLab(), failure: FAILURE, length: 2400, wired: ["repair-status"] });
+    while (g.t < 800) {
+      await g.sync();
+      if (!g.holding) g.step(0.5);
+    }
+    g.reportFault();
+    return g;
+  };
+  const ask = (g, payload) => g.receive({ flow: "closure-request", from: "possession-planner", t: g.t, payload });
+  // another fault, or no fault and another track: not this failure's team
+  let g = await start();
+  ask(g, { fault: "w12", track: "IN 2" });
+  ask(g, { track: "IN 3" });
+  assert.deepEqual([g.team.state, g.open.map((d) => d.id)], ["called", []]);
+  // this failure by its id, or no fault and its own track, or neither
+  ask(g, { fault: "ASig N2", track: "IN 2" });
+  assert.deepEqual([g.team.state, g.open.map((d) => d.id)], ["waiting", ["closure"]]);
+  g = await start();
+  ask(g, { track: "IN 2" });
+  assert.equal(g.team.state, "waiting");
+  g = await start();
+  ask(g, {});
+  assert.equal(g.team.state, "waiting");
+});
+
 test("a lab that does not answer: the seat says so and the shift goes on without it; without an address there is no lab", async () => {
   const dead = { create: async () => { throw new Error("connection refused"); } };
   const g = await alone(new LabGame({ api: dead, length: 60 }));

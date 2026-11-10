@@ -902,8 +902,9 @@ export class SignallerGame extends Game {
       } else if (p.state === "left") this._teamLeft(p.needs);
       else if (p.state === "done") this._teamDone(p.provisional);
       else if (p.state === "relapsed") this._relapsed();
-    } else if (msg.flow === "closure-request" && f?.started && (p.fault == null || p.fault === f.signal)) {
-      // the dispatcher asks for other signallers' tracks too: only the closure for this station's failure is meant here
+    } else if (msg.flow === "closure-request" && f?.started && (p.fault != null ? p.fault === f.signal : p.track == null || this._faultOf(p.track) != null)) {
+      // the dispatcher asks for other signallers' tracks too: only the closure for this station's failure is meant
+      // here (a request that names no fault: only one for the failed signal's own track)
       this._teamArrived();
     } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
       const tr = this.trains.find((x) => x.id === p.hold);

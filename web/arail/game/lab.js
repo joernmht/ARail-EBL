@@ -139,6 +139,7 @@ export class LabGame extends Game {
     release: { label: "Let a train go" },
   };
   static player = LabPlayer;
+  static replays = false;
   static settings = [
     { id: "url", label: "Address of the lab's simulation API", type: "text", value: "http://127.0.0.1:8095", hint: "Start it with: python -m ebl_twin.sim api --keys api_keys.json --cors" },
     { id: "key", label: "API key", type: "password", hint: "From: python -m ebl_twin.sim apikey add <name>" },
@@ -356,7 +357,8 @@ export class LabGame extends Game {
       else if (p.state === "left" && f.repaired == null) this.team.state = "called";
       else if (p.state === "done") this._teamDone();
       else if (p.state === "relapsed") this._relapsed();
-    } else if (msg.flow === "closure-request" && f?.started && (p.fault == null || p.fault === f.signal)) {
+    } else if (msg.flow === "closure-request" && f?.started && (p.fault != null ? p.fault === f.signal : p.track == null || p.track === this.trackName(f.track))) {
+      // a request that names another fault, or no fault and another track, is not for this failure's team
       this._teamArrived();
     }
     this._tidy();
