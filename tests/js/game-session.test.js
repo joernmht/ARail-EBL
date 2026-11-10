@@ -342,6 +342,8 @@ test("the missions of the site: listed, sound, their roles in the catalogue, and
     for (const r of doc.roles) assert.ok(roles.has(r.role), `${file}: ${r.role} is a role of the catalogue`);
     assert.ok(doc.debrief?.length >= 2, `${file}: questions for the debrief`);
     assert.ok(doc.roles.some((r) => r.seat === "human"), `${file}: a seat for a person`);
+    // a mission with a seat whose world is elsewhere (the lab's simulation) cannot be run here: tests/js/game-lab.test.js plays such a seat
+    if (doc.roles.some((r) => GAMES.get(r.game).settings.length)) continue;
     for (const seed of [1, 2, 3]) {
       const { result } = testRun(doc, GAMES, { seed });
       assert.ok(result.over, `${file}, seed ${seed}: the run ends`);

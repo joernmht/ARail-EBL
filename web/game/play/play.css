@@ -1,0 +1,111 @@
+/* The play page of the big game: the missions as cards and the seats of the mission chosen, the
+   header strip of a session (round, phases, clock and speed of a shift, the end of a turn), the
+   seats as tabs with the panel of the seat shown, what the roles give each other, and the result.
+   Colours are the tokens of app/app.css only. */
+.play-layout { padding-block: 18px 10px; }
+.play-screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.play-screen > *, .play-cols > *, .play-seat > * { min-width: 0; }
+/* while a session is played, the head of the page is its name only */
+main:not([data-screen="choose"]) .game-hero { padding-block: 14px; }
+main:not([data-screen="choose"]) .game-hero .lead { display: none; }
+main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
+/* what gets the focus is scrolled in below the sticky bar */
+.play-layout [tabindex="-1"] { scroll-margin-top: 90px; }
+.play-layout .de { color: var(--text-2); font-size: .9em; }
+.play-layout .field.check { min-height: 28px; }
+.play-layout input[type="radio"], .play-layout input[type="checkbox"] { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+.table-scroll { overflow-x: auto; }
+/* a row's head reads as its cells do (app.css sets table heads small and in capitals) */
+.play-layout tbody th { text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; color: var(--text); background: none; }
+
+/* 1: the missions, and the mission chosen */
+.play-missions > h2 { font-size: 1.05rem; margin-bottom: 8px; }
+#missions { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.play-mission h3 { font-size: 1.05rem; }
+.play-roles { margin: 0; padding-left: 1.2em; font-size: .92rem; }
+.play-setup > h2 { font-size: 1.3rem; }
+.play-setup-form { display: grid; gap: 12px; }
+.play-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+.play-choice { border: 1px solid var(--line); border-radius: var(--radius); margin: 0; padding: 6px 12px 8px; min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 18px; }
+.play-choice legend { font-weight: 700; padding: 0 4px; }
+.play-choice .play-setting { flex: 1 1 100%; }
+.play-setup details { max-width: 24em; }
+.play-wiring { display: grid; gap: 6px; margin-top: 14px; }
+.play-wiring h3 { font-size: 1rem; }
+.play-wiring ul { margin: 0; padding-left: 1.1em; }
+.play-wiring td { white-space: normal; min-width: 15em; }
+
+/* 2: the header strip */
+.play-strip-head { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 8px 12px; }
+.play-strip h2 { font-size: 1.3rem; margin: 0; }
+.play-where { font-weight: 600; }
+.play-phases { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.play-phases li { border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; font-size: .86rem; color: var(--text-2); background: var(--surface-2); }
+.play-phases li[aria-current] { border-color: var(--accent); background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.play-phases small { font-weight: 400; }
+.play-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.play-clock { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.play-progress { flex: 1 1 160px; height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.play-progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* the seats: tabs, and the panel of the seat shown */
+.play-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1200px) { .play-cols { grid-template-columns: minmax(0, 1fr) 400px; align-items: start; } }
+.play-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--line); }
+.play-tabs [role="tab"] { flex: 0 1 auto; min-width: 0; display: grid; gap: 1px; text-align: left; border: 1px solid var(--line); border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--surface-2); color: var(--text-2); padding: 8px 12px 7px; cursor: pointer; }
+.play-tabs [role="tab"]:hover { border-color: var(--accent); }
+.play-tabs [role="tab"][aria-selected="true"] { background: var(--surface); border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.play-tabs .name { font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.play-tabs .who { font-size: .8rem; }
+.play-seat { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
+@media (min-width: 760px) {
+  .play-seat { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .play-seat > .wide { grid-column: 1 / -1; }
+}
+.play-seat h3 { font-size: 1.2rem; }
+.play-seat .game-card > h4 { font-size: 1.05rem; margin-bottom: 8px; }
+.play-seat h5 { font-size: .95rem; }
+/* an empty status stays in the accessibility tree, so that what comes into it is announced */
+.play-seat p:empty:not([role="status"]), .play-seat ul:empty, .play-seat dl:empty, .play-keyed:empty, .play-moves-note:empty, .play-plain:empty { display: none; }
+.play-tables { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+.play-figures { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.play-figures > div { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--radius); background: var(--surface-2); padding: 6px 12px; min-width: 7.5em; }
+.play-figures > .tone-ok { border-left-color: var(--accent); }
+.play-figures > .tone-warn { border-left-color: var(--warn); }
+.play-figures > .tone-bad { border-left-color: var(--danger); }
+.play-figures dt { font-size: .78rem; color: var(--text-2); }
+.play-figures dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.play-keyed { display: grid; gap: 10px; }
+.play-decision { border: 1px solid var(--warn); border-radius: var(--radius); padding: 10px 12px; background: var(--surface-2); display: grid; gap: 6px; }
+.play-decision .text { font-size: .88rem; color: var(--text-2); }
+.play-decision .btn { text-align: left; justify-content: flex-start; }
+.play-options { margin: 0; padding-left: 1.2em; font-size: .9rem; }
+.play-move { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
+.play-move fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+.play-move legend { font-weight: 700; padding: 0; margin-bottom: 4px; }
+.play-move [aria-disabled="true"], .play-move .primary[aria-disabled="true"] { background: var(--surface-2); border: 1px dashed var(--line); color: var(--text-2); cursor: not-allowed; }
+.play-why { font-size: .88rem; color: var(--text-2); }
+.play-refused { color: var(--danger); font-size: .88rem; font-weight: 600; }
+
+/* messages and flows: lists that scroll in their frame */
+.play-scroll { max-height: 280px; overflow-y: auto; }
+.play-scroll ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: .86rem; }
+.play-log li { font-variant-numeric: tabular-nums; }
+.play-log li.k-violation { color: var(--danger); font-weight: 600; }
+.play-log li.k-end { font-weight: 600; }
+.play-counts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .86rem; }
+.play-flows .play-scroll { max-height: 560px; }
+.play-flows li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.play-flows .when { font-family: var(--mono); font-size: .8rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.play-flows .who, .play-flows .what { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.play-flows .what { color: var(--text-2); }
+
+/* 3: the result */
+.play-total > h2 { font-size: 1.3rem; }
+.play-result-seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+.play-result .game-card > h3 { font-size: 1.05rem; }
+.play-result .game-card > h4 { font-size: .95rem; margin-top: 14px; }
+.play-debrief { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+@media (forced-colors: active) { .play-progress i, .score-parts .meter i { forced-color-adjust: none; background: CanvasText; } }

@@ -147,8 +147,12 @@ big game couples them by what they give each other (#104): a session plays the s
 and the fast ones in shifts, a turn's decisions reach the shift as state (a staff plan, the
 condition of the assets), and the shift's reports reach the next turn; a shift is a sample of its
 period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
-computer. The first two roles are joined: the signaller of Bf Neustadt and the maintenance
-dispatcher of its district (the mission `neustadt-morning`).
+computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
+of its district for a morning (the mission `neustadt-morning`), and with the asset manager and the
+budget committee's rapporteur for three budget years (`neustadt-years`): the budget is the
+district's money, the district's plan is the dispatcher's teams and the signal's chance to fail,
+and the morning's reports are the year's delay minutes. On the lab's own timetable the operations
+are the EBL's simulation (`lab-morning`). All of them are played on the play page (`game/play/`).
 
 ## The signaller of Bf Neustadt
 
@@ -217,15 +221,17 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 | Page | What |
 | --- | --- |
 | `game/` | The game page: the games and exercises that were in the app, on the lab's layout (infrastructure asset management, rail operations, journeys, the full terminal) |
+| `game/play/` | The play page of the big game: choose a mission and the seats (you or the computer), play its turns and shifts, watch what the roles give each other, read the result and the debrief. Missions: a morning at Bf Neustadt (signaller and maintenance dispatcher), three years of Neustadt (with the asset manager and the budget rapporteur), Fault Night, Budget Years and The Night Session alone, a morning in the lab (on the EBL's simulation API) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
 | `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |
 
 ## What comes next
 
-- The role games of the catalogue, one by one, each on the game core; first those that build on what
-  ARail has (the maintenance dispatcher and the repair team with the maintenance story, the railway
-  undertaking's dispatcher with the operations, the passenger with the journeys).
+- The role games of the catalogue, one by one, each on the game core and with its ports, so that it
+  joins a mission with the others; next the undertaking's operations control and the transport
+  authority's contract manager, whose flows the first games already speak (delay notices,
+  connection requests, the transport contract), then the passenger with the journeys.
 - The career mode on the planner's model: each step a round of the role's game, applications and
   elections that can fail, pay, reputation and stress (#146); qualifications earned by exams, quizzes
   and practical rounds in the role's game (#158); starting points as people, such as a wheelchair user
@@ -233,4 +239,6 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 - The wheelchair user's trip as a mini game: step-free stations and trains, booking assistance,
   a broken lift (#156); the role games of every family (#148–#155).
 - The parked games of the game page on the game core (#144).
-- Computer players for the roles nobody plays; the roles connected by their events (#104, #106).
+- Several devices for one session (#106): the record of moves is ready for it, a relay is missing;
+  a facilitator's view (#96) and the debrief with a timeline (#101).
+- A mission editor and content packs (#105).

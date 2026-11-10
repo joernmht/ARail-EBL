@@ -64,6 +64,12 @@ export class Game {
   static actions = { decide: { label: "Decide" } };
   /** The computer player for a seat nobody sits on. */
   static player = Player;
+  /**
+   * What a seat must be told before the game begins when its world is elsewhere (the address of the
+   * lab's simulation, a key): a page asks for these and passes them to the game as options.
+   * @type {Array<{id: string, label: string, type?: "text" | "password", value?: string, hint?: string}>}
+   */
+  static settings = [];
 
   /**
    * @param {object} [options]
@@ -226,10 +232,23 @@ export class Game {
   /** What the game does with a flow it receives (to override). */
   take(msg) {}
 
-  /** A phase of a session begins for this game: a turn's decisions are asked here (to override). @param {{round: number, rounds: number, phase: object}} ctx */
+  /**
+   * A game whose world is elsewhere (the lab's simulation behind its API) exchanges with it here:
+   * its commands go out, what happened there comes in. A page calls it between the steps
+   * (`Session.sync`); a step never waits for it. To override.
+   * @returns {Promise<void>}
+   */
+  async sync() {}
+
+  /** Whether the session's clock must wait for this game: its world has not caught up (to override). */
+  get holding() {
+    return false;
+  }
+
+  /** A phase of a session begins for this game: a turn's decisions are asked here (to override). @param {{round: number, rounds: number, year: number, phase: object}} ctx */
   begin(ctx) {}
 
-  /** A phase ends: a turn's decisions take effect, reports are given (to override). @param {{round: number, rounds: number, phase: object}} ctx */
+  /** A phase ends: a turn's decisions take effect, reports are given (to override). @param {{round: number, rounds: number, year: number, phase: object}} ctx */
   finish(ctx) {}
 
   /** A rule was broken (severity 1: a slip, 2: a breach, 3: a danger to people). */

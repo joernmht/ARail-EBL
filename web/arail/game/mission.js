@@ -43,6 +43,7 @@ export function normalizeMission(doc, games = null) {
   const m = structuredClone(doc ?? {});
   m.seed ??= 1;
   m.rounds ??= 1;
+  m.year ??= 2027;
   m.mode ??= (m.roles?.length ?? 0) > 1 ? "cooperative" : "solo";
   m.roles = (m.roles ?? []).map((r) => ({ seat: "computer", level: "normal", ...r, id: r.id ?? r.role }));
   if (!m.phases?.length) {

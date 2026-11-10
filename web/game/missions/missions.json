@@ -1,6 +1,11 @@
 {
  "format": "arail-missions/1",
  "missions": [
-  "neustadt-morning.json"
+  "neustadt-morning.json",
+  "neustadt-years.json",
+  "fault-night.json",
+  "budget-years.json",
+  "night-session.json",
+  "lab-morning.json"
  ]
 }

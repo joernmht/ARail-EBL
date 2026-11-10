@@ -124,7 +124,7 @@ export const PACKAGES = [
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
     summary: "The role games, apart from the framework (their own entry, game/index.js; no framework package imports them): the game core (a role at work: clock, resources, decisions, moves, rules, objectives, score, ports), the flows between roles, sessions and missions (the big game: roles wired by their flows, in turns and shifts), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the role games.",
-    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js"],
+    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js", "web/arail/game/lab.js", "web/arail/game/asset-manager.js", "web/arail/game/budget.js"],
     uses: ["core-math"],
   },
   {
@@ -165,8 +165,8 @@ export const PACKAGES = [
   },
   {
     id: "game", name: "game", group: "pages", path: "web/game",
-    summary: "The game page: the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal).",
-    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/roles/roles.js", "web/game/career/career.js"],
+    summary: "The game page: the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games: the signaller's panel, the play page of the big game (missions, seats, turns and shifts), the role catalogue and the career planner.",
+    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {

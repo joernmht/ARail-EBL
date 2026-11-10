@@ -19,4 +19,7 @@ export {
 export {
   SignallerAutopilot, SignallerGame, STATION, TIMETABLE, CONNECTIONS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf, failureChance,
 } from "./signaller.js";
+export { AssetManagerGame, AssetManagerPlayer, LEVELS as ASSET_MANAGER_LEVELS, TARGET_GRADE, minutesPerFault, renewalsOf, yearOf } from "./asset-manager.js";
+export { BudgetGame, BudgetPlayer, LEVELS as BUDGET_LEVELS, LINES as BUDGET_LINES } from "./budget.js";
+export { CHUNK_S, EblApi, LAG_S, LATE_MIN, LabGame, LabPlayer } from "./lab.js";
 export { DISTRICT, DRIVE, FAULTS, LEVELS as MAINTENANCE_LEVELS, MaintenanceGame, MaintenancePlayer, ON_CALL, RESTORE_MIN, driveTime } from "./maintenance.js";

@@ -1,0 +1,31 @@
+{
+ "format": "arail-mission/1",
+ "id": "lab-morning",
+ "title": "A morning in the lab",
+ "text": "08:00 to 08:40 at Neustadt, on the lab's own timetable: the trains are run by the EBL's simulation (its driving behaviour, its vehicles, its signal boxes), reached through its API. At 08:13 exit signal N2 fails in the lab. The dispatcher's seat reports it, closes track 2 for the repair team and opens it again; the maintenance dispatcher sends the team. What is decided here happens in the lab: a closed track sends trains to another, a held train waits. The seat needs the address and a key of a running simulation API.",
+ "mode": "cooperative",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "train-dispatcher",
+   "game": "lab",
+   "seat": "human",
+   "options": {
+    "station": "IN",
+    "stationName": "Neustadt",
+    "timetable": { "version": 5, "day": 1 },
+    "failure": { "signal": "ASig N2", "track": 2, "at": 780 }
+   }
+  },
+  { "role": "maintenance-dispatcher", "game": "maintenance", "seat": "computer", "level": "training" }
+ ],
+ "rounds": 1,
+ "phases": [
+  { "id": "shift", "kind": "shift", "title": "The morning shift", "roles": ["train-dispatcher", "maintenance-dispatcher"], "length": 2400, "clock": "08:00" }
+ ],
+ "debrief": [
+  "Which trains were sent to another track while track 2 was closed, and what did that cost them?",
+  "The same failure in the signaller's game (A morning at Bf Neustadt) and here: what does the lab's simulation show that the small game leaves out?",
+  "In the real lab, people sit at the signal boxes. Which of the interventions made here would be a request to them, and which could a lecturer's console do directly?"
+ ]
+}

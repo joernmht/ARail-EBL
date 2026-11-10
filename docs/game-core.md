@@ -47,9 +47,9 @@ core), #104 (game modes, time scales and difficulty), #105 (missions as data), #
 - **Everything is deterministic and recorded.** The same seed and the same moves at the same ticks
   give the same session, so it can be saved, played again for the debrief, and shared between
   devices by exchanging moves only.
-- **The world can be exchanged.** The operations of a shift are played by ARail's own games; the
-  same ports fit the lab: the EBL's timetable simulation behind its HTTP API, the lab itself later
-  (see [The lab as a world](#the-lab-as-a-world): designed, not built yet).
+- **The world can be exchanged.** The operations of a shift are played by ARail's own games, or
+  by the lab: the EBL's timetable simulation behind its HTTP API today, the lab itself later (see
+  [The lab as a world](#the-lab-as-a-world)).
 
 ## The concepts
 
@@ -149,10 +149,11 @@ The role catalogue uses the same flows to say who gives what to whom: every role
 (see [Roles](roles.md)). The catalogue's graph is the wiring diagram of the whole railway; a
 mission seats a part of it.
 
-The flows of the first games and what they carry: the contract between the games. The signaller's
-and the maintenance dispatcher's games keep to it today; the rows of the budget committee MP, the
-asset manager, the contract manager and the undertaking's operations control are the contract their
-games are being written against.
+The flows of the first games and what they carry: the contract between the games. The games of
+the budget rapporteur, the asset manager, the signaller, the maintenance dispatcher and the lab's
+seat keep to it today; the rows of the contract manager and the undertaking's operations control
+are the contract for their games, which are not written yet (the signaller's game already gives
+the delay notices and takes the connection requests).
 
 | Flow | Kind | From → to | Payload |
 | --- | --- | --- | --- |
@@ -185,14 +186,14 @@ seconds, and it does not reduce a shift to a dice roll. It plays both, each at i
   begun with what holds now.
 
 A mission lays the phases out for a **round** (a budget year) and says how many rounds are played.
-The round of a budget year, as the slow roles' games are being written for it (the engine's tests
-play such rounds with small games of their own):
+The round of the mission `neustadt-years` (the contract manager and the operations control will
+join it when their games are written):
 
 ```mermaid
 flowchart LR
-  budget["Turn: the budget<br>budget committee MP"] -- "budget" --> plan["Turn: the year's plan<br>asset manager, contract manager"]
-  plan -- "staff plan, asset condition,<br>transport contract" --> shift["Shift: a morning at Bf Neustadt<br>signaller, maintenance dispatcher,<br>operations control"]
-  shift -- "performance reports" --> review["Turn: the year's account<br>asset manager, contract manager,<br>budget committee MP"]
+  budget["Turn: the night session<br>budget rapporteur"] -- "budget" --> plan["Turn: the district's plan<br>asset manager"]
+  plan -- "staff plan,<br>asset condition" --> shift["Shift: a morning at Bf Neustadt<br>signaller, maintenance dispatcher"]
+  shift -- "performance reports" --> review["Turn: the year's account<br>asset manager, budget rapporteur"]
   review -- "next year" --> budget
 ```
 
@@ -341,45 +342,81 @@ what its view shows).
 
 The operations of a shift need not be ARail's own. The EBL's digital twin has a timetable
 simulation with the train behaviour of the lab's driving simulator behind an HTTP API (`ebl`
-repository, `5 Digitaler Zwilling/SIMULATION.md`): an instance runs one of the lab's timetables or
-runs sent as JSON, is stepped or run against the clock, and tells its trains, events (departures,
-arrivals and passings with their delays, waiting routes) and results. It is the lab for now; the
-lab's Zentralrechner can be read the same way later.
+repository, `5 Digitaler Zwilling/SIMULATION.md`): an instance runs one of the lab's timetables,
+is stepped, and tells its trains, its events (departures, arrivals and passings with their delays,
+routes that wait) and its results; and it takes **interventions**: hold a train, close a station
+track, let a signal fail and repair it. It is the lab for now; the lab itself can stand behind the
+same seat later.
 
-For the engine the lab is **a seat**: a game whose world is elsewhere. It has the ports of the
-infrastructure manager's operations, so the other roles' games need not know whether a signaller's
-game or the lab is at the other end:
+For the engine the lab is **a seat** (`web/arail/game/lab.js`, the game `lab`): the
+infrastructure manager's dispatcher of the lab's network, with the ports of a signaller's game, so
+the other roles' games need not know whether ARail's small station or the lab is at the other end.
 
-| The lab tells (events of the API) | As a flow |
+| In the lab | As a flow |
 | --- | --- |
-| A train departs, arrives or passes late | `delay-notice` to the undertaking's operations control |
-| A signal that does not clear, a route that waits | `fault-report` to the maintenance dispatcher |
+| A train departs or passes Neustadt a minute or more late | `delay-notice` |
+| The signal that fails (scripted by the mission), reported at the seat | `fault-report` to the maintenance dispatcher |
+| The station track closed or opened at the seat | `track-closure` |
 
-| A flow to the lab | As an intervention |
+| A flow to the seat | As an intervention in the lab |
 | --- | --- |
-| `connection-request` | Hold the train at its station until a time |
-| `closure-request`, then the closure granted | Close the station track; open it after the repair |
-| `repair-status` done | The signal works again |
+| `connection-request`, or the move *Hold a train* | `hold` the train at the station until a time |
+| `closure-request`, granted at the seat | `closeTrack`: no route is set into the track; trains due there are sent to another |
+| `repair-status` done | `repairSignal`; then `openTrack` at the seat |
 
-The second table needs the simulation to take interventions (hold a train, close a station track,
-let a signal fail and repair it); the read side works with the API as it is. The seat is designed
-and not built yet: a game with an asynchronous `sync()` that sends its commands and reads the
-events between the session's ticks, and holds the session's clock while its world has not caught
-up. In the real lab the way back stays under the lecturer's control (#77): the same flows then go
-to the people at the desks as requests, not to the layout.
+A game whose world is elsewhere cannot answer within a tick. It has an asynchronous `sync()`: it
+creates the lab's instance (the timetable, the shift's window, the failure scripted at its time),
+sends the interventions that are waiting, advances the lab to the game's time and reads its events.
+A page calls `session.sync()` between its steps, and the session's clock waits (`holding`) while
+the lab is more than 30 s behind; `session.runWith()` plays a session of computers this way. A
+seat says what it must be told first in `static settings` (the address and a key of the API): the
+play page asks for them. A lab that does not answer is said so, and the shift goes on without it.
+
+The mission `lab-morning` seats the lab's dispatcher and the maintenance dispatcher: at 08:13 exit
+signal N2 of Neustadt fails in the lab, the report sends the dispatcher's team, the track is closed
+for it, and its report repairs the signal in the simulation; the trains of the lab's Monday
+timetable wait, are sent to other tracks and run late, as the simulation's train behaviour and
+signal boxes make them. To play it, start the API on the same computer and give the seat its
+address and a key:
+
+```sh
+cd "5 Digitaler Zwilling"                    # in a checkout of the ebl repository
+python -m ebl_twin.sim apikey add arail      # prints the key once
+python -m ebl_twin.sim api --keys api_keys.json --port 8095 --cors
+```
+
+What is left out: the session's record does not hold the lab's answers, so a session with a lab
+seat is not played again from its record alone (the simulation is deterministic, so the same
+interventions at the same times give the same lab; replaying them is the next step). In the real
+lab the way back stays under the lecturer's control (#77): the same flows then go to the people at
+the desks as requests, not to the layout.
 
 ## The role games so far
 
 | Game | Role | Played in | Takes | Gives | Alone, it plays |
 | --- | --- | --- | --- | --- | --- |
-| `signaller` (Signaller at Bf Neustadt, also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails |
+| `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails |
 | `maintenance` (Fault Night) | Maintenance and fault dispatcher | shifts (minutes) | staff plan, asset condition, fault report, track closure | repair status, closure request, performance report | the signaller's fault (exit signal N2), and the signallers who close the tracks |
+| `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
+| `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
+| `budget` (The Night Session) | Budget committee's rail rapporteur | turns (years) | performance report (infrastructure) | budget, funding decision | the district's year (each line spends what its projects can build with) |
 
-Seated together (the mission `neustadt-morning`), the signaller's fault report sends the
-dispatcher's team, the team's arrival asks the signaller for the closure of G2, the closure lets
-the team work, and its report repairs the signal: the half hour of the signaller's game with the
-repair time in another player's hands. A dispatcher who never sends a team leaves the signaller
-with the failure for the whole shift.
+Seated together:
+
+- **`neustadt-morning`** (signaller, maintenance dispatcher; one shift): the signaller's fault
+  report sends the dispatcher's team, the team's arrival asks the signaller for the closure of G2,
+  the closure lets the team work, and its report repairs the signal: the half hour of the
+  signaller's game with the repair time in another player's hands. A dispatcher who never sends a
+  team leaves the signaller with the failure for the whole shift.
+- **`neustadt-years`** (budget rapporteur, asset manager, signaller, maintenance dispatcher; three
+  years): the rapporteur's budget is the district's money; the asset manager's staff plan is the
+  number of teams the dispatcher has that morning, and the condition of the assets decides whether
+  the signal fails and how many other faults the district brings; the morning's reports give the
+  minutes one fault costs, which the asset manager's year multiplies by the faults of the year; the
+  district's account goes back to the rapporteur.
+- **`lab-morning`** (the lab's dispatcher, maintenance dispatcher; one shift on the lab's
+  timetable): see above.
+- Alone: `fault-night`, `budget-years`, `night-session`.
 
 ## The parked games
 
@@ -402,8 +439,8 @@ has what they need. How their parts map:
 The step that remains is an adapter each: a `Game` that holds an engine, raises the engine's
 decisions as its own and gives the engine's events as flows. The adapters must live outside
 `web/arail/game/` (which imports only the framework's math), in a package that may import both. The
-asset manager's game of this guide is a compact model made to be wired; the infrastructure engine
-behind the same ports would be its full form.
+asset manager's game above is a compact model made to be wired; the infrastructure engine behind
+the same ports would be its full form.
 
 ## Writing a role game
 
@@ -432,6 +469,9 @@ behind the same ports would be its full form.
 
 ## What comes next
 
+- The undertaking's operations control (Transportleitung) and the transport authority's contract
+  manager (Malus Month) on the contract above: the delay notices, connection requests, the
+  transport contract and its penalties then join `neustadt-years`.
 - The play page for several devices: a relay for the record (#106), a facilitator's view with the
   flows and the injects (#96), the debrief with a timeline (#101).
 - A mission editor (#105): seats, phases, conditions and injects on a timeline; content packs.
@@ -439,4 +479,5 @@ behind the same ports would be its full form.
   (#148–#155), each with a mission alone and a place in a mission with others.
 - The career mode on sessions: each step of a career a round of the role's game (#146).
 - The lab behind the lab's seat: the Zentralrechner's telegrams instead of the simulation's API
-  (reading), and the way back under the lecturer's control (#77).
+  (reading), and the way back under the lecturer's control (#77); more of the lab at the seat (the
+  other stations, the lab's own signal failures, connections between its trains).

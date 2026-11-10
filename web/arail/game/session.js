@@ -136,8 +136,9 @@ export class Session {
 
   /* ---------------------------------------------------------------- phases */
 
+  /** What a game is told of a phase: the round, how many there are, the calendar year of the round (rounds count as years from the mission's `year`), the phase. */
   _ctx() {
-    return { round: this.round, rounds: this.rounds, phase: this.phase };
+    return { round: this.round, rounds: this.rounds, year: (this.mission.year ?? 2027) + this.round - 1, phase: this.phase };
   }
 
   _begin(i) {
@@ -166,7 +167,8 @@ export class Session {
       }
       seat.live = true;
       for (const msg of seat.mail.splice(0)) seat.game.receive(msg);
-      seat.game.begin(this._ctx());
+      // a game that has ended (a slow role's game can fail for good) is asked nothing more
+      if (!seat.game.over) seat.game.begin(this._ctx());
     }
     this.emit("phase", { phase: ph, index: i });
     this._injects();
@@ -250,7 +252,7 @@ export class Session {
    * the next call): flows arrive, the computer players move, the games step.
    */
   step(dt) {
-    if (this.over || this.phase?.kind !== "shift" || !(dt > 0)) return;
+    if (this.over || this.phase?.kind !== "shift" || !(dt > 0) || this.holding) return;
     this._acc += dt;
     const index = this.index;
     while (this._acc >= this.phase.tick - 1e-9 && !this.over && this.index === index) {
@@ -258,6 +260,35 @@ export class Session {
       this._tick(this.phase.tick);
     }
     if (this.index !== index) this._acc = 0;
+  }
+
+  /** Whether the clock waits for a game whose world is elsewhere and has not caught up. */
+  get holding() {
+    return this.active.some((s) => s.game && !s.game.over && s.game.holding);
+  }
+
+  /**
+   * Let the games whose world is elsewhere exchange with it (`Game.sync`): a page calls this
+   * between steps and does not call it again before it is done.
+   * @returns {Promise<void>}
+   */
+  async sync() {
+    await Promise.all(this.active.filter((s) => s.game && !s.game.over).map((s) => s.game.sync()));
+  }
+
+  /**
+   * Like `run`, for sessions with a game whose world is elsewhere: play on until a person is needed
+   * or the session is over, exchanging with the worlds between the ticks.
+   * @returns {Promise<Session>}
+   */
+  async runWith() {
+    this.start();
+    while (!this.over && !this.waiting) {
+      await this.sync();
+      if (this.phase.kind !== "shift") this._close();
+      else if (!this.holding) this._tick(this.phase.tick);
+    }
+    return this;
   }
 
   _tick(h) {
@@ -280,8 +311,8 @@ export class Session {
     for (const seat of this.active) {
       const g = seat.game;
       // in a turn, what was not decided is decided by its fallback
-      if (ph.kind === "turn") for (const d of g.open) g.decide(d.id, d.fallback ?? d.options[0].id, { auto: true });
-      g.finish(ctx);
+      if (ph.kind === "turn" && !g.over) for (const d of g.open) g.decide(d.id, d.fallback ?? d.options[0].id, { auto: true });
+      if (ph.kind === "shift" || !g.over) g.finish(ctx);
       if (ph.kind === "shift") {
         g.end("The shift is over.");
         seat.results.push({ round: ph.round, phase: ph.id, ...g.result() });

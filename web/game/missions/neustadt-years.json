@@ -1,0 +1,80 @@
+{
+ "format": "arail-mission/1",
+ "id": "neustadt-years",
+ "title": "Three years of Neustadt",
+ "text": "Three budget years of the district around Bf Neustadt, with four roles at three rhythms. Each year the budget committee's rapporteur adopts the rail budget (a turn), the asset manager plans maintenance, renewals and the emergency teams with the district's share of it (a turn), and then a morning at Bf Neustadt is played (a shift): the signaller and the maintenance dispatcher work with what the plan left them: the teams on shift, and assets whose condition decides whether the signal fails. The morning's reports go into the year's account: the faults of the year times the minutes one fault cost that morning. Take the asset manager's seat and let the computer play the others, or share the seats.",
+ "mode": "cooperative",
+ "seed": 1,
+ "year": 2027,
+ "roles": [
+  {
+   "role": "bundestag-budget-mp",
+   "game": "budget",
+   "seat": "computer",
+   "level": "normal"
+  },
+  {
+   "role": "asset-manager",
+   "game": "asset-manager",
+   "seat": "human",
+   "level": "normal"
+  },
+  {
+   "role": "signaller-relay",
+   "game": "signaller",
+   "seat": "computer",
+   "level": "normal"
+  },
+  {
+   "role": "maintenance-dispatcher",
+   "game": "maintenance",
+   "seat": "computer",
+   "level": "normal"
+  }
+ ],
+ "rounds": 3,
+ "phases": [
+  {
+   "id": "budget",
+   "kind": "turn",
+   "title": "The night session: the rail budget",
+   "roles": [
+    "bundestag-budget-mp"
+   ]
+  },
+  {
+   "id": "plan",
+   "kind": "turn",
+   "title": "The district's plan for the year",
+   "roles": [
+    "asset-manager"
+   ]
+  },
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "A morning at Bf Neustadt",
+   "roles": [
+    "signaller-relay",
+    "maintenance-dispatcher"
+   ],
+   "length": 2400,
+   "clock": "08:00"
+  },
+  {
+   "id": "review",
+   "kind": "turn",
+   "title": "The year's account",
+   "roles": [
+    "asset-manager",
+    "bundestag-budget-mp"
+   ]
+  }
+ ],
+ "debrief": [
+  "Follow one decision down: what did the asset manager's staff plan change for the maintenance dispatcher that morning, and what did the morning's repair time change in the year's delay minutes?",
+  "Follow one result up: what did the rapporteur learn from the district's account, and what did the next budget do with it?",
+  "A morning is a sample of its year. Where would one unlucky morning mislead the people who decide for years?",
+  "Which of the four roles had the most to decide, and which had the most effect?"
+ ]
+}

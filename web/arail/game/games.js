@@ -3,6 +3,9 @@
  * them. A new role game is added here (one per line) and exported from index.js.
  * @module arail/game/games
  */
+import { AssetManagerGame } from "./asset-manager.js";
+import { BudgetGame } from "./budget.js";
+import { LabGame } from "./lab.js";
 import { MaintenanceGame } from "./maintenance.js";
 import { normalizeMission } from "./mission.js";
 import { Session } from "./session.js";
@@ -12,6 +15,9 @@ import { SignallerGame } from "./signaller.js";
 export const GAMES = new Map([
   SignallerGame,
   MaintenanceGame,
+  LabGame,
+  AssetManagerGame,
+  BudgetGame,
 ].map((G) => [G.id, G]));
 
 /** The game of a role (an id of the role catalogue), or undefined. */

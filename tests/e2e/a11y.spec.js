@@ -27,6 +27,8 @@ const PAGES = [
   ["signaller's game", "/game/signaller/"],
   ["role catalogue", "/game/roles/#role-signaller-relay"],
   ["career planner", "/game/career/#aim=signaller-relay"],
+  ["big game, the missions", "/game/play/"],
+  ["big game, a mission chosen with its seats and wiring", "/game/play/?mission=neustadt-morning"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["plan documents", "/plan/"],
@@ -48,6 +50,7 @@ for (const scheme of ["light", "dark"]) {
         if (path.startsWith("/live/")) await page.waitForFunction(() => window.__live?.pose);
         if (path.startsWith("/plan/")) await page.waitForFunction(() => window.__plan?.result, null, { timeout: 30_000 });
         if (path.startsWith("/builder/")) await page.waitForFunction(() => window.__builder?.doc && document.querySelector("#panel-element").childElementCount, null, { timeout: 30_000 });
+        if (path.startsWith("/game/play/")) await page.waitForFunction(() => window.__play?.ready);
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
@@ -314,6 +317,57 @@ for (const [scheme, device, viewport] of STATES) {
     await expect(page.locator(".scenario").first().getByRole("button", { name: "Stop" })).toBeVisible();
     await expect(page.locator(".disruption").first()).toBeVisible();
     found.push(...(await violations(page, "Disruptions panel, a disruption and a scenario", "#panel")));
+    expect(found).toEqual([]);
+  });
+}
+
+// The big game (game/play/): a shift that runs with open decisions and the flows between the roles,
+// a move refused, a computer's seat, the result, and a turn with its decisions.
+for (const [scheme, device, viewport] of STATES) {
+  test(`play page states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
+    const path = "/game/play/?mission=neustadt-morning";
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize(viewport);
+    await page.goto(path);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(path);
+    await page.waitForFunction(() => window.__play?.ready);
+    const found = [];
+    await page.locator("#start").click();
+    await page.getByRole("button", { name: "Pause" }).click();
+    await page.evaluate(() => {
+      const p = window.__play;
+      for (let i = 0; i < 790; i++) p.session.step(1);
+      p.draw(true);
+    });
+    await expect(page.locator("#seat-signaller-relay .play-decision")).toHaveCount(2);
+    await page.locator("#seat-signaller-relay").getByRole("button", { name: "Report it now" }).click();
+    await page.evaluate(() => {
+      const p = window.__play;
+      for (let i = 0; i < 400; i++) p.session.step(1);
+      p.draw(true);
+    });
+    await expect(page.locator("#flowList li").first()).toBeVisible();
+    found.push(...(await violations(page, "a shift with decisions and flows")));
+    await page.locator("#seat-signaller-relay .play-move").getByRole("button", { name: "Close a track" }).click(); // nothing chosen
+    await expect(page.locator("#seat-signaller-relay .play-refused").filter({ hasText: "Choose" })).toBeVisible();
+    found.push(...(await violations(page, "a move refused")));
+    await page.locator("#tab-maintenance-dispatcher").click();
+    await expect(page.locator("#seat-maintenance-dispatcher")).toBeVisible();
+    found.push(...(await violations(page, "a computer's seat")));
+    await page.evaluate(() => {
+      const p = window.__play;
+      p.sit("signaller-relay", "computer");
+      p.skip();
+    });
+    await expect(page.locator("#resultTitle")).toBeVisible();
+    found.push(...(await violations(page, "the result")));
+    // a turn: decisions with their fallback, the year's plan as a form
+    await page.goto("/game/play/?mission=budget-years");
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#start").click();
+    await expect(page.locator("#seat-asset-manager .play-decision")).toHaveCount(5);
+    found.push(...(await violations(page, "a turn with decisions")));
     expect(found).toEqual([]);
   });
 }
