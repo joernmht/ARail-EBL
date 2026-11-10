@@ -2,8 +2,9 @@
 // railway, each seat one role's game, played by a person at this device or by the computer; the games
 // are wired by flows (what one role gives another). The page lets a person choose a mission and the
 // seats, play it in hot seat (the tabs are the seats), watch what the roles give each other, and
-// read the result. It knows no game by name: every game is drawn from its view (figures, tables,
-// the moves that can be made now with their fields), its open decisions, its messages and its score.
+// read the result. It knows no game by name: every game is drawn from its view (a sketch of its world
+// with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
+// its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
 import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
@@ -57,6 +58,23 @@ function payloadLine(payload, most = 8) {
   }
   return parts.length > most ? `${parts.slice(0, most).join(" · ")} · …` : parts.join(" · ");
 }
+
+const SVG = "http://www.w3.org/2000/svg";
+/** An SVG element, made as `h` makes the others (handlers as properties, so that `morph` carries them over); its texts are names and stay as they are. */
+function s(tag, attrs = {}, ...children) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k.startsWith("on") && typeof v === "function") {
+      el[k] = v;
+      (el._handlers ||= []).push(k);
+    } else el.setAttribute(k, String(v));
+  }
+  for (const c of children.flat(Infinity)) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
+  return el;
+}
+/** The width of a text in a sketch (px), near enough for a box around it. */
+const textWidth = (text, small = false) => String(text).length * (small ? 6.2 : 7.6);
 
 /** A sentence, for the list of what is announced. */
 const sentence = (text) => (/[.?!…]$/.test(text) ? text : `${text}.`);
@@ -124,6 +142,8 @@ class PlayPage {
     /** What a person has filled into the forms (by input id), and the moves refused (by seat and move). */
     this.drafts = new Map();
     this.refused = new Map();
+    /** What is chosen in a seat's sketch (the id of the item, by seat id). */
+    this.picked = new Map();
     /** The decisions already announced. */
     this.heard = new WeakSet();
     /** The table frames that scroll sideways now (they can be reached with the keyboard). */
@@ -578,6 +598,7 @@ class PlayPage {
   panel(seat) {
     const p = {
       head: h("div", { class: "game-card play-head wide" }),
+      sketch: h("div", { class: "game-card play-sketch wide", hidden: true }),
       decisionsTitle: h("h4", { tabindex: "-1" }, "Decisions"),
       decisionsNote: h("p", { class: "hint" }),
       decisions: h("div", { class: "play-keyed" }),
@@ -590,6 +611,7 @@ class PlayPage {
     };
     p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
       p.head,
+      p.sketch,
       h("div", { class: "game-card play-decisions" }, p.decisionsTitle, p.decisionsNote, p.decisions),
       h("div", { class: "game-card play-moves" }, p.movesTitle, p.movesNote, p.moves),
       p.tables,
@@ -602,7 +624,7 @@ class PlayPage {
   view(game) {
     try {
       const v = game?.view() ?? {};
-      return { figures: v.figures ?? [], tables: v.tables ?? [], actions: v.actions ?? [] };
+      return { sketch: v.sketch?.items?.length ? v.sketch : null, figures: v.figures ?? [], tables: v.tables ?? [], actions: v.actions ?? [] };
     } catch (e) {
       return { figures: [{ label: "This game cannot be shown", value: e.message, tone: "bad" }], tables: [], actions: [] };
     }
@@ -626,6 +648,9 @@ class PlayPage {
         h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null)))),
       h("div", { class: "row" }, h("button", { class: "btn small", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over")));
 
+    p.sketch.hidden = !view.sketch;
+    if (view.sketch) this.sketch(seat, p, view.sketch, can);
+
     const open = g?.open ?? [];
     p.decisionsNote.textContent = open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.") : "Nothing to decide just now.";
     keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => morph(el, ...this.decision(seat, d, can)));
@@ -647,6 +672,86 @@ class PlayPage {
     morph(p.log, lines.length
       ? h("div", { class: "play-scroll", tabindex: "0", role: "group", "aria-label": "Messages, the newest first" }, h("ol", {}, lines.map((l) => h("li", { class: `k-${safe(l.kind)}` }, l.text))))
       : h("p", { class: "hint" }, "No messages yet."));
+  }
+
+  /**
+   * The sketch of a game's world (`view().sketch`): its shapes as they are, and on top what can be
+   * chosen (an item with a menu) as buttons for a person at work; below, what is chosen with its moves.
+   * A computer's seat and a seat not at work show the picture only.
+   */
+  sketch(seat, p, sk, can) {
+    const picks = can ? sk.items.filter((it) => it.id && it.menu?.length) : [];
+    if (!p.board) {
+      p.sketchTitle = h("h4", {});
+      p.shapes = s("g", { "aria-hidden": "true" });
+      p.picks = s("g", {});
+      p.svg = s("svg", { focusable: "false" }, p.shapes, p.picks);
+      p.board = h("div", { class: "play-board", "data-scroll": `sketch|${seat.id}` }, p.svg);
+      p.pick = h("div", { class: "play-pick" });
+      mount(p.sketch, p.sketchTitle, p.board, p.pick);
+    }
+    p.sketchTitle.textContent = sk.title ?? "The picture";
+    p.svg.setAttribute("viewBox", `0 0 ${sk.width} ${sk.height}`);
+    p.svg.style.minWidth = `${Math.round(sk.width * 0.62)}px`;
+    p.board.setAttribute("role", picks.length ? "group" : "img");
+    p.board.setAttribute("aria-label", sk.label ?? sk.title ?? "The picture");
+    morph(p.shapes, sk.items.filter((it) => !picks.includes(it)).map((it) => this.shape(it)));
+    const chosen = picks.find((it) => it.id === this.picked.get(seat.id)) ?? null;
+    keyed(p.picks, picks, (it) => it.id, () => s("g", { class: "pick", role: "button", tabindex: "0" }), (el, it) => {
+      el.setAttribute("aria-label", it.title ?? it.text ?? it.id);
+      el.setAttribute("aria-pressed", String(it === chosen));
+      el.onclick = () => this.pick(seat.id, it.id);
+      el.onkeydown = (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        this.pick(seat.id, it.id);
+      };
+      const [x, y, w, hh] = it.kind === "dot" ? [it.x - 16, it.y - 16, 32, 32] : [it.x - (it.anchor === "middle" ? textWidth(it.text) / 2 : it.anchor === "end" ? textWidth(it.text) : 0) - 8, it.y - 19, textWidth(it.text) + 16, 28];
+      morph(el, s("rect", { class: "hit", x, y, width: w, height: hh, rx: 6 }), this.shape(it));
+    });
+    const refused = this.refused.get(`${seat.id}|sketch`);
+    morph(p.pick,
+      !can ? null : chosen
+        ? [h("p", { class: "play-picked" }, chosen.title ?? chosen.text ?? ""), h("div", { class: "row" }, chosen.menu.map((m) => h("button", { class: "btn small", type: "button", "aria-disabled": m.disabled ? "true" : null, onclick: () => this.pickMove(seat.id, chosen.id, m) }, m.label)))]
+        : picks.length ? h("p", { class: "hint" }, "Choose something in the picture: its moves appear here.") : null,
+      h("p", { class: "play-refused", role: "status" }, can && refused && performance.now() - refused.at < REFUSED_MS ? refused.text : ""));
+  }
+
+  /** A shape of a sketch: a line, a box, a dot, a text, or a tag (a text in a box); its `title` is its tooltip. */
+  shape(it) {
+    const tone = `t-${safe(it.tone ?? "plain")}`, tip = it.title ? s("title", {}, it.title) : null;
+    if (it.kind === "line") return s("line", { class: `${tone}${it.faint ? " faint" : ""}${it.thin ? " thin" : ""}`, x1: it.x1, y1: it.y1, x2: it.x2, y2: it.y2 });
+    if (it.kind === "box") return s("rect", { class: tone, x: it.x, y: it.y, width: it.w, height: it.h, rx: 3 });
+    if (it.kind === "dot") return s("circle", { class: tone, cx: it.x, cy: it.y, r: it.r ?? 6 }, tip);
+    if (it.kind === "tag") {
+      const w = textWidth(it.text) + 14, x = it.anchor === "end" ? it.x - w : it.anchor === "middle" ? it.x - w / 2 : it.x;
+      return s("g", { class: `tag ${tone}` }, tip, s("rect", { x, y: it.y - 12, width: w, height: 24, rx: 4 }), s("text", { x: x + w / 2, y: it.y + 5, "text-anchor": "middle" }, it.text));
+    }
+    return s("text", { class: `${tone}${it.small ? " small" : ""}`, x: it.x, y: it.y, "text-anchor": it.anchor ?? null }, it.text, tip);
+  }
+
+  /** Choose an item of a seat's sketch: its moves appear below the picture, and the focus goes to the first of them. */
+  pick(seatId, id) {
+    this.picked.set(seatId, id);
+    this.refused.delete(`${seatId}|sketch`);
+    this.draw(true);
+    this.panels.get(seatId).pick.querySelector("button")?.focus({ preventScroll: true });
+  }
+
+  /** A move from the menu of the item chosen in a sketch; after it the focus is back on the item. */
+  pickMove(seatId, id, m) {
+    const k = `${seatId}|sketch`;
+    const res = m.disabled ? { ok: false, reason: m.disabled } : this.act(seatId, m.name, ...(m.args ?? []));
+    if (refusedBy(res)) {
+      const text = res?.reason ?? "That is not possible now.", last = this.refused.get(k)?.text;
+      this.refused.set(k, { text: last === text ? `${text} ` : text, at: performance.now() });
+      this.after();
+      return;
+    }
+    this.refused.delete(k);
+    this.after();
+    const p = this.panels.get(seatId);
+    ([...p.picks.children].find((el) => el.dataset.key === id) ?? p.sketchTitle).focus({ preventScroll: true });
   }
 
   /** An open decision: title, text, what happens without an answer, and its options (buttons for a person at work). */

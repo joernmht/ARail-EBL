@@ -1,5 +1,6 @@
 // End-to-end tests of the play page of the big game (game/play/): a mission chosen and started, the
-// seats as tabs with the keyboard, a move through a generated form and a refused one, a decision,
+// seats as tabs with the keyboard, a move through a generated form and a refused one, a game's
+// sketch with what is chosen in it (the panel's signals, the district's faults), a decision,
 // the flows between the roles, a seat taken over and handed back, the end with the result and the
 // debrief, autosave and resume, a phone screen; turns with the missions of the site (budget years
 // alone; three years of four roles at three rhythms); what a seat's game is told before it begins;
@@ -154,6 +155,66 @@ test("a move through its form: a route is set; a move the game refuses shows why
   await run(page, 230);
   const trains = page.locator(`${SIGNALLER} .play-table`).filter({ has: page.locator("h4", { hasText: "Trains" }) });
   await expect(trains.locator("tbody tr").filter({ has: page.locator("th", { hasText: "RB 31" }) })).toContainText("at G2");
+  expect(errors).toEqual([]);
+});
+
+test("the picture of a game: a signal chosen on the panel, its route from its menu, with the keyboard too; a fault with the teams to send", async ({ page }) => {
+  const errors = await start(page);
+  const board = page.locator(`${SIGNALLER} .play-board`), pick = page.locator(`${SIGNALLER} .play-pick`);
+  await expect(page.locator(`${SIGNALLER} .play-sketch h4`)).toHaveText("The panel");
+  await expect(board).toHaveAttribute("role", "group");
+  await expect(board).toHaveAttribute("aria-label", /^Track diagram of Bf Neustadt/);
+  await expect(pick.locator(".hint")).toHaveText("Choose something in the picture: its moves appear here.");
+  // a signal is a button; chosen, it offers its routes
+  const a = board.getByRole("button", { name: /^Signal A:/ });
+  await expect(a).toHaveAttribute("aria-label", "Signal A: stop");
+  await a.click();
+  await expect(a).toHaveAttribute("aria-pressed", "true");
+  await expect(pick.locator(".play-picked")).toHaveText("Signal A: stop");
+  await expect(pick.getByRole("button")).toHaveText(["Route to G1", "Route to G2", "Route to G3"]);
+  await expect(pick.getByRole("button", { name: "Route to G1" })).toBeFocused();
+  await pick.getByRole("button", { name: "Route to G2" }).click();
+  expect(await page.evaluate(() => window.__play.session.record.map((m) => [m.seat, m.name, ...m.args]))).toEqual([["signaller-relay", "setRoute", "A-G2"]]);
+  // after the move the focus is back on the signal, which stays chosen and can cancel its route
+  await expect(a).toBeFocused();
+  await expect(pick.getByRole("button", { name: "Cancel the route to G2" })).toBeVisible();
+  await run(page, 10);
+  await expect(a).toHaveAttribute("aria-label", "Signal A: proceed, route to G2");
+  expect(await board.locator("line.t-route").count()).toBeGreaterThan(2);
+  // with the keyboard: Enter on a signal, then on a route that the interlocking refuses
+  await board.getByRole("button", { name: /^Signal P2:/ }).focus();
+  await page.keyboard.press("Enter");
+  const refused = pick.getByRole("button", { name: "Route to Bergheim" });
+  await expect(refused).toBeFocused();
+  await expect(refused).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Enter");
+  await expect(pick.getByRole("status")).toHaveText(/\S/);
+  expect(await page.evaluate(() => window.__play.session.record.length)).toBe(1);
+  // a train on the panel
+  await run(page, 200);
+  await expect(board.locator(".tag text").filter({ hasText: "RB 31" })).toBeVisible();
+
+  // the computer's seat: the picture only; taken over, a fault that waits offers the teams
+  await page.getByRole("tab", { name: /Maintenance and fault dispatcher/ }).click();
+  const map = page.locator(`${MAINTENANCE} .play-board`);
+  await expect(page.locator(`${MAINTENANCE} .play-sketch h4`)).toHaveText("The district");
+  await expect(map).toHaveAttribute("role", "img");
+  await expect(map.getByRole("button")).toHaveCount(0);
+  await expect(map.locator(".tag")).toHaveCount(2);
+  await page.locator(MAINTENANCE).getByRole("button", { name: "Take over" }).click();
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("maintenance-dispatcher").game;
+    for (let i = 0; i < 2000 && !g.faults.some((f) => f.state === "open"); i++) p.session.step(1);
+    p.draw(true);
+  });
+  const fault = map.getByRole("button").first();
+  await expect(fault).toHaveAttribute("aria-label", /waits for a team$/);
+  await fault.click();
+  const send = page.locator(`${MAINTENANCE} .play-pick`).getByRole("button").first();
+  await expect(send).toHaveText(/^Send Team .+ \(\d+ min\)$/);
+  await send.click();
+  await expect(map.locator(".tag.t-train")).toHaveCount(1);
+  expect(await page.evaluate(() => window.__play.session.record.at(-1).name)).toBe("send");
   expect(errors).toEqual([]);
 });
 

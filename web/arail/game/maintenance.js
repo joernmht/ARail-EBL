@@ -18,18 +18,22 @@ import { Game, Player, clockAt } from "./core.js";
 
 /**
  * The district: line 6250 from Bergheim via Bf Neustadt to Talsee and the branch to Waldau, with the
- * kilometres by road from the maintenance base at Bf Neustadt (`via`: by way of this place).
+ * kilometres by road from the maintenance base at Bf Neustadt (the roads follow the line), and where
+ * each place lies on the district's map (`map`: x and y of the sketch; `list`: the side its faults are listed
+ * on; `name`: where its name stands, above it or to its right; `teams`: where its teams stand, from the place).
  */
 export const DISTRICT = {
   name: "District Neustadt",
   base: "Bf Neustadt",
   places: {
-    "Bf Neustadt": { km: 0 },
-    Bergheim: { km: 10 },
-    Talsee: { km: 9 },
-    Waldau: { km: 8 },
+    "Bf Neustadt": { km: 0, map: [470, 120], list: "end", name: "above", teams: [0, -46] },
+    Bergheim: { km: 10, map: [100, 120], list: "start", name: "above", teams: [0, -46] },
+    Talsee: { km: 9, map: [800, 120], list: "end", name: "above", teams: [0, -46] },
+    Waldau: { km: 8, map: [680, 270], list: "start", name: "right", teams: [62, -32] },
   },
 };
+/** The size of the district's map (sketch px). */
+const MAP = { width: 900, height: 340 };
 /** A van's time on the road (s): to another place, within a place, from the base to an asset at its own station. */
 export const DRIVE = { base_s: 180, per_km_s: 40, local_s: 120, from_base_s: 300 };
 /** The technician on call: time until ready at the base (s), and the hours paid for a call-out. */
@@ -178,7 +182,7 @@ export class MaintenanceGame extends Game {
     if (tm.state !== "ready") return { ok: false, reason: `${tm.name} is ${tm.state === "driving" ? "on the road" : "at work"}.` };
     if (f.state !== "open") return { ok: false, reason: f.state === "done" ? `${f.asset} is repaired.` : `${f.asset} already has a team.` };
     const eta = this.eta(tm, f);
-    Object.assign(tm, { state: "driving", fault: f.id, until: this.t + eta });
+    Object.assign(tm, { state: "driving", fault: f.id, from: tm.place, left: this.t, until: this.t + eta });
     Object.assign(f, { state: "assigned", team: tm.id });
     this.log(`${clockAt(this.t)} ${tm.name} drives to ${f.asset} (${f.place}), about ${Math.round(eta / 60)} min.`, "team");
     this.give("repair-status", { fault: f.id, asset: f.asset, place: f.place, state: "dispatched", eta_s: eta, team: tm.name });
@@ -364,6 +368,7 @@ export class MaintenanceGame extends Game {
     const state = (f) => (f.state === "open" ? "waits for a team" : f.state === "assigned" ? "team on its way" : f.state === "on site" ? (f.closure === "asked" ? "team waits for the closure" : "team on site") : f.state === "working" ? "being repaired" : "repaired");
     const where = (tm) => (tm.state === "ready" ? `ready${tm.base ? " at the base" : ` at ${tm.place}`}` : tm.state === "driving" ? `drives to ${this.fault(tm.fault).asset}, there at ${clockAt(tm.until)}` : tm.state === "waiting" ? `waits at ${this.fault(tm.fault).asset} for the closure` : `works on ${this.fault(tm.fault).asset} until ${clockAt(tm.until)}`);
     return {
+      sketch: this._sketch(),
       figures: [
         { label: "Faults open", value: st.open, tone: st.open ? "warn" : "ok" },
         { label: "Teams free", value: `${ready.length} of ${this.teams.length}` },
@@ -388,5 +393,61 @@ export class MaintenanceGame extends Game {
         ...(this.onCall === "available" ? [{ name: "callIn", label: `Call the technician on call (${ON_CALL.hours} h of overtime)` }] : []),
       ],
     };
+  }
+
+  /** Where a team is on the map: at its place, or on the road from the place it left by way of Bf Neustadt. */
+  _where(tm) {
+    const at = (place) => DISTRICT.places[place].map;
+    const f = tm.state === "driving" ? this.fault(tm.fault) : null;
+    if (!f || tm.from === f.place) return at(tm.place);
+    // the first minutes are the start; then the road, a kilometre in the same time everywhere
+    const a = DISTRICT.places[tm.from].km, b = DISTRICT.places[f.place].km;
+    let km = Math.max(0, Math.min(1, (this.t - tm.left - DRIVE.base_s) / (tm.until - tm.left - DRIVE.base_s))) * (a + b);
+    const [from, to, part] = km < a ? [at(tm.from), at(DISTRICT.base), km / a] : [at(DISTRICT.base), at(f.place), b ? (km - a) / b : 1];
+    return [from[0] + (to[0] - from[0]) * part, from[1] + (to[1] - from[1]) * part];
+  }
+
+  /**
+   * The district as a sketch for a page that does not know the game: the line with its places, the
+   * faults at their places (one that waits for a team has the free teams as its menu), the teams at
+   * their places or on the road.
+   */
+  _sketch() {
+    const P = DISTRICT.places, base = P[DISTRICT.base].map, items = [];
+    for (const [name, p] of Object.entries(P)) if (name !== DISTRICT.base) items.push({ kind: "line", x1: base[0], y1: base[1], x2: p.map[0], y2: p.map[1], tone: "free" });
+    const ready = this.teams.filter((tm) => tm.state === "ready");
+    for (const [name, p] of Object.entries(P)) {
+      const [x, y] = p.map, end = p.list === "end";
+      items.push({ kind: "dot", x, y, r: 9, tone: "place" });
+      const text = name === DISTRICT.base ? `${name} (base)` : name;
+      items.push(p.name === "right" ? { kind: "text", x: x + 16, y: y + 5, text } : { kind: "text", x, y: y - 18, text, anchor: "middle" });
+      this.faults.filter((f) => f.reported != null && f.place === name).forEach((f, i) => {
+        const fy = y + 34 + 24 * i, fx = x + (end ? -4 : 4);
+        const tm = f.team ? this.teams.find((t) => t.id === f.team) : null;
+        const state = f.state === "open" ? "waits for a team" : f.state === "assigned" ? `${tm.name} is on the way` : f.state === "on site" ? `${tm.name} waits for the closure of ${f.track}` : f.state === "working" ? `${tm.name} is at work` : "repaired";
+        items.push({ kind: "text", x: fx + (end ? -14 : 14), y: fy + 5, text: f.asset, anchor: end ? "end" : "start", tone: f.state === "done" ? "muted" : undefined });
+        items.push({
+          id: `fault-${f.id}`, kind: "dot", x: fx, y: fy, r: 7, tone: f.state === "done" ? "ok" : f.state === "working" ? "route" : f.safety ? "bad" : f.holds ? "warn" : "muted",
+          title: `${f.asset} at ${f.place}: ${f.kind}, ${f.safety ? "a danger while it is open" : f.holds ? `holds about ${f.holds} trains an hour` : "comfort"}; ${state}`,
+          menu: f.state !== "open" ? undefined : ready.length
+            ? ready.map((t) => ({ label: `Send ${t.name} (${Math.round(this.eta(t, f) / 60)} min)`, name: "send", args: [t.id, f.id] }))
+            : [{ label: "Send a team", name: "send", args: [null, f.id], disabled: "No team is free." }],
+        });
+      });
+    }
+    // the teams: those at one place one above the other, one on the road where it is
+    const here = new Map();
+    for (const tm of this.teams) {
+      const [x, y] = this._where(tm), road = tm.state === "driving" && tm.from !== this.fault(tm.fault).place;
+      const n = road ? 0 : here.get(tm.place) ?? 0;
+      if (!road) here.set(tm.place, n + 1);
+      const f = tm.fault ? this.fault(tm.fault) : null;
+      items.push({
+        kind: "tag", x: road ? x : x + P[tm.place].teams[0], y: road ? y : y + P[tm.place].teams[1] - 26 * n, text: tm.name.replace(/^Team /, ""), anchor: "middle",
+        tone: tm.state === "driving" ? "train" : tm.state === "working" ? "ok" : tm.state === "waiting" ? "warn" : "idle",
+        title: `${tm.name}: ${tm.state === "ready" ? `ready${tm.base ? " at the base" : ` at ${tm.place}`}` : tm.state === "driving" ? `drives to ${f.asset}` : tm.state === "waiting" ? `waits at ${f.asset} for the closure` : `works on ${f.asset}`}`,
+      });
+    }
+    return { title: "The district", width: MAP.width, height: MAP.height, label: `Map of ${DISTRICT.name}: the line from Bergheim by Bf Neustadt to Talsee and the branch to Waldau, with the faults at their places and the teams`, items };
   }
 }

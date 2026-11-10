@@ -264,3 +264,48 @@ test("a careful signaller passes with a high score; a careless one fails; the sa
   assert.deepEqual(a.result(), b.result());
   assert.deepEqual(a.logs, b.logs);
 });
+
+test("the panel as a sketch: sections in the colours of their state, a signal with its routes as a menu, trains at their heads", () => {
+  const g = new SignallerGame({ seed: 1, level: "training" });
+  const KINDS = ["line", "text", "dot", "tag", "box"];
+  const check = (sk) => {
+    assert.ok(sk.title && sk.label && sk.width > 0 && sk.height > 0);
+    for (const it of sk.items) {
+      assert.ok(KINDS.includes(it.kind), it.kind);
+      for (const k of ["x", "x1", "x2"]) if (k in it) assert.ok(it[k] >= 0 && it[k] <= sk.width, `${it.kind} ${k} ${it[k]}`);
+      for (const k of ["y", "y1", "y2"]) if (k in it) assert.ok(it[k] >= 0 && it[k] <= sk.height, `${it.kind} ${k} ${it[k]}`);
+      for (const m of it.menu ?? []) assert.ok(it.id && it.title && Object.hasOwn(SignallerGame.actions, m.name), `${it.id} ${m.name}`);
+    }
+    return sk;
+  };
+  let sk = check(g.view().sketch);
+  assert.ok(sk.items.filter((it) => it.kind === "line").every((it) => ["free", "muted"].includes(it.tone)));
+  // every signal can be chosen; signal A offers the three platform tracks
+  const lamp = (id) => sk.items.find((it) => it.id === `signal-${id}`);
+  assert.deepEqual(Object.keys(STATION.signals).filter((id) => !lamp(id)), []);
+  assert.deepEqual(lamp("A").menu.map((m) => m.label), ["Route to G1", "Route to G2", "Route to G3"]);
+  assert.equal(lamp("A").tone, "bad");
+  // a move from the menu, as the page makes it
+  const to = lamp("A").menu[1];
+  assert.equal(g.act(to.name, ...to.args).ok, true);
+  run(g, 10); // the points run, then the route is locked
+  sk = check(g.view().sketch);
+  assert.equal(lamp("A").tone, "ok");
+  assert.match(lamp("A").title, /proceed, route to G2/);
+  assert.ok(lamp("A").menu.some((m) => m.label === "Cancel the route to G2"));
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "route"));
+  // a conflicting route is offered with the reason why not
+  assert.ok(lamp("P2").menu.every((m) => m.disabled), JSON.stringify(lamp("P2").menu));
+  // a track in a route cannot be closed from its label; a free one can
+  const track = (id) => sk.items.find((it) => it.id === `track-${id}`);
+  assert.ok(track("G2").menu[0].disabled);
+  assert.equal(g.act(track("G3").menu[0].name, ...track("G3").menu[0].args).ok, true);
+  sk = check(g.view().sketch);
+  assert.equal(track("G3").menu[0].label, "Open G3");
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "closed"));
+  // the first train comes in: a tag at its head, the sections under it occupied
+  run(g, 200);
+  sk = check(g.view().sketch);
+  assert.ok(sk.items.some((it) => it.kind === "tag" && it.text.includes("RB 31")));
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "occupied"));
+});

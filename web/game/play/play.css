@@ -77,6 +77,46 @@ main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
 .play-figures dt { font-size: .78rem; color: var(--text-2); }
 .play-figures dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* the sketch of a game's world: a control desk in Dunkelblau in light and dark mode (as the signaller's panel) */
+.play-sketch { display: grid; gap: 8px; }
+.play-board { background: var(--board); border-radius: var(--radius); padding: 8px; overflow-x: auto; }
+.play-board:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.play-board svg { display: block; width: 100%; height: auto; }
+.play-board text { fill: var(--board-text); font-family: var(--font); font-size: 13px; font-weight: 600; }
+.play-board text.small { font-size: 11px; }
+.play-board text.t-muted { fill: var(--board-muted); font-weight: 500; }
+.play-board line { stroke: var(--board-muted); stroke-width: 6; stroke-linecap: round; }
+.play-board line.thin { stroke-width: 2; }
+.play-board line.faint { opacity: .22; }
+.play-board line.t-route { stroke: var(--overlay-ok); }
+.play-board line.t-occupied { stroke: var(--overlay-bad); }
+.play-board line.t-closed { stroke: var(--board-warn); stroke-dasharray: 10 7; }
+.play-board rect.t-muted { fill: var(--board-2); stroke: var(--board-line); }
+.play-board circle { fill: var(--board-muted); stroke: var(--board); stroke-width: 2; }
+.play-board circle.t-ok { fill: #3ed37a; }
+.play-board circle.t-bad { fill: #ff667e; }
+.play-board circle.t-warn { fill: var(--board-warn); }
+.play-board circle.t-route { fill: var(--overlay-ok); }
+.play-board circle.t-failed { fill: var(--board-2); stroke: #ff667e; stroke-dasharray: 3 2; }
+.play-board circle.t-zs1 { fill: #ffffff; }
+.play-board circle.t-place { fill: var(--board); stroke: var(--board-text); stroke-width: 3; }
+.play-board .tag rect { fill: #ffffff; stroke: var(--board); }
+.play-board .tag text { fill: var(--board); font-size: 12px; font-weight: 700; }
+.play-board .tag.t-warn rect { fill: var(--board-warn); }
+.play-board .tag.t-ok rect { fill: var(--overlay-ok); }
+.play-board .tag.t-idle rect { fill: var(--board-2); stroke: var(--board-muted); }
+.play-board .tag.t-idle text { fill: var(--board-text); }
+.play-board .pick { cursor: pointer; }
+.play-board .pick .hit { fill: transparent; stroke: var(--board-line); stroke-width: 1; stroke-dasharray: 2 3; }
+.play-board .pick:hover .hit { stroke: var(--board-text); stroke-dasharray: none; }
+.play-board .pick[aria-pressed="true"] .hit { stroke: var(--board-warn); stroke-width: 3; stroke-dasharray: none; }
+.play-board .pick:focus { outline: none; }
+.play-board .pick:focus-visible .hit { stroke: var(--overlay-ok); stroke-width: 3; stroke-dasharray: none; }
+.play-pick { display: grid; gap: 6px; }
+.play-picked { font-weight: 600; }
+.play-pick [aria-disabled="true"] { background: var(--surface-2); border: 1px dashed var(--line); color: var(--text-2); cursor: not-allowed; }
+@media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
+
 .play-keyed { display: grid; gap: 10px; }
 .play-decision { border: 1px solid var(--warn); border-radius: var(--radius); padding: 10px 12px; background: var(--surface-2); display: grid; gap: 6px; }
 .play-decision .text { font-size: .88rem; color: var(--text-2); }

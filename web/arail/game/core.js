@@ -298,7 +298,14 @@ export class Game {
    * What a page shows of the game without knowing it: key figures, tables, and the moves that can be
    * made now, each with the fields to fill (to override). The generic role view of the play page
    * (game/play/) draws any game from this; a game's own page may draw more.
-   * @returns {{figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad"}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
+   *
+   * A game may add a `sketch`: a picture of its world as plain shapes (a track diagram, a map), which
+   * the page draws as it is. Its `items` are lines, texts, dots, tags (a label in a box: a train, a
+   * van) and boxes, placed in a `width` × `height` and coloured by a `tone` (free, route, occupied,
+   * closed, ok, warn, bad, failed, muted, place, train, idle, zs1); an item with an `id`, a `title`
+   * and a `menu` can be chosen, and the page then offers the menu's moves (`{label, name, args,
+   * disabled}`): a signal with its routes, a fault with the teams to send.
+   * @returns {{sketch?: {title?: string, width: number, height: number, label: string, items: object[]}, figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad"}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
    */
   view() {
     return { figures: [...this.resources.values()].map((r) => ({ label: r.label, value: r.value, unit: r.unit })), tables: [], actions: [] };

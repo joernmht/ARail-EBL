@@ -102,7 +102,13 @@ What every game has, from the base class:
   other end?);
 - **a view** (`view()`): key figures, tables, and the moves that can be made now, each with the
   fields to fill. The play page draws any game from it, as settings forms are drawn from a
-  simulation's parameters; a game's own page (the signaller's panel) may draw more;
+  simulation's parameters; a game's own page (the signaller's panel) may draw more. A game can add
+  a **sketch** to its view: a picture of its world as plain shapes (lines, dots, texts, tags, boxes
+  in a `width` × `height`, coloured by a `tone`), which the play page draws as it is. A shape with
+  an `id`, a `title` and a `menu` of moves can be chosen: the signaller's panel has its signals
+  with their routes and its platform tracks to close, the dispatcher's district its faults with the
+  teams to send and the vans on the road. The page still knows no game: it draws shapes and passes
+  the move chosen to `act`;
 - **the result** of a round (`result()`): what the career mode and the big game take from it.
 
 A game that is not wired plays the other end of its ports itself. The signaller's game has its own
@@ -463,7 +469,9 @@ the same ports would be its full form.
 6. **Objectives are what the railway would value** (punctuality, safety, cost, passengers), with
    weights that add to 100 and a note in words and numbers.
 7. **`view()`** gives the figures, the tables and the moves of now; the play page needs nothing
-   else.
+   else. Where the role works on a picture (a panel, a map, a timetable graph), give it as the
+   view's `sketch`, with the moves of a thing in its menu: a person should act on the thing, not
+   look it up in a list.
 8. **A computer player** that plays by the book and passes every level; a mission needs it for
    the seats nobody takes and for its test run.
 9. **`finish()` gives the account** of the period as a `performance-report`.

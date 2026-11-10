@@ -232,3 +232,45 @@ test("the signaller's ports alone: delays told, a train held on request, the acc
   assert.equal(GAMES.get("signaller"), SignallerGame);
   assert.deepEqual(normalizeMission(MORNING, GAMES).phases.map((ph) => [ph.kind, ph.roles]), [["shift", ["signaller-relay", "maintenance-dispatcher"]]]);
 });
+
+test("the district as a sketch: a fault that waits has the free teams as its menu; the team is on the road, then at the place", () => {
+  const g = new MaintenanceGame({ seed: 3 });
+  const tags = () => g.view().sketch.items.filter((it) => it.kind === "tag");
+  const dots = () => g.view().sketch.items.filter((it) => it.id?.startsWith("fault-"));
+  const base = DISTRICT.places[DISTRICT.base].map;
+  assert.equal(dots().length, 0);
+  assert.equal(tags().length, 2);
+  assert.ok(tags().every((it) => it.tone === "idle" && it.x === base[0]));
+  while (!g.faults.some((f) => f.state === "open" && f.place !== DISTRICT.base)) g.step(1);
+  const f = g.faults.find((x) => x.state === "open" && x.place !== DISTRICT.base);
+  let dot = dots().find((it) => it.id === `fault-${f.id}`);
+  assert.deepEqual(dot.menu.map((m) => m.name), ["send", "send"]);
+  assert.match(dot.menu[0].label, /^Send Team .+ \(\d+ min\)$/);
+  assert.match(dot.title, /waits for a team/);
+  // the move from the menu, as the page makes it
+  assert.deepEqual(g.act(dot.menu[0].name, ...dot.menu[0].args), { ok: true });
+  dot = dots().find((it) => it.id === `fault-${f.id}`);
+  assert.equal(dot.menu, undefined);
+  assert.match(dot.title, /is on the way/);
+  // on the road: between the base and the place, nearer to the place with the time
+  const [px, py] = DISTRICT.places[f.place].map, far = (it) => Math.hypot(it.x - px, it.y - py);
+  const tm = g.teams.find((x) => x.fault === f.id);
+  const van = () => tags().find((it) => it.text === tm.name.replace("Team ", ""));
+  g.step(1);
+  assert.equal(van().tone, "train");
+  const d0 = far(van());
+  for (let i = 0; i < 300; i++) g.step(1);
+  assert.ok(far(van()) < d0 && far(van()) > 0, `${d0} → ${far(van())}`);
+  while (tm.state === "driving") g.step(1);
+  assert.ok(["warn", "ok"].includes(van().tone));
+  // every item lies on the map
+  const sk = g.view().sketch;
+  for (const it of sk.items) for (const k of ["x", "y", "x1", "y1", "x2", "y2"]) if (k in it) assert.ok(it[k] >= 0 && it[k] <= (k.startsWith("x") ? sk.width : sk.height), `${it.kind} ${k} ${it[k]}`);
+  // no team free: the fault's menu says so
+  const hard = new MaintenanceGame({ seed: 3, level: "hard" });
+  const open = () => hard.faults.filter((x) => x.state === "open");
+  while (!open().length) hard.step(1);
+  hard.act("send", "T1", open()[0].id);
+  while (!open().length) hard.step(1);
+  assert.equal(hard.view().sketch.items.find((it) => it.id === `fault-${open()[0].id}`).menu[0].disabled, "No team is free.");
+});

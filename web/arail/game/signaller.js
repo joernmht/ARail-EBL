@@ -960,6 +960,7 @@ export class SignallerGame extends Game {
     const team = { none: "", called: "reported, no team yet", driving: "on its way", waiting: "waits for the track closure", working: "at work on G2", done: "has finished", left: "has left" }[st.team.state];
     const late = rep.filter((r) => r.delay >= 1).length;
     return {
+      sketch: this._sketch(st),
       figures: [
         { label: "Trains through", value: `${st.trains.filter((tr) => tr.state === "gone").length} of ${st.trains.length}` },
         { label: "Late now", value: late, tone: late ? "warn" : "ok" },
@@ -1003,6 +1004,68 @@ export class SignallerGame extends Game {
         ...(closed.length ? [{ name: "openTrack", label: "Open a track", fields: [{ id: "track", label: "Track", options: closed.map((t) => ({ id: t, label: t })) }] }] : []),
       ],
     };
+  }
+
+  /**
+   * The panel as a sketch for a page that does not know the game: the sections in the colours of
+   * their state, the points' leg in use, the signals with their routes as a menu, the platform
+   * tracks to close and open, the trains at their heads.
+   */
+  _sketch(st) {
+    const X = (x) => 30 + x * 40, Y = (y) => y * 70 - 25;
+    const items = [
+      { kind: "box", x: X(9), y: Y(3) + 14, w: X(17) - X(9), h: 22, tone: "muted" },
+      { kind: "text", x: X(13), y: Y(3) + 30, text: "Platform 1", anchor: "middle", tone: "muted" },
+      { kind: "box", x: X(11.6), y: Y(1) + 15, w: X(16.4) - X(11.6), h: Y(2) - Y(1) - 30, tone: "muted" },
+      { kind: "text", x: X(14), y: (Y(1) + Y(2)) / 2 + 5, text: "Platform 2", anchor: "middle", tone: "muted" },
+      { kind: "text", x: X(0), y: Y(2) - 14, text: `← ${STATION.west}` },
+      { kind: "text", x: X(28), y: Y(2) - 14, text: `${STATION.east} →`, anchor: "end" },
+    ];
+    for (const [id, sec] of Object.entries(STATION.sections)) {
+      const now = st.sections[id], tone = now.occupied ? "occupied" : now.route ? "route" : now.closed ? "closed" : "free";
+      const point = Object.entries(STATION.points).find(([, p]) => p.section === id)?.[0];
+      sec.draw.forEach(([[x1, y1], [x2, y2]], i) => {
+        // of a point's two legs, the one not in use is faint
+        const faint = !!point && st.points[point].pos === (i === 0 ? "-" : "+");
+        items.push({ kind: "line", x1: X(x1), y1: Y(y1), x2: X(x2), y2: Y(y2), tone, faint });
+      });
+      if (sec.track) {
+        const [[x1, y1], [x2]] = sec.draw[0];
+        items.push({
+          id: `track-${sec.track}`, kind: "text", x: X((x1 + x2) / 2) + (sec.track === "G1" ? -120 : -70), y: Y(y1) - 10, text: sec.track,
+          title: `Track ${sec.track}: ${now.closed ? "closed" : now.occupied ? `occupied (${now.occupied})` : now.route ? "in a route" : "free"}`,
+          menu: [now.closed ? { label: `Open ${sec.track}`, name: "openTrack", args: [sec.track] } : { label: `Close ${sec.track}`, name: "closeTrack", args: [sec.track], disabled: now.occupied ? `${sec.track} is occupied.` : now.route ? `${sec.track} is in a route.` : undefined }],
+        });
+      }
+    }
+    for (const [id, p] of Object.entries(STATION.points)) {
+      const below = p.at[1] >= 3 || (p.at[1] === 2 && STATION.sections[p.section].draw[1][1][1] < 2);
+      items.push({ kind: "text", x: X(p.at[0]), y: Y(p.at[1]) + (below ? 24 : -12), text: id, anchor: "middle", tone: "muted", small: true });
+    }
+    for (const [id, sig] of Object.entries(STATION.signals)) {
+      const a = st.signals[id], x = X(sig.at[0]), y = Y(sig.at[1]), side = sig.dir > 0 ? 1 : -1;
+      const lx = x - sig.dir * 6, ly = y + side * 22;
+      const set = st.routes.find((r) => r.from === id);
+      items.push({ kind: "line", x1: lx, y1: y + side * 6, x2: lx, y2: ly - side * 7, tone: "muted", thin: true });
+      if (a.zs1) items.push({ kind: "dot", x: lx + 15, y: ly - 2, r: 4, tone: "zs1" });
+      items.push({
+        id: `signal-${id}`, kind: "dot", x: lx, y: ly, r: 7, tone: a.failed ? "failed" : a.aspect === "proceed" ? "ok" : "bad",
+        title: `Signal ${id}: ${a.failed ? "failed, " : ""}${a.aspect === "proceed" ? "proceed" : "stop"}${a.zs1 ? ", substitute signal lit" : ""}${a.route ? `, route to ${set?.to}` : ""}`,
+        menu: [
+          ...this.routesFrom(id).map((r) => ({ label: `Route to ${r.to}`, name: "setRoute", args: [r.id], disabled: r.blocked ?? undefined })),
+          ...(set && !set.train ? [{ label: `Cancel the route to ${set.to}`, name: "cancelRoute", args: [set.id] }] : []),
+        ],
+      });
+      items.push({ kind: "text", x: lx - sig.dir * 16, y: ly + 5, text: id, anchor: sig.dir > 0 ? "end" : "start" });
+    }
+    for (const tr of st.trains) {
+      if (!tr.head) continue;
+      const [[x1, y1], [x2, y2]] = STATION.sections[tr.head.section].draw[0];
+      const f = tr.dir > 0 ? tr.head.frac : 1 - tr.head.frac;
+      const late = st.t > tr.due + 60;
+      items.push({ kind: "tag", x: X(x1 + (x2 - x1) * f), y: Y(y1 + (y2 - y1) * f), text: `${tr.dir > 0 ? "" : "← "}${tr.id}${tr.dir > 0 ? " →" : ""}`, anchor: tr.dir > 0 ? "end" : "start", tone: late ? "warn" : "train" });
+    }
+    return { title: "The panel", width: 1180, height: 250, label: `Track diagram of ${STATION.name}: the line from ${STATION.west} on the left, the platform tracks G1, G2 and G3, the line to ${STATION.east} on the right`, items };
   }
 
   /** Everything a page draws, as plain data. */
