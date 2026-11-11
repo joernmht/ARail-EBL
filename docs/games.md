@@ -13,6 +13,7 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
 - [Two ways to play them together](#two-ways-to-play-them-together): the career mode (a graph of
   possibilities, with the career planner), the railway undertaking's simulator, and the big game
 - [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game
+- [How a game looks](#how-a-game-looks): a line or two, a picture of where you work
 - [Where the games are](#where-the-games-are) and [what comes next](#what-comes-next)
 
 ## The idea
@@ -237,6 +238,28 @@ instructor or the emergency manager become possible.
 The code: `web/arail/game/signaller.js` (the interlocking, the trains, the failure, the score; Node
 tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser tests in
 `tests/e2e/signaller.spec.js`).
+
+## How a game looks
+
+A game's page is not a form with a manual on top. Three rules hold for every page of the games:
+
+- **A line or two first.** What a game or a mission is stands in one or two catchy lines: a
+  mission's `hook` ("Nine trains, forty minutes, and one signal that will fail."), beside it its
+  facts as chips (roles, rounds, the time on the clock, solo or together). The long text is the
+  **briefing**, opened when someone asks for it.
+- **Always a picture of where you work.** Every game has a **place** on the lab's layout
+  (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains, the lab,
+  the terminal, the station forecourt, the town at night), and every mission names one. Its photo
+  with its name is in the head of each page (the scene), on every mission's card, on every seat to
+  choose and in every seat while a mission is played. The photos are close-ups in
+  `web/game/places/`: cut from the lab's photos, or taken in the flyover where everything in view
+  is virtual (trains, the town); the flyover blurs the table's photo when it comes close.
+- **It looks like a game.** Missions are numbered levels on the board's dark blue, chosen with
+  "Take a seat". Text stands on the board's colour beside a photo, never on it, so it stays
+  readable whatever the photo shows.
+
+A new game adds its place to `GAME_PLACES`, a new mission its `hook` and `place`;
+`tests/js/game-places.test.js` checks that none is missing and that every photo exists.
 
 ## Where the games are
 

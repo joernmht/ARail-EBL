@@ -268,6 +268,8 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
  "format": "arail-mission/1",
  "id": "neustadt-morning",
  "title": "A morning at Bf Neustadt",
+ "hook": "Nine trains, forty minutes, and one signal that will fail.",
+ "place": "signal-box",
  "text": "08:00 to 08:40 at Bf Neustadt and in its district. …",
  "mode": "cooperative",
  "seed": 1,
@@ -294,6 +296,8 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
 | `text`, `debrief[]` | The briefing, and questions for the debrief |
+| `hook` | The mission in a line or two, at most 110 characters (`HOOK_CHARS`): what its card shows first. The `text` stays the briefing, opened when asked for |
+| `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game |
 
 Without `phases`, a mission gets a plan turn, a shift and a review turn, as far as it has roles for
 them. `validateMission(doc, games)` names what is wrong (a seat without a game of its role, a slow
