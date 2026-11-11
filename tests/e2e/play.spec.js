@@ -102,6 +102,9 @@ const kept = (page) => page.evaluate((key) => JSON.parse(localStorage.getItem(ke
 /** The stars of a round, as game/progress.js gives them. */
 const starsFor = (score, passed) => (passed ? 1 + (score >= 70) + (score >= 85) : 0);
 
+/** What is said to those who do not see the page: the live region (the backdrop's canvas is not it). */
+const live = (page) => page.locator("p#live");
+
 /** A mission's stop on the line. */
 const stopOf = (page, id) => page.locator(`#missions a#mission-${id}`);
 /** A class among others. */
@@ -341,10 +344,10 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   // P lets the shift run again, and pauses it
   await page.keyboard.press("p");
   await expect(page.getByRole("button", { name: "1×" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#live")).toContainText("Running at 1×.");
+  await expect(live(page)).toContainText("Running at 1×.");
   await page.keyboard.press("p");
   await expect(page.getByRole("button", { name: "Pause" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#live")).toContainText("Paused.");
+  await expect(live(page)).toContainText("Paused.");
   // an address that names a mission opens it
   await page.goto(MORNING);
   await page.waitForFunction(() => window.__play?.ready);
@@ -367,7 +370,7 @@ test("a phase begins: its name over the whole screen for a moment; it takes no c
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.getByRole("button", { name: "Pause" })).toHaveAttribute("aria-pressed", "true");
   // those who do not see it hear the phase
-  await expect(page.locator("#live")).toContainText("The morning shift: a shift.");
+  await expect(live(page)).toContainText("The morning shift: a shift.");
   await expect(page.locator("#chapter .vn-chapter")).toHaveCount(0);
   // where less motion is asked for, it is not shown
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -540,8 +543,8 @@ test("the failure: decisions are announced and asked one at a time; answered, th
   await run(page, 790);
   const stage = stageOf(page, SIGNALLER), decisions = stage.locator(".play-decision"), asked = stage.locator(".play-decision:not(.waiting)"), waiting = stage.locator(".play-decision.waiting .play-next");
   await expect(decisions).toHaveCount(2);
-  await expect(page.locator("#live")).toContainText("2 decisions to take.");
-  await expect(page.locator("#live")).toContainText("Signal N2 has failed.");
+  await expect(live(page)).toContainText("2 decisions to take.");
+  await expect(live(page)).toContainText("Signal N2 has failed.");
   await expect(page.locator("#tab-signaller-relay")).toContainText("2 decisions open");
   await expect(page.locator("#tab-signaller-relay .tag")).toHaveText("2");
   // in a shift what is asked comes before what the mission's people have to say
@@ -629,7 +632,7 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await tool(page, MAINTENANCE, "Take over").click();
   await expect(page.locator("#tab-maintenance-dispatcher")).toContainText("you");
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("mine"));
-  await expect(page.locator("#live")).toContainText("You play Maintenance and fault dispatcher now.");
+  await expect(live(page)).toContainText("You play Maintenance and fault dispatcher now.");
   await expect(desk.locator(".play-head")).toContainText("played by you");
   await expect(stageOf(page, MAINTENANCE).locator(".vn-name strong")).toHaveText("You");
   expect(await page.evaluate(() => window.__play.session.seat("maintenance-dispatcher").by)).toBe("human");
@@ -689,7 +692,7 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   await expect(stage.locator(".vn-ticker")).toBeHidden();
   // they are open all the same: the bar counts them, and they are announced
   await expect(page.locator("#endTurn")).toHaveText(`End the turn (${asked.length} open)`);
-  await expect(page.locator("#live")).toContainText(`${asked.length} decisions to take.`);
+  await expect(live(page)).toContainText(`${asked.length} decisions to take.`);
   // Space reads on (the focus is on the session's title, not on a button)
   await expect(page.locator("#stripTitle")).toBeFocused();
   for (let i = 1; i < logs.length; i++) {
@@ -710,7 +713,7 @@ test("a turn is told before it is decided: Space reads on line by line, then som
     await expect(stage.locator(".vn-speaker img")).toBeVisible();
     await expect(go).toHaveAccessibleName("OK");
     await expect(stage.locator(".vn-decisions")).toBeHidden();
-    await expect(page.locator("#live")).toContainText(`${said.who.name}: ${said.say}`);
+    await expect(live(page)).toContainText(`${said.who.name}: ${said.say}`);
     await page.locator("#stripTitle").focus();
     await page.keyboard.press("Space");
   }
@@ -797,7 +800,7 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(stage.locator(".vn-speaker img")).toHaveAttribute("alt", face.alt);
   await expect(stage.locator(".vn-speaker img")).toHaveAttribute("src", new RegExp(`${face.picture.replace(/[.]/g, "\\.")}$`));
   await expect(stage.locator(".vn-speaker")).not.toHaveClass(cls("self"));
-  await expect(page.locator("#live")).toContainText(`${lines[0].who.name}: ${lines[0].say}`);
+  await expect(live(page)).toContainText(`${lines[0].who.name}: ${lines[0].say}`);
   await expect(stage.locator(".vn-decisions")).toBeHidden();
   await expect(stage.locator(".vn-note")).toBeHidden();
   // the picture stays in use while somebody speaks
@@ -1041,7 +1044,7 @@ test("the verdict of a mission a person passed: the stars, what was gained, the 
   expect(result.passed).toBe(true);
   expect(result.seats.map((s) => s.by)).toEqual(["human"]);
   const stars = starsFor(result.score, result.passed), verdict = page.locator("#result .vn-verdict");
-  await expect(page.locator("#live")).toContainText(`The session is over: ${result.score} of 100, passed.`);
+  await expect(live(page)).toContainText(`The session is over: ${result.score} of 100, passed.`);
   await expect(verdict).toHaveClass(cls("passed"));
   await expect(verdict.locator(".vn-over")).toHaveText("Mission passed");
   await expect(verdict.locator(".vn-score .score-total")).toHaveText(String(result.score));
@@ -1151,7 +1154,7 @@ test("nobody of the people at work: the shift is skipped to its end; the verdict
   await page.getByRole("button", { name: "Skip to the end of the shift" }).click();
   await expect(page.locator("#resultTitle")).toHaveText("The result: A morning at Bf Neustadt");
   await expect(page.locator("#resultTitle")).toBeFocused();
-  await expect(page.locator("#live")).toContainText("The session is over:");
+  await expect(live(page)).toContainText("The session is over:");
   await expect(page.locator("#play")).toBeHidden();
   const result = await page.evaluate(() => window.__play.session.result()), verdict = page.locator("#result .vn-verdict");
   await expect(verdict).toHaveClass(cls(result.passed ? "passed" : "failed"));
@@ -1260,7 +1263,7 @@ test("autosave and resume: after a reload the session goes on at the same time, 
   await page.locator("#resume").click();
   await expect(page.locator("#clock")).toHaveText("08:02:00");
   await expect(page.getByRole("button", { name: "Pause" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#live")).toContainText("Paused.");
+  await expect(live(page)).toContainText("Paused.");
   await expect(tableOf(page, SIGNALLER, "Routes set").locator("tbody tr")).toContainText(["A → G2"]);
   expect(await page.evaluate(() => [window.__play.session.ticks, window.__play.session.record.length])).toEqual(at);
   // a new session replaces the save
@@ -1344,7 +1347,7 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   await expect(end).toHaveText("End the turn (5 open)");
   await expect(end).not.toHaveClass(/primary/);
   await expect(page.locator("#turnNote")).toHaveText("5 of your decisions are still open. Ending the turn decides them by their fallback.");
-  await expect(page.locator("#live")).toContainText("5 decisions to take.");
+  await expect(live(page)).toContainText("5 decisions to take.");
   await expect(tool(page, ASSETS, "End the turn")).toHaveCount(0);
   // a decision that waits is put in focus and answered; its fallback is named, and who asks is the person its title names
   await stage.locator(".play-decision.waiting .play-next").filter({ hasText: "proposes to repair the bridge" }).click();
@@ -1376,7 +1379,7 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   await end.click();
   await expect(page.locator("#where")).toHaveText("Round 1 of 4 · The year's account");
   await expect(page.locator('#phases li[aria-current="step"]')).toHaveText("The year's account (turn)");
-  await expect(page.locator("#live")).toContainText("Round 1 of 4. The year's account: a turn.");
+  await expect(live(page)).toContainText("Round 1 of 4. The year's account: a turn.");
   const years = tableOf(page, ASSETS, "The years");
   await expect(years.locator("tbody tr")).toHaveCount(1);
   await expect(end).toHaveClass(/primary/);
@@ -1683,8 +1686,8 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(end).toHaveText("End the turn (1 open)");
   await expect(end).not.toHaveClass(/primary/);
   await expect(page.locator("#turnNote")).toHaveText("1 of your decisions is still open. Ending the turn decides it by its fallback.");
-  await expect(page.locator("#live")).toContainText("Round 1 of 2. The year's plan: a turn.");
-  await expect(page.locator("#live")).toContainText("Asset manager: How many emergency teams this year?");
+  await expect(live(page)).toContainText("Round 1 of 2. The year's plan: a turn.");
+  await expect(live(page)).toContainText("Asset manager: How many emergency teams this year?");
   await expect(stage.locator(".vn-story .vn-line")).toHaveText(YEARS.story[0].say);
   await expect(stage.locator(".vn-name")).toHaveText("S. FinkHead of the district");
   await stage.locator(".vn-story").getByRole("button", { name: "OK" }).click();
