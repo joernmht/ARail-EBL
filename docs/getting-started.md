@@ -280,7 +280,9 @@ A tool of Interaction; it works with the module **Disruptions** (switched on by 
 
 ## The game page
 
-The game page (`game/`, locally <http://localhost:8000/game/>) is the app with the games and exercises as its scenarios, in the same list with its filter pills: the **Sandbox**, **Infrastructure → Assets**, and **Railway undertaking → Operations**, **Terminal** and **Journeys** (no example tasks: the games have their own). It opens on the Overview. It opens the lab example Beta 0.1, whose modules (Interaction → Sandbox) have them; it remembers its last layout apart from the app.
+The game page (`game/`, locally <http://localhost:8000/game/>) opens like a game: the lab's photos full screen and a main menu. **Continue** goes back to what was played last; **Missions** (the big game), **Signaller**, **Career** and **Roles** open their pages; **Options** chooses the language, the moving background and full screen; **Leave** goes to the project page.
+
+**Free play** opens the app with the games and exercises as its scenarios, in the same list with its filter pills: the **Sandbox**, **Infrastructure → Assets**, and **Railway undertaking → Operations** and **Journeys** on the lab example Beta 0.1, whose modules (Interaction → Sandbox) have them, and **Terminal** on the virtual container terminal (no example tasks: the games have their own). It remembers its last layout and scenario apart from the app; Continue opens them again, and the bar's **Menu** leads back to the title screen. A link with a layout or a case (`game/?layout=../layouts/ebl-lab.json#infra`) skips the title screen and opens it directly.
 
 ### Infrastructure → Assets (game)
 
