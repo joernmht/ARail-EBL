@@ -1,7 +1,8 @@
 // The cast of the game: who talks to the player. A decision is asked by somebody (a team leader on
 // the radio, the coalition partner's rapporteur across the table), and the play page shows that
 // person beside the question. The portraits are placeholders, silhouettes in web/game/cast/, to be
-// replaced by pictures: put the picture there and name it in PORTRAITS. Data and plain functions
+// replaced by pictures: put the picture there and name it in PORTRAITS (a kind of person) or FACES
+// (one person). Data and plain functions
 // only: no DOM. People have bird names (arail/core/people.js).
 
 /** The portraits by kind: the picture's path below web/, and what it shows. */
@@ -12,6 +13,22 @@ export const PORTRAITS = {
   uniform: { picture: "game/cast/uniform.svg", alt: "A person in a railway uniform with a cap (placeholder silhouette)" },
   headset: { picture: "game/cast/headset.svg", alt: "A person with a headset (placeholder silhouette)" },
 };
+
+/**
+ * Pictures of single people, by their name as the game shows it; a person without one keeps the
+ * portrait of their kind. Empty until there are pictures (see cast/README.md).
+ * @type {Record<string, {picture: string, alt: string}>}
+ */
+export const FACES = {};
+
+/**
+ * The picture to show for a speaker: their own (FACES), else the portrait of their kind.
+ * @param {{name?: string, portrait?: string | null}} speaker
+ * @returns {{picture: string, alt: string}}
+ */
+export function faceOf(speaker) {
+  return FACES[speaker?.name] ?? PORTRAITS[speaker?.portrait] ?? PORTRAITS.office;
+}
 
 /**
  * @typedef {object} Speaker

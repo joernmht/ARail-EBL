@@ -85,3 +85,19 @@ test("backdrops: each is a picture that exists; what a text speaks of decides", 
     assert.ok(w.alt && w.focus);
   }
 });
+
+test("the virtual close-ups: every one named by the game can be taken again by tools/game-places.mjs", async () => {
+  const { SHOTS, parseArgs } = await import("../../tools/game-places.mjs");
+  const { BACKDROPS } = await import("../../web/game/places.js");
+  const shots = new Set(SHOTS.map((s) => s.name));
+  assert.equal(shots.size, SHOTS.length, "no name twice");
+  const used = [...PLACES.map((p) => p.photo), ...BACKDROPS.map((b) => b.photo)].filter((p) => p.endsWith("-fly.jpg")).map((p) => p.replace(/^.*\//, "").replace(/\.jpg$/, ""));
+  for (const name of used) assert.ok(shots.has(name), `${name}.jpg has no shot in tools/game-places.mjs`);
+  for (const s of SHOTS) {
+    assert.ok(existsSync(`web/game/places/${s.name}.jpg`), `${s.name}.jpg`);
+    assert.ok(existsSync(`web/${s.layout.replace("../", "")}`), s.layout);
+    assert.ok(s.distance_mm > 0 && s.pitch_deg > 0 && s.pitch_deg < 90 && s.time >= 0 && s.time < 1440, s.name);
+  }
+  assert.deepEqual(parseArgs([]), { names: [], base: "http://localhost:8000" });
+  assert.deepEqual(parseArgs(["tram-fly.jpg", "--base", "http://localhost:8123/"]), { names: ["tram-fly"], base: "http://localhost:8123" });
+});

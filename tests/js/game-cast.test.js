@@ -58,3 +58,14 @@ test("cast: who is quoted in a message", async () => {
   assert.equal(speakerOf("budget", { who: { name: "E. Wiedehopf" } }).role, "The coalition partner's rapporteur");
   assert.equal(speakerOf("budget", { who: { name: "S. Fink" } }).portrait, "suit");
 });
+
+test("cast: a person's own picture, else the portrait of their kind", async () => {
+  const { FACES, faceOf } = await import("../../web/game/cast.js");
+  assert.equal(faceOf({ name: "E. Kiebitz", portrait: "hivis" }), PORTRAITS.hivis);
+  assert.equal(faceOf({ name: "S. Fink", portrait: "no-such-kind" }), PORTRAITS.office);
+  assert.equal(faceOf(null), PORTRAITS.office);
+  for (const [name, face] of Object.entries(FACES)) {
+    assert.ok(existsSync(`web/${face.picture}`), `${name}: ${face.picture}`);
+    assert.ok(face.alt?.trim(), name);
+  }
+});

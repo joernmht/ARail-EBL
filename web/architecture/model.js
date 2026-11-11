@@ -232,7 +232,7 @@ export const PACKAGES = [
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",
     summary: "The development server, fetching the fonts, comparing operations setups on the command line, writing the role catalogue's guide.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs"],
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs", "tools/game-places.mjs"],
     uses: ["core-world", "ops", "games"],
   },
 ];
