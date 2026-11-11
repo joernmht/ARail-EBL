@@ -25,6 +25,21 @@ export const SLIDE_MS = 9000;
 /** What the browser keeps: the game played last (Continue) and whether the background moves. */
 const LAST = "arail.game.continue", MOTION = "arail.game.motion";
 
+/**
+ * A link to this page with a layout or a case (?layout=…#case), with the address's language
+ * (?lang=, e.g. for a projector) carried along; other links as they are.
+ * @param {string} href
+ * @param {{search: string}} [loc]
+ */
+export function withLang(href, loc = location) {
+  const lang = new URLSearchParams(loc.search).get("lang");
+  if (!lang || !href.startsWith("?")) return href;
+  const [query, hash] = href.split("#");
+  const q = new URLSearchParams(query);
+  q.set("lang", lang);
+  return `?${q}${hash != null ? `#${hash}` : ""}`;
+}
+
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
 
@@ -73,8 +88,13 @@ export class TitleScreen {
     /** The menu shown: "main", "free" or "options". */
     this.view = "main";
     this.slide = 0;
+    /** The photos' elements by their index in SLIDES (made when first shown), null for one that failed to load. */
+    this.imgs = [this.root.querySelector(".title-slide")];
     this.timer = null;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    /** What the motion follows while the title is open (removed when it closes). */
+    this.follow = () => this.setMotion(this.motion);
+    this.keys = (e) => this.onKey(e);
   }
 
   /** Show it: the menu, the photos moving (unless motion is off), the keys. */
@@ -83,17 +103,20 @@ export class TitleScreen {
     this.translateStatic();
     document.documentElement.classList.add("titled");
     this.root.hidden = false;
-    this.root.addEventListener("keydown", (e) => this.onKey(e));
+    this.root.addEventListener("keydown", this.keys);
     this.render();
     this.setMotion(this.motion);
-    this.reduced.addEventListener?.("change", () => this.setMotion(this.motion));
-    document.addEventListener("visibilitychange", () => this.setMotion(this.motion));
+    this.reduced.addEventListener?.("change", this.follow);
+    document.addEventListener("visibilitychange", this.follow);
     // the menu's first item takes the focus, as a game's menu has its cursor on it
     this.focusFirst();
   }
 
   /** Leave it for the app's shell (the page was given a case without loading again). */
   close() {
+    this.reduced.removeEventListener?.("change", this.follow);
+    document.removeEventListener("visibilitychange", this.follow);
+    this.root.removeEventListener("keydown", this.keys);
     clearInterval(this.timer);
     this.timer = null;
     this.root.hidden = true;
@@ -110,29 +133,42 @@ export class TitleScreen {
     this.root.classList.toggle("still", !on);
     clearInterval(this.timer);
     this.timer = null;
-    if (on && !document.hidden) this.timer = setInterval(() => this.next(), SLIDE_MS);
+    if (on && !document.hidden && !this.root.hidden) this.timer = setInterval(() => this.next(), SLIDE_MS);
   }
 
   /** The next photo: loaded first, then it fades in and drifts. */
   next() {
-    const slides = [...this.root.querySelectorAll(".title-slide")];
-    const i = (this.slide + 1) % SLIDES.length;
-    let img = slides[i];
+    // the next photo that has not failed to load (none left: the one shown stays)
+    let i = this.slide;
+    do i = (i + 1) % SLIDES.length;
+    while (this.imgs[i] === null && i !== this.slide);
+    if (i === this.slide) return;
+    let img = this.imgs[i];
     if (!img) {
-      img = h("img", { class: "title-slide", alt: "", src: SLIDES[i].src, decoding: "async" });
+      img = this.imgs[i] = h("img", { class: "title-slide", alt: "", src: SLIDES[i].src, decoding: "async", "data-i": String(i) });
+      // a photo that cannot be loaded (missing, offline) is left out, and the next one is tried
+      img.addEventListener("error", () => {
+        this.imgs[i] = null;
+        img.remove();
+        if (this.timer) this.next();
+      }, { once: true });
       $(".title-slides", this.root).append(img);
     }
+    if (img.dataset.waiting) return; // still loading since an earlier tick
     const show = () => {
-      for (const s of slides) s.classList.remove("on", "last");
-      slides[this.slide]?.classList.add("last");
-      img.classList.remove("on");
+      delete img.dataset.waiting;
+      for (const s of this.imgs) s?.classList.remove("on", "last");
+      this.imgs[this.slide]?.classList.add("last");
       void img.offsetWidth; // the drift starts again from its beginning
       img.classList.add("on");
       this.slide = i;
       this.caption();
     };
-    if (img.complete) show();
-    else img.addEventListener("load", show, { once: true });
+    if (img.complete && img.naturalWidth) show();
+    else {
+      img.dataset.waiting = "1";
+      img.addEventListener("load", show, { once: true });
+    }
   }
 
   /** The caption of the photo shown. */
@@ -186,7 +222,7 @@ export class TitleScreen {
         if ((e.movementX || e.movementY) && document.activeElement !== e.currentTarget) e.currentTarget.focus({ preventScroll: true });
       };
       if (it.href) {
-        return h("a", { class: "title-item", href: it.href, onclick: () => this.remember(it), onpointermove: hover }, label);
+        return h("a", { class: "title-item", href: withLang(it.href), onclick: () => this.remember(it), onpointermove: hover }, label);
       }
       const go = !!it.go;
       return h("button", {

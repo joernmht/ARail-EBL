@@ -1,6 +1,7 @@
 // End-to-end tests of the game page's title screen (game/title.js): it opens without a layout or a
 // case, the photos fill the screen, the menu with its cursor, Free play and Options as submenus, the
-// language, Continue, the app's shell for an address with a case, and a phone.
+// language (also from the address), Continue, the app's shell for an address with a case or given
+// only a #case, a photo that fails to load, and a phone.
 import { expect, test } from "@playwright/test";
 
 /** Open the title screen; it is ready when its menu is drawn. */
@@ -80,6 +81,46 @@ test("Options: the language, the moving background, kept on the device", async (
   await page.reload();
   await page.waitForSelector(".title-item");
   await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  expect(errors).toEqual([]);
+});
+
+test("an address given only a #case leaves the title for the app's shell, and the title stops", async ({ page }) => {
+  const errors = await open(page);
+  await page.evaluate(() => (location.hash = "overview"));
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await expect(page.locator("#title")).toBeHidden();
+  await expect(page.locator("#stage")).toBeVisible();
+  // its photos do not start again behind the app (a tab switch, the system's motion setting)
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  expect(await page.evaluate(() => window.__title.timer)).toBeNull();
+  // the arrows are the app's again
+  await page.keyboard.press("ArrowDown");
+  expect(await page.evaluate(() => document.activeElement?.closest?.("#title"))).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test("a ?lang= of the address goes along into the games and back to the title", async ({ page }) => {
+  const errors = await open(page, "/game/?lang=de");
+  await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  await page.getByRole("button", { name: /Freies Spiel/ }).click();
+  await expect(page.getByRole("link", { name: /Reisen/ })).toHaveAttribute("href", "?layout=..%2Flayouts%2Febl-lab.json&layers=journeys&lang=de#journeys");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json&lang=de#overview");
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await expect(page.locator("#bar .menu-link")).toHaveAttribute("href", "?lang=de");
+  await page.locator("#bar .menu-link").click();
+  await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  expect(errors).toEqual([]);
+});
+
+test("a photo that cannot be loaded is left out; the photos go on", async ({ page }) => {
+  await page.route("**/media/ebl-container-train.jpg", (route) => route.abort());
+  const errors = await open(page);
+  await page.evaluate(() => window.__title.setMotion(true));
+  await page.evaluate(() => window.__title.next());
+  await page.waitForFunction(() => window.__title.slide === 2);
+  expect(await page.evaluate(() => window.__title.imgs[1])).toBeNull();
+  await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../assets/town-day.jpg");
   expect(errors).toEqual([]);
 });
 

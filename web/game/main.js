@@ -11,7 +11,7 @@ import { BuildCase, Case, DisruptionsCase, SandboxCase, TerminalCase } from "../
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
-import { TitleScreen } from "./title.js";
+import { TitleScreen, withLang } from "./title.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
 
@@ -103,16 +103,23 @@ const FREE_PLAY = [
   [JourneysGame, `?layout=${LAB}&layers=journeys`],
 ].map(([C, query]) => ({ label: C.label, sub: C.description, href: `${query}#${C.id}` }));
 
-const app = new App(PAGE);
+/** The app's shell, made only when it starts (not behind the title screen); the bar's Menu keeps the address's language. */
+function start() {
+  const menu = document.querySelector("#bar .menu-link");
+  if (menu) menu.href = withLang("?", location).replace(/^\?$/, "./");
+  new App(PAGE).init();
+}
+
 if (TitleScreen.wanted()) {
   const title = new TitleScreen({ freePlay: FREE_PLAY });
+  window.__title = title; // for end-to-end tests
   title.open();
   // a case asked for without loading the page again (an address with only its #case) leaves the title for the app
   const enter = () => {
     if (!location.hash.slice(1)) return;
     removeEventListener("hashchange", enter);
     title.close();
-    app.init();
+    start();
   };
   addEventListener("hashchange", enter);
-} else app.init();
+} else start();

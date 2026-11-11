@@ -25,11 +25,11 @@ html.titled .title-screen { display: block; }
 .title-slide.on { opacity: 1; z-index: 2; }
 .title-slide.last { opacity: 1; z-index: 1; }
 .title-slide.on, .title-slide.last { animation: title-drift 13s linear both; }
-.title-slide:nth-child(2) { --dx: 2.5%; --dy: -1%; transform-origin: 30% 60%; }
-.title-slide:nth-child(3) { --dx: -1.5%; --dy: 2%; --from: 1.14; --to: 1.03; }
-.title-slide:nth-child(4) { --dx: 2%; --dy: 1.5%; transform-origin: 70% 40%; }
-.title-slide:nth-child(5) { --dx: -2%; --dy: 1%; --from: 1.15; --to: 1.04; }
-.title-slide:nth-child(6) { --dx: 1.5%; --dy: -2%; }
+.title-slide[data-i="1"] { --dx: 2.5%; --dy: -1%; transform-origin: 30% 60%; }
+.title-slide[data-i="2"] { --dx: -1.5%; --dy: 2%; --from: 1.14; --to: 1.03; }
+.title-slide[data-i="3"] { --dx: 2%; --dy: 1.5%; transform-origin: 70% 40%; }
+.title-slide[data-i="4"] { --dx: -2%; --dy: 1%; --from: 1.15; --to: 1.04; }
+.title-slide[data-i="5"] { --dx: 1.5%; --dy: -2%; }
 @keyframes title-drift {
   from { transform: scale(var(--from)) translate(0, 0); }
   to { transform: scale(var(--to)) translate(var(--dx), var(--dy)); }
