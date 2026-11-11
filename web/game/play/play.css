@@ -45,8 +45,8 @@ main[data-screen="choose"] .scene { border-bottom: 1px solid var(--board-line); 
 .play-seat-photo { flex: 1 1 100%; aspect-ratio: 16 / 6; border-radius: 3px; margin: 2px 0 6px; }
 /* a seat's head: where its role works, beside what the game is */
 .play-head { display: flow-root; }
-.play-where { float: right; width: min(38%, 300px); aspect-ratio: 16 / 9; margin: 0 0 8px 14px; border-radius: var(--radius); }
-@media (max-width: 560px) { .play-where { float: none; width: 100%; aspect-ratio: 16 / 6; margin: 0 0 8px; } }
+.play-workplace { float: right; width: min(38%, 300px); aspect-ratio: 16 / 9; margin: 0 0 8px 14px; border-radius: var(--radius); }
+@media (max-width: 560px) { .play-workplace { float: none; width: 100%; aspect-ratio: 16 / 6; margin: 0 0 8px; } }
 .play-roles { margin: 0; padding-left: 1.2em; font-size: .92rem; }
 .play-setup > h2 { font-size: 1.3rem; }
 .play-setup-form { display: grid; gap: 12px; }
@@ -203,3 +203,33 @@ main[data-screen="choose"] .scene { border-bottom: 1px solid var(--board-line); 
 .play-effects { margin: 0; padding-left: 1.2em; font-size: .9rem; }
 @media (forced-colors: active) { .play-line i, .play-chain .key { forced-color-adjust: none; } }
 @media (forced-colors: active) { .play-progress i, .score-parts .meter i { forced-color-adjust: none; background: CanvasText; } }
+
+/* the ready room: the seats as pictures to take, one big Play; the rest opens */
+.play-setup { display: grid; gap: 12px; justify-items: start; }
+.play-setup > form, .play-setup .play-more { width: 100%; max-width: none; }
+.play-setup > h2 { font-size: 1.7rem; font-weight: 800; }
+.play-choices { grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+.play-choice { padding: 0 0 8px; overflow: hidden; gap: 2px 14px; border-width: 0; background: var(--surface-2); }
+.play-choice legend { float: left; width: 100%; padding: 8px 10px 4px; font-size: .95rem; line-height: 1.25; order: 2; }
+.play-choice .play-seat-photo { order: 1; margin: 0; border-radius: 0; aspect-ratio: 16 / 9; }
+.play-choice .play-seat-photo figcaption { display: none; }
+.play-choice > label { order: 3; margin-left: 10px; }
+.play-big { font-size: 1.15rem; font-weight: 800; padding: 12px 34px; letter-spacing: .03em; }
+.play-more { margin-top: 4px; }
+.play-more > * + * { margin-top: 10px; }
+
+/* a seat at work: one decision in focus, the others wait as their titles; the details open */
+.play-decision.waiting { padding: 0; border: 0; background: none; }
+.play-next { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer; padding: 7px 10px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--text-2); font-size: .9rem; }
+.play-next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.play-decision h5 { font-size: 1.1rem; }
+.play-why { all: unset; cursor: pointer; color: var(--accent-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.play-why:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.play-options-row .btn { font-weight: 700; padding: 8px 14px; border-color: var(--accent); }
+.play-details { justify-self: start; }
+.play-ask { font-family: var(--mono); font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin-top: 6px; }
+.play-back { justify-self: start; }
+/* lean (until the details are asked for): the seats of the computer are small tabs, the flows are who gave what to whom */
+main.lean .play-tabs .theirs { font-size: .8rem; opacity: .85; }
+main.lean .play-tabs .theirs .who { display: none; }
+main.lean .play-flows .what, main.lean .play-flows .field, main.lean .play-counts { display: none; }

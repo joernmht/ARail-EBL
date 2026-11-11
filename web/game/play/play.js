@@ -10,6 +10,7 @@ import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wir
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { missionFacts, placeOf, placeOfGame, placeOfMission } from "../places.js";
 import { factChips, placeFigure, showPlace } from "../scene.js";
+import { hasMore, lead } from "../short.js";
 
 /** The way from this page to web/, for the places' photos. */
 const BASE = "../../";
@@ -21,7 +22,7 @@ const saveKey = (id) => `arail.play.${id}`;
 const SETTINGS_KEY = "arail.play.settings";
 const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 /** The messages and flows shown; the panels are drawn every DRAW_MS, the session saved every SAVE_MS, a refusal shown for REFUSED_MS. */
-const LOG_LINES = 40, FLOW_LINES = 60, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
+const LOG_LINES = 40, FLOW_LINES = 60, LEAN_FLOWS = 3, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
 
 /** The time of day (HH:MM:SS) of a shift that began at `start` ("08:00"), `t` seconds in. */
@@ -138,6 +139,11 @@ class PlayPage {
     this.mission = null;
     /** @type {"choose" | "play" | "result"} */
     this.screen = "choose";
+    /** The decision in focus per seat (its id), and whether the details are shown (tables, score, messages, all the flows). */
+    this.focus = new Map();
+    this.details = false;
+    /** The decisions whose whole text is shown (their ids). */
+    this.whole = new Set();
     this.speed = 1;
     this.lastSpeed = 1;
     /** The seat shown, the flow the list is filtered by, the phase the page has seen (index of the session's plan). */
@@ -290,6 +296,8 @@ class PlayPage {
     mount($("#missions"), this.missions.map((doc, i) => h("li", {}, this.card(doc, i + 1))));
     // the head of the page shows where the mission chosen plays
     showPlace($("#scene"), this.doc ? placeOfMission(normalizeMission(this.doc, this.games)) : placeOf(), BASE);
+    // the mission chosen has the screen to itself; Other missions brings the list back
+    $("#choose").querySelector(".play-missions").hidden = !!(this.doc && this.choice);
     this.setup();
     this.fit($("#choose"));
   }
@@ -346,12 +354,13 @@ class PlayPage {
     // a session that cannot be played again from its record is not kept (one kept by an earlier version goes)
     if (!again) storage.remove(saveKey(doc.id));
     const saved = again ? this.saved(doc.id) : null;
+    // the ready room: the mission in a line, the seats as pictures to take, Play; the rest opens
     mount(el,
+      h("button", { class: "btn small play-back", type: "button", id: "others", onclick: () => this.choose(null) }, "← Other missions"),
       h("h2", { id: "setupTitle", tabindex: "-1" }, m.title),
       m.hook ? h("p", { class: "play-hook" }, m.hook) : null,
       factChips(missionFacts(m)),
-      h("p", {}, m.text),
-      h("p", { class: "hint" }, this.outline(m)),
+      h("p", { class: "play-ask" }, "Which seat is yours?"),
       h("form", {
         class: "play-setup-form", id: "setupForm",
         onsubmit: (e) => {
@@ -360,7 +369,7 @@ class PlayPage {
         },
       },
       h("div", { class: "play-choices" }, m.roles.map((r) => h("fieldset", { class: "play-choice" },
-        h("legend", {}, this.roleText(r.role), r.id !== r.role ? ` (${r.id})` : null),
+        h("legend", { title: this.roles.get(r.role)?.name_de ?? null }, this.roleName(r.role), r.id !== r.role ? ` (${r.id})` : null),
         placeFigure(placeOfGame(r.game), BASE, { label: "Where", cls: "play-seat-photo" }),
         [["human", "You"], ["computer", "Computer"]].map(([by, label]) => h("label", { class: "field check", for: `by-${r.id}-${by}` },
           h("input", { type: "radio", name: `by-${r.id}`, id: `by-${r.id}-${by}`, value: by, checked: c.seats[r.id] === by, onchange: () => { c.seats[r.id] = by; } }), label)),
@@ -374,7 +383,16 @@ class PlayPage {
             },
           }),
           x.hint ? h("small", { class: "help" }, x.hint) : null))))),
-      h("details", {}, h("summary", {}, "More"),
+      h("div", { class: "row play-go-row" },
+        saved ? h("button", { class: "btn primary play-big", type: "button", id: "resume", onclick: () => this.resume() }, "Resume") : null,
+        h("button", { class: `btn play-big${saved ? "" : " primary"}`, type: "submit", id: "start" }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), saved ? "Start anew" : "Play")),
+      saved ? h("p", { class: "hint" }, `A session of this mission is saved in this browser (${this.standing(m, saved)}). Start begins a new one and replaces it.`) : null,
+      again ? null : h("p", { class: "hint", id: "noResume" }, "A session of this mission cannot be taken up again once this page is closed: the world of one of its seats is elsewhere and would start anew."),
+      this.note ? h("p", { class: "hint error" }, this.note) : null,
+      // what nobody needs to start: the briefing, the phases, the seed, the wiring
+      h("details", { class: "play-more" }, h("summary", {}, "Briefing and settings"),
+        h("p", {}, m.text),
+        h("p", { class: "hint" }, this.outline(m)),
         h("label", { class: "field", for: "seed" }, h("span", {}, "Seed"),
           h("input", {
             type: "number", id: "seed", min: "1", step: "1", value: c.seed,
@@ -383,14 +401,8 @@ class PlayPage {
               c.seed = e.target.value !== "" && Number.isFinite(n) && n >= 1 ? n : m.seed;
             },
           }),
-          h("small", { class: "help" }, "The same seed and the same moves give the same session."))),
-      h("div", { class: "row" },
-        saved ? h("button", { class: "btn primary", type: "button", id: "resume", onclick: () => this.resume() }, "Resume") : null,
-        h("button", { class: `btn${saved ? "" : " primary"}`, type: "submit", id: "start" }, "Start")),
-      saved ? h("p", { class: "hint" }, `A session of this mission is saved in this browser (${this.standing(m, saved)}). Start begins a new one and replaces it.`) : null,
-      again ? null : h("p", { class: "hint", id: "noResume" }, "A session of this mission cannot be taken up again once this page is closed: the world of one of its seats is elsewhere and would start anew."),
-      this.note ? h("p", { class: "hint error" }, this.note) : null),
-      this.wiringTable(doc, m));
+          h("small", { class: "help" }, "The same seed and the same moves give the same session.")),
+        this.wiringTable(doc, m))));
   }
 
   /** The mission's wiring: per seat the flows it takes and gives, and what is at their other end. */
@@ -580,6 +592,8 @@ class PlayPage {
     if (!s || this.screen !== "play") return;
     this.dirty = false;
     this.lastDraw = performance.now();
+    // lean unless the details are asked for: the flows without their payloads and filter
+    $("#main").classList.toggle("lean", !this.details);
     this.clock();
     this.strip();
     this.tabs();
@@ -626,11 +640,23 @@ class PlayPage {
   tabs() {
     morph($("#tabs"), [...this.session.seats.values()].map((seat) => {
       const on = seat.id === this.tab, at = this.atWork(seat), n = at ? seat.game.open.length : 0;
-      return h("button", { type: "button", role: "tab", id: `tab-${seat.id}`, "aria-controls": `seat-${seat.id}`, "aria-selected": String(on), tabindex: on ? "0" : "-1", onclick: () => this.select(seat.id) },
+      return h("button", { type: "button", role: "tab", class: seat.by === "human" ? "mine" : "theirs", id: `tab-${seat.id}`, "aria-controls": `seat-${seat.id}`, "aria-selected": String(on), tabindex: on ? "0" : "-1", onclick: () => this.select(seat.id) },
         h("span", { class: "name" }, this.seatName(seat.id)),
         h("span", { class: "who" }, seat.by === "human" ? "you" : "computer", at ? null : ", not at work",
           n ? [" ", h("span", { class: "tag warn" }, String(n)), h("span", { class: "visually-hidden" }, n === 1 ? " decision open" : " decisions open")] : null));
     }));
+  }
+
+  /** Put a decision of a seat in focus: it is shown in full, the others as their titles. */
+  look(seatId, id) {
+    this.focus.set(seatId, id);
+    this.draw(true);
+  }
+
+  /** Show or hide what is there when asked for: every seat's tables, score and messages, and all the flows. */
+  showDetails(on) {
+    this.details = !!on;
+    this.draw(true);
   }
 
   /** Show a seat's panel. */
@@ -664,15 +690,19 @@ class PlayPage {
       tables: h("div", { class: "play-tables wide" }),
       score: h("div", { class: "play-score" }),
       log: h("div", {}),
+      more: h("button", { class: "btn play-details wide", type: "button", "aria-expanded": "false", onclick: () => this.showDetails(!this.details) }),
     };
+    p.scoreCard = h("div", { class: "game-card" }, h("h4", {}, "Score so far"), p.score);
+    p.logCard = h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log);
     p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
       p.head,
       p.sketch,
       h("div", { class: "game-card play-decisions" }, p.decisionsTitle, p.decisionsNote, p.decisions),
       h("div", { class: "game-card play-moves" }, p.movesTitle, p.movesNote, p.moves),
+      p.more,
       p.tables,
-      h("div", { class: "game-card" }, h("h4", {}, "Score so far"), p.score),
-      h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log));
+      p.scoreCard,
+      p.logCard);
     return p;
   }
 
@@ -696,10 +726,10 @@ class PlayPage {
     const active = s.active.includes(seat), mine = seat.by === "human", can = this.atWork(seat) && mine;
     const view = this.view(g), de = this.roles.get(seat.role)?.name_de;
     morph(p.head,
-      placeFigure(placeOfGame(seat.Game.id), BASE, { cls: "play-where" }),
+      placeFigure(placeOfGame(seat.Game.id), BASE, { cls: "play-workplace" }),
       h("h3", {}, seat.Game.title),
-      h("p", { class: "play-role" }, "Role: ", h("a", { href: `../roles/#role-${seat.role}` }, this.seatName(seat.id)), de ? [" ", h("span", { class: "de", lang: "de" }, `(${de})`)] : null, ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
-      h("p", { class: "hint" }, seat.Game.description ?? ""),
+      h("p", { class: "play-role" }, h("a", { href: `../roles/#role-${seat.role}`, title: de ?? null }, this.seatName(seat.id)), ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
+      h("p", { class: "hint" }, lead(seat.Game.description ?? "")),
       h("p", { class: "play-state" }, !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over."),
       h("dl", { class: "play-figures" }, view.figures.map((f) => h("div", { class: ["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : "" },
         h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null)))),
@@ -710,12 +740,23 @@ class PlayPage {
 
     const open = g?.open ?? [];
     p.decisionsNote.textContent = open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.") : "Nothing to decide just now.";
-    keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => morph(el, ...this.decision(seat, d, can)));
+    // one decision at a time: the one in focus in full, the others as their titles
+    const focus = open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
+    p.decisionsTitle.textContent = open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : "Decisions";
+    keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => {
+      el.classList.toggle("waiting", d !== focus);
+      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", onclick: () => this.look(seat.id, d.id) }, d.title)]));
+    });
 
     // a form a person is in stays as it is
     const at = document.activeElement;
     if (force || !(at?.matches?.("select, input") && p.moves.contains(at))) this.moves(seat, p, view.actions, can);
 
+    // the tables, the score and the messages are there when asked for
+    const all = this.details;
+    p.more.textContent = all ? "Hide the details" : "Tables, score and messages";
+    p.more.setAttribute("aria-expanded", String(all));
+    p.tables.hidden = p.scoreCard.hidden = p.logCard.hidden = !all;
     morph(p.tables, view.tables.map((t) => h("div", { class: "game-card play-table" },
       h("h4", {}, t.title),
       t.rows?.length ? this.scroller(`${seat.id}|${t.id}`, t.title, this.table(t)) : h("p", { class: "hint" }, t.empty ?? "Nothing here."))));
@@ -814,14 +855,16 @@ class PlayPage {
   /** An open decision: title, text, what happens without an answer, and its options (buttons for a person at work). */
   decision(seat, d, can) {
     const shift = this.session.phase.kind === "shift", label = (id) => d.options.find((o) => o.id === id)?.label ?? "";
+    const key = `${seat.id}|${d.id}`, whole = this.whole.has(key);
     let left = "";
     if (shift && d.deadline != null) left = `${Math.max(0, Math.ceil(d.deadline - seat.game.t))} s left${d.fallback ? `, then: ${label(d.fallback)}` : ""}`;
-    else if (!shift) left = `Still open at the end of the turn: ${label(d.fallback ?? d.options[0]?.id)}`;
+    else if (!shift) left = `If you skip it: ${label(d.fallback ?? d.options[0]?.id)}`;
     return [
       h("h5", {}, d.title),
-      h("p", { class: "text" }, d.text ?? ""),
+      h("p", { class: "text" }, whole ? d.text ?? "" : lead(d.text), " ",
+        hasMore(d.text) ? h("button", { class: "play-why", type: "button", "aria-expanded": String(whole), onclick: () => { this.whole[whole ? "delete" : "add"](key); this.draw(true); } }, whole ? "Less" : "More") : null),
       h("p", { class: "hint" }, left),
-      can ? h("div", { class: "row" }, d.options.map((o) => h("button", { class: "btn small", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) }, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null)))
+      can ? h("div", { class: "row play-options-row" }, d.options.map((o) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) }, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null)))
         : h("ul", { class: "play-options" }, d.options.map((o) => h("li", {}, o.label))),
     ];
   }
@@ -912,7 +955,7 @@ class PlayPage {
       if (sel.value !== this.filter) sel.value = this.filter;
       if (sel.value !== this.filter) this.filter = sel.value;
     }
-    const lines = s.flows.filter((f) => !this.filter || f.flow === this.filter).slice(-FLOW_LINES).reverse();
+    const lines = s.flows.filter((f) => !this.filter || f.flow === this.filter).slice(this.details ? -FLOW_LINES : -LEAN_FLOWS).reverse();
     $("#flowEmpty").hidden = lines.length > 0;
     $("#flowScroll").hidden = !lines.length;
     morph($("#flowList"), lines.map((f) => {
