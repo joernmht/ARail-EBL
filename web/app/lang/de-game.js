@@ -40,6 +40,14 @@ export const GAME_DE = {
   "The crane, the train and the barge at the container terminal": "Kran, Zug und Binnenschiff am Containerterminal",
   "A tram in Bahnhofstraße": "Eine Straßenbahn in der Bahnhofstraße",
   "The level crossing at night": "Der Bahnübergang bei Nacht",
+  // ------------------------------------------------------------ the ranks, in the Logbook's line of the menu (web/game/progress.js)
+  "Passenger": "Fahrgast",
+  "Trainee": "Azubi",
+  "Dispatcher": "Disponent",
+  "Operations manager": "Betriebsleiter",
+  "Head of the network": "Netzleiter",
+  "Member of the board": "Vorstand",
+  "Minister of transport": "Verkehrsminister",
   // ------------------------------------------------------------ the game page's bar (web/game/index.html)
   "Menu": "Menü",
   "The game's main menu": "Das Hauptmenü des Spiels",

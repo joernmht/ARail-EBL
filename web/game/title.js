@@ -8,6 +8,7 @@
 import { UI_LANGUAGES } from "../arail/index.js";
 import { chooseLanguage, i18n, setLanguage, tr, translateDocument } from "../app/i18n.js";
 import { $, h, mount } from "../app/ui.js";
+import { PROGRESS_KEY, rankOf, readProgress, totalStars } from "./progress.js";
 
 /** The photos behind the menu, in their order; the first one is in the page (index.html). */
 export const SLIDES = [
@@ -283,10 +284,16 @@ export class TitleScreen {
       { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
       { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },
       { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
-      { label: "Logbook", sub: "Your stars, your rank, the railway terms you met", href: "logbook/" },
+      { label: "Logbook", sub: this.rankLine() ?? "Your stars, your rank, the railway terms you met", href: "logbook/" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
     ].filter(Boolean);
+  }
+
+  /** What the player has reached, for the Logbook's line (progress.js): the stars and the rank; null before the first mission. */
+  rankLine() {
+    const p = readProgress(store.get(PROGRESS_KEY, null)), n = totalStars(p);
+    return Object.keys(p.missions).length ? `★ ${n} · ${tr(rankOf(n).title)}` : null;
   }
 
   /**
