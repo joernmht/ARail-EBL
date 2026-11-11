@@ -61,6 +61,9 @@ export function withLang(href, loc = location) {
  */
 export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
 
+/** The pages the main menu opens, which Continue may open again. */
+export const PAGES = ["play/", "signaller/", "career/", "roles/"];
+
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
 
@@ -288,7 +291,8 @@ export class TitleScreen {
    */
   continued() {
     const last = store.get(LAST, null);
-    if (last?.href) return { label: "Continue", sub: last.label, href: last.href, keep: true };
+    // only the pages the menu opens (the browser's storage is shared by the whole site: nothing else becomes a link)
+    if (PAGES.includes(last?.href)) return { label: "Continue", sub: typeof last.label === "string" ? last.label : "", href: last.href, keep: true };
     // the shell played last; also a game kept from before the title screen (no record of what was played last)
     const layout = last?.shell || last == null ? store.get(SHELL_LAYOUT, null) : null;
     if (typeof layout !== "string" || !layout) return null;

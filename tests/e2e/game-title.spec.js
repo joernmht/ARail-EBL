@@ -107,6 +107,20 @@ test.describe("with the background still", () => {
   });
 });
 
+test("Continue opens only the menu's pages: anything else in the storage becomes no link", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("arail.game.continue", JSON.stringify({ href: "javascript:window.__ran=1", label: "Missions" }));
+  });
+  const errors = await open(page);
+  expect(await labels(page)).not.toContain("Continue");
+  expect(await page.locator('#title a[href^="javascript:"]').count()).toBe(0);
+  await expect(page.locator(".title-item").first()).toHaveAttribute("href", "play/");
+  expect(await page.evaluate(() => window.__ran)).toBeUndefined();
+  expect(errors).toEqual([]);
+});
+
 test("a game kept from before the title screen is offered as Continue", async ({ page }) => {
   await page.addInitScript(() => {
     if (sessionStorage.getItem("seeded")) return;
