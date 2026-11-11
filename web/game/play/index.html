@@ -17,8 +17,9 @@
 </head>
 <body data-screen="choose">
 <a class="skip-link" href="#main">Skip to content</a>
-<!-- the picture behind every screen: the place of the mission, of the seat shown, of what a question is about (PlayPage.backdrop) -->
-<div class="backdrop" id="backdrop" aria-hidden="true"><img alt=""><img alt=""></div>
+<!-- the picture behind every screen: the place of the mission, of the seat shown, of what a question is about (PlayPage.backdrop);
+     while a mission is played it can be live: the layout's world running, drawn on the canvas (live.js) -->
+<div class="backdrop" id="backdrop" aria-hidden="true"><img alt=""><img alt=""><canvas id="live"></canvas></div>
 <header class="bar site-bar">
   <div class="identity">
     <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
@@ -80,6 +81,7 @@
         <span class="spacer"></span>
         <button class="btn small" type="button" id="showFlows" aria-haspopup="dialog" title="What the roles give each other">Who gave what <span class="tag" id="flowBadge">0</span></button>
         <button class="btn small" type="button" id="sound" aria-pressed="true" title="Sound on or off (M)">Sound</button>
+        <button class="btn small" type="button" id="liveBtn" aria-pressed="true" title="The picture behind the game runs: trains, buses, people (L)">Live</button>
         <button class="btn small" type="button" id="bare" aria-pressed="false" title="Only the picture (H)">Picture</button>
         <button class="btn small" type="button" id="leave">Other missions</button>
       </section>

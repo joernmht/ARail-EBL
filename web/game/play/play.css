@@ -8,6 +8,9 @@ body { background: var(--board); }
 .backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--board); }
 .backdrop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .7s ease; }
 .backdrop img.on { opacity: 1; animation: drift 60s ease-in-out infinite alternate; }
+/* live (live.js): the layout's world, running, over the still picture */
+.backdrop canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .9s ease; }
+.backdrop.live canvas { opacity: 1; }
 /* the edges a little darker, for the bars on them; the middle stays the picture */
 .backdrop::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--board) 50%, transparent), transparent 20%, transparent 58%, color-mix(in srgb, var(--board) 62%, transparent)); }
 @keyframes drift { from { transform: scale(1.03); } to { transform: scale(1.1) translate(-1.2%, -.8%); } }

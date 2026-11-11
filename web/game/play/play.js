@@ -13,11 +13,14 @@ import { mark, termOf } from "../glossary.js";
 import { backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
 import { BADGES, MAX_STARS, PROGRESS_KEY, badgesOf, meet, nextMission, rankOf, readProgress, record, starsFor, totalStars } from "../progress.js";
 import { factChips } from "../scene.js";
+import { NEUSTADT, shotOf } from "../shots.js";
 import { hasMore, lead } from "../short.js";
 import { SOUND_KEY, Sound } from "../sound.js";
 
 /** The way from this page to web/, for the places' photos. */
 const BASE = "../../";
+/** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
+const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
 
 const MISSIONS = "../missions/";
 const SAVE_FORMAT = "arail-session/1";
@@ -39,6 +42,12 @@ function clockOf(start, t) {
   const s = Math.max(0, Math.floor((hh || 0) * 3600 + (mm || 0) * 60 + t));
   const two = (n) => String(n).padStart(2, "0");
   return `${two(Math.floor(s / 3600) % 24)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+}
+
+/** The time of day (minutes after midnight) of a shift that began at `start` ("08:00"), `t` seconds in. */
+function dayMinutes(start, t) {
+  const [hh, mm] = String(start ?? "08:00").split(":").map(Number);
+  return (((hh || 0) * 60 + (mm || 0) + t / 60) % 1440 + 1440) % 1440;
 }
 
 /** A number to read: rounded (one decimal below 100), large ones with separators. */
@@ -168,6 +177,14 @@ class PlayPage {
     this.beatSaid = -1;
     /** The railway term explained (its id), or null. */
     this.term = null;
+    /**
+     * The live backdrop (live.js, loaded when first wanted): whether the player wants it, the scene
+     * once it runs, and the picture shown now with whether it may be live and at what time of day.
+     */
+    this.liveOn = storage.get(LIVE_KEY, true) !== false;
+    this.live = null;
+    this.liveLoading = false;
+    this.pic = null;
     /** Only the picture is shown (H). */
     this.bare = false;
     this.sound = new Sound({ on: storage.get(SOUND_KEY, true) !== false });
@@ -211,6 +228,8 @@ class PlayPage {
     $("#closeFlows").onclick = () => $("#flowsDialog").close();
     $("#sound").onclick = () => this.setSound(!this.sound.on);
     $("#sound").setAttribute("aria-pressed", String(this.sound.on));
+    $("#liveBtn").onclick = () => this.setLive(!this.liveOn);
+    $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
     $("#bare").onclick = () => this.setBare(true);
     $("#bareBack").onclick = () => this.setBare(false);
     $("#flowFilter").onchange = (e) => {
@@ -316,21 +335,68 @@ class PlayPage {
   }
 
   /**
-   * The picture behind the screen: it fades to another one (two images, one over the other).
-   * @param {{photo: string, alt: string, focus: string}} pic a picture of places.js
+   * The picture behind the screen: it fades to another one (two images, one over the other). While
+   * a mission is played it can be live instead: where the picture has a shot of the layout that
+   * runs, the live backdrop shows that, its camera flying there; the still picture stays below it.
+   * @param {{photo: string, alt: string, focus: string, shot?: string | null}} pic a picture of places.js
+   * @param {{live?: boolean, time?: number | null}} [options] live: it may be live; time: the time of day to show (minutes)
    */
-  backdrop(pic) {
+  backdrop(pic, { live = false, time = null } = {}) {
     const el = $("#backdrop");
-    if (!pic || el.dataset.photo === pic.photo) return;
-    el.dataset.photo = pic.photo;
-    const [a, b] = el.children, next = a.classList.contains("on") ? b : a, prev = next === a ? b : a;
-    next.style.objectPosition = pic.focus;
-    next.onload = () => {
-      if (el.dataset.photo !== pic.photo) return;
-      next.classList.add("on");
-      prev.classList.remove("on");
-    };
-    next.src = BASE + pic.photo;
+    if (!pic) return;
+    this.pic = { pic, live, time };
+    if (el.dataset.photo !== pic.photo) {
+      el.dataset.photo = pic.photo;
+      const [a, b] = el.children, next = a.classList.contains("on") ? b : a, prev = next === a ? b : a;
+      next.style.objectPosition = pic.focus;
+      next.onload = () => {
+        if (el.dataset.photo !== pic.photo) return;
+        next.classList.add("on");
+        prev.classList.remove("on");
+      };
+      next.src = BASE + pic.photo;
+    }
+    const shot = live && this.wantsLive() ? shotOf(pic.shot) : null;
+    if (shot && !this.live && !this.liveLoading) this.loadLive();
+    const shown = !!shot && !!this.live?.can(shot);
+    if (shown) {
+      this.live.look(shot, { time });
+      this.live.start();
+    } else this.live?.stop();
+    el.classList.toggle("live", shown);
+  }
+
+  /**
+   * Whether the backdrop may be live: the player wants it, the window is wide enough, the system
+   * does not ask for less motion, and the browser is a person's (a test's browser gets the still
+   * pictures, unless the address asks for it with ?live).
+   */
+  wantsLive() {
+    return this.liveOn && innerWidth >= LIVE_MIN_PX && !matchMedia("(prefers-reduced-motion: reduce)").matches
+      && (!navigator.webdriver || new URLSearchParams(location.search).has("live"));
+  }
+
+  /** Load the live backdrop: the module with the framework behind it, then the layout; the picture shown then goes live. */
+  async loadLive() {
+    this.liveLoading = true;
+    try {
+      const { LiveScene } = await import("../live.js");
+      const scene = new LiveScene($("#live"));
+      // too slow on this device: the still pictures stay
+      scene.canvas.addEventListener("livefailed", () => $("#backdrop").classList.remove("live"));
+      if (await scene.load(BASE + NEUSTADT, NEUSTADT)) this.live = scene;
+    } catch {
+      this.live = null;
+    }
+    if (this.live && this.pic) this.backdrop(this.pic.pic, this.pic);
+  }
+
+  /** The live backdrop on or off (kept in the browser). */
+  setLive(on) {
+    this.liveOn = !!on;
+    storage.set(LIVE_KEY, this.liveOn);
+    $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
+    if (this.pic) this.backdrop(this.pic.pic, this.pic);
   }
 
   /** Stars as they are shown: filled and empty, with their number for who does not see them. */
@@ -1021,9 +1087,11 @@ class PlayPage {
       h("button", { class: "btn", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over"));
 
     // behind it all: the picture that fits what is read or asked, else the place where the role works
-    // (a shift by day gets no picture of the night; in a turn of months or years the time is open)
+    // (a shift by day gets no picture of the night; in a turn of months or years the time is open); it may be
+    // live, in a shift at the shift's own time of day
     const night = turn ? null : nightAt(s.phase.clock, s.t);
-    this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)));
+    this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
+      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t) });
 
     // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
     p.deskTitle.textContent = seat.Game.title;
@@ -1621,7 +1689,7 @@ class PlayPage {
   /**
    * The keys. Choosing: the arrows go along the line of missions, T sounds the little train's horn. Playing: P pauses a shift and lets
    * it run again, 1 to 9 take an option of the decision in focus, Space reads on, D opens the desk,
-   * H shows only the picture, M switches the sound.
+   * H shows only the picture, M switches the sound, L the live backdrop.
    */
   key(e) {
     if (e.target.closest?.("input, select, textarea") || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
@@ -1634,6 +1702,7 @@ class PlayPage {
     if (this.screen !== "play" || !this.session) return;
     if (k === "h" || k === "H") return void this.setBare(!this.bare);
     if (k === "m" || k === "M") return void this.setSound(!this.sound.on);
+    if (k === "l" || k === "L") return void this.setLive(!this.liveOn);
     if (this.bare) return;
     if ((k === "p" || k === "P") && this.session.phase?.kind === "shift") return void this.setSpeed(this.speed ? 0 : this.lastSpeed, true);
     const p = this.panels.get(this.tab);

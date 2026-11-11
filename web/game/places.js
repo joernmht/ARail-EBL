@@ -13,6 +13,7 @@
  * @property {string} [focus] the part of the photo kept when it is cropped (CSS object-position)
  * @property {string} [wide] a larger photo for the whole screen (the backdrop), where the close-up is too small
  * @property {string} [wideFocus] the part of the larger photo kept when it is cropped
+ * @property {string} [live] the shot (shots.js) from which the live backdrop shows the place, where its photo is of the lab
  */
 
 /**
@@ -26,17 +27,17 @@ export const PLACES = [
   {
     id: "signal-box", name: "Signal box, Bf Neustadt", line: "Three platform tracks, two lines, one panel.",
     photo: "game/places/signal-box.jpg", alt: "Bf Neustadt in the lab, close up: its tracks with signals and a freight train",
-    wide: "media/ebl-neustadt.jpg", wideFocus: "40% 72%",
+    wide: "media/ebl-neustadt.jpg", wideFocus: "40% 72%", live: "throat-fly",
   },
   {
     id: "track", name: "The line at Neustadt", line: "Signals, points and rails: what the teams go out to.",
     photo: "game/places/track.jpg", alt: "Signals between the tracks of the lab, close up, a container train beside them",
-    wide: "media/ebl-lab.jpg", wideFocus: "70% 30%",
+    wide: "media/ebl-lab.jpg", wideFocus: "70% 30%", live: "line-fly",
   },
   {
     id: "district", name: "The district around Bf Neustadt", line: "Every asset of the district, with its condition.",
     photo: "game/places/district.jpg", alt: "The platforms of Bf Neustadt in the lab with their digital layer: people waiting, trains and their labels",
-    wide: "assets/ebl-lab-ar.jpg", wideFocus: "60% 38%",
+    wide: "assets/ebl-lab-ar.jpg", wideFocus: "60% 38%", live: "overview-fly",
   },
   {
     id: "trains", name: "On the trains, Bf Neustadt", line: "The undertaking's units, drivers and passengers.",
@@ -97,13 +98,17 @@ export const BACKDROPS = [
   { id: "track", photo: "media/ebl-lab.jpg", alt: "The tracks of the lab with signals and a container train, seen along the line", words: /\b(teams?|technician|faults?|failed|repair|closure|closed|substitute signal)\b/i },
 ];
 
+/** The shot a picture was taken from, by its file's name (the virtual ones, "…-fly.jpg"), or null. */
+const shotIn = (photo) => /([a-z-]+-fly)\.jpg$/.exec(photo)?.[1] ?? null;
+
 /**
- * The picture for the whole screen behind a place: its larger photo where it has one.
+ * The picture for the whole screen behind a place: its larger photo where it has one, and the shot
+ * from which the live backdrop shows the place (live.js).
  * @param {Place} place
- * @returns {{photo: string, alt: string, focus: string}}
+ * @returns {{photo: string, alt: string, focus: string, shot: string | null}}
  */
 export function wideOf(place) {
-  return { photo: place.wide ?? place.photo, alt: place.alt, focus: (place.wide ? place.wideFocus : place.focus) ?? "50% 50%" };
+  return { photo: place.wide ?? place.photo, alt: place.alt, focus: (place.wide ? place.wideFocus : place.focus) ?? "50% 50%", shot: place.live ?? shotIn(place.photo) };
 }
 
 /** The hours of the night, as the lab's clock has them: from sunset (20:30) to sunrise (06:00). */
@@ -123,7 +128,7 @@ export function nightAt(clock, t = 0) {
 /**
  * The picture that fits what a text speaks of (a question's title first, then its text), or null.
  * @param {...string} texts
- * @returns {{photo: string, alt: string, focus: string} | null}
+ * @returns {{photo: string, alt: string, focus: string, shot: string | null} | null}
  */
 export function backdropFor(...texts) {
   return backdropAt(null, ...texts);
@@ -134,12 +139,12 @@ export function backdropFor(...texts) {
  * of the night, at night or where the time is open (null: a turn of months or years) any.
  * @param {boolean | null} night
  * @param {...string} texts
- * @returns {{photo: string, alt: string, focus: string} | null}
+ * @returns {{photo: string, alt: string, focus: string, shot: string | null} | null}
  */
 export function backdropAt(night, ...texts) {
   for (const text of texts) {
     const b = text ? BACKDROPS.find((x) => x.words.test(text) && (night !== false || !x.night)) : null;
-    if (b) return { photo: b.photo, alt: b.alt, focus: b.id === "track" ? "70% 30%" : "50% 50%" };
+    if (b) return { photo: b.photo, alt: b.alt, focus: b.id === "track" ? "70% 30%" : "50% 50%", shot: b.id === "track" ? "line-fly" : shotIn(b.photo) };
   }
   return null;
 }

@@ -7,42 +7,20 @@
 //   node tools/game-places.mjs tram-fly quay-fly --base http://localhost:8123
 //
 // It needs the browser of the end-to-end tests (npx playwright install chromium). The pictures are
-// what web/game/places.js names; a new one needs a line in SHOTS here and one there.
+// what web/game/places.js names; a new one needs a line in SHOTS (web/game/shots.js) and one there.
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { SHOTS } from "../web/game/shots.js";
 
 /** The size of a picture (px), and its JPEG quality. */
 const WIDTH = 1440, HEIGHT = 810, QUALITY = 80;
 /** How long the world runs before a picture is taken (ms), so that trains, buses and people are on their way. */
 const SETTLE_MS = 2500;
 
-const NEUSTADT = "../layouts/ebl-neustadt.json", TERMINAL = "../layouts/container-terminal.json";
-/** The times of day (minutes after midnight). */
-const DAY = 8 * 60 + 30, NIGHT = 22 * 60 + 30;
-
-/**
- * The pictures: the layout, the flyover camera (the point looked at in layout mm, its distance in
- * mm, its direction and its tilt in degrees) and the time of day.
- * @type {Array<{name: string, layout: string, target: number[], distance_mm: number, yaw_deg: number, pitch_deg: number, time: number}>}
- */
-export const SHOTS = [
-  { name: "platform-fly", layout: NEUSTADT, target: [3000, 330], distance_mm: 650, yaw_deg: 20, pitch_deg: 18, time: DAY },
-  { name: "forecourt-fly", layout: NEUSTADT, target: [3560, -330], distance_mm: 700, yaw_deg: 60, pitch_deg: 22, time: DAY },
-  { name: "town-fly", layout: NEUSTADT, target: [3474, -1300], distance_mm: 1300, yaw_deg: 110, pitch_deg: 25, time: DAY },
-  { name: "crossing-fly", layout: NEUSTADT, target: [-560, 404], distance_mm: 650, yaw_deg: 40, pitch_deg: 18, time: DAY },
-  { name: "station-fly", layout: NEUSTADT, target: [2930, -150], distance_mm: 900, yaw_deg: 270, pitch_deg: 16, time: DAY },
-  { name: "school-fly", layout: NEUSTADT, target: [5050, -1650], distance_mm: 900, yaw_deg: 60, pitch_deg: 20, time: DAY },
-  { name: "tram-fly", layout: NEUSTADT, target: [1950, -217], distance_mm: 520, yaw_deg: 10, pitch_deg: 16, time: DAY },
-  { name: "overview-fly", layout: NEUSTADT, target: [2600, 0], distance_mm: 5200, yaw_deg: 90, pitch_deg: 42, time: DAY },
-  { name: "night-platform-fly", layout: NEUSTADT, target: [3000, 330], distance_mm: 650, yaw_deg: 20, pitch_deg: 18, time: NIGHT },
-  { name: "night-town-fly", layout: NEUSTADT, target: [3474, -1300], distance_mm: 1300, yaw_deg: 110, pitch_deg: 25, time: NIGHT },
-  { name: "night-line-fly", layout: NEUSTADT, target: [5200, 300], distance_mm: 900, yaw_deg: 10, pitch_deg: 14, time: NIGHT },
-  { name: "night-office-fly", layout: NEUSTADT, target: [-2050, -750], distance_mm: 700, yaw_deg: 250, pitch_deg: 16, time: NIGHT },
-  { name: "night-crossing-fly", layout: NEUSTADT, target: [-560, 404], distance_mm: 650, yaw_deg: 40, pitch_deg: 18, time: NIGHT },
-  { name: "terminal-fly", layout: TERMINAL, target: [750, 420], distance_mm: 900, yaw_deg: 60, pitch_deg: 20, time: DAY },
-  { name: "quay-fly", layout: TERMINAL, target: [600, 560], distance_mm: 800, yaw_deg: 300, pitch_deg: 18, time: DAY },
-];
+// the pictures and their camera positions: web/game/shots.js (the live backdrop of the game flies between the same)
+export { SHOTS };
 
 /**
  * What the command line asks for: the pictures named (all without names) and the site's address.
@@ -62,7 +40,7 @@ export function parseArgs(argv) {
 /** Take the pictures of one layout: the app in the flyover, its interface hidden, the camera put where each picture wants it. */
 async function takeLayout(browser, base, layout, shots, out) {
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT } });
-  const url = `${base}/app/?layout=${layout}#sandbox`;
+  const url = `${base}/app/?layout=../${layout}#sandbox`;
   await page.goto(url);
   // nothing kept from an earlier visit: the layout as it is in its file
   await page.evaluate(() => localStorage.clear());

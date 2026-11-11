@@ -95,7 +95,7 @@ test("the virtual close-ups: every one named by the game can be taken again by t
   for (const name of used) assert.ok(shots.has(name), `${name}.jpg has no shot in tools/game-places.mjs`);
   for (const s of SHOTS) {
     assert.ok(existsSync(`web/game/places/${s.name}.jpg`), `${s.name}.jpg`);
-    assert.ok(existsSync(`web/${s.layout.replace("../", "")}`), s.layout);
+    assert.ok(existsSync(`web/${s.layout}`), s.layout);
     assert.ok(s.distance_mm > 0 && s.pitch_deg > 0 && s.pitch_deg < 90 && s.time >= 0 && s.time < 1440, s.name);
   }
   assert.deepEqual(parseArgs([]), { names: [], base: "http://localhost:8000" });

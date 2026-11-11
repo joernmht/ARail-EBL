@@ -257,6 +257,12 @@ and for the heads of the other pages of the games:
   `web/game/places/`: close-ups cut from the lab's photos, and close-ups taken in the flyover with
   everything in view virtual, by day and at night (drawn without the table's photo, which blurs
   when the camera comes close; their names end in `-fly`).
+- **It can be live.** While a mission is played, the picture can be the layout itself, running
+  (`web/game/live.js`; the bar's **Live**, or **L**): the world of Bf Neustadt as the app's flyover
+  draws it, trains, trams, buses and people on their way, by day or at night, from a camera that
+  stands where the still picture was taken (`web/game/shots.js`), sways a little, and flies on
+  when a question is about something else. It is an ornament and changes nothing in a game; on a
+  phone, where less motion is asked for, or where it is too slow, the still pictures stay.
 - **A line or two first.** A mission says what it is in its `hook` ("Nine trains, forty minutes,
   and one signal that will fail."), with its facts as chips; a long text shows its first sentence
   (`lead` in `web/game/short.js`) and the rest behind More. The briefing, the seed and the wiring
