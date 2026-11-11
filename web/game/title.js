@@ -111,6 +111,8 @@ export class TitleScreen {
     this.slide = 0;
     /** The photo being loaded to be shown next, or null. */
     this.coming = null;
+    /** How long a photo may take to load (STUCK_MS; shorter in tests). */
+    this.stuckMs = STUCK_MS;
     /** The photos' elements by their index in SLIDES (made when first shown), null for one that failed to load. */
     this.imgs = [this.root.querySelector(".title-slide")];
     // its first photo is set by the page when it opens with the title (index.html); here in case it was not
@@ -197,13 +199,11 @@ export class TitleScreen {
       this.watch(img, i);
       $(".title-slides", this.root).append(img);
     }
-    if (img.dataset.waiting) {
-      // still loading since an earlier tick; a request that never ends (a stuck connection) counts as failed
-      if (Date.now() - Number(img.dataset.waiting) > STUCK_MS) img.dispatchEvent(new Event("error"));
-      return;
-    }
+    if (img.dataset.waiting) return; // still loading since an earlier tick
     const show = () => {
-      if (this.closed) return;
+      // a photo given up meanwhile (it failed, or took too long) is not shown when it arrives late
+      if (this.closed || this.imgs[i] !== img) return;
+      clearTimeout(stuck);
       delete img.dataset.waiting;
       if (this.coming === i) this.coming = null;
       for (const s of this.imgs) s?.classList.remove("on", "last");
@@ -213,11 +213,14 @@ export class TitleScreen {
       this.slide = i;
       this.caption();
     };
+    let stuck = null;
     if (img.complete && img.naturalWidth) show();
     else {
-      img.dataset.waiting = String(Date.now());
+      img.dataset.waiting = "1";
       this.coming = i;
       img.addEventListener("load", show, { once: true });
+      // a request that never ends (a stuck connection) counts as failed, also with the background still
+      stuck = setTimeout(() => this.imgs[i] === img && img.dispatchEvent(new Event("error")), this.stuckMs);
     }
   }
 

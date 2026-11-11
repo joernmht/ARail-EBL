@@ -134,20 +134,44 @@ test("back from a page opened from the menu (restored from the browser's cache),
   expect(errors).toEqual([]);
 });
 
-test("a photo whose request never ends is left out after a while; the photos go on", async ({ page }) => {
-  await page.route("**/media/ebl-container-train.jpg", () => {}); // never answered
-  const errors = await open(page);
-  await page.evaluate(() => window.__title.setMotion(true));
-  await page.evaluate(() => window.__title.next());
-  await page.waitForFunction(() => window.__title.coming === 1);
-  // as if STUCK_MS had passed
-  await page.evaluate(() => {
-    window.__title.imgs[1].dataset.waiting = String(Date.now() - 60_000);
-    window.__title.next();
+test.describe("a photo that takes too long, with the background still", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("it is left out, the next one shown, and when it arrives late it is not shown", async ({ page }) => {
+    // the first photo fails; the second answers only after the title has given up on it
+    await page.route("**/assets/ebl-lab-ar.jpg", (route) => route.abort());
+    let release;
+    const late = new Promise((r) => (release = r));
+    await page.route("**/media/ebl-container-train.jpg", async (route) => {
+      await late;
+      await route.continue();
+    });
+    await page.addInitScript(() => {
+      // STUCK_MS made short for the test, as soon as main.js hands over the title (before the first photo's failure asks for the next one)
+      Object.defineProperty(window, "__title", {
+        configurable: true,
+        set(t) {
+          t.stuckMs = 300;
+          Object.defineProperty(window, "__title", { value: t, writable: true, configurable: true });
+        },
+      });
+    });
+    // the page's load waits for the photo held back: only its DOM is waited for
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto("/game/", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".title-item");
+    await page.waitForFunction(() => window.__title.slide === 2, null, { timeout: 15_000 });
+    expect(await page.evaluate(() => window.__title.timer)).toBeNull();
+    expect(await page.evaluate(() => window.__title.imgs[1])).toBeNull();
+    // the late photo arrives: nothing changes
+    release();
+    await page.waitForTimeout(800);
+    expect(await page.evaluate(() => window.__title.slide)).toBe(2);
+    await expect(page.locator(".title-slide.on")).toHaveCount(1);
+    await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../assets/town-day.jpg");
+    await expect(page.locator("#titleCaption")).toHaveText("The town around the layout, in the flyover");
+    expect(errors).toEqual([]);
   });
-  await page.waitForFunction(() => window.__title.slide === 2);
-  expect(await page.evaluate(() => window.__title.imgs[1])).toBeNull();
-  expect(errors).toEqual([]);
 });
 
 test("the first photo, if it cannot be loaded, is left out: the next one is shown at once", async ({ page }) => {
