@@ -67,6 +67,26 @@ test("the title screen is there from the first paint, before the scripts; the ph
   expect(await page.locator(".title-slide").first().getAttribute("src")).toBeNull();
 });
 
+test("a shared link's tracking tags still open the title screen; the shell's keys open the shell", async ({ page }) => {
+  const errors = await open(page, "/game/?utm_source=newsletter&fbclid=abc");
+  await expect(page.locator("#title")).toBeVisible();
+  expect(await page.evaluate(() => window.__arail)).toBeUndefined();
+  await page.goto("/game/?mock=1");
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await expect(page.locator("#title")).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("the first photo, if it cannot be loaded, is left out: the next one is shown at once", async ({ page }) => {
+  await page.route("**/assets/ebl-lab-ar.jpg", (route) => route.abort());
+  const errors = await open(page);
+  await page.waitForFunction(() => window.__title.slide === 1);
+  expect(await page.evaluate(() => window.__title.imgs[0])).toBeNull();
+  await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../media/ebl-container-train.jpg");
+  await expect(page.locator("#titleCaption")).toHaveText("A container train and the intercity in the lab");
+  expect(errors).toEqual([]);
+});
+
 test("the menu's keys: Home and End, the right arrow into a submenu, the left arrow back", async ({ page }) => {
   const errors = await open(page);
   await page.keyboard.press("End");

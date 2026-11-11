@@ -17,9 +17,13 @@
 <!-- without a layout or a case the page opens with its title screen (title.js); decided before it is drawn, and only
      then its first photo is fetched (title.css shows the title screen from the first paint, before the scripts) -->
 <script>
-if (!location.hash.slice(1) && [...new URLSearchParams(location.search).keys()].every((k) => k === "lang")) {
+{
+// the keys the app's shell acts on: SHELL_KEYS of title.js
+const shell = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
+if (!location.hash.slice(1) && ![...new URLSearchParams(location.search).keys()].some((k) => shell.includes(k))) {
   document.documentElement.classList.add("titled");
   document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "image", href: "../assets/ebl-lab-ar.jpg" }));
+}
 }
 </script>
 </head>

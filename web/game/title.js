@@ -51,6 +51,13 @@ export function withLang(href, loc = location) {
   return `?${q}${hash != null ? `#${hash}` : ""}`;
 }
 
+/**
+ * What the app's shell acts on in the address (app.js): with one of them, or a #case, the page opens
+ * the shell instead of the title screen. The script in index.html decides with the same list
+ * (tests/js/game-title.test.js checks it).
+ */
+export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
+
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
 
@@ -81,13 +88,13 @@ const store = {
 /** The title screen: the photos, the menu and its submenus. */
 export class TitleScreen {
   /**
-   * Whether the page opens with the title screen: no layout, example, photo or case asked for (only
-   * the language may be).
+   * Whether the page opens with the title screen: no case and nothing the app's shell acts on asked
+   * for (SHELL_KEYS); other keys (?lang=, a link's tracking tags) leave it.
    * @param {{search: string, hash: string}} [loc]
    */
   static wanted(loc = location) {
     const keys = [...new URLSearchParams(loc.search).keys()];
-    return !loc.hash.replace(/^#/, "") && keys.every((k) => k === "lang");
+    return !loc.hash.replace(/^#/, "") && !keys.some((k) => SHELL_KEYS.includes(k));
   }
 
   /**
@@ -103,6 +110,7 @@ export class TitleScreen {
     this.imgs = [this.root.querySelector(".title-slide")];
     // its first photo is set by the page when it opens with the title (index.html); here in case it was not
     if (this.imgs[0] && !this.imgs[0].getAttribute("src")) this.imgs[0].src = SLIDES[0].src;
+    if (this.imgs[0]) this.watch(this.imgs[0], 0);
     this.timer = null;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)");
     /** What the motion follows while the title is open (removed when it closes). */
@@ -164,12 +172,7 @@ export class TitleScreen {
     let img = this.imgs[i];
     if (!img) {
       img = this.imgs[i] = h("img", { class: "title-slide", alt: "", src: SLIDES[i].src, decoding: "async", "data-i": String(i) });
-      // a photo that cannot be loaded (missing, offline) is left out, and the next one is tried
-      img.addEventListener("error", () => {
-        this.imgs[i] = null;
-        img.remove();
-        if (this.timer) this.next();
-      }, { once: true });
+      this.watch(img, i);
       $(".title-slides", this.root).append(img);
     }
     if (img.dataset.waiting) return; // still loading since an earlier tick
@@ -187,6 +190,22 @@ export class TitleScreen {
       img.dataset.waiting = "1";
       img.addEventListener("load", show, { once: true });
     }
+  }
+
+  /**
+   * A photo that cannot be loaded (missing, offline) is left out. When it is the one shown (the
+   * first), the next one is shown at once, even with the background still; otherwise the next one is
+   * tried while the photos move.
+   */
+  watch(img, i) {
+    const failed = () => {
+      this.imgs[i] = null;
+      img.remove();
+      if (i === this.slide) this.next();
+      else if (this.timer) this.next();
+    };
+    if (img.complete && img.getAttribute("src") && !img.naturalWidth) queueMicrotask(failed);
+    else img.addEventListener("error", failed, { once: true });
   }
 
   /** The caption of the photo shown. */
