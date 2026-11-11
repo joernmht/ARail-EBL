@@ -19,8 +19,8 @@
 #missions { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
 /* choosing a mission looks like a game's level select, not a form: the whole screen is the board
    (dark blue), and what stands on it takes the board's colours through the tokens */
-main[data-screen="choose"] { background: var(--board); }
-main[data-screen="choose"] .play-layout {
+main[data-screen] { background: var(--board); }
+main[data-screen] .play-layout {
   --surface: var(--board-2); --surface-2: var(--board); --text: var(--board-text); --text-2: var(--board-muted); --line: var(--board-line);
   --accent-ink: var(--overlay-ok); --danger: var(--board-warn); color: var(--board-text); padding-bottom: 40px;
 }
@@ -226,10 +226,143 @@ main[data-screen="choose"] .scene { border-bottom: 1px solid var(--board-line); 
 .play-why { all: unset; cursor: pointer; color: var(--accent-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .play-why:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .play-options-row .btn { font-weight: 700; padding: 8px 14px; border-color: var(--accent); }
-.play-details { justify-self: start; }
 .play-ask { font-family: var(--mono); font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin-top: 6px; }
 .play-back { justify-self: start; }
-/* lean (until the details are asked for): the seats of the computer are small tabs, the flows are who gave what to whom */
-main.lean .play-tabs .theirs { font-size: .8rem; opacity: .85; }
-main.lean .play-tabs .theirs .who { display: none; }
-main.lean .play-flows .what, main.lean .play-flows .field, main.lean .play-counts { display: none; }
+
+/* ------------------------------------------------------------------ playing: a stage, not a dashboard
+   The seat shown is a scene: the photo of the place where the role works fills it; on it the gauges,
+   the game's picture (a control desk) if it has one, and at the bottom who speaks, as a portrait, with
+   what they ask and the choices. Tables, score and messages are the desk, a dialog. Text stands in
+   boxes of the board's colour, never on the photo. */
+main[data-screen="play"] .scene { display: none; }
+main[data-screen="play"] .play-layout { padding-top: 12px; }
+#play { gap: 10px; }
+
+/* the bar of the session */
+.play-strip { display: grid; gap: 8px; }
+.play-strip-head { align-items: center; }
+.play-strip-head .spacer { flex: 1; }
+.play-strip h2 { font-size: 1.15rem; font-weight: 800; }
+.play-where { font-family: var(--mono); font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); font-weight: 500; }
+.play-phases li { font-size: .78rem; padding: 1px 10px; }
+.play-phases li[aria-current] { border-color: var(--overlay-ok); background: var(--overlay-ok); color: var(--board); }
+.play-clock { font-size: 1.9rem; color: var(--board-text); }
+.play-progress i { background: var(--overlay-ok); }
+
+/* the seats as the cast: a face, the role, who plays it */
+.play-tabs { border-bottom: 0; gap: 6px; }
+.play-tabs [role="tab"] { grid-template-columns: 34px auto; column-gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 14px 3px 3px; background: var(--surface-2); box-shadow: none; }
+.play-tabs [role="tab"][aria-selected="true"] { border-color: var(--overlay-ok); background: var(--surface); box-shadow: 0 0 0 1px var(--overlay-ok); }
+.play-tabs .face { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--board-2); }
+.play-tabs .name { font-size: .86rem; line-height: 1.15; }
+.play-tabs .who { font-size: .72rem; line-height: 1.2; }
+.play-tabs .theirs { opacity: .8; }
+.play-tabs .theirs .name { font-weight: 500; }
+
+/* the stage */
+.play-seat { display: block; padding-top: 8px; }
+.vn-stage { position: relative; isolation: isolate; overflow: hidden; border-radius: 8px; border: 1px solid var(--board-line); min-height: clamp(520px, 76vh, 860px); display: grid; grid-template-rows: auto 1fr auto auto; gap: 12px; padding: 14px; color: var(--board-text); background: var(--board); }
+.vn-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.vn-stage::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, color-mix(in srgb, var(--board) 45%, transparent), color-mix(in srgb, var(--board) 5%, transparent) 28%, color-mix(in srgb, var(--board) 40%, transparent) 60%, color-mix(in srgb, var(--board) 92%, transparent)); }
+.vn-top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: start; justify-content: space-between; }
+.vn-where { background: var(--board); border-left: 3px solid var(--overlay-ok); border-radius: 3px; padding: 5px 12px 6px; font-size: .9rem; line-height: 1.3; }
+.vn-where .place-label { display: block; }
+.vn-gauges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; justify-content: flex-end; }
+.vn-gauges > div { background: var(--board); border-radius: 3px; border-bottom: 3px solid var(--board-line); padding: 4px 12px 3px; min-width: 5.5em; }
+.vn-gauges > .tone-ok { border-bottom-color: var(--overlay-ok); }
+.vn-gauges > .tone-warn { border-bottom-color: var(--board-warn); }
+.vn-gauges > .tone-bad { border-bottom-color: var(--overlay-bad); }
+.vn-gauges dt { font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: var(--board-muted); }
+.vn-gauges dd { margin: 0; font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* the game's picture on the stage: a control desk */
+.vn-stage .play-sketch { align-self: center; grid-row: 2; background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 10px 12px; box-shadow: 0 10px 30px color-mix(in srgb, var(--board) 70%, transparent); }
+.vn-stage .play-sketch h4 { font-family: var(--mono); font-size: .74rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
+.vn-stage .play-board { padding: 0; }
+
+/* who speaks, and what they ask */
+.vn-talk { grid-row: 3; display: grid; grid-template-columns: clamp(96px, 17vw, 220px) minmax(0, 1fr); align-items: end; }
+.vn-speaker { margin: 0 -22px -4px 0; position: relative; z-index: 1; }
+.vn-speaker img { display: block; width: 100%; height: auto; filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--board) 80%, transparent)); }
+.vn-speaker.self { opacity: .75; }
+.vn-box { background: var(--board); border: 1px solid var(--board-line); border-top: 3px solid var(--overlay-ok); border-radius: 6px; padding: 14px 18px 12px 36px; display: grid; gap: 8px; align-content: start; min-height: 190px; }
+.vn-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.vn-name strong { font-size: 1.05rem; font-weight: 800; }
+.vn-name span { font-family: var(--mono); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.vn-count { font-family: var(--mono); font-size: .72rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
+.vn-count:empty { display: none; }
+.vn-decisions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vn-decisions .play-decision { flex: 1 1 100%; order: 1; border: 0; padding: 0; background: none; gap: 8px; animation: vn-say .28s ease-out; }
+.vn-decisions .play-decision.waiting { flex: 0 1 auto; order: 2; min-width: 0; animation: none; }
+.vn-decisions h5 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.vn-decisions .text { font-size: 1rem; color: var(--board-muted); max-width: 70ch; }
+.vn-decisions .hint { font-size: .8rem; color: var(--board-muted); }
+.play-options-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px; }
+.vn-decisions .play-options-row .btn { text-align: left; justify-content: flex-start; white-space: normal; font-size: 1rem; font-weight: 700; padding: 12px 16px; background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); border-left: 5px solid var(--overlay-ok); border-radius: 4px; }
+.vn-decisions .play-options-row .btn small { font-weight: 400; color: var(--board-muted); }
+.vn-decisions .play-next { border: 1px solid var(--board-line); border-style: solid; border-radius: 999px; padding: 3px 12px; font-size: .8rem; color: var(--board-muted); max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vn-note { color: var(--board-muted); font-size: 1.05rem; }
+.vn-ticker { font-family: var(--mono); font-size: .78rem; color: var(--board-muted); border-top: 1px dashed var(--board-line); padding-top: 8px; margin-top: 2px; }
+.vn-ticker::before { content: "▸ "; color: var(--overlay-ok); }
+.vn-ticker.k-violation { color: var(--board-warn); }
+.vn-tools { grid-row: 4; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.vn-tools .btn { font-size: .86rem; }
+.vn-tools .btn.primary { font-size: 1rem; font-weight: 800; padding: 9px 22px; margin-right: auto; }
+@keyframes vn-say { from { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 640px) {
+  .vn-stage { padding: 10px; min-height: 0; }
+  .vn-talk { grid-template-columns: minmax(0, 1fr); }
+  .vn-speaker { width: 84px; margin: 0 0 -14px 10px; }
+  .vn-box { padding: 20px 14px 12px; }
+  .vn-gauges { justify-content: flex-start; }
+}
+
+/* the desk and the flows: dialogs, for who wants the numbers */
+.play-dialog { width: min(1080px, calc(100vw - 24px)); max-height: calc(100vh - 32px); margin: auto; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); overflow-y: auto; }
+.play-dialog[open] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
+.play-dialog::backdrop { background: color-mix(in srgb, var(--board) 72%, transparent); }
+.play-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: -16px; z-index: 2; background: var(--surface-2); padding-block: 6px; }
+.play-dialog-head h2, .play-dialog-head h3 { font-size: 1.25rem; font-weight: 800; }
+.play-dialog .game-card > h4 { font-size: 1.05rem; margin-bottom: 8px; }
+.play-dialog.play-flows { width: min(640px, calc(100vw - 24px)); }
+
+/* a phase begins: its name over the whole screen for a moment */
+.vn-chapter { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 24px; text-align: center; background: var(--board); color: var(--board-text); animation: vn-chapter 2.3s ease forwards; }
+.vn-chapter .over { font-family: var(--mono); font-size: .9rem; letter-spacing: .2em; text-transform: uppercase; color: var(--overlay-ok); }
+.vn-chapter .title { font-size: clamp(2rem, 6vw, 4rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance; }
+.vn-chapter .title::after { content: ""; display: block; width: 90px; height: 4px; margin: 18px auto 0; background: var(--overlay-ok); }
+.vn-chapter .under { color: var(--board-muted); font-size: 1.1rem; }
+@keyframes vn-chapter { 0% { opacity: 0; } 12% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vn-chapter { display: none; } .vn-decisions .play-decision { animation: none; } }
+
+/* tighter: the box holds the question, the photo keeps the rest of the stage */
+.vn-decisions h5, .vn-decisions p { margin: 0; }
+.vn-box { min-height: 0; }
+.vn-stage { grid-template-rows: auto minmax(120px, 1fr) auto auto; }
+#turnNote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* the cast: the computer's seats are faces, their names for who asks (title, screen readers) */
+.play-tabs .theirs { grid-template-columns: 34px; padding: 3px; }
+.play-tabs .theirs .name, .play-tabs .theirs .who { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.play-tabs .theirs[aria-selected="true"] { grid-template-columns: 34px auto; padding-right: 14px; opacity: 1; }
+.play-tabs .theirs[aria-selected="true"] .name, .play-tabs .theirs[aria-selected="true"] .who { position: static; width: auto; height: auto; clip-path: none; }
+
+/* 3: the result, a verdict on the stage of the mission's place; the report is a dialog */
+main[data-screen="result"] .scene { display: none; }
+.vn-verdict { min-height: clamp(520px, 80vh, 860px); grid-template-rows: 1fr; place-items: end start; }
+.vn-verdict-box { background: var(--board); border: 1px solid var(--board-line); border-top: 4px solid var(--overlay-ok); border-radius: 6px; padding: 20px 24px; display: grid; gap: 12px; max-width: min(100%, 760px); }
+.vn-verdict.failed .vn-verdict-box { border-top-color: var(--board-warn); }
+.vn-over { font-family: var(--mono); font-size: .86rem; letter-spacing: .18em; text-transform: uppercase; color: var(--overlay-ok); }
+.vn-verdict.failed .vn-over { color: var(--board-warn); }
+.vn-verdict h2 { font-size: clamp(1.5rem, 3.4vw, 2.3rem); font-weight: 800; letter-spacing: -.015em; }
+.vn-score .score-total { font-size: clamp(3.4rem, 9vw, 5.5rem); line-height: 1; }
+.vn-score .of { color: var(--board-muted); }
+.vn-cast { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.vn-cast li { display: grid; grid-template-columns: 38px auto; column-gap: 8px; align-items: center; border: 1px solid var(--board-line); border-left: 4px solid var(--overlay-ok); border-radius: 4px; padding: 4px 12px 4px 4px; background: var(--board-2); }
+.vn-cast li.bad { border-left-color: var(--board-warn); }
+.vn-cast .face { grid-row: span 2; width: 38px; height: 38px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--board); }
+.vn-cast .name { font-size: .84rem; font-weight: 700; line-height: 1.2; }
+.vn-cast .pts { font-size: .78rem; color: var(--board-muted); }
+.vn-question { color: var(--board-muted); max-width: 62ch; }
+.vn-question .place-label { display: block; }
+/* the game's picture leaves the photo around it in view */
+.vn-stage .play-sketch { width: 100%; max-width: 960px; justify-self: center; }

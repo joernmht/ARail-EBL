@@ -9,7 +9,8 @@
 import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { missionFacts, placeOf, placeOfGame, placeOfMission } from "../places.js";
-import { factChips, placeFigure, showPlace } from "../scene.js";
+import { PORTRAITS, selfPortrait, speakerOf } from "../cast.js";
+import { factChips, photoOf, placeFigure, showPlace } from "../scene.js";
 import { hasMore, lead } from "../short.js";
 
 /** The way from this page to web/, for the places' photos. */
@@ -22,7 +23,7 @@ const saveKey = (id) => `arail.play.${id}`;
 const SETTINGS_KEY = "arail.play.settings";
 const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 /** The messages and flows shown; the panels are drawn every DRAW_MS, the session saved every SAVE_MS, a refusal shown for REFUSED_MS. */
-const LOG_LINES = 40, FLOW_LINES = 60, LEAN_FLOWS = 3, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
+const LOG_LINES = 40, FLOW_LINES = 60, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
 
 /** The time of day (HH:MM:SS) of a shift that began at `start` ("08:00"), `t` seconds in. */
@@ -139,9 +140,8 @@ class PlayPage {
     this.mission = null;
     /** @type {"choose" | "play" | "result"} */
     this.screen = "choose";
-    /** The decision in focus per seat (its id), and whether the details are shown (tables, score, messages, all the flows). */
+    /** The decision in focus per seat (its id). */
     this.focus = new Map();
-    this.details = false;
     /** The decisions whose whole text is shown (their ids). */
     this.whole = new Set();
     this.speed = 1;
@@ -180,6 +180,8 @@ class PlayPage {
     $("#endTurn").onclick = () => this.endTurn();
     $("#skip").onclick = () => this.skip();
     $("#leave").onclick = () => this.choose(null);
+    $("#showFlows").onclick = () => this.openFlows();
+    $("#closeFlows").onclick = () => $("#flowsDialog").close();
     $("#flowFilter").onchange = (e) => {
       this.filter = e.target.value;
       this.flows(true);
@@ -544,6 +546,8 @@ class PlayPage {
     const mine = (seat) => seat.by === "human" && s.active.includes(seat);
     if (!mine(s.seat(this.tab))) this.tab = s.active.find(mine)?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
+    const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
+    this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
     this.save();
   }
 
@@ -592,8 +596,6 @@ class PlayPage {
     if (!s || this.screen !== "play") return;
     this.dirty = false;
     this.lastDraw = performance.now();
-    // lean unless the details are asked for: the flows without their payloads and filter
-    $("#main").classList.toggle("lean", !this.details);
     this.clock();
     this.strip();
     this.tabs();
@@ -641,6 +643,7 @@ class PlayPage {
     morph($("#tabs"), [...this.session.seats.values()].map((seat) => {
       const on = seat.id === this.tab, at = this.atWork(seat), n = at ? seat.game.open.length : 0;
       return h("button", { type: "button", role: "tab", class: seat.by === "human" ? "mine" : "theirs", id: `tab-${seat.id}`, "aria-controls": `seat-${seat.id}`, "aria-selected": String(on), tabindex: on ? "0" : "-1", onclick: () => this.select(seat.id) },
+        h("img", { class: "face", src: BASE + selfPortrait(seat.Game.id).picture, alt: "" }),
         h("span", { class: "name" }, this.seatName(seat.id)),
         h("span", { class: "who" }, seat.by === "human" ? "you" : "computer", at ? null : ", not at work",
           n ? [" ", h("span", { class: "tag warn" }, String(n)), h("span", { class: "visually-hidden" }, n === 1 ? " decision open" : " decisions open")] : null));
@@ -653,10 +656,36 @@ class PlayPage {
     this.draw(true);
   }
 
-  /** Show or hide what is there when asked for: every seat's tables, score and messages, and all the flows. */
-  showDetails(on) {
-    this.details = !!on;
+  /**
+   * Open a seat's desk, a dialog: its role, its moves as forms, its tables, its score and its messages.
+   * @param {string} seatId
+   * @param {"moves" | null} [part] where to begin
+   */
+  openDesk(seatId, part = null) {
+    const p = this.panels.get(seatId);
+    if (!p) return;
+    if (!p.desk.open) p.desk.showModal();
     this.draw(true);
+    const at = part === "moves" ? p.movesTitle : p.deskTitle;
+    at.scrollIntoView({ block: "start" });
+    at.focus({ preventScroll: true });
+  }
+
+  /** Open what the roles give each other, a dialog. */
+  openFlows() {
+    const d = $("#flowsDialog");
+    if (!d.open) d.showModal();
+    this.flows(true);
+  }
+
+  /**
+   * A phase has begun: its name over the whole screen for a moment, as the chapter of a story.
+   * It takes no clicks and goes by itself (not shown where less motion is asked for).
+   */
+  chapter(over, title, under) {
+    const el = $("#chapter");
+    mount(el, h("div", { class: "vn-chapter" }, h("p", { class: "over" }, over), h("p", { class: "title" }, title), h("p", { class: "under" }, under)));
+    el.firstElementChild.addEventListener("animationend", () => mount(el), { once: true });
   }
 
   /** Show a seat's panel. */
@@ -676,33 +705,50 @@ class PlayPage {
     this.select(ids[to], true);
   }
 
-  /** The fixed parts of a seat's panel; `seat` draws into them. */
+  /**
+   * The fixed parts of a seat's panel; `seat` draws into them. The stage: the photo of the place
+   * where the role works, on it the gauges, the game's picture if it has one, who speaks, what they
+   * ask with its choices, the newest message, and the tools. The desk, a dialog opened from the
+   * stage: the role, the moves as forms, the tables, the score and the messages.
+   */
   panel(seat) {
+    const place = placeOfGame(seat.Game.id);
     const p = {
-      head: h("div", { class: "game-card play-head wide" }),
-      sketch: h("div", { class: "game-card play-sketch wide", hidden: true }),
-      decisionsTitle: h("h4", { tabindex: "-1" }, "Decisions"),
-      decisionsNote: h("p", { class: "hint" }),
-      decisions: h("div", { class: "play-keyed" }),
+      head: h("div", { class: "game-card play-head" }),
+      sketch: h("div", { class: "play-sketch", hidden: true }),
+      gauges: h("dl", { class: "vn-gauges" }),
+      speaker: h("figure", { class: "vn-speaker" }),
+      name: h("p", { class: "vn-name" }),
+      decisionsTitle: h("h4", { class: "vn-count", tabindex: "-1" }, "Decisions"),
+      decisionsNote: h("p", { class: "vn-note" }),
+      decisions: h("div", { class: "play-keyed vn-decisions" }),
+      ticker: h("p", { class: "vn-ticker" }),
+      tools: h("div", { class: "vn-tools" }),
+      deskTitle: h("h3", { id: `desk-${seat.id}`, tabindex: "-1" }),
       movesTitle: h("h4", { tabindex: "-1" }, "Moves"),
       movesNote: h("div", { class: "play-moves-note" }),
       moves: h("div", { class: "play-keyed" }),
-      tables: h("div", { class: "play-tables wide" }),
+      tables: h("div", { class: "play-tables" }),
       score: h("div", { class: "play-score" }),
       log: h("div", {}),
-      more: h("button", { class: "btn play-details wide", type: "button", "aria-expanded": "false", onclick: () => this.showDetails(!this.details) }),
     };
-    p.scoreCard = h("div", { class: "game-card" }, h("h4", {}, "Score so far"), p.score);
-    p.logCard = h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log);
-    p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
+    p.desk = h("dialog", { class: "play-dialog play-desk", "aria-labelledby": `desk-${seat.id}` },
+      h("div", { class: "play-dialog-head" }, p.deskTitle, h("button", { class: "btn small", type: "button", onclick: () => p.desk.close() }, "Close")),
       p.head,
-      p.sketch,
-      h("div", { class: "game-card play-decisions" }, p.decisionsTitle, p.decisionsNote, p.decisions),
       h("div", { class: "game-card play-moves" }, p.movesTitle, p.movesNote, p.moves),
-      p.more,
       p.tables,
-      p.scoreCard,
-      p.logCard);
+      h("div", { class: "game-card" }, h("h4", {}, "Score so far"), p.score),
+      h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log));
+    p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
+      h("div", { class: "vn-stage" },
+        h("img", { class: "vn-bg", src: photoOf(place, BASE), alt: place.alt, style: `object-position: ${place.focus ?? "50% 50%"}` }),
+        h("div", { class: "vn-top" },
+          h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)),
+          p.gauges),
+        p.sketch,
+        h("div", { class: "vn-talk" }, p.speaker, h("div", { class: "vn-box" }, p.name, p.decisionsTitle, p.decisions, p.decisionsNote, p.ticker)),
+        p.tools),
+      p.desk);
     return p;
   }
 
@@ -717,46 +763,60 @@ class PlayPage {
   }
 
   /**
-   * A seat's panel: the game and its role, the figures, the open decisions, the moves as forms, the
-   * tables, the score so far and the messages. A computer's seat and a seat not at work show the
-   * same without forms and buttons.
+   * A seat's panel. On the stage: the figures as gauges, the game's picture, the decision in focus
+   * asked by its speaker with its choices (the others wait as their titles), the newest message, the
+   * tools. In the desk: the role, the moves as forms, the tables, the score so far and the messages.
+   * A computer's seat and a seat not at work show the same without forms and buttons.
    */
   seat(seat, force = false) {
     const p = this.panels.get(seat.id), s = this.session, g = seat.game;
     const active = s.active.includes(seat), mine = seat.by === "human", can = this.atWork(seat) && mine;
-    const view = this.view(g), de = this.roles.get(seat.role)?.name_de;
-    morph(p.head,
-      placeFigure(placeOfGame(seat.Game.id), BASE, { cls: "play-workplace" }),
-      h("h3", {}, seat.Game.title),
-      h("p", { class: "play-role" }, h("a", { href: `../roles/#role-${seat.role}`, title: de ?? null }, this.seatName(seat.id)), ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
-      h("p", { class: "hint" }, lead(seat.Game.description ?? "")),
-      h("p", { class: "play-state" }, !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over."),
-      h("dl", { class: "play-figures" }, view.figures.map((f) => h("div", { class: ["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : "" },
-        h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null)))),
-      h("div", { class: "row" }, h("button", { class: "btn small", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over")));
+    const view = this.view(g), de = this.roles.get(seat.role)?.name_de, name = this.seatName(seat.id);
+    const state = !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over.";
+
+    morph(p.gauges, view.figures.map((f) => h("div", { class: ["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : "" },
+      h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null))));
 
     p.sketch.hidden = !view.sketch;
     if (view.sketch) this.sketch(seat, p, view.sketch, can);
 
+    // one decision at a time: the one in focus in full, asked by its speaker; the others as their titles
     const open = g?.open ?? [];
-    p.decisionsNote.textContent = open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.") : "Nothing to decide just now.";
-    // one decision at a time: the one in focus in full, the others as their titles
     const focus = open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
-    p.decisionsTitle.textContent = open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : "Decisions";
+    const who = focus ? speakerOf(seat.Game.id, focus) : { name: mine ? "You" : "The computer", role: name, portrait: null };
+    const face = who.portrait ? PORTRAITS[who.portrait] ?? PORTRAITS.office : selfPortrait(seat.Game.id);
+    p.speaker.classList.toggle("self", !focus);
+    morph(p.speaker, h("img", { src: BASE + face.picture, alt: face.alt }));
+    morph(p.name, h("strong", {}, who.name), who.role ? h("span", {}, who.role) : null);
+    p.decisionsTitle.textContent = open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : open.length ? "A decision" : "";
     keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => {
       el.classList.toggle("waiting", d !== focus);
-      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", onclick: () => this.look(seat.id, d.id) }, d.title)]));
+      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", title: d.title, onclick: () => this.look(seat.id, d.id) }, d.title)]));
     });
+    const turn = s.phase.kind === "turn", idle = !open.length;
+    p.decisionsNote.textContent = state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
+      : turn ? "Nothing left to decide here. End the turn when you are ready." : view.sketch ? "Nothing to decide just now. Watch the picture: choose something in it to act." : "Nothing to decide just now.");
+    const last = g?.logs.at(-1);
+    p.ticker.textContent = last ? last.text : "";
+    p.ticker.className = `vn-ticker${last ? ` k-${safe(last.kind)}` : ""}`;
+
+    morph(p.tools,
+      can && turn && idle ? h("button", { class: "btn primary", type: "button", onclick: () => this.endTurn() }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), "End the turn") : null,
+      can && view.actions.length ? h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => this.openDesk(seat.id, "moves") }, view.actions.length === 1 ? view.actions[0].label ?? "A move" : `Moves (${view.actions.length})`) : null,
+      h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => this.openDesk(seat.id) }, "Desk: tables, score, messages"),
+      h("button", { class: "btn", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over"));
+
+    // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
+    p.deskTitle.textContent = seat.Game.title;
+    morph(p.head,
+      h("p", { class: "play-role" }, h("a", { href: `../roles/#role-${seat.role}` }, name), de ? [" ", h("span", { class: "de", lang: "de" }, `(${de})`)] : null, ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
+      h("p", { class: "hint" }, seat.Game.description ?? ""),
+      h("p", { class: "play-state" }, state));
 
     // a form a person is in stays as it is
     const at = document.activeElement;
     if (force || !(at?.matches?.("select, input") && p.moves.contains(at))) this.moves(seat, p, view.actions, can);
 
-    // the tables, the score and the messages are there when asked for
-    const all = this.details;
-    p.more.textContent = all ? "Hide the details" : "Tables, score and messages";
-    p.more.setAttribute("aria-expanded", String(all));
-    p.tables.hidden = p.scoreCard.hidden = p.logCard.hidden = !all;
     morph(p.tables, view.tables.map((t) => h("div", { class: "game-card play-table" },
       h("h4", {}, t.title),
       t.rows?.length ? this.scroller(`${seat.id}|${t.id}`, t.title, this.table(t)) : h("p", { class: "hint" }, t.empty ?? "Nothing here."))));
@@ -948,6 +1008,7 @@ class PlayPage {
     const s = this.session, counts = new Map();
     for (const f of s.flows) counts.set(f.flow, (counts.get(f.flow) ?? 0) + 1);
     const name = (id) => flowOf(id)?.name ?? id;
+    $("#flowBadge").textContent = String(s.flows.length);
     morph($("#flowCounts"), [...counts].map(([id, n]) => h("li", {}, name(id), " ", h("span", { class: "tag" }, String(n)))));
     const sel = $("#flowFilter");
     if (force || sel !== document.activeElement) {
@@ -955,7 +1016,7 @@ class PlayPage {
       if (sel.value !== this.filter) sel.value = this.filter;
       if (sel.value !== this.filter) this.filter = sel.value;
     }
-    const lines = s.flows.filter((f) => !this.filter || f.flow === this.filter).slice(this.details ? -FLOW_LINES : -LEAN_FLOWS).reverse();
+    const lines = s.flows.filter((f) => !this.filter || f.flow === this.filter).slice(-FLOW_LINES).reverse();
     $("#flowEmpty").hidden = lines.length > 0;
     $("#flowScroll").hidden = !lines.length;
     morph($("#flowList"), lines.map((f) => {
@@ -1109,23 +1170,37 @@ class PlayPage {
           ? [h("p", {}, `${x.violations} in all${x.worst >= 3 ? ", a danger to people among them" : ""}.`), rules.length ? h("ul", {}, rules.map((v) => h("li", {}, `${v.text} (${SEVERITY[v.severity] ?? "a breach"})`))) : null]
           : h("p", { class: "hint" }, "None."));
     };
-    const flows = Object.entries(r.flows);
-    mount($("#result"),
-      h("div", { class: "game-card play-total" },
-        h("h2", { id: "resultTitle", tabindex: "-1" }, `The result: ${m.title}`),
-        h("p", {}, h("span", { class: "score-total" }, String(r.score)), " of 100 · ", tag(r.passed)),
-        h("p", { class: "hint" }, `${r.rounds === 1 ? "1 round" : `${r.rounds} rounds`}, seed ${r.seed}. The whole is passed when every seat passed all its rounds: 50 points or more, and no danger to people.`),
-        h("div", { class: "row" },
-          h("button", { class: "btn primary", type: "button", onclick: () => this.again(false) }, "Play again"),
-          h("button", { class: "btn", type: "button", onclick: () => this.again(true) }, "New seed"),
-          h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file"),
-          h("button", { class: "btn", type: "button", onclick: () => this.choose(null) }, "Other missions"))),
+    const flows = Object.entries(r.flows), place = placeOfMission(m);
+    // the report (a dialog): every seat's rounds and objectives, what led to what, the flows, the debrief
+    const report = h("dialog", { class: "play-dialog play-report", "aria-labelledby": "reportTitle" },
+      h("div", { class: "play-dialog-head" }, h("h3", { id: "reportTitle", tabindex: "-1" }, "The full report"), h("button", { class: "btn small", type: "button", onclick: () => report.close() }, "Close")),
+      h("p", { class: "hint" }, `${r.rounds === 1 ? "1 round" : `${r.rounds} rounds`}, seed ${r.seed}. The whole is passed when every seat passed all its rounds: 50 points or more, and no danger to people.`),
       h("div", { class: "play-result-seats" }, r.seats.map(seat)),
       this.chain(s.threads()),
       h("div", { class: "game-card" },
         h("h3", {}, "What the roles gave each other"),
         flows.length ? h("ul", { class: "play-counts" }, flows.map(([id, n]) => h("li", {}, flowOf(id)?.name ?? id, " ", h("span", { class: "tag" }, String(n))))) : h("p", { class: "hint" }, "Nothing passed between the roles.")),
-      m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null);
+      m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null,
+      h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file")));
+    // the verdict, on the stage of the mission's place: the score, passed or not, the cast with their scores, a question to take along
+    mount($("#result"),
+      h("div", { class: `vn-stage vn-verdict ${r.passed ? "passed" : "failed"}` },
+        h("img", { class: "vn-bg", src: photoOf(place, BASE), alt: place.alt, style: `object-position: ${place.focus ?? "50% 50%"}` }),
+        h("div", { class: "vn-verdict-box" },
+          h("p", { class: "vn-over" }, r.passed ? "Mission passed" : "Mission not passed"),
+          h("h2", { id: "resultTitle", tabindex: "-1" }, `The result: ${m.title}`),
+          h("p", { class: "vn-score" }, h("span", { class: "score-total" }, String(r.score)), h("span", { class: "of" }, " of 100 · "), tag(r.passed)),
+          h("ul", { class: "vn-cast", "aria-label": "The seats" }, r.seats.map((x) => h("li", { class: x.passed ? "ok" : "bad" },
+            h("img", { class: "face", src: BASE + selfPortrait(s.seat(x.seat).Game.id).picture, alt: "" }),
+            h("span", { class: "name" }, this.seatName(x.seat)),
+            h("span", { class: "pts" }, h("strong", {}, String(x.score)), ` · ${x.by === "human" ? "you" : "computer"}`)))),
+          m.debrief.length ? h("p", { class: "vn-question" }, h("span", { class: "place-label" }, "To take along"), " ", m.debrief[0]) : null,
+          h("div", { class: "row" },
+            h("button", { class: "btn primary play-big", type: "button", onclick: () => this.again(false) }, "Play again"),
+            h("button", { class: "btn", type: "button", onclick: () => this.again(true) }, "New seed"),
+            h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => { report.showModal(); this.fit(report); } }, "The full report"),
+            h("button", { class: "btn", type: "button", onclick: () => this.choose(null) }, "Other missions")))),
+      report);
     this.fit($("#result"));
   }
 

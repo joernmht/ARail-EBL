@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Placeholder portrait: headset">
+<path d="M18 400C18 304 66 262 118 246l64 0c52 16 100 58 100 154Z" fill="#0c2766" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<path d="M124 196h52v58c-10 14-42 14-52 0Z" fill="#16357f" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<ellipse cx="150" cy="128" rx="60" ry="74" fill="#16357f" stroke="#36b8bf" stroke-width="4"/>
+<path d="M118 246l32 34 32-34" fill="none" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<path d="M92 100c6-40 32-56 60-54 30 2 54 20 58 58-20-4-36-14-48-28-16 14-40 22-70 24Z" fill="#001450" stroke="#36b8bf" stroke-width="3" stroke-linejoin="round"/>
+<path d="M84 132C80 70 112 34 150 34s70 36 66 98" fill="none" stroke="#a0b4d8" stroke-width="8" stroke-linecap="round"/>
+<rect x="70" y="118" width="26" height="46" rx="10" fill="#001450" stroke="#a0b4d8" stroke-width="4"/>
+<rect x="204" y="118" width="26" height="46" rx="10" fill="#001450" stroke="#a0b4d8" stroke-width="4"/>
+<path d="M82 164c0 30 22 40 46 40" fill="none" stroke="#a0b4d8" stroke-width="5" stroke-linecap="round"/>
+<rect x="124" y="196" width="24" height="14" rx="6" fill="#f0922e"/>
+</svg>

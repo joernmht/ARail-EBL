@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Placeholder portrait: suit">
+<path d="M18 400C18 304 66 262 118 246l64 0c52 16 100 58 100 154Z" fill="#0c2766" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<path d="M124 196h52v58c-10 14-42 14-52 0Z" fill="#16357f" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<ellipse cx="150" cy="128" rx="60" ry="74" fill="#16357f" stroke="#36b8bf" stroke-width="4"/>
+<path d="M118 246l-30 34 44 60 18-50Z M182 246l30 34-44 60-18-50Z" fill="#001450" stroke="#36b8bf" stroke-width="3" stroke-linejoin="round"/>
+<path d="M150 290l-10 22 10 78 10-78Z" fill="#f0922e" stroke="#001450" stroke-width="2" stroke-linejoin="round"/>
+<path d="M90 120c-6-52 26-76 62-74 34 2 62 24 58 74-10-22-26-38-48-44-22 2-52 14-72 44Z" fill="#001450" stroke="#36b8bf" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="206" cy="318" r="7" fill="#36b8bf"/>
+</svg>

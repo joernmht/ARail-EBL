@@ -69,14 +69,16 @@
       </section>
     </div>
 
-    <!-- 2: play -->
+    <!-- 2: play: the bar of the session, the seats as the cast, the stage of the seat shown; what the roles give each other opens as a dialog -->
     <div class="play-screen" id="play" hidden>
-      <section class="game-card play-strip" aria-labelledby="stripTitle">
+      <section class="play-strip" aria-labelledby="stripTitle">
         <div class="play-strip-head">
           <h2 id="stripTitle" tabindex="-1"></h2>
+          <p class="play-where" id="where"></p>
+          <span class="spacer"></span>
+          <button class="btn small" type="button" id="showFlows" aria-haspopup="dialog">Who gave what <span class="tag" id="flowBadge">0</span></button>
           <button class="btn small" type="button" id="leave">Other missions</button>
         </div>
-        <p class="play-where" id="where"></p>
         <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
         <div class="play-bar" id="shiftBar">
           <p class="play-clock"><span class="visually-hidden">Time: </span><time id="clock">08:00:00</time></p>
@@ -93,23 +95,26 @@
         </div>
       </section>
 
-      <div class="play-cols">
-        <section class="play-seats" aria-labelledby="seatsTitle">
-          <h2 id="seatsTitle" class="visually-hidden">The seats</h2>
-          <div class="play-tabs" role="tablist" aria-labelledby="seatsTitle" id="tabs"></div>
-          <div id="panels"></div>
-        </section>
+      <section class="play-seats" aria-labelledby="seatsTitle">
+        <h2 id="seatsTitle" class="visually-hidden">The seats</h2>
+        <div class="play-tabs" role="tablist" aria-labelledby="seatsTitle" id="tabs"></div>
+        <div id="panels"></div>
+      </section>
 
-        <section class="game-card play-flows" aria-labelledby="flowsTitle">
+      <dialog class="play-dialog play-flows" id="flowsDialog" aria-labelledby="flowsTitle">
+        <div class="play-dialog-head">
           <h2 id="flowsTitle">What the roles give each other</h2>
-          <ul class="play-counts" id="flowCounts" aria-label="How often each flow has passed"></ul>
-          <label class="field" for="flowFilter"><span>Show</span><select id="flowFilter"><option value="">All flows</option></select></label>
-          <p class="hint" id="flowEmpty">Nothing has passed between the roles yet.</p>
-          <div class="play-scroll" id="flowScroll" tabindex="0" role="group" aria-label="Flows, the newest first">
-            <ol id="flowList"></ol>
-          </div>
-        </section>
-      </div>
+          <button class="btn small" type="button" id="closeFlows">Close</button>
+        </div>
+        <ul class="play-counts" id="flowCounts" aria-label="How often each flow has passed"></ul>
+        <label class="field" for="flowFilter"><span>Show</span><select id="flowFilter"><option value="">All flows</option></select></label>
+        <p class="hint" id="flowEmpty">Nothing has passed between the roles yet.</p>
+        <div class="play-scroll" id="flowScroll" tabindex="0" role="group" aria-label="Flows, the newest first">
+          <ol id="flowList"></ol>
+        </div>
+      </dialog>
+      <!-- a phase begins: its name over the whole screen for a moment (PlayPage.chapter) -->
+      <div id="chapter" aria-hidden="true"></div>
     </div>
 
     <!-- 3: the result -->
