@@ -101,3 +101,21 @@ test("the virtual close-ups: every one named by the game can be taken again by t
   assert.deepEqual(parseArgs([]), { names: [], base: "http://localhost:8000" });
   assert.deepEqual(parseArgs(["tram-fly.jpg", "--base", "http://localhost:8123/"]), { names: ["tram-fly"], base: "http://localhost:8123" });
 });
+
+test("backdrops by day and at night: a shift by day gets no picture of the night", async () => {
+  const { backdropAt, backdropFor, nightAt } = await import("../../web/game/places.js");
+  assert.equal(nightAt("08:00"), false);
+  assert.equal(nightAt("08:00", 2400), false);
+  assert.equal(nightAt("22:00"), true);
+  assert.equal(nightAt("20:00", 1800), true, "half an hour after 20:00");
+  assert.equal(nightAt("05:30"), true);
+  assert.equal(nightAt("05:30", 1800), false);
+  assert.equal(nightAt("23:30", 3600), true, "past midnight");
+  const fault = "Signal N2 has failed. Report the fault to the maintenance dispatcher?";
+  assert.match(backdropAt(false, fault).photo, /ebl-lab\.jpg/, "by day: the line as the lab's photo");
+  assert.match(backdropAt(true, fault).photo, /night-line/);
+  assert.match(backdropAt(null, fault).photo, /night-line/, "the time open: any picture");
+  assert.deepEqual(backdropFor(fault), backdropAt(null, fault));
+  assert.equal(backdropAt(false, "Year 1: a technician on call"), null, "only a night picture fits: none by day");
+  assert.match(backdropAt(false, "RB 31 comes late. Shall RB 32 wait?").photo, /platform-fly/);
+});

@@ -72,6 +72,7 @@ export const PLACES = [
  * @property {string} photo the photo's path below web/
  * @property {string} alt what the photo shows
  * @property {RegExp} words what a text speaks of when this picture fits it
+ * @property {boolean} [night] a picture of the night: not shown behind a shift by day
  */
 
 /**
@@ -81,10 +82,10 @@ export const PLACES = [
  * @type {Backdrop[]}
  */
 export const BACKDROPS = [
-  { id: "night-crossing", photo: "game/places/night-crossing-fly.jpg", alt: "The level crossing at night: street lamps, a car waiting at the barriers", words: /\b(on call|at night|weekends?|night shift|overtime)\b/i },
+  { id: "night-crossing", night: true, photo: "game/places/night-crossing-fly.jpg", alt: "The level crossing at night: street lamps, a car waiting at the barriers", words: /\b(on call|at night|weekends?|night shift|overtime)\b/i },
   { id: "crossing", photo: "game/places/crossing-fly.jpg", alt: "The level crossing of Brückenstraße in the flyover: barriers, trees, a car and a cyclist", words: /\b(level crossing|barriers?|bridge|branch|speed restriction|fence|trespass)/i },
-  { id: "night-office", photo: "game/places/night-office-fly.jpg", alt: "A block of flats and offices in Neustadt at night, some windows lit, a tram at its stop", words: /\b(night session|ceiling|draft|coalition|rapporteur|committee|ministry|block|grant|equity|capital|special fund)/i },
-  { id: "night-town", photo: "game/places/night-town-fly.jpg", alt: "The town of Neustadt at night in the flyover: lit windows and street lamps", words: /\b(constituency|voters?|election|mayor|press|public)\b/i },
+  { id: "night-office", night: true, photo: "game/places/night-office-fly.jpg", alt: "A block of flats and offices in Neustadt at night, some windows lit, a tram at its stop", words: /\b(night session|ceiling|draft|coalition|rapporteur|committee|ministry|block|grant|equity|capital|special fund)/i },
+  { id: "night-town", night: true, photo: "game/places/night-town-fly.jpg", alt: "The town of Neustadt at night in the flyover: lit windows and street lamps", words: /\b(constituency|voters?|election|mayor|press|public)\b/i },
   { id: "terminal", photo: "game/places/terminal-fly.jpg", alt: "The container terminal in the flyover: the crane over the train, the yard and a barge at the quay", words: /\b(containers?|crane|terminal|barge|quay|trucks?|freight)\b/i },
   { id: "tram", photo: "game/places/tram-fly.jpg", alt: "A tram at its stop in Bahnhofstraße in the flyover, the station behind it", words: /\b(trams?|bus(es)?|replacement service|stop)\b/i },
   { id: "station", photo: "game/places/station-fly.jpg", alt: "The station building of Bf Neustadt in the flyover, a regional train at the platform in front", words: /\b(drivers?|units?|defect|sick|stand-by|spare|workshop|crew|roster)\b/i },
@@ -92,7 +93,8 @@ export const BACKDROPS = [
   { id: "forecourt", photo: "game/places/forecourt-fly.jpg", alt: "The forecourt of Bf Neustadt in the flyover: buses at their bays, trains behind them", words: /\b(operator|contract|penalt|malus|incident|train-km|timetable|emergency timetable|auditor)/i },
   { id: "school", photo: "game/places/school-fly.jpg", alt: "A school in Neustadt in the flyover, a street in front of it", words: /\b(school|apprentice|training|exam|students?|teach)/i },
   { id: "overview", photo: "game/places/overview-fly.jpg", alt: "Neustadt from above in the flyover: the station, the tracks and the town around them", words: /\b(district|network|grade|renewals?|strategy|replacement money|programme)\b/i },
-  { id: "night-line", photo: "game/places/night-line-fly.jpg", alt: "The line at Neustadt at night in the flyover, a train's lit windows in the distance", words: /\b(teams?|technician|faults?|repair|closure|closed)\b/i },
+  { id: "night-line", night: true, photo: "game/places/night-line-fly.jpg", alt: "The line at Neustadt at night in the flyover, a train's lit windows in the distance", words: /\b(teams?|technician|faults?|repair|closure|closed)\b/i },
+  { id: "track", photo: "media/ebl-lab.jpg", alt: "The tracks of the lab with signals and a container train, seen along the line", words: /\b(teams?|technician|faults?|failed|repair|closure|closed|substitute signal)\b/i },
 ];
 
 /**
@@ -104,15 +106,40 @@ export function wideOf(place) {
   return { photo: place.wide ?? place.photo, alt: place.alt, focus: (place.wide ? place.wideFocus : place.focus) ?? "50% 50%" };
 }
 
+/** The hours of the night, as the lab's clock has them: from sunset (20:30) to sunrise (06:00). */
+export const NIGHT = { from: 20.5, to: 6 };
+
+/**
+ * Whether it is night at a moment of a shift.
+ * @param {string} clock when the shift begins ("08:00")
+ * @param {number} [t] seconds into it
+ */
+export function nightAt(clock, t = 0) {
+  const [h, m] = String(clock ?? "08:00").split(":").map(Number);
+  const hour = ((((h || 0) + (m || 0) / 60 + t / 3600) % 24) + 24) % 24;
+  return hour >= NIGHT.from || hour < NIGHT.to;
+}
+
 /**
  * The picture that fits what a text speaks of (a question's title first, then its text), or null.
  * @param {...string} texts
  * @returns {{photo: string, alt: string, focus: string} | null}
  */
 export function backdropFor(...texts) {
+  return backdropAt(null, ...texts);
+}
+
+/**
+ * The picture that fits what a text speaks of at a time of day: by day (`night` false) no picture
+ * of the night, at night or where the time is open (null: a turn of months or years) any.
+ * @param {boolean | null} night
+ * @param {...string} texts
+ * @returns {{photo: string, alt: string, focus: string} | null}
+ */
+export function backdropAt(night, ...texts) {
   for (const text of texts) {
-    const b = text ? BACKDROPS.find((x) => x.words.test(text)) : null;
-    if (b) return { photo: b.photo, alt: b.alt, focus: "50% 50%" };
+    const b = text ? BACKDROPS.find((x) => x.words.test(text) && (night !== false || !x.night)) : null;
+    if (b) return { photo: b.photo, alt: b.alt, focus: b.id === "track" ? "70% 30%" : "50% 50%" };
   }
   return null;
 }
