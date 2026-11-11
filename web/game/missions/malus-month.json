@@ -1,0 +1,41 @@
+{
+ "format": "arail-mission/1",
+ "id": "malus-month",
+ "title": "Malus Month",
+ "text": "Six accounting periods of a transport contract as the transport authority's contract manager, alone. Each month the operator's incident list is on your desk: for each class of incidents, what is paid and what a penalty applies to. The operator objects now and then. Deduct too much and it runs out of money; too little and the auditor finds it, and the quality slides.",
+ "mode": "solo",
+ "seed": 1,
+ "year": 2027,
+ "roles": [
+  {
+   "role": "transport-authority-contract-manager",
+   "game": "contract",
+   "seat": "human",
+   "level": "normal"
+  }
+ ],
+ "rounds": 6,
+ "phases": [
+  {
+   "id": "plan",
+   "kind": "turn",
+   "title": "The period ahead",
+   "roles": [
+    "transport-authority-contract-manager"
+   ]
+  },
+  {
+   "id": "review",
+   "kind": "turn",
+   "title": "The period's account",
+   "roles": [
+    "transport-authority-contract-manager"
+   ]
+  }
+ ],
+ "debrief": [
+  "Train-km cancelled for an infrastructure fault: paid or not, penalty or not, and why?",
+  "Which objection did you accept, and what made it justified?",
+  "What would six months of full penalties on everything have done to the operator, and to the passengers?"
+ ]
+}

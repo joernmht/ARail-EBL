@@ -1,0 +1,1 @@
+- **Signaller game: the right answer is no longer always the first** (`web/arail/game/signaller.js`): the short questions show their options in a drawn order.

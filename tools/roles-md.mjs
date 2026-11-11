@@ -9,7 +9,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { reachable, startPoints } from "../web/arail/game/career.js";
-import { ROLE_SETTINGS, careerGraph, roleCounts, validateRoles } from "../web/arail/game/roles.js";
+import { FLOWS, FLOW_GROUPS, PARTIES, flowOf } from "../web/arail/game/flows.js";
+import { ROLE_SETTINGS, careerGraph, flowGraph, roleCounts, takesOf, validateRoles } from "../web/arail/game/roles.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 export const ROLES_JSON = `${ROOT}web/game/roles/roles.json`;
@@ -37,6 +38,11 @@ export function rolesMarkdown(cat) {
   const quals = new Map((cat.qualifications || []).map((q) => [q.id, q]));
   const qref = (id) => `[${cell(quals.get(id)?.name ?? id)}](#q-${id})`;
   const reach = reachable(cat);
+  // since format 3: who gives what to whom
+  const wired = cat.roles.some((r) => r.gives?.length);
+  const takes = wired ? takesOf(cat) : new Map();
+  const parties = new Map(PARTIES.map((p) => [p.id, p]));
+  const fref = (id) => `[${cell(flowOf(id)?.name ?? id)}](#flow-${id})`;
   const out = [];
   out.push("# Roles of the railway", "");
   out.push("<!-- Written by tools/roles-md.mjs from web/game/roles/roles.json: change the data, then run `node tools/roles-md.mjs`. -->", "");
@@ -52,6 +58,10 @@ export function rolesMarkdown(cat) {
   out.push(`Mini games: ${["knowledge", "simulation", "both"].map((k) => `${counts.kind.get(k) || 0} ${KIND[k]}`).join(", ")}; effort to build them on ARail: ${["small", "medium", "large"].map((e) => `${counts.effort.get(e) || 0} ${e}`).join(", ")}.`, "");
   const jobs = cat.roles.filter((r) => r.access?.job);
   if (cat.qualifications?.length) out.push(`**Careers.** ${jobs.length} roles are jobs; the others (passengers, residents, the public) are open to anyone. A career is not a path laid out in advance: from a school certificate (${startPoints(cat).map((s) => s.name).join(", ")}), ${(cat.qualifications || []).length} [qualifications](#qualifications) (apprenticeships, degrees, trainings, licences, certificates) each need others first, and each job has its ways in, alternatives of qualifications and years in other roles. ${reach.roles.size} of the ${jobs.length} jobs can be reached from leaving school. The typical moves between roles (${edges.length}) are hints, not rules; the career planner (\`game/career/\`) shows at every point what is open.`, "");
+  if (wired) {
+    const fg = flowGraph(cat);
+    out.push(`**Who gives what to whom.** Every role belongs to a party (${PARTIES.length} [parties](#parties): the infrastructure manager, the undertakings, the authorities, …) and hands things to other roles: ${FLOWS.length} kinds of [flows](#flows) (a budget, a train path, a fault report, a penalty), ${fg.edges.length} times from one role to another. What a role takes is what the others give it. These flows are the wiring of the big game ([The game core](game-core.md)): a mission seats some roles, and their games exchange what the catalogue says.`, "");
+  }
   const playable = cat.roles.filter((r) => r.game?.page);
   if (playable.length) out.push(`Playable now: ${playable.map((r) => `${ref(r.id)} (\`game/${r.game.page}\`)`).join(", ")}.`, "");
   for (const f of cat.families) {
@@ -65,6 +75,7 @@ export function rolesMarkdown(cat) {
       const g = r.game || {};
       out.push(`<a id="${r.id}"></a>`, "", `### ${r.name}`, "");
       out.push(`*${cell(r.name_de)}* · ${cell(r.organisation)} · ${SETTING[r.setting] ?? r.setting} · ${cell(r.timescale)}`, "");
+      if (r.party) out.push(`Party: [${cell(parties.get(r.party)?.name ?? r.party)}](#party-${r.party}) · decides in ${r.scale}, with effects over ${r.horizon}`, "");
       out.push(cell(r.summary), "");
       out.push(`- **Decides:** ${r.decisions.map(cell).join("; ")}.`);
       out.push(`- **Effects:** ${r.effects.map(cell).join("; ")}.`);
@@ -80,9 +91,36 @@ export function rolesMarkdown(cat) {
       } else if (a) out.push("- **Not a job:** open to anyone.");
       out.push(`- **Measured by:** ${r.kpis.map(cell).join("; ")}.`);
       out.push(`- **Works with:** ${r.interacts?.length ? r.interacts.map(ref).join(", ") : "–"}.`);
-      out.push(`- **Mini game, ${cell(g.title)}** (${KIND[g.kind] ?? g.kind}, effort ${g.effort}${g.page ? `, playable: \`game/${g.page}\`` : ""}): ${cell(g.loop)} *Success:* ${cell(g.win)} *Knowledge:* ${cell(g.knowledge)} *Builds on:* ${(g.arail || []).map(cell).join(", ")}. *In the big game:* ${cell(g.bigGame)}`);
+      if (r.gives?.length) out.push(`- **Gives:** ${r.gives.map((g) => `${fref(g.flow)} (${cell(g.what)}) to ${g.to.map(ref).join(", ")}`).join("; ")}.`);
+      if (takes.get(r.id)?.length) out.push(`- **Takes:** ${takes.get(r.id).map((t) => `${fref(t.flow)} from ${t.from.map(ref).join(", ")}`).join("; ")}.`);
+      out.push(`- **Mini game, ${cell(g.title)}** (${KIND[g.kind] ?? g.kind}, effort ${g.effort}${g.page ? `, playable: \`game/${g.page}\`` : ""}): ${cell(g.loop)} *Success:* ${cell(g.win)} *Knowledge:* ${cell(g.knowledge)} *Builds on:* ${(g.arail || []).map(cell).join(", ")}. *In the big game:* ${cell(g.bigGame)}${g.first ? ` *Playable now:* ${cell(g.first)}` : ""}`);
       out.push("");
     }
+  }
+  if (wired) {
+    const fg = flowGraph(cat);
+    out.push('<a id="flows"></a>', "", "## Flows", "");
+    out.push("What the roles give each other, as types (`web/arail/game/flows.js`). An **event** is a single message or handover; a **state** is a standing arrangement that holds until it is replaced. The scale says how often a flow typically passes. For each flow: how many roles give it and how many take it.", "");
+    for (const grp of FLOW_GROUPS) {
+      const fs = FLOWS.filter((f) => f.group === grp.id);
+      if (!fs.length) continue;
+      out.push(`### ${grp.name}`, "", "| Flow | German | Kind | Scale | Given by | Taken by | What is handed over |", "| --- | --- | --- | --- | ---: | ---: | --- |");
+      for (const f of fs) out.push(`| <a id="flow-${f.id}"></a>${cell(f.name)} | ${cell(f.name_de)} | ${f.kind} | ${f.scale} | ${fg.flows.get(f.id)?.gives.size ?? 0} | ${fg.flows.get(f.id)?.takes.size ?? 0} | ${cell(f.text)} |`);
+      out.push("");
+    }
+    if (cat.flow_notes?.length) {
+      out.push('<a id="flow-notes"></a>', "", "### Where the flows are stretched", "", "Notes from writing down who gives what to whom: what two roles exchange that no flow fits well, with the flow used instead. They are the open points of the catalogue of flows, to be settled when the flows are reviewed.", "");
+      for (const f of cat.families) {
+        const ns = cat.flow_notes.filter((n) => n.family === f.id);
+        if (ns.length) out.push(`**${cell(f.name)}**`, "", ...ns.map((n) => `- ${cell(n.text)}`), "");
+      }
+    }
+    out.push('<a id="parties"></a>', "", "## Parties", "", "The organisations and groups the roles belong to.", "", "| Party | German | Roles |", "| --- | --- | --- |");
+    for (const p of PARTIES) {
+      const rs = cat.roles.filter((r) => r.party === p.id);
+      if (rs.length) out.push(`| <a id="party-${p.id}"></a>${cell(p.name)} | ${cell(p.name_de)} | ${rs.map((r) => ref(r.id)).join(", ")} |`);
+    }
+    out.push("");
   }
   if (cat.qualifications?.length) {
     out.push('<a id="qualifications"></a>', "", "## Qualifications", "");

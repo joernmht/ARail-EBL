@@ -1,8 +1,8 @@
 # ARail-EBL
 
-**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets, trams and bus lines and a container terminal on it, runs the town through day and night, tells a train breaking down, the maintenance of the railway's infrastructure and a traveller's journey as stories to click through, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. The app is an interactive presentation; its games and exercises (asset management of the infrastructure, a railway undertaking with its fleet, workshop and crews, journeys with transfers that the attendees plan themselves) are on the game page beside it, with the first of the role games: the signaller of Bf Neustadt in a relay interlocking. It runs in the browser, needs no installation and no calibration board.
+**Augmented reality for model railway laboratories.** Point a phone, tablet or webcam at a model railway layout: ARail puts platforms full of passengers, a small town with streets, trams and bus lines and a container terminal on it, runs the town through day and night, tells a train breaking down, the maintenance of the railway's infrastructure and a traveller's journey as stories to click through, simulates disruptions, and shows the trains your control system reports. A flyover lets you look at and build the layout with a virtual camera. The app is an interactive presentation; its games and exercises (asset management of the infrastructure, a railway undertaking with its fleet, workshop and crews, journeys with transfers that the attendees plan themselves) are on the game page beside it, with the role games: the signaller of Bf Neustadt in a relay interlocking, and the big game, in which several roles of the railway are played together, by people or by the computer, from the signaller's seconds to the budget's years. It runs in the browser, needs no installation and no calibration board.
 
-[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Live AR for XR glasses](https://joernmht.github.io/ARail-EBL/live/?source=demo) · [Signaller game](https://joernmht.github.io/ARail-EBL/game/signaller/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
+[**Open the app**](https://joernmht.github.io/ARail-EBL/app/) · [Game page](https://joernmht.github.io/ARail-EBL/game/) · [Live AR for XR glasses](https://joernmht.github.io/ARail-EBL/live/?source=demo) · [Signaller game](https://joernmht.github.io/ARail-EBL/game/signaller/) · [Big game](https://joernmht.github.io/ARail-EBL/game/play/) · [Project page](https://joernmht.github.io/ARail-EBL/) · [Print markers](https://joernmht.github.io/ARail-EBL/markers/) · [Documentation](docs/README.md)
 
 ![The EBL lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building and a street on a virtual table module, and Plattenbau behind the tracks](web/assets/ebl-lab-ar.jpg)
 
@@ -68,6 +68,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Streets, trams, buses and road traffic](docs/streets-and-buses.md) | The road network and its cross-sections, bus and tram lines, cars and parking, bikes and e-scooters, signs, lights and railway crossings |
 | [Container terminal](docs/container-terminal.md) | Trains, trucks, barges, cranes and the yard; deck cards and rolling-stock markers for model wagons |
 | [Games](docs/games.md) | A game for every role of the railway system, the game core, the career mode and the big game; the signaller of Bf Neustadt |
+| [The game core](docs/game-core.md) | The engine under the role games: flows between roles, sessions in turns and shifts, missions as data, and how to write a role game |
 | [Roles of the railway](docs/roles.md) | The role catalogue, from the politician to the cleaning staff: decisions, means, limits, risks, ways in and a mini game for each role; the qualifications they need |
 | [Rail operations](docs/operations.md) | The operations plan of the app (units and drivers, tracks, Run) and its operations story (a train breaks down, the spare unit, the workshop, step by step); on the game page: fleet, maintenance (ECM) and penalties, crews and rosters; comparing setups under stress tests |
 | [Journeys](docs/journeys.md) | The journeys story of the app (a late train, a lost connection, the bus instead, passenger rights), step by step; on the game page, an exercise: travellers with a start, an aim and a travel plan with transfers, made by the attendees; missed connections and the results |
@@ -90,7 +91,8 @@ web/                  the website (published with GitHub Pages)
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey, in English and German; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);
-                      signaller/ the signaller's role game; roles/ the role catalogue; career/ the career planner
+                      signaller/ the signaller's role game; play/ the big game (missions/ its missions as data);
+                      roles/ the role catalogue; career/ the career planner
   builder/            the builder: a street and layout editor beside the app, with the street access check and
                       a push of the layout and covered photos to GitHub
   live/               ARail Live: live AR for XR glasses, reduced to the town and its road traffic; the town
@@ -112,7 +114,8 @@ web/                  the website (published with GitHub Pages)
                       procurement), the level crossing plant, the objects on the layout
     journeys/         journeys: the journeys story; the timetable and the trains at the platforms,
                       the planner of travel plans with transfers, the travellers
-    game/             the role games: the game core, the role catalogue's checks, the career model, the signaller's game
+    game/             the role games: the game core, the flows between roles, sessions and missions (the big
+                      game), the role catalogue's checks, the career model, the games of the roles, the lab as a seat
     rail/             railway systems of the track sections (power, train protection, signals, radio,
                       gauge, line category, country) and where they change; vehicles and consists;
                       where a train may run

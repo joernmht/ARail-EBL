@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>The big game · ARail Game</title>
+<meta name="description" content="The big game of ARail-EBL: a mission seats several roles of the railway, each played by a person at this device or by the computer. What one role gives another (a fault report, a repair status, a track closure, a budget) is what the other has to work with.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="play.css">
+<script type="module" src="play.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../roles/">Roles</a>
+    <a class="opt" href="../signaller/">Signaller game</a>
+    <a class="opt" href="../career/">Career</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main" data-screen="choose">
+  <div class="game-hero">
+    <div class="wrap">
+      <p class="eyebrow">Big game · missions</p>
+      <h1>The big game</h1>
+      <p class="lead">A mission seats several roles of the railway. Each seat is one role's game, played by you at this device or by the computer. What one role gives another (a fault report, a repair status, a track closure, a budget) is what the other has to work with.</p>
+      <p class="lead">Choose a mission and your seats, play it, watch what the roles give each other, and read the result. Slow roles decide in turns, fast roles work in shifts on one clock.</p>
+    </div>
+  </div>
+
+  <div class="wrap play-layout">
+    <!-- what a person needs to hear: a new phase, a new decision, the end -->
+    <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
+
+    <!-- 1: choose a mission and the seats -->
+    <div class="play-screen" id="choose">
+      <section class="game-card play-setup" id="setup" aria-labelledby="setupTitle" hidden></section>
+      <section class="play-missions" aria-labelledby="missionsTitle">
+        <h2 id="missionsTitle">Missions</h2>
+        <p class="hint" id="missionsNote">Loading the missions.</p>
+        <ul id="missions"></ul>
+      </section>
+    </div>
+
+    <!-- 2: play -->
+    <div class="play-screen" id="play" hidden>
+      <section class="game-card play-strip" aria-labelledby="stripTitle">
+        <div class="play-strip-head">
+          <h2 id="stripTitle" tabindex="-1"></h2>
+          <button class="btn small" type="button" id="leave">Other missions</button>
+        </div>
+        <p class="play-where" id="where"></p>
+        <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
+        <div class="play-bar" id="shiftBar">
+          <p class="play-clock"><span class="visually-hidden">Time: </span><time id="clock">08:00:00</time></p>
+          <div class="seg" role="group" aria-label="Speed" id="speed"></div>
+          <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+        </div>
+        <div class="play-bar" id="skipBar" hidden>
+          <p class="hint">Nobody of the people is at work in this shift: the computer plays it.</p>
+          <button class="btn" type="button" id="skip">Skip to the end of the shift</button>
+        </div>
+        <div class="play-bar" id="turnBar" hidden>
+          <button class="btn" type="button" id="endTurn" aria-describedby="turnNote">End the turn</button>
+          <p class="hint" id="turnNote"></p>
+        </div>
+      </section>
+
+      <div class="play-cols">
+        <section class="play-seats" aria-labelledby="seatsTitle">
+          <h2 id="seatsTitle" class="visually-hidden">The seats</h2>
+          <div class="play-tabs" role="tablist" aria-labelledby="seatsTitle" id="tabs"></div>
+          <div id="panels"></div>
+        </section>
+
+        <section class="game-card play-flows" aria-labelledby="flowsTitle">
+          <h2 id="flowsTitle">What the roles give each other</h2>
+          <ul class="play-counts" id="flowCounts" aria-label="How often each flow has passed"></ul>
+          <label class="field" for="flowFilter"><span>Show</span><select id="flowFilter"><option value="">All flows</option></select></label>
+          <p class="hint" id="flowEmpty">Nothing has passed between the roles yet.</p>
+          <div class="play-scroll" id="flowScroll" tabindex="0" role="group" aria-label="Flows, the newest first">
+            <ol id="flowList"></ol>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 3: the result -->
+    <section class="play-screen play-result" id="result" aria-labelledby="resultTitle" hidden></section>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>A prototype of the big game of ARail-EBL: the role games joined by what the roles give each other (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>, <a href="../roles/">the roles</a>). A session is kept in this browser only.</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+<noscript><p class="wrap">The game runs with JavaScript.</p></noscript>
+</body>
+</html>

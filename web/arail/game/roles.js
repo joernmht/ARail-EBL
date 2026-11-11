@@ -1,22 +1,30 @@
 /**
  * The role catalogue: every role of the railway system, from the politician to the cleaning staff,
  * with what a game of it needs (docs/roles.md). The data is web/game/roles/roles.json (format
- * "arail-roles/2"), loaded where it is needed: the roles page, the docs generator, the tests and the
- * career mode (career.js). This module checks it and reads its typical moves as a graph.
+ * "arail-roles/3"), loaded where it is needed: the roles page, the docs generator, the tests and the
+ * career mode (career.js). This module checks it, reads its typical moves as a graph, and reads
+ * what the roles give each other as the wiring of the big game.
  *
- * Format "arail-roles/1" has the roles without their careers (no qualifications, no access).
+ * Format "arail-roles/1" has the roles without their careers (no qualifications, no access); format
+ * "arail-roles/2" has the careers but not yet who gives what to whom (no party, scale, gives).
  *
  * A role: `id`, `name`, `name_de`, `family`, `organisation`, `setting` (operational, field, office,
  * mixed), `summary`, `decisions`, `effects`, `resources`, `limits`, `risks`, `career` (`entry` in
  * words, the typical moves `from` and `to`, `chances`), `access` (how one gets in: `job`, `selection`,
  * `age_min`, `fitness`, `routes` of qualifications and experience, `gains`; see career.js), `kpis`,
  * `timescale`, `interacts`, `game` (`title`, `kind`, `loop`, `win`, `knowledge`, `arail`, `bigGame`,
- * `effort`, and `page` where it can be played). The catalogue's `qualifications`: school
+ * `effort`, `page` where it can be played and `first`, what the playable first form has); since format 3 its `party` (the organisation or
+ * group it belongs to, an id of PARTIES in flows.js), its `scale` and `horizon` (the rhythm of its
+ * routine decisions and how far they reach, of SCALES), and its `gives`: the flows (flows.js) it
+ * hands to other roles, each `{flow, to: [roles], what}`; what a role takes is what the others give
+ * it (`takesOf`); the catalogue's `flow_notes` (`{family, text}`) say where a flow was stretched to
+ * fit. The catalogue's `qualifications`: school
  * certificates, apprenticeships, degrees, trainings, licences, certificates and exams, each with
  * `kind`, `months`, `requires` (alternatives of sets), `while_working`, `provider`, `note`.
  * @module arail/game/roles
  */
 import { QUALIFICATION_KINDS, SELECTIONS } from "./career.js";
+import { PARTIES, SCALES, flowOf } from "./flows.js";
 
 /** Where a role works. */
 export const ROLE_SETTINGS = ["operational", "field", "office", "mixed"];
@@ -34,9 +42,10 @@ const TEXTS = ["id", "name", "name_de", "family", "organisation", "summary", "ti
  */
 export function validateRoles(cat) {
   const out = [];
-  // format 1: roles without careers (no qualifications, no access); format 2: with them
-  const careers = cat?.format === "arail-roles/2";
-  if (!careers && cat?.format !== "arail-roles/1") out.push(`format must be "arail-roles/2" (or "arail-roles/1" without careers)`);
+  // format 1: roles without careers (no qualifications, no access); format 2: with them; format 3: also who gives what to whom
+  const wired = cat?.format === "arail-roles/3";
+  const careers = wired || cat?.format === "arail-roles/2";
+  if (!careers && cat?.format !== "arail-roles/1") out.push(`format must be "arail-roles/3" (or "arail-roles/2" without flows, "arail-roles/1" without careers)`);
   const families = new Set((cat?.families || []).map((f) => f.id));
   const ids = new Set(), quals = new Set();
   for (const q of cat?.qualifications || []) {
@@ -88,7 +97,88 @@ export function validateRoles(cat) {
     for (const x of a.gains || []) if (!quals.has(x)) out.push(`${at}: gains an unknown qualification "${x}"`);
   }
   for (const f of families) if (!(cat.roles || []).some((r) => r.family === f)) out.push(`family ${f} has no roles`);
+  if (wired) out.push(...flowProblems(cat, ids));
   return out;
+}
+
+/**
+ * Problems of what the roles give each other (format 3): a party and a scale of the catalogues in
+ * flows.js, flows that exist, given to roles that exist (not to itself), each flow of a role once;
+ * every role gives and takes something; and every pair of roles that work with each other
+ * (`interacts`) exchanges at least one flow, in either direction.
+ */
+function flowProblems(cat, ids) {
+  const out = [], parties = new Set(PARTIES.map((p) => p.id));
+  const linked = new Set();
+  for (const r of cat.roles || []) {
+    const at = `role ${r.id}`;
+    if (!parties.has(r.party)) out.push(`${at}: unknown party "${r.party}"`);
+    if (!SCALES.includes(r.scale)) out.push(`${at}: scale must be one of ${SCALES.join(", ")}`);
+    if (!SCALES.includes(r.horizon)) out.push(`${at}: horizon must be one of ${SCALES.join(", ")}`);
+    else if (SCALES.includes(r.scale) && SCALES.indexOf(r.horizon) < SCALES.indexOf(r.scale)) out.push(`${at}: the horizon (${r.horizon}) is shorter than the scale (${r.scale})`);
+    if (!Array.isArray(r.gives) || !r.gives.length) {
+      out.push(`${at}: gives is missing (every role gives something to another)`);
+      continue;
+    }
+    const seen = new Set();
+    for (const g of r.gives) {
+      if (!flowOf(g?.flow)) out.push(`${at}: gives an unknown flow "${g?.flow}"`);
+      if (seen.has(g?.flow)) out.push(`${at}: gives "${g.flow}" twice (name all its receivers in one entry)`);
+      seen.add(g?.flow);
+      if (!Array.isArray(g?.to) || !g.to.length) out.push(`${at}: "${g?.flow}" is given to nobody`);
+      if (typeof g?.what !== "string" || !g.what.trim()) out.push(`${at}: "${g?.flow}" does not say what is handed over`);
+      for (const x of g?.to || []) {
+        if (!ids.has(x)) out.push(`${at}: gives "${g.flow}" to an unknown role "${x}"`);
+        else if (x === r.id) out.push(`${at}: gives "${g.flow}" to itself`);
+        else linked.add(`${r.id}>${x}`);
+      }
+    }
+  }
+  const takes = takesOf(cat);
+  for (const r of cat.roles || []) {
+    if (!takes.get(r.id)?.length) out.push(`role ${r.id}: takes nothing (no role gives it a flow)`);
+    for (const x of r.interacts || []) if (ids.has(x) && !linked.has(`${r.id}>${x}`) && !linked.has(`${x}>${r.id}`)) out.push(`role ${r.id}: works with ${x}, but no flow passes between them`);
+  }
+  return out;
+}
+
+/**
+ * What each role takes: the flows the others give it, with the roles they come from.
+ * @returns {Map<string, Array<{flow: string, from: string[]}>>}
+ */
+export function takesOf(cat) {
+  const by = new Map(cat.roles.map((r) => [r.id, new Map()]));
+  for (const r of cat.roles) {
+    for (const g of r.gives || []) {
+      for (const x of g.to || []) {
+        const m = by.get(x);
+        if (!m) continue;
+        if (!m.has(g.flow)) m.set(g.flow, []);
+        m.get(g.flow).push(r.id);
+      }
+    }
+  }
+  return new Map([...by].map(([id, m]) => [id, [...m].map(([flow, from]) => ({ flow, from }))]));
+}
+
+/**
+ * What the roles give each other, as the wiring of the big game: an edge for every flow from a role
+ * to a role, and per flow how many roles give and take it.
+ * @returns {{edges: Array<{flow: string, from: string, to: string}>, flows: Map<string, {gives: Set<string>, takes: Set<string>}>}}
+ */
+export function flowGraph(cat) {
+  const edges = [], flows = new Map();
+  for (const r of cat.roles) {
+    for (const g of r.gives || []) {
+      if (!flows.has(g.flow)) flows.set(g.flow, { gives: new Set(), takes: new Set() });
+      flows.get(g.flow).gives.add(r.id);
+      for (const x of g.to || []) {
+        edges.push({ flow: g.flow, from: r.id, to: x });
+        flows.get(g.flow).takes.add(x);
+      }
+    }
+  }
+  return { edges, flows };
 }
 
 /**

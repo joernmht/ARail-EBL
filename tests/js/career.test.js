@@ -104,7 +104,7 @@ test("reachable: every job of the small catalogue from leaving school", () => {
 
 const CAT = readJSON("web/game/roles/roles.json");
 
-test("the real catalogue: sound, every job reachable from leaving school, several ways open", { skip: CAT.format !== "arail-roles/2" && "the catalogue has no careers yet (format 1)" }, () => {
+test("the real catalogue: sound, every job reachable from leaving school, several ways open", { skip: CAT.format === "arail-roles/1" && "the catalogue has no careers yet (format 1)" }, () => {
   const cat = CAT;
   assert.deepEqual(validateRoles(cat), []);
   const jobs = cat.roles.filter((r) => r.access.job);

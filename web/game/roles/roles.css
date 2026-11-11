@@ -33,3 +33,6 @@
 .role-card dd { margin: 2px 0 0; font-size: .9rem; }
 .role-card dd ul { margin: 0; padding-left: 1.2em; }
 .role-card .links { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.role-card .flows { padding-left: 18px; }
+.role-card .flows .links { display: inline; }
+.role-card .flows .links a { margin-right: 8px; }

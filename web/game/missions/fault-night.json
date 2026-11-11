@@ -1,0 +1,36 @@
+{
+ "format": "arail-mission/1",
+ "id": "fault-night",
+ "title": "Fault Night",
+ "text": "A shift in the maintenance control centre of the district around Bf Neustadt, alone: faults come in by their report paths, and what is behind each is known only when a team has looked. Two emergency teams are on shift, one for signalling and one for the track, and a technician of each trade is on call. Rank the faults, send the teams, ask the signaller for a closure before anybody works in the track, and decide what a team does with what it finds: a repair for good, a quick one that may not hold, or guarding a danger until the right team comes.",
+ "mode": "solo",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "maintenance-dispatcher",
+   "game": "maintenance",
+   "seat": "human",
+   "level": "normal"
+  }
+ ],
+ "rounds": 1,
+ "phases": [
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The shift",
+   "roles": [
+    "maintenance-dispatcher"
+   ],
+   "length": 2400,
+   "clock": "08:00"
+  }
+ ],
+ "debrief": [
+  "Which fault did you send a team to first, and why? What did the faults that waited cost?",
+  "A team stood at the signal and the work was in track G2. Who may close a track, and what could have happened without the closure?",
+  "Where did you send a team before you knew the cause? What did you go by, and was it the right trade?",
+  "A provisional repair or one for good: when was which the better choice, and what did it cost when it did not hold?",
+  "Was a technician on call worth the four hours of overtime?"
+ ]
+}

@@ -2,7 +2,7 @@
 // routes to set from a start signal to a destination (on the panel or in the form), the substitute
 // signal with its checks, the tracks to close and open, the decisions and questions of the game, the
 // trains with their delays, the messages and the score. The game itself is arail/game/signaller.js;
-// this page passes the player's moves to it and draws its state.
+// this page passes the player's moves to it (by `act`, which keeps them) and draws its state.
 import { CONNECTIONS, LEVELS, STATION, SignallerGame, ZS1_REASONS, clockOf } from "../../arail/game/index.js";
 import { $, h, morph, mount, storage } from "../../app/ui.js";
 
@@ -201,7 +201,7 @@ class SignallerPage {
   }
 
   set(routeId) {
-    const res = this.game.setRoute(routeId);
+    const res = this.game.act("setRoute", routeId);
     if (res.ok) {
       this.hint(`Route ${routeId.replace("-", " → ")} set: the points move, then the signal clears.`);
       const from = this.chosen;
@@ -256,7 +256,7 @@ class SignallerPage {
         return h("div", { class: `decision${quiz ? " quiz" : ""}` },
           h("h3", {}, quiz ? `Question: ${d.title}` : d.title),
           d.text ? h("p", {}, d.text) : null,
-          h("div", { class: "row" }, d.options.map((o) => h("button", { class: `btn small${!quiz && o === d.options[0] ? " primary" : ""}`, type: "button", onclick: () => { g.decide(d.id, o.id); this.draw(true); this.side(); } }, o.label))));
+          h("div", { class: "row" }, d.options.map((o) => h("button", { class: `btn small${!quiz && o === d.options[0] ? " primary" : ""}`, type: "button", onclick: () => { g.act("decide", d.id, o.id); this.draw(true); this.side(); } }, o.label))));
       }) : h("p", { class: "hint" }, g.over ? "The game is over." : "Nothing to decide just now."),
     );
   }
@@ -282,7 +282,7 @@ class SignallerPage {
   }
 
   cancel(id) {
-    const res = this.game.cancelRoute(id);
+    const res = this.game.act("cancelRoute", id);
     this.hint(res.ok ? `Route ${id.replace("-", " → ")} cancelled.` : res.reason, !res.ok);
     this.draw(true);
     this.side();
@@ -295,7 +295,7 @@ class SignallerPage {
     const zs = this.zs1For && waiting.includes(this.zs1For) ? this.zs1For : null;
     morph($("#signals"),
       h("h2", { id: "signalsTitle" }, "Signals and tracks"),
-      failed && failed.reported == null ? h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: () => { g.reportFault(); this.side(); } }, `Report the failure of ${failed.signal}`)) : null,
+      failed && failed.reported == null ? h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: () => { g.act("reportFault"); this.side(); } }, `Report the failure of ${failed.signal}`)) : null,
       failed ? h("p", { class: "hint" }, `${failed.signal}: ${failed.repaired != null ? `repaired at ${hhmm(failed.repaired)}` : failed.reported != null ? `reported at ${hhmm(failed.reported)}; repair team ${({ driving: "on its way", waiting: "waits for the track closure", working: "at work on G2", done: "has finished", left: "has left" })[st.team.state] ?? ""}` : "failed, not reported"}.`) : null,
       waiting.length ? h("div", { class: "row" }, h("span", {}, "Substitute signal (Zs 1) at:"), waiting.map((id) => h("button", { class: "btn small", type: "button", "aria-pressed": zs === id ? "true" : "false", onclick: () => { this.zs1For = zs === id ? null : id; this.checks = { route: false, track: false }; this.reason = ""; this.side(); } }, id))) : null,
       zs ? this.zs1Form(zs) : null,
@@ -322,7 +322,7 @@ class SignallerPage {
   }
 
   giveZs1(id) {
-    const res = this.game.substitute(id, { routeChecked: this.checks.route, trackChecked: this.checks.track, reason: this.reason });
+    const res = this.game.act("substitute", id, { routeChecked: this.checks.route, trackChecked: this.checks.track, reason: this.reason });
     this.hint(res.ok ? `Zs 1 at ${id}: the train may pass at up to 40 km/h.` : res.reason, !res.ok);
     this.zs1For = null;
     this.reason = "";
@@ -332,7 +332,7 @@ class SignallerPage {
   }
 
   track(t, closed) {
-    const res = closed ? this.game.openTrack(t) : this.game.closeTrack(t);
+    const res = this.game.act(closed ? "openTrack" : "closeTrack", t);
     this.hint(res.ok ? `Track ${t} ${closed ? "open" : "closed"}.` : res.reason, !res.ok);
     this.draw(true);
     this.side();

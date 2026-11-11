@@ -21,14 +21,15 @@ function run(g, seconds, each = null, dt = 1) {
  * A careful signaller: routes as planned (G2 closed: another track), the freight train waits for the
  * intercity, departures at their time, the failure reported at once, Zs 1 with its checks, the
  * closure for the repair team and the track opened after the team's report, every question right.
+ * Without `team`, the trains only: the report, the closure and the opening are left to the test.
  */
-function careful(g) {
+function careful(g, { team = true } = {}) {
   for (const d of g.open) {
-    if (d.id.startsWith("quiz-")) g.decide(d.id, d.options[0].id);
-    else if (d.id === "report") g.decide("report", "now");
+    if (d.id.startsWith("quiz-")) g.decide(d.id, g.rightAnswer(d.id));
+    else if (d.id === "report" && team) g.decide("report", "now");
   }
-  if (g.team.state === "waiting") g.closeTrack("G2");
-  if (g.team.state === "done") g.openTrack("G2");
+  if (team && g.team.state === "waiting") g.closeTrack("G2");
+  if (team && g.team.state === "done") g.openTrack("G2");
   for (const tr of g.trains) {
     if (tr.state === "gone") continue;
     const sig = tr.state === "coming" ? (tr.dir > 0 ? "A" : "F") : g.nextSignal(tr);
@@ -245,7 +246,7 @@ test("a careful signaller passes with a high score; a careless one fails; the sa
   // careless: Zs 1 without checks, the failure not reported, the questions wrong
   const careless = new SignallerGame({ level: "normal" });
   run(careless, 2600, (x) => {
-    for (const d of x.open) x.decide(d.id, d.id === "report" ? "later" : d.options[1].id);
+    for (const d of x.open) x.decide(d.id, d.id === "report" ? "later" : d.id.startsWith("quiz-") ? d.options.find((o) => o.id !== x.rightAnswer(d.id)).id : d.options[1].id);
     for (const sig of Object.keys(x.signals)) {
       if (!x.signals[sig].failed || x.signals[sig].zs1) continue;
       const tr = x.trains.find((t) => t.state === "dwelling" && x.nextSignal(t) === sig && x.t >= t.dep);
@@ -263,4 +264,169 @@ test("a careful signaller passes with a high score; a careless one fails; the sa
   run(b, 2600, careful);
   assert.deepEqual(a.result(), b.result());
   assert.deepEqual(a.logs, b.logs);
+});
+
+test("the panel as a sketch: sections in the colours of their state, a signal with its routes as a menu, trains at their heads", () => {
+  const g = new SignallerGame({ seed: 1, level: "training" });
+  const KINDS = ["line", "text", "dot", "tag", "box"];
+  const check = (sk) => {
+    assert.ok(sk.title && sk.label && sk.width > 0 && sk.height > 0);
+    for (const it of sk.items) {
+      assert.ok(KINDS.includes(it.kind), it.kind);
+      for (const k of ["x", "x1", "x2"]) if (k in it) assert.ok(it[k] >= 0 && it[k] <= sk.width, `${it.kind} ${k} ${it[k]}`);
+      for (const k of ["y", "y1", "y2"]) if (k in it) assert.ok(it[k] >= 0 && it[k] <= sk.height, `${it.kind} ${k} ${it[k]}`);
+      for (const m of it.menu ?? []) assert.ok(it.id && it.title && Object.hasOwn(SignallerGame.actions, m.name), `${it.id} ${m.name}`);
+    }
+    return sk;
+  };
+  let sk = check(g.view().sketch);
+  assert.ok(sk.items.filter((it) => it.kind === "line").every((it) => ["free", "muted"].includes(it.tone)));
+  // every signal can be chosen; signal A offers the three platform tracks
+  const lamp = (id) => sk.items.find((it) => it.id === `signal-${id}`);
+  assert.deepEqual(Object.keys(STATION.signals).filter((id) => !lamp(id)), []);
+  assert.deepEqual(lamp("A").menu.map((m) => m.label), ["Route to G1", "Route to G2", "Route to G3"]);
+  assert.equal(lamp("A").tone, "bad");
+  // a move from the menu, as the page makes it
+  const to = lamp("A").menu[1];
+  assert.equal(g.act(to.name, ...to.args).ok, true);
+  run(g, 10); // the points run, then the route is locked
+  sk = check(g.view().sketch);
+  assert.equal(lamp("A").tone, "ok");
+  assert.match(lamp("A").title, /proceed, route to G2/);
+  assert.ok(lamp("A").menu.some((m) => m.label === "Cancel the route to G2"));
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "route"));
+  // a conflicting route is offered with the reason why not
+  assert.ok(lamp("P2").menu.every((m) => m.disabled), JSON.stringify(lamp("P2").menu));
+  // a track in a route cannot be closed from its label; a free one can
+  const track = (id) => sk.items.find((it) => it.id === `track-${id}`);
+  assert.ok(track("G2").menu[0].disabled);
+  assert.equal(g.act(track("G3").menu[0].name, ...track("G3").menu[0].args).ok, true);
+  sk = check(g.view().sketch);
+  assert.equal(track("G3").menu[0].label, "Open G3");
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "closed"));
+  // the first train comes in: a tag at its head, the sections under it occupied
+  run(g, 200);
+  sk = check(g.view().sketch);
+  assert.ok(sk.items.some((it) => it.kind === "tag" && it.text.includes("RB 31")));
+  assert.ok(sk.items.some((it) => it.kind === "line" && it.tone === "occupied"));
+  // the failure and where its repair stands, as the panel's note
+  const note = (x) => x.view().sketch.items.find((it) => it.kind === "text" && it.text.startsWith("N2: "));
+  assert.equal(note(g), undefined);
+  const n = new SignallerGame({ seed: 1, level: "normal" });
+  run(n, 781);
+  assert.deepEqual([note(n).text, note(n).tone], ["N2: failed, not reported", "warn"]);
+  n.reportFault();
+  assert.equal(note(n).text, "N2: failed: the team is on its way");
+  assert.equal(n.view().sketch.items.find((it) => it.id === "signal-N2").tone, "failed");
+  run(n, 1400, careful);
+  assert.deepEqual([note(n).text, note(n).tone], ["N2: repaired", "ok"]);
+  check(n.view().sketch);
+});
+
+test("a track closure names the failure only on the failed signal's own track", () => {
+  const g = new SignallerGame({ level: "normal" });
+  const closure = () => g.outbox.filter((m) => m.flow === "track-closure").at(-1).payload;
+  // before the failure: no closure is the failure's
+  assert.deepEqual(g.closeTrack("G2"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: null });
+  g.openTrack("G2");
+  run(g, 790, careful);
+  assert.equal(g.failure.started, true);
+  // N2 has failed: G3 closed for another reason is not its closure; G2 is
+  const free = (t) => !g.occupancy().has(t.toLowerCase()) && !g.lockOf(t.toLowerCase());
+  while (!free("G3")) run(g, 1, careful);
+  assert.deepEqual(g.closeTrack("G3"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G3", closed: true, fault: null });
+  assert.deepEqual(g.openTrack("G3"), { ok: true });
+  assert.equal(closure().fault, null);
+  while (!g.closed.has("g2")) run(g, 1, careful);
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: "N2" });
+  // the repair, and the track given back: that opening is still the failure's
+  while (g.team.state !== "left" && !g.over) run(g, 1, careful);
+  assert.deepEqual([closure(), g.failure.repaired != null], [{ place: "Bf Neustadt", track: "G2", closed: false, fault: "N2" }, true]);
+  // closed again later for another reason (and opened): not the failure's any more
+  while (!free("G2") && !g.over) run(g, 1, careful);
+  assert.deepEqual(g.closeTrack("G2"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: null });
+  g.openTrack("G2");
+  assert.equal(closure().fault, null);
+});
+
+test("questions whose occasion has passed are taken back: after a repair that did not hold, nobody is asked to open G2 under the new team", () => {
+  // a person at the signaller's seat with a maintenance dispatcher in the session: the team's steps come as flows
+  const g = new SignallerGame({ level: "normal", wired: ["repair-status"] });
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: g.t, payload: { fault: "N2", state, ...more } });
+  const open = () => g.open.map((d) => d.id).filter((id) => !id.startsWith("quiz-"));
+  // the trains run by the book; the report, the closure and the opening are this person's, as said here
+  const trains = (x) => careful(x, { team: false });
+  run(g, 781, trains);
+  assert.deepEqual(open(), ["report"]);
+  g.reportFault();
+  assert.deepEqual(open(), []);
+  status("dispatched", { eta_s: 300 });
+  run(g, 300, trains);
+  status("arrived");
+  assert.deepEqual([g.team.state, open()], ["waiting", ["closure"]]);
+  // closed at the panel, not by the question: the question is gone
+  for (let i = 0; i < 900 && !g.closeTrack("G2").ok; i++) run(g, 1, trains);
+  assert.deepEqual([g.closed.has("g2"), g.team.state, open()], [true, "working", []]);
+  status("diagnosed", { cause: "water in the housing", eta_s: 720 });
+  status("working", { provisional: true, eta_s: 240 });
+  run(g, 240, trains);
+  status("done", { provisional: true });
+  assert.deepEqual([g.team.state, open()], ["done", ["reopen"]]);
+  // the person leaves the question open; the repair does not hold
+  run(g, 200, trains);
+  assert.deepEqual(open(), ["reopen"]);
+  status("relapsed");
+  assert.deepEqual([g.team.state, g.signals.N2.failed, open()], ["called", true, []]);
+  assert.equal(g.decide("reopen", "open"), false);
+  // the next team works on the closed track: no question would open it under them
+  status("dispatched", { eta_s: 120 });
+  run(g, 120, trains);
+  status("arrived");
+  assert.deepEqual([g.team.state, g.closed.has("g2"), open()], ["working", true, []]);
+  status("working", { eta_s: 300 });
+  run(g, 60, trains);
+  assert.deepEqual(open(), []);
+  assert.deepEqual(g.violations, []);
+  // repaired for good: asked again; opened at the panel, the question is gone, and the team has left
+  status("done");
+  assert.deepEqual([g.team.state, open()], ["done", ["reopen"]]);
+  assert.deepEqual(g.openTrack("G2"), { ok: true });
+  assert.deepEqual([g.team.state, open(), g.violations], ["left", [], []]);
+
+  // a team let onto the track without the closure (the dispatcher's risk): nobody is asked to close it under them
+  const h = new SignallerGame({ level: "normal", wired: ["repair-status"] });
+  const tell = (state, more = {}) => h.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: h.t, payload: { fault: "N2", state, ...more } });
+  run(h, 781, trains);
+  h.reportFault();
+  tell("dispatched");
+  tell("arrived");
+  assert.ok(h.open.some((d) => d.id === "closure"));
+  tell("diagnosed", { cause: "the lamp is burnt out" });
+  assert.deepEqual([h.team.state, h.open.some((d) => d.id === "closure")], ["working", false]);
+});
+
+test("a closure request is the failure's only with its fault, or without one for its own track", () => {
+  const start = () => {
+    const g = new SignallerGame({ level: "normal", wired: ["repair-status"] });
+    run(g, 781, (x) => careful(x, { team: false }));
+    g.reportFault();
+    return g;
+  };
+  const ask = (g, payload) => g.receive({ flow: "closure-request", from: "maintenance-dispatcher", t: g.t, payload });
+  let g = start();
+  ask(g, { fault: "w12", track: "Bergheim track 2" });
+  ask(g, { track: "G3" });
+  ask(g, { fault: "azs", track: "G2" });
+  assert.deepEqual([g.team.state, g.open.some((d) => d.id === "closure")], ["called", false]);
+  ask(g, { fault: "N2", track: "G2" });
+  assert.deepEqual([g.team.state, g.open.some((d) => d.id === "closure")], ["waiting", true]);
+  g = start();
+  ask(g, { track: "G2" });
+  assert.equal(g.team.state, "waiting");
+  g = start();
+  ask(g, {});
+  assert.equal(g.team.state, "waiting");
 });

@@ -8,7 +8,8 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
 - [The idea](#the-idea): every role, from the politician to the cleaning staff
 - [The roles](#the-roles): the role catalogue
 - [A mini game](#a-mini-game): what each role's game has
-- [The game core](#the-game-core): what the games share in the code
+- [The game core](#the-game-core): what the games share in the code, and the engine that joins
+  them ([The game core: one engine for every role](game-core.md))
 - [Two ways to play them together](#two-ways-to-play-them-together): the career mode (a graph of
   possibilities, with the career planner), the railway undertaking's simulator, and the big game
 - [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game
@@ -52,6 +53,13 @@ often comes from and goes, pay, and its **ways in** (below); what the role is **
 **rhythm** of its decisions (seconds to a legislature); the roles it **works with or against**; and a
 **mini game** for it.
 
+Each role also has its **party** (the infrastructure manager, a railway undertaking, a transport
+authority, …), its **scale** (the rhythm of its routine decisions) and what it **gives** to other
+roles: typed flows such as a budget, a train path, a possession, a fault report, a penalty, each
+with what exactly is handed over and the roles it goes to; what a role **takes** is what the
+others give it. Across the catalogue these are about 2,900 flows from one role to another: the
+wiring diagram of the railway, and of the big game ([The game core](game-core.md#flows)).
+
 Next to the roles the catalogue holds the **qualifications** that the ways in need: school
 certificates, apprenticeships (such as Eisenbahner/in im Betriebsdienst), degrees and state exams,
 function trainings for career changers, licences (the train driver's licence), certificates and
@@ -77,9 +85,10 @@ Every role's game has the same parts, so that it can stand alone and join the bi
 
 ## The game core
 
-`web/arail/game/core.js` is a first, small form of the common game core (#103). The role games have
-their own entry, `web/arail/game/index.js` (the core, the catalogue's checks, the career model, the
-signaller's game): the framework's entry `web/arail/index.js` does not export them, and no part of
+`web/arail/game/core.js` is the common game core (#103); [The game core: one engine for every
+role](game-core.md) describes it and what is built on it: the flows between roles, sessions in turns
+and shifts, missions as data. The role games have their own entry, `web/arail/game/index.js` (the
+core, the flows, sessions and missions, the catalogue's checks, the career model, the role games): the framework's entry `web/arail/index.js` does not export them, and no part of
 the framework imports them, so a layout, a simulation or a plugin loads none of their code (see
 [Using ARail for research](research.md)). A **game** (`class Game`) is one role at work:
 
@@ -87,9 +96,14 @@ the framework imports them, so a layout, a simulation or a plugin loads none of 
 - **resources** (`resource`, `add`, `value`): money, time, staff, counters;
 - **decisions** (`ask`, `decide`, `open`): a title, options, a deadline and a fallback taken at the
   deadline; what an option does is the game's handler;
+- **moves** (`act`): everything a player does, by the name of its method, kept so that a game can
+  be played again;
+- **ports** (`takes`, `gives`, `give`, `take`): the flows a role takes from other roles and gives
+  them; alone, a game plays the other end itself;
 - **rules** (`violate`): a rule broken, with its severity: 1 a slip, 2 a breach, 3 a danger to people;
 - **objectives** (`objectives`) with weights, and the **score** (`score`, 0–100);
-- a **log** and **events** for the page (`log`, `decision`, `decided`, `violation`, `over`);
+- a **log** and **events** for the page (`log`, `decision`, `decided`, `violation`, `move`, `give`,
+  `receive`, `over`), and a **view** (`view`) from which a page can draw a game it does not know;
 - the **result** of a round (`result`): score, rules broken, passed or not, the decisions taken. A
   round is passed with a score of at least 50 and no danger to people. The result is what the career
   mode and the big game take from a round.
@@ -97,7 +111,7 @@ the framework imports them, so a layout, a simulation or a plugin loads none of 
 Games run without the world and without the DOM, in Node and in the browser, and are deterministic:
 the same seed and the same moves at the same times give the same game (random numbers come from
 streams keyed by the seed and their purpose). They can be tested and replayed, and later played by
-computer players for roles nobody plays.
+computer players for roles nobody plays (a game's `static player`).
 
 ## Two ways to play them together
 
@@ -136,8 +150,31 @@ government and the Länder flows to the infrastructure manager and the transport
 tenders and timetables to the railway undertakings; the undertakings' trains to the signallers and
 dispatchers; their delays and faults back to maintenance, customer service and, in the end, to
 politics. The roles run on different time scales (seconds for a signaller, years for a minister); the
-big game couples them by the events between them (#104). Roles nobody plays are played by the
-computer, with the defaults of their decisions.
+big game couples them by what they give each other (#104): a session plays the slow roles in turns
+and the fast ones in shifts, a turn's decisions reach the shift as state (a staff plan, the
+condition of the assets), and the shift's reports reach the next turn; a shift is a sample of its
+period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
+computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
+of its district for a morning (the mission `neustadt-morning`), and with the undertaking's
+operations control, the asset manager, the transport authority's contract manager and the budget
+committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
+money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
+is what a late train costs the undertaking, and the morning's reports are the year's delay minutes
+and the contract's incident list. On the lab's own timetable the operations
+are the EBL's simulation (`lab-morning`). All of them are played on the play page (`game/play/`).
+
+The morning is the mission worked out furthest, as the model for the others:
+
+- **Pictures.** The signaller works on the track panel, the dispatcher on a map of the district
+  with the vans; what is chosen in the picture offers its moves.
+- **Choices that give something up.** The dispatcher's teams are of two trades, a fault's cause
+  is known only when a team has looked, a quick repair may not hold, a team that guards a danger
+  repairs nothing, a technician on call costs overtime. The computer's dispatcher plays by simple
+  rules and can be beaten.
+- **What led to what.** The result shows every fault on the time line of the shift: whose each
+  stretch of its time out of order was (the signaller's, the dispatcher's, the road, the work),
+  where the teams were while it waited, and what it did to the trains
+  ([The game core](game-core.md#what-led-to-what)).
 
 ## The signaller of Bf Neustadt
 
@@ -206,15 +243,17 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 | Page | What |
 | --- | --- |
 | `game/` | The game page: the games and exercises that were in the app, on the lab's layout (infrastructure asset management, rail operations, journeys, the full terminal) |
+| `game/play/` | The play page of the big game: choose a mission and the seats (you or the computer), play its turns and shifts (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), watch what the roles give each other, read the result and the debrief. Missions: a morning at Bf Neustadt (signaller and maintenance dispatcher), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), Fault Night, Transportleitung, Budget Years, Malus Month and The Night Session alone, a morning in the lab (on the EBL's simulation API) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
 | `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |
 
 ## What comes next
 
-- The role games of the catalogue, one by one, each on the game core; first those that build on what
-  ARail has (the maintenance dispatcher and the repair team with the maintenance story, the railway
-  undertaking's dispatcher with the operations, the passenger with the journeys).
+- The role games of the catalogue, one by one, each on the game core and with its ports, so that it
+  joins a mission with the others; next those whose flows the first games already speak: the
+  infrastructure manager's train dispatcher between the undertaking and the signaller, the
+  undertaking's managers who take the contract's penalties, then the passenger with the journeys.
 - The career mode on the planner's model: each step a round of the role's game, applications and
   elections that can fail, pay, reputation and stress (#146); qualifications earned by exams, quizzes
   and practical rounds in the role's game (#158); starting points as people, such as a wheelchair user
@@ -222,4 +261,6 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 - The wheelchair user's trip as a mini game: step-free stations and trains, booking assistance,
   a broken lift (#156); the role games of every family (#148–#155).
 - The parked games of the game page on the game core (#144).
-- Computer players for the roles nobody plays; the roles connected by their events (#104, #106).
+- Several devices for one session (#106): the record of moves is ready for it, a relay is missing;
+  a facilitator's view (#96) and the debrief with a timeline (#101).
+- A mission editor and content packs (#105).

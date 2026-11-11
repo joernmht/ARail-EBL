@@ -16,9 +16,15 @@
  * that the track ahead is clear, records the reason, reports the fault to the maintenance dispatcher,
  * closes track G2 for the repair team and reopens it when the team reports that it has left the track.
  * Delays, connections, safety, the fault report and answers to short questions make the score.
+ *
+ * In a session (session.js) the game is wired to other roles: the fault report goes to the
+ * maintenance dispatcher, whose team comes, asks for the closure and reports back (instead of the
+ * game's own repair team); delays are told (to the dispatcher, the undertaking's operations
+ * control), and a train is held for a connection on the dispatcher's order or the undertaking's
+ * wish; the condition of the assets decides whether the signal fails at all.
  * @module arail/game/signaller
  */
-import { Game } from "./core.js";
+import { Game, Player } from "./core.js";
 
 /** Braking and acceleration (m/s²), the sighting distance of a signal (m), the distant signal (m before the main signal). */
 export const BRAKE = 0.6, ACCEL = 0.5, SIGHT_M = 400, DISTANT_M = 1000;
@@ -140,6 +146,15 @@ export const ZS1_REASONS = [
 
 /** The repair team: minutes to come from the maintenance base, and to repair the signal. */
 const TEAM_DRIVE_S = 300, TEAM_WORK_S = 360;
+/** A delay is told to the undertaking from this many seconds on. */
+const NOTICE_S = 60;
+/** A late train is announced by the neighbouring station this long before its planned time on the panel (s). */
+const FORECAST_S = 120;
+/**
+ * How likely an exit signal fails in a shift, by the condition grade of the assets (1 very good …
+ * 6 unusable): hardly below grade 2, nearly always from grade 3.5.
+ */
+export const failureChance = (grade) => Math.max(0.05, Math.min(0.95, (grade - 2) / 1.5));
 
 const QUESTIONS = {
   failure: {
@@ -234,16 +249,96 @@ class Train {
   }
 }
 
+/**
+ * The computer's signaller, careful and by the book: routes as planned (another track while G2 is
+ * kept free for the repair), a freight train waits for the trains planned before it, departures at
+ * their time or after a connection the undertaking asked for, the failure reported at once, Zs 1
+ * with its checks and its reason, the closure for the repair team and the track opened after its
+ * report, every question right.
+ */
+export class SignallerAutopilot extends Player {
+  /** @param {SignallerGame} g */
+  think(g) {
+    for (const d of g.open) {
+      if (d.id.startsWith("quiz-")) g.act("decide", d.id, g.rightAnswer(d.id));
+      else if (d.id === "report") g.act("decide", "report", "now");
+    }
+    const free = (sec) => !g.occupancy().has(sec) && !g.lockOf(sec);
+    if (g.team.state === "waiting" && !g.closed.has("g2") && free("g2")) g.act("closeTrack", "G2");
+    if (g.team.state === "done" && g.closed.has("g2")) g.act("openTrack", "G2");
+    const set = (id) => {
+      if (!g.blocked(id)) g.act("setRoute", id);
+    };
+    const by = new Map(g.trains.map((tr) => [tr.id, tr]));
+    for (const tr of g.trains) {
+      if (tr.state === "gone") continue;
+      const sig = tr.state === "coming" ? (tr.dir > 0 ? "A" : "F") : g.nextSignal(tr);
+      if (!sig) continue;
+      const r = g.routeFrom(sig);
+      if (r) {
+        const ready = tr.state !== "dwelling" || (tr.dwell >= DWELL_S && g.t >= tr.dep);
+        if (g.signals[sig].failed && !g.signals[sig].zs1 && tr.state !== "coming" && r.state === "locked" && ready && g.distanceTo(tr, sig) < 100) g.act("substitute", sig, { routeChecked: true, trackChecked: true, reason: "lamp" });
+        continue;
+      }
+      // an entry route only for the next train to come to the signal
+      if (tr.state === "coming" && (g.t < tr.enterAt - 60 || g.trains.some((x) => x !== tr && x.dir === tr.dir && (x.state === "coming" ? x.enterAt < tr.enterAt : x.state === "running" && g.nextSignal(x) === sig)))) continue;
+      if (sig === "A" || sig === "F") {
+        // G2 is kept free for the repair team from the report until the team has left
+        const repair = g.failure?.reported != null && g.team.state !== "left";
+        set(`${sig}-${(repair || g.closed.has("g2")) && tr.plan === "G2" ? (tr.dir > 0 ? "G1" : "G3") : tr.plan}`);
+        continue;
+      }
+      // a freight train lets the trains planned before it go first, unless it stands in their way
+      const here = STATION.sections[tr.path.at(-1)]?.track;
+      if (tr.kind === "GZ" && g.trains.some((x) => x !== tr && x.dir === tr.dir && x.state !== "gone" && x.due < tr.due && (x.stops ? x.departed : x.passed) == null && x.plan !== here)) continue;
+      if (tr.stops && (tr.state !== "dwelling" || g.t < tr.dep - 20)) continue;
+      // a connection asked for: until the other train's passengers have changed, or the time agreed is over
+      const hold = g.holds.get(tr.id), other = hold && by.get(hold.for);
+      const change = other?.track && tr.track && STATION.sections[TRACKS[other.track]].platform === STATION.sections[TRACKS[tr.track]].platform ? TRANSFER_SAME_S : TRANSFER_OTHER_S;
+      if (hold && g.t < hold.until && (!other || other.arrived == null || g.t < other.arrived + change)) continue;
+      set(`${sig}-${tr.dir > 0 ? "T" : "B"}`);
+    }
+  }
+}
+
 export class SignallerGame extends Game {
   static id = "signaller";
   static title = "Signaller at Bf Neustadt";
   static role = "signaller-relay";
   static kind = "both";
   static description = "Set the routes of a morning half hour in a relay interlocking: regional trains with their connections at the island platform, an intercity overtaking a freight train, and a signal that fails.";
+  static scale = "seconds";
+  // the timetable of the morning is bound to it
+  static clock = "08:00";
+  static takes = [
+    { flow: "asset-condition" },
+    { flow: "repair-status", from: ["maintenance-dispatcher"] },
+    { flow: "closure-request", from: ["maintenance-dispatcher"] },
+    // a train to hold: the dispatcher's order; in a mission without a dispatcher between them, the undertaking's wish itself
+    { flow: "dispatching-order", from: ["train-dispatcher"] },
+    { flow: "connection-request" },
+  ];
+  static gives = [
+    { flow: "fault-report", to: ["maintenance-dispatcher"] },
+    { flow: "track-closure" },
+    { flow: "delay-notice" },
+    { flow: "performance-report" },
+  ];
+  static actions = {
+    ...Game.actions,
+    setRoute: { label: "Set a route" },
+    cancelRoute: { label: "Cancel a route" },
+    substitute: { label: "Give the substitute signal Zs 1" },
+    zs1: { label: "Give the substitute signal Zs 1" },
+    reportFault: { label: "Report the fault" },
+    closeTrack: { label: "Close a track" },
+    openTrack: { label: "Open a track" },
+  };
+  static player = SignallerAutopilot;
 
-  /** @param {{seed?: number, level?: keyof LEVELS}} [options] */
-  constructor({ seed = 1, level = "normal" } = {}) {
-    super({ seed, level: LEVELS[level] ? level : "normal" });
+  /** @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>}} [options] */
+  constructor(options = {}) {
+    super({ ...options, level: LEVELS[options.level] ? options.level : "normal" });
     const lv = LEVELS[this.level];
     this.points = Object.fromEntries(Object.entries(STATION.points).map(([id, p]) => [id, { id, pos: p.pos, target: p.pos, until: 0 }]));
     this.signals = Object.fromEntries(Object.entries(STATION.signals).map(([id]) => [id, { id, failed: false, zs1: false }]));
@@ -257,9 +352,18 @@ export class SignallerGame extends Game {
     });
     this.resource("zs1", "Substitute signals (counter)", 0);
     this.resource("cancel", "Routes cancelled", 0);
-    this.failure = lv.failure ? { ...lv.failure, started: false, reported: null, repaired: null } : null;
-    /** The repair team: "none" | "driving" | "waiting" (for the closure) | "working" | "done" (reported, off the track) | "left". */
-    this.team = { state: "none", at: null, waited: 0 };
+    // in a session the condition of the assets decides whether the signal fails this morning
+    const cond = this.conditions["asset-condition"];
+    const fails = cond?.grade == null ? lv.failure : this.rng("failure").next() < failureChance(cond.grade) ? lv.failure ?? LEVELS.normal.failure : null;
+    this.failure = fails ? { ...fails, started: false, reported: null, repaired: null } : null;
+    /**
+     * The repair team: "none" | "called" (reported; the maintenance dispatcher has not sent it yet) | "driving" |
+     * "waiting" (for the closure) | "working" | "done" (reported, off the track) | "left". With a
+     * maintenance dispatcher in the session (`remote`), the team is theirs.
+     */
+    this.team = { state: "none", at: null, waited: 0, remote: this.isWired("repair-status") };
+    /** Trains to hold for a connection, as the undertaking asked: train → {for, until}. */
+    this.holds = new Map();
     /** Answers to the short questions: id → correct. */
     this.answers = new Map();
     this.log(`${clockOf(0)} The shift begins: ${this.trains.length} trains until ${clockOf(Math.max(...this.trains.map((tr) => tr.due))).slice(0, 5)}.`, "info");
@@ -390,13 +494,25 @@ export class SignallerGame extends Game {
     return { ok: true };
   }
 
+  /** The substitute signal with its checks and its reason one by one (as a form gives them). */
+  zs1(signal, routeChecked = false, trackChecked = false, reason = "") {
+    return this.substitute(signal, { routeChecked: !!routeChecked, trackChecked: !!trackChecked, reason });
+  }
+
   /** Report the failed signal to the maintenance dispatcher: the repair team drives out. */
   reportFault() {
     const f = this.failure;
     if (!f?.started || f.reported != null) return false;
     f.reported = this.t;
-    this.team = { state: "driving", at: this.t + TEAM_DRIVE_S, waited: 0 };
-    this.log(`${clockOf(this.t)} Fault of ${f.signal} reported to the maintenance dispatcher; the repair team drives out from the maintenance base.`, "fault");
+    const track = STATION.sections[STATION.signals[f.signal].section].track;
+    this.give("fault-report", { fault: f.signal, asset: `Exit signal ${f.signal}`, kind: "lamp failure", place: STATION.name, track, holds: this.trains.filter((tr) => tr.state !== "gone" && tr.plan === track).length, since_s: Math.round(this.t - f.at) });
+    if (this.team.remote) {
+      this.team = { ...this.team, state: "called", at: null, waited: 0 };
+      this.log(`${clockOf(this.t)} Fault of ${f.signal} reported to the maintenance dispatcher.`, "fault");
+    } else {
+      this.team = { ...this.team, state: "driving", at: this.t + TEAM_DRIVE_S, waited: 0 };
+      this.log(`${clockOf(this.t)} Fault of ${f.signal} reported to the maintenance dispatcher; the repair team drives out from the maintenance base.`, "fault");
+    }
     const d = this.decisions.find((x) => x.id === "report" && !x.made);
     if (d) this.decide("report", "now");
     return true;
@@ -415,8 +531,19 @@ export class SignallerGame extends Game {
     if (lock) return { ok: false, reason: `${track} is locked by route ${lock.id}.` };
     this.closed.set(sec, this.t);
     this.log(`${clockOf(this.t)} Track ${track} closed.`, "closure");
+    this.give("track-closure", { place: STATION.name, track, closed: true, fault: this._faultOf(track) });
     if (this.team.state === "waiting" && track === "G2") this._teamStarts();
+    this._tidy();
     return { ok: true };
+  }
+
+  /**
+   * The failed signal whose track this is while its repair is not over, or null: a track closed for another reason
+   * (another track, or this one once the team has left) is not the failure's closure.
+   */
+  _faultOf(track) {
+    const f = this.failure;
+    return f?.started && this.team.state !== "left" && STATION.sections[STATION.signals[f.signal].section].track === track ? f.signal : null;
   }
 
   /** Open a closed track again. With the repair team still on it, it is a danger to them. */
@@ -424,9 +551,13 @@ export class SignallerGame extends Game {
     const sec = TRACKS[track];
     if (!sec || !this.closed.has(sec)) return { ok: false, reason: `${track} is not closed.` };
     if (track === "G2" && this.team.state === "working") this.violate("closure-workers", `${clockOf(this.t)} Track G2 opened while the repair team works on it.`, 3);
+    // whose closure it was, before the team is said to have left
+    const fault = this._faultOf(track);
     this.closed.delete(sec);
     if (track === "G2" && this.team.state === "done") this.team.state = "left";
     this.log(`${clockOf(this.t)} Track ${track} open.`, "closure");
+    this.give("track-closure", { place: STATION.name, track, closed: false, fault });
+    this._tidy();
     return { ok: true };
   }
 
@@ -438,7 +569,10 @@ export class SignallerGame extends Game {
     const t0 = this.t - dt;
     for (let i = 1; i <= n; i++) this._step(t0 + i * h, h);
     this._events();
-    if (this.t >= END_S || this.trains.every((tr) => tr.state === "gone")) this.end(this.t >= END_S ? `${clockOf(END_S).slice(0, 5)}: the shift is over.` : `${clockOf(this.t)} All trains have left.`);
+    // with a maintenance dispatcher in the session, the shift goes on while the failure is theirs to end: the team
+    // needs the closure, the track is to be opened after it, and a provisional repair may not hold
+    const f = this.failure, pending = this.team.remote && f?.started && (f.repaired == null || f.provisional || this.team.state === "done");
+    if (this.t >= END_S || (!pending && this.trains.every((tr) => tr.state === "gone"))) this.end(this.t >= END_S ? `${clockOf(END_S).slice(0, 5)}: the shift is over.` : `${clockOf(this.t)} All trains have left.`);
   }
 
   _step(now, h) {
@@ -478,6 +612,7 @@ export class SignallerGame extends Game {
       tr.state = "running";
       tr.departed = now;
       this.log(`${clockOf(now)} ${tr.id} departs from ${tr.track}${now - tr.dep >= 60 ? `, ${Math.round((now - tr.dep) / 60)} min late` : ""}.`, "train");
+      if (now - tr.dep >= NOTICE_S) this._notice(tr, "departed", now - tr.dep);
     }
     const end = tr.starts.at(-1) + STATION.sections[tr.path.at(-1)].len;
     const exit = !!STATION.sections[tr.path.at(-1)].line && tr.path.length > 1;
@@ -537,6 +672,7 @@ export class SignallerGame extends Game {
         if (s.kind === "exit" && !tr.stops && tr.passed == null) {
           tr.passed = now;
           tr.track = STATION.sections[s.section].track;
+          if (now - tr.pass >= NOTICE_S) this._notice(tr, "passed", now - tr.pass);
         }
       }
     }
@@ -591,6 +727,7 @@ export class SignallerGame extends Game {
     if (!r || r.train || !this._mayPass(tr, sig)) return;
     r.train = tr.id;
     r.zs1 = this.signals[sig].zs1;
+    if (r.zs1) tr.zs1 = sig;
     tr.routes.push(r);
     tr.path.push(...r.def.sections);
   }
@@ -634,54 +771,209 @@ export class SignallerGame extends Game {
       });
     }
     const team = this.team;
-    if (team.state === "driving" && this.t >= team.at) {
-      team.state = "waiting";
-      team.since = this.t;
-      this.log(`${clockOf(this.t)} The repair team is at signal ${f.signal} and asks for track G2 to be closed.`, "fault");
-      this.ask({
-        id: "closure", title: "The repair team asks for track G2 to be closed for the repair.",
-        text: "Close G2 at the panel (Close track) once it is clear; the team then goes onto the track.",
-        options: [{ id: "close", label: "Close G2 now" }, { id: "wait", label: "Ask the team to wait" }],
-        then: (o) => {
-          if (o === "close" && !this.closed.has("g2")) {
-            const res = this.closeTrack("G2");
-            if (!res.ok) this.log(`${clockOf(this.t)} G2 cannot be closed yet: ${res.reason}`, "fault");
-          }
-        },
-      });
-      this._quiz("closure");
-    }
+    // the game's own repair team; with a maintenance dispatcher in the session, the team's steps arrive as flows (take)
+    if (!team.remote && team.state === "driving" && this.t >= team.at) this._teamArrived();
     if (team.state === "waiting") team.waited = this.t - team.since;
-    if (team.state === "working" && this.t >= team.at) {
-      team.state = "done";
-      f.repaired = this.t;
-      this.signals[f.signal].failed = false;
-      this.log(`${clockOf(this.t)} The repair team reports: signal ${f.signal} repaired, everybody has left track G2.`, "fault");
-      this.ask({
-        id: "reopen", title: "The repair is done and the team has left the track. Open G2 again?",
-        options: [{ id: "open", label: "Open G2" }, { id: "later", label: "Later" }],
-        then: (o) => {
-          if (o === "open") this.openTrack("G2");
-        },
-      });
-      this._quiz("reopen");
+    if (!team.remote && team.state === "working" && this.t >= team.at) this._teamDone();
+    // a train that comes late: told when the neighbouring station announces it; one that stands at its platform beyond its time: told once
+    for (const tr of this.trains) {
+      if (tr.state === "coming" && !tr.forecast && tr.enterAt - tr.enter >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
+        tr.forecast = true;
+        this._notice(tr, "approaching", tr.enterAt - tr.enter);
+      }
+      if (tr.state === "dwelling" && !tr.noticed && this.t - tr.dep >= 2 * NOTICE_S) {
+        tr.noticed = true;
+        this._notice(tr, "waiting", this.t - tr.dep);
+      }
     }
+    for (const [id, hold] of this.holds) if (this.t >= hold.until) this.holds.delete(id);
+    this._tidy();
+  }
+
+  /**
+   * Questions whose occasion has passed are taken back: nobody is asked to report what is reported, to close G2
+   * for a team that does not wait for it, or to open G2 when it is open or a team is on it (after a provisional
+   * repair that did not hold, the next team works on the track that the old question would open).
+   */
+  _tidy() {
+    const f = this.failure, team = this.team.state, closed = this.closed.has("g2");
+    if (!(f?.started && f.reported == null)) this.withdraw("report");
+    if (team !== "waiting" || closed) this.withdraw("closure");
+    if (team !== "done" || !closed) this.withdraw("reopen");
+  }
+
+  /** The repair team is at the signal and asks for the closure. */
+  _teamArrived() {
+    const team = this.team, f = this.failure;
+    if (!f || team.state === "waiting" || team.state === "working" || team.state === "done" || team.state === "left") return;
+    team.state = "waiting";
+    team.since = this.t;
+    this.log(`${clockOf(this.t)} The repair team is at signal ${f.signal} and asks for track G2 to be closed.`, "fault");
+    this.ask({
+      id: "closure", title: "The repair team asks for track G2 to be closed for the repair.",
+      text: "Close G2 at the panel (Close track) once it is clear; the team then goes onto the track.",
+      options: [{ id: "close", label: "Close G2 now" }, { id: "wait", label: "Ask the team to wait" }],
+      then: (o) => {
+        if (o === "close" && !this.closed.has("g2")) {
+          const res = this.closeTrack("G2");
+          if (!res.ok) this.log(`${clockOf(this.t)} G2 cannot be closed yet: ${res.reason}`, "fault");
+        }
+      },
+    });
+    if (!this.answers.has("closure")) this._quiz("closure");
+    // closed before the team came: it can start at once
+    if (this.closed.has("g2")) this._teamStarts();
+  }
+
+  /** The repair is done (for good, or provisionally: then it may fail again) and the team has left the track. */
+  _teamDone(provisional = false) {
+    const team = this.team, f = this.failure;
+    if (!f || team.state === "done" || team.state === "left") return;
+    team.state = "done";
+    team.plan = null;
+    f.repaired = this.t;
+    f.provisional = !!provisional;
+    this.signals[f.signal].failed = false;
+    this.log(`${clockOf(this.t)} The repair team reports: signal ${f.signal} repaired${provisional ? " provisionally (it may fail again)" : ""}, everybody has left track G2.`, "fault");
+    if (!this.closed.has("g2")) {
+      team.state = "left";
+      return;
+    }
+    this.ask({
+      id: "reopen", title: "The repair is done and the team has left the track. Open G2 again?",
+      options: [{ id: "open", label: "Open G2" }, { id: "later", label: "Later" }],
+      then: (o) => {
+        if (o === "open") this.openTrack("G2");
+      },
+    });
+    if (!this.answers.has("reopen")) this._quiz("reopen");
+  }
+
+  /** The team has left the track without a repair: it is not of the trade the fault needs. */
+  _teamLeft(needs) {
+    const team = this.team, f = this.failure;
+    if (!f || f.repaired != null || !["waiting", "working"].includes(team.state)) return;
+    Object.assign(team, { state: "called", at: null, plan: null });
+    this.log(`${clockOf(this.t)} The team has left track G2 without a repair: signal ${f.signal} needs a ${needs ?? "signalling"} team, which the maintenance dispatcher has yet to send.`, "fault");
+  }
+
+  /** A provisional repair did not hold: the signal has failed again, and the maintenance dispatcher knows. */
+  _relapsed() {
+    const team = this.team, f = this.failure;
+    if (!f || f.repaired == null) return;
+    f.repaired = null;
+    f.relapses = (f.relapses ?? 0) + 1;
+    this.signals[f.signal].failed = true;
+    Object.assign(team, { state: "called", at: null, plan: null });
+    this.log(`${clockOf(this.t)} Signal ${f.signal} shows no proceed aspect again: the provisional repair did not hold. The maintenance dispatcher knows.`, "fault");
   }
 
   _teamStarts() {
     const team = this.team;
     team.state = "working";
-    team.at = this.t + TEAM_WORK_S;
+    // the maintenance dispatcher's team reports when it is done
+    team.at = team.remote ? Infinity : this.t + TEAM_WORK_S;
     team.waited = this.t - (team.since ?? this.t);
     this.log(`${clockOf(this.t)} The repair team goes onto track G2.`, "fault");
     const d = this.decisions.find((x) => x.id === "closure" && !x.made);
     if (d) this.decide("closure", "close");
   }
 
+  /** Tell the undertaking of a train's delay (a delay notice). */
+  _notice(tr, stage, late) {
+    const partner = CONNECTIONS.find((c) => c.includes(tr.id))?.find((id) => id !== tr.id) ?? null;
+    this.give("delay-notice", { train: tr.id, kind: tr.kind, place: STATION.name, stage, delay_min: Math.round(late / 6) / 10, connection: partner, cause: this.failure?.started && this.failure.repaired == null && tr.plan === "G2" ? "signal failure" : "" });
+  }
+
+  /** Flows from the other roles of a session: the maintenance dispatcher's team, the undertaking's wishes. */
+  take(msg) {
+    const p = msg.payload ?? {}, f = this.failure;
+    if (msg.flow === "repair-status" && f?.started && (p.fault == null || p.fault === f.signal)) {
+      const team = this.team;
+      if (p.state === "dispatched" && (team.state === "called" || team.state === "none")) {
+        team.state = "driving";
+        team.at = p.eta_s != null ? this.t + p.eta_s : null;
+        this.log(`${clockOf(this.t)} The maintenance dispatcher: a repair team is on its way to ${f.signal}${p.eta_s != null ? `, about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
+      } else if (p.state === "arrived") this._teamArrived();
+      else if (p.state === "diagnosed") {
+        // the team is on the track (with the closure, or without it at the dispatcher's risk) and has found the cause
+        if (team.state === "waiting" && this.closed.has("g2")) this._teamStarts();
+        else if (team.state !== "working") Object.assign(team, { state: "working", at: Infinity });
+        team.cause = p.cause ?? null;
+        this.log(`${clockOf(this.t)} The repair team at ${f.signal}: ${p.cause ?? "the cause is found"}${p.eta_s != null ? `; a repair for good takes about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
+      } else if (p.state === "working") {
+        if (team.state === "waiting" && this.closed.has("g2")) this._teamStarts();
+        else if (team.state !== "working") Object.assign(team, { state: "working", at: Infinity });
+        team.plan = { until: p.eta_s != null ? this.t + p.eta_s : null, provisional: !!p.provisional };
+        this.log(`${clockOf(this.t)} The team repairs ${f.signal}${p.provisional ? " provisionally" : " for good"}${p.eta_s != null ? `: about ${Math.max(1, Math.round(p.eta_s / 60))} min` : ""}.`, "fault");
+      } else if (p.state === "left") this._teamLeft(p.needs);
+      else if (p.state === "done") this._teamDone(p.provisional);
+      else if (p.state === "relapsed") this._relapsed();
+    } else if (msg.flow === "closure-request" && f?.started && (p.fault != null ? p.fault === f.signal : p.track == null || this._faultOf(p.track) != null)) {
+      // the dispatcher asks for other signallers' tracks too: only the closure for this station's failure is meant
+      // here (a request that names no fault: only one for the failed signal's own track)
+      this._teamArrived();
+    } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
+      const tr = this.trains.find((x) => x.id === p.hold);
+      if (!tr || tr.state === "gone") return;
+      // up to so many minutes beyond the train's own time
+      const until = Math.max(this.t, tr.dep ?? this.t) + (p.minutes ?? 3) * 60;
+      this.holds.set(tr.id, { for: p.for ?? null, until });
+      this.log(`${clockOf(this.t)} ${msg.flow === "dispatching-order" ? "The dispatcher orders" : "The undertaking's operations control asks"}: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
+    }
+    this._tidy();
+  }
+
+  /** The shift's account for those who steer and pay: delays, connections, the failure and its repair. */
+  finish() {
+    const rep = this.report(), cons = this.connections(), f = this.failure;
+    this.give("performance-report", {
+      scope: STATION.name, kind: "operations", trains: rep.length,
+      delay_min: Math.round(rep.reduce((a, r) => a + r.delay, 0) * 10) / 10, late: rep.filter((r) => r.delay >= 3).length,
+      connections: cons.length, connections_kept: cons.filter((c) => c.kept).length,
+      faults: f?.started ? 1 : 0, restore_min: f?.repaired != null ? Math.round((f.repaired - f.at) / 6) / 10 : null,
+      violations: this.violations.length, score: this.score().total, effects: this.effects(),
+    });
+  }
+
+  /**
+   * What the failed signal did to the trains, in words: who left on the substitute signal, who used another
+   * track, who did not get away, and what became of the connections of those trains.
+   * @returns {Array<{fault: string, text: string}>}
+   */
+  effects() {
+    const f = this.failure;
+    if (!f?.started) return [];
+    const track = STATION.sections[STATION.signals[f.signal].section].track, rep = new Map(this.report().map((r) => [r.id, r]));
+    const late = (tr) => (rep.get(tr.id).delay >= 1 ? `, ${Math.round(rep.get(tr.id).delay)} min late` : "");
+    const hit = new Set(), out = [];
+    for (const tr of this.trains) {
+      const seen = tr.arrived ?? tr.passed ?? tr.departed;
+      let text = null;
+      if (tr.zs1 === f.signal) text = `${tr.id} left ${track} on the substitute signal Zs 1${late(tr)}`;
+      else if (tr.plan === track && tr.track && tr.track !== track && seen != null && seen >= f.at) text = `${tr.id} ${tr.stops ? "stopped at" : "ran through"} ${tr.track} instead of ${track}${late(tr)}`;
+      else if (tr.plan === track && tr.state !== "gone" && tr.due >= f.at) text = `${tr.id} did not get away`;
+      if (!text) continue;
+      hit.add(tr.id);
+      out.push(text);
+    }
+    for (const c of this.connections()) if (c.kept != null && (hit.has(c.from) || hit.has(c.to))) out.push(`the connection from ${c.from} to ${c.to} was ${c.kept ? "kept" : "lost"}`);
+    if (!out.length) out.push("no train was planned through it while it was out of order");
+    return out.map((text) => ({ fault: f.signal, text }));
+  }
+
+  /** The right answer to a short question (a decision `quiz-…`), for computer players and tests. */
+  rightAnswer(decisionId) {
+    return QUESTIONS[decisionId.replace(/^quiz-/, "")]?.options.find((o) => o.correct)?.id ?? null;
+  }
+
   _quiz(id) {
     const q = QUESTIONS[id];
+    // the options in a drawn order: the right one is not always the first
+    const r = this.rng("quiz", id);
+    const options = q.options.map(({ id: o, label }) => ({ id: o, label, k: r.next() })).sort((a, b) => a.k - b.k).map(({ id: o, label }) => ({ id: o, label }));
     this.ask({
-      id: `quiz-${id}`, title: q.title, options: q.options.map(({ id: o, label }) => ({ id: o, label })),
+      id: `quiz-${id}`, title: q.title, options,
       then: (o) => {
         const ok = !!q.options.find((x) => x.id === o)?.correct;
         this.answers.set(id, ok);
@@ -745,6 +1037,135 @@ export class SignallerGame extends Game {
     return { ...res, stuck, passed: res.passed && !stuck.length };
   }
 
+  /** The game for a page that does not know it (the play page): the trains, the routes, the tracks, and the moves with their fields. */
+  view() {
+    const st = this.state(), rep = this.report(), f = st.failure;
+    const where = (tr) => (tr.state === "coming" ? (st.t >= tr.due - 240 ? "due" : "later") : tr.state === "gone" ? "gone" : tr.state === "dwelling" ? `at ${tr.track}` : tr.next ? `to ${tr.next}, ${tr.speed} km/h` : `${tr.speed} km/h`);
+    const can = STATION.routes.filter((r) => !this.blocked(r.id)).map((r) => ({ id: r.id, label: `${r.from} → ${r.to}` }));
+    const set = st.routes.filter((r) => !r.train).map((r) => ({ id: r.id, label: `${r.from} → ${r.to}` }));
+    const stopped = Object.keys(STATION.signals).filter((id) => st.signals[id].aspect === "stop" && !st.signals[id].zs1 && (st.signals[id].failed || st.trains.some((tr) => tr.next === id && tr.speed === 0)));
+    const tracks = Object.keys(TRACKS), closed = tracks.filter((t) => st.sections[TRACKS[t]].closed);
+    const plan = this.team.plan;
+    const team = { none: "", called: f?.relapses ? "failed again, no team yet" : "reported, no team yet", driving: "on its way", waiting: "waits for the track closure", working: plan?.until != null ? `at work on G2 until about ${clockOf(plan.until).slice(0, 5)}${plan.provisional ? " (provisionally)" : ""}` : "at work on G2", done: "has finished", left: "has left" }[st.team.state];
+    const late = rep.filter((r) => r.delay >= 1).length;
+    return {
+      sketch: this._sketch(st),
+      figures: [
+        { label: "Trains through", value: `${st.trains.filter((tr) => tr.state === "gone").length} of ${st.trains.length}` },
+        { label: "Late now", value: late, tone: late ? "warn" : "ok" },
+        { label: "Substitute signals", value: st.counters.zs1 },
+        ...(f?.started ? [{ label: `Signal ${f.signal}`, value: f.repaired != null ? (f.provisional ? "repaired provisionally" : "repaired") : `failed${team ? `; team ${team}` : ""}`, tone: f.repaired != null ? (f.provisional ? "warn" : "ok") : "bad" }] : []),
+      ],
+      tables: [
+        {
+          id: "trains", title: "Trains", columns: ["Train", "From – to", "Planned", "Due", "Where", "Late"],
+          rows: st.trains.map((tr) => {
+            const r = rep.find((x) => x.id === tr.id);
+            return [tr.id, tr.dir > 0 ? `${STATION.west} – ${STATION.east}` : `${STATION.east} – ${STATION.west}`, tr.track && tr.track !== tr.plan ? `${tr.plan} (${tr.track})` : tr.plan, `${tr.stops ? "dep" : "pass"} ${clockOf(tr.due).slice(0, 5)}`, where(tr), r.delay >= 1 ? `+${Math.round(r.delay)}` : "–"];
+          }),
+        },
+        { id: "routes", title: "Routes set", columns: ["Route", "State"], rows: st.routes.map((r) => [`${r.from} → ${r.to}`, r.train ? r.train : r.state === "locked" ? "locked" : "points moving"]), empty: "No route set." },
+        {
+          id: "tracks", title: "Tracks and wishes", columns: ["", "State"],
+          rows: [
+            ...tracks.map((t) => {
+              const sec = st.sections[TRACKS[t]];
+              return [`Track ${t}`, sec.closed ? "closed" : sec.occupied ? `occupied (${sec.occupied})` : sec.route ? "in a route" : "free"];
+            }),
+            ...st.holds.map((x) => [`Hold ${x.train}`, `${x.for ? `for ${x.for}, ` : ""}until ${clockOf(x.until).slice(0, 5)}`]),
+          ],
+        },
+      ],
+      actions: [
+        { name: "setRoute", label: "Set a route", primary: true, fields: [{ id: "route", label: "From → to", options: can }], disabled: can.length ? undefined : "No route can be set now." },
+        ...(set.length ? [{ name: "cancelRoute", label: "Cancel a route", fields: [{ id: "route", label: "Route", options: set }] }] : []),
+        ...(f?.started && f.reported == null ? [{ name: "reportFault", label: `Report the failure of ${f.signal}`, primary: true }] : []),
+        ...(stopped.length ? [{
+          name: "zs1", label: "Give the substitute signal Zs 1",
+          fields: [
+            { id: "signal", label: "Signal", options: stopped.map((id) => ({ id, label: id })) },
+            { id: "route", label: "Checked: the route from the signal is set and locked", type: "check" },
+            { id: "track", label: "Checked: the track ahead is clear up to the next main signal", type: "check" },
+            { id: "reason", label: "Reason, recorded with the counter reading", options: ZS1_REASONS },
+          ],
+        }] : []),
+        { name: "closeTrack", label: "Close a track", fields: [{ id: "track", label: "Track", options: tracks.filter((t) => !closed.includes(t)).map((t) => ({ id: t, label: t })) }] },
+        ...(closed.length ? [{ name: "openTrack", label: "Open a track", fields: [{ id: "track", label: "Track", options: closed.map((t) => ({ id: t, label: t })) }] }] : []),
+      ],
+    };
+  }
+
+  /**
+   * The panel as a sketch for a page that does not know the game: the sections in the colours of
+   * their state, the points' leg in use, the signals with their routes as a menu, the platform
+   * tracks to close and open, the trains at their heads.
+   */
+  _sketch(st) {
+    const X = (x) => 30 + x * 40, Y = (y) => y * 70 - 25;
+    const items = [
+      { kind: "box", x: X(9), y: Y(3) + 14, w: X(17) - X(9), h: 22, tone: "muted" },
+      { kind: "text", x: X(13), y: Y(3) + 30, text: "Platform 1", anchor: "middle", tone: "muted" },
+      { kind: "box", x: X(11.6), y: Y(1) + 15, w: X(16.4) - X(11.6), h: Y(2) - Y(1) - 30, tone: "muted" },
+      { kind: "text", x: X(14), y: (Y(1) + Y(2)) / 2 + 5, text: "Platform 2", anchor: "middle", tone: "muted" },
+      { kind: "text", x: X(0), y: Y(2) - 14, text: `← ${STATION.west}` },
+      { kind: "text", x: X(28), y: Y(2) - 14, text: `${STATION.east} →`, anchor: "end" },
+    ];
+    for (const [id, sec] of Object.entries(STATION.sections)) {
+      const now = st.sections[id], tone = now.occupied ? "occupied" : now.route ? "route" : now.closed ? "closed" : "free";
+      const point = Object.entries(STATION.points).find(([, p]) => p.section === id)?.[0];
+      sec.draw.forEach(([[x1, y1], [x2, y2]], i) => {
+        // of a point's two legs, the one not in use is faint
+        const faint = !!point && st.points[point].pos === (i === 0 ? "-" : "+");
+        items.push({ kind: "line", x1: X(x1), y1: Y(y1), x2: X(x2), y2: Y(y2), tone, faint });
+      });
+      if (sec.track) {
+        const [[x1, y1], [x2]] = sec.draw[0];
+        items.push({
+          id: `track-${sec.track}`, kind: "text", x: X((x1 + x2) / 2) + (sec.track === "G1" ? -120 : -70), y: Y(y1) - 10, text: sec.track,
+          title: `Track ${sec.track}: ${now.closed ? "closed" : now.occupied ? `occupied (${now.occupied})` : now.route ? "in a route" : "free"}`,
+          menu: [now.closed ? { label: `Open ${sec.track}`, name: "openTrack", args: [sec.track] } : { label: `Close ${sec.track}`, name: "closeTrack", args: [sec.track], disabled: now.occupied ? `${sec.track} is occupied.` : now.route ? `${sec.track} is in a route.` : undefined }],
+        });
+      }
+    }
+    for (const [id, p] of Object.entries(STATION.points)) {
+      const below = p.at[1] >= 3 || (p.at[1] === 2 && STATION.sections[p.section].draw[1][1][1] < 2);
+      items.push({ kind: "text", x: X(p.at[0]), y: Y(p.at[1]) + (below ? 24 : -12), text: id, anchor: "middle", tone: "muted", small: true });
+    }
+    for (const [id, sig] of Object.entries(STATION.signals)) {
+      const a = st.signals[id], x = X(sig.at[0]), y = Y(sig.at[1]), side = sig.dir > 0 ? 1 : -1;
+      const lx = x - sig.dir * 6, ly = y + side * 22;
+      const set = st.routes.find((r) => r.from === id);
+      items.push({ kind: "line", x1: lx, y1: y + side * 6, x2: lx, y2: ly - side * 7, tone: "muted", thin: true });
+      if (a.zs1) items.push({ kind: "dot", x: lx + 15, y: ly - 2, r: 4, tone: "zs1" });
+      items.push({
+        id: `signal-${id}`, kind: "dot", x: lx, y: ly, r: 7, tone: a.failed ? "failed" : a.aspect === "proceed" ? "ok" : "bad",
+        title: `Signal ${id}: ${a.failed ? "failed, " : ""}${a.aspect === "proceed" ? "proceed" : "stop"}${a.zs1 ? ", substitute signal lit" : ""}${a.route ? `, route to ${set?.to}` : ""}`,
+        menu: [
+          ...this.routesFrom(id).map((r) => ({ label: `Route to ${r.to}`, name: "setRoute", args: [r.id], disabled: r.blocked ?? undefined })),
+          ...(set && !set.train ? [{ label: `Cancel the route to ${set.to}`, name: "cancelRoute", args: [set.id] }] : []),
+        ],
+      });
+      items.push({ kind: "text", x: lx - sig.dir * 16, y: ly + 5, text: id, anchor: sig.dir > 0 ? "end" : "start" });
+    }
+    for (const tr of st.trains) {
+      if (!tr.head) continue;
+      const [[x1, y1], [x2, y2]] = STATION.sections[tr.head.section].draw[0];
+      const f = tr.dir > 0 ? tr.head.frac : 1 - tr.head.frac;
+      const late = st.t > tr.due + 60;
+      items.push({ kind: "tag", x: X(x1 + (x2 - x1) * f), y: Y(y1 + (y2 - y1) * f), text: `${tr.dir > 0 ? "" : "← "}${tr.id}${tr.dir > 0 ? " →" : ""}`, anchor: tr.dir > 0 ? "end" : "start", tone: late ? "warn" : "train" });
+    }
+    // the failure and where its repair stands, as the panel's note
+    const f = st.failure;
+    if (f?.started) {
+      const plan = this.team.plan, team = st.team.state;
+      const note = f.repaired != null ? (f.provisional ? "repaired provisionally: it may fail again" : "repaired")
+        : team === "none" ? "failed, not reported" : team === "called" ? (f.relapses ? "failed again: no team yet" : "failed: reported, no team yet") : team === "driving" ? "failed: the team is on its way"
+          : team === "waiting" ? "failed: the team waits for G2 to be closed" : plan?.until != null ? `the team repairs it${plan.provisional ? " provisionally" : ""} until about ${clockOf(plan.until).slice(0, 5)}` : "the team is at work";
+      items.push({ kind: "text", x: X(28), y: 24, text: `${f.signal}: ${note}`, anchor: "end", tone: f.repaired != null && !f.provisional ? "ok" : "warn" });
+    }
+    return { title: "The panel", width: 1180, height: 250, label: `Track diagram of ${STATION.name}: the line from ${STATION.west} on the left, the platform tracks G1, G2 and G3, the line to ${STATION.east} on the right`, items };
+  }
+
   /** Everything a page draws, as plain data. */
   state() {
     const occ = this.occupancy();
@@ -766,7 +1187,8 @@ export class SignallerGame extends Game {
         return { id: tr.id, kind: tr.kind, label: tr.label, dir: tr.dir, state: tr.state, plan: tr.plan, track: tr.track, speed: Math.round(tr.v * 3.6), at, head, due: tr.due, stops: tr.stops, note: tr.note ?? "", next: here ? this.nextSignal(tr) : null };
       }),
       team: { ...this.team },
-      failure: this.failure ? { signal: this.failure.signal, started: this.failure.started, reported: this.failure.reported, repaired: this.failure.repaired } : null,
+      holds: [...this.holds].map(([train, hold]) => ({ train, for: hold.for, until: hold.until })),
+      failure: this.failure ? { signal: this.failure.signal, started: this.failure.started, reported: this.failure.reported, repaired: this.failure.repaired, provisional: !!this.failure.provisional, relapses: this.failure.relapses ?? 0 } : null,
       counters: { zs1: this.value("zs1"), cancel: this.value("cancel") },
       decisions: this.open,
     };

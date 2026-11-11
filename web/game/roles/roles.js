@@ -1,8 +1,8 @@
 // The role catalogue page: the roles of roles.json as cards with their details (decisions, effects,
 // means, limits, risks, the ways in with their qualifications and experience, typical moves, measures,
-// rhythm, the roles they work with, the mini game), the families to filter by, and a search. The
-// career planner (../career/) takes a role from here as its aim.
-import { ROLE_SETTINGS, qualificationsOf, roleCounts } from "../../arail/game/index.js";
+// rhythm, the roles they work with, what they give to and take from other roles, the mini game), the
+// families to filter by, and a search. The career planner (../career/) takes a role from here as its aim.
+import { PARTIES, ROLE_SETTINGS, flowOf, qualificationsOf, roleCounts, takesOf } from "../../arail/game/index.js";
 import { $, h, mount } from "../../app/ui.js";
 
 const SETTING_LABELS = { operational: "operational", field: "in the field", office: "in the office", mixed: "mixed" };
@@ -15,6 +15,8 @@ class RolesPage {
     this.byId = new Map(cat.roles.map((r) => [r.id, r]));
     this.family = new Map(cat.families.map((f) => [f.id, f]));
     this.quals = qualificationsOf(cat);
+    /** What each role takes: the flows the others give it (since format 3 of the catalogue). */
+    this.takes = cat.roles.some((r) => r.gives?.length) ? takesOf(cat) : new Map();
     this.filters();
     this.render();
     // a role named in the address: open it
@@ -67,13 +69,14 @@ class RolesPage {
       h("h3", { id: `name-${r.id}` }, r.name),
       h("p", { class: "de", lang: "de" }, r.name_de),
       h("p", { class: "org" }, `${this.family.get(r.family)?.name ?? r.family} · ${r.organisation}`),
-      h("p", { class: "tags" }, h("span", { class: "tag" }, SETTING_LABELS[r.setting] ?? r.setting)),
-      h("p", { class: "hint" }, `Rhythm: ${r.timescale}`),
+      h("p", { class: "tags" }, h("span", { class: "tag" }, SETTING_LABELS[r.setting] ?? r.setting), r.party ? h("span", { class: "tag" }, PARTIES.find((p) => p.id === r.party)?.name ?? r.party) : null),
+      h("p", { class: "hint" }, `Rhythm: ${r.timescale}${r.scale ? ` (decides in ${r.scale}, with effects over ${r.horizon})` : ""}`),
       h("p", {}, r.summary),
       h("div", { class: "game" },
         h("strong", {}, `Mini game: ${g.title}`),
         h("span", { class: "hint" }, `${KIND_LABELS[g.kind] ?? g.kind} · effort ${g.effort}`),
-        g.page ? h("p", {}, h("a", { class: "btn small primary", href: `../${g.page}` }, "Play it")) : null),
+        g.page ? h("p", {}, h("a", { class: "btn small primary", href: `../${g.page}` }, "Play it")) : null,
+        g.first ? h("p", { class: "hint" }, g.first) : null),
       h("details", {},
         h("summary", {}, "Decisions, means, risks, career, the game"),
         h("dl", {},
@@ -89,9 +92,19 @@ class RolesPage {
           h("div", {}, h("dt", {}, "Often leads to"), h("dd", {}, links(r.career?.to))),
           h("div", {}, h("dt", {}, "Career chances and pay"), h("dd", {}, r.career?.chances)),
           h("div", {}, h("dt", {}, "Works with"), h("dd", {}, links(r.interacts))),
+          r.gives?.length ? h("div", {}, h("dt", {}, "Gives"), h("dd", {}, this.flows(r.gives.map((g) => ({ flow: g.flow, what: g.what, roles: g.to })), "to"))) : null,
+          this.takes.get(r.id)?.length ? h("div", {}, h("dt", {}, "Takes"), h("dd", {}, this.flows(this.takes.get(r.id).map((t) => ({ flow: t.flow, roles: t.from })), "from"))) : null,
           h("div", {}, h("dt", {}, "The game"), h("dd", {}, h("p", {}, g.loop), h("p", {}, h("strong", {}, "Success: "), g.win), h("p", {}, h("strong", {}, "Knowledge: "), g.knowledge), h("p", {}, h("strong", {}, "In the big game: "), g.bigGame), h("p", {}, h("strong", {}, "Builds on: "), (g.arail || []).join(", ")))),
         )),
     );
+  }
+
+  /** Flows of a role as a list: the flow's name (its German term as its title), what is handed over, and the roles it goes to or comes from. */
+  flows(items, word) {
+    return h("ul", { class: "flows" }, items.map((x) => {
+      const f = flowOf(x.flow);
+      return h("li", {}, h("strong", { title: f?.name_de ?? null }, f?.name ?? x.flow), x.what ? ` (${x.what})` : "", ` ${word} `, h("span", { class: "links" }, x.roles.map((id) => this.link(id))));
+    }));
   }
 
   /** A role's ways in: each route's qualifications and experience. */

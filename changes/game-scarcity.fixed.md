@@ -1,0 +1,1 @@
+- The signaller's game (and the lab seat) took every closure request of the maintenance dispatcher as the one for its own failed signal, also those for other stations' tracks; now only the request for its own failure counts.
