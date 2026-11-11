@@ -246,8 +246,11 @@ and for the heads of the other pages of the games:
 
 - **The picture fills the screen.** One picture stands behind everything: the place where the
   mission plays, where the seat you play works, or what a question is about. Text never stands on
-  the picture itself but in small boxes of the board's dark blue at its edges, so it stays readable
-  whatever the picture shows; **H** takes the boxes away and leaves the picture.
+  the bare picture: it is in small boxes of the board's dark blue at its edges, and while a mission
+  is played in a band across the bottom of the screen, as a visual novel has it, which lets the
+  picture through a little (the board's colour at 86 %, so the text stays readable whatever the
+  picture shows). The page's bar stays on every screen; **H** takes the rest away and leaves the
+  picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
   the lab, the terminal, the station forecourt, the town, the town at night), and every mission

@@ -107,7 +107,7 @@ main[data-screen] .play-layout {
 
 /* ------------------------------------------------------------------ 2: playing: a stage, not a dashboard */
 body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display: grid; }
-#play:not([hidden]) { display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 10px clamp(10px, 2vw, 22px) 12px; min-height: calc(100vh - 62px); }
+#play:not([hidden]) { --pad: clamp(10px, 2vw, 22px); display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 10px var(--pad) 0; min-height: calc(100vh - 62px); }
 
 /* the bar of the session: chips on the picture */
 .play-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
@@ -148,7 +148,7 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 #panels { display: grid; min-height: 0; grid-row: 2; }
 .play-seat:not([hidden]) { display: grid; }
 .play-seat p:empty:not([role="status"]), .play-seat ul:empty, .play-seat dl:empty, .play-keyed:empty, .play-moves-note:empty, .play-plain:empty { display: none; }
-.vn-stage { display: grid; grid-template-rows: auto minmax(60px, 1fr) auto auto; gap: 10px; color: var(--board-text); }
+.vn-stage { display: grid; grid-template-rows: auto minmax(60px, 1fr) auto; gap: 10px; color: var(--board-text); }
 .vn-top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: start; justify-content: space-between; }
 .vn-where { background: var(--board); border-left: 3px solid var(--overlay-ok); border-radius: 3px; padding: 4px 12px 5px; font-size: .88rem; line-height: 1.3; }
 .place-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
@@ -208,16 +208,22 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
 
 
-/* who speaks, and what they ask: the lower part of the stage */
-.vn-talk { grid-row: 3; display: grid; grid-template-columns: clamp(92px, 15vw, 200px) minmax(0, 1fr); align-items: end; max-width: 1080px; }
-.vn-talk.telling { grid-template-columns: minmax(0, 1fr); }
+/* who speaks, and what they ask: a band across the bottom of the screen, from edge to edge, as a visual
+   novel has it. It lets the picture through a little: the board's colour at 86 %, which keeps the text's
+   contrast above 4.5:1 whatever the picture shows. The speaker stands at its left, taller than the band. */
+.vn-talk { grid-row: 3; position: relative; margin-inline: calc(-1 * var(--pad)); --face: clamp(96px, 15vw, 200px); }
+.vn-speaker { position: absolute; left: max(var(--pad), 12px); bottom: 0; width: var(--face); margin: 0; z-index: 1; pointer-events: none; }
 .vn-talk.telling .vn-speaker { display: none; }
-.vn-speaker { margin: 0 -22px -4px 0; position: relative; z-index: 1; }
 .vn-speaker img { display: block; width: 100%; height: auto; filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--board) 80%, transparent)); animation: vn-breathe 5s ease-in-out infinite alternate; transform-origin: 50% 100%; }
 .vn-speaker.self { opacity: .8; }
 @keyframes vn-breathe { from { transform: scale(1); } to { transform: scale(1.015); } }
-.vn-box { background: var(--board); border: 1px solid var(--board-line); border-top: 3px solid var(--overlay-ok); border-radius: 6px; padding: 12px 18px 12px 36px; display: grid; gap: 8px; align-content: start; }
-.vn-talk.telling .vn-box { padding-left: 18px; }
+.vn-box {
+  background: color-mix(in srgb, var(--board) 86%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  border-top: 3px solid var(--overlay-ok); display: grid; gap: 8px; align-content: start; min-height: clamp(150px, 24vh, 240px);
+  padding: 12px max(var(--pad), 20px) 16px calc(max(var(--pad), 12px) + var(--face) + 18px);
+}
+.vn-talk.telling .vn-box { padding-left: max(var(--pad), 20px); }
+.vn-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
 .vn-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .vn-name strong { font-size: 1.05rem; font-weight: 800; }
 .vn-name span { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
@@ -258,9 +264,9 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .vn-ticker.k-violation { color: var(--board-warn); }
 .vn-ticker.bump { animation: vn-tick 1.2s ease-out; }
 @keyframes vn-tick { 0% { color: var(--board-text); } }
-.vn-tools { grid-row: 4; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.vn-tools .btn { font-size: .84rem; }
-.vn-tools .btn.primary { font-size: 1rem; font-weight: 800; padding: 9px 22px; margin-right: auto; }
+.vn-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-left: auto; }
+.vn-tools .btn { font-size: .8rem; padding: 3px 10px; }
+.vn-tools .btn.primary { font-size: .95rem; font-weight: 800; padding: 6px 18px; }
 @keyframes vn-say { from { opacity: 0; transform: translateY(6px); } }
 /* a decision with a deadline: its time runs out as a bar */
 .vn-countdown { height: 6px; border-radius: 3px; background: var(--board-2); overflow: hidden; max-width: 420px; }
@@ -268,12 +274,12 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .vn-countdown.low i { background: var(--board-warn); }
 /* little time left: the box says so */
 .vn-box:has(.vn-countdown.low) { border-top-color: var(--board-warn); animation: vn-hurry .8s ease-in-out infinite alternate; }
-@keyframes vn-hurry { to { box-shadow: 0 0 0 3px var(--board-warn); } }
+@keyframes vn-hurry { to { box-shadow: inset 0 5px 0 var(--board-warn); } }
 @media (prefers-reduced-motion: reduce) { .vn-box:has(.vn-countdown.low) { animation: none; } }
 @media (max-width: 640px) {
-  .vn-talk { grid-template-columns: minmax(0, 1fr); }
-  .vn-speaker { width: 84px; margin: 0 0 -14px 10px; }
-  .vn-box { padding: 20px 14px 12px; }
+  .vn-talk { --face: 78px; }
+  .vn-speaker { bottom: calc(100% - 12px); }
+  .vn-box { padding: 16px 14px 14px; min-height: 0; }
   .vn-gauges { width: 100%; justify-content: flex-start; }
   .vn-gauges > div { flex: 1 1 42%; min-width: 0; padding: 3px 8px 2px; }
   .vn-gauges dd { font-size: .95rem; }

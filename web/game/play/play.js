@@ -927,9 +927,9 @@ class PlayPage {
 
   /**
    * The fixed parts of a seat's panel; `seat` draws into them. The stage, over the picture: where
-   * the role works, the gauges, the game's picture if it has one, who speaks with what they ask and
-   * its choices, or what happened line by line, a railway term explained, the newest message, the
-   * tools. The desk, a dialog opened from the stage: the role, the moves as forms, the tables, the
+   * the role works, the gauges, the game's picture if it has one, and the talk, a band across the
+   * bottom: who speaks with what they ask and its choices, or what happened line by line, a railway
+   * term explained, the newest message, and the tools. The desk, a dialog opened from the stage: the role, the moves as forms, the tables, the
    * score and the messages.
    */
   panel(seat) {
@@ -957,7 +957,9 @@ class PlayPage {
       /** The gauges' values as shown last, and until when one that changed shows it. */
       gauged: new Map(),
     };
-    p.talk = h("div", { class: "vn-talk" }, p.speaker, h("div", { class: "vn-box" }, p.name, p.story, p.decisionsTitle, p.decisions, p.decisionsNote, p.term, p.ticker));
+    // the talk: a band across the bottom of the screen, as a visual novel has it; the speaker stands at its left
+    p.talk = h("div", { class: "vn-talk" }, p.speaker,
+      h("div", { class: "vn-box" }, h("div", { class: "vn-box-head" }, p.name, p.tools), p.story, p.decisionsTitle, p.decisions, p.decisionsNote, p.term, p.ticker));
     p.desk = h("dialog", { class: "play-dialog play-desk", "aria-labelledby": `desk-${seat.id}` },
       h("div", { class: "play-dialog-head" }, p.deskTitle, h("button", { class: "btn small", type: "button", onclick: () => p.desk.close() }, "Close")),
       p.head,
@@ -971,8 +973,7 @@ class PlayPage {
           h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)),
           p.gauges),
         p.sketch,
-        p.talk,
-        p.tools),
+        p.talk),
       p.desk);
     return p;
   }
