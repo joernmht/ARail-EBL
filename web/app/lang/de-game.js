@@ -36,6 +36,10 @@ export const GAME_DE = {
   "The container terminal and the line to Pirna": "Das Containerterminal und die Strecke nach Pirna",
   "Bf Neustadt, as the camera sees it": "Bf Neustadt, wie die Kamera ihn sieht",
   "The town at night": "Die Stadt bei Nacht",
+  "Bf Neustadt at night, in the flyover": "Bf Neustadt bei Nacht, im Überflug",
+  "The crane, the train and the barge at the container terminal": "Kran, Zug und Binnenschiff am Containerterminal",
+  "A tram in Bahnhofstraße": "Eine Straßenbahn in der Bahnhofstraße",
+  "The level crossing at night": "Der Bahnübergang bei Nacht",
   // ------------------------------------------------------------ the game page's bar (web/game/index.html)
   "Menu": "Menü",
   "The game's main menu": "Das Hauptmenü des Spiels",

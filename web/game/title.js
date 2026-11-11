@@ -17,6 +17,10 @@ export const SLIDES = [
   { src: "../media/ebl-terminal.jpg", caption: "The container terminal and the line to Pirna" },
   { src: "../media/ebl-neustadt.jpg", caption: "Bf Neustadt, as the camera sees it" },
   { src: "../assets/town-night.jpg", caption: "The town at night" },
+  { src: "places/night-platform-fly.jpg", caption: "Bf Neustadt at night, in the flyover" },
+  { src: "places/terminal-fly.jpg", caption: "The crane, the train and the barge at the container terminal" },
+  { src: "places/tram-fly.jpg", caption: "A tram in Bahnhofstraße" },
+  { src: "places/night-crossing-fly.jpg", caption: "The level crossing at night" },
 ];
 
 /** How long a photo stays (ms) before the next one fades in; the drift lasts a little longer. */
