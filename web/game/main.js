@@ -105,8 +105,13 @@ const FREE_PLAY = [
 
 /** The app's shell, made only when it starts (not behind the title screen); the bar's Menu keeps the address's language. */
 function start() {
+  // made when it is followed: the language may have changed in the shell meanwhile (it rewrites ?lang=)
   const menu = document.querySelector("#bar .menu-link");
-  if (menu) menu.href = withLang("?", location).replace(/^\?$/, "./");
+  const menuHref = () => withLang("?", location).replace(/^\?$/, "./");
+  if (menu) {
+    menu.href = menuHref();
+    menu.addEventListener("click", () => (menu.href = menuHref()));
+  }
   rememberShell(); // Continue on the title screen comes back here
   new App(PAGE).init();
 }

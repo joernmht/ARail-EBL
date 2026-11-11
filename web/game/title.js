@@ -116,7 +116,8 @@ export class TitleScreen {
     this.translateStatic();
     document.documentElement.classList.add("titled");
     this.root.hidden = false;
-    this.root.addEventListener("keydown", this.keys);
+    // the menu's keys work wherever the focus is while the title is open (a click on the photo leaves it on the page)
+    document.addEventListener("keydown", this.keys);
     this.render();
     this.setMotion(this.motion);
     this.reduced.addEventListener?.("change", this.follow);
@@ -131,7 +132,7 @@ export class TitleScreen {
     this.reduced.removeEventListener?.("change", this.follow);
     document.removeEventListener("visibilitychange", this.follow);
     document.removeEventListener("fullscreenchange", this.fullscreen);
-    this.root.removeEventListener("keydown", this.keys);
+    document.removeEventListener("keydown", this.keys);
     clearInterval(this.timer);
     this.timer = null;
     this.root.hidden = true;
@@ -348,9 +349,9 @@ export class TitleScreen {
     const move = { ArrowDown: 1, ArrowUp: -1, Home: "first", End: "last" }[e.key];
     if (move != null) {
       e.preventDefault();
-      const i = move === "first" ? 0 : move === "last" ? items.length - 1 : at < 0 ? 0 : (at + move + items.length) % items.length;
+      const i = move === "first" ? 0 : move === "last" ? items.length - 1 : at < 0 ? (move > 0 ? 0 : items.length - 1) : (at + move + items.length) % items.length;
       items[i]?.focus();
-    } else if ((e.key === "Escape" || e.key === "Backspace") && this.view !== "main") {
+    } else if (e.key === "Escape" && this.view !== "main") {
       e.preventDefault();
       this.go("main");
     } else if (e.key === "ArrowRight" && document.activeElement?.classList.contains("more")) {

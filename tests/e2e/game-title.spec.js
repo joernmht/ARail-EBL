@@ -35,6 +35,14 @@ test("the game page opens with its title screen: the photos full screen and the 
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
+  // with the focus off the menu (a click on the photo), the keys still move the cursor
+  await page.mouse.click(vp.width - 40, vp.height / 2);
+  await expect(page.locator(".title-item:focus")).toHaveCount(0);
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
+  await page.mouse.click(vp.width - 40, vp.height / 2);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
   // the app's shell is not started behind it
   expect(await page.evaluate(() => window.__arail)).toBeUndefined();
   expect(errors).toEqual([]);
@@ -108,9 +116,11 @@ test("an address given only a #case leaves the title for the app's shell, and th
   // its photos do not start again behind the app (a tab switch, the system's motion setting)
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   expect(await page.evaluate(() => window.__title.timer)).toBeNull();
-  // the arrows are the app's again
+  // the arrows are the app's again: the title's handler is not called any more
+  await page.evaluate(() => (window.__title.onKey = () => (window.__titleKeyed = true)));
   await page.keyboard.press("ArrowDown");
-  expect(await page.evaluate(() => document.activeElement?.closest?.("#title"))).toBeNull();
+  await page.keyboard.press("Escape");
+  expect(await page.evaluate(() => window.__titleKeyed ?? false)).toBe(false);
   expect(errors).toEqual([]);
 });
 
@@ -147,6 +157,18 @@ test("a ?lang= of the address goes along into the games and back to the title", 
   await page.goto("/game/?layout=../layouts/ebl-lab.json&lang=de#overview");
   await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
   await expect(page.locator("#bar .menu-link")).toHaveAttribute("href", "?lang=de");
+  // the language changed in the shell (as Settings → View does): Menu follows it
+  await page.evaluate(() => {
+    const url = new URL(location.href);
+    url.searchParams.set("lang", "en");
+    history.replaceState(history.state, "", url);
+  });
+  await page.locator("#bar .menu-link").click();
+  await page.waitForSelector(".title-item");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  expect(new URL(page.url()).search).toBe("?lang=en");
+  await page.goto("/game/?layout=../layouts/ebl-lab.json&lang=de#overview");
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
   await page.locator("#bar .menu-link").click();
   await page.waitForSelector(".title-item");
   // the shell was played last: Continue first, in German
