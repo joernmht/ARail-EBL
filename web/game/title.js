@@ -25,6 +25,17 @@ export const SLIDE_MS = 9000;
 /** What the browser keeps: the game played last (Continue) and whether the background moves. */
 const LAST = "arail.game.continue", MOTION = "arail.game.motion";
 
+/** What the app's shell on this page remembers (App.key): its last layout and the case shown. */
+const SHELL_LAYOUT = "arail.game.lastLayout", SHELL_CASE = "arail.game.case";
+
+/**
+ * The app's shell was played last (started by Free play, a link or an address): Continue goes back
+ * to where it was left, its layout and case as the shell remembers them.
+ */
+export function rememberShell() {
+  store.set(LAST, { shell: true });
+}
+
 /**
  * A link to this page with a layout or a case (?layout=…#case), with the address's language
  * (?lang=, e.g. for a projector) carried along; other links as they are.
@@ -62,7 +73,7 @@ const store = {
 };
 
 /**
- * @typedef {{label: string, sub?: string, href?: string, go?: string, act?: () => void, pressed?: boolean, lang?: string, keep?: boolean}} MenuItem
+ * @typedef {{id?: string, label: string, sub?: string, href?: string, go?: string, act?: () => void, pressed?: boolean, lang?: string, keep?: boolean}} MenuItem
  * href: a page to open; go: a submenu; act: an option (pressed: whether it is on; lang: a language's
  * name, in that language). keep: not remembered as the game played last.
  */
@@ -95,6 +106,8 @@ export class TitleScreen {
     /** What the motion follows while the title is open (removed when it closes). */
     this.follow = () => this.setMotion(this.motion);
     this.keys = (e) => this.onKey(e);
+    // full screen left with Esc or F11 (the browser's): Options shows it
+    this.fullscreen = () => this.view === "options" && this.redraw();
   }
 
   /** Show it: the menu, the photos moving (unless motion is off), the keys. */
@@ -108,6 +121,7 @@ export class TitleScreen {
     this.setMotion(this.motion);
     this.reduced.addEventListener?.("change", this.follow);
     document.addEventListener("visibilitychange", this.follow);
+    document.addEventListener("fullscreenchange", this.fullscreen);
     // the menu's first item takes the focus, as a game's menu has its cursor on it
     this.focusFirst();
   }
@@ -116,6 +130,7 @@ export class TitleScreen {
   close() {
     this.reduced.removeEventListener?.("change", this.follow);
     document.removeEventListener("visibilitychange", this.follow);
+    document.removeEventListener("fullscreenchange", this.fullscreen);
     this.root.removeEventListener("keydown", this.keys);
     clearInterval(this.timer);
     this.timer = null;
@@ -191,9 +206,8 @@ export class TitleScreen {
         { label: "Back", go: "main" },
       ].filter(Boolean);
     }
-    const last = store.get(LAST, null);
     return [
-      last?.href ? { label: "Continue", sub: last.label, href: last.href, keep: true } : null,
+      this.continued(),
       { label: "Missions", sub: "The big game: several roles, one railway, in turns and shifts", href: "play/" },
       { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
       { label: "Free play", sub: "The lab's layout: assets, operations, the terminal, journeys", go: "free" },
@@ -202,6 +216,22 @@ export class TitleScreen {
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
     ].filter(Boolean);
+  }
+
+  /**
+   * Continue: the page opened last from here, or, when the app's shell was played last, the shell
+   * where it was left: its last layout and case (its modules are kept with the layout), else nothing.
+   * @returns {MenuItem | null}
+   */
+  continued() {
+    const last = store.get(LAST, null);
+    if (last?.href) return { label: "Continue", sub: last.label, href: last.href, keep: true };
+    const layout = last?.shell ? store.get(SHELL_LAYOUT, null) : null;
+    if (typeof layout !== "string" || !layout) return null;
+    const id = store.get(SHELL_CASE, null);
+    const known = this.freePlay.find((it) => it.id === id);
+    const hash = typeof id === "string" && id ? id : "overview";
+    return { label: "Continue", sub: known ? `Free play · ${known.label}` : "Free play", href: `?${new URLSearchParams({ layout })}#${hash}`, keep: true };
   }
 
   /** The heading of the menu shown. */
@@ -241,6 +271,13 @@ export class TitleScreen {
     this.caption();
   }
 
+  /** Draw the menu again, the cursor kept on its item. */
+  redraw() {
+    const at = this.root.contains(document.activeElement) ? document.activeElement.querySelector(".title-label")?.textContent : null;
+    this.render();
+    if (at) [...this.root.querySelectorAll(".title-item")].find((el) => el.querySelector(".title-label")?.textContent === at)?.focus({ preventScroll: true });
+  }
+
   /** Open a submenu (or the main menu again), with the focus on its first item, or on the item that led there. */
   go(view) {
     const from = this.view;
@@ -267,8 +304,9 @@ export class TitleScreen {
   /** The game opened from the menu, for Continue next time. */
   remember(it) {
     if (it.keep) return;
-    const label = this.view === "main" ? it.label : `${this.heading()} · ${it.label}`;
-    store.set(LAST, { href: it.href, label });
+    // a case of Free play opens the app's shell, which remembers where it is left
+    if (this.view === "free") rememberShell();
+    else store.set(LAST, { href: it.href, label: it.label });
   }
 
   setLanguage(lang) {
@@ -299,8 +337,7 @@ export class TitleScreen {
     } catch {
       /* refused: nothing changes */
     }
-    this.render();
-    this.focusLabel("Full screen");
+    this.redraw();
   }
 
   /** The keys of a game's menu: the arrows move, Enter chooses (the item's own), Escape goes back. */

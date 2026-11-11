@@ -11,7 +11,7 @@ import { BuildCase, Case, DisruptionsCase, SandboxCase, TerminalCase } from "../
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
-import { TitleScreen, withLang } from "./title.js";
+import { TitleScreen, rememberShell, withLang } from "./title.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
 
@@ -101,12 +101,13 @@ const FREE_PLAY = [
   [OperationsGame, `?layout=${LAB}&layers=operations`],
   [TerminalGame, "?layout=../layouts/container-terminal.json"],
   [JourneysGame, `?layout=${LAB}&layers=journeys`],
-].map(([C, query]) => ({ label: C.label, sub: C.description, href: `${query}#${C.id}` }));
+].map(([C, query]) => ({ id: C.id, label: C.label, sub: C.description, href: `${query}#${C.id}` }));
 
 /** The app's shell, made only when it starts (not behind the title screen); the bar's Menu keeps the address's language. */
 function start() {
   const menu = document.querySelector("#bar .menu-link");
   if (menu) menu.href = withLang("?", location).replace(/^\?$/, "./");
+  rememberShell(); // Continue on the title screen comes back here
   new App(PAGE).init();
 }
 
@@ -120,6 +121,10 @@ if (TitleScreen.wanted()) {
     removeEventListener("hashchange", enter);
     title.close();
     start();
+    // Back to the bare address: the title screen again, as a reload of it would show
+    addEventListener("hashchange", () => {
+      if (TitleScreen.wanted()) location.reload();
+    });
   };
   addEventListener("hashchange", enter);
 } else start();

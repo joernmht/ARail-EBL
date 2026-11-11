@@ -290,9 +290,9 @@ export const PAGES = [
       {
         name: "TitleScreen", file: "web/game/title.js", kind: "class", role: "The title screen: the photos drifting from one to the next, the main menu and its submenus, the options.",
         attributes: ["view: string — the menu shown: main, free or options", "slide: number — the photo shown", "imgs: object[] — the photos' elements by index, null for one that failed", "freePlay: object[] — the cases on the lab's layout, with their links"],
-        operations: ["static wanted(loc) — no layout, example, photo or case asked for", "open()", "close() — for the app's shell; its listeners removed", "setMotion(on)", "next() — the next photo, loaded first; one that fails is left out", "items() — of the menu shown", "render()", "go(view) — a submenu, or the main menu again", "remember(it) — for Continue", "setLanguage(lang)", "toggleMotion()", "toggleFullscreen()", "onKey(e) — the arrows, Home, End, Escape"],
+        operations: ["static wanted(loc) — no layout, example, photo or case asked for", "open()", "close() — for the app's shell; its listeners removed", "setMotion(on)", "next() — the next photo, loaded first; one that fails is left out", "items() — of the menu shown", "continued() — Continue: the page opened last, or the shell where it was left", "render()", "redraw() — the cursor kept on its item", "go(view) — a submenu, or the main menu again", "remember(it) — for Continue", "setLanguage(lang)", "toggleMotion()", "toggleFullscreen()", "onKey(e) — the arrows, Home, End, Escape"],
       },
-      { name: "title", file: "web/game/title.js", kind: "module", role: "The photos of the title screen and how long each stays; links that keep the address's language.", attributes: ["SLIDES: object[]", "SLIDE_MS: number"], operations: ["withLang(href, loc) — a link with a layout or a case, with ?lang= carried along"] },
+      { name: "title", file: "web/game/title.js", kind: "module", role: "The photos of the title screen and how long each stays; links that keep the address's language.", attributes: ["SLIDES: object[]", "SLIDE_MS: number"], operations: ["withLang(href, loc) — a link with a layout or a case, with ?lang= carried along", "rememberShell() — the app's shell played last, for Continue"] },
       { name: "AssetsGame", file: "web/game/main.js", kind: "class", extends: "Case", role: "Infrastructure → Assets: the asset management game (#infra).", operations: ["makePanel()", "add()"] },
       { name: "OperationsGame", file: "web/game/main.js", kind: "class", extends: "Case", role: "Railway undertaking → Operations: the rail operations game (#ops).", operations: ["makePanel()", "add()"] },
       { name: "TerminalGame", file: "web/game/main.js", kind: "class", extends: "TerminalCase", role: "Railway undertaking → Terminal, with its visits (full)." },
@@ -313,7 +313,9 @@ export const PAGES = [
     rules: [
       "The game page keeps its last layout under arail.game.lastLayout; the layouts' edits and modules are shared with the app.",
       "The title screen is chosen before the page is drawn (a script in index.html), so neither the app's shell nor an empty screen flashes up; the app's shell (App, its world) is neither made nor started behind it.",
-      "Continue is the last page or case opened from the menu (arail.game.continue); the moving background is kept per device (arail.game.motion), its default still when the system asks for less motion.",
+      "Continue is what was played last (arail.game.continue): a page opened from the menu, or the app's shell, however it was started (Free play, a link, an address); then it opens the shell's last layout and case (arail.game.lastLayout, arail.game.case), whose modules are kept with the layout. The moving background is kept per device (arail.game.motion), its default still when the system asks for less motion.",
+      "Options shows full screen as it is, also when it is left with the browser's keys (fullscreenchange).",
+      "Back from a shell started by a #case to the bare address shows the title screen again (the page loads anew).",
       "The next photo is loaded before it fades in; one that cannot be loaded is left out. The photos move only while the title screen is open and the page is visible; closing it removes its listeners.",
       "A ?lang= of the address goes along with the links into the app's shell (Free play, Continue) and with the bar's Menu back to the title screen.",
     ],

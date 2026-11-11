@@ -61,7 +61,22 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   const cont = page.locator(".title-item").first();
   await expect(cont.locator(".title-label")).toHaveText("Continue");
   await expect(cont.locator(".title-sub")).toHaveText("Free play · Journeys");
-  await expect(cont).toHaveAttribute("href", "?layout=../layouts/ebl-lab.json&layers=journeys#journeys");
+  // where the shell was left: its layout and case (its modules are kept with the layout, not in the link)
+  await expect(cont).toHaveAttribute("href", "?layout=..%2Flayouts%2Febl-lab.json#journeys");
+  // another layout chosen in the shell: Continue follows it
+  await cont.click();
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await page.evaluate(() => window.__arail.openExample("neustadt"));
+  await page.waitForFunction(() => /ebl-neustadt\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
+  await page.goto("/game/");
+  await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-item").first()).toHaveAttribute("href", /^\?layout=..%2Flayouts%2Febl-neustadt\.json#/);
+  // a page opened from the menu is Continue then
+  await page.getByRole("link", { name: /Roles/ }).click();
+  await page.waitForURL(/\/game\/roles\//);
+  await page.goto("/game/");
+  await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-item").first()).toHaveAttribute("href", "roles/");
   expect(errors).toEqual([]);
 });
 
@@ -99,6 +114,31 @@ test("an address given only a #case leaves the title for the app's shell, and th
   expect(errors).toEqual([]);
 });
 
+test("Back from the shell to the bare address shows the title screen again", async ({ page }) => {
+  const errors = await open(page);
+  await page.evaluate(() => (location.hash = "overview"));
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await page.goBack();
+  await page.waitForSelector(".title-item");
+  await expect(page.locator("#title")).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("");
+  expect(errors).toEqual([]);
+});
+
+test("Options shows full screen as it is, also when it is left with the browser's key", async ({ page }) => {
+  const errors = await open(page);
+  test.skip(!(await page.evaluate(() => document.fullscreenEnabled)), "no full screen in this browser");
+  await page.getByRole("button", { name: /Options/ }).click();
+  await page.getByRole("button", { name: /Full screen/ }).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await expect(page.getByRole("button", { name: /Full screen/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Full screen/ })).toBeFocused();
+  // left without the menu (Esc, F11)
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(page.getByRole("button", { name: /Full screen/ })).toHaveAttribute("aria-pressed", "false");
+  expect(errors).toEqual([]);
+});
+
 test("a ?lang= of the address goes along into the games and back to the title", async ({ page }) => {
   const errors = await open(page, "/game/?lang=de");
   await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
@@ -109,7 +149,8 @@ test("a ?lang= of the address goes along into the games and back to the title", 
   await expect(page.locator("#bar .menu-link")).toHaveAttribute("href", "?lang=de");
   await page.locator("#bar .menu-link").click();
   await page.waitForSelector(".title-item");
-  await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  // the shell was played last: Continue first, in German
+  expect(await page.locator(".title-item .title-label").allTextContents()).toEqual(expect.arrayContaining(["Weiterspielen", "Missionen"]));
   expect(errors).toEqual([]);
 });
 
