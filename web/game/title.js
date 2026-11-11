@@ -118,6 +118,10 @@ export class TitleScreen {
     /** What the motion follows while the title is open (removed when it closes). */
     /** The item the cursor was on last (the focus), for Enter when the focus has left the menu. */
     this.cursor = null;
+    /** Closed for the app's shell: late loads and failures of photos do nothing more. */
+    this.closed = false;
+    this.track = (e) => e.target.closest?.(".title-item") && (this.cursor = e.target.closest(".title-item"));
+    this.hold = (e) => !e.target.closest("a, button") && e.preventDefault();
     this.follow = () => this.setMotion(this.motion);
     this.keys = (e) => this.onKey(e);
     // full screen left with Esc or F11 (the browser's): Options shows it
@@ -132,9 +136,9 @@ export class TitleScreen {
     this.root.hidden = false;
     // the menu's keys work wherever the focus is while the title is open (a click on the photo leaves it on the page)
     document.addEventListener("keydown", this.keys);
-    this.root.addEventListener("focusin", (e) => e.target.closest?.(".title-item") && (this.cursor = e.target.closest(".title-item")));
+    this.root.addEventListener("focusin", this.track);
     // a click on the photo keeps the cursor where it is (the focus stays in the menu)
-    this.root.addEventListener("mousedown", (e) => !e.target.closest("a, button") && e.preventDefault());
+    this.root.addEventListener("mousedown", this.hold);
     this.render();
     this.setMotion(this.motion);
     this.reduced.addEventListener?.("change", this.follow);
@@ -150,6 +154,9 @@ export class TitleScreen {
     document.removeEventListener("visibilitychange", this.follow);
     document.removeEventListener("fullscreenchange", this.fullscreen);
     document.removeEventListener("keydown", this.keys);
+    this.root.removeEventListener("focusin", this.track);
+    this.root.removeEventListener("mousedown", this.hold);
+    this.closed = true;
     clearInterval(this.timer);
     this.timer = null;
     this.root.hidden = true;
@@ -171,6 +178,7 @@ export class TitleScreen {
 
   /** The next photo: loaded first, then it fades in and drifts. */
   next() {
+    if (this.closed) return;
     // the next photo that has not failed to load (none left: the one shown stays)
     let i = this.slide;
     do i = (i + 1) % SLIDES.length;
@@ -184,6 +192,7 @@ export class TitleScreen {
     }
     if (img.dataset.waiting) return; // still loading since an earlier tick
     const show = () => {
+      if (this.closed) return;
       delete img.dataset.waiting;
       if (this.coming === i) this.coming = null;
       for (const s of this.imgs) s?.classList.remove("on", "last");
@@ -208,6 +217,7 @@ export class TitleScreen {
    */
   watch(img, i) {
     const failed = () => {
+      if (this.closed) return;
       this.imgs[i] = null;
       img.remove();
       // the one shown, the one about to be shown, or while the photos move: try the next one
@@ -384,8 +394,9 @@ export class TitleScreen {
       e.preventDefault();
       const i = move === "first" ? 0 : move === "last" ? items.length - 1 : at < 0 ? (move > 0 ? 0 : items.length - 1) : (at + move + items.length) % items.length;
       items[i]?.focus();
-    } else if (e.key === "Enter" && at < 0) {
-      // the cursor's item, or the first one, when the focus is elsewhere (on an item, the item's own Enter)
+    } else if (e.key === "Enter" && at < 0 && !document.activeElement?.closest?.("a, button, input, select, textarea, summary, [tabindex], [contenteditable]")) {
+      // the focus on nothing that takes Enter itself (the page, the photo): the cursor's item, or the first one;
+      // a link of the foot (Impressum, …) keeps its own Enter
       e.preventDefault();
       (this.cursor && this.root.contains(this.cursor) ? this.cursor : items[0])?.click();
     } else if (e.key === "Escape" && this.view !== "main") {

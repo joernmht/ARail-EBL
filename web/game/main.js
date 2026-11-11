@@ -110,7 +110,8 @@ function start() {
   const menuHref = () => withLang("?", location).replace(/^\?$/, "./");
   if (menu) {
     menu.href = menuHref();
-    menu.addEventListener("click", () => (menu.href = menuHref()));
+    // also for a middle click, a new tab from its context menu, the keyboard
+    for (const type of ["pointerdown", "click", "auxclick", "contextmenu", "focus", "mouseenter"]) menu.addEventListener(type, () => (menu.href = menuHref()));
   }
   rememberShell(); // Continue on the title screen comes back here
   new App(PAGE).init();

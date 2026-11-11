@@ -49,6 +49,12 @@ test("the game page opens with its title screen: the photos full screen and the 
   await page.keyboard.press("Enter");
   await expect(page.locator(".title-menu-head")).toHaveText("Options");
   await page.keyboard.press("Escape");
+  // a link of the foot keeps its own Enter
+  await page.locator(".title-foot a", { hasText: "Impressum" }).focus();
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/\/impressum\//);
+  await page.goBack();
+  await page.waitForSelector(".title-item");
   // the app's shell is not started behind it
   expect(await page.evaluate(() => window.__arail)).toBeUndefined();
   expect(errors).toEqual([]);
@@ -226,9 +232,13 @@ test("an address given only a #case leaves the title for the app's shell, and th
   await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
   await expect(page.locator("#title")).toBeHidden();
   await expect(page.locator("#stage")).toBeVisible();
-  // its photos do not start again behind the app (a tab switch, the system's motion setting)
+  // its photos do not start again behind the app (a tab switch, the system's motion setting, a late failure)
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   expect(await page.evaluate(() => window.__title.timer)).toBeNull();
+  const before = await page.locator(".title-slide").count();
+  await page.evaluate(() => window.__title.imgs[0]?.dispatchEvent(new Event("error")));
+  await page.evaluate(() => window.__title.next());
+  expect(await page.locator(".title-slide").count()).toBe(before);
   // the arrows are the app's again: the title's handler is not called any more
   await page.evaluate(() => (window.__title.onKey = () => (window.__titleKeyed = true)));
   await page.keyboard.press("ArrowDown");
@@ -270,12 +280,14 @@ test("a ?lang= of the address goes along into the games and back to the title", 
   await page.goto("/game/?layout=../layouts/ebl-lab.json&lang=de#overview");
   await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
   await expect(page.locator("#bar .menu-link")).toHaveAttribute("href", "?lang=de");
-  // the language changed in the shell (as Settings → View does): Menu follows it
+  // the language changed in the shell (as Settings → View does): Menu follows it, also before a click (a new tab)
   await page.evaluate(() => {
     const url = new URL(location.href);
     url.searchParams.set("lang", "en");
     history.replaceState(history.state, "", url);
   });
+  await page.locator("#bar .menu-link").hover();
+  await expect(page.locator("#bar .menu-link")).toHaveAttribute("href", "?lang=en");
   await page.locator("#bar .menu-link").click();
   await page.waitForSelector(".title-item");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
