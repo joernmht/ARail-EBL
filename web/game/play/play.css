@@ -366,3 +366,18 @@ main[data-screen="result"] .scene { display: none; }
 .vn-question .place-label { display: block; }
 /* the game's picture leaves the photo around it in view */
 .vn-stage .play-sketch { width: 100%; max-width: 960px; justify-self: center; }
+.vn-gauges > .bump { animation: vn-bump 1.2s ease-out; }
+@keyframes vn-bump { 0% { background: var(--overlay-ok); color: var(--board); transform: scale(1.08); } 100% { background: var(--board); transform: none; } }
+.vn-gauges > .bump dt { animation: vn-bump-label 1.2s ease-out; }
+@keyframes vn-bump-label { 0% { color: var(--board); } 100% { color: var(--board-muted); } }
+@media (prefers-reduced-motion: reduce) { .vn-gauges > .bump, .vn-gauges > .bump dt { animation: none; } }
+@media (max-width: 640px) {
+  .vn-gauges { width: 100%; }
+  .vn-gauges > div { flex: 1 1 42%; min-width: 0; padding: 3px 8px 2px; }
+  .vn-gauges dd { font-size: .95rem; }
+  .vn-tools .btn { flex: 1 1 auto; }
+}
+/* a decision with a deadline: its time runs out as a bar */
+.vn-countdown { height: 6px; border-radius: 3px; background: var(--board-2); overflow: hidden; max-width: 420px; }
+.vn-countdown i { display: block; height: 100%; background: var(--overlay-ok); transition: width .25s linear; }
+.vn-countdown.low i { background: var(--board-warn); }

@@ -23,7 +23,7 @@ const saveKey = (id) => `arail.play.${id}`;
 const SETTINGS_KEY = "arail.play.settings";
 const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 /** The messages and flows shown; the panels are drawn every DRAW_MS, the session saved every SAVE_MS, a refusal shown for REFUSED_MS. */
-const LOG_LINES = 40, FLOW_LINES = 60, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
+const LOG_LINES = 40, FLOW_LINES = 60, BUMP_MS = 1200, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
 
 /** The time of day (HH:MM:SS) of a shift that began at `start` ("08:00"), `t` seconds in. */
@@ -144,6 +144,8 @@ class PlayPage {
     this.focus = new Map();
     /** The decisions whose whole text is shown (their ids). */
     this.whole = new Set();
+    /** When a decision with a deadline was first shown (seat|id → the game's time), for its countdown. */
+    this.asked = new Map();
     this.speed = 1;
     this.lastSpeed = 1;
     /** The seat shown, the flow the list is filtered by, the phase the page has seen (index of the session's plan). */
@@ -513,6 +515,9 @@ class PlayPage {
     this.drafts.clear();
     this.refused.clear();
     this.picked.clear();
+    this.focus.clear();
+    this.whole.clear();
+    this.asked.clear();
     this.setSpeed(1);
     // what happens in the session is drawn with the next frame
     session.on(() => {
@@ -731,6 +736,8 @@ class PlayPage {
       tables: h("div", { class: "play-tables" }),
       score: h("div", { class: "play-score" }),
       log: h("div", {}),
+      /** The gauges' values as shown last, and until when one that changed shows it. */
+      gauged: new Map(),
     };
     p.desk = h("dialog", { class: "play-dialog play-desk", "aria-labelledby": `desk-${seat.id}` },
       h("div", { class: "play-dialog-head" }, p.deskTitle, h("button", { class: "btn small", type: "button", onclick: () => p.desk.close() }, "Close")),
@@ -774,8 +781,14 @@ class PlayPage {
     const view = this.view(g), de = this.roles.get(seat.role)?.name_de, name = this.seatName(seat.id);
     const state = !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over.";
 
-    morph(p.gauges, view.figures.map((f) => h("div", { class: ["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : "" },
-      h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null))));
+    // a gauge whose value has just changed shows it for a moment (BUMP_MS)
+    const now = performance.now();
+    morph(p.gauges, view.figures.map((f) => {
+      const value = `${typeof f.value === "number" ? num(f.value) : String(f.value ?? "–")}${f.unit ? ` ${f.unit}` : ""}`, was = p.gauged.get(f.label);
+      if (was && was.value !== value) was.until = now + BUMP_MS;
+      p.gauged.set(f.label, { value, until: was?.until ?? 0 });
+      return h("div", { class: `${["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : ""}${p.gauged.get(f.label).until > now ? " bump" : ""}` }, h("dt", {}, f.label), h("dd", {}, value));
+    }));
 
     p.sketch.hidden = !view.sketch;
     if (view.sketch) this.sketch(seat, p, view.sketch, can);
@@ -916,6 +929,9 @@ class PlayPage {
   decision(seat, d, can) {
     const shift = this.session.phase.kind === "shift", label = (id) => d.options.find((o) => o.id === id)?.label ?? "";
     const key = `${seat.id}|${d.id}`, whole = this.whole.has(key);
+    // how much of its time is left, from when it was first shown
+    if (shift && d.deadline != null && !this.asked.has(key)) this.asked.set(key, seat.game.t);
+    const t0 = this.asked.get(key), share = shift && d.deadline != null && d.deadline > t0 ? Math.max(0, Math.min(1, (d.deadline - seat.game.t) / (d.deadline - t0))) : null;
     let left = "";
     if (shift && d.deadline != null) left = `${Math.max(0, Math.ceil(d.deadline - seat.game.t))} s left${d.fallback ? `, then: ${label(d.fallback)}` : ""}`;
     else if (!shift) left = `If you skip it: ${label(d.fallback ?? d.options[0]?.id)}`;
@@ -923,6 +939,7 @@ class PlayPage {
       h("h5", {}, d.title),
       h("p", { class: "text" }, whole ? d.text ?? "" : lead(d.text), " ",
         hasMore(d.text) ? h("button", { class: "play-why", type: "button", "aria-expanded": String(whole), onclick: () => { this.whole[whole ? "delete" : "add"](key); this.draw(true); } }, whole ? "Less" : "More") : null),
+      share != null ? h("div", { class: `vn-countdown${share < 0.34 ? " low" : ""}`, "aria-hidden": "true" }, h("i", { style: { width: `${Math.round(share * 1000) / 10}%` } })) : null,
       h("p", { class: "hint" }, left),
       can ? h("div", { class: "row play-options-row" }, d.options.map((o) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) }, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null)))
         : h("ul", { class: "play-options" }, d.options.map((o) => h("li", {}, o.label))),

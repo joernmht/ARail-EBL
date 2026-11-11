@@ -252,14 +252,35 @@ A game's page is not a form with a manual on top. Three rules hold for every pag
   the terminal, the station forecourt, the town at night), and every mission names one. Its photo
   with its name is in the head of each page (the scene), on every mission's card, on every seat to
   choose and in every seat while a mission is played. The photos are close-ups in
-  `web/game/places/`: cut from the lab's photos, or taken in the flyover where everything in view
-  is virtual (trains, the town); the flyover blurs the table's photo when it comes close.
+  `web/game/places/`: cut from the lab's photos, or taken in the flyover with everything in view
+  virtual (trains, the town), drawn without the table's photo, which blurs when the camera comes close.
 - **It looks like a game.** Missions are numbered levels on the board's dark blue, chosen with
-  "Take a seat". Text stands on the board's colour beside a photo, never on it, so it stays
-  readable whatever the photo shows.
+  "Take a seat"; the mission chosen has the screen to itself: its seats as pictures to take, and
+  Play. Text stands on the board's colour beside a photo, never on it, so it stays readable
+  whatever the photo shows.
+- **Playing is a stage, not a dashboard.** The seat you play is a scene: the photo of its place
+  fills it, the game's figures are gauges on it (one that changes shows it for a moment), and the
+  game's picture, if it has one, is the control desk in the middle (the signaller's panel, the
+  dispatcher's district: what can be chosen in it is a button). At the bottom somebody speaks, as in
+  a visual novel: a portrait, a name, what they ask, and the choices as large buttons. One decision
+  at a time; the others wait as their titles. A phase begins with its name over the whole screen;
+  the seats are the cast, a face each.
+- **Somebody asks.** A decision is asked by the person its text names ("E. Kiebitz, the asset
+  responsible (ALV), proposes …"), else by the game's own counterpart (`GAME_CAST` in
+  `web/game/cast.js`: the train dispatcher on the line, the team leader, the coalition partner's
+  rapporteur). The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,
+  high-visibility vest, uniform, headset): put a picture there and name it in `PORTRAITS` to
+  replace one.
+- **The numbers are a pop-up.** The tables, the score, the messages and the moves as forms are a
+  seat's desk, a dialog opened from the stage; what the roles give each other is another; after the
+  session, the full report. The result itself is a verdict on the stage: the score, passed or not,
+  the cast with their scores, a question to take along.
+- **Short by rule.** A long text shows its lead, its first sentence (`lead` in
+  `web/game/short.js`, at most 22 words), and the rest behind More.
 
-A new game adds its place to `GAME_PLACES`, a new mission its `hook` and `place`;
-`tests/js/game-places.test.js` checks that none is missing and that every photo exists.
+A new game adds its place to `GAME_PLACES` and who asks in it to `GAME_CAST`, a new mission its
+`hook` and `place`; `tests/js/game-places.test.js` and `tests/js/game-cast.test.js` check that none
+is missing and that every picture exists.
 
 ## Where the games are
 

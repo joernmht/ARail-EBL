@@ -14,8 +14,9 @@
  */
 
 /**
- * The photos are close-ups in web/game/places/: cut from the lab's photos, or, where everything in
- * view is virtual (trains, town), taken in the flyover (their names end in -fly).
+ * The photos are close-ups in web/game/places/: cut from the lab's photos, or taken in the flyover
+ * with everything in view virtual (trains, town; drawn without the table's photo, which blurs up
+ * close): their names end in -fly.
  * @type {Place[]}
  */
 export const PLACES = [
