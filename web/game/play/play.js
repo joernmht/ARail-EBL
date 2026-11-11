@@ -6,7 +6,7 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, flowOf, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { PORTRAITS, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
@@ -160,6 +160,10 @@ class PlayPage {
     this.met = new Set();
     /** How many of a game's messages a person has read, in turns (by game). */
     this.read = new WeakMap();
+    /** The lines of the mission's story for the phase played (storyOf), the last of them answered, and the last said aloud. */
+    this.beats = [];
+    this.beatDone = -1;
+    this.beatSaid = -1;
     /** The railway term explained (its id), or null. */
     this.term = null;
     /** Only the picture is shown (H). */
@@ -635,6 +639,8 @@ class PlayPage {
     const mine = (seat) => seat.by === "human" && s.active.includes(seat);
     if (!mine(s.seat(this.tab))) this.tab = s.active.find(mine)?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
+    this.beats = storyOf(this.mission, ph.id, s.round);
+    this.beatDone = this.beatSaid = -1;
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
     this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
     this.sound.play("chapter");
@@ -912,11 +918,14 @@ class PlayPage {
 
     // one decision at a time: the one in focus in full, asked by its speaker; the others as their titles
     const open = g?.open ?? [];
-    const focus = line ? null : open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
-    const who = quote ? speakerOf(seat.Game.id, { who: { name: quote.name } }) : focus ? speakerOf(seat.Game.id, focus) : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? `${logs.length - at} to read` : name, portrait: null };
+    // what somebody says to the players (the mission's story): in a turn before the decisions, in a shift when nothing is asked
+    const beat = mine && active && !line && (turn || !open.length) ? this.beat(seat.id) : null;
+    const focus = line || beat ? null : open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
+    const who = quote ? speakerOf(seat.Game.id, { who: { name: quote.name } }) : beat ? speakerOf(seat.Game.id, { who: beat.who }) : focus ? speakerOf(seat.Game.id, focus)
+      : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? `${logs.length - at} to read` : name, portrait: null };
     const face = who.portrait ? PORTRAITS[who.portrait] ?? PORTRAITS.office : selfPortrait(seat.Game.id);
     p.talk.classList.toggle("telling", !!line && !quote);
-    p.speaker.classList.toggle("self", !focus && !quote);
+    p.speaker.classList.toggle("self", !focus && !quote && !beat);
     morph(p.speaker, h("img", { src: BASE + face.picture, alt: face.alt }));
     morph(p.name, h("strong", {}, who.name), who.role ? h("span", {}, who.role) : null);
 
@@ -928,16 +937,26 @@ class PlayPage {
         h("div", { class: "row" },
           h("button", { class: "btn primary", type: "button", onclick: () => this.readOn(seat.id, 1) }, left > 1 ? "Next" : open.length ? "To the decisions" : "Go on", h("kbd", { "aria-hidden": "true" }, "Space")),
           left > 2 ? h("button", { class: "btn", type: "button", onclick: () => this.readOn(seat.id, left) }, `Skip ${left - 1} more`) : null));
+    } else if (beat) {
+      if (this.beatSaid !== beat.index) {
+        this.beatSaid = beat.index;
+        this.say(`${who.name}: ${beat.say}`);
+        this.sound.play("next");
+      }
+      p.story.hidden = false;
+      morph(p.story,
+        h("p", { class: "vn-line" }, this.rich(beat.say, true)),
+        h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: () => this.heardBeat(seat.id, beat) }, "OK", h("kbd", { "aria-hidden": "true" }, "Space"))));
     } else mount(p.story);
 
-    p.decisionsTitle.textContent = line ? "" : open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : open.length ? "A decision" : "";
-    p.decisions.hidden = !!line;
+    p.decisionsTitle.textContent = line || beat ? "" : open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : open.length ? "A decision" : "";
+    p.decisions.hidden = !!line || !!beat;
     keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => {
       el.classList.toggle("waiting", d !== focus);
       morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", title: d.title, onclick: () => this.look(seat.id, d.id) }, d.title)]));
     });
-    const idle = !open.length && !line;
-    p.decisionsNote.textContent = line ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
+    const idle = !open.length && !line && !beat;
+    p.decisionsNote.textContent = line || beat ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
       : turn ? "Nothing left to decide here. End the turn when you are ready." : view.sketch ? "Nothing to decide just now. Watch the picture: choose something in it to act." : "Nothing to decide just now.");
 
     // a railway term asked for: what it is, in a line
@@ -963,7 +982,7 @@ class PlayPage {
       h("button", { class: "btn", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over"));
 
     // behind it all: the picture that fits what is read or asked, else the place where the role works
-    this.backdrop((line ? backdropFor(line.text) : focus ? backdropFor(focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)));
+    this.backdrop((line ? backdropFor(line.text) : beat ? null : focus ? backdropFor(focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)));
 
     // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
     p.deskTitle.textContent = seat.Game.title;
@@ -1027,6 +1046,34 @@ class PlayPage {
     this.term = this.term === id ? null : id;
     if (this.term) this.sound.play("term");
     this.draw(true);
+  }
+
+  /**
+   * The line of the mission's story that is said to a seat now, or null: in a turn the next one not
+   * answered yet, in a shift the latest one that is due and not answered.
+   */
+  beat(seatId) {
+    const s = this.session, list = this.beats;
+    if (s.phase.kind === "turn") {
+      const next = list[this.beatDone + 1];
+      return next && (!next.seats || next.seats.includes(seatId)) ? next : null;
+    }
+    let last = -1;
+    list.forEach((b, i) => {
+      if (b.at <= s.t && (!b.seats || b.seats.includes(seatId))) last = i;
+    });
+    return last > this.beatDone ? list[last] : null;
+  }
+
+  /** A line of the story was answered (OK): the stage goes on. */
+  heardBeat(seatId, beat) {
+    this.beatDone = Math.max(this.beatDone, this.beats.indexOf(beat));
+    this.term = null;
+    this.draw(true);
+    this.refocus(() => {
+      const p = this.panels.get(seatId);
+      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button") ?? p.tools.querySelector("button");
+    });
   }
 
   /** Read on in what happened at a seat: `n` lines further. */

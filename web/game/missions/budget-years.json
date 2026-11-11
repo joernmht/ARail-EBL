@@ -35,6 +35,21 @@
    ]
   }
  ],
+ "story": [
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Welcome to the district: 150 km of track. One thing I have learned out there: whatever you save on maintenance this year, I find again as faults next year."
+  }
+ ],
  "debrief": [
   "Which decision moved the condition grade most, and when did its effect show?",
   "Replacement money is lost when it is not spent in its year. What did that rule make you do?",

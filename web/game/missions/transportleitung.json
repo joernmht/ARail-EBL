@@ -28,6 +28,18 @@
    "clock": "08:00"
   }
  ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "who": {
+    "name": "A. Schwalbe",
+    "role": "Driver, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "Operations control? One thing before it gets busy: tell the passengers about every delay of three minutes or more. They forgive a late train. They do not forgive silence."
+  }
+ ],
  "debrief": [
   "Which train did you hold, and for whom? Who paid for it in minutes?",
   "What would the morning have cost by the built-in rule: never hold, cancel when in doubt?",

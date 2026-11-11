@@ -35,6 +35,21 @@
    ]
   }
  ],
+ "story": [
+  {
+   "phase": "budget",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Wiedehopf",
+    "role": "The coalition partner's rapporteur",
+    "portrait": "suit"
+   },
+   "say": "It is going to be a long night. Whatever we move, the total has to fit under the ceiling before we go home. And my group has a wish, as you will see."
+  }
+ ],
  "debrief": [
   "Which line could not spend its money, and how could you have known in the night session?",
   "Equity for DB is outside the debt brake. Who pays for it in the end?",

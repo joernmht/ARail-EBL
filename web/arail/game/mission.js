@@ -12,12 +12,18 @@
  *   "phases": [ { "id": "shift", "kind": "shift", "title": "A morning at Bf Neustadt", "roles": ["signaller-relay", "maintenance-dispatcher"], "length": 2400, "clock": "08:00" } ],
  *   "conditions": { "staff-plan": { "teams": 2 } },
  *   "injects": [ { "phase": "shift", "at": 600, "flow": "fault-report", "payload": { … } } ],
+ *   "story": [ { "phase": "shift", "at": 2, "who": { "name": "R. Dohle", "role": "Train dispatcher" }, "say": "…" } ],
  *   "debrief": [ "…?" ] }
  * ```
  *
  * The `hook` is the mission in one or two lines, at most HOOK_CHARS characters: what a card shows
  * of it (the `text` is its briefing, read when asked for). The `place` names where it is played, on
  * the layout (kebab-case; the page has the places with their photos). Both may be left out.
+ *
+ * The `story` is what people say to the players: lines at a moment of a phase (`at` seconds into a
+ * shift; in a turn, at its beginning, in their order), each by `who` says it (a name, a role, the
+ * kind of portrait; left out: whoever the page has for the seat's game), to the `seats` named or to
+ * everybody, in the `rounds` named or in all. It tells and teaches; it changes nothing in a game.
  *
  * A seat's `id` is its role unless given (two seats of one role need ids). A phase is a `turn` (the
  * slow roles decide, no clock) or a `shift` (the fast roles work at the same time for `length`
@@ -38,6 +44,9 @@ export const SHIFT_S = 2400;
 
 /** The most characters of a mission's hook: one or two lines of a card. */
 export const HOOK_CHARS = 110;
+
+/** The most characters of a line of a mission's story. */
+export const SAY_CHARS = 220;
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -64,6 +73,7 @@ export function normalizeMission(doc, games = null) {
   m.phases = m.phases.map((p) => ({ title: p.id, ...p, roles: p.roles ?? [], ...(p.kind === "shift" ? { length: p.length ?? SHIFT_S, tick: p.tick ?? TICK_S, clock: p.clock ?? "08:00" } : {}) }));
   m.conditions ??= {};
   m.injects ??= [];
+  m.story ??= [];
   m.debrief ??= [];
   return m;
 }
@@ -157,8 +167,33 @@ export function validateMission(doc, games) {
     if (inj.at != null && !(inj.at >= 0)) out.push(`${at}: at must be 0 s or more`);
     for (const id of inj.to ?? []) if (!seats.has(id) && !m.roles.some((r) => r.role === id)) out.push(`${at}: to names "${id}", which is not seated`);
   });
+  if (!Array.isArray(m.story)) out.push("story must be a list of lines");
+  else m.story.forEach((line, i) => {
+    const at = `story ${i + 1}`;
+    if (!ids.has(line?.phase)) out.push(`${at}: no phase "${line?.phase}"`);
+    if (typeof line?.say !== "string" || !line.say.trim() || line.say.length > SAY_CHARS) out.push(`${at}: say must be a line of at most ${SAY_CHARS} characters`);
+    if (line?.at != null && !(line.at >= 0)) out.push(`${at}: at must be 0 s or more`);
+    if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
+    if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
+    for (const id of line?.seats ?? []) if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
+  });
   if (!Array.isArray(m.debrief) || m.debrief.some((q) => typeof q !== "string")) out.push("debrief must be a list of questions");
   return out;
+}
+
+/**
+ * The lines of a mission's story for a phase of a round, in the order they are said (by `at`, then
+ * as written), each with its place in the story (`index`).
+ * @param {object} mission a mission with its defaults (normalizeMission)
+ * @param {string} phase a phase's id
+ * @param {number} round
+ * @returns {Array<{index: number, phase: string, at: number, say: string, who?: object, seats?: string[]}>}
+ */
+export function storyOf(mission, phase, round) {
+  return (mission.story ?? [])
+    .map((line, index) => ({ ...line, at: line.at ?? 0, index }))
+    .filter((line) => line.phase === phase && (!line.rounds || line.rounds.includes(round)))
+    .sort((a, b) => a.at - b.at || a.index - b.index);
 }
 
 /**

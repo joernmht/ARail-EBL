@@ -35,6 +35,21 @@
    ]
   }
  ],
+ "story": [
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "T. Lerche",
+    "role": "The operator's contract manager",
+    "portrait": "office"
+   },
+   "say": "We are short of drivers, I will not pretend otherwise. Every month you get our incident list. Be strict where it is our fault, and fair where it is not."
+  }
+ ],
  "debrief": [
   "Train-km cancelled for an infrastructure fault: paid or not, penalty or not, and why?",
   "Which objection did you accept, and what made it justified?",

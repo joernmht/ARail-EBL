@@ -8,12 +8,44 @@
  "mode": "cooperative",
  "seed": 1,
  "roles": [
-  { "role": "signaller-relay", "game": "signaller", "seat": "human", "level": "normal" },
-  { "role": "maintenance-dispatcher", "game": "maintenance", "seat": "computer", "level": "normal" }
+  {
+   "role": "signaller-relay",
+   "game": "signaller",
+   "seat": "human",
+   "level": "normal"
+  },
+  {
+   "role": "maintenance-dispatcher",
+   "game": "maintenance",
+   "seat": "computer",
+   "level": "normal"
+  }
  ],
  "rounds": 1,
  "phases": [
-  { "id": "shift", "kind": "shift", "title": "The morning shift", "roles": ["signaller-relay", "maintenance-dispatcher"], "length": 2400, "clock": "08:00" }
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The morning shift",
+   "roles": [
+    "signaller-relay",
+    "maintenance-dispatcher"
+   ],
+   "length": 2400,
+   "clock": "08:00"
+  }
+ ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "who": {
+    "name": "R. Dohle",
+    "role": "Train dispatcher, on the line",
+    "portrait": "headset"
+   },
+   "say": "Nine trains this morning, as every morning. One thing: exit signal N2 flickered yesterday. If it fails, report it at once and keep the trains moving another way."
+  }
  ],
  "debrief": [
   "How long did the trains of track G2 wait, from the failure to the repair? Which part of that time was the signaller's, which the maintenance dispatcher's?",

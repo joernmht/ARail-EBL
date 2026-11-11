@@ -276,7 +276,9 @@ and for the heads of the other pages of the games:
   text names ("E. Kiebitz, the asset responsible (ALV), proposes …"), else by the game's own
   counterpart (`GAME_CAST` in `web/game/cast.js`). In a turn, what happened is read line by line
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second
-  time." The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,
+  time." A mission can also tell a **story** as data (`story` in its JSON): lines somebody says at
+  a moment of a phase, as the train dispatcher who talks a beginner through *Your first shift*.
+  The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,
   high-visibility vest, uniform, headset): put a picture there and name it in `PORTRAITS` to
   replace one.
 - **A railway term can be tapped.** The terms of `web/game/glossary.js` (Zs 1, LuFV, the asset

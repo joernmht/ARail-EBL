@@ -28,6 +28,28 @@
    "clock": "08:00"
   }
  ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "who": {
+    "name": "M. Specht",
+    "role": "Team leader, signalling",
+    "portrait": "hivis"
+   },
+   "say": "Two teams on shift, mine for signalling and L. Kranich's for the track. A fault shows up in the district: tap it and send one of us. We only know what it is once we have looked."
+  },
+  {
+   "phase": "shift",
+   "at": 240,
+   "who": {
+    "name": "L. Kranich",
+    "role": "Team leader, track",
+    "portrait": "hivis"
+   },
+   "say": "Before anybody works in the track, the signaller has to close it. Ask for the closure first. I am not sending my people out otherwise."
+  }
+ ],
  "debrief": [
   "Which fault did you send a team to first, and why? What did the faults that waited cost?",
   "A team stood at the signal and the work was in track G2. Who may close a track, and what could have happened without the closure?",

@@ -296,6 +296,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
 | `text`, `debrief[]` | The briefing, and questions for the debrief |
+| `story[]` | What people say to the players: `phase`, `at` (s into a shift; in a turn the lines come at its beginning, in their order), `say` (a line of at most 220 characters, `SAY_CHARS`), `who` (`name`, `role`, `portrait`: who says it; left out, whoever the page has for the seat's game), `seats` (to whom; left out, to everybody), `rounds`. It tells and teaches, and changes nothing in a game; `storyOf(mission, phase, round)` gives a phase's lines |
 | `hook` | The mission in a line or two, at most 110 characters (`HOOK_CHARS`): what its card shows first. The `text` stays the briefing, opened when asked for |
 | `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game |
 

@@ -15,15 +15,49 @@
    "options": {
     "station": "IN",
     "stationName": "Neustadt",
-    "timetable": { "version": 5, "day": 1 },
-    "failure": { "signal": "ASig N2", "track": 2, "at": 780 }
+    "timetable": {
+     "version": 5,
+     "day": 1
+    },
+    "failure": {
+     "signal": "ASig N2",
+     "track": 2,
+     "at": 780
+    }
    }
   },
-  { "role": "maintenance-dispatcher", "game": "maintenance", "seat": "computer", "level": "training" }
+  {
+   "role": "maintenance-dispatcher",
+   "game": "maintenance",
+   "seat": "computer",
+   "level": "training"
+  }
  ],
  "rounds": 1,
  "phases": [
-  { "id": "shift", "kind": "shift", "title": "The morning shift", "roles": ["train-dispatcher", "maintenance-dispatcher"], "length": 2400, "clock": "08:00" }
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The morning shift",
+   "roles": [
+    "train-dispatcher",
+    "maintenance-dispatcher"
+   ],
+   "length": 2400,
+   "clock": "08:00"
+  }
+ ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "who": {
+    "name": "J. Reiher",
+    "role": "Signaller in the lab",
+    "portrait": "uniform"
+   },
+   "say": "This is the real lab on the line. What you close here is closed there, and a train you hold here stands there. At 08:13 one of our signals will fail."
+  }
  ],
  "debrief": [
   "Which trains were sent to another track while track 2 was closed, and what did that cost them?",
