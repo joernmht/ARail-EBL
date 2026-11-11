@@ -29,7 +29,8 @@ export const SEATS = ["human", "computer"];
 /** The sender of what the mission itself gives (conditions, injects). */
 export const MISSION = "mission";
 
-const FLOW_LOG = 4000;
+/** How many delivered flows the log keeps: beyond that the oldest tenth goes (the counts stay whole). */
+export const FLOW_LOG = 4000;
 
 /**
  * Whether a flow given by a game of role `from` reaches a seat: the receiving game takes it (from
@@ -87,6 +88,9 @@ export class Session {
     /** Flows on their way, and every flow delivered: `{n, phase, round, t, flow, from, seat, to, payload}`. */
     this.queue = [];
     this.flows = [];
+    /** How often each flow passed (whole, whatever the log keeps), and how many of the oldest lines the log has dropped. */
+    this.counts = {};
+    this.dropped = 0;
     this._n = 0;
     this._injected = new Set();
     /** The moves of people, for `replay`: `{phase, tick, seat, name, args}`. */
@@ -217,7 +221,8 @@ export class Session {
       }
       const line = { n: ++this._n, phase: this.index, round: this.round, t: this.t, flow: msg.flow, from: msg.from, seat: msg.seat, to, payload: msg.payload };
       this.flows.push(line);
-      if (this.flows.length > FLOW_LOG) this.flows.splice(0, FLOW_LOG / 10);
+      this.counts[line.flow] = (this.counts[line.flow] ?? 0) + 1;
+      if (this.flows.length > FLOW_LOG) this.dropped += this.flows.splice(0, FLOW_LOG / 10).length;
       this.emit("flow", line);
     }
   }
@@ -426,7 +431,9 @@ export class Session {
 
   /**
    * What led to what (chain.js): the story of each fault of the session's shifts, read from the
-   * flows: every stretch of its time out of order with whose it was, and what it did.
+   * flows: every stretch of its time out of order with whose it was, and what it did. It reads the
+   * log of the flows: where a very long session has dropped the oldest lines (`dropped`), the
+   * beginning of an early fault's story is missing.
    */
   threads() {
     const endOf = (i) => {
@@ -452,12 +459,11 @@ export class Session {
       };
     });
     const w = seats.reduce((a, s) => a + s.weight, 0) || 1;
-    const flows = {};
-    for (const f of this.flows) flows[f.flow] = (flows[f.flow] || 0) + 1;
     return {
       mission: this.mission.id, seed: this.seed, over: this.over, rounds: this.rounds,
       score: Math.round(seats.reduce((a, s) => a + s.weight * s.score, 0) / w),
-      passed: seats.every((s) => s.passed), seats, flows,
+      // the counts are whole; `dropped`: how many of the oldest flows the log (and so `threads`) no longer has
+      passed: seats.every((s) => s.passed), seats, flows: { ...this.counts }, dropped: this.dropped,
     };
   }
 

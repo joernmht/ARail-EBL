@@ -604,6 +604,43 @@ test("the shift's clock reaches the lab: a mission that begins at 09:00 runs the
   await s.leave();
 });
 
+test("a train is held in the lab or nowhere: when the lab is gone the holds end, and no new one is taken", async () => {
+  const lab = new SmallLab();
+  const g = new LabGame({ api: lab, length: 1200 });
+  await g.sync();
+  const ask = (payload) => g.receive({ flow: "connection-request", from: "ru-control-dispatcher", t: g.t, payload });
+  // one hold confirmed by the lab, one of the seat's own
+  ask({ hold: "4914", minutes: 3 });
+  await g.sync();
+  g.hold("4915", 5);
+  await g.sync();
+  assert.deepEqual([...g.holds.keys()], ["4914", "4915"]);
+  // the lab stops answering while another request is on its way
+  lab.commands = async () => {
+    throw new Error("connection refused");
+  };
+  ask({ hold: "26612", minutes: 4 });
+  assert.equal(g.holds.get("26612"), Infinity);
+  await g.sync();
+  assert.equal(g.link.state, "lost");
+  // nothing is listed as held, and nothing is offered to be let go
+  assert.equal(g.holds.size, 0);
+  assert.ok(g.logs.some((l) => /Without the lab no train is held: 4914, 4915, 26612 are no longer held here\./.test(l.text)));
+  assert.equal(g.view().actions.some((a) => a.name === "release"), false);
+  assert.deepEqual(g.view().tables.find((t) => t.id === "interventions").rows, []);
+  // a request that comes now is not kept for a lab that is gone: said at the seat
+  ask({ hold: "83716", for: "4915", minutes: 3 });
+  assert.equal(g.holds.size, 0);
+  assert.match(g.logs.at(-1).text, /A request to hold 83716 for 3 min was not followed: The lab does not answer: a train cannot be held\./);
+  assert.deepEqual(g.act("hold", "83716", 5), { ok: false, reason: "The lab does not answer: a train cannot be held." });
+  // nothing waits to be sent, so the end of the shift is not held up
+  g.step(1200);
+  assert.deepEqual([g.holding, !!g.over], [false, true]);
+  // without any lab, the same
+  const none = new LabGame({ length: 60 });
+  assert.equal(none.act("hold", "4914", 5).ok, false);
+});
+
 test("the API's refusal says what was wrong, and is told apart from a lab that does not answer", async () => {
   const answer = (status, body) => async () => ({ ok: false, status, json: async () => body });
   const refused = new EblApi({ url: "https://lab.example", key: "k", fetch: answer(422, { error: { code: "bad_commands", message: "the commands have errors; none was applied", details: [{ index: 0, error: "no train RB 32" }] } }) });

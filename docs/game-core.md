@@ -360,6 +360,10 @@ which failed again. `Session.threads()` (`chain.js`) reads this from the flows a
   `performance-report` may carry `effects` (`{fault, text}`): "RB 33 left G2 on the substitute
   signal Zs 1, 1 min late", "held or slowed about 2 trains".
 
+The chain reads the session's log of flows, which keeps the last 4,000 (the counts of the flows
+are kept apart and stay whole). None of the site's missions comes near that; in a session that
+does, the result says how many of the oldest flows the log no longer has.
+
 A game that wants its faults in the chain gives these flows with the fault's id; `since_s` on a
 thread's first step says how long the fault stood before it (from the failure to its report, from
 the report to the first team), and on the cause found how long the looking took. The play page

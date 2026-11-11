@@ -8,7 +8,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  FLOWS, GAMES, Game, MISSION_FORMAT, Player, SCALES, STRETCHES, Session, clockAt, flowOf, gameOfRole, normalizeMission, play, playedIn, testRun, threads, validateFlows, validateMission, wiring,
+  FLOWS, FLOW_LOG, GAMES, Game, MISSION_FORMAT, Player, SCALES, STRETCHES, Session, clockAt, flowOf, gameOfRole, normalizeMission, play, playedIn, testRun, threads, validateFlows, validateMission, wiring,
 } from "../../web/arail/game/index.js";
 import { ROOT } from "./helpers.js";
 
@@ -788,4 +788,35 @@ test("people who play at random, on every mission of the site: no move a page of
     }
   }
   assert.ok(played >= 18 && moves > 2000, `${played} sessions, ${moves} moves`);
+});
+
+test("a very long session: the log of the flows drops its oldest lines; the counts stay whole and the result says so", () => {
+  /** A role that gives a status every tick. */
+  class Chatty extends Game {
+    static id = "chatty";
+    static role = "maintenance-dispatcher";
+    static scale = "minutes";
+    static gives = [{ flow: "repair-status" }, { flow: "performance-report" }];
+
+    tick() {
+      this.give("repair-status", { n: this.t });
+    }
+
+    finish() {
+      this.give("performance-report", {});
+    }
+  }
+  const mine = new Map([[Chatty.id, Chatty]]);
+  const doc = { format: MISSION_FORMAT, id: "chatty", title: "Chatty", text: "A test.", roles: [{ role: "maintenance-dispatcher", game: "chatty" }], phases: [{ id: "shift", kind: "shift", roles: ["maintenance-dispatcher"], length: 2600, tick: 0.5 }] };
+  const s = new Session(normalizeMission(doc, mine), { games: mine }).run();
+  const res = s.result();
+  // 5200 ticks: every status counted, though the log has dropped its oldest
+  assert.deepEqual(res.flows, { "repair-status": 5200, "performance-report": 1 });
+  assert.ok(s.flows.length <= FLOW_LOG && res.dropped > 0);
+  assert.equal(s.flows.length + res.dropped, 5201);
+  assert.equal(s.flows.at(-1).n, 5201);
+  // a short session drops nothing
+  const short = session(BIG).run().result();
+  assert.equal(short.dropped, 0);
+  assert.ok(Object.values(short.flows).reduce((a, b) => a + b, 0) > 0);
 });

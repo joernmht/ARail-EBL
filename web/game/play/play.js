@@ -880,8 +880,7 @@ class PlayPage {
 
   /** What the roles give each other: how often each flow has passed, and the last flows (of one kind, if chosen), the newest first. */
   flows(force = false) {
-    const s = this.session, counts = new Map();
-    for (const f of s.flows) counts.set(f.flow, (counts.get(f.flow) ?? 0) + 1);
+    const s = this.session, counts = new Map(Object.entries(s.counts));
     const name = (id) => flowOf(id)?.name ?? id;
     morph($("#flowCounts"), [...counts].map(([id, n]) => h("li", {}, name(id), " ", h("span", { class: "tag" }, String(n)))));
     const sel = $("#flowFilter");
@@ -1059,7 +1058,8 @@ class PlayPage {
       this.chain(s.threads()),
       h("div", { class: "game-card" },
         h("h3", {}, "What the roles gave each other"),
-        flows.length ? h("ul", { class: "play-counts" }, flows.map(([id, n]) => h("li", {}, flowOf(id)?.name ?? id, " ", h("span", { class: "tag" }, String(n))))) : h("p", { class: "hint" }, "Nothing passed between the roles.")),
+        flows.length ? h("ul", { class: "play-counts" }, flows.map(([id, n]) => h("li", {}, flowOf(id)?.name ?? id, " ", h("span", { class: "tag" }, String(n))))) : h("p", { class: "hint" }, "Nothing passed between the roles."),
+        r.dropped ? h("p", { class: "hint", id: "flowsCut" }, `The session was long: the log of the flows no longer has its ${num(r.dropped)} oldest. The counts are whole; what led to what may miss the beginning of an early fault.`) : null),
       m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null);
     this.fit($("#result"));
   }

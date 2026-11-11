@@ -23,6 +23,8 @@ export const CHUNK_S = 10;
 const TRIES = 6;
 /** What the API answers when it refuses a request for what it says (an unknown train, a state that does not fit), as against not answering. */
 const REFUSED = [400, 409, 422];
+/** Why a train cannot be held when the lab is not there. */
+const NO_LAB = "The lab does not answer: a train cannot be held.";
 /** A delay is told to the undertakings from this many seconds on. */
 const NOTICE_S = 60;
 /** Lateness that counts nothing in the score (min), and the mean lateness at which nothing is left. */
@@ -278,6 +280,11 @@ export class LabGame extends Game {
         if (c.kind === "closeTrack" && this.asked.get(c.track) === "closing") this._closed(c.track);
         else if (c.kind === "openTrack" && this.asked.get(c.track) === "opening") this._opened(c.track);
       }
+      // a train is held in the lab or nowhere: the holds end with the link
+      if (this.holds.size) {
+        this.log(`${clockAt(this.t, this.start)} Without the lab no train is held: ${[...this.holds.keys()].join(", ")} ${this.holds.size === 1 ? "is" : "are"} no longer held here.`, "request");
+        this.holds.clear();
+      }
     } finally {
       this._busy = false;
     }
@@ -417,6 +424,7 @@ export class LabGame extends Game {
     const id = String(train ?? "").trim(), min = Number(minutes);
     if (!id) return { ok: false, reason: "Which train?" };
     if (!(min > 0 && min <= 30)) return { ok: false, reason: "Hold a train for 1 to 30 minutes." };
+    if (!this._lab) return { ok: false, reason: NO_LAB };
     // until the lab has said when: no end known
     this.holds.set(id, Infinity);
     this._out.push({ kind: "delay", train: id, station: this.station, seconds: Math.round(min * 60) });
@@ -432,6 +440,8 @@ export class LabGame extends Game {
     const id = String(train ?? "").trim(), min = Number(minutes);
     if (!id) return { ok: false, reason: "Which train?" };
     if (!(min > 0 && min <= 30)) return { ok: false, reason: "Hold a train for 1 to 30 minutes." };
+    // a train is held in the lab or nowhere
+    if (!this._lab) return { ok: false, reason: NO_LAB };
     const until = this.t + min * 60;
     this.holds.set(id, until);
     this._out.push({ kind: "hold", train: id, station: this.station, until: hms(this.start + until) });
