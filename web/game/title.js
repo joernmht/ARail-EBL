@@ -147,6 +147,12 @@ export class TitleScreen {
     this.root.addEventListener("mousedown", this.hold);
     this.render();
     this.setMotion(this.motion);
+    // the first photo (in the page) gets the same time to load as the others
+    const first = this.imgs[0];
+    if (first && !(first.complete && first.naturalWidth)) {
+      const stuck = setTimeout(() => this.imgs[0] === first && !first.naturalWidth && first.dispatchEvent(new Event("error")), this.stuckMs);
+      first.addEventListener("load", () => clearTimeout(stuck), { once: true });
+    }
     this.reduced.addEventListener?.("change", this.follow);
     document.addEventListener("visibilitychange", this.follow);
     // back from a page opened from the menu (the browser's back/forward cache keeps this page as it was): Continue anew
@@ -332,9 +338,14 @@ export class TitleScreen {
 
   /** Draw the menu again, the cursor kept on its item. */
   redraw() {
-    const at = this.root.contains(document.activeElement) ? document.activeElement.querySelector(".title-label")?.textContent : null;
+    const label = (el) => el?.querySelector(".title-label")?.textContent ?? null;
+    const at = this.root.contains(document.activeElement) ? label(document.activeElement) : null;
+    const cursor = label(this.cursor);
     this.render();
-    if (at) [...this.root.querySelectorAll(".title-item")].find((el) => el.querySelector(".title-label")?.textContent === at)?.focus({ preventScroll: true });
+    const items = [...this.root.querySelectorAll(".title-item")];
+    // the cursor stays on its item (drawn anew), also with the focus off the menu
+    this.cursor = items.find((el) => label(el) === cursor) ?? null;
+    if (at) items.find((el) => label(el) === at)?.focus({ preventScroll: true });
   }
 
   /** Open a submenu (or the main menu again), with the focus on its first item, or on the item that led there. */

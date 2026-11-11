@@ -134,6 +134,41 @@ test("back from a page opened from the menu (restored from the browser's cache),
   expect(errors).toEqual([]);
 });
 
+test.describe("the first photo takes too long, with the background still", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("it is left out and the second one shown", async ({ page }) => {
+    await page.route("**/assets/ebl-lab-ar.jpg", () => {}); // never answered
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "__title", {
+        configurable: true,
+        set(t) {
+          t.stuckMs = 300;
+          Object.defineProperty(window, "__title", { value: t, writable: true, configurable: true });
+        },
+      });
+    });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto("/game/", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".title-item");
+    await page.waitForFunction(() => window.__title.slide === 1, null, { timeout: 15_000 });
+    expect(await page.evaluate(() => window.__title.imgs[0])).toBeNull();
+    await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../media/ebl-container-train.jpg");
+    expect(errors).toEqual([]);
+  });
+});
+
+test("the cursor keeps its item when the menu is drawn anew with the focus off it", async ({ page }) => {
+  const errors = await open(page);
+  await page.getByRole("link", { name: /Roles/ }).focus();
+  await page.evaluate(() => document.activeElement.blur());
+  // drawn anew (as after Back from the browser's cache, or full screen left) while the focus is on the page
+  await page.evaluate(() => window.__title.redraw());
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("button", { name: /Options/ })).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
 test.describe("a photo that takes too long, with the background still", () => {
   test.use({ reducedMotion: "reduce" });
   test("it is left out, the next one shown, and when it arrives late it is not shown", async ({ page }) => {
