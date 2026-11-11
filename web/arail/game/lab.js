@@ -184,6 +184,8 @@ export class LabGame extends Game {
     /** Active holds (train → until, s into the shift) and closed station tracks. */
     this.holds = new Map();
     this.closed = new Set();
+    /** Station tracks whose closure or opening is asked of the lab and not answered yet: track → "closing" | "opening". */
+    this.asked = new Map();
     const f = options.failure ?? null;
     this.failure = f ? { ...f, started: false, reported: null, repaired: null } : null;
     /** The repair team, as its steps arrive: "none" | "called" | "driving" | "waiting" | "working" | "done" | "left". */
@@ -235,13 +237,20 @@ export class LabGame extends Game {
         try {
           res = await this.api.commands(this.instance, [c]);
         } catch (e) {
-          if (this._left || !REFUSED.includes(e.status)) throw e;
+          if (this._left || !REFUSED.includes(e.status)) {
+            // not a refusal: the lab is gone; what was on its way is the game's own to settle
+            this._out.unshift(c);
+            throw e;
+          }
           this._refused(c, e.message);
           continue;
         }
         if (this._left) return;
         this.add("commands", 1);
         const rec = (res?.applied ?? [])[0];
+        // a track: the game's state follows the lab's answer
+        if (c.kind === "closeTrack" && this.asked.get(c.track) === "closing") (rec?.ok === false ? this._refused(c, rec.error ?? "refused") : this._closed(c.track));
+        else if (c.kind === "openTrack" && this.asked.get(c.track) === "opening") (rec?.ok === false ? this._refused(c, rec.error ?? "refused") : this._opened(c.track));
         // a train asked to wait: the lab says until when (its departure and the minutes asked), or that it is later already
         if (c.kind === "delay" && this.holds.has(c.train)) {
           if (rec?.ok === false || rec?.note) this._refused(c, rec.error ?? rec.note);
@@ -264,6 +273,11 @@ export class LabGame extends Game {
       if (this._left) return;
       this.link = { state: "lost", error: e.message };
       this.log(`${clockAt(this.t, this.start)} The lab's simulation does not answer: ${e.message}`, "fault");
+      // the shift goes on without the lab: what was asked of it now counts by the game's own word
+      for (const c of this._out.splice(0)) {
+        if (c.kind === "closeTrack" && this.asked.get(c.track) === "closing") this._closed(c.track);
+        else if (c.kind === "openTrack" && this.asked.get(c.track) === "opening") this._opened(c.track);
+      }
     } finally {
       this._busy = false;
     }
@@ -277,7 +291,12 @@ export class LabGame extends Game {
   /** The lab did not take an intervention: said at the seat, and what the game kept of it is taken back. */
   _refused(c, why) {
     if ((c.kind === "hold" || c.kind === "delay") && this.holds.has(c.train)) this.holds.delete(c.train);
+    const track = c.kind === "closeTrack" || c.kind === "openTrack";
+    if (track) this.asked.delete(c.track);
     this.log(`${clockAt(this.t, this.start)} The lab did not take "${c.kind}"${c.train ? ` for ${c.train}` : c.track ? ` for track ${c.track}` : ""}: ${why}`, "request");
+    // the team still waits for its track: the question is asked again
+    if (c.kind === "closeTrack" && this.failure?.track === c.track && this.team.state === "waiting" && !this.open.some((d) => d.id === "closure")) this._askClosure();
+    if (track) this._tidy();
   }
 
   /**
@@ -337,29 +356,56 @@ export class LabGame extends Game {
    */
   closeTrack(track) {
     const n = Number(track);
-    if (!(n >= 1)) return { ok: false, reason: "There is no such track." };
+    if (!(Number.isInteger(n) && n >= 1)) return { ok: false, reason: "There is no such track." };
     if (this.closed.has(n)) return { ok: false, reason: `Track ${n} is already closed.` };
-    this.closed.add(n);
+    if (this.asked.has(n)) return { ok: false, reason: `Track ${n}: the lab has not answered yet.` };
+    if (!this._lab) return this._closed(n), { ok: true };
+    // the lab is the world: the track counts as closed, and the team goes onto it, only when the lab has closed it
+    this.asked.set(n, "closing");
     this._out.push({ kind: "closeTrack", station: this.station, track: n });
+    this.log(`${clockAt(this.t, this.start)} The lab is asked to close track ${n} of ${this.stationName}.`, "closure");
+    return { ok: true };
+  }
+
+  /** Open a closed station track again, in the lab first. With the repair team still on it, it is a danger to them. */
+  openTrack(track) {
+    const n = Number(track);
+    if (!this.closed.has(n)) return { ok: false, reason: `Track ${n} is not closed.` };
+    if (this.asked.has(n)) return { ok: false, reason: `Track ${n}: the lab has not answered yet.` };
+    // the rule is broken by the decision to open it under the team, whatever the lab answers
+    if (this.failure?.track === n && this.team.state === "working") this.violate("closure-workers", `${clockAt(this.t, this.start)} Track ${n} opened while the repair team works on it.`, 3);
+    if (!this._lab) return this._opened(n), { ok: true };
+    this.asked.set(n, "opening");
+    this._out.push({ kind: "openTrack", station: this.station, track: n });
+    this.log(`${clockAt(this.t, this.start)} The lab is asked to open track ${n} of ${this.stationName}.`, "closure");
+    return { ok: true };
+  }
+
+  /** Whether the lab is there to answer: without it the game's own word counts. */
+  get _lab() {
+    return !!this.api && !this._left && this.link.state !== "lost";
+  }
+
+  /** A station track is closed (the lab has closed it, or there is no lab): told to the other roles; a team that waited for it goes onto it. */
+  _closed(n) {
+    this.asked.delete(n);
+    this.closed.add(n);
     this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: true, fault: this._faultOf(n) });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} closed.`, "closure");
     if (this.failure?.track === n && this.team.state === "waiting") this.team.state = "working";
     this._tidy();
-    return { ok: true };
   }
 
-  /** Open a closed station track again. With the repair team still on it, it is a danger to them. */
-  openTrack(track) {
-    const n = Number(track);
-    if (!this.closed.has(n)) return { ok: false, reason: `Track ${n} is not closed.` };
-    if (this.failure?.track === n && this.team.state === "working") this.violate("closure-workers", `${clockAt(this.t, this.start)} Track ${n} opened while the repair team works on it.`, 3);
+  /** A station track is open again (the lab has opened it, or there is no lab). */
+  _opened(n) {
+    this.asked.delete(n);
+    // whose closure it was, before the team is said to have left
+    const fault = this._faultOf(n);
     this.closed.delete(n);
-    this._out.push({ kind: "openTrack", station: this.station, track: n });
-    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: false, fault: this._faultOf(n) });
+    this.give("track-closure", { place: this.stationName, track: this.trackName(n), closed: false, fault });
     this.log(`${clockAt(this.t, this.start)} Track ${n} of ${this.stationName} open.`, "closure");
     if (this.failure?.track === n && this.team.state === "done") this.team.state = "left";
     this._tidy();
-    return { ok: true };
   }
 
   /**
@@ -429,7 +475,14 @@ export class LabGame extends Game {
     if (["waiting", "working", "done", "left"].includes(this.team.state)) return;
     this.team.state = this.closed.has(f.track) ? "working" : "waiting";
     this.log(`${clockAt(this.t, this.start)} The repair team is at ${f.signal} and asks for track ${f.track} to be closed.`, "fault");
-    if (this.closed.has(f.track)) return;
+    // closed already, or asked of the lab already: nothing to ask
+    if (this.closed.has(f.track) || this.asked.has(f.track)) return;
+    this._askClosure();
+  }
+
+  /** The question to the seat: close the track for the team that waits? */
+  _askClosure() {
+    const f = this.failure;
     this.ask({
       id: "closure", title: `The repair team asks for track ${f.track} of ${this.stationName} to be closed.`,
       text: "Closed in the lab, no route is set into it; a train already on its way in still arrives.",
@@ -451,10 +504,11 @@ export class LabGame extends Game {
     if (team !== "done" || !closed) this.withdraw("reopen");
   }
 
-  /** The failed signal whose track this is, or null: a track closed for another reason is not the failure's closure. */
+  /** The failed signal whose track this is while its repair is not over, or null: a track closed for another reason is not the failure's closure. */
   _faultOf(n) {
     const f = this.failure;
-    return f?.started && Number(f.track) === Number(n) ? f.signal : null;
+    // once the team has left (repaired, the track opened again), a closure of the track is for another reason
+    return f?.started && Number(f.track) === Number(n) && this.team.state !== "left" ? f.signal : null;
   }
 
   /** A provisional repair did not hold: the signal fails again in the lab; the maintenance dispatcher knows. */
@@ -557,12 +611,12 @@ export class LabGame extends Game {
       ],
       tables: [
         { id: "trains", title: `Trains at ${this.stationName}`, columns: ["Train", "Last", "Planned", "Actual", "Late"], empty: "No train yet.", rows: rows.map((r) => [r.train, r.last, r.planned, r.actual, r.delay_s >= 60 ? `+${Math.round(r.delay_s / 60)}` : "–"]) },
-        { id: "interventions", title: "Interventions", columns: ["", "State"], empty: "None.", rows: [...[...this.closed].map((n) => [`Track ${n}`, "closed"]), ...[...this.holds].map(([id, until]) => [`Hold ${id}`, Number.isFinite(until) ? `until ${clockAt(until, this.start)}` : "beyond its departure, as asked"])] },
+        { id: "interventions", title: "Interventions", columns: ["", "State"], empty: "None.", rows: [...[...this.closed].map((n) => [`Track ${n}`, this.asked.get(n) === "opening" ? "closed; the lab is asked to open it" : "closed"]), ...[...this.asked].filter(([, what]) => what === "closing").map(([n]) => [`Track ${n}`, "the lab is asked to close it"]), ...[...this.holds].map(([id, until]) => [`Hold ${id}`, Number.isFinite(until) ? `until ${clockAt(until, this.start)}` : "beyond its departure, as asked"])] },
       ],
       actions: [
         ...(f?.started && f.reported == null ? [{ name: "reportFault", label: `Report the failure of ${f.signal}`, primary: true }] : []),
-        { name: "closeTrack", label: "Close a station track", fields: [{ id: "track", label: "Track", options: tracks.filter((n) => !this.closed.has(n)).map((n) => ({ id: String(n), label: String(n) })) }] },
-        ...(this.closed.size ? [{ name: "openTrack", label: "Open a station track", fields: [{ id: "track", label: "Track", options: [...this.closed].map((n) => ({ id: String(n), label: String(n) })) }] }] : []),
+        { name: "closeTrack", label: "Close a station track", fields: [{ id: "track", label: "Track", options: tracks.filter((n) => !this.closed.has(n) && !this.asked.has(n)).map((n) => ({ id: String(n), label: String(n) })) }] },
+        ...([...this.closed].some((n) => !this.asked.has(n)) ? [{ name: "openTrack", label: "Open a station track", fields: [{ id: "track", label: "Track", options: [...this.closed].filter((n) => !this.asked.has(n)).map((n) => ({ id: String(n), label: String(n) })) }] }] : []),
         ...(known.length ? [{ name: "hold", label: "Hold a train", fields: [{ id: "train", label: "Train", options: known.map((id) => ({ id, label: id })) }, { id: "minutes", label: "For", type: "number", min: 1, max: 30, step: 1, value: 3, unit: "min" }] }] : []),
         ...(this.holds.size ? [{ name: "release", label: "Let a train go", fields: [{ id: "train", label: "Train", options: [...this.holds.keys()].map((id) => ({ id, label: id })) }] }] : []),
       ],

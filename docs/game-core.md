@@ -410,7 +410,7 @@ the other roles' games need not know whether ARail's small station or the lab is
 | --- | --- |
 | `connection-request` | `delay`: the train waits at the station up to the minutes asked beyond its own departure |
 | the move *Hold a train* | `hold` the train at the station until a time, from now |
-| `closure-request`, granted at the seat | `closeTrack`: no route is set into the track; trains due there are sent to another |
+| `closure-request`, granted at the seat | `closeTrack`: no route is set into the track; trains due there are sent to another. The track counts as closed, the other roles are told and the team goes onto it only when the lab has answered; a refusal is said at the seat and the question asked again |
 | `repair-status` done | `repairSignal`; then `openTrack` at the seat |
 
 A game whose world is elsewhere cannot answer within a tick. It has an asynchronous `sync()`: it

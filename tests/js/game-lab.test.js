@@ -47,7 +47,10 @@ class SmallLab {
     else if (c.kind === "release") this.holds.delete(c.train);
     else if (c.kind === "failSignal") this.failed.set(c.signal, sec(c.at));
     else if (c.kind === "repairSignal") this.failed.delete(c.signal);
-    else if (c.kind === "closeTrack") this.closed.add(c.track);
+    else if (c.kind === "closeTrack") {
+      if (this.busy?.has(c.track)) throw Object.assign(new Error(`the commands have errors; none was applied (track ${c.track} is occupied)`), { status: 409 });
+      this.closed.add(c.track);
+    }
     else if (c.kind === "openTrack") this.closed.delete(c.track);
   }
 
@@ -145,6 +148,12 @@ test("the player's moves become interventions; a held train leaves late and is t
   assert.match(g.act("release", "9999").reason, /not held/);
   assert.match(g.act("openTrack", 3).reason, /not closed/);
   assert.deepEqual(g.act("closeTrack", "3"), { ok: true });
+  // asked of the lab: until it has answered, the track is neither closed nor to be asked for again
+  assert.match(g.act("closeTrack", 3).reason, /the lab has not answered yet/);
+  assert.match(g.act("closeTrack", 2.5).reason, /no such track/);
+  assert.deepEqual([g.closed.has(3), g.asked.get(3)], [false, "closing"]);
+  await g.sync();
+  assert.deepEqual([g.closed.has(3), g.asked.size], [true, 0]);
   assert.match(g.act("closeTrack", 3).reason, /already closed/);
   // a connection asked for by an undertaking: the train waits beyond its own departure (the lab's "delay")
   g.receive({ flow: "connection-request", from: "ru-control-dispatcher", t: 0, payload: { hold: "26611", for: "4914", minutes: 8 } });
@@ -175,7 +184,8 @@ test("in a session with the maintenance dispatcher: the lab's failure sends the 
   const g = s.seat("train-dispatcher").game, mt = s.seat("maintenance-dispatcher").game;
   assert.equal(mt.fault("ASig N2").remote, true);
   const steps = s.flows.filter((f) => f.payload.fault === "ASig N2" || f.payload.track === "IN 2").map((f) => `${f.flow}${f.payload.state ? `:${f.payload.state}` : f.payload.closed != null ? `:${f.payload.closed}` : ""}`);
-  assert.deepEqual(steps, ["fault-report", "repair-status:dispatched", "repair-status:arrived", "track-closure:true", "closure-request", "repair-status:diagnosed", "repair-status:working", "repair-status:done", "track-closure:false"]);
+  // the track is closed for the others when the lab has closed it: after the team has asked
+  assert.deepEqual(steps, ["fault-report", "repair-status:dispatched", "repair-status:arrived", "closure-request", "track-closure:true", "repair-status:diagnosed", "repair-status:working", "repair-status:done", "track-closure:false"]);
   assert.deepEqual(lab.requests.filter((r) => r[0] === "command").map((r) => r[1]), ["failSignal", "closeTrack", "repairSignal", "openTrack"]);
   assert.equal(g.failure.repaired, mt.fault("ASig N2").done);
   assert.ok(lab.failed.size === 0 && lab.closed.size === 0);
@@ -365,8 +375,10 @@ test("questions whose occasion has passed are taken back: after a repair that di
   status("dispatched");
   status("arrived");
   assert.deepEqual([g.team.state, open()], ["waiting", ["closure"]]);
-  // closed by the move, not by the question
+  // closed by the move, not by the question: when the lab has closed it, the team goes onto it and the question is gone
   g.closeTrack(2);
+  assert.deepEqual([g.team.state, open()], ["waiting", ["closure"]]);
+  await g.sync();
   assert.deepEqual([g.team.state, open()], ["working", []]);
   status("working", { provisional: true });
   status("done", { provisional: true });
@@ -385,7 +397,68 @@ test("questions whose occasion has passed are taken back: after a repair that di
   status("done");
   assert.deepEqual(open(), ["reopen"]);
   g.openTrack(2);
+  await g.sync();
   assert.deepEqual([g.team.state, open()], ["left", []]);
+});
+
+test("a track counts as closed only when the lab has closed it: a refusal is said, the team keeps waiting, and the question comes again", async () => {
+  const lab = new SmallLab();
+  lab.busy = new Set([2]);
+  const g = new LabGame({ api: lab, failure: FAILURE, length: 2400, wired: ["repair-status"] });
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: g.t, payload: { fault: "ASig N2", state, ...more } });
+  const closures = () => g.outbox.filter((m) => m.flow === "track-closure").map((m) => [m.payload.track, m.payload.closed]);
+  while (g.t < 800) {
+    await g.sync();
+    if (!g.holding) g.step(0.5);
+  }
+  g.reportFault();
+  status("dispatched");
+  status("arrived");
+  // the person answers the question: the lab is asked; nothing is closed yet, nobody is told, the team waits
+  assert.equal(g.decide("closure", "close"), true);
+  assert.deepEqual([g.closed.size, g.asked.get(2), g.team.state, closures()], [0, "closing", "waiting", []]);
+  assert.match(g.view().tables.find((t) => t.id === "interventions").rows[0].join(": "), /^Track 2: the lab is asked to close it$/);
+  assert.equal(g.view().actions.find((a) => a.name === "closeTrack").fields[0].options.some((o) => o.id === "2"), false);
+  // the lab refuses (a train stands in the track): said at the seat, nothing closed, the question again
+  await g.sync();
+  assert.deepEqual([g.closed.size, g.asked.size, g.team.state, closures(), g.link.state], [0, 0, "waiting", [], "ok"]);
+  assert.ok(g.logs.some((l) => /The lab did not take "closeTrack" for track 2: .*track 2 is occupied/.test(l.text)));
+  assert.deepEqual(g.open.map((d) => d.id), ["closure"]);
+  // the dispatcher's team was never told the track is closed; nothing can be opened that was not closed
+  assert.match(g.openTrack(2).reason, /not closed/);
+  assert.deepEqual(g.violations, []);
+  // the track is free now: asked again, the lab closes it, the team goes onto it, the others are told
+  lab.busy.clear();
+  g.decide("closure", "close");
+  await g.sync();
+  assert.deepEqual([g.closed.has(2), g.team.state, closures(), g.open.length], [true, "working", [["IN 2", true]], 0]);
+  // opening: asked of the lab too; refused there, the track stays closed here
+  status("done");
+  const commands = lab.commands.bind(lab);
+  lab.commands = async (id, list) => {
+    if (list[0].kind === "openTrack") throw Object.assign(new Error("the commands have errors; none was applied (no closure of track 2)"), { status: 422 });
+    return commands(id, list);
+  };
+  g.openTrack(2);
+  assert.deepEqual([g.closed.has(2), g.asked.get(2), g.team.state], [true, "opening", "done"]);
+  assert.match(g.openTrack(2).reason, /has not answered yet/);
+  await g.sync();
+  assert.deepEqual([g.closed.has(2), g.asked.size, g.team.state, closures()], [true, 0, "done", [["IN 2", true]]]);
+  lab.commands = commands;
+  g.openTrack(2);
+  await g.sync();
+  assert.deepEqual([g.closed.has(2), g.team.state, closures()], [false, "left", [["IN 2", true], ["IN 2", false]]]);
+  assert.deepEqual(g.violations, []);
+  // a lab that is gone: what was asked of it counts by the game's own word
+  lab.commands = async () => {
+    throw Object.assign(new Error("no instance sim-1"), { status: 404 });
+  };
+  g.closeTrack(3);
+  await g.sync();
+  assert.deepEqual([g.link.state, g.closed.has(3), g.asked.size], ["lost", true, 0]);
+  // and without the lab, a track is closed at once
+  assert.deepEqual(g.closeTrack(1), { ok: true });
+  assert.equal(g.closed.has(1), true);
 });
 
 test("a track closure names the failure only on the failed signal's own track", async () => {
@@ -397,12 +470,29 @@ test("a track closure names the failure only on the failed signal's own track", 
   }
   assert.equal(g.failure.started, true);
   const closure = () => g.outbox.filter((m) => m.flow === "track-closure").at(-1).payload;
+  const status = (state, more = {}) => g.receive({ flow: "repair-status", from: "maintenance-dispatcher", t: g.t, payload: { fault: "ASig N2", state, ...more } });
   g.closeTrack(3);
+  await g.sync();
   assert.deepEqual([closure().closed, closure().fault], [true, null]);
   g.openTrack(3);
+  await g.sync();
   assert.deepEqual([closure().closed, closure().fault], [false, null]);
   g.closeTrack("2");
+  await g.sync();
   assert.deepEqual([closure().closed, closure().fault], [true, "ASig N2"]);
+  // the repair, and the track given back: that opening is still the failure's
+  g.reportFault();
+  status("dispatched");
+  status("arrived");
+  status("working");
+  status("done");
+  g.openTrack(2);
+  await g.sync();
+  assert.deepEqual([closure().closed, closure().fault, g.team.state], [false, "ASig N2", "left"]);
+  // closed again later, for another reason: not the failure's any more
+  g.closeTrack(2);
+  await g.sync();
+  assert.deepEqual([closure().closed, closure().fault], [true, null]);
 });
 
 test("a session with the lab cannot be played again from its record, and says so", async () => {

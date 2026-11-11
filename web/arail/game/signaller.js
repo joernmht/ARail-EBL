@@ -537,10 +537,13 @@ export class SignallerGame extends Game {
     return { ok: true };
   }
 
-  /** The failed signal whose track this is, or null: a track closed for another reason is not the failure's closure. */
+  /**
+   * The failed signal whose track this is while its repair is not over, or null: a track closed for another reason
+   * (another track, or this one once the team has left) is not the failure's closure.
+   */
   _faultOf(track) {
     const f = this.failure;
-    return f?.started && STATION.sections[STATION.signals[f.signal].section].track === track ? f.signal : null;
+    return f?.started && this.team.state !== "left" && STATION.sections[STATION.signals[f.signal].section].track === track ? f.signal : null;
   }
 
   /** Open a closed track again. With the repair team still on it, it is a danger to them. */
@@ -548,10 +551,12 @@ export class SignallerGame extends Game {
     const sec = TRACKS[track];
     if (!sec || !this.closed.has(sec)) return { ok: false, reason: `${track} is not closed.` };
     if (track === "G2" && this.team.state === "working") this.violate("closure-workers", `${clockOf(this.t)} Track G2 opened while the repair team works on it.`, 3);
+    // whose closure it was, before the team is said to have left
+    const fault = this._faultOf(track);
     this.closed.delete(sec);
     if (track === "G2" && this.team.state === "done") this.team.state = "left";
     this.log(`${clockOf(this.t)} Track ${track} open.`, "closure");
-    this.give("track-closure", { place: STATION.name, track, closed: false, fault: this._faultOf(track) });
+    this.give("track-closure", { place: STATION.name, track, closed: false, fault });
     this._tidy();
     return { ok: true };
   }

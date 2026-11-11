@@ -77,6 +77,8 @@ export function threads(flows, { endOf = null } = {}) {
     let th = by.get(key);
     // a closure of another track is not this fault's, whatever it is tagged with
     if (th && closure && th.track && p.track && p.track !== th.track) continue;
+    // nor one after the repair was done and the track opened again: it is closed for another reason
+    if (th && closure && th.released) continue;
     if (!th && closure) {
       // closed before the fault was reported or a team sent: the thread begins with that, the track as it is then
       if (line.flow === "track-closure") before.set(key, { track: p.track ?? null, closed: !!p.closed });
@@ -86,7 +88,7 @@ export function threads(flows, { endOf = null } = {}) {
       th = {
         fault: p.fault, asset: p.asset ?? String(p.fault), place: p.place ?? null, track: null, round: line.round, phase: line.phase, from: line.t - (p.since_s ?? 0), to: line.t,
         state: "open", relapses: 0, steps: [], stretches: [], out_s: 0, by: {}, effects: [],
-        roles: { reporter: null, dispatcher: null, signaller: null }, stage: null, closed: false, asked: false, known: false, provisional: false, now: null,
+        roles: { reporter: null, dispatcher: null, signaller: null }, stage: null, closed: false, asked: false, known: false, provisional: false, released: false, now: null,
       };
       by.set(key, th);
       const was = before.get(key);
@@ -104,13 +106,17 @@ export function threads(flows, { endOf = null } = {}) {
     }
     // the step: where the repair stands now, and the track
     if (kind === "closed") th.closed = true;
-    else if (kind === "opened") th.closed = false;
-    else if (kind === "asked") th.asked = !th.closed;
+    else if (kind === "opened") {
+      th.closed = false;
+      // repaired, and the track given back: what is closed from now on is not this fault's (until it fails again)
+      th.released = th.stage === "done";
+    } else if (kind === "asked") th.asked = !th.closed;
     else {
       th.stage = kind;
       if (kind === "arrived") th.asked = false;
       else if (kind === "diagnosed") th.known = true;
       else if (kind === "relapsed") th.relapses += 1;
+      if (kind !== "done") th.released = false;
       if (kind === "done") th.state = p.provisional ? "provisional" : "repaired";
       else if (kind === "relapsed") th.state = "open";
     }
@@ -141,7 +147,7 @@ export function threads(flows, { endOf = null } = {}) {
       const who = s.by ?? "others";
       th.by[who] = (th.by[who] ?? 0) + s.to - s.from;
     }
-    for (const k of ["stage", "closed", "asked", "known", "provisional", "now"]) delete th[k];
+    for (const k of ["stage", "closed", "asked", "known", "provisional", "released", "now"]) delete th[k];
   }
   // while a fault waited for a team: where the teams were
   const busy = list.flatMap((th) => engagements(th));

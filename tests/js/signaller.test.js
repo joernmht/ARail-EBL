@@ -341,6 +341,15 @@ test("a track closure names the failure only on the failed signal's own track", 
   assert.equal(closure().fault, null);
   while (!g.closed.has("g2")) run(g, 1, careful);
   assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: "N2" });
+  // the repair, and the track given back: that opening is still the failure's
+  while (g.team.state !== "left" && !g.over) run(g, 1, careful);
+  assert.deepEqual([closure(), g.failure.repaired != null], [{ place: "Bf Neustadt", track: "G2", closed: false, fault: "N2" }, true]);
+  // closed again later for another reason (and opened): not the failure's any more
+  while (!free("G2") && !g.over) run(g, 1, careful);
+  assert.deepEqual(g.closeTrack("G2"), { ok: true });
+  assert.deepEqual(closure(), { place: "Bf Neustadt", track: "G2", closed: true, fault: null });
+  g.openTrack("G2");
+  assert.equal(closure().fault, null);
 });
 
 test("questions whose occasion has passed are taken back: after a repair that did not hold, nobody is asked to open G2 under the new team", () => {

@@ -415,6 +415,22 @@ test("what led to what: a fault's thread from the flows, each stretch of its tim
   const early = threads([line(120, "track-closure", S, { fault: "N2", track: "G2", closed: true }), ...flows.filter((f) => f.payload.fault === "N2" && f.flow !== "track-closure" && f.t <= 800)], { endOf: () => 900 })[0];
   assert.deepEqual([early.from, early.track, early.steps[0].kind], [100, "G2", "reported"]);
   assert.deepEqual(early.stretches.map((x) => [x.from, x.to, x.kind]), [[100, 160, "unreported"], [160, 280, "unsent"], [280, 580, "road"], [580, 760, "finding"], [760, 800, "undecided"], [800, 900, "repair"]]);
+  // repaired and the track given back: a closure after that, though it names the fault, is for another reason
+  const repaired = [
+    line(100, "fault-report", S, { fault: "N2", asset: "Exit signal N2", track: "G2" }, [D]),
+    line(200, "repair-status", D, { fault: "N2", state: "dispatched", team: "Team B" }),
+    line(300, "repair-status", D, { fault: "N2", state: "arrived", team: "Team B" }),
+    line(300, "track-closure", S, { fault: "N2", track: "G2", closed: true }),
+    line(360, "repair-status", D, { fault: "N2", state: "working", team: "Team B" }),
+    line(600, "repair-status", D, { fault: "N2", state: "done", team: "Team B" }),
+    line(660, "track-closure", S, { fault: "N2", track: "G2", closed: false }),
+    line(1000, "track-closure", S, { fault: "N2", track: "G2", closed: true }),
+  ];
+  const after = threads(repaired, { endOf: () => 2400 })[0];
+  assert.deepEqual([after.state, after.out_s, after.stretches.at(-1).kind, after.stretches.at(-1).to], ["repaired", 560, "unopened", 660]);
+  // but one before the track was opened again is: closed, opened and closed while the team is at work
+  const during = threads([...repaired.slice(0, 5), line(400, "track-closure", S, { fault: "N2", track: "G2", closed: false }), line(450, "track-closure", S, { fault: "N2", track: "G2", closed: true }), ...repaired.slice(5, 7)], { endOf: () => 2400 })[0];
+  assert.deepEqual([during.out_s, during.stretches.map((x) => x.kind)], [560, ["unsent", "road", "finding", "repair", "unopened"]]);
   // nothing that names a fault: no threads; a phase of its own per thread
   assert.deepEqual(threads([line(5, "budget", "mp", { eur: 1 })]), []);
   assert.deepEqual(threads([...flows, { ...flows[1], phase: 3, round: 2 }]).map((th) => [th.phase, th.fault]), [[0, "x"], [0, "N2"], [3, "N2"]]);
