@@ -92,6 +92,13 @@ main[data-screen] .play-layout {
 .lv-stop.on .dot { width: 22px; height: 22px; margin-block: -3px; border-color: var(--board-text); box-shadow: 0 0 0 4px var(--overlay-ok); }
 .lv-stop.on .name { font-weight: 800; }
 .lv-stop:focus-visible { outline: 3px solid var(--focus); outline-offset: 0; }
+/* the little train: it stands above the stop chosen, and runs to another */
+.lv-line { position: relative; }
+.lv-train { position: absolute; top: 12px; left: 0; width: 44px; height: 18px; margin-left: -66px; transition: left .7s cubic-bezier(.3, .1, .2, 1); pointer-events: none; overflow: visible; }
+.lv-train .body { fill: var(--overlay-ok); }
+.lv-train .glass { fill: var(--board); }
+.lv-train circle { fill: var(--board-text); }
+@media (prefers-reduced-motion: reduce) { .lv-train { transition: none; } }
 @media (max-width: 700px) { .lv { min-height: 0; } .lv-card { padding: 14px 16px; } }
 
 /* ------------------------------------------------------------------ 2: playing: a stage, not a dashboard */
@@ -255,6 +262,10 @@ body[data-screen="play"] .play-layout { min-height: 100vh; display: grid; }
 .vn-countdown { height: 6px; border-radius: 3px; background: var(--board-2); overflow: hidden; max-width: 420px; }
 .vn-countdown i { display: block; height: 100%; background: var(--overlay-ok); transition: width .25s linear; }
 .vn-countdown.low i { background: var(--board-warn); }
+/* little time left: the box says so */
+.vn-box:has(.vn-countdown.low) { border-top-color: var(--board-warn); animation: vn-hurry .8s ease-in-out infinite alternate; }
+@keyframes vn-hurry { to { box-shadow: 0 0 0 3px var(--board-warn); } }
+@media (prefers-reduced-motion: reduce) { .vn-box:has(.vn-countdown.low) { animation: none; } }
 @media (max-width: 640px) {
   .vn-talk { grid-template-columns: minmax(0, 1fr); }
   .vn-speaker { width: 84px; margin: 0 0 -14px 10px; }
@@ -324,6 +335,9 @@ body.bare .play-strip, body.bare .play-seats { visibility: hidden; }
 .vn-score .stars { font-size: clamp(2rem, 5vw, 3rem); flex-basis: 100%; }
 .vn-score .score-total { font-size: clamp(3.2rem, 8vw, 5rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .vn-score .of { color: var(--board-muted); }
+.stars.pop b { display: inline-block; font-weight: inherit; animation: vn-star .5s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes vn-star { from { opacity: 0; transform: scale(2.6) rotate(-30deg); } }
+@media (prefers-reduced-motion: reduce) { .stars.pop b { animation: none; } }
 .vn-gained { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .vn-gained li { border: 1px solid var(--board-warn); border-radius: 999px; padding: 2px 12px; font-size: .86rem; background: var(--board-2); }
 .vn-cast { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }

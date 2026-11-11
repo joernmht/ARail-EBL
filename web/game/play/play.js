@@ -28,7 +28,9 @@ const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 /** The messages and flows shown; the panels are drawn every DRAW_MS, the session saved every SAVE_MS, a refusal shown for REFUSED_MS. */
 const LOG_LINES = 40, FLOW_LINES = 60, BUMP_MS = 1200,
   /** Of a game met with many messages already (a session taken up again), the last ones are read; a word comes in every WORD_MS; a decision with less than LOW_SHARE of its time left hurries. */
-  STORY_MOST = 3, WORD_MS = 26, LOW_SHARE = 0.34, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
+  STORY_MOST = 3, WORD_MS = 26, LOW_SHARE = 0.34,
+  /** On the verdict a star comes in every STAR_MS. */
+  STAR_MS = 380, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
 
 /** The time of day (HH:MM:SS) of a shift that began at `start` ("08:00"), `t` seconds in. */
@@ -330,8 +332,9 @@ class PlayPage {
   }
 
   /** Stars as they are shown: filled and empty, with their number for who does not see them. */
-  stars(n, most = MAX_STARS) {
-    return h("span", { class: "stars" }, h("span", { "aria-hidden": "true" }, "★".repeat(n), h("i", {}, "★".repeat(most - n))), h("span", { class: "visually-hidden" }, `${n} of ${most} stars`));
+  stars(n, most = MAX_STARS, pop = false) {
+    const got = pop ? Array.from({ length: n }, (_, i) => h("b", { style: `animation-delay: ${300 + i * STAR_MS}ms` }, "★")) : "★".repeat(n);
+    return h("span", { class: `stars${pop ? " pop" : ""}` }, h("span", { "aria-hidden": "true" }, got, h("i", {}, "★".repeat(most - n))), h("span", { class: "visually-hidden" }, `${n} of ${most} stars`));
   }
 
   /** The sound on or off (kept in the browser). */
@@ -385,9 +388,24 @@ class PlayPage {
     rank.hidden = !this.ready;
     mount(rank, h("span", { class: "n" }, h("span", { "aria-hidden": "true" }, "★ "), String(stars), h("span", { class: "visually-hidden" }, stars === 1 ? " star" : " stars")), h("strong", {}, rankOf(stars).title), h("span", { class: "go" }, "Logbook"));
     mount($("#missions"), this.missions.map((doc, i) => h("li", {}, this.stop(doc, i + 1, doc.id === next))));
+    this.train();
     this.backdrop(wideOf(this.doc ? placeOfMission(normalizeMission(this.doc, this.games)) : placeOf()));
     this.setup();
     this.fit($("#choose"));
+  }
+
+  /** The little train on the line stands at the stop chosen (it runs there when another one is chosen). */
+  train() {
+    const line = $("#missions"), at = line.querySelector(".lv-stop.on")?.parentElement;
+    let train = line.parentElement.querySelector(".lv-train");
+    if (!train) {
+      train = s("svg", { class: "lv-train", viewBox: "0 0 44 18", "aria-hidden": "true", focusable: "false" },
+        s("path", { class: "body", d: "M2 3h30l9 7v4H2z" }), s("path", { class: "glass", d: "M5 5h6v4H5zM13 5h6v4h-6zM21 5h6v4h-6zM30 5h2l5 4h-7z" }),
+        s("circle", { cx: 10, cy: 15, r: 2.4 }), s("circle", { cx: 32, cy: 15, r: 2.4 }));
+      line.parentElement.append(train);
+    }
+    train.style.display = at ? "" : "none";
+    if (at) train.style.left = `${at.offsetLeft + at.offsetWidth / 2}px`;
   }
 
   /** A mission as a stop on the line: its number, its name, the stars reached; the one to play next is marked. */
@@ -673,6 +691,8 @@ class PlayPage {
     this.result(r);
     this.say(`The session is over: ${r.score} of 100, ${r.passed ? "passed" : "not passed"}.`);
     this.sound.play(r.passed ? "passed" : "failed");
+    // a cue for every star, as it comes in
+    for (let i = 0; i < (this.gained?.stars ?? 0); i++) setTimeout(() => this.screen === "result" && this.sound.play("star"), 900 + i * STAR_MS);
     $("#resultTitle").focus();
   }
 
@@ -1469,7 +1489,7 @@ class PlayPage {
         h("div", { class: "vn-verdict-box" },
           h("p", { class: "vn-over" }, r.passed ? "Mission passed" : "Mission not passed"),
           h("h2", { id: "resultTitle", tabindex: "-1" }, `The result: ${m.title}`),
-          h("p", { class: "vn-score" }, won ? this.stars(won.stars) : null, h("span", { class: "score-total" }, String(r.score)), h("span", { class: "of" }, " of 100 · "), tag(r.passed)),
+          h("p", { class: "vn-score" }, won ? this.stars(won.stars, MAX_STARS, true) : null, h("span", { class: "score-total" }, String(r.score)), h("span", { class: "of" }, " of 100 · "), tag(r.passed)),
           won && (won.best || won.rank || won.badges.length) ? h("ul", { class: "vn-gained" },
             won.rank ? h("li", { class: "rank" }, "Promoted: ", h("strong", {}, won.rank)) : null,
             won.badges.map((b) => h("li", {}, "Badge: ", h("strong", {}, b))),
