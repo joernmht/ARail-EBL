@@ -1504,6 +1504,8 @@ class PlayPage {
       h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file")));
     // the verdict, over the picture of the mission's place: the stars, the score, passed or not, what was gained, the cast with their scores, a question to take along
     const won = this.gained;
+    // passed: on to the next stop of the line that is not passed yet
+    const onward = r.passed ? this.missions.find((d) => d.id === nextMission(this.progress, this.missions.map((x) => x.id)) && d.id !== m.id && !this.progress.missions[d.id]?.passed) : null;
     this.backdrop(wideOf(place));
     mount($("#result"),
       h("div", { class: `vn-verdict ${r.passed ? "passed" : "failed"}` },
@@ -1522,7 +1524,8 @@ class PlayPage {
             h("span", { class: "pts" }, h("strong", {}, String(x.score)), ` · ${x.by === "human" ? "you" : "computer"}`)))),
           m.debrief.length ? h("p", { class: "vn-question" }, h("span", { class: "place-label" }, "To take along"), " ", m.debrief[0]) : null,
           h("div", { class: "row" },
-            h("button", { class: "btn primary play-big", type: "button", onclick: () => this.again(false) }, "Play again"),
+            onward ? h("button", { class: "btn primary play-big", type: "button", onclick: () => this.choose(onward.id) }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), `Next stop: ${onward.title}`) : null,
+            h("button", { class: `btn${onward ? "" : " primary play-big"}`, type: "button", onclick: () => this.again(false) }, "Play again"),
             h("button", { class: "btn", type: "button", onclick: () => this.again(true) }, "New seed"),
             won ? h("a", { class: "btn", href: `../logbook/#sheet-${encodeURIComponent(m.id)}` }, "Your sheet") : null,
             h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => { report.showModal(); this.fit(report); } }, "The full report"),
