@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "neustadt-morning",
  "title": "A morning at Bf Neustadt",
+ "hook": "Nine trains, forty minutes, and one signal that will fail.",
+ "place": "signal-box",
  "text": "08:00 to 08:40 at Bf Neustadt and in its district. The signaller sets the routes of nine trains; at some point a signal fails. The maintenance dispatcher has two emergency teams of two trades and more faults than the signaller's; what is behind a fault is known only when a team has looked, and a quick repair may not hold. What one of them does is what the other has to work with: the fault report, the team on its way, the track closure, the track opened again.",
  "mode": "cooperative",
  "seed": 1,

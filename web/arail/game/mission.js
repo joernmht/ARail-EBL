@@ -5,7 +5,7 @@
  * web/game/missions/); a session (session.js) plays it.
  *
  * ```json
- * { "format": "arail-mission/1", "id": "neustadt-morning", "title": "…", "text": "…", "seed": 1,
+ * { "format": "arail-mission/1", "id": "neustadt-morning", "title": "…", "hook": "…", "place": "signal-box", "text": "…", "seed": 1,
  *   "roles": [ { "role": "signaller-relay", "game": "signaller", "seat": "human", "level": "normal" },
  *              { "role": "maintenance-dispatcher", "game": "maintenance", "seat": "computer" } ],
  *   "rounds": 1,
@@ -14,6 +14,10 @@
  *   "injects": [ { "phase": "shift", "at": 600, "flow": "fault-report", "payload": { … } } ],
  *   "debrief": [ "…?" ] }
  * ```
+ *
+ * The `hook` is the mission in one or two lines, at most HOOK_CHARS characters: what a card shows
+ * of it (the `text` is its briefing, read when asked for). The `place` names where it is played, on
+ * the layout (kebab-case; the page has the places with their photos). Both may be left out.
  *
  * A seat's `id` is its role unless given (two seats of one role need ids). A phase is a `turn` (the
  * slow roles decide, no clock) or a `shift` (the fast roles work at the same time for `length`
@@ -31,6 +35,9 @@ export const MISSION_MODES = ["solo", "cooperative", "competitive"];
 export const TICK_S = 0.5;
 /** The length of a shift (s) where a mission gives none. */
 export const SHIFT_S = 2400;
+
+/** The most characters of a mission's hook: one or two lines of a card. */
+export const HOOK_CHARS = 110;
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -97,6 +104,8 @@ export function validateMission(doc, games) {
   if (doc?.format !== MISSION_FORMAT) out.push(`format must be "${MISSION_FORMAT}"`);
   if (!KEBAB.test(doc?.id ?? "")) out.push("id must be kebab-case");
   for (const k of ["title", "text"]) if (typeof doc?.[k] !== "string" || !doc[k].trim()) out.push(`${k} is missing`);
+  if (doc?.hook != null && (typeof doc.hook !== "string" || !doc.hook.trim() || doc.hook.length > HOOK_CHARS)) out.push(`hook must be a line or two of at most ${HOOK_CHARS} characters`);
+  if (doc?.place != null && !KEBAB.test(doc.place)) out.push("place must be kebab-case");
   if (doc?.mode != null && !MISSION_MODES.includes(doc.mode)) out.push(`mode must be one of ${MISSION_MODES.join(", ")}`);
   if (doc?.rounds != null && !(Number.isInteger(doc.rounds) && doc.rounds >= 1)) out.push("rounds must be a whole number, 1 or more");
   if (!Array.isArray(doc?.roles) || !doc.roles.length) return [...out, "roles: a mission seats at least one role"];

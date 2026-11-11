@@ -6,9 +6,6 @@
 .play-screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .play-screen > *, .play-cols > *, .play-seat > * { min-width: 0; }
 /* while a session is played, the head of the page is its name only */
-main:not([data-screen="choose"]) .game-hero { padding-block: 14px; }
-main:not([data-screen="choose"]) .game-hero .lead { display: none; }
-main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
 /* what gets the focus is scrolled in below the sticky bar */
 .play-layout [tabindex="-1"] { scroll-margin-top: 90px; }
 .play-layout .de { color: var(--text-2); font-size: .9em; }
@@ -21,7 +18,24 @@ main:not([data-screen="choose"]) .game-hero h1 { margin-bottom: 0; }
 /* 1: the missions, and the mission chosen */
 .play-missions > h2 { font-size: 1.05rem; margin-bottom: 8px; }
 #missions { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
-.play-mission h3 { font-size: 1.05rem; }
+/* a mission's card: the photo of its place on top, then its title, hook and facts; the briefing opens */
+.play-mission { padding: 0; overflow: hidden; display: grid; grid-template-rows: auto 1fr; transition: border-color .15s, box-shadow .15s; }
+.play-mission:hover, .play-mission:focus-within { border-color: var(--accent); box-shadow: 0 4px 18px rgba(0, 20, 80, .14); }
+.play-mission > .place { aspect-ratio: 16 / 7; margin: 0; }
+.play-mission > .place img { transition: transform .5s; }
+.play-mission:hover > .place img { transform: scale(1.04); }
+.play-mission-body { padding: 12px 16px 14px; display: grid; gap: 9px; align-content: start; justify-items: start; }
+.play-mission h3 { font-size: 1.2rem; font-weight: 800; }
+.play-hook { font-size: 1.02rem; line-height: 1.4; font-weight: 500; text-wrap: pretty; }
+.play-brief { width: 100%; font-size: .92rem; }
+.play-brief summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); width: fit-content; }
+.play-brief > * + * { margin-top: 8px; }
+.play-setup .play-hook { font-size: 1.12rem; }
+/* a seat's head: where its role works, beside what the game is */
+.play-head { display: flow-root; }
+.play-where { float: right; width: min(38%, 300px); aspect-ratio: 16 / 9; margin: 0 0 8px 14px; border-radius: var(--radius); }
+@media (max-width: 560px) { .play-where { float: none; width: 100%; aspect-ratio: 16 / 6; margin: 0 0 8px; } }
+@media (prefers-reduced-motion: reduce) { .play-mission > .place img { transition: none; } .play-mission:hover > .place img { transform: none; } }
 .play-roles { margin: 0; padding-left: 1.2em; font-size: .92rem; }
 .play-setup > h2 { font-size: 1.3rem; }
 .play-setup-form { display: grid; gap: 12px; }

@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "fault-night",
  "title": "Fault Night",
+ "hook": "More faults than teams. What is behind each, only a look will tell.",
+ "place": "track",
  "text": "A shift in the maintenance control centre of the district around Bf Neustadt, alone: faults come in by their report paths, and what is behind each is known only when a team has looked. Two emergency teams are on shift, one for signalling and one for the track, and a technician of each trade is on call. Rank the faults, send the teams, ask the signaller for a closure before anybody works in the track, and decide what a team does with what it finds: a repair for good, a quick one that may not hold, or guarding a danger until the right team comes.",
  "mode": "solo",
  "seed": 1,

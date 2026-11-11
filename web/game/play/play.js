@@ -8,6 +8,11 @@
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
 import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
+import { missionFacts, placeOf, placeOfGame, placeOfMission } from "../places.js";
+import { factChips, placeFigure, showPlace } from "../scene.js";
+
+/** The way from this page to web/, for the places' photos. */
+const BASE = "../../";
 
 const MISSIONS = "../missions/";
 const SAVE_FORMAT = "arail-session/1";
@@ -249,6 +254,8 @@ class PlayPage {
   show(screen) {
     this.screen = screen;
     $("#main").dataset.screen = screen;
+    // while a session is played, the head of the page is its name and its place only
+    $("#scene")?.classList.toggle("small", screen !== "choose");
     for (const id of ["choose", "play", "result"]) $(`#${id}`).hidden = id !== screen;
   }
 
@@ -281,26 +288,36 @@ class PlayPage {
     note.textContent = this.failed ?? (this.missions.length ? "" : this.ready ? "There are no missions yet." : "Loading the missions.");
     note.hidden = !note.textContent;
     mount($("#missions"), this.missions.map((doc) => h("li", {}, this.card(doc))));
+    // the head of the page shows where the mission chosen plays
+    showPlace($("#scene"), this.doc ? placeOfMission(normalizeMission(this.doc, this.games)) : placeOf(), BASE);
     this.setup();
     this.fit($("#choose"));
   }
 
-  /** A mission's card: title, text, rounds and phases, the seats with who is suggested for them. */
+  /**
+   * A mission's card: the photo of its place, its title, its hook and its facts; the briefing (its
+   * text, rounds and phases, the seats with who is suggested for them) opens below.
+   */
   card(doc) {
     const problems = validateMission(doc, this.games), m = normalizeMission(doc, this.games), chosen = this.doc === doc;
     return h("article", { class: "game-card play-mission", "aria-labelledby": `mission-${doc.id}` },
-      h("h3", { id: `mission-${doc.id}` }, m.title ?? doc.id),
-      h("p", {}, m.text),
-      h("p", { class: "hint" }, this.outline(m)),
-      h("ul", { class: "play-roles", "aria-label": "Seats" }, m.roles.map((r) => h("li", {}, this.roleText(r.role), ": ", r.seat === "human" ? "you" : "the computer"))),
-      problems.length ? h("p", { class: "hint error" }, `This mission cannot be played here: ${problems.join("; ")}.`)
-        : h("p", {}, h("a", {
-          class: `btn${chosen ? "" : " primary"}`, href: `?mission=${encodeURIComponent(doc.id)}`, "aria-describedby": `mission-${doc.id}`, "aria-current": chosen ? "true" : null,
-          onclick: (e) => {
-            e.preventDefault();
-            this.choose(doc.id);
-          },
-        }, chosen ? "Chosen" : "Choose this mission")));
+      placeFigure(placeOfMission(m), BASE, { label: "Where" }),
+      h("div", { class: "play-mission-body" },
+        h("h3", { id: `mission-${doc.id}` }, m.title ?? doc.id),
+        h("p", { class: "play-hook" }, m.hook ?? m.text),
+        factChips(missionFacts(m)),
+        problems.length ? h("p", { class: "hint error" }, `This mission cannot be played here: ${problems.join("; ")}.`)
+          : h("p", {}, h("a", {
+            class: `btn${chosen ? "" : " primary"}`, href: `?mission=${encodeURIComponent(doc.id)}`, "aria-describedby": `mission-${doc.id}`, "aria-current": chosen ? "true" : null,
+            onclick: (e) => {
+              e.preventDefault();
+              this.choose(doc.id);
+            },
+          }, chosen ? "Chosen" : "Take a seat")),
+        h("details", { class: "play-brief" }, h("summary", {}, "Briefing"),
+          m.hook ? h("p", {}, m.text) : null,
+          h("p", { class: "hint" }, this.outline(m)),
+          h("ul", { class: "play-roles", "aria-label": "Seats" }, m.roles.map((r) => h("li", {}, this.roleText(r.role), ": ", r.seat === "human" ? "you" : "the computer"))))));
   }
 
   /** The session of a mission kept in the browser, or null. */
@@ -330,6 +347,8 @@ class PlayPage {
     const saved = again ? this.saved(doc.id) : null;
     mount(el,
       h("h2", { id: "setupTitle", tabindex: "-1" }, m.title),
+      m.hook ? h("p", { class: "play-hook" }, m.hook) : null,
+      factChips(missionFacts(m)),
       h("p", {}, m.text),
       h("p", { class: "hint" }, this.outline(m)),
       h("form", {
@@ -675,6 +694,7 @@ class PlayPage {
     const active = s.active.includes(seat), mine = seat.by === "human", can = this.atWork(seat) && mine;
     const view = this.view(g), de = this.roles.get(seat.role)?.name_de;
     morph(p.head,
+      placeFigure(placeOfGame(seat.Game.id), BASE, { cls: "play-where" }),
       h("h3", {}, seat.Game.title),
       h("p", { class: "play-role" }, "Role: ", h("a", { href: `../roles/#role-${seat.role}` }, this.seatName(seat.id)), de ? [" ", h("span", { class: "de", lang: "de" }, `(${de})`)] : null, ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
       h("p", { class: "hint" }, seat.Game.description ?? ""),

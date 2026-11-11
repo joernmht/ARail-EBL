@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "transportleitung",
  "title": "Transportleitung",
+ "hook": "Six regional trains are yours. Hold the connection, or let it go?",
+ "place": "trains",
  "text": "The morning at Bf Neustadt from the railway undertaking's side, alone: the regional trains RB 31 to RB 36 are yours. A feeder is announced late: ask to hold the connecting train, or let it go? Tell the passengers of every delay of three minutes or more. And your own trouble comes in for the trains later in the day: a driver calls in sick, a unit reports a defect; each has a lawful way out and a tempting one.",
  "mode": "solo",
  "seed": 1,

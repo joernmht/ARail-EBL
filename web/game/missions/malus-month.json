@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "malus-month",
  "title": "Malus Month",
+ "hook": "The incident list is on your desk. Deduct too much and the operator folds.",
+ "place": "town",
  "text": "Six accounting periods of a transport contract as the transport authority's contract manager, alone. Each month the operator's incident list is on your desk: for each class of incidents, what is paid and what a penalty applies to. The operator objects now and then. Deduct too much and it runs out of money; too little and the auditor finds it, and the quality slides.",
  "mode": "solo",
  "seed": 1,

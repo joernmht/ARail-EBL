@@ -33,12 +33,24 @@
 </header>
 
 <main id="main">
-  <div class="game-hero">
+  <!-- the scene: the game in a line or two, its facts, the briefing to open; the photo of the place where the role works -->
+  <div class="scene" id="scene">
+    <figure class="scene-place" data-place="trains">
+      <img src="../../media/ebl-container-train.jpg" alt="Trains side by side in the lab: an intercity and a container train" decoding="async" style="object-position: 50% 35%">
+      <figcaption><span class="place-label">Where they work</span> <strong>On the trains, Bf Neustadt</strong> <span class="place-line">Behind every train: a few hundred roles.</span></figcaption>
+    </figure>
     <div class="wrap">
-      <p class="eyebrow">Role catalogue</p>
-      <h1>Roles of the railway</h1>
-      <p class="lead">From the politician to the cleaning staff: <span id="roleCount">the roles</span> of the German railway system, each with its decisions, means and limits, personal risks, career, and a mini game. Each game works on its own, for teaching; together they make one big game, played as a career or as a railway undertaking's simulator (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>).</p>
-      <p class="lead small">Compiled for game design and teaching; names, rules and numbers are simplified and in orders of magnitude, to be checked by the chair's experts.</p>
+      <div class="scene-text">
+        <p class="eyebrow">Role catalogue</p>
+        <h1>Roles of the railway</h1>
+        <p class="scene-hook">From the politician to the cleaning staff: who decides what on the railway, and with what.</p>
+        <ul class="facts" aria-label="In short"><li><span id="roleCount">the roles</span></li><li>decisions, means and limits</li><li>a mini game each</li></ul>
+        <details class="scene-brief">
+          <summary>About the catalogue</summary>
+          <p>From the politician to the cleaning staff: the roles of the German railway system, each with its decisions, means and limits, personal risks, career, and a mini game. Each game works on its own, for teaching; together they make one big game, played as a career or as a railway undertaking's simulator (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>).</p>
+          <p>Compiled for game design and teaching; names, rules and numbers are simplified and in orders of magnitude, to be checked by the chair's experts.</p>
+        </details>
+      </div>
     </div>
   </div>
 

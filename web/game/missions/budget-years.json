@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "budget-years",
  "title": "Budget Years",
+ "hook": "Four years, one district, never enough money. Keep the grade at 3.2.",
+ "place": "district",
  "text": "Four budget years as the asset manager of the district around Bf Neustadt, alone: each year the maintenance strategy, the renewals, the emergency teams and, now and then, a proposal of the asset responsible (ALV); then the year plays out: faults, delay minutes, the condition grade, the money. The target is a grade of 3.2 or better with the inspections on time and no replacement money left unused.",
  "mode": "solo",
  "seed": 1,

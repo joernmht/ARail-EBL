@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "night-session",
  "title": "The Night Session",
+ "hook": "The draft is over the ceiling and it is past midnight. Move the money.",
+ "place": "town-night",
  "text": "Four budget years as the budget committee's rapporteur for the rail budget, alone: in the night session (Bereinigungssitzung) the ministry's draft must fit under the ceiling. Move money between the lines, weigh the auditors' hints, set a qualified block where a report is due, choose a grant or equity for DB, and keep the coalition partner on board; then the year's account shows what the money did.",
  "mode": "solo",
  "seed": 1,

@@ -34,12 +34,24 @@
 </header>
 
 <main id="main" data-screen="choose">
-  <div class="game-hero">
+  <!-- the scene: the game in a line or two, its facts, the briefing to open; the photo of the place where the role works -->
+  <div class="scene" id="scene">
+    <figure class="scene-place" data-place="district">
+      <img src="../../assets/ebl-lab-ar.jpg" alt="Bf Neustadt in the lab with its digital layer: platforms, trains and their labels" decoding="async" style="object-position: 50% 40%">
+      <figcaption><span class="place-label">Where it plays</span> <strong>The district around Bf Neustadt</strong> <span class="place-line">Every asset of the district, with its condition.</span></figcaption>
+    </figure>
     <div class="wrap">
-      <p class="eyebrow">Big game · missions</p>
-      <h1>The big game</h1>
-      <p class="lead">A mission seats several roles of the railway. Each seat is one role's game, played by you at this device or by the computer. What one role gives another (a fault report, a repair status, a track closure, a budget) is what the other has to work with.</p>
-      <p class="lead">Choose a mission and your seats, play it, watch what the roles give each other, and read the result. Slow roles decide in turns, fast roles work in shifts on one clock.</p>
+      <div class="scene-text">
+        <p class="eyebrow">Big game · missions</p>
+        <h1>The big game</h1>
+        <p class="scene-hook">One railway, many desks. Take a seat and live with what the others decide.</p>
+        <ul class="facts" aria-label="In short"><li>1 to 6 roles</li><li>turns and shifts</li><li>you or the computer</li></ul>
+        <details class="scene-brief">
+          <summary>How it works</summary>
+          <p>A mission seats several roles of the railway. Each seat is one role's game, played by you at this device or by the computer. What one role gives another (a fault report, a repair status, a track closure, a budget) is what the other has to work with.</p>
+          <p>Choose a mission and your seats, play it, watch what the roles give each other, and read the result. Slow roles decide in turns, fast roles work in shifts on one clock.</p>
+        </details>
+      </div>
     </div>
   </div>
 
