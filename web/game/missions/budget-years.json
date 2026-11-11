@@ -48,6 +48,32 @@
     "portrait": "hivis"
    },
    "say": "Welcome to the district: 150 km of track. One thing I have learned out there: whatever you save on maintenance this year, I find again as faults next year."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    2
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Last year's account is in. Look at the grade before you look at the money."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    4
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Our last year together. Remember: replacement money that is not committed by December is gone."
   }
  ],
  "debrief": [

@@ -38,6 +38,16 @@
     "portrait": "uniform"
    },
    "say": "Operations control? One thing before it gets busy: tell the passengers about every delay of three minutes or more. They forgive a late train. They do not forgive silence."
+  },
+  {
+   "phase": "shift",
+   "at": 600,
+   "who": {
+    "name": "A. Schwalbe",
+    "role": "Driver, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "If a colleague calls in sick: the stand-by driver is the lawful way out. Stretching somebody's shift is the tempting one."
   }
  ],
  "debrief": [

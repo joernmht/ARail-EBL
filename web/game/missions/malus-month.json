@@ -48,6 +48,32 @@
     "portrait": "office"
    },
    "say": "We are short of drivers, I will not pretend otherwise. Every month you get our incident list. Be strict where it is our fault, and fair where it is not."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    3
+   ],
+   "who": {
+    "name": "T. Lerche",
+    "role": "The operator's contract manager",
+    "portrait": "office"
+   },
+   "say": "Half-time. If you deduct for trains that the infrastructure held up, we will object. And the auditor reads our objections too."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    6
+   ],
+   "who": {
+    "name": "T. Lerche",
+    "role": "The operator's contract manager",
+    "portrait": "office"
+   },
+   "say": "The last period. I hope we still talk to each other after it."
   }
  ],
  "debrief": [

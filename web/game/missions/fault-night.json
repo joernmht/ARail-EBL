@@ -48,6 +48,16 @@
     "portrait": "hivis"
    },
    "say": "Before anybody works in the track, the signaller has to close it. Ask for the closure first. I am not sending my people out otherwise."
+  },
+  {
+   "phase": "shift",
+   "at": 900,
+   "who": {
+    "name": "M. Specht",
+    "role": "Team leader, signalling",
+    "portrait": "hivis"
+   },
+   "say": "A quick repair gets the trains running now. It may not hold. A repair for good takes longer and holds. Your call, every time."
   }
  ],
  "debrief": [

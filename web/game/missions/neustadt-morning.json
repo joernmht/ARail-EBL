@@ -45,6 +45,26 @@
     "portrait": "headset"
    },
    "say": "Nine trains this morning, as every morning. One thing: exit signal N2 flickered yesterday. If it fails, report it at once and keep the trains moving another way."
+  },
+  {
+   "phase": "shift",
+   "at": 395,
+   "who": {
+    "name": "R. Dohle",
+    "role": "Train dispatcher, on the line",
+    "portrait": "headset"
+   },
+   "say": "IC 2045 is on its way. It passes on G1. Do not let the freight train out in front of it."
+  },
+  {
+   "phase": "shift",
+   "at": 900,
+   "who": {
+    "name": "M. Specht",
+    "role": "Team leader, signalling",
+    "portrait": "hivis"
+   },
+   "say": "Specht here, signalling team. If you want us at a signal, we need your fault report first, and the track closed before anybody steps into it."
   }
  ],
  "debrief": [

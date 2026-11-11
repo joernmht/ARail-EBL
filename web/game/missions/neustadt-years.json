@@ -104,6 +104,19 @@
     "portrait": "hivis"
    },
    "say": "The committee has spoken: this is the money for the year. What you plan now is what the signaller and the teams have to work with in the morning."
+  },
+  {
+   "phase": "review",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "The morning is over. Now see what it did to the year's numbers: every fault of the morning counts for a whole year of them."
   }
  ],
  "debrief": [
