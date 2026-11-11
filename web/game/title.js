@@ -296,7 +296,8 @@ export class TitleScreen {
         if ((e.movementX || e.movementY) && document.activeElement !== e.currentTarget) e.currentTarget.focus({ preventScroll: true });
       };
       if (it.href) {
-        return h("a", { class: "title-item", href: withLang(it.href), onclick: () => this.remember(it), onpointermove: hover }, label);
+        // a middle click (a new tab) opens it too
+        return h("a", { class: "title-item", href: withLang(it.href), onclick: () => this.remember(it), onauxclick: (e) => e.button === 1 && this.remember(it), onpointermove: hover }, label);
       }
       const go = !!it.go;
       return h("button", {
@@ -388,13 +389,15 @@ export class TitleScreen {
   onKey(e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const items = [...this.root.querySelectorAll(".title-item")];
-    const at = items.indexOf(document.activeElement);
+    const focused = items.indexOf(document.activeElement);
+    // with the focus off the menu, the cursor is the item it was on last
+    const at = focused >= 0 ? focused : items.indexOf(this.cursor);
     const move = { ArrowDown: 1, ArrowUp: -1, Home: "first", End: "last" }[e.key];
     if (move != null) {
       e.preventDefault();
       const i = move === "first" ? 0 : move === "last" ? items.length - 1 : at < 0 ? (move > 0 ? 0 : items.length - 1) : (at + move + items.length) % items.length;
       items[i]?.focus();
-    } else if (e.key === "Enter" && at < 0 && !document.activeElement?.closest?.("a, button, input, select, textarea, summary, [tabindex], [contenteditable]")) {
+    } else if (e.key === "Enter" && focused < 0 && !document.activeElement?.closest?.("a, button, input, select, textarea, summary, [tabindex], [contenteditable]")) {
       // the focus on nothing that takes Enter itself (the page, the photo): the cursor's item, or the first one;
       // a link of the foot (Impressum, …) keeps its own Enter
       e.preventDefault();

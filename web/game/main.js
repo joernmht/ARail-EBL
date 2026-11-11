@@ -113,8 +113,8 @@ function start() {
     // also for a middle click, a new tab from its context menu, the keyboard
     for (const type of ["pointerdown", "click", "auxclick", "contextmenu", "focus", "mouseenter"]) menu.addEventListener(type, () => (menu.href = menuHref()));
   }
-  rememberShell(); // Continue on the title screen comes back here
-  new App(PAGE).init();
+  // Continue on the title screen comes back here, once the shell has its layout (App.init keeps it)
+  new App(PAGE).init().then(rememberShell);
 }
 
 if (TitleScreen.wanted()) {

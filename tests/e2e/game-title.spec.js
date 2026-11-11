@@ -38,6 +38,10 @@ test("the game page opens with its title screen: the photos full screen and the 
   // a click on the photo keeps the cursor; with the focus elsewhere the keys still move it, and Enter chooses
   await page.mouse.click(vp.width - 40, vp.height / 2);
   await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
+  // with the focus off the menu the arrows move on from the cursor's item
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
@@ -204,6 +208,14 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   await page.goto("/game/");
   await page.waitForSelector(".title-item");
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", "roles/");
+  // also one opened with a middle click (in a new tab)
+  await page.getByRole("link", { name: /Career/ }).evaluate((a) => {
+    a.addEventListener("auxclick", (e) => e.preventDefault(), { once: true }); // no new tab in the test
+    a.dispatchEvent(new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }));
+  });
+  await page.reload();
+  await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-item").first()).toHaveAttribute("href", "career/");
   expect(errors).toEqual([]);
 });
 
