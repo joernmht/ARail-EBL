@@ -15,8 +15,10 @@
 <link rel="stylesheet" href="career.css">
 <script type="module" src="career.js"></script>
 </head>
-<body>
+<body class="board-page">
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind the page: where the role works, on the lab's layout -->
+<div class="backdrop" aria-hidden="true"><img src="../../game/places/town-fly.jpg" alt="" decoding="async" style="object-position: 50% 50%"></div>
 <header class="bar site-bar">
   <div class="identity">
     <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
@@ -34,18 +36,15 @@
 </header>
 
 <main id="main">
-  <!-- the scene: the game in a line or two, its facts, the briefing to open; the photo of the place where the role works -->
+  <!-- the scene: the game in a line or two, its facts, where it plays (the picture behind the page), the briefing to open -->
   <div class="scene" id="scene">
-    <figure class="scene-place" data-place="town-hall">
-      <img src="../../game/places/town-fly.jpg" alt="The town of Neustadt in the flyover: houses, a car park and streets, the station behind them" decoding="async" style="object-position: 50% 50%">
-      <figcaption><span class="place-label">Where it starts</span> <strong>Neustadt, the town</strong> <span class="place-line">A working life starts here, at school.</span></figcaption>
-    </figure>
     <div class="wrap">
       <div class="scene-text">
         <p class="eyebrow">Career mode · prototype</p>
         <h1>A career on the railway</h1>
         <p class="scene-hook">No path laid out: every step opens some doors and closes others. Where will you end up?</p>
         <ul class="facts" aria-label="In short"><li>from school to minister</li><li>a job or an education at a time</li><li>prototype</li></ul>
+        <p class="scene-where"><span class="place-label">Where it starts</span> <strong>Neustadt, the town</strong> <span class="place-line">A working life starts here, at school.</span></p>
         <details class="scene-brief">
           <summary>How it works</summary>
           <p>Not a path laid out in advance: from where you stand, some jobs are open to you and some educations can be started. Many roles need an apprenticeship, a degree, a function training or a licence first, and years in other roles. Choose your next step, work on, train again, change direction.</p>

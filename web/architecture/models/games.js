@@ -607,9 +607,8 @@ export const GAMES = [
       name: "sound", file: "web/game/sound.js", kind: "module", role: "The cues as notes.",
       attributes: ["SOUND_KEY — arail.game.sound", "CUES: object — choose, next, chapter, hurry, refuse, term, star, passed, failed: a wave and notes [Hz, start s, length s]", "VOLUME — 0.07"],
     }, {
-      name: "scene", file: "web/game/scene.js", kind: "module", role: "Draws a place: its photo with where that is, facts as chips, and another place in the head of a page (.scene of site.css).",
-      attributes: ["WHERE — Where you work"],
-      operations: ["photoOf(place, base)", "placeFigure(place, base, options) — the photo with its caption", "factChips(facts, label)", "showPlace(scene, place, base) — the head of a page shows another place"],
+      name: "scene", file: "web/game/scene.js", kind: "module", role: "What the game's pages draw the same way: facts as chips.",
+      operations: ["factChips(facts, label)"],
     }, {
       name: "PlayPage", file: "web/game/play/play.js", kind: "class", role: "Chooses a mission and its seats, runs the session, draws its games and flows, shows the result.",
       attributes: ["session: Session — the session being played", "focus: Map — the decision in focus per seat", "asked: Map — when a decision with a deadline was first shown, for its countdown", "progress: object — what the player has reached (progress.js)", "gained: object — what the last session added: stars, a rank, badges", "diary: object[] — what a person decided in this session", "met: Set — the railway terms met in it", "read: WeakMap — how many of a game's messages a person has read", "beats: object[] — the lines of the mission's story for the phase played", "beatDone: number — the last of them answered", "beatSaid: number — the last said aloud", "term: string — the railway term explained", "bare: boolean — only the picture", "sound: Sound", "whole: Set — the decisions shown with their whole text", "mission: object", "choice: object — the mission chosen: who plays each seat, the seed", "tab: string — the seat shown", "picked: Map — what is chosen in a seat's sketch", "speed: number — simulated seconds per second in a shift", "screen: string — choose, play or result"],
@@ -622,7 +621,7 @@ export const GAMES = [
       { from: "PlayPage", to: "Session", kind: "composes", label: "session" },
       { from: "PlayPage", to: "Game", kind: "uses", label: "view, open, logs, score" },
       { from: "PlayPage", to: "places", kind: "uses", label: "the place of a mission, of a seat's game" },
-      { from: "PlayPage", to: "scene", kind: "uses", label: "photos and chips" },
+      { from: "PlayPage", to: "scene", kind: "uses", label: "chips" },
       { from: "PlayPage", to: "short", kind: "uses", label: "leads" },
       { from: "PlayPage", to: "cast", kind: "uses", label: "who asks, the seats' faces" },
       { from: "PlayPage", to: "progress", kind: "uses", label: "stars, rank, badges, the sheet" },
