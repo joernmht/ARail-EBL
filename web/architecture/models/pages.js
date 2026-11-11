@@ -232,7 +232,7 @@ export const PAGES = [
     id: "i18n", group: "pages", title: "Texts in other languages",
     summary: "The app in English or German: a translator without a build step whose keys are the English texts, the framework's and the app's German texts, the choice of the language.",
     description: "The framework stays English: its cards, labels and settings are English texts. The app translates what it shows: h() (ui.js) the texts and the attributes people read or hear (aria-label, aria-valuetext, title, alt, placeholder) of the elements it makes, the View the labels on the canvas, translateDocument the page's own markup. A text is found as a whole, else by the pattern of an entry with placeholders (\"{n} min late\"; its variable parts are translated in turn and numbers get the language's decimal sign), else part by part between \" · \"; what has no translation stays English and is noted (Translator.missing). The language comes from ?lang=, else the choice in Settings → View → Language (kept on the device), else the browser. Plugins bring their texts with registry.registerTexts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js", "web/app/lang/de-game.js"],
     classes: [
       {
         name: "Translator", file: "web/arail/i18n/index.js", kind: "class", role: "Translates texts into one language at a time.",
@@ -282,11 +282,17 @@ export const PAGES = [
   },
   {
     id: "game-page", group: "pages", title: "The game page",
-    summary: "The games and exercises on the lab's layout, beside the app: the app's shell (App) with the game panels as its cases.",
-    description: "Its cases in Interaction, by side: Infrastructure → Assets, asset management with roles, decisions and budget years (InfraPanel); Railway undertaking → Operations, a railway undertaking's fleet, workshop and crews, setups compared under stress tests (OperationsPanel), Terminal, the container terminal with its visits, new arrivals and crane jobs (TerminalPanel, full), and Journeys, travellers with travel plans for a class (JourneysPanel); Build and Disruptions as in the app. Its examples start with the lab layout Beta 0.1 and its modules; it keeps what it remembers in the browser apart from the app's.",
-    files: ["web/game/main.js", "web/game/operations.js"],
+    summary: "The games and exercises on the lab's layout, beside the app: a title screen with the main menu, then the app's shell (App) with the game panels as its cases.",
+    description: "Called without a layout, an example, a photo or a case (a bare game/, or only ?lang=), the page opens like a game: its title screen (TitleScreen) fills the screen with the lab's photos, each drifting slowly and fading into the next (still when the system asks for less motion or Options says so), beside them the game's name and the main menu: Continue (the game opened last from the menu), Missions (the big game), Signaller, Free play (a submenu: the page's cases on the lab's layout, each a link with its layout, module and case), Career, Roles, Options (language, moving background, full screen) and Leave (the project page). One cursor goes through the menu: the arrow keys, Home and End move it, the mouse too; Enter chooses, Escape and the left arrow go back to the main menu. The app's shell is started only when a case is asked for; its bar has the way back (Menu). Its cases in Interaction, by side: Infrastructure → Assets, asset management with roles, decisions and budget years (InfraPanel); Railway undertaking → Operations, a railway undertaking's fleet, workshop and crews, setups compared under stress tests (OperationsPanel), Terminal, the container terminal with its visits, new arrivals and crane jobs (TerminalPanel, full), and Journeys, travellers with travel plans for a class (JourneysPanel); Build and Disruptions as in the app. Its examples start with the lab layout Beta 0.1 and its modules; it keeps what it remembers in the browser apart from the app's.",
+    files: ["web/game/main.js", "web/game/title.js", "web/game/operations.js"],
     classes: [
-      { name: "game main", file: "web/game/main.js", kind: "module", role: "The game page: its cases (assets, operations, terminal, journeys; Build, Disruptions), examples." },
+      { name: "game main", file: "web/game/main.js", kind: "module", role: "The game page: its cases (assets, operations, terminal, journeys; Build, Disruptions), examples, Free play of the title screen; the title screen or the app's shell." },
+      {
+        name: "TitleScreen", file: "web/game/title.js", kind: "class", role: "The title screen: the photos drifting from one to the next, the main menu and its submenus, the options.",
+        attributes: ["view: string — the menu shown: main, free or options", "slide: number — the photo shown", "freePlay: object[] — the cases on the lab's layout, with their links"],
+        operations: ["static wanted(loc) — no layout, example, photo or case asked for", "open()", "close() — for the app's shell", "setMotion(on)", "next() — the next photo, loaded first", "items() — of the menu shown", "render()", "go(view) — a submenu, or the main menu again", "remember(it) — for Continue", "setLanguage(lang)", "toggleMotion()", "toggleFullscreen()", "onKey(e) — the arrows, Home, End, Escape"],
+      },
+      { name: "title", file: "web/game/title.js", kind: "module", role: "The photos of the title screen and how long each stays.", attributes: ["SLIDES: object[]", "SLIDE_MS: number"] },
       { name: "AssetsGame", file: "web/game/main.js", kind: "class", extends: "Case", role: "Infrastructure → Assets: the asset management game (#infra).", operations: ["makePanel()", "add()"] },
       { name: "OperationsGame", file: "web/game/main.js", kind: "class", extends: "Case", role: "Railway undertaking → Operations: the rail operations game (#ops).", operations: ["makePanel()", "add()"] },
       { name: "TerminalGame", file: "web/game/main.js", kind: "class", extends: "TerminalCase", role: "Railway undertaking → Terminal, with its visits (full)." },
@@ -295,6 +301,7 @@ export const PAGES = [
     ],
     relations: [
       { from: "game main", to: "App", kind: "creates" },
+      { from: "game main", to: "TitleScreen", kind: "creates", label: "without a case" },
       { from: "AssetsGame", to: "Case", kind: "inherits" },
       { from: "OperationsGame", to: "Case", kind: "inherits" },
       { from: "TerminalGame", to: "TerminalCase", kind: "inherits" },
@@ -303,7 +310,15 @@ export const PAGES = [
       { from: "OperationsGame", to: "OperationsPanel", kind: "creates", label: "panel" },
       { from: "JourneysGame", to: "JourneysPanel", kind: "creates", label: "panel" },
     ],
-    rules: ["The game page keeps its last layout under arail.game.lastLayout; the layouts' edits and modules are shared with the app."],
+    rules: [
+      "The game page keeps its last layout under arail.game.lastLayout; the layouts' edits and modules are shared with the app.",
+      "The title screen is chosen before the page is drawn (a script in index.html), so neither the app's shell nor an empty screen flashes up; the app's shell is not started behind it.",
+      "Continue is the last page or case opened from the menu (arail.game.continue); the moving background is kept per device (arail.game.motion), its default still when the system asks for less motion.",
+      "The next photo is loaded before it fades in; the photos move only while the page is visible.",
+    ],
+    parameters: [
+      { key: "game/ (no ?layout=, ?example=, ?photo=, ?image= or #case)", default: "", meaning: "The title screen with the main menu (?lang= may be given)." },
+    ],
   },
   {
     id: "builder", group: "pages", title: "The builder: streets and layouts",

@@ -23,6 +23,7 @@ const PAGES = [
   ["app, Operations: the operations story", "/app/?layout=../layouts/ebl-neustadt.json&layers=operations#ops"],
   ["app, Infrastructure: the maintenance story", "/app/?layout=../layouts/ebl-neustadt.json&layers=infrastructure#infra"],
   ["app, Journeys: the journeys story", "/app/?layout=../layouts/ebl-neustadt.json&layers=journeys#journeys"],
+  ["game page, the title screen", "/game/"],
   ["game page, Overview", "/game/#overview"],
   ["signaller's game", "/game/signaller/"],
   ["role catalogue", "/game/roles/#role-signaller-relay"],
@@ -47,6 +48,7 @@ for (const scheme of ["light", "dark"]) {
         await page.goto(path);
         // the app and the game page: tracking the layout's photo, or the flyover of a virtual layout (the container terminal)
         if (/^\/(app|game)\/\?layout=..\/layouts\/ebl-|^\/game\/#/.test(path)) await page.waitForFunction(() => window.__arail?.tracker.state.H || (window.__arail?.mode === "flyover" && window.__arail.world.objects.length), null, { timeout: 30_000 });
+        if (path === "/game/") await page.waitForSelector(".title-item");
         if (path.startsWith("/live/")) await page.waitForFunction(() => window.__live?.pose);
         if (path.startsWith("/plan/")) await page.waitForFunction(() => window.__plan?.result, null, { timeout: 30_000 });
         if (path.startsWith("/builder/")) await page.waitForFunction(() => window.__builder?.doc && document.querySelector("#panel-element").childElementCount, null, { timeout: 30_000 });

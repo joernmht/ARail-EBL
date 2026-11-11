@@ -242,7 +242,7 @@ tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser 
 
 | Page | What |
 | --- | --- |
-| `game/` | The game page: the games and exercises that were in the app, on the lab's layout (infrastructure asset management, rail operations, journeys, the full terminal) |
+| `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu (Continue, Missions, Signaller, Free play, Career, Roles, Options, Leave). Free play holds the games and exercises that were in the app, on the lab's layout (the Sandbox, infrastructure asset management, rail operations, the full terminal, journeys); a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
 | `game/play/` | The play page of the big game: choose a mission and the seats (you or the computer), play its turns and shifts (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), watch what the roles give each other, read the result and the debrief. Missions: a morning at Bf Neustadt (signaller and maintenance dispatcher), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), Fault Night, Transportleitung, Budget Years, Malus Month and The Night Session alone, a morning in the lab (on the EBL's simulation API) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |

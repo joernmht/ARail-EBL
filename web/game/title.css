@@ -1,0 +1,174 @@
+/* The title screen of the game page (title.js): the lab's photos full screen, drifting slowly and
+   fading from one to the next, a shade towards the menu, the game's name and the main menu. It is
+   always dark, over the photos: the board's colours of the corporate design (Dunkelblau), Türkis for
+   what is chosen, Gelb for the cursor. Text keeps a contrast of at least 4.5:1 on the shade. */
+html.titled, html.titled body { height: 100%; overflow: hidden; background: #00061a; }
+html.titled .app { display: none; }
+/* shown from the first paint when the page opens with it (index.html decides before it is drawn) */
+html.titled .title-screen { display: block; }
+
+.title-screen {
+  --t-text: #ffffff; --t-muted: #c3d2ec; --t-accent: #36b8bf; --t-cursor: #FFC700; --t-deep: 0, 6, 26; --t-blue: 0, 20, 80;
+  --t-pad: clamp(16px, 6vw, 96px);
+  position: fixed; inset: 0; z-index: 50; overflow: hidden;
+  background: #00061a; color: var(--t-text); font-family: var(--font);
+}
+
+/* ------------------------------------------------------------------ the photos */
+.title-slides { position: absolute; inset: 0; z-index: 0; }
+.title-slide {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; z-index: 0; transition: opacity 2.4s ease-in-out; will-change: transform, opacity;
+  --dx: -2.5%; --dy: -1.5%; --from: 1.04; --to: 1.16; transform-origin: 50% 50%;
+}
+/* the photo shown fades in over the one before, which stays until it is covered */
+.title-slide.on { opacity: 1; z-index: 2; }
+.title-slide.last { opacity: 1; z-index: 1; }
+.title-slide.on, .title-slide.last { animation: title-drift 13s linear both; }
+.title-slide:nth-child(2) { --dx: 2.5%; --dy: -1%; transform-origin: 30% 60%; }
+.title-slide:nth-child(3) { --dx: -1.5%; --dy: 2%; --from: 1.14; --to: 1.03; }
+.title-slide:nth-child(4) { --dx: 2%; --dy: 1.5%; transform-origin: 70% 40%; }
+.title-slide:nth-child(5) { --dx: -2%; --dy: 1%; --from: 1.15; --to: 1.04; }
+.title-slide:nth-child(6) { --dx: 1.5%; --dy: -2%; }
+@keyframes title-drift {
+  from { transform: scale(var(--from)) translate(0, 0); }
+  to { transform: scale(var(--to)) translate(var(--dx), var(--dy)); }
+}
+.title-screen.still .title-slide { animation: none; transition: none; transform: scale(1.04); }
+
+/* the shade: dark towards the menu (the left; on phones the bottom), a vignette all round */
+.title-shade {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 70% 45%, transparent 45%, rgba(var(--t-deep), .55) 100%),
+    linear-gradient(90deg, rgba(var(--t-deep), .94) 0, rgba(var(--t-blue), .84) 26%, rgba(var(--t-blue), .45) 46%, rgba(var(--t-blue), 0) 66%),
+    linear-gradient(0deg, rgba(var(--t-deep), .7) 0, transparent 22%);
+}
+
+/* ------------------------------------------------------------------ the name and the menu */
+.title-top, .title-main, .title-foot { position: absolute; z-index: 3; }
+.title-top { top: max(18px, env(safe-area-inset-top)); left: var(--t-pad); }
+.title-top .cro-logo { --h: 40px; }
+.title-main {
+  inset: 0 auto 0 0; width: min(calc(480px + 2 * var(--t-pad)), 100%); box-sizing: border-box;
+  padding: 84px var(--t-pad) 64px; padding-left: max(var(--t-pad), env(safe-area-inset-left));
+  display: flex; flex-direction: column; justify-content: center; gap: clamp(16px, 3.5vh, 34px);
+  overflow-y: auto; scrollbar-width: none;
+}
+.title-name { animation: title-in .9s ease-out both; }
+.title-eyebrow { margin: 0; font-family: var(--mono); font-size: .78rem; letter-spacing: .16em; text-transform: uppercase; color: var(--t-accent); text-shadow: 0 1px 8px rgba(var(--t-deep), .8); }
+.title-name h1 {
+  margin: 8px 0 16px; font-size: clamp(2.8rem, 6.4vw, 4.6rem); line-height: 1; font-weight: 800; letter-spacing: -.02em;
+  text-shadow: 0 4px 30px rgba(var(--t-deep), .7);
+}
+.title-name h1 .sign { background: #0A777F; color: #ffffff; padding: 0 .12em; border-radius: .08em; margin-right: .02em; box-shadow: 0 6px 24px rgba(var(--t-deep), .5); }
+.title-game { font-weight: 300; font-size: .46em; letter-spacing: .26em; white-space: nowrap; text-transform: uppercase; vertical-align: .32em; margin-left: .25em; color: var(--t-muted); }
+.title-tagline { margin: 0; max-width: 34ch; color: var(--t-muted); font-size: 1.02rem; line-height: 1.45; text-shadow: 0 1px 10px rgba(var(--t-deep), .9); }
+
+.title-menu { min-height: 0; max-width: 470px; }
+.title-loading { color: var(--t-muted); font-size: .9rem; margin: 0; }
+.title-menu-head {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 8px;
+  font-family: var(--mono); font-size: .74rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--t-accent);
+}
+.title-menu-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(54, 184, 191, .6), transparent); }
+.title-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.title-list li { animation: title-in .5s ease-out both; }
+.title-list li:nth-child(2) { animation-delay: .05s; }
+.title-list li:nth-child(3) { animation-delay: .1s; }
+.title-list li:nth-child(4) { animation-delay: .15s; }
+.title-list li:nth-child(5) { animation-delay: .2s; }
+.title-list li:nth-child(6) { animation-delay: .25s; }
+.title-list li:nth-child(7) { animation-delay: .3s; }
+.title-list li:nth-child(n+8) { animation-delay: .35s; }
+@keyframes title-in { from { opacity: 0; transform: translateX(-14px); } }
+
+.title-item {
+  position: relative; display: grid; gap: 1px; width: 100%; box-sizing: border-box; text-align: left;
+  padding: 7px 40px 7px 18px; border: 0; border-left: 4px solid transparent; border-radius: 0 6px 6px 0;
+  background: transparent; color: var(--t-text); font: inherit; text-decoration: none; cursor: pointer;
+  transition: background-color .18s, border-color .18s, transform .18s ease-out;
+}
+.title-label { font-size: 1.12rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 1px 8px rgba(var(--t-deep), .9); }
+.title-sub { font-size: .82rem; color: var(--t-muted); line-height: 1.35; }
+.title-item:focus {
+  background: linear-gradient(90deg, rgba(10, 119, 127, .62), rgba(10, 119, 127, .18) 70%, transparent);
+  border-left-color: var(--t-cursor); transform: translateX(6px);
+}
+/* the cursor of the menu (the focus; the mouse moves it) is the yellow bar on the left and the light behind the item */
+.title-item:focus { outline: none; }
+.title-item:focus .title-label { color: #ffffff; }
+.title-item:active { transform: translateX(8px) scale(.99); }
+/* a submenu's item points onward, Back points back */
+.title-item.more::after, .title-item.back::after {
+  content: ""; position: absolute; right: 16px; top: 50%; width: 9px; height: 9px; margin-top: -5px;
+  border: solid currentColor; border-width: 2px 2px 0 0; transform: rotate(45deg); opacity: .8;
+}
+.title-item.back { margin-top: 6px; }
+.title-item.back::after { right: auto; left: -14px; transform: rotate(-135deg); opacity: 0; }
+.title-item.back:focus::after { opacity: .9; }
+/* an option: a lamp, lit when it is on */
+.title-item[aria-pressed]::after {
+  content: ""; position: absolute; right: 14px; top: 50%; width: 12px; height: 12px; margin-top: -7px;
+  border-radius: 50%; border: 2px solid var(--t-muted);
+}
+.title-item[aria-pressed="true"]::after { background: var(--t-cursor); border-color: var(--t-cursor); box-shadow: 0 0 12px rgba(255, 199, 0, .7); }
+
+/* ------------------------------------------------------------------ the foot */
+.title-foot {
+  left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 6px 20px; flex-wrap: wrap;
+  padding: 12px var(--t-pad) max(14px, env(safe-area-inset-bottom)); font-size: .8rem; color: var(--t-muted);
+  pointer-events: none;
+}
+.title-foot p { margin: 0; text-shadow: 0 1px 6px rgba(var(--t-deep), 1); }
+.title-foot a { color: var(--t-text); pointer-events: auto; }
+.title-caption { font-style: italic; transition: opacity .6s; }
+
+/* ------------------------------------------------------------------ phones and small windows */
+@media (max-width: 700px) {
+  .title-shade {
+    background:
+      linear-gradient(180deg, rgba(var(--t-deep), .82) 0, rgba(var(--t-blue), .35) 24%, rgba(var(--t-blue), .2) 36%, rgba(var(--t-blue), .78) 56%, rgba(var(--t-deep), .95) 80%);
+  }
+  .title-top .cro-logo { --h: 32px; }
+  .title-main { width: 100%; padding-top: 70px; padding-bottom: 64px; justify-content: space-between; padding-right: max(var(--t-pad), env(safe-area-inset-right)); }
+  .title-name h1 { font-size: clamp(2.5rem, 13vw, 3.4rem); }
+  .title-tagline { font-size: .95rem; }
+  .title-item { padding-block: 8px; }
+  .title-label { font-size: 1.02rem; }
+  .title-foot { justify-content: flex-start; }
+  .title-caption { display: none; }
+}
+/* short screens (phones on their side, small laptops): the menu without its lines of text */
+@media (max-height: 720px) and (max-width: 700px), (max-height: 780px) {
+  .title-sub { display: none; }
+  .title-tagline { display: none; }
+  .title-main { gap: 14px; }
+}
+/* phones on their side: the name on the left, the menu beside it in two columns */
+@media (max-height: 460px) {
+  .title-top, .title-eyebrow, .title-caption { display: none; }
+  .title-shade { background: linear-gradient(90deg, rgba(var(--t-deep), .93) 0, rgba(var(--t-blue), .82) 55%, rgba(var(--t-blue), .35) 85%, rgba(var(--t-blue), .2) 100%); }
+  .title-main { width: 100%; flex-direction: row; align-items: center; justify-content: flex-start; gap: 24px; padding-top: 12px; padding-bottom: 36px; padding-right: max(16px, env(safe-area-inset-right)); }
+  .title-name { flex: none; }
+  .title-name h1 { font-size: 2.2rem; margin: 0; }
+  .title-game { display: block; margin: 6px 0 0; font-size: .5em; }
+  .title-menu { flex: 1; max-width: 560px; }
+  .title-list { grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  .title-item { padding-block: 6px; }
+  .title-label { font-size: .95rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-name, .title-list li { animation: none; }
+  .title-item { transition: none; }
+  .title-item:focus { transform: none; }
+}
+@media (forced-colors: active) {
+  .title-item:focus { border-left-color: Highlight; outline: 2px solid Highlight; }
+  .title-item[aria-pressed="true"]::after { background: Highlight; }
+}
+
+/* the way back to the title from the app's bar */
+.bar .menu-link { background: transparent; border-color: var(--bar-line); color: var(--bar-text); }
+.bar .menu-link:hover { background: var(--bar-hover); }

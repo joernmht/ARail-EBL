@@ -13,8 +13,33 @@
 <link rel="stylesheet" href="../app/app.css">
 <link rel="stylesheet" href="../app/flyover.css">
 <link rel="stylesheet" href="game.css">
+<link rel="stylesheet" href="title.css">
+<!-- without a layout or a case the page opens with its title screen (title.js); decided before it is drawn -->
+<script>if (!location.hash.slice(1) && [...new URLSearchParams(location.search).keys()].every((k) => k === "lang")) document.documentElement.classList.add("titled");</script>
+<link rel="preload" as="image" href="../assets/ebl-lab-ar.jpg">
 </head>
 <body>
+<!-- the title screen: the lab's photos full screen, drifting from one to the next, and the main menu (title.js) -->
+<div class="title-screen" id="title" hidden>
+  <div class="title-slides" aria-hidden="true"><img class="title-slide on" src="../assets/ebl-lab-ar.jpg" alt="" decoding="async"></div>
+  <div class="title-shade" aria-hidden="true"></div>
+  <header class="title-top">
+    <img class="cro-logo" src="../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+  </header>
+  <main class="title-main">
+    <div class="title-name">
+      <p class="title-eyebrow">The railway game of the EBL lab</p>
+      <h1><span class="sign" translate="no">AR</span><span translate="no">ail</span> <span class="title-game">Game</span></h1>
+      <p class="title-tagline">Run a railway: every role, from the signal box to the budget.</p>
+    </div>
+    <nav class="title-menu" id="titleMenu" aria-label="Main menu"><p class="title-loading">Loading…</p></nav>
+  </main>
+  <footer class="title-foot">
+    <p class="title-caption" id="titleCaption"></p>
+    <p class="title-links"><span translate="no">Beta 0.1</span> · <a href="../app/">The app</a> · <a href="../impressum/" lang="de" translate="no">Impressum</a> · <a href="../datenschutz/" lang="de" translate="no">Datenschutz</a></p>
+  </footer>
+</div>
+
 <div class="app">
   <header class="bar" id="bar">
     <h1 class="visually-hidden">ARail game</h1>
@@ -25,6 +50,7 @@
     </div>
     <span class="layout-name" id="layoutName"></span>
     <span class="spacer"></span>
+    <a class="btn menu-link" href="./" title="The game's main menu">Menu</a>
     <a class="btn game-link" href="roles/">Roles</a>
     <a class="btn game-link" href="career/">Career</a>
     <a class="btn game-link" href="signaller/">Signaller game</a>
