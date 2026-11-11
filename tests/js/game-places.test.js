@@ -116,6 +116,7 @@ test("backdrops by day and at night: a shift by day gets no picture of the night
   assert.match(backdropAt(true, fault).photo, /night-line/);
   assert.match(backdropAt(null, fault).photo, /night-line/, "the time open: any picture");
   assert.deepEqual(backdropFor(fault), backdropAt(null, fault));
-  assert.equal(backdropAt(false, "Year 1: a technician on call"), null, "only a night picture fits: none by day");
+  assert.match(backdropAt(false, "Year 1: a technician on call").photo, /ebl-lab\.jpg/, "by day the next picture that fits");
+  assert.equal(backdropAt(false, "The night session's ceiling"), null, "only a night picture fits: none by day");
   assert.match(backdropAt(false, "RB 31 comes late. Shall RB 32 wait?").photo, /platform-fly/);
 });
