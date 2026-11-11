@@ -48,6 +48,61 @@ test("the game page opens with its title screen: the photos full screen and the 
   expect(errors).toEqual([]);
 });
 
+test("the title screen is there from the first paint, before the scripts; the photo only for it", async ({ page }) => {
+  // the page's scripts never arrive: the name, the photo and the shade are shown all the same
+  await page.route("**/game/main.js", (route) => route.abort());
+  await page.goto("/game/");
+  await expect(page.locator("#title")).toBeVisible();
+  await expect(page.locator(".title-name h1")).toBeVisible();
+  await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../assets/ebl-lab-ar.jpg");
+  await expect(page.locator(".app")).toBeHidden();
+  await page.unroute("**/game/main.js");
+  // an address with a case: no title, its photo not fetched
+  const photos = [];
+  page.on("request", (r) => r.url().includes("ebl-lab-ar.jpg") && photos.push(r.url()));
+  await page.goto("/game/?layout=../layouts/ebl-lab.json#overview");
+  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await expect(page.locator("#title")).toBeHidden();
+  expect(photos).toEqual([]);
+  expect(await page.locator(".title-slide").first().getAttribute("src")).toBeNull();
+});
+
+test("the menu's keys: Home and End, the right arrow into a submenu, the left arrow back", async ({ page }) => {
+  const errors = await open(page);
+  await page.keyboard.press("End");
+  await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await page.getByRole("button", { name: /Options/ }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".title-menu-head")).toHaveText("Options");
+  await expect(page.locator(".title-item").first()).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(page.getByRole("button", { name: /Options/ })).toBeFocused();
+  // the right arrow on an item without a submenu does nothing
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
+test.describe("with less motion asked for by the system", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("the photos stay still until Options turns the background on", async ({ page }) => {
+    const errors = await open(page);
+    await expect(page.locator("#title")).toHaveClass(/\bstill\b/);
+    expect(await page.evaluate(() => window.__title.timer)).toBeNull();
+    await page.getByRole("button", { name: /Options/ }).click();
+    await expect(page.getByRole("button", { name: /Moving background/ })).toHaveAttribute("aria-pressed", "false");
+    await page.getByRole("button", { name: /Moving background/ }).click();
+    await expect(page.locator("#title")).not.toHaveClass(/\bstill\b/);
+    expect(await page.evaluate(() => window.__title.timer)).not.toBeNull();
+    expect(errors).toEqual([]);
+  });
+});
+
 test("Free play lists the page's cases, each with its layout; Escape goes back; Continue", async ({ page }) => {
   const errors = await open(page);
   await page.getByRole("button", { name: /Free play/ }).click();

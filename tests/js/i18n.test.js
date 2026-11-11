@@ -137,7 +137,7 @@ test("the game page's title screen has its texts in German: the menus, the capti
   assert.ok(texts.has("Missions") && texts.has("Moving background") && texts.has("The town at night") && texts.has("Main menu"), "the texts are found");
   // its markup in the page (the name, the tagline, the foot) and the bar's way back to it
   const html = read("web/game/index.html");
-  const title = html.slice(html.indexOf('<div class="title-screen"'), html.indexOf('<div class="app">'));
+  const title = html.slice(html.indexOf('<div class="title-screen"'), html.indexOf('<div class="app">')).replace(/<script>[\s\S]*?<\/script>/g, "");
   for (const m of title.matchAll(/>([^<>]+)</g)) texts.add(m[1].trim());
   for (const m of title.matchAll(/\b(?:aria-label|title|alt)="([^"]+)"/g)) texts.add(m[1]);
   const menu = html.match(/<a class="btn menu-link"[^>]*title="([^"]+)">([^<]+)</);

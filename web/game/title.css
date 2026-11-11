@@ -4,8 +4,9 @@
    what is chosen, Gelb for the cursor. Text keeps a contrast of at least 4.5:1 on the shade. */
 html.titled, html.titled body { height: 100%; overflow: hidden; background: #00061a; }
 html.titled .app { display: none; }
-/* shown from the first paint when the page opens with it (index.html decides before it is drawn) */
-html.titled .title-screen { display: block; }
+/* shown from the first paint when the page opens with it (index.html decides before it is drawn, before
+   the scripts load): the class alone decides, the markup has no hidden attribute (app.css hides [hidden]) */
+html:not(.titled) .title-screen { display: none; }
 
 .title-screen {
   --t-text: #ffffff; --t-muted: #c3d2ec; --t-accent: #36b8bf; --t-cursor: #FFC700; --t-deep: 0, 6, 26; --t-blue: 0, 20, 80;

@@ -101,6 +101,8 @@ export class TitleScreen {
     this.slide = 0;
     /** The photos' elements by their index in SLIDES (made when first shown), null for one that failed to load. */
     this.imgs = [this.root.querySelector(".title-slide")];
+    // its first photo is set by the page when it opens with the title (index.html); here in case it was not
+    if (this.imgs[0] && !this.imgs[0].getAttribute("src")) this.imgs[0].src = SLIDES[0].src;
     this.timer = null;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)");
     /** What the motion follows while the title is open (removed when it closes). */

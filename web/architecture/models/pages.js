@@ -312,7 +312,7 @@ export const PAGES = [
     ],
     rules: [
       "The game page keeps its last layout under arail.game.lastLayout; the layouts' edits and modules are shared with the app.",
-      "The title screen is chosen before the page is drawn (a script in index.html), so neither the app's shell nor an empty screen flashes up; the app's shell (App, its world) is neither made nor started behind it.",
+      "The title screen is chosen before the page is drawn (a script in index.html) and shown by its class alone, before the scripts load, so neither the app's shell nor an empty screen flashes up; its first photo is fetched only then. The app's shell (App, its world) is neither made nor started behind it.",
       "Continue is what was played last (arail.game.continue): a page opened from the menu, or the app's shell, however it was started (Free play, a link, an address); then it opens the shell's last layout and case (arail.game.lastLayout, arail.game.case), whose modules are kept with the layout. The moving background is kept per device (arail.game.motion), its default still when the system asks for less motion.",
       "Options shows full screen as it is, also when it is left with the browser's keys (fullscreenchange).",
       "Back from a shell started by a #case to the bare address shows the title screen again (the page loads anew).",

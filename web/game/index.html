@@ -14,14 +14,22 @@
 <link rel="stylesheet" href="../app/flyover.css">
 <link rel="stylesheet" href="game.css">
 <link rel="stylesheet" href="title.css">
-<!-- without a layout or a case the page opens with its title screen (title.js); decided before it is drawn -->
-<script>if (!location.hash.slice(1) && [...new URLSearchParams(location.search).keys()].every((k) => k === "lang")) document.documentElement.classList.add("titled");</script>
-<link rel="preload" as="image" href="../assets/ebl-lab-ar.jpg">
+<!-- without a layout or a case the page opens with its title screen (title.js); decided before it is drawn, and only
+     then its first photo is fetched (title.css shows the title screen from the first paint, before the scripts) -->
+<script>
+if (!location.hash.slice(1) && [...new URLSearchParams(location.search).keys()].every((k) => k === "lang")) {
+  document.documentElement.classList.add("titled");
+  document.head.append(Object.assign(document.createElement("link"), { rel: "preload", as: "image", href: "../assets/ebl-lab-ar.jpg" }));
+}
+</script>
 </head>
 <body>
 <!-- the title screen: the lab's photos full screen, drifting from one to the next, and the main menu (title.js) -->
-<div class="title-screen" id="title" hidden>
-  <div class="title-slides" aria-hidden="true"><img class="title-slide on" src="../assets/ebl-lab-ar.jpg" alt="" decoding="async"></div>
+<div class="title-screen" id="title">
+  <div class="title-slides" aria-hidden="true"><img class="title-slide on" data-src="../assets/ebl-lab-ar.jpg" alt="" decoding="async"><script>
+  // its first photo, only when the title screen is shown
+  if (document.documentElement.classList.contains("titled")) document.currentScript.previousElementSibling.src = document.currentScript.previousElementSibling.dataset.src;
+  </script></div>
   <div class="title-shade" aria-hidden="true"></div>
   <header class="title-top">
     <img class="cro-logo" src="../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
