@@ -662,6 +662,28 @@ export const GAMES = [
     ],
   },
   {
+    id: "logbook-page", group: "games", title: "The logbook",
+    summary: "What a player has reached, as a page (game/logbook/): the rank the stars add up to, the missions on their line with stars and best scores, the badges, the railway terms met as cards to turn with a quiz, the places worked at as pictures, and a sheet per mission played, to print.",
+    description: "The page reads the progress the play page keeps in the browser (progress.js, under arail.game.progress) and draws it; nothing leaves the browser. The rank: its name, the stars, the missions passed, the terms and badges, what the next rank needs as a bar, and the ladder of ranks. The line: every mission with its stars, its best score and how often it was played, to play it and to its sheet. The badges: the earned ones lit, the others with how they are earned. The railway terms: those a mission has shown are cards (the term and its German word; turned, what it is in a line or two), the others are counted; with four or more, a quiz asks which term a line describes, the term's own words left out of the line. The places of the missions as pictures, those not played yet dark. A sheet per mission played: its score and stars, the roles sat in, what the person decided (by round), the terms met with their lines, the questions of the debrief; one sheet prints alone, dark on white. Empty my logbook removes the progress after asking.",
+    files: ["web/game/logbook/logbook.js"],
+    classes: [{
+      name: "LogbookPage", file: "web/game/logbook/logbook.js", kind: "class", role: "Draws the progress kept in the browser; turns cards, asks the quiz, prints a sheet, empties the logbook.",
+      attributes: ["progress: object — what the player has reached (progress.js)", "missions: object[] — the missions' documents in their order", "roles: Map — the roles' names by id", "turned: Set — the terms whose cards are turned", "quiz: object — the term asked, the terms offered, the answer given", "streak: number — right answers in a row"],
+      operations: ["load() — the missions and the roles' names; the sheet the address names", "say(text)", "draw()", "rank()", "line()", "badges()", "terms()", "turn(id)", "ask() — a quiz question", "answer(id)", "drawQuiz()", "places()", "sheets()", "print(sheet) — one sheet alone", "reset() — empty the logbook"],
+    }, {
+      name: "logbook", file: "web/game/logbook/logbook.js", kind: "module", role: "Stars as they are shown; a list in another order.",
+      operations: ["stars(n, most)", "shuffled(list)"],
+    }],
+    relations: [
+      { from: "LogbookPage", to: "logbook", kind: "uses", label: "stars, the quiz's order" },
+    ],
+    rules: [
+      "The logbook reads the progress (progress.js), the terms (glossary.js) and the missions' places (places.js), which the play page's model describes. It only reads the progress; the play page writes it when a session with a person on a seat ends, and when a railway term is shown.",
+      "A term is met when a mission shows it in a question or in what happened; only terms met are cards, and only they are asked in the quiz.",
+      "The quiz is the only part of the game that is not played again the same way: its order is random.",
+    ],
+  },
+  {
     id: "roles-page", group: "games", title: "The roles page",
     summary: "The role catalogue as a page (game/roles/): the families as filters, a search, every role as a card with its details, its ways in and what it gives to and takes from other roles, links between roles and to the career planner.",
     files: ["web/game/roles/roles.js"],

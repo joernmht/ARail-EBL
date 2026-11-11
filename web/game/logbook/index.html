@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
+<title>Your logbook · ARail Game</title>
+<meta name="description" content="The logbook of the ARail game: the stars and the rank you have reached, your badges, the railway terms you have met as cards to learn, and a sheet for every mission you played. Kept in this browser only.">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../../assets/fonts/fonts-app.css">
+<link rel="stylesheet" href="../../app/app.css">
+<link rel="stylesheet" href="../site.css">
+<link rel="stylesheet" href="logbook.css">
+<script type="module" src="logbook.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind the page: the town at night, where the logbook is written -->
+<div class="backdrop" aria-hidden="true"><img src="../places/night-town-fly.jpg" alt=""></div>
+<header class="bar site-bar">
+  <div class="identity">
+    <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
+    <span class="divider" aria-hidden="true"></span>
+    <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
+  </div>
+  <span class="spacer"></span>
+  <nav class="site-nav" aria-label="Main">
+    <a class="opt" href="../roles/">Roles</a>
+    <a class="opt" href="../career/">Career</a>
+    <a href="../play/">Missions</a>
+    <a href="../">Game page</a>
+    <a class="btn primary" href="../../app/">App</a>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="wrap log-layout">
+    <!-- what you are: the rank the stars add up to, and what the next one needs -->
+    <section class="log-card log-rank" id="rank" aria-labelledby="rankTitle">
+      <p class="eyebrow">Your logbook</p>
+      <h1 id="rankTitle">Passenger</h1>
+    </section>
+    <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
+
+    <section class="log-card" aria-labelledby="lineTitle">
+      <h2 id="lineTitle">The line</h2>
+      <ol class="log-line" id="line"></ol>
+    </section>
+
+    <section class="log-card" aria-labelledby="badgesTitle">
+      <h2 id="badgesTitle">Badges</h2>
+      <ul class="log-badges" id="badges"></ul>
+    </section>
+
+    <section class="log-card" aria-labelledby="termsTitle">
+      <div class="log-card-head">
+        <h2 id="termsTitle">Railway terms</h2>
+        <button class="btn" type="button" id="quizBtn">Quiz me</button>
+      </div>
+      <p class="hint" id="termsNote"></p>
+      <div class="log-quiz" id="quiz" hidden></div>
+      <ul class="log-terms" id="terms"></ul>
+    </section>
+
+    <section class="log-card" aria-labelledby="placesTitle">
+      <h2 id="placesTitle">Where you have worked</h2>
+      <ul class="log-places" id="places"></ul>
+    </section>
+
+    <section class="log-sheets" aria-labelledby="sheetsTitle">
+      <h2 id="sheetsTitle" class="log-chip">Your sheets</h2>
+      <p class="log-card hint" id="sheetsNote">A mission you have played leaves a sheet here: what you decided, what came of it, the terms you met and the questions to think about.</p>
+      <div id="sheets"></div>
+    </section>
+
+    <section class="log-card log-reset" aria-labelledby="resetTitle">
+      <h2 id="resetTitle">Start over</h2>
+      <p class="hint">The logbook is kept in this browser only. Nobody else sees it, and it is gone when the browser's data is cleared.</p>
+      <button class="btn" type="button" id="resetBtn">Empty my logbook</button>
+      <dialog class="log-dialog" id="resetDialog" aria-labelledby="resetAsk">
+        <p id="resetAsk">Empty your logbook? The stars, badges, terms and sheets are gone for good.</p>
+        <div class="row">
+          <button class="btn" type="button" id="resetNo">Keep it</button>
+          <button class="btn warn" type="button" id="resetYes">Empty it</button>
+        </div>
+      </dialog>
+    </section>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p>The logbook of the ARail game: what you have reached in the <a href="../play/">missions</a>. Kept in this browser only.</p>
+    <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
+  </div>
+</footer>
+</body>
+</html>

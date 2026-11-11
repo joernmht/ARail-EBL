@@ -62,7 +62,7 @@ export function withLang(href, loc = location) {
 export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
 
 /** The pages the main menu opens, which Continue may open again. */
-export const PAGES = ["play/", "signaller/", "career/", "roles/"];
+export const PAGES = ["play/", "signaller/", "career/", "roles/", "logbook/"];
 
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
@@ -274,11 +274,12 @@ export class TitleScreen {
     }
     return [
       this.continued(),
-      { label: "Missions", sub: "The big game: several roles, one railway, in turns and shifts", href: "play/" },
+      { label: "Missions", sub: "A line of missions: take a seat, collect your stars", href: "play/" },
       { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
       { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
       { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },
       { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
+      { label: "Logbook", sub: "Your stars, your rank, the railway terms you met", href: "logbook/" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
     ].filter(Boolean);
