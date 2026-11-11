@@ -220,6 +220,8 @@ class PlayPage {
     $("#tabs").addEventListener("keydown", (e) => this.tabKey(e));
     document.addEventListener("keydown", (e) => this.key(e));
     addEventListener("popstate", () => this.route());
+    // the little train stands at its stop also after the window has changed its size
+    addEventListener("resize", () => this.screen === "choose" && this.train());
     addEventListener("pagehide", () => {
       this.save();
       // also a page the browser keeps for "back": it may be thrown away later without another word, and what a
