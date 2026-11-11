@@ -406,7 +406,11 @@ class PlayPage {
       line.parentElement.append(train);
     }
     train.style.display = at ? "" : "none";
-    if (at) train.style.left = `${at.offsetLeft + at.offsetWidth / 2}px`;
+    if (!at) return;
+    train.style.left = `${at.offsetLeft + at.offsetWidth / 2}px`;
+    // on a narrow screen the line scrolls sideways: the stop chosen is brought into view
+    const box = line.parentElement;
+    if (box.scrollWidth > box.clientWidth) box.scrollLeft = at.offsetLeft + at.offsetWidth / 2 - box.clientWidth / 2;
   }
 
   /** The little train sounds its horn (a click on it, or T): for no reason at all. */
