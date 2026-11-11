@@ -94,11 +94,13 @@ main[data-screen] .play-layout {
 .lv-stop:focus-visible { outline: 3px solid var(--focus); outline-offset: 0; }
 /* the little train: it stands above the stop chosen, and runs to another */
 .lv-line { position: relative; }
-.lv-train { position: absolute; top: 12px; left: 0; width: 44px; height: 18px; margin-left: -66px; transition: left .7s cubic-bezier(.3, .1, .2, 1); pointer-events: none; overflow: visible; }
+.lv-train { position: absolute; top: 12px; left: 0; width: 44px; height: 18px; margin-left: -66px; transition: left .7s cubic-bezier(.3, .1, .2, 1); cursor: pointer; overflow: visible; }
+.lv-train.honk { animation: lv-honk .5s ease-out; }
+@keyframes lv-honk { 30% { transform: translateY(-5px) rotate(-4deg); } 60% { transform: translateY(0) rotate(2deg); } }
 .lv-train .body { fill: var(--overlay-ok); }
 .lv-train .glass { fill: var(--board); }
 .lv-train circle { fill: var(--board-text); }
-@media (prefers-reduced-motion: reduce) { .lv-train { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lv-train { transition: none; } .lv-train.honk { animation: none; } }
 @media (max-width: 700px) { .lv { min-height: 0; } .lv-card { padding: 14px 16px; } }
 
 /* ------------------------------------------------------------------ 2: playing: a stage, not a dashboard */

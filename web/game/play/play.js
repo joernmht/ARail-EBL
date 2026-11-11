@@ -8,9 +8,9 @@
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
 import { GAMES, MISSION, Session, flowOf, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
-import { PORTRAITS, quoteIn, selfPortrait, speakerOf } from "../cast.js";
+import { faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
-import { backdropFor, missionFacts, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
+import { backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
 import { BADGES, MAX_STARS, PROGRESS_KEY, badgesOf, meet, nextMission, rankOf, readProgress, record, starsFor, totalStars } from "../progress.js";
 import { factChips } from "../scene.js";
 import { hasMore, lead } from "../short.js";
@@ -402,10 +402,22 @@ class PlayPage {
       train = s("svg", { class: "lv-train", viewBox: "0 0 44 18", "aria-hidden": "true", focusable: "false" },
         s("path", { class: "body", d: "M2 3h30l9 7v4H2z" }), s("path", { class: "glass", d: "M5 5h6v4H5zM13 5h6v4h-6zM21 5h6v4h-6zM30 5h2l5 4h-7z" }),
         s("circle", { cx: 10, cy: 15, r: 2.4 }), s("circle", { cx: 32, cy: 15, r: 2.4 }));
+      train.addEventListener("click", () => this.honk());
       line.parentElement.append(train);
     }
     train.style.display = at ? "" : "none";
     if (at) train.style.left = `${at.offsetLeft + at.offsetWidth / 2}px`;
+  }
+
+  /** The little train sounds its horn (a click on it, or T): for no reason at all. */
+  honk() {
+    const train = document.querySelector(".lv-train");
+    if (!train) return;
+    this.sound.play("horn");
+    train.classList.remove("honk");
+    // the class again, so that the hop starts anew
+    void train.getBoundingClientRect();
+    train.classList.add("honk");
   }
 
   /** A mission as a stop on the line: its number, its name, the stars reached; the one to play next is marked. */
@@ -655,7 +667,8 @@ class PlayPage {
   entered() {
     const s = this.session, ph = s.phase;
     const mine = (seat) => seat.by === "human" && s.active.includes(seat);
-    if (!mine(s.seat(this.tab))) this.tab = s.active.find(mine)?.id ?? this.tab;
+    // nobody of the people at work in it: a seat at work to watch, one with a picture first (the signaller's panel)
+    if (!mine(s.seat(this.tab))) this.tab = (s.active.find(mine) ?? s.active.find((seat) => this.view(seat.game).sketch) ?? s.active[0])?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
     this.beatDone = this.beatSaid = -1;
@@ -943,7 +956,7 @@ class PlayPage {
     const focus = line || beat ? null : open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
     const who = quote ? speakerOf(seat.Game.id, { who: { name: quote.name } }) : beat ? speakerOf(seat.Game.id, { who: beat.who }) : focus ? speakerOf(seat.Game.id, focus)
       : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? `${logs.length - at} to read` : name, portrait: null };
-    const face = who.portrait ? PORTRAITS[who.portrait] ?? PORTRAITS.office : selfPortrait(seat.Game.id);
+    const face = who.portrait ? faceOf(who) : selfPortrait(seat.Game.id);
     p.talk.classList.toggle("telling", !!line && !quote);
     p.speaker.classList.toggle("self", !focus && !quote && !beat);
     morph(p.speaker, h("img", { src: BASE + face.picture, alt: face.alt }));
@@ -1002,7 +1015,9 @@ class PlayPage {
       h("button", { class: "btn", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over"));
 
     // behind it all: the picture that fits what is read or asked, else the place where the role works
-    this.backdrop((line ? backdropFor(line.text) : beat ? null : focus ? backdropFor(focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)));
+    // (a shift by day gets no picture of the night; in a turn of months or years the time is open)
+    const night = turn ? null : nightAt(s.phase.clock, s.t);
+    this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)));
 
     // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
     p.deskTitle.textContent = seat.Game.title;
@@ -1595,7 +1610,7 @@ class PlayPage {
   }
 
   /**
-   * The keys. Choosing: the arrows go along the line of missions. Playing: P pauses a shift and lets
+   * The keys. Choosing: the arrows go along the line of missions, T sounds the little train's horn. Playing: P pauses a shift and lets
    * it run again, 1 to 9 take an option of the decision in focus, Space reads on, D opens the desk,
    * H shows only the picture, M switches the sound.
    */
@@ -1606,6 +1621,7 @@ class PlayPage {
       e.preventDefault();
       return void this.stepMission(k === "ArrowRight" ? 1 : -1);
     }
+    if (this.screen === "choose" && (k === "t" || k === "T")) return void this.honk();
     if (this.screen !== "play" || !this.session) return;
     if (k === "h" || k === "H") return void this.setBare(!this.bare);
     if (k === "m" || k === "M") return void this.setSound(!this.sound.on);

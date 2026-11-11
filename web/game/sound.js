@@ -1,6 +1,6 @@
 // The sounds of the game: a few short cues, made by the browser (Web Audio), no files. A choice
 // clicks, a chapter chimes like a station's gong, a deadline running out beeps, a result is a
-// little tune. Quiet, never the only sign of anything, and off with one button (kept in the browser).
+// little tune, and the little train on the line of missions has a horn. Quiet, never the only sign of anything, and off with one button (kept in the browser).
 
 /** Where the pages keep whether the sound is on. */
 export const SOUND_KEY = "arail.game.sound";
@@ -19,6 +19,7 @@ export const CUES = {
   star: { wave: "triangle", notes: [[1047, 0, 0.12], [1319, 0.1, 0.2]] },
   passed: { wave: "triangle", notes: [[523, 0, 0.14], [659, 0.13, 0.14], [784, 0.26, 0.14], [1047, 0.39, 0.4]] },
   failed: { wave: "triangle", notes: [[392, 0, 0.2], [330, 0.18, 0.2], [262, 0.36, 0.45]] },
+  horn: { wave: "sawtooth", notes: [[311, 0, 0.5], [370, 0, 0.5], [311, 0.6, 0.28], [370, 0.6, 0.28]] },
 };
 
 /** How loud a cue is at most (0–1). */
