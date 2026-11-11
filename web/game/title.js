@@ -106,6 +106,8 @@ export class TitleScreen {
     /** The menu shown: "main", "free" or "options". */
     this.view = "main";
     this.slide = 0;
+    /** The photo being loaded to be shown next, or null. */
+    this.coming = null;
     /** The photos' elements by their index in SLIDES (made when first shown), null for one that failed to load. */
     this.imgs = [this.root.querySelector(".title-slide")];
     // its first photo is set by the page when it opens with the title (index.html); here in case it was not
@@ -114,6 +116,8 @@ export class TitleScreen {
     this.timer = null;
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)");
     /** What the motion follows while the title is open (removed when it closes). */
+    /** The item the cursor was on last (the focus), for Enter when the focus has left the menu. */
+    this.cursor = null;
     this.follow = () => this.setMotion(this.motion);
     this.keys = (e) => this.onKey(e);
     // full screen left with Esc or F11 (the browser's): Options shows it
@@ -128,6 +132,9 @@ export class TitleScreen {
     this.root.hidden = false;
     // the menu's keys work wherever the focus is while the title is open (a click on the photo leaves it on the page)
     document.addEventListener("keydown", this.keys);
+    this.root.addEventListener("focusin", (e) => e.target.closest?.(".title-item") && (this.cursor = e.target.closest(".title-item")));
+    // a click on the photo keeps the cursor where it is (the focus stays in the menu)
+    this.root.addEventListener("mousedown", (e) => !e.target.closest("a, button") && e.preventDefault());
     this.render();
     this.setMotion(this.motion);
     this.reduced.addEventListener?.("change", this.follow);
@@ -178,6 +185,7 @@ export class TitleScreen {
     if (img.dataset.waiting) return; // still loading since an earlier tick
     const show = () => {
       delete img.dataset.waiting;
+      if (this.coming === i) this.coming = null;
       for (const s of this.imgs) s?.classList.remove("on", "last");
       this.imgs[this.slide]?.classList.add("last");
       void img.offsetWidth; // the drift starts again from its beginning
@@ -188,6 +196,7 @@ export class TitleScreen {
     if (img.complete && img.naturalWidth) show();
     else {
       img.dataset.waiting = "1";
+      this.coming = i;
       img.addEventListener("load", show, { once: true });
     }
   }
@@ -201,8 +210,10 @@ export class TitleScreen {
     const failed = () => {
       this.imgs[i] = null;
       img.remove();
-      if (i === this.slide) this.next();
-      else if (this.timer) this.next();
+      // the one shown, the one about to be shown, or while the photos move: try the next one
+      const coming = i === this.coming;
+      if (coming) this.coming = null;
+      if (i === this.slide || coming || this.timer) this.next();
     };
     if (img.complete && img.getAttribute("src") && !img.naturalWidth) queueMicrotask(failed);
     else img.addEventListener("error", failed, { once: true });
@@ -248,7 +259,8 @@ export class TitleScreen {
   continued() {
     const last = store.get(LAST, null);
     if (last?.href) return { label: "Continue", sub: last.label, href: last.href, keep: true };
-    const layout = last?.shell ? store.get(SHELL_LAYOUT, null) : null;
+    // the shell played last; also a game kept from before the title screen (no record of what was played last)
+    const layout = last?.shell || last == null ? store.get(SHELL_LAYOUT, null) : null;
     if (typeof layout !== "string" || !layout) return null;
     const id = store.get(SHELL_CASE, null);
     const known = this.freePlay.find((it) => it.id === id);
@@ -372,6 +384,10 @@ export class TitleScreen {
       e.preventDefault();
       const i = move === "first" ? 0 : move === "last" ? items.length - 1 : at < 0 ? (move > 0 ? 0 : items.length - 1) : (at + move + items.length) % items.length;
       items[i]?.focus();
+    } else if (e.key === "Enter" && at < 0) {
+      // the cursor's item, or the first one, when the focus is elsewhere (on an item, the item's own Enter)
+      e.preventDefault();
+      (this.cursor && this.root.contains(this.cursor) ? this.cursor : items[0])?.click();
     } else if (e.key === "Escape" && this.view !== "main") {
       e.preventDefault();
       this.go("main");

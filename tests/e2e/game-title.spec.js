@@ -35,14 +35,20 @@ test("the game page opens with its title screen: the photos full screen and the 
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
-  // with the focus off the menu (a click on the photo), the keys still move the cursor
+  // a click on the photo keeps the cursor; with the focus elsewhere the keys still move it, and Enter chooses
   await page.mouse.click(vp.width - 40, vp.height / 2);
-  await expect(page.locator(".title-item:focus")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
+  await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
-  await page.mouse.click(vp.width - 40, vp.height / 2);
+  await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await page.getByRole("button", { name: /Options/ }).focus();
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".title-menu-head")).toHaveText("Options");
+  await page.keyboard.press("Escape");
   // the app's shell is not started behind it
   expect(await page.evaluate(() => window.__arail)).toBeUndefined();
   expect(errors).toEqual([]);
@@ -74,6 +80,35 @@ test("a shared link's tracking tags still open the title screen; the shell's key
   await page.goto("/game/?mock=1");
   await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
   await expect(page.locator("#title")).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test.describe("with the background still", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("the first two photos cannot be loaded: the third is shown", async ({ page }) => {
+    await page.route("**/assets/ebl-lab-ar.jpg", (route) => route.abort());
+    await page.route("**/media/ebl-container-train.jpg", (route) => route.abort());
+    const errors = await open(page);
+    await page.waitForFunction(() => window.__title.slide === 2);
+    expect(await page.evaluate(() => window.__title.timer)).toBeNull();
+    await expect(page.locator(".title-slide.on")).toHaveAttribute("src", "../assets/town-day.jpg");
+    await expect(page.locator("#titleCaption")).toHaveText("The town around the layout, in the flyover");
+    expect(errors).toEqual([]);
+  });
+});
+
+test("a game kept from before the title screen is offered as Continue", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("arail.game.lastLayout", JSON.stringify("../layouts/ebl-neustadt.json"));
+    localStorage.setItem("arail.game.case", JSON.stringify("terminal"));
+  });
+  const errors = await open(page);
+  const cont = page.locator(".title-item").first();
+  await expect(cont.locator(".title-label")).toHaveText("Continue");
+  await expect(cont.locator(".title-sub")).toHaveText("Free play · Terminal");
+  await expect(cont).toHaveAttribute("href", "?layout=..%2Flayouts%2Febl-neustadt.json#terminal");
   expect(errors).toEqual([]);
 });
 
@@ -146,9 +181,12 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   await expect(cont.locator(".title-sub")).toHaveText("Free play · Journeys");
   // where the shell was left: its layout and case (its modules are kept with the layout, not in the link)
   await expect(cont).toHaveAttribute("href", "?layout=..%2Flayouts%2Febl-lab.json#journeys");
-  // another layout chosen in the shell: Continue follows it
+  // it opens the journeys again: their module, kept with the layout, and their case
   await cont.click();
-  await page.waitForFunction(() => window.__arail?.layoutUrl, null, { timeout: 30_000 });
+  await page.waitForFunction(() => window.__arail?.journeys?.sim, null, { timeout: 60_000 });
+  expect(await page.evaluate(() => window.__arail.activeCase)).toBe("journeys");
+  await expect(page.locator("#tab-interaction")).toHaveAttribute("aria-selected", "true");
+  // another layout chosen in the shell: Continue follows it
   await page.evaluate(() => window.__arail.openExample("neustadt"));
   await page.waitForFunction(() => /ebl-neustadt\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
   await page.goto("/game/");
