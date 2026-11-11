@@ -13,35 +13,43 @@
  * @property {string} [focus] the part of the photo kept when it is cropped (CSS object-position)
  */
 
-/** @type {Place[]} */
+/**
+ * The photos are close-ups in web/game/places/: cut from the lab's photos, or, where everything in
+ * view is virtual (trains, town), taken in the flyover (their names end in -fly).
+ * @type {Place[]}
+ */
 export const PLACES = [
   {
     id: "signal-box", name: "Signal box, Bf Neustadt", line: "Three platform tracks, two lines, one panel.",
-    photo: "media/ebl-neustadt.jpg", alt: "Bf Neustadt in the lab: its platform tracks with a freight train, seen from the side of the signal box", focus: "50% 72%",
+    photo: "game/places/signal-box.jpg", alt: "Bf Neustadt in the lab, close up: its tracks with signals and a freight train",
   },
   {
     id: "track", name: "The line at Neustadt", line: "Signals, points and rails: what the teams go out to.",
-    photo: "media/ebl-lab.jpg", alt: "The tracks of the lab with signals and a container train, seen along the line", focus: "50% 45%",
+    photo: "game/places/track.jpg", alt: "Signals between the tracks of the lab, close up, a container train beside them",
   },
   {
     id: "district", name: "The district around Bf Neustadt", line: "Every asset of the district, with its condition.",
-    photo: "assets/ebl-lab-ar.jpg", alt: "Bf Neustadt in the lab with its digital layer: platforms, trains and their labels", focus: "50% 40%",
+    photo: "game/places/district.jpg", alt: "The platforms of Bf Neustadt in the lab with their digital layer: people waiting, trains and their labels",
   },
   {
     id: "trains", name: "On the trains, Bf Neustadt", line: "The undertaking's units, drivers and passengers.",
-    photo: "media/ebl-container-train.jpg", alt: "Trains side by side in the lab: an intercity and a container train", focus: "50% 35%",
+    photo: "game/places/platform-fly.jpg", alt: "Regional trains at the platform of Bf Neustadt, in the flyover",
   },
   {
-    id: "lab", name: "The EBL lab, from above", line: "The real lab: its own simulation runs these trains.",
-    photo: "media/ebl-lab-ortho.jpg", alt: "The lab's layout from above: parallel tracks with trains", focus: "40% 50%",
+    id: "lab", name: "The EBL lab", line: "The real lab: its own simulation runs these trains.",
+    photo: "game/places/lab-trains.jpg", alt: "Container wagons with their markers on the tracks of the lab, close up",
   },
   {
     id: "terminal", name: "The container terminal", line: "Crane, yard and the line to Pirna.",
-    photo: "media/ebl-terminal.jpg", alt: "The container terminal of the lab with its crane and a container train", focus: "50% 70%",
+    photo: "game/places/terminal.jpg", alt: "The crane of the lab's container terminal over its tracks, close up",
   },
   {
-    id: "town", name: "Neustadt, the town", line: "Offices with a view of the station they pay for.",
-    photo: "assets/town-day.jpg", alt: "The town around the layout in the flyover: houses, streets and buses beside the tracks", focus: "50% 55%",
+    id: "town", name: "Neustadt, the station forecourt", line: "Buses and trains: what the authority orders and pays.",
+    photo: "game/places/forecourt-fly.jpg", alt: "The forecourt of Bf Neustadt in the flyover: buses at their bays, trains behind them",
+  },
+  {
+    id: "town-hall", name: "Neustadt, the town", line: "A working life starts here, at school.",
+    photo: "game/places/town-fly.jpg", alt: "The town of Neustadt in the flyover: houses, a car park and streets, the station behind them",
   },
   {
     id: "town-night", name: "Neustadt at night", line: "One committee room is still lit.",

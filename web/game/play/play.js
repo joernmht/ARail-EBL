@@ -287,7 +287,7 @@ class PlayPage {
     const note = $("#missionsNote");
     note.textContent = this.failed ?? (this.missions.length ? "" : this.ready ? "There are no missions yet." : "Loading the missions.");
     note.hidden = !note.textContent;
-    mount($("#missions"), this.missions.map((doc) => h("li", {}, this.card(doc))));
+    mount($("#missions"), this.missions.map((doc, i) => h("li", {}, this.card(doc, i + 1))));
     // the head of the page shows where the mission chosen plays
     showPlace($("#scene"), this.doc ? placeOfMission(normalizeMission(this.doc, this.games)) : placeOf(), BASE);
     this.setup();
@@ -295,14 +295,15 @@ class PlayPage {
   }
 
   /**
-   * A mission's card: the photo of its place, its title, its hook and its facts; the briefing (its
+   * A mission's card, as a level of a game: the photo of its place, its number, its title, its hook and its facts; the briefing (its
    * text, rounds and phases, the seats with who is suggested for them) opens below.
    */
-  card(doc) {
+  card(doc, no = 0) {
     const problems = validateMission(doc, this.games), m = normalizeMission(doc, this.games), chosen = this.doc === doc;
     return h("article", { class: "game-card play-mission", "aria-labelledby": `mission-${doc.id}` },
       placeFigure(placeOfMission(m), BASE, { label: "Where" }),
       h("div", { class: "play-mission-body" },
+        no ? h("p", { class: "play-no" }, `Mission ${String(no).padStart(2, "0")}`) : null,
         h("h3", { id: `mission-${doc.id}` }, m.title ?? doc.id),
         h("p", { class: "play-hook" }, m.hook ?? m.text),
         factChips(missionFacts(m)),
@@ -313,7 +314,7 @@ class PlayPage {
               e.preventDefault();
               this.choose(doc.id);
             },
-          }, chosen ? "Chosen" : "Take a seat")),
+          }, chosen ? "Chosen" : [h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), "Take a seat"])),
         h("details", { class: "play-brief" }, h("summary", {}, "Briefing"),
           m.hook ? h("p", {}, m.text) : null,
           h("p", { class: "hint" }, this.outline(m)),
@@ -360,6 +361,7 @@ class PlayPage {
       },
       h("div", { class: "play-choices" }, m.roles.map((r) => h("fieldset", { class: "play-choice" },
         h("legend", {}, this.roleText(r.role), r.id !== r.role ? ` (${r.id})` : null),
+        placeFigure(placeOfGame(r.game), BASE, { label: "Where", cls: "play-seat-photo" }),
         [["human", "You"], ["computer", "Computer"]].map(([by, label]) => h("label", { class: "field check", for: `by-${r.id}-${by}` },
           h("input", { type: "radio", name: `by-${r.id}`, id: `by-${r.id}-${by}`, value: by, checked: c.seats[r.id] === by, onchange: () => { c.seats[r.id] = by; } }), label)),
         (this.games.get(r.game).settings ?? []).map((x) => h("label", { class: "field play-setting", for: `set-${r.id}-${safe(x.id)}` }, h("span", {}, x.label),
