@@ -66,12 +66,25 @@ export function portraitFor(role, fallback = "office") {
  */
 export function speakerOf(game, decision = {}) {
   const own = GAME_CAST[game] ?? NARRATOR;
-  if (decision.who?.name) return { role: "", portrait: own.portrait, ...decision.who };
+  if (decision.who?.name) return decision.who.name === own.name ? { name: own.name, role: own.role, portrait: own.portrait, ...decision.who } : { role: "", portrait: own.portrait, ...decision.who };
   const m = PERSON.exec(decision.title ?? "") ?? PERSON.exec(decision.text ?? "");
   if (!m) return { name: own.name, role: own.role, portrait: own.portrait };
   if (m[1] === own.name) return { name: own.name, role: own.role, portrait: own.portrait };
   const role = m[2].trim().replace(/^./, (c) => c.toUpperCase());
   return { name: m[1], role, portrait: portraitFor(role, own.portrait) };
+}
+
+/** A person quoted in a message: `E. Wiedehopf: "Not a second time."`, with what stands before. */
+const QUOTE = /^(.*?)(\p{Lu}\. (?:(?:von|van|de) )?\p{Lu}[\p{L}-]+): "(.+)"\s*$/u;
+
+/**
+ * Who is quoted in a message, and what they say; null where nobody is.
+ * @param {string} text
+ * @returns {{name: string, before: string, quote: string} | null}
+ */
+export function quoteIn(text) {
+  const m = QUOTE.exec(String(text ?? ""));
+  return m ? { before: m[1], name: m[2], quote: m[3] } : null;
 }
 
 /**

@@ -48,3 +48,13 @@ test("cast: the portrait that fits a role's words", () => {
   assert.equal(portraitFor("Planner"), "office");
   assert.equal(portraitFor("Planner", "suit"), "suit");
 });
+
+test("cast: who is quoted in a message", async () => {
+  const { quoteIn } = await import("../../web/game/cast.js");
+  assert.deepEqual(quoteIn('2027: the coalition partner did not get what it asked for. E. Wiedehopf: "Not a second time."'),
+    { before: "2027: the coalition partner did not get what it asked for. ", name: "E. Wiedehopf", quote: "Not a second time." });
+  assert.equal(quoteIn("Year 1: 276 faults at grade 3.00."), null);
+  assert.equal(quoteIn(null), null);
+  assert.equal(speakerOf("budget", { who: { name: "E. Wiedehopf" } }).role, "The coalition partner's rapporteur");
+  assert.equal(speakerOf("budget", { who: { name: "S. Fink" } }).portrait, "suit");
+});

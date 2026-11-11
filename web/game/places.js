@@ -11,26 +11,32 @@
  * @property {string} photo the photo's path below web/
  * @property {string} alt what the photo shows
  * @property {string} [focus] the part of the photo kept when it is cropped (CSS object-position)
+ * @property {string} [wide] a larger photo for the whole screen (the backdrop), where the close-up is too small
+ * @property {string} [wideFocus] the part of the larger photo kept when it is cropped
  */
 
 /**
  * The photos are close-ups in web/game/places/: cut from the lab's photos, or taken in the flyover
  * with everything in view virtual (trains, town; drawn without the table's photo, which blurs up
- * close): their names end in -fly.
+ * close): their names end in -fly. A close-up cut from a lab photo names that photo as `wide`, for
+ * the whole screen.
  * @type {Place[]}
  */
 export const PLACES = [
   {
     id: "signal-box", name: "Signal box, Bf Neustadt", line: "Three platform tracks, two lines, one panel.",
     photo: "game/places/signal-box.jpg", alt: "Bf Neustadt in the lab, close up: its tracks with signals and a freight train",
+    wide: "media/ebl-neustadt.jpg", wideFocus: "40% 72%",
   },
   {
     id: "track", name: "The line at Neustadt", line: "Signals, points and rails: what the teams go out to.",
     photo: "game/places/track.jpg", alt: "Signals between the tracks of the lab, close up, a container train beside them",
+    wide: "media/ebl-lab.jpg", wideFocus: "70% 30%",
   },
   {
     id: "district", name: "The district around Bf Neustadt", line: "Every asset of the district, with its condition.",
     photo: "game/places/district.jpg", alt: "The platforms of Bf Neustadt in the lab with their digital layer: people waiting, trains and their labels",
+    wide: "assets/ebl-lab-ar.jpg", wideFocus: "60% 38%",
   },
   {
     id: "trains", name: "On the trains, Bf Neustadt", line: "The undertaking's units, drivers and passengers.",
@@ -39,10 +45,12 @@ export const PLACES = [
   {
     id: "lab", name: "The EBL lab", line: "The real lab: its own simulation runs these trains.",
     photo: "game/places/lab-trains.jpg", alt: "Container wagons with their markers on the tracks of the lab, close up",
+    wide: "media/ebl-container-train.jpg", wideFocus: "40% 35%",
   },
   {
     id: "terminal", name: "The container terminal", line: "Crane, yard and the line to Pirna.",
     photo: "game/places/terminal.jpg", alt: "The crane of the lab's container terminal over its tracks, close up",
+    wide: "media/ebl-terminal.jpg", wideFocus: "35% 70%",
   },
   {
     id: "town", name: "Neustadt, the station forecourt", line: "Buses and trains: what the authority orders and pays.",
@@ -54,9 +62,60 @@ export const PLACES = [
   },
   {
     id: "town-night", name: "Neustadt at night", line: "One committee room is still lit.",
-    photo: "assets/town-night.jpg", alt: "The town around the layout at night, its windows and street lamps lit", focus: "55% 50%",
+    photo: "game/places/night-office-fly.jpg", alt: "A block of flats and offices in Neustadt at night, some windows lit, a tram at its stop",
   },
 ];
+
+/**
+ * @typedef {object} Backdrop
+ * @property {string} id kebab-case
+ * @property {string} photo the photo's path below web/
+ * @property {string} alt what the photo shows
+ * @property {RegExp} words what a text speaks of when this picture fits it
+ */
+
+/**
+ * More pictures for the stage: what a question is about decides which one stands behind it
+ * (backdropFor). All taken in the flyover, everything in view virtual; the first that fits wins, so
+ * the narrower words come first.
+ * @type {Backdrop[]}
+ */
+export const BACKDROPS = [
+  { id: "night-crossing", photo: "game/places/night-crossing-fly.jpg", alt: "The level crossing at night: street lamps, a car waiting at the barriers", words: /\b(on call|at night|weekends?|night shift|overtime)\b/i },
+  { id: "crossing", photo: "game/places/crossing-fly.jpg", alt: "The level crossing of Brückenstraße in the flyover: barriers, trees, a car and a cyclist", words: /\b(level crossing|barriers?|bridge|branch|speed restriction|fence|trespass)/i },
+  { id: "night-office", photo: "game/places/night-office-fly.jpg", alt: "A block of flats and offices in Neustadt at night, some windows lit, a tram at its stop", words: /\b(night session|ceiling|draft|coalition|rapporteur|committee|ministry|block|grant|equity|capital|special fund)/i },
+  { id: "night-town", photo: "game/places/night-town-fly.jpg", alt: "The town of Neustadt at night in the flyover: lit windows and street lamps", words: /\b(constituency|voters?|election|mayor|press|public)\b/i },
+  { id: "terminal", photo: "game/places/terminal-fly.jpg", alt: "The container terminal in the flyover: the crane over the train, the yard and a barge at the quay", words: /\b(containers?|crane|terminal|barge|quay|trucks?|freight)\b/i },
+  { id: "tram", photo: "game/places/tram-fly.jpg", alt: "A tram at its stop in Bahnhofstraße in the flyover, the station behind it", words: /\b(trams?|bus(es)?|replacement service|stop)\b/i },
+  { id: "station", photo: "game/places/station-fly.jpg", alt: "The station building of Bf Neustadt in the flyover, a regional train at the platform in front", words: /\b(drivers?|units?|defect|sick|stand-by|spare|workshop|crew|roster)\b/i },
+  { id: "platform", photo: "game/places/platform-fly.jpg", alt: "Regional trains at the platform of Bf Neustadt, in the flyover", words: /\b(passengers?|connections?|change|hold|wait|late|delay|punctual)/i },
+  { id: "forecourt", photo: "game/places/forecourt-fly.jpg", alt: "The forecourt of Bf Neustadt in the flyover: buses at their bays, trains behind them", words: /\b(operator|contract|penalt|malus|incident|train-km|timetable|emergency timetable|auditor)/i },
+  { id: "school", photo: "game/places/school-fly.jpg", alt: "A school in Neustadt in the flyover, a street in front of it", words: /\b(school|apprentice|training|exam|students?|teach)/i },
+  { id: "overview", photo: "game/places/overview-fly.jpg", alt: "Neustadt from above in the flyover: the station, the tracks and the town around them", words: /\b(district|network|grade|renewals?|strategy|replacement money|programme)\b/i },
+  { id: "night-line", photo: "game/places/night-line-fly.jpg", alt: "The line at Neustadt at night in the flyover, a train's lit windows in the distance", words: /\b(teams?|technician|faults?|repair|closure|closed)\b/i },
+];
+
+/**
+ * The picture for the whole screen behind a place: its larger photo where it has one.
+ * @param {Place} place
+ * @returns {{photo: string, alt: string, focus: string}}
+ */
+export function wideOf(place) {
+  return { photo: place.wide ?? place.photo, alt: place.alt, focus: (place.wide ? place.wideFocus : place.focus) ?? "50% 50%" };
+}
+
+/**
+ * The picture that fits what a text speaks of (a question's title first, then its text), or null.
+ * @param {...string} texts
+ * @returns {{photo: string, alt: string, focus: string} | null}
+ */
+export function backdropFor(...texts) {
+  for (const text of texts) {
+    const b = text ? BACKDROPS.find((x) => x.words.test(text)) : null;
+    if (b) return { photo: b.photo, alt: b.alt, focus: "50% 50%" };
+  }
+  return null;
+}
 
 /** The place of each game (by `Game.id`): where its role works. */
 export const GAME_PLACES = {

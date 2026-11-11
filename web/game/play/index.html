@@ -15,8 +15,10 @@
 <link rel="stylesheet" href="play.css">
 <script type="module" src="play.js"></script>
 </head>
-<body>
+<body data-screen="choose">
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind every screen: the place of the mission, of the seat shown, of what a question is about (PlayPage.backdrop) -->
+<div class="backdrop" id="backdrop" aria-hidden="true"><img alt=""><img alt=""></div>
 <header class="bar site-bar">
   <div class="identity">
     <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
@@ -28,64 +30,46 @@
     <a class="opt" href="../roles/">Roles</a>
     <a class="opt" href="../signaller/">Signaller game</a>
     <a class="opt" href="../career/">Career</a>
+    <a class="opt" href="../logbook/">Logbook</a>
     <a href="../">Game page</a>
     <a class="btn primary" href="../../app/">App</a>
   </nav>
 </header>
 
 <main id="main" data-screen="choose">
-  <!-- the scene: the game in a line or two, its facts, the briefing to open; the photo of the place where the role works -->
-  <div class="scene" id="scene">
-    <figure class="scene-place" data-place="district">
-      <img src="../../game/places/district.jpg" alt="The platforms of Bf Neustadt in the lab with their digital layer: people waiting, trains and their labels" decoding="async" style="object-position: 50% 50%">
-      <figcaption><span class="place-label">Where it plays</span> <strong>The district around Bf Neustadt</strong> <span class="place-line">Every asset of the district, with its condition.</span></figcaption>
-    </figure>
-    <div class="wrap">
-      <div class="scene-text">
-        <p class="eyebrow">Big game · missions</p>
-        <h1>The big game</h1>
-        <p class="scene-hook">One railway, many desks. Take a seat and live with what the others decide.</p>
-        <ul class="facts" aria-label="In short"><li>1 to 6 roles</li><li>turns and shifts</li><li>you or the computer</li></ul>
-        <details class="scene-brief">
-          <summary>How it works</summary>
-          <p>A mission seats several roles of the railway. Each seat is one role's game, played by you at this device or by the computer. What one role gives another (a fault report, a repair status, a track closure, a budget) is what the other has to work with.</p>
-          <p>Choose a mission and your seats, play it, watch what the roles give each other, and read the result. Slow roles decide in turns, fast roles work in shifts on one clock.</p>
-        </details>
-      </div>
-    </div>
-  </div>
-
-  <div class="wrap play-layout">
+  <h1 class="visually-hidden">The big game</h1>
+  <div class="play-layout">
     <!-- what a person needs to hear: a new phase, a new decision, the end -->
     <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
-    <!-- 1: choose a mission and the seats -->
-    <div class="play-screen" id="choose">
-      <section class="game-card play-setup" id="setup" aria-labelledby="setupTitle" hidden></section>
-      <section class="play-missions" aria-labelledby="missionsTitle">
-        <h2 id="missionsTitle">Missions</h2>
+    <!-- 1: the line of missions, and the mission chosen with its seats: one screen, the mission's place behind it -->
+    <div class="play-screen lv" id="choose">
+      <div class="lv-top">
+        <p class="lv-brand">The big game · missions</p>
+        <a class="lv-rank" id="rank" href="../logbook/" hidden></a>
+      </div>
+      <section class="lv-card play-setup" id="setup" aria-labelledby="setupTitle" hidden></section>
+      <nav class="lv-line play-missions" aria-labelledby="missionsTitle">
+        <h2 id="missionsTitle" tabindex="-1">The line</h2>
         <p class="hint" id="missionsNote">Loading the missions.</p>
-        <ul id="missions"></ul>
-      </section>
+        <ol id="missions"></ol>
+      </nav>
     </div>
 
-    <!-- 2: play: the bar of the session, the seats as the cast, the stage of the seat shown; what the roles give each other opens as a dialog -->
+    <!-- 2: play: the bar of the session and the cast over the picture, the stage of the seat shown; the numbers open as dialogs -->
     <div class="play-screen" id="play" hidden>
       <section class="play-strip" aria-labelledby="stripTitle">
-        <div class="play-strip-head">
+        <div class="hud-chip hud-title">
           <h2 id="stripTitle" tabindex="-1"></h2>
           <p class="play-where" id="where"></p>
-          <span class="spacer"></span>
-          <button class="btn small" type="button" id="showFlows" aria-haspopup="dialog">Who gave what <span class="tag" id="flowBadge">0</span></button>
-          <button class="btn small" type="button" id="leave">Other missions</button>
         </div>
         <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
-        <div class="play-bar" id="shiftBar">
+        <div class="play-bar hud-chip" id="shiftBar">
           <p class="play-clock"><span class="visually-hidden">Time: </span><time id="clock">08:00:00</time></p>
           <div class="seg" role="group" aria-label="Speed" id="speed"></div>
           <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
         </div>
-        <div class="play-bar" id="skipBar" hidden>
+        <div class="play-bar hud-chip" id="skipBar" hidden>
           <p class="hint">Nobody of the people is at work in this shift: the computer plays it.</p>
           <button class="btn" type="button" id="skip">Skip to the end of the shift</button>
         </div>
@@ -93,6 +77,11 @@
           <button class="btn" type="button" id="endTurn" aria-describedby="turnNote">End the turn</button>
           <p class="hint" id="turnNote"></p>
         </div>
+        <span class="spacer"></span>
+        <button class="btn small" type="button" id="showFlows" aria-haspopup="dialog" title="What the roles give each other">Who gave what <span class="tag" id="flowBadge">0</span></button>
+        <button class="btn small" type="button" id="sound" aria-pressed="true" title="Sound on or off (M)">Sound</button>
+        <button class="btn small" type="button" id="bare" aria-pressed="false" title="Only the picture (H)">Picture</button>
+        <button class="btn small" type="button" id="leave">Other missions</button>
       </section>
 
       <section class="play-seats" aria-labelledby="seatsTitle">
@@ -120,11 +109,13 @@
     <!-- 3: the result -->
     <section class="play-screen play-result" id="result" aria-labelledby="resultTitle" hidden></section>
   </div>
+  <!-- only the picture (H): what brings the interface back -->
+  <button class="btn small bare-back" type="button" id="bareBack" hidden>Show the game (H)</button>
 </main>
 
 <footer class="site-foot">
   <div class="wrap">
-    <p>A prototype of the big game of ARail-EBL: the role games joined by what the roles give each other (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>, <a href="../roles/">the roles</a>). A session is kept in this browser only.</p>
+    <p>A prototype of the big game of ARail-EBL: the role games joined by what the roles give each other (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>, <a href="../roles/">the roles</a>, <a href="../logbook/">your logbook</a>). A session is kept in this browser only.</p>
     <p><a href="../../">Project page</a> · <a href="../../app/">App</a> · <a href="../">Game page</a> · <a href="https://github.com/joernmht/ARail-EBL">Source on GitHub</a> · <a href="../../impressum/" lang="de">Impressum</a> · <a href="../../datenschutz/" lang="de">Datenschutz</a></p>
   </div>
 </footer>

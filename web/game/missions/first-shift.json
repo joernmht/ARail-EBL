@@ -1,0 +1,22 @@
+{
+ "format": "arail-mission/1",
+ "id": "first-shift",
+ "title": "Your first shift",
+ "hook": "Nine trains, three tracks, nothing fails. Get them all through on time.",
+ "place": "signal-box",
+ "text": "08:00 to 08:40 in the signal box of Bf Neustadt, alone and with nothing going wrong: the place to learn the panel. Choose a start signal in the picture, then its destination: the interlocking moves the points, locks the route and clears the signal. Regional trains meet at the island platform, and the intercity wants to pass the freight train. Nobody else is seated; no signal fails.",
+ "mode": "solo",
+ "seed": 1,
+ "roles": [
+  { "role": "signaller-relay", "game": "signaller", "seat": "human", "level": "training" }
+ ],
+ "rounds": 1,
+ "phases": [
+  { "id": "shift", "kind": "shift", "title": "The morning shift", "roles": ["signaller-relay"], "length": 2400, "clock": "08:00" }
+ ],
+ "debrief": [
+  "Which train did you let wait, and for which other train? Would you decide the same again?",
+  "A route is locked until the train has passed. What did that mean for the next train you wanted to let in?",
+  "The intercity and the freight train: where did you let one pass the other, and what did it cost the slower one?"
+ ]
+}

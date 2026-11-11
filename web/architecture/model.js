@@ -166,7 +166,7 @@ export const PACKAGES = [
   {
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: a title screen (the lab's photos full screen, drifting from one to the next, and the main menu), then the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games, each with its scene (the game in a line or two, and a photo of the place on the layout where the role works): the signaller's panel, the play page of the big game (missions, seats, turns and shifts), the role catalogue and the career planner.",
-    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/roles/roles.js", "web/game/career/career.js"],
+    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/progress.js", "web/game/glossary.js", "web/game/sound.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {

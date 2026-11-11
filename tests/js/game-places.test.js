@@ -63,3 +63,25 @@ test("missions: the facts of a mission, for its chips", () => {
   assert.deepEqual(facts("night-session"), ["1 role", "4 rounds", "2 turns each", "solo"]);
   assert.deepEqual(missionFacts({ roles: [{}, {}], rounds: 1, mode: "competitive", phases: [{ kind: "shift", length: 7200 }] }), ["2 roles", "2 h on the clock", "against each other"]);
 });
+
+test("backdrops: each is a picture that exists; what a text speaks of decides", async () => {
+  const { BACKDROPS, backdropFor, wideOf } = await import("../../web/game/places.js");
+  const ids = new Set();
+  for (const b of BACKDROPS) {
+    assert.ok(!ids.has(b.id), `${b.id} twice`);
+    ids.add(b.id);
+    assert.ok(existsSync(`web/${b.photo}`), `${b.id}: ${b.photo}`);
+    assert.ok(b.alt?.trim() && b.words instanceof RegExp && !b.words.global, b.id);
+  }
+  assert.match(backdropFor("Year 1: a technician on call").photo, /night-crossing/);
+  assert.match(backdropFor("RB 31 comes late. Shall RB 32 wait for its passengers?").photo, /platform/);
+  assert.match(backdropFor("Year 1: the renewals").photo, /overview/);
+  assert.match(backdropFor("Nothing that fits", "but the crane does").photo, /terminal/);
+  assert.equal(backdropFor("Nothing that fits"), null);
+  assert.equal(backdropFor(), null);
+  for (const p of PLACES) {
+    const w = wideOf(p);
+    assert.ok(existsSync(`web/${w.photo}`), `${p.id}: ${w.photo}`);
+    assert.ok(w.alt && w.focus);
+  }
+});
