@@ -381,7 +381,7 @@ class PlayPage {
     this.liveLoading = true;
     try {
       const { LiveScene } = await import("../live.js");
-      const scene = new LiveScene($("#live"));
+      const scene = new LiveScene($("#liveScene"));
       // too slow on this device: the still pictures stay
       scene.canvas.addEventListener("livefailed", () => $("#backdrop").classList.remove("live"));
       if (await scene.load(BASE + NEUSTADT, NEUSTADT)) this.live = scene;
