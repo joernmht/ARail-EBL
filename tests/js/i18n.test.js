@@ -126,6 +126,28 @@ test("every text the code asks for by name has a German translation", () => {
   assert.deepEqual(missing, [], "texts without a German translation");
 });
 
+test("the game page's title screen has its texts in German: the menus, the captions, its markup", () => {
+  const t = appTranslator();
+  const texts = new Set();
+  const src = read("web/game/title.js");
+  // the items, their lines, the photos' captions and the menus' headings; options shown on or off; the texts asked for by name
+  for (const m of src.matchAll(/\b(?:label|sub|caption|main|free|options):\s*"((?:[^"\\\n]|\\.)+)"/g)) texts.add(JSON.parse(`"${m[1]}"`));
+  for (const m of src.matchAll(/\?\s*"((?:[^"\\\n]|\\.)+)"\s*:\s*"((?:[^"\\\n]|\\.)+)"/g)) texts.add(JSON.parse(`"${m[1]}"`)).add(JSON.parse(`"${m[2]}"`));
+  for (const m of src.matchAll(/\b(?:tr|focusLabel)\("((?:[^"\\\n]|\\.)+)"\)/g)) texts.add(JSON.parse(`"${m[1]}"`));
+  assert.ok(texts.has("Missions") && texts.has("Moving background") && texts.has("The town at night") && texts.has("Main menu"), "the texts are found");
+  // its markup in the page (the name, the tagline, the foot) and the bar's way back to it
+  const html = read("web/game/index.html");
+  const title = html.slice(html.indexOf('<div class="title-screen"'), html.indexOf('<div class="app">')).replace(/<script>[\s\S]*?<\/script>/g, "");
+  for (const m of title.matchAll(/>([^<>]+)</g)) texts.add(m[1].trim());
+  for (const m of title.matchAll(/\b(?:aria-label|title|alt)="([^"]+)"/g)) texts.add(m[1]);
+  const menu = html.match(/<a class="btn menu-link"[^>]*title="([^"]+)">([^<]+)</);
+  texts.add(menu[1]).add(menu[2]);
+  // names and what is not translated (translate="no": AR, ail, Beta 0.1, Impressum, Datenschutz) stay
+  const kept = new Set(["AR", "ail", "Beta 0.1", "Impressum", "Datenschutz"]);
+  const missing = [...texts].filter((x) => /[A-Za-z]{2}/.test(x) && !kept.has(x) && !t.has(x) && t.translate(x) === x);
+  assert.deepEqual(missing, [], "texts of the title screen without a German translation");
+});
+
 test("the page's own markup (bar, stage buttons, tabs) is translated", () => {
   const t = appTranslator();
   const html = read("web/app/index.html");

@@ -160,13 +160,13 @@ export const PACKAGES = [
   {
     id: "app", name: "app", group: "pages", path: "web/app",
     summary: "The app, an interactive presentation: sources, frame loop, HUD, the time and speed in the stage's corner, the photo tour of the lab (from photo to photo, as in Street View), the panel's three chapters (Overview; Interaction with its scenarios to start, filtered by pills: the Introduction, a film of the layout, the Sandbox, examples with a small task by side, infrastructure and railway undertaking, and the tools Build and Disruptions; Settings), the flyover, tooltips and info cards, in the language chosen; the stage fades from picture to picture and stays in place while the panel scrolls; its shell is the game page's too.",
-    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/speed.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/icons.js", "web/app/intro.js", "web/app/sandbox.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js"],
+    files: ["web/app/main.js", "web/app/app.js", "web/app/ui.js", "web/app/speed.js", "web/app/panels.js", "web/app/overview.js", "web/app/interaction.js", "web/app/cases.js", "web/app/icons.js", "web/app/intro.js", "web/app/sandbox.js", "web/app/editor.js", "web/app/flyover.js", "web/app/survey.js", "web/app/terminal.js", "web/app/story.js", "web/app/plan.js", "web/app/inspect.js", "web/app/tour.js", "web/app/tour-nav.js", "web/app/i18n.js", "web/app/lang/de.js", "web/app/lang/de-builder.js", "web/app/lang/de-plan.js", "web/app/lang/de-game.js"],
     uses: ["api"], links: [["vendor", "script tags"]],
   },
   {
     id: "game", name: "game", group: "pages", path: "web/game",
-    summary: "The game page: the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games: the signaller's panel, the play page of the big game (missions, seats, turns and shifts), the role catalogue and the career planner.",
-    files: ["web/game/main.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/roles/roles.js", "web/game/career/career.js"],
+    summary: "The game page: a title screen (the lab's photos full screen, drifting from one to the next, and the main menu), then the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games: the signaller's panel, the play page of the big game (missions, seats, turns and shifts), the role catalogue and the career planner.",
+    files: ["web/game/main.js", "web/game/title.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {

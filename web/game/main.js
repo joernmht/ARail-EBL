@@ -3,12 +3,15 @@
 // Sandbox (the modules to switch on and off); Infrastructure, asset management with roles, decisions
 // and budget years; Railway undertaking, the operations (fleet, workshop and crews, setups compared
 // under stress tests), the container terminal with its visits and the journeys (travellers with
-// travel plans for a class). It is the app's shell (stage, flyover, Build, Settings).
+// travel plans for a class). It is the app's shell (stage, flyover, Build, Settings). Called without
+// a layout or a case, it opens with its title screen (title.js): the lab's photos and the main menu,
+// whose Free play opens these cases.
 import { App } from "../app/app.js";
 import { BuildCase, Case, DisruptionsCase, SandboxCase, TerminalCase } from "../app/cases.js";
 import { InfraPanel } from "./infra.js";
 import { JourneysPanel } from "./journeys.js";
 import { OperationsPanel } from "./operations.js";
+import { TitleScreen, rememberShell, withLang } from "./title.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
 
@@ -91,4 +94,43 @@ const PAGE = {
   },
 };
 
-new App(PAGE).init();
+/** Free play on the title screen: the cases, each on the layout and with the module it plays in. */
+const FREE_PLAY = [
+  [SandboxCase, `?layout=${LAB}`],
+  [AssetsGame, `?layout=${LAB}&layers=infrastructure`],
+  [OperationsGame, `?layout=${LAB}&layers=operations`],
+  [TerminalGame, "?layout=../layouts/container-terminal.json"],
+  [JourneysGame, `?layout=${LAB}&layers=journeys`],
+].map(([C, query]) => ({ id: C.id, label: C.label, sub: C.description, href: `${query}#${C.id}` }));
+
+/** The app's shell, made only when it starts (not behind the title screen); the bar's Menu keeps the address's language. */
+function start() {
+  // made when it is followed: the language may have changed in the shell meanwhile (it rewrites ?lang=)
+  const menu = document.querySelector("#bar .menu-link");
+  const menuHref = () => withLang("?", location).replace(/^\?$/, "./");
+  if (menu) {
+    menu.href = menuHref();
+    // also for a middle click, a new tab from its context menu, the keyboard
+    for (const type of ["pointerdown", "click", "auxclick", "contextmenu", "focus", "mouseenter"]) menu.addEventListener(type, () => (menu.href = menuHref()));
+  }
+  // Continue on the title screen comes back here, once the shell has its layout (App.init keeps it)
+  new App(PAGE).init().then(rememberShell);
+}
+
+if (TitleScreen.wanted()) {
+  const title = new TitleScreen({ freePlay: FREE_PLAY });
+  window.__title = title; // for end-to-end tests
+  title.open();
+  // a case asked for without loading the page again (an address with only its #case) leaves the title for the app
+  const enter = () => {
+    if (!location.hash.slice(1)) return;
+    removeEventListener("hashchange", enter);
+    title.close();
+    start();
+    // Back to the bare address: the title screen again, as a reload of it would show
+    addEventListener("hashchange", () => {
+      if (TitleScreen.wanted()) location.reload();
+    });
+  };
+  addEventListener("hashchange", enter);
+} else start();
