@@ -310,8 +310,9 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   // while a session is played the site's bar and foot make way
   await expect(page.locator("body")).toHaveAttribute("data-screen", "play");
   await expect(page.locator("#main")).toHaveAttribute("data-screen", "play");
-  await expect(page.locator(".site-bar")).toBeHidden();
-  await expect(page.locator(".site-foot")).toBeHidden();
+  // the page's bar stays, for the way to the other pages
+  await expect(page.locator(".site-bar")).toBeVisible();
+  await expect(page.locator(".site-nav a[href='../logbook/']")).toBeVisible();
   await expect(page.locator("#choose")).toBeHidden();
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator("#where")).toHaveText("The morning shift");
@@ -345,7 +346,9 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(desk.locator(".play-log li").first()).toContainText("The shift begins");
   await page.keyboard.press("Escape");
   await expect(desk).toBeHidden();
-  // P lets the shift run again, and pauses it
+  // P lets the shift run again, and pauses it (what the mission's people say first is heard out, so that nothing else is said meanwhile)
+  await run(page, 3);
+  await readOn(page, SIGNALLER);
   await page.keyboard.press("p");
   await expect(page.getByRole("button", { name: "1×" })).toHaveAttribute("aria-pressed", "true");
   await expect(live(page)).toContainText("Running at 1×.");
@@ -568,9 +571,8 @@ test("the failure: decisions are announced and asked one at a time; answered, th
   await expect(stage.locator(".vn-count")).toHaveText("Decision 2 of 2");
   await expect(asked.locator("h5")).toHaveText("Exit signal N2 cannot show a proceed aspect. How can RB 33 leave track G2?");
   await expect(asked.locator(".play-options-row .btn")).toHaveCount(3);
-  // BUG: PlayPage.look() draws the stage anew and the title that was clicked is gone, so the focus falls back to
-  // <body> (a keyboard user starts again at the top of the page); it should go on into the decision now in focus
-  await expect.soft(stage.locator(".vn-decisions :focus")).toHaveCount(1);
+  // the title that was pressed is gone: the focus goes on into the decision now shown
+  await expect(asked.locator(".play-options-row .btn").first()).toBeFocused();
   await waiting.click();
   await expect(asked.locator("h5")).toHaveText("Signal N2 has failed. Report the fault to the maintenance dispatcher?");
   await asked.getByRole("button", { name: "Later" }).focus();
@@ -637,9 +639,8 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await expect(page.locator("#tab-maintenance-dispatcher")).toContainText("you");
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("mine"));
   await expect(page.locator(`${MAINTENANCE} .vn-tools button`)).toHaveText(["Moves (2)", "DeskD", "Hand to the computer"]);
-  // BUG: the tools are drawn anew by their place (morph), and a seat taken over gets one button more in front: the
-  // button that was pressed is "Desk" now and keeps the focus, instead of the focus staying on the seat's switch
-  await expect.soft(tool(page, MAINTENANCE, "Hand to the computer")).toBeFocused();
+  // the tools are drawn anew, one more of them in front: the focus stays on the seat's switch
+  await expect(tool(page, MAINTENANCE, "Hand to the computer")).toBeFocused();
   await expect(live(page)).toContainText("You play Maintenance and fault dispatcher now.");
   await expect(desk.locator(".play-head")).toContainText("played by you");
   await expect(stageOf(page, MAINTENANCE).locator(".vn-name strong")).toHaveText("You");
@@ -667,9 +668,8 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await back.click();
   await expect(tool(page, MAINTENANCE, "Take over")).toBeVisible();
   await expect(live(page)).toContainText("The computer plays Maintenance and fault dispatcher now.");
-  // BUG: the same the other way: with one button less in front, the button that had the focus is removed and the focus
-  // is put on the session's title (#stripTitle) at the top of the page; the old page kept it on the button ("Take over")
-  await expect.soft(tool(page, MAINTENANCE, "Take over")).toBeFocused();
+  // the same the other way, with one button less in front: the focus stays on the seat's switch
+  await expect(tool(page, MAINTENANCE, "Take over")).toBeFocused();
   await expect(panel.locator(".play-move")).toHaveCount(0);
   await expect(tool(page, MAINTENANCE, /^Moves/)).toHaveCount(0);
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("theirs"));
@@ -1383,12 +1383,12 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   const panel = page.locator(ASSETS), stage = stageOf(page, ASSETS), end = page.locator("#endTurn"), decisions = stage.locator(".play-decision"), asked = stage.locator(".play-decision:not(.waiting)");
   // what happened is read first; then the five decisions of the year
   await expect(stage.locator(".vn-story")).toBeVisible();
+  await expect(live(page)).toContainText("5 decisions to take.");
   await readOn(page, ASSETS);
   await expect(decisions).toHaveCount(5);
   await expect(end).toHaveText("End the turn (5 open)");
   await expect(end).not.toHaveClass(/primary/);
   await expect(page.locator("#turnNote")).toHaveText("5 of your decisions are still open. Ending the turn decides them by their fallback.");
-  await expect(live(page)).toContainText("5 decisions to take.");
   await expect(tool(page, ASSETS, "End the turn")).toHaveCount(0);
   // a decision that waits is put in focus and answered; its fallback is named, and who asks is the person its title names
   await stage.locator(".play-decision.waiting .play-next").filter({ hasText: "proposes to repair the bridge" }).click();
@@ -1467,9 +1467,8 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   expect(now.missions["budget-years"]).toEqual({ best: result.score, stars: starsFor(result.score, result.passed), plays: 1, passed: result.passed });
   expect(now.sheets["budget-years"]).toMatchObject({ score: result.score, roles: ["asset-manager"] });
   await expect(verdict.getByRole("link", { name: "Your sheet" })).toHaveAttribute("href", "../logbook/#sheet-budget-years");
-  // BUG: what a person decided is kept for the sheet in PlayPage.diary only, which begin() empties: the decisions taken
-  // before the page was closed and the session resumed (here: the bridge's repair approved in round 1) are missing on the sheet
-  expect.soft(now.sheets["budget-years"].decisions.map((d) => [d.round, d.chose])).toContainEqual([1, "Approve: repair it this year (€450,000)"]);
+  // what a person decided before the page was closed is on the sheet too: it was kept with the saved session
+  expect(now.sheets["budget-years"].decisions.map((d) => [d.round, d.chose])).toContainEqual([1, "Approve: repair it this year (€450,000)"]);
   expect(errors).toEqual([]);
 });
 

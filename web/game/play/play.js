@@ -684,6 +684,9 @@ class PlayPage {
     }
     this.choice = { ...this.choice, seats: { ...session.seated }, seed: session.seed };
     this.begin(session);
+    // what the page knew of it when it was saved: the decisions a person took, the terms met
+    this.diary = Array.isArray(saved.diary) ? saved.diary.filter((d) => d && typeof d.title === "string" && typeof d.chose === "string") : [];
+    this.met = new Set(Array.isArray(saved.met) ? saved.met.filter((t) => typeof t === "string") : []);
     // a session taken up again waits: the person finds their place first
     if (this.screen === "play" && session.phase.kind === "shift") this.setSpeed(0, true);
   }
@@ -789,7 +792,8 @@ class PlayPage {
     const as = `${s.index}|${s.ticks}|${s.record.length}`;
     if (as === this.savedAs) return;
     this.savedAs = as;
-    storage.set(saveKey(s.mission.id), s.save());
+    // with what the page itself knows of the session: what a person decided and the terms met, for the mission's sheet
+    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met] });
   }
 
   /** Say something to those who do not see the page (the live region; what is said in one go is said together). */
@@ -874,6 +878,8 @@ class PlayPage {
   look(seatId, id) {
     this.focus.set(seatId, id);
     this.draw(true);
+    // the title that was pressed is gone: the focus goes on into the decision now shown
+    this.panels.get(seatId)?.decisions.querySelector(".play-decision:not(.waiting) .play-options-row .btn, .play-decision:not(.waiting) button")?.focus();
   }
 
   /**
@@ -1507,7 +1513,10 @@ class PlayPage {
     this.session.sit(seatId, by);
     this.say(`${by === "human" ? "You play" : "The computer plays"} ${this.seatName(seatId)} now.`);
     this.after();
-    this.refocus(() => $("#stripTitle"));
+    // the tools are drawn anew, more or fewer of them: the focus stays on the seat's switch (the last of them)
+    const hand = this.panels.get(seatId)?.tools.querySelector("button:last-of-type");
+    if (hand && !hand.closest("[hidden]")) hand.focus();
+    else this.refocus(() => $("#stripTitle"));
   }
 
   /** End the turn: what is still open is decided by its fallback. */
