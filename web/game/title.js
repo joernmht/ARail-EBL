@@ -1,7 +1,7 @@
 // The title screen of the game page (game/): what the page opens with when it is called without a
 // layout or a case (a bare game/, or game/?lang=de). The photos of the lab, full screen, drift and
 // fade into each other, as a game's title does; beside them the main menu: to go on with the game
-// played last, the big game's missions, the signaller, free play on the lab's layout (the game
+// played last, the big game's missions, the signaller, free play (the game
 // page's cases, a submenu), the career planner, the role catalogue, the options (language, a moving
 // background, full screen) and the way back to the project page. A link of the menu opens its page;
 // free play opens this page again with a layout and a case, which goes straight into the app's shell.
@@ -21,6 +21,9 @@ export const SLIDES = [
 
 /** How long a photo stays (ms) before the next one fades in; the drift lasts a little longer. */
 export const SLIDE_MS = 9000;
+
+/** How long a photo may take to load before it is left out like one that failed (ms). */
+export const STUCK_MS = 30000;
 
 /** What the browser keeps: the game played last (Continue) and whether the background moves. */
 const LAST = "arail.game.continue", MOTION = "arail.game.motion";
@@ -98,7 +101,7 @@ export class TitleScreen {
   }
 
   /**
-   * @param {{freePlay: MenuItem[]}} options freePlay: the game page's cases on the lab's layout
+   * @param {{freePlay: MenuItem[]}} options freePlay: the game page's cases, each with its layout
    */
   constructor({ freePlay }) {
     this.root = $("#title");
@@ -123,6 +126,7 @@ export class TitleScreen {
     this.track = (e) => e.target.closest?.(".title-item") && (this.cursor = e.target.closest(".title-item"));
     this.hold = (e) => !e.target.closest("a, button") && e.preventDefault();
     this.follow = () => this.setMotion(this.motion);
+    this.back = (e) => e.persisted && !this.closed && this.redraw();
     this.keys = (e) => this.onKey(e);
     // full screen left with Esc or F11 (the browser's): Options shows it
     this.fullscreen = () => this.view === "options" && this.redraw();
@@ -143,6 +147,8 @@ export class TitleScreen {
     this.setMotion(this.motion);
     this.reduced.addEventListener?.("change", this.follow);
     document.addEventListener("visibilitychange", this.follow);
+    // back from a page opened from the menu (the browser's back/forward cache keeps this page as it was): Continue anew
+    addEventListener("pageshow", this.back);
     document.addEventListener("fullscreenchange", this.fullscreen);
     // the menu's first item takes the focus, as a game's menu has its cursor on it
     this.focusFirst();
@@ -154,6 +160,7 @@ export class TitleScreen {
     document.removeEventListener("visibilitychange", this.follow);
     document.removeEventListener("fullscreenchange", this.fullscreen);
     document.removeEventListener("keydown", this.keys);
+    removeEventListener("pageshow", this.back);
     this.root.removeEventListener("focusin", this.track);
     this.root.removeEventListener("mousedown", this.hold);
     this.closed = true;
@@ -190,7 +197,11 @@ export class TitleScreen {
       this.watch(img, i);
       $(".title-slides", this.root).append(img);
     }
-    if (img.dataset.waiting) return; // still loading since an earlier tick
+    if (img.dataset.waiting) {
+      // still loading since an earlier tick; a request that never ends (a stuck connection) counts as failed
+      if (Date.now() - Number(img.dataset.waiting) > STUCK_MS) img.dispatchEvent(new Event("error"));
+      return;
+    }
     const show = () => {
       if (this.closed) return;
       delete img.dataset.waiting;
@@ -204,7 +215,7 @@ export class TitleScreen {
     };
     if (img.complete && img.naturalWidth) show();
     else {
-      img.dataset.waiting = "1";
+      img.dataset.waiting = String(Date.now());
       this.coming = i;
       img.addEventListener("load", show, { once: true });
     }
@@ -253,7 +264,7 @@ export class TitleScreen {
       this.continued(),
       { label: "Missions", sub: "The big game: several roles, one railway, in turns and shifts", href: "play/" },
       { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
-      { label: "Free play", sub: "The lab's layout: assets, operations, the terminal, journeys", go: "free" },
+      { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
       { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },
       { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },

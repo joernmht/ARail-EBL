@@ -122,6 +122,34 @@ test("a game kept from before the title screen is offered as Continue", async ({
   expect(errors).toEqual([]);
 });
 
+test("back from a page opened from the menu (restored from the browser's cache), Continue is drawn anew", async ({ page }) => {
+  const errors = await open(page);
+  expect(await labels(page)).not.toContain("Continue");
+  // as the click on Roles records it before the page is left; then the page comes back from the cache
+  await page.evaluate(() => {
+    localStorage.setItem("arail.game.continue", JSON.stringify({ href: "roles/", label: "Roles" }));
+    dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+  });
+  await expect(page.locator(".title-item").first()).toHaveAttribute("href", "roles/");
+  expect(errors).toEqual([]);
+});
+
+test("a photo whose request never ends is left out after a while; the photos go on", async ({ page }) => {
+  await page.route("**/media/ebl-container-train.jpg", () => {}); // never answered
+  const errors = await open(page);
+  await page.evaluate(() => window.__title.setMotion(true));
+  await page.evaluate(() => window.__title.next());
+  await page.waitForFunction(() => window.__title.coming === 1);
+  // as if STUCK_MS had passed
+  await page.evaluate(() => {
+    window.__title.imgs[1].dataset.waiting = String(Date.now() - 60_000);
+    window.__title.next();
+  });
+  await page.waitForFunction(() => window.__title.slide === 2);
+  expect(await page.evaluate(() => window.__title.imgs[1])).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test("the first photo, if it cannot be loaded, is left out: the next one is shown at once", async ({ page }) => {
   await page.route("**/assets/ebl-lab-ar.jpg", (route) => route.abort());
   const errors = await open(page);

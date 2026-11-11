@@ -17,7 +17,7 @@ export const GAME_DE = {
   "Signaller": "Fahrdienstleiter",
   "Half an hour at Bf Neustadt in a relay interlocking": "Eine halbe Stunde in Bf Neustadt am Relaisstellwerk",
   "Free play": "Freies Spiel",
-  "The lab's layout: assets, operations, the terminal, journeys": "Die Anlage des Labors: Anlagen, Betrieb, das Terminal, Reisen",
+  "Assets, operations and journeys on the lab's layout; the container terminal": "Anlagen, Betrieb und Reisen auf der Anlage des Labors; das Containerterminal",
   "Career": "Karriere",
   "A working life through the roles of the railway": "Ein Berufsleben durch die Rollen der Bahn",
   "Roles": "Rollen",
