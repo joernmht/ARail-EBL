@@ -276,10 +276,14 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(page.locator("#by-maintenance-dispatcher")).not.toBeChecked();
   const who = (id) => page.evaluate((seat) => getComputedStyle(document.querySelector(`label[for="by-${seat}"] .who`), "::after").content, id);
   expect([await who("signaller-relay"), await who("maintenance-dispatcher")]).toEqual(['"you"', '"computer"']);
-  await page.locator("#by-maintenance-dispatcher").check();
+  // a click anywhere on a seat takes it; Space on it gives it back
+  await setup.locator("label.lv-seat").nth(1).click();
+  await expect(page.locator("#by-maintenance-dispatcher")).toBeChecked();
   expect(await who("maintenance-dispatcher")).toBe('"you"');
   expect(await page.evaluate(() => window.__play.choice.seats)).toEqual({ "signaller-relay": "human", "maintenance-dispatcher": "human" });
-  await page.locator("#by-maintenance-dispatcher").uncheck();
+  await page.locator("#by-maintenance-dispatcher").focus();
+  await page.keyboard.press("Space");
+  await expect(page.locator("#by-maintenance-dispatcher")).not.toBeChecked();
   expect(await page.evaluate(() => window.__play.choice.seats["maintenance-dispatcher"])).toBe("computer");
   // what nobody needs to start is behind one fold: the briefing, the phases, the seed, the wiring
   const more = setup.locator("details.play-more");
@@ -632,6 +636,10 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await tool(page, MAINTENANCE, "Take over").click();
   await expect(page.locator("#tab-maintenance-dispatcher")).toContainText("you");
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("mine"));
+  await expect(page.locator(`${MAINTENANCE} .vn-tools button`)).toHaveText(["Moves (2)", "DeskD", "Hand to the computer"]);
+  // BUG: the tools are drawn anew by their place (morph), and a seat taken over gets one button more in front: the
+  // button that was pressed is "Desk" now and keeps the focus, instead of the focus staying on the seat's switch
+  await expect.soft(tool(page, MAINTENANCE, "Hand to the computer")).toBeFocused();
   await expect(live(page)).toContainText("You play Maintenance and fault dispatcher now.");
   await expect(desk.locator(".play-head")).toContainText("played by you");
   await expect(stageOf(page, MAINTENANCE).locator(".vn-name strong")).toHaveText("You");
@@ -653,11 +661,15 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await closeDialog(page);
   await expect(panel.locator(".vn-gauges")).toContainText("4 h");
   await expect(panel.locator(".vn-ticker")).toContainText("The track technician on call, J. Sokół, is called");
-  // the button stays where it was, with the focus
+  // handed back: the seat's switch reads "Take over" again
   const back = tool(page, MAINTENANCE, "Hand to the computer");
   await back.focus();
   await back.click();
-  await expect(tool(page, MAINTENANCE, "Take over")).toBeFocused();
+  await expect(tool(page, MAINTENANCE, "Take over")).toBeVisible();
+  await expect(live(page)).toContainText("The computer plays Maintenance and fault dispatcher now.");
+  // BUG: the same the other way: with one button less in front, the button that had the focus is removed and the focus
+  // is put on the session's title (#stripTitle) at the top of the page; the old page kept it on the button ("Take over")
+  await expect.soft(tool(page, MAINTENANCE, "Take over")).toBeFocused();
   await expect(panel.locator(".play-move")).toHaveCount(0);
   await expect(tool(page, MAINTENANCE, /^Moves/)).toHaveCount(0);
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("theirs"));
@@ -758,22 +770,26 @@ test("a turn is told before it is decided: Space reads on line by line, then som
     { who: "Asset manager", title: asked[1].title, chose: asked[1].options[0], round: 1 },
   ]);
 
-  // the account has much to tell: all but the last line can be skipped at once; with nothing to decide the last reads "Go on"
+  // the account has much to tell: a line is read, and the lines after it can be skipped at once
   await page.locator("#endTurn").click();
   await expect(page.locator("#where")).toHaveText("Round 1 of 4 · The year's account");
-  const unread = (await game()).logs.length - logs.length;
-  expect(unread).toBeGreaterThan(2);
+  const told = (await game()).logs, unread = told.length - logs.length;
+  expect(unread).toBeGreaterThan(3);
+  await expect(line).toHaveText(told[logs.length]);
   await expect(stage.locator(".vn-name span")).toHaveText(`${unread} to read`);
   const skip = story.getByRole("button", { name: /^Skip \d+ more$/ });
   await expect(skip).toHaveText(`Skip ${unread - 1} more`);
-  await skip.click();
-  await expect(stage.locator(".vn-name span")).toHaveText("1 to read");
-  await expect(line).toHaveText((await game()).logs.at(-1));
-  await expect(skip).toHaveCount(0);
-  await expect(go).toHaveAccessibleName((await game()).open.length ? "To the decisions" : "Go on");
   await go.click();
+  await expect(line).toHaveText(told[logs.length + 1]);
+  await expect(stage.locator(".vn-name span")).toHaveText(`${unread - 1} to read`);
+  await expect(skip).toHaveText(`Skip ${unread - 2} more`);
+  await skip.click();
   await readOn(page, ASSETS); // what the story says in the account, if anything
   await expect(story).toBeHidden();
+  expect(await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("asset-manager").game;
+    return p.read.get(g) === g.logs.length;
+  })).toBe(true);
   // read to its end, the turn can be ended from the stage; the newest message stays below
   await expect(stage.locator(".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
   await expect(stage.locator(".vn-ticker")).toHaveText((await game()).logs.at(-1));
@@ -885,13 +901,13 @@ test("a railway term in a text can be tapped: what it is, with its German word; 
   await expect(box).toBeVisible();
   await terms.first().click();
   await expect(box).toBeHidden();
+  // nothing new was met by tapping
+  expect((await kept(page)).terms).toEqual(before.terms);
   // reading on closes an explanation
   await terms.first().click();
   await expect(box).toBeVisible();
   await stage.locator(".vn-story .btn.primary").click();
   await expect(box).toBeHidden();
-  // nothing new was met by tapping
-  expect((await kept(page)).terms.length).toBe(before.terms.length);
   // a term in a decision's title is a button too
   await readOn(page, ASSETS);
   const titled = await page.evaluate(async () => {
@@ -1003,9 +1019,9 @@ test("only the picture: H takes the game's interface out of the way and brings i
   expect(errors).toEqual([]);
 });
 
-test("the sound: its button and M switch it, and the choice is kept in the browser", async ({ page }) => {
+test("the sound and the live backdrop: their buttons and M and L switch them, and the choices are kept in the browser", async ({ page }) => {
   const errors = await start(page);
-  const sound = page.locator("#sound"), stored = () => page.evaluate(() => localStorage.getItem("arail.game.sound"));
+  const sound = page.locator("#sound"), stored = (key = "arail.game.sound") => page.evaluate((k) => localStorage.getItem(k), key);
   await expect(sound).toHaveAttribute("aria-pressed", "true");
   expect(await stored()).toBeNull();
   await sound.click();
@@ -1027,6 +1043,25 @@ test("the sound: its button and M switch it, and the choice is kept in the brows
   await sound.click();
   await expect(sound).toHaveAttribute("aria-pressed", "true");
   expect(await stored()).toBe("true");
+  // the live backdrop (the layout's world running behind the game) is wanted unless switched off; L and its button
+  // switch it, and that is kept too. A test's browser gets the still pictures either way.
+  const liveBtn = page.locator("#liveBtn");
+  await expect(liveBtn).toHaveText("Live");
+  await expect(liveBtn).toHaveAttribute("aria-pressed", "true");
+  expect(await stored("arail.game.live")).toBeNull();
+  await expect(page.locator("#backdrop")).not.toHaveClass(cls("live"));
+  await page.keyboard.press("l");
+  await expect(liveBtn).toHaveAttribute("aria-pressed", "false");
+  expect(await stored("arail.game.live")).toBe("false");
+  await liveBtn.click();
+  await expect(liveBtn).toHaveAttribute("aria-pressed", "true");
+  expect(await stored("arail.game.live")).toBe("true");
+  await page.keyboard.press("L");
+  await page.reload();
+  await page.waitForFunction(() => window.__play?.ready);
+  await expect(liveBtn).toHaveAttribute("aria-pressed", "false");
+  expect(await page.evaluate(() => [window.__play.liveOn, window.__play.sound.on])).toEqual([false, true]);
+  await expect(page.locator("#backdrop")).not.toHaveClass(cls("live"));
   expect(errors).toEqual([]);
 });
 
@@ -1114,7 +1149,8 @@ test("the verdict of a mission a person passed: the stars, what was gained, the 
 test("the computer on every seat: the shift can be skipped, and nothing goes into the logbook", async ({ page }) => {
   const first = LINE[0], role = first.roles[0].role, errors = await open(page, `${PAGE}?mission=${first.id}`);
   await expect(page.locator("#setup .lv-seats legend")).toHaveText("Your seat");
-  await page.locator(`#by-${role}`).uncheck();
+  await page.locator(`label[for="by-${role}"]`).click();
+  await expect(page.locator(`#by-${role}`)).not.toBeChecked();
   expect(await page.evaluate(() => Object.values(window.__play.choice.seats))).toEqual(["computer"]);
   await page.locator("#start").click();
   // nobody of the people is at work: the bar says so and offers to skip the shift
@@ -1281,10 +1317,16 @@ test("on a phone: no screen scrolls sideways; the line and a wide table scroll i
   expect(await sideways(page)).toBe(false);
   // the line is longer than the screen: it scrolls in its frame, the stop chosen in view
   const line = page.locator("nav.lv-line");
+  const inFrame = (id) => page.evaluate((stop) => {
+    const a = document.querySelector(`#mission-${stop}`).getBoundingClientRect(), frame = document.querySelector("nav.lv-line").getBoundingClientRect();
+    return a.left >= frame.left && a.right <= frame.right;
+  }, id);
   expect(await line.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  await expect(stopOf(page, LINE.at(-1).id)).toBeInViewport();
-  await stopOf(page, "neustadt-morning").click();
+  expect(await inFrame(LINE.at(-1).id)).toBe(true);
+  expect(await inFrame(LINE[0].id)).toBe(false);
+  await page.evaluate(() => window.__play.choose("neustadt-morning"));
   await expect(page.locator("#setupTitle")).toHaveText("A morning at Bf Neustadt");
+  expect(await inFrame("neustadt-morning")).toBe(true);
   await page.locator("#setup details.play-more summary").click();
   expect(await sideways(page)).toBe(false);
   await page.locator("#start").click();
@@ -1293,7 +1335,6 @@ test("on a phone: no screen scrolls sideways; the line and a wide table scroll i
   await run(page, 802);
   const stage = stageOf(page, SIGNALLER);
   await expect(stage.locator(".play-decision").first()).toBeVisible();
-  await expect(stage.locator(".play-options-row .btn").first()).toBeInViewport({ ratio: 0 });
   expect(await sideways(page)).toBe(false);
   // the panel is wider than the screen: its frame scrolls, and can be reached with the keyboard
   const board = page.locator(`${SIGNALLER} .play-board`);

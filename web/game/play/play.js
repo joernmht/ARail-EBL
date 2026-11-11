@@ -328,7 +328,7 @@ class PlayPage {
   show(screen) {
     this.screen = screen;
     $("#main").dataset.screen = screen;
-    // the page around the game follows (the bar and the foot make way while a session is played)
+    // the page around the game knows the screen too (its styles follow it)
     document.body.dataset.screen = screen;
     if (screen !== "play" && this.bare) this.setBare(false);
     for (const id of ["choose", "play", "result"]) $(`#${id}`).hidden = id !== screen;

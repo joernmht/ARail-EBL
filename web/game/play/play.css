@@ -17,8 +17,7 @@ body { background: var(--board); }
 @media (prefers-reduced-motion: reduce) { .backdrop img { transition: none; } .backdrop img.on { animation: none; } }
 .site-bar, main, .site-foot { position: relative; z-index: 1; }
 .site-foot { background: var(--bg); margin-top: 0; }
-/* while a session is played, the page around it makes way */
-body[data-screen="play"] .site-bar, body[data-screen="play"] .site-foot { display: none; }
+/* (the page's bar stays on every screen, for the way to the other pages: the picture has the rest) */
 
 main[data-screen] .play-layout {
   --surface: var(--board-2); --surface-2: var(--board); --text: var(--board-text); --text-2: var(--board-muted); --line: var(--board-line);
@@ -107,8 +106,8 @@ main[data-screen] .play-layout {
 @media (max-width: 700px) { .lv { min-height: 0; } .lv-card { padding: 14px 16px; } }
 
 /* ------------------------------------------------------------------ 2: playing: a stage, not a dashboard */
-body[data-screen="play"] .play-layout { min-height: 100vh; display: grid; }
-#play:not([hidden]) { display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 10px clamp(10px, 2vw, 22px) 12px; min-height: 100vh; }
+body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display: grid; }
+#play:not([hidden]) { display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 10px clamp(10px, 2vw, 22px) 12px; min-height: calc(100vh - 62px); }
 
 /* the bar of the session: chips on the picture */
 .play-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
