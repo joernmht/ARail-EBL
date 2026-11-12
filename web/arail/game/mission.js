@@ -18,7 +18,8 @@
  *
  * The `hook` is the mission in one or two lines, at most HOOK_CHARS characters: what a card shows
  * of it (the `text` is its briefing, read when asked for). The `place` names where it is played, on
- * the layout (kebab-case; the page has the places with their photos). Both may be left out.
+ * the layout (kebab-case; the page has the places with their photos, and checks the name against
+ * them). Both may be left out.
  *
  * The `story` is what people say to the players: lines at a moment of a phase (`at` seconds into a
  * shift; in a turn, at its beginning, in their order), each by `who` says it (a name, a role, the
@@ -104,18 +105,20 @@ export function wiring(mission, games) {
 /**
  * Problems of a mission (empty when it is sound): its format and texts, seats with a known game of
  * their role, phases that fit the games' rhythms and seat every role, conditions and injects of
- * flows that a seated game takes.
+ * flows that a seated game takes, a story whose lines can be said.
  * @param {object} doc
  * @param {Map<string, Function>} games
+ * @param {{places?: string[] | null}} [options] places: the places a page has pictures of; with them, a mission's `place` must be one of them
  * @returns {string[]}
  */
-export function validateMission(doc, games) {
+export function validateMission(doc, games, { places = null } = {}) {
   const out = [];
   if (doc?.format !== MISSION_FORMAT) out.push(`format must be "${MISSION_FORMAT}"`);
   if (!KEBAB.test(doc?.id ?? "")) out.push("id must be kebab-case");
   for (const k of ["title", "text"]) if (typeof doc?.[k] !== "string" || !doc[k].trim()) out.push(`${k} is missing`);
   if (doc?.hook != null && (typeof doc.hook !== "string" || !doc.hook.trim() || doc.hook.length > HOOK_CHARS)) out.push(`hook must be a line or two of at most ${HOOK_CHARS} characters`);
   if (doc?.place != null && !KEBAB.test(doc.place)) out.push("place must be kebab-case");
+  else if (doc?.place != null && places && !places.includes(doc.place)) out.push(`place: there is no place "${doc.place}" (there are: ${places.join(", ")})`);
   if (doc?.mode != null && !MISSION_MODES.includes(doc.mode)) out.push(`mode must be one of ${MISSION_MODES.join(", ")}`);
   if (doc?.rounds != null && !(Number.isInteger(doc.rounds) && doc.rounds >= 1)) out.push("rounds must be a whole number, 1 or more");
   if (!Array.isArray(doc?.roles) || !doc.roles.length) return [...out, "roles: a mission seats at least one role"];

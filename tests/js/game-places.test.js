@@ -50,6 +50,12 @@ test("missions: a hook too long and a place not in kebab-case are problems; with
   assert.match(validateMission({ ...doc, hook: "x".repeat(HOOK_CHARS + 1) }, GAMES).join(), /hook/);
   assert.match(validateMission({ ...doc, hook: " " }, GAMES).join(), /hook/);
   assert.match(validateMission({ ...doc, place: "The Track" }, GAMES).join(), /place/);
+  // a page that names its places has a mission's place checked against them: a misspelled one is a problem
+  const places = PLACES.map((p) => p.id);
+  assert.match(validateMission({ ...doc, place: "signal-bx" }, GAMES, { places }).join(), /place: there is no place "signal-bx"/);
+  assert.deepEqual(validateMission({ ...doc, place: "signal-bx" }, GAMES), [], "without the page's places only its form is checked");
+  assert.deepEqual(validateMission(doc, GAMES, { places }), []);
+  for (const m of missions) assert.deepEqual(validateMission(m, GAMES, { places }), [], m.id);
   const { hook, place, ...bare } = doc;
   assert.deepEqual(validateMission(bare, GAMES), []);
   assert.equal(placeOfMission(bare).id, "track", "the place of its first seat's game");

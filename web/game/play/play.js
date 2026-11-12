@@ -10,13 +10,15 @@ import { GAMES, MISSION, Session, flowOf, heardWith, lineFor, normalizeMission, 
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
-import { backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
+import { PLACES, backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
 import { BADGES, MAX_STARS, PROGRESS_KEY, badgesOf, meet, nextMission, rankOf, readProgress, record, starsFor, totalStars } from "../progress.js";
 import { factChips } from "../scene.js";
 import { NEUSTADT, shotOf } from "../shots.js";
 import { hasMore, lead } from "../short.js";
 import { SOUND_KEY, Sound } from "../sound.js";
 
+/** What a mission is checked against beyond its games: the places the game has pictures of. */
+const CHECKS = { places: PLACES.map((p) => p.id) };
 /** The way from this page to web/, for the places' photos. */
 const BASE = "../../";
 /** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
@@ -171,10 +173,14 @@ class PlayPage {
     this.met = new Set();
     /** How many of a game's messages a person has read, in turns (by game). */
     this.read = new WeakMap();
-    /** The lines of the mission's story for the phase played (storyOf), those answered, and those said aloud (their index). */
+    /**
+     * The lines of the mission's story for the phase played (storyOf), those answered, and those said aloud (their
+     * index); and, of a saved session taken up again, the lines answered in the phase it stood in.
+     */
     this.beats = [];
     this.heardLines = new Set();
     this.saidLines = new Set();
+    this.keptHeard = null;
     /** The railway term explained (its id), or null. */
     this.term = null;
     /**
@@ -314,7 +320,7 @@ class PlayPage {
     this.mission = null;
     this.doc = doc;
     this.choice = null;
-    if (doc && !validateMission(doc, this.games).length) {
+    if (doc && !validateMission(doc, this.games, CHECKS).length) {
       const m = normalizeMission(doc, this.games), told = storage.get(SETTINGS_KEY, {}) ?? {};
       // what a seat's game must be told before it begins (the address of its world): as told last time, else its default
       const settings = Object.fromEntries(m.roles.map((r) => [r.id, Object.fromEntries((this.games.get(r.game).settings ?? []).map((x) => [x.id, told[`${r.game}.${x.id}`] ?? x.value ?? ""]))]));
@@ -534,7 +540,7 @@ class PlayPage {
     const el = $("#setup"), doc = this.doc, c = this.choice;
     el.hidden = !doc;
     if (el.hidden) return void mount(el);
-    const problems = validateMission(doc, this.games), m = normalizeMission(doc, this.games);
+    const problems = validateMission(doc, this.games, CHECKS), m = normalizeMission(doc, this.games);
     const no = this.missions.indexOf(doc) + 1, got = this.progress.missions[doc.id];
     const head = [
       h("p", { class: "play-no" }, `Mission ${String(no).padStart(2, "0")}`, got ? [" · ", this.stars(got.stars), ` · best ${got.best}`] : null),
@@ -683,16 +689,23 @@ class PlayPage {
       return;
     }
     this.choice = { ...this.choice, seats: { ...session.seated }, seed: session.seed };
-    this.begin(session);
-    // what the page knew of it when it was saved: the decisions a person took, the terms met
-    this.diary = Array.isArray(saved.diary) ? saved.diary.filter((d) => d && typeof d.title === "string" && typeof d.chose === "string") : [];
-    this.met = new Set(Array.isArray(saved.met) ? saved.met.filter((t) => typeof t === "string") : []);
+    // with what the page knew of it when it was saved (the decisions a person took, the terms met, the lines of
+    // the story answered in the phase it stood in): there before the session taken up again is saved for the first time
+    this.begin(session, {
+      diary: Array.isArray(saved.diary) ? saved.diary.filter((d) => d && typeof d.title === "string" && typeof d.chose === "string") : [],
+      met: Array.isArray(saved.met) ? saved.met.filter((t) => typeof t === "string") : [],
+      heard: saved.heard && Number.isInteger(saved.heard.phase) && Array.isArray(saved.heard.lines) ? { phase: saved.heard.phase, lines: saved.heard.lines.filter(Number.isInteger) } : null,
+    });
     // a session taken up again waits: the person finds their place first
     if (this.screen === "play" && session.phase.kind === "shift") this.setSpeed(0, true);
   }
 
-  /** Take a session: build its tabs and panels, show the play screen. */
-  begin(session) {
+  /**
+   * Take a session: build its tabs and panels, show the play screen.
+   * @param {Session} session
+   * @param {{diary: object[], met: string[], heard: {phase: number, lines: number[]} | null} | null} [kept] what the page knew of a saved session taken up again
+   */
+  begin(session, kept = null) {
     if (this.session !== session) this.leave();
     this.session = session;
     this.mission = session.mission;
@@ -707,8 +720,9 @@ class PlayPage {
     this.whole.clear();
     this.asked.clear();
     this.hurried.clear();
-    this.diary = [];
-    this.met = new Set();
+    this.diary = kept?.diary ?? [];
+    this.met = new Set(kept?.met ?? []);
+    this.keptHeard = kept?.heard ?? null;
     this.read = new WeakMap();
     this.term = null;
     this.setSpeed(1);
@@ -746,8 +760,10 @@ class PlayPage {
     if (!mine(s.seat(this.tab))) this.tab = (s.active.find(mine) ?? s.active.find((seat) => this.view(seat.game).sketch) ?? s.active[0])?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
-    this.heardLines = new Set();
-    this.saidLines = new Set();
+    // of a session taken up again in this phase, the lines answered before stay answered (and are not said aloud again)
+    this.heardLines = new Set(this.keptHeard?.phase === s.index ? this.keptHeard.lines : []);
+    this.saidLines = new Set(this.heardLines);
+    this.keptHeard = null;
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
     this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
     this.sound.play("chapter");
@@ -796,7 +812,8 @@ class PlayPage {
     if (as === this.savedAs) return;
     this.savedAs = as;
     // with what the page itself knows of the session: what a person decided and the terms met, for the mission's sheet
-    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met] });
+    // (and the lines of the story answered in the phase it stands in)
+    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met], heard: { phase: s.index, lines: [...this.heardLines] } });
   }
 
   /** Say something to those who do not see the page (the live region; what is said in one go is said together). */
@@ -1187,7 +1204,9 @@ class PlayPage {
     const s = this.session;
     for (const i of heardWith(this.beats, seatId, beat, s.phase.kind === "turn" ? null : s.t)) this.heardLines.add(i);
     this.term = null;
-    this.draw(true);
+    // the session's save holds the lines answered: it is due again
+    this.savedAs = "";
+    this.after();
     this.refocus(() => {
       const p = this.panels.get(seatId);
       return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button") ?? p.tools.querySelector("button");

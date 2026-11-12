@@ -1361,6 +1361,36 @@ test("the terms met are kept with a session that is taken up again: those of the
   expect(errors).toEqual([]);
 });
 
+test("a session taken up again and left at once keeps what was decided, and what was said stays said", async ({ page }) => {
+  const errors = await open(page, `${PAGE}?mission=malus-month`);
+  const stage = stageOf(page, "#seat-transport-authority-contract-manager"), saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.malus-month")));
+  await page.locator("#start").click();
+  // what happened is read, the operator's contract manager speaks, the first decision is taken
+  for (let i = 0; i < 6 && !(await stage.locator(".vn-decisions").isVisible()); i++) await stage.locator(".vn-story .btn").first().click();
+  await expect(stage.locator(".vn-name strong")).toHaveText("T. Lerche");
+  expect(await page.evaluate(() => window.__play.heardLines.size)).toBe(1);
+  await stage.locator(".play-options-row .btn").first().click();
+  const diary = await page.evaluate(() => window.__play.diary);
+  expect(diary).toHaveLength(1);
+  // the page is left and the session taken up again, twice, with nothing done in between
+  for (let i = 0; i < 2; i++) {
+    await page.reload();
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#resume").click();
+    await page.waitForFunction(() => window.__play.session);
+    expect((await saved()).diary).toEqual(diary);
+    expect(await page.evaluate(() => window.__play.diary)).toEqual(diary);
+  }
+  // the line of the story that was answered is not said again
+  expect((await saved()).heard.lines).toHaveLength(1);
+  expect(await page.evaluate(() => window.__play.beat("transport-authority-contract-manager"))).toBeNull();
+  for (let i = 0; i < 6 && (await stage.locator(".vn-story .btn").count()); i++) {
+    await expect(stage.locator(".vn-line")).not.toContainText("We are short of drivers");
+    await stage.locator(".vn-story .btn").first().click();
+  }
+  expect(errors).toEqual([]);
+});
+
 test("on a phone: no screen scrolls sideways; the line and a wide table scroll in their frames", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   const errors = await open(page, `${PAGE}?mission=${LINE.at(-1).id}`);
