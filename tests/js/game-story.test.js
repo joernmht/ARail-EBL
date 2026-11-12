@@ -51,22 +51,34 @@ test("story: lines that cannot be said are problems of the mission", () => {
   assert.deepEqual(validateMission({ ...doc, story: undefined }, GAMES), [], "a mission without a story is sound");
 });
 
-test("the line said to a seat: lines for other seats neither show nor block; in a turn the first not heard, in a shift the latest that is due", async () => {
+test("the line said to a seat: lines for other seats neither show nor block; what is heard is kept seat by seat", async () => {
   const { heardWith, lineFor } = await import("../../web/arail/game/index.js");
   const lines = storyOf({ story: [
     { phase: "plan", say: "for the manager", seats: ["manager"] }, { phase: "plan", say: "for everybody" }, { phase: "plan", say: "for the planner", seats: ["planner"] }, { phase: "plan", say: "the last, for everybody" },
   ] }, "plan", 1);
-  const said = (seat, heard) => lineFor(lines, seat, heard)?.say ?? null;
+  /** Two people at two seats of one phase: what each has answered. */
+  const heard = { planner: new Set(), manager: new Set() };
+  const said = (seat) => lineFor(lines, seat, heard[seat])?.say ?? null;
+  const ok = (seat) => {
+    for (const i of heardWith(lines, seat, lineFor(lines, seat, heard[seat]))) heard[seat].add(i);
+  };
   // a turn: a seat hears its own lines and those for everybody, in their order; a line for another seat does not stand in the way
-  const heard = new Set();
-  assert.equal(said("planner", heard), "for everybody");
-  for (const i of heardWith(lines, "planner", lineFor(lines, "planner", heard))) heard.add(i);
-  assert.equal(said("planner", heard), "for the planner");
-  assert.equal(said("manager", heard), "for the manager", "the manager's own line is still to be said");
-  for (const i of heardWith(lines, "manager", lineFor(lines, "manager", heard))) heard.add(i);
-  assert.equal(said("manager", heard), "the last, for everybody", "what everybody heard at the planner's seat is not said again");
-  assert.equal(said("somebody-else", new Set()), "for everybody");
-  // a shift: the latest line that is due; answered, the earlier ones of that seat are heard with it, another seat's are not
+  assert.equal(said("planner"), "for everybody");
+  ok("planner");
+  assert.equal(said("planner"), "for the planner");
+  // a line for everybody is said at every seat: the planner's OK does not take it from the manager
+  assert.equal(said("manager"), "for the manager");
+  ok("manager");
+  assert.equal(said("manager"), "for everybody", "answered at the planner's seat, still to be said at the manager's");
+  ok("manager");
+  assert.equal(said("manager"), "the last, for everybody");
+  ok("planner");
+  assert.equal(said("planner"), "the last, for everybody");
+  ok("planner");
+  ok("manager");
+  assert.deepEqual([said("planner"), said("manager")], [null, null]);
+  assert.equal(lineFor(lines, "somebody-else", new Set())?.say, "for everybody");
+  // a shift: the latest line that is due; answered, the earlier ones of that seat are heard with it, at that seat only
   const shift = storyOf({ story: [
     { phase: "shift", at: 10, say: "a, for the signaller", seats: ["signaller"] }, { phase: "shift", at: 20, say: "b, for the dispatcher", seats: ["dispatcher"] },
     { phase: "shift", at: 30, say: "c, for everybody" }, { phase: "shift", at: 90, say: "d, later" },
@@ -76,11 +88,15 @@ test("the line said to a seat: lines for other seats neither show nor block; in 
   assert.equal(at("signaller", new Set(), 15), "a, for the signaller");
   assert.equal(at("dispatcher", new Set(), 15), null);
   assert.equal(at("signaller", new Set(), 40), "c, for everybody");
-  const h = new Set(heardWith(shift, "signaller", lineFor(shift, "signaller", new Set(), 40), 40));
-  assert.deepEqual([...h].sort(), [0, 2], "the signaller's earlier line with it, not the dispatcher's");
-  assert.equal(at("signaller", h, 40), null);
-  assert.equal(at("signaller", h, 95), "d, later");
-  assert.equal(at("dispatcher", h, 25), "b, for the dispatcher", "the dispatcher's line stays to be said");
+  const signaller = new Set(heardWith(shift, "signaller", lineFor(shift, "signaller", new Set(), 40), 40)), dispatcher = new Set();
+  assert.deepEqual([...signaller].sort(), [0, 2], "the signaller's earlier line with it, not the dispatcher's");
+  assert.equal(at("signaller", signaller, 40), null);
+  assert.equal(at("signaller", signaller, 95), "d, later");
+  // the dispatcher has answered nothing: the line for everybody that the signaller answered is said there too
+  assert.equal(at("dispatcher", dispatcher, 25), "b, for the dispatcher");
+  assert.equal(at("dispatcher", dispatcher, 40), "c, for everybody");
+  for (const i of heardWith(shift, "dispatcher", lineFor(shift, "dispatcher", dispatcher, 40), 40)) dispatcher.add(i);
+  assert.deepEqual([...dispatcher].sort(), [1, 2]);
   assert.deepEqual(heardWith(shift, "nobody", { index: 7 }, 40), [7]);
 });
 
@@ -104,4 +120,20 @@ test("story: a line that could never be said is a problem: after the end of its 
   assert.match(bad({ phase: shift.id, say: "Nobody is there.", seats: [idle] }), new RegExp(`story 1: seats names "${idle}", which is not at work in the phase "${shift.id}"`));
   assert.equal(bad({ phase: shift.id, say: "Somebody is there.", seats: [shift.roles[0]] }), "");
   for (const m of missions) assert.deepEqual(validateMission(m, GAMES), [], m.id);
+});
+
+test("story: a line in a round its phase is not played in, a time that is no number, a portrait there is none of", async () => {
+  const { PORTRAITS } = await import("../../web/game/cast.js");
+  const doc = missions.find((m) => m.id === "budget-years"), first = doc.phases[0];
+  const once = { ...doc, phases: doc.phases.map((p, i) => (i === 0 ? { ...p, rounds: [1] } : p)) };
+  const bad = (d, line, options) => validateMission({ ...d, story: [line] }, GAMES, options).filter((x) => x.startsWith("story")).join(" | ");
+  assert.match(bad(once, { phase: first.id, say: "Never.", rounds: [2] }), /story 1: rounds names none of the rounds the phase "\w[\w-]*" is played in/);
+  assert.equal(bad(once, { phase: first.id, say: "In its round.", rounds: [1, 2] }), "");
+  assert.equal(bad(doc, { phase: first.id, say: "Every round.", rounds: [2] }), "", "a phase played in every round");
+  assert.match(bad(doc, { phase: first.id, say: "When?", at: "5" }), /story 1: at must be a number of seconds, 0 or more/);
+  assert.match(bad(doc, { phase: first.id, say: "When?", at: Number.NaN }), /story 1: at must be a number/);
+  const portraits = Object.keys(PORTRAITS);
+  assert.match(bad(doc, { phase: first.id, say: "Who?", who: { name: "S. Fink", portrait: "astronaut" } }, { portraits }), /story 1: there is no portrait "astronaut"/);
+  assert.equal(bad(doc, { phase: first.id, say: "Who?", who: { name: "S. Fink", portrait: "astronaut" } }), "", "without the page's portraits it is not checked");
+  for (const m of missions) assert.deepEqual(validateMission(m, GAMES, { portraits }), [], m.id);
 });

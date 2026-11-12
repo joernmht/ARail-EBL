@@ -108,10 +108,10 @@ export function wiring(mission, games) {
  * flows that a seated game takes, a story whose lines can be said.
  * @param {object} doc
  * @param {Map<string, Function>} games
- * @param {{places?: string[] | null}} [options] places: the places a page has pictures of; with them, a mission's `place` must be one of them
+ * @param {{places?: string[] | null, portraits?: string[] | null}} [options] what a page has pictures of: with `places`, a mission's `place` must be one of them; with `portraits`, the portrait of who says a line of its story
  * @returns {string[]}
  */
-export function validateMission(doc, games, { places = null } = {}) {
+export function validateMission(doc, games, { places = null, portraits = null } = {}) {
   const out = [];
   if (doc?.format !== MISSION_FORMAT) out.push(`format must be "${MISSION_FORMAT}"`);
   if (!KEBAB.test(doc?.id ?? "")) out.push("id must be kebab-case");
@@ -176,11 +176,13 @@ export function validateMission(doc, games, { places = null } = {}) {
     if (!ids.has(line?.phase)) out.push(`${at}: no phase "${line?.phase}"`);
     if (typeof line?.say !== "string" || !line.say.trim() || line.say.length > SAY_CHARS) out.push(`${at}: say must be a line of at most ${SAY_CHARS} characters`);
     const phase = m.phases.find((p) => p.id === line?.phase);
-    if (line?.at != null && !(line.at >= 0)) out.push(`${at}: at must be 0 s or more`);
+    if (line?.at != null && !(typeof line.at === "number" && line.at >= 0)) out.push(`${at}: at must be a number of seconds, 0 or more`);
     // a line that could never be said: after the end of its shift, or to a seat that is not at work in its phase
     else if (phase?.kind === "shift" && line?.at > phase.length) out.push(`${at}: at is ${line.at} s, after the end of the shift (${phase.length} s)`);
     if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
     if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
+    else if (line?.rounds && phase?.rounds && !line.rounds.some((n) => phase.rounds.includes(n))) out.push(`${at}: rounds names none of the rounds the phase "${phase.id}" is played in`);
+    if (line?.who?.portrait != null && portraits && !portraits.includes(line.who.portrait)) out.push(`${at}: there is no portrait "${line.who.portrait}" (there are: ${portraits.join(", ")})`);
     if (line?.seats != null && !Array.isArray(line.seats)) out.push(`${at}: seats must be a list of seats`);
     else for (const id of line?.seats ?? []) {
       if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
@@ -208,11 +210,12 @@ export function storyOf(mission, phase, round) {
 
 /**
  * The line of a phase's story that is said to a seat now, or null. Only lines for this seat count
- * (those that name no seats are for everybody), and those not heard yet. In a turn it is the first
- * of them; in a shift (`t`, seconds into it) the latest one that is due.
+ * (those that name no seats are for everybody, and are said at every seat), and those not answered
+ * at this seat yet. In a turn it is the first of them; in a shift (`t`, seconds into it) the latest
+ * one that is due.
  * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
  * @param {string} seat a seat's id
- * @param {Set<number>} heard the lines answered (their `index`)
+ * @param {Set<number>} heard the lines answered at this seat (their `index`)
  * @param {number | null} [t] seconds into a shift; null: a turn
  */
 export function lineFor(lines, seat, heard, t = null) {
@@ -223,8 +226,9 @@ export function lineFor(lines, seat, heard, t = null) {
 }
 
 /**
- * The lines that count as heard once a line is answered at a seat: the line itself and, in a shift,
- * the earlier lines for that seat, which it took the place of. Lines for other seats stay.
+ * The lines that count as heard at a seat once a line is answered there: the line itself and, in a
+ * shift, the earlier lines for that seat, which it took the place of. What is heard is kept seat
+ * by seat: at another seat the same lines are still to be said, if they are for it too.
  * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
  * @param {string} seat a seat's id
  * @param {{index: number}} line the line answered

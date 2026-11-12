@@ -44,7 +44,10 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "Nine trains this morning, as every morning. One thing: exit signal N2 flickered yesterday. If it fails, report it at once and keep the trains moving another way."
+   "say": "Nine trains this morning, as every morning. One thing: exit signal N2 flickered yesterday. If it fails, report it at once and keep the trains moving another way.",
+   "seats": [
+    "signaller-relay"
+   ]
   },
   {
    "phase": "shift",
@@ -54,7 +57,10 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "IC 2045 is on its way. It passes on G1. Do not let the freight train out in front of it."
+   "say": "IC 2045 is on its way. It passes on G1. Do not let the freight train out in front of it.",
+   "seats": [
+    "signaller-relay"
+   ]
   },
   {
    "phase": "shift",
@@ -64,7 +70,23 @@
     "role": "Team leader, signalling",
     "portrait": "hivis"
    },
-   "say": "Specht here, signalling team. If you want us at a signal, we need your fault report first, and the track closed before anybody steps into it."
+   "say": "Specht here, signalling team. If you want us at a signal, we need your fault report first, and the track closed before anybody steps into it.",
+   "seats": [
+    "signaller-relay"
+   ]
+  },
+  {
+   "phase": "shift",
+   "at": 2,
+   "seats": [
+    "maintenance-dispatcher"
+   ],
+   "who": {
+    "name": "M. Specht",
+    "role": "Team leader, signalling",
+    "portrait": "hivis"
+   },
+   "say": "Two teams on shift, mine for signalling and L. Kranich's for the track. A fault shows up in the district: tap it and send one of us. We only know what it is once we have looked."
   }
  ],
  "debrief": [

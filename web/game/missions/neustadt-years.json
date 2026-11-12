@@ -103,7 +103,10 @@
     "role": "Asset responsible (ALV)",
     "portrait": "hivis"
    },
-   "say": "The committee has spoken: this is the money for the year. What you plan now is what the signaller and the teams have to work with in the morning."
+   "say": "The committee has spoken: this is the money for the year. What you plan now is what the signaller and the teams have to work with in the morning.",
+   "seats": [
+    "asset-manager"
+   ]
   },
   {
    "phase": "review",
@@ -116,7 +119,10 @@
     "role": "Asset responsible (ALV)",
     "portrait": "hivis"
    },
-   "say": "The morning is over. Now see what it did to the year's numbers: every fault of the morning counts for a whole year of them."
+   "say": "The morning is over. Now see what it did to the year's numbers: every fault of the morning counts for a whole year of them.",
+   "seats": [
+    "asset-manager"
+   ]
   }
  ],
  "debrief": [

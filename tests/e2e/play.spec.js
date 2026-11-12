@@ -1361,6 +1361,44 @@ test("the terms met are kept with a session that is taken up again: those of the
   expect(errors).toEqual([]);
 });
 
+test("two people at two seats: each seat is told its own lines of the story, and what one has answered is still said to the other", async ({ page }) => {
+  const errors = await open(page, MORNING);
+  await page.locator('label[for="by-maintenance-dispatcher"]').click();
+  await expect(page.locator("#by-maintenance-dispatcher")).toBeChecked();
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await run(page, 3);
+  const signaller = stageOf(page, SIGNALLER), maintenance = stageOf(page, MAINTENANCE);
+  // the train dispatcher speaks to the signaller, the team leader to the maintenance dispatcher
+  await expect(signaller.locator(".vn-name strong")).toHaveText("R. Dohle");
+  await expect(signaller.locator(".vn-line")).toContainText("Nine trains this morning");
+  await signaller.locator(".vn-story .btn").click();
+  await expect(signaller.locator(".vn-story")).toBeHidden();
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(maintenance.locator(".vn-name strong")).toHaveText("M. Specht");
+  await expect(maintenance.locator(".vn-line")).toContainText("Two teams on shift");
+  // a line for everybody, said now: the signaller's OK does not take it from the maintenance dispatcher
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.beats = [...p.beats, { index: 99, phase: "shift", at: 3, say: "Both of you: the line to Talsee is busy today." }].sort((a, b) => a.at - b.at || a.index - b.index);
+    p.draw(true);
+  });
+  await expect(maintenance.locator(".vn-line")).toContainText("Both of you");
+  await page.locator("#tab-signaller-relay").click();
+  await expect(signaller.locator(".vn-line")).toContainText("Both of you");
+  await signaller.locator(".vn-story .btn").click();
+  await expect(signaller.locator(".vn-story")).toBeHidden();
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(maintenance.locator(".vn-line")).toContainText("Both of you");
+  await maintenance.locator(".vn-story .btn").click();
+  await expect(maintenance.locator(".vn-story")).toBeHidden();
+  expect(await page.evaluate(() => Object.fromEntries([...window.__play.heardLines].map(([seat, lines]) => [seat, [...lines].sort((a, b) => a - b)])))).toEqual({
+    "signaller-relay": [0, 99], "maintenance-dispatcher": [3, 99],
+  });
+  expect(errors).toEqual([]);
+});
+
 test("a session taken up again and left at once keeps what was decided, and what was said stays said", async ({ page }) => {
   const errors = await open(page, `${PAGE}?mission=malus-month`);
   const stage = stageOf(page, "#seat-transport-authority-contract-manager"), saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.malus-month")));
@@ -1368,7 +1406,7 @@ test("a session taken up again and left at once keeps what was decided, and what
   // what happened is read, the operator's contract manager speaks, the first decision is taken
   for (let i = 0; i < 6 && !(await stage.locator(".vn-decisions").isVisible()); i++) await stage.locator(".vn-story .btn").first().click();
   await expect(stage.locator(".vn-name strong")).toHaveText("T. Lerche");
-  expect(await page.evaluate(() => window.__play.heardLines.size)).toBe(1);
+  expect(await page.evaluate(() => [...window.__play.heardLines].map(([seat, lines]) => [seat, lines.size]))).toEqual([["transport-authority-contract-manager", 1]]);
   await stage.locator(".play-options-row .btn").first().click();
   const diary = await page.evaluate(() => window.__play.diary);
   expect(diary).toHaveLength(1);
@@ -1382,7 +1420,7 @@ test("a session taken up again and left at once keeps what was decided, and what
     expect(await page.evaluate(() => window.__play.diary)).toEqual(diary);
   }
   // the line of the story that was answered is not said again
-  expect((await saved()).heard.lines).toHaveLength(1);
+  expect((await saved()).heard.seats["transport-authority-contract-manager"]).toHaveLength(1);
   expect(await page.evaluate(() => window.__play.beat("transport-authority-contract-manager"))).toBeNull();
   for (let i = 0; i < 6 && (await stage.locator(".vn-story .btn").count()); i++) {
     await expect(stage.locator(".vn-line")).not.toContainText("We are short of drivers");

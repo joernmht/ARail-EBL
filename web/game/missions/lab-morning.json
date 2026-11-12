@@ -56,7 +56,10 @@
     "role": "Signaller in the lab",
     "portrait": "uniform"
    },
-   "say": "This is the real lab on the line. What you close here is closed there, and a train you hold here stands there. At 08:13 one of our signals will fail."
+   "say": "This is the real lab on the line. What you close here is closed there, and a train you hold here stands there. At 08:13 one of our signals will fail.",
+   "seats": [
+    "train-dispatcher"
+   ]
   }
  ],
  "debrief": [

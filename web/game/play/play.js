@@ -8,7 +8,7 @@
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
 import { GAMES, MISSION, Session, flowOf, heardWith, lineFor, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
-import { faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
+import { PORTRAITS, faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
 import { PLACES, backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
 import { BADGES, MAX_STARS, PROGRESS_KEY, badgesOf, meet, nextMission, rankOf, readProgress, record, starsFor, totalStars } from "../progress.js";
@@ -17,8 +17,8 @@ import { NEUSTADT, shotOf } from "../shots.js";
 import { hasMore, lead } from "../short.js";
 import { SOUND_KEY, Sound } from "../sound.js";
 
-/** What a mission is checked against beyond its games: the places the game has pictures of. */
-const CHECKS = { places: PLACES.map((p) => p.id) };
+/** What a mission is checked against beyond its games: the places and the portraits the game has pictures of. */
+const CHECKS = { places: PLACES.map((p) => p.id), portraits: Object.keys(PORTRAITS) };
 /** The way from this page to web/, for the places' photos. */
 const BASE = "../../";
 /** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
@@ -174,11 +174,13 @@ class PlayPage {
     /** How many of a game's messages a person has read, in turns (by game). */
     this.read = new WeakMap();
     /**
-     * The lines of the mission's story for the phase played (storyOf), those answered, and those said aloud (their
-     * index); and, of a saved session taken up again, the lines answered in the phase it stood in.
+     * The lines of the mission's story for the phase played (storyOf); those answered, seat by seat (a line for
+     * everybody is said at every seat); those said aloud (seat|index); and, of a saved session taken up again, the
+     * lines answered in the phase it stood in.
      */
     this.beats = [];
-    this.heardLines = new Set();
+    /** @type {Map<string, Set<number>>} */
+    this.heardLines = new Map();
     this.saidLines = new Set();
     this.keptHeard = null;
     /** The railway term explained (its id), or null. */
@@ -694,7 +696,8 @@ class PlayPage {
     this.begin(session, {
       diary: Array.isArray(saved.diary) ? saved.diary.filter((d) => d && typeof d.title === "string" && typeof d.chose === "string") : [],
       met: Array.isArray(saved.met) ? saved.met.filter((t) => typeof t === "string") : [],
-      heard: saved.heard && Number.isInteger(saved.heard.phase) && Array.isArray(saved.heard.lines) ? { phase: saved.heard.phase, lines: saved.heard.lines.filter(Number.isInteger) } : null,
+      heard: saved.heard && Number.isInteger(saved.heard.phase) && saved.heard.seats && typeof saved.heard.seats === "object"
+        ? { phase: saved.heard.phase, seats: Object.fromEntries(Object.entries(saved.heard.seats).filter(([, lines]) => Array.isArray(lines)).map(([seat, lines]) => [seat, lines.filter(Number.isInteger)])) } : null,
     });
     // a session taken up again waits: the person finds their place first
     if (this.screen === "play" && session.phase.kind === "shift") this.setSpeed(0, true);
@@ -703,7 +706,7 @@ class PlayPage {
   /**
    * Take a session: build its tabs and panels, show the play screen.
    * @param {Session} session
-   * @param {{diary: object[], met: string[], heard: {phase: number, lines: number[]} | null} | null} [kept] what the page knew of a saved session taken up again
+   * @param {{diary: object[], met: string[], heard: {phase: number, seats: Record<string, number[]>} | null} | null} [kept] what the page knew of a saved session taken up again
    */
   begin(session, kept = null) {
     if (this.session !== session) this.leave();
@@ -761,8 +764,8 @@ class PlayPage {
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
     // of a session taken up again in this phase, the lines answered before stay answered (and are not said aloud again)
-    this.heardLines = new Set(this.keptHeard?.phase === s.index ? this.keptHeard.lines : []);
-    this.saidLines = new Set(this.heardLines);
+    this.heardLines = new Map(this.keptHeard?.phase === s.index ? Object.entries(this.keptHeard.seats).map(([seat, lines]) => [seat, new Set(lines)]) : []);
+    this.saidLines = new Set([...this.heardLines].flatMap(([seat, lines]) => [...lines].map((i) => `${seat}|${i}`)));
     this.keptHeard = null;
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
     this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
@@ -813,7 +816,7 @@ class PlayPage {
     this.savedAs = as;
     // with what the page itself knows of the session: what a person decided and the terms met, for the mission's sheet
     // (and the lines of the story answered in the phase it stands in)
-    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met], heard: { phase: s.index, lines: [...this.heardLines] } });
+    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met], heard: { phase: s.index, seats: Object.fromEntries([...this.heardLines].map(([seat, lines]) => [seat, [...lines]])) } });
   }
 
   /** Say something to those who do not see the page (the live region; what is said in one go is said together). */
@@ -1074,8 +1077,8 @@ class PlayPage {
           h("button", { class: "btn primary", type: "button", onclick: () => this.readOn(seat.id, 1) }, left > 1 ? "Next" : open.length ? "To the decisions" : "Go on", h("kbd", { "aria-hidden": "true" }, "Space")),
           left > 2 ? h("button", { class: "btn", type: "button", onclick: () => this.readOn(seat.id, left) }, `Skip ${left - 1} more`) : null));
     } else if (beat) {
-      if (!this.saidLines.has(beat.index)) {
-        this.saidLines.add(beat.index);
+      if (!this.saidLines.has(`${seat.id}|${beat.index}`)) {
+        this.saidLines.add(`${seat.id}|${beat.index}`);
         this.say(`${who.name}: ${beat.say}`);
         this.sound.play("next");
       }
@@ -1196,13 +1199,16 @@ class PlayPage {
    */
   beat(seatId) {
     const s = this.session;
-    return lineFor(this.beats, seatId, this.heardLines, s.phase.kind === "turn" ? null : s.t);
+    return lineFor(this.beats, seatId, this.heardLines.get(seatId) ?? new Set(), s.phase.kind === "turn" ? null : s.t);
   }
 
-  /** A line of the story was answered at a seat (OK): the stage goes on. Lines for other seats stay to be said. */
+  /** A line of the story was answered at a seat (OK): the stage goes on. At the other seats it stays to be said, if it is for them too. */
   heardBeat(seatId, beat) {
     const s = this.session;
-    for (const i of heardWith(this.beats, seatId, beat, s.phase.kind === "turn" ? null : s.t)) this.heardLines.add(i);
+    // at this seat: a line for everybody is still to be said at the others
+    const heard = this.heardLines.get(seatId) ?? new Set();
+    for (const i of heardWith(this.beats, seatId, beat, s.phase.kind === "turn" ? null : s.t)) heard.add(i);
+    this.heardLines.set(seatId, heard);
     this.term = null;
     // the session's save holds the lines answered: it is due again
     this.savedAs = "";
