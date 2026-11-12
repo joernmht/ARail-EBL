@@ -26,6 +26,8 @@
     <span class="divider" aria-hidden="true"></span>
     <a class="brand" href="../../" title="About ARail-EBL"><span class="sign">AR</span>ail <small>Game</small></a>
   </div>
+  <!-- while a mission is played: its name and where it stands (not on a phone: there it is behind the flag at the side) -->
+  <p class="site-where"><strong id="headTitle"></strong> <span id="where"></span></p>
   <span class="spacer"></span>
   <nav class="site-nav" aria-label="Main">
     <a class="opt" href="../roles/">Roles</a>
@@ -59,38 +61,61 @@
 
     <!-- 2: play: the bar of the session and the cast over the picture, the stage of the seat shown; the numbers open as dialogs -->
     <div class="play-screen" id="play" hidden>
-      <section class="play-strip" aria-labelledby="stripTitle">
-        <div class="hud-chip hud-title">
-          <h2 id="stripTitle" tabindex="-1"></h2>
-          <p class="play-where" id="where"></p>
-        </div>
-        <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
-        <div class="play-bar hud-chip" id="shiftBar">
+      <!-- what must be seen, in one line at the upper middle, without boxes: the clock and its speed (or the round), the figures -->
+      <section class="play-hud" id="hud" aria-labelledby="stripTitle">
+        <h2 id="stripTitle" class="visually-hidden" tabindex="-1"></h2>
+        <div class="play-bar" id="shiftBar">
           <p class="play-clock"><span class="visually-hidden">Time: </span><time id="clock">08:00:00</time></p>
-          <div class="seg" role="group" aria-label="Speed" id="speed"></div>
-          <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+          <div class="hud-speed" role="group" aria-label="Speed" id="speed"></div>
         </div>
-        <div class="play-bar hud-chip" id="skipBar" hidden>
-          <p class="hint">Nobody of the people is at work in this shift: the computer plays it.</p>
-          <button class="btn" type="button" id="skip">Skip to the end of the shift</button>
+        <div class="play-bar" id="skipBar" hidden>
+          <p class="hint visually-hidden">Nobody of the people is at work in this shift: the computer plays it.</p>
+          <button class="btn small" type="button" id="skip">Skip to the end of the shift</button>
         </div>
         <div class="play-bar" id="turnBar" hidden>
-          <button class="btn" type="button" id="endTurn" aria-describedby="turnNote">End the turn</button>
+          <button class="btn small" type="button" id="endTurn" aria-describedby="turnNote">End the turn</button>
           <p class="hint" id="turnNote"></p>
         </div>
-        <span class="spacer"></span>
-        <button class="btn small" type="button" id="showFlows" aria-haspopup="dialog" title="What the roles give each other">Who gave what <span class="tag" id="flowBadge">0</span></button>
-        <button class="btn small" type="button" id="sound" aria-pressed="true" title="Sound on or off (M)">Sound</button>
-        <button class="btn small" type="button" id="liveBtn" aria-pressed="true" title="The picture behind the game runs: trains, buses, people (L)">Live</button>
-        <button class="btn small" type="button" id="bare" aria-pressed="false" title="Only the picture (H)">Picture</button>
-        <button class="btn small" type="button" id="leave">Other missions</button>
+        <div class="hud-figures" id="hudFigures"></div>
+        <div class="hud-notes" id="hudNotes"></div>
+        <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
       </section>
 
       <section class="play-seats" aria-labelledby="seatsTitle">
         <h2 id="seatsTitle" class="visually-hidden">The seats</h2>
-        <div class="play-tabs" role="tablist" aria-labelledby="seatsTitle" id="tabs"></div>
         <div id="panels"></div>
       </section>
+
+      <!-- everything else at the side, as icons: a click opens what is behind one, or does what it says -->
+      <nav class="play-rail" id="rail" aria-label="The game's tools">
+        <div class="rail-in">
+          <button class="rail-btn" type="button" id="missionBtn" data-icon="flag" aria-label="The mission" title="The mission" aria-expanded="false" aria-controls="missionPanel"></button>
+          <div class="play-tabs" role="tablist" aria-orientation="vertical" aria-labelledby="seatsTitle" id="tabs"></div>
+          <div class="rail-tools" id="railTools"></div>
+          <button class="rail-btn" type="button" id="placeBtn" data-icon="pin" aria-label="Where you work" title="Where you work" aria-expanded="false" aria-controls="placePanel"></button>
+          <button class="rail-btn" type="button" id="bellBtn" data-icon="bell" aria-label="Messages" title="Messages" aria-expanded="false" aria-controls="bellPanel"><span class="tag warn" id="bellBadge" hidden></span></button>
+          <button class="rail-btn" type="button" id="showFlows" data-icon="flows" aria-haspopup="dialog" aria-label="Who gave what" title="What the roles give each other"><span class="tag" id="flowBadge">0</span></button>
+          <span class="rail-gap"></span>
+          <button class="rail-btn" type="button" id="sound" data-icon="sound" aria-label="Sound" aria-pressed="true" title="Sound on or off (M)"></button>
+          <button class="rail-btn" type="button" id="liveBtn" data-icon="live" aria-label="Live" aria-pressed="true" title="The picture behind the game runs: trains, buses, people (L)"></button>
+          <button class="rail-btn" type="button" id="bare" data-icon="picture" aria-label="Picture" aria-pressed="false" title="Only the picture (H)"></button>
+          <button class="rail-btn" type="button" id="leave" data-icon="leave" aria-label="Other missions" title="Other missions"></button>
+
+          <div class="rail-panel" id="missionPanel" role="region" aria-labelledby="missionName" hidden>
+            <h3 id="missionName"></h3>
+            <p class="play-where" id="missionWhere"></p>
+            <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
+          </div>
+          <div class="rail-panel" id="placePanel" role="region" aria-label="Where you work" hidden></div>
+          <div class="rail-panel rail-bell" id="bellPanel" role="region" aria-labelledby="bellTitle" hidden>
+            <h3 id="bellTitle">Messages</h3>
+            <div id="bellLists"></div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- a message, one at a time: the newest of the seat shown (all of them are under the bell) -->
+      <button class="play-toast" type="button" id="toast" hidden></button>
 
       <dialog class="play-dialog play-flows" id="flowsDialog" aria-labelledby="flowsTitle">
         <div class="play-dialog-head">

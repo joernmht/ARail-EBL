@@ -111,7 +111,16 @@ const cls = (name) => new RegExp(`(^|\\s)${name}(\\s|$)`);
 const stageOf = (page, seat) => page.locator(`${seat} .vn-stage`);
 const deskOf = (page, seat) => page.locator(`${seat} dialog.play-desk`);
 /** A button among a seat's tools, below its stage. */
-const tool = (page, seat, name) => page.locator(`${seat} .vn-tools`).getByRole("button", { name, exact: typeof name === "string" });
+const tool = (page, seat, name) => part(page, seat, ".vn-tools").getByRole("button", { name, exact: typeof name === "string" });
+/**
+ * A part of a seat that is not in its panel: its figures and the note on its state in the line at the top
+ * (`.vn-gauges`, `.vn-note`), its tools at the side (`.vn-tools`), its messages under the bell (`.play-log`).
+ */
+const part = (page, seat, sel) => page.locator(`${sel}[data-seat="${seat.replace(/^#seat-/, "")}"]`);
+/** The names of a seat's tools at the side (icons, named by their labels). */
+const toolNames = (page, seat) => part(page, seat, ".vn-tools").locator("button").evaluateAll((list) => list.map((b) => b.getAttribute("aria-label")));
+/** The pop-up message shown now. */
+const toast = (page) => page.locator("#toast");
 
 /** Open a seat's desk from its stage. */
 async function openDesk(page, seat) {
@@ -313,6 +322,7 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(page.locator("#choose")).toBeHidden();
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator("#where")).toHaveText("The morning shift");
+  await expect(page.locator("#missionWhere")).toHaveText("The morning shift");
   await expect(page.locator("#phases li")).toHaveText(["The morning shift (shift)"]);
   await expect(page.locator("#phases li")).toHaveAttribute("aria-current", "step");
   await expect(page.locator("#clock")).toHaveText(/^08:00:0\d$/);
@@ -321,15 +331,27 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(page.getByRole("tab")).toHaveCount(2);
   // the stage of the person's seat: where the role works, the figures as gauges, the game's picture, the tools
   const stage = stageOf(page, SIGNALLER);
-  await expect(stage.locator(".vn-where .place-label")).toHaveText("Where you work");
-  await expect(stage.locator(".vn-where strong")).toHaveText(await page.evaluate(async () => (await import("/game/places.js")).placeOfGame("signaller").name));
-  await expect(stage.locator(".vn-gauges dt")).toContainText(["Trains through"]);
+  // where the seat works is behind the pin at the side; the mission's name behind the flag (and nowhere else on the screen)
+  await page.locator("#placeBtn").click();
+  await expect(page.locator("#placePanel")).toBeVisible();
+  await expect(page.locator("#placeBtn")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#placePanel .vn-where .place-label")).toHaveText("Where you work");
+  await page.locator("#missionBtn").click();
+  await expect(page.locator("#placePanel")).toBeHidden();
+  await expect(page.locator("#missionName")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#missionPanel")).toBeHidden();
+  await expect(page.locator("#missionBtn")).toBeFocused();
+  expect(await page.evaluate((title) => [...document.querySelectorAll("#play *")].filter((el) => !el.closest("#chapter, .visually-hidden") && el.checkVisibility?.() && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.includes(title))).length, "A morning at Bf Neustadt")).toBe(0);
+  await expect(page.locator("#placePanel .vn-where strong")).toHaveText(await page.evaluate(async () => (await import("/game/places.js")).placeOfGame("signaller").name));
+  await expect(part(page, SIGNALLER, ".vn-gauges").locator("dt")).toContainText(["Trains through"]);
   await expect(stage.locator(".play-sketch")).toBeVisible();
   await expect(stage.locator(".vn-name strong")).toHaveText("You");
   await expect(stage.locator(".vn-name span")).toHaveText("Signaller in a relay interlocking");
-  await expect(stage.locator(".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
-  await expect(stage.locator(".vn-ticker")).toContainText("The shift begins");
-  await expect(page.locator(`${SIGNALLER} .vn-tools button`)).toHaveText([/^Moves \(\d+\)$/, "DeskD", "Hand to the computer"]);
+  await expect(part(page, SIGNALLER, ".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
+  // the newest message pops up; the seat's tools are icons at the side, named
+  await expect(toast(page)).toContainText("The shift begins");
+  expect(await toolNames(page, SIGNALLER)).toEqual([expect.stringMatching(/^Moves \(\d+\)$/), "Desk", "Hand to the computer"]);
   // the role, the game and the score so far are on the seat's desk, a dialog; D opens it
   const desk = deskOf(page, SIGNALLER);
   await expect(desk).toBeHidden();
@@ -340,7 +362,7 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(desk.getByRole("link", { name: "Signaller in a relay interlocking" })).toHaveAttribute("href", "../roles/#role-signaller-relay");
   await expect(desk.locator(".play-head")).toContainText("played by you");
   await expect(desk.locator(".score-total")).toBeVisible();
-  await expect(desk.locator(".play-log li").first()).toContainText("The shift begins");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("The shift begins");
   await page.keyboard.press("Escape");
   await expect(desk).toBeHidden();
   // P lets the shift run again, and pauses it (what the mission's people say first is heard out, so that nothing else is said meanwhile)
@@ -382,6 +404,8 @@ test("a phase begins: its name over the whole screen for a moment; it takes no c
   await page.waitForFunction(() => window.__play?.ready);
   await page.locator("#start").click();
   await expect(page.locator("#where")).toHaveText("Round 1 of 4 · The year's plan");
+  // (on a phone the bar does not show it: the mission's panel at the side says it too)
+  await expect(page.locator("#missionWhere")).toHaveText("Round 1 of 4 · The year's plan");
   await expect(page.locator("#chapter .vn-chapter")).toBeHidden();
   await expect(page.locator("#chapter .vn-chapter p")).toHaveText(["Round 1 of 4", "The year's plan", "You: Asset manager"]);
   expect(errors).toEqual([]);
@@ -397,22 +421,22 @@ test("the seats are tabs: arrow keys, Home and End; a computer's seat shows a fa
   await expect(tabs.first()).toHaveClass(cls("mine"));
   await expect(tabs.nth(1)).toContainText("computer");
   await expect(tabs.nth(1)).toHaveClass(cls("theirs"));
-  // the computer's seat is a face; its name is there for who does not see it, and shown when the seat is
+  // the seats are faces at the side; their names are said to who does not see them, and are their tooltips
   await expect(tabs.nth(1)).toHaveAccessibleName(/Maintenance and fault dispatcher\s*computer/);
-  await expect(tabs.first().locator(".name")).toHaveCSS("position", "static");
-  await expect(tabs.nth(1).locator(".name")).toHaveCSS("position", "absolute");
+  await expect(tabs.nth(1)).toHaveAttribute("title", "Maintenance and fault dispatcher: the computer");
+  await expect(tabs.first().locator(".name")).toHaveCSS("position", "absolute");
+  await expect(page.locator("#rail #tabs")).toHaveAttribute("aria-orientation", "vertical");
   await tabs.first().focus();
-  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
   await expect(tabs.nth(1)).toBeFocused();
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
-  await expect(tabs.nth(1).locator(".name")).toHaveCSS("position", "static");
   await expect(page.locator(SIGNALLER)).toBeHidden();
   const panel = page.getByRole("tabpanel");
   await expect(panel).toHaveAttribute("id", "seat-maintenance-dispatcher");
   const stage = stageOf(page, MAINTENANCE);
   await expect(stage.locator(".vn-name strong")).toHaveText("The computer");
-  await expect(stage.locator(".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
-  await expect(page.locator(`${MAINTENANCE} .vn-tools button`)).toHaveText(["DeskD", "Take over"]);
+  await expect(part(page, MAINTENANCE, ".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
+  expect(await toolNames(page, MAINTENANCE)).toEqual(["Desk", "Take over"]);
   // its desk (D): the same numbers, the moves by their names only
   await page.keyboard.press("d");
   const desk = deskOf(page, MAINTENANCE);
@@ -459,7 +483,7 @@ test("a move through its form on the desk: a route is set; a move the game refus
   const routes = tableOf(page, SIGNALLER, "Routes set");
   await expect(routes.locator("tbody tr")).toContainText(["A → G2"]);
   await expect(set.getByRole("status")).toHaveText("");
-  await expect(desk.locator(".play-log li").first()).toContainText("Route A → G2 set.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("Route A → G2 set.");
   expect(await page.evaluate(() => window.__play.session.record.map((m) => [m.seat, m.name, ...m.args]))).toEqual([["signaller-relay", "setRoute", "A-G2"]]);
   // the track of a locked route cannot be closed: the game says why
   const close = move(page, SIGNALLER, "Close a track");
@@ -475,8 +499,8 @@ test("a move through its form on the desk: a route is set; a move the game refus
   await expect(desk).toBeHidden();
   await expect(tool(page, SIGNALLER, /^Moves \(\d+\)$/)).toBeFocused();
   const stage = stageOf(page, SIGNALLER);
-  await expect(stage.locator(".vn-gauges div").filter({ hasText: "Trains through" }).locator("dd")).toHaveText(/^\d of 9$/);
-  await expect(stage.locator(".vn-ticker")).toHaveText(await page.evaluate(() => window.__play.session.seat("signaller-relay").game.logs.at(-1).text));
+  await expect(part(page, SIGNALLER, ".vn-gauges").locator("div").filter({ hasText: "Trains through" }).locator("dd")).toHaveText(/^\d of 9$/);
+  await expect(toast(page)).toHaveText(await page.evaluate(() => window.__play.session.seat("signaller-relay").game.logs.at(-1).text));
   expect(errors).toEqual([]);
 });
 
@@ -586,9 +610,9 @@ test("the failure: decisions are announced and asked one at a time; answered, th
   expect(await page.evaluate(() => window.__play.diary.map((d) => [d.who, d.chose.slice(0, 31), d.round]))).toEqual([["Signaller in a relay interlocking", "Report it now", 1], ["Signaller in a relay interlocking", "With the substitute signal Zs 1", 1]]);
   // nothing is asked any more: who of the mission's story has something to say says it now; then the stage is quiet
   await readOn(page, SIGNALLER);
-  await expect(stage.locator(".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
-  await expect(stage.locator(".vn-ticker")).toHaveText("Right.");
-  await expect(page.locator(`${SIGNALLER} .play-log li`).first()).toHaveText("Right.");
+  await expect(part(page, SIGNALLER, ".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
+  await expect(toast(page)).toHaveText("Right.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("Right.");
   await expect(page.locator("#tab-signaller-relay .tag")).toHaveCount(0);
   await run(page, 2);
   // what the roles give each other is a dialog; its button counts the flows
@@ -628,6 +652,151 @@ test("the failure: decisions are announced and asked one at a time; answered, th
   expect(errors).toEqual([]);
 });
 
+test("something in the picture that needs attention pulses; chosen, it says what is known of it, and its figure is not written out", async ({ page }) => {
+  const errors = await start(page);
+  await run(page, 790);
+  const stage = stageOf(page, SIGNALLER), n2 = stage.locator('.play-board .pick[data-id="signal-N2"]');
+  // the failed signal: a red pulse on it, and no figure of its own in the line at the top
+  await expect(n2).toHaveClass(cls("alert"));
+  await expect(n2.locator("circle.pulse")).toHaveClass(cls("pulse-bad"));
+  await expect(part(page, SIGNALLER, ".vn-gauges").locator("dt")).not.toContainText(["Signal N2"]);
+  await expect(part(page, SIGNALLER, ".vn-gauges").locator("dt")).toContainText(["Trains through", "Late now"]);
+  // the other signals do not pulse
+  await expect(stage.locator(".play-board .pick.alert")).toHaveCount(1);
+  // chosen: what is known of it, with its moves
+  await n2.click();
+  await expect(stage.locator(".play-asset")).toHaveText(/^Signal N2: failed/);
+  await expect(stage.locator(".play-asset")).toHaveClass(cls("tone-bad"));
+  // and said, for who does not see the picture
+  await expect(live(page)).toContainText("Signal N2: failed");
+  // a computer's seat with something that needs attention: it can be chosen to read, without moves
+  // (at Fence at the halt at Talsee children are at the track some 20 minutes into the shift: a danger)
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await run(page, 400);
+  const district = stageOf(page, MAINTENANCE), fault = district.locator(".play-board .pick.alert").first();
+  await expect(fault).toBeVisible();
+  await fault.click();
+  await expect(district.locator(".play-picked")).not.toBeEmpty();
+  await expect(district.locator(".play-pick button")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("messages: one pops up at a time, a newer one takes its place and it goes by itself; all of them are under the bell, which counts the new ones", async ({ page }) => {
+  const errors = await start(page);
+  const bell = page.locator("#bellBtn"), badge = page.locator("#bellBadge"), panel = page.locator("#bellPanel");
+  const say = (text) => page.evaluate((t) => {
+    const p = window.__play;
+    p.session.seat("signaller-relay").game.logs.push({ t: 0, kind: "info", text: t });
+    p.draw(true);
+  }, text);
+  await say("First of two.");
+  await say("Second of two.");
+  await expect(toast(page)).toHaveText("Second of two.");
+  await expect(page.locator(".play-toast")).toHaveCount(1);
+  const fresh = await page.evaluate(() => window.__play.session.seat("signaller-relay").game.logs.length);
+  await expect(badge).toHaveText(String(fresh));
+  await expect(bell).toHaveAccessibleName(`Messages, ${fresh} new`);
+  // it goes by itself
+  await page.evaluate(() => (window.__play.toastUntil = 0));
+  await page.evaluate(() => window.__play.draw(true));
+  await expect(toast(page)).toBeHidden();
+  // the bell: all of them, the newest first; opened, nothing is new any more
+  await bell.click();
+  await expect(panel).toBeVisible();
+  await expect(panel).toBeFocused();
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("Second of two.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").nth(1)).toContainText("First of two.");
+  // each message on its own card, the new ones marked (for screen readers too)
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toHaveClass(cls("new"));
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("(new)");
+  await expect(badge).toBeHidden();
+  // with the messages open nothing pops up; a click elsewhere closes them
+  await say("Third.");
+  await expect(toast(page)).toBeHidden();
+  await page.mouse.click(400, 300);
+  await expect(panel).toBeHidden();
+  await expect(bell).toHaveAttribute("aria-expanded", "false");
+  // a pop-up pressed opens the messages
+  await say("Fourth.");
+  await expect(toast(page)).toHaveText("Fourth.");
+  await toast(page).click();
+  await expect(panel).toBeVisible();
+  await expect(toast(page)).toBeHidden();
+  // another seat shown with the messages open: its messages not seen before are marked new there too
+  const dispatcher = await page.evaluate(() => window.__play.session.seat("maintenance-dispatcher").game.logs.length);
+  expect(dispatcher).toBeGreaterThan(0);
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(panel).toBeVisible();
+  await expect(part(page, MAINTENANCE, ".play-log").locator("li.new")).toHaveCount(Math.min(dispatcher, 40));
+  await expect(badge).toBeHidden();
+  // a seat shown anew does not pop up what it said before
+  await page.keyboard.press("Escape");
+  await page.locator("#tab-signaller-relay").click();
+  await expect(toast(page)).toBeHidden();
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(toast(page)).toBeHidden();
+  await page.locator("#tab-signaller-relay").click();
+  // a long shift: the game keeps only its newest messages, and what is new is still counted right
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("signaller-relay").game;
+    for (let i = 0; i < 320; i++) g.log(`Message ${i}.`);
+    p.draw(true);
+  });
+  expect(await page.evaluate(() => window.__play.session.seat("signaller-relay").game.dropped)).toBeGreaterThan(0);
+  await expect(badge).toHaveText("99+");
+  await bell.click();
+  await expect(part(page, SIGNALLER, ".play-log").locator("li.new")).toHaveCount(40);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("signaller-relay").game;
+    for (let i = 0; i < 3; i++) g.log(`After ${i}.`);
+    p.draw(true);
+  });
+  await expect(badge).toHaveText("3");
+  expect(errors).toEqual([]);
+});
+
+test("the play screen fills the window and does not scroll: the band stays at the bottom, the rail at the side; a long text scrolls in its box", async ({ page }) => {
+  const errors = await start(page);
+  await run(page, 790);
+  const band = stageOf(page, SIGNALLER).locator(".vn-talk"), box = band.locator(".vn-box");
+  await expect(band).toBeVisible();
+  expect(await page.evaluate(() => [document.documentElement.scrollHeight - innerHeight, document.documentElement.scrollWidth - innerWidth])).toEqual([0, 0]);
+  await expect(page.locator(".site-foot")).toBeHidden();
+  await expect(page.locator(".site-bar")).toBeVisible();
+  // the band ends at the bottom of the window, the rail at its right edge
+  const [bottom, right, rail] = await page.evaluate(() => [document.querySelector("#seat-signaller-relay .vn-talk").getBoundingClientRect().bottom, document.querySelector("#rail").getBoundingClientRect().right, innerHeight]);
+  expect(Math.abs(bottom - rail)).toBeLessThan(2);
+  expect(right).toBe(page.viewportSize().width);
+  // the line at the top is one line; the mission's name and where it stands are in the page's bar, not on a phone
+  await expect(page.locator("#hud")).not.toHaveClass(cls("wrap"));
+  expect(await part(page, SIGNALLER, ".vn-gauges").evaluate((el) => new Set([...el.children].map((c) => Math.round(c.getBoundingClientRect().top))).size)).toBe(1);
+  await expect(page.locator(".site-bar .site-where")).toBeVisible();
+  await expect(page.locator("#headTitle")).toHaveText("A morning at Bf Neustadt");
+  await expect(page.locator("#where")).toHaveText("The morning shift");
+  // (the note on a computer's seat: a few words on the screen, the whole sentence for screen readers)
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(part(page, MAINTENANCE, ".vn-note")).toHaveAttribute("data-short", "The computer plays this seat");
+  await expect(part(page, MAINTENANCE, ".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
+  await page.locator("#tab-signaller-relay").click();
+  // the wheel does not move it
+  await page.mouse.wheel(0, 600);
+  expect(await page.evaluate(() => document.querySelector("#seat-signaller-relay .vn-talk").getBoundingClientRect().bottom)).toBe(bottom);
+  // a text longer than the band scrolls in the band
+  await page.evaluate(() => {
+    const p = window.__play, d = p.session.seat("signaller-relay").game.open[0];
+    d.text = `${d.text} `.repeat(40);
+    p.whole.add(`signaller-relay|${d.id}`);
+    p.draw(true);
+  });
+  expect(await box.evaluate((el) => [el.scrollHeight > el.clientHeight, getComputedStyle(el).overflowY])).toEqual([true, "auto"]);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".site-bar .site-where")).toBeHidden();
+  expect(await page.evaluate(() => [document.documentElement.scrollHeight - innerHeight, document.documentElement.scrollWidth - innerWidth])).toEqual([0, 0]);
+  expect(errors).toEqual([]);
+});
+
 test("a computer's seat is taken over and handed back", async ({ page }) => {
   const errors = await start(page);
   await page.locator("#tab-maintenance-dispatcher").click();
@@ -635,7 +804,7 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await tool(page, MAINTENANCE, "Take over").click();
   await expect(page.locator("#tab-maintenance-dispatcher")).toContainText("you");
   await expect(page.locator("#tab-maintenance-dispatcher")).toHaveClass(cls("mine"));
-  await expect(page.locator(`${MAINTENANCE} .vn-tools button`)).toHaveText(["Moves (2)", "DeskD", "Hand to the computer"]);
+  expect(await toolNames(page, MAINTENANCE)).toEqual(["Moves (2)", "Desk", "Hand to the computer"]);
   // the tools are drawn anew, one more of them in front: the focus stays on the seat's switch
   await expect(tool(page, MAINTENANCE, "Hand to the computer")).toBeFocused();
   await expect(live(page)).toContainText("You play Maintenance and fault dispatcher now.");
@@ -655,10 +824,10 @@ test("a computer's seat is taken over and handed back", async ({ page }) => {
   await expect(call).toContainText("4 h of overtime; ready at the base after 10 min.");
   await call.getByLabel("Trade").selectOption("track");
   await call.getByRole("button", { name: "Call a technician on call" }).click();
-  await expect(desk.locator(".play-log li").first()).toContainText("The track technician on call, J. Sokół, is called");
+  await expect(part(page, MAINTENANCE, ".play-log").locator("li").first()).toContainText("The track technician on call, J. Sokół, is called");
   await closeDialog(page);
-  await expect(panel.locator(".vn-gauges")).toContainText("4 h");
-  await expect(panel.locator(".vn-ticker")).toContainText("The track technician on call, J. Sokół, is called");
+  await expect(part(page, MAINTENANCE, ".vn-gauges")).toContainText("4 h");
+  await expect(toast(page)).toContainText("The track technician on call, J. Sokół, is called");
   // handed back: the seat's switch reads "Take over" again
   const back = tool(page, MAINTENANCE, "Hand to the computer");
   await back.focus();
@@ -700,7 +869,7 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   await expect(go).toHaveAccessibleName("Next");
   await expect(stage.locator(".vn-decisions")).toBeHidden();
   await expect(stage.locator(".vn-count")).toBeHidden();
-  await expect(stage.locator(".vn-ticker")).toBeHidden();
+  await expect(toast(page)).toBeHidden();
   // they are open all the same: the bar counts them, and they are announced
   await expect(page.locator("#endTurn")).toHaveText(`End the turn (${asked.length} open)`);
   await expect(live(page)).toContainText(`${asked.length} decisions to take.`);
@@ -786,10 +955,10 @@ test("a turn is told before it is decided: Space reads on line by line, then som
     const p = window.__play, g = p.session.seat("asset-manager").game;
     return p.read.get(g) === g.logs.length;
   })).toBe(true);
-  // read to its end, the turn can be ended from the stage; the newest message stays below
-  await expect(stage.locator(".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
-  await expect(stage.locator(".vn-ticker")).toHaveText((await game()).logs.at(-1));
-  await tool(page, ASSETS, "End the turn").click();
+  // read to its end, the turn can be ended (in the line at the top); the newest message is the first under the bell
+  await expect(part(page, ASSETS, ".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
+  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toContainText((await game()).logs.at(-1));
+  await page.locator("#endTurn").click();
   await expect(page.locator("#where")).toHaveText("Round 2 of 4 · The year's plan");
   expect(errors).toEqual([]);
 });
@@ -803,7 +972,7 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   // before its moment nobody speaks: there is no band of talk, the picture has the room; the tools are at the top of the stage
   await expect(story).toBeHidden();
   await expect(stage.locator(".vn-talk")).toBeHidden();
-  await expect(stage.locator(".vn-top .vn-tools")).toBeVisible();
+  await expect(part(page, seat, ".vn-tools")).toBeVisible();
   await expect(stage.locator(".vn-name strong")).toHaveText("You");
   await run(page, Math.ceil(lines[0].at));
   // the coach's first line, with the name, what they are and a face; it is said aloud for who does not see it
@@ -822,7 +991,7 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(stage.locator(".vn-speaker")).not.toHaveClass(cls("self"));
   await expect(live(page)).toContainText(`${lines[0].who.name}: ${lines[0].say}`);
   await expect(stage.locator(".vn-decisions")).toBeHidden();
-  await expect(stage.locator(".vn-note")).toBeHidden();
+  await expect(part(page, seat, ".vn-note")).toBeHidden();
   // the picture stays in use while somebody speaks
   await expect(page.locator(`${seat} .play-board`).getByRole("button").first()).toBeVisible();
   // the shift's clock waits for the answer: with the shift running, no time passes
@@ -837,7 +1006,7 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(ok).toHaveText("OKSpace");
   await ok.click();
   await expect(story).toBeHidden();
-  await expect(page.locator(`${seat} .vn-tools button`).first()).toBeFocused();
+  await expect(part(page, seat, ".vn-tools").locator("button").first()).toBeFocused();
   // answered: the clock runs again (and is paused for what follows)
   await expect.poll(() => page.evaluate(() => window.__play.session.t)).toBeGreaterThan(before);
   await expect(page.locator("#shiftBar")).not.toHaveClass(cls("held"));
@@ -847,8 +1016,8 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(stage.locator(".vn-name strong")).toHaveText("You");
   await expect(stage.locator(".vn-speaker")).toHaveClass(cls("self"));
   // (that nothing is asked is said to who does not see the page, not written on it)
-  await expect(stage.locator(".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
-  await expect(stage.locator(".vn-note")).toHaveClass(cls("visually-hidden"));
+  await expect(part(page, seat, ".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
+  await expect(part(page, seat, ".vn-note")).toHaveClass(cls("visually-hidden"));
   // a line is said once: time passing does not bring it back
   await run(page, 5);
   await expect(story).toBeHidden();
@@ -1012,12 +1181,21 @@ test("a decision with a deadline: its time runs out as a bar, hurries near the e
 
 test("only the picture: H takes the game's interface out of the way and brings it back; so do the buttons", async ({ page }) => {
   const errors = await start(page);
-  const strip = page.locator(".play-strip"), seats = page.locator(".play-seats"), back = page.locator("#bareBack"), bare = page.locator("#bare");
+  const strip = page.locator("#hud"), rail = page.locator("#rail"), seats = page.locator(".play-seats"), back = page.locator("#bareBack"), bare = page.locator("#bare");
   await expect(back).toBeHidden();
   await expect(bare).toHaveAttribute("aria-pressed", "false");
+  // (a message has just popped up: it goes with the rest)
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.session.seat("signaller-relay").game.logs.push({ t: 0, kind: "info", text: "Just now." });
+    p.draw(true);
+  });
+  await expect(toast(page)).toBeVisible();
   await page.keyboard.press("h");
   await expect(page.locator("body")).toHaveClass(cls("bare"));
+  await expect(toast(page)).toBeHidden();
   await expect(strip).toBeHidden();
+  await expect(rail).toBeHidden();
   await expect(seats).toBeHidden();
   await expect(page.locator("#backdrop")).toBeVisible();
   await expect(bare).toHaveAttribute("aria-pressed", "true");
@@ -1032,6 +1210,7 @@ test("only the picture: H takes the game's interface out of the way and brings i
   await page.keyboard.press("H");
   await expect(page.locator("body")).not.toHaveClass(cls("bare"));
   await expect(strip).toBeVisible();
+  await expect(rail).toBeVisible();
   await expect(seats).toBeVisible();
   await expect(back).toBeHidden();
   await expect(bare).toBeFocused();
@@ -1084,7 +1263,9 @@ test("the sound and the live backdrop: their buttons and M and L switch them, an
   // the live backdrop (the layout's world running behind the game) is wanted unless switched off; L and its button
   // switch it, and that is kept too. A test's browser gets the still pictures either way.
   const liveBtn = page.locator("#liveBtn");
-  await expect(liveBtn).toHaveText("Live");
+  // (an icon at the side, named)
+  await expect(liveBtn).toHaveAccessibleName("Live");
+  await expect(liveBtn.locator("svg.icon")).toHaveCount(1);
   await expect(liveBtn).toHaveAttribute("aria-pressed", "true");
   expect(await stored("arail.game.live")).toBeNull();
   await expect(page.locator("#backdrop")).not.toHaveClass(cls("live"));
@@ -1196,7 +1377,7 @@ test("the computer on every seat: the shift can be skipped, and nothing goes int
   await expect(page.locator("#skipBar .hint")).toHaveText("Nobody of the people is at work in this shift: the computer plays it.");
   await expect(page.locator("#tabs [role=tab]")).toHaveCount(1);
   await expect(page.locator("#tabs")).toBeHidden();
-  await expect(stageOf(page, `#seat-${role}`).locator(".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
+  await expect(part(page, `#seat-${role}`, ".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
   await page.locator("#skip").click();
   await expect(page.locator("#resultTitle")).toHaveText(`The result: ${first.title}`);
   const result = await page.evaluate(() => window.__play.session.result()), verdict = page.locator("#result .vn-verdict");
@@ -1690,9 +1871,10 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   await expect(end).toHaveClass(/primary/);
   await expect(page.locator("#turnNote")).toHaveText("Nothing is left for you to decide in this turn.");
   expect(await page.evaluate(() => window.__play.session.seat("asset-manager").game.plan)).toMatchObject({ strategy: "thorough", teams: 3, on_call: true });
-  // with nothing left to decide the stage offers to end the turn
-  await expect(stage.locator(".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
-  await expect(tool(page, ASSETS, "End the turn")).toHaveClass(/primary/);
+  // with nothing left to decide the line at the top offers to end the turn (once on the screen: not again at the side)
+  await expect(part(page, ASSETS, ".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
+  await expect(end).toBeVisible();
+  await expect(tool(page, ASSETS, "End the turn")).toHaveCount(0);
   // the account of the year
   await end.click();
   await expect(page.locator("#where")).toHaveText("Round 1 of 4 · The year's account");
@@ -1778,7 +1960,7 @@ test("three years of Neustadt: the computer's turn, your turn, the shift watched
   await page.locator("#closeFlows").click();
   // a seat whose game has not begun
   await page.locator("#tab-signaller-relay").click();
-  await expect(stageOf(page, SIGNALLER).locator(".vn-note")).toHaveText("Not at work in this phase. Its game has not begun yet.");
+  await expect(part(page, SIGNALLER, ".vn-note")).toHaveText("Not at work in this phase. Its game has not begun yet.");
   await expect(page.locator(`${SIGNALLER} .play-sketch`)).toBeHidden();
   await expect(deskOf(page, SIGNALLER).locator(".play-state")).toHaveText("Not at work in this phase. Its game has not begun yet.");
   // the turn ends with its fallbacks: the plan goes down, the shift is the computers'
@@ -2033,8 +2215,8 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await amount.fill("80");
   await spend.getByLabel("The urgent work first").check();
   await spend.getByRole("button", { name: "Spend on upkeep" }).click();
-  await expect(panel.locator(".play-log li").first()).toHaveText("Spent 80 k€ on upkeep, the urgent work first.");
-  await expect(panel.locator(".vn-gauges div").first()).toHaveText("Money20 k€");
+  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toContainText("Spent 80 k€ on upkeep, the urgent work first.");
+  await expect(part(page, ASSETS, ".vn-gauges").locator("div").first()).toHaveText("Money20 k€");
   await expect(spend.getByLabel("The urgent work first")).not.toBeChecked();
   await amount.fill("40");
   await spend.getByRole("button", { name: "Spend on upkeep" }).click();
@@ -2056,10 +2238,10 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(page.locator("#tab-signaller-relay")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#tab-asset-manager")).toContainText("not at work");
   await page.locator("#tab-asset-manager").click();
-  await expect(stage.locator(".vn-note")).toHaveText("Not at work in this phase. This is its last state.");
+  await expect(part(page, ASSETS, ".vn-note")).toHaveText("Not at work in this phase. This is its last state.");
   await expect(desk.locator(".play-state")).toHaveText("Not at work in this phase. This is its last state.");
   await expect(panel.locator(".play-move")).toHaveCount(0);
-  await expect(page.locator(`${ASSETS} .vn-tools button`)).toHaveText(["DeskD", "Hand to the computer"]);
+  expect(await toolNames(page, ASSETS)).toEqual(["Desk", "Hand to the computer"]);
   const flows = page.locator("#flowList li");
   await expect(flows.filter({ hasText: plan$ })).toContainText("Round 1 · The year's plan");
   await expect(flows.filter({ hasText: plan$ })).toContainText("Asset manager → Maintenance and fault dispatcher");
@@ -2073,7 +2255,7 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(page.locator("#tab-asset-manager")).toHaveAttribute("aria-selected", "true");
   await expect(stage.locator(".vn-story .vn-line")).toHaveText(/^A report on \w+: \d+ points\.$/);
   await readOn(page, ASSETS);
-  await expect(panel.locator(".vn-gauges div").nth(1)).toHaveText("Reports read2");
+  await expect(part(page, ASSETS, ".vn-gauges").locator("div").nth(1)).toHaveText("Reports read2");
   await expect(flows.filter({ hasText: await flowName(page, "performance-report") }).first()).toContainText("Round 1 · 08:05:00");
   await expect(end).toHaveClass(/primary/);
   await expect(page.locator("#turnNote")).toHaveText("Nothing is left for you to decide in this turn.");
@@ -2096,7 +2278,7 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(page.getByLabel("A note for the plan")).toHaveValue("year one");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator("#where")).toHaveText("Round 2 of 2 · The year's account");
-  await expect(page.locator(`${ASSETS} .vn-gauges div`).nth(1)).toHaveText("Reports read4");
+  await expect(part(page, ASSETS, ".vn-gauges").locator("div").nth(1)).toHaveText("Reports read4");
   await page.locator("#endTurn").click();
 
   // the result: every seat with its two rounds

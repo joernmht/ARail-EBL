@@ -111,6 +111,8 @@ export class Game {
     this.violations = [];
     /** @type {Array<{t: number, text: string, kind: string}>} */
     this.logs = [];
+    /** How many of the oldest messages were let go (the list keeps the newest 250 to 300): with the list's length, how many there were. */
+    this.dropped = 0;
     /** The flows received and given: `{flow, from, to, t, payload}`. */
     this.inbox = [];
     this.outbox = [];
@@ -140,7 +142,10 @@ export class Game {
   log(text, kind = "info") {
     const line = { t: this.t, text, kind };
     this.logs.push(line);
-    if (this.logs.length > 300) this.logs.splice(0, 50);
+    if (this.logs.length > 300) {
+      this.logs.splice(0, 50);
+      this.dropped += 50;
+    }
     this.emit("log", line);
   }
 
@@ -345,8 +350,11 @@ export class Game {
    * van) and boxes, placed in a `width` × `height` and coloured by a `tone` (free, route, occupied,
    * closed, ok, warn, bad, failed, muted, place, train, idle, zs1); an item with an `id`, a `title`
    * and a `menu` can be chosen, and the page then offers the menu's moves (`{label, name, args,
-   * disabled}`): a signal with its routes, a fault with the teams to send.
-   * @returns {{sketch?: {title?: string, width: number, height: number, label: string, items: object[]}, figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad"}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
+   * disabled}`): a signal with its routes, a fault with the teams to send. An item's `alert` ("bad",
+   * "warn") says that something about it needs attention: the page makes it pulse. A figure about one
+   * item of the sketch names it as its `asset`: the page shows the figure on the item (its tone as
+   * the pulse, its value when the item is chosen) instead of writing it out.
+   * @returns {{sketch?: {title?: string, width: number, height: number, label: string, items: object[]}, figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad", asset?: string}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
    */
   view() {
     return { figures: [...this.resources.values()].map((r) => ({ label: r.label, value: r.value, unit: r.unit })), tables: [], actions: [] };

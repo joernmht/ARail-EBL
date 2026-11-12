@@ -245,12 +245,31 @@ A mission is played as a game, not filled in as a form. What holds on the play p
 and for the heads of the other pages of the games:
 
 - **The picture fills the screen.** One picture stands behind everything: the place where the
-  mission plays, where the seat you play works, or what a question is about. Text never stands on
-  the bare picture: it is in small boxes of the board's dark blue at its edges, and while a mission
-  is played in a band across the bottom of the screen, as a visual novel has it, which lets the
-  picture through a little (the board's colour at 86 %, so the text stays readable whatever the
-  picture shows). The page's bar stays on every screen; **H** takes the rest away and leaves the
-  picture.
+  mission plays, where the seat you play works, or what a question is about. While a mission is
+  played the screen does not scroll: the page's bar stays at the top, and below it there are only
+  three things on the picture.
+  - **One line at the upper middle, without boxes**, for what must always be seen: in a shift the
+    clock and its speed (Pause, 1×, 5×, 20×), in a turn End the turn, then the figures of the seat
+    shown ("Trains through 3 of 9 · Late now 1"), and a few words when the computer plays the
+    seat. Only when it does not fit (many figures, a narrow window) it takes a second line. The
+    mission's name and where it stands (the round, the phase) are in the page's bar, beside its
+    name; on a phone they are behind the flag at the side. The board's blue fades out below it across the whole width, which
+    keeps it readable on any picture. The time of a shift is a thin line at the lower edge of the
+    page's bar.
+  - **A rail of icons at the right**: the mission (its name, its phases), the seats as faces, the
+    seat's tools (its moves, its desk, handing it to the computer), where you work, the messages
+    (a bell that counts the new ones), what the roles gave each other, the sound, the live
+    picture, only the picture, and the way back to the line. A click does what an icon says, or
+    opens what is behind it beside the rail; the icon's name is its tooltip.
+  - **The band at the bottom**, as a visual novel has it, there while somebody speaks or asks. It
+    lets the picture through (the board's colour at 76 %, its text a little lighter, so it stays
+    readable whatever the picture shows). A text longer than the band scrolls in the band.
+
+  A new message pops up, one at a time (a newer one takes its place, and it goes by itself);
+  all of them are under the bell, each on its own card with its time, the new ones marked. Something in the game's picture that a figure is about, or that
+  needs attention, is not written out: it **pulses** in its colour (red for a problem, orange for
+  a worry: the failed signal, a fault where a danger is not guarded), and a click on it says what
+  is known of it. **H** leaves only the picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
   the lab, the terminal, the station forecourt, the town, the town at night), and every mission
@@ -275,17 +294,14 @@ and for the heads of the other pages of the games:
   roles). The stop chosen shows its mission on the same screen: its seats as faces to take (a seat
   taken is yours, the others are the computer's) and Play. The arrow keys go along the line; the
   stop to play next is marked.
-- **Playing is a stage.** The game's figures are gauges (one that changes shows it for a moment);
-  its picture, if it has one, is the control desk in the middle (the signaller's panel, the
-  dispatcher's district: what can be chosen in it is a button). A phase begins with its name over
-  the whole screen; the seats are the cast, a face each.
+- **Playing is a stage.** The game's picture, if it has one, is the control desk in the middle
+  (the signaller's panel, the dispatcher's district: what can be chosen in it is a button). A
+  phase begins with its name over the whole screen; the seats are the cast, a face each.
 - **Somebody asks, and a story is told.** At the bottom somebody speaks, as in a visual novel: a
   portrait that stands taller than the band, a name, the question, and the choices as filled
   buttons (keys **1** to **9**), one decision at a time (others that wait are dots to press); a
   decision with a deadline counts down. The band holds only this: who speaks, the story, the
-  question with what is needed to decide, the choices. It is there while somebody speaks or asks;
-  the seat's tools (its moves, its desk, handing it to the computer) are at the top of the stage,
-  the newest message is a chip on the picture. A decision is asked by the person its
+  question with what is needed to decide, the choices. A decision is asked by the person its
   text names ("E. Kiebitz, the asset responsible (ALV), proposes …"), else by the game's own
   counterpart (`GAME_CAST` in `web/game/cast.js`). In a turn, what happened is read line by line
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second

@@ -740,6 +740,8 @@ export class MaintenanceGame extends Game {
         items.push({ kind: "text", x: fx + (end ? -14 : 14), y: fy + 5, text: f.asset, anchor: end ? "end" : "start", tone: f.state === "done" ? "muted" : undefined });
         items.push({
           id: `fault-${f.id}`, kind: "dot", x: fx, y: fy, r: 7, tone: f.state === "done" ? "ok" : f.state === "working" ? "route" : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : "muted",
+          // a fault that waits pulses on the page: a danger nobody guards red, one that holds trains or is a danger orange
+          alert: !waits ? undefined : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : undefined,
           title: `${f.asset} at ${f.place}: ${f.kind}, ${f.safety ? "a danger while nobody is there" : f.holds ? `holds about ${f.holds} trains an hour` : "comfort"}; ${this._state(f)}`,
           menu: !waits ? undefined : can.length
             ? can.map((tm) => ({ label: `Send ${tm.name} (${tm.trade}, ${minutes(this.eta(tm, f))} min)`, name: "send", args: [tm.id, f.id] }))
