@@ -494,6 +494,27 @@ test("from a mission's verdict to its sheet: what the play page keeps is what th
   expect(errors).toEqual([]);
 });
 
+test("a damaged sheet does not break the logbook: it is shown with what is left of it", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(PAGE);
+  // a progress written by hand, or by an older page: a sheet without its parts, a mission without its numbers
+  await page.evaluate((key) => localStorage.setItem(key, JSON.stringify({
+    format: "arail-progress/1", missions: { "budget-years": { passed: true, stars: 2 } }, sheets: { "budget-years": {}, "fault-night": { decisions: "none" } }, terms: ["lufv"],
+  })), PROGRESS);
+  await page.goto("/game/play/");
+  await page.goto(PAGE);
+  await page.waitForFunction(() => window.__logbook?.ready);
+  await expect(page.locator("#rankTitle")).toHaveText("Trainee");
+  await expect(page.locator("#sheets .log-sheet")).toHaveCount(2);
+  const sheet = page.locator("#sheet-budget-years");
+  await expect(sheet.locator("h3")).toHaveText(missionOf("budget-years").title);
+  await expect(sheet).toContainText("No decision was asked of you");
+  await expect(sheet).toContainText("You were: nobody.");
+  await expect(page.locator("#terms .log-term[data-term]")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
 test("on a phone: the logbook does not scroll sideways, with a card turned and the quiz open", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   const errors = await open(page, { played: PLAYED });

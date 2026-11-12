@@ -50,3 +50,45 @@ test("story: lines that cannot be said are problems of the mission", () => {
   assert.match(bad("no list"), /story must be a list/);
   assert.deepEqual(validateMission({ ...doc, story: undefined }, GAMES), [], "a mission without a story is sound");
 });
+
+test("the line said to a seat: lines for other seats neither show nor block; in a turn the first not heard, in a shift the latest that is due", async () => {
+  const { heardWith, lineFor } = await import("../../web/arail/game/index.js");
+  const lines = storyOf({ story: [
+    { phase: "plan", say: "for the manager", seats: ["manager"] }, { phase: "plan", say: "for everybody" }, { phase: "plan", say: "for the planner", seats: ["planner"] }, { phase: "plan", say: "the last, for everybody" },
+  ] }, "plan", 1);
+  const said = (seat, heard) => lineFor(lines, seat, heard)?.say ?? null;
+  // a turn: a seat hears its own lines and those for everybody, in their order; a line for another seat does not stand in the way
+  const heard = new Set();
+  assert.equal(said("planner", heard), "for everybody");
+  for (const i of heardWith(lines, "planner", lineFor(lines, "planner", heard))) heard.add(i);
+  assert.equal(said("planner", heard), "for the planner");
+  assert.equal(said("manager", heard), "for the manager", "the manager's own line is still to be said");
+  for (const i of heardWith(lines, "manager", lineFor(lines, "manager", heard))) heard.add(i);
+  assert.equal(said("manager", heard), "the last, for everybody", "what everybody heard at the planner's seat is not said again");
+  assert.equal(said("somebody-else", new Set()), "for everybody");
+  // a shift: the latest line that is due; answered, the earlier ones of that seat are heard with it, another seat's are not
+  const shift = storyOf({ story: [
+    { phase: "shift", at: 10, say: "a, for the signaller", seats: ["signaller"] }, { phase: "shift", at: 20, say: "b, for the dispatcher", seats: ["dispatcher"] },
+    { phase: "shift", at: 30, say: "c, for everybody" }, { phase: "shift", at: 90, say: "d, later" },
+  ] }, "shift", 1);
+  const at = (seat, h, t) => lineFor(shift, seat, h, t)?.say ?? null;
+  assert.equal(at("signaller", new Set(), 5), null, "nothing is due yet");
+  assert.equal(at("signaller", new Set(), 15), "a, for the signaller");
+  assert.equal(at("dispatcher", new Set(), 15), null);
+  assert.equal(at("signaller", new Set(), 40), "c, for everybody");
+  const h = new Set(heardWith(shift, "signaller", lineFor(shift, "signaller", new Set(), 40), 40));
+  assert.deepEqual([...h].sort(), [0, 2], "the signaller's earlier line with it, not the dispatcher's");
+  assert.equal(at("signaller", h, 40), null);
+  assert.equal(at("signaller", h, 95), "d, later");
+  assert.equal(at("dispatcher", h, 25), "b, for the dispatcher", "the dispatcher's line stays to be said");
+  assert.deepEqual(heardWith(shift, "nobody", { index: 7 }, 40), [7]);
+});
+
+test("story: seats that are not a list are a problem of the mission, not a crash", () => {
+  const doc = missions.find((m) => m.id === "first-shift");
+  const bad = (seats) => validateMission({ ...doc, story: [{ phase: "shift", say: "Hello.", seats }] }, GAMES).join(" | ");
+  assert.match(bad("signaller-relay"), /story 1: seats must be a list of seats/);
+  assert.match(bad(1), /story 1: seats must be a list of seats/);
+  assert.match(bad({}), /story 1: seats must be a list of seats/);
+  assert.equal(bad(["signaller-relay"]), "");
+});

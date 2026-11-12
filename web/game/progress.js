@@ -49,21 +49,32 @@ export function emptyProgress() {
 }
 
 /**
- * A progress document as it must be: what is missing or of another format is empty.
+ * A progress document as it must be: what is missing or of another format is empty, and every
+ * mission and sheet in it has all its parts (a damaged one, written by hand or by an older page,
+ * breaks nothing).
  * @param {unknown} doc
  * @returns {Progress}
  */
 export function readProgress(doc) {
   const e = emptyProgress();
   if (!doc || typeof doc !== "object" || doc.format !== PROGRESS_FORMAT) return e;
+  const texts = (list) => (Array.isArray(list) ? list.filter((t) => typeof t === "string") : []);
+  const entries = (o) => (o && typeof o === "object" && !Array.isArray(o) ? Object.entries(o).filter(([, v]) => v && typeof v === "object" && !Array.isArray(v)) : []);
+  const stars = (n) => Math.max(0, Math.min(MAX_STARS, Math.round(Number(n)) || 0));
   return {
     ...e,
-    missions: doc.missions && typeof doc.missions === "object" ? doc.missions : {},
-    sheets: doc.sheets && typeof doc.sheets === "object" ? doc.sheets : {},
-    terms: Array.isArray(doc.terms) ? doc.terms.filter((t) => typeof t === "string") : [],
-    roles: Array.isArray(doc.roles) ? doc.roles.filter((t) => typeof t === "string") : [],
-    clean: Number(doc.clean) || 0,
-    dangers: Number(doc.dangers) || 0,
+    // every entry as it must be, so that one that is damaged (written by hand, or by an older page) breaks nothing
+    missions: Object.fromEntries(entries(doc.missions).map(([id, m]) => [id, { best: Number(m.best) || 0, stars: stars(m.stars), plays: Math.max(1, Math.round(Number(m.plays)) || 1), passed: !!m.passed }])),
+    sheets: Object.fromEntries(entries(doc.sheets).map(([id, sh]) => [id, {
+      score: Number(sh.score) || 0, passed: !!sh.passed, stars: stars(sh.stars), roles: texts(sh.roles), violations: Math.max(0, Number(sh.violations) || 0), danger: !!sh.danger,
+      decisions: (Array.isArray(sh.decisions) ? sh.decisions : []).filter((d) => d && typeof d.title === "string" && typeof d.chose === "string")
+        .map((d) => ({ who: typeof d.who === "string" ? d.who : "", title: d.title, chose: d.chose, round: Math.max(1, Math.round(Number(d.round)) || 1) })),
+      terms: texts(sh.terms),
+    }])),
+    terms: texts(doc.terms),
+    roles: texts(doc.roles),
+    clean: Math.max(0, Number(doc.clean) || 0),
+    dangers: Math.max(0, Number(doc.dangers) || 0),
   };
 }
 

@@ -175,7 +175,8 @@ export function validateMission(doc, games) {
     if (line?.at != null && !(line.at >= 0)) out.push(`${at}: at must be 0 s or more`);
     if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
     if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
-    for (const id of line?.seats ?? []) if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
+    if (line?.seats != null && !Array.isArray(line.seats)) out.push(`${at}: seats must be a list of seats`);
+    else for (const id of line?.seats ?? []) if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
   });
   if (!Array.isArray(m.debrief) || m.debrief.some((q) => typeof q !== "string")) out.push("debrief must be a list of questions");
   return out;
@@ -194,6 +195,38 @@ export function storyOf(mission, phase, round) {
     .map((line, index) => ({ ...line, at: line.at ?? 0, index }))
     .filter((line) => line.phase === phase && (!line.rounds || line.rounds.includes(round)))
     .sort((a, b) => a.at - b.at || a.index - b.index);
+}
+
+/**
+ * The line of a phase's story that is said to a seat now, or null. Only lines for this seat count
+ * (those that name no seats are for everybody), and those not heard yet. In a turn it is the first
+ * of them; in a shift (`t`, seconds into it) the latest one that is due.
+ * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
+ * @param {string} seat a seat's id
+ * @param {Set<number>} heard the lines answered (their `index`)
+ * @param {number | null} [t] seconds into a shift; null: a turn
+ */
+export function lineFor(lines, seat, heard, t = null) {
+  const mine = lines.filter((l) => !l.seats || l.seats.includes(seat));
+  if (t == null) return mine.find((l) => !heard.has(l.index)) ?? null;
+  const last = mine.filter((l) => l.at <= t).at(-1);
+  return last && !heard.has(last.index) ? last : null;
+}
+
+/**
+ * The lines that count as heard once a line is answered at a seat: the line itself and, in a shift,
+ * the earlier lines for that seat, which it took the place of. Lines for other seats stay.
+ * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
+ * @param {string} seat a seat's id
+ * @param {{index: number}} line the line answered
+ * @param {number | null} [t] seconds into a shift; null: a turn
+ * @returns {number[]} their `index`
+ */
+export function heardWith(lines, seat, line, t = null) {
+  if (t == null) return [line.index];
+  const mine = lines.filter((l) => !l.seats || l.seats.includes(seat));
+  const at = mine.findIndex((l) => l.index === line.index);
+  return at < 0 ? [line.index] : mine.slice(0, at + 1).map((l) => l.index);
 }
 
 /**

@@ -77,3 +77,22 @@ test("next mission: the first that is not passed, else the first", () => {
   assert.equal(nextMission(record(p, { mission: MISSIONS[1], score: 20, passed: false }), MISSIONS), MISSIONS[1]);
   assert.equal(nextMission(emptyProgress(), []), null);
 });
+
+test("progress: a damaged mission or sheet is made whole when it is read, so that nothing that draws it breaks", () => {
+  const p = readProgress({
+    format: PROGRESS_FORMAT,
+    missions: { "fault-night": { best: "88", stars: 9, passed: 1 }, broken: null, list: [] },
+    sheets: { "fault-night": {}, "budget-years": { score: 70, decisions: [{ title: "A question", chose: "Yes" }, { title: 3 }, null, "no"], terms: ["zs1", 5], roles: "nobody" }, gone: null },
+    terms: ["zs1", null], roles: "x", clean: -3, dangers: "2",
+  });
+  assert.deepEqual(p.missions, { "fault-night": { best: 88, stars: MAX_STARS, plays: 1, passed: true } });
+  assert.deepEqual(p.sheets["fault-night"], { score: 0, passed: false, stars: 0, roles: [], violations: 0, danger: false, decisions: [], terms: [] });
+  assert.deepEqual(p.sheets["budget-years"].decisions, [{ who: "", title: "A question", chose: "Yes", round: 1 }]);
+  assert.deepEqual(p.sheets["budget-years"].terms, ["zs1"]);
+  assert.deepEqual(p.sheets["budget-years"].roles, []);
+  assert.deepEqual(Object.keys(p.sheets).sort(), ["budget-years", "fault-night"]);
+  assert.deepEqual([p.terms, p.roles, p.clean, p.dangers], [["zs1"], [], 0, 2]);
+  // what record writes reads back as it was
+  const whole = record(emptyProgress(), { mission: "fault-night", score: 88, passed: true, roles: ["maintenance-dispatcher"], decisions: [{ who: "Dispatcher", title: "A team asks", chose: "Yes", round: 2 }], terms: ["closure"] });
+  assert.deepEqual(readProgress(JSON.parse(JSON.stringify(whole))), whole);
+});

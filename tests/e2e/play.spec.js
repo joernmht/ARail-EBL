@@ -1182,6 +1182,39 @@ test("the computer on every seat: the shift can be skipped, and nothing goes int
   expect(errors).toEqual([]);
 });
 
+test("the logbook as it is kept now is what a session's end adds to: missions played in another tab stay, a logbook emptied there stays empty of the old", async ({ page }) => {
+  const errors = await open(page, `${PAGE}?mission=malus-month`);
+  /** Play the mission to its end at the person's seat: every turn ended at once, what is open decided by its fallback. */
+  const play = async () => {
+    await page.locator("#start").click();
+    await page.waitForFunction(() => window.__play.session);
+    await page.evaluate(() => {
+      const p = window.__play;
+      for (let i = 0; i < 40 && p.screen === "play"; i++) p.endTurn();
+    });
+    await expect(page.locator("#resultTitle")).toHaveText("The result: Malus Month");
+  };
+  // while this page is open, another tab plays a mission: its stars are in the browser, not in this page's memory
+  await page.evaluate(async (key) => {
+    const { emptyProgress, record } = await import("/game/progress.js");
+    localStorage.setItem(key, JSON.stringify(record(emptyProgress(), { mission: "fault-night", score: 90, passed: true, roles: ["maintenance-dispatcher"], terms: ["closure"] })));
+  }, PROGRESS);
+  await play();
+  let now = await kept(page);
+  expect(Object.keys(now.missions).sort()).toEqual(["fault-night", "malus-month"]);
+  expect(now.missions["fault-night"]).toEqual({ best: 90, stars: 3, plays: 1, passed: true });
+  expect(now.terms).toContain("closure");
+  // the other tab empties the logbook; the mission is played again here: only this time's play is kept
+  await page.locator("#result").getByRole("button", { name: "The line" }).click();
+  await page.evaluate((key) => localStorage.removeItem(key), PROGRESS);
+  await play();
+  now = await kept(page);
+  expect(Object.keys(now.missions)).toEqual(["malus-month"]);
+  expect(now.missions["malus-month"].plays).toBe(1);
+  expect(Object.keys(now.sheets)).toEqual(["malus-month"]);
+  expect(errors).toEqual([]);
+});
+
 test("nobody of the people at work: the shift is skipped to its end; the verdict, the full report with the debrief, as a file, again", async ({ page }) => {
   const errors = await start(page);
   await expect(page.locator("#skipBar")).toBeHidden();
@@ -1308,6 +1341,23 @@ test("autosave and resume: after a reload the session goes on at the same time, 
   await page.getByRole("button", { name: "Start anew" }).click();
   await page.getByRole("button", { name: "Pause" }).click();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.neustadt-morning")).record)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("the terms met are kept with a session that is taken up again: those of the last screen before the page was left too", async ({ page }) => {
+  const errors = await open(page, `${PAGE}?mission=budget-years`);
+  await page.locator("#start").click();
+  // the first line of the turn names railway terms: shown, they count as met
+  await expect(stageOf(page, "#seat-asset-manager").locator(".vn-story .term").first()).toBeVisible();
+  const met = await page.evaluate(() => [...window.__play.met]);
+  expect(met.length).toBeGreaterThan(0);
+  // the page is left with nothing done since: the session's save has them all the same
+  await page.reload();
+  await page.waitForFunction(() => window.__play?.ready);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.budget-years")).met)).toEqual(met);
+  await page.locator("#resume").click();
+  await page.waitForFunction(() => window.__play.session);
+  expect(await page.evaluate(() => [...window.__play.met])).toEqual(expect.arrayContaining(met));
   expect(errors).toEqual([]);
 });
 

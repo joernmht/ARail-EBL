@@ -6,7 +6,7 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, flowOf, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, flowOf, heardWith, lineFor, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
@@ -171,10 +171,10 @@ class PlayPage {
     this.met = new Set();
     /** How many of a game's messages a person has read, in turns (by game). */
     this.read = new WeakMap();
-    /** The lines of the mission's story for the phase played (storyOf), the last of them answered, and the last said aloud. */
+    /** The lines of the mission's story for the phase played (storyOf), those answered, and those said aloud (their index). */
     this.beats = [];
-    this.beatDone = -1;
-    this.beatSaid = -1;
+    this.heardLines = new Set();
+    this.saidLines = new Set();
     /** The railway term explained (its id), or null. */
     this.term = null;
     /**
@@ -746,7 +746,8 @@ class PlayPage {
     if (!mine(s.seat(this.tab))) this.tab = (s.active.find(mine) ?? s.active.find((seat) => this.view(seat.game).sketch) ?? s.active[0])?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
-    this.beatDone = this.beatSaid = -1;
+    this.heardLines = new Set();
+    this.saidLines = new Set();
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
     this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
     this.sound.play("chapter");
@@ -760,7 +761,9 @@ class PlayPage {
   finish() {
     const s = this.session, r = s.result(), ids = this.missions.map((m) => m.id);
     storage.remove(saveKey(s.mission.id));
-    const mine = r.seats.filter((x) => x.by === "human"), before = this.progress;
+    // the progress as it is kept now, not as it was when the page was opened (another tab may have emptied the logbook)
+    const mine = r.seats.filter((x) => x.by === "human"), before = readProgress(storage.get(PROGRESS_KEY, null));
+    this.progress = before;
     this.gained = null;
     if (mine.length) {
       this.progress = record(before, {
@@ -1054,8 +1057,8 @@ class PlayPage {
           h("button", { class: "btn primary", type: "button", onclick: () => this.readOn(seat.id, 1) }, left > 1 ? "Next" : open.length ? "To the decisions" : "Go on", h("kbd", { "aria-hidden": "true" }, "Space")),
           left > 2 ? h("button", { class: "btn", type: "button", onclick: () => this.readOn(seat.id, left) }, `Skip ${left - 1} more`) : null));
     } else if (beat) {
-      if (this.beatSaid !== beat.index) {
-        this.beatSaid = beat.index;
+      if (!this.saidLines.has(beat.index)) {
+        this.saidLines.add(beat.index);
         this.say(`${who.name}: ${beat.say}`);
         this.sound.play("next");
       }
@@ -1155,10 +1158,12 @@ class PlayPage {
     const fresh = ids.filter((id) => !this.met.has(id));
     if (!fresh.length) return;
     for (const id of fresh) this.met.add(id);
-    const p = meet(this.progress, fresh);
-    if (p === this.progress) return;
+    // the session's save holds the terms met: it is due again (the next save writes it, also when the page is left)
+    this.savedAs = "";
+    // the progress as it is kept now (another tab may have played on, or emptied the logbook), with these terms
+    const kept = readProgress(storage.get(PROGRESS_KEY, null)), p = meet(kept, fresh);
     this.progress = p;
-    storage.set(PROGRESS_KEY, p);
+    if (p !== kept) storage.set(PROGRESS_KEY, p);
   }
 
   /** Explain a railway term (again: close it). */
@@ -1169,25 +1174,18 @@ class PlayPage {
   }
 
   /**
-   * The line of the mission's story that is said to a seat now, or null: in a turn the next one not
-   * answered yet, in a shift the latest one that is due and not answered.
+   * The line of the mission's story that is said to a seat now, or null (lineFor): of the lines for
+   * this seat that are not answered yet, in a turn the first, in a shift the latest that is due.
    */
   beat(seatId) {
-    const s = this.session, list = this.beats;
-    if (s.phase.kind === "turn") {
-      const next = list[this.beatDone + 1];
-      return next && (!next.seats || next.seats.includes(seatId)) ? next : null;
-    }
-    let last = -1;
-    list.forEach((b, i) => {
-      if (b.at <= s.t && (!b.seats || b.seats.includes(seatId))) last = i;
-    });
-    return last > this.beatDone ? list[last] : null;
+    const s = this.session;
+    return lineFor(this.beats, seatId, this.heardLines, s.phase.kind === "turn" ? null : s.t);
   }
 
-  /** A line of the story was answered (OK): the stage goes on. */
+  /** A line of the story was answered at a seat (OK): the stage goes on. Lines for other seats stay to be said. */
   heardBeat(seatId, beat) {
-    this.beatDone = Math.max(this.beatDone, this.beats.indexOf(beat));
+    const s = this.session;
+    for (const i of heardWith(this.beats, seatId, beat, s.phase.kind === "turn" ? null : s.t)) this.heardLines.add(i);
     this.term = null;
     this.draw(true);
     this.refocus(() => {
