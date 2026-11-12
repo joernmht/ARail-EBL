@@ -175,11 +175,17 @@ export function validateMission(doc, games, { places = null } = {}) {
     const at = `story ${i + 1}`;
     if (!ids.has(line?.phase)) out.push(`${at}: no phase "${line?.phase}"`);
     if (typeof line?.say !== "string" || !line.say.trim() || line.say.length > SAY_CHARS) out.push(`${at}: say must be a line of at most ${SAY_CHARS} characters`);
+    const phase = m.phases.find((p) => p.id === line?.phase);
     if (line?.at != null && !(line.at >= 0)) out.push(`${at}: at must be 0 s or more`);
+    // a line that could never be said: after the end of its shift, or to a seat that is not at work in its phase
+    else if (phase?.kind === "shift" && line?.at > phase.length) out.push(`${at}: at is ${line.at} s, after the end of the shift (${phase.length} s)`);
     if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
     if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
     if (line?.seats != null && !Array.isArray(line.seats)) out.push(`${at}: seats must be a list of seats`);
-    else for (const id of line?.seats ?? []) if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
+    else for (const id of line?.seats ?? []) {
+      if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
+      else if (phase && !phase.roles.includes(id)) out.push(`${at}: seats names "${id}", which is not at work in the phase "${phase.id}"`);
+    }
   });
   if (!Array.isArray(m.debrief) || m.debrief.some((q) => typeof q !== "string")) out.push("debrief must be a list of questions");
   return out;

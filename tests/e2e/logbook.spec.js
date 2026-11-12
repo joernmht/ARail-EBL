@@ -494,6 +494,17 @@ test("from a mission's verdict to its sheet: what the play page keeps is what th
   expect(errors).toEqual([]);
 });
 
+test("an address that cannot be read names no sheet, and breaks nothing", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/game/play/");
+  await page.goto(`${PAGE}#sheet-%E0`);
+  await page.waitForFunction(() => window.__logbook?.ready);
+  await page.evaluate(() => window.__logbook.loaded);
+  await expect(page.locator("#rankTitle")).toHaveText("Passenger");
+  expect(errors).toEqual([]);
+});
+
 test("a damaged sheet does not break the logbook: it is shown with what is left of it", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

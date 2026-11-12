@@ -65,7 +65,13 @@ class LogbookPage {
     }
     this.ready = true;
     this.draw();
-    const at = location.hash.startsWith("#sheet-") ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+    let id = "";
+    try {
+      id = location.hash.startsWith("#sheet-") ? decodeURIComponent(location.hash.slice(1)) : "";
+    } catch {
+      // an address that cannot be read names no sheet
+    }
+    const at = id ? document.getElementById(id) : null;
     if (at) {
       at.scrollIntoView({ block: "start" });
       at.querySelector("h3")?.focus();

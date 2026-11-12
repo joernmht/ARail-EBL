@@ -92,3 +92,16 @@ test("story: seats that are not a list are a problem of the mission, not a crash
   assert.match(bad({}), /story 1: seats must be a list of seats/);
   assert.equal(bad(["signaller-relay"]), "");
 });
+
+test("story: a line that could never be said is a problem: after the end of its shift, or to a seat not at work in its phase", () => {
+  const doc = missions.find((m) => m.id === "neustadt-years"), shift = doc.phases.find((p) => p.kind === "shift"), turn = doc.phases.find((p) => p.kind === "turn");
+  const bad = (line) => validateMission({ ...doc, story: [line] }, GAMES).join(" | ");
+  assert.match(bad({ phase: shift.id, at: shift.length + 1, say: "Too late." }), /story 1: at is \d+ s, after the end of the shift \(\d+ s\)/);
+  assert.equal(bad({ phase: shift.id, at: shift.length, say: "At the very end." }), "");
+  assert.equal(bad({ phase: turn.id, at: 99999, say: "In a turn the time does not count." }), "");
+  const idle = doc.roles.map((r) => r.id ?? r.role).find((id) => !shift.roles.includes(id));
+  assert.ok(idle, "a seat that is not at work in the shift");
+  assert.match(bad({ phase: shift.id, say: "Nobody is there.", seats: [idle] }), new RegExp(`story 1: seats names "${idle}", which is not at work in the phase "${shift.id}"`));
+  assert.equal(bad({ phase: shift.id, say: "Somebody is there.", seats: [shift.roles[0]] }), "");
+  for (const m of missions) assert.deepEqual(validateMission(m, GAMES), [], m.id);
+});
