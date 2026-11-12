@@ -379,7 +379,7 @@ for (const [scheme, device, viewport] of STATES) {
     await check("what the roles give each other");
     await page.locator("#closeFlows").click();
     // the desk: a move through its form that the game refuses
-    await signaller.locator(".vn-tools").getByRole("button", { name: /^Desk/ }).click();
+    await page.locator('.vn-tools[data-seat="signaller-relay"]').getByRole("button", { name: /^Desk/ }).click();
     const desk = signaller.locator("dialog.play-desk");
     await expect(desk).toBeVisible();
     await desk.locator(".play-move").getByRole("button", { name: "Close a track" }).click(); // nothing chosen

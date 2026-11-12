@@ -107,74 +107,156 @@ main[data-screen] .play-layout {
 @media (max-width: 700px) { .lv { min-height: 0; } .lv-card { padding: 14px 16px; } }
 
 /* ------------------------------------------------------------------ 2: playing: a stage, not a dashboard */
-body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display: grid; }
-#play:not([hidden]) { --pad: clamp(10px, 2vw, 22px); display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: 10px var(--pad) 0; min-height: calc(100vh - 62px); }
+/* the play screen fills the window and does not scroll: the line at the top, the stage, the band at the
+   bottom and the rail at the side stay where they are; only a box whose content is longer scrolls in itself */
+body[data-screen="play"] { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+body[data-screen="play"] .site-foot { display: none; }
+body[data-screen="play"] main { flex: 1 1 auto; min-height: 0; display: grid; }
+body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
+#play:not([hidden]) {
+  --pad: clamp(10px, 2vw, 22px); --rail: 52px;
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--rail); grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 0; row-gap: 4px; padding: 6px 0 0 var(--pad); min-height: 0; overflow: hidden; position: relative;
+}
 
-/* the bar of the session: chips on the picture */
-.play-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.play-strip .spacer { flex: 1 1 0; }
-.hud-chip { background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 4px 12px; }
-.hud-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; border-left: 4px solid var(--overlay-ok); }
-.play-strip h2 { font-size: 1.05rem; font-weight: 800; margin: 0; }
-.play-where { font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--overlay-ok); }
-.play-phases { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
-.play-phases li { border: 1px solid var(--board-line); border-radius: 999px; padding: 1px 10px; font-size: .76rem; color: var(--board-muted); background: var(--board); }
-.play-phases li[aria-current] { border-color: var(--overlay-ok); background: var(--overlay-ok); color: var(--board); font-weight: 700; }
-.play-phases small { font-weight: 400; }
-.play-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+/* (the phase's name over the whole screen is fixed, and takes no row of the grid) */
+#chapter { position: absolute; }
+/* the line at the upper middle: what must be seen, without boxes; a soft shade behind it keeps it readable on any picture */
+.play-hud {
+  grid-column: 1; grid-row: 1; justify-self: center; max-width: 100%; position: relative;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 18px; padding: 2px 18px 8px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--board) 72%, transparent), color-mix(in srgb, var(--board) 0%, transparent));
+  text-shadow: 0 0 2px var(--board), 0 0 6px var(--board), 0 1px 3px var(--board);
+  font-size: .92rem;
+}
+/* (one line as long as it fits; a long one wraps between its parts rather than be cut) */
+.play-hud > *, .vn-gauges > div { white-space: nowrap; }
+.play-hud > .hud-notes, .vn-note { white-space: normal; }
+.play-hud > [hidden] { display: none; }
+.play-where { font-family: var(--mono); font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: #9fe3e7; }
+.play-bar { display: flex; align-items: baseline; gap: 6px 12px; }
 .play-bar .hint { color: var(--board-muted); }
-.play-clock { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.play-clock { font-family: var(--mono); font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 /* the clock waits while somebody speaks to the person at the seat shown */
 .held .play-clock { color: var(--board-muted); }
-.play-progress { flex: 1 1 120px; min-width: 120px; height: 8px; border-radius: 4px; background: var(--board-2); border: 1px solid var(--board-line); overflow: hidden; }
+/* the speed: words to press; the one that holds is bright and underlined */
+.hud-speed { display: flex; gap: 2px; }
+.hud-speed button { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: .86rem; font-weight: 600; color: var(--board-muted); text-shadow: inherit; }
+.hud-speed button[aria-pressed="true"] { color: var(--board-text); font-weight: 800; text-decoration: underline 2px var(--overlay-ok); text-underline-offset: 5px; }
+.hud-speed button:hover { color: var(--board-text); }
+.hud-speed button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.play-hud .btn { text-shadow: none; }
+/* the time of the shift: a thin line under the whole line */
+.play-progress { position: absolute; left: 18px; right: 18px; bottom: 2px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--board-line) 70%, transparent); overflow: hidden; }
+.play-hud:has(#shiftBar[hidden]) .play-progress { display: none; }
 .play-progress i { display: block; height: 100%; width: 0; background: var(--overlay-ok); }
 #turnNote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.play-strip .btn[aria-pressed="true"] { border-color: var(--overlay-ok); }
+/* the figures of the seat shown: a label and its value, side by side */
+.hud-figures, .hud-notes { display: contents; }
+.vn-gauges { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 16px; margin: 0; }
+.vn-gauges[hidden] { display: none; }
+.vn-gauges > div { display: flex; align-items: baseline; gap: 6px; }
+.vn-gauges dt { font-size: .76rem; color: var(--board-muted); }
+.vn-gauges dd { margin: 0; font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.vn-gauges > .tone-ok dd { color: #8fe8c0; }
+.vn-gauges > .tone-warn dd { color: #ffbe73; }
+.vn-gauges > .tone-bad dd { color: #ff98a8; }
+.vn-gauges > .bump dd { animation: vn-bump 1.2s ease-out; }
+@keyframes vn-bump { 0% { color: var(--overlay-ok); transform: scale(1.15); } }
+/* a note on the seat's state (the computer plays it, it is not at work) */
+.vn-note { color: #ffd7a8; font-size: .86rem; font-style: italic; }
+.vn-note[hidden] { display: none; }
 
-/* the seats as the cast: a face each; the computer's without their names (title, screen readers) */
-.play-seats { display: grid; grid-template-rows: auto 1fr; gap: 8px; min-height: 0; }
-.play-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.play-tabs [role="tab"] { min-width: 0; display: grid; grid-template-columns: 34px auto; column-gap: 8px; align-items: center; text-align: left; border: 1px solid var(--board-line); border-radius: 999px; padding: 3px 14px 3px 3px; background: var(--board); color: var(--board-muted); cursor: pointer; }
-.play-tabs [role="tab"][aria-selected="true"] { border-color: var(--overlay-ok); box-shadow: 0 0 0 1px var(--overlay-ok); }
-.play-tabs .face { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; background: var(--board-2); }
-.play-tabs .name { font-size: .86rem; font-weight: 700; line-height: 1.15; color: var(--board-text); overflow-wrap: anywhere; }
-.play-tabs .who { font-size: .72rem; line-height: 1.2; }
-.play-tabs .theirs { grid-template-columns: 34px; padding: 3px; }
+/* the rail at the side: everything else, as icons; three of them open a panel beside the rail */
+.play-rail { grid-column: 2; grid-row: 1 / 3; min-height: 0; background: color-mix(in srgb, var(--board) 82%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-left: 1px solid var(--board-line); position: relative; z-index: 4; }
+.rail-in { height: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.rail-tools { display: contents; }
+.vn-tools { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-block: 1px solid var(--board-line); }
+.vn-tools[hidden] { display: none; }
+.rail-gap { flex: 1 1 8px; }
+.rail-btn {
+  all: unset; box-sizing: border-box; position: relative; display: grid; place-items: center; width: 40px; height: 40px; flex: none;
+  border-radius: 10px; color: var(--board-text); cursor: pointer;
+}
+.rail-btn:hover { background: var(--board-2); }
+.rail-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.rail-btn[aria-expanded="true"] { background: var(--overlay-ok); color: var(--board); }
+.rail-btn[aria-pressed="false"] { color: var(--board-muted); }
+.rail-btn[aria-pressed="false"]::after { content: ""; position: absolute; width: 26px; height: 2px; background: currentColor; transform: rotate(-45deg); border-radius: 1px; }
+.rail-btn .icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rail-btn .tag { position: absolute; top: -2px; right: -4px; min-width: 18px; padding: 0 4px; font-size: .66rem; line-height: 16px; text-align: center; border-radius: 999px; background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); }
+.rail-btn .tag.warn { background: var(--board-warn); color: var(--board); border-color: var(--board-warn); }
+.rail-btn .tag[hidden] { display: none; }
+/* the seats as the cast: a face each (its name is its tooltip); the one shown is ringed */
+.play-tabs { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+.play-tabs [role="tab"] { all: unset; box-sizing: border-box; position: relative; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid var(--board-line); background: var(--board-2); }
+.play-tabs [role="tab"][aria-selected="true"] { border-color: var(--overlay-ok); box-shadow: 0 0 0 2px var(--overlay-ok); }
+.play-tabs [role="tab"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.play-tabs .face { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: 50% 12%; display: block; }
 .play-tabs .theirs .face { filter: grayscale(1) opacity(.7); }
-.play-tabs .theirs .name, .play-tabs .theirs .who { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.play-tabs .theirs[aria-selected="true"] { grid-template-columns: 34px auto; padding-right: 14px; }
-.play-tabs .theirs[aria-selected="true"] .name, .play-tabs .theirs[aria-selected="true"] .who { position: static; width: auto; height: auto; clip-path: none; }
+.play-tabs .tag { position: absolute; top: -4px; right: -6px; min-width: 16px; padding: 0 4px; font-size: .64rem; line-height: 15px; text-align: center; border-radius: 999px; }
+.play-tabs .tag.warn { background: var(--board-warn); color: var(--board); }
 /* one seat only: nothing to choose between */
 .play-tabs:has([role="tab"]:only-child) { display: none; }
+/* a panel beside the rail: the mission, where you work, the messages; long ones scroll in themselves */
+.rail-panel {
+  position: absolute; right: calc(100% + 6px); top: 8px; width: min(340px, calc(100vw - var(--rail) - 24px)); max-height: calc(100% - 16px); overflow-y: auto; overscroll-behavior: contain;
+  display: grid; gap: 8px; align-content: start; padding: 12px 14px; background: var(--board); color: var(--board-text);
+  border: 1px solid var(--board-line); border-top: 3px solid var(--overlay-ok); border-radius: 8px; box-shadow: 0 12px 30px color-mix(in srgb, var(--board) 70%, transparent);
+  animation: vn-say .18s ease-out;
+}
+.rail-panel[hidden] { display: none; }
+.rail-panel:focus { outline: none; }
+.rail-panel h3 { font-size: 1.05rem; font-weight: 800; margin: 0; }
+.rail-panel p { margin: 0; }
+.play-phases { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.play-phases li { border: 1px solid var(--board-line); border-radius: 999px; padding: 1px 10px; font-size: .76rem; color: var(--board-muted); }
+.play-phases li[aria-current] { border-color: var(--overlay-ok); background: var(--overlay-ok); color: var(--board); font-weight: 700; }
+.play-phases small { font-weight: 400; }
+.vn-where { font-size: .95rem; line-height: 1.3; }
+.place-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
+.play-log[hidden] { display: none; }
+.play-log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.play-log li { font-size: .88rem; border-left: 3px solid var(--board-line); padding-left: 8px; }
+.play-log li.k-violation, .play-log li.k-wrong { border-left-color: var(--board-warn); }
+.rail-bell .play-scroll { max-height: none; border: 0; padding: 0; }
+
+/* a message, one at a time: below the line at the top, at the right; pressed, it opens the messages */
+.play-toast {
+  all: unset; box-sizing: border-box; grid-column: 1; grid-row: 2; align-self: start; justify-self: end; position: relative; z-index: 6; margin: 4px 12px 0 0; max-width: min(420px, calc(100% - 24px));
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; background: var(--board); color: var(--board-text); border-left: 4px solid var(--overlay-ok);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--board) 60%, transparent); font-size: .9rem; line-height: 1.35; animation: vn-toast .25s ease-out;
+}
+.play-toast[hidden] { display: none; }
+.play-toast.k-violation, .play-toast.k-wrong, .play-toast.k-cut { border-left-color: var(--board-warn); }
+.play-toast:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@keyframes vn-toast { from { transform: translateX(16px); } }
 
 /* the stage of the seat shown: the picture is the scene; the boxes keep to its edges */
-#panels { display: grid; min-height: 0; grid-row: 2; }
-.play-seat:not([hidden]) { display: grid; }
+.play-seats { grid-column: 1; grid-row: 2; display: grid; min-height: 0; }
+#panels { display: grid; min-height: 0; }
+.play-seat:not([hidden]) { display: grid; min-height: 0; }
 .play-seat p:empty:not([role="status"]), .play-seat ul:empty, .play-seat dl:empty, .play-keyed:empty, .play-moves-note:empty, .play-plain:empty { display: none; }
-.vn-stage { display: grid; grid-template-rows: auto minmax(60px, 1fr) auto auto; gap: 10px; color: var(--board-text); }
-.vn-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: start; }
-.vn-where { background: var(--board); border-left: 3px solid var(--overlay-ok); border-radius: 3px; padding: 4px 12px 5px; font-size: .88rem; line-height: 1.3; }
-.place-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
-.vn-gauges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 auto; justify-content: flex-end; }
-.vn-gauges > div { background: var(--board); border-radius: 3px; border-bottom: 3px solid var(--board-line); padding: 4px 12px 3px; min-width: 5.5em; }
-.vn-gauges > .tone-ok { border-bottom-color: var(--overlay-ok); }
-.vn-gauges > .tone-warn { border-bottom-color: var(--board-warn); }
-.vn-gauges > .tone-bad { border-bottom-color: var(--overlay-bad); }
-.vn-gauges dt { font-size: .64rem; letter-spacing: .07em; text-transform: uppercase; color: var(--board-muted); }
-.vn-gauges dd { margin: 0; font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.vn-gauges > .bump { animation: vn-bump 1.2s ease-out; }
-.vn-gauges > .bump dt { animation: vn-bump-label 1.2s ease-out; }
-@keyframes vn-bump { 0% { background: var(--overlay-ok); color: var(--board); transform: scale(1.08); } 100% { background: var(--board); transform: none; } }
-@keyframes vn-bump-label { 0% { color: var(--board); } 100% { color: var(--board-muted); } }
+.vn-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; min-height: 0; color: var(--board-text); }
+/* something in the picture that needs attention pulses in its colour (a problem red, a worry orange); chosen, it says what is known */
+.play-board .pulse { fill: none; stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: vn-pulse 1.4s ease-out infinite; pointer-events: none; }
+.play-board .pulse-bad { stroke: #ff667e; }
+.play-board .pulse-warn { stroke: var(--board-warn); animation-duration: 2.2s; }
+@keyframes vn-pulse { 0% { transform: scale(.55); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
+.play-asset { font-size: .92rem; }
+.play-asset.tone-bad strong { color: #ff98a8; }
+.play-asset.tone-warn strong { color: #ffbe73; }
+@media (prefers-reduced-motion: reduce) { .play-board .pulse { animation: none; transform: none; opacity: 1; } }
 
 /* the game's picture on the stage: a control desk in Dunkelblau (as the signaller's panel) */
-.vn-stage .play-sketch { grid-row: 2; align-self: center; justify-self: center; width: 100%; max-width: 940px; display: grid; gap: 6px; background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 8px 12px 10px; box-shadow: 0 10px 30px color-mix(in srgb, var(--board) 70%, transparent); }
+.vn-stage .play-sketch { grid-row: 1; align-self: center; justify-self: center; width: 100%; max-width: 940px; display: grid; gap: 6px; background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 8px 12px 10px; box-shadow: 0 10px 30px color-mix(in srgb, var(--board) 70%, transparent); }
 .vn-stage .play-sketch h4 { font-family: var(--mono); font-size: .72rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
-.play-board { background: var(--board); border-radius: var(--radius); overflow-x: auto; }
+.play-board { background: var(--board); border-radius: var(--radius); overflow: auto; }
 .play-board:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .play-board svg { display: block; width: 100%; height: auto; }
-/* on a low screen the stage's picture gives way, so that what is asked below it stays in view */
-.vn-stage .play-board svg { max-height: max(180px, calc(100vh - 615px)); }
+/* the stage's picture takes the height that is left (the screen does not scroll): less while the band is up */
+.vn-stage .play-board svg { max-height: max(160px, calc(100dvh - 250px)); }
+.vn-stage:has(.vn-talk:not([hidden])) .play-board svg { max-height: max(130px, calc(100dvh - 560px)); }
 @media (max-height: 860px) and (min-width: 1000px) { .vn-stage .play-sketch h4 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .play-board text { fill: var(--board-text); font-family: var(--font); font-size: 13px; font-weight: 600; }
 .play-board text.small { font-size: 11px; }
@@ -214,33 +296,20 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
 
 
-/* above the talk, on the picture: a note on the seat's state and the newest message. While somebody
-   speaks, their head stands in this row, and what is in it keeps to the right of it. */
+/* the speaker's size, and how far they stand above the band */
 .vn-stage { --face: clamp(220px, 23vw, 320px); --rise: 58px; --edge: color-mix(in srgb, var(--overlay-ok) 60%, var(--board)); }
-.vn-side { grid-row: 3; display: grid; gap: 4px; justify-items: start; align-content: end; min-width: 0; }
-.vn-stage:has(.vn-talk:not([hidden]):not(.telling)) .vn-side { min-height: calc(var(--rise) - 10px); padding-left: calc(var(--face) + 14px); }
-.vn-note, .vn-ticker { background: var(--board); border-radius: 3px; padding: 3px 10px; max-width: 100%; overflow-wrap: anywhere; }
-.vn-note { color: var(--board-text); font-size: .9rem; border-left: 3px solid var(--board-warn); }
-.vn-note.visually-hidden { padding: 0; border: 0; }
-.vn-ticker { font-family: var(--mono); font-size: .76rem; color: var(--board-muted); }
-.vn-ticker::before { content: "▸ "; color: var(--overlay-ok); }
-.vn-ticker.k-violation { color: var(--board-warn); }
-.vn-ticker.bump { animation: vn-tick 1.2s ease-out; }
-@keyframes vn-tick { 0% { color: var(--board-text); } }
 /* buttons look like buttons: filled, with an edge below that gives way when pressed */
-.vn-tools { display: flex; flex-wrap: wrap; gap: 6px; }
-.vn-tools .btn, .vn-story .btn, .vn-term .btn { background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); border-radius: 7px; font-weight: 700; box-shadow: 0 3px 0 var(--board); }
-.vn-tools .btn { font-size: .86rem; padding: 6px 12px; }
-.vn-tools .btn.primary, .vn-story .btn.primary { background: var(--overlay-ok); border-color: var(--overlay-ok); color: var(--board); font-weight: 800; box-shadow: 0 3px 0 var(--edge); }
-.vn-tools .btn.primary { font-size: .95rem; padding: 7px 18px; }
-.vn-tools .btn:active, .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
-.vn-story .btn kbd, .vn-tools .btn kbd { margin-left: 8px; }
+.vn-story .btn, .vn-term .btn { background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); border-radius: 7px; font-weight: 700; box-shadow: 0 3px 0 var(--board); }
+.vn-story .btn.primary { background: var(--overlay-ok); border-color: var(--overlay-ok); color: var(--board); font-weight: 800; box-shadow: 0 3px 0 var(--edge); }
+.vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
+.vn-story .btn kbd { margin-left: 8px; }
 
 /* who speaks, and what they ask: a band across the bottom of the screen, from edge to edge, as a visual
-   novel has it. It lets the picture through a little: the board's colour at 86 %, which keeps the text's
-   contrast above 4.5:1 whatever the picture shows. In it only who speaks, what they say or ask, and the
-   choices. The speaker stands at its left, taller than the band: head and shoulders above its edge. */
-.vn-talk { grid-row: 4; position: relative; margin-inline: calc(-1 * var(--pad)); }
+   novel has it. It lets the picture through: the board's colour at 76 %, with its text a little lighter
+   than elsewhere, which keeps the contrast above 4.5:1 even on a white picture. In it only who speaks, what
+   they say or ask, and the choices. The speaker stands at its left, taller than the band: head and
+   shoulders above its edge. It stays where it is (the screen does not scroll); a long text scrolls in it. */
+.vn-talk { grid-row: 2; position: relative; margin-left: calc(-1 * var(--pad)); }
 .vn-talk[hidden] { display: none; }
 .vn-speaker { position: absolute; left: max(var(--pad), 12px); bottom: 0; width: var(--face); height: calc(100% + var(--rise)); margin: 0; z-index: 1; pointer-events: none; }
 .vn-talk.telling .vn-speaker { display: none; }
@@ -248,14 +317,16 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .vn-speaker.self { opacity: .8; }
 @keyframes vn-breathe { from { transform: scale(1); } to { transform: scale(1.015); } }
 .vn-box {
-  background: color-mix(in srgb, var(--board) 86%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  --board-muted: #c8d5ec; --talk-accent: #8fe3e7;
+  background: color-mix(in srgb, var(--board) 76%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   border-top: 3px solid var(--overlay-ok); display: grid; gap: 8px; align-content: start; min-height: clamp(140px, 22vh, 220px);
+  max-height: 48dvh; overflow-y: auto; overscroll-behavior: contain;
   padding: 10px max(var(--pad), 20px) 14px calc(max(var(--pad), 12px) + var(--face) + 18px);
 }
 .vn-talk.telling .vn-box { padding-left: max(var(--pad), 20px); }
 .vn-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .vn-name strong { font-size: 1.1rem; font-weight: 800; }
-.vn-name span { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.vn-name span { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--talk-accent); }
 .vn-count:empty { display: none; }
 /* what happened, a line at a time; its words come in one after the other */
 .vn-story { display: grid; gap: 12px; justify-items: start; }
@@ -283,7 +354,7 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .play-next { all: unset; box-sizing: border-box; display: grid; place-items: center; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; background: var(--board-2); border: 1px solid var(--board-line); }
 .play-next::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--overlay-ok); }
 .play-next:focus-visible, .play-why:focus-visible, .term:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.play-why { all: unset; cursor: pointer; color: var(--overlay-ok); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.play-why { all: unset; cursor: pointer; color: var(--talk-accent, var(--overlay-ok)); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 /* a railway term in a text: tap it to read what it is */
 .term { all: unset; cursor: help; color: inherit; text-decoration: underline dotted var(--overlay-ok); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 .term.on { background: var(--board-2); box-shadow: 0 0 0 3px var(--board-2); border-radius: 2px; }
@@ -306,23 +377,24 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
   .vn-stage { --face: 132px; }
   .vn-speaker { bottom: calc(100% - 14px); height: auto; aspect-ratio: 3 / 4; }
   .vn-box { padding-left: max(var(--pad), 20px); }
-  .vn-stage:has(.vn-talk:not([hidden]):not(.telling)) .vn-side { min-height: calc(var(--face) * 4 / 3 - 24px); padding-left: calc(var(--face) + 12px); }
 }
 @media (max-width: 640px) {
   .vn-stage { --face: 96px; }
+  #play:not([hidden]) { --rail: 46px; }
+  .rail-btn, .play-tabs [role="tab"] { width: 36px; height: 36px; }
   .vn-box { padding: 16px 14px 14px; min-height: 0; }
-  .vn-gauges { width: 100%; justify-content: flex-start; }
-  .vn-gauges > div { flex: 1 1 42%; min-width: 0; padding: 3px 8px 2px; }
-  .vn-gauges dd { font-size: .95rem; }
-  .vn-tools .btn { flex: 1 1 auto; }
+  /* (the line at the top may take two lines here, so that it stays readable) */
+  .play-hud { flex-wrap: wrap; white-space: normal; padding-inline: 8px; gap: 2px 12px; }
+  .vn-gauges { flex-wrap: wrap; justify-content: center; gap: 2px 12px; }
+  .play-hud > *, .vn-gauges > div { white-space: normal; max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .w, .play-decision, .lv-card, .vn-term, .vn-speaker img, .vn-ticker.bump, .vn-gauges > .bump, .vn-gauges > .bump dt { animation: none; }
-  .vn-tools .btn:active, .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: none; }
+  .w, .play-decision, .lv-card, .vn-term, .vn-speaker img, .vn-gauges > .bump dd, .rail-panel, .play-toast { animation: none; }
+  .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: none; }
 }
 
 /* only the picture (H): the game's interface out of the way */
-body.bare .play-strip, body.bare .play-seats { visibility: hidden; }
+body.bare .play-hud, body.bare .play-seats, body.bare .play-rail { visibility: hidden; }
 .bare-back { position: fixed; right: 14px; bottom: 14px; z-index: 5; }
 
 /* a phase begins: its name over the whole screen for a moment */

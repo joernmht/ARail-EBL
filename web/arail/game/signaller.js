@@ -1054,7 +1054,7 @@ export class SignallerGame extends Game {
         { label: "Trains through", value: `${st.trains.filter((tr) => tr.state === "gone").length} of ${st.trains.length}` },
         { label: "Late now", value: late, tone: late ? "warn" : "ok" },
         { label: "Substitute signals", value: st.counters.zs1 },
-        ...(f?.started ? [{ label: `Signal ${f.signal}`, value: f.repaired != null ? (f.provisional ? "repaired provisionally" : "repaired") : `failed${team ? `; team ${team}` : ""}`, tone: f.repaired != null ? (f.provisional ? "warn" : "ok") : "bad" }] : []),
+        ...(f?.started ? [{ label: `Signal ${f.signal}`, value: f.repaired != null ? (f.provisional ? "repaired provisionally" : "repaired") : `failed${team ? `; team ${team}` : ""}`, tone: f.repaired != null ? (f.provisional ? "warn" : "ok") : "bad", asset: `signal-${f.signal}` }] : []),
       ],
       tables: [
         {
