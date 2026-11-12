@@ -51,6 +51,9 @@ const ICONS = {
   person: "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
 };
 
+/** How many messages a game has said so far (its list keeps only the newest; `dropped` counts the ones let go). */
+const said = (g) => (g ? (g.dropped ?? 0) + g.logs.length : 0);
+
 /** An icon of the rail as SVG, hidden from screen readers (its button is named). */
 function icon(name) {
   return s("svg", { class: "icon", viewBox: "0 0 24 24", "aria-hidden": "true", focusable: "false" }, s("path", { d: ICONS[name] ?? "" }));
@@ -929,9 +932,8 @@ class PlayPage {
   side() {
     const seat = this.session.seat(this.tab), g = seat?.game, place = placeOfGame(seat.Game.id);
     morph($("#placePanel"), h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)), h("p", { class: "hint" }, place.line));
-    const logs = g?.logs ?? [];
-    if (g && this.opened === "bellPanel") this.seen.set(g, logs.length);
-    const fresh = g ? Math.max(0, logs.length - (this.seen.get(g) ?? 0)) : 0, badge = $("#bellBadge");
+    if (g && this.opened === "bellPanel") this.seen.set(g, said(g));
+    const fresh = g ? Math.max(0, said(g) - (this.seen.get(g) ?? 0)) : 0, badge = $("#bellBadge");
     badge.hidden = !fresh;
     badge.textContent = fresh > 99 ? "99+" : String(fresh);
     $("#bellBtn").setAttribute("aria-label", fresh ? `Messages, ${fresh} new` : "Messages");
@@ -962,6 +964,7 @@ class PlayPage {
     $("#stripTitle").textContent = m.title;
     $("#missionName").textContent = m.title;
     $("#headTitle").textContent = m.title;
+    $("#missionWhere").textContent = `${m.rounds > 1 ? `Round ${s.round} of ${m.rounds} · ` : ""}${ph.title}`;
     $("#where").textContent = `${m.rounds > 1 ? `Round ${s.round} of ${m.rounds} · ` : ""}${ph.title}`;
     morph($("#phases"), s.plan.filter((p) => p.round === s.round).map((p) => h("li", { "aria-current": p === ph ? "step" : null }, p.title, " ", h("small", {}, `(${p.kind})`))));
     $("#shiftBar").hidden = !shift;
@@ -1044,8 +1047,7 @@ class PlayPage {
     this.opened = next;
     if (next === "bellPanel") {
       this.hideToast();
-      const g = this.session?.seat(this.tab)?.game, p = this.panels?.get(this.tab);
-      if (p) p.seenAt = g ? this.seen.get(g) ?? 0 : 0;
+      this.markSeen(this.tab);
     }
     if (next) {
       this.draw(true);
@@ -1053,6 +1055,12 @@ class PlayPage {
       panel.setAttribute("tabindex", "-1");
       panel.focus();
     } else if (inside) $(`#rail [aria-controls="${was}"]`)?.focus();
+  }
+
+  /** With the messages opened at a seat: those not seen before stay marked "new" while they are open. */
+  markSeen(seatId) {
+    const g = this.session?.seat(seatId)?.game, p = this.panels?.get(seatId);
+    if (p) p.seenAt = g ? this.seen.get(g) ?? 0 : 0;
   }
 
   /** The pop-up goes. */
@@ -1064,6 +1072,10 @@ class PlayPage {
   /** Show a seat's panel. */
   select(id, focus = false) {
     this.tab = id;
+    // a seat shown anew: what it said before is not a new message to pop up; with the messages open, its new ones are marked
+    const p = this.panels?.get(id);
+    if (p) p.lastLine = this.session.seat(id)?.game?.logs.at(-1) ?? null;
+    if (this.opened === "bellPanel") this.markSeen(id);
     this.draw(true);
     if (focus) document.getElementById(`tab-${id}`)?.focus();
   }
@@ -1174,7 +1186,7 @@ class PlayPage {
     if (g && !this.read.has(g)) this.read.set(g, Math.max(0, logs.length - STORY_MOST));
     if (g && !tells) this.read.set(g, logs.length);
     // what was read line by line in a turn is seen
-    if (g && tells) this.seen.set(g, Math.max(this.seen.get(g) ?? 0, this.read.get(g)));
+    if (g && tells) this.seen.set(g, Math.max(this.seen.get(g) ?? 0, (g.dropped ?? 0) + this.read.get(g)));
     const at = g ? this.read.get(g) : 0, line = tells && at < logs.length ? logs[at] : null, quote = line ? quoteIn(line.text) : null;
 
     // one decision at a time: the one in focus in full, asked by its speaker; the others as their titles
@@ -1292,7 +1304,7 @@ class PlayPage {
       // each message on its own: its time apart, what it says, the new ones marked (not seen under the bell before)
       ? h("div", { class: "play-scroll", tabindex: "0", role: "group", "aria-label": "Messages, the newest first" }, h("ol", {}, lines.map((l, i) => {
         const [, time, text] = /^(\d{1,2}:\d{2})\s+(.*)$/s.exec(l.text) ?? [null, null, l.text];
-        const fresh = logs.length - i > (p.seenAt ?? logs.length);
+        const fresh = said(g) - i > (p.seenAt ?? said(g));
         return h("li", { class: `k-${safe(l.kind)}${fresh ? " new" : ""}` }, time ? h("time", {}, time) : null, h("span", {}, text), fresh ? h("span", { class: "visually-hidden" }, " (new)") : null);
       })))
       : h("p", { class: "hint" }, "No messages yet."));

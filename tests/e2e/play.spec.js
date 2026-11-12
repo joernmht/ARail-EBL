@@ -322,6 +322,7 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await expect(page.locator("#choose")).toBeHidden();
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator("#where")).toHaveText("The morning shift");
+  await expect(page.locator("#missionWhere")).toHaveText("The morning shift");
   await expect(page.locator("#phases li")).toHaveText(["The morning shift (shift)"]);
   await expect(page.locator("#phases li")).toHaveAttribute("aria-current", "step");
   await expect(page.locator("#clock")).toHaveText(/^08:00:0\d$/);
@@ -403,6 +404,8 @@ test("a phase begins: its name over the whole screen for a moment; it takes no c
   await page.waitForFunction(() => window.__play?.ready);
   await page.locator("#start").click();
   await expect(page.locator("#where")).toHaveText("Round 1 of 4 · The year's plan");
+  // (on a phone the bar does not show it: the mission's panel at the side says it too)
+  await expect(page.locator("#missionWhere")).toHaveText("Round 1 of 4 · The year's plan");
   await expect(page.locator("#chapter .vn-chapter")).toBeHidden();
   await expect(page.locator("#chapter .vn-chapter p")).toHaveText(["Round 1 of 4", "The year's plan", "You: Asset manager"]);
   expect(errors).toEqual([]);
@@ -717,6 +720,37 @@ test("messages: one pops up at a time, a newer one takes its place and it goes b
   await toast(page).click();
   await expect(panel).toBeVisible();
   await expect(toast(page)).toBeHidden();
+  // another seat shown with the messages open: its messages not seen before are marked new there too
+  const dispatcher = await page.evaluate(() => window.__play.session.seat("maintenance-dispatcher").game.logs.length);
+  expect(dispatcher).toBeGreaterThan(0);
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(panel).toBeVisible();
+  await expect(part(page, MAINTENANCE, ".play-log").locator("li.new")).toHaveCount(Math.min(dispatcher, 40));
+  await expect(badge).toBeHidden();
+  // a seat shown anew does not pop up what it said before
+  await page.keyboard.press("Escape");
+  await page.locator("#tab-signaller-relay").click();
+  await expect(toast(page)).toBeHidden();
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(toast(page)).toBeHidden();
+  await page.locator("#tab-signaller-relay").click();
+  // a long shift: the game keeps only its newest messages, and what is new is still counted right
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("signaller-relay").game;
+    for (let i = 0; i < 320; i++) g.log(`Message ${i}.`);
+    p.draw(true);
+  });
+  expect(await page.evaluate(() => window.__play.session.seat("signaller-relay").game.dropped)).toBeGreaterThan(0);
+  await expect(badge).toHaveText("99+");
+  await bell.click();
+  await expect(part(page, SIGNALLER, ".play-log").locator("li.new")).toHaveCount(40);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("signaller-relay").game;
+    for (let i = 0; i < 3; i++) g.log(`After ${i}.`);
+    p.draw(true);
+  });
+  await expect(badge).toHaveText("3");
   expect(errors).toEqual([]);
 });
 

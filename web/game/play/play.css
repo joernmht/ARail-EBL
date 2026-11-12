@@ -223,6 +223,7 @@ body[data-screen="play"] .site-where { display: block; }
 .rail-panel:focus { outline: none; }
 .rail-panel h3 { font-size: 1.05rem; font-weight: 800; margin: 0; }
 .rail-panel p { margin: 0; }
+.rail-panel .play-where { font-family: var(--mono); font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
 .play-phases { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .play-phases li { border: 1px solid var(--board-line); border-radius: 999px; padding: 1px 10px; font-size: .76rem; color: var(--board-muted); }
 .play-phases li[aria-current] { border-color: var(--overlay-ok); background: var(--overlay-ok); color: var(--board); font-weight: 700; }

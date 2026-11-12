@@ -111,6 +111,8 @@ export class Game {
     this.violations = [];
     /** @type {Array<{t: number, text: string, kind: string}>} */
     this.logs = [];
+    /** How many of the oldest messages were let go (the list keeps the newest 250 to 300): with the list's length, how many there were. */
+    this.dropped = 0;
     /** The flows received and given: `{flow, from, to, t, payload}`. */
     this.inbox = [];
     this.outbox = [];
@@ -140,7 +142,10 @@ export class Game {
   log(text, kind = "info") {
     const line = { t: this.t, text, kind };
     this.logs.push(line);
-    if (this.logs.length > 300) this.logs.splice(0, 50);
+    if (this.logs.length > 300) {
+      this.logs.splice(0, 50);
+      this.dropped += 50;
+    }
     this.emit("log", line);
   }
 
