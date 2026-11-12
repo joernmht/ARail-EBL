@@ -15,8 +15,10 @@
 <link rel="stylesheet" href="roles.css">
 <script type="module" src="roles.js"></script>
 </head>
-<body>
+<body class="board-page">
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind the page: where the role works, on the lab's layout -->
+<div class="backdrop" aria-hidden="true"><img src="../../game/places/station-fly.jpg" alt="" decoding="async" style="object-position: 50% 50%"></div>
 <header class="bar site-bar">
   <div class="identity">
     <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
@@ -33,12 +35,21 @@
 </header>
 
 <main id="main">
-  <div class="game-hero">
+  <!-- the scene: the game in a line or two, its facts, where it plays (the picture behind the page), the briefing to open -->
+  <div class="scene" id="scene">
     <div class="wrap">
-      <p class="eyebrow">Role catalogue</p>
-      <h1>Roles of the railway</h1>
-      <p class="lead">From the politician to the cleaning staff: <span id="roleCount">the roles</span> of the German railway system, each with its decisions, means and limits, personal risks, career, and a mini game. Each game works on its own, for teaching; together they make one big game, played as a career or as a railway undertaking's simulator (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>).</p>
-      <p class="lead small">Compiled for game design and teaching; names, rules and numbers are simplified and in orders of magnitude, to be checked by the chair's experts.</p>
+      <div class="scene-text">
+        <p class="eyebrow">Role catalogue</p>
+        <h1>Roles of the railway</h1>
+        <p class="scene-hook">From the politician to the cleaning staff: who decides what on the railway, and with what.</p>
+        <ul class="facts" aria-label="In short"><li><span id="roleCount">the roles</span></li><li>decisions, means and limits</li><li>a mini game each</li></ul>
+        <p class="scene-where"><span class="place-label">Where they work</span> <strong>Bf Neustadt, and everywhere behind it</strong> <span class="place-line">Behind every train: a few hundred roles.</span></p>
+        <details class="scene-brief">
+          <summary>About the catalogue</summary>
+          <p>From the politician to the cleaning staff: the roles of the German railway system, each with its decisions, means and limits, personal risks, career, and a mini game. Each game works on its own, for teaching; together they make one big game, played as a career or as a railway undertaking's simulator (<a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/games.md">the game design</a>).</p>
+          <p>Compiled for game design and teaching; names, rules and numbers are simplified and in orders of magnitude, to be checked by the chair's experts.</p>
+        </details>
+      </div>
     </div>
   </div>
 

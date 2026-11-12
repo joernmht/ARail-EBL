@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "budget-years",
  "title": "Budget Years",
+ "hook": "Four years, one district, never enough money. Keep the grade at 3.2.",
+ "place": "district",
  "text": "Four budget years as the asset manager of the district around Bf Neustadt, alone: each year the maintenance strategy, the renewals, the emergency teams and, now and then, a proposal of the asset responsible (ALV); then the year plays out: faults, delay minutes, the condition grade, the money. The target is a grade of 3.2 or better with the inspections on time and no replacement money left unused.",
  "mode": "solo",
  "seed": 1,
@@ -31,6 +33,47 @@
    "roles": [
     "asset-manager"
    ]
+  }
+ ],
+ "story": [
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Welcome to the district: 150 km of track. One thing I have learned out there: whatever you save on maintenance this year, I find again as faults next year."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    2
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Last year's account is in. Look at the grade before you look at the money."
+  },
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    4
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "Our last year together. Remember: replacement money that is not committed by December is gone."
   }
  ],
  "debrief": [

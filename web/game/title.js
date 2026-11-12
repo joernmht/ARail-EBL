@@ -8,6 +8,7 @@
 import { UI_LANGUAGES } from "../arail/index.js";
 import { chooseLanguage, i18n, setLanguage, tr, translateDocument } from "../app/i18n.js";
 import { $, h, mount } from "../app/ui.js";
+import { PROGRESS_KEY, rankOf, readProgress, totalStars } from "./progress.js";
 
 /** The photos behind the menu, in their order; the first one is in the page (index.html). */
 export const SLIDES = [
@@ -17,6 +18,10 @@ export const SLIDES = [
   { src: "../media/ebl-terminal.jpg", caption: "The container terminal and the line to Pirna" },
   { src: "../media/ebl-neustadt.jpg", caption: "Bf Neustadt, as the camera sees it" },
   { src: "../assets/town-night.jpg", caption: "The town at night" },
+  { src: "places/night-platform-fly.jpg", caption: "Bf Neustadt at night, in the flyover" },
+  { src: "places/terminal-fly.jpg", caption: "The crane, the train and the barge at the container terminal" },
+  { src: "places/tram-fly.jpg", caption: "A tram in Bahnhofstraße" },
+  { src: "places/night-crossing-fly.jpg", caption: "The level crossing at night" },
 ];
 
 /** How long a photo stays (ms) before the next one fades in; the drift lasts a little longer. */
@@ -62,7 +67,7 @@ export function withLang(href, loc = location) {
 export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
 
 /** The pages the main menu opens, which Continue may open again. */
-export const PAGES = ["play/", "signaller/", "career/", "roles/"];
+export const PAGES = ["play/", "signaller/", "career/", "roles/", "logbook/"];
 
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
 const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
@@ -274,14 +279,21 @@ export class TitleScreen {
     }
     return [
       this.continued(),
-      { label: "Missions", sub: "The big game: several roles, one railway, in turns and shifts", href: "play/" },
+      { label: "Missions", sub: "A line of missions: take a seat, collect your stars", href: "play/" },
       { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
       { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
       { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },
       { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
+      { label: "Logbook", sub: this.rankLine() ?? "Your stars, your rank, the railway terms you met", href: "logbook/" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
     ].filter(Boolean);
+  }
+
+  /** What the player has reached, for the Logbook's line (progress.js): the stars and the rank; null before the first mission. */
+  rankLine() {
+    const p = readProgress(store.get(PROGRESS_KEY, null)), n = totalStars(p);
+    return Object.keys(p.missions).length ? `★ ${n} · ${tr(rankOf(n).title)}` : null;
   }
 
   /**

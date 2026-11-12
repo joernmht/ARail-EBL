@@ -25,7 +25,7 @@ test("the game page opens with its title screen: the photos full screen and the 
   expect(size.width).toBeGreaterThanOrEqual(vp.width);
   expect(size.height).toBeGreaterThanOrEqual(vp.height);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("ARail");
-  expect(await labels(page)).toEqual(["Missions", "Signaller", "Free play", "Career", "Roles", "Options", "Leave"]);
+  expect(await labels(page)).toEqual(["Missions", "Signaller", "Free play", "Career", "Roles", "Logbook", "Options", "Leave"]);
   await expect(page.getByRole("link", { name: /Missions/ })).toHaveAttribute("href", "play/");
   await expect(page.getByRole("link", { name: /Signaller/ })).toHaveAttribute("href", "signaller/");
   // the cursor starts on the first item and moves with the arrows, round the end
@@ -179,7 +179,7 @@ test("the cursor keeps its item when the menu is drawn anew with the focus off i
   // drawn anew (as after Back from the browser's cache, or full screen left) while the focus is on the page
   await page.evaluate(() => window.__title.redraw());
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("button", { name: /Options/ })).toBeFocused();
+  await expect(page.getByRole("link", { name: /Logbook/ })).toBeFocused();
   expect(errors).toEqual([]);
 });
 

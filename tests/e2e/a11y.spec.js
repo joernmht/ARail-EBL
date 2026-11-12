@@ -29,7 +29,8 @@ const PAGES = [
   ["role catalogue", "/game/roles/#role-signaller-relay"],
   ["career planner", "/game/career/#aim=signaller-relay"],
   ["big game, the missions", "/game/play/"],
-  ["big game, a mission chosen with its seats and wiring", "/game/play/?mission=neustadt-morning"],
+  ["big game, a mission chosen with its seats", "/game/play/?mission=neustadt-morning"],
+  ["logbook, empty", "/game/logbook/"],
   ["marker sheets, deck cards", "/markers/?kind=rolling"],
   ["photo map", "/lab-map/"],
   ["plan documents", "/plan/"],
@@ -53,6 +54,8 @@ for (const scheme of ["light", "dark"]) {
         if (path.startsWith("/plan/")) await page.waitForFunction(() => window.__plan?.result, null, { timeout: 30_000 });
         if (path.startsWith("/builder/")) await page.waitForFunction(() => window.__builder?.doc && document.querySelector("#panel-element").childElementCount, null, { timeout: 30_000 });
         if (path.startsWith("/game/play/")) await page.waitForFunction(() => window.__play?.ready);
+        if (path.startsWith("/game/logbook/")) await page.waitForFunction(() => window.__logbook?.ready);
+        if (path.startsWith("/game/")) await settled(page);
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
           .analyze();
@@ -61,6 +64,14 @@ for (const scheme of ["light", "dark"]) {
       });
     }
   });
+}
+
+/**
+ * The page has come to rest: its animations that end have ended (words coming in one after the other, a box
+ * sliding in, stars). Those that go on for ever (a picture drifting) are left alone.
+ */
+function settled(page) {
+  return page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))));
 }
 
 /** Settings → Simulation (the tab remembers its last view). */
@@ -323,11 +334,23 @@ for (const [scheme, device, viewport] of STATES) {
   });
 }
 
-// The big game (game/play/): a shift that runs with open decisions and the flows between the roles,
-// a move refused, a computer's seat, the result, and a turn with its decisions.
+// The big game (game/play/), on its stage: the briefing and the wiring of a mission; a shift with a decision
+// asked and one waiting; the flows and a seat's desk as dialogs, with a move refused; a computer's seat; only the
+// picture; the verdict and the full report; a turn that is told line by line, a railway term explained, and its
+// decisions. And the logbook with something in it.
 for (const [scheme, device, viewport] of STATES) {
   test(`play page states have no accessibility violations (${scheme} mode, ${device})`, async ({ page }) => {
     const path = "/game/play/?mission=neustadt-morning";
+    const step = (seconds) => page.evaluate((n) => {
+      const p = window.__play;
+      for (let i = 0; i < n; i++) p.session.step(1);
+      p.draw(true);
+    }, seconds);
+    /** A state of the page, once it has come to rest. */
+    const check = async (state) => {
+      await settled(page);
+      found.push(...(await violations(page, state)));
+    };
     await page.emulateMedia({ colorScheme: scheme });
     await page.setViewportSize(viewport);
     await page.goto(path);
@@ -335,41 +358,81 @@ for (const [scheme, device, viewport] of STATES) {
     await page.goto(path);
     await page.waitForFunction(() => window.__play?.ready);
     const found = [];
+    const signaller = page.locator("#seat-signaller-relay");
+    await page.locator("#setup summary").click();
+    await expect(page.locator("#setup .play-wiring")).toBeVisible();
+    await check("the briefing and the wiring of a mission");
     await page.locator("#start").click();
     await page.getByRole("button", { name: "Pause" }).click();
-    await page.evaluate(() => {
-      const p = window.__play;
-      for (let i = 0; i < 790; i++) p.session.step(1);
-      p.draw(true);
-    });
-    await expect(page.locator("#seat-signaller-relay .play-decision")).toHaveCount(2);
-    await page.locator("#seat-signaller-relay").getByRole("button", { name: "Report it now" }).click();
-    await page.evaluate(() => {
-      const p = window.__play;
-      for (let i = 0; i < 400; i++) p.session.step(1);
-      p.draw(true);
-    });
+    // somebody of the mission's story speaks first, two seconds into the shift
+    await step(3);
+    await expect(signaller.locator(".vn-story .vn-line")).toBeVisible();
+    await check("a line of the mission's story");
+    await signaller.locator(".vn-story .btn").click();
+    await step(787);
+    await expect(signaller.locator(".play-decision")).toHaveCount(2);
+    await check("a shift with a decision asked and one waiting");
+    await signaller.getByRole("button", { name: "Report it now" }).click();
+    await step(400);
+    await page.locator("#showFlows").click();
     await expect(page.locator("#flowList li").first()).toBeVisible();
-    found.push(...(await violations(page, "a shift with decisions and flows")));
-    await page.locator("#seat-signaller-relay .play-move").getByRole("button", { name: "Close a track" }).click(); // nothing chosen
-    await expect(page.locator("#seat-signaller-relay .play-refused").filter({ hasText: "Choose" })).toBeVisible();
-    found.push(...(await violations(page, "a move refused")));
+    await check("what the roles give each other");
+    await page.locator("#closeFlows").click();
+    // the desk: a move through its form that the game refuses
+    await signaller.locator(".vn-tools").getByRole("button", { name: /^Desk/ }).click();
+    const desk = signaller.locator("dialog.play-desk");
+    await expect(desk).toBeVisible();
+    await desk.locator(".play-move").getByRole("button", { name: "Close a track" }).click(); // nothing chosen
+    await expect(desk.locator(".play-refused").filter({ hasText: "Choose" })).toBeVisible();
+    await check("a seat's desk, a move refused");
+    await desk.getByRole("button", { name: "Close", exact: true }).click();
     await page.locator("#tab-maintenance-dispatcher").click();
     await expect(page.locator("#seat-maintenance-dispatcher")).toBeVisible();
-    found.push(...(await violations(page, "a computer's seat")));
+    await check("a computer's seat");
+    await page.locator("#bare").click();
+    await expect(page.locator("#bareBack")).toBeVisible();
+    await check("only the picture");
+    await page.locator("#bareBack").click();
     await page.evaluate(() => {
       const p = window.__play;
       p.sit("signaller-relay", "computer");
       p.skip();
     });
     await expect(page.locator("#resultTitle")).toBeVisible();
-    found.push(...(await violations(page, "the result")));
-    // a turn: decisions with their fallback, the year's plan as a form
+    await check("the verdict");
+    await page.locator("#result").getByRole("button", { name: "The full report" }).click();
+    await expect(page.locator("#result dialog.play-report")).toBeVisible();
+    await check("the full report");
+    // a turn: what happened is read first, a railway term in it is explained; then the decisions with their fallback
     await page.goto("/game/play/?mission=budget-years");
     await page.waitForFunction(() => window.__play?.ready);
     await page.locator("#start").click();
-    await expect(page.locator("#seat-asset-manager .play-decision")).toHaveCount(5);
-    found.push(...(await violations(page, "a turn with decisions")));
+    const manager = page.locator("#seat-asset-manager");
+    await expect(manager.locator(".vn-story .vn-line")).toBeVisible();
+    await manager.locator(".vn-story .term").first().click();
+    await expect(manager.locator(".vn-term")).toBeVisible();
+    await check("a turn told line by line, a railway term explained");
+    for (let i = 0; i < 6 && (await manager.locator(".vn-story .btn").count()); i++) await manager.locator(".vn-story .btn").first().click();
+    await expect(manager.locator(".play-decision")).toHaveCount(5);
+    await check("a turn with decisions");
+    // the logbook, with what such a session leaves in it
+    await page.goto("/game/logbook/");
+    await page.evaluate(async () => {
+      const { PROGRESS_KEY, emptyProgress, record } = await import("/game/progress.js");
+      const { TERMS } = await import("/game/glossary.js");
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(record(emptyProgress(), {
+        mission: "budget-years", score: 88, passed: true, roles: ["asset-manager"], terms: TERMS.slice(0, 6).map((t) => t.id),
+        decisions: [{ who: "Asset manager", title: "Year 1: the maintenance strategy", chose: "Standard: €4.30 M", round: 1 }],
+      })));
+    });
+    // (only the address's end changes: the page is loaded anew to read what was kept)
+    await page.goto("/game/logbook/#sheet-budget-years");
+    await page.reload();
+    await page.waitForFunction(() => window.__logbook?.ready);
+    await page.locator("#terms .log-term[data-term]").first().click();
+    await page.locator("#quizBtn").click();
+    await expect(page.locator("#quiz .log-quiz-options .btn").first()).toBeVisible();
+    await check("the logbook: a rank, badges, a card turned, the quiz, a sheet");
     expect(found).toEqual([]);
   });
 }

@@ -91,6 +91,8 @@ export class Session {
     this._injected = new Set();
     /** The moves of people, for `replay`: `{phase, tick, seat, name, args}`. */
     this.record = [];
+    /** How many ticks each phase that is over lasted, by its index in the plan (a shift may end before its time is up). */
+    this.lasted = [];
     this.over = false;
     this._listeners = new Set();
   }
@@ -338,6 +340,7 @@ export class Session {
   _close() {
     const ph = this.phase, ctx = this._ctx();
     this._settling = false;
+    this.lasted[this.index] = this.ticks;
     this._deliver();
     for (const seat of this.active) {
       const g = seat.game;
@@ -464,6 +467,47 @@ export class Session {
   /** What is needed to play the session again up to now: the mission's id, the seed, who sat where at the start, the moves, and where it stands. */
   save() {
     return { format: "arail-session/1", mission: this.mission.id, seed: this.seed, seats: { ...this.seated }, record: structuredClone(this.record), at: { phase: this.index, tick: this.ticks } };
+  }
+
+  /**
+   * How much of its work each seat was a person's, 0 … 1: of the phases it was at work in so far, a
+   * shift counts by the part of the time it lasted that a person held the seat, a turn by who held it
+   * when it ended (or holds it now). Read from the seating at the start and the changes of hands in
+   * the record, so it says who played a seat, not who holds it at the end.
+   * @returns {Record<string, number>} by seat id; a seat that was never at work: 0
+   */
+  heldByPeople() {
+    const out = {};
+    for (const seat of this.seats.values()) {
+      const changes = this.record.filter((m) => m.name === "@seat" && m.seat === seat.id);
+      let by = this.seated[seat.id], sum = 0, n = 0;
+      for (let i = 0; i <= Math.min(this.index, this.plan.length - 1); i++) {
+        const ph = this.plan[i], here = changes.filter((m) => m.phase === i).sort((a, b) => a.tick - b.tick), atWork = ph.roles.includes(seat.id);
+        if (ph.kind === "shift" && atWork) {
+          const total = this.lasted[i] ?? this.ticks;
+          let human = 0, from = 0;
+          for (const m of here) {
+            const at = Math.min(total, m.tick);
+            if (by === "human") human += at - from;
+            from = at;
+            by = m.args[0];
+          }
+          if (by === "human") human += total - from;
+          if (total > 0) {
+            sum += human / total;
+            n++;
+          }
+        } else {
+          for (const m of here) by = m.args[0];
+          if (atWork) {
+            sum += by === "human" ? 1 : 0;
+            n++;
+          }
+        }
+      }
+      out[seat.id] = n ? sum / n : 0;
+    }
+    return out;
   }
 
   /** Whether a session of a mission can be played again from its record: every game seated in it can (`Game.replays`). */

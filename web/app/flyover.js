@@ -40,7 +40,7 @@ const VIEW_KEYS = { photo: "F", flyover: "F", map: "Shift+S", "3d": "S" };
 /** Background of the flyover by day: sky above the horizon, the lab floor below. */
 export const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", floorNear: "#9ba5aa" };
 /** ... and its night colours (the view darkens both further). */
-const SKY_NIGHT = { top: "#020a24", horizon: "#16284f", floorFar: "#1b2438", floorNear: "#0b1122" };
+export const SKY_NIGHT = { top: "#020a24", horizon: "#16284f", floorFar: "#1b2438", floorNear: "#0b1122" };
 
 export class Flyover {
   constructor(app) {

@@ -1,0 +1,26 @@
+{
+ "format": "arail-mission/1",
+ "id": "rush-hour",
+ "title": "Rush hour",
+ "hook": "Ten trains, most of them late, and the signal fails earlier. Nobody is coming to help.",
+ "place": "signal-box",
+ "text": "08:00 to 08:40 in the signal box of Bf Neustadt on a bad morning, alone: the trains come up to three minutes late, a third freight train is on its way, and exit signal N2 fails before the second pair of regional trains is through. Report the fault, keep the trains moving by the other tracks, give the substitute signal only where its conditions hold, close the track when the team asks for it, and open it again.",
+ "mode": "solo",
+ "seed": 1,
+ "roles": [
+  { "role": "signaller-relay", "game": "signaller", "seat": "human", "level": "hard" }
+ ],
+ "rounds": 1,
+ "phases": [
+  { "id": "shift", "kind": "shift", "title": "The morning shift", "roles": ["signaller-relay"], "length": 2400, "clock": "08:00" }
+ ],
+ "story": [
+  { "phase": "shift", "at": 2, "who": { "name": "R. Dohle", "role": "Train dispatcher, on the line", "portrait": "headset" }, "say": "Bad news before you sit down: everything from Bergheim is running late, and I have a third freight train for you. Keep G1 free for what has to pass." },
+  { "phase": "shift", "at": 690, "who": { "name": "R. Dohle", "role": "Train dispatcher, on the line", "portrait": "headset" }, "say": "If a signal fails now, report it first. The substitute signal Zs 1 is for a signal that cannot clear, not for a track that is occupied." }
+ ],
+ "debrief": [
+  "Which train did you hold longest, and whose minutes were they: the late train's, the failed signal's, or yours?",
+  "Where did you give the substitute signal Zs 1, and what had you checked before?",
+  "With the same trains and no failure: how many minutes would the morning have cost? What does that say about spare tracks?"
+ ]
+}

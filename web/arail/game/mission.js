@@ -5,15 +5,26 @@
  * web/game/missions/); a session (session.js) plays it.
  *
  * ```json
- * { "format": "arail-mission/1", "id": "neustadt-morning", "title": "…", "text": "…", "seed": 1,
+ * { "format": "arail-mission/1", "id": "neustadt-morning", "title": "…", "hook": "…", "place": "signal-box", "text": "…", "seed": 1,
  *   "roles": [ { "role": "signaller-relay", "game": "signaller", "seat": "human", "level": "normal" },
  *              { "role": "maintenance-dispatcher", "game": "maintenance", "seat": "computer" } ],
  *   "rounds": 1,
  *   "phases": [ { "id": "shift", "kind": "shift", "title": "A morning at Bf Neustadt", "roles": ["signaller-relay", "maintenance-dispatcher"], "length": 2400, "clock": "08:00" } ],
  *   "conditions": { "staff-plan": { "teams": 2 } },
  *   "injects": [ { "phase": "shift", "at": 600, "flow": "fault-report", "payload": { … } } ],
+ *   "story": [ { "phase": "shift", "at": 2, "who": { "name": "R. Dohle", "role": "Train dispatcher" }, "say": "…" } ],
  *   "debrief": [ "…?" ] }
  * ```
+ *
+ * The `hook` is the mission in one or two lines, at most HOOK_CHARS characters: what a card shows
+ * of it (the `text` is its briefing, read when asked for). The `place` names where it is played, on
+ * the layout (kebab-case; the page has the places with their photos, and checks the name against
+ * them). Both may be left out.
+ *
+ * The `story` is what people say to the players: lines at a moment of a phase (`at` seconds into a
+ * shift; in a turn, at its beginning, in their order), each by `who` says it (a name, a role, the
+ * kind of portrait; left out: whoever the page has for the seat's game), to the `seats` named or to
+ * everybody, in the `rounds` named or in all. It tells and teaches; it changes nothing in a game.
  *
  * A seat's `id` is its role unless given (two seats of one role need ids). A phase is a `turn` (the
  * slow roles decide, no clock) or a `shift` (the fast roles work at the same time for `length`
@@ -31,6 +42,12 @@ export const MISSION_MODES = ["solo", "cooperative", "competitive"];
 export const TICK_S = 0.5;
 /** The length of a shift (s) where a mission gives none. */
 export const SHIFT_S = 2400;
+
+/** The most characters of a mission's hook: one or two lines of a card. */
+export const HOOK_CHARS = 110;
+
+/** The most characters of a line of a mission's story. */
+export const SAY_CHARS = 220;
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -57,6 +74,7 @@ export function normalizeMission(doc, games = null) {
   m.phases = m.phases.map((p) => ({ title: p.id, ...p, roles: p.roles ?? [], ...(p.kind === "shift" ? { length: p.length ?? SHIFT_S, tick: p.tick ?? TICK_S, clock: p.clock ?? "08:00" } : {}) }));
   m.conditions ??= {};
   m.injects ??= [];
+  m.story ??= [];
   m.debrief ??= [];
   return m;
 }
@@ -87,16 +105,20 @@ export function wiring(mission, games) {
 /**
  * Problems of a mission (empty when it is sound): its format and texts, seats with a known game of
  * their role, phases that fit the games' rhythms and seat every role, conditions and injects of
- * flows that a seated game takes.
+ * flows that a seated game takes, a story whose lines can be said.
  * @param {object} doc
  * @param {Map<string, Function>} games
+ * @param {{places?: string[] | null, portraits?: string[] | null}} [options] what a page has pictures of: with `places`, a mission's `place` must be one of them; with `portraits`, the portrait of who says a line of its story
  * @returns {string[]}
  */
-export function validateMission(doc, games) {
+export function validateMission(doc, games, { places = null, portraits = null } = {}) {
   const out = [];
   if (doc?.format !== MISSION_FORMAT) out.push(`format must be "${MISSION_FORMAT}"`);
   if (!KEBAB.test(doc?.id ?? "")) out.push("id must be kebab-case");
   for (const k of ["title", "text"]) if (typeof doc?.[k] !== "string" || !doc[k].trim()) out.push(`${k} is missing`);
+  if (doc?.hook != null && (typeof doc.hook !== "string" || !doc.hook.trim() || doc.hook.length > HOOK_CHARS)) out.push(`hook must be a line or two of at most ${HOOK_CHARS} characters`);
+  if (doc?.place != null && !KEBAB.test(doc.place)) out.push("place must be kebab-case");
+  else if (doc?.place != null && places && !places.includes(doc.place)) out.push(`place: there is no place "${doc.place}" (there are: ${places.join(", ")})`);
   if (doc?.mode != null && !MISSION_MODES.includes(doc.mode)) out.push(`mode must be one of ${MISSION_MODES.join(", ")}`);
   if (doc?.rounds != null && !(Number.isInteger(doc.rounds) && doc.rounds >= 1)) out.push("rounds must be a whole number, 1 or more");
   if (!Array.isArray(doc?.roles) || !doc.roles.length) return [...out, "roles: a mission seats at least one role"];
@@ -148,8 +170,70 @@ export function validateMission(doc, games) {
     if (inj.at != null && !(inj.at >= 0)) out.push(`${at}: at must be 0 s or more`);
     for (const id of inj.to ?? []) if (!seats.has(id) && !m.roles.some((r) => r.role === id)) out.push(`${at}: to names "${id}", which is not seated`);
   });
+  if (!Array.isArray(m.story)) out.push("story must be a list of lines");
+  else m.story.forEach((line, i) => {
+    const at = `story ${i + 1}`;
+    if (!ids.has(line?.phase)) out.push(`${at}: no phase "${line?.phase}"`);
+    if (typeof line?.say !== "string" || !line.say.trim() || line.say.length > SAY_CHARS) out.push(`${at}: say must be a line of at most ${SAY_CHARS} characters`);
+    const phase = m.phases.find((p) => p.id === line?.phase);
+    if (line?.at != null && !(typeof line.at === "number" && line.at >= 0)) out.push(`${at}: at must be a number of seconds, 0 or more`);
+    // a line that could never be said: after the end of its shift, or to a seat that is not at work in its phase
+    else if (phase?.kind === "shift" && line?.at > phase.length) out.push(`${at}: at is ${line.at} s, after the end of the shift (${phase.length} s)`);
+    if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
+    if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
+    else if (line?.rounds && phase?.rounds && !line.rounds.some((n) => phase.rounds.includes(n))) out.push(`${at}: rounds names none of the rounds the phase "${phase.id}" is played in`);
+    if (line?.who?.portrait != null && portraits && !portraits.includes(line.who.portrait)) out.push(`${at}: there is no portrait "${line.who.portrait}" (there are: ${portraits.join(", ")})`);
+    if (line?.seats != null && !Array.isArray(line.seats)) out.push(`${at}: seats must be a list of seats`);
+    else for (const id of line?.seats ?? []) {
+      if (!seats.has(id)) out.push(`${at}: seats names "${id}", which is not seated`);
+      else if (phase && !phase.roles.includes(id)) out.push(`${at}: seats names "${id}", which is not at work in the phase "${phase.id}"`);
+    }
+  });
   if (!Array.isArray(m.debrief) || m.debrief.some((q) => typeof q !== "string")) out.push("debrief must be a list of questions");
   return out;
+}
+
+/**
+ * The lines of a mission's story for a phase of a round, in the order they are said (by `at`, then
+ * as written), each with its place in the story (`index`).
+ * @param {object} mission a mission with its defaults (normalizeMission)
+ * @param {string} phase a phase's id
+ * @param {number} round
+ * @returns {Array<{index: number, phase: string, at: number, say: string, who?: object, seats?: string[]}>}
+ */
+export function storyOf(mission, phase, round) {
+  return (mission.story ?? [])
+    .map((line, index) => ({ ...line, at: line.at ?? 0, index }))
+    .filter((line) => line.phase === phase && (!line.rounds || line.rounds.includes(round)))
+    .sort((a, b) => a.at - b.at || a.index - b.index);
+}
+
+/**
+ * The line of a phase's story that is said to a seat now, or null: the first of the lines for this
+ * seat (those that name no seats are for everybody, and are said at every seat) that is not
+ * answered there yet; in a shift (`t`, seconds into it) of those whose moment has come. One line at
+ * a time, in their order, and none is passed over: a page holds the shift's clock while a line
+ * waits for its answer, so the next one is not due before.
+ * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
+ * @param {string} seat a seat's id
+ * @param {Set<number>} heard the lines answered at this seat (their `index`)
+ * @param {number | null} [t] seconds into a shift; null: a turn
+ */
+export function lineFor(lines, seat, heard, t = null) {
+  return lines.find((l) => (!l.seats || l.seats.includes(seat)) && !heard.has(l.index) && (t == null || l.at <= t)) ?? null;
+}
+
+/**
+ * The lines of a shift that a seat is not told any more when a person sits down at it at `t`: those
+ * for this seat whose moment has passed, but for the latest of them (what was said last is still
+ * worth hearing; the ones before it spoke of what is over).
+ * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
+ * @param {string} seat a seat's id
+ * @param {number} t seconds into the shift
+ * @returns {number[]} their `index`
+ */
+export function staleLines(lines, seat, t) {
+  return lines.filter((l) => (!l.seats || l.seats.includes(seat)) && l.at <= t).slice(0, -1).map((l) => l.index);
 }
 
 /**

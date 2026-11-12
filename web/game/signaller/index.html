@@ -15,8 +15,10 @@
 <link rel="stylesheet" href="signaller.css">
 <script type="module" src="signaller.js"></script>
 </head>
-<body>
+<body class="board-page">
 <a class="skip-link" href="#main">Skip to content</a>
+<!-- the picture behind the page: where the role works, on the lab's layout -->
+<div class="backdrop" aria-hidden="true"><img src="../../media/ebl-neustadt.jpg" alt="" decoding="async" style="object-position: 40% 72%"></div>
 <header class="bar site-bar">
   <div class="identity">
     <img class="cro-logo" src="../../assets/cro-logo-white.svg" width="1014" height="321" alt="TU Dresden, Chair of Railway Operations">
@@ -33,12 +35,22 @@
 </header>
 
 <main id="main">
-  <div class="game-hero">
+  <!-- the scene: the game in a line or two, its facts, where it plays (the picture behind the page), the briefing to open -->
+  <div class="scene" id="scene">
     <div class="wrap">
-      <p class="eyebrow">Role game · signaller (Fahrdienstleiter)</p>
-      <h1>Signaller at Bf Neustadt</h1>
-      <p class="lead">Half an hour of a morning at Bf Neustadt, worked from a relay interlocking with a track diagram panel. Set the routes from a start signal to a destination: the interlocking moves the points, locks the route and clears the signal. Keep the trains on time and the connections at platform 2; let the intercity pass the freight train. At some point a signal fails.</p>
-      <p class="lead">Simplified for teaching, after the German rules for signallers (Ril 408); the station is that of the lab and of the app's maintenance story.</p>
+      <div class="scene-text">
+        <p class="eyebrow">Role game · signaller (Fahrdienstleiter)</p>
+        <h1>Signaller at Bf Neustadt</h1>
+        <p class="scene-hook">Three tracks, two lines, one panel: every train is yours. At some point a signal fails.</p>
+        <ul class="facts" aria-label="In short"><li>30 min on the clock</li><li>solo</li><li>decisions in seconds</li></ul>
+        <p class="scene-where"><span class="place-label">Where you work</span> <strong>Signal box, Bf Neustadt</strong> <span class="place-line">Three platform tracks, two lines, one panel.</span></p>
+        <p><a class="btn primary" href="../play/?mission=first-shift">Play it as a mission: Your first shift</a></p>
+        <details class="scene-brief">
+          <summary>Briefing</summary>
+          <p>Half an hour of a morning at Bf Neustadt, worked from a relay interlocking with a track diagram panel. Set the routes from a start signal to a destination: the interlocking moves the points, locks the route and clears the signal. Keep the trains on time and the connections at platform 2; let the intercity pass the freight train. At some point a signal fails.</p>
+          <p>Simplified for teaching, after the German rules for signallers (Ril 408); the station is that of the lab and of the app's maintenance story.</p>
+        </details>
+      </div>
     </div>
   </div>
 

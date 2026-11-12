@@ -1,6 +1,5 @@
 /* The role catalogue: the families as filter buttons, the filters, the link to the career planner and
    the roles as cards with their details. */
-.game-hero .lead.small { font-size: .92rem; }
 .roles-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-block: 18px 10px; }
 @media (min-width: 1000px) {
   .roles-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }

@@ -6,8 +6,23 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, flowOf, normalizeMission, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, flowOf, lineFor, normalizeMission, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
+import { PORTRAITS, faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
+import { mark, termOf } from "../glossary.js";
+import { PLACES, backdropAt, missionFacts, nightAt, placeOf, placeOfGame, placeOfMission, wideOf } from "../places.js";
+import { BADGES, MAX_STARS, PROGRESS_KEY, badgesOf, meet, nextMission, rankOf, readProgress, record, starsFor, totalStars } from "../progress.js";
+import { factChips } from "../scene.js";
+import { NEUSTADT, shotOf } from "../shots.js";
+import { hasMore, lead } from "../short.js";
+import { SOUND_KEY, Sound } from "../sound.js";
+
+/** What a mission is checked against beyond its games: the places and the portraits the game has pictures of. */
+const CHECKS = { places: PLACES.map((p) => p.id), portraits: Object.keys(PORTRAITS) };
+/** The way from this page to web/, for the places' photos. */
+const BASE = "../../";
+/** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
+const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
 
 const MISSIONS = "../missions/";
 const SAVE_FORMAT = "arail-session/1";
@@ -16,7 +31,13 @@ const saveKey = (id) => `arail.play.${id}`;
 const SETTINGS_KEY = "arail.play.settings";
 const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 /** The messages and flows shown; the panels are drawn every DRAW_MS, the session saved every SAVE_MS, a refusal shown for REFUSED_MS. */
-const LOG_LINES = 40, FLOW_LINES = 60, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
+const LOG_LINES = 40, FLOW_LINES = 60, BUMP_MS = 1200,
+  /** Of a game met with many messages already (a session taken up again), the last ones are read; a word comes in every WORD_MS; a decision with less than LOW_SHARE of its time left hurries. */
+  STORY_MOST = 3, WORD_MS = 26, LOW_SHARE = 0.34,
+  /** A seat is a person's, for the logbook, when a person held it for at least this part of its work (Session.heldByPeople). */
+  HELD_SHARE = 0.5,
+  /** On the verdict a star comes in every STAR_MS. */
+  STAR_MS = 380, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
 
 /** The time of day (HH:MM:SS) of a shift that began at `start` ("08:00"), `t` seconds in. */
@@ -25,6 +46,12 @@ function clockOf(start, t) {
   const s = Math.max(0, Math.floor((hh || 0) * 3600 + (mm || 0) * 60 + t));
   const two = (n) => String(n).padStart(2, "0");
   return `${two(Math.floor(s / 3600) % 24)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+}
+
+/** The time of day (minutes after midnight) of a shift that began at `start` ("08:00"), `t` seconds in. */
+function dayMinutes(start, t) {
+  const [hh, mm] = String(start ?? "08:00").split(":").map(Number);
+  return (((hh || 0) * 60 + (mm || 0) + t / 60) % 1440 + 1440) % 1440;
 }
 
 /** A number to read: rounded (one decimal below 100), large ones with separators. */
@@ -133,6 +160,47 @@ class PlayPage {
     this.mission = null;
     /** @type {"choose" | "play" | "result"} */
     this.screen = "choose";
+    /** The decision in focus per seat (its id). */
+    this.focus = new Map();
+    /** The decisions whose whole text is shown (their ids). */
+    this.whole = new Set();
+    /** When a decision with a deadline was first shown (seat|id → the game's time), for its countdown; those that have hurried. */
+    this.asked = new Map();
+    this.hurried = new Set();
+    /** What the player has reached (progress.js), kept in the browser; what the last session added to it. */
+    this.progress = readProgress(storage.get(PROGRESS_KEY, null));
+    this.gained = null;
+    /** Of the session that ended: the seats that were a person's for most of their work, and whether no person ever held one. */
+    this.yours = new Set();
+    this.watched = true;
+    /** What a person decided in this session, for the mission's sheet, and the railway terms met in it. */
+    this.diary = [];
+    this.met = new Set();
+    /** How many of a game's messages a person has read, in turns (by game). */
+    this.read = new WeakMap();
+    /**
+     * The lines of the mission's story for the phase played (storyOf); those answered, seat by seat (a line for
+     * everybody is said at every seat); those said aloud (seat|index); and, of a saved session taken up again, the
+     * lines answered in the phase it stood in.
+     */
+    this.beats = [];
+    /** @type {Map<string, Set<number>>} */
+    this.heardLines = new Map();
+    this.saidLines = new Set();
+    this.keptHeard = null;
+    /** The railway term explained (its id), or null. */
+    this.term = null;
+    /**
+     * The live backdrop (live.js, loaded when first wanted): whether the player wants it, the scene
+     * once it runs, and the picture shown now with whether it may be live and at what time of day.
+     */
+    this.liveOn = storage.get(LIVE_KEY, true) !== false;
+    this.live = null;
+    this.liveLoading = false;
+    this.pic = null;
+    /** Only the picture is shown (H). */
+    this.bare = false;
+    this.sound = new Sound({ on: storage.get(SOUND_KEY, true) !== false });
     this.speed = 1;
     this.lastSpeed = 1;
     /** The seat shown, the flow the list is filtered by, the phase the page has seen (index of the session's plan). */
@@ -169,6 +237,14 @@ class PlayPage {
     $("#endTurn").onclick = () => this.endTurn();
     $("#skip").onclick = () => this.skip();
     $("#leave").onclick = () => this.choose(null);
+    $("#showFlows").onclick = () => this.openFlows();
+    $("#closeFlows").onclick = () => $("#flowsDialog").close();
+    $("#sound").onclick = () => this.setSound(!this.sound.on);
+    $("#sound").setAttribute("aria-pressed", String(this.sound.on));
+    $("#liveBtn").onclick = () => this.setLive(!this.liveOn);
+    $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
+    $("#bare").onclick = () => this.setBare(true);
+    $("#bareBack").onclick = () => this.setBare(false);
     $("#flowFilter").onchange = (e) => {
       this.filter = e.target.value;
       this.flows(true);
@@ -176,6 +252,8 @@ class PlayPage {
     $("#tabs").addEventListener("keydown", (e) => this.tabKey(e));
     document.addEventListener("keydown", (e) => this.key(e));
     addEventListener("popstate", () => this.route());
+    // the little train stands at its stop also after the window has changed its size
+    addEventListener("resize", () => this.screen === "choose" && this.train());
     addEventListener("pagehide", () => {
       this.save();
       // also a page the browser keeps for "back": it may be thrown away later without another word, and what a
@@ -210,21 +288,35 @@ class PlayPage {
     this.route();
   }
 
-  /** The address: `?mission=<id>` opens that mission. */
+  /** The address: `?mission=<id>` opens that mission; without one, the mission to play next. */
   route() {
-    this.open(this.missions.find((m) => m.id === new URLSearchParams(location.search).get("mission")) ?? null);
+    const id = new URLSearchParams(location.search).get("mission");
+    this.open(this.missions.find((m) => m.id === id) ?? this.suggested());
   }
 
-  /** Choose a mission (null: back to the list of missions); the address follows. */
+  /** The mission to play next (progress.js): the first that is not passed yet. */
+  suggested() {
+    const id = nextMission(this.progress, this.missions.map((m) => m.id));
+    return this.missions.find((m) => m.id === id) ?? null;
+  }
+
+  /** Choose a mission (null: back to the line of missions, with the mission that was chosen); the address follows. */
   choose(id) {
     this.note = "";
-    const doc = this.missions.find((m) => m.id === id) ?? null;
+    const doc = this.missions.find((m) => m.id === id) ?? this.doc ?? this.suggested();
     const url = new URL(location.href);
     if (doc) url.searchParams.set("mission", doc.id);
     else url.searchParams.delete("mission");
     if (url.href !== location.href) history.pushState(null, "", url);
     this.open(doc);
-    (doc && this.choice ? $("#setupTitle") : $("#missionsTitle"))?.focus();
+    (doc ? $("#setupTitle") : $("#missionsTitle"))?.focus();
+  }
+
+  /** The mission before or after the one chosen, on the line (the arrow keys). */
+  stepMission(by) {
+    const i = this.missions.indexOf(this.doc), n = this.missions.length;
+    if (!n) return;
+    this.choose(this.missions[(Math.max(0, i) + by + n) % n].id);
   }
 
   /** Show the first screen with a mission chosen (or none). A session that runs is saved and left. */
@@ -235,7 +327,7 @@ class PlayPage {
     this.mission = null;
     this.doc = doc;
     this.choice = null;
-    if (doc && !validateMission(doc, this.games).length) {
+    if (doc && !validateMission(doc, this.games, CHECKS).length) {
       const m = normalizeMission(doc, this.games), told = storage.get(SETTINGS_KEY, {}) ?? {};
       // what a seat's game must be told before it begins (the address of its world): as told last time, else its default
       const settings = Object.fromEntries(m.roles.map((r) => [r.id, Object.fromEntries((this.games.get(r.game).settings ?? []).map((x) => [x.id, told[`${r.game}.${x.id}`] ?? x.value ?? ""]))]));
@@ -249,7 +341,97 @@ class PlayPage {
   show(screen) {
     this.screen = screen;
     $("#main").dataset.screen = screen;
+    // the page around the game knows the screen too (its styles follow it)
+    document.body.dataset.screen = screen;
+    if (screen !== "play" && this.bare) this.setBare(false);
     for (const id of ["choose", "play", "result"]) $(`#${id}`).hidden = id !== screen;
+  }
+
+  /**
+   * The picture behind the screen: it fades to another one (two images, one over the other). While
+   * a mission is played it can be live instead: where the picture has a shot of the layout that
+   * runs, the live backdrop shows that, its camera flying there; the still picture stays below it.
+   * @param {{photo: string, alt: string, focus: string, shot?: string | null}} pic a picture of places.js
+   * @param {{live?: boolean, time?: number | null}} [options] live: it may be live; time: the time of day to show (minutes)
+   */
+  backdrop(pic, { live = false, time = null } = {}) {
+    const el = $("#backdrop");
+    if (!pic) return;
+    this.pic = { pic, live, time };
+    if (el.dataset.photo !== pic.photo) {
+      el.dataset.photo = pic.photo;
+      const [a, b] = el.children, next = a.classList.contains("on") ? b : a, prev = next === a ? b : a;
+      next.style.objectPosition = pic.focus;
+      next.onload = () => {
+        if (el.dataset.photo !== pic.photo) return;
+        next.classList.add("on");
+        prev.classList.remove("on");
+      };
+      next.src = BASE + pic.photo;
+    }
+    const shot = live && this.wantsLive() ? shotOf(pic.shot) : null;
+    if (shot && !this.live && !this.liveLoading) this.loadLive();
+    const shown = !!shot && !!this.live?.can(shot);
+    if (shown) {
+      this.live.look(shot, { time });
+      this.live.start();
+    } else this.live?.stop();
+    el.classList.toggle("live", shown);
+  }
+
+  /**
+   * Whether the backdrop may be live: the player wants it, the window is wide enough, the system
+   * does not ask for less motion, and the browser is a person's (a test's browser gets the still
+   * pictures, unless the address asks for it with ?live).
+   */
+  wantsLive() {
+    return this.liveOn && innerWidth >= LIVE_MIN_PX && !matchMedia("(prefers-reduced-motion: reduce)").matches
+      && (!navigator.webdriver || new URLSearchParams(location.search).has("live"));
+  }
+
+  /** Load the live backdrop: the module with the framework behind it, then the layout; the picture shown then goes live. */
+  async loadLive() {
+    this.liveLoading = true;
+    try {
+      const { LiveScene } = await import("../live.js");
+      const scene = new LiveScene($("#liveScene"));
+      // too slow on this device: the still pictures stay
+      scene.canvas.addEventListener("livefailed", () => $("#backdrop").classList.remove("live"));
+      if (await scene.load(BASE + NEUSTADT, NEUSTADT)) this.live = scene;
+    } catch {
+      this.live = null;
+    }
+    if (this.live && this.pic) this.backdrop(this.pic.pic, this.pic);
+  }
+
+  /** The live backdrop on or off (kept in the browser). */
+  setLive(on) {
+    this.liveOn = !!on;
+    storage.set(LIVE_KEY, this.liveOn);
+    $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
+    if (this.pic) this.backdrop(this.pic.pic, this.pic);
+  }
+
+  /** Stars as they are shown: filled and empty, with their number for who does not see them. */
+  stars(n, most = MAX_STARS, pop = false) {
+    const got = pop ? Array.from({ length: n }, (_, i) => h("b", { style: `animation-delay: ${300 + i * STAR_MS}ms` }, "★")) : "★".repeat(n);
+    return h("span", { class: `stars${pop ? " pop" : ""}` }, h("span", { "aria-hidden": "true" }, got, h("i", {}, "★".repeat(most - n))), h("span", { class: "visually-hidden" }, `${n} of ${most} stars`));
+  }
+
+  /** The sound on or off (kept in the browser). */
+  setSound(on) {
+    this.sound.set(on);
+    storage.set(SOUND_KEY, !!on);
+    $("#sound").setAttribute("aria-pressed", String(!!on));
+  }
+
+  /** Only the picture (H): the game's interface out of the way, and back. */
+  setBare(on) {
+    this.bare = !!on;
+    document.body.classList.toggle("bare", this.bare);
+    $("#bare").setAttribute("aria-pressed", String(this.bare));
+    $("#bareBack").hidden = !this.bare;
+    (this.bare ? $("#bareBack") : $("#bare")).focus();
   }
 
   /** The name of a role of the catalogue. */
@@ -275,32 +457,69 @@ class PlayPage {
     return `${m.rounds === 1 ? "1 round" : `${m.rounds} rounds`}: ${phases.join(", ")}.`;
   }
 
-  /** The first screen: the missions as cards, and the mission chosen with its seats. */
+  /**
+   * The first screen: the missions as stops on a line, the mission chosen with its seats and Play,
+   * and behind them the place where it plays. The rank the stars add up to leads to the logbook.
+   */
   chooser() {
     const note = $("#missionsNote");
     note.textContent = this.failed ?? (this.missions.length ? "" : this.ready ? "There are no missions yet." : "Loading the missions.");
     note.hidden = !note.textContent;
-    mount($("#missions"), this.missions.map((doc) => h("li", {}, this.card(doc))));
+    const next = nextMission(this.progress, this.missions.map((m) => m.id)), stars = totalStars(this.progress), rank = $("#rank");
+    rank.hidden = !this.ready;
+    mount(rank, h("span", { class: "n" }, h("span", { "aria-hidden": "true" }, "★ "), String(stars), h("span", { class: "visually-hidden" }, stars === 1 ? " star" : " stars")), h("strong", {}, rankOf(stars).title), h("span", { class: "go" }, "Logbook"));
+    mount($("#missions"), this.missions.map((doc, i) => h("li", {}, this.stop(doc, i + 1, doc.id === next))));
+    this.train();
+    this.backdrop(wideOf(this.doc ? placeOfMission(normalizeMission(this.doc, this.games)) : placeOf()));
     this.setup();
     this.fit($("#choose"));
   }
 
-  /** A mission's card: title, text, rounds and phases, the seats with who is suggested for them. */
-  card(doc) {
-    const problems = validateMission(doc, this.games), m = normalizeMission(doc, this.games), chosen = this.doc === doc;
-    return h("article", { class: "game-card play-mission", "aria-labelledby": `mission-${doc.id}` },
-      h("h3", { id: `mission-${doc.id}` }, m.title ?? doc.id),
-      h("p", {}, m.text),
-      h("p", { class: "hint" }, this.outline(m)),
-      h("ul", { class: "play-roles", "aria-label": "Seats" }, m.roles.map((r) => h("li", {}, this.roleText(r.role), ": ", r.seat === "human" ? "you" : "the computer"))),
-      problems.length ? h("p", { class: "hint error" }, `This mission cannot be played here: ${problems.join("; ")}.`)
-        : h("p", {}, h("a", {
-          class: `btn${chosen ? "" : " primary"}`, href: `?mission=${encodeURIComponent(doc.id)}`, "aria-describedby": `mission-${doc.id}`, "aria-current": chosen ? "true" : null,
-          onclick: (e) => {
-            e.preventDefault();
-            this.choose(doc.id);
-          },
-        }, chosen ? "Chosen" : "Choose this mission")));
+  /** The little train on the line stands at the stop chosen (it runs there when another one is chosen). */
+  train() {
+    const line = $("#missions"), at = line.querySelector(".lv-stop.on")?.parentElement;
+    let train = line.parentElement.querySelector(".lv-train");
+    if (!train) {
+      train = s("svg", { class: "lv-train", viewBox: "0 0 44 18", "aria-hidden": "true", focusable: "false" },
+        s("path", { class: "body", d: "M2 3h30l9 7v4H2z" }), s("path", { class: "glass", d: "M5 5h6v4H5zM13 5h6v4h-6zM21 5h6v4h-6zM30 5h2l5 4h-7z" }),
+        s("circle", { cx: 10, cy: 15, r: 2.4 }), s("circle", { cx: 32, cy: 15, r: 2.4 }));
+      train.addEventListener("click", () => this.honk());
+      line.parentElement.append(train);
+    }
+    train.style.display = at ? "" : "none";
+    if (!at) return;
+    train.style.left = `${at.offsetLeft + at.offsetWidth / 2}px`;
+    // on a narrow screen the line scrolls sideways: the stop chosen is brought into view
+    const box = line.parentElement;
+    if (box.scrollWidth > box.clientWidth) box.scrollLeft = at.offsetLeft + at.offsetWidth / 2 - box.clientWidth / 2;
+  }
+
+  /** The little train sounds its horn (a click on it, or T): for no reason at all. */
+  honk() {
+    const train = document.querySelector(".lv-train");
+    if (!train) return;
+    this.sound.play("horn");
+    train.classList.remove("honk");
+    // the class again, so that the hop starts anew
+    void train.getBoundingClientRect();
+    train.classList.add("honk");
+  }
+
+  /** A mission as a stop on the line: its number, its name, the stars reached; the one to play next is marked. */
+  stop(doc, no, next) {
+    const chosen = this.doc === doc, got = this.progress.missions[doc.id];
+    return h("a", {
+      class: `lv-stop${chosen ? " on" : ""}${got?.passed ? " done" : ""}${next ? " next" : ""}`, id: `mission-${doc.id}`, href: `?mission=${encodeURIComponent(doc.id)}`, "aria-current": chosen ? "true" : null,
+      onclick: (e) => {
+        e.preventDefault();
+        this.choose(doc.id);
+      },
+    },
+    h("span", { class: "no" }, String(no).padStart(2, "0")),
+    h("span", { class: "dot", "aria-hidden": "true" }),
+    h("span", { class: "name" }, doc.title ?? doc.id),
+    this.stars(got?.stars ?? 0),
+    next ? h("span", { class: "tag ok" }, "next") : null);
   }
 
   /** The session of a mission kept in the browser, or null. */
@@ -319,19 +538,30 @@ class PlayPage {
     }
   }
 
-  /** The mission chosen: who plays which seat, the seed, Start and Resume, and its wiring. */
+  /**
+   * The mission chosen, ready to play: its number and stars, its hook and facts, its seats as faces
+   * to take (a seat taken is played by the person, the others by the computer), Play and Resume. Its
+   * briefing, its phases, the seed and the wiring open below.
+   */
   setup() {
     const el = $("#setup"), doc = this.doc, c = this.choice;
-    el.hidden = !doc || !c;
+    el.hidden = !doc;
     if (el.hidden) return void mount(el);
-    const m = normalizeMission(doc, this.games), again = Session.replayable(m, this.games);
+    const problems = validateMission(doc, this.games, CHECKS), m = normalizeMission(doc, this.games);
+    const no = this.missions.indexOf(doc) + 1, got = this.progress.missions[doc.id];
+    const head = [
+      h("p", { class: "play-no" }, `Mission ${String(no).padStart(2, "0")}`, got ? [" · ", this.stars(got.stars), ` · best ${got.best}`] : null),
+      h("h2", { id: "setupTitle", tabindex: "-1" }, m.title ?? doc.id),
+      h("p", { class: "play-hook" }, m.hook ?? lead(m.text)),
+      factChips(missionFacts(m)),
+    ];
+    if (problems.length || !c) return void mount(el, head, h("p", { class: "hint error" }, `This mission cannot be played here: ${problems.join("; ")}.`));
+    const again = Session.replayable(m, this.games);
     // a session that cannot be played again from its record is not kept (one kept by an earlier version goes)
     if (!again) storage.remove(saveKey(doc.id));
     const saved = again ? this.saved(doc.id) : null;
-    mount(el,
-      h("h2", { id: "setupTitle", tabindex: "-1" }, m.title),
-      h("p", {}, m.text),
-      h("p", { class: "hint" }, this.outline(m)),
+    const settings = m.roles.flatMap((r) => (this.games.get(r.game).settings ?? []).map((x) => [r, x]));
+    mount(el, head,
       h("form", {
         class: "play-setup-form", id: "setupForm",
         onsubmit: (e) => {
@@ -339,21 +569,32 @@ class PlayPage {
           this.start();
         },
       },
-      h("div", { class: "play-choices" }, m.roles.map((r) => h("fieldset", { class: "play-choice" },
-        h("legend", {}, this.roleText(r.role), r.id !== r.role ? ` (${r.id})` : null),
-        [["human", "You"], ["computer", "Computer"]].map(([by, label]) => h("label", { class: "field check", for: `by-${r.id}-${by}` },
-          h("input", { type: "radio", name: `by-${r.id}`, id: `by-${r.id}-${by}`, value: by, checked: c.seats[r.id] === by, onchange: () => { c.seats[r.id] = by; } }), label)),
-        (this.games.get(r.game).settings ?? []).map((x) => h("label", { class: "field play-setting", for: `set-${r.id}-${safe(x.id)}` }, h("span", {}, x.label),
-          h("input", {
-            type: x.type === "password" ? "password" : "text", id: `set-${r.id}-${safe(x.id)}`, autocomplete: "off", value: c.settings[r.id][x.id],
-            oninput: (e) => {
-              c.settings[r.id][x.id] = e.target.value;
-              // kept in this browser for the next time, but never a key
-              if (x.type !== "password") storage.set(SETTINGS_KEY, { ...storage.get(SETTINGS_KEY, {}), [`${r.game}.${x.id}`]: e.target.value });
-            },
-          }),
-          x.hint ? h("small", { class: "help" }, x.hint) : null))))),
-      h("details", {}, h("summary", {}, "More"),
+      h("fieldset", { class: "lv-seats" }, h("legend", {}, m.roles.length > 1 ? "Take your seats" : "Your seat"),
+        m.roles.map((r) => h("label", { class: "lv-seat", for: `by-${r.id}`, title: this.roles.get(r.role)?.name_de ?? null },
+          h("input", { type: "checkbox", id: `by-${r.id}`, checked: c.seats[r.id] === "human", onchange: (e) => { c.seats[r.id] = e.target.checked ? "human" : "computer"; } }),
+          h("img", { class: "face", src: BASE + selfPortrait(r.game).picture, alt: "" }),
+          h("span", { class: "name" }, this.roleName(r.role), r.id !== r.role ? ` (${r.id})` : null),
+          h("span", { class: "who", "aria-hidden": "true" })))),
+      settings.map(([r, x]) => h("label", { class: "field play-setting", for: `set-${r.id}-${safe(x.id)}` }, h("span", {}, x.label),
+        h("input", {
+          type: x.type === "password" ? "password" : "text", id: `set-${r.id}-${safe(x.id)}`, autocomplete: "off", value: c.settings[r.id][x.id],
+          oninput: (e) => {
+            c.settings[r.id][x.id] = e.target.value;
+            // kept in this browser for the next time, but never a key
+            if (x.type !== "password") storage.set(SETTINGS_KEY, { ...storage.get(SETTINGS_KEY, {}), [`${r.game}.${x.id}`]: e.target.value });
+          },
+        }),
+        x.hint ? h("small", { class: "help" }, x.hint) : null)),
+      h("div", { class: "row play-go-row" },
+        saved ? h("button", { class: "btn primary play-big", type: "button", id: "resume", onclick: () => this.resume() }, "Resume") : null,
+        h("button", { class: `btn play-big${saved ? "" : " primary"}`, type: "submit", id: "start" }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), saved ? "Start anew" : "Play"))),
+      saved ? h("p", { class: "hint" }, `A session of this mission is saved in this browser (${this.standing(m, saved)}). Start begins a new one and replaces it.`) : null,
+      again ? null : h("p", { class: "hint", id: "noResume" }, "A session of this mission cannot be taken up again once this page is closed: the world of one of its seats is elsewhere and would start anew."),
+      this.note ? h("p", { class: "hint error" }, this.note) : null,
+      // what nobody needs to start: the briefing, the phases, the seed, the wiring
+      h("details", { class: "play-more" }, h("summary", {}, "Briefing and settings"),
+        h("p", {}, m.text),
+        h("p", { class: "hint" }, this.outline(m)),
         h("label", { class: "field", for: "seed" }, h("span", {}, "Seed"),
           h("input", {
             type: "number", id: "seed", min: "1", step: "1", value: c.seed,
@@ -362,14 +603,8 @@ class PlayPage {
               c.seed = e.target.value !== "" && Number.isFinite(n) && n >= 1 ? n : m.seed;
             },
           }),
-          h("small", { class: "help" }, "The same seed and the same moves give the same session."))),
-      h("div", { class: "row" },
-        saved ? h("button", { class: "btn primary", type: "button", id: "resume", onclick: () => this.resume() }, "Resume") : null,
-        h("button", { class: `btn${saved ? "" : " primary"}`, type: "submit", id: "start" }, "Start")),
-      saved ? h("p", { class: "hint" }, `A session of this mission is saved in this browser (${this.standing(m, saved)}). Start begins a new one and replaces it.`) : null,
-      again ? null : h("p", { class: "hint", id: "noResume" }, "A session of this mission cannot be taken up again once this page is closed: the world of one of its seats is elsewhere and would start anew."),
-      this.note ? h("p", { class: "hint error" }, this.note) : null),
-      this.wiringTable(doc, m));
+          h("small", { class: "help" }, "The same seed and the same moves give the same session.")),
+        this.wiringTable(doc, m)));
   }
 
   /** The mission's wiring: per seat the flows it takes and gives, and what is at their other end. */
@@ -461,13 +696,24 @@ class PlayPage {
       return;
     }
     this.choice = { ...this.choice, seats: { ...session.seated }, seed: session.seed };
-    this.begin(session);
+    // with what the page knew of it when it was saved (the decisions a person took, the terms met, the lines of
+    // the story answered in the phase it stood in): there before the session taken up again is saved for the first time
+    this.begin(session, {
+      diary: Array.isArray(saved.diary) ? saved.diary.filter((d) => d && typeof d.title === "string" && typeof d.chose === "string") : [],
+      met: Array.isArray(saved.met) ? saved.met.filter((t) => typeof t === "string") : [],
+      heard: saved.heard && Number.isInteger(saved.heard.phase) && saved.heard.seats && typeof saved.heard.seats === "object"
+        ? { phase: saved.heard.phase, seats: Object.fromEntries(Object.entries(saved.heard.seats).filter(([, lines]) => Array.isArray(lines)).map(([seat, lines]) => [seat, lines.filter(Number.isInteger)])) } : null,
+    });
     // a session taken up again waits: the person finds their place first
     if (this.screen === "play" && session.phase.kind === "shift") this.setSpeed(0, true);
   }
 
-  /** Take a session: build its tabs and panels, show the play screen. */
-  begin(session) {
+  /**
+   * Take a session: build its tabs and panels, show the play screen.
+   * @param {Session} session
+   * @param {{diary: object[], met: string[], heard: {phase: number, seats: Record<string, number[]>} | null} | null} [kept] what the page knew of a saved session taken up again
+   */
+  begin(session, kept = null) {
     if (this.session !== session) this.leave();
     this.session = session;
     this.mission = session.mission;
@@ -478,6 +724,15 @@ class PlayPage {
     this.drafts.clear();
     this.refused.clear();
     this.picked.clear();
+    this.focus.clear();
+    this.whole.clear();
+    this.asked.clear();
+    this.hurried.clear();
+    this.diary = kept?.diary ?? [];
+    this.met = new Set(kept?.met ?? []);
+    this.keptHeard = kept?.heard ?? null;
+    this.read = new WeakMap();
+    this.term = null;
     this.setSpeed(1);
     // what happens in the session is drawn with the next frame
     session.on(() => {
@@ -505,22 +760,68 @@ class PlayPage {
     }
   }
 
-  /** A phase has begun: show one of the people's seats at work in it, say so, save. */
+  /** A phase has begun: show one of the people's seats at work in it, say so (its name over the whole screen), save. */
   entered() {
     const s = this.session, ph = s.phase;
     const mine = (seat) => seat.by === "human" && s.active.includes(seat);
-    if (!mine(s.seat(this.tab))) this.tab = s.active.find(mine)?.id ?? this.tab;
+    // nobody of the people at work in it: a seat at work to watch, one with a picture first (the signaller's panel)
+    if (!mine(s.seat(this.tab))) this.tab = (s.active.find(mine) ?? s.active.find((seat) => this.view(seat.game).sketch) ?? s.active[0])?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
+    this.beats = storyOf(this.mission, ph.id, s.round);
+    // of a session taken up again in this phase, the lines answered before stay answered (and are not said aloud again)
+    this.heardLines = new Map(this.keptHeard?.phase === s.index ? Object.entries(this.keptHeard.seats).map(([seat, lines]) => [seat, new Set(lines)])
+      // (taken up in the middle of a shift with nothing kept of it: only the latest line that is due is said)
+      : ph.kind === "shift" && s.t > 0 ? s.active.filter(mine).map((seat) => [seat.id, new Set(staleLines(this.beats, seat.id, s.t))]) : []);
+    this.saidLines = new Set([...this.heardLines].flatMap(([seat, lines]) => [...lines].map((i) => `${seat}|${i}`)));
+    this.keptHeard = null;
+    const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
+    this.chapter(s.rounds > 1 ? `Round ${s.round} of ${s.rounds}` : this.mission.title, ph.title, you.length ? `You: ${you.join(", ")}` : "The computer plays this one");
+    this.sound.play("chapter");
     this.save();
   }
 
-  /** The session is over: its save is removed, the result is shown. */
+  /**
+   * The session is over: its save is removed, what was reached is kept (the mission's stars and
+   * sheet, the roles sat in; only where a seat was a person's for at least half of its work), the
+   * result is shown. The stars are for the score of the person's own seats, given when the mission
+   * as a whole is passed; the sheet's decisions and rule breaks are those of these seats.
+   */
   finish() {
-    const s = this.session, r = s.result();
+    const s = this.session, r = s.result(), ids = this.missions.map((m) => m.id);
     storage.remove(saveKey(s.mission.id));
+    // whose seats: a person's who held one for at least half of its work, whoever holds it at the end (a seat
+    // handed to the computer for the last stretch still counts, one taken over just before the end does not)
+    const held = s.heldByPeople();
+    this.yours = new Set(r.seats.filter((x) => held[x.seat] >= HELD_SHARE).map((x) => x.seat));
+    this.watched = Object.values(held).every((share) => share === 0);
+    // the progress as it is kept now, not as it was when the page was opened (another tab may have emptied the logbook)
+    const mine = r.seats.filter((x) => this.yours.has(x.seat)), before = readProgress(storage.get(PROGRESS_KEY, null));
+    this.progress = before;
+    this.gained = null;
+    if (mine.length) {
+      // the score that counts for the person is that of their own seats (by the seats' weights), so that the computer's
+      // play at the other seats neither earns nor costs stars; passed is the mission as a whole: it is passed together
+      const own = Math.round(mine.reduce((n, x) => n + x.weight * x.score, 0) / (mine.reduce((n, x) => n + x.weight, 0) || 1));
+      this.progress = record(before, {
+        mission: s.mission.id, score: own, passed: r.passed, roles: mine.map((x) => x.role),
+        violations: mine.reduce((n, x) => n + (x.violations || 0), 0), danger: mine.some((x) => x.worst >= 3),
+        // of the decisions, those taken at these seats (a seat held for a turn and handed on is not the person's)
+        decisions: this.diary.filter((d) => !d.seat || this.yours.has(d.seat)).map(({ seat, ...d }) => d), terms: [...this.met],
+      });
+      storage.set(PROGRESS_KEY, this.progress);
+      const rank = rankOf(totalStars(this.progress)), had = badgesOf(before, ids);
+      this.gained = {
+        score: own, stars: starsFor(own, r.passed), best: own > (before.missions[s.mission.id]?.best ?? -1),
+        rank: rank.index > rankOf(totalStars(before)).index ? rank.title : null,
+        badges: badgesOf(this.progress, ids).filter((b) => !had.includes(b)).map((b) => BADGES.find((x) => x.id === b).title),
+      };
+    }
     this.show("result");
     this.result(r);
     this.say(`The session is over: ${r.score} of 100, ${r.passed ? "passed" : "not passed"}.`);
+    this.sound.play(r.passed ? "passed" : "failed");
+    // a cue for every star, as it comes in
+    for (let i = 0; i < (this.gained?.stars ?? 0); i++) setTimeout(() => this.screen === "result" && this.sound.play("star"), 900 + i * STAR_MS);
     $("#resultTitle").focus();
   }
 
@@ -532,7 +833,9 @@ class PlayPage {
     const as = `${s.index}|${s.ticks}|${s.record.length}`;
     if (as === this.savedAs) return;
     this.savedAs = as;
-    storage.set(saveKey(s.mission.id), s.save());
+    // with what the page itself knows of the session: what a person decided and the terms met, for the mission's sheet
+    // (and the lines of the story answered in the phase it stands in)
+    storage.set(saveKey(s.mission.id), { ...s.save(), diary: this.diary, met: [...this.met], heard: { phase: s.index, seats: Object.fromEntries([...this.heardLines].map(([seat, lines]) => [seat, [...lines]])) } });
   }
 
   /** Say something to those who do not see the page (the live region; what is said in one go is said together). */
@@ -605,11 +908,52 @@ class PlayPage {
   tabs() {
     morph($("#tabs"), [...this.session.seats.values()].map((seat) => {
       const on = seat.id === this.tab, at = this.atWork(seat), n = at ? seat.game.open.length : 0;
-      return h("button", { type: "button", role: "tab", id: `tab-${seat.id}`, "aria-controls": `seat-${seat.id}`, "aria-selected": String(on), tabindex: on ? "0" : "-1", onclick: () => this.select(seat.id) },
+      return h("button", { type: "button", role: "tab", class: seat.by === "human" ? "mine" : "theirs", id: `tab-${seat.id}`, "aria-controls": `seat-${seat.id}`, "aria-selected": String(on), tabindex: on ? "0" : "-1", onclick: () => this.select(seat.id) },
+        h("img", { class: "face", src: BASE + selfPortrait(seat.Game.id).picture, alt: "" }),
         h("span", { class: "name" }, this.seatName(seat.id)),
         h("span", { class: "who" }, seat.by === "human" ? "you" : "computer", at ? null : ", not at work",
           n ? [" ", h("span", { class: "tag warn" }, String(n)), h("span", { class: "visually-hidden" }, n === 1 ? " decision open" : " decisions open")] : null));
     }));
+  }
+
+  /** Put a decision of a seat in focus: it is shown in full, the others as their titles. */
+  look(seatId, id) {
+    this.focus.set(seatId, id);
+    this.draw(true);
+    // the title that was pressed is gone: the focus goes on into the decision now shown
+    this.panels.get(seatId)?.decisions.querySelector(".play-decision:not(.waiting) .play-options-row .btn, .play-decision:not(.waiting) button")?.focus();
+  }
+
+  /**
+   * Open a seat's desk, a dialog: its role, its moves as forms, its tables, its score and its messages.
+   * @param {string} seatId
+   * @param {"moves" | null} [part] where to begin
+   */
+  openDesk(seatId, part = null) {
+    const p = this.panels.get(seatId);
+    if (!p) return;
+    if (!p.desk.open) p.desk.showModal();
+    this.draw(true);
+    const at = part === "moves" ? p.movesTitle : p.deskTitle;
+    at.scrollIntoView({ block: "start" });
+    at.focus({ preventScroll: true });
+  }
+
+  /** Open what the roles give each other, a dialog. */
+  openFlows() {
+    const d = $("#flowsDialog");
+    if (!d.open) d.showModal();
+    this.flows(true);
+  }
+
+  /**
+   * A phase has begun: its name over the whole screen for a moment, as the chapter of a story.
+   * It takes no clicks and goes by itself (not shown where less motion is asked for).
+   */
+  chapter(over, title, under) {
+    const el = $("#chapter");
+    mount(el, h("div", { class: "vn-chapter" }, h("p", { class: "over" }, over), h("p", { class: "title" }, title), h("p", { class: "under" }, under)));
+    el.firstElementChild.addEventListener("animationend", () => mount(el), { once: true });
   }
 
   /** Show a seat's panel. */
@@ -629,29 +973,64 @@ class PlayPage {
     this.select(ids[to], true);
   }
 
-  /** The fixed parts of a seat's panel; `seat` draws into them. */
+  /**
+   * The fixed parts of a seat's panel; `seat` draws into them. The stage, over the picture: where
+   * the role works, the gauges, the game's picture if it has one, and the talk, a band across the
+   * bottom: who speaks with what they ask and its choices, or what happened line by line, a railway
+   * term explained, the newest message, and the tools. The desk, a dialog opened from the stage: the role, the moves as forms, the tables, the
+   * score and the messages.
+   */
   panel(seat) {
+    const place = placeOfGame(seat.Game.id);
     const p = {
-      head: h("div", { class: "game-card play-head wide" }),
-      sketch: h("div", { class: "game-card play-sketch wide", hidden: true }),
-      decisionsTitle: h("h4", { tabindex: "-1" }, "Decisions"),
-      decisionsNote: h("p", { class: "hint" }),
-      decisions: h("div", { class: "play-keyed" }),
+      head: h("div", { class: "game-card play-head" }),
+      /** The seat's own heading, for who does not see the stage: whose seat it is, and who plays it. */
+      title: h("h3", { class: "visually-hidden" }),
+      sketch: h("div", { class: "play-sketch", hidden: true }),
+      gauges: h("dl", { class: "vn-gauges" }),
+      speaker: h("figure", { class: "vn-speaker" }),
+      name: h("p", { class: "vn-name" }),
+      story: h("div", { class: "vn-story", hidden: true }),
+      decisionsTitle: h("h4", { class: "vn-count visually-hidden", tabindex: "-1" }, "Decisions"),
+      decisionsNote: h("p", { class: "vn-note" }),
+      decisions: h("div", { class: "play-keyed vn-decisions" }),
+      term: h("div", { class: "vn-term", role: "note", hidden: true }),
+      ticker: h("p", { class: "vn-ticker" }),
+      tools: h("div", { class: "vn-tools" }),
+      deskTitle: h("h3", { id: `desk-${seat.id}`, tabindex: "-1" }),
       movesTitle: h("h4", { tabindex: "-1" }, "Moves"),
       movesNote: h("div", { class: "play-moves-note" }),
       moves: h("div", { class: "play-keyed" }),
-      tables: h("div", { class: "play-tables wide" }),
+      tables: h("div", { class: "play-tables" }),
       score: h("div", { class: "play-score" }),
       log: h("div", {}),
+      /** The gauges' values as shown last, and until when one that changed shows it. */
+      gauged: new Map(),
     };
-    p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
+    // the talk: a band across the bottom of the screen, as a visual novel has it; the speaker stands at its left, taller
+    // than the band. In its box only who speaks, what they say or ask, and the choices; it is there while somebody speaks
+    p.talk = h("div", { class: "vn-talk", hidden: true }, p.speaker,
+      h("div", { class: "vn-box" }, p.name, p.story, p.decisionsTitle, p.decisions, p.term));
+    // above it, on the picture: a note on the seat's state and the newest message (the tools are at the top of the stage)
+    p.side = h("div", { class: "vn-side" }, p.decisionsNote, p.ticker);
+    p.desk = h("dialog", { class: "play-dialog play-desk", "aria-labelledby": `desk-${seat.id}` },
+      h("div", { class: "play-dialog-head" }, p.deskTitle, h("button", { class: "btn small", type: "button", onclick: () => p.desk.close() }, "Close")),
       p.head,
-      p.sketch,
-      h("div", { class: "game-card play-decisions" }, p.decisionsTitle, p.decisionsNote, p.decisions),
       h("div", { class: "game-card play-moves" }, p.movesTitle, p.movesNote, p.moves),
       p.tables,
       h("div", { class: "game-card" }, h("h4", {}, "Score so far"), p.score),
       h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log));
+    p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
+      h("div", { class: "vn-stage" },
+        p.title,
+        h("div", { class: "vn-top" },
+          h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)),
+          p.tools,
+          p.gauges),
+        p.sketch,
+        p.side,
+        p.talk),
+      p.desk);
     return p;
   }
 
@@ -666,33 +1045,127 @@ class PlayPage {
   }
 
   /**
-   * A seat's panel: the game and its role, the figures, the open decisions, the moves as forms, the
-   * tables, the score so far and the messages. A computer's seat and a seat not at work show the
-   * same without forms and buttons.
+   * A seat's panel. On the stage: the figures as gauges, the game's picture; in a turn, what
+   * happened, line by line, to read on from; then the decision in focus, asked by its speaker with
+   * its choices (the others wait as their titles); the newest message; the tools. Behind it the
+   * picture that fits what is spoken of. In the desk: the role, the moves as forms, the tables, the
+   * score so far and the messages. A computer's seat and a seat not at work show the same without
+   * forms and buttons.
    */
   seat(seat, force = false) {
     const p = this.panels.get(seat.id), s = this.session, g = seat.game;
     const active = s.active.includes(seat), mine = seat.by === "human", can = this.atWork(seat) && mine;
-    const view = this.view(g), de = this.roles.get(seat.role)?.name_de;
-    morph(p.head,
-      h("h3", {}, seat.Game.title),
-      h("p", { class: "play-role" }, "Role: ", h("a", { href: `../roles/#role-${seat.role}` }, this.seatName(seat.id)), de ? [" ", h("span", { class: "de", lang: "de" }, `(${de})`)] : null, ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
-      h("p", { class: "hint" }, seat.Game.description ?? ""),
-      h("p", { class: "play-state" }, !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over."),
-      h("dl", { class: "play-figures" }, view.figures.map((f) => h("div", { class: ["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : "" },
-        h("dt", {}, f.label), h("dd", {}, typeof f.value === "number" ? num(f.value) : String(f.value ?? "–"), f.unit ? ` ${f.unit}` : null)))),
-      h("div", { class: "row" }, h("button", { class: "btn small", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over")));
+    const view = this.view(g), de = this.roles.get(seat.role)?.name_de, name = this.seatName(seat.id);
+    const turn = s.phase.kind === "turn", logs = g?.logs ?? [];
+    const state = !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over.";
+
+    p.title.textContent = `${name}, played by ${mine ? "you" : "the computer"}`;
+    // a gauge whose value has just changed shows it for a moment (BUMP_MS)
+    const now = performance.now();
+    morph(p.gauges, view.figures.map((f) => {
+      const value = `${typeof f.value === "number" ? num(f.value) : String(f.value ?? "–")}${f.unit ? ` ${f.unit}` : ""}`, was = p.gauged.get(f.label);
+      if (was && was.value !== value) was.until = now + BUMP_MS;
+      p.gauged.set(f.label, { value, until: was?.until ?? 0 });
+      return h("div", { class: `${["ok", "warn", "bad"].includes(f.tone) ? `tone-${f.tone}` : ""}${p.gauged.get(f.label).until > now ? " bump" : ""}` }, h("dt", {}, f.label), h("dd", {}, value));
+    }));
 
     p.sketch.hidden = !view.sketch;
     if (view.sketch) this.sketch(seat, p, view.sketch, can);
 
+    // in a turn a person reads what happened line by line (the game's messages not read yet); in a shift
+    // they pass in the ticker, and what passed there or at a computer's seat counts as read
+    const tells = !!g && mine && active && turn;
+    if (g && !this.read.has(g)) this.read.set(g, Math.max(0, logs.length - STORY_MOST));
+    if (g && !tells) this.read.set(g, logs.length);
+    const at = g ? this.read.get(g) : 0, line = tells && at < logs.length ? logs[at] : null, quote = line ? quoteIn(line.text) : null;
+
+    // one decision at a time: the one in focus in full, asked by its speaker; the others as their titles
     const open = g?.open ?? [];
-    p.decisionsNote.textContent = open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.") : "Nothing to decide just now.";
-    keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => morph(el, ...this.decision(seat, d, can)));
+    // what somebody says to the players (the mission's story): in a turn before the decisions, in a shift when nothing is asked
+    const beat = mine && active && !line && (turn || !open.length) ? this.beat(seat.id) : null;
+    const focus = line || beat ? null : open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
+    const who = quote ? speakerOf(seat.Game.id, { who: { name: quote.name } }) : beat ? speakerOf(seat.Game.id, { who: beat.who }) : focus ? speakerOf(seat.Game.id, focus)
+      : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? "" : name, portrait: null };
+    const face = who.portrait ? faceOf(who) : selfPortrait(seat.Game.id);
+    p.talk.classList.toggle("telling", !!line && !quote);
+    p.speaker.classList.toggle("self", !focus && !quote && !beat);
+    morph(p.speaker, h("img", { src: BASE + face.picture, alt: face.alt }));
+    morph(p.name, h("strong", {}, who.name), who.role ? h("span", {}, who.role) : null);
+
+    p.story.hidden = !line;
+    if (line) {
+      const left = logs.length - at;
+      morph(p.story,
+        h("p", { class: `vn-line k-${safe(line.kind)}` }, this.rich(quote ? `${quote.before}“${quote.quote}”` : line.text, true)),
+        h("div", { class: "row" },
+          h("button", { class: "btn primary", type: "button", onclick: () => this.readOn(seat.id, 1) }, left > 1 ? "Next" : open.length ? "To the decisions" : "Go on", h("kbd", { "aria-hidden": "true" }, "Space")),
+          left > 2 ? h("button", { class: "btn", type: "button", onclick: () => this.readOn(seat.id, left) }, `Skip ${left - 1} more`) : null));
+    } else if (beat) {
+      if (!this.saidLines.has(`${seat.id}|${beat.index}`)) {
+        this.saidLines.add(`${seat.id}|${beat.index}`);
+        this.say(`${who.name}: ${beat.say}`);
+        this.sound.play("next");
+      }
+      p.story.hidden = false;
+      morph(p.story,
+        h("p", { class: "vn-line" }, this.rich(beat.say, true)),
+        h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", onclick: () => this.heardBeat(seat.id, beat) }, "OK", h("kbd", { "aria-hidden": "true" }, "Space"))));
+    } else mount(p.story);
+
+    p.decisionsTitle.textContent = line || beat ? "" : open.length > 1 ? `Decision ${open.indexOf(focus) + 1} of ${open.length}` : open.length ? "A decision" : "";
+    p.decisions.hidden = !!line || !!beat;
+    keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => {
+      el.classList.toggle("waiting", d !== focus);
+      // (one that waits is a dot to press: its title is its name, and shows on it)
+      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", title: d.title, onclick: () => this.look(seat.id, d.id) }, h("span", { class: "visually-hidden" }, d.title))]));
+    });
+    const idle = !open.length && !line && !beat;
+    // that nothing is asked needs no words on the screen (they are there for who does not see it); a seat's state does
+    p.decisionsNote.classList.toggle("visually-hidden", idle && !state);
+    p.decisionsNote.textContent = line || beat ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
+      : turn ? "Nothing left to decide here. End the turn when you are ready." : view.sketch ? "Nothing to decide just now. Watch the picture: choose something in it to act." : "Nothing to decide just now.");
+
+    // a railway term asked for: what it is, in a line
+    const term = this.term && !p.el.hidden ? termOf(this.term) : null;
+    p.term.hidden = !term;
+    morph(p.term, term ? [
+      h("p", {}, h("strong", {}, term.term), term.de ? [" ", h("span", { class: "de", lang: "de" }, term.de)] : null),
+      h("p", {}, term.line),
+      h("button", { class: "btn small", type: "button", onclick: () => this.explain(term.id) }, "Got it"),
+    ] : null);
+
+    // the newest message (not the one being read): new, it shows for a moment
+    const last = line ? null : logs.at(-1);
+    if (p.lastLine !== last) p.tickedUntil = last && p.lastLine !== undefined ? now + BUMP_MS : 0;
+    p.lastLine = last ?? null;
+    p.ticker.textContent = last ? last.text : "";
+    p.ticker.className = `vn-ticker${last ? ` k-${safe(last.kind)}` : ""}${p.tickedUntil > now ? " bump" : ""}`;
+    // the talk's band is there while somebody speaks or asks (or a term is explained): else the picture has the room
+    p.talk.hidden = !(line || beat || focus || term);
+
+    morph(p.tools,
+      can && turn && idle ? h("button", { class: "btn primary", type: "button", onclick: () => this.endTurn() }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), "End the turn") : null,
+      can && view.actions.length ? h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => this.openDesk(seat.id, "moves") }, view.actions.length === 1 ? view.actions[0].label ?? "A move" : `Moves (${view.actions.length})`) : null,
+      h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => this.openDesk(seat.id) }, "Desk", h("kbd", { "aria-hidden": "true" }, "D")),
+      h("button", { class: "btn", type: "button", onclick: () => this.sit(seat.id, mine ? "computer" : "human") }, mine ? "Hand to the computer" : "Take over"));
+
+    // behind it all: the picture that fits what is read or asked, else the place where the role works
+    // (a shift by day gets no picture of the night; in a turn of months or years the time is open); it may be
+    // live, in a shift at the shift's own time of day
+    const night = turn ? null : nightAt(s.phase.clock, s.t);
+    this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
+      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t) });
+
+    // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
+    p.deskTitle.textContent = seat.Game.title;
+    morph(p.head,
+      h("p", { class: "play-role" }, h("a", { href: `../roles/#role-${seat.role}` }, name), de ? [" ", h("span", { class: "de", lang: "de" }, `(${de})`)] : null, ", played by ", h("strong", {}, mine ? "you" : "the computer"), "."),
+      h("p", { class: "hint" }, seat.Game.description ?? ""),
+      h("p", { class: "play-state" }, state));
 
     // a form a person is in stays as it is
-    const at = document.activeElement;
-    if (force || !(at?.matches?.("select, input") && p.moves.contains(at))) this.moves(seat, p, view.actions, can);
+    const inForm = document.activeElement;
+    if (force || !(inForm?.matches?.("select, input") && p.moves.contains(inForm))) this.moves(seat, p, view.actions, can);
 
     morph(p.tables, view.tables.map((t) => h("div", { class: "game-card play-table" },
       h("h4", {}, t.title),
@@ -703,10 +1176,101 @@ class PlayPage {
       morph(p.score, h("p", {}, h("span", { class: "score-total" }, String(total)), " of 100"), this.parts(parts));
     } else morph(p.score, h("p", { class: "hint" }, "No score yet."));
 
-    const lines = g ? g.logs.slice(-LOG_LINES).reverse() : [];
+    const lines = g ? logs.slice(-LOG_LINES).reverse() : [];
     morph(p.log, lines.length
       ? h("div", { class: "play-scroll", tabindex: "0", role: "group", "aria-label": "Messages, the newest first" }, h("ol", {}, lines.map((l) => h("li", { class: `k-${safe(l.kind)}` }, l.text))))
       : h("p", { class: "hint" }, "No messages yet."));
+  }
+
+  /**
+   * A text with its railway terms as buttons (glossary.js): a term tapped is explained, and every
+   * term shown counts as met. `reveal`: the words come in one after the other.
+   * @param {string} text
+   * @param {boolean} [reveal]
+   */
+  rich(text, reveal = false) {
+    const parts = mark(text);
+    this.meets(parts.filter((x) => typeof x !== "string").map((x) => x.term.id));
+    let i = 0;
+    const delay = () => (reveal ? `animation-delay: ${Math.min(i++ * WORD_MS, 1600)}ms` : null);
+    return parts.flatMap((part) => {
+      if (typeof part !== "string") {
+        const on = this.term === part.term.id;
+        return [h("button", { class: `term${reveal ? " w" : ""}${on ? " on" : ""}`, type: "button", "aria-expanded": String(on), title: "What is this?", style: delay(), onclick: () => this.explain(part.term.id) }, part.text)];
+      }
+      return reveal ? part.split(/(\s+)/).map((w) => (/^\s*$/.test(w) ? w : h("span", { class: "w", style: delay() }, w))) : [part];
+    });
+  }
+
+  /** Railway terms were shown: they count as met, in this session (for its sheet) and for good (the logbook). */
+  meets(ids) {
+    const fresh = ids.filter((id) => !this.met.has(id));
+    if (!fresh.length) return;
+    for (const id of fresh) this.met.add(id);
+    // the session's save holds the terms met: it is due again (the next save writes it, also when the page is left)
+    this.savedAs = "";
+    // the progress as it is kept now (another tab may have played on, or emptied the logbook), with these terms
+    const kept = readProgress(storage.get(PROGRESS_KEY, null)), p = meet(kept, fresh);
+    this.progress = p;
+    if (p !== kept) storage.set(PROGRESS_KEY, p);
+  }
+
+  /** Explain a railway term (again: close it). */
+  explain(id) {
+    this.term = this.term === id ? null : id;
+    if (this.term) this.sound.play("term");
+    this.draw(true);
+  }
+
+  /**
+   * The line of the mission's story that is said to a seat now, or null (lineFor): the first of the
+   * lines for this seat that is not answered yet, in a shift of those whose moment has come.
+   */
+  beat(seatId) {
+    const s = this.session;
+    return lineFor(this.beats, seatId, this.heardLines.get(seatId) ?? new Set(), s.phase.kind === "turn" ? null : s.t);
+  }
+
+  /**
+   * Whether somebody of the mission's story is speaking to the person at the seat shown, in a shift:
+   * the clock waits for the answer (OK), so that no line is passed over. Not while the stage is out
+   * of the way (only the picture, a dialog), nor while a decision is open there: then the line
+   * waits, and the clock runs.
+   */
+  listening() {
+    const s = this.session, seat = s?.seat(this.tab);
+    if (!seat || s.over || s.phase.kind !== "shift" || this.bare || document.querySelector("dialog[open]")) return false;
+    return seat.by === "human" && s.active.includes(seat) && !seat.game?.open.length && !!this.beat(seat.id);
+  }
+
+  /** A line of the story was answered at a seat (OK): the stage goes on. At the other seats it stays to be said, if it is for them too. */
+  heardBeat(seatId, beat) {
+    // at this seat: a line for everybody is still to be said at the others
+    const heard = this.heardLines.get(seatId) ?? new Set();
+    heard.add(beat.index);
+    this.heardLines.set(seatId, heard);
+    this.term = null;
+    // the session's save holds the lines answered: it is due again
+    this.savedAs = "";
+    this.after();
+    this.refocus(() => {
+      const p = this.panels.get(seatId);
+      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button") ?? p.tools.querySelector("button");
+    });
+  }
+
+  /** Read on in what happened at a seat: `n` lines further. */
+  readOn(seatId, n = 1) {
+    const g = this.session?.seat(seatId)?.game;
+    if (!g) return;
+    this.read.set(g, Math.min(g.logs.length, (this.read.get(g) ?? 0) + n));
+    this.term = null;
+    this.sound.play("next");
+    this.draw(true);
+    this.refocus(() => {
+      const p = this.panels.get(seatId);
+      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button") ?? p.tools.querySelector("button");
+    });
   }
 
   /**
@@ -789,17 +1353,33 @@ class PlayPage {
     ([...p.picks.children].find((el) => el.dataset.key === id) ?? p.sketchTitle).focus({ preventScroll: true });
   }
 
-  /** An open decision: title, text, what happens without an answer, and its options (buttons for a person at work). */
+  /**
+   * An open decision: what is asked (its railway terms can be tapped), the lead of its text with the
+   * rest behind More, how much time is left, what happens without an answer, and its options: large
+   * buttons for a person at work, numbered as their keys.
+   */
   decision(seat, d, can) {
     const shift = this.session.phase.kind === "shift", label = (id) => d.options.find((o) => o.id === id)?.label ?? "";
+    const key = `${seat.id}|${d.id}`, whole = this.whole.has(key);
+    // how much of its time is left, from when it was first shown
+    if (shift && d.deadline != null && !this.asked.has(key)) this.asked.set(key, seat.game.t);
+    const t0 = this.asked.get(key), share = shift && d.deadline != null && d.deadline > t0 ? Math.max(0, Math.min(1, (d.deadline - seat.game.t) / (d.deadline - t0))) : null;
+    if (can && share != null && share < LOW_SHARE && !this.hurried.has(key)) {
+      this.hurried.add(key);
+      this.sound.play("hurry");
+    }
     let left = "";
     if (shift && d.deadline != null) left = `${Math.max(0, Math.ceil(d.deadline - seat.game.t))} s left${d.fallback ? `, then: ${label(d.fallback)}` : ""}`;
-    else if (!shift) left = `Still open at the end of the turn: ${label(d.fallback ?? d.options[0]?.id)}`;
+    else if (!shift) left = `If you skip it: ${label(d.fallback ?? d.options[0]?.id)}`;
     return [
-      h("h5", {}, d.title),
-      h("p", { class: "text" }, d.text ?? ""),
-      h("p", { class: "hint" }, left),
-      can ? h("div", { class: "row" }, d.options.map((o) => h("button", { class: "btn small", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) }, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null)))
+      h("h5", {}, this.rich(d.title, true)),
+      h("p", { class: "text" }, this.rich(whole ? d.text ?? "" : lead(d.text)), " ",
+        hasMore(d.text) ? h("button", { class: "play-why", type: "button", "aria-expanded": String(whole), onclick: () => { this.whole[whole ? "delete" : "add"](key); this.draw(true); } }, whole ? "Less" : "More") : null),
+      share != null ? h("div", { class: `vn-countdown${share < LOW_SHARE ? " low" : ""}`, "aria-hidden": "true" }, h("i", { style: { width: `${Math.round(share * 1000) / 10}%` } })) : null,
+      // (what happens to a decision that is skipped in a turn is said to who does not see the page; the time left in a shift to all)
+      h("p", { class: shift ? "hint" : "hint visually-hidden" }, left),
+      can ? h("div", { class: "row play-options-row" }, d.options.map((o, i) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) },
+        i < 9 ? h("kbd", { "aria-hidden": "true" }, String(i + 1)) : null, h("span", {}, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null))))
         : h("ul", { class: "play-options" }, d.options.map((o) => h("li", {}, o.label))),
     ];
   }
@@ -883,6 +1463,7 @@ class PlayPage {
     const s = this.session, counts = new Map();
     for (const f of s.flows) counts.set(f.flow, (counts.get(f.flow) ?? 0) + 1);
     const name = (id) => flowOf(id)?.name ?? id;
+    $("#flowBadge").textContent = String(s.flows.length);
     morph($("#flowCounts"), [...counts].map(([id, n]) => h("li", {}, name(id), " ", h("span", { class: "tag" }, String(n)))));
     const sel = $("#flowFilter");
     if (force || sel !== document.activeElement) {
@@ -976,23 +1557,37 @@ class PlayPage {
     this.refocus(() => this.panels.get(seatId).movesTitle);
   }
 
-  /** Take a decision at a seat. */
+  /** Take a decision at a seat; what a person decided goes into the session's diary (with its seat), for the mission's sheet. */
   decide(seatId, id, option) {
+    const seat = this.session.seat(seatId), d = seat?.game?.open.find((x) => x.id === id), o = d?.options.find((x) => x.id === option);
     const res = this.act(seatId, "decide", id, option);
-    if (refusedBy(res)) this.say(res?.reason ?? "This decision is not open any more.");
+    if (refusedBy(res)) {
+      this.say(res?.reason ?? "This decision is not open any more.");
+      this.sound.play("refuse");
+    } else {
+      if (d && o && seat.by === "human") this.diary.push({ seat: seatId, who: this.seatName(seatId), title: d.title, chose: o.label, round: this.session.round });
+      this.sound.play("choose");
+    }
+    this.term = null;
     this.after();
     this.refocus(() => {
       const p = this.panels.get(seatId);
-      return p.decisions.querySelector("button") ?? p.decisionsTitle;
+      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button, button") ?? p.tools.querySelector("button") ?? p.decisionsTitle;
     });
   }
 
   /** A seat changes hands: a person takes over, or hands it to the computer. */
   sit(seatId, by) {
-    this.session.sit(seatId, by);
+    const s = this.session;
+    s.sit(seatId, by);
+    // a seat taken in the middle of a shift: the lines whose moment has passed are not said any more, but for the latest
+    if (by === "human" && s.phase?.kind === "shift") this.heardLines.set(seatId, new Set([...(this.heardLines.get(seatId) ?? []), ...staleLines(this.beats, seatId, s.t)]));
     this.say(`${by === "human" ? "You play" : "The computer plays"} ${this.seatName(seatId)} now.`);
     this.after();
-    this.refocus(() => $("#stripTitle"));
+    // the tools are drawn anew, more or fewer of them: the focus stays on the seat's switch (the last of them)
+    const hand = this.panels.get(seatId)?.tools.querySelector("button:last-of-type");
+    if (hand && !hand.closest("[hidden]")) hand.focus();
+    else this.refocus(() => $("#stripTitle"));
   }
 
   /** End the turn: what is still open is decided by its fallback. */
@@ -1044,23 +1639,48 @@ class PlayPage {
           ? [h("p", {}, `${x.violations} in all${x.worst >= 3 ? ", a danger to people among them" : ""}.`), rules.length ? h("ul", {}, rules.map((v) => h("li", {}, `${v.text} (${SEVERITY[v.severity] ?? "a breach"})`))) : null]
           : h("p", { class: "hint" }, "None."));
     };
-    const flows = Object.entries(r.flows);
-    mount($("#result"),
-      h("div", { class: "game-card play-total" },
-        h("h2", { id: "resultTitle", tabindex: "-1" }, `The result: ${m.title}`),
-        h("p", {}, h("span", { class: "score-total" }, String(r.score)), " of 100 · ", tag(r.passed)),
-        h("p", { class: "hint" }, `${r.rounds === 1 ? "1 round" : `${r.rounds} rounds`}, seed ${r.seed}. The whole is passed when every seat passed all its rounds: 50 points or more, and no danger to people.`),
-        h("div", { class: "row" },
-          h("button", { class: "btn primary", type: "button", onclick: () => this.again(false) }, "Play again"),
-          h("button", { class: "btn", type: "button", onclick: () => this.again(true) }, "New seed"),
-          h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file"),
-          h("button", { class: "btn", type: "button", onclick: () => this.choose(null) }, "Other missions"))),
+    const flows = Object.entries(r.flows), place = placeOfMission(m);
+    // the report (a dialog): every seat's rounds and objectives, what led to what, the flows, the debrief
+    const report = h("dialog", { class: "play-dialog play-report", "aria-labelledby": "reportTitle" },
+      h("div", { class: "play-dialog-head" }, h("h3", { id: "reportTitle", tabindex: "-1" }, "The full report"), h("button", { class: "btn small", type: "button", onclick: () => report.close() }, "Close")),
+      h("p", { class: "hint" }, `${r.rounds === 1 ? "1 round" : `${r.rounds} rounds`}, seed ${r.seed}. The whole is passed when every seat passed all its rounds: 50 points or more, and no danger to people.`),
       h("div", { class: "play-result-seats" }, r.seats.map(seat)),
       this.chain(s.threads()),
       h("div", { class: "game-card" },
         h("h3", {}, "What the roles gave each other"),
         flows.length ? h("ul", { class: "play-counts" }, flows.map(([id, n]) => h("li", {}, flowOf(id)?.name ?? id, " ", h("span", { class: "tag" }, String(n))))) : h("p", { class: "hint" }, "Nothing passed between the roles.")),
-      m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null);
+      m.debrief.length ? h("div", { class: "game-card" }, h("h3", {}, "For the debrief"), h("ol", { class: "play-debrief" }, m.debrief.map((q) => h("li", {}, q)))) : null,
+      h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.file() }, "Save the session as a file")));
+    // the verdict, over the picture of the mission's place: the stars, the score, passed or not, what was gained, the cast with their scores, a question to take along
+    const won = this.gained;
+    // passed: on to the next stop of the line that is not passed yet
+    const onward = r.passed ? this.missions.find((d) => d.id === nextMission(this.progress, this.missions.map((x) => x.id)) && d.id !== m.id && !this.progress.missions[d.id]?.passed) : null;
+    this.backdrop(wideOf(place));
+    mount($("#result"),
+      h("div", { class: `vn-verdict ${r.passed ? "passed" : "failed"}` },
+        h("div", { class: "vn-verdict-box" },
+          h("p", { class: "vn-over" }, r.passed ? "Mission passed" : "Mission not passed"),
+          h("h2", { id: "resultTitle", tabindex: "-1" }, `The result: ${m.title}`),
+          h("p", { class: "vn-score" }, won ? this.stars(won.stars, MAX_STARS, true) : null, h("span", { class: "score-total" }, String(r.score)), h("span", { class: "of" }, " of 100 · "), tag(r.passed)),
+          won && (won.best || won.rank || won.badges.length) ? h("ul", { class: "vn-gained" },
+            won.rank ? h("li", { class: "rank" }, "Promoted: ", h("strong", {}, won.rank)) : null,
+            won.badges.map((b) => h("li", {}, "Badge: ", h("strong", {}, b))),
+            won.best && r.passed ? h("li", {}, "Your best so far") : null) : null,
+          won && won.score !== r.score ? h("p", { class: "hint vn-own" }, `Your stars are for your own ${this.yours.size > 1 ? "seats" : "seat"}: ${won.score} of 100.`) : null,
+          !won ? h("p", { class: "hint" }, this.watched ? "The computer played every seat: nothing goes into your logbook." : "No seat was yours for most of its work: nothing goes into your logbook.") : null,
+          h("ul", { class: "vn-cast", "aria-label": "The seats" }, r.seats.map((x) => h("li", { class: x.passed ? "ok" : "bad" },
+            h("img", { class: "face", src: BASE + selfPortrait(s.seat(x.seat).Game.id).picture, alt: "" }),
+            h("span", { class: "name" }, this.seatName(x.seat)),
+            h("span", { class: "pts" }, h("strong", {}, String(x.score)), ` · ${this.yours.has(x.seat) ? "you" : "computer"}`)))),
+          m.debrief.length ? h("p", { class: "vn-question" }, h("span", { class: "place-label" }, "To take along"), " ", m.debrief[0]) : null,
+          h("div", { class: "row" },
+            onward ? h("button", { class: "btn primary play-big", type: "button", onclick: () => this.choose(onward.id) }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), `Next stop: ${onward.title}`) : null,
+            h("button", { class: `btn${onward ? "" : " primary play-big"}`, type: "button", onclick: () => this.again(false) }, "Play again"),
+            h("button", { class: "btn", type: "button", onclick: () => this.again(true) }, "New seed"),
+            won ? h("a", { class: "btn", href: `../logbook/#sheet-${encodeURIComponent(m.id)}` }, "Your sheet") : null,
+            h("button", { class: "btn", type: "button", "aria-haspopup": "dialog", onclick: () => { report.showModal(); this.fit(report); } }, "The full report"),
+            h("button", { class: "btn", type: "button", onclick: () => this.choose(null) }, "The line")))),
+      report);
     this.fit($("#result"));
   }
 
@@ -1132,7 +1752,10 @@ class PlayPage {
     this.prev = t;
     const s = this.session;
     if (s && this.screen === "play") {
-      if (!s.over && s.phase.kind === "shift" && this.speed > 0) s.step(dt * this.speed);
+      // while somebody speaks to the person at the seat shown, the shift's clock waits for the answer
+      const held = this.listening();
+      if (!s.over && s.phase.kind === "shift" && this.speed > 0 && !held) s.step(dt * this.speed);
+      $("#shiftBar").classList.toggle("held", held);
       // games whose world is elsewhere exchange with it between the steps, one exchange at a time
       if (!s.over && !this.exchanging && typeof s.sync === "function") {
         this.exchanging = true;
@@ -1148,10 +1771,41 @@ class PlayPage {
     requestAnimationFrame((x) => this.frame(x));
   }
 
-  /** P pauses a shift and lets it run again. */
+  /**
+   * The keys. Choosing: the arrows go along the line of missions, T sounds the little train's horn. Playing: P pauses a shift and lets
+   * it run again, 1 to 9 take an option of the decision in focus, Space reads on, D opens the desk,
+   * H shows only the picture, M switches the sound, L the live backdrop.
+   */
   key(e) {
-    if (e.target.closest?.("input, select, textarea") || e.ctrlKey || e.metaKey || e.altKey) return;
-    if ((e.key === "p" || e.key === "P") && this.screen === "play" && this.session?.phase?.kind === "shift") this.setSpeed(this.speed ? 0 : this.lastSpeed, true);
+    if (e.target.closest?.("input, select, textarea") || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
+    const k = e.key;
+    if (this.screen === "choose" && (k === "ArrowRight" || k === "ArrowLeft") && !e.target.closest?.("summary, [role=tab]")) {
+      e.preventDefault();
+      return void this.stepMission(k === "ArrowRight" ? 1 : -1);
+    }
+    if (this.screen === "choose" && (k === "t" || k === "T")) return void this.honk();
+    if (this.screen !== "play" || !this.session) return;
+    if (k === "h" || k === "H") return void this.setBare(!this.bare);
+    if (k === "m" || k === "M") return void this.setSound(!this.sound.on);
+    if (k === "l" || k === "L") return void this.setLive(!this.liveOn);
+    if (this.bare) return;
+    if ((k === "p" || k === "P") && this.session.phase?.kind === "shift") return void this.setSpeed(this.speed ? 0 : this.lastSpeed, true);
+    const p = this.panels.get(this.tab);
+    if (!p) return;
+    if (k === "d" || k === "D") return void this.openDesk(this.tab);
+    if (/^[1-9]$/.test(k) && !p.decisions.hidden) {
+      const b = p.decisions.querySelectorAll(".play-decision:not(.waiting) .play-options-row .btn")[Number(k) - 1];
+      if (b) {
+        e.preventDefault();
+        b.click();
+      }
+    } else if (k === " " && !e.target.closest?.("button, a, summary, [role=button], [role=tab]")) {
+      const next = p.story.querySelector(".btn");
+      if (next) {
+        e.preventDefault();
+        next.click();
+      }
+    }
   }
 }
 

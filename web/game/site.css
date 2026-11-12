@@ -52,3 +52,43 @@ p { margin: 0; }
 
 .site-foot { border-top: 1px solid var(--line); margin-top: 40px; padding-block: 22px 30px; color: var(--text-2); font-size: .9rem; }
 .site-foot p + p { margin-top: 6px; }
+
+/* a page on the board: one picture fills the screen behind everything (where the role works, on
+   the lab's layout), and what stands on it is in boxes of the board's dark blue, which take their
+   colours through the tokens. Text never stands on the picture itself. */
+body.board-page { background: var(--board); }
+body.board-page > .backdrop { position: fixed; inset: 0; z-index: 0; background: var(--board); }
+body.board-page > .backdrop img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* the edges a little darker; the middle stays the picture */
+body.board-page > .backdrop::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--board) 45%, transparent), color-mix(in srgb, var(--board) 12%, transparent) 30%, color-mix(in srgb, var(--board) 55%, transparent)); }
+body.board-page .site-bar, body.board-page main, body.board-page .site-foot { position: relative; z-index: 1; }
+body.board-page .site-foot { background: var(--bg); margin-top: 0; }
+body.board-page main {
+  --bg: var(--board); --surface: var(--board); --surface-2: var(--board-2); --text: var(--board-text); --text-2: var(--board-muted); --line: var(--board-line);
+  --accent-ink: var(--overlay-ok); --danger: var(--board-warn); color: var(--board-text); padding-bottom: 40px;
+}
+body.board-page main a { color: var(--overlay-ok); }
+body.board-page main a.btn { color: var(--text); }
+body.board-page main a.btn.primary { color: var(--accent-text); }
+
+/* the scene: the head of a game's page, a box at the lower left of the picture: what the game is
+   in a line or two (the hook), its facts as chips, where it plays, and the briefing to open */
+.scene { position: relative; color: var(--board-text); min-height: min(58vh, 520px); display: flex; align-items: flex-end; }
+.scene .wrap { width: 100%; padding-block: 26px 18px; }
+.scene-text { display: grid; gap: 10px; justify-items: start; width: min(100%, 640px); background: var(--board); border: 1px solid var(--board-line); border-top: 4px solid var(--overlay-ok); border-radius: 6px; padding: 18px 22px 16px; }
+.scene .eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
+.scene h1 { font-size: clamp(1.8rem, 4.2vw, 2.9rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.08; text-wrap: balance; }
+.scene-hook { font-size: clamp(1.05rem, 1.9vw, 1.25rem); line-height: 1.4; font-weight: 500; text-wrap: pretty; }
+.scene-where { border-left: 3px solid var(--overlay-ok); padding-left: 10px; font-size: .88rem; line-height: 1.35; }
+.place-label { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
+.place-line { color: var(--board-muted); display: block; }
+.scene-brief { color: var(--board-muted); max-width: 62ch; font-size: .95rem; width: 100%; }
+.scene-brief summary { cursor: pointer; color: var(--board-text); font-weight: 600; width: fit-content; }
+.scene-brief p + p { margin-top: 8px; }
+.scene-brief[open] summary { margin-bottom: 4px; }
+@media (max-width: 759px) { .scene { min-height: 0; } .scene .wrap { padding-block: 14px 10px; } }
+
+/* facts as chips: on the board (a scene) and on a card */
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; font-weight: 600; }
+.facts li { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); white-space: nowrap; }
+.scene .facts li, .lv-card .facts li { border-color: var(--board-line); background: var(--board-2); color: var(--board-text); }

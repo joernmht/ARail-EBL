@@ -174,3 +174,13 @@ html:not(.titled) .title-screen { display: none; }
 /* the way back to the title from the app's bar */
 .bar .menu-link { background: transparent; border-color: var(--bar-line); color: var(--bar-text); }
 .bar .menu-link:hover { background: var(--bar-hover); }
+
+/* a long menu on a low screen (a laptop): closer lines, a smaller name, so that the whole menu is in view */
+@media (max-height: 900px) and (min-width: 700px) {
+  .title-main { gap: 12px; padding-top: 64px; padding-bottom: 46px; }
+  .title-name h1 { font-size: clamp(2.4rem, 4.6vw, 3.4rem); margin: .3em 0; }
+  .title-tagline { font-size: .95rem; }
+  .title-item { padding-block: 4px; }
+  .title-label { font-size: 1.02rem; }
+  .title-sub { font-size: .78rem; line-height: 1.25; }
+}

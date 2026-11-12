@@ -79,7 +79,9 @@ test("the project page links to the architecture page; on a phone it does not sc
 
 for (const scheme of ["light", "dark"]) {
   test(`the architecture page with every model open has no accessibility violations (${scheme} mode)`, async ({ page }) => {
-    test.setTimeout(120_000);
+    // the whole page with every model open is checked at once: about a minute here, close to two on a slow CI
+    // runner, and more with every model added; the limit leaves room for that
+    test.setTimeout(300_000);
     await page.emulateMedia({ colorScheme: scheme });
     await open(page);
     await page.locator("#openAll").click();

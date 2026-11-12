@@ -2,6 +2,8 @@
  "format": "arail-mission/1",
  "id": "neustadt-years",
  "title": "Three years of Neustadt",
+ "hook": "Six desks, three years: this year's budget is next year's signal failure.",
+ "place": "district",
  "text": "Three budget years of the district around Bf Neustadt, with six roles at three rhythms. Each year the budget committee's rapporteur adopts the rail budget (a turn); the asset manager plans maintenance, renewals and the emergency teams with the district's share of it, and the transport authority's contract manager sets the period's terms (a turn); then a morning at Bf Neustadt is played (a shift): the signaller, the maintenance dispatcher and the undertaking's operations control work with what the plans left them: the teams on shift, assets whose condition decides whether the signal fails, the contract's penalties. The morning's reports go into the year's accounts: the faults of the year times the minutes one fault cost that morning; the undertaking's cancelled and late trains into the contract's incident list. Take the asset manager's seat and let the computer play the others, or share the seats.",
  "mode": "cooperative",
  "seed": 1,
@@ -86,6 +88,40 @@
     "asset-manager",
     "transport-authority-contract-manager",
     "bundestag-budget-mp"
+   ]
+  }
+ ],
+ "story": [
+  {
+   "phase": "plan",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "The committee has spoken: this is the money for the year. What you plan now is what the signaller and the teams have to work with in the morning.",
+   "seats": [
+    "asset-manager"
+   ]
+  },
+  {
+   "phase": "review",
+   "at": 0,
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "The morning is over. Now see what it did to the year's numbers: every fault of the morning counts for a whole year of them.",
+   "seats": [
+    "asset-manager"
    ]
   }
  ],

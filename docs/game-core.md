@@ -268,6 +268,8 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
  "format": "arail-mission/1",
  "id": "neustadt-morning",
  "title": "A morning at Bf Neustadt",
+ "hook": "Nine trains, forty minutes, and one signal that will fail.",
+ "place": "signal-box",
  "text": "08:00 to 08:40 at Bf Neustadt and in its district. …",
  "mode": "cooperative",
  "seed": 1,
@@ -294,6 +296,9 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
 | `text`, `debrief[]` | The briefing, and questions for the debrief |
+| `story[]` | What people say to the players: `phase`, `at` (s into a shift; in a turn the lines come at its beginning, in their order), `say` (a line of at most 220 characters, `SAY_CHARS`), `who` (`name`, `role`, `portrait`: who says it; left out, whoever the page has for the seat's game), `seats` (to whom; left out, to everybody), `rounds`. It tells and teaches, and changes nothing in a game; `storyOf(mission, phase, round)` gives a phase's lines, `lineFor(lines, seat, heard, t)` the one said to a seat now: the first not answered there yet, in a shift of those whose moment has come (a line that names seats is said only at those and does not stand in the way of the others; a line that names none is said at every seat, and what is answered is kept seat by seat). The play page holds a shift's clock while a line waits for its answer, so none is passed over; `staleLines(lines, seat, t)` are the lines a seat taken in the middle of a shift is not told any more |
+| `hook` | The mission in a line or two, at most 110 characters (`HOOK_CHARS`): what its card shows first. The `text` stays the briefing, opened when asked for |
+| `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game. The play page checks the name against its places (`validateMission(doc, games, { places })`): a misspelled one is a problem of the mission |
 
 Without `phases`, a mission gets a plan turn, a shift and a review turn, as far as it has roles for
 them. `validateMission(doc, games)` names what is wrong (a seat without a game of its role, a slow
@@ -319,6 +324,9 @@ changed the game before it failed, and played again it fails at the same point.
   done in the lab at its time would all reach a new instance at once. Such a game says so
   (`static replays = false`), `Session.replayable(mission, games)` tells, `replay` refuses, and
   the play page neither keeps such a session nor offers to resume it.
+- `session.heldByPeople()` says how much of its work each seat was a person's (0 … 1), from the
+  seating at the start and the changes of hands in the record: a shift by the part of the time it
+  lasted, a turn by who held the seat when it ended. The play page asks it whose a mission was.
 
 This is the base of three things:
 

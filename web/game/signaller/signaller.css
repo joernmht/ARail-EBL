@@ -83,3 +83,7 @@
 .sig-log li.right { color: var(--accent-ink); }
 .sig-log li.wrong { color: var(--danger); }
 .sig-debrief > * + * { margin-top: 8px; }
+
+/* on the picture (site.css, a page on the board): what is not a card gets a box of its own, so that no text stands on the picture */
+.board-page .sig-desk-wrap { background: var(--board); border: 1px solid var(--board-line); border-radius: 6px; padding: 12px 14px 14px; }
+.board-page .sig-desk { border: 1px solid var(--board-line); }

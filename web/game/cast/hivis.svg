@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" role="img" aria-label="Placeholder portrait: hivis">
+<path d="M18 400C18 304 66 262 118 246l64 0c52 16 100 58 100 154Z" fill="#0c2766" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<path d="M124 196h52v58c-10 14-42 14-52 0Z" fill="#16357f" stroke="#36b8bf" stroke-width="4" stroke-linejoin="round"/>
+<ellipse cx="150" cy="128" rx="60" ry="74" fill="#16357f" stroke="#36b8bf" stroke-width="4"/>
+<path d="M70 268l40-18 14 150H52Z M230 268l-40-18-14 150h72Z" fill="#f0922e" stroke="#001450" stroke-width="3" stroke-linejoin="round"/>
+<path d="M58 344h60M182 344h60M54 372h66M180 372h66" stroke="#ffffff" stroke-width="9"/>
+<path d="M84 110c0-46 30-70 66-70s66 24 66 70Z" fill="#f0922e" stroke="#001450" stroke-width="3" stroke-linejoin="round"/>
+<path d="M70 108h160v14H70Z" fill="#f0922e" stroke="#001450" stroke-width="3" stroke-linejoin="round"/>
+<path d="M150 42v66" stroke="#001450" stroke-width="3"/>
+</svg>
