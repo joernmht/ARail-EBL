@@ -34,6 +34,8 @@ const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
 const LOG_LINES = 40, FLOW_LINES = 60, BUMP_MS = 1200,
   /** Of a game met with many messages already (a session taken up again), the last ones are read; a word comes in every WORD_MS; a decision with less than LOW_SHARE of its time left hurries. */
   STORY_MOST = 3, WORD_MS = 26, LOW_SHARE = 0.34,
+  /** A seat is a person's, for the logbook, when a person held it for at least this part of its work (Session.heldByPeople). */
+  HELD_SHARE = 0.5,
   /** On the verdict a star comes in every STAR_MS. */
   STAR_MS = 380, DRAW_MS = 250, SAVE_MS = 5000, REFUSED_MS = 20000;
 const SEVERITY = ["", "a slip", "a breach", "a danger to people"];
@@ -168,6 +170,9 @@ class PlayPage {
     /** What the player has reached (progress.js), kept in the browser; what the last session added to it. */
     this.progress = readProgress(storage.get(PROGRESS_KEY, null));
     this.gained = null;
+    /** Of the session that ended: the seats that were a person's for most of their work, and whether no person ever held one. */
+    this.yours = new Set();
+    this.watched = true;
     /** What a person decided in this session, for the mission's sheet, and the railway terms met in it. */
     this.diary = [];
     this.met = new Set();
@@ -775,13 +780,19 @@ class PlayPage {
 
   /**
    * The session is over: its save is removed, what was reached is kept (the mission's stars and
-   * sheet, the roles sat in; only where a person sat somewhere), the result is shown.
+   * sheet, the roles sat in; only where a seat was a person's for at least half of its work), the
+   * result is shown.
    */
   finish() {
     const s = this.session, r = s.result(), ids = this.missions.map((m) => m.id);
     storage.remove(saveKey(s.mission.id));
+    // whose seats: a person's who held one for at least half of its work, whoever holds it at the end (a seat
+    // handed to the computer for the last stretch still counts, one taken over just before the end does not)
+    const held = s.heldByPeople();
+    this.yours = new Set(r.seats.filter((x) => held[x.seat] >= HELD_SHARE).map((x) => x.seat));
+    this.watched = Object.values(held).every((share) => share === 0);
     // the progress as it is kept now, not as it was when the page was opened (another tab may have emptied the logbook)
-    const mine = r.seats.filter((x) => x.by === "human"), before = readProgress(storage.get(PROGRESS_KEY, null));
+    const mine = r.seats.filter((x) => this.yours.has(x.seat)), before = readProgress(storage.get(PROGRESS_KEY, null));
     this.progress = before;
     this.gained = null;
     if (mine.length) {
@@ -1622,11 +1633,11 @@ class PlayPage {
             won.rank ? h("li", { class: "rank" }, "Promoted: ", h("strong", {}, won.rank)) : null,
             won.badges.map((b) => h("li", {}, "Badge: ", h("strong", {}, b))),
             won.best && r.passed ? h("li", {}, "Your best so far") : null) : null,
-          !won ? h("p", { class: "hint" }, "The computer played every seat: nothing goes into your logbook.") : null,
+          !won ? h("p", { class: "hint" }, this.watched ? "The computer played every seat: nothing goes into your logbook." : "No seat was yours for most of its work: nothing goes into your logbook.") : null,
           h("ul", { class: "vn-cast", "aria-label": "The seats" }, r.seats.map((x) => h("li", { class: x.passed ? "ok" : "bad" },
             h("img", { class: "face", src: BASE + selfPortrait(s.seat(x.seat).Game.id).picture, alt: "" }),
             h("span", { class: "name" }, this.seatName(x.seat)),
-            h("span", { class: "pts" }, h("strong", {}, String(x.score)), ` · ${x.by === "human" ? "you" : "computer"}`)))),
+            h("span", { class: "pts" }, h("strong", {}, String(x.score)), ` · ${this.yours.has(x.seat) ? "you" : "computer"}`)))),
           m.debrief.length ? h("p", { class: "vn-question" }, h("span", { class: "place-label" }, "To take along"), " ", m.debrief[0]) : null,
           h("div", { class: "row" },
             onward ? h("button", { class: "btn primary play-big", type: "button", onclick: () => this.choose(onward.id) }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), `Next stop: ${onward.title}`) : null,

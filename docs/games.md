@@ -296,7 +296,8 @@ and for the heads of the other pages of the games:
 - **Stars, ranks and badges.** A mission passed gives one star, two from 70 points, three from 85
   (`web/game/progress.js`); the stars add up to a rank, from Passenger to Minister of transport,
   and what was done earns badges ("By the book", "Many hats", and one nobody is proud of). All of it
-  is kept in the browser only, and only when a person sat somewhere.
+  is kept in the browser only, and only for a seat that was a person's: held by a person for at
+  least half of its work, whoever holds it at the end.
 - **The numbers are a pop-up.** The tables, the score, the messages and the moves as forms are a
   seat's desk, a dialog (**D**); what the roles give each other is another; after the session, the
   full report. The result itself is a verdict on the picture: the stars, the score, what was

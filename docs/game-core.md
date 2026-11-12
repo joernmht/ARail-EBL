@@ -324,6 +324,9 @@ changed the game before it failed, and played again it fails at the same point.
   done in the lab at its time would all reach a new instance at once. Such a game says so
   (`static replays = false`), `Session.replayable(mission, games)` tells, `replay` refuses, and
   the play page neither keeps such a session nor offers to resume it.
+- `session.heldByPeople()` says how much of its work each seat was a person's (0 … 1), from the
+  seating at the start and the changes of hands in the record: a shift by the part of the time it
+  lasted, a turn by who held the seat when it ended. The play page asks it whose a mission was.
 
 This is the base of three things:
 

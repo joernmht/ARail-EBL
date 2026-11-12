@@ -70,23 +70,20 @@ const storyNow = (page) => page.evaluate(async () => {
 });
 
 /**
- * The computer plays a seat for the person up to the last seconds of the shift, then the person
- * sits there again and the shift ends: the session is over with a person on the seat and a score
- * worth its stars. A game may end before the shift's time is up; when, a copy played ahead tells.
+ * A person plays a seat to the end of the shift, with the moves the computer would make: before
+ * every tick the game's computer player thinks, and each move it wants is made as the person's,
+ * through the session (as the page's forms make them). The seat is the person's all through, and
+ * the score is worth its stars.
  */
-const playOut = (page, seat) => page.evaluate(async (id) => {
-  const { Session } = await import("/arail/game/index.js");
-  const p = window.__play, s = p.session, tick = s.phase.tick;
-  p.sit(id, "computer");
-  const copy = Session.replay(p.told(), s.save(), { games: p.games });
-  let n = 0;
-  while (!copy.over && n < 1e5) {
-    copy.step(tick);
-    n++;
+const playOut = (page, seat) => page.evaluate((id) => {
+  const p = window.__play, s = p.session, at = s.seat(id), tick = s.phase.tick;
+  const hands = new Proxy(at.game, {
+    get: (g, key) => (key === "act" ? (name, ...args) => s.act(id, name, ...args) : typeof g[key] === "function" ? g[key].bind(g) : g[key]),
+  });
+  for (let i = 0; i < 1e5 && !s.over; i++) {
+    at.player.think(hands, s);
+    s.step(tick);
   }
-  for (let i = 0; i < n - 4 && !s.over; i++) s.step(tick);
-  p.sit(id, "human");
-  for (let i = 0; i < 1e4 && !s.over; i++) s.step(tick);
   p.draw(true);
 }, seat);
 
@@ -1182,6 +1179,79 @@ test("the computer on every seat: the shift can be skipped, and nothing goes int
   expect(errors).toEqual([]);
 });
 
+test("whose a mission was: a seat played and handed to the computer for the last stretch counts, a seat taken over just before the end does not", async ({ page }) => {
+  const first = LINE[0], role = first.roles[0].role, seat = `#seat-${role}`;
+  const errors = await start(page, `${PAGE}?mission=${first.id}`);
+  /** How many ticks the shift lasts with the computer at the seat (its game may end before the time is up). */
+  const length = () => page.evaluate(async () => {
+    const { Session } = await import("/arail/game/index.js");
+    const p = window.__play, copy = new Session(p.told(), { games: p.games, seed: p.session.seed, seats: Object.fromEntries([...p.session.seats.keys()].map((id) => [id, "computer"])) });
+    copy.run();
+    return copy.lasted[0];
+  });
+  const ticks = await length();
+  expect(ticks).toBeGreaterThan(40);
+
+  // played for most of the shift with the moves the computer would make, then handed over to fast-forward the rest
+  await page.evaluate(([id, n]) => {
+    const p = window.__play, s = p.session, at = s.seat(id);
+    const hands = new Proxy(at.game, { get: (g, key) => (key === "act" ? (name, ...args) => s.act(id, name, ...args) : typeof g[key] === "function" ? g[key].bind(g) : g[key]) });
+    for (let i = 0; i < n && !s.over; i++) {
+      at.player.think(hands, s);
+      s.step(s.phase.tick);
+    }
+    p.draw(true);
+  }, [role, Math.round(ticks * 0.8)]);
+  await expect(page.locator("#play")).toBeVisible();
+  await tool(page, seat, "Hand to the computer").click();
+  await page.locator("#skip").click();
+  await expect(page.locator("#resultTitle")).toHaveText(`The result: ${first.title}`);
+  let result = await page.evaluate(() => window.__play.session.result());
+  const verdict = page.locator("#result .vn-verdict");
+  expect(result.seats.map((s) => s.by)).toEqual(["computer"]);
+  expect(result.passed).toBe(true);
+  const held = await page.evaluate((id) => window.__play.session.heldByPeople()[id], role);
+  expect(held).toBeGreaterThan(0.7);
+  expect(held).toBeLessThan(0.9);
+  // the mission is the person's: the stars, the sheet, the role
+  await expect(verdict.locator(".vn-score .stars .visually-hidden")).toHaveText(`${starsFor(result.score, true)} of 3 stars`);
+  await expect(verdict.locator(".hint")).toHaveCount(0);
+  await expect(verdict.locator(".vn-cast li .pts")).toHaveText([`${result.seats[0].score} · you`]);
+  await expect(verdict.getByRole("link", { name: "Your sheet" })).toBeVisible();
+  let now = await kept(page);
+  expect(now.missions[first.id]).toEqual({ best: result.score, stars: starsFor(result.score, true), plays: 1, passed: true });
+  expect(now.sheets[first.id]).toMatchObject({ score: result.score, passed: true, roles: [role] });
+  expect(now.roles).toEqual([role]);
+
+  // the other way round, with an empty logbook: the computer plays the shift, a person takes the seat for its last seconds
+  await page.evaluate((key) => localStorage.removeItem(key), PROGRESS);
+  await verdict.getByRole("button", { name: "Play again" }).click();
+  await page.waitForFunction(() => window.__play.screen === "play" && !window.__play.session.over);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await tool(page, seat, "Hand to the computer").click();
+  await page.evaluate((n) => {
+    const p = window.__play, s = p.session;
+    for (let i = 0; i < n && !s.over; i++) s.step(s.phase.tick);
+    p.draw(true);
+  }, ticks - 6);
+  await expect(page.locator("#play")).toBeVisible();
+  await tool(page, seat, "Take over").click();
+  await run(page, 600);
+  await expect(page.locator("#resultTitle")).toHaveText(`The result: ${first.title}`);
+  result = await page.evaluate(() => window.__play.session.result());
+  expect(result.seats.map((s) => s.by)).toEqual(["human"]);
+  expect(await page.evaluate((id) => window.__play.session.heldByPeople()[id], role)).toBeLessThan(0.2);
+  // the computer's play earns nothing: no stars, no sheet, nothing kept
+  await expect(verdict.locator(".stars")).toHaveCount(0);
+  await expect(verdict.locator(".vn-gained")).toHaveCount(0);
+  await expect(verdict.locator(".hint")).toHaveText("No seat was yours for most of its work: nothing goes into your logbook.");
+  await expect(verdict.locator(".vn-cast li .pts")).toHaveText([`${result.seats[0].score} · computer`]);
+  await expect(verdict.getByRole("link", { name: "Your sheet" })).toHaveCount(0);
+  expect(await page.evaluate(() => window.__play.gained)).toBeNull();
+  expect(await kept(page)).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test("the logbook as it is kept now is what a session's end adds to: missions played in another tab stay, a logbook emptied there stays empty of the old", async ({ page }) => {
   const errors = await open(page, `${PAGE}?mission=malus-month`);
   /** Play the mission to its end at the person's seat: every turn ended at once, what is open decided by its fallback. */
@@ -1218,6 +1288,8 @@ test("the logbook as it is kept now is what a session's end adds to: missions pl
 test("nobody of the people at work: the shift is skipped to its end; the verdict, the full report with the debrief, as a file, again", async ({ page }) => {
   const errors = await start(page);
   await expect(page.locator("#skipBar")).toBeHidden();
+  // a minute at the seat, then the computer has it for the rest of the shift
+  await run(page, 60);
   await tool(page, SIGNALLER, "Hand to the computer").click();
   await expect(page.locator("#skipBar")).toBeVisible();
   await page.getByRole("button", { name: "Skip to the end of the shift" }).click();
@@ -1230,11 +1302,11 @@ test("nobody of the people at work: the shift is skipped to its end; the verdict
   await expect(verdict.locator(".vn-over")).toHaveText(result.passed ? "Mission passed" : "Mission not passed");
   await expect(verdict.locator(".vn-score .score-total")).toHaveText(String(result.score));
   await expect(verdict.locator(".vn-score .tag")).toHaveText(result.passed ? "passed" : "not passed");
-  // the cast with their scores; the seat handed over was the computer's at the end: nothing for the logbook
+  // the cast with their scores; the seat handed over was the computer's for nearly all of its work: nothing for the logbook
   await expect(verdict.locator(".vn-cast")).toHaveAttribute("aria-label", "The seats");
   await expect(verdict.locator(".vn-cast li .name")).toHaveText(["Signaller in a relay interlocking", "Maintenance and fault dispatcher"]);
   await expect(verdict.locator(".vn-cast li .pts")).toHaveText(result.seats.map((s) => `${s.score} · computer`));
-  await expect(verdict.locator(".hint")).toHaveText("The computer played every seat: nothing goes into your logbook.");
+  await expect(verdict.locator(".hint")).toHaveText("No seat was yours for most of its work: nothing goes into your logbook.");
   await expect(verdict.locator(".vn-question")).toContainText("How long did the trains of track G2 wait");
   expect(await kept(page)).toBeNull();
   // the full report is a dialog: every seat with its rounds and objectives

@@ -27,7 +27,7 @@ export const RANKS = [
  * @property {number} score
  * @property {boolean} passed
  * @property {number} stars
- * @property {string[]} roles the roles the person sat in
+ * @property {string[]} roles the roles the person played (the seats that were a person's for at least half of their work)
  * @property {number} violations rules broken on the person's seats
  * @property {boolean} danger a danger to people among them
  * @property {Array<{who: string, title: string, chose: string, round: number}>} decisions

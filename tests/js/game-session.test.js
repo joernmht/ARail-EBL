@@ -789,3 +789,58 @@ test("people who play at random, on every mission of the site: no move a page of
   }
   assert.ok(played >= 18 && moves > 2000, `${played} sessions, ${moves} moves`);
 });
+
+test("whose a seat was: by the part of its work a person held it, not by who holds it at the end", () => {
+  const dir = join(ROOT, "web", "game", "missions");
+  const morning = () => normalizeMission(JSON.parse(readFileSync(join(dir, "neustadt-morning.json"), "utf8")), GAMES);
+  const ticks = (s, seconds) => {
+    for (let i = 0; i < seconds * 2 && !s.over; i++) s.step(s.phase.tick);
+  };
+  // a person plays three quarters of the shift and hands the seat to the computer for the rest
+  let s = new Session(morning(), { games: GAMES });
+  s.start();
+  ticks(s, 1800);
+  s.sit("signaller-relay", "computer");
+  s.run();
+  assert.ok(s.over);
+  let held = s.heldByPeople();
+  assert.ok(Math.abs(held["signaller-relay"] - 0.75) < 0.01, `three quarters: ${held["signaller-relay"]}`);
+  assert.equal(held["maintenance-dispatcher"], 0);
+  assert.equal(s.seat("signaller-relay").by, "computer", "the computer holds it at the end");
+  // the computer plays nearly all of it and a person takes the seat just before the end
+  s = new Session(morning(), { games: GAMES, seats: { "signaller-relay": "computer", "maintenance-dispatcher": "computer" } });
+  s.start();
+  ticks(s, 2300);
+  s.sit("signaller-relay", "human");
+  ticks(s, 200);
+  held = s.heldByPeople();
+  assert.ok(held["signaller-relay"] < 0.1, `a few minutes at the end: ${held["signaller-relay"]}`);
+  assert.equal(s.seat("signaller-relay").by, "human");
+  // a shift that ends before its time is up (its game is over) counts by the time it lasted, not by its length
+  const first = () => normalizeMission(JSON.parse(readFileSync(join(dir, "first-shift.json"), "utf8")), GAMES);
+  const seat = first().roles[0].id, whole = new Session(first(), { games: GAMES, seats: { [seat]: "computer" } });
+  whole.run();
+  assert.ok(whole.over);
+  const lasted = whole.lasted[0];
+  assert.ok(lasted > 8 && lasted < whole.plan[0].length / whole.plan[0].tick, `the shift ends early: after ${lasted} ticks`);
+  s = new Session(first(), { games: GAMES, seats: { [seat]: "computer" } });
+  s.start();
+  for (let i = 0; i < lasted - 4; i++) s.step(s.phase.tick);
+  s.sit(seat, "human");
+  for (let i = 0; i < 4; i++) s.step(s.phase.tick);
+  assert.ok(s.over);
+  assert.ok(Math.abs(s.heldByPeople()[seat] - 4 / lasted) < 1e-9, `the last four ticks of ${lasted}: ${s.heldByPeople()[seat]}`);
+  // played again from its record, a session says the same
+  assert.deepEqual(Session.replay(first(), s.save(), { games: GAMES }).heldByPeople(), s.heldByPeople());
+  // in turns: who held the seat when a turn ended; a seat is counted only in the phases it is at work in
+  const years = normalizeMission(JSON.parse(readFileSync(join(dir, "budget-years.json"), "utf8")), GAMES);
+  s = new Session(years, { games: GAMES });
+  s.start();
+  assert.deepEqual(s.heldByPeople(), { "asset-manager": 1 });
+  s.next(); // the plan of year 1, the person's
+  s.sit("asset-manager", "computer");
+  s.run(); // the computer plays on to the end
+  assert.ok(s.over);
+  held = s.heldByPeople();
+  assert.ok(Math.abs(held["asset-manager"] - 1 / s.plan.length) < 1e-9, `one of ${s.plan.length} turns: ${held["asset-manager"]}`);
+});
