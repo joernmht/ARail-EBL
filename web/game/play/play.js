@@ -942,6 +942,8 @@ class PlayPage {
     const place = placeOfGame(seat.Game.id);
     const p = {
       head: h("div", { class: "game-card play-head" }),
+      /** The seat's own heading, for who does not see the stage: whose seat it is, and who plays it. */
+      title: h("h3", { class: "visually-hidden" }),
       sketch: h("div", { class: "play-sketch", hidden: true }),
       gauges: h("dl", { class: "vn-gauges" }),
       speaker: h("figure", { class: "vn-speaker" }),
@@ -975,6 +977,7 @@ class PlayPage {
       h("div", { class: "game-card play-log" }, h("h4", {}, "Messages"), p.log));
     p.el = h("div", { class: "play-seat", role: "tabpanel", id: `seat-${seat.id}`, "aria-labelledby": `tab-${seat.id}`, hidden: true },
       h("div", { class: "vn-stage" },
+        p.title,
         h("div", { class: "vn-top" },
           h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)),
           p.gauges),
@@ -1009,6 +1012,7 @@ class PlayPage {
     const turn = s.phase.kind === "turn", logs = g?.logs ?? [];
     const state = !g ? "Not at work in this phase. Its game has not begun yet." : !active ? "Not at work in this phase. This is its last state." : g.over ? `This game is over: ${g.over}` : mine ? "" : "The computer plays this seat. You can watch it, or take over.";
 
+    p.title.textContent = `${name}, played by ${mine ? "you" : "the computer"}`;
     // a gauge whose value has just changed shows it for a moment (BUMP_MS)
     const now = performance.now();
     morph(p.gauges, view.figures.map((f) => {

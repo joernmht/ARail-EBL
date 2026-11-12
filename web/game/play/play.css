@@ -29,7 +29,8 @@ main[data-screen] .play-layout {
 .play-layout [tabindex="-1"]:focus { outline: none; }
 .play-layout .de { color: var(--text-2); font-size: .9em; }
 .play-layout input[type="radio"], .play-layout input[type="checkbox"] { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
-.play-layout kbd { font-family: var(--mono); font-size: .68em; font-weight: 500; line-height: 1; padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; opacity: .7; }
+/* (a key's name keeps the full colour of its button's text: fainter, it would not have the contrast) */
+.play-layout kbd { font-family: var(--mono); font-size: .68em; font-weight: 500; line-height: 1; padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; }
 .table-scroll { overflow-x: auto; }
 /* a row's head reads as its cells do (app.css sets table heads small and in capitals) */
 .play-layout tbody th { text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 600; color: var(--text); background: none; }
@@ -267,7 +268,8 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .vn-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-left: auto; }
 .vn-tools .btn { font-size: .8rem; padding: 3px 10px; }
 .vn-tools .btn.primary { font-size: .95rem; font-weight: 800; padding: 6px 18px; }
-@keyframes vn-say { from { opacity: 0; transform: translateY(6px); } }
+/* (it slides in and does not fade: a text that fades in has no contrast for a moment) */
+@keyframes vn-say { from { transform: translateY(10px); } }
 /* a decision with a deadline: its time runs out as a bar */
 .vn-countdown { height: 6px; border-radius: 3px; background: var(--board-2); overflow: hidden; max-width: 420px; }
 .vn-countdown i { display: block; height: 100%; background: var(--overlay-ok); transition: width .25s linear; }
