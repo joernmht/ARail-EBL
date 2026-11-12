@@ -1037,7 +1037,11 @@ class PlayPage {
     for (const panel of document.querySelectorAll("#rail .rail-panel")) panel.hidden = panel.id !== next;
     for (const b of document.querySelectorAll("#rail [aria-controls]")) b.setAttribute("aria-expanded", String(b.getAttribute("aria-controls") === next));
     this.opened = next;
-    if (next === "bellPanel") this.hideToast();
+    if (next === "bellPanel") {
+      this.hideToast();
+      const g = this.session?.seat(this.tab)?.game, p = this.panels?.get(this.tab);
+      if (p) p.seenAt = g ? this.seen.get(g) ?? 0 : 0;
+    }
     if (next) {
       this.draw(true);
       const panel = $(`#${next}`);
@@ -1275,7 +1279,12 @@ class PlayPage {
 
     const lines = g ? logs.slice(-LOG_LINES).reverse() : [];
     morph(p.log, lines.length
-      ? h("div", { class: "play-scroll", tabindex: "0", role: "group", "aria-label": "Messages, the newest first" }, h("ol", {}, lines.map((l) => h("li", { class: `k-${safe(l.kind)}` }, l.text))))
+      // each message on its own: its time apart, what it says, the new ones marked (not seen under the bell before)
+      ? h("div", { class: "play-scroll", tabindex: "0", role: "group", "aria-label": "Messages, the newest first" }, h("ol", {}, lines.map((l, i) => {
+        const [, time, text] = /^(\d{1,2}:\d{2})\s+(.*)$/s.exec(l.text) ?? [null, null, l.text];
+        const fresh = logs.length - i > (p.seenAt ?? logs.length);
+        return h("li", { class: `k-${safe(l.kind)}${fresh ? " new" : ""}` }, time ? h("time", {}, time) : null, h("span", {}, text), fresh ? h("span", { class: "visually-hidden" }, " (new)") : null);
+      })))
       : h("p", { class: "hint" }, "No messages yet."));
   }
 

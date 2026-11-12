@@ -116,17 +116,17 @@ body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
 #play:not([hidden]) {
   --pad: clamp(10px, 2vw, 22px); --rail: 52px;
   display: grid; grid-template-columns: minmax(0, 1fr) var(--rail); grid-template-rows: auto minmax(0, 1fr);
-  column-gap: 0; row-gap: 4px; padding: 6px 0 0 var(--pad); min-height: 0; overflow: hidden; position: relative;
+  column-gap: 0; row-gap: 4px; padding: 0 0 0 var(--pad); min-height: 0; overflow: hidden; position: relative;
 }
 
 /* (the phase's name over the whole screen is fixed, and takes no row of the grid) */
 #chapter { position: absolute; }
-/* the line at the upper middle: what must be seen, without boxes; a soft shade behind it keeps it readable on any picture */
+/* the line at the upper middle: what must be seen, without boxes. Behind it the board's blue fades out
+   downwards across the whole width, which keeps it readable on any picture */
 .play-hud {
-  grid-column: 1; grid-row: 1; justify-self: center; max-width: 100%; position: relative;
-  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 18px; padding: 2px 18px 8px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--board) 72%, transparent), color-mix(in srgb, var(--board) 0%, transparent));
-  text-shadow: 0 0 2px var(--board), 0 0 6px var(--board), 0 1px 3px var(--board);
+  grid-column: 1; grid-row: 1; margin: 0 0 0 calc(-1 * var(--pad)); padding: 10px 18px 22px;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 18px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--board) 92%, transparent) 0%, color-mix(in srgb, var(--board) 78%, transparent) 55%, color-mix(in srgb, var(--board) 0%, transparent) 100%);
   font-size: .92rem;
 }
 /* (one line as long as it fits; a long one wraps between its parts rather than be cut) */
@@ -141,15 +141,14 @@ body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
 .held .play-clock { color: var(--board-muted); }
 /* the speed: words to press; the one that holds is bright and underlined */
 .hud-speed { display: flex; gap: 2px; }
-.hud-speed button { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: .86rem; font-weight: 600; color: var(--board-muted); text-shadow: inherit; }
+.hud-speed button { all: unset; cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: .86rem; font-weight: 600; color: var(--board-muted); }
 .hud-speed button[aria-pressed="true"] { color: var(--board-text); font-weight: 800; text-decoration: underline 2px var(--overlay-ok); text-underline-offset: 5px; }
 .hud-speed button:hover { color: var(--board-text); }
 .hud-speed button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.play-hud .btn { text-shadow: none; }
-/* the time of the shift: a thin line under the whole line */
-.play-progress { position: absolute; left: 18px; right: 18px; bottom: 2px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--board-line) 70%, transparent); overflow: hidden; }
+/* the time of the shift: a thin line right at the lower edge of the page's bar, across the whole window */
+.play-progress { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: 4px; background: color-mix(in srgb, var(--board) 85%, transparent); overflow: hidden; }
 .play-hud:has(#shiftBar[hidden]) .play-progress { display: none; }
-.play-progress i { display: block; height: 100%; width: 0; background: var(--overlay-ok); }
+.play-progress i { display: block; height: 100%; width: 0; background: linear-gradient(to right, var(--overlay-ok), #8fe3e7); box-shadow: 0 0 6px var(--overlay-ok); transition: width .25s linear; }
 #turnNote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* the figures of the seat shown: a label and its value, side by side */
 .hud-figures, .hud-notes { display: contents; }
@@ -216,9 +215,14 @@ body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
 .vn-where { font-size: .95rem; line-height: 1.3; }
 .place-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
 .play-log[hidden] { display: none; }
-.play-log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.play-log li { font-size: .88rem; border-left: 3px solid var(--board-line); padding-left: 8px; }
-.play-log li.k-violation, .play-log li.k-wrong { border-left-color: var(--board-warn); }
+/* the messages: each on its own card, its time apart; the new ones marked */
+.play-log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.play-log li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; font-size: .88rem; line-height: 1.35; background: var(--board-2); border: 1px solid var(--board-line); border-left: 4px solid var(--board-line); border-radius: 6px; padding: 7px 10px; }
+.play-log li time { font-family: var(--mono); font-size: .76rem; font-weight: 600; color: var(--overlay-ok); }
+.play-log li > span:only-child, .play-log li > span:first-child { grid-column: 1 / -1; }
+.play-log li.new { border-left-color: var(--overlay-ok); }
+.play-log li.new::after { content: "new"; grid-column: 2; justify-self: end; margin-top: 4px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--board); background: var(--overlay-ok); border-radius: 999px; padding: 0 7px; }
+.play-log li.k-violation, .play-log li.k-wrong, .play-log li.k-cut { border-left-color: var(--board-warn); }
 .rail-bell .play-scroll { max-height: none; border: 0; padding: 0; }
 
 /* a message, one at a time: below the line at the top, at the right; pressed, it opens the messages */

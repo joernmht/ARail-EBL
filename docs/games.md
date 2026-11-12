@@ -251,7 +251,9 @@ and for the heads of the other pages of the games:
   - **One line at the upper middle, without boxes**, for what must always be seen: in a shift the
     clock and its speed (Pause, 1×, 5×, 20×), in a turn the round and End the turn, then the
     figures of the seat shown ("Trains through 3 of 9 · Late now 1"), and a note when the
-    computer plays the seat. A soft shade behind it keeps it readable on any picture.
+    computer plays the seat. The board's blue fades out below it across the whole width, which
+    keeps it readable on any picture. The time of a shift is a thin line at the lower edge of the
+    page's bar.
   - **A rail of icons at the right**: the mission (its name, its phases), the seats as faces, the
     seat's tools (its moves, its desk, handing it to the computer), where you work, the messages
     (a bell that counts the new ones), what the roles gave each other, the sound, the live
@@ -262,7 +264,7 @@ and for the heads of the other pages of the games:
     readable whatever the picture shows). A text longer than the band scrolls in the band.
 
   A new message pops up, one at a time (a newer one takes its place, and it goes by itself);
-  all of them are under the bell. Something in the game's picture that a figure is about, or that
+  all of them are under the bell, each on its own card with its time, the new ones marked. Something in the game's picture that a figure is about, or that
   needs attention, is not written out: it **pulses** in its colour (red for a problem, orange for
   a worry: the failed signal, a fault where a danger is not guarded), and a click on it says what
   is known of it. **H** leaves only the picture.

@@ -609,7 +609,7 @@ test("the failure: decisions are announced and asked one at a time; answered, th
   await readOn(page, SIGNALLER);
   await expect(part(page, SIGNALLER, ".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
   await expect(toast(page)).toHaveText("Right.");
-  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toHaveText("Right.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("Right.");
   await expect(page.locator("#tab-signaller-relay .tag")).toHaveCount(0);
   await run(page, 2);
   // what the roles give each other is a dialog; its button counts the flows
@@ -699,8 +699,11 @@ test("messages: one pops up at a time, a newer one takes its place and it goes b
   await bell.click();
   await expect(panel).toBeVisible();
   await expect(panel).toBeFocused();
-  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toHaveText("Second of two.");
-  await expect(part(page, SIGNALLER, ".play-log").locator("li").nth(1)).toHaveText("First of two.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("Second of two.");
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").nth(1)).toContainText("First of two.");
+  // each message on its own card, the new ones marked (for screen readers too)
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toHaveClass(cls("new"));
+  await expect(part(page, SIGNALLER, ".play-log").locator("li").first()).toContainText("(new)");
   await expect(badge).toBeHidden();
   // with the messages open nothing pops up; a click elsewhere closes them
   await say("Third.");
@@ -904,7 +907,7 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   })).toBe(true);
   // read to its end, the turn can be ended (in the line at the top); the newest message is the first under the bell
   await expect(part(page, ASSETS, ".vn-note")).toHaveText("Nothing left to decide here. End the turn when you are ready.");
-  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toHaveText((await game()).logs.at(-1));
+  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toContainText((await game()).logs.at(-1));
   await page.locator("#endTurn").click();
   await expect(page.locator("#where")).toHaveText("Round 2 of 4 · The year's plan");
   expect(errors).toEqual([]);
@@ -2154,7 +2157,7 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await amount.fill("80");
   await spend.getByLabel("The urgent work first").check();
   await spend.getByRole("button", { name: "Spend on upkeep" }).click();
-  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toHaveText("Spent 80 k€ on upkeep, the urgent work first.");
+  await expect(part(page, ASSETS, ".play-log").locator("li").first()).toContainText("Spent 80 k€ on upkeep, the urgent work first.");
   await expect(part(page, ASSETS, ".vn-gauges").locator("div").first()).toHaveText("Money20 k€");
   await expect(spend.getByLabel("The urgent work first")).not.toBeChecked();
   await amount.fill("40");
