@@ -280,13 +280,19 @@ and for the heads of the other pages of the games:
   dispatcher's district: what can be chosen in it is a button). A phase begins with its name over
   the whole screen; the seats are the cast, a face each.
 - **Somebody asks, and a story is told.** At the bottom somebody speaks, as in a visual novel: a
-  portrait, a name, the question, and the choices as large buttons (keys **1** to **9**), one
-  decision at a time; a decision with a deadline counts down. A decision is asked by the person its
+  portrait that stands taller than the band, a name, the question, and the choices as filled
+  buttons (keys **1** to **9**), one decision at a time (others that wait are dots to press); a
+  decision with a deadline counts down. The band holds only this: who speaks, the story, the
+  question with what is needed to decide, the choices. It is there while somebody speaks or asks;
+  the seat's tools (its moves, its desk, handing it to the computer) are at the top of the stage,
+  the newest message is a chip on the picture. A decision is asked by the person its
   text names ("E. Kiebitz, the asset responsible (ALV), proposes …"), else by the game's own
   counterpart (`GAME_CAST` in `web/game/cast.js`). In a turn, what happened is read line by line
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second
   time." A mission can also tell a **story** as data (`story` in its JSON): lines somebody says at
   a moment of a phase, as the train dispatcher who talks a beginner through *Your first shift*.
+  While somebody speaks in a shift, its clock waits for the answer (**OK** or **Space**), so no
+  line is passed over, at any speed.
   The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,
   high-visibility vest, uniform, headset): put a picture there and name it in `PORTRAITS` to
   replace one.
@@ -297,7 +303,10 @@ and for the heads of the other pages of the games:
   (`web/game/progress.js`); the stars add up to a rank, from Passenger to Minister of transport,
   and what was done earns badges ("By the book", "Many hats", and one nobody is proud of). All of it
   is kept in the browser only, and only for a seat that was a person's: held by a person for at
-  least half of its work, whoever holds it at the end.
+  least half of its work, whoever holds it at the end. With several seats, the stars are for the
+  score of your own seats (the computer's play at the others neither earns nor costs them), given
+  when the mission as a whole is passed: it is passed together. The sheet lists the decisions
+  taken at your seats.
 - **The numbers are a pop-up.** The tables, the score, the messages and the moves as forms are a
   seat's desk, a dialog (**D**); what the roles give each other is another; after the session, the
   full report. The result itself is a verdict on the picture: the stars, the score, what was

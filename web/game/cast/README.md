@@ -12,7 +12,8 @@ Who speaks in the game is shown as a portrait beside what they say. The files he
 
 What fits: a bust (head and shoulders) facing the viewer or slightly to the right, 3:4 upright,
 about 600 × 800 px, with a transparent background (WebP or PNG), cut off straight at the bottom. The
-stage shows it up to 200 px wide at the lower left, the seats' faces as circles of 34 to 40 px
+stage shows it up to 320 px wide at the lower left, taller than the band of talk (head and shoulders
+stand above its edge), the seats' faces as circles of 34 to 40 px
 (cut from the upper part, so the face should sit in the upper half).
 
 People in the game have bird names (`web/arail/core/people.js`); pictures must not show real,

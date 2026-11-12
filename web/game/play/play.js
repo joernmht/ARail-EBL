@@ -6,7 +6,7 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, flowOf, heardWith, lineFor, normalizeMission, storyOf, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, flowOf, lineFor, normalizeMission, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { PORTRAITS, faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
@@ -769,7 +769,9 @@ class PlayPage {
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
     // of a session taken up again in this phase, the lines answered before stay answered (and are not said aloud again)
-    this.heardLines = new Map(this.keptHeard?.phase === s.index ? Object.entries(this.keptHeard.seats).map(([seat, lines]) => [seat, new Set(lines)]) : []);
+    this.heardLines = new Map(this.keptHeard?.phase === s.index ? Object.entries(this.keptHeard.seats).map(([seat, lines]) => [seat, new Set(lines)])
+      // (taken up in the middle of a shift with nothing kept of it: only the latest line that is due is said)
+      : ph.kind === "shift" && s.t > 0 ? s.active.filter(mine).map((seat) => [seat.id, new Set(staleLines(this.beats, seat.id, s.t))]) : []);
     this.saidLines = new Set([...this.heardLines].flatMap(([seat, lines]) => [...lines].map((i) => `${seat}|${i}`)));
     this.keptHeard = null;
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
@@ -781,7 +783,8 @@ class PlayPage {
   /**
    * The session is over: its save is removed, what was reached is kept (the mission's stars and
    * sheet, the roles sat in; only where a seat was a person's for at least half of its work), the
-   * result is shown.
+   * result is shown. The stars are for the score of the person's own seats, given when the mission
+   * as a whole is passed; the sheet's decisions and rule breaks are those of these seats.
    */
   finish() {
     const s = this.session, r = s.result(), ids = this.missions.map((m) => m.id);
@@ -796,14 +799,19 @@ class PlayPage {
     this.progress = before;
     this.gained = null;
     if (mine.length) {
+      // the score that counts for the person is that of their own seats (by the seats' weights), so that the computer's
+      // play at the other seats neither earns nor costs stars; passed is the mission as a whole: it is passed together
+      const own = Math.round(mine.reduce((n, x) => n + x.weight * x.score, 0) / (mine.reduce((n, x) => n + x.weight, 0) || 1));
       this.progress = record(before, {
-        mission: s.mission.id, score: r.score, passed: r.passed, roles: mine.map((x) => x.role),
-        violations: mine.reduce((n, x) => n + (x.violations || 0), 0), danger: mine.some((x) => x.worst >= 3), decisions: this.diary, terms: [...this.met],
+        mission: s.mission.id, score: own, passed: r.passed, roles: mine.map((x) => x.role),
+        violations: mine.reduce((n, x) => n + (x.violations || 0), 0), danger: mine.some((x) => x.worst >= 3),
+        // of the decisions, those taken at these seats (a seat held for a turn and handed on is not the person's)
+        decisions: this.diary.filter((d) => !d.seat || this.yours.has(d.seat)).map(({ seat, ...d }) => d), terms: [...this.met],
       });
       storage.set(PROGRESS_KEY, this.progress);
       const rank = rankOf(totalStars(this.progress)), had = badgesOf(before, ids);
       this.gained = {
-        stars: starsFor(r.score, r.passed), best: r.score > (before.missions[s.mission.id]?.best ?? -1),
+        score: own, stars: starsFor(own, r.passed), best: own > (before.missions[s.mission.id]?.best ?? -1),
         rank: rank.index > rankOf(totalStars(before)).index ? rank.title : null,
         badges: badgesOf(this.progress, ids).filter((b) => !had.includes(b)).map((b) => BADGES.find((x) => x.id === b).title),
       };
@@ -983,7 +991,7 @@ class PlayPage {
       speaker: h("figure", { class: "vn-speaker" }),
       name: h("p", { class: "vn-name" }),
       story: h("div", { class: "vn-story", hidden: true }),
-      decisionsTitle: h("h4", { class: "vn-count", tabindex: "-1" }, "Decisions"),
+      decisionsTitle: h("h4", { class: "vn-count visually-hidden", tabindex: "-1" }, "Decisions"),
       decisionsNote: h("p", { class: "vn-note" }),
       decisions: h("div", { class: "play-keyed vn-decisions" }),
       term: h("div", { class: "vn-term", role: "note", hidden: true }),
@@ -999,9 +1007,12 @@ class PlayPage {
       /** The gauges' values as shown last, and until when one that changed shows it. */
       gauged: new Map(),
     };
-    // the talk: a band across the bottom of the screen, as a visual novel has it; the speaker stands at its left
-    p.talk = h("div", { class: "vn-talk" }, p.speaker,
-      h("div", { class: "vn-box" }, h("div", { class: "vn-box-head" }, p.name, p.tools), p.story, p.decisionsTitle, p.decisions, p.decisionsNote, p.term, p.ticker));
+    // the talk: a band across the bottom of the screen, as a visual novel has it; the speaker stands at its left, taller
+    // than the band. In its box only who speaks, what they say or ask, and the choices; it is there while somebody speaks
+    p.talk = h("div", { class: "vn-talk", hidden: true }, p.speaker,
+      h("div", { class: "vn-box" }, p.name, p.story, p.decisionsTitle, p.decisions, p.term));
+    // above it, on the picture: a note on the seat's state and the newest message (the tools are at the top of the stage)
+    p.side = h("div", { class: "vn-side" }, p.decisionsNote, p.ticker);
     p.desk = h("dialog", { class: "play-dialog play-desk", "aria-labelledby": `desk-${seat.id}` },
       h("div", { class: "play-dialog-head" }, p.deskTitle, h("button", { class: "btn small", type: "button", onclick: () => p.desk.close() }, "Close")),
       p.head,
@@ -1014,8 +1025,10 @@ class PlayPage {
         p.title,
         h("div", { class: "vn-top" },
           h("p", { class: "vn-where" }, h("span", { class: "place-label" }, "Where you work"), " ", h("strong", {}, place.name)),
+          p.tools,
           p.gauges),
         p.sketch,
+        p.side,
         p.talk),
       p.desk);
     return p;
@@ -1072,7 +1085,7 @@ class PlayPage {
     const beat = mine && active && !line && (turn || !open.length) ? this.beat(seat.id) : null;
     const focus = line || beat ? null : open.find((d) => d.id === this.focus.get(seat.id)) ?? open[0];
     const who = quote ? speakerOf(seat.Game.id, { who: { name: quote.name } }) : beat ? speakerOf(seat.Game.id, { who: beat.who }) : focus ? speakerOf(seat.Game.id, focus)
-      : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? `${logs.length - at} to read` : name, portrait: null };
+      : { name: line ? s.phase.title : mine ? "You" : "The computer", role: line ? "" : name, portrait: null };
     const face = who.portrait ? faceOf(who) : selfPortrait(seat.Game.id);
     p.talk.classList.toggle("telling", !!line && !quote);
     p.speaker.classList.toggle("self", !focus && !quote && !beat);
@@ -1103,9 +1116,12 @@ class PlayPage {
     p.decisions.hidden = !!line || !!beat;
     keyed(p.decisions, open, (d) => d.id, () => h("div", { class: "play-decision" }), (el, d) => {
       el.classList.toggle("waiting", d !== focus);
-      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", title: d.title, onclick: () => this.look(seat.id, d.id) }, d.title)]));
+      // (one that waits is a dot to press: its title is its name, and shows on it)
+      morph(el, ...(d === focus ? this.decision(seat, d, can) : [h("button", { class: "play-next", type: "button", title: d.title, onclick: () => this.look(seat.id, d.id) }, h("span", { class: "visually-hidden" }, d.title))]));
     });
     const idle = !open.length && !line && !beat;
+    // that nothing is asked needs no words on the screen (they are there for who does not see it); a seat's state does
+    p.decisionsNote.classList.toggle("visually-hidden", idle && !state);
     p.decisionsNote.textContent = line || beat ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
       : turn ? "Nothing left to decide here. End the turn when you are ready." : view.sketch ? "Nothing to decide just now. Watch the picture: choose something in it to act." : "Nothing to decide just now.");
 
@@ -1124,6 +1140,8 @@ class PlayPage {
     p.lastLine = last ?? null;
     p.ticker.textContent = last ? last.text : "";
     p.ticker.className = `vn-ticker${last ? ` k-${safe(last.kind)}` : ""}${p.tickedUntil > now ? " bump" : ""}`;
+    // the talk's band is there while somebody speaks or asks (or a term is explained): else the picture has the room
+    p.talk.hidden = !(line || beat || focus || term);
 
     morph(p.tools,
       can && turn && idle ? h("button", { class: "btn primary", type: "button", onclick: () => this.endTurn() }, h("span", { class: "play-go", "aria-hidden": "true" }, "▶"), "End the turn") : null,
@@ -1205,20 +1223,31 @@ class PlayPage {
   }
 
   /**
-   * The line of the mission's story that is said to a seat now, or null (lineFor): of the lines for
-   * this seat that are not answered yet, in a turn the first, in a shift the latest that is due.
+   * The line of the mission's story that is said to a seat now, or null (lineFor): the first of the
+   * lines for this seat that is not answered yet, in a shift of those whose moment has come.
    */
   beat(seatId) {
     const s = this.session;
     return lineFor(this.beats, seatId, this.heardLines.get(seatId) ?? new Set(), s.phase.kind === "turn" ? null : s.t);
   }
 
+  /**
+   * Whether somebody of the mission's story is speaking to the person at the seat shown, in a shift:
+   * the clock waits for the answer (OK), so that no line is passed over. Not while the stage is out
+   * of the way (only the picture, a dialog), nor while a decision is open there: then the line
+   * waits, and the clock runs.
+   */
+  listening() {
+    const s = this.session, seat = s?.seat(this.tab);
+    if (!seat || s.over || s.phase.kind !== "shift" || this.bare || document.querySelector("dialog[open]")) return false;
+    return seat.by === "human" && s.active.includes(seat) && !seat.game?.open.length && !!this.beat(seat.id);
+  }
+
   /** A line of the story was answered at a seat (OK): the stage goes on. At the other seats it stays to be said, if it is for them too. */
   heardBeat(seatId, beat) {
-    const s = this.session;
     // at this seat: a line for everybody is still to be said at the others
     const heard = this.heardLines.get(seatId) ?? new Set();
-    for (const i of heardWith(this.beats, seatId, beat, s.phase.kind === "turn" ? null : s.t)) heard.add(i);
+    heard.add(beat.index);
     this.heardLines.set(seatId, heard);
     this.term = null;
     // the session's save holds the lines answered: it is due again
@@ -1347,7 +1376,8 @@ class PlayPage {
       h("p", { class: "text" }, this.rich(whole ? d.text ?? "" : lead(d.text)), " ",
         hasMore(d.text) ? h("button", { class: "play-why", type: "button", "aria-expanded": String(whole), onclick: () => { this.whole[whole ? "delete" : "add"](key); this.draw(true); } }, whole ? "Less" : "More") : null),
       share != null ? h("div", { class: `vn-countdown${share < LOW_SHARE ? " low" : ""}`, "aria-hidden": "true" }, h("i", { style: { width: `${Math.round(share * 1000) / 10}%` } })) : null,
-      h("p", { class: "hint" }, left),
+      // (what happens to a decision that is skipped in a turn is said to who does not see the page; the time left in a shift to all)
+      h("p", { class: shift ? "hint" : "hint visually-hidden" }, left),
       can ? h("div", { class: "row play-options-row" }, d.options.map((o, i) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) },
         i < 9 ? h("kbd", { "aria-hidden": "true" }, String(i + 1)) : null, h("span", {}, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null))))
         : h("ul", { class: "play-options" }, d.options.map((o) => h("li", {}, o.label))),
@@ -1527,7 +1557,7 @@ class PlayPage {
     this.refocus(() => this.panels.get(seatId).movesTitle);
   }
 
-  /** Take a decision at a seat; what a person decided goes into the session's diary, for the mission's sheet. */
+  /** Take a decision at a seat; what a person decided goes into the session's diary (with its seat), for the mission's sheet. */
   decide(seatId, id, option) {
     const seat = this.session.seat(seatId), d = seat?.game?.open.find((x) => x.id === id), o = d?.options.find((x) => x.id === option);
     const res = this.act(seatId, "decide", id, option);
@@ -1535,7 +1565,7 @@ class PlayPage {
       this.say(res?.reason ?? "This decision is not open any more.");
       this.sound.play("refuse");
     } else {
-      if (d && o && seat.by === "human") this.diary.push({ who: this.seatName(seatId), title: d.title, chose: o.label, round: this.session.round });
+      if (d && o && seat.by === "human") this.diary.push({ seat: seatId, who: this.seatName(seatId), title: d.title, chose: o.label, round: this.session.round });
       this.sound.play("choose");
     }
     this.term = null;
@@ -1548,7 +1578,10 @@ class PlayPage {
 
   /** A seat changes hands: a person takes over, or hands it to the computer. */
   sit(seatId, by) {
-    this.session.sit(seatId, by);
+    const s = this.session;
+    s.sit(seatId, by);
+    // a seat taken in the middle of a shift: the lines whose moment has passed are not said any more, but for the latest
+    if (by === "human" && s.phase?.kind === "shift") this.heardLines.set(seatId, new Set([...(this.heardLines.get(seatId) ?? []), ...staleLines(this.beats, seatId, s.t)]));
     this.say(`${by === "human" ? "You play" : "The computer plays"} ${this.seatName(seatId)} now.`);
     this.after();
     // the tools are drawn anew, more or fewer of them: the focus stays on the seat's switch (the last of them)
@@ -1633,6 +1666,7 @@ class PlayPage {
             won.rank ? h("li", { class: "rank" }, "Promoted: ", h("strong", {}, won.rank)) : null,
             won.badges.map((b) => h("li", {}, "Badge: ", h("strong", {}, b))),
             won.best && r.passed ? h("li", {}, "Your best so far") : null) : null,
+          won && won.score !== r.score ? h("p", { class: "hint vn-own" }, `Your stars are for your own ${this.yours.size > 1 ? "seats" : "seat"}: ${won.score} of 100.`) : null,
           !won ? h("p", { class: "hint" }, this.watched ? "The computer played every seat: nothing goes into your logbook." : "No seat was yours for most of its work: nothing goes into your logbook.") : null,
           h("ul", { class: "vn-cast", "aria-label": "The seats" }, r.seats.map((x) => h("li", { class: x.passed ? "ok" : "bad" },
             h("img", { class: "face", src: BASE + selfPortrait(s.seat(x.seat).Game.id).picture, alt: "" }),
@@ -1718,7 +1752,10 @@ class PlayPage {
     this.prev = t;
     const s = this.session;
     if (s && this.screen === "play") {
-      if (!s.over && s.phase.kind === "shift" && this.speed > 0) s.step(dt * this.speed);
+      // while somebody speaks to the person at the seat shown, the shift's clock waits for the answer
+      const held = this.listening();
+      if (!s.over && s.phase.kind === "shift" && this.speed > 0 && !held) s.step(dt * this.speed);
+      $("#shiftBar").classList.toggle("held", held);
       // games whose world is elsewhere exchange with it between the steps, one exchange at a time
       if (!s.over && !this.exchanging && typeof s.sync === "function") {
         this.exchanging = true;

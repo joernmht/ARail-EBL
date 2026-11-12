@@ -52,16 +52,14 @@ test("story: lines that cannot be said are problems of the mission", () => {
 });
 
 test("the line said to a seat: lines for other seats neither show nor block; what is heard is kept seat by seat", async () => {
-  const { heardWith, lineFor } = await import("../../web/arail/game/index.js");
+  const { lineFor, staleLines } = await import("../../web/arail/game/index.js");
   const lines = storyOf({ story: [
     { phase: "plan", say: "for the manager", seats: ["manager"] }, { phase: "plan", say: "for everybody" }, { phase: "plan", say: "for the planner", seats: ["planner"] }, { phase: "plan", say: "the last, for everybody" },
   ] }, "plan", 1);
   /** Two people at two seats of one phase: what each has answered. */
   const heard = { planner: new Set(), manager: new Set() };
   const said = (seat) => lineFor(lines, seat, heard[seat])?.say ?? null;
-  const ok = (seat) => {
-    for (const i of heardWith(lines, seat, lineFor(lines, seat, heard[seat]))) heard[seat].add(i);
-  };
+  const ok = (seat) => heard[seat].add(lineFor(lines, seat, heard[seat]).index);
   // a turn: a seat hears its own lines and those for everybody, in their order; a line for another seat does not stand in the way
   assert.equal(said("planner"), "for everybody");
   ok("planner");
@@ -78,7 +76,7 @@ test("the line said to a seat: lines for other seats neither show nor block; wha
   ok("manager");
   assert.deepEqual([said("planner"), said("manager")], [null, null]);
   assert.equal(lineFor(lines, "somebody-else", new Set())?.say, "for everybody");
-  // a shift: the latest line that is due; answered, the earlier ones of that seat are heard with it, at that seat only
+  // a shift: the lines whose moment has come, one at a time and in their order; none is passed over
   const shift = storyOf({ story: [
     { phase: "shift", at: 10, say: "a, for the signaller", seats: ["signaller"] }, { phase: "shift", at: 20, say: "b, for the dispatcher", seats: ["dispatcher"] },
     { phase: "shift", at: 30, say: "c, for everybody" }, { phase: "shift", at: 90, say: "d, later" },
@@ -87,17 +85,25 @@ test("the line said to a seat: lines for other seats neither show nor block; wha
   assert.equal(at("signaller", new Set(), 5), null, "nothing is due yet");
   assert.equal(at("signaller", new Set(), 15), "a, for the signaller");
   assert.equal(at("dispatcher", new Set(), 15), null);
-  assert.equal(at("signaller", new Set(), 40), "c, for everybody");
-  const signaller = new Set(heardWith(shift, "signaller", lineFor(shift, "signaller", new Set(), 40), 40)), dispatcher = new Set();
-  assert.deepEqual([...signaller].sort(), [0, 2], "the signaller's earlier line with it, not the dispatcher's");
+  // two lines have come due without an answer (a decision was open): the earlier one is said first, then the next
+  const signaller = new Set(), dispatcher = new Set();
+  assert.equal(at("signaller", signaller, 40), "a, for the signaller", "the earlier line is not passed over");
+  signaller.add(lineFor(shift, "signaller", signaller, 40).index);
+  assert.equal(at("signaller", signaller, 40), "c, for everybody");
+  signaller.add(lineFor(shift, "signaller", signaller, 40).index);
+  assert.deepEqual([...signaller].sort(), [0, 2], "the signaller's lines, not the dispatcher's");
   assert.equal(at("signaller", signaller, 40), null);
   assert.equal(at("signaller", signaller, 95), "d, later");
   // the dispatcher has answered nothing: the line for everybody that the signaller answered is said there too
   assert.equal(at("dispatcher", dispatcher, 25), "b, for the dispatcher");
+  dispatcher.add(lineFor(shift, "dispatcher", dispatcher, 25).index);
   assert.equal(at("dispatcher", dispatcher, 40), "c, for everybody");
-  for (const i of heardWith(shift, "dispatcher", lineFor(shift, "dispatcher", dispatcher, 40), 40)) dispatcher.add(i);
-  assert.deepEqual([...dispatcher].sort(), [1, 2]);
-  assert.deepEqual(heardWith(shift, "nobody", { index: 7 }, 40), [7]);
+  // a seat a person takes in the middle of a shift: the lines whose moment has passed are not said any more, but for the latest
+  assert.deepEqual(staleLines(shift, "signaller", 5), []);
+  assert.deepEqual(staleLines(shift, "signaller", 15), [], "the only line that is due is still said");
+  assert.deepEqual(staleLines(shift, "signaller", 95), [0, 2], "all but the latest, of this seat's lines");
+  assert.deepEqual(staleLines(shift, "dispatcher", 40), [1]);
+  assert.equal(at("signaller", new Set(staleLines(shift, "signaller", 95)), 95), "d, later");
 });
 
 test("story: seats that are not a list are a problem of the mission, not a crash", () => {

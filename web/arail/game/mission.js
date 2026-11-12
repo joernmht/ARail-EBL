@@ -209,37 +209,31 @@ export function storyOf(mission, phase, round) {
 }
 
 /**
- * The line of a phase's story that is said to a seat now, or null. Only lines for this seat count
- * (those that name no seats are for everybody, and are said at every seat), and those not answered
- * at this seat yet. In a turn it is the first of them; in a shift (`t`, seconds into it) the latest
- * one that is due.
+ * The line of a phase's story that is said to a seat now, or null: the first of the lines for this
+ * seat (those that name no seats are for everybody, and are said at every seat) that is not
+ * answered there yet; in a shift (`t`, seconds into it) of those whose moment has come. One line at
+ * a time, in their order, and none is passed over: a page holds the shift's clock while a line
+ * waits for its answer, so the next one is not due before.
  * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
  * @param {string} seat a seat's id
  * @param {Set<number>} heard the lines answered at this seat (their `index`)
  * @param {number | null} [t] seconds into a shift; null: a turn
  */
 export function lineFor(lines, seat, heard, t = null) {
-  const mine = lines.filter((l) => !l.seats || l.seats.includes(seat));
-  if (t == null) return mine.find((l) => !heard.has(l.index)) ?? null;
-  const last = mine.filter((l) => l.at <= t).at(-1);
-  return last && !heard.has(last.index) ? last : null;
+  return lines.find((l) => (!l.seats || l.seats.includes(seat)) && !heard.has(l.index) && (t == null || l.at <= t)) ?? null;
 }
 
 /**
- * The lines that count as heard at a seat once a line is answered there: the line itself and, in a
- * shift, the earlier lines for that seat, which it took the place of. What is heard is kept seat
- * by seat: at another seat the same lines are still to be said, if they are for it too.
+ * The lines of a shift that a seat is not told any more when a person sits down at it at `t`: those
+ * for this seat whose moment has passed, but for the latest of them (what was said last is still
+ * worth hearing; the ones before it spoke of what is over).
  * @param {ReturnType<typeof storyOf>} lines a phase's lines (storyOf)
  * @param {string} seat a seat's id
- * @param {{index: number}} line the line answered
- * @param {number | null} [t] seconds into a shift; null: a turn
+ * @param {number} t seconds into the shift
  * @returns {number[]} their `index`
  */
-export function heardWith(lines, seat, line, t = null) {
-  if (t == null) return [line.index];
-  const mine = lines.filter((l) => !l.seats || l.seats.includes(seat));
-  const at = mine.findIndex((l) => l.index === line.index);
-  return at < 0 ? [line.index] : mine.slice(0, at + 1).map((l) => l.index);
+export function staleLines(lines, seat, t) {
+  return lines.filter((l) => (!l.seats || l.seats.includes(seat)) && l.at <= t).slice(0, -1).map((l) => l.index);
 }
 
 /**

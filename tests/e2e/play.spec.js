@@ -691,7 +691,9 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   // the game's messages first, one at a time, under the phase's name; the decisions wait behind them
   await expect(line).toHaveText(logs[0]);
   await expect(stage.locator(".vn-name strong")).toHaveText("The year's plan");
-  await expect(stage.locator(".vn-name span")).toHaveText(`${logs.length} to read`);
+  // (who tells is the phase: no role beside its name, and no count of what is left)
+  await expect(stage.locator(".vn-name span")).toHaveCount(0);
+  await expect(stage.locator(".vn-talk")).toBeVisible();
   await expect(stage.locator(".vn-talk")).toHaveClass(cls("telling"));
   await expect(stage.locator(".vn-speaker")).toBeHidden();
   await expect(go).toHaveText("NextSpace");
@@ -707,7 +709,6 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   for (let i = 1; i < logs.length; i++) {
     await page.keyboard.press("Space");
     await expect(line).toHaveText(logs[i]);
-    await expect(stage.locator(".vn-name span")).toHaveText(`${logs.length - i} to read`);
   }
   await expect(go).toHaveAccessibleName("To the decisions");
   // a click reads on as well
@@ -763,8 +764,8 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   expect(made).toEqual([[asked[0].id, asked[0].options.length - 1], [asked[1].id, 0]]);
   // what the person decided is kept for the mission's sheet
   expect(await page.evaluate(() => window.__play.diary)).toEqual([
-    { who: "Asset manager", title: asked[0].title, chose: asked[0].options.at(-1), round: 1 },
-    { who: "Asset manager", title: asked[1].title, chose: asked[1].options[0], round: 1 },
+    { seat: "asset-manager", who: "Asset manager", title: asked[0].title, chose: asked[0].options.at(-1), round: 1 },
+    { seat: "asset-manager", who: "Asset manager", title: asked[1].title, chose: asked[1].options[0], round: 1 },
   ]);
 
   // the account has much to tell: a line is read, and the lines after it can be skipped at once
@@ -773,12 +774,10 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   const told = (await game()).logs, unread = told.length - logs.length;
   expect(unread).toBeGreaterThan(3);
   await expect(line).toHaveText(told[logs.length]);
-  await expect(stage.locator(".vn-name span")).toHaveText(`${unread} to read`);
   const skip = story.getByRole("button", { name: /^Skip \d+ more$/ });
   await expect(skip).toHaveText(`Skip ${unread - 1} more`);
   await go.click();
   await expect(line).toHaveText(told[logs.length + 1]);
-  await expect(stage.locator(".vn-name span")).toHaveText(`${unread - 1} to read`);
   await expect(skip).toHaveText(`Skip ${unread - 2} more`);
   await skip.click();
   await readOn(page, ASSETS); // what the story says in the account, if anything
@@ -795,18 +794,26 @@ test("a turn is told before it is decided: Space reads on line by line, then som
   expect(errors).toEqual([]);
 });
 
-test("the mission's story: somebody speaks when the moment has come, answered with OK or Space; of several lines that are due, the latest", async ({ page }) => {
+test("the mission's story: somebody speaks when the moment has come, answered with OK or Space; the clock waits meanwhile, and lines that came due are said in their order", async ({ page }) => {
   const first = LINE[0], errors = await start(page, `${PAGE}?mission=${first.id}`);
   const seat = `#seat-${first.roles[0].role}`, stage = stageOf(page, seat), story = stage.locator(".vn-story"), line = story.locator(".vn-line");
   const lines = await storyNow(page);
   expect(lines.length).toBeGreaterThan(3);
   expect(lines[0].at).toBeGreaterThan(1);
-  // before its moment nobody speaks
+  // before its moment nobody speaks: there is no band of talk, the picture has the room; the tools are at the top of the stage
   await expect(story).toBeHidden();
+  await expect(stage.locator(".vn-talk")).toBeHidden();
+  await expect(stage.locator(".vn-top .vn-tools")).toBeVisible();
   await expect(stage.locator(".vn-name strong")).toHaveText("You");
   await run(page, Math.ceil(lines[0].at));
   // the coach's first line, with the name, what they are and a face; it is said aloud for who does not see it
   await expect(line).toHaveText(lines[0].say);
+  await expect(stage.locator(".vn-talk")).toBeVisible();
+  // in the band only who speaks, what is said and the answer: no tools, no messages, no counters
+  expect(await stage.locator(".vn-box").evaluate((box) => [...box.children].filter((el) => el.getClientRects().length && !el.classList.contains("visually-hidden")).map((el) => el.className))).toEqual(["vn-name", "vn-story"]);
+  // the speaker stands taller than the band
+  const tall = await stage.evaluate((st) => [st.querySelector(".vn-speaker img").getBoundingClientRect().height, st.querySelector(".vn-box").getBoundingClientRect().height]);
+  expect(tall[0]).toBeGreaterThan(tall[1] + 30);
   await expect(stage.locator(".vn-name strong")).toHaveText(lines[0].who.name);
   await expect(stage.locator(".vn-name span")).toHaveText(lines[0].who.role);
   const face = await page.evaluate(async (who) => (await import("/game/cast.js")).faceOf(who), lines[0].who);
@@ -818,33 +825,67 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(stage.locator(".vn-note")).toBeHidden();
   // the picture stays in use while somebody speaks
   await expect(page.locator(`${seat} .play-board`).getByRole("button").first()).toBeVisible();
+  // the shift's clock waits for the answer: with the shift running, no time passes
+  await page.getByRole("button", { name: "5×" }).click();
+  const before = await page.evaluate(() => window.__play.session.t);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__play.session.t)).toBe(before);
+  await expect(page.locator("#shiftBar")).toHaveClass(cls("held"));
+  expect(await page.evaluate(() => window.__play.listening())).toBe(true);
   // OK: the stage goes on, the focus with it
   const ok = story.getByRole("button", { name: "OK" });
   await expect(ok).toHaveText("OKSpace");
   await ok.click();
   await expect(story).toBeHidden();
+  await expect(page.locator(`${seat} .vn-tools button`).first()).toBeFocused();
+  // answered: the clock runs again (and is paused for what follows)
+  await expect.poll(() => page.evaluate(() => window.__play.session.t)).toBeGreaterThan(before);
+  await expect(page.locator("#shiftBar")).not.toHaveClass(cls("held"));
+  await page.getByRole("button", { name: "Pause" }).click();
+  expect(await page.evaluate(() => window.__play.session.t)).toBeLessThan(lines[1].at);
+  await expect(stage.locator(".vn-talk")).toBeHidden();
   await expect(stage.locator(".vn-name strong")).toHaveText("You");
   await expect(stage.locator(".vn-speaker")).toHaveClass(cls("self"));
+  // (that nothing is asked is said to who does not see the page, not written on it)
   await expect(stage.locator(".vn-note")).toHaveText("Nothing to decide just now. Watch the picture: choose something in it to act.");
-  await expect(page.locator(`${seat} .vn-tools button`).first()).toBeFocused();
+  await expect(stage.locator(".vn-note")).toHaveClass(cls("visually-hidden"));
   // a line is said once: time passing does not bring it back
   await run(page, 5);
   await expect(story).toBeHidden();
   // the next line at its time; Space answers it (with the focus off the buttons)
-  await run(page, Math.ceil(lines[1].at - lines[0].at));
+  await page.evaluate((t) => {
+    const p = window.__play;
+    while (p.session.t < t) p.session.step(1);
+    p.draw(true);
+  }, Math.ceil(lines[1].at));
   await expect(line).toHaveText(lines[1].say);
   await page.locator("#stripTitle").focus();
   await page.keyboard.press("Space");
   await expect(story).toBeHidden();
-  // two more lines come due without an answer: the latest is said, the one before is passed over
+  // two more lines come due without an answer: none is passed over, they are said one after the other
   await page.evaluate((t) => {
     const p = window.__play;
     while (p.session.t < t) p.session.step(1);
     p.draw(true);
   }, Math.ceil(lines[3].at) + 1);
+  await expect(line).toHaveText(lines[2].say);
+  await ok.click();
   await expect(line).toHaveText(lines[3].say);
   await ok.click();
   await expect(story).toBeHidden();
+  // a seat handed to the computer and taken again later: of the lines that came due meanwhile only the latest is said
+  await tool(page, seat, "Hand to the computer").click();
+  await page.evaluate((t) => {
+    const p = window.__play;
+    while (p.session.t < t) p.session.step(1);
+    p.draw(true);
+  }, Math.ceil(lines[5].at) + 1);
+  await expect(story).toBeHidden();
+  await tool(page, seat, "Take over").click();
+  await expect(line).toHaveText(lines[5].say);
+  await ok.click();
+  await expect(story).toBeHidden();
+  expect(await page.evaluate((id) => [...window.__play.heardLines.get(id)].sort((a, b) => a - b), first.roles[0].role)).toEqual(lines.slice(0, 6).map((l) => l.index));
   expect(errors).toEqual([]);
 });
 
@@ -1252,6 +1293,49 @@ test("whose a mission was: a seat played and handed to the computer for the last
   expect(errors).toEqual([]);
 });
 
+test("several seats: the stars are for the score of the person's own seat, and the sheet lists the decisions taken at it", async ({ page }) => {
+  const errors = await start(page);
+  // the signaller's seat is played by a person, with the moves the computer would make; what is decided goes through the page, as a click does
+  await page.evaluate(() => {
+    const p = window.__play, s = p.session, id = "signaller-relay", at = s.seat(id);
+    const hands = new Proxy(at.game, {
+      get: (g, key) => (key === "act" ? (name, ...args) => (name === "decide" ? p.decide(id, ...args) : s.act(id, name, ...args)) : typeof g[key] === "function" ? g[key].bind(g) : g[key]),
+    });
+    for (let i = 0; i < 1e5 && !s.over; i++) {
+      at.player.think(hands, s);
+      // (a decision noted at the other seat, which is the computer's: as if a person had sat there for a moment and decided)
+      if (i === 100) p.diary.push({ seat: "maintenance-dispatcher", who: "Maintenance and fault dispatcher", title: "A decision at the other seat", chose: "Something", round: 1 });
+      s.step(s.phase.tick);
+    }
+    p.draw(true);
+  });
+  await expect(page.locator("#resultTitle")).toHaveText("The result: A morning at Bf Neustadt");
+  const result = await page.evaluate(() => window.__play.session.result()), verdict = page.locator("#result .vn-verdict");
+  const own = result.seats.find((x) => x.seat === "signaller-relay").score, other = result.seats.find((x) => x.seat === "maintenance-dispatcher").score;
+  expect(result.passed).toBe(true);
+  expect(own).not.toBe(other);
+  expect(result.score).toBe(Math.round((own + other) / 2));
+  expect(await page.evaluate(() => [...window.__play.yours])).toEqual(["signaller-relay"]);
+  // the verdict shows the mission's score; the stars are for the person's own seat, and the verdict says so
+  await expect(verdict.locator(".vn-score .score-total")).toHaveText(String(result.score));
+  await expect(verdict.locator(".vn-score .stars .visually-hidden")).toHaveText(`${starsFor(own, true)} of 3 stars`);
+  await expect(verdict.locator(".vn-own")).toHaveText(`Your stars are for your own seat: ${own} of 100.`);
+  await expect(verdict.locator(".vn-cast li .pts")).toHaveText([`${own} · you`, `${other} · computer`]);
+  expect(await page.evaluate(() => window.__play.gained)).toMatchObject({ score: own, stars: starsFor(own, true), best: true });
+  // kept: the own seat's score as the mission's best, its role, and of the decisions those taken at it
+  const now = await kept(page), sheet = now.sheets["neustadt-morning"];
+  expect(now.missions["neustadt-morning"]).toEqual({ best: own, stars: starsFor(own, true), plays: 1, passed: true });
+  expect(sheet).toMatchObject({ score: own, passed: true, stars: starsFor(own, true), roles: ["signaller-relay"] });
+  expect(now.roles).toEqual(["signaller-relay"]);
+  expect(sheet.decisions.length).toBeGreaterThan(1);
+  expect([...new Set(sheet.decisions.map((d) => d.who))]).toEqual(["Signaller in a relay interlocking"]);
+  expect(sheet.decisions.map((d) => d.title)).toContain("Signal N2 has failed. Report the fault to the maintenance dispatcher?");
+  expect(sheet.decisions.every((d) => !("seat" in d))).toBe(true);
+  // (the diary itself knew of the other seat's decision)
+  expect(await page.evaluate(() => window.__play.diary.filter((d) => d.seat === "maintenance-dispatcher").length)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
 test("the logbook as it is kept now is what a session's end adds to: missions played in another tab stay, a logbook emptied there stays empty of the old", async ({ page }) => {
   const errors = await open(page, `${PAGE}?mission=malus-month`);
   /** Play the mission to its end at the person's seat: every turn ended at once, what is open decided by its fallback. */
@@ -1456,6 +1540,9 @@ test("two people at two seats: each seat is told its own lines of the story, and
     p.beats = [...p.beats, { index: 99, phase: "shift", at: 3, say: "Both of you: the line to Talsee is busy today." }].sort((a, b) => a.at - b.at || a.index - b.index);
     p.draw(true);
   });
+  // (the maintenance dispatcher has not answered the team leader yet: that line stays first there)
+  await expect(maintenance.locator(".vn-line")).toContainText("Two teams on shift");
+  await maintenance.locator(".vn-story .btn").click();
   await expect(maintenance.locator(".vn-line")).toContainText("Both of you");
   await page.locator("#tab-signaller-relay").click();
   await expect(signaller.locator(".vn-line")).toContainText("Both of you");
@@ -1626,7 +1713,11 @@ test("budget years: a decision and the plan in a turn, End the turn, the account
   await expect(page.locator("#where")).toHaveText("Round 2 of 4 · The year's plan");
   await expect(years.locator("tbody tr")).toHaveCount(1);
   // of a session taken up again only the last messages are told anew
-  await expect(stage.locator(".vn-name span")).toHaveText(/^[1-3] to read$/);
+  expect(await page.evaluate(() => {
+    const g = window.__play.session.seat("asset-manager").game;
+    return g.logs.length - window.__play.read.get(g);
+  })).toBeLessThanOrEqual(3);
+  await expect(stage.locator(".vn-story")).toBeVisible();
   // to the end: what is open is decided by its fallback
   for (const where of ["Round 2 of 4 · The year's account", "Round 3 of 4 · The year's plan", "Round 3 of 4 · The year's account", "Round 4 of 4 · The year's plan", "Round 4 of 4 · The year's account"]) {
     await page.locator("#endTurn").click();

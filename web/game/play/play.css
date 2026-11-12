@@ -124,6 +124,8 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .play-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .play-bar .hint { color: var(--board-muted); }
 .play-clock { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* the clock waits while somebody speaks to the person at the seat shown */
+.held .play-clock { color: var(--board-muted); }
 .play-progress { flex: 1 1 120px; min-width: 120px; height: 8px; border-radius: 4px; background: var(--board-2); border: 1px solid var(--board-line); overflow: hidden; }
 .play-progress i { display: block; height: 100%; width: 0; background: var(--overlay-ok); }
 #turnNote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -149,11 +151,11 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 #panels { display: grid; min-height: 0; grid-row: 2; }
 .play-seat:not([hidden]) { display: grid; }
 .play-seat p:empty:not([role="status"]), .play-seat ul:empty, .play-seat dl:empty, .play-keyed:empty, .play-moves-note:empty, .play-plain:empty { display: none; }
-.vn-stage { display: grid; grid-template-rows: auto minmax(60px, 1fr) auto; gap: 10px; color: var(--board-text); }
-.vn-top { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: start; justify-content: space-between; }
+.vn-stage { display: grid; grid-template-rows: auto minmax(60px, 1fr) auto auto; gap: 10px; color: var(--board-text); }
+.vn-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: start; }
 .vn-where { background: var(--board); border-left: 3px solid var(--overlay-ok); border-radius: 3px; padding: 4px 12px 5px; font-size: .88rem; line-height: 1.3; }
 .place-label { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); display: block; }
-.vn-gauges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; justify-content: flex-end; }
+.vn-gauges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 0 auto; justify-content: flex-end; }
 .vn-gauges > div { background: var(--board); border-radius: 3px; border-bottom: 3px solid var(--board-line); padding: 4px 12px 3px; min-width: 5.5em; }
 .vn-gauges > .tone-ok { border-bottom-color: var(--overlay-ok); }
 .vn-gauges > .tone-warn { border-bottom-color: var(--board-warn); }
@@ -171,6 +173,9 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .play-board { background: var(--board); border-radius: var(--radius); overflow-x: auto; }
 .play-board:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .play-board svg { display: block; width: 100%; height: auto; }
+/* on a low screen the stage's picture gives way, so that what is asked below it stays in view */
+.vn-stage .play-board svg { max-height: max(180px, calc(100vh - 615px)); }
+@media (max-height: 860px) and (min-width: 1000px) { .vn-stage .play-sketch h4 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .play-board text { fill: var(--board-text); font-family: var(--font); font-size: 13px; font-weight: 600; }
 .play-board text.small { font-size: 11px; }
 .play-board text.t-muted { fill: var(--board-muted); font-weight: 500; }
@@ -209,65 +214,83 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
 
 
+/* above the talk, on the picture: a note on the seat's state and the newest message. While somebody
+   speaks, their head stands in this row, and what is in it keeps to the right of it. */
+.vn-stage { --face: clamp(220px, 23vw, 320px); --rise: 58px; --edge: color-mix(in srgb, var(--overlay-ok) 60%, var(--board)); }
+.vn-side { grid-row: 3; display: grid; gap: 4px; justify-items: start; align-content: end; min-width: 0; }
+.vn-stage:has(.vn-talk:not([hidden]):not(.telling)) .vn-side { min-height: calc(var(--rise) - 10px); padding-left: calc(var(--face) + 14px); }
+.vn-note, .vn-ticker { background: var(--board); border-radius: 3px; padding: 3px 10px; max-width: 100%; overflow-wrap: anywhere; }
+.vn-note { color: var(--board-text); font-size: .9rem; border-left: 3px solid var(--board-warn); }
+.vn-note.visually-hidden { padding: 0; border: 0; }
+.vn-ticker { font-family: var(--mono); font-size: .76rem; color: var(--board-muted); }
+.vn-ticker::before { content: "▸ "; color: var(--overlay-ok); }
+.vn-ticker.k-violation { color: var(--board-warn); }
+.vn-ticker.bump { animation: vn-tick 1.2s ease-out; }
+@keyframes vn-tick { 0% { color: var(--board-text); } }
+/* buttons look like buttons: filled, with an edge below that gives way when pressed */
+.vn-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.vn-tools .btn, .vn-story .btn, .vn-term .btn { background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); border-radius: 7px; font-weight: 700; box-shadow: 0 3px 0 var(--board); }
+.vn-tools .btn { font-size: .86rem; padding: 6px 12px; }
+.vn-tools .btn.primary, .vn-story .btn.primary { background: var(--overlay-ok); border-color: var(--overlay-ok); color: var(--board); font-weight: 800; box-shadow: 0 3px 0 var(--edge); }
+.vn-tools .btn.primary { font-size: .95rem; padding: 7px 18px; }
+.vn-tools .btn:active, .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
+.vn-story .btn kbd, .vn-tools .btn kbd { margin-left: 8px; }
+
 /* who speaks, and what they ask: a band across the bottom of the screen, from edge to edge, as a visual
    novel has it. It lets the picture through a little: the board's colour at 86 %, which keeps the text's
-   contrast above 4.5:1 whatever the picture shows. The speaker stands at its left, taller than the band. */
-.vn-talk { grid-row: 3; position: relative; margin-inline: calc(-1 * var(--pad)); --face: clamp(96px, 15vw, 200px); }
-.vn-speaker { position: absolute; left: max(var(--pad), 12px); bottom: 0; width: var(--face); margin: 0; z-index: 1; pointer-events: none; }
+   contrast above 4.5:1 whatever the picture shows. In it only who speaks, what they say or ask, and the
+   choices. The speaker stands at its left, taller than the band: head and shoulders above its edge. */
+.vn-talk { grid-row: 4; position: relative; margin-inline: calc(-1 * var(--pad)); }
+.vn-talk[hidden] { display: none; }
+.vn-speaker { position: absolute; left: max(var(--pad), 12px); bottom: 0; width: var(--face); height: calc(100% + var(--rise)); margin: 0; z-index: 1; pointer-events: none; }
 .vn-talk.telling .vn-speaker { display: none; }
-.vn-speaker img { display: block; width: 100%; height: auto; filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--board) 80%, transparent)); animation: vn-breathe 5s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+.vn-speaker img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--board) 80%, transparent)); animation: vn-breathe 5s ease-in-out infinite alternate; transform-origin: 50% 100%; }
 .vn-speaker.self { opacity: .8; }
 @keyframes vn-breathe { from { transform: scale(1); } to { transform: scale(1.015); } }
 .vn-box {
   background: color-mix(in srgb, var(--board) 86%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-  border-top: 3px solid var(--overlay-ok); display: grid; gap: 8px; align-content: start; min-height: clamp(150px, 24vh, 240px);
-  padding: 12px max(var(--pad), 20px) 16px calc(max(var(--pad), 12px) + var(--face) + 18px);
+  border-top: 3px solid var(--overlay-ok); display: grid; gap: 8px; align-content: start; min-height: clamp(140px, 22vh, 220px);
+  padding: 10px max(var(--pad), 20px) 14px calc(max(var(--pad), 12px) + var(--face) + 18px);
 }
 .vn-talk.telling .vn-box { padding-left: max(var(--pad), 20px); }
-.vn-box-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
 .vn-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-.vn-name strong { font-size: 1.05rem; font-weight: 800; }
+.vn-name strong { font-size: 1.1rem; font-weight: 800; }
 .vn-name span { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
-.vn-count { font-family: var(--mono); font-size: .7rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
 .vn-count:empty { display: none; }
 /* what happened, a line at a time; its words come in one after the other */
-.vn-story { display: grid; gap: 10px; }
+.vn-story { display: grid; gap: 12px; justify-items: start; }
 .vn-story[hidden] { display: none; }
 .vn-line { font-size: clamp(1.1rem, 2vw, 1.4rem); line-height: 1.4; font-weight: 500; max-width: 60ch; text-wrap: pretty; }
 .vn-line.k-wrong, .vn-line.k-violation, .vn-line.k-cut { border-left: 4px solid var(--board-warn); padding-left: 12px; }
+.vn-story .btn { font-size: 1rem; padding: 9px 20px; }
 .w { animation: vn-word .22s ease-out both; }
 @keyframes vn-word { from { opacity: 0; } }
-.vn-story .btn kbd, .vn-tools .btn kbd { margin-left: 8px; }
-.vn-decisions.play-keyed { display: flex; flex-wrap: wrap; gap: 8px; }
+/* what is asked, in full; the decisions that wait are dots to press, below it */
+.vn-decisions.play-keyed { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .vn-decisions[hidden] { display: none; }
-.play-decision { display: grid; gap: 8px; flex: 1 1 100%; order: 1; animation: vn-say .28s ease-out; }
-.play-decision.waiting { flex: 0 1 auto; order: 2; min-width: 0; animation: none; }
+.play-decision { display: grid; gap: 10px; flex: 1 1 100%; order: 1; animation: vn-say .28s ease-out; }
+.play-decision.waiting { flex: 0 0 auto; order: 2; animation: none; }
 .vn-decisions h5, .vn-decisions p { margin: 0; }
-.vn-decisions h5 { font-size: clamp(1.15rem, 2.2vw, 1.5rem); font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.vn-decisions h5 { font-size: clamp(1.15rem, 2.1vw, 1.4rem); font-weight: 700; line-height: 1.25; text-wrap: balance; }
 .vn-decisions .text { font-size: 1rem; color: var(--board-muted); max-width: 70ch; }
 .vn-decisions .hint { font-size: .8rem; color: var(--board-muted); }
-.play-options-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 8px; }
-.play-options-row .btn { display: flex; align-items: baseline; gap: 10px; text-align: left; justify-content: flex-start; white-space: normal; font-size: 1rem; font-weight: 700; padding: 11px 14px; background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); border-left: 5px solid var(--overlay-ok); border-radius: 4px; }
-.play-options-row .btn small { font-weight: 400; color: var(--board-muted); }
+/* the choices: filled buttons in the stage's own colour */
+.play-options-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; padding-bottom: 4px; }
+.play-options-row .btn { display: flex; align-items: baseline; gap: 10px; text-align: left; justify-content: flex-start; white-space: normal; font-size: 1.02rem; font-weight: 800; padding: 12px 16px; background: var(--overlay-ok); color: var(--board); border: 0; border-radius: 8px; box-shadow: 0 4px 0 var(--edge); }
+.play-options-row .btn kbd { background: var(--board); color: var(--board-text); border-color: var(--board); }
+.play-options-row .btn small { font-weight: 600; color: inherit; }
 .play-options { margin: 0; padding-left: 1.2em; font-size: .9rem; }
-.play-next { all: unset; box-sizing: border-box; display: block; cursor: pointer; border: 1px solid var(--board-line); border-radius: 999px; padding: 3px 12px; font-size: .8rem; color: var(--board-muted); max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.play-next { all: unset; box-sizing: border-box; display: grid; place-items: center; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; background: var(--board-2); border: 1px solid var(--board-line); }
+.play-next::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--overlay-ok); }
 .play-next:focus-visible, .play-why:focus-visible, .term:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .play-why { all: unset; cursor: pointer; color: var(--overlay-ok); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 /* a railway term in a text: tap it to read what it is */
 .term { all: unset; cursor: help; color: inherit; text-decoration: underline dotted var(--overlay-ok); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 .term.on { background: var(--board-2); box-shadow: 0 0 0 3px var(--board-2); border-radius: 2px; }
-.vn-term { border-left: 4px solid var(--overlay-ok); background: var(--board-2); border-radius: 0 4px 4px 0; padding: 8px 12px; display: grid; gap: 4px; justify-items: start; max-width: 70ch; font-size: .95rem; animation: vn-say .2s ease-out; }
+.vn-term { border-left: 4px solid var(--overlay-ok); background: var(--board-2); border-radius: 0 4px 4px 0; padding: 8px 12px 10px; display: grid; gap: 4px; justify-items: start; max-width: 70ch; font-size: .95rem; animation: vn-say .2s ease-out; }
 .vn-term[hidden] { display: none; }
 .vn-term p { margin: 0; }
-.vn-note { color: var(--board-muted); font-size: 1.05rem; }
-.vn-ticker { font-family: var(--mono); font-size: .76rem; color: var(--board-muted); border-top: 1px dashed var(--board-line); padding-top: 8px; margin-top: 2px; }
-.vn-ticker::before { content: "▸ "; color: var(--overlay-ok); }
-.vn-ticker.k-violation { color: var(--board-warn); }
-.vn-ticker.bump { animation: vn-tick 1.2s ease-out; }
-@keyframes vn-tick { 0% { color: var(--board-text); } }
-.vn-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-left: auto; }
-.vn-tools .btn { font-size: .8rem; padding: 3px 10px; }
-.vn-tools .btn.primary { font-size: .95rem; font-weight: 800; padding: 6px 18px; }
+.vn-term .btn { background: var(--board); }
 /* (it slides in and does not fade: a text that fades in has no contrast for a moment) */
 @keyframes vn-say { from { transform: translateY(10px); } }
 /* a decision with a deadline: its time runs out as a bar */
@@ -278,9 +301,15 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 .vn-box:has(.vn-countdown.low) { border-top-color: var(--board-warn); animation: vn-hurry .8s ease-in-out infinite alternate; }
 @keyframes vn-hurry { to { box-shadow: inset 0 5px 0 var(--board-warn); } }
 @media (prefers-reduced-motion: reduce) { .vn-box:has(.vn-countdown.low) { animation: none; } }
+/* a narrower screen: the text needs the band's width, and the speaker stands on its edge */
+@media (max-width: 999px) {
+  .vn-stage { --face: 132px; }
+  .vn-speaker { bottom: calc(100% - 14px); height: auto; aspect-ratio: 3 / 4; }
+  .vn-box { padding-left: max(var(--pad), 20px); }
+  .vn-stage:has(.vn-talk:not([hidden]):not(.telling)) .vn-side { min-height: calc(var(--face) * 4 / 3 - 24px); padding-left: calc(var(--face) + 12px); }
+}
 @media (max-width: 640px) {
-  .vn-talk { --face: 78px; }
-  .vn-speaker { bottom: calc(100% - 12px); }
+  .vn-stage { --face: 96px; }
   .vn-box { padding: 16px 14px 14px; min-height: 0; }
   .vn-gauges { width: 100%; justify-content: flex-start; }
   .vn-gauges > div { flex: 1 1 42%; min-width: 0; padding: 3px 8px 2px; }
@@ -289,6 +318,7 @@ body[data-screen="play"] .play-layout { min-height: calc(100vh - 62px); display:
 }
 @media (prefers-reduced-motion: reduce) {
   .w, .play-decision, .lv-card, .vn-term, .vn-speaker img, .vn-ticker.bump, .vn-gauges > .bump, .vn-gauges > .bump dt { animation: none; }
+  .vn-tools .btn:active, .vn-story .btn:active, .vn-term .btn:active, .play-options-row .btn:active { transform: none; }
 }
 
 /* only the picture (H): the game's interface out of the way */
