@@ -667,6 +667,8 @@ test("something in the picture that needs attention pulses; chosen, it says what
   await n2.click();
   await expect(stage.locator(".play-asset")).toHaveText(/^Signal N2: failed/);
   await expect(stage.locator(".play-asset")).toHaveClass(cls("tone-bad"));
+  // and said, for who does not see the picture
+  await expect(live(page)).toContainText("Signal N2: failed");
   // a computer's seat with something that needs attention: it can be chosen to read, without moves
   // (at Fence at the halt at Talsee children are at the track some 20 minutes into the shift: a danger)
   await page.locator("#tab-maintenance-dispatcher").click();
@@ -1182,8 +1184,16 @@ test("only the picture: H takes the game's interface out of the way and brings i
   const strip = page.locator("#hud"), rail = page.locator("#rail"), seats = page.locator(".play-seats"), back = page.locator("#bareBack"), bare = page.locator("#bare");
   await expect(back).toBeHidden();
   await expect(bare).toHaveAttribute("aria-pressed", "false");
+  // (a message has just popped up: it goes with the rest)
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.session.seat("signaller-relay").game.logs.push({ t: 0, kind: "info", text: "Just now." });
+    p.draw(true);
+  });
+  await expect(toast(page)).toBeVisible();
   await page.keyboard.press("h");
   await expect(page.locator("body")).toHaveClass(cls("bare"));
+  await expect(toast(page)).toBeHidden();
   await expect(strip).toBeHidden();
   await expect(rail).toBeHidden();
   await expect(seats).toBeHidden();

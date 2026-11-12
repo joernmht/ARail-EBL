@@ -469,7 +469,10 @@ class PlayPage {
   /** Only the picture (H): the game's interface out of the way, and back. */
   setBare(on) {
     this.bare = !!on;
-    if (this.bare) this.flyout(null);
+    if (this.bare) {
+      this.flyout(null);
+      this.hideToast();
+    }
     document.body.classList.toggle("bare", this.bare);
     $("#bare").setAttribute("aria-pressed", String(this.bare));
     $("#bareBack").hidden = !this.bare;
@@ -1002,7 +1005,7 @@ class PlayPage {
   }
 
   /**
-   * Open a seat's desk, a dialog: its role, its moves as forms, its tables, its score and its messages.
+   * Open a seat's desk, a dialog: its role, its moves as forms, its tables and its score.
    * @param {string} seatId
    * @param {"moves" | null} [part] where to begin
    */
@@ -1091,11 +1094,12 @@ class PlayPage {
   }
 
   /**
-   * The fixed parts of a seat's panel; `seat` draws into them. The stage, over the picture: where
-   * the role works, the gauges, the game's picture if it has one, and the talk, a band across the
-   * bottom: who speaks with what they ask and its choices, or what happened line by line, a railway
-   * term explained, the newest message, and the tools. The desk, a dialog opened from the stage: the role, the moves as forms, the tables, the
-   * score and the messages.
+   * The fixed parts of a seat's panel; `seat` draws into them. The stage, over the picture: the
+   * game's picture if it has one, and the talk, a band across the bottom: who speaks with what they
+   * ask and its choices, or what happened line by line, a railway term explained. Kept elsewhere
+   * (begin): its figures and the note on its state in the line at the top, its tools at the side,
+   * its messages under the bell. The desk, a dialog opened from the rail: the role, the moves as
+   * forms, the tables, the score.
    */
   panel(seat) {
     const p = {
@@ -1152,12 +1156,13 @@ class PlayPage {
   }
 
   /**
-   * A seat's panel. On the stage: the figures as gauges, the game's picture; in a turn, what
+   * A seat's panel. In the line at the top its figures (those about something in its picture are
+   * shown there, pulsing) and a note on its state; on the stage the game's picture; in a turn, what
    * happened, line by line, to read on from; then the decision in focus, asked by its speaker with
-   * its choices (the others wait as their titles); the newest message; the tools. Behind it the
-   * picture that fits what is spoken of. In the desk: the role, the moves as forms, the tables, the
-   * score so far and the messages. A computer's seat and a seat not at work show the same without
-   * forms and buttons.
+   * its choices (the others wait as dots); a new message pops up; its tools at the side, its
+   * messages under the bell. Behind it the picture that fits what is spoken of. In the desk: the
+   * role, the moves as forms, the tables, the score so far. A computer's seat and a seat not at
+   * work show the same without forms and buttons.
    */
   seat(seat, force = false) {
     const p = this.panels.get(seat.id), s = this.session, g = seat.game;
@@ -1473,6 +1478,9 @@ class PlayPage {
     this.picked.set(seatId, id);
     this.refused.delete(`${seatId}|sketch`);
     this.draw(true);
+    // what is known of it is said (for who does not see the picture: the item's own name is its label)
+    const known = this.panels.get(seatId).pick.querySelector(".play-asset");
+    if (known) this.say(known.textContent);
     this.panels.get(seatId).pick.querySelector("button")?.focus({ preventScroll: true });
   }
 

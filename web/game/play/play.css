@@ -142,7 +142,7 @@ body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
 /* (only what does not fit on one line takes a second: the page measures it, PlayPage.side) */
 .play-hud.wrap, .play-hud.wrap .vn-gauges { flex-wrap: wrap; }
 /* (the note: a few words; its whole sentence is for screen readers) */
-.vn-note[data-short]:not([data-short=""])::before { content: attr(data-short); }
+.vn-note[data-short]:not([data-short=""])::before { content: attr(data-short); content: attr(data-short) / ""; }
 .play-hud > [hidden] { display: none; }
 /* the mission's name and where it stands, in the page's bar while a mission is played (not on a phone) */
 .site-where { display: none; margin: 0 0 0 18px; min-width: 0; color: var(--bar-text); font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -415,7 +415,7 @@ body[data-screen="play"] .site-where { display: block; }
 }
 
 /* only the picture (H): the game's interface out of the way */
-body.bare .play-hud, body.bare .play-seats, body.bare .play-rail { visibility: hidden; }
+body.bare .play-hud, body.bare .play-seats, body.bare .play-rail, body.bare .play-toast { visibility: hidden; }
 .bare-back { position: fixed; right: 14px; bottom: 14px; z-index: 5; }
 
 /* a phase begins: its name over the whole screen for a moment */
