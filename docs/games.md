@@ -249,9 +249,11 @@ and for the heads of the other pages of the games:
   played the screen does not scroll: the page's bar stays at the top, and below it there are only
   three things on the picture.
   - **One line at the upper middle, without boxes**, for what must always be seen: in a shift the
-    clock and its speed (Pause, 1×, 5×, 20×), in a turn the round and End the turn, then the
-    figures of the seat shown ("Trains through 3 of 9 · Late now 1"), and a note when the
-    computer plays the seat. The board's blue fades out below it across the whole width, which
+    clock and its speed (Pause, 1×, 5×, 20×), in a turn End the turn, then the figures of the seat
+    shown ("Trains through 3 of 9 · Late now 1"), and a few words when the computer plays the
+    seat. Only when it does not fit (many figures, a narrow window) it takes a second line. The
+    mission's name and where it stands (the round, the phase) are in the page's bar, beside its
+    name; on a phone they are behind the flag at the side. The board's blue fades out below it across the whole width, which
     keeps it readable on any picture. The time of a shift is a thin line at the lower edge of the
     page's bar.
   - **A rail of icons at the right**: the mission (its name, its phases), the seats as faces, the

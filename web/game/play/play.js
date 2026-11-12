@@ -936,6 +936,10 @@ class PlayPage {
     badge.textContent = fresh > 99 ? "99+" : String(fresh);
     $("#bellBtn").setAttribute("aria-label", fresh ? `Messages, ${fresh} new` : "Messages");
     if ($("#toast").hidden === false && performance.now() > this.toastUntil) this.hideToast();
+    // the line at the top is one line; only when it does not fit (many figures, a narrow window) it takes a second
+    const hud = $("#hud");
+    hud.classList.remove("wrap");
+    if (hud.scrollWidth > hud.clientWidth + 1) hud.classList.add("wrap");
   }
 
   /** The clock and the progress of a shift (every frame). */
@@ -957,6 +961,7 @@ class PlayPage {
     // the mission's name is said once: in the panel of the mission at the side (and to screen readers as the line's heading)
     $("#stripTitle").textContent = m.title;
     $("#missionName").textContent = m.title;
+    $("#headTitle").textContent = m.title;
     $("#where").textContent = `${m.rounds > 1 ? `Round ${s.round} of ${m.rounds} · ` : ""}${ph.title}`;
     morph($("#phases"), s.plan.filter((p) => p.round === s.round).map((p) => h("li", { "aria-current": p === ph ? "step" : null }, p.title, " ", h("small", {}, `(${p.kind})`))));
     $("#shiftBar").hidden = !shift;
@@ -1215,8 +1220,13 @@ class PlayPage {
     const idle = !open.length && !line && !beat;
     // that nothing is asked needs no words on the screen (they are there for who does not see it); a seat's state does
     p.decisionsNote.classList.toggle("visually-hidden", idle && !state);
-    p.decisionsNote.textContent = line || beat ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
+    const note = line || beat ? "" : state || (open.length ? (can ? "" : mine ? "The seat is not at work: nothing can be decided now." : "The computer decides.")
       : turn ? "Nothing left to decide here. End the turn when you are ready." : view.sketch ? "Nothing to decide just now. Watch the picture: choose something in it to act." : "Nothing to decide just now.");
+    // in the line at the top only a few words (the whole sentence is said to screen readers)
+    const short = !note || (idle && !state) ? "" : !g || !active ? "Not at work" : g.over ? "Game over" : !mine ? "The computer plays this seat" : !can ? "Not at work" : "";
+    p.decisionsNote.dataset.short = short;
+    if (short) morph(p.decisionsNote, h("span", { class: "visually-hidden" }, note));
+    else p.decisionsNote.textContent = note;
 
     // a railway term asked for: what it is, in a line
     const term = this.term && !p.el.hidden ? termOf(this.term) : null;

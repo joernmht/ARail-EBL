@@ -732,6 +732,17 @@ test("the play screen fills the window and does not scroll: the band stays at th
   const [bottom, right, rail] = await page.evaluate(() => [document.querySelector("#seat-signaller-relay .vn-talk").getBoundingClientRect().bottom, document.querySelector("#rail").getBoundingClientRect().right, innerHeight]);
   expect(Math.abs(bottom - rail)).toBeLessThan(2);
   expect(right).toBe(page.viewportSize().width);
+  // the line at the top is one line; the mission's name and where it stands are in the page's bar, not on a phone
+  await expect(page.locator("#hud")).not.toHaveClass(cls("wrap"));
+  expect(await part(page, SIGNALLER, ".vn-gauges").evaluate((el) => new Set([...el.children].map((c) => Math.round(c.getBoundingClientRect().top))).size)).toBe(1);
+  await expect(page.locator(".site-bar .site-where")).toBeVisible();
+  await expect(page.locator("#headTitle")).toHaveText("A morning at Bf Neustadt");
+  await expect(page.locator("#where")).toHaveText("The morning shift");
+  // (the note on a computer's seat: a few words on the screen, the whole sentence for screen readers)
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(part(page, MAINTENANCE, ".vn-note")).toHaveAttribute("data-short", "The computer plays this seat");
+  await expect(part(page, MAINTENANCE, ".vn-note")).toHaveText("The computer plays this seat. You can watch it, or take over.");
+  await page.locator("#tab-signaller-relay").click();
   // the wheel does not move it
   await page.mouse.wheel(0, 600);
   expect(await page.evaluate(() => document.querySelector("#seat-signaller-relay .vn-talk").getBoundingClientRect().bottom)).toBe(bottom);
@@ -744,6 +755,9 @@ test("the play screen fills the window and does not scroll: the band stays at th
   });
   expect(await box.evaluate((el) => [el.scrollHeight > el.clientHeight, getComputedStyle(el).overflowY])).toEqual([true, "auto"]);
   expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".site-bar .site-where")).toBeHidden();
+  expect(await page.evaluate(() => [document.documentElement.scrollHeight - innerHeight, document.documentElement.scrollWidth - innerWidth])).toEqual([0, 0]);
   expect(errors).toEqual([]);
 });
 
