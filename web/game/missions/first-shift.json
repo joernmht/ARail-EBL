@@ -37,7 +37,7 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "Morning! Your first train is RB 31 from Bergheim, for track G2. Tap signal A, on the table or in the panel, then the route to G2. That is all a route is."
+   "say": "Morning! Your first train is RB 31 from Bergheim, for track G2. Tap signal A in the panel, then the route to G2. That is all a route is."
   },
   {
    "phase": "shift",

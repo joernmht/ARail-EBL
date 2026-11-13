@@ -254,10 +254,10 @@ export class ServiceManager {
     return true;
   }
 
-  _dispatch(st, { source = "timetable", line, trainId = null, direction = null, kind = null } = {}) {
+  _dispatch(st, { source = "timetable", line, trainId = null, direction = null } = {}) {
     const dock = st.dock;
     const v = new Vehicle({
-      kind: kind && this.world.registry.vehicles.has(kind) ? kind : this._vehicleKind(dock),
+      kind: this._vehicleKind(dock),
       dock,
       line: line || this._lineFor(dock),
       source,
@@ -275,15 +275,11 @@ export class ServiceManager {
     return v;
   }
 
-  /**
-   * Feed control (see core/trains.js): a real train stopped at / left a dock. `kind`: the registered
-   * vehicle that stands for it (default: the dock's), for who draws its trains itself (the game's
-   * table, web/game/table.js) and says where their doors are.
-   */
-  feedArrived(dockId, { trainId, line, kind = null }) {
+  /** Feed control (see core/trains.js): a real train stopped at / left a dock. */
+  feedArrived(dockId, { trainId, line }) {
     const st = this.docks.get(dockId);
     if (!st || st.vehicle) return st?.vehicle || null;
-    const v = this._dispatch(st, { source: "feed", line, trainId, kind });
+    const v = this._dispatch(st, { source: "feed", line, trainId });
     v.phase = "dwelling";
     v.progress = 1;
     v.dwellLeft = Infinity;

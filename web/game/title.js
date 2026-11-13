@@ -279,7 +279,7 @@ export class TitleScreen {
     }
     return [
       this.continued(),
-      { label: "Missions", sub: "A line of missions, played on the lab's table: take a seat, collect your stars", href: "play/" },
+      { label: "Missions", sub: "A line of missions: take a seat, collect your stars", href: "play/" },
       { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
       { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
       { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },

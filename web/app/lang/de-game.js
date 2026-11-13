@@ -13,7 +13,7 @@ export const GAME_DE = {
   "Main menu": "Hauptmenü",
   "Continue": "Weiterspielen",
   "Missions": "Missionen",
-  "A line of missions, played on the lab's table: take a seat, collect your stars": "Eine Strecke voller Missionen, gespielt auf dem Tisch des Labors: Platz nehmen, Sterne sammeln",
+  "A line of missions: take a seat, collect your stars": "Eine Strecke voller Missionen: Platz nehmen, Sterne sammeln",
   "Signaller": "Fahrdienstleiter",
   "Half an hour at Bf Neustadt in a relay interlocking": "Eine halbe Stunde in Bf Neustadt am Relaisstellwerk",
   "Free play": "Freies Spiel",
