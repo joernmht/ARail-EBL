@@ -526,6 +526,8 @@ class PlayPage {
   async setSource(kind) {
     if (!this.live || !this.tabled) return;
     const got = await this.live.setSource(kind, BASE);
+    // asked for again meanwhile, or the table was left: what this one opened is let go of, the page shows the other
+    if (got.stale || !this.tabled) return;
     for (const b of $("#tableBar").querySelectorAll("[data-source]")) b.setAttribute("aria-pressed", String(b.dataset.source === got.source));
     this.tableShown(true, got.source);
     this.tableNote(got.problem ?? "");
@@ -535,6 +537,7 @@ class PlayPage {
 
   /** The table's note, in the line at the top: why it is not seen as asked, or that the table's markers are not in view. */
   tableNote(problem = "") {
+    problem ||= (this.live?.feed && this.live.searchProblem) || "";
     const lost = this.live?.tracking === false;
     $("#tableNote").textContent = problem || (lost ? (this.live.source === "camera" ? "No markers in view: point the camera at the table." : "Looking for the table's markers …") : "");
   }

@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Camera, FlyCamera, View, createWorld, orthoOf, polylineAt } from "../../web/arail/index.js";
+import { LiveScene } from "../../web/game/live.js";
 import { STATION, SignallerGame } from "../../web/arail/game/signaller.js";
 import { CROSSING, HIT_PX, TABLE, TABLE_LAYOUT, TABLE_TRAIN, TableBoard, TableStation, WAIT_S, tableProblems } from "../../web/game/table.js";
 
@@ -263,7 +264,11 @@ test("the board: the level crossing on the line to Talsee closes for the game's 
   assert.ok(first.length * 1 < 60, `closed for ${first.length} s for RB 32`);
   assert.ok(CROSSING.before_m === 250 && CROSSING.beside_mm > 30);
   // a place off the trains' ways is never near
-  assert.equal(board.trainsNear([at[0], at[1] + 400]), false);
+  // a place that none of the station's tracks passes: the board answers for no train there (a crossing elsewhere closes by the clock)
+  assert.equal(board.trainsNear([at[0], at[1] + 400]), null);
+  assert.equal(board.trainsNear([at[0] - 5000, at[1] - 2000]), null);
+  // on a track of the station with no train near: no
+  assert.equal(board.trainsNear(board.at.trackMiddle("G1")), false);
   board.dispose();
   assert.equal(byClock("08:00"), true, "by the clock again");
 });
@@ -314,4 +319,36 @@ test("the board: a signal waits for a route while a train comes to it or stands 
   g.setRoute("A-G2");
   assert.deepEqual([...board.waiting(g)], ["signal-F"]);
   assert.ok(WAIT_S > 60 && WAIT_S < 300);
+});
+
+test("the table in the live picture: leaving it gives the backdrop its modules and its own timetable back, and it can be taken again", async (t) => {
+  const fetched = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ ok: true, json: async () => JSON.parse(readFileSync(`web/${url}`, "utf8")) });
+  t.after(() => (globalThis.fetch = fetched));
+  const ctx = countingContext(), canvas = { width: W, height: H, clientWidth: W, clientHeight: H, getContext: () => ctx, addEventListener() {}, dispatchEvent() {} };
+  const scene = new LiveScene(canvas);
+  assert.ok(await scene.load(TABLE_LAYOUT, TABLE_LAYOUT));
+  const world = scene.world, on = () => world.layers().filter((l) => l.enabled).map((l) => l.id).sort();
+  const before = on(), docks = () => [...world.services.docks.values()].filter((st) => ["G1", "G2", "G3"].includes(String(st.dock.track))).map((st) => st.mode);
+  assert.ok(before.includes("waldhof"));
+  world.step(0.05);
+  assert.ok(docks().length && docks().every((m) => m !== "plan"));
+  for (let round = 0; round < 2; round++) {
+    // the table: the modules whose trains run into the station off, the board the planner of the platform tracks
+    assert.equal(scene.setTable(new SignallerGame({ level: "training" }), { active: true }), true);
+    world.step(0.05);
+    assert.deepEqual(on(), ["sbahn"]);
+    assert.equal(world.services.planner, scene.board);
+    assert.ok(docks().every((m) => m === "plan"));
+    scene.draw(1e9);
+    // left: the world as it was, its own timetable at the platforms, no board
+    assert.equal(scene.setTable(null), false);
+    world.step(0.05);
+    assert.deepEqual(on(), before, `round ${round}: the modules back`);
+    assert.equal(world.services.planner, null);
+    assert.equal(scene.board, null);
+    assert.ok(!world.simulations.some((s) => s instanceof TableBoard));
+    assert.ok(docks().every((m) => m !== "plan"), `round ${round}: the timetable's again`);
+    assert.equal(world.clock.factor, 1);
+  }
 });

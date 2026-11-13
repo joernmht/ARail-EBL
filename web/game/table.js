@@ -403,14 +403,15 @@ export class TableBoard {
   /**
    * Is a train of the game coming to, or on, a place of the layout (a level crossing asks:
    * objects/crossings.js)? From CROSSING.before_m before its front reaches the place until its
-   * end has passed it; a train standing at a platform is not coming. Null without a game: then
-   * the board answers for no train.
+   * end has passed it; a train standing at a platform is not coming. Null without a game, and for
+   * a place that none of the station's tracks passes: there the board answers for no train (a
+   * crossing elsewhere closes as it would without the board).
    * @param {number[]} pos [x, y] layout mm
    * @returns {boolean | null}
    */
   trainsNear(pos) {
     const g = this.game;
-    if (!g) return null;
+    if (!g || !this.passes(pos)) return null;
     for (const tr of g.trains) {
       if (tr.state !== "running") continue;
       const place = this.at.place(tr, this.m);
@@ -420,6 +421,14 @@ export class TableBoard {
       if (place.head > on.s - CROSSING.before_m * this.at.k && place.head - tr.length * this.at.k < on.s + CROSSING.behind_mm) return true;
     }
     return false;
+  }
+
+  /** Does one of the station's tracks on the table pass a place (within CROSSING.beside_mm)? */
+  passes(pos) {
+    return Object.keys(this.station.sections).some((id) => Object.keys(this.at.table.sections[id]).some((p) => {
+      const w = this.at.way(id, p, 1);
+      return polylineProject(w.points, pos, w.lengths).distance <= CROSSING.beside_mm;
+    }));
   }
 
   /** The train of the game that a vehicle of the services stands for, or null. */

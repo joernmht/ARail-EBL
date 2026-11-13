@@ -298,7 +298,9 @@ vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people ge
 level crossing of Brückenstraße, on the line to Talsee, closes for the game's trains (from 250 m
 before a train reaches it until its end has passed; a freight train held at signal F stands across
 it) and no longer by the clock: the town's cars wait at its barriers (`TableBoard.trainsNear`,
-which a level crossing asks of the world's simulations).
+which a level crossing asks of the world's simulations; a crossing that none of the station's
+tracks passes closes by the clock as before). When the table is left (another seat, **T**), the
+board leaves the world, and the backdrop gets its modules and its own timetable back.
 
 The code: `web/game/table.js` (the station on the layout, the board: drawing, what is clicked, the
 world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.js` (the table's

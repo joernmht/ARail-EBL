@@ -234,3 +234,73 @@ test("the table has no accessibility violations and no text in the picture: the 
   await check("the table on a photo of the lab");
   expect(found).toEqual([]);
 });
+
+/**
+ * A camera that answers only when the test says so, as a person answers the browser's prompt: `window.__camera.release()`
+ * gives a stream (a canvas's), and `stopped` counts its tracks stopped.
+ */
+const slowCamera = () => {
+  window.__camera = { asked: 0, release: null, stopped: 0 };
+  if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { value: {} });
+  navigator.mediaDevices.getUserMedia = () => new Promise((resolve) => {
+    window.__camera.asked++;
+    window.__camera.release = () => {
+      const c = Object.assign(document.createElement("canvas"), { width: 640, height: 480 });
+      c.getContext("2d").fillRect(0, 0, 640, 480);
+      const stream = c.captureStream(5);
+      for (const track of stream.getTracks()) {
+        const stop = track.stop.bind(track);
+        track.stop = () => (window.__camera.stopped++, stop());
+      }
+      resolve(stream);
+    };
+  });
+};
+
+test("a camera still opening when the table is left, or another source is chosen, is let go of", async ({ page }) => {
+  await page.addInitScript(slowCamera);
+  const errors = await start(page);
+  await run(page, 3);
+  await page.locator(`${SEAT} .vn-story .btn`).click();
+  const live = () => page.evaluate(() => ({ source: window.__play.live.source, feed: !!window.__play.live.feed, table: window.__play.live.table, stopped: window.__camera.stopped }));
+  // the camera is asked for; while the person still answers the prompt, the table is left (T)
+  await (await panel(page)).getByRole("button", { name: "Camera" }).click();
+  await page.waitForFunction(() => window.__camera.asked === 1);
+  await page.keyboard.press("t");
+  await expect(page.locator("body")).not.toHaveClass(/\btabled\b/);
+  await page.evaluate(() => window.__camera.release());
+  // the camera that opened late is stopped at once: no light without the table
+  await expect.poll(live).toEqual({ source: "table", feed: false, table: false, stopped: 1 });
+  // back on the table: from above, its controls as they are
+  await page.keyboard.press("t");
+  await expect(page.locator("body")).toHaveClass(/\btabled\b/);
+  await panel(page);
+  await expect(page.locator("#tableBar [data-source=table]")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#tableParts")).toBeVisible();
+  // the camera is asked for, and the lab's photo is chosen before the prompt is answered: the photo it is
+  await page.getByRole("button", { name: "Camera" }).click();
+  await page.waitForFunction(() => window.__camera.asked === 2);
+  await page.getByRole("button", { name: "Lab photo" }).click();
+  await expect.poll(async () => (await live()).source).toBe("photo");
+  await page.evaluate(() => window.__camera.release());
+  await expect.poll(live).toEqual({ source: "photo", feed: true, table: true, stopped: 2 });
+  await expect(page.locator("#tableBar [data-source=photo]")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#tableBar [data-source=camera]")).toHaveAttribute("aria-pressed", "false");
+  expect(errors).toEqual([]);
+});
+
+test("where the table's markers cannot be searched, the line at the top says so", async ({ page }) => {
+  // a browser that cannot start the search's worker
+  await page.addInitScript(() => {
+    window.Worker = function Worker() {
+      throw new Error("no workers here");
+    };
+  });
+  await start(page);
+  await run(page, 3);
+  await page.locator(`${SEAT} .vn-story .btn`).click();
+  await (await panel(page)).getByRole("button", { name: "Lab photo" }).click();
+  await expect(page.locator("#tableNote")).toHaveText("The table's markers cannot be searched in this browser: the game cannot be placed on the picture.");
+  await expect(page.locator("#tableNote")).toBeVisible();
+  expect(await page.evaluate(() => window.__play.live.tracking)).toBe(false);
+});

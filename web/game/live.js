@@ -300,12 +300,16 @@ export class LiveScene {
    * photo of the lab), "camera" (this device's camera; it needs https and a person's leave).
    * @param {"table" | "photo" | "camera"} kind
    * @param {string} [base] the way to web/ from the page
-   * @returns {Promise<{source: string, problem?: string}>} what it is seen through now, and why not as asked
+   * @returns {Promise<{source: string, problem?: string, stale?: boolean}>} what it is seen through now, and why not as
+   *   asked; `stale`: another source was asked for, or the table was left, while this one was opening (what it opened
+   *   is let go of: a camera's light goes out)
    */
   async setSource(kind, base = "../../") {
     this.closeFeed();
     this.source = "table";
     if (kind !== "photo" && kind !== "camera") return { source: "table" };
+    // (a request waits for the browser: for the photo, or for the person's leave to use the camera)
+    const request = this.request, stale = () => request !== this.request || !this.table;
     let feed;
     try {
       if (kind === "photo") {
@@ -316,14 +320,19 @@ export class LiveScene {
       } else {
         if (!navigator.mediaDevices?.getUserMedia || !globalThis.isSecureContext) return { source: "table", problem: "The camera needs a secure page (https)." };
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: SOURCES.max_px } }, audio: false });
+        feed = { el: null, width: 0, height: 0, still: false, stream };
+        if (stale()) throw Object.assign(new Error("stale"), { stale: true });
         const video = document.createElement("video");
         video.muted = true;
         video.playsInline = true;
         video.srcObject = stream;
         await video.play();
-        feed = { el: video, width: video.videoWidth, height: video.videoHeight, still: false, stream };
+        Object.assign(feed, { el: video, width: video.videoWidth, height: video.videoHeight });
       }
+      if (stale()) throw Object.assign(new Error("stale"), { stale: true });
     } catch (e) {
+      for (const track of feed?.stream?.getTracks() ?? []) track.stop();
+      if (e.stale || stale()) return { source: this.source, stale: true };
       return { source: "table", problem: kind === "photo" ? "The photo of the lab could not be loaded." : `The camera could not be opened (${e.name === "NotAllowedError" ? "not allowed" : e.message}).` };
     }
     if (!(feed.width > 0 && feed.height > 0)) return { source: "table", problem: "The picture is empty." };
@@ -342,8 +351,9 @@ export class LiveScene {
     return { source: kind };
   }
 
-  /** Let go of the photo or the camera. */
+  /** Let go of the photo or the camera (and of one that is still opening: its request is stale now). */
   closeFeed() {
+    this.request = (this.request || 0) + 1;
     for (const track of this.feed?.stream?.getTracks() ?? []) track.stop();
     this.feed = null;
     this.found = null;
@@ -352,24 +362,32 @@ export class LiveScene {
 
   /** The worker that finds the table's markers in a picture (the live page's, web/live/detect-worker.js), started once. */
   startSearch() {
-    if (this.worker || typeof Worker !== "function") return;
+    if (this.worker || this.searchProblem) return;
+    // the markers cannot be searched: said once (the event livetracking), the picture is shown without the game
+    const fail = () => {
+      this.searching = false;
+      if (this.ready || this.searchProblem) return;
+      this.searchProblem = "The table's markers cannot be searched in this browser: the game cannot be placed on the picture.";
+      this.canvas.dispatchEvent(new CustomEvent("livetracking", { detail: { tracking: false, problem: this.searchProblem } }));
+    };
+    if (typeof Worker !== "function") return fail();
     const m = this.world.layout.markers;
     try {
       const worker = new Worker(new URL("../live/detect-worker.js", import.meta.url), { type: "module" });
       worker.onmessage = ({ data: msg }) => {
         if (msg.type === "ready") this.ready = true;
+        else if (msg.type === "error" && !this.ready) fail();
         else if (msg.type === "markers" || msg.type === "error") {
           this.searching = false;
           if (msg.type === "markers" && this.feed && msg.id === this.searchId) this.markers(msg.markers);
         }
       };
-      worker.onerror = () => {
-        this.searching = false;
-      };
+      worker.onerror = fail;
       worker.postMessage({ type: "init", dictionary: m.dictionary || "ARUCO", codes: this.world.map.detectionCodes(m.codes) });
       this.worker = worker;
     } catch {
       this.worker = null;
+      fail();
     }
   }
 
@@ -437,6 +455,8 @@ export class LiveScene {
   setTable(game, { active = false, picked = null, offers = [] } = {}) {
     if (!this.world || this.failed) return false;
     if (game && !this.board) {
+      // (the modules on before: the backdrop gets them back when the table is left)
+      this.layersBefore = this.world.layers().filter((l) => l.enabled).map((l) => l.id);
       this.world.setLayers(this.world.layers().filter((l) => TABLE_VIEW.layers.includes(l.id)).map((l) => l.id));
       this.world.clock.factor = 1;
       this.boxes.clear();
@@ -459,9 +479,17 @@ export class LiveScene {
         this.cam.set({ yaw: toRad(TABLE_VIEW.yaw_deg), pitch: toRad(TABLE_VIEW.pitch_deg) });
         this.show("all", true);
       } else {
-        // the backdrop again: the camera goes back to the shot asked for next, the world to its own pace
+        // the backdrop again: the camera goes back to the shot asked for next, the world to its own pace, with its
+        // modules and its own timetable at the platforms (the board leaves the world)
         this.closeFeed();
         this.source = "table";
+        this.board?.dispose();
+        this.board = null;
+        if (this.layersBefore) this.world.setLayers(this.layersBefore);
+        this.layersBefore = null;
+        this.world.clock.factor = 1;
+        this.boxes.clear();
+        this.near = this.nearFrom = null;
         this.world.paused = false;
         this.world.speed = LIVE.speed;
         this.to = this.from = null;
