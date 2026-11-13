@@ -20,3 +20,4 @@ export { wagonType, wagonTypes, axlePositions, makeWagon, cutsOf, CUT_SIZES, ran
 export { cutBody, cutForces, coast, requiredSpeeds, timeRun, energyHeight } from "./physics.js";
 export { HumpControl } from "./control.js";
 export { SIM_DEFAULTS, HumpSimulation } from "./simulation.js";
+export { DIAGRAM_COLOURS, CLASS_LABELS, niceTicks, simplify, cutClass, humpDiagrams } from "./diagrams.js";

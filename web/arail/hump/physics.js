@@ -143,15 +143,16 @@ export function requiredSpeeds(yard, route, body, from, to, v_to, options = {}) 
 }
 
 /**
- * A free run without retarders and other cuts, integrated over time: where the cut is every `dt`
- * until it stops or reaches `to`, where it stays.
+ * A run without other cuts, integrated over time: where the cut is every `dt` until it stops or
+ * reaches `to`, where it stays. Retarders brake only if `options.level` says so (speed-holding units
+ * then by themselves).
  * @param {import("./yard.js").HumpYard} yard
  * @param {string[]} route
  * @param {ReturnType<typeof cutBody>} body
  * @param {number} from front at the start (m)
  * @param {number} v0 speed there (m/s)
  * @param {number} to the end of the run (m)
- * @param {{wind_mps?: number, w?: number, dt?: number, max_s?: number}} [options] dt: the step (s, 0.25)
+ * @param {{wind_mps?: number, w?: number, level?: (r: object) => number, dt?: number, max_s?: number}} [options] dt: the step (s, 0.25)
  * @returns {{dt: number, s: Float64Array, v: Float64Array, at: (t: number) => {s: number, v: number}}}
  */
 export function timeRun(yard, route, body, from, v0, to, options = {}) {
@@ -160,7 +161,7 @@ export function timeRun(yard, route, body, from, v0, to, options = {}) {
   let s = from, v = v0;
   for (let k = 0; k < n && v > 0 && s < to; k++) {
     const f = cutForces(yard, route, body, s, v, options);
-    const a = (f.drive - f.resist) / f.eff_t, v1 = v + a * dt;
+    const a = (f.drive - f.resist - f.retard) / f.eff_t, v1 = v + a * dt;
     if (v1 <= 0) {
       s += a < 0 ? (v * v) / (-2 * a) : 0;
       v = 0;

@@ -136,9 +136,9 @@ export const PACKAGES = [
   },
   {
     id: "hump", name: "hump", group: "framework", path: "web/arail/hump",
-    summary: "The hump yard on its own (#236): the yard's geometry, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results. Not exported by index.js and not registered yet.",
-    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js"],
-    uses: ["core-math", "rail"],
+    summary: "The hump yard on its own (#236): the yard's geometry, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design. Not exported by index.js and not registered yet.",
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js"],
+    uses: ["core-math", "core-drawing", "rail"],
   },
   {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",

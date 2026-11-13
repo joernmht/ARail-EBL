@@ -99,10 +99,12 @@ gaps):
 node tools/hump.mjs                                    # one train of 30 wagons, 8 tracks, summer
 node tools/hump.mjs --trains 4 --season winter --push 1.6 --quiet
 node tools/hump.mjs --design target --json run.json    # target braking alone; the whole result
+node tools/hump.mjs --svg run.svg                      # the diagrams of hump design for the run
 ```
 
 Options: `--tracks N` (8), `--wagons N` (30), `--trains N` (1), `--seed N` (1), `--push M/S` (1.2),
-`--season summer|winter`, `--design speed|target`, `--estimate-sd N/KN` (0.4), `--quiet`, `--json FILE`.
+`--season summer|winter`, `--design speed|target`, `--estimate-sd N/KN` (0.4), `--pull-below M` (pull
+full tracks out as trains), `--quiet`, `--json FILE`, `--svg FILE`.
 
 ## The role catalogue's guide
 

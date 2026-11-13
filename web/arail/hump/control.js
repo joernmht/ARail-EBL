@@ -64,9 +64,11 @@ export class HumpControl {
       const cap = this.safeExit(sim, cut, r, free.at(r.s1), v);
       return { at: (s) => Math.min(free.at(s), cap), floor: Math.min(v, cap) };
     }
-    // into speed-holding units: at their speed, or as fast as a free run to the target needs (the units take the rest)
+    // into speed-holding units: at their speed, or as fast as a free run to the target needs (the units take the rest),
+    // but no faster than meets a cut rolling ahead gently
     const hold = Math.min(units.hold_mps, v);
-    return { at: (s) => Math.max(hold, free.at(s)), floor: hold };
+    const cap = this.safeExit(sim, cut, r, Math.max(hold, free.at(r.s1)), hold);
+    return { at: (s) => Math.min(Math.max(hold, free.at(s)), cap), floor: hold };
   }
 
   /**
@@ -88,11 +90,12 @@ export class HumpControl {
       if (b.s > cut.s && (!leader || b.s < leader.s)) leader = b;
     }
     if (!leader) return Infinity;
-    const end = this.yard.segments.get(leaf).s1, wind = sim.wind_mps;
-    const lead = timeRun(this.yard, leader.plan, leader.body, leader.s, leader.v, end, { w: leader.w_est, wind_mps: wind });
+    // both runs with the retarders open, the speed-holding units braking by themselves
+    const end = this.yard.segments.get(leaf).s1, wind = sim.wind_mps, open = () => 0;
+    const lead = timeRun(this.yard, leader.plan, leader.body, leader.s, leader.v, end, { w: leader.w_est, wind_mps: wind, level: open });
     const safe = (v0) => {
       const t0 = (r.s1 - cut.s) / Math.max(0.5, (cut.v + v0) / 2);
-      const run = timeRun(this.yard, cut.plan, cut.body, r.s1, v0, end, { w: cut.w_est, wind_mps: wind });
+      const run = timeRun(this.yard, cut.plan, cut.body, r.s1, v0, end, { w: cut.w_est, wind_mps: wind, level: open });
       for (let k = 0; k < run.s.length; k++) {
         const l = lead.at(t0 + k * run.dt);
         if (run.s[k] >= l.s - leader.body.length_m) return run.v[k] - l.v <= this.options.couple_mps + 1e-9;

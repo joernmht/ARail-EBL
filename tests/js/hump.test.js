@@ -1,7 +1,8 @@
 // The hump yard on its own (web/arail/hump/, issue #236): the yard's geometry, the physics of a cut
 // checked against the energy balance, separating at the crest, switches, retarders and their limits,
 // impacts with the momentum kept, misroutes when the train is pushed too fast, winter, target braking
-// against speed-holding units, wagons that must not be humped, determinism and pulling a train out.
+// against speed-holding units, wagons that must not be humped, determinism, pulling a train out (by
+// hand and when a track is full), and the diagrams of a run.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -9,6 +10,7 @@ import { createRng } from "../../web/arail/core/math.js";
 import {
   G, HumpSimulation, HumpYard, RETARDERS, ROLLING, ROTATING_T_PER_AXLE, SEASONS, SPEEDS, STANDARD_YARD, SWITCHES, axlePositions, coast, curveResistance,
   cutBody, cutForces, cutsOf, energyHeight, makeWagon, randomTrain, requiredSpeeds, standardYard, wagonType, wagonTypes,
+  CLASS_LABELS, cutClass, humpDiagrams, niceTicks, simplify, timeRun,
 } from "../../web/arail/hump/index.js";
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} is not ${b} ± ${tol}`);
@@ -323,4 +325,58 @@ test("several trains, deterministic runs, pulling a formed train out", () => {
   const first = humped(one).find((c) => c.id === out.cuts[0]);
   assert.ok(out.cuts.every((id) => humped(one).find((c) => c.id === id).s <= first.s));
   assert.ok(SWITCHES.throw_s > 0 && STANDARD_YARD.track_m > 0);
+});
+
+test("full tracks are pulled out as trains, so that train after train can be humped", () => {
+  const yard = standardYard({ tracks: 4, track_m: 250 });
+  const run = (pull) => {
+    const sim = new HumpSimulation(yard, { seed: 9, dt: 0.1, train_gap_s: 60, pull_below_m: pull });
+    const r = createRng(9);
+    for (const id of ["A", "B", "C", "D"]) sim.hump({ id, wagons: randomTrain(r, { wagons: 15, tracks: ["1", "2", "3", "4"] }) });
+    return { sim, r: sim.run() };
+  };
+  const kept = run(null), pulled = run(60);
+  assert.equal(kept.sim.departures.length, 0);
+  assert.ok(kept.r.short > 0, `${kept.r.short} cuts stopped short in full tracks`);
+  assert.ok(pulled.sim.departures.length >= 3, `${pulled.sim.departures.length} trains pulled out`);
+  assert.equal(pulled.r.short, 0, "room again for every cut");
+  assert.ok(pulled.sim.log.some((e) => e.type === "track.pulled"));
+  for (const d of pulled.sim.departures) assert.ok(d.length_m > yard.tracks[0].length_m - 60 - 30, `a train of ${d.length_m} m`);
+});
+
+test("the diagrams of a run: one line per cut in each panel, the problems marked, light and dark", () => {
+  assert.deepEqual(niceTicks(0, 1000, 5), [0, 200, 400, 600, 800, 1000]);
+  assert.deepEqual(niceTicks(-4.2, 2.7, 4), [-4, -2, 0, 2]);
+  assert.deepEqual(simplify([[0, 0], [1, 0.01], [2, 0], [3, 5]]), [[0, 0], [2, 0], [3, 5]]);
+  const yard = standardYard();
+  const wagons = [
+    { type: "hbbillns", w_nkn: 4.2, track: "4" }, { type: "eanos", loaded: 1, w_nkn: 1, track: "5" }, { type: "eanos", loaded: 1, w_nkn: 1, track: "5" },
+    { type: "hbbillns", w_nkn: 4.2, track: "1" }, { type: "habbins", loaded: 1, w_nkn: 1, track: "2" },
+  ];
+  const fast = new HumpSimulation(yard, { seed: 1, trace: true, trace_s: 1 });
+  fast.hump({ id: "A", push_mps: 3, wagons });
+  const r = fast.run();
+  const svg = humpDiagrams(fast);
+  assert.ok(svg.startsWith("<svg") && svg.trim().endsWith("</svg>"));
+  assert.match(svg, /<title id="hump-title">Standard hump: 4 cuts of 1 train<\/title>/);
+  const cuts = fast.cuts.filter((c) => c.order != null);
+  assert.equal((svg.match(/<g class="cut (good|medium|bad)"><title>/g) || []).length, 3 * cuts.length, "a line per cut in each of the three panels");
+  assert.equal((svg.match(/<g class="problem"><title>/g) || []).length, r.misrouted + r.hard + r.short);
+  assert.ok(r.misrouted >= 1 && svg.includes("misrouted"));
+  for (const k of Object.keys(CLASS_LABELS)) assert.ok(svg.includes(CLASS_LABELS[k]));
+  assert.match(svg, /prefers-color-scheme: dark/);
+  assert.equal(cutClass(cuts[0]), "bad");
+  assert.equal(cutClass(cuts[1]), "good");
+  // the same run, the same picture; a run without a trace has none
+  const again = new HumpSimulation(yard, { seed: 1, trace: true, trace_s: 1 });
+  again.hump({ id: "A", push_mps: 3, wagons });
+  again.run();
+  assert.equal(humpDiagrams(again), svg);
+  assert.throws(() => humpDiagrams(new HumpSimulation(yard)), /trace: true/);
+  // timeRun agrees with the simulation's free run on a slope
+  const body = cutBody([makeWagon({ type: "eanos", loaded: 1, w_nkn: 2, cwA_m2: 0 }, rng)]);
+  const tr = timeRun(slope(-5), ["s"], body, 100, 1, 2000, { dt: 0.1 });
+  const a = (G * 0.003 * body.mass_t) / body.eff_t;
+  near(tr.at(20).v, 1 + a * 20, 0.01, "v = v0 + a t");
+  near(tr.at(20).s, 100 + 20 + (a * 400) / 2, 0.1, "s = s0 + v0 t + a t²/2");
 });

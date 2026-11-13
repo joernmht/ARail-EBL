@@ -20,6 +20,8 @@ part of hybrid single wagonload ([#230](https://github.com/joernmht/ARail-EBL/is
 node tools/hump.mjs                                    # one train of 30 wagons, 8 tracks, summer
 node tools/hump.mjs --trains 3 --season winter --push 1.6
 node tools/hump.mjs --design target --estimate-sd 0.2 --json run.json
+node tools/hump.mjs --svg run.svg                      # the diagrams of the run (below)
+node tools/hump.mjs --trains 6 --tracks 4 --pull-below 120   # full tracks leave as trains
 ```
 
 It prints every cut (its wagons, mass, true and measured rolling resistance, the track it ended in,
@@ -27,7 +29,8 @@ its speeds into and out of the main and group retarders, the impact with which i
 its track, and what went wrong), the tracks (wagons, gaps to push up, room left) and the figures of
 the run. Options: `--tracks N` (8), `--wagons N` per train (30), `--trains N` (1), `--seed N` (1),
 `--push M/S` (1.2), `--season summer|winter`, `--design speed|target` (below), `--estimate-sd N/KN`
-(the error of the measured rolling resistance, 0.4), `--quiet`, `--json FILE`.
+(the error of the measured rolling resistance, 0.4), `--pull-below M` (pull a track out as a train
+when its wagons leave less than M metres of it), `--quiet`, `--json FILE`, `--svg FILE`.
 
 In code:
 
@@ -46,6 +49,10 @@ sim.hump({ id: "53202", wagons: randomTrain(createRng(2), { wagons: 30, tracks: 
 const results = sim.run();          // every cut, every track, the figures
 const train = sim.pullOut("6");     // the wagons of track 6, from its end: a new train
 ```
+
+With `pull_below_m` (say 120) the simulation pulls a track out by itself once its wagons leave less
+than that of it: the standing wagons leave from its far end while cuts on their way roll on into it,
+so train after train can be humped (`sim.departures` lists them).
 
 A wagon is `{type, loaded, track | destination, w_nkn?, careful?, noHump?}`: its type from the
 vehicle catalogue's freight wagons (`sgns`, `eanos`, `habbins`, `zacns`, see
@@ -134,7 +141,9 @@ N/kN), and when the cut enters a retarder computes the speed it needs at every m
   (`targetPoint`), at the coupling speed of 1.0 m/s (DB allows impacts up to 1.25 m/s), never slower
   than that. If a cut is still rolling ahead of it in the track, both runs are predicted over time
   and the exit speed is lowered until it would meet that one gently (`safeExit`): a gap to push up
-  is better than a damaged wagon.
+  is better than a damaged wagon. Into a track with speed-holding units it lets a cut go at their
+  speed, or faster where a bad runner needs it to get far enough, but never faster than meets a cut
+  rolling ahead gently (the units counted in both runs).
 
 A retarder closes while a cut in it is faster than it needs (plus 0.05 m/s) and opens again as fast
 as it responds (0.5 s), so it lets cuts go a little slower than needed.
@@ -150,13 +159,34 @@ in the first column:
 | --- | --- | --- | --- | --- | --- | --- |
 | (none: speed-holding units, summer, pushed at 1.2 m/s) | 143 | 0 | 0 | 0 | 0 | 0 |
 | `--push 2` | 238 | 6 | 0 | 0 | 18 | 20 |
-| `--season winter` (−10 °C, 5 m/s head wind) | 142 | 3 | 9 | 7 | 1 | 25 |
+| `--season winter` (−10 °C, 5 m/s head wind) | 142 | 1 | 9 | 7 | 1 | 25 |
 | `--design target` (target braking alone, resistance measured ± 0.4 N/kN) | 143 | 17 | 22 | 0 | 0 | 0 |
 | `--design target --season winter` | 142 | 4 | 17 | 9 | 1 | 9 |
 
 In winter, bad runners stop at the entrance of their track ("stopped short": not wholly in the
 track), and the next cuts for that track run into them there ("caught up"): between trains nobody
 pushes the tracks up.
+
+### The diagrams
+
+`humpDiagrams(sim)` (or `--svg FILE`) draws a run made with `trace: true` as the diagrams of hump
+design, one line per cut in the colour of its rolling class:
+
+- **Height and energy line**: the height of every route and each cut's energy height (the height
+  of its centre of mass plus its speed height). The energy line falls with the resistance, steps
+  down in the retarders, and must stay above the track to the place the cut should reach.
+- **Speed over the distance from the crest**: accelerating down the ramp, braked in the main
+  retarder, faster again through the switch zone, braked in the group retarder to the speed of the
+  track; the impact limit as a line.
+- **Distance over time**: the cuts one after the other; where two lines come together, a cut
+  catches up the one ahead.
+
+What went wrong is marked in Rot: an impact too hard, a misroute (at its switch), a cut stopped short
+of its track; labelled where the label fits, and every line tells its cut on hover. The picture
+follows the viewer's light or dark mode. One train of 30 wagons on the standard yard
+(`node tools/hump.mjs --svg docs/assets/hump-diagrams.svg`):
+
+![The diagrams of hump design for one train: height and energy lines, speed over distance, distance over time](assets/hump-diagrams.svg)
 
 What it teaches: the hump's capacity (cuts per hour) rises with the pushing speed until good runners
 catch up bad ones and are misrouted; the cold makes bad runners stop short; and target braking over
@@ -233,7 +263,7 @@ The geometry's sources are in the table of [the yard](#the-yard): [Pachl][pachl]
 - **Retarder physics in detail**: the force is the same share of the weight on every axle inside
   (a weight-proportional retarder), closing and opening take a fixed time.
 - **Tracks pushed up between trains** (Beidrücken) and a yard planner who keeps cuts away from a
-  track whose entrance is blocked.
+  track whose entrance is blocked; pulling a train out takes no time.
 - **The plan**: the yard is a profile along its routes, not drawn on the table (#237).
 - **Rolling back**, couplers (buffers touching count as coupled), and the train being pulled out
   taking time.
@@ -248,5 +278,6 @@ speeds run forwards again, air with the wind and the following wagon, a wagon on
 energy height), separating at the crest, a train humped on the standard yard (every cut in its
 track, the retarders within their limits, no switch under a cut, the tracks holding every wagon),
 impacts keeping the momentum, misroutes when pushed too fast, target braking with and without the
-error, winter, wagons not to be humped and to shunt with care, several trains, determinism and
-pulling a train out.
+error, winter, wagons not to be humped and to shunt with care, several trains, determinism, pulling a
+train out by hand and when a track is full, and the diagrams (a line per cut in each panel, the
+problems marked, the same picture for the same run).

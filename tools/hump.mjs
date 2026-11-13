@@ -9,12 +9,14 @@
 // --trains N (default 1), --seed N (default 1), --push M/S (pushing speed, default 1.2),
 // --season summer|winter, --design speed|target (how the tracks bring the cuts to the wagons in
 // them, see docs/hump-yard.md), --estimate-sd N/KN (error of the measured rolling resistance),
-// --quiet (only the figures), --json FILE (the whole result).
+// --pull-below M (pull a track out as a train when it has less room than this), --quiet (only the
+// figures), --json FILE (the whole result), --svg FILE (the diagrams of hump design: height and
+// energy line, speed over distance, distance over time).
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { createRng } from "../web/arail/core/math.js";
-import { HumpSimulation, SEASONS, TRACK_DESIGNS, randomTrain, standardYard } from "../web/arail/hump/index.js";
+import { HumpSimulation, SEASONS, TRACK_DESIGNS, humpDiagrams, randomTrain, standardYard } from "../web/arail/hump/index.js";
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => {
@@ -22,7 +24,7 @@ const opt = (name, fallback) => {
   return i >= 0 && i + 1 < args.length ? args[i + 1] : fallback;
 };
 if (args.includes("--help")) {
-  console.log("Usage: node tools/hump.mjs [--tracks 8] [--wagons 30] [--trains 1] [--seed 1] [--push 1.2] [--season summer|winter] [--design speed|target] [--estimate-sd 0.4] [--quiet] [--json FILE]");
+  console.log("Usage: node tools/hump.mjs [--tracks 8] [--wagons 30] [--trains 1] [--seed 1] [--push 1.2] [--season summer|winter] [--design speed|target] [--estimate-sd 0.4] [--pull-below M] [--quiet] [--json FILE] [--svg FILE]");
   process.exit(0);
 }
 const num = (name, fallback) => {
@@ -42,7 +44,9 @@ if (!SEASONS[season] || !TRACK_DESIGNS[design]) {
 const control = opt("estimate-sd") != null ? { estimate_sd: num("estimate-sd") } : {};
 
 const yard = standardYard({ tracks, design });
-const sim = new HumpSimulation(yard, { seed, season, control });
+const svg = opt("svg");
+const pull = opt("pull-below") != null ? num("pull-below") : null;
+const sim = new HumpSimulation(yard, { seed, season, control, trace: !!svg, pull_below_m: pull });
 const rng = createRng(seed + 1000);
 for (let i = 0; i < trains; i++) sim.hump({ id: `T${i + 1}`, push_mps: push, wagons: randomTrain(rng, { wagons, tracks: yard.tracks.map((t) => t.name) }) });
 const r = sim.run();
@@ -66,9 +70,14 @@ if (!args.includes("--quiet")) {
 }
 console.log("");
 console.log(`${r.trains} train(s), ${r.cuts} cuts, ${r.wagons} wagons in ${f(r.push_s / 60)} min of pushing: ${f(r.cuts_per_hour, 0)} cuts per hour`);
+if (sim.departures.length) console.log(`Pulled out: ${sim.departures.map((d) => `track ${d.track} (${d.wagons.length} wagon${d.wagons.length === 1 ? "" : "s"})`).join(", ")}`);
 console.log(`Misrouted ${r.misrouted}, caught up ${r.caughtUp}, derailed ${r.derailed}, stopped short ${r.short}; impacts too hard ${r.hard} (highest ${f(r.max_impact_mps, 2)} m/s); gaps ${r.gaps} (${f(r.gaps_m, 0)} m to push up); retarders entered too fast ${r.overspeed}`);
+if (svg) {
+  writeFileSync(resolve(svg), humpDiagrams(sim));
+  console.log(`Written: ${svg}`);
+}
 const file = opt("json");
 if (file) {
-  writeFileSync(resolve(file), `${JSON.stringify({ yard: { name: yard.name, tracks: yard.tracks, height_m: yard.height_m, crest_m: yard.crest_m }, options: { tracks, wagons, trains, seed, push, season, design, control }, results: r, log: sim.log }, null, 2)}\n`);
+  writeFileSync(resolve(file), `${JSON.stringify({ yard: { name: yard.name, tracks: yard.tracks, height_m: yard.height_m, crest_m: yard.crest_m }, options: { tracks, wagons, trains, seed, push, season, design, control, pull }, results: r, departures: sim.departures.map((d) => ({ ...d, wagons: d.wagons.map((w) => w.id) })), log: sim.log }, null, 2)}\n`);
   console.log(`Written: ${file}`);
 }

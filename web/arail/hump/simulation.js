@@ -20,12 +20,14 @@ import { cutBody, cutForces, energyHeight } from "./physics.js";
  * Settings of a run: time step (s), seed, season, head wind (m/s; null: the season's), time between
  * two trains (s), how far before the crest a train's front starts (m), how far beyond the crest the
  * locomotive pushes a cut that does not run free (m), the space between two cuts that counts as a
- * gap (m), the impact limits (m/s), trace (s, v and energy height of every cut every `trace_s`), and
- * the longest run (s).
+ * gap (m), the impact limits (m/s), trace (s, v and energy height of every cut every `trace_s`), the
+ * longest run (s), and `pull_below_m`: a track whose wagons leave less of it than this is pulled out
+ * as a train (null: only by hand, `pullOut`).
  */
 export const SIM_DEFAULTS = Object.freeze({
   dt: 0.05, seed: 1, season: "summer", wind_mps: null, train_gap_s: 120, start_m: 15, push_over_m: 25, gap_m: 1,
   impact_mps: SPEEDS.impact_mps, careful_mps: SPEEDS.careful_mps, trace: false, trace_s: 0.5, max_s: 4 * 3600, control: {},
+  pull_below_m: null,
 });
 
 /** Closer than this (m), two cuts touch. */
@@ -150,6 +152,21 @@ export class HumpSimulation {
     if (this.options.trace && this.t >= this._nextTrace) {
       this._nextTrace = this.t + this.options.trace_s;
       for (const c of this.bodies) if (c.v > 0) c.trace.push([this.t, c.s, c.v, energyHeight(this.yard, c.route, c.body, c.s, c.v)]);
+    }
+    if (this.options.pull_below_m != null && this.t >= (this._nextPull || 0)) {
+      this._nextPull = this.t + 1;
+      this._pullFull();
+    }
+  }
+
+  /**
+   * Pull out every track whose wagons leave less than `pull_below_m` of it: the standing wagons leave
+   * from its far end, while cuts on their way roll on into the emptied track.
+   */
+  _pullFull() {
+    for (const t of this.yard.tracks) {
+      const c = this.trackContents(t.name);
+      if (c.length_m - c.occupied_m < this.options.pull_below_m) this.pullOut(t.name);
     }
   }
 
@@ -318,7 +335,7 @@ export class HumpSimulation {
       const M = chain.reduce((m, x) => m + x.body.eff_t, 0), m = c.body.eff_t;
       const v = held ? 0 : (m * c.v + M * L.v) / (m + M);
       const inTrack = this._inTrack(c) && L.route[L.route.length - 1] === c.route[c.route.length - 1];
-      const hit = { t: round(this.t), with: L.id, v_mps: dv, inTrack, before_mps: [c.v, L.v], after_mps: v, masses_t: [m, M] };
+      const hit = { t: round(this.t), s: round(c.s), with: L.id, v_mps: dv, inTrack, before_mps: [c.v, L.v], after_mps: v, masses_t: [m, M] };
       c.rec.impacts.push(hit);
       L.rec.hitBy.push({ t: hit.t, by: c.id, v_mps: dv });
       this.note(inTrack ? "cut.impact" : "cut.caught-up", { cut: c.id, with: L.id, v_mps: round(dv) });
@@ -345,7 +362,7 @@ export class HumpSimulation {
     const yard = this.yard;
     for (let seg = yard.segments.get(c.route[c.route.length - 1]); c.s > seg.s1;) {
       if (!seg.children.length) {
-        c.rec.end = { t: round(this.t), v_mps: c.v };
+        c.rec.end = { t: round(this.t), s: seg.s1, v_mps: c.v };
         this.note("cut.end", { cut: c.id, track: seg.track.name, v_mps: round(c.v) });
         Object.assign(c, { s: seg.s1, v: 0, held: true });
         return;
@@ -408,7 +425,8 @@ export class HumpSimulation {
   }
 
   /**
-   * The cuts standing in a classification track, from its end: wagons, gaps between them, room left.
+   * The cuts standing in a classification track, from its end: wagons, gaps between them, room left
+   * at its entrance (`free_m`), the length of its wagons (`occupied_m`).
    * @param {string} name
    */
   trackContents(name) {
@@ -424,6 +442,7 @@ export class HumpSimulation {
     return {
       name: tr.name, cuts: here.map((b) => b.id), wagons: here.reduce((n, b) => n + b.wagons.length, 0),
       end_m: here.length ? tr.s1 - here[0].s : null, gaps, gaps_m: gaps.reduce((m, g) => m + g.m, 0), free_m: edge - tr.s0, length_m: tr.length_m,
+      occupied_m: here.reduce((m, b) => m + b.body.length_m, 0),
     };
   }
 
