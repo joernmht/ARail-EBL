@@ -395,16 +395,19 @@ test("pulling out takes the cuts of the track's contents, never an empty track; 
   const ids = sim.cuts.flatMap((c) => c.wagons.map((w) => w.id));
   assert.equal(new Set(ids).size, ids.length, "every wagon's id is its own, also across trains");
   assert.ok(ids.includes("T2.1") && !ids.includes("W1"));
-  const short = new Set(res.perCut.filter((c) => c.stop && !c.ended).map((c) => c.id));
+  // a cut stopped short across a track's entrance belongs to the track; one wholly in front of it does not
+  const byId = new Map(sim.cuts.map((c) => [c.id, c]));
+  const shortIds = res.perCut.filter((c) => c.stop && !c.ended).map((c) => c.id);
+  const outside = new Set(shortIds.filter((id) => { const c = byId.get(id), seg = yard.segment(c.route[c.route.length - 1]); return !seg.track || c.s < seg.track.s0; }));
   for (const t of yard.tracks) {
     const before = sim.trackContents(t.name);
     const out = sim.pullOut(t.name);
     assert.deepEqual(out.cuts, before.cuts, `track ${t.name}: the cuts of its contents`);
     assert.equal(out.wagons.length, before.wagons);
     assert.equal(out.gaps_m, before.gaps_m);
-    assert.ok(out.cuts.every((id) => !short.has(id)));
+    assert.ok(out.cuts.every((id) => !outside.has(id)));
   }
-  assert.equal(sim.bodies.filter((b) => short.has(b.id)).length, short.size, "the cuts stopped short stay");
+  assert.equal(sim.bodies.filter((b) => outside.has(b.id)).length, outside.size, "the cuts wholly in front of a track stay");
   // a threshold above the tracks' length pulls out tracks with wagons only
   const eager = new HumpSimulation(yard, { seed: 1, pull_below_m: 800 });
   eager.hump({ id: "A", wagons: randomTrain(createRng(2), { wagons: 20, tracks: yard.tracks.map((t) => t.name) }) });
@@ -431,4 +434,47 @@ test("the command line refuses an option without its value", () => {
   const ok = run("--wagons", "6", "--tracks", "2", "--quiet");
   assert.equal(ok.status, 0, ok.stderr);
   assert.match(ok.stdout, /1 train\(s\), \d+ cuts/);
+});
+
+test("one careful limit, cuts per hour while a train is pushed, a cut across a track's entrance, a train checked before it changes anything", () => {
+  const yard = standardYard();
+  // the control aims careful cuts at the simulation's limit
+  const careful = new HumpSimulation(yard, { seed: 1, careful_mps: 0.6 });
+  assert.equal(careful.control.options.careful_mps, 0.6);
+  assert.equal(new HumpSimulation(yard, { careful_mps: 0.6, control: { careful_mps: 0.8 } }).control.options.careful_mps, 0.8, "unless the control is told otherwise");
+  careful.hump({ id: "A", wagons: [{ type: "zacns", loaded: 1, track: "3", careful: true }, { type: "eanos", loaded: 1, track: "6" }] });
+  const rc = careful.run();
+  near(rc.perCut[0].group.need_mps, 0.6, 1e-9, "aimed at 0.6 m/s");
+  // but the track's speed-holding units hold 1 m/s for every wagon: the careful cut arrives faster than its limit
+  assert.ok(rc.perCut[0].impact_mps > 0.6 && rc.perCut[0].impact_mps <= 1.05, `careful cut met at ${rc.perCut[0].impact_mps}`);
+  // cuts per hour counts the time of the train on the hump too
+  const mid = new HumpSimulation(yard, { seed: 1 });
+  mid.hump({ id: "A", wagons: randomTrain(createRng(4), { wagons: 30, tracks: yard.tracks.map((t) => t.name) }) });
+  const part = mid.run({ until_s: 150 });
+  assert.ok(mid.pushing && part.cuts > 0, "stopped while the train is pushed");
+  near(part.push_s, 150, 0.1, "pushed since the start");
+  near(part.cuts_per_hour, (part.cuts / part.push_s) * 3600, 1e-9, "the released cuts over the time of pushing");
+  // long cuts in short tracks: a cut that stops across the entrance fills the track; it is pulled out with it
+  const small = standardYard({ tracks: 2, track_m: 250 });
+  const jam = new HumpSimulation(small, { seed: 1, dt: 0.1, pull_below_m: 60 });
+  const wagons = [];
+  for (let k = 0; k < 8; k++) for (let i = 0; i < 4; i++) wagons.push({ type: "habbins", loaded: 1, track: String(1 + (k % 2)) });
+  jam.hump({ id: "J", wagons });
+  const rj = jam.run();
+  assert.ok(jam.departures.length >= 2, `${jam.departures.length} trains pulled out`);
+  for (const b of jam.bodies) {
+    const seg = small.segment(b.route[b.route.length - 1]);
+    assert.ok(seg.track && b.s >= seg.track.s0, `${b.id} stands in front of track ${seg.track?.name}: jammed`);
+  }
+  assert.equal(rj.cuts, 8);
+  // a train with a track the yard does not have: refused before anything changes
+  const run = (bad) => {
+    const sim = new HumpSimulation(yard, { seed: 3 });
+    if (bad) assert.throws(() => sim.hump({ wagons: [{ type: "eanos", track: "1" }, { type: "eanos", track: "1" }, { type: "eanos", track: "99" }] }), /no classification track 99/);
+    if (bad) assert.throws(() => sim.hump({ wagons: [{ type: "eanos", track: "1" }, { type: "ice", track: "2" }] }), /no wagon type ice/);
+    assert.equal(sim.cuts.length, 0);
+    sim.hump({ wagons: randomTrain(createRng(5), { wagons: 12, tracks: yard.tracks.map((t) => t.name) }) });
+    return JSON.stringify(sim.run());
+  };
+  assert.equal(run(true), run(false), "the same run as without the refused trains");
 });

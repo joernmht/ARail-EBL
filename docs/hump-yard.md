@@ -53,8 +53,10 @@ const train = sim.pullOut("6");     // the wagons of track 6, from its end: a ne
 With `pull_below_m` (say 120) the simulation pulls a track out by itself once its wagons leave less
 than that of it: the standing wagons leave from its far end while cuts on their way roll on into it,
 so train after train can be humped (`sim.departures` lists them). A train pulled out, by hand or by
-itself, takes the cuts standing in the track (`trackContents`); a cut stopped short in front of the
-track stays there, and an empty track is never pulled out. `run()` stops at `max_s` (4 h) at the
+itself, takes the cuts standing in the track (`trackContents`), also one that stopped across its
+entrance, coupled to the last wagons with its rear still outside: it fills the track, which is then
+pulled out with it. A cut stopped wholly in front of the track stays there, and an empty track is
+never pulled out. `run()` stops at `max_s` (4 h) at the
 latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
 (`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
@@ -151,6 +153,11 @@ N/kN), and when the cut enters a retarder computes the speed it needs at every m
 
 A retarder closes while a cut in it is faster than it needs (plus 0.05 m/s) and opens again as fast
 as it responds (0.5 s), so it lets cuts go a little slower than needed.
+
+Wagons to shunt with care (`careful`, RID label 13) are aimed at `careful_mps` (1.0 m/s; the
+simulation's setting, which the control takes over). On tracks with speed-holding units they still
+arrive at the units' speed, which is the same for every wagon: a careful limit below it counts them as
+too hard.
 
 ## What a run shows
 
