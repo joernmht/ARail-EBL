@@ -2334,6 +2334,21 @@ test("no information box on the picture: in every state of a mission, text is on
   expect(msg.y + msg.height).toBeLessThanOrEqual(hud.y + hud.height);
   expect(await toast(page).evaluate((el) => el.closest(".play-hud") !== null && getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
   await check("a new message");
+  // the header holds the message without changing what else it holds: the shift's time still runs across the whole window
+  const [bar, win] = await Promise.all([page.locator("#progress").boundingBox(), page.evaluate(() => innerWidth)]);
+  expect(Math.round(bar.x)).toBe(0);
+  expect(Math.round(bar.width)).toBe(win);
+  // on a phone a long message stays one line, cut off, below the clock and the figures
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    const t = document.querySelector("#toast");
+    t.textContent = "08:13:13 A long message that is far wider than a phone's screen, so that it would wrap onto several lines.";
+  });
+  const box = await toast(page).boundingBox(), lineHeight = await toast(page).evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+  expect(box.height).toBeLessThanOrEqual(lineHeight * 1.2);
+  const above = await page.locator("#hud").evaluate((hud) => Math.max(...[...hud.querySelectorAll(".play-clock, .vn-gauges > div")].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().bottom)));
+  expect(box.y).toBeGreaterThanOrEqual(above);
+  await page.setViewportSize({ width: 1440, height: 900 });
   // something in the game's picture that needs attention pulses there, and chosen it says what is known
   await expect(page.locator(`${SIGNALLER} .play-board .pick.alert`).first()).toBeVisible();
   await page.locator(`${SIGNALLER} .play-board .pick.alert`).first().click();

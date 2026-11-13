@@ -61,6 +61,8 @@
 
     <!-- 2: play: the bar of the session and the cast over the picture, the stage of the seat shown; the numbers open as dialogs -->
     <div class="play-screen" id="play" hidden>
+      <!-- the time of a shift: a thin line across the whole window, at the lower edge of the page's bar (over the rail too) -->
+      <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
       <!-- what must be seen, in one line at the upper middle, without boxes: the clock and its speed (or the round), the figures -->
       <section class="play-hud" id="hud" aria-labelledby="stripTitle">
         <h2 id="stripTitle" class="visually-hidden" tabindex="-1"></h2>
@@ -78,7 +80,6 @@
         </div>
         <div class="hud-figures" id="hudFigures"></div>
         <div class="hud-notes" id="hudNotes"></div>
-        <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
         <!-- a new message, one at a time: the newest of the seat shown, below the figures (all of them are under the bell) -->
         <button class="play-toast" type="button" id="toast" hidden></button>
       </section>

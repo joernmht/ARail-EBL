@@ -163,7 +163,7 @@ body[data-screen="play"] .site-where { display: block; }
 .hud-speed button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 /* the time of the shift: a thin line right at the lower edge of the page's bar, across the whole window */
 .play-progress { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: 4px; background: color-mix(in srgb, var(--board) 85%, transparent); overflow: hidden; }
-.play-hud:has(#shiftBar[hidden]) .play-progress { display: none; }
+#play:has(#shiftBar[hidden]) .play-progress { display: none; }
 .play-progress i { display: block; height: 100%; width: 0; background: linear-gradient(to right, var(--overlay-ok), #8fe3e7); box-shadow: 0 0 6px var(--overlay-ok); transition: width .25s linear; }
 #turnNote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* the figures of the seat shown: a label and its value, side by side */
@@ -248,6 +248,8 @@ body[data-screen="play"] .site-where { display: block; }
   all: unset; box-sizing: border-box; position: absolute; left: 18px; right: 18px; bottom: 18px; text-align: center; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--board-text); font-size: .88rem; line-height: 1.4; animation: vn-toast .3s ease-out;
 }
+/* (one line on a phone too, where the other parts of the header may wrap: it is cut off, never grows over the figures) */
+.play-hud > .play-toast { white-space: nowrap; max-width: none; }
 .play-toast::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; vertical-align: .1em; background: var(--overlay-ok); }
 .play-toast[hidden] { display: none; }
 .play-toast.k-violation, .play-toast.k-wrong, .play-toast.k-cut { color: #ffbe73; }
