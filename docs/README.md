@@ -23,6 +23,7 @@
 | [Day and night](day-and-night.md) | The fast clock, day/night lighting, demand over the day and the town simulation |
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |
+| [Camera bridge](camera-bridge.md) | A 3D-printed camera bridge over the tracks and a side stand that hold a phone, to film the lab's trains for a model that checks train compositions (locomotives by their numbers, wagons by their look); printing, hardware, assembly, stability, the cable in printed cable troughs, recording and labels |
 | [Videos of the lab](videos.md) | How the project page's videos are rendered frame by frame; stabilizing an AR clip in several steps (marker poses, the picture's own motion, least squares); the tools (`render.mjs`, `arail-stabilize`, `arail-compose`); which steps could run live |
 
 **Building on ARail**
