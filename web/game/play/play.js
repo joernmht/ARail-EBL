@@ -23,6 +23,17 @@ const CHECKS = { places: PLACES.map((p) => p.id), portraits: Object.keys(PORTRAI
 const BASE = "../../";
 /** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
 const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
+/**
+ * Where the page keeps whether the signaller plays on the table (the live picture as the game's own, table.js),
+ * the game it is for, what of the page is not the table (a click there is the page's), how far a pointer may move
+ * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
+ */
+const TABLE_KEY = "arail.game.table", TABLE_GAME = "signaller", TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .vn-talk, .play-rail, .play-hud, .play-toast, .table-bar";
+/** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
+const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
+/** What the table is seen through (SOURCES of live.js), as its buttons name them. */
+const TABLE_SOURCES = [["table", "Table", "The table from above: its photo, with the camera yours to move"], ["photo", "Lab photo", "A photo of the lab, the game drawn onto the real table"], ["camera", "Camera", "This device's camera, in the lab: point it at the table and its markers"]];
 
 const MISSIONS = "../missions/";
 const SAVE_FORMAT = "arail-session/1";
@@ -43,6 +54,7 @@ const ICONS = {
   flows: "M4 8h13l-3-3M20 16H7l3 3",
   sound: "M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11",
   live: "M4 6h12v12H4zM16 10l5-3v10l-5-3",
+  table: "M3 9l9-4 9 4-9 4zM3 9v3l9 4 9-4V9M7 11.6l8-3.6M10 13l8-3.6",
   picture: "M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 9.5h.01",
   leave: "M10 4H5v16h5M14 8l-4 4 4 4M10 12h11",
   desk: "M8 4h8v3H8zM6 6H5v15h14V6h-1M8 11h8M8 15h6",
@@ -226,6 +238,11 @@ class PlayPage {
     this.live = null;
     this.liveLoading = false;
     this.pic = null;
+    /** Whether the signaller plays on the table (T): the live picture is then the game's own, and what is clicked there is chosen. */
+    this.tableOn = storage.get(TABLE_KEY, true) !== false;
+    this.tabled = false;
+    /** The pointers down on the table (their id → where they are and were first, client px). */
+    this.pointers = new Map();
     /** Only the picture is shown (H). */
     this.bare = false;
     this.sound = new Sound({ on: storage.get(SOUND_KEY, true) !== false });
@@ -276,6 +293,17 @@ class PlayPage {
     $("#sound").setAttribute("aria-pressed", String(this.sound.on));
     $("#liveBtn").onclick = () => this.setLive(!this.liveOn);
     $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
+    $("#tableBtn").onclick = () => this.setTable(!this.tableOn);
+    $("#tableBtn").setAttribute("aria-pressed", String(this.tableOn));
+    mount($("#tableBar"),
+      h("div", { class: "table-group", role: "group", "aria-label": "The table seen through" },
+        TABLE_SOURCES.map(([kind, label, title]) => h("button", { class: "btn small", type: "button", "data-source": kind, "aria-pressed": String(kind === "table"), title, onclick: () => this.setSource(kind) }, label))),
+      h("div", { class: "table-group", id: "tableParts", role: "group", "aria-label": "What the camera shows" },
+        TABLE_PARTS.map(([part, label]) => h("button", { class: "btn small", type: "button", "data-part": part, onclick: () => this.live?.show(part) }, label)),
+        h("button", { class: "btn small", type: "button", "aria-label": "Farther", title: "Farther (−)", onclick: () => this.live?.zoom(1 / TABLE_ZOOM) }, "−"),
+        h("button", { class: "btn small", type: "button", "aria-label": "Nearer", title: "Nearer (+)", onclick: () => this.live?.zoom(TABLE_ZOOM) }, "+")),
+      h("p", { class: "table-note", id: "tableNote", role: "status" }));
+    this.tableControls($("#play"));
     $("#bare").onclick = () => this.setBare(true);
     $("#bareBack").onclick = () => this.setBare(false);
     // the rail: every button an icon; three of them open what is behind them, one at a time
@@ -392,13 +420,15 @@ class PlayPage {
    * The picture behind the screen: it fades to another one (two images, one over the other). While
    * a mission is played it can be live instead: where the picture has a shot of the layout that
    * runs, the live backdrop shows that, its camera flying there; the still picture stays below it.
+   * For a signaller's seat the live picture can be the table (`table`): the game itself on the layout (table.js).
    * @param {{photo: string, alt: string, focus: string, shot?: string | null}} pic a picture of places.js
-   * @param {{live?: boolean, time?: number | null}} [options] live: it may be live; time: the time of day to show (minutes)
+   * @param {{live?: boolean, time?: number | null, table?: {game: object, active: boolean, picked: string | null, offers: object[]} | null}} [options]
+   *   live: it may be live; time: the time of day to show (minutes); table: the game to show on the table, whether a person can choose there, and what is chosen
    */
-  backdrop(pic, { live = false, time = null } = {}) {
+  backdrop(pic, { live = false, time = null, table = null } = {}) {
     const el = $("#backdrop");
     if (!pic) return;
-    this.pic = { pic, live, time };
+    this.pic = { pic, live, time, table };
     if (el.dataset.photo !== pic.photo) {
       el.dataset.photo = pic.photo;
       const [a, b] = el.children, next = a.classList.contains("on") ? b : a, prev = next === a ? b : a;
@@ -410,14 +440,28 @@ class PlayPage {
       };
       next.src = BASE + pic.photo;
     }
-    const shot = live && this.wantsLive() ? shotOf(pic.shot) : null;
-    if (shot && !this.live && !this.liveLoading) this.loadLive();
-    const shown = !!shot && !!this.live?.can(shot);
-    if (shown) {
+    const shot = live && this.wantsLive() ? shotOf(pic.shot) : null, game = live && this.wantsLive() ? table?.game ?? null : null;
+    if ((shot || game) && !this.live && !this.liveLoading) this.loadLive();
+    const tabled = !!this.live?.setTable(game, table ?? {});
+    const shown = tabled || (!!shot && !!this.live?.can(shot));
+    if (tabled) {
+      this.live.clock(time);
+      this.live.start();
+    } else if (shown) {
       this.live.look(shot, { time });
       this.live.start();
     } else this.live?.stop();
     el.classList.toggle("live", shown);
+    if (tabled !== this.tabled) {
+      this.tabled = tabled;
+      document.body.classList.toggle("tabled", tabled);
+      $("#tableBar").hidden = !tabled;
+      this.pointers.clear();
+      // (left, the table is seen from above again the next time)
+      for (const b of $("#tableBar").querySelectorAll("[data-source]")) b.setAttribute("aria-pressed", String(b.dataset.source === "table"));
+      $("#tableParts").hidden = false;
+      this.tableNote();
+    }
   }
 
   /**
@@ -437,7 +481,12 @@ class PlayPage {
       const { LiveScene } = await import("../live.js");
       const scene = new LiveScene($("#liveScene"));
       // too slow on this device: the still pictures stay
-      scene.canvas.addEventListener("livefailed", () => $("#backdrop").classList.remove("live"));
+      // the table seen as it is (a photo, the camera): whether its markers are in view
+      scene.canvas.addEventListener("livetracking", () => this.tableNote());
+      scene.canvas.addEventListener("livefailed", () => {
+        $("#backdrop").classList.remove("live");
+        if (this.pic) this.backdrop(this.pic.pic, this.pic);
+      });
       if (await scene.load(BASE + NEUSTADT, NEUSTADT)) this.live = scene;
     } catch {
       this.live = null;
@@ -451,6 +500,101 @@ class PlayPage {
     storage.set(LIVE_KEY, this.liveOn);
     $("#liveBtn").setAttribute("aria-pressed", String(this.liveOn));
     if (this.pic) this.backdrop(this.pic.pic, this.pic);
+  }
+
+  /** The signaller plays on the table (T), or on the panel alone (kept in the browser). */
+  setTable(on) {
+    this.tableOn = !!on;
+    storage.set(TABLE_KEY, this.tableOn);
+    $("#tableBtn").setAttribute("aria-pressed", String(this.tableOn));
+    if (this.screen === "play") this.draw(true);
+  }
+
+  /**
+   * See the table through something else (LiveScene.setSource): from above, on a photo of the lab, or through
+   * this device's camera. Where that cannot be (no camera, no leave), it stays as it was and says why.
+   * @param {"table" | "photo" | "camera"} kind
+   */
+  async setSource(kind) {
+    if (!this.live || !this.tabled) return;
+    const got = await this.live.setSource(kind, BASE);
+    for (const b of $("#tableBar").querySelectorAll("[data-source]")) b.setAttribute("aria-pressed", String(b.dataset.source === got.source));
+    // the camera over the table can be moved; a photo and the device's camera show what they show
+    $("#tableParts").hidden = got.source !== "table";
+    this.tableNote(got.problem ?? "");
+    if (got.problem) this.say(got.problem);
+    else this.say({ table: "The table from above.", photo: "A photo of the lab, with the game on the table.", camera: "The camera: point it at the table." }[got.source]);
+  }
+
+  /** The note of the table's bar: why it is not seen as asked, or that the table's markers are not in view. */
+  tableNote(problem = "") {
+    const lost = this.live?.tracking === false;
+    $("#tableNote").textContent = problem || (lost ? (this.live.source === "camera" ? "No markers in view: point the camera at the table." : "Looking for the table's markers …") : "");
+  }
+
+  /**
+   * The table under the pointer: a drag slides it (with the right button or Shift: turns and tilts the
+   * camera), the wheel and two fingers go nearer and farther, a click chooses what is there (a signal,
+   * a platform track, where a route goes). Only where the page shows nothing of its own.
+   */
+  tableControls(el) {
+    const mine = (e) => this.tabled && !this.bare && !e.target.closest?.(NOT_TABLE);
+    el.addEventListener("pointerdown", (e) => {
+      if (!mine(e)) return;
+      this.pointers.set(e.pointerId, { at: [e.clientX, e.clientY], from: [e.clientX, e.clientY], moved: false, turn: e.button === 2 || e.shiftKey });
+      el.setPointerCapture?.(e.pointerId);
+    });
+    el.addEventListener("pointermove", (e) => {
+      const p = this.pointers.get(e.pointerId);
+      if (!p || !this.live) return;
+      const to = [e.clientX, e.clientY];
+      if (!p.moved && Math.hypot(to[0] - p.from[0], to[1] - p.from[1]) < TABLE_CLICK_PX) return;
+      p.moved = true;
+      if (this.pointers.size === 2) {
+        // two fingers: the distance between them is the distance to the table
+        const other = [...this.pointers.values()].find((x) => x !== p), was = Math.hypot(p.at[0] - other.at[0], p.at[1] - other.at[1]), is = Math.hypot(to[0] - other.at[0], to[1] - other.at[1]);
+        if (was > 0 && is > 0) this.live.zoom(is / was, [(to[0] + other.at[0]) / 2, (to[1] + other.at[1]) / 2]);
+      } else if (p.turn) this.live.orbit((p.at[0] - to[0]) * 0.006, (to[1] - p.at[1]) * 0.004);
+      else this.live.drag(p.at, to);
+      p.at = to;
+    });
+    const up = (e) => {
+      const p = this.pointers.get(e.pointerId);
+      this.pointers.delete(e.pointerId);
+      if (!p || p.moved || e.type !== "pointerup") return;
+      this.tablePick(this.live?.hit(e.clientX, e.clientY, e.pointerType === "touch") ?? null);
+    };
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+    el.addEventListener("contextmenu", (e) => mine(e) && e.preventDefault());
+    el.addEventListener("wheel", (e) => {
+      if (!mine(e) || !this.live) return;
+      e.preventDefault();
+      this.live.zoom(Math.exp(-(e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) * (e.ctrlKey ? 0.01 : 0.0016)), [e.clientX, e.clientY]);
+    }, { passive: false });
+  }
+
+  /**
+   * What was clicked on the table (LiveScene.hit): a signal or a platform track is chosen as on the
+   * panel (a second click lets go of it); where a route of the signal chosen goes sets that route.
+   */
+  tablePick(hit) {
+    const seat = this.session?.seat(this.tab), p = seat && this.panels.get(seat.id);
+    if (!hit || !p || !this.atWork(seat) || seat.by !== "human") return;
+    const chosen = this.picked.get(seat.id);
+    if (hit.item) return void (hit.item === chosen ? this.unpick(seat.id) : this.pick(seat.id, hit.item, false));
+    const item = this.view(seat.game).sketch?.items.find((it) => it.id === chosen), move = item?.menu?.find((m) => m.name === "setRoute" && m.args?.[0] === hit.route);
+    if (!move) return;
+    this.pickMove(seat.id, item.id, move, false);
+    // a route set: the signal is let go of (one that was refused stays chosen, with the reason)
+    if (!this.refused.has(`${seat.id}|sketch`)) this.unpick(seat.id);
+  }
+
+  /** Let go of what is chosen in a seat's picture. */
+  unpick(seatId) {
+    this.picked.delete(seatId);
+    this.refused.delete(`${seatId}|sketch`);
+    this.draw(true);
   }
 
   /** Stars as they are shown: filled and empty, with their number for who does not see them. */
@@ -1281,8 +1425,12 @@ class PlayPage {
     // (a shift by day gets no picture of the night; in a turn of months or years the time is open); it may be
     // live, in a shift at the shift's own time of day
     const night = turn ? null : nightAt(s.phase.clock, s.t);
+    // the signaller's picture can be the table itself: the game on the layout, with what is chosen and the routes offered from a signal chosen
+    const item = view.sketch?.items.find((it) => it.id === this.picked.get(seat.id));
+    const table = this.tableOn && seat.Game.id === TABLE_GAME && g && active && !turn
+      ? { game: g, active: can, picked: can ? item?.id ?? null : null, offers: (item?.menu ?? []).filter((m) => m.name === "setRoute").map((m) => ({ route: m.args?.[0], disabled: !!m.disabled })) } : null;
     this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
-      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t) });
+      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t), table });
 
     // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
     p.deskTitle.textContent = seat.Game.title;
@@ -1473,19 +1621,22 @@ class PlayPage {
     return s("text", { class: `${tone}${it.small ? " small" : ""}`, x: it.x, y: it.y, "text-anchor": it.anchor ?? null }, it.text, tip);
   }
 
-  /** Choose an item of a seat's sketch: its moves appear below the picture, and the focus goes to the first of them. */
-  pick(seatId, id) {
+  /** Choose an item of a seat's sketch: its moves appear below the picture, and the focus goes to the first of them (`focus`). */
+  pick(seatId, id, focus = true) {
     this.picked.set(seatId, id);
     this.refused.delete(`${seatId}|sketch`);
     this.draw(true);
     // what is known of it is said (for who does not see the picture: the item's own name is its label)
     const known = this.panels.get(seatId).pick.querySelector(".play-asset");
     if (known) this.say(known.textContent);
-    this.panels.get(seatId).pick.querySelector("button")?.focus({ preventScroll: true });
+    // (chosen on the table with the pointer, the focus stays where it is: the next click is on the table again;
+    // chosen on the panel, the table's camera goes where it is)
+    if (focus) this.panels.get(seatId).pick.querySelector("button")?.focus({ preventScroll: true });
+    if (focus && this.tabled) this.live?.reveal(id);
   }
 
   /** A move from the menu of the item chosen in a sketch; after it the focus is back on the item. */
-  pickMove(seatId, id, m) {
+  pickMove(seatId, id, m, focus = true) {
     const k = `${seatId}|sketch`;
     const res = m.disabled ? { ok: false, reason: m.disabled } : this.act(seatId, m.name, ...(m.args ?? []));
     if (refusedBy(res)) {
@@ -1497,7 +1648,7 @@ class PlayPage {
     this.refused.delete(k);
     this.after();
     const p = this.panels.get(seatId);
-    ([...p.picks.children].find((el) => el.dataset.key === id) ?? p.sketchTitle).focus({ preventScroll: true });
+    if (focus) ([...p.picks.children].find((el) => el.dataset.key === id) ?? p.sketchTitle).focus({ preventScroll: true });
   }
 
   /**
@@ -1902,6 +2053,8 @@ class PlayPage {
       // while somebody speaks to the person at the seat shown, the shift's clock waits for the answer
       const held = this.listening();
       if (!s.over && s.phase.kind === "shift" && this.speed > 0 && !held) s.step(dt * this.speed);
+      // the world of the table runs with the game
+      if (this.live) this.live.pace = s.over || s.phase.kind !== "shift" || held ? 0 : this.speed;
       $("#shiftBar").classList.toggle("held", held);
       // games whose world is elsewhere exchange with it between the steps, one exchange at a time
       if (!s.over && !this.exchanging && typeof s.sync === "function") {
@@ -1921,7 +2074,8 @@ class PlayPage {
   /**
    * The keys. Choosing: the arrows go along the line of missions, T sounds the little train's horn. Playing: P pauses a shift and lets
    * it run again, 1 to 9 take an option of the decision in focus, Space reads on, D opens the desk,
-   * H shows only the picture, M switches the sound, L the live backdrop.
+   * H shows only the picture, M switches the sound, L the live backdrop, T the table; on the table the arrows slide it, + and − go
+   * nearer and farther, 0 shows the whole station.
    */
   key(e) {
     if (e.target.closest?.("input, select, textarea") || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return;
@@ -1937,6 +2091,14 @@ class PlayPage {
     if (k === "h" || k === "H") return void this.setBare(!this.bare);
     if (k === "m" || k === "M") return void this.setSound(!this.sound.on);
     if (k === "l" || k === "L") return void this.setLive(!this.liveOn);
+    if (k === "t" || k === "T") return void this.setTable(!this.tableOn);
+    if (this.tabled && this.live && !e.target.closest?.("[role=tab], [role=tablist], .play-scroll, .play-board")) {
+      const step = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[k];
+      if (step || k === "+" || k === "-" || k === "0") e.preventDefault();
+      if (step) return void this.live.drag([innerWidth / 2, innerHeight / 2], [innerWidth / 2 + step[0] * TABLE_STEP_PX, innerHeight / 2 + step[1] * TABLE_STEP_PX]);
+      if (k === "+" || k === "-") return void this.live.zoom(k === "+" ? TABLE_ZOOM : 1 / TABLE_ZOOM);
+      if (k === "0") return void this.live.show("all");
+    }
     if (this.bare) return;
     if ((k === "p" || k === "P") && this.session.phase?.kind === "shift") return void this.setSpeed(this.speed ? 0 : this.lastSpeed, true);
     const p = this.panels.get(this.tab);
