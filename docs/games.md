@@ -12,7 +12,8 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
   them ([The game core: one engine for every role](game-core.md))
 - [Two ways to play them together](#two-ways-to-play-them-together): the career mode (a graph of
   possibilities, with the career planner), the railway undertaking's simulator, and the big game
-- [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game
+- [The signaller of Bf Neustadt](#the-signaller-of-bf-neustadt): the first role game, and
+  [its shift on the table](#the-shift-on-the-table): the game on the lab's layout, in augmented reality
 - [How a game looks](#how-a-game-looks): a line or two, a picture of where you work
 - [Where the games are](#where-the-games-are) and [what comes next](#what-comes-next)
 
@@ -239,6 +240,71 @@ The code: `web/arail/game/signaller.js` (the interlocking, the trains, the failu
 tests in `tests/js/signaller.test.js`), the page `web/game/signaller/` (browser tests in
 `tests/e2e/signaller.spec.js`).
 
+### The shift on the table
+
+In a mission the signaller does not only work on the panel: the shift is played **on the table**,
+the lab's layout of Bf Neustadt, as the app shows it. The picture behind the game is then the game
+itself. The trains of the timetable run on the real tracks as cars (a railcar for a regional train,
+a locomotive with coaches for the intercity, a long freight train), stop at the real platforms and
+open their doors; a route is a Türkis band on the rails it locks (it pulses while its points move);
+the signals stand beside their tracks as masts with a red or green lamp, the three white lights of
+Zs 1, and a ring on the ground. The people of the layout's world wait on the platforms and get on
+the game's trains.
+
+**Nothing is written on the table** (the rule of [how a game looks](#how-a-game-looks)): no train
+numbers, no names of signals or tracks, no times. What needs the player pulses where it is: a
+signal pulses orange when a train comes to it within two minutes, or stands before it ready to go,
+and no route is set from it. The names, the trains on the lines and their delays are on the panel
+beside the table; the table's controls are in the side bar, its notes in the line at the top.
+
+**How to play.** Click a signal on the table (the one that pulses, to begin with), then where its
+route goes: one of the marks that pulse, or the platform track itself. A click on a platform track chooses it (to
+close or open it); a second click lets go. The panel stands small in the lower right corner and
+works as before: what is chosen in one is chosen in the other, and a signal chosen on the panel
+brings the table's camera to it. Everything else (the questions, the fault report, Zs 1 with its
+checks, the desk) is as on the panel: the table is another picture of the same game and makes the
+same moves, so the score, the stars and a saved session are the same.
+
+**Three ways to see the table** (in the side bar: the button *The table*):
+
+| | What it shows | For |
+| --- | --- | --- |
+| **Table** | The photo of the real table (the layout's orthophoto) from above, with the town behind it. The camera is yours: *Bergheim end*, *Platforms*, *Talsee end*, *Whole station*; a drag slides the table, the wheel, two fingers, **+** and **−** go nearer and farther, the arrows slide it, **0** shows the whole station (with the right button or Shift a drag turns and tilts) | playing anywhere |
+| **Lab photo** | A photo of the lab. The camera's place is found from the table's markers, and the game is drawn onto the real table | seeing what it is in the lab |
+| **Camera** | The camera of your tablet or phone (held wide), in the lab: point it at the table and its markers, and the shift runs on the real table in front of you. Without markers in view only the camera image is shown, and a note says so; without a camera the table stays as it was | playing in the lab (it needs https) |
+
+**T** (or *Play on the table*, behind the side bar's button) switches the table off and on; the
+choice is kept in the browser. Whether the table's markers are in view, and why a camera cannot be
+used, is said in the line at the top. The table is there wherever the live picture runs (not in a narrow window, where less
+motion is asked for, or where the device is too slow: there the panel is the picture, as before).
+
+**How the station lies on the table.** `TABLE` in `web/game/table.js` gives every section of the
+panel's station its way on the layout, along the real rails as the table's orthophoto shows them:
+the platform tracks G1 to G3 beside the two platforms, the ladder of points towards Bergheim
+(W1 to W3), the point of track G3 and the crossover towards Talsee (W6, W5, W4), the two lines
+out to the ends of the table. The game's east is the layout's −x: a train to Talsee runs on the
+track towards the windows. The table is shorter than the station, as every model railway is: the
+platform tracks set the scale (about 3.6 mm of table per metre, the 750 m of track G2 on 2.7 m),
+a train is drawn as long as it is at that scale, a section with a point is as long as its real
+rails are (a train passes it faster or slower in between, never backwards), and of the 1800 m of
+open line only the stretch next to the station is on the table. `tableProblems()` checks that
+every section has its way and that the ways of every route meet.
+
+**The world is the game's.** On the table the modules of the layout whose trains run into the
+station are off, the board (`TableBoard`, one of the world's simulations) is the planner of the
+platform tracks, and the world runs at the game's speed. A train of the game that stands at a
+platform is told to the world's services as a control system's train is (`feedArrived`, with a
+vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. The
+level crossing of Brückenstraße, on the line to Talsee, closes for the game's trains (from 250 m
+before a train reaches it until its end has passed; a freight train held at signal F stands across
+it) and no longer by the clock: the town's cars wait at its barriers (`TableBoard.trainsNear`,
+which a level crossing asks of the world's simulations).
+
+The code: `web/game/table.js` (the station on the layout, the board: drawing, what is clicked, the
+world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.js` (the table's
+camera, the table's photo, the lab's photo and the device's camera with the markers found in a
+worker), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
+
 ## How a game looks
 
 A mission is played as a game, not filled in as a form. What holds on the play page (`game/play/`),
@@ -291,6 +357,10 @@ and for the heads of the other pages of the games:
   stands where the still picture was taken (`web/game/shots.js`), sways a little, and flies on
   when a question is about something else. It is an ornament and changes nothing in a game; on a
   phone, where less motion is asked for, or where it is too slow, the still pictures stay.
+- **The signaller's picture is the table.** For a signaller's seat the live picture is the game's
+  own (the rail's **Table**, or **T**): its trains run on the lab's layout, its signals stand
+  there, and what is clicked on the table is chosen; on the table's photo from above, on a photo of
+  the lab, or through the camera in the lab itself ([the shift on the table](#the-shift-on-the-table)).
 - **A line or two first.** A mission says what it is in its `hook` ("Nine trains, forty minutes,
   and one signal that will fail."), with its facts as chips; a long text shows its first sentence
   (`lead` in `web/game/short.js`) and the rest behind More. The briefing, the seed and the wiring
@@ -351,7 +421,7 @@ A new game adds its place to `GAME_PLACES` and who asks in it to `GAME_CAST`; a 
 | Page | What |
 | --- | --- |
 | `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu (Continue, Missions, Signaller, Free play, Career, Roles, Logbook, Options, Leave). Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
-| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night, Transportleitung, Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API) |
+| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night, Transportleitung, Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API) The signaller's shift is played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/logbook/` | The logbook: the rank, the stars and the badges reached, the railway terms met as cards with a quiz, a sheet per mission played |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |

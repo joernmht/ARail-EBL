@@ -9,7 +9,8 @@ body { background: var(--board); }
 .backdrop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .7s ease; }
 .backdrop img.on { opacity: 1; animation: drift 60s ease-in-out infinite alternate; }
 /* live (live.js): the layout's world, running, over the still picture */
-.backdrop canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .9s ease; }
+/* (a picture of another shape than the window, a photo of the lab or the camera's image, covers it: SOURCES.focus in live.js) */
+.backdrop canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 80%; opacity: 0; transition: opacity .9s ease; }
 .backdrop.live canvas { opacity: 1; }
 /* the edges a little darker, for the bars on them; the middle stays the picture */
 .backdrop::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--board) 50%, transparent), transparent 20%, transparent 58%, color-mix(in srgb, var(--board) 62%, transparent)); }
@@ -320,6 +321,24 @@ body[data-screen="play"] .site-where { display: block; }
 .play-picked { font-weight: 600; }
 .play-pick [aria-disabled="true"] { background: var(--surface-2); border: 1px dashed var(--line); color: var(--text-2); cursor: not-allowed; }
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
+
+/* the table (T): the signaller's game on the lab's layout (table.js). The picture is the game's own, so nothing
+   shades it but the line at the top; the panel stands small in the lower right corner (the speaker stands at
+   the left), with what is chosen below it; the table's controls are in the side bar, its note in the line at the top */
+body.tabled .backdrop::after { background: linear-gradient(180deg, color-mix(in srgb, var(--board) 35%, transparent), transparent 14%); }
+body.tabled .vn-stage { cursor: grab; touch-action: none; }
+body.tabled .vn-stage .play-sketch { align-self: end; justify-self: end; margin-right: 12px; max-width: min(560px, 52%); padding: 6px 8px 8px; background: color-mix(in srgb, var(--board) 90%, transparent); cursor: auto; touch-action: auto; }
+body.tabled .vn-stage .play-sketch h4 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+body.tabled .vn-stage .play-board svg { min-width: 0 !important; max-height: 132px; }
+body.tabled .vn-talk { cursor: auto; touch-action: auto; }
+/* the table's controls: in the side bar, behind its button */
+.rail-table #tableBar { display: grid; gap: 10px; }
+.table-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.table-group[hidden], .rail-table [hidden] { display: none; }
+.rail-table .btn { background: var(--board-2); color: var(--board-text); border: 1px solid var(--board-line); font-weight: 600; }
+.rail-table .btn:hover { border-color: var(--board-text); }
+.rail-table .btn[aria-pressed="true"] { background: var(--overlay-ok); border-color: var(--overlay-ok); color: var(--board); }
+.table-note:empty { display: none; }
 
 
 /* the speaker's size, and how far they stand above the band */

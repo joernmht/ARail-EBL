@@ -80,6 +80,8 @@
         </div>
         <div class="hud-figures" id="hudFigures"></div>
         <div class="hud-notes" id="hudNotes"></div>
+        <!-- the table seen through a photo or the camera: why not as asked, or that its markers are not in view -->
+        <p class="vn-note table-note" id="tableNote" role="status"></p>
         <!-- a new message, one at a time: the newest of the seat shown, below the figures (all of them are under the bell) -->
         <button class="play-toast" type="button" id="toast" hidden></button>
       </section>
@@ -101,6 +103,7 @@
           <span class="rail-gap"></span>
           <button class="rail-btn" type="button" id="sound" data-icon="sound" aria-label="Sound" aria-pressed="true" title="Sound on or off (M)"></button>
           <button class="rail-btn" type="button" id="liveBtn" data-icon="live" aria-label="Live" aria-pressed="true" title="The picture behind the game runs: trains, buses, people (L)"></button>
+          <button class="rail-btn" type="button" id="tableBtn" data-icon="table" aria-label="The table" title="The table: the signaller plays on the lab's layout; how it is seen, and where (T switches it)" aria-expanded="false" aria-controls="tablePanel"></button>
           <button class="rail-btn" type="button" id="bare" data-icon="picture" aria-label="Picture" aria-pressed="false" title="Only the picture (H)"></button>
           <button class="rail-btn" type="button" id="leave" data-icon="leave" aria-label="Other missions" title="Other missions"></button>
 
@@ -110,6 +113,10 @@
             <ol class="play-phases" id="phases" aria-label="Phases of the round"></ol>
           </div>
           <div class="rail-panel" id="placePanel" role="region" aria-label="Where you work" hidden></div>
+          <div class="rail-panel rail-table" id="tablePanel" role="region" aria-labelledby="tableTitle" hidden>
+            <h3 id="tableTitle">The table</h3>
+            <div id="tableBar"></div>
+          </div>
           <div class="rail-panel rail-bell" id="bellPanel" role="region" aria-labelledby="bellTitle" hidden>
             <h3 id="bellTitle">Messages</h3>
             <div id="bellLists"></div>

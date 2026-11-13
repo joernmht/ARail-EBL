@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { BACKDROPS, PLACES, backdropAt, wideOf } from "../../web/game/places.js";
 import { View } from "../../web/arail/index.js";
 import { LiveScene } from "../../web/game/live.js";
+import { SignallerGame } from "../../web/arail/game/signaller.js";
 import { DAY, NEUSTADT, NIGHT, SEEN, SHOTS, between, seenFrom, shotOf } from "../../web/game/shots.js";
 
 test("shots: each has a picture, a layout that exists and a camera that looks down at the table", () => {
@@ -107,6 +108,17 @@ test("the game's pictures carry no information boxes: the live backdrop draws no
       for (let i = 0; i < 40; i++) scene.world.step(0.25);
       scene.draw(1e9);
     }
+  }
+  // the table, the signaller's game on the layout (web/game/table.js): no labels either, of the world or of the game
+  const scene = new LiveScene(blankCanvas());
+  await scene.load("layouts/ebl-neustadt.json", "layouts/ebl-neustadt.json");
+  const game = new SignallerGame({ seed: 3, level: "training" }), player = new SignallerGame.player();
+  assert.equal(scene.setTable(game, { active: true }), true);
+  for (let i = 0; i < 400; i++) {
+    player.think(game);
+    game.step(1);
+    scene.world.step(0.25);
+    if (i % 50 === 0) scene.draw(1e9 + i);
   }
   // the world would have labelled its trains, stops and stacks: asked for, none drawn
   assert.ok(asked.length > 10, `${asked.length} labels asked for`);

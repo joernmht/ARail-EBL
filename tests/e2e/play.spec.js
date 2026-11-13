@@ -15,6 +15,8 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test } from "@playwright/test";
 
+import { inPicture } from "./picture.js";
+
 const PAGE = "/game/play/", MORNING = `${PAGE}?mission=neustadt-morning`;
 const SIGNALLER = "#seat-signaller-relay", MAINTENANCE = "#seat-maintenance-dispatcher", ASSETS = "#seat-asset-manager";
 /** Where the pages keep what a player has reached (game/progress.js). */
@@ -2295,23 +2297,6 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(seats.nth(1).locator("tbody tr").first()).toContainText("A morning");
   await expect(page.locator("#result .play-debrief li")).toHaveText(["What did the second team cost, and what did it save?"]);
   expect(errors).toEqual([]);
-});
-
-/**
- * Text on the play screen that stands in the picture: every visible text that is not in the line at the top (the
- * semi-transparent header), the rail at the side, the band of who speaks, the game's own picture (the control desk:
- * what is about something in it pulses there) or a dialog. The phase's name over the whole screen is a title, for a
- * moment, not information. Each found as its text and the element it is in.
- */
-const inPicture = (page) => page.evaluate(() => {
-  const allowed = ".play-hud, .play-rail, .vn-talk, .play-sketch, dialog, #chapter, .visually-hidden, .bare-back";
-  const out = [], walk = document.createTreeWalker(document.querySelector("#play"), NodeFilter.SHOW_TEXT);
-  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-    const el = n.parentElement;
-    if (!n.textContent.trim() || el.closest(allowed) || !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
-    out.push(`${n.textContent.trim().slice(0, 60)} (in ${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}.${[...el.classList].join(".")})`);
-  }
-  return out;
 });
 
 test("no information box on the picture: in every state of a mission, text is only in the header, the rail, the band, the game's own picture or a dialog", async ({ page }) => {
