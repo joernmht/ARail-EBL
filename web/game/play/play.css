@@ -124,9 +124,10 @@ body[data-screen="play"] .play-layout { min-height: 0; display: grid; }
 /* the line at the upper middle: what must be seen, without boxes. Behind it the board's blue fades out
    downwards across the whole width, which keeps it readable on any picture */
 .play-hud {
-  grid-column: 1; grid-row: 1; margin: 0 0 0 calc(-1 * var(--pad)); padding: 10px 18px 22px;
+  grid-column: 1; grid-row: 1; margin: 0 0 0 calc(-1 * var(--pad)); padding: 10px 18px 46px; position: relative;
   display: flex; flex-wrap: nowrap; align-items: baseline; justify-content: center; gap: 2px 18px; white-space: nowrap; overflow: hidden;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--board) 92%, transparent) 0%, color-mix(in srgb, var(--board) 78%, transparent) 55%, color-mix(in srgb, var(--board) 0%, transparent) 100%);
+  /* (solid enough behind the message's line, then it fades out) */
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--board) 92%, transparent) 0%, color-mix(in srgb, var(--board) 82%, transparent) calc(100% - 16px), color-mix(in srgb, var(--board) 0%, transparent) 100%);
   font-size: .92rem;
 }
 /* (one line as long as it fits; a long one wraps between its parts rather than be cut) */
@@ -241,16 +242,19 @@ body[data-screen="play"] .site-where { display: block; }
 .play-log li.k-violation, .play-log li.k-wrong, .play-log li.k-cut { border-left-color: var(--board-warn); }
 .rail-bell .play-scroll { max-height: none; border: 0; padding: 0; }
 
-/* a message, one at a time: below the line at the top, at the right; pressed, it opens the messages */
+/* a new message, one at a time: a line of the header, below its figures, never a box on the picture (the header keeps
+   its room, so the stage does not move); pressed, it opens the messages */
 .play-toast {
-  all: unset; box-sizing: border-box; grid-column: 1; grid-row: 2; align-self: start; justify-self: end; position: relative; z-index: 6; margin: 4px 12px 0 0; max-width: min(420px, calc(100% - 24px));
-  padding: 8px 14px; border-radius: 8px; cursor: pointer; background: var(--board); color: var(--board-text); border-left: 4px solid var(--overlay-ok);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--board) 60%, transparent); font-size: .9rem; line-height: 1.35; animation: vn-toast .25s ease-out;
+  all: unset; box-sizing: border-box; position: absolute; left: 18px; right: 18px; bottom: 18px; text-align: center; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--board-text); font-size: .88rem; line-height: 1.4; animation: vn-toast .3s ease-out;
 }
+.play-toast::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; vertical-align: .1em; background: var(--overlay-ok); }
 .play-toast[hidden] { display: none; }
-.play-toast.k-violation, .play-toast.k-wrong, .play-toast.k-cut { border-left-color: var(--board-warn); }
-.play-toast:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-@keyframes vn-toast { from { transform: translateX(16px); } }
+.play-toast.k-violation, .play-toast.k-wrong, .play-toast.k-cut { color: #ffbe73; }
+.play-toast.k-violation::before, .play-toast.k-wrong::before, .play-toast.k-cut::before { background: var(--board-warn); }
+.play-toast:hover { text-decoration: underline; text-underline-offset: 3px; }
+.play-toast:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+@keyframes vn-toast { from { opacity: 0; transform: translateY(-4px); } }
 
 /* the stage of the seat shown: the picture is the scene; the boxes keep to its edges */
 .play-seats { grid-column: 1; grid-row: 2; display: grid; min-height: 0; }

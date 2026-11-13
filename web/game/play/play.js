@@ -30,7 +30,7 @@ const SAVE_FORMAT = "arail-session/1";
 const saveKey = (id) => `arail.play.${id}`;
 const SETTINGS_KEY = "arail.play.settings";
 const SPEEDS = [[0, "Pause"], [1, "1×"], [5, "5×"], [20, "20×"]];
-/** How long a message stays up as a pop-up (one at a time; all of them are under the bell). */
+/** How long a new message stays in the line at the top (one at a time; all of them are under the bell). */
 const TOAST_MS = 5000;
 /**
  * The icons of the rail: drawn as lines in a 24 × 24 box (the stroke takes the button's colour). A
@@ -252,7 +252,7 @@ class PlayPage {
     this.prev = null;
     this.lastDraw = 0;
     this.lastSave = 0;
-    /** What is open at the side (the id of its panel), or null; the pop-up shown, and until when. */
+    /** What is open at the side (the id of its panel), or null; the newest message in the line at the top, and until when. */
     this.opened = null;
     this.toastUntil = 0;
     /** Of each game, how many of its messages have been seen (under the bell, or read in a turn). */
@@ -1066,7 +1066,7 @@ class PlayPage {
     if (p) p.seenAt = g ? this.seen.get(g) ?? 0 : 0;
   }
 
-  /** The pop-up goes. */
+  /** The newest message goes from the line at the top. */
   hideToast() {
     this.toastUntil = 0;
     $("#toast").hidden = true;
@@ -1159,7 +1159,7 @@ class PlayPage {
    * A seat's panel. In the line at the top its figures (those about something in its picture are
    * shown there, pulsing) and a note on its state; on the stage the game's picture; in a turn, what
    * happened, line by line, to read on from; then the decision in focus, asked by its speaker with
-   * its choices (the others wait as dots); a new message pops up; its tools at the side, its
+   * its choices (the others wait as dots); a new message comes into the line at the top; its tools at the side, its
    * messages under the bell. Behind it the picture that fits what is spoken of. In the desk: the
    * role, the moves as forms, the tables, the score so far. A computer's seat and a seat not at
    * work show the same without forms and buttons.
@@ -1254,7 +1254,7 @@ class PlayPage {
       h("button", { class: "btn small", type: "button", onclick: () => this.explain(term.id) }, "Got it"),
     ] : null);
 
-    // a new message of the seat shown pops up, one at a time (a newer one takes the place of the one before); not
+    // a new message of the seat shown comes into the line at the top, one at a time (a newer one takes the place of the one before); not
     // what is read line by line in a turn, nor with the messages open under the bell
     const last = logs.at(-1) ?? null;
     if (seat.id === this.tab && last && p.lastLine !== last && !tells && this.opened !== "bellPanel" && !this.bare) {

@@ -69,7 +69,8 @@ export class LiveScene {
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
       const world = createWorld(await res.json(), { seed: 1 });
-      // an ornament: no signs over the stops, and the clock at the simulation's own pace, so that a morning stays a morning
+      // an ornament: no signs over the stops (and no labels at all: View `labels`), and the clock at the simulation's
+      // own pace, so that a morning stays a morning
       world.settings.labels = false;
       world.speed = LIVE.speed;
       world.clock.factor = 1;
@@ -182,7 +183,7 @@ export class LiveScene {
     // on the way from one shot to another, what both show
     const flying = this.from && now - this.t0 < LIVE.fly_s * 1000 && this.nearFrom;
     const objects = flying ? [...new Set([...this.nearFrom, ...this.near])] : this.near;
-    world.draw(new View({ ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: width / Math.max(1, canvas.clientWidth), time: world.time, night, virtual: true }), { objects });
+    world.draw(new View({ ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: width / Math.max(1, canvas.clientWidth), time: world.time, night, virtual: true, labels: false }), { objects });
   }
 
   /** The sky above the horizon and the lab's floor below it, by day and at night (the colours of the app's flyover). */

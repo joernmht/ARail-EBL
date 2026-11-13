@@ -1,8 +1,11 @@
-// The camera positions of the game's virtual pictures (web/game/shots.js), and the camera's way between them.
+// The camera positions of the game's virtual pictures (web/game/shots.js), and the camera's way between them; and
+// that the game's pictures carry no information boxes: the live backdrop draws no labels, no place is the AR screenshot.
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { BACKDROPS, PLACES, backdropAt, wideOf } from "../../web/game/places.js";
+import { View } from "../../web/arail/index.js";
+import { LiveScene } from "../../web/game/live.js";
 import { DAY, NEUSTADT, NIGHT, SEEN, SHOTS, between, seenFrom, shotOf } from "../../web/game/shots.js";
 
 test("shots: each has a picture, a layout that exists and a camera that looks down at the table", () => {
@@ -63,4 +66,59 @@ test("seenFrom: a square on the ground from behind the camera to several distanc
   const close = seenFrom({ target: [100, 100], distance_mm: 10, yaw_deg: 90 });
   assert.equal(Math.round(close[2] - close[0]), 2 * SEEN.min_mm, "never smaller than the least");
   assert.ok(close[3] - 100 > 100 - close[1], "more ahead than behind");
+});
+
+/** A canvas that draws nothing, as large as a window. */
+function blankCanvas() {
+  const ctx = new Proxy({}, {
+    get(t, key) {
+      if (key in t) return t[key];
+      if (key === "measureText") return (text) => ({ width: 6 * String(text).length });
+      if (key === "createRadialGradient" || key === "createLinearGradient") return () => ({ addColorStop() {} });
+      if (key === "getLineDash") return () => [];
+      return () => {};
+    },
+    set: (t, key, value) => ((t[key] = value), true),
+  });
+  const canvas = { width: 1280, height: 720, clientWidth: 1280, clientHeight: 720, getContext: () => ctx, addEventListener() {} };
+  ctx.canvas = canvas;
+  return canvas;
+}
+
+test("the game's pictures carry no information boxes: the live backdrop draws no labels from any shot", async (t) => {
+  const fetched = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ ok: true, json: async () => JSON.parse(readFileSync(`web/${url}`, "utf8")) });
+  // every label asked for, and how many of them were drawn (put on the view to be drawn)
+  const label = View.prototype.label, asked = [];
+  View.prototype.label = function (at, text, style) {
+    const before = this.items.length;
+    label.call(this, at, text, style);
+    asked.push({ text: [text].flat().join(" "), drawn: this.items.length - before });
+  };
+  t.after(() => {
+    View.prototype.label = label;
+    globalThis.fetch = fetched;
+  });
+  for (const layout of new Set(SHOTS.map((s) => s.layout))) {
+    const scene = new LiveScene(blankCanvas());
+    assert.ok(await scene.load(layout, layout), layout);
+    for (const shot of SHOTS.filter((s) => s.layout === layout)) {
+      scene.look(shot);
+      for (let i = 0; i < 40; i++) scene.world.step(0.25);
+      scene.draw(1e9);
+    }
+  }
+  // the world would have labelled its trains, stops and stacks: asked for, none drawn
+  assert.ok(asked.length > 10, `${asked.length} labels asked for`);
+  assert.deepEqual(asked.filter((a) => a.drawn).map((a) => a.text), []);
+  // a view of the app still draws them
+  const view = new View({ ctx: blankCanvas().getContext(), camera: { width: 100, height: 100, project: () => [50, 50], intrinsics: { fx: 1, fy: 1, cx: 0, cy: 0 } }, H: [1, 0, 0, 0, 1, 0, 0, 0, 1], scale: 87, pose: { a1: [1, 0, 0], a2: [0, 1, 0], a3: [0, 0, 1000], n: [0, 0, 1] } });
+  view.label([0, 0, 0], "RB 31");
+  assert.equal(asked.at(-1).drawn, 1);
+});
+
+test("the game's pictures carry no information boxes: no place or backdrop is the AR screenshot with its labels", () => {
+  for (const p of [...PLACES, ...BACKDROPS]) {
+    for (const pic of [p.photo, p.wide].filter(Boolean)) assert.doesNotMatch(pic, /-ar\.jpg$/, `${p.id}: ${pic}`);
+  }
 });

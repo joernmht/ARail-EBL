@@ -79,6 +79,8 @@
         <div class="hud-figures" id="hudFigures"></div>
         <div class="hud-notes" id="hudNotes"></div>
         <div class="play-progress" id="progress" role="progressbar" aria-label="Time of the shift" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+        <!-- a new message, one at a time: the newest of the seat shown, below the figures (all of them are under the bell) -->
+        <button class="play-toast" type="button" id="toast" hidden></button>
       </section>
 
       <section class="play-seats" aria-labelledby="seatsTitle">
@@ -113,9 +115,6 @@
           </div>
         </div>
       </nav>
-
-      <!-- a message, one at a time: the newest of the seat shown (all of them are under the bell) -->
-      <button class="play-toast" type="button" id="toast" hidden></button>
 
       <dialog class="play-dialog play-flows" id="flowsDialog" aria-labelledby="flowsTitle">
         <div class="play-dialog-head">

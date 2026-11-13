@@ -265,11 +265,17 @@ and for the heads of the other pages of the games:
     lets the picture through (the board's colour at 76 %, its text a little lighter, so it stays
     readable whatever the picture shows). A text longer than the band scrolls in the band.
 
-  A new message pops up, one at a time (a newer one takes its place, and it goes by itself);
-  all of them are under the bell, each on its own card with its time, the new ones marked. Something in the game's picture that a figure is about, or that
-  needs attention, is not written out: it **pulses** in its colour (red for a problem, orange for
-  a worry: the failed signal, a fault where a danger is not guarded), and a click on it says what
-  is known of it. **H** leaves only the picture.
+  **No information stands in a box on the picture.** It is in the line at the top or at the side,
+  in the rail; the band at the bottom is only for who speaks. A new message comes into the line
+  at the top, below the figures, one at a time (a newer one takes its place, and it goes by
+  itself); all of them are under the bell, each on its own card with its time, the new ones
+  marked. Something in the game's picture that a figure is about, or that needs attention, is not
+  written out: it **pulses** in its colour (red for a problem, orange for a worry: the failed
+  signal, a fault where a danger is not guarded), and a click on it says what is known of it. The
+  pictures themselves carry no labels either: the live picture draws none (`View` with `labels:
+  false`), and the still ones are taken without them and without the marker plates (signs that
+  are part of the world, such as a station's name board, stay). `tests/e2e/play.spec.js` and
+  `tests/js/game-shots.test.js` check this. **H** leaves only the picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
   the lab, the terminal, the station forecourt, the town, the town at night), and every mission

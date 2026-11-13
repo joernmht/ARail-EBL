@@ -119,7 +119,7 @@ const tool = (page, seat, name) => part(page, seat, ".vn-tools").getByRole("butt
 const part = (page, seat, sel) => page.locator(`${sel}[data-seat="${seat.replace(/^#seat-/, "")}"]`);
 /** The names of a seat's tools at the side (icons, named by their labels). */
 const toolNames = (page, seat) => part(page, seat, ".vn-tools").locator("button").evaluateAll((list) => list.map((b) => b.getAttribute("aria-label")));
-/** The pop-up message shown now. */
+/** The newest message, in the line at the top. */
 const toast = (page) => page.locator("#toast");
 
 /** Open a seat's desk from its stage. */
@@ -2294,5 +2294,67 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(seats.nth(1).locator("tbody tr")).toHaveCount(2);
   await expect(seats.nth(1).locator("tbody tr").first()).toContainText("A morning");
   await expect(page.locator("#result .play-debrief li")).toHaveText(["What did the second team cost, and what did it save?"]);
+  expect(errors).toEqual([]);
+});
+
+/**
+ * Text on the play screen that stands in the picture: every visible text that is not in the line at the top (the
+ * semi-transparent header), the rail at the side, the band of who speaks, the game's own picture (the control desk:
+ * what is about something in it pulses there) or a dialog. The phase's name over the whole screen is a title, for a
+ * moment, not information. Each found as its text and the element it is in.
+ */
+const inPicture = (page) => page.evaluate(() => {
+  const allowed = ".play-hud, .play-rail, .vn-talk, .play-sketch, dialog, #chapter, .visually-hidden, .bare-back";
+  const out = [], walk = document.createTreeWalker(document.querySelector("#play"), NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const el = n.parentElement;
+    if (!n.textContent.trim() || el.closest(allowed) || !el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+    out.push(`${n.textContent.trim().slice(0, 60)} (in ${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}.${[...el.classList].join(".")})`);
+  }
+  return out;
+});
+
+test("no information box on the picture: in every state of a mission, text is only in the header, the rail, the band, the game's own picture or a dialog", async ({ page }) => {
+  const found = [];
+  const check = async (state) => found.push(...(await inPicture(page)).map((t) => `${state}: ${t}`));
+  const errors = await start(page);
+  await run(page, 3);
+  await expect(page.locator(`${SIGNALLER} .vn-story .vn-line`)).toBeVisible();
+  await check("a line of the mission's story");
+  await readOn(page, SIGNALLER);
+  await run(page, 787);
+  await expect(page.locator(`${SIGNALLER} .play-decision`)).toHaveCount(2);
+  await check("a shift with a decision asked and one waiting");
+  await page.locator(SIGNALLER).getByRole("button", { name: "Report it now" }).click();
+  await run(page, 2);
+  // a new message: in the line at the top, below the figures, not as a box on the picture
+  await expect(toast(page)).toBeVisible();
+  const [msg, hud] = await Promise.all([toast(page).boundingBox(), page.locator("#hud").boundingBox()]);
+  expect(msg.y).toBeGreaterThanOrEqual(hud.y);
+  expect(msg.y + msg.height).toBeLessThanOrEqual(hud.y + hud.height);
+  expect(await toast(page).evaluate((el) => el.closest(".play-hud") !== null && getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await check("a new message");
+  // something in the game's picture that needs attention pulses there, and chosen it says what is known
+  await expect(page.locator(`${SIGNALLER} .play-board .pick.alert`).first()).toBeVisible();
+  await page.locator(`${SIGNALLER} .play-board .pick.alert`).first().click();
+  await check("an asset chosen in the game's picture");
+  await page.locator("#bellBtn").click();
+  await check("the messages at the side");
+  await page.keyboard.press("Escape");
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(page.locator(MAINTENANCE)).toBeVisible();
+  await check("a computer's seat");
+  await page.locator("#bare").click();
+  await check("only the picture");
+  await page.locator("#bareBack").click();
+  // a turn: what happened, line by line, and its decisions
+  await open(page, `${PAGE}?mission=budget-years`);
+  await page.locator("#start").click();
+  await expect(page.locator(`${ASSETS} .vn-story .vn-line`)).toBeVisible();
+  await check("a turn told line by line");
+  await readOn(page, ASSETS);
+  await expect(page.locator(`${ASSETS} .play-decision`).first()).toBeVisible();
+  await check("a turn with decisions");
+  expect(found).toEqual([]);
   expect(errors).toEqual([]);
 });
