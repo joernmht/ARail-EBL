@@ -1,7 +1,7 @@
 # arail-tools
 
-Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and five Node.js scripts,
-[`ops-compare.mjs`](#comparing-operations-setups), [`roles-md.mjs`](#the-role-catalogues-guide),
+Python tools for [ARail-EBL](https://github.com/joernmht/ARail-EBL) (and six Node.js scripts,
+[`ops-compare.mjs`](#comparing-operations-setups), [`hump.mjs`](#humping-trains), [`roles-md.mjs`](#the-role-catalogues-guide),
 [`changelog.mjs`](#the-changelog-fragments), [`fetch-fonts.mjs`](#updating-the-fonts) and [`video/render.mjs`](#videos)):
 
 | Command | What it does | Extra |
@@ -88,6 +88,21 @@ node tools/ops-compare.mjs web/layouts/ebl-lab.json --list   # the setups and st
 
 Options: `--days N` (measured days per run, 28), `--seeds N` (runs per setup, 3), `--stress ID`,
 `--setups ID,ID` (default: the layout's setups, else the presets), `--csv FILE`, `--json FILE`.
+
+## Humping trains
+
+`hump.mjs` (Node.js) humps random trains over the standard [hump yard](../docs/hump-yard.md) and
+prints what became of every cut, the tracks and the figures (cuts per hour, misroutes, hard impacts,
+gaps):
+
+```bash
+node tools/hump.mjs                                    # one train of 30 wagons, 8 tracks, summer
+node tools/hump.mjs --trains 4 --season winter --push 1.6 --quiet
+node tools/hump.mjs --design target --json run.json    # target braking alone; the whole result
+```
+
+Options: `--tracks N` (8), `--wagons N` (30), `--trains N` (1), `--seed N` (1), `--push M/S` (1.2),
+`--season summer|winter`, `--design speed|target`, `--estimate-sd N/KN` (0.4), `--quiet`, `--json FILE`.
 
 ## The role catalogue's guide
 
