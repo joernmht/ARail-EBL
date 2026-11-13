@@ -426,10 +426,10 @@ test("pulling out takes the cuts of the track's contents, never an empty track; 
 
 test("the command line refuses an option without its value", () => {
   const run = (...args) => spawnSync(process.execPath, [join(ROOT, "tools/hump.mjs"), ...args], { cwd: ROOT, encoding: "utf8" });
-  for (const args of [["--json", "--quiet"], ["--quiet", "--svg"], ["--trains"], ["--push", "fast"]]) {
+  for (const args of [["--json", "--quiet"], ["--quiet", "--svg"], ["--trains"], ["--push", "fast"], ["--tracks", "0"], ["--wagons", "-1"], ["--trains", "1.5"], ["--push", "0"], ["--pull-below", "-5"]]) {
     const p = run(...args);
     assert.equal(p.status, 1, `${args.join(" ")}: ${p.stdout}`);
-    assert.match(p.stderr, /needs a (value|number)/);
+    assert.match(p.stderr, /needs a (value|number|whole number)/);
   }
   const ok = run("--wagons", "6", "--tracks", "2", "--quiet");
   assert.equal(ok.status, 0, ok.stderr);
@@ -477,4 +477,47 @@ test("one careful limit, cuts per hour while a train is pushed, a cut across a t
     return JSON.stringify(sim.run());
   };
   assert.equal(run(true), run(false), "the same run as without the refused trains");
+});
+
+test("a track blocked at its entrance with room further in is pushed up, not pulled out; tracks by name, also given by segment", () => {
+  // the review's case: a bad runner stopped early in a 250 m track, the cuts coupled behind it up to the entrance,
+  // the space all at the far end: no room at the entrance, but most of the track free
+  const yard = standardYard({ tracks: 2, track_m: 250 });
+  const sim = new HumpSimulation(yard, { seed: 1, dt: 0.1 });
+  sim.hump({ id: "B", wagons: Array.from({ length: 6 }, () => ({ type: "eanos", loaded: 1, track: "1" })) });
+  sim.run();
+  const leaf = yard.trackSegment("1");
+  const standing = sim.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id).sort((a, b) => b.s - a.s);
+  let edge = leaf.track.s0 + standing.reduce((m, b) => m + b.body.length_m, 0) + 0.5;
+  for (const b of standing) {
+    Object.assign(b, { s: edge, held: false });
+    edge -= b.body.length_m;
+  }
+  const blocked = sim.trackContents("1");
+  assert.ok(blocked.free_m < 1 && blocked.length_m - blocked.occupied_m > 150, "blocked at its entrance, room further in");
+  sim.options.pull_below_m = 60;
+  sim._pullFull();
+  const ups = sim.log.filter((e) => e.type === "track.pushed-up" && e.track === "1");
+  assert.equal(ups.length, 1, "pushed up");
+  assert.equal(sim.departures.length, 0, "not pulled out: the room was in the track");
+  const freed = sim.trackContents("1");
+  near(freed.free_m, freed.length_m - freed.occupied_m, 1e-6, "all the room at the entrance now");
+  near(ups[0].m, freed.free_m - blocked.free_m, 0.01, "the room gained");
+  assert.equal(sim.results().pushed_up_m, Math.round(ups[0].m * 100) / 100);
+  // by hand: the gaps closed, the room gained
+  const hand = new HumpSimulation(yard, { seed: 1, dt: 0.1 });
+  hand.hump({ id: "H", wagons: [{ type: "eanos", loaded: 1, w_nkn: 6, track: "1" }, { type: "eanos", loaded: 1, w_nkn: 1, track: "2" }, { type: "eanos", loaded: 1, w_nkn: 6, track: "1" }] });
+  hand.run();
+  const before = hand.trackContents("1");
+  const gained = hand.pushUp("1");
+  const after = hand.trackContents("1");
+  near(after.free_m - before.free_m, gained, 1e-6, "the room gained at the entrance");
+  assert.equal(after.gaps.length, 0);
+  assert.equal(after.end_m, 0, "buffer to buffer up to the end");
+  // a track given by its segment's id is that track, by its name
+  const named = new HumpSimulation(standardYard(), { seed: 1 });
+  named.hump({ id: "N", wagons: [{ type: "eanos", loaded: 1, track: "3" }, { type: "eanos", loaded: 1, track: "t3" }, { type: "zacns", loaded: 1, track: "t6" }] });
+  assert.deepEqual(named.cuts.map((c) => [c.track, c.wagons.length]), [["3", 2], ["6", 1]], "one cut for 3 and t3");
+  const rn = named.run();
+  assert.deepEqual(rn.perCut.map((c) => [c.track, c.ended]), [["3", "3"], ["6", "6"]]);
 });

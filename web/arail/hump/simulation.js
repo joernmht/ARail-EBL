@@ -21,8 +21,8 @@ import { cutBody, cutForces, energyHeight } from "./physics.js";
  * two trains (s), how far before the crest a train's front starts (m), how far beyond the crest the
  * locomotive pushes a cut that does not run free (m), the space between two cuts that counts as a
  * gap (m), the impact limits (m/s), trace (s, v and energy height of every cut every `trace_s`), the
- * longest run (s), and `pull_below_m`: a track whose wagons leave less of it than this is pulled out
- * as a train (null: only by hand, `pullOut`).
+ * longest run (s), and `pull_below_m`: a track with less room than this at its entrance is pushed up
+ * and, if still too full, pulled out as a train (null: only by hand, `pushUp` and `pullOut`).
  */
 export const SIM_DEFAULTS = Object.freeze({
   dt: 0.05, seed: 1, season: "summer", wind_mps: null, train_gap_s: 120, start_m: 15, push_over_m: 25, gap_m: 1,
@@ -111,13 +111,14 @@ export class HumpSimulation {
   hump(train) {
     const id = String(train.id ?? `T${this.trains.length + 1}`);
     // the whole train checked first (types, tracks), so that a wrong one changes nothing: no cut, no random number
-    for (const w of train.wagons || []) {
+    // each wagon's track by its name, also where it was given by its segment's id ("t3" → "3")
+    const specs = (train.wagons || []).map((w) => {
       wagonType(w.type);
       const track = w.track ?? (w.destination != null ? train.sorting?.[w.destination] : null);
       if (track == null) throw new Error(`wagon ${w.id ?? w.type} of train ${id}: no classification track for ${w.destination ?? "it"}`);
-      this.yard.trackSegment(track);
-    }
-    const wagons = (train.wagons || []).map((w, i) => makeWagon({ ...w, id: w.id ?? `${id}.${i + 1}` }, this.rng, this.options.season));
+      return { ...w, track: this.yard.trackSegment(track).track.name };
+    });
+    const wagons = specs.map((w, i) => makeWagon({ ...w, id: w.id ?? `${id}.${i + 1}` }, this.rng, this.options.season));
     const push = train.push_mps ?? (train.push_kmh != null ? train.push_kmh / 3.6 : SPEEDS.push_mps);
     const rec = { id, wagons: wagons.length, cuts: [], push_mps: push, queued_t: this.t, started_t: null, humped_t: null, skipped: [] };
     const cuts = [];
@@ -169,16 +170,54 @@ export class HumpSimulation {
   }
 
   /**
-   * Pull out every track whose wagons leave less than `pull_below_m` of it (also one whose last cut
-   * sticks out of its entrance: then they fill more than all of it): the standing wagons leave from
-   * its far end, while cuts on their way roll on into the emptied track. A track without wagons is
-   * never pulled out.
+   * Every track with less than `pull_below_m` of room left at its entrance (also one whose last cut
+   * sticks out of it): its wagons are first pushed up to its end (`pushUp`), closing the gaps; if
+   * that leaves too little room, the track is pulled out as a train once no cut rolls in it: the
+   * standing wagons leave from its far end, while cuts on their way roll on into the emptied track.
+   * A track without wagons is never pulled out.
    */
   _pullFull() {
+    const min = this.options.pull_below_m;
     for (const t of this.yard.tracks) {
-      const c = this.trackContents(t.name);
-      if (c.cuts.length && c.length_m - c.occupied_m < this.options.pull_below_m) this.pullOut(t.name);
+      let c = this.trackContents(t.name);
+      if (!c.cuts.length || c.free_m >= min) continue;
+      // too little room at the entrance: first push the wagons up to the end (never past a cut still rolling)
+      if (c.gaps.length || c.end_m > this.options.gap_m) {
+        this.pushUp(t.name);
+        c = this.trackContents(t.name);
+      }
+      // then pull them out if still full, once no cut rolls in the track any more
+      const leaf = this.yard.trackSegment(t.name);
+      const quiet = !this.bodies.some((b) => b.v > 0 && b.route[b.route.length - 1] === leaf.id && b.s >= leaf.track.s0);
+      if (c.free_m < min && quiet) this.pullOut(t.name);
     }
+  }
+
+  /**
+   * Push the cuts standing in a classification track up to its end, buffer to buffer (Beidrücken):
+   * the gaps between them and the room before the end are closed, but no cut is pushed past one
+   * still rolling in the track. Instant, like pulling out.
+   * @param {string} name
+   * @returns {number} the room gained at the entrance (m): how far the last cut was moved
+   */
+  pushUp(name) {
+    const leaf = this.yard.trackSegment(name), tr = leaf.track;
+    const here = this.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id && b.s >= tr.s0 - 1e-6).sort((a, b) => b.s - a.s);
+    let edge = leaf.s1, gained = 0;
+    for (const b of here) {
+      if (b.v > 0) {
+        edge = Math.min(edge, b.s - b.body.length_m); // a cut still rolling: the ones behind it stay behind it
+        gained = 0;
+        continue;
+      }
+      gained = Math.max(0, edge - b.s); // the last one moved is the one at the entrance
+      if (edge > b.s) b.s = edge;
+      if (b.s >= leaf.s1 - 1e-9) b.held = true; // at the end, its stop holds it
+      edge = b.s - b.body.length_m;
+    }
+    this.pushedUp_m = (this.pushedUp_m || 0) + gained;
+    this.note("track.pushed-up", { track: tr.name, m: round(gained) });
+    return gained;
   }
 
   /**
@@ -528,7 +567,7 @@ export class HumpSimulation {
       derailed: perCut.filter((c) => c.derailed).length, short: perCut.filter((c) => c.stop && !c.ended).length,
       hard: impacts.filter((c) => c.impact_mps > (c.careful ? o.careful_mps : o.impact_mps) + 1e-9).length,
       max_impact_mps: impacts.reduce((m, c) => Math.max(m, c.impact_mps), 0),
-      gaps: tracks.reduce((n, t) => n + t.gaps.length, 0), gaps_m: tracks.reduce((m, t) => m + t.gaps_m, 0),
+      gaps: tracks.reduce((n, t) => n + t.gaps.length, 0), gaps_m: tracks.reduce((m, t) => m + t.gaps_m, 0), pushed_up_m: round(this.pushedUp_m || 0),
       overspeed: this.log.filter((e) => e.type === "retarder.overspeed").length,
       perCut, tracks,
     };

@@ -50,9 +50,13 @@ const results = sim.run();          // every cut, every track, the figures
 const train = sim.pullOut("6");     // the wagons of track 6, from its end: a new train
 ```
 
-With `pull_below_m` (say 120) the simulation pulls a track out by itself once its wagons leave less
-than that of it: the standing wagons leave from its far end while cuts on their way roll on into it,
-so train after train can be humped (`sim.departures` lists them). A train pulled out, by hand or by
+With `pull_below_m` (say 120) the simulation keeps the tracks open by itself. A track with less
+room than that at its entrance is first **pushed up** (`pushUp`, Beidrücken): its wagons are pushed
+buffer to buffer up to its end, closing the gaps and the space a bad runner left before the end
+(never past a cut still rolling in it). If that leaves too little room, the track is **pulled out**
+as a train once no cut rolls in it: the standing wagons leave from its far end while cuts on their
+way roll on into it. So train after train can be humped (`sim.departures` lists the trains,
+`results().pushed_up_m` the room gained by pushing up). A train pulled out, by hand or by
 itself, takes the cuts standing in the track (`trackContents`), also one that stopped across its
 entrance, coupled to the last wagons with its rear still outside: it fills the track, which is then
 pulled out with it. A cut stopped wholly in front of the track stays there, and an empty track is
@@ -273,8 +277,8 @@ The geometry's sources are in the table of [the yard](#the-yard): [Pachl][pachl]
   per wagon; only the control's measurement of it has an error.
 - **Retarder physics in detail**: the force is the same share of the weight on every axle inside
   (a weight-proportional retarder), closing and opening take a fixed time.
-- **Tracks pushed up between trains** (Beidrücken) and a yard planner who keeps cuts away from a
-  track whose entrance is blocked; pulling a train out takes no time.
+- **The shunting locomotive** that pushes tracks up and pulls trains out: both take no time and
+  no locomotive here; a yard planner who keeps cuts away from a track while it is being pushed up.
 - **The plan**: the yard is a profile along its routes, not drawn on the table (#237).
 - **Rolling back**, couplers (buffers touching count as coupled), and the train being pulled out
   taking time.

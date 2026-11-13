@@ -35,17 +35,22 @@ if (args.includes("--help")) {
   console.log("Usage: node tools/hump.mjs [--tracks 8] [--wagons 30] [--trains 1] [--seed 1] [--push 1.2] [--season summer|winter] [--design speed|target] [--estimate-sd 0.4] [--pull-below M] [--quiet] [--json FILE] [--svg FILE]");
   process.exit(0);
 }
-const num = (name, fallback) => {
+/** A number of an option; `kind`: "count" a whole number from 1, "positive" above 0, "nonnegative" from 0. */
+const num = (name, fallback, kind) => {
   const v = Number(opt(name, fallback));
   if (!Number.isFinite(v)) fail(`--${name} needs a number`);
+  if (kind === "count" && !(Number.isInteger(v) && v >= 1)) fail(`--${name} needs a whole number from 1`);
+  if (kind === "positive" && !(v > 0)) fail(`--${name} needs a number above 0`);
+  if (kind === "nonnegative" && !(v >= 0)) fail(`--${name} needs a number from 0`);
   return v;
 };
 // every option read before the run, so that a wrong one fails at once
-const tracks = num("tracks", 8), wagons = num("wagons", 30), trains = num("trains", 1), seed = num("seed", 1), push = num("push", 1.2);
+const tracks = num("tracks", 8, "count"), wagons = num("wagons", 30, "count"), trains = num("trains", 1, "count"), seed = num("seed", 1);
+const push = num("push", 1.2, "positive");
 const season = opt("season", "summer"), design = opt("design", "speed");
 if (!SEASONS[season] || !TRACK_DESIGNS[design]) fail(`--season is one of ${Object.keys(SEASONS).join(", ")}; --design one of ${Object.keys(TRACK_DESIGNS).join(", ")}`);
-const control = opt("estimate-sd") != null ? { estimate_sd: num("estimate-sd") } : {};
-const pull = opt("pull-below") != null ? num("pull-below") : null;
+const control = opt("estimate-sd") != null ? { estimate_sd: num("estimate-sd", 0, "nonnegative") } : {};
+const pull = opt("pull-below") != null ? num("pull-below", 0, "nonnegative") : null;
 const svg = opt("svg"), file = opt("json");
 
 const yard = standardYard({ tracks, design });
@@ -76,6 +81,7 @@ console.log("");
 console.log(`${r.trains} train(s), ${r.cuts} cuts, ${r.wagons} wagons in ${f(r.push_s / 60)} min of pushing: ${f(r.cuts_per_hour, 0)} cuts per hour`);
 if (r.limit_reached) console.warn(`Stopped after ${f(r.t_s / 3600)} h with ${r.waiting} train(s) not humped (or cuts still rolling).`);
 if (sim.departures.length) console.log(`Pulled out: ${sim.departures.map((d) => `track ${d.track} (${d.wagons.length} wagon${d.wagons.length === 1 ? "" : "s"})`).join(", ")}`);
+if (r.pushed_up_m > 0) console.log(`Pushed up: ${f(r.pushed_up_m, 0)} m`);
 console.log(`Misrouted ${r.misrouted}, caught up ${r.caughtUp}, derailed ${r.derailed}, stopped short ${r.short}; impacts too hard ${r.hard} (highest ${f(r.max_impact_mps, 2)} m/s); gaps ${r.gaps} (${f(r.gaps_m, 0)} m to push up); retarders entered too fast ${r.overspeed}`);
 if (svg) {
   writeFileSync(resolve(svg), humpDiagrams(sim));
