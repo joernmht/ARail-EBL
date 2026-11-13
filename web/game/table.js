@@ -7,7 +7,7 @@
 // people of the layout's world get on and off it: the board tells the world's services, as a
 // control system would. Data, geometry and drawing on a View: no DOM.
 import {
-  CD, CD_LIGHT, LIVERIES, OVERLAY, PALETTE, RAIL_TRAIN, drawTrain, grey, polylineAt, polylineLengths, prismFaces, rectFootprint, rgba, shade,
+  CD, CD_LIGHT, LIVERIES, OVERLAY, PALETTE, RAIL_TRAIN, drawTrain, grey, polylineAt, polylineLengths, polylineProject, prismFaces, rectFootprint, rgba, shade,
 } from "../arail/index.js";
 import { STATION } from "../arail/game/signaller.js";
 
@@ -285,6 +285,8 @@ export const TABLE_TRAIN = {
 const TONE = { route: CD_LIGHT.tuerkis, occupied: CD.rot, closed: CD_LIGHT.orange, choice: OVERLAY.task, proceed: "#3ed37a", stop: CD.rot, zs1: CD.white };
 /** Widths on the table (mm): the band of a section's state, a track bed drawn where no real track shows. */
 const BAND_MM = 26, BED_MM = 30, GAUGE_MM = 16.5;
+/** A level crossing closes for a train of the game: this far before the train reaches it (m of the game), and how near the train's way must pass it (mm). */
+export const CROSSING = { before_m: 250, beside_mm: 90, behind_mm: 40 };
 /** How near a click must be (CSS px): to a signal, to a track. */
 export const HIT_PX = { signal: 26, track: 16 };
 
@@ -393,6 +395,28 @@ export class TableBoard {
       services.feedDeparted(dock.id);
       this.standing.delete(id);
     }
+  }
+
+  /**
+   * Is a train of the game coming to, or on, a place of the layout (a level crossing asks:
+   * objects/crossings.js)? From CROSSING.before_m before its front reaches the place until its
+   * end has passed it; a train standing at a platform is not coming. Null without a game: then
+   * the board answers for no train.
+   * @param {number[]} pos [x, y] layout mm
+   * @returns {boolean | null}
+   */
+  trainsNear(pos) {
+    const g = this.game;
+    if (!g) return null;
+    for (const tr of g.trains) {
+      if (tr.state !== "running") continue;
+      const place = this.at.place(tr, this.m);
+      if (!place) continue;
+      const on = polylineProject(place.line.points, pos, place.line.lengths);
+      if (on.distance > CROSSING.beside_mm) continue;
+      if (place.head > on.s - CROSSING.before_m * this.at.k && place.head - tr.length * this.at.k < on.s + CROSSING.behind_mm) return true;
+    }
+    return false;
   }
 
   /** The train of the game that a vehicle of the services stands for, or null. */
@@ -536,7 +560,7 @@ export class TableBoard {
     const rows = { 1: [], [-1]: [] };
     for (const tr of g.trains) {
       if (tr.state === "coming" && tr.enterAt - g.t < 150) rows[tr.dir].push(`${tr.id} → ${tr.plan} · ${tr.enterAt <= g.t ? "now" : `in ${Math.max(1, Math.ceil(tr.enterAt - g.t))} s`}`);
-      else if (tr.state === "running" && tr.path.length === 1 && this.at.place(tr, this.m)?.head <= 0) {
+      else if (tr.state === "running" && tr.head < this.station.sections[tr.path[0]].len && this.at.place(tr, this.m)?.head <= 0) {
         rows[tr.dir].push(`${tr.id} → ${tr.plan} · ${Math.max(0.1, Math.round((this.station.sections[tr.path[0]].len - tr.head) / 100) / 10)} km`);
       }
     }

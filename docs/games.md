@@ -288,7 +288,11 @@ every section has its way and that the ways of every route meet.
 station are off, the board (`TableBoard`, one of the world's simulations) is the planner of the
 platform tracks, and the world runs at the game's speed. A train of the game that stands at a
 platform is told to the world's services as a control system's train is (`feedArrived`, with a
-vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there.
+vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. The
+level crossing of Brückenstraße, on the line to Talsee, closes for the game's trains (from 250 m
+before a train reaches it until its end has passed; a freight train held at signal F stands across
+it) and no longer by the clock: the town's cars wait at its barriers (`TableBoard.trainsNear`,
+which a level crossing asks of the world's simulations).
 
 The code: `web/game/table.js` (the station on the layout, the board: drawing, what is clicked, the
 world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.js` (the table's

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Camera, FlyCamera, View, createWorld, orthoOf, polylineAt } from "../../web/arail/index.js";
 import { STATION, SignallerGame } from "../../web/arail/game/signaller.js";
-import { HIT_PX, TABLE, TABLE_LAYOUT, TABLE_TRAIN, TableBoard, TableStation, tableProblems } from "../../web/game/table.js";
+import { CROSSING, HIT_PX, TABLE, TABLE_LAYOUT, TABLE_TRAIN, TableBoard, TableStation, tableProblems } from "../../web/game/table.js";
 
 const NEUSTADT = JSON.parse(readFileSync(new URL(`../../web/${TABLE_LAYOUT}`, import.meta.url), "utf8"));
 const W = 1280, H = 800, MM = 1000 / 87;
@@ -232,4 +232,37 @@ test("the board: it draws the game on the table, and a signal, a track and where
     const [x0, y0, x1, y1] = board.bounds(part);
     assert.ok(x1 > x0 && y1 > y0, part);
   }
+});
+
+test("the board: the level crossing on the line to Talsee closes for the game's trains, and no longer by the clock", () => {
+  const world = createWorld(NEUSTADT, { seed: 1 });
+  world.step(0.05);
+  const crossing = world.getObject("rail-crossing-bruecke"), at = crossing.geometry.pos;
+  // without the board it closes by the clock (a line beyond the layout): four times an hour, on the quarter
+  let asked = 0;
+  const byClock = (time) => {
+    world.setTime(time);
+    return crossing.closed(--asked);
+  };
+  assert.deepEqual([byClock("08:05"), byClock("08:00")], [false, true], "by the clock");
+  const board = new TableBoard(world), g = new SignallerGame({ seed: 3, level: "training" });
+  assert.equal(board.trainsNear(at), null, "no game: the board answers for no train");
+  board.show(g);
+  // RB 31 leaves for Talsee at about 08:03:10 and RB 32 comes from there at about 08:02; in between and before, no train is near
+  const closed = [], when = (t) => closed.filter((c) => c.v).some((c) => c.t >= t[0] && c.t <= t[1]);
+  playTo(g, 330, () => closed.push({ t: g.t, v: crossing.closed(1e6 + g.t), near: board.trainsNear(at) }));
+  assert.ok(closed.every((c) => c.v === c.near), "the crossing is closed exactly while the board says a train is near");
+  assert.equal(closed.find((c) => c.t === 20).v, false, "08:00:20: no train yet, and no closing by the clock (which would close it now)");
+  assert.ok(when([60, 140]), "RB 32 from Talsee");
+  assert.ok(when([200, 320]), "RB 31 to Talsee");
+  const spans = closed.reduce((n, c, i) => n + (c.v && !closed[i - 1]?.v ? 1 : 0), 0);
+  assert.equal(spans, 2, "it closes once for each of the two trains");
+  // it opens again behind a train: from 250 m of the game before the crossing to the train's end past it
+  const first = closed.filter((c) => c.v && c.t < 180);
+  assert.ok(first.length * 1 < 60, `closed for ${first.length} s for RB 32`);
+  assert.ok(CROSSING.before_m === 250 && CROSSING.beside_mm > 30);
+  // a place off the trains' ways is never near
+  assert.equal(board.trainsNear([at[0], at[1] + 400]), false);
+  board.dispose();
+  assert.equal(byClock("08:00"), true, "by the clock again");
 });
