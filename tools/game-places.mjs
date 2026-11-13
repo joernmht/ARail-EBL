@@ -1,6 +1,7 @@
 // Takes the game's virtual close-ups (web/game/places/*-fly.jpg): pictures of the lab's layouts in
 // the app's flyover, with everything in view virtual (trains, town, terminal), by day and at night.
-// The table's photo is left out, because it blurs when the camera comes close.
+// The table's photo is left out, because it blurs when the camera comes close; labels and the marker
+// plates too, because a picture of the game carries no information boxes.
 //
 //   npm start                                  (in another terminal: the site on port 8000)
 //   node tools/game-places.mjs                 (all pictures)
@@ -49,11 +50,18 @@ async function takeLayout(browser, base, layout, shots, out) {
   const view = page.locator("#btnView");
   for (let i = 0; i < 4 && (await view.getAttribute("data-view")) !== "flyover"; i++) await view.click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
-  // without the table's photo, and without the app's interface: only the stage
+  // without the table's photo, and without the app's interface: only the stage. And without information in the
+  // picture: no labels (signs, trains' lines, stops' boards) and no marker plates with their numbers; the game puts its
+  // information beside the picture (tests/e2e/play.spec.js checks it), signs of the world itself stay
+  // (the views of the flyover's frames are Views: the last one drawn gives their class)
+  await page.waitForFunction(() => window.__arail.lastView);
   await page.evaluate(() => {
     const app = window.__arail;
     if (app.world.layout.view) app.world.layout.view.ortho = null;
     app.flyover.ortho = null;
+    app.display.flyMarkers = false;
+    app.world.settings.labels = false;
+    Object.getPrototypeOf(app.lastView).label = function () {};
   });
   await page.addStyleTag({ content: ".hud,.sim-clock,.fly-nav,.stage-tools,.toast,.panel,.bar,.placing{display:none!important}.main{grid-template-columns:1fr!important}.app{grid-template-rows:1fr!important}" });
   await page.evaluate(() => window.dispatchEvent(new Event("resize")));

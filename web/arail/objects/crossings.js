@@ -204,7 +204,9 @@ export class AtGrade extends CrossingType {
   /**
    * Closed while a train of the control system is near or a timetable train comes into or leaves a
    * platform of its track nearby; without either, for `closed_min` clock minutes `trains_per_hour`
-   * times an hour (a line beyond the layout).
+   * times an hour (a line beyond the layout). A simulation that runs the trains of the line itself
+   * answers for them (`trainsNear(pos)`: true, false, or null where it runs none; the game's table,
+   * web/game/table.js): then the crossing closes for its trains and never by the clock.
    */
   closed(t = this.crossing.world.time) {
     if (!/** @type {typeof AtGrade} */ (this.constructor).closes) return false;
@@ -225,7 +227,14 @@ export class AtGrade extends CrossingType {
         if (dist2(mid, g.pos) < c.mm(450)) v = true;
       }
     }
-    if (!v && !(w.trains?.trains?.size > 0)) {
+    let own = false;
+    for (const sim of w.simulations || []) {
+      const coming = sim.enabled !== false && typeof sim.trainsNear === "function" ? sim.trainsNear(g.pos) : null;
+      if (coming == null) continue;
+      own = true;
+      if (coming) v = true;
+    }
+    if (!v && !own && !(w.trains?.trains?.size > 0)) {
       const perHour = Math.max(0, Number(c.spec.trains_per_hour ?? 4));
       if (perHour > 0) {
         const every = 60 / perHour, x = (w.clock?.minutes ?? 0) % every;

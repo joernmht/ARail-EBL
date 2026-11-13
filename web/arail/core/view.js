@@ -68,10 +68,13 @@ export class View {
    *   layout origin is in front of the camera
    * @param {((text: string) => string) | null} [options.translate] the texts of labels in the language shown
    *   (arail/i18n); null: as they are (English)
+   * @param {boolean} [options.labels=true] false: no labels (`label` draws nothing): a picture that is only a picture (the
+   *   game's backdrop), where information belongs beside it, not on it; signs that are part of the world (a station's name
+   *   board, a bus stop's H) are not labels and stay
    * @param {number | null} [options.pulse] the beat of highlights that pulse to catch the eye (0 … 1, from
    *   the app's clock in real time, not the simulation's); null: they stay steady (reduced motion, Node)
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null, pulse = null }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null, pulse = null, labels = true }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -85,6 +88,8 @@ export class View {
     this.darken = darken;
     /** Texts of labels in the language shown (arail/i18n `translate`); English as they are without. */
     this.translate = translate;
+    /** Whether labels are drawn (`label`); false in a picture that is only a picture. */
+    this.labels = labels !== false;
     /** The beat of pulsing highlights (0 … 1), or null: steady. */
     this.pulse = Number.isFinite(pulse) ? Math.min(1, Math.max(0, pulse)) : null;
     /**
@@ -636,6 +641,7 @@ export class View {
    *   order?: number, optional?: boolean, fit?: boolean, compact?: {text: string | string[], style?: object}}} [style]
    */
   label(at, text, style = {}) {
+    if (!this.labels) return;
     const p = this.project(at[0], at[1], at[2] || 0);
     if (!p) return;
     // labels of things just outside the picture are pulled in at its edge; far away ones (e.g. the

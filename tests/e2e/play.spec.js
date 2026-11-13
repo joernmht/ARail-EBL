@@ -15,6 +15,8 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test } from "@playwright/test";
 
+import { inPicture } from "./picture.js";
+
 const PAGE = "/game/play/", MORNING = `${PAGE}?mission=neustadt-morning`;
 const SIGNALLER = "#seat-signaller-relay", MAINTENANCE = "#seat-maintenance-dispatcher", ASSETS = "#seat-asset-manager";
 /** Where the pages keep what a player has reached (game/progress.js). */
@@ -119,7 +121,7 @@ const tool = (page, seat, name) => part(page, seat, ".vn-tools").getByRole("butt
 const part = (page, seat, sel) => page.locator(`${sel}[data-seat="${seat.replace(/^#seat-/, "")}"]`);
 /** The names of a seat's tools at the side (icons, named by their labels). */
 const toolNames = (page, seat) => part(page, seat, ".vn-tools").locator("button").evaluateAll((list) => list.map((b) => b.getAttribute("aria-label")));
-/** The pop-up message shown now. */
+/** The newest message, in the line at the top. */
 const toast = (page) => page.locator("#toast");
 
 /** Open a seat's desk from its stage. */
@@ -2294,5 +2296,65 @@ test("turns with a game of the test's own: a move with a number and a checkbox, 
   await expect(seats.nth(1).locator("tbody tr")).toHaveCount(2);
   await expect(seats.nth(1).locator("tbody tr").first()).toContainText("A morning");
   await expect(page.locator("#result .play-debrief li")).toHaveText(["What did the second team cost, and what did it save?"]);
+  expect(errors).toEqual([]);
+});
+
+test("no information box on the picture: in every state of a mission, text is only in the header, the rail, the band, the game's own picture or a dialog", async ({ page }) => {
+  const found = [];
+  const check = async (state) => found.push(...(await inPicture(page)).map((t) => `${state}: ${t}`));
+  const errors = await start(page);
+  await run(page, 3);
+  await expect(page.locator(`${SIGNALLER} .vn-story .vn-line`)).toBeVisible();
+  await check("a line of the mission's story");
+  await readOn(page, SIGNALLER);
+  await run(page, 787);
+  await expect(page.locator(`${SIGNALLER} .play-decision`)).toHaveCount(2);
+  await check("a shift with a decision asked and one waiting");
+  await page.locator(SIGNALLER).getByRole("button", { name: "Report it now" }).click();
+  await run(page, 2);
+  // a new message: in the line at the top, below the figures, not as a box on the picture
+  await expect(toast(page)).toBeVisible();
+  const [msg, hud] = await Promise.all([toast(page).boundingBox(), page.locator("#hud").boundingBox()]);
+  expect(msg.y).toBeGreaterThanOrEqual(hud.y);
+  expect(msg.y + msg.height).toBeLessThanOrEqual(hud.y + hud.height);
+  expect(await toast(page).evaluate((el) => el.closest(".play-hud") !== null && getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await check("a new message");
+  // the header holds the message without changing what else it holds: the shift's time still runs across the whole window
+  const [bar, win] = await Promise.all([page.locator("#progress").boundingBox(), page.evaluate(() => innerWidth)]);
+  expect(Math.round(bar.x)).toBe(0);
+  expect(Math.round(bar.width)).toBe(win);
+  // on a phone a long message stays one line, cut off, below the clock and the figures
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    const t = document.querySelector("#toast");
+    t.textContent = "08:13:13 A long message that is far wider than a phone's screen, so that it would wrap onto several lines.";
+  });
+  const box = await toast(page).boundingBox(), lineHeight = await toast(page).evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+  expect(box.height).toBeLessThanOrEqual(lineHeight * 1.2);
+  const above = await page.locator("#hud").evaluate((hud) => Math.max(...[...hud.querySelectorAll(".play-clock, .vn-gauges > div")].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().bottom)));
+  expect(box.y).toBeGreaterThanOrEqual(above);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // something in the game's picture that needs attention pulses there, and chosen it says what is known
+  await expect(page.locator(`${SIGNALLER} .play-board .pick.alert`).first()).toBeVisible();
+  await page.locator(`${SIGNALLER} .play-board .pick.alert`).first().click();
+  await check("an asset chosen in the game's picture");
+  await page.locator("#bellBtn").click();
+  await check("the messages at the side");
+  await page.keyboard.press("Escape");
+  await page.locator("#tab-maintenance-dispatcher").click();
+  await expect(page.locator(MAINTENANCE)).toBeVisible();
+  await check("a computer's seat");
+  await page.locator("#bare").click();
+  await check("only the picture");
+  await page.locator("#bareBack").click();
+  // a turn: what happened, line by line, and its decisions
+  await open(page, `${PAGE}?mission=budget-years`);
+  await page.locator("#start").click();
+  await expect(page.locator(`${ASSETS} .vn-story .vn-line`)).toBeVisible();
+  await check("a turn told line by line");
+  await readOn(page, ASSETS);
+  await expect(page.locator(`${ASSETS} .play-decision`).first()).toBeVisible();
+  await check("a turn with decisions");
+  expect(found).toEqual([]);
   expect(errors).toEqual([]);
 });

@@ -108,7 +108,10 @@ What every game has, from the base class:
   an `id`, a `title` and a `menu` of moves can be chosen: the signaller's panel has its signals
   with their routes and its platform tracks to close, the dispatcher's district its faults with the
   teams to send and the vans on the road. The page still knows no game: it draws shapes and passes
-  the move chosen to `act`;
+  the move chosen to `act`. One game has a second picture, on the lab's layout itself: the
+  signaller's table (`web/game/table.js`, [the shift on the table](games.md#the-shift-on-the-table)).
+  It is no other game and no other view: what is clicked on the table is an item of the sketch by
+  its `id` (`signal-A`, `track-G2`) or a move of its `menu`, and goes the same way to `act`;
 - **the result** of a round (`result()`): what the career mode and the big game take from it.
 
 A game that is not wired plays the other end of its ports itself. The signaller's game has its own

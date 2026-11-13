@@ -36,8 +36,8 @@ export const PLACES = [
   },
   {
     id: "district", name: "The district around Bf Neustadt", line: "Every asset of the district, with its condition.",
-    photo: "game/places/district.jpg", alt: "The platforms of Bf Neustadt in the lab with their digital layer: people waiting, trains and their labels",
-    wide: "assets/ebl-lab-ar.jpg", wideFocus: "60% 38%", live: "overview-fly",
+    photo: "game/places/district.jpg", alt: "The platforms of Bf Neustadt in the lab with their signals, a tank train and a container train",
+    wide: "media/ebl-lab.jpg", wideFocus: "60% 38%", live: "overview-fly",
   },
   {
     id: "trains", name: "On the trains, Bf Neustadt", line: "The undertaking's units, drivers and passengers.",
