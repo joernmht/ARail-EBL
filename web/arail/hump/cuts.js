@@ -109,7 +109,7 @@ export const CUT_SIZES = [[1, 0.55], [2, 0.25], [3, 0.12], [4, 0.08]];
  * @param {{next: Function, pick: Function, chance: Function}} rng
  * @param {{wagons?: number, tracks: string[], types?: string[], loaded?: number}} options
  *   wagons: about how many (the last cut is whole); loaded: the share of loaded wagons
- * @returns {object[]} wagon specs with `track`
+ * @returns {object[]} wagon specs with `track` and no id (`HumpSimulation.hump` numbers them by train)
  */
 export function randomTrain(rng, { wagons = 30, tracks, types = ["eanos", "habbins", "zacns", "sgns", "hbbillns"], loaded = 0.5 }) {
   if (!tracks?.length) throw new Error("randomTrain needs the tracks");
@@ -127,7 +127,7 @@ export function randomTrain(rng, { wagons = 30, tracks, types = ["eanos", "habbi
     }
     const choices = tracks.length > 1 ? tracks.filter((t) => t !== last) : tracks;
     const track = rng.pick(choices);
-    for (let i = 0; i < size; i++) out.push({ id: `W${++n}`, type: rng.pick(types), loaded: rng.chance(loaded) ? 1 : 0, track });
+    for (let i = 0; i < size; i++, n++) out.push({ type: rng.pick(types), loaded: rng.chance(loaded) ? 1 : 0, track });
     last = track;
   }
   return out;

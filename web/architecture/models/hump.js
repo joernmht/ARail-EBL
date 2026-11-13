@@ -29,7 +29,7 @@ export const HUMP = [
       {
         name: "hump cuts", file: "web/arail/hump/cuts.js", kind: "module", role: "Wagons, cuts and trains.",
         attributes: ["CUT_SIZES — wagons per cut and how often"],
-        operations: ["wagonType(type) — the catalogue's figures with the hump's", "wagonTypes()", "axlePositions(length_m, axles)", "makeWagon(spec, rng, season) — mass, axles, rotating mass, rolling resistance drawn, drag area", "cutsOf(wagons, sorting) — consecutive wagons for one track; a wagon not to be humped alone", "randomTrain(rng, options) — cuts of 1–4 wagons"],
+        operations: ["wagonType(type) — the catalogue's figures with the hump's", "wagonTypes()", "axlePositions(length_m, axles)", "makeWagon(spec, rng, season) — mass, axles, rotating mass, rolling resistance drawn, drag area", "cutsOf(wagons, sorting) — consecutive wagons for one track; a wagon not to be humped alone", "randomTrain(rng, options) — cuts of 1–4 wagons; no ids (hump numbers them by train)"],
       },
       {
         name: "hump physics", file: "web/arail/hump/physics.js", kind: "module", role: "The forces on a cut and its free runs.",
@@ -50,7 +50,7 @@ export const HUMP = [
       {
         name: "HumpSimulation", file: "web/arail/hump/simulation.js", kind: "class", role: "Trains humped over a yard.",
         attributes: ["yard: HumpYard", "options: object — SIM_DEFAULTS", "wind_mps: number", "rng — createRng(seed)", "control: HumpControl", "t: number", "cuts: object[] — every cut with its plan, route, s, v and record", "bodies: object[] — the free cuts", "queue: object[] — trains waiting", "pushing: object|null — the train on the hump", "trains: object[]", "log: object[] — {t, type, …}", "departures: object[]", "movers — pushed and free cuts", "idle — nothing waiting or moving", "SIM_DEFAULTS — dt, seed, season, wind, time between trains, limits, trace"],
-        operations: ["hump(train) — wagons → cuts, each with its plan and measured resistance", "step()", "run(options) — until idle", "note(type, data)", "switchState(id)", "retarderState(id)", "targetPoint(c) — where it should meet the wagons in its track", "enteredRetarder(c, r)", "leftRetarder(c, r)", "trackContents(name) — cuts, gaps, room at the entrance, length occupied", "pullOut(name) — a formed train", "results() — every cut and the figures", "_startTrain()", "_push(dt)", "_move(dt)", "_pass(c)", "_misroute(c, switchId, next)", "_leader(c)", "_pullFull() — tracks filled to pull_below_m"],
+        operations: ["hump(train) — wagons → cuts, each with its plan and measured resistance", "step()", "run(options) — until idle, or its longest time (limitReached, logged)", "note(type, data)", "switchState(id)", "retarderState(id)", "targetPoint(c) — where it should meet the wagons in its track", "enteredRetarder(c, r)", "leftRetarder(c, r)", "trackContents(name) — cuts, gaps, room at the entrance, length occupied", "pullOut(name) — a formed train: the cuts of trackContents; a cut stopped short stays", "results() — every cut and the figures; trains humped, waiting, limit_reached", "_startTrain()", "_push(dt)", "_move(dt)", "_pass(c)", "_misroute(c, switchId, next)", "_leader(c)", "_pullFull() — tracks with wagons filled to pull_below_m", "_standing(leaf) — the cuts standing wholly in a track"],
       },
       {
         name: "hump diagrams", file: "web/arail/hump/diagrams.js", kind: "module", role: "The diagrams of hump design for a traced run, as SVG.",

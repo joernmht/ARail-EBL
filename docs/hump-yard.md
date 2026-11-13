@@ -52,7 +52,11 @@ const train = sim.pullOut("6");     // the wagons of track 6, from its end: a ne
 
 With `pull_below_m` (say 120) the simulation pulls a track out by itself once its wagons leave less
 than that of it: the standing wagons leave from its far end while cuts on their way roll on into it,
-so train after train can be humped (`sim.departures` lists them).
+so train after train can be humped (`sim.departures` lists them). A train pulled out, by hand or by
+itself, takes the cuts standing in the track (`trackContents`); a cut stopped short in front of the
+track stays there, and an empty track is never pulled out. `run()` stops at `max_s` (4 h) at the
+latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
+(`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
 A wagon is `{type, loaded, track | destination, w_nkn?, careful?, noHump?}`: its type from the
 vehicle catalogue's freight wagons (`sgns`, `eanos`, `habbins`, `zacns`, see

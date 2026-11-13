@@ -19,9 +19,17 @@ import { createRng } from "../web/arail/core/math.js";
 import { HumpSimulation, SEASONS, TRACK_DESIGNS, humpDiagrams, randomTrain, standardYard } from "../web/arail/hump/index.js";
 
 const args = process.argv.slice(2);
+const fail = (message) => {
+  console.error(message);
+  process.exit(1);
+};
+/** The value after --name; a value that is missing or is another option is an error. */
 const opt = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
-  return i >= 0 && i + 1 < args.length ? args[i + 1] : fallback;
+  if (i < 0) return fallback;
+  const v = args[i + 1];
+  if (v == null || v.startsWith("--")) fail(`--${name} needs a value`);
+  return v;
 };
 if (args.includes("--help")) {
   console.log("Usage: node tools/hump.mjs [--tracks 8] [--wagons 30] [--trains 1] [--seed 1] [--push 1.2] [--season summer|winter] [--design speed|target] [--estimate-sd 0.4] [--pull-below M] [--quiet] [--json FILE] [--svg FILE]");
@@ -29,24 +37,20 @@ if (args.includes("--help")) {
 }
 const num = (name, fallback) => {
   const v = Number(opt(name, fallback));
-  if (!Number.isFinite(v)) {
-    console.error(`--${name} needs a number`);
-    process.exit(1);
-  }
+  if (!Number.isFinite(v)) fail(`--${name} needs a number`);
   return v;
 };
+// every option read before the run, so that a wrong one fails at once
 const tracks = num("tracks", 8), wagons = num("wagons", 30), trains = num("trains", 1), seed = num("seed", 1), push = num("push", 1.2);
 const season = opt("season", "summer"), design = opt("design", "speed");
-if (!SEASONS[season] || !TRACK_DESIGNS[design]) {
-  console.error(`--season is one of ${Object.keys(SEASONS).join(", ")}; --design one of ${Object.keys(TRACK_DESIGNS).join(", ")}`);
-  process.exit(1);
-}
+if (!SEASONS[season] || !TRACK_DESIGNS[design]) fail(`--season is one of ${Object.keys(SEASONS).join(", ")}; --design one of ${Object.keys(TRACK_DESIGNS).join(", ")}`);
 const control = opt("estimate-sd") != null ? { estimate_sd: num("estimate-sd") } : {};
+const pull = opt("pull-below") != null ? num("pull-below") : null;
+const svg = opt("svg"), file = opt("json");
 
 const yard = standardYard({ tracks, design });
-const svg = opt("svg");
-const pull = opt("pull-below") != null ? num("pull-below") : null;
-const sim = new HumpSimulation(yard, { seed, season, control, trace: !!svg, pull_below_m: pull });
+// time enough for every train: an hour per train at the least, as for a long train pushed slowly
+const sim = new HumpSimulation(yard, { seed, season, control, trace: !!svg, pull_below_m: pull, max_s: Math.max(4, trains + 1) * 3600 });
 const rng = createRng(seed + 1000);
 for (let i = 0; i < trains; i++) sim.hump({ id: `T${i + 1}`, push_mps: push, wagons: randomTrain(rng, { wagons, tracks: yard.tracks.map((t) => t.name) }) });
 const r = sim.run();
@@ -70,13 +74,13 @@ if (!args.includes("--quiet")) {
 }
 console.log("");
 console.log(`${r.trains} train(s), ${r.cuts} cuts, ${r.wagons} wagons in ${f(r.push_s / 60)} min of pushing: ${f(r.cuts_per_hour, 0)} cuts per hour`);
+if (r.limit_reached) console.warn(`Stopped after ${f(r.t_s / 3600)} h with ${r.waiting} train(s) not humped (or cuts still rolling).`);
 if (sim.departures.length) console.log(`Pulled out: ${sim.departures.map((d) => `track ${d.track} (${d.wagons.length} wagon${d.wagons.length === 1 ? "" : "s"})`).join(", ")}`);
 console.log(`Misrouted ${r.misrouted}, caught up ${r.caughtUp}, derailed ${r.derailed}, stopped short ${r.short}; impacts too hard ${r.hard} (highest ${f(r.max_impact_mps, 2)} m/s); gaps ${r.gaps} (${f(r.gaps_m, 0)} m to push up); retarders entered too fast ${r.overspeed}`);
 if (svg) {
   writeFileSync(resolve(svg), humpDiagrams(sim));
   console.log(`Written: ${svg}`);
 }
-const file = opt("json");
 if (file) {
   writeFileSync(resolve(file), `${JSON.stringify({ yard: { name: yard.name, tracks: yard.tracks, height_m: yard.height_m, crest_m: yard.crest_m }, options: { tracks, wagons, trains, seed, push, season, design, control, pull }, results: r, departures: sim.departures.map((d) => ({ ...d, wagons: d.wagons.map((w) => w.id) })), log: sim.log }, null, 2)}\n`);
   console.log(`Written: ${file}`);

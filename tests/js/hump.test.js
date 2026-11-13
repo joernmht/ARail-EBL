@@ -4,9 +4,12 @@
 // against speed-holding units, wagons that must not be humped, determinism, pulling a train out (by
 // hand and when a track is full), and the diagrams of a run.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 import test from "node:test";
 
 import { createRng } from "../../web/arail/core/math.js";
+import { ROOT } from "./helpers.js";
 import {
   G, HumpSimulation, HumpYard, RETARDERS, ROLLING, ROTATING_T_PER_AXLE, SEASONS, SPEEDS, STANDARD_YARD, SWITCHES, axlePositions, coast, curveResistance,
   cutBody, cutForces, cutsOf, energyHeight, makeWagon, randomTrain, requiredSpeeds, standardYard, wagonType, wagonTypes,
@@ -379,4 +382,53 @@ test("the diagrams of a run: one line per cut in each panel, the problems marked
   const a = (G * 0.003 * body.mass_t) / body.eff_t;
   near(tr.at(20).v, 1 + a * 20, 0.01, "v = v0 + a t");
   near(tr.at(20).s, 100 + 20 + (a * 400) / 2, 0.1, "s = s0 + v0 t + a t²/2");
+});
+
+test("pulling out takes the cuts of the track's contents, never an empty track; the run's limit and the wagons' ids", () => {
+  const yard = standardYard();
+  // winter: cuts stop short in front of their tracks; they are no part of the track's train
+  const sim = new HumpSimulation(yard, { seed: 1, season: "winter" });
+  const r = createRng(1001);
+  for (const id of ["T1", "T2"]) sim.hump({ id, push_mps: 1.2, wagons: randomTrain(r, { wagons: 30, tracks: yard.tracks.map((t) => t.name) }) });
+  const res = sim.run();
+  assert.ok(res.short > 0, "cuts stopped short");
+  const ids = sim.cuts.flatMap((c) => c.wagons.map((w) => w.id));
+  assert.equal(new Set(ids).size, ids.length, "every wagon's id is its own, also across trains");
+  assert.ok(ids.includes("T2.1") && !ids.includes("W1"));
+  const short = new Set(res.perCut.filter((c) => c.stop && !c.ended).map((c) => c.id));
+  for (const t of yard.tracks) {
+    const before = sim.trackContents(t.name);
+    const out = sim.pullOut(t.name);
+    assert.deepEqual(out.cuts, before.cuts, `track ${t.name}: the cuts of its contents`);
+    assert.equal(out.wagons.length, before.wagons);
+    assert.equal(out.gaps_m, before.gaps_m);
+    assert.ok(out.cuts.every((id) => !short.has(id)));
+  }
+  assert.equal(sim.bodies.filter((b) => short.has(b.id)).length, short.size, "the cuts stopped short stay");
+  // a threshold above the tracks' length pulls out tracks with wagons only
+  const eager = new HumpSimulation(yard, { seed: 1, pull_below_m: 800 });
+  eager.hump({ id: "A", wagons: randomTrain(createRng(2), { wagons: 20, tracks: yard.tracks.map((t) => t.name) }) });
+  eager.run();
+  assert.ok(eager.departures.length > 0 && eager.departures.every((d) => d.wagons.length > 0));
+  assert.equal(eager.log.filter((e) => e.type === "track.pulled").length, eager.departures.length);
+  // stopped at its longest time: the trains not humped are not counted as humped
+  const short2 = new HumpSimulation(yard, { seed: 1, max_s: 200 });
+  for (const id of ["A", "B"]) short2.hump({ id, wagons: randomTrain(createRng(3), { wagons: 30, tracks: yard.tracks.map((t) => t.name) }) });
+  const cut = short2.run();
+  assert.ok(cut.limit_reached);
+  assert.equal(cut.trains + cut.waiting, 2);
+  assert.ok(cut.waiting >= 1, `${cut.waiting} trains waiting`);
+  assert.ok(short2.log.some((e) => e.type === "run.limit"));
+});
+
+test("the command line refuses an option without its value", () => {
+  const run = (...args) => spawnSync(process.execPath, [join(ROOT, "tools/hump.mjs"), ...args], { cwd: ROOT, encoding: "utf8" });
+  for (const args of [["--json", "--quiet"], ["--quiet", "--svg"], ["--trains"], ["--push", "fast"]]) {
+    const p = run(...args);
+    assert.equal(p.status, 1, `${args.join(" ")}: ${p.stdout}`);
+    assert.match(p.stderr, /needs a (value|number)/);
+  }
+  const ok = run("--wagons", "6", "--tracks", "2", "--quiet");
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /1 train\(s\), \d+ cuts/);
 });

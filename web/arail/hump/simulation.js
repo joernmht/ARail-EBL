@@ -161,12 +161,13 @@ export class HumpSimulation {
 
   /**
    * Pull out every track whose wagons leave less than `pull_below_m` of it: the standing wagons leave
-   * from its far end, while cuts on their way roll on into the emptied track.
+   * from its far end, while cuts on their way roll on into the emptied track. A track without
+   * wagons is never pulled out.
    */
   _pullFull() {
     for (const t of this.yard.tracks) {
       const c = this.trackContents(t.name);
-      if (c.length_m - c.occupied_m < this.options.pull_below_m) this.pullOut(t.name);
+      if (c.cuts.length && c.length_m - c.occupied_m < this.options.pull_below_m) this.pullOut(t.name);
     }
   }
 
@@ -178,6 +179,11 @@ export class HumpSimulation {
   run(options = {}) {
     const until = options.until_s ?? Infinity, stop = this.t + (options.max_s ?? this.options.max_s);
     while (this.t < until && this.t < stop && !this.idle) this.step();
+    if (this.t >= stop && !this.idle && !this.limitReached) {
+      /** The run stopped at its longest time with trains or cuts still to go. */
+      this.limitReached = true;
+      this.note("run.limit", { waiting: this.queue.length + (this.pushing ? 1 : 0) });
+    }
     return this.results();
   }
 
@@ -425,13 +431,23 @@ export class HumpSimulation {
   }
 
   /**
+   * The cuts standing wholly in a classification track, from its end (not those stopped short in
+   * front of it: they are no part of the track's train).
+   * @param {import("./yard.js").Segment} leaf
+   */
+  _standing(leaf) {
+    const tr = leaf.track;
+    return this.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id && b.v === 0 && b.s - b.body.length_m >= tr.s0 - 1e-6).sort((a, b) => b.s - a.s);
+  }
+
+  /**
    * The cuts standing in a classification track, from its end: wagons, gaps between them, room left
    * at its entrance (`free_m`), the length of its wagons (`occupied_m`).
    * @param {string} name
    */
   trackContents(name) {
     const leaf = this.yard.trackSegment(name), tr = leaf.track;
-    const here = this.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id && b.v === 0 && b.s - b.body.length_m >= tr.s0 - 1e-6).sort((a, b) => b.s - a.s);
+    const here = this._standing(leaf);
     const gaps = [];
     let edge = tr.s1;
     for (const b of here) {
@@ -447,15 +463,16 @@ export class HumpSimulation {
   }
 
   /**
-   * Pull a formed train out of a classification track: its wagons from the track's end, the gaps
-   * that had to be closed (Beidrücken). The cuts leave the simulation.
+   * Pull a formed train out of a classification track: the cuts standing in it (those of
+   * `trackContents`), its wagons from the track's end, the gaps that had to be closed (Beidrücken).
+   * The cuts leave the simulation; a cut stopped short in front of the track stays.
    * @param {string} name
    * @returns {{track: string, t: number, cuts: string[], wagons: object[], length_m: number, gaps_m: number}}
    */
   pullOut(name) {
     const leaf = this.yard.trackSegment(name);
-    const here = this.bodies.filter((b) => b.route[b.route.length - 1] === leaf.id && b.v === 0).sort((a, b) => b.s - a.s);
     const contents = this.trackContents(name);
+    const here = this._standing(leaf);
     for (const b of here) b.state = "departed";
     this.bodies = this.bodies.filter((b) => b.state !== "departed");
     const out = {
@@ -467,7 +484,10 @@ export class HumpSimulation {
     return out;
   }
 
-  /** What became of every cut, the tracks, and the figures of the run. */
+  /**
+   * What became of every cut, the tracks, and the figures of the run: `trains` humped to their last
+   * cut, `waiting` not (yet), `limit_reached` if `run` stopped at its longest time with work left.
+   */
   results() {
     const o = this.options, humped = this.cuts.filter((c) => c.order != null);
     const perCut = humped.map((c) => {
@@ -485,8 +505,10 @@ export class HumpSimulation {
     const tracks = this.yard.tracks.map((t) => this.trackContents(t.name));
     const pushing = this.trains.filter((r) => r.humped_t != null).reduce((s, r) => s + (r.humped_t - r.started_t), 0);
     const impacts = perCut.filter((c) => c.impact_mps != null);
+    const done = this.trains.filter((r) => r.humped_t != null).length;
     return {
-      t_s: round(this.t), trains: this.trains.length, cuts: humped.length, wagons: humped.reduce((n, c) => n + c.wagons.length, 0),
+      t_s: round(this.t), trains: done, waiting: this.trains.length - done, limit_reached: !!this.limitReached,
+      cuts: humped.length, wagons: humped.reduce((n, c) => n + c.wagons.length, 0),
       push_s: round(pushing), cuts_per_hour: pushing > 0 ? (humped.length / pushing) * 3600 : 0,
       misrouted: perCut.filter((c) => c.misrouted).length, caughtUp: perCut.filter((c) => c.caughtUp).length,
       derailed: perCut.filter((c) => c.derailed).length, short: perCut.filter((c) => c.stop && !c.ended).length,
