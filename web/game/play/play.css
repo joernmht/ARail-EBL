@@ -317,11 +317,11 @@ body[data-screen="play"] .site-where { display: block; }
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
 
 /* the table (T): the signaller's game on the lab's layout (table.js). The picture is the game's own, so nothing
-   shades it but the line at the top; the panel stands small in the lower left corner, with what is chosen
-   beside it; the parts of the station the camera shows are buttons below the line at the top */
+   shades it but the line at the top; the panel stands small in the lower right corner (the speaker stands at
+   the left), with what is chosen below it; the parts of the station the camera shows are buttons below the line at the top */
 body.tabled .backdrop::after { background: linear-gradient(180deg, color-mix(in srgb, var(--board) 35%, transparent), transparent 14%); }
 body.tabled .vn-stage { cursor: grab; touch-action: none; }
-body.tabled .vn-stage .play-sketch { align-self: end; justify-self: start; max-width: min(620px, 56%); padding: 6px 8px 8px; background: color-mix(in srgb, var(--board) 90%, transparent); cursor: auto; touch-action: auto; }
+body.tabled .vn-stage .play-sketch { align-self: end; justify-self: end; margin-right: 12px; max-width: min(560px, 52%); padding: 6px 8px 8px; background: color-mix(in srgb, var(--board) 90%, transparent); cursor: auto; touch-action: auto; }
 body.tabled .vn-stage .play-sketch h4 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 body.tabled .vn-stage .play-board svg { min-width: 0 !important; max-height: 132px; }
 body.tabled .vn-talk { cursor: auto; touch-action: auto; }
