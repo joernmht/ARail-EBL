@@ -845,8 +845,8 @@
       "description": "A hump yard (Ablaufberg) on a virtual table module at the west end of the table, in line with the main line west: a locomotive pushes train after train over the crest, the cuts roll through the main retarder, the switches and their group retarders into six classification tracks, and full tracks leave as new trains. The retarders glow while they brake; a band on each wagon shows how well it rolls. See docs/hump-yard.md.",
       "enabled": false,
       "objects": [
-        {"id": "table-hump", "type": "tabletop", "name": "Hump yard module", "position": [-5125, 290], "width_mm": 5450, "depth_mm": 600, "level_mm": -45},
-        {"id": "hump-yard", "type": "hump-yard", "name": "Hump yard Neustadt West", "position": [-2860, 322], "rotation_deg": 180}
+        {"id": "table-hump", "type": "tabletop", "name": "Hump yard module", "position": [-5450, 290], "width_mm": 6100, "depth_mm": 600, "level_mm": -45},
+        {"id": "hump-yard", "type": "hump-yard", "name": "Hump yard Neustadt West", "position": [-3518, 322], "rotation_deg": 180}
       ]
     }
   ],

@@ -247,6 +247,9 @@ export class HumpYard {
       const ys = seg.children.map(centre);
       return ys.reduce((a, b) => a + b, 0) / ys.length;
     };
+    // the hump's axis at y = 0: where a switch's branches split unevenly, the fan lies a little to one side
+    const shift = centre(this.root);
+    for (const [id, y] of offset) offset.set(id, y - shift);
     for (const seg of this.segments.values()) {
       const y0 = seg.parent == null ? centre(seg.id) : null;
       seg.plan = { y0, y1: centre(seg.id), a: seg.s0, b: seg.s1 };

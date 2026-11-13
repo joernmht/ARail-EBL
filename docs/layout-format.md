@@ -244,6 +244,7 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`truck-lane`](#truck-lane) | Truck lane (Terminal) | `points` (polyline) |
 | [`quay`](#quay-quay-and-fairway) | Quay and fairway (Terminal) | `points` (polyline) |
 | [`reach-stacker`](#reach-stacker) | Reach stacker (Terminal) | `position` |
+| [`hump-yard`](#hump-yard) | Hump yard (Hump yard) | `position` |
 | [`depot`](#depot-depot-and-workshop) | Depot and workshop (Transport) | `position` |
 | [`signal`, `switch`, `balise`, `level-crossing`, `gsmr-mast`, `lift`, `passenger-display`, `interlocking`, `maintenance-base`, `crossing-plant`](infrastructure.md#objects) | Signal, Switch, Balise, Level crossing, GSM-R mast, Lift, Passenger display, Interlocking, Maintenance base, Level crossing plant (Infrastructure) | `position` |
 | [`catenary`, `cable-route`](infrastructure.md#objects) | Overhead line, Cable route (Infrastructure) | `points` (polyline) |
@@ -625,6 +626,28 @@ Geometry: `position`, its parking place. It moves containers where no crane reac
 | `rotation_deg` | `0` | |
 | `tiers` | `3` | the highest tier it stacks to (1–4) |
 | `speed` | `1` | speed factor (0.25–5) |
+
+### `hump-yard`
+
+Geometry: `position`, the crest of the hump; the cuts roll away from it in the direction of
+`rotation_deg`, the train is pushed towards it from behind. A hump yard with a simulation of its
+own: it humps one random train after the other, pushes its tracks up and pulls them out as trains
+when they are full, and draws the yard (the formation, ballast and rails, the retarders, orange
+while they brake), every wagon and the locomotive pushing. Its heights are drawn above its lowest
+track end: put it on a table module low enough for its push track to meet the table. See
+[Hump yard](hump-yard.md#on-the-table).
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | where the cuts roll |
+| `tracks` | `6` | classification tracks (2–16) |
+| `track_m` | `120` | their length (m) |
+| `push_m` | `100` | the push track before the crest (m): the train being pushed stands on it |
+| `design` | `speed` | the tracks: `speed` (speed-holding units) or `target` (target braking alone) |
+| `season` | `summer` | `summer` or `winter` (−10 °C) |
+| `push_mps` | `1.2` | pushing speed (m/s) |
+| `wagons` | `24` | wagons per train |
+| `pull_below_m` | `40` | a track with less room than this at its entrance is pushed up, then pulled out |
 
 ### `depot`: depot and workshop
 

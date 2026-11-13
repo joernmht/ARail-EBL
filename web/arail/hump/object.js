@@ -48,7 +48,7 @@ function hash(s) {
 /** The colours of the yard on the table: greys for ground, ballast, rails and wagons, CD for what happens. */
 const COLOURS = {
   bank: grey(0.7), bankSide: grey(0.66), ballast: grey(0.5), rail: grey(0.2), beam: grey(0.12),
-  body: shade(CD.rot, 0.55), top: grey(0.36), load: grey(0.2), loco: CD.rot, locoTop: grey(0.5),
+  body: shade(CD.rot, 0.55), top: shade(CD.rot, 0.42), load: grey(0.2), loco: CD.rot, locoTop: grey(0.5),
   braking: CD.orange, problem: CD.rot, label: grey(0.15),
 };
 
@@ -64,6 +64,7 @@ export class HumpYardObject extends LayoutObject {
     { key: "rotation_deg", label: "Direction", type: "number", unit: "°", min: -180, max: 180, step: 5, default: 0, help: "Where the cuts roll, from the crest (the object's position)." },
     { key: "tracks", label: "Classification tracks", type: "number", min: 2, max: 16, step: 1, default: 6 },
     { key: "track_m", label: "Track length", type: "number", unit: "m", min: 60, max: 750, step: 10, default: 120 },
+    { key: "push_m", label: "Push track", type: "number", unit: "m", min: 30, max: 300, step: 10, default: 100, help: "How much of the push track before the crest lies on the table: the train being pushed stands on it." },
     { key: "design", label: "Track design", type: "select", default: "speed", options: Object.entries(TRACK_DESIGNS).map(([k, d]) => [k, d.label]) },
     { key: "season", label: "Season", type: "select", default: "summer", options: Object.entries(SEASONS).map(([k, s]) => [k, s.label]) },
     { key: "push_mps", label: "Pushing speed", type: "number", unit: "m/s", min: 0.5, max: 3, step: 0.1, default: 1.2 },
@@ -73,10 +74,10 @@ export class HumpYardObject extends LayoutObject {
 
   /** The yard of the object's figures (kept while they stay the same). */
   get yard() {
-    const s = this.spec, key = `${s.tracks}:${s.track_m}:${s.design}`;
+    const s = this.spec, key = `${s.tracks}:${s.track_m}:${s.design}:${s.push_m}`;
     if (key !== this._yardKey) {
       this._yardKey = key;
-      this._yard = standardYard({ tracks: Math.round(s.tracks), track_m: Number(s.track_m), design: s.design, push_m: 40 });
+      this._yard = standardYard({ tracks: Math.round(s.tracks), track_m: Number(s.track_m), design: s.design, push_m: Number(s.push_m) });
       const routes = this._yard.tracks.map((t) => this._yard.routeTo(t.name));
       /** The lowest point of the yard: the end of the lowest track (heights are drawn above it). */
       this._low = Math.min(...this._yard.tracks.map((t, i) => this._yard.height(routes[i], t.s1)));
@@ -198,7 +199,7 @@ export class HumpYardObject extends LayoutObject {
           const dx = r[0] - q[0], dy = r[1] - q[1], l = Math.hypot(dx, dy) || 1;
           let n = [dy / l, -dx / l, 0];
           if (n[0] * ((q[0] + r[0]) / 2 - p.mid[0]) + n[1] * ((q[1] + r[1]) / 2 - p.mid[1]) < 0) n = n.map((v) => -v);
-          return { pts: [[q[0], q[1], 0], [r[0], r[1], 0], [r[0], r[1], zr], [q[0], q[1], zq]], normal: n, color: COLOURS.bankSide, twoSided: true };
+          return { pts: [[q[0], q[1], 0], [r[0], r[1], 0], [r[0], r[1], zr], [q[0], q[1], zq]], normal: n, color: COLOURS.bankSide }; // a wall facing away is not drawn
         };
         const walls = [wall(a, b, p.zs, p.ze), wall(c, d, p.ze, p.zs)];
         if (p.first) walls.push(wall(d, a, p.zs, p.zs));
