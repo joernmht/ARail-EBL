@@ -202,12 +202,12 @@ test("the table on a photo of the lab: its markers are found, and the game is dr
   const cam = await camera(page);
   await page.keyboard.press("+");
   expect((await camera(page)).distance).toBe(cam.distance);
-  // a device without a camera: the table stays as it is, and a note says why
+  // a device without a camera: the photo stays as it is (with the game on it), and a note says why
   await (await panel(page)).getByRole("button", { name: "Camera" }).click();
   await expect(page.locator("#tableNote")).toContainText(/camera/i);
-  await expect(page.locator("#tableBar [data-source=table]")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#tableParts")).toBeVisible();
-  expect(await page.evaluate(() => [window.__play.live.source, window.__play.live.tracking])).toEqual(["table", null]);
+  await expect(page.locator("#tableBar [data-source=photo]")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#tableParts")).toBeHidden();
+  expect(await page.evaluate(() => [window.__play.live.source, !!window.__play.live.feed, window.__play.live.tracking])).toEqual(["photo", true, true]);
   expect(errors).toEqual([]);
 });
 
@@ -303,4 +303,45 @@ test("where the table's markers cannot be searched, the line at the top says so"
   await expect(page.locator("#tableNote")).toHaveText("The table's markers cannot be searched in this browser: the game cannot be placed on the picture.");
   await expect(page.locator("#tableNote")).toBeVisible();
   expect(await page.evaluate(() => window.__play.live.tracking)).toBe(false);
+});
+
+test("a camera whose picture has no size is stopped, and what was shown stays", async ({ page }) => {
+  // a camera that opens, but whose video never reports a size (some virtual or USB cameras)
+  await page.addInitScript(() => {
+    window.__camera = { stopped: 0 };
+    if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { value: {} });
+    navigator.mediaDevices.getUserMedia = async () => {
+      const stream = Object.assign(document.createElement("canvas"), { width: 64, height: 48 }).captureStream(5);
+      for (const track of stream.getTracks()) {
+        const stop = track.stop.bind(track);
+        track.stop = () => (window.__camera.stopped++, stop());
+      }
+      return stream;
+    };
+    HTMLMediaElement.prototype.play = async function () {};
+  });
+  await start(page);
+  await run(page, 3);
+  await page.locator(`${SEAT} .vn-story .btn`).click();
+  await (await panel(page)).getByRole("button", { name: "Camera" }).click();
+  await expect(page.locator("#tableNote")).toHaveText("The picture is empty.");
+  expect(await page.evaluate(() => [window.__camera.stopped, window.__play.live.source, !!window.__play.live.feed])).toEqual([1, "table", false]);
+  await expect(page.locator("#tableBar [data-source=table]")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a photo in which the table's markers are not found is searched a few times, then the line at the top says so", async ({ page }) => {
+  await start(page);
+  await run(page, 3);
+  await page.locator(`${SEAT} .vn-story .btn`).click();
+  // a picture of the game without markers stands in for the lab's photo
+  await page.evaluate(async () => {
+    (await import("/game/live.js")).SOURCES.photo = "game/places/town-fly.jpg";
+  });
+  await (await panel(page)).getByRole("button", { name: "Lab photo" }).click();
+  await expect(page.locator("#tableNote")).toHaveText("The table's markers were not found in the photo: the game cannot be placed on it.", { timeout: 30_000 });
+  const tries = await page.evaluate(async () => [window.__play.live.tries, (await import("/game/live.js")).SOURCES.tries]);
+  expect(tries[0]).toBe(tries[1]);
+  // and no more after that
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.__play.live.tries)).toBe(tries[0]);
 });

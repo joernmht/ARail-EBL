@@ -537,7 +537,7 @@ class PlayPage {
 
   /** The table's note, in the line at the top: why it is not seen as asked, or that the table's markers are not in view. */
   tableNote(problem = "") {
-    problem ||= (this.live?.feed && this.live.searchProblem) || "";
+    problem ||= this.live?.problem || "";
     const lost = this.live?.tracking === false;
     $("#tableNote").textContent = problem || (lost ? (this.live.source === "camera" ? "No markers in view: point the camera at the table." : "Looking for the table's markers …") : "");
   }

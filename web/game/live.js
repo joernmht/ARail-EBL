@@ -48,10 +48,11 @@ export const TABLE_VIEW = {
 /**
  * What the table is seen through: the camera over the table's photo ("table"), a photo of the lab
  * ("photo", below web/), this device's camera ("camera"). `max_px`: the widest picture searched for
- * markers and drawn on; `every_ms`: how often a camera frame is searched; `focus`: the part of the
+ * markers and drawn on; `every_ms`: how often a camera frame is searched; `tries`: how often a photo is (it does not
+ * change: its markers are found at once, or not at all); `focus`: the part of the
  * picture kept in view where the window has another shape (as CSS object-position, 0 … 1).
  */
-export const SOURCES = { kinds: ["table", "photo", "camera"], photo: "media/ebl-neustadt.jpg", max_px: 1280, every_ms: 90, focus: [0.5, 0.8] };
+export const SOURCES = { kinds: ["table", "photo", "camera"], photo: "media/ebl-neustadt.jpg", max_px: 1280, every_ms: 90, tries: 5, focus: [0.5, 0.8] };
 
 
 const mixHex = (a, b, t) => {
@@ -209,6 +210,11 @@ export class LiveScene {
     return this.feed ? !!this.found : null;
   }
 
+  /** Why the game cannot be placed on the photo or the camera's picture (no search, no markers in a photo), or null. */
+  get problem() {
+    return this.feed ? this.searchProblem || this.notFound || null : null;
+  }
+
   /** A frame: the world goes on, the picture is drawn; the first frames say whether it is fast enough. */
   frame(now) {
     if (!this.running) return;
@@ -305,37 +311,45 @@ export class LiveScene {
    *   is let go of: a camera's light goes out)
    */
   async setSource(kind, base = "../../") {
-    this.closeFeed();
-    this.source = "table";
-    if (kind !== "photo" && kind !== "camera") return { source: "table" };
-    // (a request waits for the browser: for the photo, or for the person's leave to use the camera)
-    const request = this.request, stale = () => request !== this.request || !this.table;
-    let feed;
+    // a new request: one still opening is stale now (leaving the table and closeFeed make it stale too); what is
+    // shown stays until the new source has opened, and where it cannot open, it stays as it was
+    const request = (this.request = (this.request || 0) + 1), stale = () => request !== this.request || !this.table;
+    if (kind !== "photo" && kind !== "camera") {
+      this.closeFeed();
+      this.source = "table";
+      return { source: "table" };
+    }
+    let feed = null, problem = null;
     try {
       if (kind === "photo") {
         const img = new Image();
         img.src = new URL(SOURCES.photo, new URL(base, location.href)).href;
         await img.decode();
         feed = { el: img, width: img.naturalWidth, height: img.naturalHeight, still: true, stream: null };
-      } else {
-        if (!navigator.mediaDevices?.getUserMedia || !globalThis.isSecureContext) return { source: "table", problem: "The camera needs a secure page (https)." };
+      } else if (!navigator.mediaDevices?.getUserMedia || !globalThis.isSecureContext) problem = "The camera needs a secure page (https).";
+      else {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: SOURCES.max_px } }, audio: false });
         feed = { el: null, width: 0, height: 0, still: false, stream };
-        if (stale()) throw Object.assign(new Error("stale"), { stale: true });
-        const video = document.createElement("video");
-        video.muted = true;
-        video.playsInline = true;
-        video.srcObject = stream;
-        await video.play();
-        Object.assign(feed, { el: video, width: video.videoWidth, height: video.videoHeight });
+        if (!stale()) {
+          const video = document.createElement("video");
+          video.muted = true;
+          video.playsInline = true;
+          video.srcObject = stream;
+          await video.play();
+          Object.assign(feed, { el: video, width: video.videoWidth, height: video.videoHeight });
+        }
       }
-      if (stale()) throw Object.assign(new Error("stale"), { stale: true });
     } catch (e) {
-      for (const track of feed?.stream?.getTracks() ?? []) track.stop();
-      if (e.stale || stale()) return { source: this.source, stale: true };
-      return { source: "table", problem: kind === "photo" ? "The photo of the lab could not be loaded." : `The camera could not be opened (${e.name === "NotAllowedError" ? "not allowed" : e.message}).` };
+      problem = kind === "photo" ? "The photo of the lab could not be loaded." : `The camera could not be opened (${e.name === "NotAllowedError" ? "not allowed" : e.message}).`;
     }
-    if (!(feed.width > 0 && feed.height > 0)) return { source: "table", problem: "The picture is empty." };
+    if (!problem && !stale() && !(feed.width > 0 && feed.height > 0)) problem = "The picture is empty.";
+    if (problem || stale()) {
+      // what was opened is let go of (a camera's light goes out); what is shown stays
+      for (const track of feed?.stream?.getTracks() ?? []) track.stop();
+      return stale() ? { source: this.source, stale: true } : { source: this.source, problem };
+    }
+    // the new one has opened: the one before goes
+    this.closeFeed();
     // searched and drawn at one size: the picture's own, or smaller
     const k = Math.min(1, SOURCES.max_px / feed.width);
     feed.w = Math.round(feed.width * k);
@@ -346,6 +360,8 @@ export class LiveScene {
     this.tracker = new PlaneTracker(this.world.map, { survey: false });
     this.found = null;
     this.searched = 0;
+    this.tries = 0;
+    this.notFound = null;
     this.proc ||= document.createElement("canvas");
     this.startSearch();
     return { source: kind };
@@ -395,6 +411,15 @@ export class LiveScene {
   search(now) {
     const f = this.feed;
     if (!f || !this.ready || this.searching || (f.still && this.found) || now - this.searched < SOURCES.every_ms) return;
+    // a still picture is searched a few times; where its markers are not found, that is said once and the search stops
+    if (f.still && this.tries >= SOURCES.tries) {
+      if (!this.notFound) {
+        this.notFound = "The table's markers were not found in the photo: the game cannot be placed on it.";
+        this.canvas.dispatchEvent(new CustomEvent("livetracking", { detail: { tracking: false, problem: this.notFound } }));
+      }
+      return;
+    }
+    this.tries = (this.tries || 0) + 1;
     if (!f.still && f.el.readyState < 2) return;
     const c = this.proc;
     if (c.width !== f.w || c.height !== f.h) {
