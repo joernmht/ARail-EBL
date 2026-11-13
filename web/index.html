@@ -16,10 +16,11 @@
 <link rel="stylesheet" href="app/app.css">
 <style>
 /* Project page in the app's design (tokens, bar, buttons and logo come from app/app.css).
-   Story: the picture first, then where to go from it: (1) the base, a digital big sister of the
-   lab; (2) the applications built on it, each a function prototype that opens in the app;
-   (3) the next steps, from a mirror of the layout to a sister that runs it. Numbered sections
-   wear the Türkis platform signs of the app. */
+   Story: the picture first (the video), then a switch below it: who are you? An educator, a
+   scientist or a practitioner gets a page of their own: a question, three ways to use ARail, the way
+   from an idea to something that runs, and the board of what others have brought. The switch is three
+   radio buttons; what belongs to one group carries data-aud, and CSS alone shows the chosen one. Then,
+   for all: what runs today, how it gets onto a lab's table, and where it goes next. */
 html { scroll-behavior: smooth; }
 html, body { height: auto; }
 body { font-size: 17px; line-height: 1.55; }
@@ -27,11 +28,12 @@ img { max-width: 100%; display: block; }
 a { color: var(--accent-ink); }
 .wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
 @media (min-width: 700px) { .wrap { padding-inline: 28px; } }
-h1, h2, h3 { line-height: 1.15; text-wrap: balance; margin: 0; }
-h2 { font-size: clamp(1.7rem, 3.6vw, 2.4rem); font-weight: 800; letter-spacing: -.01em; }
+h1, h2, h3 { line-height: 1.12; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.8rem, 3.8vw, 2.7rem); font-weight: 800; letter-spacing: -.02em; }
 h3 { font-size: 1.15rem; font-weight: 700; }
 p { margin: 0; }
-.lead { font-size: 1.08rem; color: var(--text-2); max-width: 64ch; }
+.lead { font-size: 1.1rem; color: var(--text-2); max-width: 60ch; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
 
 /* ---------------------------------------------------------------- bar (as in the app) */
 .site-bar { position: sticky; top: 0; z-index: 5; }
@@ -43,21 +45,116 @@ p { margin: 0; }
 @media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
 
 /* ---------------------------------------------------------------- hero: the picture first */
-.hero { background: var(--board); color: var(--board-text); }
-.hero-grid { display: grid; gap: 22px; padding-block: 22px 30px; }
-@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 390px); align-items: center; gap: 56px; padding-block: 32px 40px; } }
-.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--overlay-ok); }
-.hero h1 { font-size: clamp(2rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: -.015em; margin: 10px 0 14px; }
+.hero { background: radial-gradient(900px 520px at 88% -10%, rgba(54, 184, 191, .22), transparent 70%), var(--board); color: var(--board-text); }
+.hero-grid { display: grid; gap: 24px; padding-block: 24px 30px; }
+@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); align-items: center; gap: 64px; padding-block: 56px 44px; } }
+.hero .eyebrow { color: var(--overlay-ok); }
+.hero h1 { font-size: clamp(2.5rem, 6vw, 4.4rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.02; margin: 14px 0 18px; }
 .hero h1 em { font-style: normal; color: var(--overlay-ok); }
-.hero .lead { color: var(--board-muted); }
-.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
-.btn.big { padding: 11px 18px; font-size: 1rem; font-weight: 700; }
-.hero .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
-.hero .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
-.hero .btn.ghost:hover { border-color: var(--board-text); }
-.hero :focus-visible { outline-color: #ffffff; }
+.hero .lead { color: var(--board-muted); font-size: 1.15rem; max-width: 46ch; }
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+.btn.big { padding: 12px 20px; font-size: 1rem; font-weight: 700; }
+.hero .btn.primary, .coop .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
+.hero .btn.ghost, .coop .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
+.hero .btn.ghost:hover, .coop .btn.ghost:hover { border-color: var(--board-text); }
+.hero :focus-visible, .coop :focus-visible { outline-color: #ffffff; }
 
-.compare { position: relative; margin: 0; border-radius: var(--radius); overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
+/* the hero video: a real train through a virtual town (square, from a phone) */
+.hero-video { margin: 0; justify-self: center; width: min(100%, 520px); }
+.hero-video .media { position: relative; }
+.hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-height: min(78vh, 600px); object-fit: cover; border-radius: 14px; background: #000; box-shadow: 0 24px 60px rgba(0, 6, 26, .55); }
+.hero-video .tag { position: absolute; top: 12px; left: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: #0A777F; color: #ffffff; pointer-events: none; }
+.hero-video .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
+.hero-video .pause svg { width: 16px; height: 16px; fill: currentColor; }
+.hero-video .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.hero-video figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
+@media (max-width: 999px) { .hero-grid .hero-video { order: -1; } }
+
+/* the switch below the video: who the page is for. Three radio buttons on a track, a thumb that
+   slides to the chosen one */
+.aud { border: 0; margin: 0; padding: 6px 0 38px; min-width: 0; display: grid; justify-items: center; gap: 12px; }
+.aud legend { padding: 0; margin: 0 auto 12px; font: 600 .78rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--board-muted); text-align: center; }
+.aud-track { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 600px); padding: 5px; border-radius: 999px; background: var(--board-2); border: 1px solid var(--board-line); }
+.aud-thumb { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / 3); border-radius: 999px; background: #ffffff; box-shadow: 0 4px 14px rgba(0, 6, 26, .45); transition: transform .3s cubic-bezier(.3, .7, .2, 1); }
+.aud-track:has(#aud-scientists:checked) .aud-thumb { transform: translateX(100%); }
+.aud-track:has(#aud-practitioners:checked) .aud-thumb { transform: translateX(200%); }
+.aud-track label { position: relative; display: grid; place-items: center; min-height: 46px; padding: 6px 4px; border-radius: 999px; font-weight: 700; font-size: clamp(.84rem, 3.4vw, 1.02rem); color: var(--board-text); cursor: pointer; transition: color .2s; }
+.aud-track label:has(input:checked) { color: #001450; }
+.aud-track label:has(input:focus-visible) { outline: 3px solid #ffffff; outline-offset: 3px; }
+.aud-track input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+/* what belongs to one group is shown only while that group is chosen */
+html:has(#aud-educators:checked) [data-aud]:not([data-aud="educators"]),
+html:has(#aud-scientists:checked) [data-aud]:not([data-aud="scientists"]),
+html:has(#aud-practitioners:checked) [data-aud]:not([data-aud="practitioners"]) { display: none; }
+
+/* ---------------------------------------------------------------- the page of one group */
+.pitch { background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 64px 72px; scroll-margin-top: 64px; overflow: hidden; }
+/* the page chosen moves in (it does not fade: its text stays readable all the way) */
+.pitch > .wrap { animation: arrive .35s cubic-bezier(.3, .7, .2, 1) both; }
+@keyframes arrive { from { transform: translateY(14px); } }
+.provoke { font-size: clamp(2.1rem, 4.6vw, 3.4rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.06; margin: 14px 0 22px; }
+.provoke em { display: block; font-style: normal; color: var(--accent-ink); }
+.ways { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 28px 32px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.ways li { border-top: 3px solid var(--text); padding-top: 16px; display: grid; gap: 8px; align-content: start; }
+.ways .where { font: 600 .76rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+.ways h3 { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; }
+.ways p { color: var(--text-2); }
+.benefit { margin-top: 40px; padding-left: 18px; border-left: 4px solid var(--warn); font-size: clamp(1.15rem, 2.2vw, 1.45rem); font-weight: 700; line-height: 1.3; max-width: 36ch; text-wrap: balance; }
+.route { margin-top: 56px; display: grid; gap: 32px; }
+@media (min-width: 980px) { .route { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: start; } }
+.route h3 { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; margin-bottom: 22px; }
+/* a platform sign, as on the layout and in the app */
+.psign { display: inline-grid; place-items: center; min-width: 1.9rem; height: 2.1rem; padding-inline: 6px; border-radius: 3px; background: var(--sign); color: var(--sign-text); font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
+/* the way there: three stops on a line */
+.path { list-style: none; margin: 0; padding: 0; display: grid; }
+.path li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 16px; padding-bottom: 22px; }
+.path li:not(:last-child)::before { content: ""; position: absolute; left: calc(.95rem - 1.5px); top: 2.1rem; bottom: 0; width: 3px; background: var(--line); }
+.path .psign { grid-row: span 2; }
+.path b { font-size: 1.08rem; align-self: end; }
+.path span:last-child { color: var(--text-2); font-size: .97rem; }
+.route .ctas { margin-top: 6px; }
+/* the board: what has been brought, with its status, as a departure board */
+.refs { background: var(--board); color: var(--board-text); border: 1px solid var(--board-line); border-radius: 14px; padding: 20px 22px 10px; }
+.refs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding-bottom: 14px; }
+.refs .refs-head h3 { font: 600 .82rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--board-muted); margin: 0; }
+.refs a { color: var(--overlay-ok); font-weight: 600; }
+.refs :focus-visible { outline-color: #ffffff; }
+.refs-head a { font-size: .88rem; }
+.refs-rows { list-style: none; margin: 0; padding: 0; }
+.refs-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--board-line); }
+.refs-rows .what { display: grid; gap: 2px; }
+.refs-rows .what b, .refs-rows .what b a { color: var(--board-text); font-weight: 700; }
+.refs-rows .by { color: var(--board-muted); font-size: .88rem; }
+.refs-rows .links { grid-column: 1 / -1; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: .88rem; }
+.refs-rows li.none { display: block; color: var(--board-muted); }
+.refs-rows li.none b { display: block; color: var(--board-text); font-size: 1.1rem; margin-bottom: 2px; }
+.state { display: inline-block; padding: 4px 8px; border-radius: 3px; font: 700 .7rem/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.state.arrived { background: var(--accent); color: var(--accent-text); }
+.state.boarding { background: var(--warn); color: var(--warn-text); }
+.state.planned { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
+
+/* ---------------------------------------------------------------- sections for all */
+.block { padding-block: 72px 0; scroll-margin-top: 64px; }
+.block-head { display: grid; gap: 14px; margin-bottom: 34px; }
+
+/* what runs today */
+.apps { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.app-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; scroll-margin-top: 80px; transition: transform .2s, box-shadow .2s; }
+.app-card:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(0, 20, 80, .12); }
+.app-card .pic { aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
+.app-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.app-card .body { padding: 18px 20px 20px; display: grid; gap: 10px; align-content: start; }
+.app-card h3 { font-size: 1.3rem; font-weight: 800; letter-spacing: -.01em; }
+.app-card p { color: var(--text-2); font-size: .97rem; }
+.app-card .teach { font-size: .9rem; border-left: 3px solid var(--accent); padding-left: 10px; color: var(--text); }
+.app-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+.app-card .acts a:not(.btn) { font-size: .9rem; font-weight: 500; }
+.more { margin-top: 22px; color: var(--text-2); }
+
+/* onto your lab's table */
+.base { display: grid; gap: 32px; }
+@media (min-width: 980px) { .base { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 56px; align-items: start; } }
+.compare { position: relative; margin: 0; border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .3); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .compare .before { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
 .compare .divider { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; margin-left: -1.5px; background: var(--warn); pointer-events: none; }
@@ -69,80 +166,24 @@ p { margin: 0; }
 .compare .tag.r { right: 12px; background: #0A777F; color: #ffffff; }
 .compare-fig { margin: 0; }
 .compare-fig figcaption { padding: 12px 2px 0; color: var(--text-2); font-size: .92rem; }
-.compare-fig figcaption b { color: var(--text); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 20px; margin-top: 26px; }
+.facts div { display: grid; gap: 2px; align-content: start; border-top: 3px solid var(--text); padding-top: 10px; }
+.facts strong { font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.facts span { font-size: .82rem; color: var(--text-2); }
+details.dev { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+details.dev summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
+details.dev .dev-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
+pre { margin: 0; background: var(--board); color: #dfe7f3; border-radius: var(--radius); padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
+pre code { font-size: inherit; }
+pre .c { color: #a0b4d8; }
+pre .k { color: #f0922e; }
+pre .s { color: #7fd6db; }
+kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); }
 
-/* the hero video: a real train through a virtual town (portrait, from a phone) */
-.hero-video { margin: 0; justify-self: center; width: min(100%, 520px); }
-.hero-video .media { position: relative; }
-.hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-height: min(78vh, 600px); object-fit: cover; border-radius: var(--radius); background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .5); }
-.hero-video .tag { position: absolute; top: 12px; left: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: #0A777F; color: #ffffff; pointer-events: none; }
-.hero-video .pause, .pic.clip .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
-.hero-video .pause svg, .pic.clip .pause svg { width: 16px; height: 16px; fill: currentColor; }
-.hero-video .pause:focus-visible, .pic.clip .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
-.hero-video figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
-@media (max-width: 999px) { .hero-grid .hero-video { order: -1; } }
-
-/* the hand-over: one tap from the picture to an application */
-.jump { border-top: 1px solid var(--board-line); padding-block: 14px 18px; display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
-.jump > span { font-size: .85rem; color: var(--board-muted); margin-right: 4px; }
-.jump a { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--board-2); color: var(--board-text); text-decoration: none; font-size: .9rem; font-weight: 500; border: 1px solid var(--board-line); }
-.jump a:hover { border-color: var(--board-text); }
-.jump a i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0A777F; color: #ffffff; font-size: .74rem; font-weight: 700; }
-
-/* ---------------------------------------------------------------- sections */
-.block { padding-block: 64px; scroll-margin-top: 64px; }
-.block + .block { padding-top: 8px; }
-.block-head { display: grid; gap: 12px; margin-bottom: 30px; }
-.step-label { display: flex; align-items: center; gap: 10px; font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
-/* a platform sign, as on the layout and in the app */
-.psign { display: inline-grid; place-items: center; min-width: 1.9rem; height: 2.1rem; padding-inline: 6px; border-radius: 3px; background: var(--sign); color: var(--sign-text); font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
-
-.claim { font-size: clamp(1.25rem, 2.6vw, 1.7rem); font-weight: 700; line-height: 1.3; max-width: 46ch; text-wrap: balance; }
-.claim em { font-style: normal; color: var(--accent-ink); }
-.intro { padding-block: 56px 8px; display: grid; gap: 16px; }
-
-/* (1) the base */
-.base { display: grid; gap: 28px; }
-@media (min-width: 980px) { .base { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); align-items: start; } }
-.pipe { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: pipe; }
-.pipe li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-.pipe li::before { counter-increment: pipe; content: counter(pipe); grid-row: span 2; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid var(--accent-ink); color: var(--accent-ink); font-weight: 700; font-size: .9rem; }
-.pipe b { font-weight: 700; }
-.pipe span { color: var(--text-2); font-size: .95rem; }
-.shot { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.shot img { width: 100%; height: auto; }
-.shot figcaption { padding: 12px 16px 14px; color: var(--text-2); font-size: .92rem; }
-.shot figcaption b { color: var(--text); }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; margin-top: 14px; }
-.facts div { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
-.facts strong { font-size: 1.25rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
-.facts span { font-size: .84rem; color: var(--text-2); }
-
-/* (2) applications */
-.apps { display: grid; gap: 18px; }
-@media (min-width: 760px) { .apps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.app-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; scroll-margin-top: 80px; }
-.app-card .pic { position: relative; aspect-ratio: 16 / 10; background: var(--stage); overflow: hidden; }
-.app-card .pic img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
-.app-card .pic .badge { position: absolute; left: 10px; top: 10px; }
-.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; background: var(--overlay); color: var(--overlay-text); }
-.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--overlay-ok); }
-.app-card .body { padding: 16px 18px 18px; display: grid; gap: 10px; align-content: start; }
-.app-card .kicker { font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
-.app-card p { color: var(--text-2); font-size: .96rem; }
-.app-card .teach { font-size: .88rem; border-left: 3px solid var(--accent); padding-left: 10px; color: var(--text); }
-.app-card .acts { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
-.app-card .acts a:not(.btn) { font-size: .9rem; font-weight: 500; }
-.app-card.wide { grid-column: 1 / -1; }
-@media (min-width: 900px) {
-  .app-card.wide { grid-template-rows: none; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-  .app-card.wide .pic { aspect-ratio: auto; min-height: 100%; }
-  .app-card.wide .body { padding: 24px; align-content: center; }
-}
-
-/* (3) next steps: three stages of the sister */
+/* where it goes: three stages of the sister */
 .stages { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 10px; align-content: start; }
+.stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 10px; align-content: start; }
 .stage-card.now { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
 .stage-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .stage-card header span:first-child { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
@@ -152,54 +193,27 @@ p { margin: 0; }
 .flow text { fill: var(--text); font: 600 13px var(--font); }
 .flow .ar { stroke: currentColor; stroke-width: 2.4; fill: none; }
 .flow .ar-off { stroke: var(--line); stroke-width: 2; stroke-dasharray: 4 5; fill: none; }
-.pill { display: inline-block; padding: 3px 8px; border-radius: 3px; font: 700 .7rem/1.3 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
-.pill.arrived { background: var(--accent); color: var(--accent-text); }
-.pill.boarding { background: var(--warn); color: var(--warn-text); }
-.pill.planned { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
-.ideas { margin-top: 26px; display: grid; gap: 12px; }
-.ideas ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.ideas li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: .92rem; }
-.ideas li b { color: var(--accent-ink); font-weight: 700; }
-
-/* bring it to your lab */
-.split { display: grid; gap: 28px; }
-@media (min-width: 980px) { .split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; } }
-.setup { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
-.setup li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
-.setup li > div { display: flex; align-items: center; gap: 10px; }
-.setup .psign { min-width: 1.6rem; height: 1.8rem; font-size: 1rem; }
-.setup p { color: var(--text-2); font-size: .92rem; }
-pre { margin: 0; background: var(--board); color: #dfe7f3; border-radius: var(--radius); padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
-pre code { font-size: inherit; }
-pre .c { color: #a0b4d8; }
-pre .k { color: #f0922e; }
-pre .s { color: #7fd6db; }
-details.dev { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-details.dev summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
-details.dev .dev-body { padding: 0 16px 16px; display: grid; gap: 12px; }
-details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
 
 /* cooperation */
-.coop { background: var(--board); color: var(--board-text); border-radius: var(--radius); padding: 28px; display: grid; gap: 14px; }
-@media (min-width: 900px) { .coop { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 34px 38px; } }
-.coop h2 { font-size: clamp(1.5rem, 3vw, 2rem); }
-.coop p { color: var(--board-muted); max-width: 62ch; margin-top: 8px; }
+.coop { background: radial-gradient(700px 360px at 100% 0, rgba(54, 184, 191, .2), transparent 70%), var(--board); color: var(--board-text); border-radius: 18px; padding: 30px; display: grid; gap: 18px; }
+@media (min-width: 900px) { .coop { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 44px 48px; } }
+.coop p { color: var(--board-muted); max-width: 56ch; margin-top: 10px; }
 .coop .ctas { margin-top: 0; }
 .coop .contact { color: var(--board-text); font-size: .95rem; }
 .coop .contact a { color: inherit; font-weight: 700; }
-.coop .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
-.coop .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
-.coop :focus-visible { outline-color: #ffffff; }
 
-kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); }
-
-footer { padding-block: 36px 44px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; margin-top: 64px; }
+footer { padding-block: 36px 44px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; margin-top: 72px; }
 footer .wrap { display: grid; gap: 10px; }
 footer a { color: inherit; }
 
 .skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: #ffffff; color: #001450; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
 .skip-link:focus { top: 12px; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .aud-thumb, .aud-track label, .app-card { transition: none; }
+  .pitch > .wrap { animation: none; }
+  .app-card:hover { transform: none; }
+}
 </style>
 </head>
 <body>
@@ -212,125 +226,190 @@ footer a { color: inherit; }
   </div>
   <span class="spacer"></span>
   <nav class="site-nav" aria-label="Main">
-    <a class="opt" href="#base">Base</a>
-    <a class="opt" href="#applications">Applications</a>
-    <a class="opt" href="#next">Next steps</a>
+    <a class="opt" href="#for">For you</a>
+    <a class="opt" href="#applications">What runs</a>
+    <a class="opt" href="#base">Your lab</a>
+    <a class="opt" href="#next">Next</a>
+    <a class="opt" href="game/">Game</a>
     <a class="opt" href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
-    <a class="opt" href="lab-map/">Photo map</a>
-    <a class="opt" href="builder/">Builder</a>
-    <a class="opt" href="architecture/">Architecture</a>
     <a class="btn primary" href="app/">App</a>
   </nav>
 </header>
 
-<div class="hero">
-  <div class="wrap">
-    <section class="hero-grid" aria-labelledby="intro">
-      <div>
-        <p class="eyebrow">Railway operations lab · TU Dresden</p>
-        <h1 id="intro">The railway lab gets <em>augmented reality</em></h1>
-        <p class="lead">A digital big sister of the model railway, on any phone. Real trains run through a virtual town; passengers on the platforms, buses, a container terminal that loads real wagons, drivers on their way to work, ageing infrastructure and a whole bouquet of disruptions, registered on the real layout.</p>
-        <div class="ctas">
-          <a class="btn primary big" href="app/">Open the app</a>
-          <a class="btn ghost big" href="#applications">See the applications</a>
-        </div>
-      </div>
-      <figure class="hero-video" id="heroVideo">
-        <div class="media">
-          <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="720" aria-label="Three scenes in a loop. A real freight train runs along the curve of the lab table, through a virtual town with old buildings, Plattenbau and a forest, under a virtual sky. At the terminal a virtual crane lifts a container off a real wagon and sets it down on a real model truck, seen in a photo and from above by a phone camera in front of the truck. In the virtual town a bus stops and people get on.">
-            <source src="media/ebl-city-train.mp4" type="video/mp4">
-          </video>
-          <span class="tag">Real trains · virtual world</span>
-          <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
-        </div>
-        <figcaption>The lab in three scenes: a freight train on its way to the terminal, in a town that ARail draws around it; the terminal, where a virtual crane puts a container from the real train onto the real truck, seen by two cameras; and bus line 7 of the town, all virtual. The markers are covered with grey plates; the sky is added for this video.</figcaption>
-      </figure>
-    </section>
-    <nav class="jump" aria-label="Applications">
-      <span>Jump to</span>
-      <a href="#app-town"><i>1</i>Passengers &amp; town</a>
-      <a href="#app-terminal"><i>2</i>Container terminal</a>
-      <a href="#app-operations"><i>3</i>Rail operations</a>
-      <a href="#app-infrastructure"><i>4</i>Infrastructure</a>
-      <a href="#app-journeys"><i>5</i>Journeys</a>
-      <a href="#app-disruptions"><i>6</i>Disruptions</a>
-    </nav>
-  </div>
-</div>
-
 <main id="main">
-  <div class="wrap intro">
-    <p class="claim">Not only interlocking and train operation, not only the railway as a whole: <em>the whole transport system</em>, from the walk to work to the driver of a freight train that passes on containers between modes.</p>
-    <p class="lead">Each course switches on the functions it needs and develops its own scenarios. Everything runs in the browser: no installation, no calibration board.</p>
-  </div>
-
-  <!-- (1) the base -->
-  <section class="block" id="base" aria-labelledby="base-title">
+  <div class="hero">
     <div class="wrap">
-      <div class="block-head">
-        <p class="step-label"><span class="psign" aria-hidden="true">1</span>The base</p>
-        <h2 id="base-title">A digital big sister of the lab</h2>
-        <p class="lead">Digital twins are boring. We mapped the whole lab with ArUco markers and built a sister: an image of the layout that can be laid over it, with every phone, as a photo or a live picture, or projected. As a sister, she is technically independent of the layout.</p>
-      </div>
-      <div class="base">
+      <section class="hero-grid" aria-labelledby="intro">
         <div>
-          <ol class="pipe">
-            <li><b>Mark</b><span>Square ArUco or AprilTag stickers, 30&nbsp;mm, anywhere on the layout. Model wagons get small tags of their own.</span></li>
-            <li><b>Map</b><span>One video of the table: <code>arail-survey</code> measures every marker and writes a fixed layout and an orthophoto.</span></li>
-            <li><b>Register</b><span>From the camera image alone, all visible markers give the camera pose and its focal length. Fixed camera positions are the steadiest for now.</span></li>
-            <li><b>Mirror</b><span>Platforms, streets, houses, a terminal: a JSON layout in model millimetres, scaled to the prototype. A person on an H0 platform is 20&nbsp;mm tall.</span></li>
-            <li><b>Fly over</b><span>Press <kbd>F</kbd> for a virtual camera: build on a grid on the orthophoto and add virtual table modules beyond the real table.</span></li>
-          </ol>
-          <div class="facts">
-            <div><strong>1110 px</strong><span>estimated focal length, 1111&nbsp;px from the photo's metadata</span></div>
-            <div><strong>700.7 mm</strong><span>platform 1 from the markers; measured about 700&nbsp;mm</span></div>
-            <div><strong>0 installs</strong><span>a browser on any phone, tablet or webcam</span></div>
+          <p class="eyebrow">Railway operations lab · TU Dresden</p>
+          <h1 id="intro">The whole railway <em>on one table</em></h1>
+          <p class="lead">ARail lays a living transport system over a model railway: passengers, buses, a container terminal, crews, ageing track and everything that can go wrong. In the browser, on any phone.</p>
+          <div class="ctas">
+            <a class="btn primary big" href="app/">Open the app</a>
+            <a class="btn ghost big" href="game/">Play the game</a>
           </div>
         </div>
-        <figure class="compare-fig">
-        <figure class="compare" id="compare">
-          <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" loading="lazy" decoding="async">
-          <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
-          <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
-          <span class="divider" aria-hidden="true"></span>
-          <span class="tag l">Photo</span><span class="tag r">ARail</span>
+        <figure class="hero-video" id="heroVideo">
+          <div class="media">
+            <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="720" aria-label="Three scenes in a loop. A real freight train runs along the curve of the lab table, through a virtual town with old buildings, Plattenbau and a forest, under a virtual sky. At the terminal a virtual crane lifts a container off a real wagon and sets it down on a real model truck, seen in a photo and from above by a phone camera in front of the truck. In the virtual town a bus stops and people get on.">
+              <source src="media/ebl-city-train.mp4" type="video/mp4">
+            </video>
+            <span class="tag">Real trains · virtual world</span>
+            <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+          </div>
+          <figcaption>Three scenes from the lab: a real freight train in a virtual town, a virtual crane loading a real truck, and bus line 7. The markers are covered with grey plates; the sky is added for this video.</figcaption>
         </figure>
-          <figcaption><b>Laid over the lab.</b> The photo of the lab table and the same photo in ARail: slide to compare.</figcaption>
-        </figure>
+      </section>
+      <!-- the switch: who the page is for (the three pages below, and a line on every application) -->
+      <fieldset class="aud" id="for">
+        <legend>Show me ARail for</legend>
+        <div class="aud-track">
+          <span class="aud-thumb" aria-hidden="true"></span>
+          <label><input type="radio" name="aud" id="aud-educators" value="educators" checked><span>Educators</span></label>
+          <label><input type="radio" name="aud" id="aud-scientists" value="scientists"><span>Scientists</span></label>
+          <label><input type="radio" name="aud" id="aud-practitioners" value="practitioners"><span>Practitioners</span></label>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <!-- educators -->
+  <section class="pitch" id="educators" data-aud="educators" aria-labelledby="q-educators">
+    <div class="wrap">
+      <p class="eyebrow">For educators</p>
+      <h2 class="provoke" id="q-educators">Everything in the railway is connected. <em>Do you teach it that way?</em></h2>
+      <p class="lead">Timetabling in one course, signalling in the next, freight in another term. ARail puts them all on the same railway, so students see what their decision does to everyone else.</p>
+      <ol class="ways">
+        <li><span class="where">In the lab</span><h3>Run it live</h3><p>Real trains, a virtual town, students in the roles: signaller, operations controller, asset manager.</p></li>
+        <li><span class="where">In the lecture</span><h3>Show it</h3><p>Cases to click through and clips for your slides: a train breaks down, a signal fails, a connection is lost.</p></li>
+        <li><span class="where">At home</span><h3>Let them play</h3><p>Missions on your subject. Students collect stars; you get a class that has already met the problem.</p></li>
+      </ol>
+      <p class="benefit">One infrastructure across all your courses: that is where cross-disciplinary thinking starts.</p>
+      <div class="route">
+        <div>
+          <h3>From your idea to a teaching concept</h3>
+          <ol class="path">
+            <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>Open an issue labelled <i>teaching concept</i>: the course, the learning goal, what students should do.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>We build it</b><span>As a scenario, a case or a mission, on the lab's layout or on yours.</span></li>
+            <li><span class="psign" aria-hidden="true">3</span><b>It is on the board</b><span>Listed here with its status and a link, for you and everyone else to reuse.</span></li>
+          </ol>
+          <div class="ctas">
+            <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues/new?template=teaching_concept.yml">Propose a teaching concept</a>
+            <a class="btn big" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=operations#evu-disruption">Try a case</a>
+          </div>
+        </div>
+        <div class="refs">
+          <div class="refs-head"><h3 id="refs-teaching">Teaching concepts</h3><a href="https://github.com/joernmht/ARail-EBL/issues?q=label%3Ateaching-concept">All on GitHub</a></div>
+          <ol class="refs-rows" data-refs="teaching" aria-labelledby="refs-teaching">
+            <li class="none"><b>The board is empty.</b>The first teaching concept on it could be yours.</li>
+          </ol>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- (2) applications -->
+  <!-- scientists -->
+  <section class="pitch" id="scientists" data-aud="scientists" aria-labelledby="q-scientists">
+    <div class="wrap">
+      <p class="eyebrow">For scientists</p>
+      <h2 class="provoke" id="q-scientists">Your method works in isolation. <em>Does it survive the whole railway?</em></h2>
+      <p class="lead">A clean model meets passengers who miss their connection, a unit that breaks down and a signal that fails at rush hour. Find out before the reviewers ask.</p>
+      <ol class="ways">
+        <li><span class="where">Implement</span><h3>Your paper as a plugin</h3><p>A simulation, a dispatching rule, a demand model: one ES module, no build step.</p></li>
+        <li><span class="where">Stress</span><h3>Meet the rest of the system</h3><p>Town, timetable, fleet, track and disruptions already run. Your method runs among them.</p></li>
+        <li><span class="where">Show</span><h3>A link instead of a figure</h3><p>Colleagues and reviewers open your method in the browser and watch it work, on a model railway.</p></li>
+      </ol>
+      <p class="benefit">Methods that others can open, rerun and compare, on the same infrastructure.</p>
+      <div class="route">
+        <div>
+          <h3>From your paper to a running method</h3>
+          <ol class="path">
+            <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>As an author, open an issue labelled <i>paper</i>: the link or DOI, what to implement, what to measure.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>That is the go-ahead</b><span>Your issue allows us to give the paper to an AI that implements it. Its text is not republished.</span></li>
+            <li><span class="psign" aria-hidden="true">3</span><b>It is on the board</b><span>Logged here: the paper, its status and a link to the method as it runs.</span></li>
+          </ol>
+          <div class="ctas">
+            <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues/new?template=paper.yml">Submit a paper</a>
+            <a class="btn big" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a>
+          </div>
+        </div>
+        <div class="refs">
+          <div class="refs-head"><h3 id="refs-papers">Implemented papers</h3><a href="https://github.com/joernmht/ARail-EBL/issues?q=label%3Apaper">All on GitHub</a></div>
+          <ol class="refs-rows" data-refs="papers" aria-labelledby="refs-papers">
+            <li class="none"><b>The board is empty.</b>The first paper on it could be yours.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- practitioners -->
+  <section class="pitch" id="practitioners" data-aud="practitioners" aria-labelledby="q-practitioners">
+    <div class="wrap">
+      <p class="eyebrow">For practitioners</p>
+      <h2 class="provoke" id="q-practitioners">A disruption never stays in one department. <em>Does your training?</em></h2>
+      <p class="lead">Signal box, control centre, workshop, customer information: everyone knows their own desk. ARail shows the whole railway on a bad day, and lets people sit at the desk next door.</p>
+      <ol class="ways">
+        <li><span class="where">Rehearse</span><h3>Replay the bad day</h3><p>An incident as a scenario: run it, change one decision, run it again.</p></li>
+        <li><span class="where">Onboard</span><h3>Sit at the desk next door</h3><p>Role games for new colleagues and old hands: a signaller's half hour, an operations controller's morning, an asset manager's budget year.</p></li>
+        <li><span class="where">Explain</span><h3>Show it, don't slide it</h3><p>For clients, authorities and the public: what a closure, a spare unit or a budget cut does to passengers.</p></li>
+      </ol>
+      <p class="benefit">A shared picture of the system, before the next disruption draws it for you.</p>
+      <div class="route">
+        <div>
+          <h3>From your case to a scenario</h3>
+          <ol class="path">
+            <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>Open an issue labelled <i>practice case</i>: the situation, the roles, what people should take away. Issues are public: nothing confidential.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>We build it</b><span>As a scenario or a role game, on the lab's layout or on yours.</span></li>
+            <li><span class="psign" aria-hidden="true">3</span><b>It is on the board</b><span>Listed here with its status and a link.</span></li>
+          </ol>
+          <div class="ctas">
+            <a class="btn primary big" href="https://github.com/joernmht/ARail-EBL/issues/new?template=practice_case.yml">Bring a case from practice</a>
+            <a class="btn big" href="game/signaller/">Play the signaller</a>
+          </div>
+        </div>
+        <div class="refs">
+          <div class="refs-head"><h3 id="refs-practice">Cases from practice</h3><a href="https://github.com/joernmht/ARail-EBL/issues?q=label%3Apractice-case">All on GitHub</a></div>
+          <ol class="refs-rows" data-refs="practice" aria-labelledby="refs-practice">
+            <li class="none"><b>The board is empty.</b>The first case on it could be yours.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- what runs today -->
   <section class="block" id="applications" aria-labelledby="apps-title">
     <div class="wrap">
       <div class="block-head">
-        <p class="step-label"><span class="psign" aria-hidden="true">2</span>Applications</p>
-        <h2 id="apps-title">What runs on the sister today</h2>
-        <p class="lead">Six function prototypes, each one an example layout that opens in the app, an interactive presentation of the lab: stories to click through and containers to move. Try them on the lab photo; they work the same on your own layout and on the live camera. The games and exercises behind them, with roles, budgets and comparisons, are on the <a href="game/">game page</a>, with the first role game: the <a href="game/signaller/">signaller of Bf Neustadt</a>, one of the <a href="game/roles/">roles of the railway</a> that are to become games, and the <a href="game/career/">career planner</a> through them.</p>
+        <p class="eyebrow">What runs today</p>
+        <h2 id="apps-title">Six prototypes, one railway</h2>
+        <p class="lead">Each opens in the app, on a photo of the lab. They work the same on your layout and on the live camera.</p>
       </div>
       <div class="apps">
-        <article class="app-card wide" id="app-town" aria-labelledby="t-town">
-          <div class="pic"><img src="assets/bus-stop.jpg" width="1200" height="750" loading="lazy" decoding="async" alt="A yellow bus of line 62 at the stop Schule: people stand at its doors; the board above the stop shows the next bus of each line."><span class="badge">Prototype</span></div>
+        <article class="app-card" id="app-town" aria-labelledby="t-town">
+          <div class="pic"><img src="assets/bus-stop.jpg" width="1200" height="750" loading="lazy" decoding="async" alt="A yellow bus of line 62 at the stop Schule: people stand at its doors; the board above the stop shows the next bus of each line."></div>
           <div class="body">
-            <p class="kicker">1 · Passenger flows, town and buses</p>
             <h3 id="t-town">A town that goes to work</h3>
-            <p>Passengers wait where their train stops and board through the doors; their colour shows their mood. Around the station, residents of Plattenbau, Gründerzeit blocks and houses go to work, school and shopping on foot, by bus and by train, on a fast clock through day and night.</p>
-            <p class="teach">In teaching: station and public transport planning, intermodal trips, demand over the day.</p>
+            <p>Residents walk, take the bus and board trains through the doors, on a fast clock through day and night. Their colour shows their mood.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> station and public transport planning, intermodal trips, demand over the day.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> demand models, transfer behaviour, crowding on platforms.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> what a new stop or a changed timetable does to a town.</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#simulate">Open this example</a>
               <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/day-and-night.md">Day and night</a>
-              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/streets-and-buses.md">Streets, trams and buses</a>
+              <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/streets-and-buses.md">Streets and buses</a>
             </div>
           </div>
         </article>
         <article class="app-card" id="app-terminal" aria-labelledby="t-terminal">
-          <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks, the markers under grey plates with their numbers: a virtual gantry crane over the three loading tracks unloads a container train into the yard block; the Terminal panel lists the arrivals."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-crane-terminal.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on a photo of the lab's terminal tracks, the markers under grey plates with their numbers: a virtual gantry crane over the three loading tracks unloads a container train into the yard block; the Terminal panel lists the arrivals."></div>
           <div class="body">
-            <p class="kicker">2 · Intermodal freight</p>
             <h3 id="t-terminal">A working container terminal</h3>
-            <p>Container trains, trucks and barges, a gantry crane and a reach stacker, on the lab's terminal tracks. Pick a container and its new place, and the crane moves it. Real wagons with AprilTag labels carry their virtual containers.</p>
-            <p class="teach">In teaching: freight transport, terminal operation, the hand-over between modes.</p>
+            <p>Trains, trucks and barges, a gantry crane and a reach stacker. Pick a container and its new place, and the crane moves it. Real wagons carry virtual containers.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> freight transport, terminal operation, the hand-over between modes.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> stacking and crane strategies, loading plans for a train.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> the terminal explained to new staff, customers and visitors.</p>
             <div class="acts">
               <a class="btn primary" href="app/?example=crane-terminal">Open this example</a>
               <a href="app/?example=container-train">Hybrid train</a>
@@ -340,12 +419,13 @@ footer a { color: inherit; }
           </div>
         </article>
         <article class="app-card" id="app-operations" aria-labelledby="t-operations">
-          <div class="pic"><img src="assets/app-operations.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Operations tab at step 7 of the operations story, Passengers change trains: at platform 2 the broken unit 442 101 stands at track G3 with a red fault label, the spare unit 442 108 at track G2 with its doors open, passengers cross the platform; the display shows RB 31 to Talsee now from track G2, about 25 minutes late; the panel lists all ten steps."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-operations.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Operations tab at step 7 of the operations story, Passengers change trains: at platform 2 the broken unit 442 101 stands at track G3 with a red fault label, the spare unit 442 108 at track G2 with its doors open, passengers cross the platform; the display shows RB 31 to Talsee now from track G2, about 25 minutes late; the panel lists all ten steps."></div>
           <div class="body">
-            <p class="kicker">3 · Rail operations</p>
-            <h3 id="t-operations">A train breaks down, step by step</h3>
-            <p>RB 31 to Talsee reports a fault at the platform. The driver calls the operations control, the spare unit comes from the depot, the passengers change trains, and the broken unit runs empty to the workshop: what it costs under the transport contract. Click through it on Bf Neustadt; the flyover's camera follows. Or plan a normal morning: units and drivers on the trains, the trains on tracks, then run it. The railway undertaking's fleet, workshop and crews are a game on the game page.</p>
-            <p class="teach">In teaching: railway undertakings, disruption management, spare units, maintenance (ECM), penalties; vehicle and crew scheduling, track occupation.</p>
+            <h3 id="t-operations">A train breaks down</h3>
+            <p>RB 31 reports a fault at the platform. A spare unit comes from the depot, the passengers change trains, the broken unit runs to the workshop: what it costs. Or plan a normal morning and run it.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> disruption management, spare units, maintenance (ECM), penalties; vehicle and crew scheduling.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> rescheduling and dispatching rules, vehicle and crew plans under disruption.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> a disruption drill for the control centre; what a spare unit is worth.</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=operations#evu-disruption">Open this example</a>
               <a href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=plan#evu-operations">Plan a morning</a>
@@ -355,12 +435,13 @@ footer a { color: inherit; }
           </div>
         </article>
         <article class="app-card" id="app-infrastructure" aria-labelledby="t-infra">
-          <div class="pic"><img src="assets/app-infrastructure.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Infrastructure tab at step 11 of the maintenance story, The new track goes in: track G3 at platform 2 is closed, a red band with crosses along it; a yellow road-rail excavator lays the new track; the panel lists all twelve steps."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-infrastructure.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Infrastructure tab at step 11 of the maintenance story, The new track goes in: track G3 at platform 2 is closed, a red band with crosses along it; a yellow road-rail excavator lays the new track; the panel lists all twelve steps."></div>
           <div class="body">
-            <p class="kicker">4 · Infrastructure</p>
-            <h3 id="t-infra">A maintenance case, step by step</h3>
-            <p>Exit signal N2 fails, the signaller closes its track, the repair team drives out from its base, repairs the signal and exchanges it for a new one. Then worn track G3 is closed and renewed with a construction train. Click through it on Bf Neustadt; the flyover's camera follows. Asset management with roles, budgets and HOAI projects is a game on the game page.</p>
-            <p class="teach">In teaching: maintenance and renewal, track closures, the condition of assets and their age.</p>
+            <h3 id="t-infra">A signal fails, a track wears out</h3>
+            <p>Exit signal N2 fails: the signaller closes its track, the repair team drives out and exchanges it. Then worn track G3 is closed and renewed with a construction train.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> maintenance and renewal, track closures, the condition of assets and their age.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> maintenance strategies, planning of closures, models of wear.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> a closure explained to operators and clients; budget choices made visible.</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=infrastructure#infra-disruption">Open this example</a>
               <a href="game/?layout=../layouts/ebl-lab.json&amp;layers=infrastructure#infra">The game</a>
@@ -369,12 +450,13 @@ footer a { color: inherit; }
           </div>
         </article>
         <article class="app-card" id="app-journeys" aria-labelledby="t-journeys">
-          <div class="pic"><img src="assets/app-journeys.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Journeys tab at step 6 of the journeys story, Her app finds a bus: on platform 1 a warning says RB 31 to Talsee about 20 min late, the platform display says about 20 min later, and over Ada her phone offers bus 270 from bay B of the bus station; a dashed orange line leads from the platform through the underpass and along Bahnhofstraße to the bus station; the departure board at the station shows the RB 31 with +20."><span class="badge">Prototype</span></div>
+          <div class="pic"><img src="assets/app-journeys.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app in the flyover over Bf Neustadt with the Journeys tab at step 6 of the journeys story, Her app finds a bus: on platform 1 a warning says RB 31 to Talsee about 20 min late, the platform display says about 20 min later, and over Ada her phone offers bus 270 from bay B of the bus station; a dashed orange line leads from the platform through the underpass and along Bahnhofstraße to the bus station; the departure board at the station shows the RB 31 with +20."></div>
           <div class="body">
-            <p class="kicker">5 · Journeys</p>
-            <h3 id="t-journeys">A traveller's journey, step by step</h3>
-            <p>Ada walks to platform 1 of Bf Neustadt. Her train is 20 minutes late, her connection in Talsee is lost, and her travel app finds a bus from the bus station; she takes it while the late train comes in without her. Then her journey in numbers and her rights as a passenger. The exercise in which every attendee plans a traveller is a game on the game page.</p>
-            <p class="teach">In teaching: passenger information, connections and how they break, passenger rights, the bus as the alternative.</p>
+            <h3 id="t-journeys">A connection is lost</h3>
+            <p>Ada's train is 20 minutes late and her connection is gone. Her travel app finds a bus; she takes it while the late train comes in without her. Then her journey in numbers, and her rights.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> passenger information, connections and how they break, passenger rights.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> passenger information, holding connections, route choice.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> a delay as the customer lives it, for customer information training.</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-neustadt.json&amp;layers=journeys#journeys">Open this example</a>
               <a href="game/?layout=../layouts/ebl-lab.json&amp;layers=journeys#journeys">The game</a>
@@ -382,13 +464,14 @@ footer a { color: inherit; }
             </div>
           </div>
         </article>
-        <article class="app-card wide" id="app-disruptions" aria-labelledby="t-disrupt">
-          <div class="pic"><img src="assets/app-disruptions.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo during the scenario Rush hour with a signal failure: crowded platforms, trains held; the Disruptions panel lists the scenarios."><span class="badge">Prototype</span></div>
+        <article class="app-card" id="app-disruptions" aria-labelledby="t-disrupt">
+          <div class="pic"><img src="assets/app-disruptions.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="The app on the lab photo during the scenario Rush hour with a signal failure: crowded platforms, trains held; the Disruptions panel lists the scenarios."></div>
           <div class="body">
-            <p class="kicker">6 · Disruptions and scenarios</p>
             <h3 id="t-disrupt">A bouquet of disruptions</h3>
-            <p>Delays, cancellations, closures, signal failures, crowd surges and rail replacement buses, started by hand or scripted as scenarios: rush hour with a signal failure, the crowd after the football match.</p>
-            <p class="teach">In teaching: dispatching, passenger information, exercises that can be repeated.</p>
+            <p>Delays, cancellations, closures, signal failures, crowds and replacement buses, started by hand or scripted: rush hour with a signal failure, the crowd after the match.</p>
+            <p class="teach" data-aud="educators"><b>Teach:</b> dispatching, passenger information, exercises that can be repeated.</p>
+            <p class="teach" data-aud="scientists"><b>Research:</b> scripted scenarios as a test bench: the same disruption, another strategy.</p>
+            <p class="teach" data-aud="practitioners"><b>Practice:</b> incident reviews and drills, scripted and repeatable.</p>
             <div class="acts">
               <a class="btn primary" href="app/?layout=../layouts/ebl-lab.json#disrupt">Open this example</a>
               <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/disruptions-and-scenarios.md">Guide</a>
@@ -396,82 +479,46 @@ footer a { color: inherit; }
           </div>
         </article>
       </div>
+      <p class="more">Rather play? The <a href="game/">game page</a> has missions, the signaller of Bf Neustadt, a career through the roles of the railway, and the games with budgets and fleets.</p>
     </div>
   </section>
 
-  <!-- (3) next steps -->
-  <section class="block" id="next" aria-labelledby="next-title">
+  <!-- onto your lab's table -->
+  <section class="block" id="base" aria-labelledby="base-title">
     <div class="wrap">
       <div class="block-head">
-        <p class="step-label"><span class="psign" aria-hidden="true">3</span>Next steps</p>
-        <h2 id="next-title">From a sister to a hybrid lab</h2>
-        <p class="lead">The first step is done. Next, the sister learns where the real trains are; later, she can run the layout herself.</p>
+        <p class="eyebrow">Bring it to your lab</p>
+        <h2 id="base-title">Stickers, a phone, a browser</h2>
+        <p class="lead">Digital twins are boring. We built a sister: an image of the layout that is laid over it, and technically independent of it. Any scale: H0, TT, N.</p>
       </div>
-      <div class="stages">
-        <article class="stage-card now" aria-labelledby="s1">
-          <header><span>Stage 1</span><span class="pill arrived">Arrived</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister side by side, not connected">
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar-off" d="M116 40h68"/>
-          </svg>
-          <h3 id="s1">The digital sister</h3>
-          <p>An image of the layout that can be laid over it, on any phone, live or projected. Technically independent of the layout: she simulates the lab next to it.</p>
-        </article>
-        <article class="stage-card" aria-labelledby="s2">
-          <header><span>Stage 2</span><span class="pill boarding">Next</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="The layout writes into the sister">
-            <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar" d="M116 40h66" marker-end="url(#ah)"/>
-          </svg>
-          <h3 id="s2">The layout writes into the model</h3>
-          <p>Live positions from the lab's control system: physical trains in a virtual world. When a real train stops at a platform, the virtual passengers board it. The bridge runs with a simulator; the adapter for the EBL is next.</p>
-        </article>
-        <article class="stage-card" aria-labelledby="s3">
-          <header><span>Stage 3</span><span class="pill planned">Later</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister write into each other">
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar" d="M120 32h62" marker-end="url(#ah)"/>
-            <path class="ar" d="M180 50h-62" marker-end="url(#ah)"/>
-          </svg>
-          <h3 id="s3">The sister runs operations</h3>
-          <p>The sister takes over operations control and writes into the layout: disruptions hit the real trains too, flexibly and repeatably, for any exercise.</p>
-        </article>
-      </div>
-      <div class="ideas">
-        <h3>And then</h3>
-        <ul>
-          <li><b>Airports</b> as another mode</li>
-          <li><b>BIM models</b> of stations and buildings</li>
-          <li><b>Occlusion</b> by real trains</li>
-          <li><b>Projection</b> onto the table</li>
-          <li><b>Your scenarios</b> for your courses</li>
-          <li><b>Other labs</b> and model railway clubs</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- bring it to your lab -->
-  <section class="block" id="setup" aria-labelledby="setup-title">
-    <div class="wrap split">
-      <div class="block-head">
-        <h2 id="setup-title">Bring it to your lab</h2>
-        <p class="lead">One visit gives a fixed layout; the <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">lab-session guide</a> has the checklist. Any scale: H0, TT, N.</p>
-        <div class="ctas"><a class="btn primary" href="markers/">Print markers</a><a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/getting-started.md">Getting started</a></div>
-      </div>
-      <div>
-        <ol class="setup">
-          <li><div><span class="psign" aria-hidden="true">1</span><h3>Print</h3></div><p>The <a href="markers/">marker sheets</a> on matte sticker paper, or one per label on A4 label sheets (e.g. HERMA); check the scale bar with a ruler.</p></li>
-          <li><div><span class="psign" aria-hidden="true">2</span><h3>Stick</h3></div><p>Marker 0 at a table corner, then one every 30–40&nbsp;cm and at both ends of every platform.</p></li>
-          <li><div><span class="psign" aria-hidden="true">3</span><h3>Film</h3></div><p>Slow passes along and across the table, two or three markers always in view: two to five minutes.</p></li>
-          <li><div><span class="psign" aria-hidden="true">4</span><h3>Survey</h3></div><p><code>arail-survey</code> writes a locked layout, a report and an orthophoto.</p></li>
-          <li><div><span class="psign" aria-hidden="true">5</span><h3>Build</h3></div><p>In the flyover: table modules, platforms, streets, bus lines, houses; export the layout file.</p></li>
-          <li><div><span class="psign" aria-hidden="true">6</span><h3>Connect</h3></div><p><code>arail-bridge</code> with an adapter for your control system, or the built-in simulator.</p></li>
-        </ol>
+      <div class="base">
+        <figure class="compare-fig">
+          <figure class="compare" id="compare">
+            <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" loading="lazy" decoding="async">
+            <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
+            <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
+            <span class="divider" aria-hidden="true"></span>
+            <span class="tag l">Photo</span><span class="tag r">ARail</span>
+          </figure>
+          <figcaption>The lab table, and the same photo in ARail: slide to compare.</figcaption>
+        </figure>
+        <div>
+          <ol class="path">
+            <li><span class="psign" aria-hidden="true">1</span><b>Stick</b><span>ArUco or AprilTag markers, 30&nbsp;mm, one every 30–40&nbsp;cm. Print them from the <a href="markers/">marker sheets</a>.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>Film</b><span>One slow video of the table. <code>arail-survey</code> measures every marker and writes the layout and an orthophoto.</span></li>
+            <li><span class="psign" aria-hidden="true">3</span><b>Build</b><span>Platforms, streets, houses, a terminal: in the flyover (<kbd>F</kbd>), on a grid, also beyond the real table.</span></li>
+            <li><span class="psign" aria-hidden="true">4</span><b>Connect</b><span><code>arail-bridge</code> brings the positions of the real trains from your control system, or from the built-in simulator.</span></li>
+          </ol>
+          <div class="ctas">
+            <a class="btn primary" href="markers/">Print markers</a>
+            <a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/getting-started.md">Getting started</a>
+            <a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">Lab-session checklist</a>
+          </div>
+          <div class="facts">
+            <div><strong>0 installs</strong><span>a browser on any phone, tablet or webcam</span></div>
+            <div><strong>700.7 mm</strong><span>platform 1 from the markers; measured about 700&nbsp;mm</span></div>
+            <div><strong>1110 px</strong><span>estimated focal length; 1111&nbsp;px in the photo's metadata</span></div>
+          </div>
         <details class="dev">
           <summary>For developers: plugins</summary>
           <div class="dev-body">
@@ -497,6 +544,52 @@ footer a { color: inherit; }
 }</code></pre>
           </div>
         </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- where it goes -->
+  <section class="block" id="next" aria-labelledby="next-title">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow">Next</p>
+        <h2 id="next-title">From a sister to a hybrid lab</h2>
+        <p class="lead">The first step is done. Next, the sister learns where the real trains are; later, she runs the layout herself.</p>
+      </div>
+      <div class="stages">
+        <article class="stage-card now" aria-labelledby="s1">
+          <header><span>Stage 1</span><span class="state arrived">Arrived</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister side by side, not connected">
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar-off" d="M116 40h68"/>
+          </svg>
+          <h3 id="s1">The digital sister</h3>
+          <p>An image of the layout that can be laid over it, on any phone, live or projected. Technically independent of the layout: she simulates the lab next to it.</p>
+        </article>
+        <article class="stage-card" aria-labelledby="s2">
+          <header><span>Stage 2</span><span class="state boarding">Next</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="The layout writes into the sister">
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar" d="M116 40h66" marker-end="url(#ah)"/>
+          </svg>
+          <h3 id="s2">The layout writes into the model</h3>
+          <p>Live positions from the lab's control system: physical trains in a virtual world. When a real train stops at a platform, the virtual passengers board it. The bridge runs with a simulator; the adapter for the EBL is next.</p>
+        </article>
+        <article class="stage-card" aria-labelledby="s3">
+          <header><span>Stage 3</span><span class="state planned">Later</span></header>
+          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister write into each other">
+            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
+            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
+            <path class="ar" d="M120 32h62" marker-end="url(#ah)"/>
+            <path class="ar" d="M180 50h-62" marker-end="url(#ah)"/>
+          </svg>
+          <h3 id="s3">The sister runs operations</h3>
+          <p>The sister takes over operations control and writes into the layout: disruptions hit the real trains too, flexibly and repeatably, for any exercise.</p>
+        </article>
       </div>
     </div>
   </section>
@@ -505,8 +598,8 @@ footer a { color: inherit; }
     <div class="wrap">
       <div class="coop">
         <div>
-          <h2 id="coop-title">Open for cooperation</h2>
-          <p>Railway labs, universities, model railway clubs and industry: bring your layout, your control system or your course. ARail-EBL is open source under the Apache License 2.0.</p>
+          <h2 id="coop-title">Bring your layout, your course, your case</h2>
+          <p>Railway labs, universities, model railway clubs and industry are welcome. ARail-EBL is open source under the Apache License 2.0.</p>
           <p class="contact">Contact: Jörn Maurischat, <a href="mailto:joern.maurischat@tu-dresden.de">joern.maurischat@tu-dresden.de</a></p>
         </div>
         <div class="ctas">
@@ -523,42 +616,77 @@ footer a { color: inherit; }
     <p>ARail-EBL is open source under the <a href="https://github.com/joernmht/ARail-EBL/blob/main/LICENSE">Apache License 2.0</a>, developed by Jörn Maurischat with the infrastructure of the Chair of Railway Operations, TU Dresden (<a href="https://github.com/joernmht/ARail-EBL/blob/main/NOTICE">NOTICE</a>). Marker detection uses <a href="https://github.com/damianofalcioni/js-aruco2">js-aruco2</a>; the tools use <a href="https://opencv.org">OpenCV</a>.</p>
     <p>The site and the app follow the corporate design of the Chair of Railway Operations at TU Dresden. The chair's logo is used with the chair's permission and not covered by the project license; the fonts are hosted on this site (<a href="https://github.com/joernmht/ARail-EBL/blob/main/THIRD_PARTY_NOTICES.md">third-party notices</a>).</p>
     <p>Contact: <a href="mailto:joern.maurischat@tu-dresden.de">joern.maurischat@tu-dresden.de</a></p>
-    <p><a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Documentation</a> · <a href="architecture/">Software architecture (UML)</a></p>
+    <p><a href="lab-map/">Photo map</a> · <a href="builder/">Builder</a> · <a href="architecture/">Software architecture (UML)</a> · <a href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Documentation</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/joernmht/ARail-EBL/issues">Report a problem or suggest an idea</a></p>
     <p><a href="impressum/" lang="de">Impressum</a> (legal notice) · <a href="datenschutz/" lang="de">Datenschutz</a> (privacy)</p>
   </div>
 </footer>
 
 <script>
+  // who the page is for: the switch's choice, also from the address (?for=scientists), and kept in it for a link to share
+  const audiences = [...document.querySelectorAll('input[name="aud"]')];
+  const asked = audiences.find((a) => a.value === new URLSearchParams(location.search).get("for"));
+  if (asked) asked.checked = true;
+  for (const a of audiences) {
+    a.addEventListener("change", () => {
+      const url = new URL(location.href);
+      url.searchParams.set("for", a.value);
+      history.replaceState(history.state, "", url);
+    });
+  }
+
+  // the boards: what has been brought so far (references.json, kept in the repository), each with its status and its links
+  const STATUS = { proposed: ["Proposed", "planned"], "in-progress": ["In progress", "boarding"], implemented: ["Implemented", "arrived"] };
+  const el = (tag, props, ...kids) => {
+    const e = Object.assign(document.createElement(tag), props);
+    e.append(...kids.filter(Boolean));
+    return e;
+  };
+  // a link of this site, or an https one; anything else becomes no link
+  const safe = (href) => {
+    try {
+      const url = new URL(href, location.href);
+      return url.origin === location.origin || url.protocol === "https:" ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
+  const link = (href, text) => (typeof href === "string" && safe(href) ? el("a", { href: safe(href) }, text) : null);
+  fetch("references.json").then((r) => (r.ok ? r.json() : {})).then((refs) => {
+    for (const list of document.querySelectorAll("[data-refs]")) {
+      const rows = (Array.isArray(refs[list.dataset.refs]) ? refs[list.dataset.refs] : []).filter((r) => r && typeof r.title === "string" && STATUS[r.status]);
+      if (!rows.length) continue;
+      list.replaceChildren(...rows.map((r) => {
+        const [status, pill] = STATUS[r.status];
+        return el("li", {},
+          el("span", { className: "what" }, el("b", {}, link(r.source, r.title) || r.title), typeof r.by === "string" ? el("span", { className: "by" }, r.by) : null),
+          el("span", { className: `state ${pill}` }, status),
+          el("span", { className: "links" }, link(r.link, "Open it"), Number.isInteger(r.issue) ? link(`https://github.com/joernmht/ARail-EBL/issues/${r.issue}`, `Issue #${r.issue}`) : null));
+      }));
+    }
+  }).catch(() => {});
+
   // the video: a pause button, and no autoplay for people who prefer reduced motion
   const icons = { pause: '<path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/>', play: '<path d="M4 2l10 6-10 6z"/>' };
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  for (const [clipId, buttonId, name] of [["heroClip", "heroPause", "the video"]]) {
-    const clip = document.getElementById(clipId), pause = document.getElementById(buttonId);
-    const showState = () => {
-      const playing = !clip.paused;
-      pause.setAttribute("aria-pressed", playing ? "false" : "true");
-      pause.setAttribute("aria-label", `${playing ? "Pause" : "Play"} ${name}`);
-      pause.querySelector("svg").innerHTML = playing ? icons.pause : icons.play;
-    };
-    pause.addEventListener("click", () => {
-      clip.dataset.user = clip.paused ? "play" : "pause";
-      if (clip.paused) clip.play().catch(() => {});
-      else clip.pause();
-    });
-    clip.addEventListener("play", showState);
-    clip.addEventListener("pause", showState);
-    if (still) {
-      clip.removeAttribute("autoplay");
-      clip.pause();
-    } else if (!clip.autoplay && "IntersectionObserver" in window) {
-      new IntersectionObserver(([e]) => {
-        if (clip.dataset.user === "pause") return;
-        if (e.isIntersecting) clip.play().catch(() => {});
-        else clip.pause();
-      }, { threshold: 0.3 }).observe(clip);
-    }
-    showState();
+  const clip = document.getElementById("heroClip"), pause = document.getElementById("heroPause");
+  const showState = () => {
+    const playing = !clip.paused;
+    pause.setAttribute("aria-pressed", playing ? "false" : "true");
+    pause.setAttribute("aria-label", `${playing ? "Pause" : "Play"} the video`);
+    pause.querySelector("svg").innerHTML = playing ? icons.pause : icons.play;
+  };
+  pause.addEventListener("click", () => {
+    if (clip.paused) clip.play().catch(() => {});
+    else clip.pause();
+  });
+  clip.addEventListener("play", showState);
+  clip.addEventListener("pause", showState);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    clip.removeAttribute("autoplay");
+    clip.pause();
   }
+  showState();
+
+  // the photo and the same photo in ARail
   const fig = document.getElementById("compare");
   const range = document.getElementById("compareRange");
   const set = (v) => fig.style.setProperty("--pos", `${v}%`);

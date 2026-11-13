@@ -1,0 +1,44 @@
+name: Paper to implement
+description: For scientists. A published method (dispatching, scheduling, demand, maintenance…) that should run in ARail, among everything else that runs there.
+title: "Paper: "
+labels: ["paper"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Filed by an author of the paper, this issue is the go-ahead: we may give the paper to an AI coding assistant, which implements the method as a plugin or a simulation in ARail. The paper's text is not republished by the project; the [project page](https://joernmht.github.io/ARail-EBL/?for=scientists) lists its title, authors and link, its status and a link to the method as it runs.
+  - type: input
+    id: reference
+    attributes:
+      label: The paper
+      description: Title, authors, year, and a DOI or link. If it is not open access, say how we get the text (attach it here only if you may publish it; otherwise send it by email).
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: What should be implemented?
+      description: The method or model, its inputs and outputs, and the sections, equations or algorithms that define it.
+    validations:
+      required: true
+  - type: textarea
+    id: measure
+    attributes:
+      label: What should be measured or shown?
+      description: The situation on the railway it should meet (rush hour, a broken unit, a signal failure…), what to compare it with, and the figures that matter.
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data and code
+      description: Reference implementations, test instances or data that may be used, with their licences.
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Go-ahead
+      options:
+        - label: I am an author of this paper, or I file this with the authors' consent.
+          required: true
+        - label: I agree that the paper is given to an AI coding assistant to implement it in ARail, under the project's Apache License 2.0. The paper's text is not republished.
+          required: true

@@ -1,10 +1,11 @@
 // The title screen of the game page (game/): what the page opens with when it is called without a
 // layout or a case (a bare game/, or game/?lang=de). The photos of the lab, full screen, drift and
-// fade into each other, as a game's title does; beside them the main menu: to go on with the game
-// played last, the big game's missions, the signaller, free play (the game
-// page's cases, a submenu), the career planner, the role catalogue, the options (language, a moving
-// background, full screen) and the way back to the project page. A link of the menu opens its page;
-// free play opens this page again with a layout and a case, which goes straight into the app's shell.
+// fade into each other, as a game's title does; beside them the main menu, never more than five
+// choices (MAX_CHOICES), the rest in submenus: to go on with the game played last; Games (the big game's
+// missions, the signaller, and free play, a submenu of its own with the game page's cases); Career (the
+// logbook, the career planner, the role catalogue); the options (language, a moving background, full
+// screen); and the way back to the project page. A link of the menu opens its page; free play opens
+// this page again with a layout and a case, which goes straight into the app's shell.
 import { UI_LANGUAGES } from "../arail/index.js";
 import { chooseLanguage, i18n, setLanguage, tr, translateDocument } from "../app/i18n.js";
 import { $, h, mount } from "../app/ui.js";
@@ -70,7 +71,13 @@ export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "cam
 export const PAGES = ["play/", "signaller/", "career/", "roles/", "logbook/"];
 
 /** The heading of each menu; a submenu's is also the label of the item that opens it. */
-const HEADINGS = { main: "Main menu", free: "Free play", options: "Options" };
+const HEADINGS = { main: "Main menu", play: "Games", free: "Free play", career: "Career", options: "Options" };
+
+/** The menu each submenu goes back to (Back, Escape, the left arrow). */
+const PARENT = { play: "main", free: "play", career: "main", options: "main" };
+
+/** A menu offers at most this many choices (Back not counted); what does not fit goes into a submenu. */
+export const MAX_CHOICES = 5;
 
 const store = {
   get(key, fallback) {
@@ -91,9 +98,10 @@ const store = {
 };
 
 /**
- * @typedef {{id?: string, label: string, sub?: string, href?: string, go?: string, act?: () => void, pressed?: boolean, lang?: string, keep?: boolean}} MenuItem
- * href: a page to open; go: a submenu; act: an option (pressed: whether it is on; lang: a language's
- * name, in that language). keep: not remembered as the game played last.
+ * @typedef {{id?: string, label: string, sub?: string, href?: string, go?: string, back?: boolean, act?: () => void, pressed?: boolean, lang?: string, keep?: boolean}} MenuItem
+ * href: a page to open; go: a menu to show (back: the one this submenu came from); act: an option
+ * (pressed: whether it is on; lang: a language's name, in that language). keep: not remembered as the
+ * game played last.
  */
 
 /** The title screen: the photos, the menu and its submenus. */
@@ -114,7 +122,7 @@ export class TitleScreen {
   constructor({ freePlay }) {
     this.root = $("#title");
     this.freePlay = freePlay;
-    /** The menu shown: "main", "free" or "options". */
+    /** The menu shown: "main", "play", "free", "career" or "options". */
     this.view = "main";
     this.slide = 0;
     /** The photo being loaded to be shown next, or null. */
@@ -267,30 +275,43 @@ export class TitleScreen {
 
   /** The items of the menu shown. @returns {MenuItem[]} */
   items() {
-    if (this.view === "free") return [...this.freePlay, { label: "Back", go: "main" }];
+    const back = { label: "Back", go: PARENT[this.view], back: true };
+    if (this.view === "play") {
+      return [
+        { label: "Missions", sub: "A line of missions, played on the lab's table: take a seat, collect your stars", href: "play/" },
+        { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
+        { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
+        back,
+      ];
+    }
+    if (this.view === "free") return [...this.freePlay, back];
+    if (this.view === "career") {
+      return [
+        { label: "Logbook", sub: this.rankLine() ?? "Your stars, your rank, the railway terms you met", href: "logbook/" },
+        { label: "Career planner", sub: "A working life through the roles of the railway", href: "career/" },
+        { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
+        back,
+      ];
+    }
     if (this.view === "options") {
       const lang = i18n.lang, motion = this.motion;
       return [
         ...Object.entries(UI_LANGUAGES).map(([code, name]) => ({ label: name, sub: "Language", pressed: lang === code, lang: code, act: () => this.setLanguage(code) })),
         { label: "Moving background", sub: motion ? "On" : "Off", pressed: motion, act: () => this.toggleMotion() },
         document.fullscreenEnabled ? { label: "Full screen", sub: document.fullscreenElement ? "On" : "Off", pressed: !!document.fullscreenElement, act: () => this.toggleFullscreen() } : null,
-        { label: "Back", go: "main" },
+        back,
       ].filter(Boolean);
     }
     return [
       this.continued(),
-      { label: "Missions", sub: "A line of missions, played on the lab's table: take a seat, collect your stars", href: "play/" },
-      { label: "Signaller", sub: "Half an hour at Bf Neustadt in a relay interlocking", href: "signaller/" },
-      { label: "Free play", sub: "Assets, operations and journeys on the lab's layout; the container terminal", go: "free" },
-      { label: "Career", sub: "A working life through the roles of the railway", href: "career/" },
-      { label: "Roles", sub: "Every role of the railway, with its decisions and limits", href: "roles/" },
-      { label: "Logbook", sub: this.rankLine() ?? "Your stars, your rank, the railway terms you met", href: "logbook/" },
+      { label: "Games", sub: "Missions, the signaller, free play on the lab's layout", go: "play" },
+      { label: "Career", sub: this.rankLine() ?? "Your logbook, the career planner, every role of the railway", go: "career" },
       { label: "Options", sub: "Language, moving background, full screen", go: "options" },
       { label: "Leave", sub: "To the project page", href: "../", keep: true },
     ].filter(Boolean);
   }
 
-  /** What the player has reached, for the Logbook's line (progress.js): the stars and the rank; null before the first mission. */
+  /** What the player has reached, for the lines of Career and its Logbook (progress.js): the stars and the rank; null before the first mission. */
   rankLine() {
     const p = readProgress(store.get(PROGRESS_KEY, null)), n = totalStars(p);
     return Object.keys(p.missions).length ? `★ ${n} · ${tr(rankOf(n).title)}` : null;
@@ -337,7 +358,7 @@ export class TitleScreen {
       }
       const go = !!it.go;
       return h("button", {
-        class: `title-item${go && it.go !== "main" ? " more" : ""}${it.go === "main" ? " back" : ""}`,
+        class: `title-item${it.back ? " back" : go ? " more" : ""}`,
         type: "button",
         "aria-pressed": it.pressed == null ? null : String(it.pressed),
         onclick: () => (go ? this.go(it.go) : it.act()),
@@ -364,12 +385,12 @@ export class TitleScreen {
     if (at) items.find((el) => label(el) === at)?.focus({ preventScroll: true });
   }
 
-  /** Open a submenu (or the main menu again), with the focus on its first item, or on the item that led there. */
+  /** Open a submenu, with the focus on its first item, or go back to the menu it came from, with the focus on the item that led there. */
   go(view) {
     const from = this.view;
     this.view = view;
     this.render();
-    if (view === "main" && from !== "main") this.focusLabel(HEADINGS[from]);
+    if (PARENT[from] === view) this.focusLabel(HEADINGS[from]);
     else this.focusFirst();
   }
 
@@ -426,7 +447,7 @@ export class TitleScreen {
     this.redraw();
   }
 
-  /** The keys of a game's menu: the arrows move, Enter chooses (the item's own), Escape goes back. */
+  /** The keys of a game's menu: the arrows move, Enter chooses (the item's own), Escape goes back one menu. */
   onKey(e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const items = [...this.root.querySelectorAll(".title-item")];
@@ -445,13 +466,13 @@ export class TitleScreen {
       (this.cursor && this.root.contains(this.cursor) ? this.cursor : items[0])?.click();
     } else if (e.key === "Escape" && this.view !== "main") {
       e.preventDefault();
-      this.go("main");
+      this.go(PARENT[this.view]);
     } else if (e.key === "ArrowRight" && document.activeElement?.classList.contains("more")) {
       e.preventDefault();
       document.activeElement.click();
     } else if (e.key === "ArrowLeft" && this.view !== "main") {
       e.preventDefault();
-      this.go("main");
+      this.go(PARENT[this.view]);
     }
   }
 }

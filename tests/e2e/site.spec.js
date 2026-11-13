@@ -24,14 +24,111 @@ test("project page links to the app and the compare slider works", async ({ page
   expect(errors).toEqual([]);
 });
 
-test("project page hands over from the picture to the applications, each opening an example in the app", async ({ page, request }) => {
+test("the switch below the video shows the page of one group: its question, its ways, its way in and its board", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  // base, applications, next steps, in this order
+  const groups = page.getByRole("group", { name: "Show me ARail for" });
+  expect(await groups.getByRole("radio").evaluateAll((rs) => rs.map((r) => r.value))).toEqual(["educators", "scientists", "practitioners"]);
+  // below the video, above the pages it switches
+  const video = await page.locator("#heroVideo").boundingBox(), sw = await groups.boundingBox(), first = await page.locator("#educators").boundingBox();
+  expect(sw.y).toBeGreaterThanOrEqual(video.y + video.height);
+  expect(first.y).toBeGreaterThanOrEqual(sw.y + sw.height);
+  // educators first; one page at a time, and one line for the group on every application
+  await expect(page.getByRole("radio", { name: "Educators" })).toBeChecked();
+  const shown = () => page.locator("section.pitch").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.id));
+  expect(await shown()).toEqual(["educators"]);
+  await expect(page.getByRole("heading", { level: 2, name: /Do you teach it that way\?/ })).toBeVisible();
+  expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill("educators"));
+  // each page: the question, three ways, three steps, a form to file it with, and its board
+  const pages = [
+    ["scientists", "Scientists", /Does it survive the whole railway\?/, "Submit a paper", "paper.yml", "Implemented papers"],
+    ["practitioners", "Practitioners", /Does your training\?/, "Bring a case from practice", "practice_case.yml", "Cases from practice"],
+    ["educators", "Educators", /Do you teach it that way\?/, "Propose a teaching concept", "teaching_concept.yml", "Teaching concepts"],
+  ];
+  for (const [id, name, question, cta, form, board] of pages) {
+    await page.getByRole("radio", { name }).check();
+    expect(await shown()).toEqual([id]);
+    const section = page.locator(`#${id}`);
+    await expect(section.getByRole("heading", { level: 2 })).toHaveText(question);
+    await expect(section.locator(".ways li")).toHaveCount(3);
+    await expect(section.locator(".route .path li")).toHaveCount(3);
+    await expect(section.getByRole("link", { name: cta })).toHaveAttribute("href", `https://github.com/joernmht/ARail-EBL/issues/new?template=${form}`);
+    await expect(section.getByRole("heading", { name: board })).toBeVisible();
+    expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill(id));
+    // the choice is in the address, for a link to share
+    expect(new URL(page.url()).searchParams.get("for")).toBe(id);
+    const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    expect(width[0]).toBe(width[1]);
+  }
+  // the arrow keys move the switch, as radio buttons do
+  await page.getByRole("radio", { name: "Practitioners" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("radio", { name: "Scientists" })).toBeChecked();
+  expect(await shown()).toEqual(["scientists"]);
+  // a link with the group opens its page
+  await page.goto("/?for=practitioners");
+  await expect(page.getByRole("radio", { name: "Practitioners" })).toBeChecked();
+  expect(await shown()).toEqual(["practitioners"]);
+  // an unknown group: the first page
+  await page.goto("/?for=nobody");
+  expect(await shown()).toEqual(["educators"]);
+  // the paper's way in says what filing it allows
+  await page.getByRole("radio", { name: "Scientists" }).check();
+  await expect(page.locator("#scientists .route .path")).toContainText("give the paper to an AI");
+  await expect(page.locator("#scientists .route .path")).toContainText("not republished");
+  expect(errors).toEqual([]);
+});
+
+test("the boards list what has been brought, with its status and its links; empty, they say so", async ({ page }) => {
+  await page.goto("/");
+  // as the repository has it: nothing yet is said, not left blank
+  for (const kind of ["teaching", "papers", "practice"]) await expect(page.locator(`[data-refs="${kind}"] li`)).toHaveCount(1);
+  await expect(page.locator('[data-refs="teaching"]')).toContainText("The board is empty.");
+  await page.route("**/references.json", (route) => route.fulfill({
+    json: {
+      teaching: [
+        { title: "A morning at Bf Neustadt for three courses", by: "S. Fink, Chair of Railway Operations", status: "implemented", issue: 12, link: "game/play/?mission=neustadt-morning" },
+        { title: "Passenger rights after a lost connection", by: "M. van Kraai", status: "in-progress", issue: 13 },
+        { title: "A mark-up <img src=x onerror=window.__ran=1>", status: "proposed", issue: 14, link: "javascript:window.__ran=1" },
+        { title: "Of an unknown status", status: "done" },
+      ],
+      papers: [{ title: "Holding connections under delay", by: "W. Sokół", status: "proposed", source: "https://doi.org/10.0000/example", issue: 15 }],
+    },
+  }));
+  await page.reload();
+  const rows = page.locator('[data-refs="teaching"] li');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("A morning at Bf Neustadt for three courses");
+  await expect(rows.nth(0)).toContainText("S. Fink, Chair of Railway Operations");
+  await expect(rows.nth(0).locator(".state")).toHaveText("Implemented");
+  await expect(rows.nth(0).getByRole("link", { name: "Open it" })).toHaveAttribute("href", /\/game\/play\/\?mission=neustadt-morning$/);
+  await expect(rows.nth(0).getByRole("link", { name: "Issue #12" })).toHaveAttribute("href", "https://github.com/joernmht/ARail-EBL/issues/12");
+  await expect(rows.nth(1).locator(".state")).toHaveText("In progress");
+  await expect(rows.nth(1).getByRole("link", { name: "Open it" })).toHaveCount(0);
+  // what is in the file is shown as text, and only links of this site or https ones become links
+  await expect(rows.nth(2)).toContainText("<img src=x onerror=window.__ran=1>");
+  await expect(rows.nth(2).locator(".state")).toHaveText("Proposed");
+  await expect(rows.nth(2).locator("img")).toHaveCount(0);
+  expect(await page.locator('main a[href^="javascript:"]').count()).toBe(0);
+  expect(await page.evaluate(() => window.__ran)).toBeUndefined();
+  // a paper links to where it is published
+  await page.getByRole("radio", { name: "Scientists" }).check();
+  await expect(page.locator('[data-refs="papers"]').getByRole("link", { name: "Holding connections under delay" })).toHaveAttribute("href", "https://doi.org/10.0000/example");
+  // a kind the file does not have keeps its empty board
+  await expect(page.locator('[data-refs="practice"] li')).toHaveCount(1);
+  // readable on the board
+  const results = await new AxeBuilder({ page }).include(".refs").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => `${n.target.join(" ")} ${n.any.map((c) => c.message).join(" ")}`).join("; ")}`)).toEqual([]);
+});
+
+test("project page shows what runs today, each application opening an example in the app", async ({ page, request }) => {
+  await page.goto("/");
+  // what runs, how it gets onto a lab's table, what is next, in this order
   const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
-  expect(order).toEqual(["base", "applications", "next"]);
-  const jumps = await page.getByRole("navigation", { name: "Applications" }).getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-  expect(jumps).toEqual(["#app-town", "#app-terminal", "#app-operations", "#app-infrastructure", "#app-journeys", "#app-disruptions"]);
-  for (const id of jumps) await expect(page.locator(id)).toHaveCount(1);
+  expect(order).toEqual(["applications", "base", "next"]);
+  const cards = await page.locator(".app-card").evaluateAll((els) => els.map((e) => e.id));
+  expect(cards).toEqual(["app-town", "app-terminal", "app-operations", "app-infrastructure", "app-journeys", "app-disruptions"]);
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(examples).toHaveLength(6);
   // the cards of the stories: the story in the app, the game on the game page
