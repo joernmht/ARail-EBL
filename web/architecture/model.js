@@ -19,6 +19,7 @@
 import { CONTROL } from "./models/control.js";
 import { DISRUPTIONS } from "./models/disruptions.js";
 import { GAMES } from "./models/games.js";
+import { HUMP } from "./models/hump.js";
 import { INFRA } from "./models/infra.js";
 import { JOURNEYS } from "./models/journeys.js";
 import { OPERATIONS } from "./models/operations.js";
@@ -134,6 +135,12 @@ export const PACKAGES = [
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "core-disruptions"],
   },
   {
+    id: "hump", name: "hump", group: "framework", path: "web/arail/hump",
+    summary: "The hump yard on its own (#236): the yard's geometry, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design. Not exported by index.js and not registered yet.",
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js"],
+    uses: ["core-math", "core-drawing", "rail"],
+  },
+  {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
     summary: "Train positions of a control system: the WebSocket client of the bridge, a simulated control system.",
     files: ["web/arail/feeds/websocket.js", "web/arail/feeds/mock.js"],
@@ -196,7 +203,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js", "web/architecture/models/plan.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/hump.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js", "web/architecture/models/plan.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -231,9 +238,9 @@ export const PACKAGES = [
   },
   {
     id: "node-tools", name: "Node tools", group: "tools", path: "tools",
-    summary: "The development server, fetching the fonts, comparing operations setups on the command line, writing the role catalogue's guide.",
-    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs", "tools/game-places.mjs"],
-    uses: ["core-world", "ops", "games"],
+    summary: "The development server, fetching the fonts, comparing operations setups on the command line, humping trains on the command line, writing the role catalogue's guide.",
+    files: ["tools/serve.mjs", "tools/fetch-fonts.mjs", "tools/ops-compare.mjs", "tools/roles-md.mjs", "tools/changelog.mjs", "tools/game-places.mjs", "tools/hump.mjs"],
+    uses: ["core-world", "core-math", "ops", "games", "hump"],
   },
 ];
 
@@ -328,6 +335,7 @@ export const MODEL_GROUPS = [
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
   { id: "rail", name: "Railway systems and trains", intro: "What the track sections are equipped with, where a system changes, and the vehicles and consists of the trains." },
+  { id: "hump", name: "Hump yard", intro: "Trains broken up and formed again over a hump: the yard, the physics of the cuts, switches and retarders. On its own for now, without a world (#236)." },
   { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the role catalogue, the game core the games share, and the first of them, the signaller." },
   { id: "control", name: "The control system" },
   { id: "plans", name: "Plans and data exchange", intro: "The infrastructure as data in the exchange format rail-infra/1, shared with the EBL's digital twin, and as plan sheets: drawings at a scale with a title block, SVG and DXF." },
@@ -335,7 +343,7 @@ export const MODEL_GROUPS = [
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...GAMES, ...CONTROL, ...PLAN, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...HUMP, ...GAMES, ...CONTROL, ...PLAN, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
