@@ -128,6 +128,12 @@ export const WAGONS = {
 };
 
 /**
+ * Distance between the centre lines of neighbouring classification tracks (m), for the plan: 4.5 m,
+ * an estimate (the EBO asks at least 4.0 m between tracks in stations; yards keep room for the staff).
+ */
+export const TRACK_SPACING_M = 4.5;
+
+/**
  * How the classification tracks bring the cuts to the wagons in them.
  * - `speed`: speed-holding units along the whole track, which falls 3 ‰, more than most wagons'
  *   rolling resistance; the group retarder lets a cut go at the units' speed (where a track falls

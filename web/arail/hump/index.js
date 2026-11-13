@@ -1,6 +1,6 @@
 /**
- * The hump yard (Ablaufberg): public names. It runs on its own for now (issue #236): no world, no
- * registration, not exported by arail/index.js.
+ * The hump yard (Ablaufberg): public names. The simulation runs on its own (issue #236); on the table
+ * it is the layout object `hump-yard` (object.js, #237), registered by `registerHump`.
  *
  *   import { standardYard, HumpSimulation, randomTrain } from "./hump/index.js";
  *   const yard = standardYard();
@@ -21,3 +21,16 @@ export { cutBody, cutForces, coast, requiredSpeeds, timeRun, energyHeight } from
 export { HumpControl } from "./control.js";
 export { SIM_DEFAULTS, HumpSimulation } from "./simulation.js";
 export { DIAGRAM_COLOURS, CLASS_LABELS, niceTicks, simplify, cutClass, humpDiagrams } from "./diagrams.js";
+import { HumpYardObject } from "./object.js";
+
+export { HumpYardObject };
+
+/**
+ * Register the hump's object type (palette group "Hump yard").
+ * @param {import("../core/registry.js").Registry} registry
+ * @returns {import("../core/registry.js").Registry}
+ */
+export function registerHump(registry) {
+  registry.registerObject(HumpYardObject);
+  return registry;
+}

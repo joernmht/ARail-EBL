@@ -12,7 +12,7 @@
  * `standardYard` builds a yard from a few figures (see `STANDARD_YARD` in params.js).
  * @module arail/hump/yard
  */
-import { RETARDERS, STANDARD_YARD, SWITCHES, TRACK_DESIGNS } from "./params.js";
+import { RETARDERS, STANDARD_YARD, SWITCHES, TRACK_DESIGNS, TRACK_SPACING_M } from "./params.js";
 
 /**
  * A segment as the yard keeps it (positions along the route, m).
@@ -141,6 +141,9 @@ export class HumpYard {
     if (new Set(names).size !== names.length) this.problems.push("two classification tracks have the same name");
     /** The crest (m): the highest point of the routes, where humping starts. */
     this.crest_m = this._crest();
+    /** Distance between the centre lines of neighbouring classification tracks (m), for the plan. */
+    this.spacing_m = Number(spec.spacing_m ?? TRACK_SPACING_M);
+    this._planFan();
   }
 
   /** @param {string} id @returns {Segment} */
@@ -226,6 +229,45 @@ export class HumpYard {
   /** The retarders along a route, in order. */
   retardersOn(route) {
     return route.flatMap((id) => this.segments.get(id).retarders);
+  }
+
+  /**
+   * The plan of the yard, a schematic fan: each classification track's centre line lies `spacing_m`
+   * from its neighbour's (in the order of the tree), reached by the first retarder on it (else the
+   * start of the track); every segment bends smoothly from where its parent ends to the middle of
+   * the tracks behind it. x runs along the hump from the start of the root (as s does), y to the
+   * left. Lengths along the bends are taken as their x (they are a few per cent longer).
+   */
+  _planFan() {
+    const n = this.trackIds.length, mid = (n - 1) / 2;
+    const offset = new Map(this.trackIds.map((id, k) => [id, (mid - k) * this.spacing_m]));
+    const centre = (id) => {
+      const seg = this.segments.get(id);
+      if (!seg.children.length) return offset.get(id);
+      const ys = seg.children.map(centre);
+      return ys.reduce((a, b) => a + b, 0) / ys.length;
+    };
+    for (const seg of this.segments.values()) {
+      const y0 = seg.parent == null ? centre(seg.id) : null;
+      seg.plan = { y0, y1: centre(seg.id), a: seg.s0, b: seg.s1 };
+      if (seg.track) seg.plan.b = Math.max(seg.s0 + 1, seg.retarders[0]?.s0 ?? seg.track.s0);
+    }
+    for (const seg of this.segments.values()) if (seg.parent != null) seg.plan.y0 = this.segments.get(seg.parent).plan.y1;
+  }
+
+  /**
+   * Where a position of a route lies in the plan (m, the yard's frame: see `_planFan`), and which way
+   * the track points there (rad, from the x axis to the left).
+   * @param {string[]} route
+   * @param {number} s
+   * @returns {{x: number, y: number, heading: number}}
+   */
+  planAt(route, s) {
+    const { y0, y1, a, b } = this.segmentOn(route, s).plan;
+    const u = Math.min(1, Math.max(0, (s - a) / (b - a)));
+    const y = y0 + (y1 - y0) * u * u * (3 - 2 * u);
+    const dy = u > 0 && u < 1 ? ((y1 - y0) * 6 * u * (1 - u)) / (b - a) : 0;
+    return { x: s, y, heading: Math.atan(dy) };
   }
 
   /** The profile of a route every `step_m`: s, height, grade, curve radius, in a turnout. */
@@ -335,5 +377,5 @@ export function standardYard(options = {}) {
   };
   if (n === 1) grow("hump", 0, 1, 0, 0);
   else grow("hump", 0, n, 0, 0);
-  return new HumpYard({ name: o.name, h0_m: 0, switches: o.switches, segments });
+  return new HumpYard({ name: o.name, h0_m: 0, switches: o.switches, spacing_m: o.spacing_m, segments });
 }

@@ -136,9 +136,9 @@ export const PACKAGES = [
   },
   {
     id: "hump", name: "hump", group: "framework", path: "web/arail/hump",
-    summary: "The hump yard on its own (#236): the yard's geometry, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design. Not exported by index.js and not registered yet.",
-    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js"],
-    uses: ["core-math", "core-drawing", "rail"],
+    summary: "The hump yard: the yard's geometry and its plan, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design (#236); on the table the object hump-yard, which runs it and draws it (#237).",
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js", "web/arail/hump/object.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
@@ -162,7 +162,7 @@ export const PACKAGES = [
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail", "plan", "i18n"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "hump", "ops", "infra", "journeys", "feeds", "rail", "plan", "i18n"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
@@ -496,6 +496,7 @@ export const REGISTRY = {
     obj("truck-lane", "TruckLane", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("quay", "Quay", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("reach-stacker", "ReachStacker", "web/arail/terminal/objects.js", "terminal-objects"),
+    obj("hump-yard", "HumpYardObject", "web/arail/hump/object.js", "hump"),
     obj("depot", "Depot", "web/arail/ops/depot.js", "ops-world"),
     obj("signal", "Signal", "web/arail/infra/objects.js", "infra-world"),
     obj("switch", "Switch", "web/arail/infra/objects.js", "infra-world"),

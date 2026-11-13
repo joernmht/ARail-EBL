@@ -24,6 +24,7 @@ import { BUS, TRAIN, TRAM } from "./core/vehicles.js";
 import { registerObjects } from "./objects/index.js";
 import { registerSimulations } from "./sims/index.js";
 import { registerTerminal } from "./terminal/index.js";
+import { registerHump } from "./hump/index.js";
 import { registerOperations } from "./ops/index.js";
 import { registerInfrastructure } from "./infra/index.js";
 import { registerJourneys } from "./journeys/index.js";
@@ -93,6 +94,8 @@ export {
   drawGhost, pickBoxes,
   ROLLING_DEFAULTS, decodeTag, encodeTag, RollingStock, registerTerminal,
 } from "./terminal/index.js";
+// the hump yard: the object on the table and its simulation (named exports only; its figures stay in hump/index.js)
+export { HumpYardObject, HumpSimulation, HumpYard, standardYard, humpDiagrams, registerHump } from "./hump/index.js";
 // rail operations: fleet, maintenance (ECM), crews and penalties (named exports only, like the terminal)
 export {
   OPS_DEFAULTS, DEFAULT_PROGRAM, DEFAULT_SOFT, DEFAULT_VEHICLE, DEFAULT_PARTIES, DEFAULT_CONTRACTS, PRESET_SETUPS, PRESET_STRESS,
@@ -158,6 +161,7 @@ export function registerBuiltins(registry) {
   registry.registerVehicle(BUS);
   registry.registerVehicle(TRAM);
   registerTerminal(registry);
+  registerHump(registry);
   registerOperations(registry);
   registerInfrastructure(registry);
   registerJourneys(registry);

@@ -7,7 +7,7 @@ export const HUMP = [
     id: "hump", group: "hump", title: "Hump yard (Ablaufberg), on its own",
     summary: "Trains broken up over a hump: a locomotive pushes a train over the crest, its cuts run free, roll through the main retarder, the switch zone and their group retarder into the classification tracks and meet the wagons there. The physics of every cut, the control's switches and retarders, misroutes, catching up, impacts and gaps; parameters from the literature on hump design. It runs on its own, without a world (issue #236).",
     description: "A HumpYard is a tree of segments from the push track to the classification tracks: grades (‰, linear between their points, so a change of grade is a vertical curve), curves, turnouts and retarders; a position is metres along a route, the same on every route up to where they part. standardYard builds the usual shape from a few figures (params.js, each with its source). A train is a list of wagons (the freight wagons of the vehicle catalogue, rail/vehicles.js VEHICLE_TYPES, and the hump's own 2-axle type), each with a rolling resistance drawn by its class and the season; consecutive wagons for the same track are one cut. HumpSimulation pushes the train at its pushing speed; its first cut runs free as soon as gravity pulls it faster. Every step, cutForces gives each free cut its forces (gravity over its whole length, rolling, curve and switch resistance, air with the wind, the retarders on the axles inside them, speed-holding units by themselves); cuts that touch move together while the one behind would be faster; a cut that meets another one does so plastically. At a switch a cut takes the branch the switch lies in: if that is not its own, it is misrouted. HumpControl throws each switch for the next cut that needs it when no cut is in its detection section and the throw is done in time, and closes each retarder while a cut in it is faster than it needs: the main retarder to reach the group retarder at 4.5 m/s (never below 3 m/s), the group retarder to meet the wagons in the track at the coupling speed (requiredSpeeds: the cut's run backwards with its measured, imperfect resistance), no faster than lets it meet a cut still rolling ahead gently (safeExit, both runs over time, with the speed-holding units). A track whose wagons fill it (pull_below_m) is pulled out as a train. results() gives every cut's run and the figures: cuts per hour, misroutes, catching up, hard impacts, gaps; humpDiagrams draws a traced run as the diagrams of hump design (height and energy line, speed over distance, distance over time) in SVG. tools/hump.mjs runs it on the command line.",
-    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js"],
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js", "web/arail/hump/object.js"],
     classes: [
       {
         name: "hump params", file: "web/arail/hump/params.js", kind: "module", role: "The figures of hump design, each with its source (estimates marked).",
@@ -16,14 +16,14 @@ export const HUMP = [
           "SEASONS — summer, winter (−10 °C: +2 N/kN, 5 m/s head wind)", "START_EXTRA — 2 N/kN to start a standing cut", "AIR — FOLLOWING 0.2: a wagon behind another one",
           "SWITCHES — loss 8 mm, throw 0.6 s, detection 8 m before and 4 m behind the tip", "RETARDERS — main 3.6 m, group 2 m of energy height; speed-holding units 6 N/kN above 1 m/s",
           "SPEEDS — push 1.2, impact 1.25 (DB), careful 1.0, couple 1.0, group in 4.5, main out 3.0 m/s", "CONTROL — band 0.05 m/s, estimate error 0.4 N/kN",
-          "WAGONS — drag area and rolling class per type; Hbbillns", "TRACK_DESIGNS — speed (units, 3 ‰), target (target braking, 2 then 1 ‰)", "STANDARD_YARD — the figures of standardYard",
+          "WAGONS — drag area and rolling class per type; Hbbillns", "TRACK_DESIGNS — speed (units, 3 ‰), target (target braking, 2 then 1 ‰)", "STANDARD_YARD — the figures of standardYard", "TRACK_SPACING_M — 4.5 m between the tracks of the plan",
         ],
         operations: ["curveResistance(r) — Röckl"],
       },
       {
         name: "HumpYard", file: "web/arail/hump/yard.js", kind: "class", role: "The yard's geometry: segments from the push track to the classification tracks.",
-        attributes: ["name: string", "switches: object — loss, throw time, detection section", "segments: Map — id → segment (s0, s1, points of the grade with heights, curves, turnout, retarders, track)", "retarders: Retarder[] — id, kind, s0, s1, w_max, response_s, vmax_in_mps, hold_mps", "problems: string[] — segments too short for a switch's detection section, tracks of one name", "root: string", "trackIds: string[]", "crest_m: number — where the grade passes zero", "tracks — the classification tracks", "switchIds — the segments that end in a switch", "height_m — crest to the highest track's start"],
-        operations: ["segment(id)", "trackSegment(name)", "pathTo(id) — the ids from the root", "routeTo(name)", "segmentOn(route, s)", "heightAt(seg, s)", "gradeAt(seg, s)", "height(route, s)", "radiusAt(seg, s)", "inTurnout(seg, s)", "retardersOn(route)", "profile(route, step_m) — s, height, grade, radius every step"],
+        attributes: ["name: string", "switches: object — loss, throw time, detection section", "segments: Map — id → segment (s0, s1, points of the grade with heights, curves, turnout, retarders, track)", "retarders: Retarder[] — id, kind, s0, s1, w_max, response_s, vmax_in_mps, hold_mps", "problems: string[] — segments too short for a switch's detection section, tracks of one name", "root: string", "trackIds: string[]", "crest_m: number — where the grade passes zero", "tracks — the classification tracks", "switchIds — the segments that end in a switch", "height_m — crest to the highest track's start", "spacing_m: number — between the tracks of the plan"],
+        operations: ["segment(id)", "trackSegment(name)", "pathTo(id) — the ids from the root", "routeTo(name)", "segmentOn(route, s)", "heightAt(seg, s)", "gradeAt(seg, s)", "height(route, s)", "radiusAt(seg, s)", "inTurnout(seg, s)", "retardersOn(route)", "profile(route, step_m) — s, height, grade, radius every step", "planAt(route, s) — x, y and heading in the plan: a fan of the tracks", "_planFan() — each track spacing_m from the next, each segment bending to the middle of its tracks"],
       },
       { name: "hump yard", file: "web/arail/hump/yard.js", kind: "module", role: "A yard of the usual shape.", operations: ["standardYard(options) — push track and crest, steep ramp, main retarder, a balanced tree of switches (the branch to the outside curved), group retarders lined up, tracks of a design"] },
       {
@@ -57,7 +57,12 @@ export const HUMP = [
         attributes: ["DIAGRAM_COLOURS — light and dark: the rolling classes in Türkis, Brillantblau, Orange; Rot for problems", "CLASS_LABELS — good, medium, bad runner"],
         operations: ["humpDiagrams(sim, options) — height and energy lines, speed over distance, distance over time; problems marked, labels where they fit, a tooltip per cut", "niceTicks(a, b, n)", "simplify(points, tol) — Ramer–Douglas–Peucker", "cutClass(cut) — the class of most of its mass"],
       },
-      { name: "hump", file: "web/arail/hump/index.js", kind: "module", role: "The public names (not exported by arail/index.js yet)." },
+      {
+        name: "HumpYardObject", file: "web/arail/hump/object.js", kind: "class", extends: "LayoutObject", role: "The hump yard on the table (`hump-yard`): its own simulation, drawn where it is placed.",
+        attributes: ["yard — the standard yard of its figures (kept while they stay the same)", "sim — its HumpSimulation (made again when its figures change)", "COLOURS — greys for ground, ballast, rails and wagons; CD Rot, Orange for what happens"],
+        operations: ["computeGeometry() — the crest, the fan in layout mm, the formation's slices and the pieces of ballast and rails", "footprint()", "anchorPoint() — the crest", "update(dt) — the next train when none waits; the simulation in steps of 0.1 s", "draw(view) — formation and banks, ballast, rails, retarders (orange while they brake), track numbers", "drawMoving(view) — every wagon (a band in its rolling class's colour, red after an impact too hard), the locomotive pushing", "card() — tracks, trains humped, cuts per hour, misroutes, hard impacts, trains pulled out"],
+      },
+      { name: "hump", file: "web/arail/hump/index.js", kind: "module", role: "The public names; registerHump(registry) registers the object type.", operations: ["registerHump(registry)"] },
     ],
     relations: [
       { from: "HumpSimulation", to: "HumpYard", kind: "uses" },
@@ -67,6 +72,8 @@ export const HUMP = [
       { from: "HumpControl", to: "hump physics", kind: "uses", label: "requiredSpeeds, timeRun" },
       { from: "hump yard", to: "HumpYard", kind: "creates" },
       { from: "hump diagrams", to: "HumpSimulation", kind: "uses", label: "a traced run" },
+      { from: "HumpYardObject", to: "HumpSimulation", kind: "composes" },
+      { from: "HumpYardObject", to: "HumpYard", kind: "uses", label: "planAt" },
       { from: "HumpYard", to: "hump params", kind: "depends" },
       { from: "hump physics", to: "hump params", kind: "depends" },
     ],
@@ -97,6 +104,23 @@ export const HUMP = [
         edges: [["s", "m0"], ["m0", "a1"], ["a1", "a2"], ["a2", "d1"], ["d1", "a3", "yes, or pushed far enough"], ["d1", "m1", "no"], ["a3", "m1"], ["m1", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "d2"], ["d2", "a7", "yes"], ["d2", "m2", "no"], ["a7", "m2"], ["m2", "a8"], ["a8", "a9"], ["a9", "a10"], ["a10", "d3"], ["d3", "m0", "yes"], ["d3", "e", "no"]],
       },
       {
+        id: "hump-table", name: "The hump yard on the table",
+        description: "HumpYardObject in the world: World.step calls update, World.draw calls draw and drawMoving.",
+        nodes: [
+          ["s", "start"],
+          ["d1", "decision", "A train waiting or pushed?"],
+          ["a1", "action", "A random train for the yard's tracks, from the object's own random stream", "HumpYardObject.update"],
+          ["m1", "merge"],
+          ["a2", "action", "The simulation on, in steps of 0.1 s (at most 400 a frame)", "HumpSimulation.step"],
+          ["a3", "action", "Impacts too hard remembered for a flash; old cuts and log entries dropped", "HumpYardObject.update"],
+          ["a4", "action", "The formation with its banks, ballast and rails, at the yard's heights above its lowest track end", "HumpYardObject.draw"],
+          ["a5", "action", "Retarders: orange while they brake (a glow at night); the track numbers", "HumpYardObject.draw"],
+          ["a6", "action", "Every wagon along the plan (planAt), the locomotive pushing", "HumpYardObject.drawMoving"],
+          ["e", "end"],
+        ],
+        edges: [["s", "d1"], ["d1", "a1", "no"], ["d1", "m1", "yes"], ["a1", "m1"], ["m1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "e"]],
+      },
+      {
         id: "hump-need", name: "The speed a cut needs through a retarder",
         description: "HumpControl.need, when a cut enters a retarder; the retarder closes while the cut is faster than this (and its floor).",
         nodes: [
@@ -115,6 +139,7 @@ export const HUMP = [
       },
     ],
     parameters: [
+      { key: "hump-yard: tracks, track_m, design, season, push_mps, wagons, pull_below_m", default: "6, 120, speed, summer, 1.2, 24, 40", meaning: "The object's figures: the yard, the trains it humps, when a track leaves." },
       { key: "dt, seed", default: "0.05 s, 1", meaning: "Time step; the random stream of the wagons' resistances and the control's errors." },
       { key: "season, wind_mps", default: "summer, the season's", meaning: "Rolling resistance added, head wind." },
       { key: "train_gap_s", default: "120", meaning: "From one train humped to the next one starting." },
@@ -130,7 +155,8 @@ export const HUMP = [
       "A retarder brakes the axles inside it: a long cut is braked less. It closes while a cut is faster than it needs and opens as fast as it responds; speed-holding units brake by themselves.",
       "Impacts are plastic, the momentum kept; cuts do not roll back.",
       "Deterministic: one random stream (createRng(seed)) for the wagons' resistances and the control's errors.",
-      "On its own: no world, no registration, not exported by arail/index.js (#236); joining it to the lab is #237.",
+      "On the table it is one layout object, hump-yard, with its simulation inside: no simulation entry in the layout; its random numbers from the world's seed and its id.",
+      "Its position is the crest; the cuts roll in the direction of rotation_deg. Heights are drawn above the yard's lowest track end; Bf Neustadt's module lies 45 mm below the table, so that the push track meets the table's level.",
     ],
   },
 ];
