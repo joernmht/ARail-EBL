@@ -9,6 +9,7 @@
 *.webm binary
 *.pdf binary
 *.zip binary
+*.stl binary
 
 # Third-party code is kept byte-identical to the upstream package
 web/vendor/** -text linguist-vendored

@@ -82,6 +82,7 @@ Write an adapter for your system from the template; see [Control-system interfac
 | [Extending ARail](docs/extending.md) | Plugins: object types, simulations, disruptions, vehicles |
 | [Architecture](docs/architecture.md) | How tracking, the world and rendering fit together; the maths. In UML, with the classes and activities of every model: the [architecture page](https://joernmht.github.io/ARail-EBL/architecture/) |
 | [Camera calibration](docs/calibration.md) | Optional calibration for wide-angle webcams |
+| [Camera bridge](docs/camera-bridge.md) | A 3D-printed camera bridge and side stand that hold a phone to film the lab's trains (for a model that checks train compositions), with cable troughs for the charging cable |
 
 ## Repository layout
 
@@ -132,6 +133,8 @@ web/                  the website (published with GitHub Pages)
   vendor/js-aruco2/   marker detection library (MIT)
 tools/                Python tools: control-system bridge, calibration, lab survey, synthetic test scenes;
                       ops-compare.mjs (comparing operations setups from the command line)
+hardware/             things to print: camera-bridge/ a camera bridge and side stand for a phone, and cable troughs
+                      (a parametric script and its STL files)
 tests/                JavaScript (node:test), Python (pytest) and browser (Playwright) tests
 docs/                 documentation
 examples/             original photo and video of the lab, a recorded control-system feed
