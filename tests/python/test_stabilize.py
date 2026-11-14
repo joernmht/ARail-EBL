@@ -291,6 +291,88 @@ def test_compose_takes_a_clip_as_a_shot(tmp_path, monkeypatch):
         cp.Part({"clip": "a.mp4", "first": 10, "count": 6, "crop": [0, 0, 1, 1]}, (10, 10))
 
 
+def test_compose_tints_a_shot_and_lays_the_lines_over_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 20, (0, 0, 200))
+    plan = {
+        "size": [200, 100],
+        "fps": 10,
+        "overlay": "text",
+        "parts": [
+            {
+                "frames": "a",
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "say": [{"text": "What if", "at": 0.2, "hold": 0.5}],
+            },
+            {
+                "frames": "a",
+                "first": 10,
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "fade": 2,
+                "tint": ["#001450", "#ffffff"],
+            },
+        ],
+    }
+    assert cp.cues(plan) == [{"text": "What if", "start": 2, "end": 7}]
+    os.makedirs(tmp_path / "text")
+    line = np.zeros((20, 200, 4), np.uint8)
+    line[:, :100] = (0, 255, 0, 255)  # opaque green on the left, transparent on the right
+    cv2.imwrite(str(tmp_path / "text" / "f0003.png"), line)
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 18
+    f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
+    assert f(3)[10, 50, 1] > 200 and f(3)[10, 50, 2] < 60, "the line over the frame"
+    assert f(3)[10, 150, 2] > 180, "beside it the frame"
+    assert f(2)[10, 50, 2] > 180, "no line where there is no PNG"
+    tinted = f(15)[60, 150]
+    assert tinted[0] > tinted[2] + 20 and tinted[2] < 60, "in the blue of the tint"
+
+
+def test_compose_writes_each_shot_on_its_own_and_mixes_the_sounds(tmp_path, monkeypatch):
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is not installed")
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 12, (0, 0, 200), size=(160, 96))
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=440:d=2", str(tmp_path / "tone.wav")], check=True
+    )
+    plan = {
+        "size": [64, 48],
+        "fps": 10,
+        "parts": [
+            {
+                "name": "first",
+                "frames": "a",
+                "count": 6,
+                "crop": [0, 0, 160, 96],
+                "sounds": [{"file": "tone.wav", "dur": 0.4}],
+            },
+            {
+                "frames": "a",
+                "first": 6,
+                "count": 6,
+                "crop": [0, 0, 160, 96],
+                "say": [{"text": "Hi", "at": 0, "hold": 0.3}],
+            },
+        ],
+        "typing": {"file": "tone.wav", "gain": -6},
+        "cps": 10,
+    }
+    assert cp.shots(plan, str(tmp_path / "shots"), log=lambda *_: None) == ["01-first.mp4", "02-a.mp4"]
+    assert (tmp_path / "shots" / "02-a.mp4").stat().st_size > 0
+    video = tmp_path / "v.mp4"
+    cp.encode(str(tmp_path / "a"), str(video), 10, 30)
+    assert cp.soundtrack(plan, str(video)) == 2  # the shot's tone and the typing under the line
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(video)],
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    assert probe == ["video", "audio"]
+
+
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
 def test_compose_encodes_with_a_poster(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, "ROOT", str(tmp_path))

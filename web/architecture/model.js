@@ -232,8 +232,8 @@ export const PACKAGES = [
   },
   {
     id: "video-tools", name: "video tools", group: "tools", path: "tools/video",
-    summary: "Videos of the app: rendering frame by frame after a plan (render.mjs, in a browser), steadier poses (arail-stabilize) and joining the shots (arail-compose).",
-    files: ["tools/video/render.mjs", "tools/video/sky.js", "tools/arail_tools/stabilize.py", "tools/arail_tools/compose.py"],
+    summary: "Videos of the app: rendering frame by frame after a plan (render.mjs, in a browser), recording the site's pages as they are used (screen.mjs), steadier poses (arail-stabilize), the story's lines typed as on an old computer (typewriter.mjs) and joining the shots with their lines and sounds (arail-compose).",
+    files: ["tools/video/render.mjs", "tools/video/sky.js", "tools/video/screen.mjs", "tools/video/typewriter.mjs", "tools/arail_tools/stabilize.py", "tools/arail_tools/compose.py"],
     uses: [], links: [["core-world", "the app and its layouts, in a browser"]],
   },
   {

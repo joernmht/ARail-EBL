@@ -1,7 +1,7 @@
 {
   "about": "The hybrid terminal, first camera: the example's photo; the crane sets off to the real wagon.",
   "page": "example=container-train",
-  "frames": 110,
+  "frames": 180,
   "proc_max": 1600,
   "speed": 6,
   "each": "if (term) term.highlight.slots = false;",

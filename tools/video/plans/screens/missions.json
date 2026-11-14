@@ -1,0 +1,14 @@
+{
+  "about": "The big game's missions: along the line of missions, the second chosen with its seats, then Play.",
+  "out": "build/video/missions",
+  "steps": [
+    { "goto": "game/play/", "wait": 2500 },
+    { "record": true, "wait": 500 },
+    { "hover": "#mission-first-shift", "ms": 700, "wait": 200 },
+    { "hover": "#mission-fault-night", "ms": 500, "wait": 150 },
+    { "hover": "#mission-malus-month", "ms": 500, "wait": 150 },
+    { "hover": "#mission-night-session", "ms": 500, "wait": 300 },
+    { "click": "#mission-neustadt-morning", "ms": 700, "wait": 1500 },
+    { "click": "#start", "ms": 700, "wait": 5000 }
+  ]
+}

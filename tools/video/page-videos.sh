@@ -1,5 +1,5 @@
 #!/bin/sh
-# Rebuilds the project page's videos from the lab's clips and photos (about an hour):
+# Rebuilds the project page's videos from the lab's clips, photos and pages (about an hour):
 #   sh tools/video/page-videos.sh
 # Needs Node with the dev dependencies (npm install), the Python tools with OpenCV
 # (pip install -e "tools[headless]") and ffmpeg. Frames, poses and clips go to build/video/.
@@ -23,6 +23,13 @@ render town-pass2
 # terminal at the crane and the hybrid terminal's photo; the photos of the photo map (plans/photos/)
 for p in station station-b station-c terminal-wagons terminal-wagons-0 terminal-truck crane-terminal terminal-photo; do render $p; done
 for f in tools/video/plans/photos/*.json; do node tools/video/render.mjs "$f"; done
-# the videos
+# the bikes in the flyover; the game page's title and the big game's missions, recorded as they are used
+render bikes
+for f in tools/video/plans/screens/*.json; do node tools/video/screen.mjs "$f"; done
+# the story's lines (typed as on an old computer), then the videos
+arail-compose tools/video/plans/hero.json --cues build/video/hero-cues.json
+node tools/video/typewriter.mjs build/video/hero-cues.json build/video/hero-text
 arail-compose tools/video/plans/hero.json
 arail-compose tools/video/plans/terminal-card.json
+# each shot of the project page's video on its own, without lines or sound, to combine them again:
+#   arail-compose tools/video/plans/hero.json --shots <dir>
