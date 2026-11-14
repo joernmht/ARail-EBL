@@ -745,7 +745,7 @@ export class BudgetGame extends Game {
     const lines = y ? [...y.lines].map((l) => ({ id: l.id, label: l.name })) : [];
     const steps = { id: "steps", label: "Steps", type: "number", min: 1, max: 20, step: 1, value: 1, unit: `× ${money(STEP_EUR)}` };
     return {
-      scene: this._scene(),
+      scene: this.scene(),
       figures,
       tables: [
         {
@@ -785,7 +785,7 @@ export class BudgetGame extends Game {
    * at the station, everything else in the town.
    * @returns {Array<{thing: string}>}
    */
-  _scene() {
+  scene() {
     const a = this.years.findLast((x) => x.account)?.account ?? null;
     const about = (id) => (id.startsWith("constituency-") ? "project" : id.startsWith("capital-") ? "station" : "town");
     return [

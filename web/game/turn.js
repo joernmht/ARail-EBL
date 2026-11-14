@@ -102,10 +102,14 @@ export class TurnBoard {
 
   /** The scene of the game shown: the things it names that the board knows. */
   scene() {
+    // (a game's own scene(), cheap enough for every frame; a game without one gives it with its view)
     let scene = [];
     try {
-      scene = this.game?.view().scene ?? [];
-    } catch {
+      scene = (typeof this.game?.scene === "function" ? this.game.scene() : this.game?.view().scene) ?? [];
+    } catch (e) {
+      // said once: the table is blank, and the error is not lost
+      if (!this.failed) console.error("The table cannot show this game's scene:", e);
+      this.failed = true;
       scene = [];
     }
     return scene.filter((x) => THINGS.includes(x.thing));

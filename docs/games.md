@@ -324,7 +324,8 @@ the faults and the vans' beacons glow.
 the signaller's game that runs the same morning: the signaller's seat is the computer's, and the
 mission says which feeders come late (RB 31, RB 33 and RB 35). The regional trains have a thin
 ring where they are; a late one is marked at the end of the table it will come in at as soon as it
-is announced. A ring pulses orange while the train's passengers have not been told of its delay,
+is announced, and a train of later in the day that is cancelled has one on platform 1, where its
+passengers wait. A ring pulses orange while the train's passengers have not been told of its delay,
 and in the choice's colour while a question is about it: the feeder out on the line and the train
 at platform 2 that could wait for it. A click on a train chooses it; *Tell the passengers* is its
 move, below the picture of the connections (a row for each: the feeder, how many change, the train

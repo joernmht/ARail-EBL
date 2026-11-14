@@ -633,7 +633,7 @@ export class AssetManagerGame extends Game {
       rows: done.map((y) => [y.year, y.grade_end.toFixed(2), y.faults, num(y.delay_min), `${eur(y.spent_eur)} of ${eur(y.money.maintenance_eur)}`, eur(y.unspent_eur), `${y.inspections_pct} %`]),
     });
     return {
-      scene: this._scene(),
+      scene: this.scene(),
       figures: [
         { label: "Year", value: this.rounds ? `${this.year} of ${this.rounds}` : Math.max(1, this.year) },
         { label: `Condition grade (target ${TARGET_GRADE})`, value: this.grade.toFixed(2), tone: this.grade <= TARGET_GRADE ? "ok" : this.grade <= TARGET_GRADE + SCORE.grade_span / 2 ? "warn" : "bad" },
@@ -664,7 +664,7 @@ export class AssetManagerGame extends Game {
    * speed restrictions, the faults of the year before, and what each open decision is about.
    * @returns {Array<{thing: string}>}
    */
-  _scene() {
+  scene() {
     const p = this.plan, last = this.years.filter((y) => y.settled).at(-1);
     const about = { strategy: "tracks", renewals: "works", teams: "base", "on-call": "base", proposal: "asset" };
     return [

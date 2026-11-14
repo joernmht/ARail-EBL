@@ -393,12 +393,12 @@ export class DistrictBoard {
 
   /**
    * What of the board is at a pixel: with something chosen, the thing one of its moves needs
-   * (`{move}`: the place of that move in the chosen item's menu); else a fault, a van or the base
+   * (`{target}`: the item it needs, by which the page finds the move in the menu as it is now); else a fault, a van or the base
    * (`{item}`, the id of the item of the game's picture); else null.
    * @param {import("../arail/index.js").View} view the view of the frame drawn last
    * @param {number[]} pixel [u, v] canvas px
    * @param {number} [scale] how many CSS px a thing may be away, as a factor (a finger: more)
-   * @returns {{item: string} | {move: number} | null}
+   * @returns {{item: string} | {target: string} | null}
    */
   hit(view, [u, v], scale = 1) {
     const g = this.game;
@@ -422,7 +422,7 @@ export class DistrictBoard {
     near("base", b.at, HIT_PX.base, [0, 4]);
     if (!best) return null;
     const offer = this.offers.find((o) => o.target === best.id);
-    return offer ? { move: offer.i } : { item: best.id };
+    return offer ? { target: offer.target } : { item: best.id };
   }
 
   /** Where an item of the game's picture is on the table ("fault-bue", "team-T1", "base"), or null. */

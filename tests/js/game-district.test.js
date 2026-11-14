@@ -167,12 +167,15 @@ test("the board: it draws the shift on the table without a word, and a fault, a 
   board.picked = "fault-bue";
   board.offers = offers("fault-bue");
   assert.deepEqual(board.offers.map((o) => o.target), ["team-T1", "team-T2"]);
-  assert.deepEqual(board.hit(view, px(DISTRICT_TABLE.base.yard[1])), { move: 1 });
+  assert.deepEqual(board.hit(view, px(DISTRICT_TABLE.base.yard[1])), { target: "team-T2" });
   assert.deepEqual(menu("fault-bue")[1].args, ["T2", "bue"]);
   board.picked = "team-T1";
   board.offers = offers("team-T1");
-  assert.deepEqual(board.hit(view, px(spot.at)), { move: 0 });
+  assert.deepEqual(board.hit(view, px(spot.at)), { target: "fault-bue" });
   assert.deepEqual(menu("team-T1")[0], { label: "To Level crossing Brückenstraße (Talsee, 8 min)", name: "send", args: ["T1", "bue"], target: "fault-bue" });
+  // what the board names is the thing the move needs, not its place in a menu that may have changed since it was drawn
+  board.offers = [{ i: 3, target: "fault-bue" }];
+  assert.deepEqual(board.hit(view, px(spot.at)), { target: "fault-bue" });
   // the base has the technicians on call as its moves
   assert.deepEqual(menu("base").map((m) => [m.name, m.args]), [["callIn", ["signalling"]], ["callIn", ["track"]]]);
   // nothing is written, whatever the shift's state: a danger, a team on the road, at work, securing, a closure, a repair done

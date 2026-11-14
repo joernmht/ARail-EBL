@@ -616,7 +616,8 @@ class PlayPage {
     const chosen = this.picked.get(seat.id);
     if (hit.item) return void (hit.item === chosen ? this.unpick(seat.id) : this.pick(seat.id, hit.item, false));
     const item = this.view(seat.game).sketch?.items.find((it) => it.id === chosen);
-    const move = hit.move != null ? item?.menu?.[hit.move] : item?.menu?.find((m) => m.name === "setRoute" && m.args?.[0] === hit.route);
+    // (by what the move needs, in the menu as it is now: the game has gone on since the table was drawn)
+    const move = hit.target != null ? item?.menu?.find((m) => m.target === hit.target) : item?.menu?.find((m) => m.name === "setRoute" && m.args?.[0] === hit.route);
     if (!move) return;
     this.pickMove(seat.id, item.id, move, false);
     // the move made: what was chosen is let go of (one that was refused stays chosen, with the reason)

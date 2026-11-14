@@ -344,7 +344,7 @@ export class ContractGame extends Game {
     const p = this.current, done = this.periods.filter((x) => x.account), last = done.at(-1)?.account;
     const said = (c, x) => (x.choice ? (c.cancelled ? CANCELLED : DELIVERED).find((o) => o.id === x.choice).label.toLowerCase() : "to decide");
     return {
-      scene: this._scene(),
+      scene: this.scene(),
       figures: [
         { label: "The operator's finances", value: this._healthText(), tone: this.health < HEALTH.cuts_below ? "bad" : this.health < 0.5 ? "warn" : "ok" },
         { label: "Trips on time", value: last ? (100 * last.punctual_share).toFixed(1) : "–", unit: last ? "%" : "" },
@@ -374,7 +374,7 @@ export class ContractGame extends Game {
    * is about: the operator's wishes at its trains, the incident list and the checks at the station.
    * @returns {Array<{thing: string}>}
    */
-  _scene() {
+  scene() {
     const last = this.periods.filter((x) => x.account).at(-1)?.account, n = 20;
     const things = [];
     if (last) {

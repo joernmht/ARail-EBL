@@ -3,7 +3,8 @@
 // and a board marks them where they are on the lab's layout. A train of the undertaking has a thin
 // ring; it pulses orange while its passengers have not been told of its delay, and in the choice's
 // colour while a question is about it (the feeder that comes late and the train that could wait for
-// it). A click on a train chooses it, as in the picture of the connections beside the table, where
+// it). A train of later in the day that is cancelled has a ring on platform 1, where its passengers
+// wait, until they are told. A click on a train chooses it, as in the picture of the connections beside the table, where
 // its moves are. Nothing is written on the table. Data, geometry and drawing on a View: no DOM.
 import { CD_LIGHT, OVERLAY, polylineAt, rgba } from "../arail/index.js";
 import { TableBoard } from "./table.js";
@@ -16,6 +17,8 @@ export const HIT_PX = { train: 30 };
 export const RING = { m: 9, px: 9 };
 /** How long before its time a train to come is marked at the table's end (s). */
 export const AHEAD_S = 240;
+/** Platform 1 of the layout (its edge, mm), where the passengers of a cancelled train wait. */
+const PLATFORM_1 = [[1615, 425], [4161, 380]];
 
 /** The train a decision's id is about ("hold-RB 34": RB 34), or null. */
 const heldIn = (id) => (String(id).startsWith("hold-") ? String(id).slice(5) : null);
@@ -69,16 +72,25 @@ export class ControlBoard {
    * @returns {number[] | null} [x, y] layout mm
    */
   where(id) {
+    const mine = this.game?.train(id);
+    // a train of later in the day that is cancelled: on platform 1, where its passengers wait, while they must be told
+    if (mine?.cancelled) return this.trains && mine.informed == null ? this.waiting(id) : null;
     const tb = this.trains, tr = tb?.game.trains.find((x) => x.id === id);
     if (!tr || tr.state === "gone") return null;
     const place = tr.state === "coming" ? null : tb.at.place(tr, tb.m);
     if (place?.on) return polylineAt(place.line.points, Math.max(0, Math.min(place.line.total, place.head - (tr.length * tb.at.k) / 2)), place.line.lengths).point;
     if (tr.state !== "coming") return null;
-    const mine = this.game?.train(id);
     if (tr.enterAt - tb.game.t > AHEAD_S && !(mine?.delay_min > 0)) return null;
     // the end of the table it comes in at: the line from Bergheim, or from Talsee
     const w = tb.at.way(tr.dir > 0 ? "aw" : "ae", "+", tr.dir);
     return polylineAt(w.points, Math.min(w.total, 160), w.lengths).point;
+  }
+
+  /** Where the passengers of a cancelled train wait (the trains of later in the day, side by side along platform 1). */
+  waiting(id) {
+    const k = Math.max(0, this.game.trains.filter((x) => x.cancelled).findIndex((x) => x.id === id));
+    const [a, b] = PLATFORM_1, x = a[0] + (b[0] - a[0]) * (0.75 - 0.12 * k);
+    return [x, a[1] + ((b[1] - a[1]) * (x - a[0])) / (b[0] - a[0])];
   }
 
   /** The trains a question is about now: the train that could be held, and the feeder it would wait for. */

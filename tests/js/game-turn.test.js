@@ -133,7 +133,19 @@ test("the board: it draws a scene thing by thing without a word; what a decision
   assert.ok(only([{ thing: "works", n: 3 }]) > fills.works && only([{ thing: "tally", at: "platform", parts: [{ tone: "ok", n: 5 }] }]) < fills.tally);
   // a thing the board does not know, a place it has not, a game whose view fails: nothing, and no error
   assert.equal(only([{ thing: "weather" }, { thing: "ask", id: "x", at: "moon" }]), 0);
-  assert.equal(drawn(boardOf({ view: () => { throw new Error("no view"); } }).board, world).fill, 0);
+  const said = [], error = console.error;
+  console.error = (...args) => said.push(args.join(" "));
+  try {
+    const broken = boardOf({ scene: () => { throw new Error("no scene"); } }).board;
+    assert.equal(drawn(broken, world).fill, 0);
+    drawn(broken, world);
+  } finally {
+    console.error = error;
+  }
+  assert.equal(said.length, 1, "told once");
+  assert.match(said[0], /no scene/);
+  // the games give their scene without their whole view
+  assert.deepEqual(g.scene(), g.view().scene);
   // the questions: two at the base stand side by side; a click names the decision, and the one in focus is chosen
   const asks = board.asks();
   assert.deepEqual(asks.map((a) => a.id), g.open.map((d) => d.id));

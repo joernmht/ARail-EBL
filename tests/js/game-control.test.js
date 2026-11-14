@@ -117,6 +117,13 @@ test("the board of the operations control: a train is marked where it is on the 
   assert.ok(tc.open.some((d) => d.id === "hold-RB 34"));
   assert.deepEqual([...board.asked()].sort(), ["RB 33", "RB 34"]);
   assert.ok(tc.train("RB 33").info_since != null && tc.train("RB 33").informed == null);
+  // a train of later in the day that is cancelled: on platform 1 while its passengers must be told, and not once they are
+  tc.trains.push({ id: "RB 38", dep: null, cancelled: true, info_since: tc.t, informed: null, info_text: "RB 38 is cancelled" });
+  const p38 = board.where("RB 38");
+  assert.ok(p38[0] > 1615 && p38[0] < 4161 && p38[1] > 370 && p38[1] < 430, JSON.stringify(p38));
+  assert.deepEqual(board.hit(viewOf(world, board.bounds("platforms")), viewOf(world, board.bounds("platforms")).project(p38[0], p38[1], 0)), { item: "train-RB 38" });
+  tc.act("inform", "RB 38");
+  assert.equal(board.where("RB 38"), null);
   // gone, a train has no mark any more
   to(700);
   assert.equal(sig.trains.find((tr) => tr.id === "RB 31").state, "gone");
