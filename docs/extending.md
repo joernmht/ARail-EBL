@@ -148,6 +148,7 @@ Optional methods the editor and the other parts look for:
 | `trafficRule()`, `crossingInfo()`, `railCrossingInfo()` | the road network: the rule of a traffic sign or traffic lights, a zebra crossing, a railway crossing (see `objects/traffic-signs.js`, `objects/crossings.js`) |
 | `parkingInfo()`, `bikeParking()`, `noParking(road, side)` | `world.parking`: parking facilities (`[{id, kind, label, spaces, spots, tariff, access, entry}]`), places to lock bikes, stretches of a street where nobody parks (see `objects/parking.js`, `core/parking.js`) |
 | `dwellFactor()`, `blocksCars()`, `carLaneShift(dock)` | the transit, for a stop: boarding takes longer, cars beside a standing vehicle wait (see `objects/tram.js`) |
+| `marketInfo()` | the market simulation: a stall, a sight or a ride on a market square (`{kind, …}`, see [The market square](market.md#for-plugins-and-simulations)) |
 | `card()` | the info card when someone points at the object (core/pick.js): `{title, subtitle, status, tone, rows: [[label, value]], sections: [{title, lines}], text, related: [ids], actions}`. Start from `super.card()` (name, type, description, module) and add rows; keep the texts plain English |
 | `pickHeight()` | how high (layout mm) the object is pointed at in the image: tall objects are found on their walls and roof, not only on the ground (buildings return their height, signals their mast) |
 

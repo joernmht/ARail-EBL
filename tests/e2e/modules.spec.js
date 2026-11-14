@@ -31,7 +31,7 @@ const box = moduleBox;
 
 test("Interaction → Sandbox switches the modules of the lab example by clicking their boxes; the choice is kept (#modules opens it)", async ({ page }) => {
   const errors = await open(page, `${LAB}#modules`);
-  await expect(page.locator(".modules").getByRole("button")).toHaveCount(7); // the lab's five, the app's Build and Disruptions
+  await expect(page.locator(".modules").getByRole("button")).toHaveCount(9); // the lab's seven, the app's Build and Disruptions
   const ops = box(page, "Rail operations"), infra = box(page, "Infrastructure");
   await expect(ops).toHaveAttribute("aria-pressed", "false");
   await expect(infra).toHaveAttribute("aria-pressed", "false");

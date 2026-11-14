@@ -426,6 +426,17 @@ const APP_DE = {
   "A crowd surge on platform 1; extra trains are sent.": "Großer Andrang auf Bahnsteig 1; Sonderzüge werden geschickt.",
   "Platform closure": "Bahnsteigsperrung",
   "Platform 2 is closed for maintenance; trains on platform 1 are delayed.": "Bahnsteig 2 ist wegen Instandhaltung gesperrt; Züge an Bahnsteig 1 sind verspätet.",
+  "The Christmas market on the Marktplatz: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.":
+    "Der Weihnachtsmarkt auf dem Marktplatz: ein großer geschmückter Weihnachtsbaum, ein Riesenrad, ein Karussell und eine Kindereisenbahn, und Buden mit Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilzen aus einer Dampflok und Kunsthandwerk. Nachts beleuchtet; für das Gedränge Marktbesucher einschalten.",
+  "Evening at the Striezelmarkt": "Abend auf dem Striezelmarkt",
+  "The clock jumps to the evening: the lights of the stalls, the tree and the rides come on at dusk.": "Die Uhr springt auf den Abend: In der Dämmerung gehen die Lichter der Buden, des Baums und der Fahrgeschäfte an.",
+  "Evening at the Striezelmarkt: the lights come on at dusk.": "Abend auf dem Striezelmarkt: In der Dämmerung gehen die Lichter an.",
+  "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.":
+    "Menschen kommen aus den Häusern der Stadt, von den Enden der Straßen und mit dem Zug zum Striezelmarkt: Sie stehen an den Buden an, trinken ihren Glühwein an den Stehtischen, schauen den Baum an und fahren Riesenrad, Karussell und Kindereisenbahn, dann gehen sie nach Hause, viele zum Bahnhof. Braucht das Modul Striezelmarkt.",
+  "Closing time at the Striezelmarkt": "Feierabend auf dem Striezelmarkt",
+  "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.": "Der Markt schließt um 22:00: Die Menge geht, viele zu den Zügen. Sehen Sie, wie sich die Bahnsteige füllen.",
+  "A busy evening at the Striezelmarkt.": "Ein voller Abend auf dem Striezelmarkt.",
+  "The market closes: everybody goes home, many to the station.": "Der Markt schließt: Alle gehen nach Hause, viele zum Bahnhof.",
 
   // ------------------------------------------------------------ Build
   "Add to the layout": "Zur Anlage hinzufügen",
