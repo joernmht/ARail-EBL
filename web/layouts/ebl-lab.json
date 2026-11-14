@@ -1,7 +1,7 @@
 {
   "format": "arail-layout/1",
   "name": "EBL lab, Beta 0.1 (example)",
-  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. Modules (View panel) add rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
+  "description": "Two platforms of the railway operations lab, marker map surveyed from a photo. In front of the table, virtual table modules carry a small town: streets, two bus lines and people who go to work, school and shopping. A modern station building stands between Bahnhofstraße and the tracks; behind the tracks, Plattenbau on another module, linked by a pedestrian underpass. West of the town, a market square on a module of its own. Modules (View panel) add the Striezelmarkt with its visitors, rail operations, the infrastructure game, journeys for an exercise and the container terminal.",
   "scale": 87,
   "markers": {
     "dictionary": "ARUCO",
@@ -47,10 +47,11 @@
     {"id": "table-7", "type": "tabletop", "name": "Country module D1", "position": [250, -2070], "width_mm": 800, "depth_mm": 500, "surface": "green"},
     {"id": "table-8", "type": "tabletop", "name": "Country module D2", "position": [1050, -2070], "width_mm": 800, "depth_mm": 500, "surface": "green"},
     {"id": "table-back", "type": "tabletop", "name": "Module behind the tracks", "position": [785, 985], "width_mm": 2170, "depth_mm": 550},
+    {"id": "table-market", "type": "tabletop", "name": "Market module M", "position": [-550, -920], "width_mm": 800, "depth_mm": 800},
     {"id": "road-bahnhofstrasse", "type": "road", "name": "Bahnhofstraße", "kind": "main", "points": [[-150, -410], [1450, -410]]},
     {"id": "road-schulstrasse", "type": "road", "name": "Schulstraße", "points": [[650, -410], [650, -1700]]},
     {"id": "road-ostring", "type": "road", "name": "Ostring", "points": [[1380, -410], [1380, -1700]]},
-    {"id": "road-lindenallee", "type": "road", "name": "Lindenallee", "points": [[-150, -1070], [1380, -1070]]},
+    {"id": "road-lindenallee", "type": "road", "name": "Lindenallee", "points": [[-950, -1070], [1380, -1070]]},
     {"id": "road-am-feldrain", "type": "road", "name": "Am Feldrain", "kind": "residential", "points": [[-150, -1700], [1380, -1700]]},
     {"id": "road-feldweg", "type": "road", "name": "Feldweg", "kind": "path", "lamps": false, "points": [[650, -1700], [650, -2320]]},
     {"id": "station-1", "type": "station-building", "name": "Station building", "position": [650, -284.8], "rotation_deg": 0, "length_m": 66, "depth_m": 7, "hall_m": 18, "floors": 2},
@@ -58,6 +59,8 @@
     {"id": "building-1", "type": "building", "name": "Hotel am Bahnhof", "position": [470, -558], "rotation_deg": 180, "width_m": 14, "depth_m": 9, "floors": 4, "roof": "flat", "use": "work"},
     {"id": "bus-terminal-1", "type": "bus-terminal", "name": "Bahnhof", "position": [993.5, -546], "rotation_deg": 0, "bays": 3, "bay_length_m": 15, "width_m": 4.5, "lane_width_m": 3.5, "lines": "305, 328"},
     {"id": "altbau-1", "type": "altbau-block", "name": "Altbau block Altmarkt", "position": [112, -746], "width_m": 42, "depth_m": 42, "floors": 5, "form": "closed", "rear_wings": true, "seed": 3},
+    {"id": "market-square", "type": "market-square", "name": "Marktplatz", "points": [[-930, -545], [-170, -545], [-170, -1000], [-930, -1000]]},
+    {"id": "altbau-markt", "type": "altbau-block", "name": "Altbau Am Markt", "position": [-550, -1232], "rotation_deg": 180, "width_m": 60, "depth_m": 13, "floors": 4, "form": "row", "roof": "pitched", "seed": 11},
     {"id": "area-altmarkt", "type": "area", "name": "Altmarkt", "kind": "plaza", "points": [[372, -625], [575, -625], [575, -995], [372, -995]], "opacity": 0.8},
     {"id": "tree-altmarkt-1", "type": "tree", "position": [415, -665], "kind": "deciduous", "height_m": 10},
     {"id": "tree-altmarkt-2", "type": "tree", "position": [530, -760], "kind": "deciduous", "height_m": 11},
@@ -449,6 +452,57 @@
       "objects": [
         { "id": "track-g3", "country": "CZ" },
         { "id": "border-g3", "type": "system-change", "name": "Border DE | CZ", "kind": "border", "position": [1400, -45], "rotation_deg": 1.5 }
+      ]
+    },
+    {
+      "id": "striezelmarkt",
+      "name": "Striezelmarkt",
+      "description": "The Christmas market on the Marktplatz: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.",
+      "enabled": false,
+      "objects": [
+        { "id": "market-gate", "type": "market-gate", "name": "Eingang Lindenallee", "position": [-550, -996], "rotation_deg": 0, "text": "Striezelmarkt" },
+        { "id": "market-gate-2", "type": "market-gate", "name": "Eingang Ost", "position": [-174, -659], "rotation_deg": 90, "width_m": 4, "text": "Striezelmarkt" },
+        { "id": "christmas-tree", "type": "christmas-tree", "name": "Weihnachtsbaum", "position": [-560, -780], "height_m": 20 },
+        { "id": "ferris-wheel", "type": "ferris-wheel", "name": "Riesenrad", "position": [-790, -600], "rotation_deg": 0, "diameter_m": 22 },
+        { "id": "carousel", "type": "carousel", "name": "Kinderkarussell", "position": [-290, -660], "rotation_deg": 0, "diameter_m": 9 },
+        { "id": "mini-train", "type": "mini-train", "name": "Kindereisenbahn", "position": [-300, -905], "rotation_deg": 180, "length_m": 14 },
+        { "id": "stall-1", "type": "market-stall", "position": [-640, -570], "rotation_deg": 0, "goods": "gluehwein" },
+        { "id": "stall-2", "type": "market-stall", "position": [-587, -570], "rotation_deg": 0, "goods": "handbrot" },
+        { "id": "stall-3", "type": "market-stall", "position": [-534, -570], "rotation_deg": 0, "goods": "lebkuchen" },
+        { "id": "stall-4", "type": "market-stall", "position": [-481, -570], "rotation_deg": 0, "goods": "eierpunsch" },
+        { "id": "stall-5", "type": "market-stall", "position": [-428, -570], "rotation_deg": 0, "goods": "baumstriezel" },
+        { "id": "stall-6", "type": "market-stall", "position": [-375, -570], "rotation_deg": 0, "goods": "printen" },
+        { "id": "stall-7", "type": "market-stall", "position": [-905, -715], "rotation_deg": 90, "goods": "strickwaren" },
+        { "id": "stall-8", "type": "market-stall", "position": [-905, -768], "rotation_deg": 90, "goods": "lederwaren" },
+        { "id": "stall-9", "type": "market-stall", "position": [-905, -821], "rotation_deg": 90, "goods": "holzkunst" },
+        { "id": "stall-10", "type": "market-stall", "position": [-905, -955], "rotation_deg": 90, "goods": "kerzen" },
+        { "id": "stall-11", "type": "market-stall", "position": [-741, -978], "rotation_deg": 180, "goods": "marzipan-luebeck" },
+        { "id": "stall-12", "type": "market-stall", "position": [-688, -978], "rotation_deg": 180, "goods": "stollen" },
+        { "id": "stall-13", "type": "market-stall", "position": [-635, -978], "rotation_deg": 180, "goods": "langos" },
+        { "id": "stall-14", "type": "market-stall", "position": [-455, -976], "rotation_deg": 180, "goods": "pilze", "name": "Pilzpfanne Dampflok", "style": "locomotive" },
+        { "id": "stall-15", "type": "market-stall", "position": [-710, -730], "rotation_deg": 90, "goods": "gluehwein" },
+        { "id": "stall-16", "type": "market-stall", "position": [-710, -830], "rotation_deg": 90, "goods": "maronen" },
+        { "id": "stall-17", "type": "market-stall", "position": [-410, -730], "rotation_deg": -90, "goods": "gluehwein" },
+        { "id": "stall-18", "type": "market-stall", "position": [-410, -830], "rotation_deg": -90, "goods": "punsch" },
+        { "id": "stall-19", "type": "market-stall", "position": [-195, -760], "rotation_deg": -90, "goods": "marzipan" },
+        { "id": "stall-20", "type": "market-stall", "position": [-195, -815], "rotation_deg": -90, "goods": "gluehwein" },
+        { "id": "stall-21", "type": "market-stall", "position": [-610, -905], "rotation_deg": 180, "goods": "kakao", "tables": 1 },
+        { "id": "stall-22", "type": "market-stall", "position": [-510, -905], "rotation_deg": 180, "goods": "flammlachs", "tables": 1 }
+      ],
+      "scenarios": [
+        { "id": "striezelmarkt-evening", "name": "Evening at the Striezelmarkt", "description": "The clock jumps to the evening: the lights of the stalls, the tree and the rides come on at dusk.", "steps": [{ "at": 0, "set": { "time": "19:45" }, "message": "Evening at the Striezelmarkt: the lights come on at dusk." }] }
+      ]
+    },
+    {
+      "id": "market-visitors",
+      "name": "Market visitors",
+      "description": "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.",
+      "enabled": false,
+      "simulations": [
+        { "type": "market", "visitors": 260, "open": "10:00", "close": "22:00" }
+      ],
+      "scenarios": [
+        { "id": "market-closing", "name": "Closing time at the Striezelmarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{ "at": 0, "set": { "time": "20:30" }, "message": "A busy evening at the Striezelmarkt." }, { "at": 450, "message": "The market closes: everybody goes home, many to the station." }] }
       ]
     },
     {

@@ -74,7 +74,7 @@ export const DISRUPTIONS = [
   },
   {
     id: "scenarios", group: "disruptions", title: "Scenarios",
-    summary: "Timelines of a layout file: at given simulated times they set demand and speed, show messages, call trains, start and stop disruptions and send events.",
+    summary: "Timelines of a layout file: at given simulated times they set demand, speed and the time of day, show messages, call trains, start and stop disruptions and send events.",
     files: ["web/arail/core/scenarios.js"],
     classes: [{
       name: "ScenarioPlayer", file: "web/arail/core/scenarios.js", kind: "class", role: "Plays one scenario at a time.",
@@ -109,7 +109,7 @@ export const DISRUPTIONS = [
     }],
     parameters: [
       { key: "scenarios[].steps[].at", default: "0", meaning: "Simulated seconds after Play (a pause stops the time)." },
-      { key: "set, message, call, start, stop, emit", default: "", meaning: "What a step does: demand or speed, a message, a train or bus called, a disruption started or stopped, an event sent (e.g. terminal.request.*)." },
+      { key: "set, message, call, start, stop, emit", default: "", meaning: "What a step does: demand, speed or the time of day (set.time, as World.setTime; one that is no time of day fails the step), a message, a train or bus called, a disruption started or stopped, an event sent (e.g. terminal.request.*)." },
     ],
     events: {
       emits: [

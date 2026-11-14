@@ -7,8 +7,10 @@ import { PassengerSimulation } from "./passengers.js";
 import { TownSimulation } from "./town.js";
 import { TrafficSimulation } from "./traffic.js";
 import { CyclingSimulation } from "./cycling.js";
+import { MarketSimulation } from "./market.js";
 
-export { PassengerSimulation, TownSimulation, TrafficSimulation, CyclingSimulation };
+export { PassengerSimulation, TownSimulation, TrafficSimulation, CyclingSimulation, MarketSimulation };
+export { MARKET_PROFILE, MARKET_COLOUR } from "./market.js";
 export {
   BOARD_MIN_PX, boardStatus, boardingAccess, crowdForces, dockStatus, drawPerson, HOLD_S, NEUTRAL_PERSON, personLooks, personRadius, profileRows, STAFF_HOURS,
   STOP_CAPACITY_PER_M2, STOP_LOAD_EASY, statusLines, stopLoad, vehicleSpaces,
@@ -23,6 +25,7 @@ export const SIMULATION_TYPES = [
   TownSimulation,
   TrafficSimulation,
   CyclingSimulation,
+  MarketSimulation,
 ];
 
 /** Register the built-in simulations. */
