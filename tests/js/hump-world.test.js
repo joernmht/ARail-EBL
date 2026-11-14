@@ -184,21 +184,27 @@ test("its figures changed while the world is paused: drawn at once with the new 
   assert.ok(hump.sim.cuts.length > 0);
 });
 
-test("for hours: what is done is forgotten, the card's figures and the flashes stay as they were", () => {
-  // target braking: impacts too hard, so that there are flashes to keep in step
-  const whole = lone({ design: "target" }), lean = lone({ design: "target" }), a = whole.getObject("hump"), b = lean.getObject("hump");
+test("for hours: what is done is forgotten, the card's figures and the flashes stay as they were; the cuts flashing are those counted", () => {
+  // target braking and pushed fast: impacts too hard, and cuts catching up before their tracks (no impact too hard)
+  const fast = { design: "target", push_mps: 2.5 };
+  const whole = lone(fast), lean = lone(fast), a = whole.getObject("hump"), b = lean.getObject("hump");
   a.keep = { cuts: Infinity, trains: Infinity, departures: Infinity, log: Infinity };
   b.keep = { cuts: 5, trains: 1, departures: 1, log: 30 };
-  let flashed = 0;
+  const flashed = new Set();
   for (let t = 0; t < 900; t += 0.1) {
     whole.step(0.1);
     lean.step(0.1);
     assert.deepEqual(b._flashes, a._flashes, `the same flashes at ${t.toFixed(1)} s`);
-    flashed += a._flashes.length > 0;
+    for (const f of a._flashes) flashed.add(f.cut);
   }
   assert.equal(a.sim.logStart, 0, "the one kept everything");
   assert.ok(b.sim.logStart > 0 && b.sim.cuts.length < a.sim.cuts.length && b.sim.departures.length <= 2, "the other forgot");
-  assert.ok(flashed > 0 && a.sim.results().hard > 0, "impacts too hard flashed");
+  // the cuts that flashed red are those the card counts as too hard
+  const hard = a.sim.results();
+  assert.ok(hard.hard > 0, "impacts too hard");
+  assert.ok(a.sim.log.some((e) => e.type === "cut.caught-up" && e.v_mps > a.sim.options.impact_mps), "a cut caught up hard before its track");
+  assert.deepEqual([...flashed].toSorted(), hard.perCut.filter((c) => c.impact_mps > a.sim.options.impact_mps + 1e-9).map((c) => c.id).toSorted());
+  assert.equal(flashed.size, hard.hard);
   const rows = Object.fromEntries(a.card().rows);
   assert.ok(Number(rows["Trains pulled out"]) >= 2, `${rows["Trains pulled out"]} trains pulled out`);
   assert.deepEqual(b.card().rows, a.card().rows, "the same card");

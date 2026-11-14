@@ -128,8 +128,10 @@ the yard is 6 m long and 0.36 m wide) and draws:
 - **ballast and rails** along the plan of the yard, a fan whose tracks lie 4.5 m apart (`planAt`);
 - the **retarders**: dark beams beside the rails, **orange while they brake** (and glowing at night);
 - every **wagon** in dark red with a band in the colour of its rolling class (Türkis good, Brillantblau
-  medium, Orange bad runners, as in the diagrams), **red** for a few seconds after an impact too hard,
-  and the **locomotive** pushing the train;
+  medium, Orange bad runners, as in the diagrams), **red** for a few seconds after an impact too hard
+  (the impacts the card counts: a cut's first impact in its track, or at its end, faster than 1.25 m/s;
+  the simulation notes it as `cut.hard`; catching up before the track is not one), and the
+  **locomotive** pushing the train;
 - the track numbers behind the group retarders.
 
 Its card says how many trains it humped, its cuts per hour, misroutes, impacts too hard and trains

@@ -176,10 +176,10 @@ export class HumpYardObject extends LayoutObject {
       n++;
     }
     if (n >= MAX_STEPS) this._acc = 0;
-    // impacts too hard flash for a while (_seen counts the log's entries since the start of the run)
+    // impacts too hard flash for a while: those the card counts (cut.hard; _seen counts the log's entries since the start)
     for (this._seen = Math.max(this._seen, sim.logStart); this._seen < sim.logStart + sim.log.length; this._seen++) {
       const e = sim.log[this._seen - sim.logStart];
-      if ((e.type === "cut.impact" || e.type === "cut.caught-up" || e.type === "cut.end") && e.v_mps > sim.options.impact_mps) this._flashes.push({ t: sim.t, cut: e.cut });
+      if (e.type === "cut.hard") this._flashes.push({ t: sim.t, cut: e.cut });
     }
     this._flashes = this._flashes.filter((f) => sim.t - f.t < FLASH_S);
     // what is done goes, its figures stay

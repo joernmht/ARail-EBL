@@ -252,6 +252,9 @@ test("pushed too fast: a good runner catches up a bad one and is misrouted", () 
   assert.notEqual(m.ended, m.track);
   assert.ok(fast.log.some((e) => e.type === "cut.misrouted" && e.intended === m.track && e.now === m.ended));
   assert.ok(fast.log.some((e) => e.type === "cut.caught-up"));
+  // catching up before the track is not an impact too hard: a cut is judged by its impact in the track
+  assert.ok(fast.log.some((e) => e.type === "cut.caught-up" && e.v_mps > fast.options.impact_mps), "caught up hard");
+  assert.equal(fast.log.filter((e) => e.type === "cut.hard").length, bad.hard);
   assert.ok(bad.cuts_per_hour > 2 * ok.cuts_per_hour, "but it is faster");
 });
 
@@ -260,7 +263,14 @@ test("target braking alone: the error of the measured resistance makes hard impa
   const run = (sd) => {
     const sim = new HumpSimulation(yard, { seed: 4, control: { estimate_sd: sd } });
     sim.hump({ id: "A", wagons: randomTrain(createRng(104), { wagons: 30, tracks: yard.tracks.map((t) => t.name) }) });
-    return sim.run();
+    const r = sim.run();
+    // one rule for too hard: the cuts noted (cut.hard, the flash on the table) are the cuts counted, by their first
+    // impact in the track (or at its end), unrounded
+    const noted = sim.log.filter((e) => e.type === "cut.hard").map((e) => e.cut);
+    const counted = r.perCut.filter((c) => c.impact_mps != null && c.impact_mps > sim.options.impact_mps + 1e-9).map((c) => c.id);
+    assert.deepEqual(noted.toSorted(), counted.toSorted());
+    assert.equal(noted.length, r.hard);
+    return r;
   };
   const exact = run(0), rough = run(0.6);
   assert.ok(exact.hard <= 3, `${exact.hard} hard impacts with the true resistance`);

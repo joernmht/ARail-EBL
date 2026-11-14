@@ -141,7 +141,7 @@ export class HumpSimulation {
         s: -Infinity, v: 0, a: 0, state: "queued", order: null, careful: g.wagons.some((w) => w.careful), misrouted: null, held: false,
         derailed: false, pushedOver: false, firstAxle: body.parts[0].axles[0], lastAxle: last.axles[last.axles.length - 1],
         need: new Map(), inRetarder: null, w_est: 0, f: null, F: 0,
-        rec: { released_t: null, released_s: null, max_mps: 0, retarders: {}, impacts: [], hitBy: [], end: null, stop: null }, trace: [],
+        rec: { released_t: null, released_s: null, max_mps: 0, retarders: {}, impacts: [], hitBy: [], end: null, stop: null, judged: false }, trace: [],
       };
       cut.w_est = this.control.measure(cut, this.rng);
       rec.cuts.push(cut.id);
@@ -397,6 +397,7 @@ export class HumpSimulation {
       const v = held ? 0 : (m * c.v + M * L.v) / (m + M);
       const inTrack = this._inTrack(c) && L.route[L.route.length - 1] === c.route[c.route.length - 1];
       const hit = { t: round(this.t), s: round(c.s), with: L.id, v_mps: dv, inTrack, before_mps: [c.v, L.v], after_mps: v, masses_t: [m, M] };
+      if (inTrack) this._judge(c, dv);
       c.rec.impacts.push(hit);
       L.rec.hitBy.push({ t: hit.t, by: c.id, v_mps: dv });
       this.note(inTrack ? "cut.impact" : "cut.caught-up", { cut: c.id, with: L.id, v_mps: round(dv) });
@@ -425,6 +426,7 @@ export class HumpSimulation {
       if (!seg.children.length) {
         c.rec.end = { t: round(this.t), s: seg.s1, v_mps: c.v };
         this.note("cut.end", { cut: c.id, track: seg.track.name, v_mps: round(c.v) });
+        this._judge(c, c.v);
         Object.assign(c, { s: seg.s1, v: 0, held: true });
         return;
       }
@@ -597,6 +599,21 @@ export class HumpSimulation {
     this.logStart += nl;
   }
 
+  /**
+   * A cut is judged by one impact: its first in its track, else at the track's end (then it is held, so
+   * nothing follows). The first call for a cut is that one; too hard, it is noted (`cut.hard`), once.
+   */
+  _judge(c, v_mps) {
+    if (c.rec.judged) return;
+    c.rec.judged = true;
+    if (this.tooHard(c.careful, v_mps)) this.note("cut.hard", { cut: c.id, v_mps: round(v_mps) });
+  }
+
+  /** Faster than a cut may meet the wagons in its track (its careful limit, if it has careful wagons). */
+  tooHard(careful, v_mps) {
+    return v_mps > (careful ? this.options.careful_mps : this.options.impact_mps) + 1e-9;
+  }
+
   /** One cut's run, as `results().perCut` lists it. */
   _cutResult(c) {
     const ret = Object.values(c.rec.retarders);
@@ -613,12 +630,12 @@ export class HumpSimulation {
 
   /** The figures of cuts' runs (`_cutResult`): counts and the hardest impact. */
   _figures(perCut) {
-    const o = this.options, impacts = perCut.filter((c) => c.impact_mps != null);
+    const impacts = perCut.filter((c) => c.impact_mps != null);
     return {
       cuts: perCut.length, wagons: perCut.reduce((n, c) => n + c.wagons, 0),
       misrouted: perCut.filter((c) => c.misrouted).length, caughtUp: perCut.filter((c) => c.caughtUp).length,
       derailed: perCut.filter((c) => c.derailed).length, short: perCut.filter((c) => c.stop && !c.ended).length,
-      hard: impacts.filter((c) => c.impact_mps > (c.careful ? o.careful_mps : o.impact_mps) + 1e-9).length,
+      hard: impacts.filter((c) => this.tooHard(c.careful, c.impact_mps)).length,
       max_impact_mps: impacts.reduce((m, c) => Math.max(m, c.impact_mps), 0),
     };
   }
