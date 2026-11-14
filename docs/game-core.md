@@ -108,10 +108,13 @@ What every game has, from the base class:
   an `id`, a `title` and a `menu` of moves can be chosen: the signaller's panel has its signals
   with their routes and its platform tracks to close, the dispatcher's district its faults with the
   teams to send and the vans on the road. The page still knows no game: it draws shapes and passes
-  the move chosen to `act`. One game has a second picture, on the lab's layout itself: the
-  signaller's table (`web/game/table.js`, [the shift on the table](games.md#the-shift-on-the-table)).
+  the move chosen to `act`. A game can have a second picture, on the lab's layout itself: the
+  signaller's table (`web/game/table.js`) and the dispatcher's district (`web/game/district.js`;
+  [the shift on the table](games.md#the-shift-on-the-table)).
   It is no other game and no other view: what is clicked on the table is an item of the sketch by
-  its `id` (`signal-A`, `track-G2`) or a move of its `menu`, and goes the same way to `act`;
+  its `id` (`signal-A`, `track-G2`, `fault-bue`, `team-T1`) or a move of its `menu`, and goes the
+  same way to `act`. A move that needs a second thing of the picture names it (`target`: the van to
+  send to a fault), so that a picture which shows both can offer the move there;
 - **the result** of a round (`result()`): what the career mode and the big game take from it.
 
 A game that is not wired plays the other end of its ports itself. The signaller's game has its own
@@ -531,7 +534,9 @@ the same ports would be its full form.
 7. **`view()`** gives the figures, the tables and the moves of now; the play page needs nothing
    else. Where the role works on a picture (a panel, a map, a timetable graph), give it as the
    view's `sketch`, with the moves of a thing in its menu: a person should act on the thing, not
-   look it up in a list.
+   look it up in a list. Where the role's world is on the lab's layout, give it a board on the
+   table too (`BOARDS` in `web/game/live.js`): the items of the sketch at their places, chosen by
+   their `id`.
 8. **Every choice gives something up.** A decision with a right answer is a quiz. Give the role
    less than it needs (teams, time, money), and let it decide before it knows (a cause that only
    shows on site, a repair that may not hold): then two players decide differently, and both have

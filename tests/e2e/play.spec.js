@@ -557,7 +557,10 @@ test("the picture of a game: a signal chosen on the panel, its route from its me
     for (let i = 0; i < 2000 && !g.faults.some((f) => f.state === "open"); i++) p.session.step(1);
     p.draw(true);
   });
-  const fault = map.getByRole("button").first();
+  // (the base and the vans can be chosen too: a free team has the faults it can go to as its moves)
+  await expect(map.locator('.pick[data-id="base"]')).toHaveCount(1);
+  await expect(map.locator('.pick[data-id^="team-"]')).toHaveCount(2);
+  const fault = map.locator('.pick[data-id^="fault-"]').first();
   await expect(fault).toHaveAttribute("aria-label", /waits for a team$/);
   await fault.click();
   const send = page.locator(`${MAINTENANCE} .play-pick`).getByRole("button").first();
@@ -1716,7 +1719,7 @@ test("two people at two seats: each seat is told its own lines of the story, and
   await expect(signaller.locator(".vn-story")).toBeHidden();
   await page.locator("#tab-maintenance-dispatcher").click();
   await expect(maintenance.locator(".vn-name strong")).toHaveText("M. Specht");
-  await expect(maintenance.locator(".vn-line")).toContainText("Two teams on shift");
+  await expect(maintenance.locator(".vn-line")).toContainText("Two vans at the base");
   // a line for everybody, said now: the signaller's OK does not take it from the maintenance dispatcher
   await page.evaluate(() => {
     const p = window.__play;
@@ -1724,7 +1727,7 @@ test("two people at two seats: each seat is told its own lines of the story, and
     p.draw(true);
   });
   // (the maintenance dispatcher has not answered the team leader yet: that line stays first there)
-  await expect(maintenance.locator(".vn-line")).toContainText("Two teams on shift");
+  await expect(maintenance.locator(".vn-line")).toContainText("Two vans at the base");
   await maintenance.locator(".vn-story .btn").click();
   await expect(maintenance.locator(".vn-line")).toContainText("Both of you");
   await page.locator("#tab-signaller-relay").click();

@@ -135,6 +135,68 @@ test("the signaller's shift on the table: a signal and where its route goes are 
   expect(errors).toEqual([]);
 });
 
+test("the dispatcher's shift on the table: a fault and the van to send are chosen there, the base calls a technician, and the signaller's trains share the table", async ({ page }) => {
+  const MORNING = "/game/play/?mission=neustadt-morning&live", DISPATCHER = "#seat-maintenance-dispatcher";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(MORNING);
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("arail.game.sound", "false");
+  });
+  await page.goto(MORNING);
+  await page.waitForFunction(() => window.__play?.ready);
+  await page.evaluate(async () => {
+    (await import("/game/live.js")).LIVE.slow_ms = 1e9;
+  });
+  // the dispatcher's seat for the person, the signaller's for the computer
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.sit("maintenance-dispatcher", "human");
+    p.sit("signaller-relay", "computer");
+    p.select("maintenance-dispatcher");
+  });
+  await page.waitForFunction(() => window.__play.tabled && window.__play.live?.view && window.__play.live.board?.constructor.type === "district-board");
+  // one table for both games: the dispatcher's board is chosen on, the signaller's draws its trains
+  expect(await page.evaluate(() => [...window.__play.live.boards.keys()].sort())).toEqual(["maintenance", "signaller"]);
+  expect(await inPicture(page)).toEqual([]);
+  await expect(page.locator(`${DISPATCHER} .play-board`)).toBeVisible();
+  // the first fault of the district is reported: it is on the table, and a click chooses it
+  const state = () => page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("maintenance-dispatcher").game;
+    return { picked: p.picked.get("maintenance-dispatcher") ?? null, offers: p.live.board.offers.map((o) => o.target), faults: g.faults.filter((f) => f.reported != null).map((f) => [f.id, f.state, f.team]), teams: g.teams.map((tm) => [tm.id, tm.state, tm.fault]), onCall: g.onCall };
+  });
+  await page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("maintenance-dispatcher").game;
+    for (let i = 0; i < 2400 && !g.faults.some((f) => f.reported != null); i++) p.session.step(1);
+    for (const story of document.querySelectorAll(".vn-story")) for (let i = 0; i < 50 && !story.hidden; i++) story.querySelector(".btn.primary")?.click();
+    p.draw(true);
+  });
+  const fault = (await state()).faults[0][0];
+  await page.waitForFunction((id) => window.__play.live.board.shown().some((f) => f.id === id), fault);
+  await page.mouse.click(...(await where(page, `fault-${fault}`)));
+  await expect(page.locator(`${DISPATCHER} .play-board .pick[data-id="fault-${fault}"]`)).toHaveAttribute("aria-pressed", "true");
+  expect(await state()).toMatchObject({ picked: `fault-${fault}`, offers: ["team-T1", "team-T2"] });
+  await expect(page.locator(`${DISPATCHER} .play-pick`).getByRole("button", { name: /^Send Team M\. Specht/ })).toBeVisible();
+  // a click on the van in the yard sends its team: the game's own move, and the fault is let go of
+  await page.mouse.click(...(await where(page, "team-T1")));
+  await expect.poll(async () => (await state()).teams[0]).toEqual(["T1", "driving", fault]);
+  expect(await state()).toMatchObject({ picked: null, offers: [] });
+  // a click on the base: the technicians on call are its moves
+  await page.mouse.click(...(await where(page, "base")));
+  expect((await state()).picked).toBe("base");
+  await page.locator(`${DISPATCHER} .play-pick`).getByRole("button", { name: /^Call S\. Kartal \(signalling\)/ }).click();
+  expect((await state()).onCall.signalling).toBe("called");
+  // the signaller's seat shown: the same table, its board the one chosen on, the vans still drawn
+  await page.evaluate(() => window.__play.select("signaller-relay"));
+  await page.waitForFunction(() => window.__play.live.board?.constructor.type === "table-board");
+  expect(await page.evaluate(() => [window.__play.live.boards.size, window.__play.live.boards.get("maintenance").active])).toEqual([2, false]);
+  expect(errors).toEqual([]);
+});
+
 test("the table's camera: the parts of the station, nearer and farther, the keys; a choice on the panel brings it there", async ({ page }) => {
   const errors = await start(page);
   await run(page, 3);

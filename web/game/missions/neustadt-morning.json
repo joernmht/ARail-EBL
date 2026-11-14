@@ -86,7 +86,33 @@
     "role": "Team leader, signalling",
     "portrait": "hivis"
    },
-   "say": "Two teams on shift, mine for signalling and L. Kranich's for the track. A fault shows up in the district: tap it and send one of us. We only know what it is once we have looked."
+   "say": "Two vans at the base: mine for signalling, L. Kranich's for the track. When a fault lights up on the table, tap it, then the van to send. We only know what it is once we have looked."
+  },
+  {
+   "phase": "shift",
+   "at": 800,
+   "seats": [
+    "maintenance-dispatcher"
+   ],
+   "who": {
+    "name": "L. Kranich",
+    "role": "Team leader, track",
+    "portrait": "hivis"
+   },
+   "say": "The trains you see are the signaller's. A fault at the station holds them until we are done, and nobody steps into a track before the signaller has closed it."
+  },
+  {
+   "phase": "shift",
+   "at": 870,
+   "seats": [
+    "signaller-relay"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Train dispatcher, on the line",
+    "portrait": "headset"
+   },
+   "say": "Look behind the station: the vans at the maintenance base are the dispatcher's. One comes to your signal when it is its turn. A danger elsewhere goes first."
   }
  ],
  "debrief": [

@@ -1,0 +1,1 @@
+- A track of the dispatcher's district is closed by a signaller, not by whoever reported the fault: the line to Talsee was "closed by a train driver (by radio)".
