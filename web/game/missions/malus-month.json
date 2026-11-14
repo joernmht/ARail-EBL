@@ -74,6 +74,18 @@
     "portrait": "office"
    },
    "say": "The last period. I hope we still talk to each other after it."
+  },
+  {
+   "phase": "plan",
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "T. Lerche",
+    "role": "The operator's contract manager",
+    "portrait": "office"
+   },
+   "say": "The discs along platform 1 are our trips of the last period, once it is settled: green on time, orange late, a red ring cancelled. What I ask of you pulses on the table: tap it."
   }
  ],
  "debrief": [

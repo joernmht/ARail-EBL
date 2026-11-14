@@ -5,11 +5,14 @@
 // asked for; standing, it sways a little. It is an ornament: it changes nothing in a game, and
 // where it cannot be drawn fast enough it gives up, and the still pictures stay.
 //
-// For the signaller's game it is more than that: the table (`setTable`). Then the world is the one
-// the game plays in. The game's trains run on the station's tracks and its signals stand beside
-// them (table.js), the table is the photo of the real one (the layout's orthophoto), the world runs
+// For a game that has a board (BOARDS) it is more than that: the table (`setTable`). Then the world
+// is the one the game plays in. The signaller's trains run on the station's tracks and its signals
+// stand beside them (table.js), the maintenance dispatcher's vans drive the streets to the faults
+// (district.js), the undertaking's operations control has its trains marked (control.js), and a slow
+// role's turn shows what its decisions are about (turn.js); the table is the photo of the real one (the layout's orthophoto), the world runs
 // at the game's speed, and the camera is the player's: it shows the station or a part of it, and can
-// be moved. What is clicked on the table is told to the page (`hit`).
+// be moved. What is clicked on the table is told to the page (`hit`). The games of one shift share
+// the table: the seat shown can choose on it, the others' games are drawn with it.
 //
 // The table can also be seen as the app shows the lab (`setSource`): on a photo of the lab, or
 // through the camera of this device in the lab itself. Then the picture is the photo or the camera
@@ -17,8 +20,18 @@
 // and the game is drawn onto the real table: augmented reality.
 import { SKY, SKY_NIGHT, clearUncovered, drawGroundImage, mipmaps } from "../app/flyover.js";
 import { Camera, FlyCamera, PlaneTracker, View, createWorld, orthoOf, rgba, toRad } from "../arail/index.js";
+import { ControlBoard } from "./control.js";
+import { DistrictBoard } from "./district.js";
 import { between, seenFrom } from "./shots.js";
 import { TableBoard } from "./table.js";
+import { TurnBoard } from "./turn.js";
+
+/**
+ * The boards of the games that are played on the table, by the game's id: each draws its game on
+ * the layout's world and says what of it is at a pixel (`show`, `draw`, `hit`, `placeOf`, `partOf`,
+ * `bounds`, `dispose`; `active`, `picked`, `offers`).
+ */
+export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
 
 /** Where the pages keep whether the backdrop is live. */
 export const LIVE_KEY = "arail.game.live";
@@ -91,7 +104,8 @@ export class LiveScene {
     this.frames = 0;
     this.spent = 0;
     this.checks = 0;
-    /** The table: the board of the game played on it (table.js), whether it is shown, and the game's speed (0: it waits). */
+    /** The table: the boards of the games shown on it by their game's id (BOARDS), that of the seat shown, whether the table is shown, and the game's speed (0: it waits). */
+    this.boards = new Map();
     this.board = null;
     this.table = false;
     this.pace = 1;
@@ -469,34 +483,48 @@ export class LiveScene {
   /* ---------------------------------------------------------------- the table */
 
   /**
-   * Make the table the picture of a signaller's game, or let it be the backdrop again (null). The
-   * first time the world becomes the game's: the modules whose trains run into the station go off,
-   * the board takes the platform tracks, the table's photo is loaded.
-   * @param {object | null} game a SignallerGame, or null
-   * @param {{active?: boolean, picked?: string | null, offers?: {route: string, disabled?: boolean}[]}} [state] whether a
-   *   person can choose on it, what is chosen (an item of the game's picture) and the routes offered from a signal chosen
+   * Make the table the picture of a game that has a board (BOARDS), or let it be the backdrop again
+   * (null). The first time the world becomes the game's: the modules whose trains run into the
+   * station go off, the table's photo is loaded. Every game shown gets its board (the signaller's
+   * takes the platform tracks); the board of `game` is the one a person chooses on.
+   * @param {object | null} game the game of the seat shown, or null
+   * @param {{active?: boolean, picked?: string | null, offers?: {i: number, route?: string | null, target?: string | null, disabled?: boolean}[], others?: object[]}} [state]
+   *   whether a person can choose on it, what is chosen (an item of the game's picture), the moves offered from it
+   *   (a route of a signal, the thing a move needs), and the other games of the shift, drawn with it
    * @returns {boolean} whether the table is shown
    */
-  setTable(game, { active = false, picked = null, offers = [] } = {}) {
+  setTable(game, { active = false, picked = null, offers = [], others = [] } = {}) {
     if (!this.world || this.failed) return false;
-    if (game && !this.board) {
+    const idOf = (g) => g?.constructor?.id, shown = new Map();
+    if (game && !BOARDS[idOf(game)]) game = null;
+    if (game) for (const g of [game, ...others]) if (BOARDS[idOf(g)] && !shown.has(idOf(g))) shown.set(idOf(g), g);
+    if (game && !this.table) {
       // (the modules on before: the backdrop gets them back when the table is left)
       this.layersBefore = this.world.layers().filter((l) => l.enabled).map((l) => l.id);
       this.world.setLayers(this.world.layers().filter((l) => TABLE_VIEW.layers.includes(l.id)).map((l) => l.id));
       this.world.clock.factor = 1;
       this.boxes.clear();
       this.near = this.nearFrom = null;
-      this.board = new TableBoard(this.world);
       this.loadOrtho();
     }
-    const board = this.board;
-    if (board) {
-      board.show(game);
-      board.active = !!game && active;
-      board.picked = picked;
-      board.offers = game && active ? offers : [];
+    // a board for every game shown; one whose game is gone leaves the world
+    for (const [id, b] of this.boards) {
+      if (shown.has(id)) continue;
+      b.dispose();
+      this.boards.delete(id);
     }
-    const on = !!game;
+    for (const [id, g] of shown) {
+      let b = this.boards.get(id);
+      if (!b) this.boards.set(id, (b = new BOARDS[id](this.world)));
+      const mine = g === game;
+      b.show(g);
+      b.mine = mine;
+      b.active = mine && active;
+      b.picked = mine ? picked : null;
+      b.offers = mine && active ? offers : [];
+    }
+    const before = this.board, on = !!game;
+    this.board = game ? this.boards.get(idOf(game)) : null;
     if (on !== this.table) {
       this.table = on;
       this.flight = null;
@@ -505,11 +533,9 @@ export class LiveScene {
         this.show("all", true);
       } else {
         // the backdrop again: the camera goes back to the shot asked for next, the world to its own pace, with its
-        // modules and its own timetable at the platforms (the board leaves the world)
+        // modules and its own timetable at the platforms (the boards have left the world)
         this.closeFeed();
         this.source = "table";
-        this.board?.dispose();
-        this.board = null;
         if (this.layersBefore) this.world.setLayers(this.layersBefore);
         this.layersBefore = null;
         this.world.clock.factor = 1;
@@ -519,7 +545,7 @@ export class LiveScene {
         this.world.speed = LIVE.speed;
         this.to = this.from = null;
       }
-    }
+    } else if (on && before !== this.board) this.show("all");
     return on;
   }
 

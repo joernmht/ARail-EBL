@@ -2,9 +2,9 @@
  "format": "arail-mission/1",
  "id": "fault-night",
  "title": "Fault Night",
- "hook": "More faults than teams. What is behind each, only a look will tell.",
+ "hook": "A late shift, more faults than teams. What is behind each, only a look will tell.",
  "place": "track",
- "text": "A shift in the maintenance control centre of the district around Bf Neustadt, alone: faults come in by their report paths, and what is behind each is known only when a team has looked. Two emergency teams are on shift, one for signalling and one for the track, and a technician of each trade is on call. Rank the faults, send the teams, ask the signaller for a closure before anybody works in the track, and decide what a team does with what it finds: a repair for good, a quick one that may not hold, or guarding a danger until the right team comes.",
+ "text": "22:00 to 22:40 in the maintenance control centre of the district around Bf Neustadt, alone, and on the lab's table: faults light up where their assets are, and what is behind each is known only when a team has looked. Two emergency teams are on shift, one for signalling and one for the track, and a technician of each trade is on call. Rank the faults, send the vans, ask the signaller for a closure before anybody works in the track, and decide what a team does with what it finds: a repair for good, a quick one that may not hold, or guarding a danger until the right team comes.",
  "mode": "solo",
  "seed": 1,
  "roles": [
@@ -20,12 +20,12 @@
   {
    "id": "shift",
    "kind": "shift",
-   "title": "The shift",
+   "title": "The late shift",
    "roles": [
     "maintenance-dispatcher"
    ],
    "length": 2400,
-   "clock": "08:00"
+   "clock": "22:00"
   }
  ],
  "story": [
@@ -37,7 +37,7 @@
     "role": "Team leader, signalling",
     "portrait": "hivis"
    },
-   "say": "Two teams on shift, mine for signalling and L. Kranich's for the track. A fault shows up in the district: tap it and send one of us. We only know what it is once we have looked."
+   "say": "Late shift. Two vans at the base: mine for signalling, L. Kranich's for the track. When a fault lights up on the table, tap it, then the van to send. We only know what it is once we have looked."
   },
   {
    "phase": "shift",
@@ -51,6 +51,16 @@
   },
   {
    "phase": "shift",
+   "at": 560,
+   "who": {
+    "name": "L. Kranich",
+    "role": "Team leader, track",
+    "portrait": "hivis"
+   },
+   "say": "A red ring is a danger with nobody there. Any of us can stand guard until the right team comes. But whoever guards repairs nothing."
+  },
+  {
+   "phase": "shift",
    "at": 900,
    "who": {
     "name": "M. Specht",
@@ -58,6 +68,16 @@
     "portrait": "hivis"
    },
    "say": "A quick repair gets the trains running now. It may not hold. A repair for good takes longer and holds. Your call, every time."
+  },
+  {
+   "phase": "shift",
+   "at": 1300,
+   "who": {
+    "name": "M. Specht",
+    "role": "Team leader, signalling",
+    "portrait": "hivis"
+   },
+   "say": "Two technicians are on call at home. Tap the base to wake one: four hours of overtime, and ten minutes until they are ready. Worth it only if they still repair something tonight."
   }
  ],
  "debrief": [

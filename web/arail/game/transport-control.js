@@ -433,6 +433,7 @@ export class TransportControlGame extends Game {
     const note = (tr) => [tr.cancelled ? "cancelled" : "", tr.held ? `held for ${tr.held.for}, up to ${tr.held.minutes} min` : "", tr.informed != null ? "passengers told" : tr.info_since != null ? "passengers not told yet" : ""].filter(Boolean).join("; ");
     const way = { standby: "the stand-by driver", freeday: "a driver on a free day", spare: "the spare unit", short: "one unit instead of two", send: "sent out as it is", cancel: "cancelled" };
     return {
+      sketch: this._sketch(),
       figures: [
         { label: "Penalties", value: a.eur, unit: "€", tone: a.eur ? "warn" : "ok" },
         { label: "Passenger minutes lost", value: a.minutes, tone: a.minutes > a.base.minutes ? "bad" : a.minutes ? "warn" : "ok" },
@@ -451,5 +452,61 @@ export class TransportControlGame extends Game {
         { name: "inform", label: "Publish passenger information", primary: true, disabled: todo.length ? undefined : "Nothing to tell just now.", fields: [{ id: "train", label: "Train", options: todo.map((tr) => ({ id: tr.id, label: `${tr.id}: ${tr.info_text}` })) }] },
       ],
     };
+  }
+
+  /** What is known of a train, in words: its time, its delay, whether it is held, whether its passengers know. */
+  _about(tr) {
+    const parts = [tr.cancelled ? "cancelled" : tr.dep == null ? "" : `departs ${clockAt(tr.dep).slice(0, 5)}`];
+    if (tr.left_min != null && !tr.cancelled) parts.push(tr.left_min >= 1 ? `left ${Math.round(tr.left_min)} min late` : "left on time");
+    else if (tr.delay_min) parts.push(`about ${Math.round(tr.delay_min)} min late`);
+    if (tr.held) parts.push(`held for ${tr.held.for}, up to ${tr.held.minutes} min`);
+    if (tr.info_since != null) parts.push(tr.informed != null ? "passengers told" : "passengers not told yet");
+    return `${tr.id}: ${parts.filter(Boolean).join(", ")}`;
+  }
+
+  /**
+   * The connections of the morning as a sketch for a page that does not know the game: a row for
+   * every connection (the feeder, the passengers who change, the train they change to: green once
+   * it is kept, red once it is missed), the trains cancelled later in the day, and the reserves.
+   * A train whose passengers have not been told pulses, and telling them is its move.
+   */
+  _sketch() {
+    const items = [], W = 640, row = 50, top = 40, cons = new Map(this.connections().map((c) => [c.from, c]));
+    const tag = (tr, x, y, anchor, arrow) => {
+      const todo = tr.info_since != null && tr.informed == null;
+      items.push({
+        id: `train-${tr.id}`, kind: "tag", x, y, anchor, text: arrow < 0 ? `← ${tr.id}` : arrow > 0 ? `${tr.id} →` : tr.id,
+        tone: tr.cancelled ? "bad" : (tr.delay_min ?? 0) >= INFO.from_min ? "warn" : "train", alert: todo ? "warn" : undefined, title: this._about(tr),
+        menu: todo ? [{ label: `Tell the passengers: ${tr.info_text}`, name: "inform", args: [tr.id] }] : undefined,
+      });
+    };
+    const feeders = this.trains.filter((tr) => tr.feeder);
+    feeders.forEach((a, i) => {
+      const b = this.train(a.partner), y = top + row * i, c = cons.get(a.id), gone = b.left_min != null;
+      // the connection: open until the connecting train has left; then kept or missed
+      const tone = !c?.need_s && !gone ? "free" : gone ? (c.kept ? "ok" : "bad") : b.held ? "route" : "warn";
+      items.push({ kind: "text", x: 46, y: y + 5, anchor: "end", small: true, text: clockAt(a.dep).slice(0, 5), tone: "muted" });
+      items.push({ kind: "line", x1: 160, y1: y, x2: 480, y2: y, tone });
+      items.push({ kind: "text", x: 320, y: y - 9, anchor: "middle", small: true, text: `${a.changers} change` });
+      items.push({ kind: "text", x: 320, y: y + 19, anchor: "middle", small: true, tone: tone === "bad" ? "bad" : tone === "ok" ? "ok" : "muted", text: gone ? (c.kept ? "connection kept" : "connection missed") : b.held ? `waits up to ${b.held.minutes} min` : c?.need_s ? `needs ${Math.ceil(c.need_s / 6) / 10} min more` : "as planned" });
+      tag(a, 58, y, "start", 1);
+      tag(b, 582, y, "end", -1);
+      items.push({ kind: "text", x: 594, y: y + 5, small: true, text: clockAt(b.dep).slice(0, 5), tone: "muted" });
+    });
+    // later in the day: the trains the undertaking's own trouble is about
+    const y2 = top + row * feeders.length + 6;
+    this.trouble.filter((x) => x.asked).forEach((x, i) => {
+      const tr = this.train(x.train), cx = 58 + 120 * i;
+      if (tr) tag(tr, cx, y2, "start", 0);
+      else items.push({ kind: "tag", x: cx, y: y2, anchor: "start", text: x.train, tone: x.choice ? "ok" : "warn", title: `${x.train}: ${x.choice ? { standby: "the stand-by driver takes it", freeday: "a driver on a free day takes it", spare: "the spare unit runs", short: "runs with one unit instead of two", send: "runs with its defect" }[x.choice] : "to decide"}` });
+    });
+    // the reserves: a dot each, as long as they are there
+    const reserve = (label, n, x) => {
+      items.push({ kind: "text", x, y: y2 + 44, small: true, text: label, tone: n ? undefined : "muted" });
+      for (let k = 0; k < Math.max(1, n); k++) items.push({ kind: "dot", x: x - 14 - 16 * k, y: y2 + 40, r: 5, tone: n ? "ok" : "muted" });
+    };
+    reserve("Stand-by driver", this.value("standby"), 100);
+    reserve("Spare unit", this.value("spare"), 330);
+    return { title: "Our trains", width: W, height: y2 + 60, label: "The connections of the morning at platform 2: for each, the feeder, the passengers who change and the train they change to; below, the trains of later in the day and the reserves", items };
   }
 }

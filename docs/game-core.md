@@ -108,10 +108,20 @@ What every game has, from the base class:
   an `id`, a `title` and a `menu` of moves can be chosen: the signaller's panel has its signals
   with their routes and its platform tracks to close, the dispatcher's district its faults with the
   teams to send and the vans on the road. The page still knows no game: it draws shapes and passes
-  the move chosen to `act`. One game has a second picture, on the lab's layout itself: the
-  signaller's table (`web/game/table.js`, [the shift on the table](games.md#the-shift-on-the-table)).
+  the move chosen to `act`. A game can have a second picture, on the lab's layout itself: the
+  signaller's table (`web/game/table.js`) and the dispatcher's district (`web/game/district.js`;
+  [the shift on the table](games.md#the-shift-on-the-table)).
   It is no other game and no other view: what is clicked on the table is an item of the sketch by
-  its `id` (`signal-A`, `track-G2`) or a move of its `menu`, and goes the same way to `act`;
+  its `id` (`signal-A`, `track-G2`, `fault-bue`, `team-T1`) or a move of its `menu`, and goes the
+  same way to `act`. A move that needs a second thing of the picture names it (`target`: the van to
+  send to a fault), so that a picture which shows both can offer the move there;
+  A slow role's game, which has no picture to act on, can give a **scene** instead (`view().scene`):
+  a list of things in a small vocabulary that a picture of the district can show (`{thing:
+  "condition", grade}`, `{thing: "teams", n, on_call}`, `works`, `restrictions`, `faults`, `tally`,
+  `project`), and for every open decision what it is about (`{thing: "ask", id, at}`, `at` one of
+  the places `base`, `tracks`, `works`, `asset`, `station`, `platform`, `trains`, `project`,
+  `town`). The table draws it in the role's turns (`web/game/turn.js`), and a click on what a
+  decision is about brings the decision up;
 - **the result** of a round (`result()`): what the career mode and the big game take from it.
 
 A game that is not wired plays the other end of its ports itself. The signaller's game has its own
@@ -460,7 +470,7 @@ the desks as requests, not to the layout.
 
 | Game | Role | Played in | Takes | Gives | Alone, it plays |
 | --- | --- | --- | --- | --- | --- |
-| `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails |
+| `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails; a mission can say which trains come late (`late`) |
 | `maintenance` (Fault Night) | Maintenance and fault dispatcher | shifts (minutes) | staff plan, asset condition, fault report, track closure | repair status, closure request, performance report | the signaller's fault (exit signal N2), and the signallers who close the tracks |
 | `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
 | `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
@@ -486,7 +496,11 @@ Seated together:
   shape the contract's incident list; the district's account goes back to the rapporteur.
 - **`lab-morning`** (the lab's dispatcher, maintenance dispatcher; one shift on the lab's
   timetable): see above.
-- Alone: `fault-night`, `transportleitung`, `budget-years`, `malus-month`, `night-session`.
+- **`transportleitung`** (operations control, signaller; one shift): the signaller's seat is the
+  computer's and its trains come late as the mission says (`options.late`); the delay notices are
+  the signaller's, and a hold the operations control asks for is kept on the signaller's panel.
+  The signaller's score does not count (`weight: 0`).
+- Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`.
 
 ## The parked games
 
@@ -531,7 +545,9 @@ the same ports would be its full form.
 7. **`view()`** gives the figures, the tables and the moves of now; the play page needs nothing
    else. Where the role works on a picture (a panel, a map, a timetable graph), give it as the
    view's `sketch`, with the moves of a thing in its menu: a person should act on the thing, not
-   look it up in a list.
+   look it up in a list. Where the role's world is on the lab's layout, give it a board on the
+   table too (`BOARDS` in `web/game/live.js`): the items of the sketch at their places, chosen by
+   their `id`.
 8. **Every choice gives something up.** A decision with a right answer is a quiz. Give the role
    less than it needs (teams, time, money), and let it decide before it knows (a cause that only
    shows on site, a repair that may not hold): then two players decide differently, and both have

@@ -74,6 +74,18 @@
     "portrait": "suit"
    },
    "say": "The last budget of this parliament. What we do not fund tonight, the next coalition inherits."
+  },
+  {
+   "phase": "budget",
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Wiedehopf",
+    "role": "The coalition partner's rapporteur",
+    "portrait": "suit"
+   },
+   "say": "On the table: the line towards Bergheim is your constituency's project, stage by stage. What is built shows there. What is not, your voters will see as well."
   }
  ],
  "debrief": [

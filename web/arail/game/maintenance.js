@@ -36,8 +36,8 @@ export const DISTRICT = {
   places: {
     "Bf Neustadt": { km: 0, map: [470, 120], list: "end", name: "above", teams: [0, -46] },
     Bergheim: { km: 10, map: [100, 120], list: "start", name: "above", teams: [0, -46] },
-    Talsee: { km: 9, map: [800, 120], list: "end", name: "above", teams: [0, -46] },
-    Waldau: { km: 8, map: [680, 270], list: "start", name: "right", teams: [62, -32] },
+    Talsee: { km: 8, map: [800, 120], list: "end", name: "above", teams: [0, -46] },
+    Waldau: { km: 9, map: [680, 270], list: "start", name: "right", teams: [62, -32] },
   },
 };
 /** The size of the district's map (sketch px). */
@@ -77,7 +77,8 @@ const LAMP_CAUSES = [
 
 /**
  * The faults a shift can bring, beside those the signaller reports. `holds`: how many trains an
- * hour it holds or slows; `track`: the work is in this track and needs it closed; `safety`: a
+ * hour it holds or slows; `track`: the work is in this track and needs it closed (by the signaller
+ * who reported it, or by `closer` where somebody else reported it); `safety`: a
  * danger while nobody is there (`secure`: what a team of any trade does about it until the repair).
  * `causes`: what it can turn out to be, once a team has looked: `p` how often (from experience),
  * `trade` who can repair it ("any": every team), `work_s` the repair for good, and `quick` where
@@ -85,7 +86,7 @@ const LAMP_CAUSES = [
  */
 export const FAULTS = [
   {
-    id: "bue", asset: "Level crossing Waldau", kind: "the barriers do not close", place: "Waldau", path: "The crossing's remote monitoring", safety: true, secure: "guard the crossing by hand", holds: 2, track: null,
+    id: "bue", asset: "Level crossing Brückenstraße", kind: "the barriers do not close", place: "Talsee", path: "The crossing's remote monitoring", safety: true, secure: "guard the crossing by hand", holds: 2, track: null,
     causes: [
       { p: 0.45, text: "a barrier's drive is stuck", trade: "signalling", work_s: 540, quick: { text: "Free the drive and grease it", work_s: 210, relapse: 0.5 } },
       { p: 0.35, text: "the switch-on contact in the track does not answer", trade: "signalling", work_s: 420 },
@@ -110,7 +111,7 @@ export const FAULTS = [
   },
   { id: "vsig", asset: "Distant signal Vf", kind: "dark", place: "Bergheim", path: "A train driver (by radio)", safety: false, holds: 3, track: null, causes: LAMP_CAUSES },
   {
-    id: "rail", asset: "Track at km 12.4", kind: "a train driver felt a hard knock", place: "Talsee", path: "A train driver (by radio)", safety: false, holds: 4, track: "the line to Talsee",
+    id: "rail", asset: "Track at km 12.4", kind: "a train driver felt a hard knock", place: "Talsee", path: "A train driver (by radio)", closer: "The signaller of Talsee", safety: false, holds: 4, track: "the line to Talsee",
     causes: [
       { p: 0.3, text: "nothing wrong with the track: it was the train's wheel", trade: "any", work_s: 120 },
       { p: 0.35, text: "the bolts of a fishplate are loose", trade: "track", work_s: 360 },
@@ -118,7 +119,7 @@ export const FAULTS = [
     ],
   },
   {
-    id: "fence", asset: "Fence at the halt", kind: "children at the track, a train driver reports", place: "Talsee", path: "A train driver (by radio)", safety: true, secure: "stand guard at the gap", holds: 2, track: null,
+    id: "fence", asset: "Fence at the halt", kind: "children at the track, a train driver reports", place: "Waldau", path: "A train driver (by radio)", safety: true, secure: "stand guard at the gap", holds: 2, track: null,
     causes: [
       { p: 0.6, text: "one panel of the fence is down", trade: "any", work_s: 360 },
       { p: 0.4, text: "the fence is cut open over twenty metres", trade: "track", work_s: 720, quick: { text: "Close the gap with barrier tape and wire", work_s: 240, relapse: 0.45 } },
@@ -132,7 +133,7 @@ export const FAULTS = [
     ],
   },
   {
-    id: "dfi", asset: "Platform display", kind: "dark", place: "Talsee", path: "The station's diagnostics", safety: false, holds: 0, track: null,
+    id: "dfi", asset: "Platform display", kind: "dark", place: "Waldau", path: "The station's diagnostics", safety: false, holds: 0, track: null,
     causes: [
       { p: 0.6, text: "it hangs and starts again", trade: "any", work_s: 180 },
       { p: 0.4, text: "its power supply is defective: a case for the telecoms service, the team puts up notices", trade: "any", work_s: 120 },
@@ -422,7 +423,7 @@ export class MaintenanceGame extends Game {
         // the game's own signaller has closed the track
         f.closure = "closed";
         f.closed = true;
-        this.log(`${this.at(now)} ${f.path} has closed ${f.track}.`, "closure");
+        this.log(`${this.at(now)} ${f.closer ?? f.path} has closed ${f.track}.`, "closure");
         this._look(tm, f);
       } else if (tm.state === "diagnosing" && now >= tm.until) this._diagnosed(tm, f);
       else if (tm.state === "working" && now >= tm.until) this._done(tm, f);
@@ -479,7 +480,7 @@ export class MaintenanceGame extends Game {
     if (f.remote) this.log(`${this.at()} The signaller is asked to close ${f.track}.`, "closure");
     else {
       f.closeAt = this.t + Math.round(this.rng("closure", f.id, f.relapses).uniform(...CLOSURE_S));
-      this.log(`${this.at()} ${f.path} is asked to close ${f.track}.`, "closure");
+      this.log(`${this.at()} ${f.closer ?? f.path} is asked to close ${f.track}.`, "closure");
     }
   }
 
@@ -723,28 +724,35 @@ export class MaintenanceGame extends Game {
   /**
    * The district as a sketch for a page that does not know the game: the line with its places, the
    * faults at their places (one that waits for a team has the free teams as its menu), the teams at
-   * their places or on the road.
+   * their places or on the road (a free team has the faults it can go to as its menu, one that secures
+   * a place can be called off), and the base, where the technicians on call are called. A move that
+   * needs a second thing of the picture names it (`target`: the team to send, the fault to go to), so
+   * that a picture which shows both can offer it there.
    */
   _sketch() {
     const P = DISTRICT.places, base = P[DISTRICT.base].map, items = [];
     for (const [name, p] of Object.entries(P)) if (name !== DISTRICT.base) items.push({ kind: "line", x1: base[0], y1: base[1], x2: p.map[0], y2: p.map[1], tone: "free" });
     const ready = this.teams.filter((tm) => tm.state === "ready");
+    const waits = (f) => f.state === "open" || f.state === "secured";
+    const calls = TRADES.filter((trade) => this.onCall[trade] === "available").map((trade) => ({ label: `Call ${TECHNICIANS[trade]} (${trade}): ready in ${minutes(ON_CALL.ready_s)} min, ${ON_CALL.hours} h of overtime`, name: "callIn", args: [trade] }));
     for (const [name, p] of Object.entries(P)) {
       const [x, y] = p.map, end = p.list === "end";
       const text = name === DISTRICT.base ? `${name} (base)` : name;
-      items.push({ kind: "dot", x, y, r: 9, tone: "place" });
+      // the base can be chosen while a technician can still be called
+      if (name === DISTRICT.base && calls.length) items.push({ id: "base", kind: "dot", x, y, r: 9, tone: "place", title: `The maintenance base at ${name}: the technicians on call are called from here`, menu: calls });
+      else items.push({ kind: "dot", x, y, r: 9, tone: "place" });
       items.push(p.name === "right" ? { kind: "text", x: x + 16, y: y + 5, text } : { kind: "text", x, y: y - 18, text, anchor: "middle" });
       this.faults.filter((f) => f.reported != null && f.place === name).forEach((f, i) => {
-        const fy = y + 34 + 24 * i, fx = x + (end ? -4 : 4), waits = f.state === "open" || f.state === "secured";
+        const fy = y + 34 + 24 * i, fx = x + (end ? -4 : 4);
         const can = ready.filter((tm) => this.can(tm, f) !== false || this.exposed(f));
         items.push({ kind: "text", x: fx + (end ? -14 : 14), y: fy + 5, text: f.asset, anchor: end ? "end" : "start", tone: f.state === "done" ? "muted" : undefined });
         items.push({
           id: `fault-${f.id}`, kind: "dot", x: fx, y: fy, r: 7, tone: f.state === "done" ? "ok" : f.state === "working" ? "route" : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : "muted",
           // a fault that waits pulses on the page: a danger nobody guards red, one that holds trains or is a danger orange
-          alert: !waits ? undefined : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : undefined,
+          alert: !waits(f) ? undefined : this.exposed(f) ? "bad" : f.holds || f.safety ? "warn" : undefined,
           title: `${f.asset} at ${f.place}: ${f.kind}, ${f.safety ? "a danger while nobody is there" : f.holds ? `holds about ${f.holds} trains an hour` : "comfort"}; ${this._state(f)}`,
-          menu: !waits ? undefined : can.length
-            ? can.map((tm) => ({ label: `Send ${tm.name} (${tm.trade}, ${minutes(this.eta(tm, f))} min)`, name: "send", args: [tm.id, f.id] }))
+          menu: !waits(f) ? undefined : can.length
+            ? can.map((tm) => ({ label: `Send ${tm.name} (${tm.trade}, ${minutes(this.eta(tm, f))} min)`, name: "send", args: [tm.id, f.id], target: `team-${tm.id}` }))
             : [{ label: "Send a team", name: "send", args: [null, f.id], disabled: ready.length ? `No free team is a ${f.cause.trade} team.` : "No team is free." }],
         });
       });
@@ -755,10 +763,14 @@ export class MaintenanceGame extends Game {
       const [x, y] = this._where(tm), road = tm.state === "driving" && tm.from !== this.fault(tm.fault).place;
       const n = road ? 0 : here.get(tm.place) ?? 0;
       if (!road) here.set(tm.place, n + 1);
+      // a free team has the faults it can go to as its menu, a team that secures a place can be called off
+      const to = tm.state !== "ready" ? [] : this.faults.filter((f) => f.reported != null && waits(f) && (this.can(tm, f) !== false || this.exposed(f)));
       items.push({
-        kind: "tag", x: road ? x : x + P[tm.place].teams[0], y: road ? y : y + P[tm.place].teams[1] - 26 * n, text: `${tm.name.replace(/^Team /, "")} (${tm.trade[0].toUpperCase()})`, anchor: "middle",
+        id: `team-${tm.id}`, kind: "tag", x: road ? x : x + P[tm.place].teams[0], y: road ? y : y + P[tm.place].teams[1] - 26 * n, text: `${tm.name.replace(/^Team /, "")} (${tm.trade[0].toUpperCase()})`, anchor: "middle",
         tone: tm.state === "driving" ? "train" : tm.state === "ready" ? "idle" : tm.state === "working" || tm.state === "diagnosing" ? "ok" : "warn",
         title: `${tm.name}, ${tm.trade}: ${this._doing(tm)}`,
+        menu: tm.state === "securing" ? [{ label: `Call ${tm.name} off: nobody guards the place then`, name: "recall", args: [tm.id] }]
+          : to.length ? to.map((f) => ({ label: `To ${f.asset} (${f.place}, ${minutes(this.eta(tm, f))} min)`, name: "send", args: [tm.id, f.id], target: `fault-${f.id}` })) : undefined,
       });
     }
     return { title: "The district", width: MAP.width, height: MAP.height, label: `Map of ${DISTRICT.name}: the line from Bergheim by Bf Neustadt to Talsee and the branch to Waldau, with the faults at their places and the teams (S: signalling, T: track)`, items };

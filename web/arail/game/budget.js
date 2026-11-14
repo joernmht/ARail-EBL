@@ -745,6 +745,7 @@ export class BudgetGame extends Game {
     const lines = y ? [...y.lines].map((l) => ({ id: l.id, label: l.name })) : [];
     const steps = { id: "steps", label: "Steps", type: "number", min: 1, max: 20, step: 1, value: 1, unit: `× ${money(STEP_EUR)}` };
     return {
+      scene: this.scene(),
       figures,
       tables: [
         {
@@ -775,5 +776,22 @@ export class BudgetGame extends Game {
         ...(Object.keys(plan.blocks).length ? [{ name: "unblock", label: "Take a block back", fields: [{ id: "line", label: "Line", options: Object.keys(plan.blocks).map((id) => ({ id, label: lineDef(id).name })) }] }] : []),
       ] : [],
     };
+  }
+
+  /**
+   * The budget years as things a picture of the district can show (the table: web/game/turn.js):
+   * the network's condition as the year's account has it, the constituency's project with the
+   * stages built, and what each open decision is about: the project on its line, the capital need
+   * at the station, everything else in the town.
+   * @returns {Array<{thing: string}>}
+   */
+  scene() {
+    const a = this.years.findLast((x) => x.account)?.account ?? null;
+    const about = (id) => (id.startsWith("constituency-") ? "project" : id.startsWith("capital-") ? "station" : "town");
+    return [
+      { thing: "condition", grade: a?.grade ?? GRADE.start, target: a?.target ?? GRADE.target },
+      { thing: "project", stages: PROJECT.stages, built: this.built },
+      ...this.open.map((d) => ({ thing: "ask", id: d.id, at: about(d.id) })),
+    ];
   }
 }
