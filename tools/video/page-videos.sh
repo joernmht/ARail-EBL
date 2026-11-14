@@ -23,13 +23,12 @@ render town-pass2
 # terminal at the crane and the hybrid terminal's photo; the photos of the photo map (plans/photos/)
 for p in station station-b station-c terminal-wagons terminal-wagons-0 terminal-truck crane-terminal terminal-photo; do render $p; done
 for f in tools/video/plans/photos/*.json; do node tools/video/render.mjs "$f"; done
-# the bikes in the flyover; the game page's title and the big game's missions, recorded as they are used
-render bikes
+# the flyover: the bikes, the travellers on the platforms, the whole town; the game page's title and
+# the big game's missions, recorded as they are used
+for p in bikes platform-people platform-people-2 city-wide; do render $p; done
 for f in tools/video/plans/screens/*.json; do node tools/video/screen.mjs "$f"; done
-# the story's lines (typed as on an old computer), then the videos
-arail-compose tools/video/plans/hero.json --cues build/video/hero-cues.json
-node tools/video/typewriter.mjs build/video/hero-cues.json build/video/hero-text
-arail-compose tools/video/plans/hero.json
+# the story (its lines typed into the terminal box), then the terminal card's video
+sh tools/video/story.sh tools/video/plans/hero.json
 arail-compose tools/video/plans/terminal-card.json
 # each shot of the project page's video on its own, without lines or sound, to combine them again:
 #   arail-compose tools/video/plans/hero.json --shots <dir>

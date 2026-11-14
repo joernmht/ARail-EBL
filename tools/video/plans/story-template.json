@@ -1,0 +1,22 @@
+{
+  "about": "A template for a short video after docs/short-videos.md (about 25 s): the real lab, the turn (But what if\u2026), one idea in a few views of ARail, the question on the town in the chair's blue. Copy it, change the parts and the lines, build it with sh tools/video/story.sh.",
+  "size": [1280, 720],
+  "fps": 30,
+  "cps": 20,
+  "overlay": "build/video/story-template-text",
+  "parts": [
+    {"name": "real-lab", "clip": "examples/media/ebl-station-trains.mp4", "count": 95, "crop": [[0, 0, 1920, 1080], [120, 68, 1800, 1013]],
+      "say": [{"text": "A real lab is awesome.", "at": 0.3, "hold": 2.7, "keep": true}] },
+    {"name": "town-curve", "frames": "build/video/town", "first": 20, "count": 150, "crop": [[0, 320, 720, 725], [40, 342, 680, 702]], "fade": 12,
+      "bare": {"clip": "examples/media/ebl-curve-trains.mp4", "start": 20, "fade": [60, 85]},
+      "say": [{"text": "But what if…", "at": 0.4, "hold": 1.5, "keep": true}, {"text": "…there is a container terminal?", "at": 2.2, "hold": 3.0}] },
+    {"name": "terminal-container-train", "frames": "build/video/terminal-photo", "first": 60, "count": 105, "crop": [[0, 0, 1600, 900], [160, 90, 1440, 810]], "fade": 12 },
+    {"name": "terminal-wide", "frames": "build/video/photos/141012", "count": 90, "crop": [[0, 300, 1205, 978], [60, 360, 1145, 970]], "fade": 12 },
+    {"name": "terminal-crane-truck", "frames": "build/video/terminal-truck", "first": 122, "count": 100, "crop": [[0, 0, 1280, 720], [200, 60, 1160, 600]], "fade": 12,
+      "say": [{"text": "…and the crane loads your real truck?", "at": 0.3, "hold": 3.0}] },
+    {"name": "city-blue", "frames": "build/video/city-wide", "count": 210, "crop": [[0, 50, 1600, 950], [100, 106, 1500, 894]], "fade": 20, "tint": ["#000a2e", "#6f9fcf"],
+      "say": [{"text": "Would you still plan a terminal on paper?", "at": 0.8, "hold": 5.8, "style": "accent"}] }
+  ],
+  "out": "build/video/story-template.mp4",
+  "crf": 26
+}

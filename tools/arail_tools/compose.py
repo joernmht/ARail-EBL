@@ -28,7 +28,7 @@ video, ``clip`` in place of ``frames``)::
   the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
   ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze);
 - ``tint``: [dark, light] ("#rrggbb"): the shot in one colour, from dark to light (a duotone);
-- ``say``: lines written over the shot, [{"text", "at" (s into the shot), "hold" (s)}]: their cues
+- ``say``: lines written over the shot, [{"text", "at" (s into the shot), "hold" (s), "style", "keep"}]: their cues
   (``--cues``) are drawn by ``node tools/video/typewriter.mjs`` into the directory ``overlay`` of the
   plan, whose PNG frames (f0000.png …, with alpha) are laid over the video's frames of the same number;
 - ``sounds``: sounds of the shot, [{"file", "at" (s into the shot), "dur" (s), "from" (s into the
@@ -241,7 +241,8 @@ def cues(plan: dict) -> list[dict]:
     for p, b in timeline:
         for s in p.say:
             at = s.get("at", 0)
-            out.append({"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s["hold"]) * fps)})
+            cue = {"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s["hold"]) * fps)}
+            out.append({**cue, **{k: s[k] for k in ("style", "keep") if s.get(k)}})
     return out
 
 
@@ -361,7 +362,8 @@ def main(argv=None) -> int:
     if args.cues:
         with open(args.cues, "w", encoding="utf-8") as f:
             fps, cps = int(plan.get("fps", 30)), float(plan.get("cps", 20))
-            json.dump({"size": plan["size"], "fps": fps, "cps": cps, "cues": cues(plan)}, f, indent=1)
+            frames = schedule(plan)[1]
+            json.dump({"size": plan["size"], "fps": fps, "cps": cps, "frames": frames, "cues": cues(plan)}, f, indent=1)
         print(f"written {args.cues}")
         return 0
     if args.shots:

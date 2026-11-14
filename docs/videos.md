@@ -101,41 +101,24 @@ moves away from the markers to stay steady (a few pixels).
 
 ## The project page's video
 
-The video spans the whole width of the project page, 16:9 (1280 × 720, 1 min 40 s, about 9.5 MB,
-looping). It tells a story in lines typed as on an old computer, each with a prompt and a block
-cursor, at the top in the middle; most views have no line:
+The video spans the whole width of the project page, 16:9 (1280 × 720, 65 s, looping). It is a
+short story told after the concept of [Short videos](short-videos.md): the real lab (*A real lab is
+awesome.*), the one fade from the real lab into ARail (*But what if… there are houses.*), then views of
+ARail grouped by idea, each group with its line typed into a terminal box: the container terminal,
+travellers (close-ups on the platforms), bikes, the game, the missions; at the end the whole town in
+the chair's blue and the question *Would you still do everything the same way as today?*
 
-| Line | What the video shows |
-| --- | --- |
-| A real lab is awesome. | the lab's tables, the real clip (`ebl-station-trains.mp4`) |
-| But what if… / …there are houses. | the real curve with a freight train fades into the town (the only moving camera in ARail), then three photos of Bf Neustadt's town |
-| …there is a container terminal. | the hybrid container train's photo with the crane working, a frame of the walk along it, a wide view, the crane setting a container on the truck |
-| …there are travellers. | Bf Neustadt: two frames of the pan along the platforms, two photos |
-| …there are bikes. | a street of the town (a photo), then riders on a bike lane beside a tram (the flyover) |
-| …there is a game. | the game page's title, its menu opened (`plans/screens/game-title.json`) |
-| …there are tailor-made missions. | the big game's line of missions, one chosen with its seats, Play, the shift's briefing (`plans/screens/missions.json`) |
-| Would you still do everything the same way as today? | the lab's tables again, moving, in the chair's blue (`tint`) |
-
-Each view of the lab shows the real picture for 2.5 s, which fades into ARail over 0.8 s; ARail
-stays 2.3 s; between the views a crossfade of 0.5 s. No part lasts more than 3 s, no view more than
-6 s (the game pages a little more). The real picture comes first because it is what the video
-explains: this is the model railway on the table, and this is what ARail lays over it.
-
-Only the curve is shown moving in ARail: its poses are stabilized as above. The other clips are
-drawn with the app's tracker alone, which is not steady enough for a moving shot. So each of them,
-like each photo, is one picture held: the simulation runs on (trains, buses, people), and a slow
-move within the picture (the `crop` from one box to another: a push in, or a pan) keeps it alive.
-Before it, the same picture without ARail (`bare`: the photo, or the same frame of the clip with
-`still`), so the fade lines up.
+Only the curve is shown moving in ARail over a real clip: its poses are stabilized as above. The
+other clips are drawn with the app's tracker alone, which is not steady enough for a moving shot. So
+each of them, like each photo, is one picture held: the simulation runs on (trains, buses, people),
+and a slow move within the picture (the `crop` from one box to another: a push in, or a pan) keeps it
+alive. The close-ups, the bikes and the town at the end are flyover shots.
 
 The station and the container train are rendered from copies of their clips at 1280 px
 (`page-videos.sh` makes them): the browser of the render loads the whole clip as one file, and the
 full-size station clip is too large for it.
 
-The video has no sound yet. `arail-compose` can mix one (`sounds` of the shots, `typing` under the
-lines); openly licensed recordings of the city, the railway, a container terminal and people were
-chosen from Wikimedia Commons (CC0, public domain and CC BY only: share-alike sound would put its
-licence on the whole video), but could not yet be downloaded.
+The video has no sound yet; see [Sound](short-videos.md#sound).
 
 ### The shots on their own
 
@@ -153,18 +136,19 @@ What there is to cut from, and what the video uses (the clips are described in
 
 | Material | Size | In the video |
 | --- | --- | --- |
-| `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | the real lab at the start and, in blue, at the end; frames 40 and 175, held, in ARail |
-| `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the town at the curve, moving (frames 20–189) |
+| `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | the real lab at the start; frame 40, held, in ARail |
+| `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the turn: the real curve fading into the town, moving (frames 20–169) |
 | `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | frame 0, held (at frame 200 its markers are not found) |
 | `examples/media/ebl-terminal-truck.mp4` | 10 s, 1920 × 1080 | frame 230, held: the crane loads the truck |
 | `web/media/ebl-container-train.jpg` | photo, 1600 × 900 | the hybrid container train, the crane working |
-| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 7 in this video (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
+| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 5 in this video (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
 | the game page and the big game | pages of this site | recorded as they are used (`screen.mjs`) |
+| the flyover | rendered | the travellers on the platforms and the bikes, close; the whole town at the end |
 | `examples/media/ebl-lab-video.mp4` | 16 s, 1920 × 1080 | not used: it carries an editor's watermark |
 | the hump simulation's diagrams | `tools/hump.mjs --svg` | not used: the hump is not in the app yet |
 | the EBL's digital twin (screen recording from the deck of 22 October 2026) | 70 s, 1600 × 900 | not used: the twin is the lab's own project, not ARail. Its first 14 s are on How it works (`web/media/ebl-twin.mp4`) |
 
-A new clip or photo of the lab joins the video as a new view: a clip goes to `examples/media/` and
+How to make another short video, and the shots there are: [Short videos](short-videos.md). A new clip or photo of the lab joins as a new view: a clip goes to `examples/media/` and
 its README; write a plan for its shot (a frame held with `freeze`, as `station.json`, or a photo, as
 the plans in `plans/photos/`), render it, and add a part with `bare` to `hero.json`, keeping each part
 to 3 s or less. A photo of the photo map needs only its plan; a page of the site, a plan in
@@ -226,10 +210,12 @@ picture is captured as it changes (Chrome's screencast) and resampled to 30 fram
 that only runs CSS animations sends the screencast nothing: its `animate` step steps them frame by
 frame instead. The plans are in `plans/screens/`.
 
-**`node tools/video/typewriter.mjs <cues.json> <dir>`** draws the lines of a video's story: a prompt,
-the text typed at 20 letters a second, a blinking block cursor, faint lines of an old screen, then
-backspaced in the last 0.4 s; one PNG with alpha per frame, in the site's Noto Sans Mono. The cues
-come from the plan's `say` (`arail-compose <plan> --cues <file>`).
+**`node tools/video/typewriter.mjs <cues.json> <dir>`** draws the lines of a video's story into a
+terminal box of a fixed size (three rows, upper centre): a prompt per row, the text typed at 20
+letters a second behind a block cursor; lines marked `keep` stay in their row, the others are
+backspaced in their last 0.4 s; one PNG with alpha per frame, in the site's Noto Sans Mono. The cues
+come from the plan's `say` (`arail-compose <plan> --cues <file>`); `sh tools/video/story.sh <plan>`
+runs both and composes the video. The design: [Short videos](short-videos.md#the-design).
 
 **`arail-compose <plan.json>`** joins rendered shots into a video: each shot (a directory of
 frames, or a `clip`, from frame `first`) cropped (a box, or `[from, to]` for a slow push), faded in
