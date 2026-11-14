@@ -73,6 +73,26 @@ test("the switch below the video shows the page of one group: its question, its 
   // an unknown group: the first page
   await page.goto("/?for=nobody");
   expect(await shown()).toEqual(["educators"]);
+  // without :has() (older browsers) the switch still works: the script marks the page with the choice
+  await expect(page.locator("html")).toHaveAttribute("data-aud", "educators");
+  await page.evaluate(() => {
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      for (let i = rules.length - 1; i >= 0; i--) {
+        if (rules[i].selectorText?.includes(":has(")) {
+          const kept = rules[i].selectorText.split(",").filter((sel) => !sel.includes(":has("));
+          if (kept.length) rules[i].selectorText = kept.join(",");
+          else sheet.deleteRule(i);
+        }
+      }
+    }
+  });
+  await page.getByRole("radio", { name: "Practitioners" }).check();
+  await expect(page.locator("html")).toHaveAttribute("data-aud", "practitioners");
+  expect(await shown()).toEqual(["practitioners"]);
+  expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill("practitioners"));
+  await page.goto("/?for=nobody");
   // the paper's way in says what filing it allows
   await page.getByRole("radio", { name: "Scientists" }).check();
   await expect(page.locator("#scientists .route .path")).toContainText("give the paper to an AI");

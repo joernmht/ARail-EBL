@@ -36,6 +36,11 @@ test("each group of the project page has its issue form, with the label its boar
   assert.match(paper, /given to an AI coding assistant/);
   assert.match(paper, /not republished/);
   assert.match(html, /give the paper to an AI/);
+  // anyone can tick the form's boxes: a maintainer's label `accepted` comes first, for people and agents
+  assert.match(paper, /label `accepted`/);
+  assert.match(read("CONTRIBUTING.md"), /added the label `accepted`/);
+  assert.match(read("CLAUDE.md"), /only once it also has the label `accepted`/);
+  assert.match(html, /Once we have confirmed you are an author/);
 });
 
 test("references.json lists what was brought: a title, a status, an issue, links of this site or https", () => {

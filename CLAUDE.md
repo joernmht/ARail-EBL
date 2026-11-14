@@ -32,7 +32,7 @@ names in code and prose, check yourself.
 The project page has a board for each (`web/references.json`; see "The boards of the project page" in CONTRIBUTING.md). When you work on an issue labelled `teaching-concept`, `paper` or `practice-case`:
 
 - Add its entry to `web/references.json` (`in-progress`), and set it to `implemented` with a link to what runs when it is done. Leave it out if the issue says "do not list".
-- A `paper` issue filed by an author allows you to read the paper and implement it. Never copy the paper's text into code, docs or the page: implement the method, name the paper.
+- A `paper` issue allows you to read the paper and implement it only once it also has the label `accepted`: a maintainer has confirmed that its filer is an author (the form's ticks alone are not checked). Without it, don't start and don't list it. Never copy the paper's text into code, docs or the page: implement the method, name the paper.
 
 ## Checks
 

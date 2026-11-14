@@ -19,7 +19,7 @@ The [project page](web/index.html) speaks to three groups, and each has a way in
 | Scientists | Paper to implement | `paper` | `papers` |
 | Practitioners | Case from practice | `practice-case` | `practice` |
 
-- **A paper issue filed by an author is the go-ahead** to give the paper to an AI coding assistant that implements it (the form asks for this consent). The paper's text is not copied into the repository, the documentation or the page: the code implements the method and names the paper; the board lists its title, authors and link.
+- **A paper issue filed by an author is the go-ahead** to give the paper to an AI coding assistant that implements it (the form asks for this consent), **once a maintainer has confirmed the authorship** and added the label `accepted`: anyone can tick the form's boxes. Until then no work starts and nothing is listed. The paper's text is not copied into the repository, the documentation or the page: the code implements the method and names the paper; the board lists its title, authors and link.
 - **The boards are kept by hand**, in `web/references.json`, so nothing reaches the project page unseen: the pull request that starts on an issue adds its entry, the one that finishes it sets it to `implemented` with a link. An entry: `{ "title": "…", "by": "name, institution", "status": "proposed" | "in-progress" | "implemented", "issue": 123, "link": "app/?…" , "source": "https://doi.org/…" }`; `by`, `link` (a page of this site or an https link; needed once implemented) and `source` (where a paper is published) are optional. Leave an entry out when its form says "do not list". `tests/js/references.test.js` checks the file.
 - Issues are public: nothing confidential goes into a case from practice.
 

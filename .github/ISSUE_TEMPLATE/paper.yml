@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Filed by an author of the paper, this issue is the go-ahead: we may give the paper to an AI coding assistant, which implements the method as a plugin or a simulation in ARail. The paper's text is not republished by the project; the [project page](https://joernmht.github.io/ARail-EBL/?for=scientists) lists its title, authors and link, its status and a link to the method as it runs.
+        Filed by an author of the paper, and once a maintainer has confirmed the authorship (the label `accepted`), this issue is the go-ahead: we may give the paper to an AI coding assistant, which implements the method as a plugin or a simulation in ARail. The paper's text is not republished by the project; the [project page](https://joernmht.github.io/ARail-EBL/?for=scientists) lists its title, authors and link, its status and a link to the method as it runs.
   - type: input
     id: reference
     attributes:
@@ -40,5 +40,5 @@ body:
       options:
         - label: I am an author of this paper, or I file this with the authors' consent.
           required: true
-        - label: I agree that the paper is given to an AI coding assistant to implement it in ARail, under the project's Apache License 2.0. The paper's text is not republished.
+        - label: I agree that the paper is given to an AI coding assistant to implement its method in ARail. The paper's text is not republished; the code written for ARail is licensed under the project's Apache License 2.0 (the paper itself stays under its own copyright).
           required: true

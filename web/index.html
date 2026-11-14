@@ -85,7 +85,11 @@ p { margin: 0; }
 /* what belongs to one group is shown only while that group is chosen */
 html:has(#aud-educators:checked) [data-aud]:not([data-aud="educators"]),
 html:has(#aud-scientists:checked) [data-aud]:not([data-aud="scientists"]),
-html:has(#aud-practitioners:checked) [data-aud]:not([data-aud="practitioners"]) { display: none; }
+html:has(#aud-practitioners:checked) [data-aud]:not([data-aud="practitioners"]),
+/* the same from the script (html[data-aud]), for browsers without :has() */
+html[data-aud="educators"] [data-aud]:not([data-aud="educators"]),
+html[data-aud="scientists"] [data-aud]:not([data-aud="scientists"]),
+html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { display: none; }
 
 /* ---------------------------------------------------------------- the page of one group */
 .pitch { background: var(--surface); border-bottom: 1px solid var(--line); padding-block: 64px 72px; scroll-margin-top: 64px; overflow: hidden; }
@@ -325,7 +329,7 @@ footer a { color: inherit; }
           <h3>From your paper to a running method</h3>
           <ol class="path">
             <li><span class="psign" aria-hidden="true">1</span><b>File it</b><span>As an author, open an issue labelled <i>paper</i>: the link or DOI, what to implement, what to measure.</span></li>
-            <li><span class="psign" aria-hidden="true">2</span><b>That is the go-ahead</b><span>Your issue allows us to give the paper to an AI that implements it. Its text is not republished.</span></li>
+            <li><span class="psign" aria-hidden="true">2</span><b>That is the go-ahead</b><span>Once we have confirmed you are an author, your issue allows us to give the paper to an AI that implements it. Its text is not republished.</span></li>
             <li><span class="psign" aria-hidden="true">3</span><b>It is on the board</b><span>Logged here: the paper, its status and a link to the method as it runs.</span></li>
           </ol>
           <div class="ctas">
@@ -626,8 +630,12 @@ footer a { color: inherit; }
   const audiences = [...document.querySelectorAll('input[name="aud"]')];
   const asked = audiences.find((a) => a.value === new URLSearchParams(location.search).get("for"));
   if (asked) asked.checked = true;
+  // the choice also on the page itself, for the browsers without :has() (the CSS reads either)
+  const show = () => (document.documentElement.dataset.aud = audiences.find((a) => a.checked)?.value ?? "educators");
+  show();
   for (const a of audiences) {
     a.addEventListener("change", () => {
+      show();
       const url = new URL(location.href);
       url.searchParams.set("for", a.value);
       history.replaceState(history.state, "", url);
