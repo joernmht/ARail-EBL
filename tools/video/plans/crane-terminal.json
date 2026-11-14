@@ -1,0 +1,9 @@
+{
+  "about": "The terminal at the crane: the example's photo (web/media/ebl-terminal.jpg) in ARail, the terminal working.",
+  "page": "example=crane-terminal",
+  "frames": 180,
+  "proc_max": 1600,
+  "warm_s": 20,
+  "speed": 4,
+  "out": "build/video/crane-terminal"
+}
