@@ -121,7 +121,7 @@ export function districtProblems(table = DISTRICT_TABLE, { places = Object.keys(
  * The board of a maintenance dispatcher's game on the layout's world: one of the world's
  * simulations (drawn with everything else, so a van passes behind a house), which changes nothing
  * in the world but the platform track a team works in: no train of the world's own timetable is
- * sent there while it is closed.
+ * sent there while it is closed (where a signaller's game runs the station, that is the signaller's).
  */
 export class DistrictBoard {
   static elevation = "ground";
@@ -147,6 +147,8 @@ export class DistrictBoard {
     /** Where each team's van stood last (a fault's id, or "base"), and the ways between two stands. */
     this.last = new Map();
     this.ways = new Map();
+    /** The platform tracks closed for a team now (their names), which the board keeps the world's trains off. */
+    this.closed = new Set();
     world.simulations.push(this);
   }
 
@@ -155,12 +157,45 @@ export class DistrictBoard {
     if (game === this.game) return;
     this.game = game ?? null;
     this.last.clear();
+    this._plan(new Set());
   }
 
   /** Take the board out of its world again. */
   dispose() {
+    this._plan(new Set());
     const sims = this.world.simulations, i = sims.indexOf(this);
     if (i >= 0) sims.splice(i, 1);
+  }
+
+  /* ---------------------------------------------------------------- the world's services */
+
+  /** The platform tracks of the station closed for a team now (their names: "G2"). */
+  closedTracks(g = this.game) {
+    const out = new Set();
+    for (const f of g?.faults ?? []) {
+      if (f.closure !== "closed" || f.state === "done" || f.reported == null) continue;
+      const track = this.station.station.sections[this.spot(f).track]?.track;
+      if (track) out.add(track);
+    }
+    return out;
+  }
+
+  /** A platform track closed for a team is the board's while it is closed: the world's timetable sends no train there (ServiceManager.planner). */
+  claims(dock) {
+    return dock.kind === "rail" && this.closed.has(String(dock.track ?? ""));
+  }
+
+  /**
+   * Keep the world's trains off the tracks closed now. Only where no other board plans the platform
+   * tracks: the signaller's does, and closes the track in its own game.
+   */
+  _plan(closed) {
+    const services = this.world.services;
+    if (services.planner != null && services.planner !== this) return void (this.closed = new Set());
+    if (closed.size === this.closed.size && [...closed].every((t) => this.closed.has(t))) return;
+    this.closed = closed;
+    services.planner = closed.size ? this : null;
+    services.refreshModes();
   }
 
   /* ---------------------------------------------------------------- where things are */
@@ -233,10 +268,11 @@ export class DistrictBoard {
     return { at, dir: key === "base" ? [0, 1] : [1, 0], driving: false };
   }
 
-  /** The world's time goes on: the board remembers where each van stands, for the way it takes next. */
+  /** The world's time goes on: the board remembers where each van stands, for the way it takes next, and keeps the world's trains off a closed platform track. */
   step() {
     const g = this.game;
     if (!g) return;
+    this._plan(this.closedTracks(g));
     for (const tm of g.teams) {
       if (tm.state === "driving") continue;
       if (tm.fault) this.last.set(tm.id, tm.fault);

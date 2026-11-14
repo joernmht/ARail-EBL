@@ -222,6 +222,49 @@ test("the board: the track a team works in shows its closure, asked and then clo
   assert.equal(bands(), 0);
 });
 
+test("the board: a platform track closed for a team is kept free of the world's own trains, unless a signaller's board plans the station", () => {
+  // the dispatcher alone: the game's own fault at exit signal N2, whose work is in track G2
+  const g = new MaintenanceGame({ seed: 3, level: "training" });
+  g.faults = g.faults.filter((f) => f.id === "N2");
+  const { world, board } = boardOf(g), n2 = g.fault("N2");
+  const modes = () => Object.fromEntries([...world.services.docks.values()].filter((st) => ["G1", "G2", "G3"].includes(String(st.dock.track))).map((st) => [st.dock.track, st.mode]));
+  until(g, board, () => n2.state === "open");
+  g.act("send", "T1", "N2");
+  until(g, board, () => g.open.some((d) => d.id === "closure-N2"));
+  assert.deepEqual([[...board.closed], world.services.planner], [[], null]);
+  assert.ok(Object.values(modes()).every((m) => m !== "plan"));
+  g.act("decide", "closure-N2", "ask");
+  until(g, board, () => n2.closure === "closed");
+  board.step();
+  assert.deepEqual([[...board.closed], world.services.planner], [["G2"], board]);
+  assert.equal(modes().G2, "plan");
+  assert.notEqual(modes().G1, "plan");
+  // repaired, the track is the timetable's again
+  until(g, board, () => n2.state === "done");
+  board.step();
+  assert.deepEqual([[...board.closed], world.services.planner], [[], null]);
+  assert.notEqual(modes().G2, "plan");
+  // with a signaller's board on the table, the station is its own: the dispatcher's board plans nothing
+  const h = new MaintenanceGame({ seed: 3, level: "training" });
+  h.faults = h.faults.filter((f) => f.id === "N2");
+  const b = boardOf(h), table = new TableBoard(b.world);
+  h.fault("N2").at = 0;
+  until(h, b.board, () => h.fault("N2").state === "open");
+  h.act("send", "T1", "N2");
+  until(h, b.board, () => h.open.some((d) => d.id === "closure-N2"));
+  h.act("decide", "closure-N2", "ask");
+  until(h, b.board, () => h.fault("N2").closure === "closed");
+  b.board.step();
+  assert.deepEqual([[...b.board.closed], b.world.services.planner], [[], table]);
+  // taken out of its world, a board lets go of what it planned
+  const again = boardOf(g);
+  again.board.closed = new Set();
+  again.board._plan(new Set(["G3"]));
+  assert.equal(again.world.services.planner, again.board);
+  again.board.dispose();
+  assert.equal(again.world.services.planner, null);
+});
+
 test("one table for the games of a shift: the seat shown chooses on its board, the others' games are drawn with it", async (t) => {
   const fetched = globalThis.fetch;
   globalThis.fetch = async (url) => ({ ok: true, json: async () => JSON.parse(readFileSync(`web/${url}`, "utf8")) });

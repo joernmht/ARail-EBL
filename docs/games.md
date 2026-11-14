@@ -309,7 +309,8 @@ the dispatcher's vans come, whoever sits at the dispatcher's sees the trains tha
 - **A team** drives the layout's streets to its fault, in the time the game gives it (the first
   minutes it gets ready). Its people stand beside the van while they wait for the closure, and at
   the asset while they look for the cause, work or guard a danger. A track asked for is a band that
-  pulses on its rails; closed, it is steady.
+  pulses on its rails; closed, it is steady. Where no signaller's game runs the station (*Fault
+  Night*), a platform track closed for a team is kept free of the layout's own trains.
 
 **How to play.** Click a fault, then the van to send (the vans that can go pulse); or a van first,
 then where it goes. A click on the base offers the technicians on call. The district's map stands
