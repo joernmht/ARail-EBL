@@ -26,6 +26,7 @@ import { TEXTS as MOBILITY } from "./de/mobility.js";
 import { TEXTS as RAIL_LINES } from "./de/rail-lines.js";
 import { TEXTS as INTRO } from "./de/intro.js";
 import { TEXTS as PLAN } from "./de/plan.js";
+import { TEXTS as HUMP } from "./de/hump.js";
 
 /** The parts by their file, for the checks of the catalogues. */
 export const DE_PARTS = {
@@ -48,6 +49,7 @@ export const DE_PARTS = {
   "web/arail/i18n/de/rail-lines.js": RAIL_LINES,
   "web/arail/i18n/de/intro.js": INTRO,
   "web/arail/i18n/de/plan.js": PLAN,
+  "web/arail/i18n/de/hump.js": HUMP,
 };
 
 /** The framework's German texts. */

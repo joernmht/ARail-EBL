@@ -8,10 +8,10 @@ retarder** (Richtungsgleisbremse) into its **classification track** (Richtungsgl
 should meet the wagons already standing there gently. Once a track holds a train, the train is
 pulled out.
 
-ARail simulates this **on its own** for now ([#236](https://github.com/joernmht/ARail-EBL/issues/236)):
-the module `web/arail/hump/` has no world, is not registered as a simulation and has no page in the
-app. It runs in Node and in the browser, deterministically. Joining it to the lab, as the hybrid
-container terminal is joined, is [#237](https://github.com/joernmht/ARail-EBL/issues/237); both are
+ARail simulates this in the module `web/arail/hump/` ([#236](https://github.com/joernmht/ARail-EBL/issues/236)),
+on its own in Node and in the browser, deterministically; on the table it is the object `hump-yard`,
+Bf Neustadt's module **Hump yard** ([On the table](#on-the-table), [#237](https://github.com/joernmht/ARail-EBL/issues/237)).
+Joining it to real trains, as the hybrid container terminal is joined, is the rest of #237; both are
 part of hybrid single wagonload ([#230](https://github.com/joernmht/ARail-EBL/issues/230)).
 
 ## Trying it
@@ -64,6 +64,13 @@ never pulled out. `run()` stops at `max_s` (4 h) at the
 latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
 (`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
+A run without end (the yard on the table runs for hours) calls `sim.forget(keep)` now and then: it
+drops departed cuts, humped trains, departures and log entries but the newest (`{cuts, trains,
+departures, log}`, all of them by default). The figures of `results()` still count the whole run
+(`pulled_out` the trains formed); `perCut`, `sim.departures` and `sim.log` hold only what is kept,
+and `sim.logStart` counts the log entries forgotten. Nothing the run still needs goes, so a run
+that forgets goes exactly as one that does not.
+
 A wagon is `{type, loaded, track | destination, w_nkn?, careful?, noHump?}`: its type from the
 vehicle catalogue's freight wagons (`sgns`, `eanos`, `habbins`, `zacns`, see
 [Railway systems and trains](rail-systems.md)) or the hump's own 2-axle `hbbillns`; `destination`
@@ -100,6 +107,40 @@ The tracks come in two designs (`design`):
 - **`target`**: target braking alone (Laufzielbremsung). The group retarder lets a cut go at the
   speed that brings it to the wagons in its track at the coupling speed; the track falls 2 ‰, then
   1 ‰ (older yards 1.5–3 ‰, sometimes stepped).
+
+## On the table
+
+Bf Neustadt has the module **Hump yard** (off by default): a virtual table module at the west end of
+the EBL table, 6.1 m long, 45 mm below the table, with the object `hump-yard` on it. Its push track
+starts at the table's edge, at the table's level, in line with the main line west; from there the
+yard falls away to the west. Switch the module on (or open
+`app/?layout=../layouts/ebl-neustadt.json&layers=sbahn,waldhof,hump`) and look at it in the
+flyover (F): the module lies beyond the photos.
+
+![The module Hump yard in the flyover, a time-lapse: a train pushed over the crest on the right, its cuts sorted into six tracks on the left, two retarders braking in orange](assets/hump-yard-on-the-table.jpg)
+
+The object humps one random train of 24 wagons after the other into six tracks of 120 m (in H0:
+the yard is 6 m long and 0.36 m wide) and draws:
+
+- the **formation**: one graded plateau under all tracks, its banks down to the table, its heights
+  those of the yard above its lowest track end (the push track starts 4 mm below the table's top,
+  the crest is 18 mm above it, the classification tracks 32–45 mm below it);
+- **ballast and rails** along the plan of the yard, a fan whose tracks lie 4.5 m apart (`planAt`);
+- the **retarders**: dark beams beside the rails, **orange while they brake** (and glowing at night);
+- every **wagon** in dark red with a band in the colour of its rolling class (Türkis good, Brillantblau
+  medium, Orange bad runners, as in the diagrams), **red** for a few seconds after an impact too hard
+  (the impacts the card counts: a cut's first impact in its track, or at its end, faster than 1.25 m/s;
+  the simulation notes it as `cut.hard`; catching up before the track is not one), and the
+  **locomotive** pushing the train;
+- the track numbers behind the group retarders.
+
+Its card says how many trains it humped, its cuts per hour, misroutes, impacts too hard and trains
+pulled out. Its settings (Build) are the yard's (tracks, their length, the push track, the design),
+the season, the pushing speed, the wagons per train and when a track is pulled out
+([layout format](layout-format.md#hump-yard)); moving it keeps its run, other figures start it anew,
+at once, also while the world is paused. Its random numbers come from the world's seed and its id:
+the same layout humps the same trains. It keeps the last 200 cuts gone, 10 trains, 20 departures and
+1000 log entries and forgets the rest (`forget`); its card counts them all.
 
 ## A cut and its forces
 
