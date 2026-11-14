@@ -28,7 +28,7 @@ video, ``clip`` in place of ``frames``)::
   the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
   ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze);
 - ``tint``: [dark, light] ("#rrggbb"): the shot in one colour, from dark to light (a duotone);
-- ``say``: lines written over the shot, [{"text", "at" (s into the shot), "hold" (s), "style", "keep"}]: their cues
+- ``say``: lines written over the shot, [{"text", "at" (s into the shot), "row", "style"}]: their cues
   (``--cues``) are drawn by ``node tools/video/typewriter.mjs`` into the directory ``overlay`` of the
   plan, whose PNG frames (f0000.png …, with alpha) are laid over the video's frames of the same number;
 - ``sounds``: sounds of the shot, [{"file", "at" (s into the shot), "dur" (s), "from" (s into the
@@ -241,8 +241,8 @@ def cues(plan: dict) -> list[dict]:
     for p, b in timeline:
         for s in p.say:
             at = s.get("at", 0)
-            cue = {"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s["hold"]) * fps)}
-            out.append({**cue, **{k: s[k] for k in ("style", "keep") if s.get(k)}})
+            cue = {"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s.get("hold", 0)) * fps)}
+            out.append({**cue, **{k: s[k] for k in ("style", "row") if s.get(k)}})
     return out
 
 

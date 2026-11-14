@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 // Draws the lines of a video's story as an old computer would type them: a terminal box of a fixed
 // size and three rows, upper centre, each row with a prompt; the text typed letter by letter behind
-// a block cursor. A line marked `keep` stays in its row (a little lighter once the next one begins:
-// "A real lab is awesome.", "But what if…"); the others are typed into the first free row and
-// backspaced again. Between two lines the cursor waits in that row, so the box stays from the first
-// line to the end of the video. Each frame is a PNG with alpha (f0000.png …, numbered as the video's
+// a block cursor. Each line goes into its row (`row` 1 to 3, default 3) and stays there until the
+// next line of that row backspaces it; the newest line is bright and has the cursor, the older ones
+// are a little lighter. The box stays from the first line to the end of the video. Each frame is a PNG with alpha (f0000.png …, numbered as the video's
 // frames) that arail-compose lays over the top of the video. See docs/short-videos.md for the design.
 //   arail-compose tools/video/plans/hero.json --cues build/video/hero-cues.json
 //   node tools/video/typewriter.mjs build/video/hero-cues.json build/video/hero-text
@@ -75,25 +74,38 @@ window.__draw = (rows) => {
 };
 </script></body></html>`;
 
+const ERASE_CPS = 60; // the old line of a row is backspaced this fast before the new one is typed
 const color = (c) => (c.style === "accent" ? BOX.accent : BOX.text);
 const blink = (t) => (Math.floor(t * 2.2) % 2 === 0 ? true : "off");
-/** What the box shows at frame f: the kept lines above, the line of the moment below them. */
+const rowOf = (c) => (c.row ?? BOX.rows) - 1;
+/** What the box shows at frame f: in each row its latest line (the one before it backspaced first);
+ * the newest line of all bright, with the cursor, the others a little lighter. */
 function rows(f) {
-  const kept = cues.filter((c) => c.keep && c.start <= f);
-  const now = cues.find((c) => !c.keep && c.start <= f && f < c.end);
-  const out = kept.map((c) => {
-    const t = (f - c.start) / fps, typed = Math.min(c.text.length, Math.floor(t * cps));
-    const later = cues.some((d) => d !== c && d.start > c.start && d.start <= f);
-    return { text: c.text.slice(0, typed), color: later ? BOX.kept : color(c), cursor: later ? false : typed < c.text.length || blink(t) };
-  });
-  if (now) {
-    const t = (f - now.start) / fps, length = (now.end - now.start) / fps, typed = Math.min(now.text.length, Math.floor(t * cps));
-    const erase = 0.4, left = length - t;
-    const shown = left < erase ? Math.floor(typed * Math.max(0, left / erase)) : typed;
-    out.push({ text: now.text.slice(0, shown), color: color(now), cursor: typed < now.text.length || left < erase ? true : blink(t) });
-  } else if (!out.some((r) => r.cursor)) out.push({ text: "", color: BOX.text, cursor: blink(f / fps) });
-  while (out.length < BOX.rows) out.push({ text: "", color: BOX.text, cursor: false });
-  return out.slice(0, BOX.rows);
+  const begun = cues.filter((c) => c.start <= f);
+  const newest = begun.reduce((a, c) => (!a || c.start >= a.start ? c : a), null);
+  const out = [];
+  for (let r = 0; r < BOX.rows; r++) {
+    const mine = begun.filter((c) => rowOf(c) === r);
+    const cur = mine.at(-1);
+    if (!cur) {
+      out.push({ text: "", color: BOX.text, cursor: false });
+      continue;
+    }
+    const prev = mine.at(-2), t = (f - cur.start) / fps;
+    const wipe = prev ? prev.text.length / ERASE_CPS : 0;
+    let text, busy;
+    if (t < wipe) {
+      text = prev.text.slice(0, Math.max(0, prev.text.length - Math.floor(t * ERASE_CPS)));
+      busy = true;
+    } else {
+      const typed = Math.min(cur.text.length, Math.floor((t - wipe) * cps));
+      text = cur.text.slice(0, typed);
+      busy = typed < cur.text.length;
+    }
+    const top = cur === newest;
+    out.push({ text, color: top ? color(cur) : BOX.kept, cursor: top ? (busy ? true : blink(t)) : false });
+  }
+  return out;
 }
 
 const long = cues.find((c) => c.text.length > BOX.columns);

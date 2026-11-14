@@ -1,0 +1,11 @@
+{
+  "about": "Photo 132542 of the photo map (Neustadt) in ARail at night: the clock held at 22:30, the town's windows, street lamps and the lights of trains, buses and cars lit.",
+  "page": "photo=132542",
+  "frames": 110,
+  "proc_max": 1600,
+  "warm_s": 30,
+  "speed": 3,
+  "eval": "app.world.clock.minutes = 1350;",
+  "each": "app.world.clock.minutes = 1350; if (term) term.highlight.slots = false;",
+  "out": "build/video/night-town"
+}

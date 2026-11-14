@@ -23,9 +23,9 @@ render town-pass2
 # terminal at the crane and the hybrid terminal's photo; the photos of the photo map (plans/photos/)
 for p in station station-b station-c terminal-wagons terminal-wagons-0 terminal-truck crane-terminal terminal-photo; do render $p; done
 for f in tools/video/plans/photos/*.json; do node tools/video/render.mjs "$f"; done
-# the flyover: the bikes, the travellers on the platforms, the whole town; the game page's title and
+# the flyover: the bikes, the travellers on the platforms, the night, the whole town; the game page's title and
 # the big game's missions, recorded as they are used
-for p in bikes platform-people platform-people-2 city-wide; do render $p; done
+for p in bikes platform-people platform-people-2 night-town night-street city-wide; do render $p; done
 for f in tools/video/plans/screens/*.json; do node tools/video/screen.mjs "$f"; done
 # the story (its lines typed into the terminal box), then the terminal card's video
 sh tools/video/story.sh tools/video/plans/hero.json

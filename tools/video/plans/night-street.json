@@ -1,0 +1,12 @@
+{
+  "about": "A street of the virtual town at night in the flyover, close: the clock held at 22:30, street lamps, lit windows, the head- and tail lights of the traffic and a tram.",
+  "page": "example=neustadt",
+  "eval": "app.world.clock.minutes = 1350;",
+  "each": "app.world.clock.minutes = 1350;",
+  "warm_s": 40,
+  "warm_speed": 10,
+  "speed": 1,
+  "fly": { "target": [[-1500, -300], [-1380, -300]], "distance": [420, 360], "yaw_deg": [140, 158], "pitch_deg": [22, 18] },
+  "frames": 110,
+  "out": "build/video/night-street"
+}
