@@ -6,7 +6,22 @@ Thank you for helping. ARail-EBL is meant to be useful for many railway labs, so
 
 - **Report a problem** with the [bug report form](https://github.com/joernmht/ARail-EBL/issues/new/choose). For tracking problems, attach a photo or a short video: it lets us reproduce the problem.
 - **Suggest a feature** or describe your lab's setup with the corresponding forms.
+- **Bring a teaching concept, a paper or a case from practice** with its form: see [The boards of the project page](#the-boards-of-the-project-page).
 - **Send a pull request.** For larger changes, please open an issue first so we can agree on the approach.
+
+## The boards of the project page
+
+The [project page](web/index.html) speaks to three groups, and each has a way in: an issue form, a label, and a board on the page that lists what was brought, with its status and a link.
+
+| Group | Form | Label | List in `web/references.json` |
+|---|---|---|---|
+| Educators | Teaching concept | `teaching-concept` | `teaching` |
+| Scientists | Paper to implement | `paper` | `papers` |
+| Practitioners | Case from practice | `practice-case` | `practice` |
+
+- **A paper issue filed by an author is the go-ahead** to give the paper to an AI coding assistant that implements it (the form asks for this consent), **once a maintainer has confirmed the authorship** and added the label `accepted`: anyone can tick the form's boxes. Until then no work starts and nothing is listed. The paper's text is not copied into the repository, the documentation or the page: the code implements the method and names the paper; the board lists its title, authors and link.
+- **The boards are kept by hand**, in `web/references.json`, so nothing reaches the project page unseen: the pull request that starts on an issue adds its entry, the one that finishes it sets it to `implemented` with a link. An entry: `{ "title": "…", "by": "name, institution", "status": "proposed" | "in-progress" | "implemented", "issue": 123, "link": "app/?…" , "source": "https://doi.org/…" }`; `by`, `link` (a page of this site or an https link; needed once implemented) and `source` (where a paper is published) are optional. Leave an entry out when its form says "do not list". `tests/js/references.test.js` checks the file.
+- Issues are public: nothing confidential goes into a case from practice.
 
 ## Development setup
 
@@ -69,7 +84,7 @@ Several people (and agents) work on ARail at the same time. A change merges with
 - **Changelog**: a fragment in `changes/` per pull request, never `CHANGELOG.md` itself.
 - **Registration**: object types in `web/arail/objects/index.js`, simulations in `web/arail/sims/index.js`, one per line; the terminal, operations, infrastructure, journeys and railway systems register their types in their own `index.js`.
 - **Translations**: one file per area (`web/arail/i18n/de/*.js`; the app's `web/app/lang/de.js` and the builder's `de-builder.js`). A new area gets a file of its own, listed in `web/arail/i18n/de.js`.
-- **The project page** (`web/index.html`) shows what ARail is, not what is new: a new function goes into the changelog and its guide, not onto the landing page.
+- **The project page** (`web/index.html`) shows what ARail is, not what is new: a new function goes into the changelog and its guide, not onto the landing page. What its three groups brought is on its boards, one entry each in `web/references.json`.
 - **Overview documents** (`README.md`, `docs/architecture.md`, `docs/getting-started.md`): change them where a change alters the overview, not to list every new function.
 - **One topic per pull request**, and short-lived branches: merge `main` into a branch often, and split work that touches many areas.
 
