@@ -101,7 +101,7 @@ Each shot is a plan in `tools/video/plans/` and renders into `build/video/<name>
 | travellers, close | `platform-people.json`, `platform-people-2.json` | busy platforms, a train boarding (flyover) |
 | bikes, close | `bikes.json` | riders on a bike lane beside a tram (flyover) |
 | the whole town | `city-wide.json` | the town in the flyover, wide, turning |
-| night | `night-town.json`, `night-street.json` | the town photo and a street at 22:30: lit windows, lamps, the traffic's lights |
+| night | `night-town.json`, `night-street.json` | the town (photo 132542) and a street at 22:30: lit windows, lamps, the traffic's lights |
 | the wide hall | `photos/132821.json`, `132826` | the lab's hall with the town on the tables |
 | the game | `screens/game-title.json` | the game page's title, its menu opened (recorded) |
 | the missions | `screens/missions.json` | the big game's missions, one chosen, Play, the briefing (recorded) |

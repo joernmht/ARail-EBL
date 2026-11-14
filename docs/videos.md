@@ -139,10 +139,10 @@ What there is to cut from, and what the video uses (the clips are described in
 | --- | --- | --- |
 | `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | the real lab at the start; frame 40, held, in ARail |
 | `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the turn: the real curve fading into the town, moving (frames 20–169) |
-| `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | frame 0, held (at frame 200 its markers are not found) |
+| `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | not in this video: its held frames cut off the truck's trailers (and at frame 200 its markers are not found) |
 | `examples/media/ebl-terminal-truck.mp4` | 10 s, 1920 × 1080 | frame 230, held: the crane loads the truck |
 | `web/media/ebl-container-train.jpg` | photo, 1600 × 900 | the hybrid container train, the crane working |
-| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 5 in this video (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
+| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 5 in this video (132542 also at night) (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
 | the game page and the big game | pages of this site | recorded as they are used (`screen.mjs`) |
 | the flyover | rendered | the travellers on the platforms, the bikes and a street at night, close; the whole town at the end |
 | `examples/media/ebl-lab-video.mp4` | 16 s, 1920 × 1080 | not used: it carries an editor's watermark |
