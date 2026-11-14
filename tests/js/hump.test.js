@@ -2,7 +2,7 @@
 // checked against the energy balance, separating at the crest, switches, retarders and their limits,
 // impacts with the momentum kept, misroutes when the train is pushed too fast, winter, target braking
 // against speed-holding units, wagons that must not be humped, determinism, pulling a train out (by
-// hand and when a track is full), and the diagrams of a run.
+// hand and when a track is full), forgetting what is done, and the diagrams of a run.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -345,6 +345,43 @@ test("full tracks are pulled out as trains, so that train after train can be hum
   assert.equal(pulled.r.short, 0, "room again for every cut");
   assert.ok(pulled.sim.log.some((e) => e.type === "track.pulled"));
   for (const d of pulled.sim.departures) assert.ok(d.length_m > yard.tracks[0].length_m - 60 - 30, `a train of ${d.length_m} m`);
+});
+
+test("forgetting what is done (a run without end) changes no figure and no cut's way; train ids go on", () => {
+  const yard = standardYard({ tracks: 4, track_m: 250 });
+  const make = () => {
+    const sim = new HumpSimulation(yard, { seed: 9, dt: 0.1, train_gap_s: 60, pull_below_m: 60 });
+    const r = createRng(9);
+    for (let i = 0; i < 5; i++) sim.hump({ wagons: randomTrain(r, { wagons: 15, tracks: ["1", "2", "3", "4"] }) });
+    return sim;
+  };
+  const whole = make(), lean = make();
+  whole.run();
+  // the same run, forgetting all it can every 10 s, also while a train is pushed
+  let during = false;
+  while (!lean.idle) {
+    lean.run({ until_s: lean.t + 10 });
+    during ||= lean.pushing != null && lean.logStart > 0;
+    lean.forget();
+  }
+  assert.ok(during, "forgotten while a train was still pushed");
+  const a = whole.results(), b = lean.results();
+  assert.ok(a.trains === 5 && a.pulled_out >= 3 && a.cuts > 30, `${a.trains} trains, ${a.pulled_out} pulled out, ${a.cuts} cuts`);
+  const figures = ({ perCut, tracks, ...rest }) => ({ ...rest, cuts_per_hour: Math.round(rest.cuts_per_hour * 1e6) });
+  assert.deepEqual(figures(b), figures(a), "the same figures");
+  assert.deepEqual(b.tracks, a.tracks, "the same tracks");
+  assert.deepEqual(lean.bodies.map((c) => [c.id, c.s]), whole.bodies.map((c) => [c.id, c.s]), "every cut where it is in the whole run");
+  // what is done went: departed cuts, humped trains, departures, the log (its entries still counted from the start)
+  assert.ok(lean.cuts.every((c) => c.state !== "departed") && lean.cuts.length < whole.cuts.length);
+  assert.equal(lean.trains.length, 0);
+  assert.equal(lean.departures.length, 0);
+  assert.equal(lean.log.length, 0);
+  assert.equal(lean.logStart, whole.log.length);
+  assert.ok(b.perCut.length < a.perCut.length, "perCut lists the cuts kept");
+  // the next train without an id is the sixth, as in the whole run
+  const more = () => randomTrain(createRng(3), { wagons: 4, tracks: ["1"] });
+  assert.equal(lean.hump({ wagons: more() }).id, "T6");
+  assert.equal(whole.hump({ wagons: more() }).id, "T6");
 });
 
 test("the diagrams of a run: one line per cut in each panel, the problems marked, light and dark", () => {

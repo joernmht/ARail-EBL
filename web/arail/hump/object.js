@@ -35,8 +35,11 @@ const LOCO_M = 19;
 const FLASH_S = 4;
 /** Most simulation steps in one `update` (the rest is dropped, so that a slow frame does not pile up work). */
 const MAX_STEPS = 400;
-/** Cuts and log entries kept before old ones are dropped (an app that runs for hours). */
-const KEEP_CUTS = 600, KEEP_LOG = 2000;
+/**
+ * What the simulation keeps of what is done (an app runs for hours); the rest goes into its figures
+ * (`HumpSimulation#forget`), once a list holds twice as much.
+ */
+const KEEP = { cuts: 200, trains: 10, departures: 20, log: 1000 };
 
 /** A small string hash (FNV-1a) for the object's own random stream. */
 function hash(s) {
@@ -71,6 +74,9 @@ export class HumpYardObject extends LayoutObject {
     { key: "wagons", label: "Wagons per train", type: "number", min: 4, max: 60, step: 1, default: 24 },
     { key: "pull_below_m", label: "Pull out a track with less room", type: "number", unit: "m", min: 10, max: 200, step: 5, default: 40 },
   ];
+
+  /** What its simulation keeps of what is done (`HumpSimulation#forget`). */
+  keep = { ...KEEP };
 
   /** The yard of the object's figures (kept while they stay the same). */
   get yard() {
@@ -170,25 +176,23 @@ export class HumpYardObject extends LayoutObject {
       n++;
     }
     if (n >= MAX_STEPS) this._acc = 0;
-    // impacts too hard flash for a while; old cuts and log entries go
-    for (; this._seen < sim.log.length; this._seen++) {
-      const e = sim.log[this._seen];
+    // impacts too hard flash for a while (_seen counts the log's entries since the start of the run)
+    for (this._seen = Math.max(this._seen, sim.logStart); this._seen < sim.logStart + sim.log.length; this._seen++) {
+      const e = sim.log[this._seen - sim.logStart];
       if ((e.type === "cut.impact" || e.type === "cut.caught-up" || e.type === "cut.end") && e.v_mps > sim.options.impact_mps) this._flashes.push({ t: sim.t, cut: e.cut });
     }
     this._flashes = this._flashes.filter((f) => sim.t - f.t < FLASH_S);
-    if (sim.cuts.length > KEEP_CUTS) sim.cuts = sim.cuts.filter((c) => c.state !== "departed");
-    if (sim.log.length > KEEP_LOG) {
-      const drop = sim.log.length - KEEP_LOG / 2;
-      sim.log.splice(0, drop);
-      this._seen = Math.max(0, this._seen - drop);
-    }
+    // what is done goes, its figures stay
+    const k = this.keep;
+    if (sim.cuts.length > 2 * k.cuts || sim.trains.length > 2 * k.trains || sim.departures.length > 2 * k.departures || sim.log.length > 2 * k.log) sim.forget(k);
   }
 
   /** The yard: the raised hump, ballast and rails, retarders (glowing while they brake), track numbers. */
   draw(view) {
     const g = this.geometry;
     if (!g) return;
-    const sim = this._sim, lit = view.darkness > 0.35;
+    // the simulation of the yard drawn (this.sim: made anew at once when the figures changed, also while paused)
+    const sim = this.sim, lit = view.darkness > 0.35;
     // the formation, walled down to the table along its outer edges (and at its start)
     for (const p of g.slices) {
       if (!view.inImage(p.mid[0], p.mid[1], p.z, 400)) continue;
@@ -214,7 +218,7 @@ export class HumpYardObject extends LayoutObject {
     }
     for (const r of this.yard.retarders) {
       if (r.hold_mps != null) continue; // speed-holding units are part of the track
-      const route = this.yard.pathTo(r.seg), level = sim?.retarderState(r.id).level ?? 0;
+      const route = this.yard.pathTo(r.seg), level = sim.retarderState(r.id).level;
       const zr = g.z(this.yard.height(route, (r.s0 + r.s1) / 2)) + view.m(0.25);
       for (const side of [-1, 1]) {
         const off = side * (GAUGE_M / 2 + BEAM_M);
@@ -236,8 +240,9 @@ export class HumpYardObject extends LayoutObject {
 
   /** The cuts: every wagon on the hump and in the tracks, the locomotive pushing, impacts too hard. */
   drawMoving(view) {
-    const g = this.geometry, sim = this._sim;
-    if (!g || !sim) return;
+    const g = this.geometry;
+    if (!g) return;
+    const sim = this.sim;
     const yard = this.yard, start = 0, flashing = new Set(this._flashes.map((f) => f.cut));
     const cuts = [...(sim.pushing ? sim.pushing.cuts : []), ...sim.bodies];
     for (const c of cuts) {
@@ -285,12 +290,9 @@ export class HumpYardObject extends LayoutObject {
 
   /** What the card says: the yard's figures and how the humping goes. */
   card() {
-    const card = super.card(), sim = this._sim;
+    const card = super.card(), r = this.sim.results();
     card.rows.push(["Classification tracks", `${this.yard.tracks.length} × ${Math.round(this.spec.track_m)} m`]);
-    if (sim) {
-      const r = sim.results();
-      card.rows.push(["Trains humped", String(r.trains)], ["Cuts per hour", String(Math.round(r.cuts_per_hour))], ["Misrouted", String(r.misrouted)], ["Impacts too hard", String(r.hard)], ["Trains pulled out", String(sim.departures.length)]);
-    }
+    card.rows.push(["Trains humped", String(r.trains)], ["Cuts per hour", String(Math.round(r.cuts_per_hour))], ["Misrouted", String(r.misrouted)], ["Impacts too hard", String(r.hard)], ["Trains pulled out", String(r.pulled_out)]);
     return card;
   }
 }

@@ -72,6 +72,11 @@ export class HumpSimulation {
     this._nextTrace = 0;
     /** The cuts of each train waiting, by its record. */
     this._waiting = new Map();
+    /** Log entries forgotten (`forget`): an entry's place since the start is `logStart` + its index. */
+    this.logStart = 0;
+    /** The figures of what was forgotten, added to those of `results()`. */
+    this._past = { ...NO_FIGURES, trains: 0, push_s: 0, overspeed: 0, departures: 0 };
+    this._trainCount = 0;
   }
 
   /** The cuts being pushed or free (for the control). */
@@ -109,7 +114,7 @@ export class HumpSimulation {
    * @returns {object} the train's record
    */
   hump(train) {
-    const id = String(train.id ?? `T${this.trains.length + 1}`);
+    const id = String(train.id ?? `T${this._trainCount + 1}`);
     // the whole train checked first (types, tracks), so that a wrong one changes nothing: no cut, no random number
     // each wagon's track by its name, also where it was given by its segment's id ("t3" → "3")
     const specs = (train.wagons || []).map((w) => {
@@ -145,6 +150,7 @@ export class HumpSimulation {
     }
     this._waiting.set(rec, cuts);
     this.trains.push(rec);
+    this._trainCount++;
     this.queue.push(rec);
     return rec;
   }
@@ -538,40 +544,86 @@ export class HumpSimulation {
 
   /**
    * What became of every cut, the tracks, and the figures of the run: `trains` humped to their last
-   * cut, `waiting` not (yet), `limit_reached` if `run` stopped at its longest time with work left.
+   * cut, `waiting` not (yet), `limit_reached` if `run` stopped at its longest time with work left,
+   * `pulled_out` the trains formed. The figures count the whole run, also what `forget` dropped;
+   * `perCut` lists the cuts kept.
    */
   results() {
-    const o = this.options, humped = this.cuts.filter((c) => c.order != null);
-    const perCut = humped.map((c) => {
-      const ret = Object.values(c.rec.retarders);
-      const main = ret.find((r) => r.kind === "main") || null, group = ret.find((r) => r.kind === "group") || null;
-      const inTrack = c.rec.impacts.find((i) => i.inTrack);
-      return {
-        id: c.id, train: c.train, wagons: c.wagons.length, types: c.wagons.map((w) => w.type), mass_t: c.body.mass_t, length_m: c.body.length_m,
-        w: c.body.w, w_est: c.w_est, track: c.intended, ended: c.rec.stop?.track ?? null, misrouted: !!c.misrouted, careful: c.careful,
-        released_t: c.rec.released_t, pushedOver: c.pushedOver, max_mps: c.rec.max_mps, main, group,
-        impact_mps: inTrack ? inTrack.v_mps : c.rec.end ? c.rec.end.v_mps : null, caughtUp: c.rec.impacts.some((i) => !i.inTrack),
-        stop: c.rec.stop, derailed: c.derailed,
-      };
-    });
+    const p = this._past, perCut = this.cuts.filter((c) => c.order != null).map((c) => this._cutResult(c)), f = this._figures(perCut);
     const tracks = this.yard.tracks.map((t) => this.trackContents(t.name));
     // the time of pushing: the trains humped, and the one on the hump so far (its released cuts are counted)
-    const pushing = this.trains.filter((r) => r.started_t != null).reduce((s, r) => s + ((r.humped_t ?? this.t) - r.started_t), 0);
-    const impacts = perCut.filter((c) => c.impact_mps != null);
-    const done = this.trains.filter((r) => r.humped_t != null).length;
+    const pushing = p.push_s + this.trains.filter((r) => r.started_t != null).reduce((s, r) => s + ((r.humped_t ?? this.t) - r.started_t), 0);
+    const done = this.trains.filter((r) => r.humped_t != null).length, cuts = p.cuts + f.cuts;
     return {
-      t_s: round(this.t), trains: done, waiting: this.trains.length - done, limit_reached: !!this.limitReached,
-      cuts: humped.length, wagons: humped.reduce((n, c) => n + c.wagons.length, 0),
-      push_s: round(pushing), cuts_per_hour: pushing > 0 ? (humped.length / pushing) * 3600 : 0,
+      t_s: round(this.t), trains: p.trains + done, waiting: this.trains.length - done, limit_reached: !!this.limitReached,
+      cuts, wagons: p.wagons + f.wagons,
+      push_s: round(pushing), cuts_per_hour: pushing > 0 ? (cuts / pushing) * 3600 : 0,
+      misrouted: p.misrouted + f.misrouted, caughtUp: p.caughtUp + f.caughtUp, derailed: p.derailed + f.derailed, short: p.short + f.short,
+      hard: p.hard + f.hard, max_impact_mps: Math.max(p.max_impact_mps, f.max_impact_mps),
+      gaps: tracks.reduce((n, t) => n + t.gaps.length, 0), gaps_m: tracks.reduce((m, t) => m + t.gaps_m, 0), pushed_up_m: round(this.pushedUp_m || 0),
+      overspeed: p.overspeed + this.log.filter((e) => e.type === "retarder.overspeed").length,
+      pulled_out: p.departures + this.departures.length,
+      perCut, tracks,
+    };
+  }
+
+  /**
+   * Forget what is done, for a run without end (the hump yard on the table): departed cuts but the
+   * newest `cuts`, humped trains but the newest `trains`, departures but the newest `departures`, log
+   * entries but the newest `log`. What they counted stays in the figures of `results()`; nothing the
+   * run still needs goes (cuts not departed, trains not humped).
+   * @param {{cuts?: number, trains?: number, departures?: number, log?: number}} [keep]
+   */
+  forget({ cuts = 0, trains = 0, departures = 0, log = 0 } = {}) {
+    const p = this._past;
+    const gone = this.cuts.filter((c) => c.state === "departed"), dropCuts = new Set(gone.slice(0, Math.max(0, gone.length - cuts)));
+    if (dropCuts.size) {
+      const f = this._figures([...dropCuts].filter((c) => c.order != null).map((c) => this._cutResult(c)));
+      for (const k of Object.keys(NO_FIGURES)) p[k] = k === "max_impact_mps" ? Math.max(p[k], f[k]) : p[k] + f[k];
+      this.cuts = this.cuts.filter((c) => !dropCuts.has(c));
+    }
+    const done = this.trains.filter((r) => r.humped_t != null), dropTrains = new Set(done.slice(0, Math.max(0, done.length - trains)));
+    for (const r of dropTrains) {
+      p.trains++;
+      p.push_s += r.humped_t - r.started_t;
+    }
+    if (dropTrains.size) this.trains = this.trains.filter((r) => !dropTrains.has(r));
+    const nd = Math.max(0, this.departures.length - departures);
+    p.departures += nd;
+    this.departures.splice(0, nd);
+    const nl = Math.max(0, this.log.length - log);
+    for (let i = 0; i < nl; i++) if (this.log[i].type === "retarder.overspeed") p.overspeed++;
+    this.log.splice(0, nl);
+    this.logStart += nl;
+  }
+
+  /** One cut's run, as `results().perCut` lists it. */
+  _cutResult(c) {
+    const ret = Object.values(c.rec.retarders);
+    const main = ret.find((r) => r.kind === "main") || null, group = ret.find((r) => r.kind === "group") || null;
+    const inTrack = c.rec.impacts.find((i) => i.inTrack);
+    return {
+      id: c.id, train: c.train, wagons: c.wagons.length, types: c.wagons.map((w) => w.type), mass_t: c.body.mass_t, length_m: c.body.length_m,
+      w: c.body.w, w_est: c.w_est, track: c.intended, ended: c.rec.stop?.track ?? null, misrouted: !!c.misrouted, careful: c.careful,
+      released_t: c.rec.released_t, pushedOver: c.pushedOver, max_mps: c.rec.max_mps, main, group,
+      impact_mps: inTrack ? inTrack.v_mps : c.rec.end ? c.rec.end.v_mps : null, caughtUp: c.rec.impacts.some((i) => !i.inTrack),
+      stop: c.rec.stop, derailed: c.derailed,
+    };
+  }
+
+  /** The figures of cuts' runs (`_cutResult`): counts and the hardest impact. */
+  _figures(perCut) {
+    const o = this.options, impacts = perCut.filter((c) => c.impact_mps != null);
+    return {
+      cuts: perCut.length, wagons: perCut.reduce((n, c) => n + c.wagons, 0),
       misrouted: perCut.filter((c) => c.misrouted).length, caughtUp: perCut.filter((c) => c.caughtUp).length,
       derailed: perCut.filter((c) => c.derailed).length, short: perCut.filter((c) => c.stop && !c.ended).length,
       hard: impacts.filter((c) => c.impact_mps > (c.careful ? o.careful_mps : o.impact_mps) + 1e-9).length,
       max_impact_mps: impacts.reduce((m, c) => Math.max(m, c.impact_mps), 0),
-      gaps: tracks.reduce((n, t) => n + t.gaps.length, 0), gaps_m: tracks.reduce((m, t) => m + t.gaps_m, 0), pushed_up_m: round(this.pushedUp_m || 0),
-      overspeed: this.log.filter((e) => e.type === "retarder.overspeed").length,
-      perCut, tracks,
     };
   }
 }
 
 const round = (x) => Math.round(x * 100) / 100;
+/** The figures of no cut at all (`_figures([])`). */
+const NO_FIGURES = { cuts: 0, wagons: 0, misrouted: 0, caughtUp: 0, derailed: 0, short: 0, hard: 0, max_impact_mps: 0 };

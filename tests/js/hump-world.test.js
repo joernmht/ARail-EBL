@@ -1,7 +1,8 @@
 // The hump yard on the table (web/arail/hump/object.js, issue #237): Bf Neustadt's module Hump yard (its table
 // module, the push track meeting the table), the plan of the yard (a fan), train after train in the world
 // (deterministic, a change of figures makes it anew, moving it keeps it), drawing in the flyover (ballast,
-// wagons, retarders braking, only finite coordinates), its card and its German texts.
+// wagons, retarders braking, only finite coordinates), its figures changed while paused, a run of hours (what is done
+// forgotten, the card and the flashes as they were), its card and its German texts.
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -161,6 +162,46 @@ test("drawn in the flyover: formation, ballast and rails, wagons, retarders oran
   const dark = flyView(cam, { night: 1 });
   world.draw(dark.view);
   assert.ok(dark.fills.length > 50);
+});
+
+test("its figures changed while the world is paused: drawn at once with the new yard and a new run, its card too", () => {
+  const world = lone(), hump = world.getObject("hump");
+  run(world, 300);
+  assert.ok(hump.sim.bodies.some((c) => c.route.length > 2), "cuts on their way through the switches");
+  world.paused = true;
+  hump.set({ tracks: 4 });
+  const cam = new FlyCamera({ target: [-1800, 0], distance: 2600, yaw: toRad(100), pitch: toRad(35) });
+  world.draw(flyView(cam).view); // no step in between: draw and drawMoving must not use the old run on the new yard
+  assert.equal(hump.sim.yard, hump.yard, "the run of the new yard");
+  assert.equal(hump.sim.cuts.length, 0, "not started yet");
+  const rows = Object.fromEntries(hump.card().rows);
+  assert.equal(rows["Classification tracks"], "4 × 120 m");
+  assert.equal(rows["Trains humped"], "0");
+  // and on, once the world runs again
+  world.paused = false;
+  run(world, 120);
+  world.draw(flyView(cam).view);
+  assert.ok(hump.sim.cuts.length > 0);
+});
+
+test("for hours: what is done is forgotten, the card's figures and the flashes stay as they were", () => {
+  // target braking: impacts too hard, so that there are flashes to keep in step
+  const whole = lone({ design: "target" }), lean = lone({ design: "target" }), a = whole.getObject("hump"), b = lean.getObject("hump");
+  a.keep = { cuts: Infinity, trains: Infinity, departures: Infinity, log: Infinity };
+  b.keep = { cuts: 5, trains: 1, departures: 1, log: 30 };
+  let flashed = 0;
+  for (let t = 0; t < 900; t += 0.1) {
+    whole.step(0.1);
+    lean.step(0.1);
+    assert.deepEqual(b._flashes, a._flashes, `the same flashes at ${t.toFixed(1)} s`);
+    flashed += a._flashes.length > 0;
+  }
+  assert.equal(a.sim.logStart, 0, "the one kept everything");
+  assert.ok(b.sim.logStart > 0 && b.sim.cuts.length < a.sim.cuts.length && b.sim.departures.length <= 2, "the other forgot");
+  assert.ok(flashed > 0 && a.sim.results().hard > 0, "impacts too hard flashed");
+  const rows = Object.fromEntries(a.card().rows);
+  assert.ok(Number(rows["Trains pulled out"]) >= 2, `${rows["Trains pulled out"]} trains pulled out`);
+  assert.deepEqual(b.card().rows, a.card().rows, "the same card");
 });
 
 test("the hump yard's texts in German", () => {

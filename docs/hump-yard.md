@@ -64,6 +64,13 @@ never pulled out. `run()` stops at `max_s` (4 h) at the
 latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
 (`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
+A run without end (the yard on the table runs for hours) calls `sim.forget(keep)` now and then: it
+drops departed cuts, humped trains, departures and log entries but the newest (`{cuts, trains,
+departures, log}`, all of them by default). The figures of `results()` still count the whole run
+(`pulled_out` the trains formed); `perCut`, `sim.departures` and `sim.log` hold only what is kept,
+and `sim.logStart` counts the log entries forgotten. Nothing the run still needs goes, so a run
+that forgets goes exactly as one that does not.
+
 A wagon is `{type, loaded, track | destination, w_nkn?, careful?, noHump?}`: its type from the
 vehicle catalogue's freight wagons (`sgns`, `eanos`, `habbins`, `zacns`, see
 [Railway systems and trains](rail-systems.md)) or the hump's own 2-axle `hbbillns`; `destination`
@@ -128,8 +135,10 @@ the yard is 6 m long and 0.36 m wide) and draws:
 Its card says how many trains it humped, its cuts per hour, misroutes, impacts too hard and trains
 pulled out. Its settings (Build) are the yard's (tracks, their length, the push track, the design),
 the season, the pushing speed, the wagons per train and when a track is pulled out
-([layout format](layout-format.md#hump-yard)); moving it keeps its run, other figures start it anew.
-Its random numbers come from the world's seed and its id: the same layout humps the same trains.
+([layout format](layout-format.md#hump-yard)); moving it keeps its run, other figures start it anew,
+at once, also while the world is paused. Its random numbers come from the world's seed and its id:
+the same layout humps the same trains. It keeps the last 200 cuts gone, 10 trains, 20 departures and
+1000 log entries and forgets the rest (`forget`); its card counts them all.
 
 ## A cut and its forces
 
