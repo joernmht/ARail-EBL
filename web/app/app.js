@@ -111,6 +111,8 @@ export class App {
     this.pctx = this.proc.getContext("2d", { willReadFrequently: true });
     this.camera = new ARail.Camera(1280, 720);
     this.world = ARail.createWorld({});
+    // rain and snow stand still for people who asked their system for less motion
+    this.world.settings.weatherStill = reducedMotion();
     this.tracker = new ARail.PlaneTracker(this.world.map);
     this.detector = null;
     this.source = null;
@@ -1745,6 +1747,9 @@ export class App {
     if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
     if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
+    // the date and the weather, when the layout or a scenario has them: "6 Dec · −2 °C · snow"
+    const weather = [this.world.clock.dateLabel(), this.world.weather.describe()].filter(Boolean).join(" · ");
+    if (weather) chips.push(["info weather", weather]);
     this.speed.update();
     this.flyover.syncView(); // the camera view is named after its source
     this._syncTour();

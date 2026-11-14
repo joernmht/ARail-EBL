@@ -241,7 +241,11 @@ test("scenarios set the time of day; the Striezelmarkt's evening", () => {
   assert.ok(world.scenarios.scenarios.some((s) => s.id === "striezelmarkt-evening"));
   world.scenarios.play("striezelmarkt-evening");
   world.step(0.1);
-  assert.equal(world.clock.label().slice(0, 4), "19:4");
+  // 6 December, a quarter to four, in snow: dusk at four
+  assert.equal(world.clock.label().slice(0, 4), "15:4");
+  assert.equal(world.clock.dateLabel(), "6 Dec");
+  assert.equal(world.weather.now().sky, "snow");
+  assert.ok(world.clock.sun().set < 16 * 60 + 5, "the sun sets at about four");
   assert.ok(marketOf(world).visitors.length > 100, "the clock was set: the market is full");
   const { layout } = composeLayout(withLayers(LAB, ["striezelmarkt"]));
   assert.ok(layout.scenarios.some((s) => s.id === "striezelmarkt-evening") && !layout.scenarios.some((s) => s.id === "market-closing"));

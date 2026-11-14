@@ -54,8 +54,8 @@ export const GROUPS = [
 export const PACKAGES = [
   {
     id: "core-world", name: "core · world", group: "framework", path: "web/arail/core",
-    summary: "The loaded layout: objects, simulations and stories, the scenes of a layout's introduction, the step, the clock, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
-    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/intro.js", "web/arail/core/clock.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
+    summary: "The loaded layout: objects, simulations and stories, the scenes of a layout's introduction, the step, the clock with its date and sun, the weather, layers, people and their mobility, the registry, the event bus, the heights of table modules and streets, and pointing at things.",
+    files: ["web/arail/core/world.js", "web/arail/core/layout.js", "web/arail/core/layers.js", "web/arail/core/anchors.js", "web/arail/core/object.js", "web/arail/core/registry.js", "web/arail/core/events.js", "web/arail/core/simulation.js", "web/arail/core/states.js", "web/arail/core/story.js", "web/arail/core/intro.js", "web/arail/core/clock.js", "web/arail/core/weather.js", "web/arail/core/people.js", "web/arail/core/mobility.js", "web/arail/core/pick.js", "web/arail/core/elevation.js"],
     uses: ["core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing"],
   },
   {
@@ -150,7 +150,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/de/hump.js", "web/arail/i18n/de/market.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/de/hump.js", "web/arail/i18n/de/market.js", "web/arail/i18n/de/weather.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -327,7 +327,7 @@ export const DATA_FLOW = {
 
 /** Groups of models on the page, in this order. */
 export const MODEL_GROUPS = [
-  { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock, objects, people, drawing." },
+  { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock with its date, the weather, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
   { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets and their cross-sections, traffic signs and crossings, bus and tram lines, cars and parking, bikes and e-scooters." },
   { id: "market", name: "Market square", intro: "A market square with its stalls, the Christmas tree and rides, and the visitors who come to it (the lab example's modules Striezelmarkt and Market visitors)." },
@@ -361,7 +361,9 @@ export const EVENTS = [
   { name: "object.changed", from: ["web/arail/core/world.js"], payload: "object", meaning: "An object was edited (also right before object.added)." },
   { name: "object.removed", from: ["web/arail/core/world.js"], payload: "object", meaning: "An object was deleted." },
   { name: "clock.day", from: ["web/arail/core/world.js"], payload: "day", meaning: "Midnight passed." },
-  { name: "clock.set", from: ["web/arail/core/world.js"], payload: "minutes", meaning: "The time was set by hand: the simulations place everybody anew." },
+  { name: "clock.set", from: ["web/arail/core/world.js"], payload: "minutes", meaning: "The time (or the date) was set by hand: the simulations place everybody anew." },
+  { name: "clock.date", from: ["web/arail/core/world.js"], payload: "date", meaning: "The date was set (the day of the year, or null: no date)." },
+  { name: "weather.changed", from: ["web/arail/core/weather.js"], payload: "weather", meaning: "The weather was set, or it changed: rain or snow starts or stops, ice forms, snow lies or is gone." },
   { name: "disruption.started", from: ["web/arail/core/disruptions.js"], payload: "disruption", meaning: "A disruption started." },
   { name: "disruption.ended", from: ["web/arail/core/disruptions.js"], payload: "disruption", meaning: "A disruption expired or was stopped." },
   { name: "scenario.started", from: ["web/arail/core/scenarios.js"], payload: "scenario", meaning: "A scenario is played." },

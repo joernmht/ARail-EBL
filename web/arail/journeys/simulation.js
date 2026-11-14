@@ -580,7 +580,7 @@ export class JourneysSimulation extends Simulation {
   _walk(t, dt, now) {
     const path = t.path;
     if (!path) return this._next(t, now);
-    t.s += ((t.speed * 1000) / this.world.scale) * dt;
+    t.s += ((t.speed * this.world.weather.walkFactor() * 1000) / this.world.scale) * dt;
     t.phase += t.speed * dt * 5;
     if (t.s >= path.length) {
       t.pos = path.points[path.points.length - 1].slice();

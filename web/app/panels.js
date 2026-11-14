@@ -1,5 +1,5 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
-import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, MONTHS, monthDay, RAIL_CONDITIONS, WEATHER_PRESETS, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { download, h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 /** Fast-clock ratios offered in Settings → Simulation. */
@@ -201,7 +201,7 @@ export class Panels {
       this.settingsBody,
     );
     // the other views' controls are gone: their live figures are not refreshed
-    this.viewInfo = this.board = this.clockFace = this.townBox = this.feedStatus = null;
+    this.viewInfo = this.board = this.clockFace = this.townBox = this.feedStatus = this.weatherNow = null;
     if (this.settingsView === "control") this.renderControl(this.settingsBody);
     else if (this.settingsView === "view") this.renderView(this.settingsBody);
     else this.renderSimulate(this.settingsBody);
@@ -238,6 +238,23 @@ export class Panels {
     this.timeRange = h("input", { type: "range", id: "timeOfDay", min: 0, max: 1439, step: 15, value: Math.round(w.clock.minutes),
       "aria-valuetext": w.clock.label(), oninput: (e) => { w.setTime(Number(e.target.value)); this.updateClock(); } });
     this.townBox = h("div", { class: "town-stats" });
+    this.weatherNow = h("p", { class: "hint", id: "weatherNow", "aria-live": "off" });
+    // the date: a month (or none: every day the same day) and the day of the month
+    const date = w.clock.date == null ? null : monthDay(w.clock.date);
+    const setDate = () => {
+      const month = Number(this.dateMonth.value);
+      this.dateDay.disabled = !month;
+      w.setDate(month ? `${month}-${Math.min(Number(this.dateDay.value) || 1, [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])}` : null);
+      this.updateClock();
+    };
+    this.dateMonth = h("select", { id: "dateMonth", onchange: setDate },
+      h("option", { value: 0, selected: !date }, "No date"), MONTHS.map((m, i) => h("option", { value: i + 1, selected: date?.month === i + 1 }, m)));
+    this.dateDay = h("input", { type: "number", id: "dateDay", min: 1, max: 31, step: 1, value: date?.day ?? 1, disabled: !date, onchange: setDate });
+    const weather = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
+    this.weatherSelect = h("select", { id: "weatherSelect", onchange: (e) => { w.setWeather(e.target.value); this.updateClock(); } },
+      h("option", { value: "off", selected: weather === "off" }, "Off"),
+      h("option", { value: "typical", selected: weather === "typical" }, "Typical for the date"),
+      Object.entries(WEATHER_PRESETS).map(([k, p]) => h("option", { value: k, selected: weather === k }, p.label)));
     const app = this.app, s = w.settings;
     const hasTown = w.simulations.some((x) => x.constructor.type === "town");
     mount(el,
@@ -255,6 +272,15 @@ export class Panels {
           h("label", { class: "field check", for: "optFreeze" },
             h("input", { type: "checkbox", id: "optFreeze", checked: !!w.clock.frozen, onchange: (e) => { w.clock.frozen = e.target.checked; } }), "Stop the clock"),
         ),
+      ),
+      section("Date and weather",
+        h("div", { class: "fields" },
+          h("label", { class: "field", for: "dateMonth" }, h("span", {}, "Month"), this.dateMonth),
+          h("label", { class: "field", for: "dateDay" }, h("span", {}, "Day"), this.dateDay),
+          h("label", { class: "field", for: "weatherSelect" }, h("span", {}, "Weather"), this.weatherSelect),
+        ),
+        this.weatherNow,
+        h("p", { class: "hint" }, "With a date the sun rises and sets as on that day in Dresden, and the trees follow the season. The typical weather is that of the date; without a date it is a mild dry day."),
       ),
       hasTown ? section("Town", this.townBox) : null,
       section("Speed",
@@ -291,6 +317,25 @@ export class Panels {
       this.timeRange.value = String(Math.round(c.minutes));
     }
     this.timeRange?.setAttribute("aria-valuetext", c.label());
+    this.updateWeather();
+  }
+
+  /** The date and the weather of Settings → Simulation as they are now (a scenario may have set them). */
+  updateWeather() {
+    if (!this.weatherNow?.isConnected) return;
+    const w = this.world, c = w.clock, date = c.date == null ? null : monthDay(c.date);
+    if (document.activeElement !== this.dateMonth) this.dateMonth.value = String(date?.month ?? 0);
+    if (document.activeElement !== this.dateDay && date) this.dateDay.value = String(date.day);
+    this.dateDay.disabled = !date;
+    if (document.activeElement !== this.weatherSelect) this.weatherSelect.value = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
+    const sun = c.sun(), parts = [];
+    if (date) parts.push(h("span", {}, `Sunrise ${formatTime(sun.rise)}`), " · ", h("span", {}, `Sunset ${formatTime(sun.set)}`));
+    if (w.weather.on) {
+      const n = w.weather.now(), ground = n.snow_cm > 0.5 ? `${Math.round(n.snow_cm)} cm of snow` : n.ice ? "ice on the ground" : n.wet > 0.3 ? "wet ground" : "dry ground";
+      if (parts.length) parts.push(" · ");
+      parts.push(h("span", {}, w.weather.describe()), " · ", h("span", {}, ground), " · ", h("span", {}, `Rails: ${RAIL_CONDITIONS[w.weather.railCondition()].label}`));
+    }
+    morph(this.weatherNow, parts.length ? parts : h("span", {}, "No date and no weather: every day is the same mild day."));
   }
 
   /** The town's people: where they are, and on their way by purpose (Settings → Simulation). */

@@ -60,7 +60,8 @@ export function lineBrakingDistance(track) {
 
 /**
  * The rail's condition on a track: a low-adhesion disruption on its platform track while it lasts,
- * else its own (`rail_condition`), else dry.
+ * else the worse (the lower adhesion) of its own (`rail_condition`, else dry) and the weather's
+ * (`world.weather.railCondition()`: wet in rain and snow, leaves in the leaf-fall weeks, ice).
  * @param {import("../core/world.js").World} world
  * @param {object} track
  */
@@ -70,7 +71,9 @@ export function railCondition(world, track) {
     const dock = world.services?.docks.get(d.target)?.dock;
     if (dock?.track != null && String(dock.track) === String(track.spec.track_id)) return d.def.railCondition(d);
   }
-  return RAIL_CONDITIONS[track.spec.rail_condition] ? track.spec.rail_condition : "dry";
+  const own = RAIL_CONDITIONS[track.spec.rail_condition] ? track.spec.rail_condition : "dry";
+  const weather = world.weather?.railCondition?.() ?? "dry";
+  return RAIL_CONDITIONS[weather] && RAIL_CONDITIONS[weather].factor < RAIL_CONDITIONS[own].factor ? weather : own;
 }
 
 /** The direction (unit) from an end of a track into it (`end` 0: from its first point, 1: from its last). */

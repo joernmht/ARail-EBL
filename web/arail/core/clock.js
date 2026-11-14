@@ -19,10 +19,73 @@ export const DEFAULT_CLOCK = {
   factor: 12,
   /** Vary timetables, traffic and passenger numbers with the time of day. */
   profiles: true,
+  /** The date ("MM-DD", e.g. "12-06"), or null: no date, every day the same day with the sun of {@link SUN}. */
+  date: null,
+  /** Latitude of the place (°N), for sunrise and sunset by the date (Dresden). */
+  latitude: 51.05,
 };
 
-/** Sunrise and sunset (minutes after midnight) and the length of the twilight. */
+/** Sunrise and sunset (minutes after midnight) without a date, and the length of the twilight. */
 export const SUN = { rise: 6 * 60, set: 20 * 60 + 30, twilight: 45 };
+
+/** Days of the months (no leap years: the clock has no year). */
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const YEAR_DAYS = 365;
+/** Summer time (clock + 1 h) from 29 March to 24 October: about the last Sundays of March and October. */
+const SUMMER_TIME = [88, 298];
+
+/** "12-06" (or "6.12." / a day of the year 1…365) -> the day of the year (1 = 1 January); invalid -> null. */
+export function parseDate(value) {
+  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= YEAR_DAYS ? value : null;
+  const m = String(value ?? "").trim().match(/^(\d{1,2})-(\d{1,2})$/);
+  if (!m) return null;
+  const month = Number(m[1]), day = Number(m[2]);
+  if (month < 1 || month > 12 || day < 1 || day > MONTH_DAYS[month - 1]) return null;
+  return MONTH_DAYS.slice(0, month - 1).reduce((a, b) => a + b, 0) + day;
+}
+
+/** The month (1…12) and the day of the month of a day of the year. */
+export function monthDay(doy) {
+  let d = ((Math.round(doy) - 1 + YEAR_DAYS) % YEAR_DAYS) + 1, month = 0;
+  while (d > MONTH_DAYS[month]) d -= MONTH_DAYS[month++];
+  return { month: month + 1, day: d };
+}
+
+/** A day of the year -> "12-06". */
+export function formatDate(doy) {
+  const { month, day } = monthDay(doy);
+  return `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** The meteorological season of a day of the year: winter (Dec–Feb), spring, summer, autumn. */
+export function seasonOf(doy) {
+  const { month } = monthDay(doy);
+  return month === 12 || month <= 2 ? "winter" : month <= 5 ? "spring" : month <= 8 ? "summer" : "autumn";
+}
+
+/**
+ * Sunrise and sunset on a day of the year at a latitude, in clock time (minutes after midnight) of
+ * Central European Time with summer time, at the longitude of Dresden: from the sun's declination
+ * and the equation of time, the sun's upper edge on the horizon with refraction (−0.833°). Where
+ * the sun does not rise or set (polar night, midnight sun) the day has no length or all of it.
+ * @param {number} doy day of the year (1 = 1 January)
+ * @param {number} [latitude] °N
+ * @param {{longitude?: number, zone_h?: number, summerTime?: boolean}} [place]
+ * @returns {{rise: number, set: number, noon: number, twilight: number}}
+ */
+export function sunTimes(doy, latitude = DEFAULT_CLOCK.latitude, { longitude = 13.74, zone_h = 1, summerTime = true } = {}) {
+  const rad = Math.PI / 180;
+  const decl = -23.44 * rad * Math.cos((2 * Math.PI * (doy + 10)) / YEAR_DAYS);
+  const B = (2 * Math.PI * (doy - 81)) / 364;
+  const equation = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B); // minutes
+  const lat = clamp(latitude, -89, 89) * rad;
+  const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat) * Math.sin(decl)) / (Math.cos(lat) * Math.cos(decl));
+  const half = (Math.acos(clamp(cosH, -1, 1)) / rad) * 4; // minutes from noon to sunset
+  const summer = summerTime && doy >= SUMMER_TIME[0] && doy < SUMMER_TIME[1] ? 60 : 0;
+  const noon = 12 * 60 - equation - 4 * (longitude - 15 * zone_h) + summer;
+  return { rise: noon - half, set: noon + half, noon, twilight: SUN.twilight };
+}
 
 /**
  * Demand over the day, as factors of the normal daytime level: [hour, factor] points,
@@ -86,6 +149,11 @@ export class Clock {
     this.start = parseTime(c.start) ?? parseTime(DEFAULT_CLOCK.start);
     this.factor = Number(c.factor) >= 0 ? Number(c.factor) : DEFAULT_CLOCK.factor;
     this.profiles = c.profiles !== false;
+    /** The day of the year (1 = 1 January), or null: no date. It runs on at midnight. */
+    this.date = parseDate(c.date);
+    /** The date the layout starts with (null: none). */
+    this.startDate = this.date;
+    this.latitude = Number.isFinite(Number(c.latitude)) ? clamp(Number(c.latitude), -89, 89) : DEFAULT_CLOCK.latitude;
     /** Minutes after midnight (fractional). */
     this.minutes = this.start;
     /** Days passed since the start (0 on the first day). */
@@ -99,9 +167,36 @@ export class Clock {
     if (this.frozen || !(dt > 0)) return false;
     this.minutes += (dt * this.factor) / 60;
     if (this.minutes < DAY_MINUTES) return false;
-    this.day += Math.floor(this.minutes / DAY_MINUTES);
+    const days = Math.floor(this.minutes / DAY_MINUTES);
+    this.day += days;
+    if (this.date != null) this.date = ((this.date - 1 + days) % YEAR_DAYS) + 1;
     this.minutes = wrapMinutes(this.minutes);
     return true;
+  }
+
+  /** Set the date ("MM-DD" or a day of the year; null: no date). Returns the day of the year, or null. */
+  setDate(value) {
+    this.date = value == null || value === "" ? null : parseDate(value) ?? this.date;
+    return this.date;
+  }
+
+  /** "6 Dec", or "" without a date. */
+  dateLabel() {
+    if (this.date == null) return "";
+    const { month, day } = monthDay(this.date);
+    return `${day} ${MONTHS[month - 1]}`;
+  }
+
+  /** The season (winter, spring, summer, autumn), or null without a date. */
+  season() {
+    return this.date == null ? null : seasonOf(this.date);
+  }
+
+  /** Sunrise and sunset today (minutes after midnight): by the date and the latitude, else {@link SUN}. */
+  sun() {
+    if (this.date == null) return SUN;
+    if (this._sun?.date !== this.date || this._sun.latitude !== this.latitude) this._sun = { date: this.date, latitude: this.latitude, times: sunTimes(this.date, this.latitude) };
+    return this._sun.times;
   }
 
   /** Jump to a time of day ("HH:MM" or minutes). */
@@ -122,7 +217,7 @@ export class Clock {
 
   /** Daylight 0 (night) .. 1 (day). */
   daylight() {
-    return daylightAt(this.minutes);
+    return daylightAt(this.minutes, this.sun());
   }
 
   /** Darkness 0 (day) .. 1 (night), used for the lighting. */
@@ -148,6 +243,10 @@ export class Clock {
 
   /** The layout's `clock` section (the start time, not the current time). */
   toJSON() {
-    return { start: formatTime(this.start), factor: this.factor, profiles: this.profiles };
+    return {
+      start: formatTime(this.start), factor: this.factor, profiles: this.profiles,
+      ...(this.startDate != null ? { date: formatDate(this.startDate) } : {}),
+      ...(this.latitude !== DEFAULT_CLOCK.latitude ? { latitude: this.latitude } : {}),
+    };
   }
 }

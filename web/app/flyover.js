@@ -40,6 +40,8 @@ const VIEW_KEYS = { photo: "F", flyover: "F", map: "Shift+S", "3d": "S" };
 /** Background of the flyover by day: sky above the horizon, the lab floor below. */
 export const SKY = { top: "#cfe4e6", horizon: "#eef5f5", floorFar: "#ccd3d6", floorNear: "#9ba5aa" };
 /** ... and its night colours (the view darkens both further). */
+/** The sky under cloud (the weather, arail/core/weather.js), by day and at night. */
+export const SKY_GREY = { top: "#aab2b9", horizon: "#d9dee1", nightTop: "#0c1220", nightHorizon: "#1c2538" };
 export const SKY_NIGHT = { top: "#020a24", horizon: "#16284f", floorFar: "#1b2438", floorNear: "#0b1122" };
 
 export class Flyover {
@@ -765,7 +767,13 @@ export class Flyover {
       const A = parseHex(a), B = parseHex(b);
       return rgba(A.map((v, i) => v + (B[i] - v) * night));
     };
-    const c = Object.fromEntries(Object.keys(SKY).map((k) => [k, mix(SKY[k], SKY_NIGHT[k])]));
+    // the weather's sky: grey under cloud and in fog (the lab's floor stays as it is)
+    const look = this.app.world.weather?.look?.() ?? null, grey = look ? Math.max(0.85 * look.cloud, look.fog) : 0;
+    const hex = (rgb) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+    const under = (a, b) => hex(parseHex(a).map((v, i) => v + (parseHex(b)[i] - v) * grey));
+    const day = { ...SKY, top: under(SKY.top, SKY_GREY.top), horizon: under(SKY.horizon, SKY_GREY.horizon) };
+    const dark = { ...SKY_NIGHT, top: under(SKY_NIGHT.top, SKY_GREY.nightTop), horizon: under(SKY_NIGHT.horizon, SKY_GREY.nightHorizon) };
+    const c = Object.fromEntries(Object.keys(SKY).map((k) => [k, mix(day[k], dark[k])]));
     const f = this.cam.focal(H);
     const yh = this.cam.isPlan ? -Infinity : H / 2 - f * Math.tan(this.cam.pitch);
     ctx.save();
@@ -778,7 +786,7 @@ export class Flyover {
       ctx.fillRect(0, 0, W, Math.ceil(yh));
       // dawn and dusk: a warm band along the horizon
       const d = this.app.world.clock.daylight?.() ?? 1;
-      const warm = this.app.world.settings.lighting === false ? 0 : 0.5 * (1 - Math.abs(2 * d - 1));
+      const warm = this.app.world.settings.lighting === false ? 0 : 0.5 * (1 - Math.abs(2 * d - 1)) * (1 - grey);
       if (warm > 0.02) {
         const band = ctx.createLinearGradient(0, yh - 0.35 * H, 0, yh);
         band.addColorStop(0, rgba(CD_LIGHT.orange, 0));

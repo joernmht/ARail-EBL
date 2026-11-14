@@ -15,8 +15,10 @@
  *   }
  *
  * `at` is simulated seconds after the start of the scenario. Actions:
- * - `set`: world settings (`demand`, `speed`) and the time of day (`time`: "HH:MM", as `world.setTime`;
- *   anything else fails the step, which says so)
+ * - `set`: world settings (`demand`, `speed`), the time of day (`time`: "HH:MM", as `world.setTime`),
+ *   the date (`date`: "MM-DD", as `world.setDate`) and the weather (`weather`: a preset's name,
+ *   "typical", "off" or an object, as `world.setWeather`); what is none of them fails the step,
+ *   which says so
  * - `message`: text for the app (event `scenario.message`)
  * - `call`: send a vehicle to an object / stop area / dock
  * - `start`: start a disruption (same fields as `DisruptionManager.start`)
@@ -82,7 +84,10 @@ export class ScenarioPlayer {
       if (step.set) {
         if (step.set.demand != null) w.demand = Number(step.set.demand);
         if (step.set.speed != null) w.speed = Number(step.set.speed);
+        // the date first: the time and the weather are those of that day
+        if (step.set.date != null && w.setDate(step.set.date) === undefined) throw new Error(`"${step.set.date}" is no date (MM-DD)`);
         if (step.set.time != null && w.setTime(step.set.time) == null) throw new Error(`"${step.set.time}" is no time of day (HH:MM)`);
+        if (step.set.weather != null && !w.setWeather(step.set.weather)) throw new Error(`${JSON.stringify(step.set.weather)} is no weather`);
       }
       if (step.message) w.events.emit("scenario.message", { scenario: this.current, text: step.message });
       if (step.call) w.services.call(step.call, { source: "scenario" });

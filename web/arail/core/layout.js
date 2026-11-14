@@ -8,7 +8,8 @@
  */
 
 import { markersUsed } from "./anchors.js";
-import { DEFAULT_CLOCK, parseTime } from "./clock.js";
+import { DEFAULT_CLOCK, parseDate, parseTime } from "./clock.js";
+import { weatherProblems } from "./weather.js";
 import { DICTIONARIES } from "./detector.js";
 import { composeLayout, layerProblems } from "./layers.js";
 
@@ -156,6 +157,7 @@ export function normalizeLayout(json = {}) {
     },
     services: { ...DEFAULT_SERVICES, ...(isObject(j.services) ? j.services : {}) },
     clock: { ...DEFAULT_CLOCK, ...(isObject(j.clock) ? j.clock : {}) },
+    weather: j.weather ?? null,
     grid: normalizeGrid(j.grid),
     simulations: list(j.simulations, typed) ?? [{ type: "passengers" }],
     objects: list(j.objects, typed) ?? [],
@@ -253,12 +255,16 @@ export function validateLayout(json, registry) {
   if (isObject(json.view) && json.view.extend_below != null && json.view.extend_below !== 0 && !extendBelowOf(json)) {
     problems.push(`view.extend_below must be a number from 0 to ${EXTEND_BELOW_MAX} (a share of the photo's height)`);
   }
+  if (isObject(json.clock) && json.clock.date != null && parseDate(json.clock.date) == null) problems.push(`clock.date "${json.clock.date}" is no date (MM-DD)`);
+  problems.push(...weatherProblems(json.weather));
   (Array.isArray(json.scenarios) ? json.scenarios : []).forEach((s, i) => {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);
     if (!s.id) problems.push(`scenarios[${i}] has no id`);
     if (!Array.isArray(s.steps)) problems.push(`scenarios[${i}].steps must be a list`);
     else s.steps.forEach((st, k) => {
       if (isObject(st?.set) && st.set.time != null && parseTime(st.set.time) == null) problems.push(`scenarios[${i}].steps[${k}].set.time "${st.set.time}" is no time of day (HH:MM)`);
+      if (isObject(st?.set) && st.set.date != null && parseDate(st.set.date) == null) problems.push(`scenarios[${i}].steps[${k}].set.date "${st.set.date}" is no date (MM-DD)`);
+      if (isObject(st?.set) && st.set.weather != null) for (const p of weatherProblems(st.set.weather)) problems.push(`scenarios[${i}].steps[${k}].set.${p}`);
     });
   });
   // settings of simulations: checked by the simulation class (`static validate(config, layout)`), if it has one

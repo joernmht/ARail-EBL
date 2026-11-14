@@ -271,7 +271,8 @@ function fillPolygons(view, quads, colour, order, alpha = 0.92) {
   view.ground(order, (ctx) => {
     b.drawn = true;
     ctx.globalAlpha *= alpha;
-    ctx.fillStyle = view.dim(colour);
+    // streets in use take half of the snow cover; wet, they are darker
+    ctx.fillStyle = view.dim(view.tone(colour, 0.5));
     ctx.beginPath();
     for (const p of b.polys) {
       ctx.moveTo(p[0][0], p[0][1]);
