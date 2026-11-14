@@ -101,26 +101,29 @@ moves away from the markers to stay steady (a few pixels).
 
 ## The project page's video
 
-The video spans the whole width of the project page, 16:9 (1280 × 720, 21 s, looping). It shows
-the layout first and ARail second, from four cameras in turn:
+The video spans the whole width of the project page, 16:9 (1280 × 720, 1 min 54 s, about 10 MB,
+looping). It shows the layout first and ARail second, from 22 cameras in turn (`hero.json`):
 
-| Camera | The real layout | Then in ARail |
-| --- | --- | --- |
-| the curve, a freight train (`ebl-curve-trains.mp4`, cut to 16:9; the clip moving) | 2.5 s | the town and its sky |
-| Bf Neustadt (`ebl-station-trains.mp4`, frame 40 held) | 2.5 s | platforms, people, trams, buses, the town |
-| beside the container train (`ebl-terminal-wagons.mp4`, frame 290 held) | 2.5 s | the terminal round the real wagons |
-| beside the truck (`ebl-terminal-truck.mp4`, frame 230 held) | 2.5 s | the crane sets a container on the truck |
+- **the curve** with a freight train (`ebl-curve-trains.mp4`, cut to 16:9): the only camera shown
+  moving; its poses are stabilized as above;
+- **frames of the lab's clips, held** with the app's Freeze: Bf Neustadt three times
+  (`ebl-station-trains.mp4`), the container train twice (`ebl-terminal-wagons.mp4`), and beside the
+  truck, where the crane sets a container on it (`ebl-terminal-truck.mp4`);
+- **photos**: 14 of the [photo map](../web/lab-map/) (`plans/photos/`, each in the app with the
+  layout of its digital layer, `?photo=`), and the terminal at the crane (`crane-terminal.json`).
 
-The real picture fades into ARail over 0.8 s, and ARail stays 2.3 s; between the cameras a
-crossfade of 0.5 s. No part lasts more than 3 s, no camera more than 6 s. The real picture comes
-first because it is what the video explains: this is the model railway on the table, and this is
-what ARail lays over it.
+Each camera shows the real picture for 2.5 s, which fades into ARail over 0.8 s; ARail stays 2.3 s;
+between the cameras a crossfade of 0.5 s. No part lasts more than 3 s, no camera more than 6 s. The
+real picture comes first because it is what the video explains: this is the model railway on the
+table, and this is what ARail lays over it. The cameras alternate between the town, the station and
+the terminal, and the video ends on two wide views over the hall before it starts again on the
+curve.
 
-Only the curve is shown moving: its poses are stabilized as above. The other clips are drawn with
-the app's tracker alone, which is not steady enough for a moving shot, so each of them is one frame
-held with the app's Freeze (as in [the terminal scene](#the-terminal-scene-one-fixed-frame)): the
-simulation runs on, and a slow move within the picture (the `crop` from one box to another) keeps
-it alive. The real picture before it is the same frame of the clip (`still`), so the fade lines up.
+The clips other than the curve are drawn with the app's tracker alone, which is not steady enough
+for a moving shot. So each of them, like each photo, is one picture held: the simulation runs on
+(trains, buses, people), and a slow move within the picture (the `crop` from one box to another: a
+push in, or a pan) keeps it alive. Before it, the same picture without ARail (`bare`: the photo, or
+the same frame of the clip with `still`), so the fade lines up.
 
 The station and the container train are rendered from copies of their clips at 1280 px
 (`page-videos.sh` makes them): the browser of the render loads the whole clip as one file, and the
@@ -133,18 +136,21 @@ What there is to cut from, and what the video uses (the clips are described in
 
 | Material | Size | In the video |
 | --- | --- | --- |
-| `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the first camera (frames 20–189) |
-| `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | the second camera (frame 40) |
-| `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | the third camera (frame 290) |
-| `examples/media/ebl-terminal-truck.mp4` | 10 s, 1920 × 1080 | the fourth camera (frame 230) |
+| `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the first camera, moving (frames 20–189) |
+| `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | three cameras: frames 40, 175 and 250, held |
+| `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | two cameras: frames 0 and 290, held (at frame 200 its markers are not found) |
+| `examples/media/ebl-terminal-truck.mp4` | 10 s, 1920 × 1080 | one camera: frame 230, held |
+| `web/media/ebl-terminal.jpg` | photo, 1600 × 1205 | the terminal at the crane |
+| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 14 of those 35; the others of Waldhof show little of ARail, or repeat a view |
 | `examples/media/ebl-lab-video.mp4` | 16 s, 1920 × 1080 | not used: it carries an editor's watermark |
 | `web/media/ebl-container-train.jpg` | photo, 1600 × 900 | not in this video; the terminal card's video starts on it |
 | the flyover at a bus stop | | not used any more: it has no real picture before it |
 | the EBL's digital twin (screen recording from the deck of 22 October 2026) | 70 s, 1600 × 900 | not used: the twin is the lab's own project, not ARail. Its first 14 s are on How it works (`web/media/ebl-twin.mp4`) |
 
-A new clip of the lab joins the video as a new camera: add it to `examples/media/` and its README,
-write a plan for its shot (as `station.json`: a frame held with `freeze`), render it, and add a part
-with `bare` (`still`, the same frame) to `hero.json`, keeping each part to 3 s or less.
+A new clip or photo of the lab joins the video as a new camera: a clip goes to `examples/media/` and
+its README; write a plan for its shot (a frame held with `freeze`, as `station.json`, or a photo, as
+the plans in `plans/photos/`), render it, and add a part with `bare` to `hero.json`, keeping each part
+to 3 s or less. A photo of the photo map needs only its plan.
 
 ## The terminal scene: one fixed frame
 
@@ -212,9 +218,9 @@ arail-stabilize build/video/town-raw.json -o build/video/town-poses.json --motio
 node tools/video/render.mjs tools/video/plans/town-pass2.json
 ```
 
-`tools/video/page-videos.sh` runs all shots (the town, Bf Neustadt and the container train each with
-a frame held, the terminal's photo and frozen frame) and both compositions (`hero.json`, the project page's
-video, and `terminal-card.json`); it takes half an hour or more.
+`tools/video/page-videos.sh` runs all shots (the town; the held frames of the station, the container
+train and the truck; the terminal's photos; the photos of the photo map) and both compositions (`hero.json`, the project page's
+video, and `terminal-card.json`); it takes about an hour.
 
 ## What could run live
 
