@@ -68,6 +68,35 @@ const atLeast = (view, at, mm, px) => Math.max(mm, (px * view.px) / Math.max(1e-
 const circle = ([x, y], r, n = 22) => Array.from({ length: n }, (_, i) => [x + r * Math.cos((i * 2 * Math.PI) / n), y + r * Math.sin((i * 2 * Math.PI) / n)]);
 
 /**
+ * The maintenance base: its yard and its hall with the gate.
+ * @param {import("../arail/index.js").View} view
+ * @param {typeof DISTRICT_TABLE.base} base
+ */
+export function drawBase(view, base) {
+  const b = base, m = (x) => view.m(x);
+  const yard = [[b.yard[0][0] - m(6), b.at[1]], [b.yard.at(-1)[0] + m(6), b.at[1]], [b.yard.at(-1)[0] + m(6), b.gate[1] - m(5.5)], [b.yard[0][0] - m(6), b.gate[1] - m(5.5)]];
+  view.polygon(yard, { fill: grey(0.66), stroke: grey(0.5), width: 1, order: 3 });
+  view.faces(prismFaces(rectFootprint(b.at, m(30), m(11)), 0, m(6), { side: grey(0.8), top: grey(0.6) }), [b.at[0], b.at[1], m(3)]);
+  view.faces(prismFaces(rectFootprint([b.at[0], b.at[1] + m(5.6)], m(26), m(0.4)), 0, m(4.2), { side: CD.dunkelblau, top: CD.dunkelblau }), [b.at[0], b.at[1] + m(5.6), m(2)]);
+}
+
+/**
+ * A team's van: white, its roof in the colour of its trade; a technician's is a little smaller.
+ * @param {import("../arail/index.js").View} view
+ * @param {number[]} at [x, y] layout mm
+ * @param {number[]} dir where it looks
+ * @param {{trade?: string, small?: boolean, beacon?: number | null}} [options] beacon: how bright its beacon is (0 … 1), or null
+ */
+export function drawTeamVan(view, at, dir, { trade = "signalling", small = false, beacon = null } = {}) {
+  const [x, y] = at, m = (v) => view.m(v), k = small ? VAN.small : 1;
+  if (!view.inImage(x, y, 0, 120)) return;
+  const l = Math.hypot(dir[0], dir[1]) || 1, u = [dir[0] / l, dir[1] / l];
+  const half = (m(VAN.length_m) * k) / 2, rear = [x - u[0] * half, y - u[1] * half], front = [x + u[0] * half, y + u[1] * half], roof = ROOF[trade] ?? grey(0.5);
+  view.faces(boxFaces(rear, front, m(VAN.width_m) * k, m(0.35), m(VAN.height_m) * k, { side: "#f2f2ef", top: roof, end: grey(0.86) }), [x, y, m(1.2)]);
+  if (beacon != null) view.glow([x, y, m(VAN.height_m + 0.3)], m(1.2), CD.orange, beacon);
+}
+
+/**
  * What is wrong with a district on the table: a place or a fault of the game without its spot, a
  * spot outside the part of the layout the table's camera may look at.
  * @param {typeof DISTRICT_TABLE} [table]
@@ -264,10 +293,7 @@ export class DistrictBoard {
   /** The maintenance base: its hall and its yard; it pulses in the choice's colour while a technician can be called from it. */
   _base(view, g) {
     const b = this.table.base, m = (x) => view.m(x), beat = view.pulse ?? 1;
-    const yard = [[b.yard[0][0] - m(6), b.at[1]], [b.yard.at(-1)[0] + m(6), b.at[1]], [b.yard.at(-1)[0] + m(6), b.gate[1] - m(5.5)], [b.yard[0][0] - m(6), b.gate[1] - m(5.5)]];
-    view.polygon(yard, { fill: grey(0.66), stroke: grey(0.5), width: 1, order: 3 });
-    view.faces(prismFaces(rectFootprint(b.at, m(30), m(11)), 0, m(6), { side: grey(0.8), top: grey(0.6) }), [b.at[0], b.at[1], m(3)]);
-    view.faces(prismFaces(rectFootprint([b.at[0], b.at[1] + m(5.6)], m(26), m(0.4)), 0, m(4.2), { side: CD.dunkelblau, top: CD.dunkelblau }), [b.at[0], b.at[1] + m(5.6), m(2)]);
+    drawBase(view, b);
     const chosen = this.picked === "base";
     if (this.active && (chosen || this._canCall(g))) view.polygon(circle([b.at[0], b.at[1] + m(8)], atLeast(view, b.at, m(3.2), 7) * (chosen ? 1.5 : 1 + 0.25 * beat)), { fill: rgba(TONE.choice, chosen ? 0.6 : 0.2 + 0.25 * beat), stroke: TONE.choice, width: 1.5, order: 7, emissive: true });
   }
@@ -307,20 +333,15 @@ export class DistrictBoard {
 
   /** A team: its van where it is, a ring under it where it can be chosen or sent, and its people at the asset while they are there. */
   _team(view, g, tm) {
-    const v = this.van(tm), m = (x) => view.m(x), beat = view.pulse ?? 1, k = tm.overtime ? VAN.small : 1;
-    const l = Math.hypot(v.dir[0], v.dir[1]) || 1, u = [v.dir[0] / l, v.dir[1] / l], [x, y] = v.at;
+    const v = this.van(tm), m = (x) => view.m(x), beat = view.pulse ?? 1, [x, y] = v.at;
     const chosen = this.picked === `team-${tm.id}`, offered = this.active && this.offers.some((o) => o.target === `team-${tm.id}` && !o.disabled);
     const free = this.active && tm.state === "ready" && g.faults.some((f) => f.state === "open" || f.state === "secured");
     if (chosen || offered || free) {
       const strong = chosen || offered;
       view.polygon(circle([x, y], atLeast(view, [x, y], m(3.6), 8) * (strong ? 1.2 + 0.3 * beat : 1)), { fill: rgba(TONE.choice, chosen ? 0.6 : strong ? 0.25 + 0.3 * beat : 0.16), stroke: rgba(TONE.choice, strong ? 1 : 0.6), width: strong ? 2 : 1.2, order: 7, emissive: true });
     }
-    if (view.inImage(x, y, 0, 120)) {
-      const half = (m(VAN.length_m) * k) / 2, rear = [x - u[0] * half, y - u[1] * half], front = [x + u[0] * half, y + u[1] * half], roof = ROOF[tm.trade] ?? grey(0.5);
-      view.faces(boxFaces(rear, front, m(VAN.width_m) * k, m(0.35), m(VAN.height_m) * k, { side: "#f2f2ef", top: roof, end: grey(0.86) }), [x, y, m(1.2)]);
-      // the beacon: on the road, and at a danger the team guards
-      if (v.driving || tm.state === "securing") view.glow([x, y, m(VAN.height_m + 0.3)], m(1.2), CD.orange, 0.5 + 0.5 * beat);
-    }
+    // the beacon: on the road, and at a danger the team guards
+    drawTeamVan(view, v.at, v.dir, { trade: tm.trade, small: tm.overtime, beacon: v.driving || tm.state === "securing" ? 0.5 + 0.5 * beat : null });
     const f = tm.fault ? g.fault(tm.fault) : null;
     if (!f || tm.state === "driving" || tm.state === "ready") return;
     // its people: beside the van while they wait for the closure, at the asset when they look, work or guard

@@ -2,10 +2,10 @@
  "format": "arail-mission/1",
  "id": "transportleitung",
  "title": "Transportleitung",
- "hook": "Six regional trains are yours. Hold the connection, or let it go?",
+ "hook": "Six regional trains are yours, and three come late. Hold the connection, or let it go?",
  "place": "trains",
- "text": "The morning at Bf Neustadt from the railway undertaking's side, alone: the regional trains RB 31 to RB 36 are yours. A feeder is announced late: ask to hold the connecting train, or let it go? Tell the passengers of every delay of three minutes or more. And your own trouble comes in for the trains later in the day: a driver calls in sick, a unit reports a defect; each has a lawful way out and a tempting one.",
- "mode": "solo",
+ "text": "The morning at Bf Neustadt from the railway undertaking's side, on the lab's table: the regional trains RB 31 to RB 36 are yours, and the signaller (the computer's seat) runs them. Three feeders come late. For each: ask to hold the connecting train at platform 2, or let it go? Who misses it waits half an hour, who sits in a held train loses the minutes. Tell the passengers of every delay of three minutes or more: tap the train. And your own trouble comes in for the trains later in the day: a driver calls in sick, a unit reports a defect; each has a lawful way out and a tempting one.",
+ "mode": "cooperative",
  "seed": 1,
  "roles": [
   {
@@ -13,6 +13,20 @@
    "game": "transport-control",
    "seat": "human",
    "level": "normal"
+  },
+  {
+   "role": "signaller-relay",
+   "game": "signaller",
+   "seat": "computer",
+   "level": "training",
+   "options": {
+    "late": {
+     "RB 31": 180,
+     "RB 33": 390,
+     "RB 35": 150
+    }
+   },
+   "weight": 0
   }
  ],
  "rounds": 1,
@@ -22,7 +36,8 @@
    "kind": "shift",
    "title": "The morning shift",
    "roles": [
-    "ru-control-dispatcher"
+    "ru-control-dispatcher",
+    "signaller-relay"
    ],
    "length": 2400,
    "clock": "08:00"
@@ -32,22 +47,54 @@
   {
    "phase": "shift",
    "at": 2,
+   "seats": [
+    "ru-control-dispatcher"
+   ],
    "who": {
     "name": "A. Schwalbe",
     "role": "Driver, on the radio",
     "portrait": "uniform"
    },
-   "say": "Operations control? One thing before it gets busy: tell the passengers about every delay of three minutes or more. They forgive a late train. They do not forgive silence."
+   "say": "Operations control? The trains with a ring on the table are ours. One thing before it gets busy: tell the passengers about every delay of three minutes or more. Tap the train. They do not forgive silence."
+  },
+  {
+   "phase": "shift",
+   "at": 150,
+   "seats": [
+    "ru-control-dispatcher"
+   ],
+   "who": {
+    "name": "A. Schwalbe",
+    "role": "Driver, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "Watch platform 2: our trains meet there in pairs, and people change across the platform. When the first one is late, the second can wait for it. You ask, the signaller holds it."
   },
   {
    "phase": "shift",
    "at": 600,
+   "seats": [
+    "ru-control-dispatcher"
+   ],
    "who": {
     "name": "A. Schwalbe",
     "role": "Driver, on the radio",
     "portrait": "uniform"
    },
    "say": "If a colleague calls in sick: the stand-by driver is the lawful way out. Stretching somebody's shift is the tempting one."
+  },
+  {
+   "phase": "shift",
+   "at": 1250,
+   "seats": [
+    "ru-control-dispatcher"
+   ],
+   "who": {
+    "name": "A. Schwalbe",
+    "role": "Driver, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "A held train costs everybody aboard its minutes, and from four minutes a penalty. A missed connection costs the changers half an hour. Count heads before you ask."
   }
  ],
  "debrief": [

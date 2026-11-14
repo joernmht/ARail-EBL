@@ -184,8 +184,10 @@ test("the board: it draws the shift on the table without a word, and a fault, a 
     full.step(1);
     b.board.step();
     if (i % 40) continue;
-    const c = countingContext();
-    b.board.draw(viewOf(b.world, b.board.bounds("all"), c));
+    const c = countingContext(), v = viewOf(b.world, b.board.bounds("all"), c);
+    b.board.draw(v);
+    v.render();
+    assert.ok(c.counts.fill > 5, "the board is drawn");
     assert.deepEqual(c.counts.text, [], `nothing written at ${full.at()}`);
     for (const f of b.board.shown()) tones.add(b.board.tone(f));
   }
@@ -227,7 +229,7 @@ test("one table for the games of a shift: the seat shown chooses on its board, t
   const ctx = countingContext(), canvas = { width: W, height: H, clientWidth: W, clientHeight: H, getContext: () => ctx, addEventListener() {}, dispatchEvent() {} };
   const scene = new LiveScene(canvas);
   assert.ok(await scene.load(TABLE_LAYOUT, TABLE_LAYOUT));
-  assert.deepEqual(BOARDS, { signaller: TableBoard, maintenance: DistrictBoard });
+  assert.deepEqual([BOARDS.signaller, BOARDS.maintenance], [TableBoard, DistrictBoard]);
   const world = scene.world, sig = new SignallerGame({ level: "normal" }), mt = new MaintenanceGame({ seed: 1 });
   const boards = () => world.simulations.filter((s) => s instanceof TableBoard || s instanceof DistrictBoard).map((s) => s.constructor.type).sort();
   // the dispatcher's seat: its board is the one chosen on, the signaller's shows its trains
@@ -252,6 +254,6 @@ test("one table for the games of a shift: the seat shown chooses on its board, t
   assert.deepEqual(boards(), ["district-board"]);
   assert.equal(world.services.planner, null);
   // a game without a board has no table; left, no board stays in the world
-  assert.equal(scene.setTable({ constructor: { id: "contract" } }), false);
+  assert.equal(scene.setTable({ constructor: { id: "lab" } }), false);
   assert.deepEqual([boards(), scene.board, scene.boards.size, scene.table], [[], null, 0, false]);
 });

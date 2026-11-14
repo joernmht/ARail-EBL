@@ -1748,10 +1748,11 @@ test("a session taken up again and left at once keeps what was decided, and what
   const errors = await open(page, `${PAGE}?mission=malus-month`);
   const stage = stageOf(page, "#seat-transport-authority-contract-manager"), saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.malus-month")));
   await page.locator("#start").click();
-  // what happened is read, the operator's contract manager speaks, the first decision is taken
-  for (let i = 0; i < 6 && !(await stage.locator(".vn-decisions").isVisible()); i++) await stage.locator(".vn-story .btn").first().click();
+  // what happened is read, the operator's contract manager speaks (the lines of the first period's plan), the first decision is taken
+  const said = missionOf("malus-month").story.filter((l) => l.phase === "plan" && (!l.rounds || l.rounds.includes(1))).length;
+  for (let i = 0; i < 8 && !(await stage.locator(".vn-decisions").isVisible()); i++) await stage.locator(".vn-story .btn").first().click();
   await expect(stage.locator(".vn-name strong")).toHaveText("T. Lerche");
-  expect(await page.evaluate(() => [...window.__play.heardLines].map(([seat, lines]) => [seat, lines.size]))).toEqual([["transport-authority-contract-manager", 1]]);
+  expect(await page.evaluate(() => [...window.__play.heardLines].map(([seat, lines]) => [seat, lines.size]))).toEqual([["transport-authority-contract-manager", said]]);
   await stage.locator(".play-options-row .btn").first().click();
   const diary = await page.evaluate(() => window.__play.diary);
   expect(diary).toHaveLength(1);
@@ -1765,7 +1766,7 @@ test("a session taken up again and left at once keeps what was decided, and what
     expect(await page.evaluate(() => window.__play.diary)).toEqual(diary);
   }
   // the line of the story that was answered is not said again
-  expect((await saved()).heard.seats["transport-authority-contract-manager"]).toHaveLength(1);
+  expect((await saved()).heard.seats["transport-authority-contract-manager"]).toHaveLength(said);
   expect(await page.evaluate(() => window.__play.beat("transport-authority-contract-manager"))).toBeNull();
   for (let i = 0; i < 6 && (await stage.locator(".vn-story .btn").count()); i++) {
     await expect(stage.locator(".vn-line")).not.toContainText("We are short of drivers");

@@ -8,7 +8,8 @@
 // For a game that has a board (BOARDS) it is more than that: the table (`setTable`). Then the world
 // is the one the game plays in. The signaller's trains run on the station's tracks and its signals
 // stand beside them (table.js), the maintenance dispatcher's vans drive the streets to the faults
-// (district.js); the table is the photo of the real one (the layout's orthophoto), the world runs
+// (district.js), the undertaking's operations control has its trains marked (control.js), and a slow
+// role's turn shows what its decisions are about (turn.js); the table is the photo of the real one (the layout's orthophoto), the world runs
 // at the game's speed, and the camera is the player's: it shows the station or a part of it, and can
 // be moved. What is clicked on the table is told to the page (`hit`). The games of one shift share
 // the table: the seat shown can choose on it, the others' games are drawn with it.
@@ -19,16 +20,18 @@
 // and the game is drawn onto the real table: augmented reality.
 import { SKY, SKY_NIGHT, clearUncovered, drawGroundImage, mipmaps } from "../app/flyover.js";
 import { Camera, FlyCamera, PlaneTracker, View, createWorld, orthoOf, rgba, toRad } from "../arail/index.js";
+import { ControlBoard } from "./control.js";
 import { DistrictBoard } from "./district.js";
 import { between, seenFrom } from "./shots.js";
 import { TableBoard } from "./table.js";
+import { TurnBoard } from "./turn.js";
 
 /**
  * The boards of the games that are played on the table, by the game's id: each draws its game on
  * the layout's world and says what of it is at a pixel (`show`, `draw`, `hit`, `placeOf`, `partOf`,
  * `bounds`, `dispose`; `active`, `picked`, `offers`).
  */
-export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard };
+export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
 
 /** Where the pages keep whether the backdrop is live. */
 export const LIVE_KEY = "arail.game.live";

@@ -227,7 +227,8 @@ fails); Zs 1 without the checks is a breach; no or the wrong reason recorded is 
 passed with 50 points, no danger to people and every train through.
 
 **Levels.** *Training*: no failures. *Normal*: the signal fails at 08:13. *Hard*: trains up to three
-minutes late, the signal fails at 08:11:40, one more freight train.
+minutes late, the signal fails at 08:11:40, one more freight train. A mission can say which trains
+come late, whatever the level (the seat's option `late`: a train's id and its seconds).
 
 **In the big game.** The signaller takes the timetable (from the capacity planning and the railway
 undertakings) and the trains' delays; gives delays to the undertakings' dispatchers and to
@@ -318,6 +319,43 @@ what is chosen says below it what is known of it, and its moves are buttons ther
 before. *Fault Night* is a late shift, 22:00 to 22:40: the town's windows are lit, and the lamps of
 the faults and the vans' beacons glow.
 
+**The undertaking's trains are on the table too.** *Transportleitung* is played on the table of
+the signaller's game that runs the same morning: the signaller's seat is the computer's, and the
+mission says which feeders come late (RB 31, RB 33 and RB 35). The regional trains have a thin
+ring where they are; a late one is marked at the end of the table it will come in at as soon as it
+is announced. A ring pulses orange while the train's passengers have not been told of its delay,
+and in the choice's colour while a question is about it: the feeder out on the line and the train
+at platform 2 that could wait for it. A click on a train chooses it; *Tell the passengers* is its
+move, below the picture of the connections (a row for each: the feeder, how many change, the train
+they change to; green once it is kept, red once it is missed), which stands small beside the table.
+A hold that is asked for is the signaller's to keep: the train stands at the platform with its
+doors open until the changers have crossed. Code: `web/game/control.js` (`ControlBoard`; Node
+tests in `tests/js/game-control.test.js`).
+
+**A turn is on the table too.** The asset manager, the contract manager and the budget
+rapporteur decide for a year or a month: their games have no trains to run, but what they decide
+about lies on the layout. In their turns the table shows the scene of their game, thing by thing:
+
+| Thing | On the table | Whose |
+| --- | --- | --- |
+| The condition of the track | A tint on every rail, from green (good) through yellow to red | asset manager, budget rapporteur |
+| The staff plan | The maintenance base with a van for every team, a smaller one for the technician on call | asset manager |
+| The renewals | Building sites on the rails: barriers, a machine, people at work; more of them the more is built | asset manager |
+| The speed restrictions | Yellow stretches of rail with their board on a post | asset manager |
+| Last year's faults | Red lamps that flash at the signals, the points, the level crossing: a few at a time, more the more faults the year had | asset manager |
+| The trips of a period | A tally of twenty discs along platform 1: on time, late, cancelled | contract manager |
+| The constituency's project | The stages of the line towards Bergheim: built ones a band with a new mast, the next one pulsing | budget rapporteur |
+
+What an open decision is about is a ring with a pin that pulses where it is: the teams and the
+technician on call at the base, the strategy on the platform tracks, the renewals at their building
+site, the asset responsible's proposal out on the line, the operator's emergency timetable at its
+trains. **A click on it brings that decision up** at the bottom; the choices are there as before
+(the dots beside them and the number keys work as before). So a year is planned by going round
+the district, not down a list. *The Night Session* is at night. A game says what its scene is
+(`view().scene`: a list of things, `{thing: "teams", n: 2, on_call: true}`, `{thing: "ask", id:
+"teams", at: "base"}`), and the board knows no game: `web/game/turn.js` (`TurnBoard`, `THINGS`,
+`PLACES`; Node tests in `tests/js/game-turn.test.js`).
+
 The code: `web/game/district.js` (`DISTRICT_TABLE`: the spots; `DistrictBoard`: drawing, the way of
 a van by the world's road network, what is clicked; Node tests in
 `tests/js/game-district.test.js`). A board per game is named in `BOARDS` (`web/game/live.js`); a
@@ -393,12 +431,15 @@ and for the heads of the other pages of the games:
   stands where the still picture was taken (`web/game/shots.js`), sways a little, and flies on
   when a question is about something else. It is an ornament and changes nothing in a game; on a
   phone, where less motion is asked for, or where it is too slow, the still pictures stay.
-- **A shift's picture is the table.** For a signaller's and a maintenance dispatcher's seat the
-  live picture is the game's own (the rail's **Table**, or **T**): the trains run on the lab's
-  layout and the signals stand there, the vans drive its streets to the faults, and what is clicked
+- **A shift's picture is the table.** For a signaller's, a maintenance dispatcher's and an
+  operations control's seat the live picture is the game's own (the rail's **Table**, or **T**):
+  the trains run on the lab's layout and the signals stand there, the vans drive its streets to the
+  faults, the undertaking's trains are marked, and what is clicked
   on the table is chosen; on the table's photo from above, on a photo of the lab, or through the
   camera in the lab itself ([the shift on the table](#the-shift-on-the-table)). The games of one
-  shift share the table; a seat whose game has no board yet watches it.
+  shift share the table; a seat whose game has no board yet watches it. The turns of the slow roles
+  are on the table as well: it shows what their decisions are about, and a click there brings the
+  decision up.
 - **A line or two first.** A mission says what it is in its `hook` ("Nine trains, forty minutes,
   and one signal that will fail."), with its facts as chips; a long text shows its first sentence
   (`lead` in `web/game/short.js`) and the rest behind More. The briefing, the seed and the wiring
@@ -459,13 +500,19 @@ A new game adds its place to `GAME_PLACES` and who asks in it to `GAME_CAST`; a 
 | Page | What |
 | --- | --- |
 | `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu (Continue, Missions, Signaller, Free play, Career, Roles, Logbook, Options, Leave). Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
-| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night, Transportleitung, Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The signaller's and the maintenance dispatcher's shifts are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
+| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/logbook/` | The logbook: the rank, the stars and the badges reached, the railway terms met as cards with a quiz, a sheet per mission played |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
 | `game/career/` | The career planner: a career from a school certificate through educations and jobs, chosen step by step |
 
 ## What comes next
+
+- More of every mission on the table: the faults of the dispatcher's district holding the
+  signaller's trains for real (a failed point, a level crossing that stays open), the operations
+  control's depot with its spare unit and its stand-by driver, the year of the slow roles played
+  out on the table between their turns (the faults as they come, the building sites as they move),
+  and the lab's own morning (`lab-morning`) on the lab's own trains.
 
 - The role games of the catalogue, one by one, each on the game core and with its ports, so that it
   joins a mission with the others; next those whose flows the first games already speak: the

@@ -633,6 +633,7 @@ export class AssetManagerGame extends Game {
       rows: done.map((y) => [y.year, y.grade_end.toFixed(2), y.faults, num(y.delay_min), `${eur(y.spent_eur)} of ${eur(y.money.maintenance_eur)}`, eur(y.unspent_eur), `${y.inspections_pct} %`]),
     });
     return {
+      scene: this._scene(),
       figures: [
         { label: "Year", value: this.rounds ? `${this.year} of ${this.rounds}` : Math.max(1, this.year) },
         { label: `Condition grade (target ${TARGET_GRADE})`, value: this.grade.toFixed(2), tone: this.grade <= TARGET_GRADE ? "ok" : this.grade <= TARGET_GRADE + SCORE.grade_span / 2 ? "warn" : "bad" },
@@ -655,5 +656,24 @@ export class AssetManagerGame extends Game {
         ],
       }] : [],
     };
+  }
+
+  /**
+   * The district's year as things a picture of the district can show (the table: web/game/turn.js):
+   * the condition of the track, the teams of the staff plan, the renewals as building sites, the
+   * speed restrictions, the faults of the year before, and what each open decision is about.
+   * @returns {Array<{thing: string}>}
+   */
+  _scene() {
+    const p = this.plan, last = this.years.filter((y) => y.settled).at(-1);
+    const about = { strategy: "tracks", renewals: "works", teams: "base", "on-call": "base", proposal: "asset" };
+    return [
+      { thing: "condition", grade: this.grade, target: TARGET_GRADE },
+      { thing: "teams", n: p.teams, on_call: !!p.on_call },
+      { thing: "works", n: Math.max(0, Object.keys(RENEWALS).indexOf(p.renewals)) + 1 },
+      { thing: "restrictions", n: Math.max(0, Math.round((this.grade - RESTRICTIONS.from_grade) * RESTRICTIONS.per_grade)) + this.permanent },
+      ...(last ? [{ thing: "faults", n: last.faults }] : []),
+      ...this.open.map((d) => ({ thing: "ask", id: d.id, at: about[d.id] ?? "station" })),
+    ];
   }
 }

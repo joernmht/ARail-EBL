@@ -197,6 +197,104 @@ test("the dispatcher's shift on the table: a fault and the van to send are chose
   expect(errors).toEqual([]);
 });
 
+test("the operations control's shift on the table: its trains are marked among the signaller's, a late one is chosen there, and its passengers are told", async ({ page }) => {
+  const CONTROL = "#seat-ru-control-dispatcher";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/game/play/?mission=transportleitung&live");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("arail.game.sound", "false");
+  });
+  await page.goto("/game/play/?mission=transportleitung&live");
+  await page.waitForFunction(() => window.__play?.ready);
+  await page.evaluate(async () => {
+    (await import("/game/live.js")).LIVE.slow_ms = 1e9;
+  });
+  // the operations control is the person's seat, the signaller's the computer's
+  await expect(page.locator("#by-ru-control-dispatcher")).toBeChecked();
+  await expect(page.locator("#by-signaller-relay")).not.toBeChecked();
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await page.waitForFunction(() => window.__play.tabled && window.__play.live?.view && window.__play.live.board?.constructor.type === "control-board");
+  expect(await page.evaluate(() => [...window.__play.live.boards.keys()].sort())).toEqual(["signaller", "transport-control"]);
+  expect(await inPicture(page)).toEqual([]);
+  // RB 31 is announced three minutes late: its ring is at the Bergheim end of the table, and the question is asked
+  await run(page, 3);
+  await page.evaluate(() => {
+    for (const story of document.querySelectorAll(".vn-story")) for (let i = 0; i < 50 && !story.hidden; i++) story.querySelector(".btn.primary")?.click();
+    window.__play.draw(true);
+  });
+  await expect(page.locator(`${CONTROL} .vn-decisions h5`).first()).toContainText("RB 31 comes late. Shall RB 32 wait for its passengers?");
+  expect(await page.evaluate(() => [...window.__play.live.board.asked()].sort())).toEqual(["RB 31", "RB 32"]);
+  await page.locator(`${CONTROL} .play-options-row button`).nth(1).click();
+  // the late train is chosen on the table, and its passengers are told with its move
+  await page.waitForFunction(() => window.__play.live.board.where("RB 31"));
+  await page.mouse.click(...(await where(page, "train-RB 31")));
+  await expect(page.locator(`${CONTROL} .play-board .pick[data-id="train-RB 31"]`)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(`${CONTROL} .play-picked`)).toContainText("RB 31: departs 08:03, about 3 min late, passengers not told yet");
+  await page.locator(`${CONTROL} .play-pick`).getByRole("button", { name: "Tell the passengers: RB 31 about 3 min late" }).click();
+  expect(await page.evaluate(() => {
+    const g = window.__play.session.seat("ru-control-dispatcher").game;
+    return [g.train("RB 31").informed != null, g.train("RB 32").held];
+  })).toEqual([true, { for: "RB 31", minutes: 4 }]);
+  // the signaller keeps the hold: RB 32 leaves when the changers of RB 31 have crossed, and the connection is kept
+  await page.evaluate(() => {
+    const p = window.__play;
+    for (let i = 0; i < 420; i++) p.session.step(1);
+    p.draw(true);
+  });
+  expect(await page.evaluate(() => window.__play.session.seat("ru-control-dispatcher").game.connections()[0])).toMatchObject({ from: "RB 31", to: "RB 32", kept: true });
+  await expect(page.locator(`${CONTROL} .play-board`)).toContainText("connection kept");
+  expect(errors).toEqual([]);
+});
+
+test("a turn on the table: what the asset manager's decisions are about pulses on the layout, and a click there brings the decision up", async ({ page }) => {
+  const ASSETS = "#seat-asset-manager";
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/game/play/?mission=budget-years&live");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("arail.game.sound", "false");
+  });
+  await page.goto("/game/play/?mission=budget-years&live");
+  await page.waitForFunction(() => window.__play?.ready);
+  await page.evaluate(async () => {
+    (await import("/game/live.js")).LIVE.slow_ms = 1e9;
+  });
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  // what happened and what is said is read first; then the decisions are asked, and the table shows what they are about
+  await page.evaluate(() => {
+    for (const story of document.querySelectorAll(".vn-story")) for (let i = 0; i < 300 && !story.hidden; i++) story.querySelector(".btn.primary")?.click();
+    window.__play.draw(true);
+  });
+  await page.waitForFunction(() => window.__play.tabled && window.__play.live?.view && window.__play.live.board?.constructor.type === "turn-board");
+  expect(await inPicture(page)).toEqual([]);
+  const state = () => page.evaluate(() => {
+    const p = window.__play, g = p.session.seat("asset-manager").game;
+    return { picked: p.live.board.picked, asks: p.live.board.asks().map((a) => a.id), open: g.open.map((d) => d.id), teams: g.plan.teams, scene: g.view().scene.find((x) => x.thing === "teams") };
+  });
+  const first = await state();
+  expect(first.asks).toEqual(first.open);
+  expect(first.picked).toBe(`ask-${first.open[0]}`);
+  await expect(page.locator(`${ASSETS} .vn-decisions h5`).first()).toHaveText("Year 1: the maintenance strategy");
+  // a click on the base: the question of the teams comes up, and its answer puts a third van there
+  await page.mouse.click(...(await where(page, "ask-teams")));
+  await expect(page.locator(`${ASSETS} .vn-decisions .play-decision:not(.waiting) h5`)).toHaveText("Year 1: the emergency teams");
+  expect((await state()).picked).toBe("ask-teams");
+  await page.keyboard.press("3");
+  await expect.poll(async () => (await state()).scene).toEqual({ thing: "teams", n: 3, on_call: true });
+  expect((await state()).asks).not.toContain("teams");
+  // the world goes on at its own pace in a turn, and the table can be switched off
+  expect(await page.evaluate(() => window.__play.live.pace)).toBe(1);
+  await page.keyboard.press("t");
+  await expect(page.locator("body")).not.toHaveClass(/\btabled\b/);
+  expect(errors).toEqual([]);
+});
+
 test("the table's camera: the parts of the station, nearer and farther, the keys; a choice on the panel brings it there", async ({ page }) => {
   const errors = await start(page);
   await run(page, 3);

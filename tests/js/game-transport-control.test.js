@@ -162,3 +162,56 @@ test("with the signaller: the delay notice comes in, the wish to hold the train 
   assert.equal(idle.seat("ru-control-dispatcher").game.connections()[0].kept, false);
   assert.equal(idle.flows.filter((f) => f.flow === "connection-request").length, 0);
 });
+
+test("the picture of the connections: a row for each, kept or missed once the train has left; a train whose passengers wait to be told pulses, and telling them is its move", () => {
+  const g = new TransportControlGame({ seed: 5, level: "normal" });
+  g.step(0.5);
+  const sketch = () => g.view().sketch, item = (id) => sketch().items.find((it) => it.id === id);
+  assert.equal(sketch().title, "Our trains");
+  // the six trains of the morning can be found by their id; a row has its feeder on the left, as it runs
+  assert.deepEqual(sketch().items.filter((it) => it.id).map((it) => it.id), ["train-RB 31", "train-RB 32", "train-RB 33", "train-RB 34", "train-RB 35", "train-RB 36"]);
+  assert.deepEqual([item("train-RB 31").text, item("train-RB 32").text], ["RB 31 →", "← RB 32"]);
+  for (const it of sketch().items) for (const k of ["x", "x1", "x2"]) if (it[k] != null) assert.ok(it[k] >= 0 && it[k] <= sketch().width, `${it.id ?? it.text}: in the picture`);
+  // RB 31 is announced late: it pulses, and its move tells its passengers
+  const a = item("train-RB 31");
+  assert.deepEqual([a.tone, a.alert], ["warn", "warn"]);
+  assert.match(a.title, /^RB 31: departs 08:\d\d, about \d min late, passengers not told yet$/);
+  assert.deepEqual(a.menu.map((m) => [m.name, m.args]), [["inform", ["RB 31"]]]);
+  assert.equal(item("train-RB 32").menu, undefined);
+  assert.deepEqual(g.act(a.menu[0].name, ...a.menu[0].args), { ok: true });
+  assert.deepEqual([item("train-RB 31").alert, item("train-RB 31").menu], [undefined, undefined]);
+  assert.match(item("train-RB 31").title, /passengers told$/);
+  // the connection: open while the train to change to has not left (held: the route's colour), then kept or missed
+  const line = (i) => sketch().items.filter((it) => it.kind === "line")[i], word = (i) => sketch().items.filter((it) => /connection|waits|needs|planned/.test(it.text ?? ""))[i].text;
+  assert.deepEqual([line(0).tone, word(0)], ["warn", `needs ${Math.ceil(g.train("RB 31").need_s / 6) / 10} min more`]);
+  g.act("decide", "hold-RB 32", "4");
+  assert.deepEqual([line(0).tone, word(0)], ["route", "waits up to 4 min"]);
+  assert.deepEqual([line(2).tone, word(2)], ["free", "as planned"]);
+  alone(g, { think: (x) => x.open.forEach((d) => x.act("decide", d.id, d.id.startsWith("hold-") ? "go" : "cancel")) });
+  assert.deepEqual([line(0).tone, word(0)], ["ok", "connection kept"]);
+  assert.deepEqual([line(1).tone, word(1)], ["bad", "connection missed"]);
+  // a train cancelled later in the day is in the picture too, and its passengers must be told
+  const cancelled = sketch().items.filter((it) => it.id && it.tone === "bad");
+  assert.deepEqual(cancelled.map((it) => [it.text, it.menu?.[0].name]), [["RB 37", "inform"], ["RB 38", "inform"]]);
+});
+
+test("with a signaller whose trains a mission lets come late: the delays are the signaller's, and a hold asked for is kept on the panel", () => {
+  // the trains come as late as the mission says, whatever the level
+  const sig = new SignallerGame({ level: "training", late: { "RB 33": 390, "RB 31": 180 } });
+  assert.deepEqual(sig.trains.filter((tr) => tr.enterAt !== tr.enter).map((tr) => [tr.id, tr.enterAt - tr.enter]), [["RB 31", 180], ["RB 33", 390]]);
+  assert.deepEqual(new SignallerGame({ level: "training", late: { "RB 31": "soon" } }).trains.filter((tr) => tr.enterAt !== tr.enter), []);
+  const games = new Map([SignallerGame, TransportControlGame].map((G) => [G.id, G]));
+  const mission = normalizeMission({
+    format: "arail-mission/1", id: "late", title: "Late", text: "A test.",
+    roles: [{ role: "ru-control-dispatcher", game: "transport-control", seat: "computer" }, { role: "signaller-relay", game: "signaller", seat: "computer", level: "training", options: { late: { "RB 31": 180, "RB 33": 390 } } }],
+    phases: [{ id: "shift", kind: "shift", roles: ["ru-control-dispatcher", "signaller-relay"], length: 2400, clock: "08:00" }],
+  }, games);
+  const s = new Session(mission, { games, seed: 1 }).run(), tc = s.seat("ru-control-dispatcher"), told = s.flows.filter((f) => f.flow === "delay-notice" && f.payload.stage === "approaching").map((f) => [f.payload.train, f.payload.delay_min]);
+  assert.deepEqual(told, [["RB 31", 3], ["RB 33", 6.5]]);
+  // the three minutes of RB 31 are worth a hold, and the signaller keeps it; the six and a half of RB 33 are not
+  assert.deepEqual(s.flows.filter((f) => f.flow === "connection-request").map((f) => f.payload), [{ hold: "RB 32", for: "RB 31", minutes: 4 }]);
+  const left = Object.fromEntries(s.flows.filter((f) => f.flow === "delay-notice" && f.payload.stage === "departed").map((f) => [f.payload.train, f.payload.delay_min]));
+  assert.ok(left["RB 32"] >= 2 && left["RB 32"] <= 4, `RB 32 waited ${left["RB 32"]} min`);
+  assert.equal(left["RB 34"], undefined);
+  assert.ok(tc.results[0].passed && tc.results[0].score >= 95, String(tc.results[0].score));
+});

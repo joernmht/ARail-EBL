@@ -25,10 +25,10 @@ const BASE = "../../";
 const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
 /**
  * Where the page keeps whether a shift is played on the table (the live picture as the game's own: table.js,
- * district.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
+ * district.js, control.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
-const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
 const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
@@ -296,7 +296,7 @@ class PlayPage {
     // the table's controls are in the side bar, behind its button (nothing of them stands on the picture)
     mount($("#tableBar"),
       h("button", { class: "btn small", type: "button", id: "tableOn", "aria-pressed": String(this.tableOn), onclick: () => this.setTable(!this.tableOn) }, "Play on the table"),
-      h("p", { class: "hint", id: "tableOff" }, "The signaller's and the maintenance dispatcher's seats are played on the table, while the picture is live."),
+      h("p", { class: "hint", id: "tableOff" }, "A shift at Bf Neustadt is played on the table, while the picture is live."),
       h("div", { class: "table-group", id: "tableSources", role: "group", "aria-label": "The table seen through" },
         TABLE_SOURCES.map(([kind, label, title]) => h("button", { class: "btn small", type: "button", "data-source": kind, "aria-pressed": String(kind === "table"), title, onclick: () => this.setSource(kind) }, label))),
       h("div", { class: "table-group", id: "tableParts", role: "group", "aria-label": "What the camera shows" },
@@ -446,7 +446,8 @@ class PlayPage {
     const tabled = !!this.live?.setTable(game, table ?? {});
     const shown = tabled || (!!shot && !!this.live?.can(shot));
     if (tabled) {
-      this.live.clock(time);
+      // (a turn has no time of day: the table has that of the place's picture, a night session the night)
+      this.live.clock(time ?? shot?.time ?? null);
       this.live.start();
     } else if (shown) {
       this.live.look(shot, { time });
@@ -507,13 +508,15 @@ class PlayPage {
    * board, with what is chosen in its picture and the moves offered from it (a move names the route it sets, or the
    * thing of the picture it needs: `target`); and the other games of the shift that have a board, drawn with it.
    * A seat whose game has no board watches the others' table. Null where no game of the shift has a board.
+   * A slow role's turn is on the table too: its game's scene, with the decision in focus (`focus`) as what is chosen.
    */
-  tableOf(seat, can, item) {
+  tableOf(seat, can, item, focus = null) {
     const on = (x) => x.game && TABLE_GAMES.has(x.Game.id);
     const others = (this.session?.active ?? []).filter((x) => x !== seat && on(x)).map((x) => x.game);
     if (!on(seat)) return others.length ? { game: others[0], active: false, picked: null, offers: [], others: others.slice(1) } : null;
     const offers = (item?.menu ?? []).map((m, i) => ({ i, route: m.name === "setRoute" ? m.args?.[0] ?? null : null, target: m.target ?? null, disabled: !!m.disabled }));
-    return { game: seat.game, active: can, picked: can ? item?.id ?? null : null, offers: can ? offers : [], others };
+    // (in a turn nothing of a picture is chosen: the decision in focus is, where the table shows what it is about)
+    return { game: seat.game, active: can, picked: can ? item?.id ?? (focus ? `ask-${focus.id}` : null) : null, offers: can ? offers : [], others };
   }
 
   /** A shift is played on the table (T), or on the seats' own pictures alone (kept in the browser). */
@@ -608,6 +611,8 @@ class PlayPage {
     const seat = this.session?.seat(this.tab), p = seat && this.panels.get(seat.id);
     // (a seat whose game has no board only watches the table of the others)
     if (!hit || !p || !this.atWork(seat) || seat.by !== "human" || !TABLE_GAMES.has(seat.Game.id)) return;
+    // in a turn: what a decision is about brings that decision up
+    if (hit.ask != null) return void this.look(seat.id, hit.ask);
     const chosen = this.picked.get(seat.id);
     if (hit.item) return void (hit.item === chosen ? this.unpick(seat.id) : this.pick(seat.id, hit.item, false));
     const item = this.view(seat.game).sketch?.items.find((it) => it.id === chosen);
@@ -1455,7 +1460,7 @@ class PlayPage {
     const night = turn ? null : nightAt(s.phase.clock, s.t);
     // the signaller's picture can be the table itself: the game on the layout, with what is chosen and the routes offered from a signal chosen
     const item = view.sketch?.items.find((it) => it.id === this.picked.get(seat.id));
-    const table = this.tableOn && g && active && !turn ? this.tableOf(seat, can, item) : null;
+    const table = this.tableOn && g && active ? this.tableOf(seat, can, item, turn ? focus : null) : null;
     this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
       { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t), table });
 
@@ -2083,7 +2088,8 @@ class PlayPage {
       const held = this.listening();
       if (!s.over && s.phase.kind === "shift" && this.speed > 0 && !held) s.step(dt * this.speed);
       // the world of the table runs with the game
-      if (this.live) this.live.pace = s.over || s.phase.kind !== "shift" || held ? 0 : this.speed;
+      // (in a turn at its own pace: the year has no clock)
+      if (this.live) this.live.pace = s.over ? 0 : s.phase.kind !== "shift" ? 1 : held ? 0 : this.speed;
       $("#shiftBar").classList.toggle("held", held);
       // games whose world is elsewhere exchange with it between the steps, one exchange at a time
       if (!s.over && !this.exchanging && typeof s.sync === "function") {
