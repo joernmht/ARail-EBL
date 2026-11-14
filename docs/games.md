@@ -353,7 +353,9 @@ technician on call at the base, the strategy on the platform tracks, the renewal
 site, the asset responsible's proposal out on the line, the operator's emergency timetable at its
 trains. **A click on it brings that decision up** at the bottom; the choices are there as before
 (the dots beside them and the number keys work as before). So a year is planned by going round
-the district, not down a list. *The Night Session* is at night. A game says what its scene is
+the district, not down a list. With two slow roles in one turn (*Three years of Neustadt*) the
+table shows the other's things too, but only the seat shown tints the rails and has its questions
+there. A year without faults has no lamps. *The Night Session* is at night. A game says what its scene is
 (`view().scene`: a list of things, `{thing: "teams", n: 2, on_call: true}`, `{thing: "ask", id:
 "teams", at: "base"}`), and the board knows no game: `web/game/turn.js` (`TurnBoard`, `THINGS`,
 `PLACES`; Node tests in `tests/js/game-turn.test.js`).

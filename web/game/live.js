@@ -518,6 +518,7 @@ export class LiveScene {
       if (!b) this.boards.set(id, (b = new BOARDS[id](this.world)));
       const mine = g === game;
       b.show(g);
+      b.mine = mine;
       b.active = mine && active;
       b.picked = mine ? picked : null;
       b.offers = mine && active ? offers : [];

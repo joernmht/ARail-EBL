@@ -86,6 +86,8 @@ export class TurnBoard {
     this.offers = [];
     /** Whether a person can choose (else the board only shows). */
     this.active = false;
+    /** Whether its game is that of the seat shown (else it is drawn beside it, without what is the seat's alone). */
+    this.mine = true;
     world.simulations.push(this);
   }
 
@@ -161,8 +163,10 @@ export class TurnBoard {
   draw(view) {
     if (!this.game) return;
     const scene = this.scene();
-    for (const x of scene) this[`_${x.thing}`]?.(view, x);
-    this._asks(view, scene);
+    // the condition of the rails and the decisions asked are the seat's own: another seat's board of the same turn
+    // (two slow roles at one table) draws neither, so its grade does not tint the rails and its pins take no tap
+    for (const x of scene) if (this.mine || x.thing !== "condition") this[`_${x.thing}`]?.(view, x);
+    if (this.mine && this.active) this._asks(view, scene);
   }
 
   /** The condition of the track: every rail of the station and its lines tinted by the grade. */
@@ -223,7 +227,9 @@ export class TurnBoard {
 
   /** Last year's faults: red lamps that flash at the assets, a few at a time, more of them the more faults the year had. */
   _faults(view, x) {
-    const all = this.assets(), n = Math.max(1, Math.min(FLASH.most, Math.round((x.n ?? 0) / FLASH.per))), t = view.time ?? 0, set = Math.floor(t / FLASH.every_s), beat = view.pulse ?? 1;
+    // (a year without faults has no lamps; a year with a few has one)
+    if (!(x.n > 0)) return;
+    const all = this.assets(), n = Math.max(1, Math.min(FLASH.most, Math.round(x.n / FLASH.per))), t = view.time ?? 0, set = Math.floor(t / FLASH.every_s), beat = view.pulse ?? 1;
     for (let i = 0; i < n; i++) {
       // (which assets: another few every few seconds, the same for everybody who looks)
       const at = all[(set * 7 + i * 5) % all.length], r = atLeast(view, at, view.m(2.4), 6);
@@ -284,7 +290,7 @@ export class TurnBoard {
    * @returns {{ask: string} | null}
    */
   hit(view, [u, v], scale = 1) {
-    if (!this.game) return null;
+    if (!this.game || !this.mine || !this.active) return null;
     const mz = view.m(1);
     let best = null;
     for (const a of this.asks()) {

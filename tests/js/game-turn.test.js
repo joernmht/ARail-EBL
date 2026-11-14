@@ -50,6 +50,8 @@ function boardOf(game) {
   world.setLayers(TABLE_VIEW.layers);
   const board = new TurnBoard(world);
   board.show(game);
+  // (the seat shown, a person at it)
+  board.active = true;
   return { world, board };
 }
 
@@ -146,6 +148,20 @@ test("the board: it draws a scene thing by thing without a word; what a decision
   assert.match(said[0], /no scene/);
   // the games give their scene without their whole view
   assert.deepEqual(g.scene(), g.view().scene);
+  // a year without faults has no lamps
+  assert.equal(only([{ thing: "faults", n: 0 }]), 0);
+  // another seat's board of the same turn: its things, but neither its tint of the rails nor its questions, and no tap
+  const other = boardOf({ view: () => ({ scene: [{ thing: "condition", grade: 4.4 }, { thing: "ask", id: "x", at: "station" }, { thing: "works", n: 1 }] }) }).board;
+  other.mine = false;
+  other.active = false;
+  assert.equal(drawn(other, world).fill, only([{ thing: "works", n: 1 }]));
+  const ov = viewOf(world, other.bounds("all"));
+  assert.equal(other.hit(ov, ov.project(...PLACES.station, 0)), null);
+  // a computer's seat shown: its things, no questions to tap
+  const watched = boardOf(g).board;
+  watched.active = false;
+  assert.equal(watched.hit(ov, ov.project(...PLACES.base, 0)), null);
+  board.active = true;
   // the questions: two at the base stand side by side; a click names the decision, and the one in focus is chosen
   const asks = board.asks();
   assert.deepEqual(asks.map((a) => a.id), g.open.map((d) => d.id));
@@ -183,6 +199,7 @@ test("a turn in the live picture: the game's board is on the table with the deci
   assert.equal(scene.setTable(am, { active: true, picked: "ask-teams", others: [cm] }), true);
   assert.ok(scene.board instanceof TurnBoard);
   assert.deepEqual([scene.board.game, scene.board.picked, scene.boards.get("contract").game, scene.boards.get("contract").active], [am, "ask-teams", cm, false]);
+  assert.deepEqual([scene.board.mine, scene.boards.get("contract").mine], [true, false]);
   assert.equal(scene.boards.size, 2);
   scene.draw(1e9);
   assert.ok(ctx.counts.fill > 40);
