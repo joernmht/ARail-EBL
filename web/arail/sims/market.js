@@ -33,7 +33,7 @@ const LAST_ENTRY_MIN = 30;
 const SUBSTEP_S = 0.25;
 /** Spacing of the people in a queue (m). */
 const QUEUE_M = 0.7;
-/** A queue this long sends people to another stall of the same kind, or makes them give up (people). */
+/** A queue this long sends people to the next best stall of the same kind; all that long, they give up what they wanted (people). */
 const QUEUE_MAX = 12;
 /** Clock minutes people wait at the station for a train home before they go another way. */
 const STATION_PATIENCE_MIN = 75;
@@ -331,13 +331,27 @@ export class MarketSimulation extends Simulation {
       on("passenger.boarded", (e) => this._boarded(e)),
       on("passenger.removed", (e) => this._gone(e.agent)),
       on("vehicle.arrived", (e) => this._vehicleArrived(e)),
-      on("clock.set", () => this.enabled && this._afterJump()),
-      on("clock.day", () => (this.today = this._emptyDay())),
+      on("clock.set", () => {
+        if (!this.enabled) return;
+        this._afterJump();
+        this._wasOpen = this.isOpen(); // filled now: the first step does not fill it again
+      }),
+      on("clock.day", () => this._newDay()),
     ];
   }
 
   dispose() {
     this._off.forEach((off) => off());
+  }
+
+  /** Midnight: the figures of today start again, the market's and each stall's. */
+  _newDay() {
+    this.today = this._emptyDay();
+    for (const s of this.stalls.values()) {
+      s.sold = 0;
+      s.takings = 0;
+      s.waits = [];
+    }
   }
 
   _emptyDay() {
@@ -392,7 +406,20 @@ export class MarketSimulation extends Simulation {
     // people whose square is gone go home; the others keep where they are
     const ids = new Set(this._venues.map((v) => v.id));
     for (const v of [...this.visitors]) if (!ids.has(v.venue)) this._remove(v);
-    for (const v of this.visitors) if (v.state === "market") v.task = null;
+    // what people on the square are doing stays valid where its stall, ride or gate is still there
+    for (const v of this.visitors) {
+      if (v.state !== "market" || !v.task) continue;
+      const venue = this._venues.find((x) => x.id === v.venue), t = v.task;
+      let ok = true;
+      if (t.type === "queue") ok = venue.stalls.some((o) => o.id === t.stall);
+      else if (t.type === "ride") ok = venue.rides.some((o) => o.id === t.ride);
+      else if (t.type === "leave") ok = !!(t.gate = venue.gates.find((g) => g.key === t.gate.key) || this._nearestGate(venue, t.gate.pos));
+      if (!ok) {
+        this._leaveQueues(v);
+        this._leaveTable(v);
+        v.task = null;
+      }
+    }
     return this._venues;
   }
 
@@ -816,19 +843,13 @@ export class MarketSimulation extends Simulation {
         const d = Math.hypot(info.counter[0] - v.pos[0], info.counter[1] - v.pos[1]) / venue.k;
         return (g.weight * (child && g.kids ? 3 : 1)) / (1 + q / 4) / (1 + d / 40) * rng.uniform(0.6, 1.4);
       };
-      let best = null, bs = -1;
-      for (const o of stalls) {
-        const s = score(o);
-        if (s > bs) {
-          bs = s;
-          best = o;
-        }
-      }
-      const s = this._stall(best.id);
-      if (s.queue.length >= QUEUE_MAX) {
+      // the best stall whose queue is not full; all full: give it up, annoyed
+      const best = stalls.map((o) => [score(o), o]).sort((a, b) => b[0] - a[0]).map(([, o]) => o).find((o) => this._stall(o.id).queue.length < QUEUE_MAX);
+      if (!best) {
         v.mood = Math.max(0, v.mood - 0.08);
         continue;
       }
+      const s = this._stall(best.id);
       s.queue.push(v);
       v.queuedAt = this.world.time;
       return { type: "queue", stall: best.id };

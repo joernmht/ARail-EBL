@@ -42,7 +42,7 @@ Off the square they walk the road network on the sidewalks, like the town's resi
 
 Each visitor wants two to five things, three in four grown-ups a hot drink first; children want rides, Kakao, Punsch and sweets:
 
-- **A stall** is chosen by the weight of its goods (Glühwein ten times as much as Lederwaren) divided by its queue and its distance. People queue in a line out from the counter; serving takes the goods' `serve_s` (Glühwein 18 s, Lederwaren 70 s); at a craft stall 45 % buy. A queue of 12 sends people elsewhere, and long waits cost mood.
+- **A stall** is chosen by the weight of its goods (Glühwein ten times as much as Lederwaren) divided by its queue and its distance. People queue in a line out from the counter; serving takes the goods' `serve_s` (Glühwein 18 s, Lederwaren 70 s); at a craft stall 45 % buy. A queue of 12 sends people to the next best stall of that kind; when all of them have 12 waiting, they give up what they wanted, annoyed, and long waits cost mood too. Sales, takings and waiting times count from midnight.
 - **Drinks and food** are eaten on the spot: at a standing table (four places each), else in front of the stall, for 5 to 25 clock minutes by the goods.
 - **The tree**: people stand round it for a few minutes.
 - **A ride**: they queue at its gate and get on while it boards.

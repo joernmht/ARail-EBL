@@ -76,7 +76,7 @@ export const MARKET = [
         operations: [
           "hours()", "isOpen(minutes)", "present() — people at the market at this time of day", "target() — people who should be there now: none come in the last half hour", "venues() — the squares as walking grids", "step(dt)", "_spawn(dt) — from the town and the ends of the streets",
           "_vehicleArrived(e) — visitors get off a train", "_comeIn(v, from, fromKey)", "_enterSquare(v, venue, gate)", "_plan(v, rng) — 2 to 5 things to do", "_nextTask(v, venue)", "_serve(dt)",
-          "_stayAt(v, venue, o, info, minutes, goods) — at a standing table", "_rides(venue)", "_move(dt)", "_stepOnSquare(v, venue, dt, push, neighbours)", "_goOut(v, t)", "_walkStreet(v, dt)", "_giveUp() — after 75 clock minutes at the station: home another way", "_afterJump() — the clock was set: the market as it would be",
+          "_stayAt(v, venue, o, info, minutes, goods) — at a standing table", "_rides(venue)", "_move(dt)", "_stepOnSquare(v, venue, dt, push, neighbours)", "_goOut(v, t)", "_walkStreet(v, dt)", "_giveUp() — after 75 clock minutes at the station: home another way", "_afterJump() — the clock was set: the market as it would be", "_newDay() — midnight: the figures of today start again",
           "clear()", "doing(v)", "describeAgent(agent)", "describeObject(o, card) — queue, waiting time, sold and takings of a stall; queue of a ride; visitors and sales of a square",
           "states() — the stalls by their queue, the visitors by their mood", "marketStats()", "pickables(view)", "card(hit)", "draw(view) — in winter coats, by mood or by purpose",
         ],
@@ -142,7 +142,9 @@ export const MARKET = [
     ],
     rules: [
       "Visitors want 2 to 5 things; three in four grown-ups a hot drink first. A stall is chosen by the weight of its goods (children: three times for what they like) / (1 + queue/4) / (1 + distance/40 m).",
-      "A queue of 12 sends people elsewhere, and costs mood; waiting longer than a minute costs mood too.",
+      "A queue of 12 sends people to the next best stall of that kind; all of them that long, they give the item up, and it costs mood; waiting longer than a minute costs mood too.",
+      "When objects or the marker map change, the squares are made anew; people keep what they are doing while its stall, ride or gate is still there, else they leave its queue and table.",
+      "At midnight the figures of the day start again: the market's and each stall's sales, takings and waiting times.",
       "Serving takes serve_s × 0.7 to 1.4; at a craft stall 45 % buy. Drinks and food are eaten on the spot at a standing table (four places), else in front of the stall, for the goods' stay in clock minutes.",
       "Who came by train goes back to the station and waits there for any train; after 75 clock minutes (no trains after midnight), or when the passengers give up, they go home another way.",
       "When the clock is set, the market is filled to 80 % of the people it should have, on the square.",

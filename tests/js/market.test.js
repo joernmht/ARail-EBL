@@ -246,3 +246,62 @@ test("scenarios set the time of day; the Striezelmarkt's evening", () => {
   const { layout } = composeLayout(withLayers(LAB, ["striezelmarkt"]));
   assert.ok(layout.scenarios.some((s) => s.id === "striezelmarkt-evening") && !layout.scenarios.some((s) => s.id === "market-closing"));
 });
+
+test("editing the layout while the market runs: queues and tables stay consistent, the stalls keep serving", () => {
+  const world = lab(MARKET, "18:00");
+  const market = marketOf(world);
+  run(world, 60);
+  // moving something (Build), or a new photo: the squares are made anew
+  world.objectChanged(world.getObject("tree-1"));
+  run(world, 0.2);
+  const before = Object.values(market.marketStats().sold).reduce((a, b) => a + b, 0);
+  run(world, 90);
+  const after = Object.values(market.marketStats().sold).reduce((a, b) => a + b, 0);
+  assert.ok(after > before + 30, `${after - before} sold after the change`);
+  // everybody in a queue is there once, wants that stall, and is still at the market
+  const seen = new Set();
+  for (const [id, s] of market.stalls) {
+    for (const v of s.queue) {
+      assert.ok(market.visitors.includes(v), `${v.name} left but is in the queue of ${id}`);
+      assert.equal(v.task?.type, "queue", `${v.name} in the queue of ${id} does something else`);
+      assert.equal(v.task.stall, id);
+      assert.ok(!seen.has(v), `${v.name} is in two queues`);
+      seen.add(v);
+    }
+  }
+  for (const [key, holders] of market.tables) for (const v of holders) assert.equal(v.table, key, `${v.name} holds a place at ${key}`);
+});
+
+test("a full queue sends people to the next best stall; at midnight the stalls' figures start again", () => {
+  const world = lab(MARKET, "18:00");
+  const market = marketOf(world);
+  run(world, 30);
+  const venue = market.venues()[0];
+  const drinks = venue.stalls.filter((o) => MARKET_GOODS[o.spec.goods].kind === "drink");
+  const free = drinks.find((o) => o.spec.goods === "punsch");
+  for (const o of drinks) if (o !== free) market._stall(o.id).queue.push(...Array.from({ length: 12 }, () => ({})));
+  const v = market.visitors.find((x) => x.state === "market" && x.profile.age !== "child");
+  market._leaveQueues(v);
+  v.plan = ["drink"];
+  const task = market._nextTask(v, venue);
+  assert.deepEqual(task, { type: "queue", stall: free.id }, "the one stall of the kind with room");
+  market.clear();
+  // midnight
+  run(world, 30);
+  const sold = () => [...market.stalls.values()].reduce((a, s) => a + s.sold, 0);
+  market._stall("stall-1").sold += 3;
+  assert.ok(sold() > 0);
+  world.events.emit("clock.day", { day: 1 });
+  assert.equal(sold(), 0);
+  assert.ok([...market.stalls.values()].every((s) => s.takings === 0 && s.waits.length === 0));
+  assert.deepEqual(market.today.sold, {});
+});
+
+test("setting the clock fills the market once: the first step keeps those people", () => {
+  const world = lab(MARKET, "19:00");
+  const market = marketOf(world);
+  const ids = market.visitors.map((v) => v.id);
+  assert.ok(ids.length > 100);
+  world.step(0.1);
+  for (const id of ids.slice(0, 20)) assert.ok(market.visitors.some((v) => v.id === id), `${id} was replaced`);
+});
