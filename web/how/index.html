@@ -7,18 +7,22 @@
 <meta name="theme-color" content="#0A777F" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#001450" media="(prefers-color-scheme: dark)">
 <title>How it works · ARail-EBL</title>
-<meta name="description" content="How ARail gets onto a lab's table: markers, one video of the table, the flyover builder and a bridge to the control system. And where it goes next: from a digital sister to a hybrid lab.">
+<meta name="description" content="How ARail gets onto a lab's table: markers, one video of the table, the flyover builder and a bridge to the control system. The lab's own digital twin beside it, and where ARail goes next: from a digital sister to a hybrid lab.">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../assets/fonts/fonts-app.css">
 <link rel="stylesheet" href="../app/app.css">
 <link rel="stylesheet" href="../assets/site.css">
 <style>
 /* How it works: the technical part of the project page, on a page of its own (the project page keeps
-   the video and the photo slider). How ARail gets onto a lab's table, then where it goes next. */
+   the video and the photo slider). How ARail gets onto a lab's table, the lab's own digital twin beside
+   it, then where it goes next. */
 .base { display: grid; gap: 32px; }
 @media (min-width: 980px) { .base { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: start; } }
 .base .ctas { margin-top: 6px; }
 .base .facts { margin-top: 0; }
+.twin { margin: 0; }
+.twin video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 14px; background: #000; }
+.twin figcaption { padding: 12px 2px 0; color: var(--text-2); font-size: .92rem; }
 h1 { font-size: clamp(2.1rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: -.03em; }
 </style>
 </head>
@@ -33,6 +37,7 @@ h1 { font-size: clamp(2.1rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: 
   <span class="spacer"></span>
   <nav class="site-nav" aria-label="Main">
     <a class="opt" href="#base">Your lab</a>
+    <a class="opt" href="#twin">The twin</a>
     <a class="opt" href="#next">Next</a>
     <a class="opt" href="../game/">Game</a>
     <a class="opt" href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
@@ -96,6 +101,23 @@ h1 { font-size: clamp(2.1rem, 4.6vw, 3.2rem); font-weight: 800; letter-spacing: 
           </details>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- the lab's own digital twin, beside ARail -->
+  <section class="block" id="twin" aria-labelledby="twin-title">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow">Beside ARail</p>
+        <h2 id="twin-title">The lab's own digital twin</h2>
+        <p class="lead">A separate project of the lab, not part of ARail: the EBL generated from its own files, with its tracks, switches, signals and interlockings, wound round the hall as on the tables. ARail shares its topology and its track and hall plans, and its timetable simulation can run the operations of a shift in ARail's games.</p>
+      </div>
+      <figure class="twin">
+        <video controls muted playsinline preload="none" poster="../media/ebl-twin.jpg" width="1280" height="720" aria-label="The EBL's digital twin, a screen recording: the whole layout as a dark-blue map with the names of its stations and their interlockings, turning, then the camera moves down along the tracks as they wind round the hall.">
+          <source src="../media/ebl-twin.mp4" type="video/mp4">
+        </video>
+        <figcaption>The EBL's digital twin (<a href="https://github.com/joernmht/ebl">ebl</a>): the layout from the lab's files, placed as it stands in the hall. How ARail uses it: <a href="https://github.com/joernmht/ARail-EBL/blob/main/examples/ebl/README.md">the EBL's topology</a>, <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/plan-documents.md">plan documents</a>, <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/game-core.md#the-lab-as-a-world">the lab as a world</a>.</figcaption>
+      </figure>
     </div>
   </section>
 

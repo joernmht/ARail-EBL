@@ -217,10 +217,10 @@ def test_compose_puts_the_bare_picture_first(tmp_path, monkeypatch):
         cp.Part({"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1]}, (10, 10))
 
 
-def test_compose_wipes_from_the_bare_picture_and_starts_a_shot_later(tmp_path, monkeypatch):
+def test_compose_starts_a_shot_later_over_one_frame_of_its_clip(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, "ROOT", str(tmp_path))
     frames_dir(tmp_path / "a", 20, (0, 0, 200))
-    cv2.imwrite(str(tmp_path / "photo.jpg"), np.full((100, 200, 3), (200, 0, 0), np.uint8))
+    frames_dir(tmp_path / "bare", 10, (200, 0, 0))
     plan = {
         "size": [200, 100],
         "parts": [
@@ -229,22 +229,18 @@ def test_compose_wipes_from_the_bare_picture_and_starts_a_shot_later(tmp_path, m
                 "first": 8,
                 "count": 10,
                 "crop": [0, 0, 200, 100],
-                "bare": {"image": "photo.jpg", "hold": 2, "fade": [2, 8], "wipe": True, "edge": "#00ff00"},
+                "bare": {"image": "bare/f0003.jpg", "fade": [2, 6]},
             }
         ],
     }
     out = tmp_path / "out"
-    assert cp.compose(plan, str(out), log=lambda *_: None) == 12
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 10
     f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
-    assert f(0)[50, 100, 0] > 180, "the bare photo"
-    mid = f(5)  # half way: the shot on the left, the photo on the right, the edge between
-    assert mid[50, 20, 2] > 180 and mid[50, 180, 0] > 180
-    green = np.flatnonzero((mid[50, :, 1] > 180) & (mid[50, :, 0] < 90) & (mid[50, :, 2] < 90))
-    assert len(green) and 40 < green.mean() < 160, "the edge, green, near the middle"
-    # from the shot's frame 8 on: its bar is 10 + 8 px wide at the start
-    last = f(11)
-    assert last[50, 30, 2] > 180 and last[50, 20, 0] > 180 and last[50, 10 + 17 + 3, 2] > 180
-    assert last[50, 10 + 17 - 2, 0] > 180
+    assert f(0)[50, 100, 0] > 180, "the bare picture"
+    assert 40 < f(4)[50, 100, 0] < 180, "fading"
+    # from the shot's frame 8 on: its bar is 10 + 8 px wide at the start, 10 + 17 at the end
+    last = f(9)
+    assert last[50, 100, 2] > 180 and last[50, 10 + 17 + 3, 2] > 180 and last[50, 10 + 17 - 2, 0] > 180
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
@@ -276,6 +272,21 @@ def test_compose_takes_a_clip_as_a_shot(tmp_path, monkeypatch):
     assert cp.compose(plan, str(out), log=lambda *_: None) == 6
     bar = lambda i: int((cv2.imread(str(out / f"f{i:04d}.jpg"))[48, :, 0] > 150).sum())  # noqa: E731
     assert abs(bar(0) - 14) <= 2 and abs(bar(5) - 19) <= 2, "the clip's frames 4 to 9"
+    # a frame of the clip held as the bare picture (a shot with the app's Freeze)
+    frames_dir(tmp_path / "b", 12, (0, 200, 0), size=(160, 96))
+    plan = {
+        "size": [160, 96],
+        "parts": [
+            {
+                "frames": "b",
+                "count": 8,
+                "crop": [0, 0, 160, 96],
+                "bare": {"clip": "a.mp4", "start": 6, "still": True, "fade": [6, 8]},
+            }
+        ],
+    }
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 8
+    assert abs(bar(0) - 16) <= 2 and abs(bar(4) - 16) <= 2, "the clip's frame 6, held"
     with pytest.raises(OSError, match="frames needed"):
         cp.Part({"clip": "a.mp4", "first": 10, "count": 6, "crop": [0, 0, 1, 1]}, (10, 10))
 

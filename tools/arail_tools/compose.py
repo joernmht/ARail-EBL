@@ -26,9 +26,7 @@ video, ``clip`` in place of ``frames``)::
 - ``bare``: the picture without the augmentation (``image``, or ``clip`` from ``start``) pasted over
   the frame's top left (around it the frame, or the colour ``fill``); the shot fades in over it in
   the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
-  ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze); ``wipe``: instead
-  of fading in, the shot is uncovered from left to right behind an edge (the colour ``edge``,
-  "#rrggbb"), as the photo slider of the project page does;
+  ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze);
 - ``loop``: the last frames fade into the first, so the video loops without a seam.
 
 Paths are relative to the repository.
@@ -70,22 +68,6 @@ def blend(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     import cv2
 
     return cv2.addWeighted(a, 1 - t, b, t, 0)
-
-
-def wipe(a: np.ndarray, b: np.ndarray, t: float, edge: str = "#f0922e") -> np.ndarray:
-    """a, then b uncovered from the left behind a vertical edge: t = 0 is a, 1 is b. The edge
-    (3 px of the colour `edge`, "#rrggbb") comes in from the left side and leaves at the right."""
-    h, w = a.shape[:2]
-    soft = max(2.0, w / 400)
-    x = -soft + t * (w + 2 * soft)  # the edge, from just outside the left to just outside the right
-    cols = np.arange(w, dtype=np.float32)
-    m = np.clip((x - cols) / soft + 0.5, 0, 1)[None, :, None]  # 1 left of the edge: b
-    out = (a.astype(np.float32) * (1 - m) + b.astype(np.float32) * m).astype(np.uint8)
-    half = max(1, round(w / 640))
-    x0, x1 = max(0, round(x) - half), min(w, round(x) + half + 1)
-    if 0 < t < 1 and x0 < x1:
-        out[:, x0:x1] = [int(edge[i : i + 2], 16) for i in (5, 3, 1)]  # BGR
-    return out
 
 
 class Part:
@@ -191,16 +173,12 @@ class Part:
         img = self._read(self.first + k)
         u = ease(k / max(1, self.count - 1))
         box = [p + (q - p) * u for p, q in zip(self.box[0], self.box[1], strict=True)]
-        if not self.bare:
-            return crop(img, box, self.size)
-        a, b = self.bare.get("fade", [0, 1])
-        t = ease((i - a) / max(1, b - a))
-        if t >= 1:
-            return crop(img, box, self.size)
-        bare = self._bare(k, img)
-        if not self.bare.get("wipe"):
-            return crop(blend(bare, img, t), box, self.size)
-        return wipe(crop(bare, box, self.size), crop(img, box, self.size), t, self.bare.get("edge", "#f0922e"))
+        if self.bare:
+            a, b = self.bare.get("fade", [0, 1])
+            t = ease((i - a) / max(1, b - a))
+            if t < 1:
+                img = blend(self._bare(k, img), img, t)
+        return crop(img, box, self.size)
 
 
 def compose(plan: dict, frames_dir: str, log=print) -> int:

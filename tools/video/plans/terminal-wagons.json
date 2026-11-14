@@ -1,10 +1,16 @@
 {
-  "about": "The hybrid container train from a phone walking along it: the virtual terminal around the real wagons.",
+  "about": "The hybrid container train, one frame of a phone walking along it, held with the app's Freeze: the virtual terminal and its crane around the real wagons, the simulation running on.",
   "page": "example=container-train",
   "clip": "build/video/clips/terminal-wagons-720.mp4",
-  "frames": 300,
+  "start": 290,
+  "frames": 180,
   "proc_max": 1600,
   "viewport": [1600, 1000],
+  "track": { "from": -40, "hold": 30 },
+  "keep_rolling": true,
+  "freeze": true,
+  "speed": 6,
   "each": "if (term) term.highlight.slots = false;",
+  "setup": "for (const c of term.markerWagons()) if (!c.present) c.pose = null; app.world.events.emit('terminal.request.move', { container: 'TUDU 600002 9', to: { carrier: 'W1', bay: 1 } });",
   "out": "build/video/terminal-wagons"
 }

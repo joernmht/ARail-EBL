@@ -52,7 +52,11 @@ test("How it works: how ARail gets onto a lab's table, and where it goes next", 
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/how/");
   await expect(page).toHaveTitle("How it works · ARail-EBL");
-  expect(await page.locator("#base, #next").evaluateAll((els) => els.map((e) => e.id))).toEqual(["base", "next"]);
+  expect(await page.locator("#base, #twin, #next").evaluateAll((els) => els.map((e) => e.id))).toEqual(["base", "twin", "next"]);
+  // the lab's own digital twin: not part of ARail, so here and not in the project page's video
+  const twin = page.locator("#twin video");
+  await expect(twin).toHaveAttribute("poster", "../media/ebl-twin.jpg");
+  for (const src of ["/media/ebl-twin.jpg", "/media/ebl-twin.mp4"]) expect((await page.request.get(src)).ok(), src).toBe(true);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stickers, a phone, a browser");
   await expect(page.locator("#base .path li")).toHaveCount(4);
   await expect(page.getByRole("link", { name: "Print markers" })).toHaveAttribute("href", "../markers/");
