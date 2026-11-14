@@ -1,5 +1,6 @@
 // End-to-end tests of the game page's title screen (game/title.js): it opens without a layout or a
-// case, the photos fill the screen, the menu with its cursor, Free play and Options as submenus, the
+// case, the photos fill the screen, the menu with its cursor and at most five choices, Games (with
+// Free play in it), Career and Options as submenus, the
 // language (also from the address), Continue, the app's shell for an address with a case or given
 // only a #case, a photo that fails to load, and a phone.
 import { expect, test } from "@playwright/test";
@@ -25,29 +26,28 @@ test("the game page opens with its title screen: the photos full screen and the 
   expect(size.width).toBeGreaterThanOrEqual(vp.width);
   expect(size.height).toBeGreaterThanOrEqual(vp.height);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("ARail");
-  expect(await labels(page)).toEqual(["Missions", "Signaller", "Free play", "Career", "Roles", "Logbook", "Options", "Leave"]);
-  await expect(page.getByRole("link", { name: /Missions/ })).toHaveAttribute("href", "play/");
-  await expect(page.getByRole("link", { name: /Signaller/ })).toHaveAttribute("href", "signaller/");
+  expect(await labels(page)).toEqual(["Games", "Career", "Options", "Leave"]);
+  await expect(page.getByRole("link", { name: /Leave/ })).toHaveAttribute("href", "../");
   // the cursor starts on the first item and moves with the arrows, round the end
   await expect(page.locator(".title-item").first()).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Career/ })).toBeFocused();
   // a click on the photo keeps the cursor; with the focus elsewhere the keys still move it, and Enter chooses
   await page.mouse.click(vp.width - 40, vp.height / 2);
-  await expect(page.getByRole("link", { name: /Signaller/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Career/ })).toBeFocused();
   // with the focus off the menu the arrows move on from the cursor's item
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowUp");
-  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Games/ })).toBeFocused();
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowUp");
   await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Games/ })).toBeFocused();
   await page.getByRole("button", { name: /Options/ }).focus();
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("Enter");
@@ -61,6 +61,42 @@ test("the game page opens with its title screen: the photos full screen and the 
   await page.waitForSelector(".title-item");
   // the app's shell is not started behind it
   expect(await page.evaluate(() => window.__arail)).toBeUndefined();
+  expect(errors).toEqual([]);
+});
+
+test("no menu offers more than five choices: the games and the career are submenus, Free play one of the games", async ({ page }) => {
+  // with something to go on with, the main menu is at its longest
+  await page.addInitScript(() => localStorage.setItem("arail.game.continue", JSON.stringify({ href: "play/", label: "Missions" })));
+  const errors = await open(page);
+  const choices = async () => (await labels(page)).filter((l) => l !== "Back");
+  expect(await choices()).toEqual(["Continue", "Games", "Career", "Options", "Leave"]);
+  // Games: the big game's missions, the signaller, and Free play, a submenu of its own
+  await page.getByRole("button", { name: /Games/ }).click();
+  await expect(page.locator(".title-menu-head")).toHaveText("Games");
+  expect(await labels(page)).toEqual(["Missions", "Signaller", "Free play", "Back"]);
+  await expect(page.getByRole("link", { name: /Missions/ })).toHaveAttribute("href", "play/");
+  await expect(page.getByRole("link", { name: /Signaller/ })).toHaveAttribute("href", "signaller/");
+  await page.getByRole("button", { name: /Free play/ }).click();
+  await expect(page.locator(".title-menu-head")).toHaveText("Free play");
+  expect((await choices()).length).toBeLessThanOrEqual(5);
+  // Back goes one menu back, the cursor on the item that led there
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.locator(".title-menu-head")).toHaveText("Games");
+  await expect(page.getByRole("button", { name: /Free play/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(page.getByRole("button", { name: /Games/ })).toBeFocused();
+  // Career: the logbook, the career planner, the roles
+  await page.getByRole("button", { name: /Career/ }).click();
+  await expect(page.locator(".title-menu-head")).toHaveText("Career");
+  expect(await labels(page)).toEqual(["Logbook", "Career planner", "Roles", "Back"]);
+  await expect(page.getByRole("link", { name: /Logbook/ })).toHaveAttribute("href", "logbook/");
+  await expect(page.getByRole("link", { name: /Career planner/ })).toHaveAttribute("href", "career/");
+  await expect(page.getByRole("link", { name: /Roles/ })).toHaveAttribute("href", "roles/");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("button", { name: /Career/ })).toBeFocused();
+  await page.getByRole("button", { name: /Options/ }).click();
+  expect((await choices()).length).toBeLessThanOrEqual(5);
   expect(errors).toEqual([]);
 });
 
@@ -116,7 +152,7 @@ test("Continue opens only the menu's pages: anything else in the storage becomes
   const errors = await open(page);
   expect(await labels(page)).not.toContain("Continue");
   expect(await page.locator('#title a[href^="javascript:"]').count()).toBe(0);
-  await expect(page.locator(".title-item").first()).toHaveAttribute("href", "play/");
+  await expect(page.locator(".title-item .title-label").first()).toHaveText("Games");
   expect(await page.evaluate(() => window.__ran)).toBeUndefined();
   expect(errors).toEqual([]);
 });
@@ -174,12 +210,12 @@ test.describe("the first photo takes too long, with the background still", () =>
 
 test("the cursor keeps its item when the menu is drawn anew with the focus off it", async ({ page }) => {
   const errors = await open(page);
-  await page.getByRole("link", { name: /Roles/ }).focus();
+  await page.getByRole("button", { name: /Career/ }).focus();
   await page.evaluate(() => document.activeElement.blur());
   // drawn anew (as after Back from the browser's cache, or full screen left) while the focus is on the page
   await page.evaluate(() => window.__title.redraw());
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("link", { name: /Logbook/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Options/ })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -238,7 +274,7 @@ test("the menu's keys: Home and End, the right arrow into a submenu, the left ar
   await page.keyboard.press("End");
   await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await expect(page.getByRole("button", { name: /Games/ })).toBeFocused();
   await page.getByRole("button", { name: /Options/ }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".title-menu-head")).toHaveText("Options");
@@ -247,10 +283,10 @@ test("the menu's keys: Home and End, the right arrow into a submenu, the left ar
   await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
   await expect(page.getByRole("button", { name: /Options/ })).toBeFocused();
   // the right arrow on an item without a submenu does nothing
-  await page.keyboard.press("Home");
+  await page.keyboard.press("End");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
-  await expect(page.getByRole("link", { name: /Missions/ })).toBeFocused();
+  await expect(page.getByRole("link", { name: /Leave/ })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -271,13 +307,14 @@ test.describe("with less motion asked for by the system", () => {
 
 test("Free play lists the page's cases, each with its layout; Escape goes back; Continue", async ({ page }) => {
   const errors = await open(page);
+  await page.getByRole("button", { name: /Games/ }).click();
   await page.getByRole("button", { name: /Free play/ }).click();
   await expect(page.locator(".title-menu-head")).toHaveText("Free play");
   expect(await labels(page)).toEqual(["Sandbox", "Assets", "Operations", "Terminal", "Journeys", "Back"]);
   await expect(page.locator(".title-item").first()).toBeFocused();
   await expect(page.getByRole("link", { name: /Assets/ })).toHaveAttribute("href", "?layout=../layouts/ebl-lab.json&layers=infrastructure#infra");
   await page.keyboard.press("Escape");
-  await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(page.locator(".title-menu-head")).toHaveText("Games");
   await expect(page.getByRole("button", { name: /Free play/ })).toBeFocused();
   // a case opens the app's shell with it, and is offered as Continue afterwards
   await page.getByRole("button", { name: /Free play/ }).click();
@@ -304,13 +341,15 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   await page.waitForSelector(".title-item");
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", /^\?layout=..%2Flayouts%2Febl-neustadt\.json#/);
   // a page opened from the menu is Continue then
+  await page.getByRole("button", { name: /Career/ }).click();
   await page.getByRole("link", { name: /Roles/ }).click();
   await page.waitForURL(/\/game\/roles\//);
   await page.goto("/game/");
   await page.waitForSelector(".title-item");
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", "roles/");
   // also one opened with a middle click (in a new tab)
-  await page.getByRole("link", { name: /Career/ }).evaluate((a) => {
+  await page.getByRole("button", { name: /Career/ }).click();
+  await page.getByRole("link", { name: /Career planner/ }).evaluate((a) => {
     a.addEventListener("auxclick", (e) => e.preventDefault(), { once: true }); // no new tab in the test
     a.dispatchEvent(new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }));
   });
@@ -335,7 +374,7 @@ test("Options: the language, the moving background, kept on the device", async (
   expect(await page.locator("#title").evaluate((el) => el.classList.contains("still"))).toBe(was === "true");
   await page.reload();
   await page.waitForSelector(".title-item");
-  await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  await expect(page.locator(".title-item .title-label").first()).toHaveText("Spiele");
   expect(errors).toEqual([]);
 });
 
@@ -387,7 +426,8 @@ test("Options shows full screen as it is, also when it is left with the browser'
 
 test("a ?lang= of the address goes along into the games and back to the title", async ({ page }) => {
   const errors = await open(page, "/game/?lang=de");
-  await expect(page.locator(".title-item .title-label").first()).toHaveText("Missionen");
+  await expect(page.locator(".title-item .title-label").first()).toHaveText("Spiele");
+  await page.getByRole("button", { name: /Spiele/ }).click();
   await page.getByRole("button", { name: /Freies Spiel/ }).click();
   await expect(page.getByRole("link", { name: /Reisen/ })).toHaveAttribute("href", "?layout=..%2Flayouts%2Febl-lab.json&layers=journeys&lang=de#journeys");
   await page.goto("/game/?layout=../layouts/ebl-lab.json&lang=de#overview");
@@ -410,7 +450,7 @@ test("a ?lang= of the address goes along into the games and back to the title", 
   await page.locator("#bar .menu-link").click();
   await page.waitForSelector(".title-item");
   // the shell was played last: Continue first, in German
-  expect(await page.locator(".title-item .title-label").allTextContents()).toEqual(expect.arrayContaining(["Weiterspielen", "Missionen"]));
+  expect(await page.locator(".title-item .title-label").allTextContents()).toEqual(expect.arrayContaining(["Weiterspielen", "Spiele"]));
   expect(errors).toEqual([]);
 });
 

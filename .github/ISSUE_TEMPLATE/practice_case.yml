@@ -1,0 +1,35 @@
+name: Case from practice
+description: For practitioners. An incident, a decision or a routine from the working railway that should become a scenario or a role game.
+title: "Practice case: "
+labels: ["practice-case"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe a situation worth rehearsing or explaining. We turn it into a scenario or a role game and list it on the [project page](https://joernmht.github.io/ARail-EBL/?for=practitioners) with its status and a link. **Issues are public:** leave out anything confidential, and names of people; for the rest, write to joern.maurischat@tu-dresden.de.
+  - type: textarea
+    id: situation
+    attributes:
+      label: The situation
+      description: What happens, where (kind of station or line), and in which order.
+    validations:
+      required: true
+  - type: textarea
+    id: roles
+    attributes:
+      label: Who is involved?
+      description: The roles and departments (signaller, operations control, workshop, customer information, infrastructure manager, transport authority…) and what each decides.
+    validations:
+      required: true
+  - type: textarea
+    id: takeaway
+    attributes:
+      label: What should people take away?
+      description: Who is it for (new colleagues, a control centre, clients, the public), and what should they see or be able to do afterwards?
+    validations:
+      required: true
+  - type: input
+    id: listing
+    attributes:
+      label: How to list it
+      description: The organisation to show on the project page, or "do not list".
