@@ -35,6 +35,8 @@ const SUBSTEP_S = 0.25;
 const QUEUE_M = 0.7;
 /** A queue this long sends people to the next best stall of the same kind; all that long, they give up what they wanted (people). */
 const QUEUE_MAX = 12;
+/** Flow fields a square keeps (the ones used last; the counters, gates and tables are far fewer). */
+const FIELDS_MAX = 160;
 /** Clock minutes people wait at the station for a train home before they go another way. */
 const STATION_PATIENCE_MIN = 75;
 /** Mood lost per second of waiting in a queue after the first minute. */
@@ -112,7 +114,7 @@ class Venue {
     }).filter((g) => g.inside);
     const near = open.filter((g) => Math.hypot(g.inside[0] - g.pos[0], g.inside[1] - g.pos[1]) <= 3 * k);
     this.gates = near.length ? near : open;
-    /** @type {Map<string, Float64Array>} */
+    /** @type {Map<number, Float64Array>} the flow fields by the cell they lead to (at most {@link FIELDS_MAX}) */
     this.fields = new Map();
   }
 
@@ -189,11 +191,15 @@ class Venue {
 
   /** The flow field to a layout point: the walking distance (cells) of every cell to it. */
   field(p) {
-    const key = `${Math.round(p[0])}:${Math.round(p[1])}`;
-    let f = this.fields.get(key);
-    if (f) return f;
-    f = new Float64Array(this.walkable.length).fill(Infinity);
+    // a field depends only on the cell it leads to: kept by that cell, the ones used last
     const start = this.nearestCell(p);
+    let f = this.fields.get(start);
+    if (f) {
+      this.fields.delete(start);
+      this.fields.set(start, f);
+      return f;
+    }
+    f = new Float64Array(this.walkable.length).fill(Infinity);
     if (start >= 0) {
       // Dijkstra over eight neighbours (no cutting of corners), with a small binary heap
       const heap = [[0, start]];
@@ -219,7 +225,8 @@ class Venue {
         }
       }
     }
-    this.fields.set(key, f);
+    this.fields.set(start, f);
+    if (this.fields.size > FIELDS_MAX) this.fields.delete(this.fields.keys().next().value);
     return f;
   }
 
@@ -298,6 +305,11 @@ export class MarketSimulation extends Simulation {
   static type = "market";
   static label = "Market visitors";
   static description = "Visitors of a market on a market square: they come from the town, the streets and by train, queue at the stalls, stay at standing tables, look at the tree, take rides and go home.";
+  /** The opening hours must be times of day (validateLayout). */
+  static validate(config) {
+    return ["open", "close"].filter((k) => config[k] != null && parseTime(config[k]) == null).map((k) => `${k} "${config[k]}" is no time of day (HH:MM)`);
+  }
+
   static params = [
     { key: "visitors", label: "Visitors at the busiest time", type: "number", min: 0, max: 2000, step: 10, default: 240, help: "People on the market at once in the evening" },
     { key: "open", label: "Opens", type: "text", default: "10:00" },

@@ -74,7 +74,7 @@ export const MARKET = [
         name: "MarketSimulation", file: "web/arail/sims/market.js", kind: "class", extends: "Simulation", role: "The visitors of the market squares.",
         attributes: ["visitors: Visitor[] — {origin, state, task, plan, bought, spent, mood}", "stalls: Map — per stall: queue, serving, sold, takings, waits", "rideQueues: Map — per ride: its queue", "tables: Map — the people at each standing table", "today: object — sold by goods, takings, came and left by how, rides (since midnight)"],
         operations: [
-          "hours()", "isOpen(minutes)", "present() — people at the market at this time of day", "target() — people who should be there now: none come in the last half hour", "venues() — the squares as walking grids", "step(dt)", "_spawn(dt) — from the town and the ends of the streets",
+          "validate(config) — static: open and close must be times of day", "hours()", "isOpen(minutes)", "present() — people at the market at this time of day", "target() — people who should be there now: none come in the last half hour", "venues() — the squares as walking grids", "step(dt)", "_spawn(dt) — from the town and the ends of the streets",
           "_vehicleArrived(e) — visitors get off a train", "_comeIn(v, from, fromKey)", "_enterSquare(v, venue, gate)", "_plan(v, rng) — 2 to 5 things to do", "_nextTask(v, venue)", "_serve(dt)",
           "_stayAt(v, venue, o, info, minutes, goods) — at a standing table", "_rides(venue)", "_move(dt)", "_stepOnSquare(v, venue, dt, push, neighbours)", "_goOut(v, t)", "_walkStreet(v, dt)", "_giveUp() — after 75 clock minutes at the station: home another way", "_afterJump() — the clock was set: the market as it would be", "_newDay() — midnight: the figures of today start again",
           "clear()", "doing(v)", "describeAgent(agent)", "describeObject(o, card) — queue, waiting time, sold and takings of a stall; queue of a ride; visitors and sales of a square",
@@ -84,7 +84,7 @@ export const MARKET = [
       {
         name: "Venue", file: "web/arail/sims/market.js", kind: "class", role: "A market square as a walking grid of 1 m cells, with its gates and flow fields.",
         attributes: ["walkable: Uint8Array — on the square, not on a stall or ride", "gates: object[] — {pos, dir, key, inside}", "fields: Map — the flow fields by place"],
-        operations: ["_keepLargestArea()", "field(p) — Dijkstra over eight neighbours", "direction(f, p, target)", "free(p)", "nearestCell(p)", "randomPoint(rng)"],
+        operations: ["_keepLargestArea()", "field(p) — Dijkstra over eight neighbours; kept by the cell it leads to, the 160 used last", "direction(f, p, target)", "free(p)", "nearestCell(p)", "randomPoint(rng)"],
       },
       { name: "market", file: "web/arail/sims/market.js", kind: "module", role: "The day of a market.", attributes: ["MARKET_PROFILE — share of visitors by the hour, the most from 17:30 to 20:30", "MARKET_COLOUR — Rot, when people show the purpose of their trip"] },
     ],

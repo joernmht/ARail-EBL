@@ -346,3 +346,18 @@ test("a scenario's time that is no time of day: the step fails and says so, the 
   json.scenarios = [...json.scenarios, { id: "bad", steps: [{ at: 0, set: { time: "7:45 pm" } }] }];
   assert.ok(validateLayout(json, registry).some((p) => /set\.time "7:45 pm" is no time of day/.test(p)));
 });
+
+test("the flow fields a square keeps stay few; opening hours that are no time of day are reported", () => {
+  const world = lab(MARKET, "18:00");
+  const market = marketOf(world);
+  const venue = market.venues()[0];
+  for (let i = 0; i < 400; i++) venue.field(venue.randomPoint(market.rng));
+  assert.ok(venue.fields.size <= 160, `${venue.fields.size} fields`);
+  const p = venue.randomPoint(market.rng);
+  assert.equal(venue.field(p), venue.field([p[0] + 0.01, p[1]]), "the same cell, the same field");
+  run(world, 30);
+  assert.ok(Object.values(market.marketStats().sold).length > 0, "people still find their way");
+  const json = withLayers(LAB, MARKET);
+  json.layers.find((l) => l.id === "market-visitors").simulations[0].close = "23.30";
+  assert.ok(validateLayout(json, registry).some((x) => /\(market\): close "23\.30" is no time of day/.test(x)), validateLayout(json, registry).join("\n"));
+});
