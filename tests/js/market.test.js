@@ -305,3 +305,44 @@ test("setting the clock fills the market once: the first step keeps those people
   world.step(0.1);
   for (const id of ids.slice(0, 20)) assert.ok(market.visitors.some((v) => v.id === id), `${id} was replaced`);
 });
+
+test("a ride removed while it runs: its riders are back on the square and go home at closing time", () => {
+  const world = lab(MARKET, "21:20");
+  const market = marketOf(world);
+  const wheel = world.getObject("ferris-wheel");
+  for (let i = 0; i < 1200 && wheel.ride.phase !== "running"; i++) world.step(0.1);
+  const riders = market.visitors.filter((v) => v.state === "riding" && v.ride === "ferris-wheel");
+  assert.equal(wheel.ride.phase, "running");
+  assert.ok(riders.length > 0, "people on the ferris wheel");
+  world.removeObject("ferris-wheel");
+  run(world, 0.2);
+  for (const v of riders) if (market.visitors.includes(v)) assert.notEqual(v.state, "riding", `${v.name} is still on a ride that is gone`);
+  run(world, 30);
+  while (world.clock.minutes < 23 * 60 + 15) world.step(0.1); // closed at 22:00, the last rides over; not yet midnight, when the day's figures start again
+  assert.ok(!market.isOpen());
+  assert.equal(market.visitors.filter((v) => v.state === "riding" || v.state === "market").length, 0, "everybody has left the square");
+  // every visitor who came has left, or is still on the way
+  const st = market.marketStats();
+  const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  assert.equal(sum(st.came), sum(st.left) + market.visitors.length, `came ${JSON.stringify(st.came)}, left ${JSON.stringify(st.left)}, here ${market.visitors.length}`);
+});
+
+test("a scenario's time that is no time of day: the step fails and says so, the clock and the people stay; the layout check finds it", () => {
+  const world = lab(MARKET, "18:00");
+  const market = marketOf(world);
+  run(world, 5);
+  const ids = market.visitors.map((v) => v.id), minutes = world.clock.minutes;
+  assert.equal(world.setTime("7:45 pm"), null);
+  assert.equal(world.clock.minutes, minutes);
+  const messages = [];
+  world.events.on("scenario.message", ({ text }) => messages.push(text));
+  world.scenarios.load([{ id: "bad", steps: [{ at: 0, set: { time: "19.45" } }] }]);
+  world.scenarios.play("bad");
+  world.step(0.1);
+  assert.ok(Math.abs(world.clock.minutes - minutes) < 1, "the clock did not jump");
+  assert.ok(messages.some((m) => /19\.45/.test(m) && /no time of day/.test(m)), messages.join(" | "));
+  assert.ok(ids.slice(0, 20).every((id) => market.visitors.some((v) => v.id === id)), "nobody was put anew");
+  const json = withLayers(LAB, []);
+  json.scenarios = [...json.scenarios, { id: "bad", steps: [{ at: 0, set: { time: "7:45 pm" } }] }];
+  assert.ok(validateLayout(json, registry).some((p) => /set\.time "7:45 pm" is no time of day/.test(p)));
+});

@@ -99,7 +99,7 @@ A scenario is a timeline stored in the layout file. It is played from Interactio
 
 | Action | Example | Effect |
 | --- | --- | --- |
-| `set` | `{"demand": 1.5, "speed": 5, "time": "19:45"}` | passenger demand, time-lapse speed and the time of day (as Settings → Simulation → Set the time: the simulations put their people where they belong at that time) |
+| `set` | `{"demand": 1.5, "speed": 5, "time": "19:45"}` | passenger demand, time-lapse speed and the time of day (`HH:MM`, as Settings → Simulation → Set the time: the simulations put their people where they belong at that time; anything else fails the step, which says so, and the layout check reports it) |
 | `message` | `"Signal failure!"` | shown in the app (event `scenario.message`) |
 | `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`); not to tracks of the control system or of the rail operations |
 | `start` | `{"id": "sf", "type": "delay", "target": "platform-1", "params": {"minutes": 5}, "duration": 300}` | start a disruption; `duration` in seconds overrides the default |

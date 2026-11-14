@@ -8,7 +8,7 @@
  */
 
 import { markersUsed } from "./anchors.js";
-import { DEFAULT_CLOCK } from "./clock.js";
+import { DEFAULT_CLOCK, parseTime } from "./clock.js";
 import { DICTIONARIES } from "./detector.js";
 import { composeLayout, layerProblems } from "./layers.js";
 
@@ -257,6 +257,9 @@ export function validateLayout(json, registry) {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);
     if (!s.id) problems.push(`scenarios[${i}] has no id`);
     if (!Array.isArray(s.steps)) problems.push(`scenarios[${i}].steps must be a list`);
+    else s.steps.forEach((st, k) => {
+      if (isObject(st?.set) && st.set.time != null && parseTime(st.set.time) == null) problems.push(`scenarios[${i}].steps[${k}].set.time "${st.set.time}" is no time of day (HH:MM)`);
+    });
   });
   // settings of simulations: checked by the simulation class (`static validate(config, layout)`), if it has one
   if (registry) {

@@ -355,7 +355,7 @@ export class MarketSimulation extends Simulation {
   }
 
   _emptyDay() {
-    return { sold: {}, takings: 0, came: { home: 0, street: 0, train: 0 }, left: { home: 0, street: 0, train: 0 }, rides: 0 };
+    return { sold: {}, takings: 0, came: { home: 0, street: 0, train: 0 }, left: { home: 0, street: 0, train: 0, other: 0 }, rides: 0 };
   }
 
   /** Opening hours (clock minutes). */
@@ -406,6 +406,12 @@ export class MarketSimulation extends Simulation {
     // people whose square is gone go home; the others keep where they are
     const ids = new Set(this._venues.map((v) => v.id));
     for (const v of [...this.visitors]) if (!ids.has(v.venue)) this._remove(v);
+    // riders of a ride that is gone are back on the square
+    for (const v of this.visitors) {
+      if (v.state !== "riding") continue;
+      const venue = this._venues.find((x) => x.id === v.venue);
+      if (venue && !venue.rides.some((r) => r.id === v.ride)) this._enterSquare(v, venue, null);
+    }
     // what people on the square are doing stays valid where its stall, ride or gate is still there
     for (const v of this.visitors) {
       if (v.state !== "market" || !v.task) continue;
@@ -600,13 +606,14 @@ export class MarketSimulation extends Simulation {
   _boarded({ agent }) {
     const v = this._ours(agent);
     if (!v) return;
-    this.today.left.train++;
-    this._remove(v, false);
+    this._remove(v, false, "train");
   }
 
+  /** Taken off by the passengers (gave up waiting at the station, the stop removed): home another way. */
   _gone(agent) {
     const v = this._ours(agent);
-    if (v) this._remove(v, false);
+    if (!v) return;
+    this._remove(v, false);
   }
 
   _ours(agent) {
@@ -614,10 +621,12 @@ export class MarketSimulation extends Simulation {
   }
 
   /** Take a visitor away (from queues, tables, rides; from the stops too unless `passengers` is false). */
-  _remove(v, passengers = true) {
+  _remove(v, passengers = true, how = "other") {
     const i = this.visitors.indexOf(v);
     if (i < 0) return;
     this.visitors.splice(i, 1);
+    // how they left (`today.left`): home, to the street ends, by train, or otherwise (gave up, square gone)
+    this.today.left[how in this.today.left ? how : "other"]++;
     this._leaveQueues(v);
     this._leaveTable(v);
     for (const venue of this._venues || []) for (const r of venue.rides) r.clearRiders((a) => a === v);
@@ -670,6 +679,7 @@ export class MarketSimulation extends Simulation {
       this.population.people.delete(v.id);
       this.population.names.delete(v.name);
     }
+    this.today.left.other += this.visitors.length;
     this.visitors = [];
     this.stalls.clear();
     this.rideQueues.clear();
@@ -682,8 +692,17 @@ export class MarketSimulation extends Simulation {
     if (!this.enabled || !(dt > 0)) return;
     const open = this.isOpen();
     if (this._wasOpen === null && open) this._afterJump();
-    // closing time: everybody finishes what they are doing and goes
-    if (this._wasOpen && !open) for (const v of this.visitors) v.plan = [];
+    // closing time: the stalls stop serving and the queues break up; people finish what is in their
+    // hands (a drink, a ride) and go
+    if (this._wasOpen && !open) {
+      for (const v of this.visitors) {
+        v.plan = [];
+        if (v.task?.type === "queue" || v.task?.type === "ride") {
+          this._leaveQueues(v);
+          v.task = null;
+        }
+      }
+    }
     this._wasOpen = open;
     this._spawn(dt);
     this._giveUp();
@@ -736,6 +755,7 @@ export class MarketSimulation extends Simulation {
 
   /** The first in each queue is served; when done, the next. */
   _serve(dt) {
+    if (!this.isOpen()) return;
     for (const venue of this._venues || []) {
       for (const o of venue.stalls) {
         const s = this._stall(o.id), v = s.queue[0];
@@ -987,13 +1007,11 @@ export class MarketSimulation extends Simulation {
     const dest = t.dest;
     const net = this.world.network();
     if (!dest?.pos || !net) {
-      this.today.left[v.origin.kind === "train" ? "train" : v.origin.kind]++;
-      return this._remove(v);
+      return this._remove(v, true, v.origin.kind === "train" ? "other" : v.origin.kind);
     }
     v.walk = net.walk(t.gate.pos, dest.pos, { fromKey: t.gate.key, toKey: dest.key });
     if (!v.walk || v.walk.offstage || !v.walk.points?.length) {
-      this.today.left[dest.kind]++;
-      return this._remove(v);
+      return this._remove(v, true, dest.kind === "train" ? "other" : dest.kind);
     }
     v.dest = dest;
     v.state = "going";
@@ -1021,8 +1039,7 @@ export class MarketSimulation extends Simulation {
         else this._remove(v);
         return;
       }
-      this.today.left[dest?.kind ?? "street"]++;
-      return this._remove(v);
+      return this._remove(v, true, dest?.kind ?? "street");
     }
     const { point, dir } = polylineAt(w.points, v.s, w.lengths);
     v.dir = dir;
@@ -1167,7 +1184,7 @@ export class MarketSimulation extends Simulation {
         else if (v.task?.type === "stay") out.staying++;
       }
     }
-    return { ...out, open: this.isOpen(), sold: { ...this.today.sold }, takings: this.today.takings, came: { ...this.today.came }, rides: this.today.rides };
+    return { ...out, open: this.isOpen(), sold: { ...this.today.sold }, takings: this.today.takings, came: { ...this.today.came }, left: { ...this.today.left }, rides: this.today.rides };
   }
 }
 

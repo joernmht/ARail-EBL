@@ -134,7 +134,7 @@ export const MARKET = [
     parameters: [
       { key: "visitors", default: "240", meaning: "People on the market at once at the busiest time (17:30 to 20:30); fewer over the day (MARKET_PROFILE).", sim: "market" },
       { key: "open", default: "10:00", meaning: "When the market opens.", sim: "market" },
-      { key: "close", default: "22:00", meaning: "When it closes: nobody comes in the last half hour; at closing time everybody finishes what they do and goes.", sim: "market" },
+      { key: "close", default: "22:00", meaning: "When it closes: nobody comes in the last half hour; at closing time the stalls stop serving, the queues break up, people finish their drink or ride and go.", sim: "market" },
       { key: "by_train", default: "0.3", meaning: "Share of the visitors who come by train (when there are platforms and a passenger simulation).", sim: "market" },
       { key: "from_homes", default: "0.45", meaning: "Of the others, the share who come from the houses of the town (by their residents); the rest from the ends of the streets.", sim: "market" },
       { key: "children", default: "0.15", meaning: "Share of children: they want rides, Kakao, Punsch and sweets.", sim: "market" },

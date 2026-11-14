@@ -47,7 +47,7 @@ Each visitor wants two to five things, three in four grown-ups a hot drink first
 - **The tree**: people stand round it for a few minutes.
 - **A ride**: they queue at its gate and get on while it boards.
 
-Then they leave by the gate nearest home; who came by train walks to the station and waits at the platform for any train (handed over to the passenger simulation). At closing time everybody finishes what they are doing and goes. Setting the clock fills the market as it would be at that time (80 % of the people it should have, on the square).
+Then they leave by the gate nearest home; who came by train walks to the station and waits at the platform for any train (handed over to the passenger simulation). At closing time the stalls stop serving and the queues break up; people finish what is in their hands (a drink, a ride) and go. Setting the clock fills the market as it would be at that time (80 % of the people it should have, on the square).
 
 Stays are clock minutes, walking and serving simulated seconds, as everywhere in ARail ([Day and night](day-and-night.md)). People are named with bird names, like everybody in the simulations.
 
