@@ -1,4 +1,4 @@
-// The market square with its stalls, Christmas tree and rides (objects/market.js), and its visitors
+// The market square with its stalls, signs, gates, Christmas tree and rides (objects/market.js), and its visitors
 // (sims/market.js): the lab example's modules Striezelmarkt and Market visitors.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -43,23 +43,24 @@ function lookAt(camera, eye, target) {
   return [c0[0], c1[0], c2[0], c0[1], c1[1], c2[1], c0[2], c1[2], c2[2]];
 }
 
-/** Draw a world through a fake canvas; the fill colours, and whether lights glowed. Fails on non-finite coordinates. */
+/** Draw a world through a fake canvas: the fill colours, the lights that glowed, the texts painted (signs). Fails on non-finite coordinates. */
 function draw(world, night = null) {
-  const fills = [];
+  const fills = [], texts = [];
   let glows = 0;
   const noop = () => {};
   const finite = (x, y) => assert.ok(Number.isFinite(x) && Number.isFinite(y), "finite coordinates");
   const ctx = {
     canvas: { width: 1600, height: 900 }, fillStyle: "#000", strokeStyle: "#000", lineWidth: 1, globalAlpha: 1,
     save: noop, restore: noop, setTransform: noop, fillRect: noop, beginPath: noop, closePath: noop, stroke: noop, setLineDash: noop,
-    arc: noop, ellipse: noop, quadraticCurveTo: noop, arcTo: noop, clip: noop, fillText: noop, drawImage: noop,
+    arc: noop, ellipse: noop, quadraticCurveTo: noop, arcTo: noop, clip: noop, drawImage: noop, transform: noop, strokeRect: noop,
+    fillText(t) { texts.push(t); },
     moveTo: finite, lineTo: finite, fill() { fills.push(this.fillStyle); }, measureText: (t) => ({ width: t.length * 6 }),
     createRadialGradient: () => (glows++, { addColorStop: noop }),
   };
   const camera = new Camera(1600, 900);
   const view = new View({ ctx, camera, H: lookAt(camera, [-560, -1900, 900], [-560, -780, 0]), scale: world.scale, night });
   world.draw(view);
-  return { fills, glows };
+  return { fills, glows, texts };
 }
 
 test("the lab's market: the square is in the base, the Striezelmarkt and its visitors are modules", () => {
@@ -115,6 +116,12 @@ test("stalls, the tree and the rides: what the market simulation needs, cards, d
   const night = draw(world, 1);
   assert.ok(day.fills.length > 500);
   assert.ok(night.glows > day.glows + 50, `${night.glows} lights at night, ${day.glows} by day`);
+  // the signs: the goods on the stalls' boards, the market's name on its gates
+  for (const t of ["Glühwein", "Handbrot", "Strickwaren", "Striezelmarkt"]) assert.ok(day.texts.includes(t), `no sign "${t}" in ${day.texts.join(", ")}`);
+  assert.ok(!day.texts.includes("Kakao"), "a sign turned away from the camera is not painted (the Kakao stall faces the tree)");
+  const gate = world.getObject("market-gate");
+  assert.equal(gate.spec.text, "Striezelmarkt");
+  assert.ok(!world.getObject("market-square").contents().includes(gate), "a gate is no obstacle: people walk through it");
 });
 
 test("a ride boards, runs and lets its riders off; it runs without riders too", () => {

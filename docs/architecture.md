@@ -51,7 +51,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/object.js`, `objects/*` | `LayoutObject` and the built-in object types |
 | `objects/building-kit.js`, `objects/houses.js`, `objects/building.js` | `BuildingBase` and `BuildingModel` (white-model look, lit windows, level of detail) and the house types |
 | `objects/tabletop.js` | table modules at their levels, the default table of the flyover |
-| `objects/market.js` | a market square with its gates, market stalls (huts and a steam locomotive) with their goods, the Christmas tree, rides that board and run in turn (ferris wheel, carousel, mini train) |
+| `objects/market.js` | a market square with its gates and the arches over them, market stalls (huts and a steam locomotive) with their goods and signs painted in perspective, the Christmas tree, rides that board and run in turn (ferris wheel, carousel, mini train) |
 | `core/elevation.js` | heights: the levels of the table modules, each street's profile (ramps at most 8 %, 6 % with trams; straight from edge to edge between raised modules; the heights railway crossings ask for), how streets cross tracks by their heights, the street level and the ground the view lifts what is drawn by |
 | `core/stops.js` | stop areas and docks, the common interface of stops |
 | `core/services.js`, `core/vehicles.js` | timetable, vehicle life cycle, drawing trains and buses, bikes and e-scooters with their riders; a track taken over at once for a story's train (`free`); a train sent the other way, a rail line's own platforms (mode `line`) and the timetable held back for its trains (`defer`) |

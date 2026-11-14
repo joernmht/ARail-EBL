@@ -6,7 +6,7 @@
 export const MARKET = [
   {
     id: "market-objects", group: "market", title: "The market square, its stalls, the tree and the rides",
-    summary: "A paved square whose gates are where streets meet it; wooden stalls (one a steam locomotive) that sell Glühwein, Stollen or Lederwaren, a Christmas tree, a ferris wheel, a carousel and a mini train that board and run in turn.",
+    summary: "A paved square whose gates are where streets meet it, arches with the market's name over them; wooden stalls (one a steam locomotive) with signs that sell Glühwein, Stollen or Lederwaren, a Christmas tree, a ferris wheel, a carousel and a mini train that board and run in turn.",
     description: "Everything on the square answers marketInfo(): a stall its goods, where people queue (its counter, the direction out of it) and its standing tables; the tree where people stand to look at it; a ride its gate. The goods keep their German names in every language. Stalls are greyscale like all buildings (BuildingBase draws them, with their counter lit while the market is open); the signs (by the kind of goods), the decorations, the rides and the lights have colours. The rides cycle by themselves; the market simulation puts its visitors on them.",
     files: ["web/arail/objects/market.js"],
     classes: [
@@ -16,7 +16,11 @@ export const MARKET = [
       },
       {
         name: "MarketStall", file: "web/arail/objects/market.js", kind: "class", extends: "BuildingBase", role: "A stall: a wooden hut or a steam locomotive, with its goods.",
-        operations: ["goods() — its entry of MARKET_GOODS", "tableCount() — two for drinks and food unless set", "_locomotive(m, L, sign) — boiler, chimney, wheels, cab with the serving hatch", "marketInfo() — {kind: stall, goods, counter, out, tables}", "litShare(darkness) — the counter lit while the market is open", "card() — goods, kind, price", "draw(view) — tables, steam, fairy lights, a fire's glow for hot food"],
+        operations: ["goods() — its entry of MARKET_GOODS", "tableCount() — two for drinks and food unless set", "_locomotive(m, L, sign) — boiler, chimney, wheels, cab with the serving hatch", "marketInfo() — {kind: stall, goods, counter, out, tables}", "litShare(darkness) — the counter lit while the market is open", "card() — goods, kind, price", "draw(view) — tables, steam, fairy lights, a fire's glow for hot food, its sign with the goods"],
+      },
+      {
+        name: "MarketGate", file: "web/arail/objects/market.js", kind: "class", extends: "LayoutObject", role: "An arch over an entrance with the market's name on a board, a fir garland and lights; no obstacle: people walk through it.",
+        operations: ["draw(view)"],
       },
       {
         name: "ChristmasTree", file: "web/arail/objects/market.js", kind: "class", extends: "LayoutObject", role: "The tree: tiers of a cone, baubles, twinkling lights and a star.",
@@ -33,7 +37,7 @@ export const MARKET = [
       {
         name: "market", file: "web/arail/objects/market.js", kind: "module", role: "The goods, their kinds and the market's hours.",
         attributes: ["MARKET_GOODS — id → {name (German), kind, price, serve_s, stay (clock min), weight, kids, hot}", "GOODS_KINDS — drink, food, sweets, crafts: label and the colour of the sign", "MARKET_HOURS — 10:00 to 22:00 when no market simulation says otherwise"],
-        operations: ["marketHours(world)", "marketOpen(world, minutes)", "parseHours(open, close)"],
+        operations: ["marketHours(world)", "marketOpen(world, minutes)", "parseHours(open, close)", "signBoard(m, x0, x1, y, z0, z1) — a sign board on a model: its back a face, its front for paintSign", "paintSign(view, board, text, opts) — the board in its colour with the text in perspective, while it faces the camera (lit at night)"],
       },
     ],
     relations: [
@@ -57,6 +61,7 @@ export const MARKET = [
     rules: [
       "A gate of the square is a point of a side (every 20 m) within gate_m (25 m) of a street or footpath; the road network connects it like a door.",
       "Stalls light their counter and fairy lights only while the market is open; the tree's lights burn all night.",
+      "A stall's sign (the goods' name on a board over the counter, the coloured board by the kind of goods) is painted only while its front faces the camera, and lit at night while the market is open; a gate's sign on both sides.",
     ],
   },
   {

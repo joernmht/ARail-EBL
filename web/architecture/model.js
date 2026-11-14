@@ -496,6 +496,7 @@ export const REGISTRY = {
     obj("tabletop", "Tabletop", "web/arail/objects/tabletop.js", "objects"),
     obj("market-square", "MarketSquare", "web/arail/objects/market.js", "market-objects"),
     obj("market-stall", "MarketStall", "web/arail/objects/market.js", "market-objects"),
+    obj("market-gate", "MarketGate", "web/arail/objects/market.js", "market-objects"),
     obj("christmas-tree", "ChristmasTree", "web/arail/objects/market.js", "market-objects"),
     obj("ferris-wheel", "FerrisWheel", "web/arail/objects/market.js", "market-objects"),
     obj("carousel", "Carousel", "web/arail/objects/market.js", "market-objects"),

@@ -650,7 +650,8 @@ See [The market square and the Striezelmarkt](market.md). The goods keep their G
 | Type | Geometry | Parameters (defaults) |
 | --- | --- | --- |
 | `market-square` | `points` (polygon) | `paving` (`cobbles`, `slabs`), `gate_m` (25: a side gets gates where a street or footpath passes this close) |
-| `market-stall` | `position`, `rotation_deg` (the counter faces −y at 0°) | `goods` (`gluehwein`; also `punsch`, `eierpunsch`, `kakao`, `baumstriezel`, `handbrot`, `printen`, `lebkuchen`, `stollen`, `marzipan-luebeck`, `marzipan`, `langos`, `flammlachs`, `maronen`, `pilze`, `strickwaren`, `lederwaren`, `holzkunst`, `kerzen`), `style` (`hut`, `locomotive`: 9 m long), `width_m` (4), `depth_m` (2.5), `tables` (empty: two for drinks and food, none for the others) |
+| `market-stall` | `position`, `rotation_deg` (the counter faces −y at 0°; its sign over it shows the goods) | `goods` (`gluehwein`; also `punsch`, `eierpunsch`, `kakao`, `baumstriezel`, `handbrot`, `printen`, `lebkuchen`, `stollen`, `marzipan-luebeck`, `marzipan`, `langos`, `flammlachs`, `maronen`, `pilze`, `strickwaren`, `lederwaren`, `holzkunst`, `kerzen`), `style` (`hut`, `locomotive`: 9 m long), `width_m` (4), `depth_m` (2.5), `tables` (empty: two for drinks and food, none for the others) |
+| `market-gate` | `position`, `rotation_deg` (the arch along x) | `text` (`Striezelmarkt`: on its board, both sides), `width_m` (5), `height_m` (5); no obstacle, people walk through it |
 | `christmas-tree` | `position` | `height_m` (20), `lights` (true), `seed` (1) |
 | `ferris-wheel` | `position`, `rotation_deg` (the wheel along x, people get in on −y) | `diameter_m` (24), `gondolas` (16, four places each), `rpm` (1), `board_s` (60), `ride_s` (180) |
 | `carousel` | `position`, `rotation_deg` (its gate on −y) | `diameter_m` (10), `seats` (16 horses), `rpm` (4), `board_s` (45), `ride_s` (150) |

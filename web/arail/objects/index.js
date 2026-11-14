@@ -22,7 +22,7 @@ import { BikeStand, ParkingGarage, ParkingLot } from "./parking.js";
 import { RailCrossing } from "./crossings.js";
 import { Label } from "./label.js";
 import { Tabletop } from "./tabletop.js";
-import { Carousel, ChristmasTree, FerrisWheel, MarketSquare, MarketStall, MiniTrain } from "./market.js";
+import { Carousel, ChristmasTree, FerrisWheel, MarketGate, MarketSquare, MarketStall, MiniTrain } from "./market.js";
 
 export { Platform, BusTerminal, Building, Tree, Forest, Area, Road, Track, Label, Tabletop, BusStop, BusLine, StationBuilding, Underpass };
 export { TABLE_SURFACES, TABLE_THICKNESS_MM, drawTable, defaultTableBounds, hasPhysicalTable } from "./tabletop.js";
@@ -46,7 +46,7 @@ export {
 } from "./building-kit.js";
 export { drawTree } from "./trees.js";
 export {
-  MarketSquare, MarketStall, ChristmasTree, Ride, FerrisWheel, Carousel, MiniTrain, MARKET_GOODS, GOODS_KINDS, MARKET_HOURS, marketHours, marketOpen, parseHours,
+  MarketSquare, MarketStall, MarketGate, ChristmasTree, Ride, paintSign, FerrisWheel, Carousel, MiniTrain, MARKET_GOODS, GOODS_KINDS, MARKET_HOURS, marketHours, marketOpen, parseHours,
 } from "./market.js";
 
 /** The built-in object types, in the order of the Build tab's lists. */
@@ -84,6 +84,7 @@ export const OBJECT_TYPES = [
   Tabletop,
   MarketSquare,
   MarketStall,
+  MarketGate,
   ChristmasTree,
   FerrisWheel,
   Carousel,

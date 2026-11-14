@@ -10,6 +10,8 @@ export const TEXTS = {
   "Market square": "Marktplatz",
   "Market stall": "Marktbude",
   "Christmas tree": "Weihnachtsbaum",
+  "Market gate": "Markttor",
+  "An arch over an entrance of the market with its name on a board, a fir garland and lights; people walk through it.": "Ein Bogen über einem Eingang des Markts mit seinem Namen auf einem Schild, einer Tannengirlande und Lichtern; die Leute gehen hindurch.",
   "Ferris wheel": "Riesenrad",
   "Carousel": "Karussell",
   "Mini train": "Kindereisenbahn",

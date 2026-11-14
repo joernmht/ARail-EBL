@@ -11,7 +11,7 @@ Open the lab example (`app/?layout=../layouts/ebl-lab.json`) and switch on the m
 | Module | What it adds |
 | --- | --- |
 | *(the base)* | the market module M with the paved Marktplatz, Lindenallee leading to it and the Altbau Am Markt on its south side |
-| **Striezelmarkt** (`striezelmarkt`) | 22 stalls, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
+| **Striezelmarkt** (`striezelmarkt`) | 22 stalls with their signs, two arches over the entrances reading *Striezelmarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
 | **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides the visitors have nothing to do |
 
 The rides board and run in turn also without visitors. The stalls light their counters and fairy lights while the market is open (10:00 to 22:00), the tree its lights all night, the lanterns round the square at dusk. Point at a stall for its goods, price, queue, waiting time, sales and takings today; at the square for the visitors now and what sold best; at a visitor for where they came from, what they bought and what they still want to do; at a ride for its places, runs and queue. The Overview rates the stalls by their queues and the visitors by their mood.
@@ -23,11 +23,12 @@ The clock's sun follows a summer day (sunset 20:30): *Evening at the Striezelmar
 | Type | Placement | What it is |
 | --- | --- | --- |
 | `market-square` | polygon | the paved square; its gates (`entrances()`) are points of its sides within `gate_m` of a street or footpath, connected to the road network like doors |
-| `market-stall` | point | a wooden hut or a steam locomotive (`style`) selling one kind of `goods`, with a counter on its front (−y), fairy lights and standing tables (two for drinks and food unless `tables` says otherwise) |
+| `market-stall` | point | a wooden hut or a steam locomotive (`style`) selling one kind of `goods`, with a counter on its front (−y), a sign over it with the goods' name (on the locomotive on its cab), fairy lights and standing tables (two for drinks and food unless `tables` says otherwise) |
+| `market-gate` | point | an arch over an entrance with the market's name on a board (both sides), a fir garland and lights; people walk through it (the lab has one on Lindenallee and one on the east side) |
 | `christmas-tree` | point | tiers of a cone with baubles, twinkling lights and a star; people stop to look at it |
 | `ferris-wheel`, `carousel`, `mini-train` | point | rides: boarding for `board_s`, then running for `ride_s` (the mini train whole laps); riders are drawn in the gondolas, on the horses, in the cars |
 
-The settings are in the [layout file format](layout-format.md#market-square-and-christmas-market). Stalls are greyscale like all buildings; their signs are coloured by the kind of goods (hot drinks Rot, food Orange, sweets Gelb, crafts Türkis).
+The settings are in the [layout file format](layout-format.md#market-square-and-christmas-market). Stalls are greyscale like all buildings; their signs are coloured by the kind of goods (hot drinks Rot, food Orange, sweets Gelb, crafts Türkis). A sign is painted in perspective while its front faces the camera, and lit at night while the market is open.
 
 ## The visitors
 

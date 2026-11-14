@@ -19,7 +19,7 @@ import { LayoutObject } from "../core/object.js";
 import { resolvePoint, resolvePoints } from "../core/anchors.js";
 import { clamp, createRng, hashKey, pointInPolygon, pointSegment, polygonCentroid, polylineAt, polylineLengths, toRad } from "../core/math.js";
 import { parseTime } from "../core/clock.js";
-import { CD, PALETTE, grey, shade } from "../core/colors.js";
+import { CD, FONT, PALETTE, grey, shade } from "../core/colors.js";
 import { BuildingBase, TIER, TONES, gableRoof, polygonNormal } from "./building-kit.js";
 
 const NAME = { key: "name", label: "Name", type: "text", default: "" };
@@ -256,8 +256,10 @@ export class MarketSquare extends LayoutObject {
         });
       }
     }
-    // lanterns round the square
+    // lanterns round the square (not in the way of a gate's arch)
+    const arches = this.world.objects.filter((o) => o.type === "market-gate" && o.geometry).map((o) => o.geometry.center);
     for (const p of g.lamps) {
+      if (arches.some((c) => Math.hypot(c[0] - p[0], c[1] - p[1]) < this.mm(5))) continue;
       view.prism(circle(p, this.mm(0.12), 6), 0, this.mm(4.2), { side: grey(0.25), top: grey(0.25) });
       view.glow([p[0], p[1], this.mm(4.3)], this.mm(1.6), WARM, 0.9);
       view.lightPool(p, this.mm(5), WARM, 0.7);
@@ -309,8 +311,8 @@ export class MarketStall extends BuildingBase {
     const w = loco ? 9 : num(this.spec.width_m, 4, 2.5, 10), d = loco ? 2.6 : num(this.spec.depth_m, 2.5, 2, 5);
     const x0 = -w / 2, x1 = w / 2, y0 = -d / 2, y1 = d / 2, sign = GOODS_KINDS[this.goods().kind]?.colour || CD.rot;
     m.setAnchor(0, 0, 1.5, Math.hypot(w, d) / 2 + 2);
-    let counter, lights = [], height, hatch;
-    if (loco) ({ counter, lights, height, hatch } = this._locomotive(m, w, sign));
+    let counter, lights = [], height, hatch, board;
+    if (loco) ({ counter, lights, height, hatch, board } = this._locomotive(m, w, sign));
     else {
       const wall = grey(0.74), H = 2.3;
       const body = m.box(x0, y0, x1, y1, 0, H, { wall });
@@ -318,7 +320,6 @@ export class MarketStall extends BuildingBase {
       const front = body.walls[0];
       // the counter's opening, lit while the stall is open; the sign over it; boards on the walls
       m.window(front, 0.35, w - 0.35, 1.0, 2.05, { group: "shop", colour: grey(TONES.opening), tier: TIER.coarse });
-      m.decal(front, 0.3, w - 0.3, 2.08, 2.28, sign);
       for (const wl of body.walls) for (let s = 0.5; s < wl.length; s += 0.5) m.decal(wl, s - 0.02, s + 0.02, 0, wl === front ? 0.95 : H, grey(0.62), TIER.fine);
       m.part([...body.faces, ...roof.faces]);
       m.part(m.box(x0 + 0.25, y0 - 0.45, x1 - 0.25, y0, 0.92, 1.0, { wall: grey(0.8), top: grey(0.86) }).faces, { after: true, facing: front });
@@ -328,6 +329,8 @@ export class MarketStall extends BuildingBase {
       hatch = [0, y0, 1.6];
       const eave = H + 0.05 - 0.55 * Math.tan(toRad(32));
       for (let i = 0; i <= 6; i++) lights.push(m.frame.at(x0 - 0.5 + ((w + 1) * i) / 6, y0 - 0.55, eave));
+      // the sign: a board on the eave over the counter, painted with the goods (drawn in draw)
+      board = signBoard(m, x0 + 0.2, x1 - 0.2, y0 - 0.62, eave - 0.04, eave + 0.6);
     }
     // standing tables in front of the counter
     const n = this.tableCount(), tables = [];
@@ -347,6 +350,8 @@ export class MarketStall extends BuildingBase {
       hatch: m.frame.at(hatch[0], hatch[1] - 0.3, hatch[2]),
       loco,
       chimney: loco ? m.frame.at(-w / 2 + 1.2, 0, 3.7) : null,
+      board,
+      sign,
     });
     const len = Math.hypot(geo.out[0], geo.out[1]) || 1;
     geo.out = [geo.out[0] / len, geo.out[1] / len];
@@ -391,7 +396,6 @@ export class MarketStall extends BuildingBase {
     const cabRoof = m.box(cab0 - 0.25, -1.5, x1 + 0.25, 1.5, 3.3, 3.5, { wall: dark, top: grey(0.35) });
     const side = cab.walls[0];
     m.window(side, 0.3, 2.8, 1.25, 2.6, { group: "shop", colour: grey(0.32), tier: TIER.coarse });
-    m.decal(side, 0.2, 2.9, 2.75, 3.15, sign);
     m.decal(frame.walls[0], 0.2, L - 0.2, 0.75, 0.85, red, TIER.fine);
     m.part([...frame.faces, ...beam.faces, ...buffers]);
     m.part(wheels, { after: true });
@@ -402,7 +406,9 @@ export class MarketStall extends BuildingBase {
     const lights = [];
     for (let i = 0; i <= 6; i++) lights.push(m.frame.at(cab0 - 0.25 + (3.6 * i) / 6, -1.55, 3.3));
     for (let i = 0; i <= 4; i++) lights.push(m.frame.at(x0 + 0.3 + i * 1.2, -0.9, 2.55));
-    return { counter: [x1 - 1.55, -1.75], lights, height: 3.6, hatch: [x1 - 1.55, -1.3, 1.9] };
+    // the sign on the cab, over the hatch
+    const board = signBoard(m, cab0 + 0.15, x1 - 0.15, -1.34, 2.68, 3.24);
+    return { counter: [x1 - 1.55, -1.75], lights, height: 3.6, hatch: [x1 - 1.55, -1.3, 1.9], board };
   }
 
   /** What the market simulation needs: the goods, where people queue and stand. */
@@ -444,10 +450,63 @@ export class MarketStall extends BuildingBase {
       view.lightPool(g.counter, this.mm(3.2), WARM, 0.8);
       if (this.goods().hot) view.glow(g.hatch, this.mm(1.1), CD.orange, 0.8);
     }
-    if (view.pxPerMM(g.center[0], g.center[1], 0) * this.mm(3) > 70 * view.px) {
-      view.label([g.counter[0], g.counter[1], this.mm(3.2)], this.goods().name, { size: 10, optional: true, fit: true, order: -2 });
-    }
+    paintSign(view, g.board, this.goods().name, { fill: g.sign, lit: open, depth: view.depth(g.center[0], g.center[1], 0) - 1 });
   }
+}
+
+/**
+ * A sign board in a model: a vertical board along local x from x0 to x1 at y, from z0 to z1 (m),
+ * facing −y (its back, wood, is a face of the model). Returns its corners in layout mm, front
+ * view from the left bottom counter-clockwise, for {@link paintSign}.
+ */
+function signBoard(m, x0, x1, y, z0, z1) {
+  m.part([m.face([[x1, y + 0.03, z0], [x0, y + 0.03, z0], [x0, y + 0.03, z1], [x1, y + 0.03, z1]], grey(0.45))], { after: true });
+  return { corners: [m.frame.at(x0, y, z0), m.frame.at(x1, y, z0), m.frame.at(x1, y, z1), m.frame.at(x0, y, z1)], width: x1 - x0, height: z1 - z0 };
+}
+
+/**
+ * Paint a sign: the board in its colour with the text on it, in perspective, while its front faces
+ * the camera (by night lit while `lit`). Close up only: below 4 px the board is a coloured patch.
+ * @param {{corners: number[][], width: number, height: number}} board corners [left bottom, right bottom, right top, left top] (mm), size (m)
+ */
+export function paintSign(view, board, text, { fill = CD.dunkelblau, ink = "#ffffff", lit = false, depth = null, twoSided = false } = {}) {
+  if (!board || view.simple) return;
+  let [a, b, c, d] = board.corners;
+  const n = polygonNormal([a, b, c, d]);
+  const cam = view.cam(a[0], a[1], a[2]), nc = view.normalToCamera(n);
+  if (nc[0] * cam[0] + nc[1] * cam[1] + nc[2] * cam[2] >= 0) {
+    if (!twoSided) return;
+    [a, b, c, d] = [b, a, d, c]; // seen from behind: the other side, painted the same
+  }
+  const P = [a, b, c, d].map((p) => view.project(p[0], p[1], p[2]));
+  if (P.some((p) => !p) || view.offImage(P)) return;
+  const W = board.width * 100, H = board.height * 100; // the board in cm
+  const tall = Math.hypot(P[3][0] - P[0][0], P[3][1] - P[0][1]);
+  const glow = lit && view.darkness > 0.05;
+  const board2d = (ctx) => {
+    // left top as the origin, x along the board, y down it
+    ctx.transform((P[2][0] - P[3][0]) / W, (P[2][1] - P[3][1]) / W, (P[0][0] - P[3][0]) / H, (P[0][1] - P[3][1]) / H, P[3][0], P[3][1]);
+    ctx.fillStyle = glow ? fill : view.dim(fill);
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = view.dim("#4a3a28");
+    ctx.lineWidth = Math.min(W, H) * 0.06;
+    ctx.strokeRect(0, 0, W, H);
+    if (tall < 4 * view.px) return;
+    let size = H * 0.62;
+    ctx.font = `700 ${size}px ${FONT}`;
+    const w = ctx.measureText(text).width || 1;
+    if (w > W * 0.9) {
+      size *= (W * 0.9) / w;
+      ctx.font = `700 ${size}px ${FONT}`;
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = glow ? ink : view.dim(ink, 0.6);
+    ctx.fillText(text, W / 2, H / 2 + size * 0.05);
+  };
+  const m = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2, (a[2] + c[2]) / 2];
+  view.solid(depth ?? view.depth(m[0], m[1], m[2]) - 1, board2d);
+  if (glow) view.glow(m, Math.hypot(c[0] - a[0], c[1] - a[1]) * 0.45, fill, 0.35);
 }
 
 /** A standing table (Stehtisch) at a layout point. */
@@ -600,6 +659,58 @@ export class ChristmasTree extends LayoutObject {
       view.glow([g.center[0], g.center[1], g.height * 0.4], g.radius * 1.1, WARM, 0.35);
       view.lightPool(g.center, g.radius * 1.8, WARM, 0.6);
     }
+  }
+}
+
+/* ================================================================== the gate */
+
+export class MarketGate extends LayoutObject {
+  static type = "market-gate";
+  static label = "Market gate";
+  static category = "Market";
+  static placement = "point";
+  static description = "An arch over an entrance of the market with its name on a board, a fir garland and lights; people walk through it.";
+  static params = [
+    NAME,
+    ROTATION,
+    { key: "text", label: "Text", type: "text", default: "Striezelmarkt" },
+    { key: "width_m", label: "Width", type: "number", unit: "m", min: 2, max: 15, step: 0.5, default: 5 },
+    { key: "height_m", label: "Height", type: "number", unit: "m", min: 3, max: 10, step: 0.5, default: 5 },
+  ];
+
+  computeGeometry() {
+    const c = resolvePoint(this.world.map, this.spec.position);
+    if (!c) return null;
+    const a = toRad(+this.spec.rotation_deg || 0), k = this.mm(1);
+    const W = num(this.spec.width_m, 5, 2, 15), H = num(this.spec.height_m, 5, 3, 10);
+    const u = [Math.cos(a), Math.sin(a)];
+    const at = (x, y, z = 0) => [c[0] + (u[0] * x - u[1] * y) * k, c[1] + (u[1] * x + u[0] * y) * k, z * k];
+    const faces = [];
+    for (const x of [-W / 2, W / 2]) faces.push(...boxFaces(at(x, 0).slice(0, 2), u, 0.3 * k, 0.3 * k, 0, H * k, "#6b4a2f"));
+    faces.push(...boxFaces(at(0, 0).slice(0, 2), u, (W + 0.5) * k, 0.35 * k, (H - 0.15) * k, (H + 0.05) * k, "#6b4a2f"));
+    // the fir garland along the beam
+    faces.push(...boxFaces(at(0, -0.05).slice(0, 2), u, (W + 0.2) * k, 0.5 * k, (H - 0.45) * k, (H - 0.15) * k, PALETTE.conifer));
+    const board = { corners: [at(-W * 0.4, -0.2, H + 0.05), at(W * 0.4, -0.2, H + 0.05), at(W * 0.4, -0.2, H + 1.05), at(-W * 0.4, -0.2, H + 1.05)], width: W * 0.8, height: 1 };
+    const back = board.corners.map((p) => p.slice());
+    faces.push(face(back, grey(0.45)));
+    const lights = Array.from({ length: 9 }, (_, i) => at(-W / 2 + (W * i) / 8, -0.3, H - 0.4));
+    const fp = [at(-W / 2 - 0.3, -0.4), at(W / 2 + 0.3, -0.4), at(W / 2 + 0.3, 0.4), at(-W / 2 - 0.3, 0.4)].map((p) => p.slice(0, 2));
+    return { center: c, faces, board, lights, footprint: fp, height: (H + 1.1) * k };
+  }
+
+  footprint() {
+    return this.geometry?.footprint || null;
+  }
+
+  pickHeight() {
+    return this.geometry?.height ?? 0;
+  }
+
+  draw(view) {
+    const g = this.geometry;
+    view.faces(g.faces, [g.center[0], g.center[1], 0], { outline: "rgba(40,30,20,0.3)" });
+    paintSign(view, g.board, this.spec.text || "", { fill: CD.rot, lit: true, twoSided: true, depth: view.depth(g.center[0], g.center[1], 0) - 1 });
+    if (view.darkness > 0.05) for (const p of g.lights) view.glow(p, this.mm(0.4), WARM, 0.9);
   }
 }
 

@@ -460,6 +460,8 @@
       "description": "The Christmas market on the Marktplatz: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.",
       "enabled": false,
       "objects": [
+        { "id": "market-gate", "type": "market-gate", "name": "Eingang Lindenallee", "position": [-550, -996], "rotation_deg": 0, "text": "Striezelmarkt" },
+        { "id": "market-gate-2", "type": "market-gate", "name": "Eingang Ost", "position": [-174, -659], "rotation_deg": 90, "width_m": 4, "text": "Striezelmarkt" },
         { "id": "christmas-tree", "type": "christmas-tree", "name": "Weihnachtsbaum", "position": [-560, -780], "height_m": 20 },
         { "id": "ferris-wheel", "type": "ferris-wheel", "name": "Riesenrad", "position": [-790, -600], "rotation_deg": 0, "diameter_m": 22 },
         { "id": "carousel", "type": "carousel", "name": "Kinderkarussell", "position": [-290, -660], "rotation_deg": 0, "diameter_m": 9 },
