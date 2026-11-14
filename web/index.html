@@ -653,7 +653,7 @@ footer a { color: inherit; }
   const link = (href, text) => (typeof href === "string" && safe(href) ? el("a", { href: safe(href) }, text) : null);
   fetch("references.json").then((r) => (r.ok ? r.json() : {})).then((refs) => {
     for (const list of document.querySelectorAll("[data-refs]")) {
-      const rows = (Array.isArray(refs[list.dataset.refs]) ? refs[list.dataset.refs] : []).filter((r) => r && typeof r.title === "string" && STATUS[r.status]);
+      const rows = (Array.isArray(refs[list.dataset.refs]) ? refs[list.dataset.refs] : []).filter((r) => r && typeof r.title === "string" && Object.hasOwn(STATUS, r.status));
       if (!rows.length) continue;
       list.replaceChildren(...rows.map((r) => {
         const [status, pill] = STATUS[r.status];

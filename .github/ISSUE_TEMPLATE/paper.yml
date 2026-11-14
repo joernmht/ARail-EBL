@@ -11,7 +11,7 @@ body:
     id: reference
     attributes:
       label: The paper
-      description: Title, authors, year, and a DOI or link. If it is not open access, say how we get the text (attach it here only if you may publish it; otherwise send it by email).
+      description: Title, authors, year, and a DOI or link. If it is not open access, say how we get the text (attach it here only if you may publish it; otherwise send it to joern.maurischat@tu-dresden.de).
     validations:
       required: true
   - type: textarea

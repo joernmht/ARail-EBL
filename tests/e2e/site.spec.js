@@ -92,6 +92,7 @@ test("the boards list what has been brought, with its status and its links; empt
         { title: "Passenger rights after a lost connection", by: "M. van Kraai", status: "in-progress", issue: 13 },
         { title: "A mark-up <img src=x onerror=window.__ran=1>", status: "proposed", issue: 14, link: "javascript:window.__ran=1" },
         { title: "Of an unknown status", status: "done" },
+        { title: "Of a status an object inherits", status: "constructor" },
       ],
       papers: [{ title: "Holding connections under delay", by: "W. Sokół", status: "proposed", source: "https://doi.org/10.0000/example", issue: 15 }],
     },
