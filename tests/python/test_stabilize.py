@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 
 import numpy as np
 import pytest
@@ -214,6 +215,69 @@ def test_compose_puts_the_bare_picture_first(tmp_path, monkeypatch):
     assert f(8)[25, 80, 2] > 180, "then the shot"
     with pytest.raises(OSError, match="missing"):
         cp.Part({"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1]}, (10, 10))
+
+
+def test_compose_wipes_from_the_bare_picture_and_starts_a_shot_later(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 20, (0, 0, 200))
+    cv2.imwrite(str(tmp_path / "photo.jpg"), np.full((100, 200, 3), (200, 0, 0), np.uint8))
+    plan = {
+        "size": [200, 100],
+        "parts": [
+            {
+                "frames": "a",
+                "first": 8,
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "bare": {"image": "photo.jpg", "hold": 2, "fade": [2, 8], "wipe": True, "edge": "#00ff00"},
+            }
+        ],
+    }
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 12
+    f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
+    assert f(0)[50, 100, 0] > 180, "the bare photo"
+    mid = f(5)  # half way: the shot on the left, the photo on the right, the edge between
+    assert mid[50, 20, 2] > 180 and mid[50, 180, 0] > 180
+    green = np.flatnonzero((mid[50, :, 1] > 180) & (mid[50, :, 0] < 90) & (mid[50, :, 2] < 90))
+    assert len(green) and 40 < green.mean() < 160, "the edge, green, near the middle"
+    # from the shot's frame 8 on: its bar is 10 + 8 px wide at the start
+    last = f(11)
+    assert last[50, 30, 2] > 180 and last[50, 20, 0] > 180 and last[50, 10 + 17 + 3, 2] > 180
+    assert last[50, 10 + 17 - 2, 0] > 180
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
+def test_compose_takes_a_clip_as_a_shot(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 12, (0, 0, 200), size=(160, 96))
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-framerate",
+            "30",
+            "-i",
+            str(tmp_path / "a" / "f%04d.jpg"),
+            "-c:v",
+            "libx264",
+            "-crf",
+            "10",
+            "-pix_fmt",
+            "yuv420p",
+            str(tmp_path / "a.mp4"),
+        ],
+        check=True,
+    )
+    plan = {"size": [160, 96], "parts": [{"clip": "a.mp4", "first": 4, "count": 6, "crop": [0, 0, 160, 96]}]}
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 6
+    bar = lambda i: int((cv2.imread(str(out / f"f{i:04d}.jpg"))[48, :, 0] > 150).sum())  # noqa: E731
+    assert abs(bar(0) - 14) <= 2 and abs(bar(5) - 19) <= 2, "the clip's frames 4 to 9"
+    with pytest.raises(OSError, match="frames needed"):
+        cp.Part({"clip": "a.mp4", "first": 10, "count": 6, "crop": [0, 0, 1, 1]}, (10, 10))
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")

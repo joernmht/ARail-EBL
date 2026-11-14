@@ -1,0 +1,10 @@
+{
+  "about": "The hybrid container train from a phone walking along it: the virtual terminal around the real wagons.",
+  "page": "example=container-train",
+  "clip": "build/video/clips/terminal-wagons-720.mp4",
+  "frames": 300,
+  "proc_max": 1600,
+  "viewport": [1600, 1000],
+  "each": "if (term) term.highlight.slots = false;",
+  "out": "build/video/terminal-wagons"
+}

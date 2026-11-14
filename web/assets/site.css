@@ -1,0 +1,84 @@
+/* The pages of the site around the app (the project page, How it works): the parts they share.
+   Tokens, bar, buttons and logo come from app/app.css. */
+html { scroll-behavior: smooth; }
+html, body { height: auto; }
+body { font-size: 17px; line-height: 1.55; }
+img { max-width: 100%; display: block; }
+a { color: var(--accent-ink); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
+h1, h2, h3 { line-height: 1.12; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.8rem, 3.8vw, 2.7rem); font-weight: 800; letter-spacing: -.02em; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; }
+.lead { font-size: 1.1rem; color: var(--text-2); max-width: 60ch; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+
+/* ---------------------------------------------------------------- bar (as in the app) */
+.site-bar { position: sticky; top: 0; z-index: 5; }
+.site-nav { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+.site-nav a:not(.btn) { color: var(--bar-text); text-decoration: none; font-weight: 500; font-size: .92rem; padding: 7px 9px; border-radius: var(--radius); }
+.site-nav a:not(.btn):hover { background: var(--bar-hover); }
+@media (max-width: 860px) { .site-nav .opt { display: none; } }
+@media (max-width: 640px) { .site-nav { margin-left: auto; } .site-bar .cro-logo { --h: 30px; } }
+@media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
+
+/* ---------------------------------------------------------------- buttons in a row */
+.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+.btn.big { padding: 12px 20px; font-size: 1rem; font-weight: 700; }
+
+/* ---------------------------------------------------------------- a platform sign, as on the layout and in the app */
+.psign { display: inline-grid; place-items: center; min-width: 1.9rem; height: 2.1rem; padding-inline: 6px; border-radius: 3px; background: var(--sign); color: var(--sign-text); font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
+/* the way there: three stops on a line */
+.path { list-style: none; margin: 0; padding: 0; display: grid; }
+.path li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 16px; padding-bottom: 22px; }
+.path li:not(:last-child)::before { content: ""; position: absolute; left: calc(.95rem - 1.5px); top: 2.1rem; bottom: 0; width: 3px; background: var(--line); }
+.path .psign { grid-row: span 2; }
+.path b { font-size: 1.08rem; align-self: end; }
+.path span:last-child { color: var(--text-2); font-size: .97rem; }
+
+/* ---------------------------------------------------------------- a status, as on a departure board */
+.state { display: inline-block; padding: 4px 8px; border-radius: 3px; font: 700 .7rem/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.state.arrived { background: var(--accent); color: var(--accent-text); }
+.state.boarding { background: var(--warn); color: var(--warn-text); }
+.state.planned { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
+
+/* ---------------------------------------------------------------- sections */
+.block { padding-block: 72px 0; scroll-margin-top: 64px; }
+.block-head { display: grid; gap: 14px; margin-bottom: 34px; }
+
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 20px; margin-top: 26px; }
+.facts div { display: grid; gap: 2px; align-content: start; border-top: 3px solid var(--text); padding-top: 10px; }
+.facts strong { font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.facts span { font-size: .82rem; color: var(--text-2); }
+details.dev { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+details.dev summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
+details.dev .dev-body { padding: 0 16px 16px; display: grid; gap: 12px; }
+details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
+pre { margin: 0; background: var(--board); color: #dfe7f3; border-radius: var(--radius); padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
+pre code { font-size: inherit; }
+pre .c { color: #a0b4d8; }
+pre .k { color: #f0922e; }
+pre .s { color: #7fd6db; }
+kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); }
+
+/* where it goes: three stages of the sister */
+.stages { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 10px; align-content: start; }
+.stage-card.now { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.stage-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.stage-card header span:first-child { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
+.stage-card p { color: var(--text-2); font-size: .95rem; }
+.flow { width: 100%; height: auto; max-height: 92px; color: var(--accent-ink); }
+.flow rect { fill: var(--surface-2); stroke: var(--line); }
+.flow text { fill: var(--text); font: 600 13px var(--font); }
+.flow .ar { stroke: currentColor; stroke-width: 2.4; fill: none; }
+.flow .ar-off { stroke: var(--line); stroke-width: 2; stroke-dasharray: 4 5; fill: none; }
+
+footer { padding-block: 36px 44px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; margin-top: 72px; }
+footer .wrap { display: grid; gap: 10px; }
+footer a { color: inherit; }
+
+.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: #ffffff; color: #001450; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
+.skip-link:focus { top: 12px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

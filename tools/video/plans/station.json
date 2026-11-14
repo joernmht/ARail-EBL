@@ -1,0 +1,12 @@
+{
+  "about": "Bf Neustadt from a phone panning along the platforms: the station, its town and its passengers over the real trains.",
+  "page": "layout=../layouts/ebl-neustadt.json",
+  "clip": "build/video/clips/station-trains-720.mp4",
+  "frames": 180,
+  "viewport": [
+    1600,
+    1000
+  ],
+  "warm_s": 30,
+  "out": "build/video/station"
+}

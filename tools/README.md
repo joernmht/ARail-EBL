@@ -67,8 +67,8 @@ into a video. The plans of the project page's videos are in `video/plans/`; `sh
 tools/video/page-videos.sh` makes them again (ffmpeg needed):
 
 ```bash
-node tools/video/render.mjs tools/video/plans/bus.json --only 0,120   # a quick look at two frames
-arail-compose tools/video/plans/landing.json
+node tools/video/render.mjs tools/video/plans/station.json --only 0,120   # a quick look at two frames
+arail-compose tools/video/plans/hero.json
 ```
 
 The way from a clip to a video, the stabilization step by step and which steps could run live:

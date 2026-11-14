@@ -2,25 +2,67 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("project page links to the app and the compare slider works", async ({ page }) => {
+test("project page: the video the whole width, with the ways in at its lower edge, and the compare slider", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto("/");
   await expect(page).toHaveTitle("ARail-EBL");
-  await expect(page.getByRole("link", { name: "Open the app" })).toHaveAttribute("href", "app/");
+  // the video at the top: 16:9 over the whole width, with its poster and a pause button
+  const video = page.locator("#heroClip");
+  await expect(video).toHaveAttribute("poster", "media/ebl-hero.jpg");
+  for (const src of ["media/ebl-hero.jpg", await page.locator("#heroClip source").getAttribute("src")]) {
+    expect((await page.request.get(`/${src}`)).ok(), src).toBe(true);
+  }
+  const box = await video.boundingBox(), width = await page.evaluate(() => document.documentElement.clientWidth);
+  expect(box.x).toBe(0);
+  expect(box.width).toBe(width);
+  expect(Math.abs(box.height - (box.width * 9) / 16)).toBeLessThan(2);
+  await expect(page.getByRole("button", { name: /^(Pause|Play) the video$/ })).toBeVisible();
+  // the app, the game and How it works: inside the video, at its lower edge, side by side, centred
+  const ways = [["Open the app", "app/"], ["Play the game", "game/"], ["How it works", "how/"]];
+  const boxes = [];
+  for (const [name, href] of ways) {
+    const link = page.locator("#heroVideo").getByRole("link", { name });
+    await expect(link).toHaveAttribute("href", href);
+    boxes.push(await link.boundingBox());
+  }
+  for (const b of boxes) {
+    expect(Math.abs(b.y + b.height / 2 - (boxes[0].y + boxes[0].height / 2))).toBeLessThan(1);
+    expect(b.y).toBeGreaterThan(box.y + box.height / 2);
+    expect(b.y + b.height).toBeLessThanOrEqual(box.y + box.height);
+  }
+  const left = boxes[0].x, right = boxes[2].x + boxes[2].width;
+  expect(Math.abs((left + right) / 2 - (box.x + box.width / 2))).toBeLessThan(2);
+  // one sentence below it
+  const title = await page.getByRole("heading", { level: 1 }).boundingBox();
+  expect(title.y).toBeGreaterThanOrEqual(box.y + box.height);
+  // the photo slider stays on the project page
   await page.locator("#compareRange").fill("20");
   await expect.poll(() => page.locator("#compare").evaluate((el) => el.style.getPropertyValue("--pos"))).toBe("20%");
   await page.locator("#compare").scrollIntoViewIfNeeded();
   await expect.poll(() => page.locator("#compare img").evaluateAll((imgs) => imgs.map((i) => i.naturalWidth))).toEqual([1600, 1600]);
-  // the video at the top: a real train through a virtual town, with its poster and a pause button
-  const video = page.locator("#heroClip");
-  await expect(video).toHaveAttribute("poster", "media/ebl-city-train.jpg");
-  for (const src of ["media/ebl-city-train.jpg", await page.locator("#heroClip source").getAttribute("src")]) {
-    expect((await page.request.get(`/${src}`)).ok(), src).toBe(true);
+  const scroll = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(scroll[0]).toBe(scroll[1]); // no horizontal scrolling
+  expect(errors).toEqual([]);
+});
+
+test("How it works: how ARail gets onto a lab's table, and where it goes next", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/how/");
+  await expect(page).toHaveTitle("How it works · ARail-EBL");
+  expect(await page.locator("#base, #next").evaluateAll((els) => els.map((e) => e.id))).toEqual(["base", "next"]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stickers, a phone, a browser");
+  await expect(page.locator("#base .path li")).toHaveCount(4);
+  await expect(page.getByRole("link", { name: "Print markers" })).toHaveAttribute("href", "../markers/");
+  await expect(page.locator(".stage-card")).toHaveCount(3);
+  await expect(page.locator(".site-bar .brand")).toHaveAttribute("href", "../");
+  for (const href of await page.locator('main a[href^="../"]').evaluateAll((as) => as.map((a) => a.getAttribute("href")))) {
+    expect((await page.request.get(new URL(href, page.url()).pathname)).ok(), href).toBe(true);
   }
-  await expect(page.getByRole("button", { name: /^(Pause|Play) the video$/ })).toBeVisible();
   const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
-  expect(width[0]).toBe(width[1]); // no horizontal scrolling
+  expect(width[0]).toBe(width[1]);
   expect(errors).toEqual([]);
 });
 
@@ -145,9 +187,10 @@ test("the boards list what has been brought, with its status and its links; empt
 
 test("project page shows what runs today, each application opening an example in the app", async ({ page, request }) => {
   await page.goto("/");
-  // what runs, how it gets onto a lab's table, what is next, in this order
-  const order = await page.locator("#base, #applications, #next").evaluateAll((els) => els.map((e) => e.id));
-  expect(order).toEqual(["applications", "base", "next"]);
+  // what runs, then the lab table in ARail; how it gets onto a lab's table and what is next are on How it works
+  const order = await page.locator("#applications, #sister, #base, #next").evaluateAll((els) => els.map((e) => e.id));
+  expect(order).toEqual(["applications", "sister"]);
+  await expect(page.locator("#sister").getByRole("link", { name: "How it works" })).toHaveAttribute("href", "how/");
   const cards = await page.locator(".app-card").evaluateAll((els) => els.map((e) => e.id));
   expect(cards).toEqual(["app-town", "app-terminal", "app-operations", "app-infrastructure", "app-journeys", "app-disruptions"]);
   const examples = await page.getByRole("link", { name: "Open this example" }).evaluateAll((as) => as.map((a) => a.getAttribute("href")));
@@ -185,12 +228,18 @@ test("project page shows what runs today, each application opening an example in
   for (const src of images) expect((await request.get(`/${src}`)).ok(), src).toBe(true);
 });
 
-test("project page fits a phone: the video first, no horizontal scrolling", async ({ page }) => {
+test("project page fits a phone: the video first, the ways in on one level, no horizontal scrolling", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  const pic = await page.locator("#heroVideo").boundingBox();
+  const pic = await page.locator("#heroClip").boundingBox();
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   expect(pic.y).toBeLessThan(title.y);
+  expect(pic.width).toBe(390);
+  // too low for the buttons inside it: they follow the video, still side by side
+  const ways = await page.locator(".hero-ctas .btn").evaluateAll((as) => as.map((a) => a.getBoundingClientRect()).map((r) => [r.top, r.bottom]));
+  expect(ways).toHaveLength(3);
+  for (const [top] of ways) expect(Math.abs(top - ways[0][0])).toBeLessThan(1);
+  expect(ways[0][0]).toBeGreaterThanOrEqual(pic.y + pic.height);
   const width = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(width[0]).toBe(width[1]);
 });
@@ -366,7 +415,7 @@ test("the 404 page links back to the site", async ({ page }) => {
 });
 
 test("every page links to the Impressum and the Datenschutzerklärung, which give the operator", async ({ page, request }) => {
-  for (const path of ["/", "/markers/", "/lab-map/", "/architecture/", "/404.html", "/impressum/", "/datenschutz/"]) {
+  for (const path of ["/", "/how/", "/markers/", "/lab-map/", "/architecture/", "/404.html", "/impressum/", "/datenschutz/"]) {
     await page.goto(path);
     for (const [name, target] of [[/^Impressum$/, "impressum/"], [/^Datenschutz/, "datenschutz/"]]) {
       const link = page.getByRole("link", { name });

@@ -14,61 +14,40 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/fonts/fonts-app.css">
 <link rel="stylesheet" href="app/app.css">
+<link rel="stylesheet" href="assets/site.css">
 <style>
-/* Project page in the app's design (tokens, bar, buttons and logo come from app/app.css).
-   Story: the picture first (the video), then a switch below it: who are you? An educator, a
-   scientist or a practitioner gets a page of their own: a question, three ways to use ARail, the way
-   from an idea to something that runs, and the board of what others have brought. The switch is three
-   radio buttons; what belongs to one group carries data-aud, and CSS alone shows the chosen one. Then,
-   for all: what runs today, how it gets onto a lab's table, and where it goes next. */
-html { scroll-behavior: smooth; }
-html, body { height: auto; }
-body { font-size: 17px; line-height: 1.55; }
-img { max-width: 100%; display: block; }
-a { color: var(--accent-ink); }
-.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; }
-@media (min-width: 700px) { .wrap { padding-inline: 28px; } }
-h1, h2, h3 { line-height: 1.12; text-wrap: balance; margin: 0; }
-h2 { font-size: clamp(1.8rem, 3.8vw, 2.7rem); font-weight: 800; letter-spacing: -.02em; }
-h3 { font-size: 1.15rem; font-weight: 700; }
-p { margin: 0; }
-.lead { font-size: 1.1rem; color: var(--text-2); max-width: 60ch; }
-.eyebrow { font-family: var(--mono); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
-
-/* ---------------------------------------------------------------- bar (as in the app) */
-.site-bar { position: sticky; top: 0; z-index: 5; }
-.site-nav { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
-.site-nav a:not(.btn) { color: var(--bar-text); text-decoration: none; font-weight: 500; font-size: .92rem; padding: 7px 9px; border-radius: var(--radius); }
-.site-nav a:not(.btn):hover { background: var(--bar-hover); }
-@media (max-width: 860px) { .site-nav .opt { display: none; } }
-@media (max-width: 640px) { .site-nav { margin-left: auto; } .site-bar .cro-logo { --h: 30px; } }
-@media (max-width: 360px) { .site-bar .identity .divider, .site-bar .cro-logo { display: none; } }
-
-/* ---------------------------------------------------------------- hero: the picture first */
-.hero { background: radial-gradient(900px 520px at 88% -10%, rgba(54, 184, 191, .22), transparent 70%), var(--board); color: var(--board-text); }
-.hero-grid { display: grid; gap: 24px; padding-block: 24px 30px; }
-@media (min-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); align-items: center; gap: 64px; padding-block: 56px 44px; } }
-.hero .eyebrow { color: var(--overlay-ok); }
-.hero h1 { font-size: clamp(2.5rem, 6vw, 4.4rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.02; margin: 14px 0 18px; }
-.hero h1 em { font-style: normal; color: var(--overlay-ok); }
-.hero .lead { color: var(--board-muted); font-size: 1.15rem; max-width: 46ch; }
-.ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
-.btn.big { padding: 12px 20px; font-size: 1rem; font-weight: 700; }
+/* Project page in the app's design (tokens, bar, buttons and logo: app/app.css; what the pages of the
+   site share: assets/site.css). Story: the picture first (the video, the whole width, with the ways in
+   at its lower edge), one sentence, then a switch: who are you? An educator, a scientist or a
+   practitioner gets a page of their own: a question, three ways to use ARail, the way from an idea to
+   something that runs, and the board of what others have brought. The switch is three radio buttons;
+   what belongs to one group carries data-aud, and CSS alone shows the chosen one. Then, for all: what
+   runs today and the lab table in ARail. How it gets onto a lab's table, and where it goes next, are on
+   the page How it works (how/). */
+/* ---------------------------------------------------------------- hero: the video, the whole width */
+.hero { background: radial-gradient(900px 520px at 88% 100%, rgba(54, 184, 191, .18), transparent 70%), var(--board); color: var(--board-text); }
+.hero-video { position: relative; margin: 0; }
+.hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; max-height: calc(100vh - 56px); max-height: calc(100svh - 56px); object-fit: cover; background: #000; }
+/* the ways in: inside the video, at its lower edge, side by side */
+.hero-ctas { position: absolute; inset: auto 0 0; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; padding: 72px 16px clamp(18px, 3.4vw, 44px); background: linear-gradient(rgba(0, 10, 40, 0), rgba(0, 10, 40, .6)); pointer-events: none; }
+.hero-ctas .btn { pointer-events: auto; }
 .hero .btn.primary, .coop .btn.primary { background: #ffffff; border-color: #ffffff; color: #001450; }
 .hero .btn.ghost, .coop .btn.ghost { background: transparent; color: var(--board-text); border-color: var(--board-line); }
 .hero .btn.ghost:hover, .coop .btn.ghost:hover { border-color: var(--board-text); }
+.hero-ctas .btn.ghost { background: rgba(0, 20, 80, .72); border-color: rgba(255, 255, 255, .8); color: #ffffff; }
+.hero-ctas .btn.ghost:hover { background: rgba(0, 20, 80, .9); border-color: #ffffff; }
 .hero :focus-visible, .coop :focus-visible { outline-color: #ffffff; }
-
-/* the hero video: a real train through a virtual town (square, from a phone) */
-.hero-video { margin: 0; justify-self: center; width: min(100%, 520px); }
-.hero-video .media { position: relative; }
-.hero-video video { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-height: min(78vh, 600px); object-fit: cover; border-radius: 14px; background: #000; box-shadow: 0 24px 60px rgba(0, 6, 26, .55); }
-.hero-video .tag { position: absolute; top: 12px; left: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: #0A777F; color: #ffffff; pointer-events: none; }
-.hero-video .pause { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
+.hero-video .pause { position: absolute; right: 12px; top: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .7); background: rgba(0, 20, 80, .75); color: #ffffff; cursor: pointer; }
 .hero-video .pause svg { width: 16px; height: 16px; fill: currentColor; }
 .hero-video .pause:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
-.hero-video figcaption { font-size: .85rem; color: var(--board-muted); margin-top: 10px; }
-@media (max-width: 999px) { .hero-grid .hero-video { order: -1; } }
+/* on a phone the video is too low for three buttons: they follow it */
+@media (max-width: 640px) {
+  .hero-ctas { position: static; flex-wrap: nowrap; padding: 14px 12px 0; background: none; gap: 6px; }
+  .hero-ctas .btn.big { padding: 10px clamp(6px, 2.4vw, 14px); font-size: clamp(.76rem, 3.5vw, .95rem); white-space: nowrap; }
+}
+/* one sentence below it */
+.hero h1 { font-size: clamp(1.9rem, 4.4vw, 3.3rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.08; text-align: center; max-width: 24ch; margin: 0 auto; padding-block: clamp(28px, 5vw, 56px) 30px; }
+.hero h1 em { font-style: normal; color: var(--overlay-ok); }
 
 /* the switch below the video: who the page is for. Three radio buttons on a track, a thumb that
    slides to the chosen one */
@@ -106,16 +85,6 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
 .benefit { margin-top: 40px; padding-left: 18px; border-left: 4px solid var(--warn); font-size: clamp(1.15rem, 2.2vw, 1.45rem); font-weight: 700; line-height: 1.3; max-width: 36ch; text-wrap: balance; }
 .route { margin-top: 56px; display: grid; gap: 32px; }
 @media (min-width: 980px) { .route { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: start; } }
-.route h3 { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; margin-bottom: 22px; }
-/* a platform sign, as on the layout and in the app */
-.psign { display: inline-grid; place-items: center; min-width: 1.9rem; height: 2.1rem; padding-inline: 6px; border-radius: 3px; background: var(--sign); color: var(--sign-text); font-size: 1.15rem; font-weight: 800; letter-spacing: 0; }
-/* the way there: three stops on a line */
-.path { list-style: none; margin: 0; padding: 0; display: grid; }
-.path li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 16px; padding-bottom: 22px; }
-.path li:not(:last-child)::before { content: ""; position: absolute; left: calc(.95rem - 1.5px); top: 2.1rem; bottom: 0; width: 3px; background: var(--line); }
-.path .psign { grid-row: span 2; }
-.path b { font-size: 1.08rem; align-self: end; }
-.path span:last-child { color: var(--text-2); font-size: .97rem; }
 .route .ctas { margin-top: 6px; }
 /* the board: what has been brought, with its status, as a departure board */
 .refs { background: var(--board); color: var(--board-text); border: 1px solid var(--board-line); border-radius: 14px; padding: 20px 22px 10px; }
@@ -132,15 +101,8 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
 .refs-rows .links { grid-column: 1 / -1; display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: .88rem; }
 .refs-rows li.none { display: block; color: var(--board-muted); }
 .refs-rows li.none b { display: block; color: var(--board-text); font-size: 1.1rem; margin-bottom: 2px; }
-.state { display: inline-block; padding: 4px 8px; border-radius: 3px; font: 700 .7rem/1 var(--mono); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
-.state.arrived { background: var(--accent); color: var(--accent-text); }
-.state.boarding { background: var(--warn); color: var(--warn-text); }
-.state.planned { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); }
 
 /* ---------------------------------------------------------------- sections for all */
-.block { padding-block: 72px 0; scroll-margin-top: 64px; }
-.block-head { display: grid; gap: 14px; margin-bottom: 34px; }
-
 /* what runs today */
 .apps { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .app-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; scroll-margin-top: 80px; transition: transform .2s, box-shadow .2s; }
@@ -155,9 +117,8 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
 .app-card .acts a:not(.btn) { font-size: .9rem; font-weight: 500; }
 .more { margin-top: 22px; color: var(--text-2); }
 
-/* onto your lab's table */
-.base { display: grid; gap: 32px; }
-@media (min-width: 980px) { .base { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 56px; align-items: start; } }
+/* the lab table, and the same photo in ARail */
+.compare-fig { margin: 0 auto; max-width: 1040px; }
 .compare { position: relative; margin: 0; border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 18px 50px rgba(0, 6, 26, .3); aspect-ratio: 1600 / 1205; max-width: 100%; --pos: 55%; touch-action: pan-y; }
 .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .compare .before { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
@@ -168,35 +129,7 @@ html[data-aud="practitioners"] [data-aud]:not([data-aud="practitioners"]) { disp
 .compare .tag { position: absolute; top: 12px; font: 700 .72rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 8px; border-radius: 4px; background: rgba(0, 20, 80, .85); color: #eaf1ff; pointer-events: none; }
 .compare .tag.l { left: 12px; }
 .compare .tag.r { right: 12px; background: #0A777F; color: #ffffff; }
-.compare-fig { margin: 0; }
 .compare-fig figcaption { padding: 12px 2px 0; color: var(--text-2); font-size: .92rem; }
-.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 20px; margin-top: 26px; }
-.facts div { display: grid; gap: 2px; align-content: start; border-top: 3px solid var(--text); padding-top: 10px; }
-.facts strong { font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
-.facts span { font-size: .82rem; color: var(--text-2); }
-details.dev { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-details.dev summary { cursor: pointer; padding: 14px 16px; font-weight: 700; }
-details.dev .dev-body { padding: 0 16px 16px; display: grid; gap: 12px; }
-details.dev .dev-body p { color: var(--text-2); font-size: .95rem; }
-pre { margin: 0; background: var(--board); color: #dfe7f3; border-radius: var(--radius); padding: 18px; overflow-x: auto; font: 13.5px/1.6 var(--mono); }
-pre code { font-size: inherit; }
-pre .c { color: #a0b4d8; }
-pre .k { color: #f0922e; }
-pre .s { color: #7fd6db; }
-kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); }
-
-/* where it goes: three stages of the sister */
-.stages { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 10px; align-content: start; }
-.stage-card.now { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
-.stage-card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.stage-card header span:first-child { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
-.stage-card p { color: var(--text-2); font-size: .95rem; }
-.flow { width: 100%; height: auto; max-height: 92px; color: var(--accent-ink); }
-.flow rect { fill: var(--surface-2); stroke: var(--line); }
-.flow text { fill: var(--text); font: 600 13px var(--font); }
-.flow .ar { stroke: currentColor; stroke-width: 2.4; fill: none; }
-.flow .ar-off { stroke: var(--line); stroke-width: 2; stroke-dasharray: 4 5; fill: none; }
 
 /* cooperation */
 .coop { background: radial-gradient(700px 360px at 100% 0, rgba(54, 184, 191, .2), transparent 70%), var(--board); color: var(--board-text); border-radius: 18px; padding: 30px; display: grid; gap: 18px; }
@@ -206,14 +139,7 @@ kbd { font: 600 .82em/1 var(--mono); padding: 2px 5px; border: 1px solid var(--l
 .coop .contact { color: var(--board-text); font-size: .95rem; }
 .coop .contact a { color: inherit; font-weight: 700; }
 
-footer { padding-block: 36px 44px; border-top: 1px solid var(--line); color: var(--text-2); font-size: .9rem; margin-top: 72px; }
-footer .wrap { display: grid; gap: 10px; }
-footer a { color: inherit; }
-
-.skip-link { position: absolute; left: 12px; top: -60px; z-index: 10; background: #ffffff; color: #001450; padding: 8px 14px; border-radius: 3px; font-weight: 700; }
-.skip-link:focus { top: 12px; }
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
   .aud-thumb, .aud-track label, .app-card { transition: none; }
   .pitch > .wrap { animation: none; }
   .app-card:hover { transform: none; }
@@ -232,8 +158,8 @@ footer a { color: inherit; }
   <nav class="site-nav" aria-label="Main">
     <a class="opt" href="#for">For you</a>
     <a class="opt" href="#applications">What runs</a>
-    <a class="opt" href="#base">Your lab</a>
-    <a class="opt" href="#next">Next</a>
+    <a class="opt" href="#sister">Photo and ARail</a>
+    <a class="opt" href="how/">How it works</a>
     <a class="opt" href="game/">Game</a>
     <a class="opt" href="https://github.com/joernmht/ARail-EBL/tree/main/docs">Docs</a>
     <a class="btn primary" href="app/">App</a>
@@ -242,28 +168,23 @@ footer a { color: inherit; }
 
 <main id="main">
   <div class="hero">
-    <div class="wrap">
-      <section class="hero-grid" aria-labelledby="intro">
-        <div>
-          <p class="eyebrow">Railway operations lab · TU Dresden</p>
-          <h1 id="intro">The whole railway <em>on one table</em></h1>
-          <p class="lead">ARail lays a living transport system over a model railway: passengers, buses, a container terminal, crews, ageing track and everything that can go wrong. In the browser, on any phone.</p>
-          <div class="ctas">
-            <a class="btn primary big" href="app/">Open the app</a>
-            <a class="btn ghost big" href="game/">Play the game</a>
-          </div>
+    <section aria-labelledby="intro">
+      <figure class="hero-video" id="heroVideo">
+        <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-hero.jpg" width="1600" height="900" aria-label="Five cameras in a loop, each first the real model railway, then the same picture in ARail as an edge sweeps across it. A freight train runs along the curve of the lab table, then through a virtual town under a virtual sky. A phone pans along Bf Neustadt: the station gets platforms with people, trams and a town. A phone walks along a container train: around the real wagons a virtual terminal with a crane, a road and stacks of containers. From above, the virtual crane lifts a container off a real wagon and sets it down on a real model truck. Last, the EBL's digital twin: the whole layout as it winds round the hall. The markers are covered with grey plates; the sky is added for this video.">
+          <source src="media/ebl-hero.mp4" type="video/mp4">
+        </video>
+        <div class="hero-ctas">
+          <a class="btn primary big" href="app/">Open the app</a>
+          <a class="btn ghost big" href="game/">Play the game</a>
+          <a class="btn ghost big" href="how/">How it works</a>
         </div>
-        <figure class="hero-video" id="heroVideo">
-          <div class="media">
-            <video id="heroClip" autoplay muted loop playsinline preload="metadata" poster="media/ebl-city-train.jpg" width="720" height="720" aria-label="Three scenes in a loop. A real freight train runs along the curve of the lab table, through a virtual town with old buildings, Plattenbau and a forest, under a virtual sky. At the terminal a virtual crane lifts a container off a real wagon and sets it down on a real model truck, seen in a photo and from above by a phone camera in front of the truck. In the virtual town a bus stops and people get on.">
-              <source src="media/ebl-city-train.mp4" type="video/mp4">
-            </video>
-            <span class="tag">Real trains · virtual world</span>
-            <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
-          </div>
-          <figcaption>Three scenes from the lab: a real freight train in a virtual town, a virtual crane loading a real truck, and bus line 7. The markers are covered with grey plates; the sky is added for this video.</figcaption>
-        </figure>
-      </section>
+        <button class="pause" id="heroPause" type="button" aria-pressed="false" aria-label="Pause the video"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z"/></svg></button>
+      </figure>
+      <div class="wrap">
+        <h1 id="intro">The railway lab that makes your job <em>tangible</em></h1>
+      </div>
+    </section>
+    <div class="wrap">
       <!-- the switch: who the page is for (the three pages below, and a line on every application) -->
       <fieldset class="aud" id="for">
         <legend>Show me ARail for</legend>
@@ -487,114 +408,24 @@ footer a { color: inherit; }
     </div>
   </section>
 
-  <!-- onto your lab's table -->
-  <section class="block" id="base" aria-labelledby="base-title">
+  <!-- the lab table, and the same photo in ARail -->
+  <section class="block" id="sister" aria-labelledby="sister-title">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow">Bring it to your lab</p>
-        <h2 id="base-title">Stickers, a phone, a browser</h2>
-        <p class="lead">Digital twins are boring. We built a sister: an image of the layout that is laid over it, and technically independent of it. Any scale: H0, TT, N.</p>
+        <p class="eyebrow">Photo and ARail</p>
+        <h2 id="sister-title">The same table, twice</h2>
       </div>
-      <div class="base">
-        <figure class="compare-fig">
-          <figure class="compare" id="compare">
-            <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" loading="lazy" decoding="async">
-            <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
-            <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
-            <span class="divider" aria-hidden="true"></span>
-            <span class="tag l">Photo</span><span class="tag r">ARail</span>
-          </figure>
-          <figcaption>The lab table, and the same photo in ARail: slide to compare.</figcaption>
+      <figure class="compare-fig">
+        <figure class="compare" id="compare">
+          <img src="assets/ebl-lab-ar.jpg" alt="The lab table in ARail: trains at both platforms with waiting passengers, boards with the next departures, a modern station building between the tracks and a street with a zebra crossing, and Plattenbau behind the tracks where the wall is in the photo." width="1600" height="1205" loading="lazy" decoding="async">
+          <img class="before" src="media/ebl-lab.jpg" alt="The same model railway table as a plain photo." width="1600" height="1205">
+          <input type="range" id="compareRange" min="0" max="100" value="55" aria-label="Slide between the plain photo and the augmented view">
+          <span class="divider" aria-hidden="true"></span>
+          <span class="tag l">Photo</span><span class="tag r">ARail</span>
         </figure>
-        <div>
-          <ol class="path">
-            <li><span class="psign" aria-hidden="true">1</span><b>Stick</b><span>ArUco or AprilTag markers, 30&nbsp;mm, one every 30–40&nbsp;cm. Print them from the <a href="markers/">marker sheets</a>.</span></li>
-            <li><span class="psign" aria-hidden="true">2</span><b>Film</b><span>One slow video of the table. <code>arail-survey</code> measures every marker and writes the layout and an orthophoto.</span></li>
-            <li><span class="psign" aria-hidden="true">3</span><b>Build</b><span>Platforms, streets, houses, a terminal: in the flyover (<kbd>F</kbd>), on a grid, also beyond the real table.</span></li>
-            <li><span class="psign" aria-hidden="true">4</span><b>Connect</b><span><code>arail-bridge</code> brings the positions of the real trains from your control system, or from the built-in simulator.</span></li>
-          </ol>
-          <div class="ctas">
-            <a class="btn primary" href="markers/">Print markers</a>
-            <a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/getting-started.md">Getting started</a>
-            <a class="btn" href="https://github.com/joernmht/ARail-EBL/blob/main/docs/lab-session.md">Lab-session checklist</a>
-          </div>
-          <div class="facts">
-            <div><strong>0 installs</strong><span>a browser on any phone, tablet or webcam</span></div>
-            <div><strong>700.7 mm</strong><span>platform 1 from the markers; measured about 700&nbsp;mm</span></div>
-            <div><strong>1110 px</strong><span>estimated focal length; 1111&nbsp;px in the photo's metadata</span></div>
-          </div>
-        <details class="dev">
-          <summary>For developers: plugins</summary>
-          <div class="dev-body">
-            <p>No build step, no framework. A plugin is an ES module that registers object types, simulations or disruption types; layouts load it by URL. <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/extending.md">Guide to plugins</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/layout-format.md">Layout file format</a> · <a href="https://github.com/joernmht/ARail-EBL/blob/main/docs/control-system-interface.md">Control-system interface</a></p>
-            <pre tabindex="0" aria-label="Example plugin"><code><span class="c">// plugins/windmill.js: a new object type</span>
-<span class="k">export default function</span> (arail) {
-  <span class="k">class</span> Windmill <span class="k">extends</span> arail.LayoutObject {
-    <span class="k">static</span> type = <span class="s">"windmill"</span>;
-    <span class="k">static</span> label = <span class="s">"Windmill"</span>;
-    <span class="k">static</span> params = [{ key: <span class="s">"height_m"</span>, label: <span class="s">"Height"</span>, type: <span class="s">"number"</span>, unit: <span class="s">"m"</span>, default: 18 }];
-    computeGeometry() {
-      <span class="k">const</span> c = arail.resolvePoint(<span class="k">this</span>.world.map, <span class="k">this</span>.spec.position);
-      <span class="k">return</span> c && { center: c };
-    }
-    draw(view) {
-      <span class="k">const</span> [x, y] = <span class="k">this</span>.geometry.center;
-      <span class="k">const</span> h = view.m(<span class="k">this</span>.spec.height_m);   <span class="c">// metres → model mm</span>
-      view.prism(arail.rectFootprint([x, y], view.m(5), view.m(5)), 0, h,
-                 { side: <span class="s">"#e8e1d0"</span>, top: <span class="s">"#8a5a3c"</span> });
-    }
-  }
-  arail.registry.registerObject(Windmill);
-}</code></pre>
-          </div>
-        </details>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- where it goes -->
-  <section class="block" id="next" aria-labelledby="next-title">
-    <div class="wrap">
-      <div class="block-head">
-        <p class="eyebrow">Next</p>
-        <h2 id="next-title">From a sister to a hybrid lab</h2>
-        <p class="lead">The first step is done. Next, the sister learns where the real trains are; later, she runs the layout herself.</p>
-      </div>
-      <div class="stages">
-        <article class="stage-card now" aria-labelledby="s1">
-          <header><span>Stage 1</span><span class="state arrived">Arrived</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister side by side, not connected">
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar-off" d="M116 40h68"/>
-          </svg>
-          <h3 id="s1">The digital sister</h3>
-          <p>An image of the layout that can be laid over it, on any phone, live or projected. Technically independent of the layout: she simulates the lab next to it.</p>
-        </article>
-        <article class="stage-card" aria-labelledby="s2">
-          <header><span>Stage 2</span><span class="state boarding">Next</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="The layout writes into the sister">
-            <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar" d="M116 40h66" marker-end="url(#ah)"/>
-          </svg>
-          <h3 id="s2">The layout writes into the model</h3>
-          <p>Live positions from the lab's control system: physical trains in a virtual world. When a real train stops at a platform, the virtual passengers board it. The bridge runs with a simulator; the adapter for the EBL is next.</p>
-        </article>
-        <article class="stage-card" aria-labelledby="s3">
-          <header><span>Stage 3</span><span class="state planned">Later</span></header>
-          <svg class="flow" viewBox="0 0 300 80" role="img" aria-label="Layout and sister write into each other">
-            <rect x="4" y="18" width="104" height="44" rx="6"/><text x="56" y="45" text-anchor="middle">Layout</text>
-            <rect x="192" y="18" width="104" height="44" rx="6"/><text x="244" y="45" text-anchor="middle">Sister</text>
-            <path class="ar" d="M120 32h62" marker-end="url(#ah)"/>
-            <path class="ar" d="M180 50h-62" marker-end="url(#ah)"/>
-          </svg>
-          <h3 id="s3">The sister runs operations</h3>
-          <p>The sister takes over operations control and writes into the layout: disruptions hit the real trains too, flexibly and repeatably, for any exercise.</p>
-        </article>
-      </div>
+        <figcaption>The lab table, and the same photo in ARail: slide to compare.</figcaption>
+      </figure>
+      <p class="more">How it gets onto your lab's table, and where it goes next: <a href="how/">How it works</a>.</p>
     </div>
   </section>
 

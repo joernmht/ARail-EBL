@@ -1,0 +1,20 @@
+{
+  "about": "The project page's video (web/media/ebl-hero.mp4), 16:9, the whole width of the page: each camera first shows the real layout (about 2 s), an edge wipes it into ARail (about 2 s more), then the next camera. The town at the curve, Bf Neustadt, a walk along the hybrid container train, the crane loading the truck, and the EBL's digital twin over the whole hall; looping.",
+  "size": [1280, 720],
+  "fps": 30,
+  "parts": [
+    { "frames": "build/video/town", "first": 30, "count": 150, "crop": [[0, 330, 720, 735], [40, 352, 680, 712]],
+      "bare": { "clip": "examples/media/ebl-curve-trains.mp4", "start": 30, "fade": [66, 86], "wipe": true } },
+    { "frames": "build/video/station", "count": 150, "crop": [[0, 0, 1280, 720], [64, 36, 1216, 684]], "fade": 12,
+      "bare": { "clip": "build/video/clips/station-trains-720.mp4", "fade": [62, 82], "wipe": true } },
+    { "frames": "build/video/terminal-wagons", "count": 140, "crop": [[0, 0, 1280, 720], [48, 27, 1232, 693]], "fade": 12,
+      "bare": { "clip": "build/video/clips/terminal-wagons-720.mp4", "fade": [55, 75], "wipe": true } },
+    { "frames": "build/video/terminal-truck", "first": 100, "count": 122, "crop": [[0, 0, 1280, 720], [200, 60, 1160, 600]], "fade": 12,
+      "bare": { "clip": "examples/media/ebl-terminal-truck.mp4", "start": 230, "still": true, "fade": [45, 65], "wipe": true } },
+    { "clip": "examples/media/ebl-twin-overview.mp4", "first": 10, "count": 90, "crop": [[0, 0, 1600, 900], [60, 34, 1540, 866]], "fade": 15 }
+  ],
+  "loop": 20,
+  "out": "web/media/ebl-hero.mp4",
+  "crf": 25,
+  "poster": { "frame": 258, "out": "web/media/ebl-hero.jpg" }
+}

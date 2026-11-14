@@ -2,7 +2,8 @@
 the shots, the bare picture before the augmented one fades in, a loop without a seam, and the
 encoding (H.264 with ffmpeg) with a poster frame.
 
-A plan (JSON) lists the shots, each a directory of frames from ``node tools/video/render.mjs``::
+A plan (JSON) lists the shots, each a directory of frames from ``node tools/video/render.mjs`` (or a
+video, ``clip`` in place of ``frames``)::
 
     {
       "size": [720, 720], "fps": 30,
@@ -17,17 +18,22 @@ A plan (JSON) lists the shots, each a directory of frames from ``node tools/vide
       "poster": {"frame": 150, "out": "web/media/video.jpg"}
     }
 
+- ``first``: the shot starts at this frame of its directory or clip (default 0); ``count`` frames are
+  used;
 - ``crop``: the box (x0, y0, x1, y1, px of the frames) scaled to ``size``, or [from, to]: the box
   moves from one to the other over the shot (eased);
 - ``fade``: frames over which the shot fades in from the one before (the two overlap);
 - ``bare``: the picture without the augmentation (``image``, or ``clip`` from ``start``) pasted over
   the frame's top left (around it the frame, or the colour ``fill``); the shot fades in over it in
   the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
+  ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze); ``wipe``: instead
+  of fading in, the shot is uncovered from left to right behind an edge (the colour ``edge``,
+  "#rrggbb"), as the photo slider of the project page does;
 - ``loop``: the last frames fade into the first, so the video loops without a seam.
 
 Paths are relative to the repository.
 
-    arail-compose tools/video/plans/landing.json
+    arail-compose tools/video/plans/hero.json
 """
 
 from __future__ import annotations
@@ -66,14 +72,35 @@ def blend(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     return cv2.addWeighted(a, 1 - t, b, t, 0)
 
 
+def wipe(a: np.ndarray, b: np.ndarray, t: float, edge: str = "#f0922e") -> np.ndarray:
+    """a, then b uncovered from the left behind a vertical edge: t = 0 is a, 1 is b. The edge
+    (3 px of the colour `edge`, "#rrggbb") comes in from the left side and leaves at the right."""
+    h, w = a.shape[:2]
+    soft = max(2.0, w / 400)
+    x = -soft + t * (w + 2 * soft)  # the edge, from just outside the left to just outside the right
+    cols = np.arange(w, dtype=np.float32)
+    m = np.clip((x - cols) / soft + 0.5, 0, 1)[None, :, None]  # 1 left of the edge: b
+    out = (a.astype(np.float32) * (1 - m) + b.astype(np.float32) * m).astype(np.uint8)
+    half = max(1, round(w / 640))
+    x0, x1 = max(0, round(x) - half), min(w, round(x) + half + 1)
+    if 0 < t < 1 and x0 < x1:
+        out[:, x0:x1] = [int(edge[i : i + 2], 16) for i in (5, 3, 1)]  # BGR
+    return out
+
+
 class Part:
     """One shot of a plan: its frames, crop, the fade from the shot before and the bare picture."""
 
     def __init__(self, spec: dict, size):
         import cv2
 
-        self.dir = os.path.join(ROOT, spec["frames"])
+        self.dir = os.path.join(ROOT, spec["frames"]) if spec.get("frames") else None
+        self.video = os.path.join(ROOT, spec["clip"]) if spec.get("clip") else None
+        if not self.dir and not self.video:
+            raise OSError("a shot needs `frames` or `clip`")
+        self._reader = None
         self.count = int(spec["count"])
+        self.first = int(spec.get("first", 0))
         self.fade = int(spec.get("fade", 0))
         self.size = size
         c = spec["crop"]
@@ -87,12 +114,42 @@ class Part:
             self._image = cv2.imread(os.path.join(ROOT, self.bare["image"]))
             if self._image is None:
                 raise OSError(f"cannot read {self.bare['image']}")
-        missing = [i for i in (0, self.count - 1) if not os.path.exists(self._path(i))]
+        if self.video:
+            cap = cv2.VideoCapture(self.video)
+            n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if cap.isOpened() else 0
+            cap.release()
+            if n < self.first + self.count:
+                raise OSError(f"{spec['clip']}: {self.first + self.count} frames needed, {n} there")
+            return
+        missing = [i for i in (self.first, self.first + self.count - 1) if not os.path.exists(self._path(i))]
         if missing:
             raise OSError(f"{spec['frames']}: frame {missing[0]} is missing (render the shot first)")
 
     def _path(self, k: int) -> str:
         return os.path.join(self.dir, f"f{k:04d}.jpg")
+
+    def _read(self, k: int) -> np.ndarray:
+        """Frame k of the directory, or of the clip (read in order; a step back starts it again)."""
+        import cv2
+
+        if not self.video:
+            img = cv2.imread(self._path(k))
+            if img is None:
+                raise OSError(f"cannot read {self._path(k)}")
+            return img
+        if self._reader is None or k < self._reader[1]:
+            cap = cv2.VideoCapture(self.video)
+            self._reader = [cap, -1, None]
+        cap = self._reader[0]
+        while self._reader[1] < k:
+            ok, img = cap.read()
+            if not ok:
+                break
+            self._reader[1] += 1
+            self._reader[2] = img
+        if self._reader[2] is None:
+            raise OSError(f"cannot read frame {k} of {self.video}")
+        return self._reader[2]
 
     def _bare(self, k: int, frame: np.ndarray) -> np.ndarray:
         """The bare picture over the frame's top left (scaled to its width for a clip); around it the
@@ -107,6 +164,8 @@ class Part:
                 self._clip.set(cv2.CAP_PROP_POS_FRAMES, int(self.bare.get("start", 0)))
                 self._last = None
                 self._at = -1
+            if self.bare.get("still"):
+                k = 0
             while self._at < k:
                 ok, img = self._clip.read()
                 if ok:
@@ -127,20 +186,21 @@ class Part:
 
     def frame(self, i: int) -> np.ndarray:
         """Frame i of the shot (0 .. length - 1), cropped to the video's size."""
-        import cv2
 
         k = max(0, i - self.hold)
-        img = cv2.imread(self._path(k))
-        if img is None:
-            raise OSError(f"cannot read {self._path(k)}")
-        if self.bare:
-            a, b = self.bare.get("fade", [0, 1])
-            t = ease((i - a) / max(1, b - a))
-            if t < 1:
-                img = blend(self._bare(k, img), img, t)
+        img = self._read(self.first + k)
         u = ease(k / max(1, self.count - 1))
         box = [p + (q - p) * u for p, q in zip(self.box[0], self.box[1], strict=True)]
-        return crop(img, box, self.size)
+        if not self.bare:
+            return crop(img, box, self.size)
+        a, b = self.bare.get("fade", [0, 1])
+        t = ease((i - a) / max(1, b - a))
+        if t >= 1:
+            return crop(img, box, self.size)
+        bare = self._bare(k, img)
+        if not self.bare.get("wipe"):
+            return crop(blend(bare, img, t), box, self.size)
+        return wipe(crop(bare, box, self.size), crop(img, box, self.size), t, self.bare.get("edge", "#f0922e"))
 
 
 def compose(plan: dict, frames_dir: str, log=print) -> int:

@@ -5,6 +5,7 @@ import { openCase, openModules } from "./ui.js";
 
 const PAGES = [
   ["project page", "/"],
+  ["how it works", "/how/"],
   ["marker sheets", "/markers/"],
   ["app, Overview", "/app/?layout=../layouts/ebl-lab.json#overview"],
   ["app, Settings: view", "/app/?layout=../layouts/ebl-lab.json#view"],
