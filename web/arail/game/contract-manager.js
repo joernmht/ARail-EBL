@@ -344,6 +344,7 @@ export class ContractGame extends Game {
     const p = this.current, done = this.periods.filter((x) => x.account), last = done.at(-1)?.account;
     const said = (c, x) => (x.choice ? (c.cancelled ? CANCELLED : DELIVERED).find((o) => o.id === x.choice).label.toLowerCase() : "to decide");
     return {
+      scene: this.scene(),
       figures: [
         { label: "The operator's finances", value: this._healthText(), tone: this.health < HEALTH.cuts_below ? "bad" : this.health < 0.5 ? "warn" : "ok" },
         { label: "Trips on time", value: last ? (100 * last.punctual_share).toFixed(1) : "–", unit: last ? "%" : "" },
@@ -365,5 +366,23 @@ export class ContractGame extends Game {
       ],
       actions: [],
     };
+  }
+
+  /**
+   * The contract's period as things a picture of the station can show (the table: web/game/turn.js):
+   * the trips of the last period as a tally (on time, late, cancelled), and what each open decision
+   * is about: the operator's wishes at its trains, the incident list and the checks at the station.
+   * @returns {Array<{thing: string}>}
+   */
+  scene() {
+    const last = this.periods.filter((x) => x.account).at(-1)?.account, n = 20;
+    const things = [];
+    if (last) {
+      // (a cancelled share of half a percent or more shows as one trip of the twenty)
+      const cancelled = last.cancelled_share >= 0.005 ? Math.max(1, Math.round(n * last.cancelled_share)) : 0, late = Math.min(n - cancelled, Math.round(n * (1 - last.punctual_share)));
+      things.push({ thing: "tally", at: "platform", parts: [{ tone: "ok", n: n - late - cancelled }, { tone: "warn", n: late }, { tone: "bad", n: cancelled }] });
+    }
+    const about = (id) => (id.startsWith("emergency-") ? "trains" : id.startsWith("checks-") ? "platform" : "station");
+    return [...things, ...this.open.map((d) => ({ thing: "ask", id: d.id, at: about(d.id) }))];
   }
 }

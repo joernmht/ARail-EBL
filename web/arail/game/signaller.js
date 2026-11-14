@@ -336,7 +336,10 @@ export class SignallerGame extends Game {
   };
   static player = SignallerAutopilot;
 
-  /** @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>}} [options] */
+  /**
+   * @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, late?: Record<string, number>}} [options]
+   *   `late`: the trains a mission lets come late, whatever the level (a train's id → seconds)
+   */
   constructor(options = {}) {
     super({ ...options, level: LEVELS[options.level] ? options.level : "normal" });
     const lv = LEVELS[this.level];
@@ -347,7 +350,8 @@ export class SignallerGame extends Game {
     /** Closed tracks (Sperre): section id → since when. */
     this.closed = new Map();
     this.trains = TIMETABLE.filter((s) => !s.level || s.level === this.level).map((s) => {
-      const late = lv.lateMax ? Math.round(this.rng("late", s.id).next() * lv.lateMax) : 0;
+      const told = Number(options.late?.[s.id]);
+      const late = Number.isFinite(told) ? Math.max(0, Math.round(told)) : lv.lateMax ? Math.round(this.rng("late", s.id).next() * lv.lateMax) : 0;
       return new Train(s, s.enter + late);
     });
     this.resource("zs1", "Substitute signals (counter)", 0);

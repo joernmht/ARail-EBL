@@ -131,10 +131,11 @@ test("the game page's title screen has its texts in German: the menus, the capti
   const texts = new Set();
   const src = read("web/game/title.js");
   // the items, their lines, the photos' captions and the menus' headings; options shown on or off; the texts asked for by name
-  for (const m of src.matchAll(/\b(?:label|sub|caption|main|free|options):\s*"((?:[^"\\\n]|\\.)+)"/g)) texts.add(JSON.parse(`"${m[1]}"`));
+  for (const m of src.matchAll(/\b(?:label|sub|caption):\s*"((?:[^"\\\n]|\\.)+)"/g)) texts.add(JSON.parse(`"${m[1]}"`));
+  for (const m of src.match(/const HEADINGS = \{([^}]+)\}/)[1].matchAll(/:\s*"([^"]+)"/g)) texts.add(m[1]);
   for (const m of src.matchAll(/\?\s*"((?:[^"\\\n]|\\.)+)"\s*:\s*"((?:[^"\\\n]|\\.)+)"/g)) texts.add(JSON.parse(`"${m[1]}"`)).add(JSON.parse(`"${m[2]}"`));
   for (const m of src.matchAll(/\b(?:tr|focusLabel)\("((?:[^"\\\n]|\\.)+)"\)/g)) texts.add(JSON.parse(`"${m[1]}"`));
-  assert.ok(texts.has("Missions") && texts.has("Moving background") && texts.has("The town at night") && texts.has("Main menu"), "the texts are found");
+  assert.ok(texts.has("Missions") && texts.has("Career planner") && texts.has("Moving background") && texts.has("The town at night") && texts.has("Main menu") && texts.has("Games"), "the texts are found");
   // its markup in the page (the name, the tagline, the foot) and the bar's way back to it
   const html = read("web/game/index.html");
   const title = html.slice(html.indexOf('<div class="title-screen"'), html.indexOf('<div class="app">')).replace(/<script>[\s\S]*?<\/script>/g, "");

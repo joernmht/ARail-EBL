@@ -1,0 +1,49 @@
+name: Teaching concept
+description: For educators. A course, lecture or exercise that should use ARail, in the lab, in the lecture or as a mission for students.
+title: "Teaching concept: "
+labels: ["teaching-concept"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you teach and what your students should take away. We build it with you as a scenario, a case to click through or a mission, and list it on the [project page](https://joernmht.github.io/ARail-EBL/?for=educators) with its status and a link.
+  - type: input
+    id: course
+    attributes:
+      label: Course and audience
+      description: The course or module, the level (bachelor, master, vocational training) and roughly how many students.
+      placeholder: "Railway operations 2, master, 25 students"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Learning goal
+      description: What should students understand or be able to do afterwards? Which connection between subjects should they see?
+    validations:
+      required: true
+  - type: textarea
+    id: activity
+    attributes:
+      label: What should students do?
+      description: The situation on the railway, the roles students take, the decisions they make.
+    validations:
+      required: true
+  - type: checkboxes
+    id: where
+    attributes:
+      label: Where does it run?
+      options:
+        - label: In the lab, live on the model railway
+        - label: In the lecture, as a video or a case to click through in the app
+        - label: At home, as a mission in the game
+  - type: textarea
+    id: material
+    attributes:
+      label: Material and links
+      description: Slides, exercise sheets, a module description, a layout of your own lab. Issues are public.
+  - type: input
+    id: listing
+    attributes:
+      label: How to list it
+      description: The name and institution to show on the project page, or "do not list".

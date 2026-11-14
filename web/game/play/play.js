@@ -24,11 +24,11 @@ const BASE = "../../";
 /** Where the page keeps whether the backdrop is live (live.js), and the narrowest window it runs in (px). */
 const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
 /**
- * Where the page keeps whether the signaller plays on the table (the live picture as the game's own, table.js),
- * the game it is for, what of the page is not the table (a click there is the page's), how far a pointer may move
+ * Where the page keeps whether a shift is played on the table (the live picture as the game's own: table.js,
+ * district.js, control.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
-const TABLE_KEY = "arail.game.table", TABLE_GAME = "signaller", TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
 const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
@@ -296,7 +296,7 @@ class PlayPage {
     // the table's controls are in the side bar, behind its button (nothing of them stands on the picture)
     mount($("#tableBar"),
       h("button", { class: "btn small", type: "button", id: "tableOn", "aria-pressed": String(this.tableOn), onclick: () => this.setTable(!this.tableOn) }, "Play on the table"),
-      h("p", { class: "hint", id: "tableOff" }, "The signaller's seat is played on the table, while the picture is live."),
+      h("p", { class: "hint", id: "tableOff" }, "A shift at Bf Neustadt is played on the table, while the picture is live."),
       h("div", { class: "table-group", id: "tableSources", role: "group", "aria-label": "The table seen through" },
         TABLE_SOURCES.map(([kind, label, title]) => h("button", { class: "btn small", type: "button", "data-source": kind, "aria-pressed": String(kind === "table"), title, onclick: () => this.setSource(kind) }, label))),
       h("div", { class: "table-group", id: "tableParts", role: "group", "aria-label": "What the camera shows" },
@@ -446,7 +446,8 @@ class PlayPage {
     const tabled = !!this.live?.setTable(game, table ?? {});
     const shown = tabled || (!!shot && !!this.live?.can(shot));
     if (tabled) {
-      this.live.clock(time);
+      // (a turn has no time of day: the table has that of the place's picture, a night session the night)
+      this.live.clock(time ?? shot?.time ?? null);
       this.live.start();
     } else if (shown) {
       this.live.look(shot, { time });
@@ -502,7 +503,23 @@ class PlayPage {
     if (this.pic) this.backdrop(this.pic.pic, this.pic);
   }
 
-  /** The signaller plays on the table (T), or on the panel alone (kept in the browser). */
+  /**
+   * What the table shows for a seat at work in a shift (LiveScene.setTable): the seat's game, where it has a
+   * board, with what is chosen in its picture and the moves offered from it (a move names the route it sets, or the
+   * thing of the picture it needs: `target`); and the other games of the shift that have a board, drawn with it.
+   * A seat whose game has no board watches the others' table. Null where no game of the shift has a board.
+   * A slow role's turn is on the table too: its game's scene, with the decision in focus (`focus`) as what is chosen.
+   */
+  tableOf(seat, can, item, focus = null) {
+    const on = (x) => x.game && TABLE_GAMES.has(x.Game.id);
+    const others = (this.session?.active ?? []).filter((x) => x !== seat && on(x)).map((x) => x.game);
+    if (!on(seat)) return others.length ? { game: others[0], active: false, picked: null, offers: [], others: others.slice(1) } : null;
+    const offers = (item?.menu ?? []).map((m, i) => ({ i, route: m.name === "setRoute" ? m.args?.[0] ?? null : null, target: m.target ?? null, disabled: !!m.disabled }));
+    // (in a turn nothing of a picture is chosen: the decision in focus is, where the table shows what it is about)
+    return { game: seat.game, active: can, picked: can ? item?.id ?? (focus ? `ask-${focus.id}` : null) : null, offers: can ? offers : [], others };
+  }
+
+  /** A shift is played on the table (T), or on the seats' own pictures alone (kept in the browser). */
   setTable(on) {
     this.tableOn = !!on;
     storage.set(TABLE_KEY, this.tableOn);
@@ -585,18 +602,25 @@ class PlayPage {
   }
 
   /**
-   * What was clicked on the table (LiveScene.hit): a signal or a platform track is chosen as on the
-   * panel (a second click lets go of it); where a route of the signal chosen goes sets that route.
+   * What was clicked on the table (LiveScene.hit): a thing of the game's picture is chosen as in the
+   * picture (a signal, a platform track; a fault, a van, the base; a second click lets go of it); with
+   * something chosen, what one of its moves needs makes that move (where a route of the signal goes,
+   * the van to send to the fault).
    */
   tablePick(hit) {
     const seat = this.session?.seat(this.tab), p = seat && this.panels.get(seat.id);
-    if (!hit || !p || !this.atWork(seat) || seat.by !== "human") return;
+    // (a seat whose game has no board only watches the table of the others)
+    if (!hit || !p || !this.atWork(seat) || seat.by !== "human" || !TABLE_GAMES.has(seat.Game.id)) return;
+    // in a turn: what a decision is about brings that decision up
+    if (hit.ask != null) return void this.look(seat.id, hit.ask);
     const chosen = this.picked.get(seat.id);
     if (hit.item) return void (hit.item === chosen ? this.unpick(seat.id) : this.pick(seat.id, hit.item, false));
-    const item = this.view(seat.game).sketch?.items.find((it) => it.id === chosen), move = item?.menu?.find((m) => m.name === "setRoute" && m.args?.[0] === hit.route);
+    const item = this.view(seat.game).sketch?.items.find((it) => it.id === chosen);
+    // (by what the move needs, in the menu as it is now: the game has gone on since the table was drawn)
+    const move = hit.target != null ? item?.menu?.find((m) => m.target === hit.target) : item?.menu?.find((m) => m.name === "setRoute" && m.args?.[0] === hit.route);
     if (!move) return;
     this.pickMove(seat.id, item.id, move, false);
-    // a route set: the signal is let go of (one that was refused stays chosen, with the reason)
+    // the move made: what was chosen is let go of (one that was refused stays chosen, with the reason)
     if (!this.refused.has(`${seat.id}|sketch`)) this.unpick(seat.id);
   }
 
@@ -1437,8 +1461,7 @@ class PlayPage {
     const night = turn ? null : nightAt(s.phase.clock, s.t);
     // the signaller's picture can be the table itself: the game on the layout, with what is chosen and the routes offered from a signal chosen
     const item = view.sketch?.items.find((it) => it.id === this.picked.get(seat.id));
-    const table = this.tableOn && seat.Game.id === TABLE_GAME && g && active && !turn
-      ? { game: g, active: can, picked: can ? item?.id ?? null : null, offers: (item?.menu ?? []).filter((m) => m.name === "setRoute").map((m) => ({ route: m.args?.[0], disabled: !!m.disabled })) } : null;
+    const table = this.tableOn && g && active ? this.tableOf(seat, can, item, turn ? focus : null) : null;
     this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
       { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t), table });
 
@@ -1587,6 +1610,8 @@ class PlayPage {
     p.sketchTitle.textContent = sk.title ?? "The picture";
     p.svg.setAttribute("viewBox", `0 0 ${sk.width} ${sk.height}`);
     p.svg.style.minWidth = `${Math.round(sk.width * 0.62)}px`;
+    // (beside the table the picture stands small: as high as its shape needs, within limits)
+    p.svg.style.setProperty("--beside", `${Math.max(132, Math.min(236, Math.round((540 * sk.height) / sk.width)))}px`);
     p.board.setAttribute("role", picks.length ? "group" : "img");
     p.board.setAttribute("aria-label", sk.label ?? sk.title ?? "The picture");
     morph(p.shapes, sk.items.filter((it) => !picks.includes(it)).map((it) => this.shape(it)));
@@ -2064,7 +2089,8 @@ class PlayPage {
       const held = this.listening();
       if (!s.over && s.phase.kind === "shift" && this.speed > 0 && !held) s.step(dt * this.speed);
       // the world of the table runs with the game
-      if (this.live) this.live.pace = s.over || s.phase.kind !== "shift" || held ? 0 : this.speed;
+      // (in a turn at its own pace: the year has no clock)
+      if (this.live) this.live.pace = s.over ? 0 : s.phase.kind !== "shift" ? 1 : held ? 0 : this.speed;
       $("#shiftBar").classList.toggle("held", held);
       // games whose world is elsewhere exchange with it between the steps, one exchange at a time
       if (!s.over && !this.exchanging && typeof s.sync === "function") {

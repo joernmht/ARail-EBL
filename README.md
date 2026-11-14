@@ -87,7 +87,8 @@ Write an adapter for your system from the template; see [Control-system interfac
 
 ```
 web/                  the website (published with GitHub Pages)
-  index.html          project page
+  index.html          project page: one page each for educators, scientists and practitioners, behind a switch
+  references.json     what they brought (teaching concepts, papers, cases from practice), listed on its boards
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey, in English and German; its shell is the game page's too
   game/               the game page: the games and exercises (infrastructure, rail operations, journeys, the terminal);

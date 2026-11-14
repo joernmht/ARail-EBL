@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { SHELL_KEYS, TitleScreen, withLang } from "../../web/game/title.js";
+import { MAX_CHOICES, SHELL_KEYS, TitleScreen, withLang } from "../../web/game/title.js";
 
 const at = (search, hash = "") => ({ search, hash });
 
@@ -35,4 +35,21 @@ test("a link into the shell keeps the address's language; other links stay as th
   assert.equal(withLang("?layout=a.json#infra", at("")), "?layout=a.json#infra");
   assert.equal(withLang("play/", at("?lang=de")), "play/");
   assert.equal(withLang("?", at("?lang=de")), "?lang=de");
+});
+
+test("no menu of the title screen offers more than MAX_CHOICES choices (Back not counted)", () => {
+  // the Free play cases, as game/main.js lists them (the page itself cannot be loaded in Node)
+  const main = readFileSync(new URL("../../web/game/main.js", import.meta.url), "utf8");
+  const list = main.match(/const FREE_PLAY = \[([\s\S]*?)\]\.map\(/);
+  assert.ok(list, "game/main.js lists FREE_PLAY");
+  const freePlay = [...list[1].matchAll(/^\s*\[(\w+),/gm)].map(([, id]) => ({ id, label: id, href: "?" }));
+  assert.ok(freePlay.length >= 1, "the cases of Free play are found");
+  globalThis.document ??= { fullscreenEnabled: true, fullscreenElement: null };
+  for (const view of ["main", "play", "free", "career", "options"]) {
+    // the main menu at its longest: with something to go on with
+    const screen = Object.assign(Object.create(TitleScreen.prototype), { view, freePlay, continued: () => ({ label: "Continue", href: "play/" }), rankLine: () => null });
+    Object.defineProperty(screen, "motion", { value: true });
+    const choices = screen.items().filter((it) => !it.back);
+    assert.ok(choices.length <= MAX_CHOICES, `${view}: ${choices.length} choices (${choices.map((it) => it.label).join(", ")}), at most ${MAX_CHOICES}`);
+  }
 });
