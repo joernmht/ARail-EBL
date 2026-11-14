@@ -110,6 +110,8 @@ yard falls away to the west. Switch the module on (or open
 `app/?layout=../layouts/ebl-neustadt.json&layers=sbahn,waldhof,hump`) and look at it in the
 flyover (F): the module lies beyond the photos.
 
+![The module Hump yard in the flyover, a time-lapse: a train pushed over the crest on the right, its cuts sorted into six tracks on the left, two retarders braking in orange](assets/hump-yard-on-the-table.jpg)
+
 The object humps one random train of 24 wagons after the other into six tracks of 120 m (in H0:
 the yard is 6 m long and 0.36 m wide) and draws:
 
