@@ -21,7 +21,7 @@ import { ServiceManager } from "./services.js";
 import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
-import { Clock } from "./clock.js";
+import { Clock, parseTime } from "./clock.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { ParkingSpaces } from "./parking.js";
@@ -383,8 +383,12 @@ export class World {
     return findPickable(this, view, key);
   }
 
-  /** Set the time of day ("HH:MM" or minutes); simulations re-place their people (`clock.set`). */
+  /**
+   * Set the time of day ("HH:MM" or minutes); simulations re-place their people (`clock.set`). A value
+   * that is no time of day changes nothing (no `clock.set`) and gives null.
+   */
   setTime(value) {
+    if (parseTime(value) == null) return null;
     const minutes = this.clock.set(value);
     this.events.emit("clock.set", { minutes });
     return minutes;

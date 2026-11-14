@@ -32,6 +32,7 @@ export const SIMPLE_STYLES = {
   road: { fill: PALETTE.asphalt, order: 1 },
   "truck-lane": { fill: PALETTE.asphalt, order: 1 },
   underpass: { fill: "#7d838a", order: 1.5 },
+  "market-square": { fill: "#bdb4a5", order: 0.6 },
   platform: { fill: PALETTE.platform, order: 2 },
   "bus-stop": { fill: PALETTE.platform, order: 2 },
   "bus-terminal": { fill: PALETTE.platform, order: 2 },
@@ -46,6 +47,7 @@ export const CATEGORY_STYLES = {
   Buildings: { fill: "#d3cdc2", order: 4 },
   Infrastructure: { fill: PALETTE.steel, order: 3.8 },
   Terminal: { fill: "#b9bec4", order: 3.8 },
+  Market: { fill: "#d8cbb4", order: 4 },
 };
 
 export const DEFAULT_STYLE = { fill: "#c3c8ce", order: 4 };

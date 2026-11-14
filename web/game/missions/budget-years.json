@@ -74,6 +74,30 @@
     "portrait": "hivis"
    },
    "say": "Our last year together. Remember: replacement money that is not committed by December is gone."
+  },
+  {
+   "phase": "plan",
+   "rounds": [
+    1
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "The district is on the table. What I ask you pulses where it is: the teams at the base, the renewals on the track. Tap it and decide there. The rails show the grade: the redder, the worse."
+  },
+  {
+   "phase": "plan",
+   "rounds": [
+    2
+   ],
+   "who": {
+    "name": "E. Kiebitz",
+    "role": "Asset responsible (ALV)",
+    "portrait": "hivis"
+   },
+   "say": "The red lamps on the table are last year's faults. More lamps, more faults: that is what the grade and the strategy bought you."
   }
  ],
  "debrief": [

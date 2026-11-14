@@ -87,11 +87,11 @@ test("a street joins the one it starts on, a bus stop goes onto it, a fix connec
   const errors = await openBuilder(page);
   await expect(page.locator("#layoutName")).toHaveText("EBL lab, Beta 0.1 (example)");
   await expect(page.locator("#saveState")).toHaveText("No changes");
-  // Street (S): from the west end of Lindenallee to the south, then east (on the town modules); Enter finishes
+  // Street (S): from Lindenallee (at the west edge of the town modules; it goes on to the market) to the south, then east; Enter finishes
   await page.locator("#plan").focus();
   await page.keyboard.press("s");
   await expect(page.getByRole("button", { name: "Street", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await clickAt(page, [-145, -1065]); // near the end: snaps onto it
+  await clickAt(page, [-150, -1066]); // on the street: snaps onto it
   await clickAt(page, [-148, -1600]); // right below the point before
   await clickAt(page, [300, -1600]);
   await page.keyboard.press("Enter");

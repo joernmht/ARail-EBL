@@ -329,7 +329,7 @@ body.tabled .backdrop::after { background: linear-gradient(180deg, color-mix(in 
 body.tabled .vn-stage { cursor: grab; touch-action: none; }
 body.tabled .vn-stage .play-sketch { align-self: end; justify-self: end; margin-right: 12px; max-width: min(560px, 52%); padding: 6px 8px 8px; background: color-mix(in srgb, var(--board) 90%, transparent); cursor: auto; touch-action: auto; }
 body.tabled .vn-stage .play-sketch h4 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-body.tabled .vn-stage .play-board svg { min-width: 0 !important; max-height: 132px; }
+body.tabled .vn-stage .play-board svg { min-width: 0 !important; max-height: var(--beside, 132px); }
 body.tabled .vn-talk { cursor: auto; touch-action: auto; }
 /* the table's controls: in the side bar, behind its button */
 .rail-table #tableBar { display: grid; gap: 10px; }

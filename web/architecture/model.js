@@ -22,6 +22,7 @@ import { GAMES } from "./models/games.js";
 import { HUMP } from "./models/hump.js";
 import { INFRA } from "./models/infra.js";
 import { JOURNEYS } from "./models/journeys.js";
+import { MARKET } from "./models/market.js";
 import { OPERATIONS } from "./models/operations.js";
 import { PAGES } from "./models/pages.js";
 import { PLAN } from "./models/plan.js";
@@ -88,14 +89,14 @@ export const PACKAGES = [
   },
   {
     id: "objects", name: "objects", group: "framework", path: "web/arail/objects",
-    summary: "The built-in object types: platforms, tracks, stations, streets with their cross-sections, bus stops and lines, tram stops and lines, traffic signs and lights, zebra crossings, railway crossings, parking, houses, trees, tables.",
-    files: ["web/arail/objects/index.js", "web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/street-profile.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/tram.js", "web/arail/objects/signs.js", "web/arail/objects/traffic-signs.js", "web/arail/objects/crossings.js", "web/arail/objects/parking.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js"],
+    summary: "The built-in object types: platforms, tracks, stations, streets with their cross-sections, bus stops and lines, tram stops and lines, traffic signs and lights, zebra crossings, railway crossings, parking, houses, trees, tables, a market square with its stalls, Christmas tree and rides.",
+    files: ["web/arail/objects/index.js", "web/arail/objects/platform.js", "web/arail/objects/track.js", "web/arail/objects/station.js", "web/arail/objects/underpass.js", "web/arail/objects/street-profile.js", "web/arail/objects/road.js", "web/arail/objects/bus-stop.js", "web/arail/objects/bus-terminal.js", "web/arail/objects/bus-line.js", "web/arail/objects/tram.js", "web/arail/objects/signs.js", "web/arail/objects/traffic-signs.js", "web/arail/objects/crossings.js", "web/arail/objects/parking.js", "web/arail/objects/building-kit.js", "web/arail/objects/building.js", "web/arail/objects/houses.js", "web/arail/objects/trees.js", "web/arail/objects/landscape.js", "web/arail/objects/label.js", "web/arail/objects/tabletop.js", "web/arail/objects/market.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "sims", name: "sims", group: "framework", path: "web/arail/sims",
-    summary: "Passengers at the stops, the town's residents, road traffic with its drivers and parking, bikes and e-scooters.",
-    files: ["web/arail/sims/index.js", "web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js"],
+    summary: "Passengers at the stops, the town's residents, road traffic with its drivers and parking, bikes and e-scooters, the visitors of a market.",
+    files: ["web/arail/sims/index.js", "web/arail/sims/passengers.js", "web/arail/sims/town.js", "web/arail/sims/traffic.js", "web/arail/sims/cycling.js", "web/arail/sims/market.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects"],
   },
   {
@@ -136,9 +137,9 @@ export const PACKAGES = [
   },
   {
     id: "hump", name: "hump", group: "framework", path: "web/arail/hump",
-    summary: "The hump yard on its own (#236): the yard's geometry, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design. Not exported by index.js and not registered yet.",
-    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js"],
-    uses: ["core-math", "core-drawing", "rail"],
+    summary: "The hump yard: the yard's geometry and its plan, wagons and cuts, the physics of a cut, the control of switches and retarders, trains humped and their results, the diagrams of hump design (#236); on the table the object hump-yard, which runs it and draws it (#237).",
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js", "web/arail/hump/object.js"],
+    uses: ["core-math", "core-world", "core-transport", "core-drawing", "rail"],
   },
   {
     id: "feeds", name: "feeds", group: "framework", path: "web/arail/feeds",
@@ -149,7 +150,7 @@ export const PACKAGES = [
   {
     id: "i18n", name: "i18n", group: "framework", path: "web/arail/i18n",
     summary: "Texts in other languages: the translator (the English text is the key, patterns with placeholders, plural forms, number formats) and the framework's German texts.",
-    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/en.js"],
+    files: ["web/arail/i18n/index.js", "web/arail/i18n/de.js", "web/arail/i18n/de/general.js", "web/arail/i18n/de/types.js", "web/arail/i18n/de/settings.js", "web/arail/i18n/de/rail-systems.js", "web/arail/i18n/de/rail-trains.js", "web/arail/i18n/de/rail-dynamics.js", "web/arail/i18n/de/cards.js", "web/arail/i18n/de/town.js", "web/arail/i18n/de/access.js", "web/arail/i18n/de/streets.js", "web/arail/i18n/de/traffic-signs.js", "web/arail/i18n/de/crossings.js", "web/arail/i18n/de/parking.js", "web/arail/i18n/de/traffic.js", "web/arail/i18n/de/trams.js", "web/arail/i18n/de/mobility.js", "web/arail/i18n/de/rail-lines.js", "web/arail/i18n/de/intro.js", "web/arail/i18n/de/plan.js", "web/arail/i18n/de/hump.js", "web/arail/i18n/de/market.js", "web/arail/i18n/en.js"],
     uses: [],
   },
   {
@@ -162,7 +163,7 @@ export const PACKAGES = [
     id: "api", name: "index.js · API", group: "framework", path: "web/arail", hub: true,
     summary: "The framework's entry: createWorld, the registry with the built-in types, plugins, every export (it imports every package).",
     files: ["web/arail/index.js"],
-    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "ops", "infra", "journeys", "feeds", "rail", "plan", "i18n"],
+    uses: ["core-world", "core-math", "core-tracking", "core-transport", "core-disruptions", "core-drawing", "objects", "sims", "terminal", "hump", "ops", "infra", "journeys", "feeds", "rail", "plan", "i18n"],
   },
   {
     id: "app", name: "app", group: "pages", path: "web/app",
@@ -172,8 +173,8 @@ export const PACKAGES = [
   },
   {
     id: "game", name: "game", group: "pages", path: "web/game",
-    summary: "The game page: a title screen (the lab's photos full screen, drifting from one to the next, and the main menu), then the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games, each with its scene (the game in a line or two, and a photo of the place on the layout where the role works): the signaller's panel, the play page of the big game (missions, seats, turns and shifts; the signaller's shift on the table itself: on the photo of the real table, on a photo of the lab or through the camera), the role catalogue, the career planner, and the logbook (the stars, the rank, the badges and the railway terms a player has collected, and a sheet per mission played).",
-    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/progress.js", "web/game/glossary.js", "web/game/sound.js", "web/game/shots.js", "web/game/live.js", "web/game/table.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/logbook/logbook.js", "web/game/roles/roles.js", "web/game/career/career.js"],
+    summary: "The game page: a title screen (the lab's photos full screen, drifting from one to the next, and the main menu), then the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games, each with its scene (the game in a line or two, and a photo of the place on the layout where the role works): the signaller's panel, the play page of the big game (missions, seats, turns and shifts; a shift on the table itself, the signaller's trains, the maintenance dispatcher's vans, the trains of the undertaking's operations control, and what a slow role's turn decides about: on the photo of the real table, on a photo of the lab or through the camera), the role catalogue, the career planner, and the logbook (the stars, the rank, the badges and the railway terms a player has collected, and a sheet per mission played).",
+    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/progress.js", "web/game/glossary.js", "web/game/sound.js", "web/game/shots.js", "web/game/live.js", "web/game/table.js", "web/game/district.js", "web/game/control.js", "web/game/turn.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/logbook/logbook.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {
@@ -203,7 +204,7 @@ export const PACKAGES = [
   {
     id: "architecture", name: "architecture", group: "pages", path: "web/architecture",
     summary: "This page: the architecture as data, drawn as UML.",
-    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/hump.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js", "web/architecture/models/plan.js"],
+    files: ["web/architecture/model.js", "web/architecture/uml.js", "web/architecture/architecture.js", "web/architecture/models/tracking.js", "web/architecture/models/world.js", "web/architecture/models/transport.js", "web/architecture/models/streets.js", "web/architecture/models/disruptions.js", "web/architecture/models/terminal.js", "web/architecture/models/operations.js", "web/architecture/models/infra.js", "web/architecture/models/journeys.js", "web/architecture/models/market.js", "web/architecture/models/games.js", "web/architecture/models/rail.js", "web/architecture/models/hump.js", "web/architecture/models/control.js", "web/architecture/models/tools.js", "web/architecture/models/pages.js", "web/architecture/models/plan.js"],
     uses: ["app", "vendor"],
   },
   {
@@ -329,13 +330,14 @@ export const MODEL_GROUPS = [
   { id: "world", name: "The world", intro: "What every layout has: the world and its step, layout files and modules, the clock, objects, people, drawing." },
   { id: "tracking", name: "Tracking and cameras", intro: "From the camera image to the layout's pose: markers, the marker map, the flyover's virtual camera." },
   { id: "transport", name: "People and vehicles", intro: "Stops, the timetable's trains and buses, passengers, the town's residents, streets and their cross-sections, traffic signs and crossings, bus and tram lines, cars and parking, bikes and e-scooters." },
+  { id: "market", name: "Market square", intro: "A market square with its stalls, the Christmas tree and rides, and the visitors who come to it (the lab example's modules Striezelmarkt and Market visitors)." },
   { id: "disruptions", name: "Disruptions, scenarios and stories", intro: "What can go wrong, timelines of it for exercises (the module Disruptions), and stories to click through (the app's module tabs)." },
   { id: "terminal", name: "Module: container terminal" },
   { id: "operations", name: "Module: rail operations" },
   { id: "infra", name: "Module: infrastructure" },
   { id: "journeys", name: "Module: journeys" },
   { id: "rail", name: "Railway systems and trains", intro: "What the track sections are equipped with, where a system changes, and the vehicles and consists of the trains." },
-  { id: "hump", name: "Hump yard", intro: "Trains broken up and formed again over a hump: the yard, the physics of the cuts, switches and retarders. On its own for now, without a world (#236)." },
+  { id: "hump", name: "Hump yard", intro: "Trains broken up and formed again over a hump: the yard, the physics of the cuts, switches and retarders (#236); on the table the object hump-yard, Bf Neustadt's module Hump yard (#237)." },
   { id: "games", name: "Role games", intro: "Each role of the railway system as a game of its own (docs/roles.md, docs/games.md): the role catalogue, the game core the games share, and the first of them, the signaller." },
   { id: "control", name: "The control system" },
   { id: "plans", name: "Plans and data exchange", intro: "The infrastructure as data in the exchange format rail-infra/1, shared with the EBL's digital twin, and as plan sheets: drawings at a scale with a title block, SVG and DXF." },
@@ -343,7 +345,7 @@ export const MODEL_GROUPS = [
   { id: "tools", name: "Tools" },
 ];
 
-export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...HUMP, ...GAMES, ...CONTROL, ...PLAN, ...PAGES, ...TOOLS];
+export const MODELS = [...WORLD, ...TRACKING, ...TRANSPORT, ...STREETS, ...MARKET, ...DISRUPTIONS, ...TERMINAL, ...OPERATIONS, ...INFRA, ...JOURNEYS, ...RAIL, ...HUMP, ...GAMES, ...CONTROL, ...PLAN, ...PAGES, ...TOOLS];
 
 /* ================================================================ events */
 
@@ -449,6 +451,7 @@ export const REGISTRY = {
     { type: "town", class: "TownSimulation", file: "web/arail/sims/town.js", model: "town" },
     { type: "traffic", class: "TrafficSimulation", file: "web/arail/sims/traffic.js", model: "traffic" },
     { type: "cycling", class: "CyclingSimulation", file: "web/arail/sims/cycling.js", model: "cycling" },
+    { type: "market", class: "MarketSimulation", file: "web/arail/sims/market.js", model: "market" },
     { type: "terminal", class: "TerminalSimulation", file: "web/arail/terminal/operations.js", model: "terminal-operations" },
     { type: "operations", class: "OperationsSimulation", file: "web/arail/ops/simulation.js", model: "ops-world" },
     { type: "infrastructure", class: "InfrastructureSimulation", file: "web/arail/infra/simulation.js", model: "infra-world" },
@@ -491,11 +494,19 @@ export const REGISTRY = {
     obj("track", "Track", "web/arail/objects/track.js", "objects"),
     obj("label", "Label", "web/arail/objects/label.js", "objects"),
     obj("tabletop", "Tabletop", "web/arail/objects/tabletop.js", "objects"),
+    obj("market-square", "MarketSquare", "web/arail/objects/market.js", "market-objects"),
+    obj("market-stall", "MarketStall", "web/arail/objects/market.js", "market-objects"),
+    obj("market-gate", "MarketGate", "web/arail/objects/market.js", "market-objects"),
+    obj("christmas-tree", "ChristmasTree", "web/arail/objects/market.js", "market-objects"),
+    obj("ferris-wheel", "FerrisWheel", "web/arail/objects/market.js", "market-objects"),
+    obj("carousel", "Carousel", "web/arail/objects/market.js", "market-objects"),
+    obj("mini-train", "MiniTrain", "web/arail/objects/market.js", "market-objects"),
     obj("container-yard", "ContainerYard", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("gantry-crane", "GantryCrane", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("truck-lane", "TruckLane", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("quay", "Quay", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("reach-stacker", "ReachStacker", "web/arail/terminal/objects.js", "terminal-objects"),
+    obj("hump-yard", "HumpYardObject", "web/arail/hump/object.js", "hump"),
     obj("depot", "Depot", "web/arail/ops/depot.js", "ops-world"),
     obj("signal", "Signal", "web/arail/infra/objects.js", "infra-world"),
     obj("switch", "Switch", "web/arail/infra/objects.js", "infra-world"),

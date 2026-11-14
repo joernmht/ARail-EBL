@@ -238,7 +238,7 @@ test("the trades: a team of the other trade finds the cause and leaves; a danger
   assert.equal(g.open.length, 0);
   assert.equal(dot().menu, undefined);
 
-  // a danger: the crossing at Waldau, a signalling fault; the track team is the first there
+  // a danger: the crossing of Brückenstraße on the line to Talsee, a signalling fault; the track team is the first there
   const x = gameWith("bue", "normal", { length: 6000 });
   const bue = cause(x, "bue", "switch-on contact");
   until(x, () => bue.state === "open");
@@ -253,7 +253,7 @@ test("the trades: a team of the other trade finds the cause and leaves; a danger
   assert.deepEqual([bue.state, bue.secured, x.teams[1].state, x.exposed(bue)], ["secured", "T2", "securing", false]);
   x.step(200);
   assert.equal(bue.exposed_s, exposed);
-  assert.match(x.view().tables[0].rows.find((r) => r[0] === "Level crossing Waldau")[7], /^secured by Team L\. Kranich, waits for a signalling team$/);
+  assert.match(x.view().tables[0].rows.find((r) => r[0] === "Level crossing Brückenstraße")[7], /^secured by Team L\. Kranich, waits for a signalling team$/);
   // called off, the place is a danger again; a team that secures cannot be sent elsewhere
   assert.match(x.act("send", "T2", "bue").reason, /securing a place/);
   assert.ok(x.view().actions.some((a) => a.name === "recall" && a.fields[0].options[0].id === "T2"));
@@ -266,7 +266,7 @@ test("the trades: a team of the other trade finds the cause and leaves; a danger
   x.act("decide", "plan-bue", "secure");
   until(x, () => x.teams[0].state === "ready");
   assert.deepEqual(x.act("send", "T1", "bue"), { ok: true });
-  assert.match(x.view().tables[0].rows.find((r) => r[0] === "Level crossing Waldau")[7], /is on the way; Team L\. Kranich secures it$/);
+  assert.match(x.view().tables[0].rows.find((r) => r[0] === "Level crossing Brückenstraße")[7], /is on the way; Team L\. Kranich secures it$/);
   until(x, () => bue.state === "working");
   assert.deepEqual([bue.team, bue.secured, x.teams[1].state, x.teams[1].fault], ["T1", null, "ready", null]);
   until(x, () => bue.state === "done");

@@ -158,7 +158,7 @@ export function humpDiagrams(sim, options = {}) {
     line(p2, c.trace.map(([, s, v]) => [p2.X(s - crest), p2.Y(v)]));
     line(p3, c.trace.map(([t, s]) => [p3.X(t), p3.Y(s - crest)]));
     // what went wrong, at the place it happened (as results() counts it)
-    if (r.impact_mps != null && r.impact_mps > (c.careful ? sim.options.careful_mps : lim) + 1e-9) {
+    if (r.impact_mps != null && sim.tooHard(c.careful, r.impact_mps)) {
       const at = c.rec.impacts.find((i) => i.inTrack)?.s ?? c.rec.end?.s;
       problems.push({ x: at - crest, y: r.impact_mps, label: `${c.id} ${num(r.impact_mps, 2)} m/s` });
     }
