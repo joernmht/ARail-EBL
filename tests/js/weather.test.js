@@ -7,7 +7,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  Camera, Clock, RAIL_CONDITIONS, SUN, View, WEATHER_PRESETS, createWorld, formatDate, formatTime, leafState, leafTone, parseDate, registry, seasonOf, sunTimes,
+  Camera, Clock, RAIL_CONDITIONS, SimpleView, SUN, View, WEATHER_PRESETS, createWorld, formatDate, formatTime, leafState, leafTone, parseDate, registry, seasonOf, sunTimes,
   typicalAir, validateLayout, weatherProblems, withLayers,
 } from "../../web/arail/index.js";
 import { railCondition } from "../../web/arail/rail/ahead.js";
@@ -352,6 +352,11 @@ test("the weather in the picture: snow whitens the ground and the roofs, flakes 
   // with reduced motion the rain stands still: two frames, the same streaks
   world.settings.weatherStill = true;
   assert.equal(world.weather.look().still, true);
+  // the Map and 2.5D show no weather
+  world.setWeather("snow");
+  const camera = new Camera(800, 600), simple = new SimpleView({ ctx: snow.view.ctx, camera, H: [1, 0, 0, 0, 1, 0, 0, 0, 1], scale: world.scale });
+  world.draw(simple);
+  assert.equal(simple.weather, null);
   // the season: bare trees in January, coloured ones in October (the lab has deciduous trees)
   world.setWeather("clear");
   world.setDate("01-15");

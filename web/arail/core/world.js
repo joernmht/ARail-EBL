@@ -448,8 +448,9 @@ export class World {
    */
   draw(view, { selected = null, objects = null, moving = true } = {}) {
     if (view.night == null) view.night = this.night();
-    // the weather's look (snow cover, wet ground, the season's leaves) for everything drawn
-    if (view.weather === undefined) view.weather = this.weather.look();
+    // the weather's look (snow cover, wet ground, the season's leaves) for everything drawn; the
+    // simple view (Map, 2.5D) shows no weather
+    if (view.weather === undefined) view.weather = view.simple ? null : this.weather.look();
     this._syncStops();
     const el = this.elevation.sync();
     const lifts = view.simple ? {} : { street: el.streetLift, ground: el.groundLift };
