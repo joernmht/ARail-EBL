@@ -215,7 +215,7 @@ test("keyboard only: the chapter Interaction, the pill Freight, the scenario Loa
   await page.keyboard.press("Enter");
   await tabTo(page, "#pill-freight", { back: true });
   await page.keyboard.press("Enter");
-  await expect(page.locator(".case-card")).toHaveCount(1);
+  await expect(page.locator(".case-card")).toHaveCount(2); // Load the hybrid train, Hump a train
   await tabTo(page, "#case-terminal");
   // Enter starts it: the loading task at the hybrid container train opens with its photo
   await page.keyboard.press("Enter");

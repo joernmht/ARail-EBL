@@ -44,14 +44,14 @@ test("the app opens with the Introduction; the examples in a list with filter pi
   expect(await page.locator(".pill").allTextContents()).toEqual(["All", "First steps", "Infrastructure", "Railway undertaking", "Passengers", "Freight", "Tools"]);
   await expect(page.locator("#pill-all")).toHaveAttribute("aria-pressed", "true");
   expect(await page.locator(".case-card .case-name").allTextContents()).toEqual([
-    "Introduction", "Sandbox", "Trains on tracks", "A signal fails", "Units and drivers", "A train breaks down", "Load the hybrid train", "A traveller's journey", "Build", "Disruptions",
+    "Introduction", "Sandbox", "Trains on tracks", "A signal fails", "Units and drivers", "A train breaks down", "Load the hybrid train", "Hump a train", "A traveller's journey", "Build", "Disruptions",
   ]);
   // a card's name says its side; what it is about describes it
   await expect(page.locator("#case-evu-disruption")).toHaveAccessibleName("Railway undertaking A train breaks down");
   await expect(page.locator("#case-evu-disruption")).toHaveAccessibleDescription(/breaks down at the platform/);
   for (const [pill, names] of [
-    ["explore", ["Introduction", "Sandbox"]], ["infra", ["Trains on tracks", "A signal fails"]], ["evu", ["Units and drivers", "A train breaks down", "Load the hybrid train", "A traveller's journey"]],
-    ["passengers", ["A traveller's journey"]], ["freight", ["Load the hybrid train"]], ["tools", ["Build", "Disruptions"]],
+    ["explore", ["Introduction", "Sandbox"]], ["infra", ["Trains on tracks", "A signal fails"]], ["evu", ["Units and drivers", "A train breaks down", "Load the hybrid train", "Hump a train", "A traveller's journey"]],
+    ["passengers", ["A traveller's journey"]], ["freight", ["Load the hybrid train", "Hump a train"]], ["tools", ["Build", "Disruptions"]],
   ]) {
     await page.locator(`#pill-${pill}`).click();
     await expect(page.locator(`#pill-${pill}`)).toHaveAttribute("aria-pressed", "true");
