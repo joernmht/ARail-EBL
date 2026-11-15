@@ -24,7 +24,8 @@ and at 10× a whole day passes in twelve minutes.
 "clock": { "start": "06:30", "factor": 12, "profiles": true }
 ```
 
-In the app (**Settings → Simulation → Time of day**) you can set the time with the presets
+In the app **Settings → Simulation** sets a whole situation at once (a winter weekday's morning rush, a
+spring Sunday, …); under **Each on its own → Time of day** you can set the time with the presets
 (morning, noon, evening, night), choose another fast-clock ratio, switch the day/night lighting
 off and stop the clock. The time is shown at the top left of the stage (*07:32*, with *· night*
 between sunset and sunrise).
@@ -32,7 +33,7 @@ between sunset and sunrise).
 ### Light
 
 Sunrise is at 06:00 and sunset at 20:30, each with a twilight of about an hour and a half; with a
-date on the clock (Settings → Simulation → Season and weather) the sun rises and sets as on that day
+date on the clock (Settings → Simulation, a situation or Each on its own → Season) the sun rises and sets as on that day
 in Dresden, 08:06 to 16:01 on 21 December (see [Seasons and weather](weather.md)). At
 night the camera image and everything ARail draws get darker and bluer (towards the chair's
 Dunkelblau); lit windows, street lamps, head- and tail lights and the windows of trains and
@@ -52,7 +53,20 @@ the timetable settings such as "A train every 70 s" are the off-peak intervals):
 | 16:00–18:30 | 1.4 | up to 1.5 | 1.5 |
 | 21:00–24:00 | trains 0.6 → 0.4, buses 0.5 → 0.3 | 0.5 → 0.15 | 0.5 → 0.3 |
 
-The profiles are in `core/clock.js` (`PROFILES`); plugins can read `world.clock.demand(kind)`.
+With a date on the clock, a **Saturday or Sunday** has no rush hour: service and traffic start
+later and stay at about the daytime level from late morning into the evening, the most in the early
+afternoon (`WEEKEND_PROFILES`). Without a date every day is a working day.
+
+| Saturday, Sunday | Trains and buses | Cars | Random passengers |
+| --- | --- | --- | --- |
+| 01:00–05:00 | no service | up to 0.2 | almost none |
+| 06:00–08:00 | trains 0.3 → 0.5, buses 0.3 → 0.4 | 0.15 → 0.4 | 0.2 → 0.4 |
+| 10:00–18:00 | trains up to 1, buses up to 0.9 | up to 1 | up to 1 |
+| 18:00–20:00 | trains 0.9 → 0.7, buses 0.8 → 0.6 | 0.9 → 0.6 | 0.9 → 0.6 |
+| 22:00–24:00 | trains 0.6 → 0.5, buses 0.5 → 0.4 | 0.4 → 0.2 | 0.5 → 0.4 |
+
+The profiles are in `core/clock.js` (`PROFILES`, `WEEKEND_PROFILES`); plugins can read `world.clock.demand(kind)`.
+The town's residents still go to work and school on every day of the week.
 
 ## The town simulation
 

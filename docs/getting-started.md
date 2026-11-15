@@ -201,11 +201,23 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 **Simulation**
 
-Presets only: each shows what the simulation can be set to. What it measures is in the [Overview](#overview).
+Situations: each a characteristic combination of what the simulation can be set to, in one click. What it measures is in the [Overview](#overview).
 
-- *Time of day*: **Morning 06:30**, **Noon 12:00**, **Evening 17:00** and **Night 22:30** (the part of the day it is is pressed), the **Fast clock** ratio (1:1 real time … 1:60; 1:12 = one clock hour in five simulated minutes), **Day and night lighting** and **Stop the clock**. **Pause** and the speed are in the upper right corner of the stage (see [What you see](#what-you-see)). See [Day and night](day-and-night.md).
-- *Season and weather*: **No date**, or a day of each season (**Spring**, 15 April; **Summer**, 15 July; **Autumn**, 15 October; **Winter**, 15 December), and the **Weather** (off, typical for the date, or one of its presets). A date a scenario set shows as an option of its own. See [Seasons and weather](weather.md).
-- *Passengers*: the **Demand** (**Quiet** × 0.5, **Normal** × 1, **Busy** × 2, **Rush hour** × 4) and **Clear passengers** (removes everybody waiting; the town and the cars start afresh).
+- *Situations*: days, each with its weekday, time, weather and demand, and events. The situation set is pressed until something is set on its own or another layout opens. An event the layout lacks the modules for is shown, but off (*Not in this layout*).
+
+  | Situation | Day and time | Weather | Demand |
+  | --- | --- | --- | --- |
+  | **Winter weekday, morning rush** | Tuesday 13 January 2026, 07:15 | frost | × 2 |
+  | **Foggy Monday in November** | Monday 16 November 2026, 06:45 | fog | × 2 |
+  | **Spring Sunday** | Sunday 19 April 2026, 11:00 | cloudy | × 1 |
+  | **Thunderstorm on an autumn night** | Friday 23 October 2026, 22:30 | thunderstorm | × 0.5 |
+  | **Hot weekend in the summer of 2050** | Saturday 16 July 2050, 15:00 | heat, 39 °C | × 1 |
+  | **Christmas market** (event) | Saturday 5 December 2026, 16:30 | snowfall | × 2, with the modules *Striezelmarkt* and *Market visitors* (the lab example) |
+  | **After the football match** (event) | Saturday 19 September 2026, 17:20 | cloudy | × 1, and a crowd surge (× 6, 20 min) at every stop |
+
+  On a Saturday or Sunday there is no rush hour (see [Day and night](day-and-night.md#demand-over-the-day)). A stadium of its own is planned ([#264](https://github.com/joernmht/ARail-EBL/issues/264)).
+- *Clock*: the **Fast clock** ratio (1:1 real time … 1:60; 1:12 = one clock hour in five simulated minutes), **Day and night lighting**, **Stop the clock** and **Clear passengers** (removes everybody waiting; the town and the cars start afresh). **Pause** and the speed are in the upper right corner of the stage (see [What you see](#what-you-see)).
+- *Each on its own* (folded away): the **Time of day** (**Morning 06:30**, **Noon 12:00**, **Evening 17:00**, **Night 22:30**; the part of the day it is is pressed), the **Season** (**No date**, or a day of each: **Spring**, 15 April; **Summer**, 15 July; **Autumn**, 15 October; **Winter**, 15 December; a date a scenario set shows as an option of its own), the **Weather** (off, typical for the date, or one of its presets) and the **Demand** (**Quiet** × 0.5, **Normal** × 1, **Busy** × 2, **Rush hour** × 4). See [Day and night](day-and-night.md) and [Seasons and weather](weather.md).
 
 **Control system**
 

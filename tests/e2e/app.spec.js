@@ -383,10 +383,11 @@ test("Pause and the speed in the upper right corner of the stage: each click on 
   await page.keyboard.press("Space");
   expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false);
   await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "false");
-  // the time of day is in Settings → Simulation, as presets: the part of the day it is is pressed
+  // the time of day is in Settings → Simulation → Each on its own, as presets: the part of the day it is is pressed
   await page.evaluate(() => window.__arail.world.setTime("22:30"));
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-simulate").click();
+  await page.locator("#simByHand summary").click();
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright
   await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Noon 12:00" }).click();

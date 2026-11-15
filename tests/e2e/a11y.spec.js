@@ -150,6 +150,11 @@ for (const [scheme, device, viewport] of STATES) {
     await page.locator("#settingsView-view").click();
     found.push(...(await violations(page, "Settings → View, locked map with moving markers")));
     await openSimulation(page);
+    found.push(...(await violations(page, "Settings → Simulation, the situations")));
+    await page.locator("#situation-christmas-market").click();
+    await expect(page.locator("#situation-christmas-market")).toHaveAttribute("aria-pressed", "true");
+    found.push(...(await violations(page, "Settings → Simulation, the Christmas market set")));
+    await page.locator("#simByHand summary").click();
     await page.getByRole("button", { name: "Night 22:30" }).click();
     await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "true");
     found.push(...(await violations(page, "Settings → Simulation at night")));

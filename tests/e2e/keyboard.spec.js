@@ -142,7 +142,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(Math.abs(pos[1] % 50)).toBe(0);
   expect(Math.hypot(pos[0] - aim[0], pos[1] - aim[1])).toBeLessThan(40);
   await expect(page.locator("#stage")).toBeFocused();
-  // the time of day: Settings → Simulation, its presets
+  // the time of day: Settings → Simulation → Each on its own, its presets
   await tabTo(page, "#tab-interaction");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
@@ -150,6 +150,9 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await tabTo(page, "#settingsView-simulate");
   await page.keyboard.press("Enter");
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
+  await tabTo(page, "#simByHand summary");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#simByHand")).toHaveAttribute("open", "");
   await tabTo(page, "#panel-settings button:has-text('Noon 12:00')");
   await page.keyboard.press("Enter");
   expect(await a(() => window.__arail.world.clock.label())).toMatch(/^12:0/);

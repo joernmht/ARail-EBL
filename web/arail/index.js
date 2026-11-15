@@ -66,7 +66,7 @@ export { ScenarioPlayer } from "./core/scenarios.js";
 export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
 export { introScenes, sceneSeconds, boundsOf, SCENE_SECONDS } from "./core/intro.js";
 export {
-  Clock, DEFAULT_CLOCK, PROFILES, SUN, MONTHS, MONTH_NAMES, DAYS, DAY_NAMES, YEAR_DAYS, DEFAULT_YEAR, parseTime, formatTime, parseDate, parseDay, dayOfYear, dayOfWeek, commonDay, dateFits,
+  Clock, DEFAULT_CLOCK, PROFILES, WEEKEND_PROFILES, SUN, MONTHS, MONTH_NAMES, DAYS, DAY_NAMES, YEAR_DAYS, DEFAULT_YEAR, parseTime, formatTime, parseDate, parseDay, dayOfYear, dayOfWeek, commonDay, dateFits,
   isLeapYear, yearDays, formatDate, monthDay, seasonOf, summerTime, sunTimes, profileAt, daylightAt, DAY_MINUTES,
 } from "./core/clock.js";
 export {

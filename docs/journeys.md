@@ -81,7 +81,7 @@ example.
 1. Open the lab example on the game page and switch on the module **Journeys** (Examples → Sandbox, or
    `game/?layout=../layouts/ebl-lab.json&layers=journeys#journeys`). The town's residents stay at
    home and no other passengers come; the trains run to the timetable.
-2. Set the time of day (Settings → Simulation → Time of day, e.g. Morning 06:30) and pause (Space) while the travellers
+2. Set the time of day (Settings → Simulation → Each on its own → Time of day, e.g. Morning 06:30) and pause (Space) while the travellers
    are made.
 3. Each attendee, in the **Journeys** tab: a name (or the one offered), **From** and **To** (a
    building of the town or a station beyond the layout), **Leaves at** and the **transfer time**,

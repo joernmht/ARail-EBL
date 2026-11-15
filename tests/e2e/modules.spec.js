@@ -193,7 +193,7 @@ test("Settings holds the simulation and the control system: #simulate and #contr
   await expect(page.locator("#feedUrl")).toBeVisible();
   await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#datePreset")).toBeVisible();
+  await expect(page.locator("#situation-winter-rush")).toBeVisible();
   await expect(page.locator("#feedUrl")).toHaveCount(0);
   expect(new URL(page.url()).hash).toBe("#simulate");
   // the tab opens the view chosen last, also after a reload

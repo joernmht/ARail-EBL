@@ -61,7 +61,8 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   // the other panels
   await page.evaluate(() => window.__arail.selectTab("simulate"));
   await expect(page.locator("#panel-settings")).toContainText("Uhrzeit");
-  await expect(page.locator("#panel-settings")).toContainText("Jahreszeit und Wetter");
+  await expect(page.locator("#panel-settings")).toContainText("Situationen");
+  await expect(page.locator("#situation-spring-sunday")).toContainText("Frühlingssonntag");
   await page.evaluate(() => window.__arail.selectTab("control"));
   await expect(page.locator("#panel-settings")).toContainText("Leitsystem");
   await page.evaluate(() => window.__arail.selectTab("build"));
