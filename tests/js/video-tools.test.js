@@ -55,6 +55,16 @@ test("video box: the end types the rows anew, the question in the accent colour"
   assert.deepEqual(rows.map((r) => r.text), ["What if all that is possible?", "But what if", "Would your work still be the same?"]);
   assert.equal(rows[2].color, BOX.accent);
   assert.equal(rows[0].color, BOX.kept);
+  // while "missions" is backspaced it keeps the colour it had just before: lighter, as a newer
+  // line ("What if all that…", row 1) came after it; neither bright nor the question's orange
+  assert.equal(at(cues, 160)[2].text, "missions");
+  assert.equal(at(cues, 159)[2].color, BOX.kept);
+  assert.equal(at(cues, 160)[2].color, at(cues, 159)[2].color);
+  // a line that was the newest when the next of its row begins stays bright while it goes
+  const two = [{ text: "houses", start: 0 }, { text: "trees", start: 20 }];
+  assert.equal(at(two, 19)[2].color, BOX.text);
+  assert.equal(at(two, 20)[2].text, "houses");
+  assert.equal(at(two, 20)[2].color, BOX.text);
 });
 
 test("video box: a line longer than the box is found", () => {

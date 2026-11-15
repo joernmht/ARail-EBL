@@ -1,0 +1,12 @@
+{
+  "about": "The station square of Bf Neustadt at night in the flyover: the clock held at 22:30, the lit station building and windows, street lamps, the lights of the trams, buses and cars. The shot starts once the night lighting has settled.",
+  "page": "example=neustadt",
+  "eval": "app.world.clock.minutes = 1350;",
+  "each": "app.world.clock.minutes = 1350;",
+  "warm_s": 40,
+  "warm_speed": 10,
+  "speed": 1,
+  "fly": { "target": [[2750, -215], [3050, -215]], "distance": [520, 450], "yaw_deg": [150, 165], "pitch_deg": [24, 20] },
+  "frames": 150,
+  "out": "build/video/night-station"
+}
