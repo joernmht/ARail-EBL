@@ -1,0 +1,1 @@
+- **The project page's video:** the terminal box with the story's lines spans the whole width of the picture, at its top edge (`tools/video/typewriter.mjs`); a line being backspaced keeps its own colour.

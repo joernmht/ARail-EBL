@@ -35,17 +35,18 @@ export function rowsAt(cues, f, { fps, cps, box = BOX }) {
     }
     const prev = mine.at(-2), t = (f - cur.start) / fps;
     const wipe = prev ? prev.text.length / ERASE_CPS : 0;
-    let text, busy;
+    let text, busy, erasing = false;
     if (t < wipe) {
       text = prev.text.slice(0, Math.max(0, prev.text.length - Math.floor(t * ERASE_CPS)));
-      busy = true;
+      busy = erasing = true;
     } else {
       const typed = Math.min(cur.text.length, Math.floor((t - wipe) * cps));
       text = cur.text.slice(0, typed);
       busy = typed < cur.text.length;
     }
     const top = cur === newest;
-    out.push({ text, color: top ? color(cur) : box.kept, cursor: top ? (busy ? true : blink(t)) : false });
+    // a line being backspaced keeps its own colour; the new one has its colour once it is typed
+    out.push({ text, color: top ? color(erasing ? prev : cur) : box.kept, cursor: top ? (busy ? true : blink(t)) : false });
   }
   return out;
 }

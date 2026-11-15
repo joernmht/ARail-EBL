@@ -212,7 +212,7 @@ that only runs CSS animations sends the screencast nothing: its `animate` step s
 frame instead. The plans are in `plans/screens/`.
 
 **`node tools/video/typewriter.mjs <cues.json> <dir>`** draws the lines of a video's story into a
-terminal box of a fixed size (three rows, upper centre): a prompt per row, the text typed at 20
+terminal box of a fixed size (three rows, over the whole width at the top): a prompt per row, the text typed at 20
 letters a second behind a block cursor; each line stays in its row (`row`) until the next line of
 that row backspaces it; one PNG with alpha per frame, in the site's Noto Sans Mono. The cues
 come from the plan's `say` (`arail-compose <plan> --cues <file>`); `sh tools/video/story.sh <plan>`

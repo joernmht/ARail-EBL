@@ -55,9 +55,9 @@ The lines are typed into a box like an old computer's terminal (`tools/video/typ
 
 | | |
 | --- | --- |
-| Place | upper centre, 26 px from the top (at 1280 × 720) |
-| Size | fixed: 3 rows, 56 characters wide; it does not change with its text |
-| Box | dark blue `rgba(0, 12, 48, .84)`, a teal border `rgba(54, 184, 191, .65)`, a faint teal glow, the lines of an old screen |
+| Place | the top edge of the picture, over its whole width; the text a column in the middle |
+| Size | fixed: 3 rows, lines of up to 56 characters; it does not change with its text |
+| Box | dark blue `rgba(0, 12, 48, .84)`, a teal line along its bottom `rgba(54, 184, 191, .65)`, a faint teal glow, the lines of an old screen |
 | Type | the site's Noto Sans Mono, 600, 24 px, line height 1.5 |
 | Rows | each with the prompt `>` in teal `#36b8bf` |
 | Text | the newest line `#e3f7f8` with a teal glow and the cursor; the older rows `#9fbccb` |

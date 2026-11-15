@@ -55,6 +55,9 @@ test("video box: the end types the rows anew, the question in the accent colour"
   assert.deepEqual(rows.map((r) => r.text), ["What if all that is possible?", "But what if", "Would your work still be the same?"]);
   assert.equal(rows[2].color, BOX.accent);
   assert.equal(rows[0].color, BOX.kept);
+  // while "missions" is backspaced it keeps its own colour, not the question's orange
+  assert.equal(at(cues, 160)[2].text, "missions");
+  assert.equal(at(cues, 160)[2].color, BOX.text);
 });
 
 test("video box: a line longer than the box is found", () => {

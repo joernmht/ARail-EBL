@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Draws the lines of a video's story as an old computer would type them: a terminal box of a fixed
-// size and three rows, upper centre, each row with a prompt; the text typed letter by letter behind
+// Draws the lines of a video's story as an old computer would type them: a terminal box of three
+// rows over the whole width of the picture, at its top edge, each row with a prompt; the text typed letter by letter behind
 // a block cursor. Each line goes into its row (`row` 1 to 3, default 3) and stays there until the
 // next line of that row backspaces it; the newest line is bright and has the cursor, the older ones
 // are a little lighter. The box stays from the first line to the end of the video. Each frame is a PNG with alpha (f0000.png …, numbered as the video's
@@ -34,9 +34,10 @@ const s = width / 1280;
 const fonts = pathToFileURL(join(ROOT, "web/assets/fonts/fonts-app.css")).href;
 const html = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="${fonts}"><style>
 html, body { margin: 0; background: transparent; }
-.strip { width: ${width}px; height: ${HEIGHT}px; display: flex; justify-content: center; align-items: flex-start; padding-top: ${26 * s}px; box-sizing: border-box; }
-.box { position: relative; width: ${BOX.columns + 3}ch; padding: ${10 * s}px ${20 * s}px; border-radius: ${4 * s}px;
-  background: rgba(0, 12, 48, .84); border: ${1.5 * s}px solid rgba(54, 184, 191, .65);
+.strip { width: ${width}px; height: ${HEIGHT}px; display: flex; align-items: flex-start; }
+/* the whole width of the picture, from its top edge; the text a column of the box's width in the middle */
+.box { position: relative; width: 100%; box-sizing: border-box; padding: ${10 * s}px max(${20 * s}px, calc((100% - ${BOX.columns + 3}ch) / 2));
+  background: rgba(0, 12, 48, .84); border-bottom: ${1.5 * s}px solid rgba(54, 184, 191, .65);
   box-shadow: 0 0 ${18 * s}px rgba(54, 184, 191, .25), 0 ${6 * s}px ${24 * s}px rgba(0, 0, 0, .45);
   font: 600 ${24 * s}px/1.5 "Noto Sans Mono", monospace; letter-spacing: .01em; white-space: pre; }
 /* the lines of an old screen */
