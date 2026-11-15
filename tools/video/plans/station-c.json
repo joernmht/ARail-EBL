@@ -1,0 +1,13 @@
+{
+  "about": "Waldhof end of Bf Neustadt, the last part of the phone's pan, held with the app's Freeze; the simulation running on.",
+  "page": "layout=../layouts/ebl-neustadt.json",
+  "clip": "build/video/clips/station-trains-720b.mp4",
+  "start": 100,
+  "frames": 180,
+  "viewport": [1600, 1000],
+  "warm_s": 30,
+  "track": { "from": -40, "hold": 30 },
+  "freeze": true,
+  "speed": 3,
+  "out": "build/video/station-c"
+}

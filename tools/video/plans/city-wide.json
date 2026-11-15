@@ -1,0 +1,10 @@
+{
+  "about": "The whole virtual town of Bf Neustadt in the flyover, turning slowly: the last picture of the project page's video (in the chair's blue there).",
+  "page": "example=neustadt",
+  "warm_s": 40,
+  "warm_speed": 10,
+  "speed": 2,
+  "fly": { "target": [[2200, 500], [2600, 500]], "distance": [5200, 4600], "yaw_deg": [150, 172], "pitch_deg": [34, 30] },
+  "frames": 270,
+  "out": "build/video/city-wide"
+}

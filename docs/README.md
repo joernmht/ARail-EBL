@@ -25,6 +25,7 @@
 | [Disruptions and scenarios](disruptions-and-scenarios.md) | What each disruption does, and how to script exercises |
 | [Camera calibration](calibration.md) | Only needed for wide-angle webcams |
 | [Videos of the lab](videos.md) | How the project page's videos are rendered frame by frame; stabilizing an AR clip in several steps (marker poses, the picture's own motion, least squares); the tools (`render.mjs`, `arail-stabilize`, `arail-compose`); which steps could run live |
+| [Short videos](short-videos.md) | The concept and design of the project page's video, to make more: a story in four parts, the terminal box, the shots there are, the steps |
 
 **Building on ARail**
 

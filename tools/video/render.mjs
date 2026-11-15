@@ -101,6 +101,8 @@ const poses = plan.poses ? JSON.parse(readFileSync(repo(plan.poses), "utf8")) : 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: viewport[0], height: viewport[1] } });
 page.on("pageerror", (e) => console.log("page error:", e.message));
+page.on("crash", () => console.log("page crashed"));
+page.on("console", (m) => m.type() === "error" && console.log("console:", m.text()));
 // the web directory and the clip, served from disk
 await page.route(`${ORIGIN}/**`, async (route) => {
   const url = new URL(route.request().url());

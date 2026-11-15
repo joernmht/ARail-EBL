@@ -1,0 +1,13 @@
+{
+  "about": "Bf Neustadt, a frame from the second half of the phone's pan (the platforms with a yellow train), held with the app's Freeze; the simulation running on.",
+  "page": "layout=../layouts/ebl-neustadt.json",
+  "clip": "build/video/clips/station-trains-720b.mp4",
+  "start": 25,
+  "frames": 180,
+  "viewport": [1600, 1000],
+  "warm_s": 30,
+  "track": { "from": -25, "hold": 30 },
+  "freeze": true,
+  "speed": 3,
+  "out": "build/video/station-b"
+}

@@ -2,7 +2,8 @@
 the shots, the bare picture before the augmented one fades in, a loop without a seam, and the
 encoding (H.264 with ffmpeg) with a poster frame.
 
-A plan (JSON) lists the shots, each a directory of frames from ``node tools/video/render.mjs``::
+A plan (JSON) lists the shots, each a directory of frames from ``node tools/video/render.mjs`` (or a
+video, ``clip`` in place of ``frames``)::
 
     {
       "size": [720, 720], "fps": 30,
@@ -17,17 +18,30 @@ A plan (JSON) lists the shots, each a directory of frames from ``node tools/vide
       "poster": {"frame": 150, "out": "web/media/video.jpg"}
     }
 
+- ``first``: the shot starts at this frame of its directory or clip (default 0); ``count`` frames are
+  used;
 - ``crop``: the box (x0, y0, x1, y1, px of the frames) scaled to ``size``, or [from, to]: the box
   moves from one to the other over the shot (eased);
 - ``fade``: frames over which the shot fades in from the one before (the two overlap);
 - ``bare``: the picture without the augmentation (``image``, or ``clip`` from ``start``) pasted over
   the frame's top left (around it the frame, or the colour ``fill``); the shot fades in over it in
   the frames ``fade`` [from, to] of the shot, after ``hold`` frames of the first frame held;
+  ``still``: the clip's frame ``start`` throughout (for a shot with the app's Freeze);
+- ``tint``: [dark, light] ("#rrggbb"): the shot in one colour, from dark to light (a duotone);
+- ``say``: lines written over the shot, [{"text", "at" (s into the shot), "row", "style"}]: their cues
+  (``--cues``) are drawn by ``node tools/video/typewriter.mjs`` into the directory ``overlay`` of the
+  plan, whose PNG frames (f0000.png …, with alpha) are laid over the video's frames of the same number;
+- ``sounds``: sounds of the shot, [{"file", "at" (s into the shot), "dur" (s), "from" (s into the
+  file), "gain" (dB), "fade" (s in and out)}], mixed into the video's sound track; ``typing`` of the
+  plan ({"file", "gain"}) sounds under each line while it is typed (``cps`` characters a second);
 - ``loop``: the last frames fade into the first, so the video loops without a seam.
+
+``--shots DIR`` writes each shot as a video of its own (``01-town.mp4`` …: its crop, its bare picture
+and tint, no lines, no sound, no fades into the shots beside it), to combine them again later.
 
 Paths are relative to the repository.
 
-    arail-compose tools/video/plans/landing.json
+    arail-compose tools/video/plans/hero.json
 """
 
 from __future__ import annotations
@@ -66,19 +80,53 @@ def blend(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     return cv2.addWeighted(a, 1 - t, b, t, 0)
 
 
+def rgb(colour: str) -> np.ndarray:
+    """ "#rrggbb" as BGR floats."""
+    return np.array([int(colour[i : i + 2], 16) for i in (5, 3, 1)], np.float32)
+
+
+def tint(img: np.ndarray, dark: str, light: str) -> np.ndarray:
+    """The picture in one colour: its brightness from `dark` to `light` (a duotone)."""
+    import cv2
+
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)[..., None] / 255
+    g = np.clip((g - 0.08) / 0.84, 0, 1)
+    return (rgb(dark) * (1 - g) + rgb(light) * g).astype(np.uint8)
+
+
+def over(img: np.ndarray, png: np.ndarray) -> np.ndarray:
+    """A picture with alpha (BGRA) laid over the frame's top left."""
+    h, w = min(png.shape[0], img.shape[0]), min(png.shape[1], img.shape[1])
+    a = png[:h, :w, 3:4].astype(np.float32) / 255
+    out = img.copy()
+    out[:h, :w] = (img[:h, :w].astype(np.float32) * (1 - a) + png[:h, :w, :3].astype(np.float32) * a).astype(np.uint8)
+    return out
+
+
 class Part:
     """One shot of a plan: its frames, crop, the fade from the shot before and the bare picture."""
 
     def __init__(self, spec: dict, size):
         import cv2
 
-        self.dir = os.path.join(ROOT, spec["frames"])
+        self.dir = os.path.join(ROOT, spec["frames"]) if spec.get("frames") else None
+        self.video = os.path.join(ROOT, spec["clip"]) if spec.get("clip") else None
+        if not self.dir and not self.video:
+            raise OSError("a shot needs `frames` or `clip`")
+        self._reader = None
         self.count = int(spec["count"])
+        self.first = int(spec.get("first", 0))
         self.fade = int(spec.get("fade", 0))
         self.size = size
         c = spec["crop"]
         self.box = (c, c) if not isinstance(c[0], (list, tuple)) else (c[0], c[1])
         self.bare = spec.get("bare")
+        self.name = spec.get("name") or os.path.basename(
+            os.path.normpath(spec.get("frames") or os.path.splitext(spec["clip"])[0])
+        )
+        self.tint = spec.get("tint")
+        self.say = spec.get("say", [])
+        self.sounds = spec.get("sounds", [])
         self.hold = int(self.bare.get("hold", 0)) if self.bare else 0
         self.length = self.hold + self.count
         self._clip = None
@@ -87,12 +135,42 @@ class Part:
             self._image = cv2.imread(os.path.join(ROOT, self.bare["image"]))
             if self._image is None:
                 raise OSError(f"cannot read {self.bare['image']}")
-        missing = [i for i in (0, self.count - 1) if not os.path.exists(self._path(i))]
+        if self.video:
+            cap = cv2.VideoCapture(self.video)
+            n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if cap.isOpened() else 0
+            cap.release()
+            if n < self.first + self.count:
+                raise OSError(f"{spec['clip']}: {self.first + self.count} frames needed, {n} there")
+            return
+        missing = [i for i in (self.first, self.first + self.count - 1) if not os.path.exists(self._path(i))]
         if missing:
             raise OSError(f"{spec['frames']}: frame {missing[0]} is missing (render the shot first)")
 
     def _path(self, k: int) -> str:
         return os.path.join(self.dir, f"f{k:04d}.jpg")
+
+    def _read(self, k: int) -> np.ndarray:
+        """Frame k of the directory, or of the clip (read in order; a step back starts it again)."""
+        import cv2
+
+        if not self.video:
+            img = cv2.imread(self._path(k))
+            if img is None:
+                raise OSError(f"cannot read {self._path(k)}")
+            return img
+        if self._reader is None or k < self._reader[1]:
+            cap = cv2.VideoCapture(self.video)
+            self._reader = [cap, -1, None]
+        cap = self._reader[0]
+        while self._reader[1] < k:
+            ok, img = cap.read()
+            if not ok:
+                break
+            self._reader[1] += 1
+            self._reader[2] = img
+        if self._reader[2] is None:
+            raise OSError(f"cannot read frame {k} of {self.video}")
+        return self._reader[2]
 
     def _bare(self, k: int, frame: np.ndarray) -> np.ndarray:
         """The bare picture over the frame's top left (scaled to its width for a clip); around it the
@@ -107,6 +185,8 @@ class Part:
                 self._clip.set(cv2.CAP_PROP_POS_FRAMES, int(self.bare.get("start", 0)))
                 self._last = None
                 self._at = -1
+            if self.bare.get("still"):
+                k = 0
             while self._at < k:
                 ok, img = self._clip.read()
                 if ok:
@@ -127,26 +207,22 @@ class Part:
 
     def frame(self, i: int) -> np.ndarray:
         """Frame i of the shot (0 .. length - 1), cropped to the video's size."""
-        import cv2
 
         k = max(0, i - self.hold)
-        img = cv2.imread(self._path(k))
-        if img is None:
-            raise OSError(f"cannot read {self._path(k)}")
+        img = self._read(self.first + k)
+        u = ease(k / max(1, self.count - 1))
+        box = [p + (q - p) * u for p, q in zip(self.box[0], self.box[1], strict=True)]
         if self.bare:
             a, b = self.bare.get("fade", [0, 1])
             t = ease((i - a) / max(1, b - a))
             if t < 1:
                 img = blend(self._bare(k, img), img, t)
-        u = ease(k / max(1, self.count - 1))
-        box = [p + (q - p) * u for p, q in zip(self.box[0], self.box[1], strict=True)]
-        return crop(img, box, self.size)
+        out = crop(img, box, self.size)
+        return tint(out, *self.tint) if self.tint else out
 
 
-def compose(plan: dict, frames_dir: str, log=print) -> int:
-    """Writes the video's frames (f0000.jpg …) to `frames_dir`; returns their number."""
-    import cv2
-
+def schedule(plan: dict):
+    """The shots of a plan, each with the frame it begins at, and the number of frames."""
     size = tuple(plan["size"])
     parts = [Part(p, size) for p in plan["parts"]]
     timeline, t = [], 0
@@ -154,7 +230,38 @@ def compose(plan: dict, frames_dir: str, log=print) -> int:
         begin = t if k == 0 else t - p.fade
         timeline.append((p, begin))
         t = begin + p.length
-    total, loop = t, int(plan.get("loop", 0))
+    return timeline, t
+
+
+# the typewriter's box (tools/video/story-box.mjs): its rows, and how fast it backspaces a row's old
+# line (characters a second) before it types the new one
+ROWS = 3
+ERASE_CPS = 60
+
+
+def cues(plan: dict) -> list[dict]:
+    """The lines to write over the video: [{"text", "start", "end"} (frames), "typing" (s after the
+    start the first letter appears: the time the row's line before it is backspaced)]."""
+    fps = int(plan.get("fps", 30))
+    timeline, _ = schedule(plan)
+    out, last = [], {}
+    for p, b in timeline:
+        for s in p.say:
+            at, row = s.get("at", 0), s.get("row", ROWS)
+            cue = {"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s.get("hold", 0)) * fps)}
+            cue["typing"] = len(last.get(row, "")) / ERASE_CPS
+            last[row] = s["text"]
+            out.append({**cue, **{k: s[k] for k in ("style", "row") if s.get(k)}})
+    return out
+
+
+def compose(plan: dict, frames_dir: str, log=print) -> int:
+    """Writes the video's frames (f0000.jpg …) to `frames_dir`; returns their number."""
+    import cv2
+
+    timeline, total = schedule(plan)
+    loop = int(plan.get("loop", 0))
+    overlay = os.path.join(ROOT, plan["overlay"]) if plan.get("overlay") else None
     os.makedirs(frames_dir, exist_ok=True)
     first = None
     for f in range(total):
@@ -163,6 +270,10 @@ def compose(plan: dict, frames_dir: str, log=print) -> int:
         if len(on) > 1:
             p, i = on[1]
             img = blend(img, p.frame(i), ease((i + 1) / max(1, p.fade)))
+        # the lines first, so the last frames fade into the first one as it is shown, lines and all
+        text = os.path.join(overlay, f"f{f:04d}.png") if overlay else None
+        if text and os.path.exists(text):
+            img = over(img, cv2.imread(text, cv2.IMREAD_UNCHANGED))
         if f == 0:
             first = img.copy()
         if loop and f >= total - loop:
@@ -183,6 +294,63 @@ def encode(frames_dir: str, out: str, fps: int, crf: int) -> None:
     subprocess.run(cmd, check=True)
 
 
+def soundtrack(plan: dict, out: str) -> int:
+    """Mixes the sounds of the shots (and the typing under the lines) into one track (AAC) and puts it
+    into the video `out`; returns the number of sounds."""
+    fps = int(plan.get("fps", 30))
+    timeline, total = schedule(plan)
+    length = total / fps
+    sounds = [dict(s, at=b / fps + s.get("at", 0)) for p, b in timeline for s in p.sounds]
+    typing = plan.get("typing")
+    if typing:
+        cps = float(plan.get("cps", 20))
+        for c in cues(plan):
+            dur = len(c["text"]) / cps
+            sounds.append({**typing, "at": c["start"] / fps + c["typing"], "dur": dur, "fade": min(0.08, dur / 4)})
+    if not sounds:
+        return 0
+    cmd = ["ffmpeg", "-v", "error", "-y", "-i", out]
+    graph = []
+    for k, sd in enumerate(sounds):
+        cmd += ["-ss", str(sd.get("from", 0)), "-t", str(sd["dur"]), "-i", os.path.join(ROOT, sd["file"])]
+        fade = float(sd.get("fade", 0.3))
+        chain = f"[{k + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:{sd['dur']},asetpts=PTS-STARTPTS"
+        if fade > 0:
+            chain += f",afade=t=in:d={fade},afade=t=out:st={max(0, sd['dur'] - fade)}:d={fade}"
+        chain += f",volume={sd.get('gain', 0)}dB,adelay={round(sd['at'] * 1000)}|{round(sd['at'] * 1000)}[s{k}]"
+        graph.append(chain)
+    mix = "".join(f"[s{k}]" for k in range(len(sounds)))
+    # padded with silence, then cut: the track as long as the video, however early its last sound ends
+    graph.append(f"{mix}amix=inputs={len(sounds)}:normalize=0,apad,atrim=0:{length},alimiter=limit=0.89[mix]")
+    tmp = out + ".tmp.mp4"
+    cmd += ["-filter_complex", ";".join(graph), "-map", "0:v", "-map", "[mix]", "-c:v", "copy"]
+    cmd += ["-c:a", "aac", "-b:a", str(plan.get("audio_bitrate", "112k")), "-movflags", "+faststart", tmp]
+    subprocess.run(cmd, check=True)
+    os.replace(tmp, out)
+    return len(sounds)
+
+
+def shots(plan: dict, out_dir: str, crf: int = 20, log=print) -> list[str]:
+    """Each shot of the plan as a video of its own in `out_dir` (01-name.mp4 …); returns their names."""
+    import tempfile
+
+    import cv2
+
+    fps = int(plan.get("fps", 30))
+    timeline, _ = schedule(plan)
+    os.makedirs(out_dir, exist_ok=True)
+    names = []
+    for k, (p, _) in enumerate(timeline):
+        name = f"{k + 1:02d}-{p.name}.mp4"
+        with tempfile.TemporaryDirectory() as tmp:
+            for i in range(p.length):
+                cv2.imwrite(os.path.join(tmp, f"f{i:04d}.jpg"), p.frame(i), [cv2.IMWRITE_JPEG_QUALITY, 95])
+            encode(tmp, os.path.join(out_dir, name), fps, crf)
+        names.append(name)
+        log(f"{name}: {p.length / fps:.1f} s")
+    return names
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="arail-compose",
@@ -193,6 +361,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("plan", help="the plan (JSON)")
     ap.add_argument("--frames", help="directory for the video's frames (default: build/video/<plan name>)")
     ap.add_argument("--no-encode", action="store_true", help="only the frames")
+    ap.add_argument("--cues", metavar="FILE", help="only write the lines to write over the video (JSON) to FILE")
+    ap.add_argument("--shots", metavar="DIR", help="only write each shot as a video of its own to DIR")
     return ap
 
 
@@ -200,6 +370,25 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     with open(args.plan, encoding="utf-8") as f:
         plan = json.load(f)
+    if args.cues:
+        try:
+            frames, lines = schedule(plan)[1], cues(plan)
+        except OSError as e:
+            print(f"arail-compose: {e}", file=sys.stderr)
+            return 1
+        fps, cps = int(plan.get("fps", 30)), float(plan.get("cps", 20))
+        with open(args.cues, "w", encoding="utf-8") as f:
+            json.dump({"size": plan["size"], "fps": fps, "cps": cps, "frames": frames, "cues": lines}, f, indent=1)
+        print(f"written {args.cues}")
+        return 0
+    if args.shots:
+        try:
+            names = shots(plan, args.shots, log=lambda m: print(m, file=sys.stderr))
+        except OSError as e:
+            print(f"arail-compose: {e}", file=sys.stderr)
+            return 1
+        print(f"{len(names)} shots: {args.shots}")
+        return 0
     name = os.path.splitext(os.path.basename(args.plan))[0]
     frames_dir = args.frames or os.path.join(ROOT, "build", "video", f"{name}-frames")
     if os.path.isdir(frames_dir):
@@ -217,6 +406,9 @@ def main(argv=None) -> int:
         return 0
     out = os.path.join(ROOT, plan["out"])
     encode(frames_dir, out, fps, int(plan.get("crf", 26)))
+    n = soundtrack(plan, out)
+    if n:
+        print(f"mixed {n} sounds into the sound track")
     print(f"written {plan['out']} ({os.path.getsize(out) / 1e6:.2f} MB)")
     poster = plan.get("poster")
     if poster:
