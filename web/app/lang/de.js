@@ -289,6 +289,10 @@ const APP_DE = {
   "Key {n}": "Taste {n}",
   "Its trains run to the timetable of the rail operations": "Seine Züge fahren nach dem Fahrplan des Bahnbetriebs",
   "Taken": "Belegt",
+  "All start again; the clock is set back to {time}.": "Alle beginnen von vorn; die Uhr ist auf {time} zurückgestellt.",
+  "Only the trains of its rail line stop at this track": "An diesem Gleis halten nur die Züge seiner Bahnlinie",
+  "This track is kept for a story's train": "Dieses Gleis ist für den Zug einer Geschichte freigehalten",
+  "This track is closed": "Dieses Gleis ist gesperrt",
   // Settings → Simulation (panels.js): the presets
   "Season and weather": "Jahreszeit und Wetter",
   "Spring (15 April)": "Frühling (15. April)",
@@ -441,7 +445,6 @@ const APP_DE = {
   "Speed is simulated time per real time. Space pauses.": "Das Tempo ist simulierte Zeit je Echtzeit. Leertaste hält an.",
   "Speed": "Tempo",
   "Stops": "Haltestellen",
-  "Keys 1–9 send a vehicle to the stop with that position in the list.": "Die Tasten 1–9 schicken ein Fahrzeug zur Haltestelle an dieser Stelle der Liste.",
   "Add to this layout": "Zu dieser Anlage hinzufügen",
   "Connection": "Verbindung",
   "Train positions from your control system come through the ARail bridge (Python) as WebSocket messages. See docs/control-system-interface.md.": "Zugpositionen aus Ihrem Leitsystem kommen über die ARail-Brücke (Python) als WebSocket-Nachrichten. Siehe docs/control-system-interface.md.",

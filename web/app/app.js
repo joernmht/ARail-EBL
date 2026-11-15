@@ -753,7 +753,7 @@ export class App {
   }
 
   /**
-   * An example opened for the case of its tab (Settings → View → Examples, ?example=): when the layout
+   * An example opened for the case of its tab (Settings → View → Layouts, ?example=): when the layout
    * open now is that of the example the case plays in (`opens`; the hybrid container train, with or
    * without its task), the photo tour offers the case's photos before Start (Case#opened), until the
    * case is stopped. A link whose photo (?photo=) chose another layout opens none.

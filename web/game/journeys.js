@@ -395,13 +395,21 @@ export class JourneysPanel {
     download("journeys.csv", `${head.join(",")}\n${lines.join("\n")}\n`, "text/csv");
   }
 
-  /** Every traveller starts again (at its departure time; set the clock back to before it to watch it again). */
+  /**
+   * Every traveller starts again at its departure time; the clock goes back to five minutes before
+   * the first one, if it is past it, to watch them from their departure (Settings sets the time by
+   * presets only).
+   */
   restartAll() {
     const sim = this.sim;
     for (const t of sim.travellers) sim.restart(t.id);
     this.app.saveLayout();
     const first = Math.min(...sim.travellers.map((t) => t.leave));
-    toast(first < this.world.clock.minutes ? `All start again. Set the clock to ${hm(first - 5)} (Settings → Simulation) to watch them from their departure.` : "All start again.", 6000);
+    if (first < this.world.clock.minutes) {
+      const back = Math.max(0, first - 5);
+      this.world.setTime(back);
+      toast(`All start again; the clock is set back to ${hm(back)}.`, 6000);
+    } else toast("All start again.", 6000);
     this.update();
   }
 

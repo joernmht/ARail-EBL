@@ -79,7 +79,7 @@ export class Case {
     /** Whether its task was done when it was last stopped: the list shows it as Done. */
     this.completed = false;
     /**
-     * Whether the example it plays in was opened for it (Settings → View → Examples, a link: App#_openedFor),
+     * Whether the example it plays in was opened for it (Settings → View → Layouts, a link: App#_openedFor),
      * so that before Start the photo tour offers its photos (`scopesTour`); until it is stopped.
      */
     this.opened = false;
@@ -184,7 +184,7 @@ export class Case {
   /**
    * Does the photo tour offer only the photos of its task now (`photoScope`)? While it runs; one that
    * plays in an example of its own (`opens`: the hybrid container train) also before Start once that
-   * example was opened for it (`opened`: Settings → View → Examples, a link), so that a change of
+   * example was opened for it (`opened`: Settings → View → Layouts, a link), so that a change of
    * perspective stays with its task. Only selected, with its layout reached otherwise (the photo
    * tour's arrows), it leaves the tour alone.
    */
