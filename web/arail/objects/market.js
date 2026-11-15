@@ -245,6 +245,8 @@ export class MarketSquare extends LayoutObject {
           img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
           ctx.closePath();
           ctx.clip();
+          // the joints vanish under snow
+          ctx.globalAlpha *= 1 - (view.weather?.snow ?? 0);
           ctx.strokeStyle = view.dim("rgba(80,72,60,0.28)");
           ctx.lineWidth = 0.6 * view.px;
           ctx.beginPath();

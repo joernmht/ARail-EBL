@@ -22,18 +22,26 @@ test("Settings → Simulation sets the date and the weather; the stage's chip sh
   await expect(page.locator("#hud .chip.weather")).toHaveCount(0);
   await expect(page.locator("#weatherNow")).toHaveText("No date and no weather: every day is the same mild day.");
   await expect(page.locator("#dateDay")).toBeDisabled();
-  // 6 December: the sun of that day
+  // 6 December 2026: the sun of that day; the clock with the weekday and the year
+  await expect(page.locator("#dateYear")).toBeDisabled();
   await page.locator("#dateMonth").selectOption("12");
   await page.locator("#dateDay").fill("6");
   await page.locator("#dateDay").dispatchEvent("change");
   await expect(page.locator("#weatherNow")).toContainText("Sunrise 07:5");
   await expect(page.locator("#weatherNow")).toContainText("Sunset 15:5");
-  await expect(page.locator("#hud .chip.weather")).toHaveText("6 Dec");
+  await expect(page.locator("#clockDate")).toHaveText("Sunday, 6 December 2026");
+  await expect(page.locator("#hud .chip.weather")).toHaveText(/^Sun 6 Dec · \d\d:\d\d$/);
+  // another year: another weekday
+  await page.locator("#dateYear").fill("2027");
+  await page.locator("#dateYear").dispatchEvent("change");
+  await expect(page.locator("#clockDate")).toHaveText("Monday, 6 December 2027");
+  await page.locator("#dateYear").fill("2026");
+  await page.locator("#dateYear").dispatchEvent("change");
   // snowfall
   await page.locator("#weatherSelect").selectOption("snow");
   await expect(page.locator("#weatherNow")).toContainText("−2 °C · snow");
   await expect(page.locator("#weatherNow")).toContainText("Rails: Wet");
-  await expect(page.locator("#hud .chip.weather")).toHaveText("6 Dec · −2 °C · snow");
+  await expect(page.locator("#hud .chip.weather")).toHaveText(/^Sun 6 Dec · \d\d:\d\d · −2 °C · snow$/);
   // the flyover: more of the picture is white than without the snow
   await viewTo(page, "flyover");
   const white = () => page.evaluate(() => {
@@ -56,10 +64,11 @@ test("Settings → Simulation sets the date and the weather; the stage's chip sh
   const overcast = await white();
   expect(snowy).toBeGreaterThan(overcast + 8); // the same grey sky, but the ground and the roofs are white
   // a scenario may have set them: the fields follow
-  await page.evaluate(() => { window.__arail.world.setDate("07-10"); window.__arail.world.setWeather("off"); });
+  await page.evaluate(() => { window.__arail.world.setDate("2028-07-10"); window.__arail.world.setWeather("off"); });
   await expect(page.locator("#dateMonth")).toHaveValue("7");
+  await expect(page.locator("#dateYear")).toHaveValue("2028");
   await expect(page.locator("#weatherSelect")).toHaveValue("off");
-  await expect(page.locator("#hud .chip.weather")).toHaveText("10 Jul");
+  await expect(page.locator("#hud .chip.weather")).toHaveText(/^Mon 10 Jul · \d\d:\d\d$/);
   // no date again
   await page.locator("#dateMonth").selectOption("0");
   await expect(page.locator("#hud .chip.weather")).toHaveCount(0);
@@ -71,10 +80,13 @@ test("the date and the weather in German", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Datum und Wetter" })).toBeVisible();
   await page.locator("#dateMonth").selectOption({ label: "Dezember" });
   await page.locator("#weatherSelect").selectOption({ label: "Schneefall" });
-  await expect(page.locator("#hud .chip.weather")).toHaveText("1. Dez. · −2 °C · Schnee");
+  await expect(page.locator("#hud .chip.weather")).toHaveText(/^Di\. 1\. Dez\. · \d\d:\d\d · −2 °C · Schnee$/);
+  await expect(page.locator("#clockDate")).toHaveText("Dienstag, 1. Dezember 2026");
+  await page.locator("#weatherSelect").selectOption({ label: "Gewitter" });
+  await expect(page.locator("#hud .chip.weather")).toContainText("Gewitter");
   await expect(page.locator("#weatherNow")).toContainText("Sonnenuntergang 16:0");
   await expect(page.locator("#weatherNow")).toContainText("Schienen: Nass");
-  const missing = await page.evaluate(async () => [...(await import("/app/i18n.js")).i18n.missing].filter((t) => /Sunrise|Sunset|snow|Weather|Month|Rails|ground/.test(t)));
+  const missing = await page.evaluate(async () => [...(await import("/app/i18n.js")).i18n.missing].filter((t) => /Sunrise|Sunset|snow|Weather|Month|Year|Rails|ground|day|December|thunder/.test(t)));
   expect(missing).toEqual([]);
   expect(errors).toEqual([]);
 });

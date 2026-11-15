@@ -250,7 +250,12 @@ const LAYERS = new WeakMap();
  * streets in the same layer (order, colour, alpha) are filled together, in one path: where
  * streets overlap (junctions) the semi-transparent asphalt is not darker than elsewhere.
  */
-function fillPolygons(view, quads, colour, order, alpha = 0.92) {
+/**
+ * Fill polygons of a street (batched by colour and order). Under snow they are covered unless the
+ * traffic has cleared them (`look.cleared`): the roadway (`snow` "street") by that share, the
+ * sidewalks and curbs ("walk") by half of it.
+ */
+function fillPolygons(view, quads, colour, order, alpha = 0.92, snow = "street") {
   if (!quads.length) return;
   const img = [];
   for (const q of quads) {
@@ -260,7 +265,7 @@ function fillPolygons(view, quads, colour, order, alpha = 0.92) {
   if (!img.length) return;
   let layers = LAYERS.get(view);
   if (!layers) LAYERS.set(view, (layers = new Map()));
-  const key = `${order}|${colour}|${alpha}`;
+  const key = `${order}|${colour}|${alpha}|${snow}`;
   const batch = layers.get(key);
   if (batch && !batch.drawn) {
     for (const p of img) batch.polys.push(p);
@@ -271,8 +276,9 @@ function fillPolygons(view, quads, colour, order, alpha = 0.92) {
   view.ground(order, (ctx) => {
     b.drawn = true;
     ctx.globalAlpha *= alpha;
-    // streets in use take half of the snow cover; wet, they are darker
-    ctx.fillStyle = view.dim(view.tone(colour, 0.5));
+    // under snow until the traffic clears it; wet, darker
+    const cleared = view.weather?.cleared ?? 0;
+    ctx.fillStyle = view.dim(view.tone(colour, snow === "walk" ? 1 - 0.5 * cleared : 1 - cleared));
     ctx.beginPath();
     for (const p of b.polys) {
       ctx.moveTo(p[0][0], p[0][1]);
@@ -774,13 +780,13 @@ export class Road extends LayoutObject {
       const colour = g.xs.profile === "bike-paths" ? PALETTE.bikePath : COLOURS.path;
       fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), colour, 1.02, 0.85);
     } else if (g.kind === "pedestrian") {
-      fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.plaza, 1.02, 0.92);
+      fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.plaza, 1.02, 0.92, "walk");
     } else if (g.kind === "tram") {
       fillPolygons(view, g.bed.concat(jc.patches.map((p) => disc(p, g.width / 2))), PALETTE.tramBed, 1.02, 0.9);
     } else {
       const h = g.width / 2;
-      if (g.outer) fillPolygons(view, g.outer.concat(jc.patches.map((p) => disc(p, g.half))), COLOURS.sidewalk, 1.0, 0.9);
-      fillPolygons(view, g.curb.concat(jc.patches.map((p) => disc(p, h + this.mm(0.25)))), COLOURS.curb, 1.05, 0.95);
+      if (g.outer) fillPolygons(view, g.outer.concat(jc.patches.map((p) => disc(p, g.half))), COLOURS.sidewalk, 1.0, 0.9, "walk");
+      fillPolygons(view, g.curb.concat(jc.patches.map((p) => disc(p, h + this.mm(0.25)))), COLOURS.curb, 1.05, 0.95, "walk");
       fillPolygons(view, g.carriage.concat(jc.patches.map((p) => disc(p, h))), COLOURS.asphalt, 1.1, 0.95);
       fillPolygons(view, jc.zebras, COLOURS.marking, 1.2, 0.9);
       // the turning areas of the dead ends, in the same layers as the street
@@ -788,8 +794,8 @@ export class Road extends LayoutObject {
         [t.pos[0] + t.out[1] * (t.size / 2 + grow), t.pos[1] - t.out[0] * (t.size / 2 + grow)],
         [t.pos[0] - t.out[1] * (t.size / 2 + grow), t.pos[1] + t.out[0] * (t.size / 2 + grow)], g.width + 2 * grow));
       if (jc.turnings.length) {
-        if (g.sidewalk > 0) fillPolygons(view, jc.turnings.map((t) => area(t, g.sidewalk + this.mm(0.25))), COLOURS.sidewalk, 1.0, 0.9);
-        fillPolygons(view, jc.turnings.map((t) => area(t, this.mm(0.25))), COLOURS.curb, 1.05, 0.95);
+        if (g.sidewalk > 0) fillPolygons(view, jc.turnings.map((t) => area(t, g.sidewalk + this.mm(0.25))), COLOURS.sidewalk, 1.0, 0.9, "walk");
+        fillPolygons(view, jc.turnings.map((t) => area(t, this.mm(0.25))), COLOURS.curb, 1.05, 0.95, "walk");
         fillPolygons(view, jc.turnings.map((t) => area(t, 0)), COLOURS.asphalt, 1.1, 0.95);
       }
     }

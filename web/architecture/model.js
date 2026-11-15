@@ -85,7 +85,7 @@ export const PACKAGES = [
     id: "core-drawing", name: "core · drawing", group: "framework", path: "web/arail/core", utility: true,
     summary: "Projection and the display list, day and night, the simple view, the corporate-design colours (used by nearly all packages).",
     files: ["web/arail/core/view.js", "web/arail/core/simple.js", "web/arail/core/colors.js"],
-    uses: ["core-tracking"],
+    uses: ["core-math", "core-tracking"],
   },
   {
     id: "objects", name: "objects", group: "framework", path: "web/arail/objects",

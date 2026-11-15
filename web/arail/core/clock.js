@@ -19,7 +19,10 @@ export const DEFAULT_CLOCK = {
   factor: 12,
   /** Vary timetables, traffic and passenger numbers with the time of day. */
   profiles: true,
-  /** The date ("MM-DD", e.g. "12-06"), or null: no date, every day the same day with the sun of {@link SUN}. */
+  /**
+   * The date ("YYYY-MM-DD", or "MM-DD" in {@link DEFAULT_YEAR}), or null: no date, every day the same
+   * day with the sun of {@link SUN}.
+   */
   date: null,
   /** Latitude of the place (°N), for sunrise and sunset by the date (Dresden). */
   latitude: 51.05,
@@ -28,34 +31,73 @@ export const DEFAULT_CLOCK = {
 /** Sunrise and sunset (minutes after midnight) without a date, and the length of the twilight. */
 export const SUN = { rise: 6 * 60, set: 20 * 60 + 30, twilight: 45 };
 
-/** Days of the months (no leap years: the clock has no year). */
+/** Days of the months (February of a common year). */
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** The days of the week, Monday first (as in Germany). */
+export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+/** Days of a common year (the sun and the climate go by these). */
 export const YEAR_DAYS = 365;
-/** Summer time (clock + 1 h) from 29 March to 24 October: about the last Sundays of March and October. */
-const SUMMER_TIME = [88, 298];
+/** The year of a date written without one ("12-06"). */
+export const DEFAULT_YEAR = 2026;
+/** Years the clock takes. */
+const YEARS = [1900, 2200];
 
-/** "12-06" (or "6.12." / a day of the year 1…365) -> the day of the year (1 = 1 January); invalid -> null. */
-export function parseDate(value) {
-  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= YEAR_DAYS ? value : null;
-  const m = String(value ?? "").trim().match(/^(\d{1,2})-(\d{1,2})$/);
+/** Is it a leap year (Gregorian)? */
+export const isLeapYear = (year) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+/** Days of a year (365 when the year is not known). */
+export const yearDays = (year = null) => (year != null && isLeapYear(year) ? 366 : 365);
+const monthDays = (month, year = null) => (month === 2 && year != null && isLeapYear(year) ? 29 : MONTH_DAYS[month - 1]);
+
+/**
+ * A date as it is written: "2026-12-06" (with the year) or "12-06" (without) -> {year (or null),
+ * month, day}; a day of the year (1…366) -> {year: null, month, day}. What is no date -> null.
+ */
+export function parseDay(value) {
+  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= YEAR_DAYS ? { year: null, ...monthDay(value) } : null;
+  const m = String(value ?? "").trim().match(/^(?:(\d{4})-)?(\d{1,2})-(\d{1,2})$/);
   if (!m) return null;
-  const month = Number(m[1]), day = Number(m[2]);
-  if (month < 1 || month > 12 || day < 1 || day > MONTH_DAYS[month - 1]) return null;
-  return MONTH_DAYS.slice(0, month - 1).reduce((a, b) => a + b, 0) + day;
+  const year = m[1] != null ? Number(m[1]) : null, month = Number(m[2]), day = Number(m[3]);
+  if (year != null && (year < YEARS[0] || year > YEARS[1])) return null;
+  if (month < 1 || month > 12 || day < 1 || day > monthDays(month, year ?? DEFAULT_YEAR)) return null;
+  return { year, month, day };
 }
 
-/** The month (1…12) and the day of the month of a day of the year. */
-export function monthDay(doy) {
-  let d = ((Math.round(doy) - 1 + YEAR_DAYS) % YEAR_DAYS) + 1, month = 0;
-  while (d > MONTH_DAYS[month]) d -= MONTH_DAYS[month++];
-  return { month: month + 1, day: d };
+/** The day of the year (1 = 1 January) of a month and a day, in a year (a common year when null). */
+export function dayOfYear(month, day, year = null) {
+  let doy = day;
+  for (let m = 1; m < month; m++) doy += monthDays(m, year);
+  return doy;
 }
 
-/** A day of the year -> "12-06". */
-export function formatDate(doy) {
-  const { month, day } = monthDay(doy);
-  return `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+/** "2026-12-06", "12-06" or a day of the year -> the day of the year (1 = 1 January); invalid -> null. */
+export function parseDate(value) {
+  const d = parseDay(value);
+  return d ? dayOfYear(d.month, d.day, d.year ?? DEFAULT_YEAR) : null;
+}
+
+/** The month (1…12) and the day of the month of a day of the year (in a year: leap years have 29 February). */
+export function monthDay(doy, year = null) {
+  const n = yearDays(year);
+  let d = ((Math.round(doy) - 1) % n + n) % n + 1, month = 1;
+  while (d > monthDays(month, year)) d -= monthDays(month++, year);
+  return { month, day: d };
+}
+
+/** A day of the year -> "12-06", with a year "2026-12-06". */
+export function formatDate(doy, year = null) {
+  const { month, day } = monthDay(doy, year);
+  const md = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return year == null ? md : `${year}-${md}`;
+}
+
+/** The day of the week (0 = Monday … 6 = Sunday) of a day of a year (Gregorian calendar). */
+export function dayOfWeek(year, doy) {
+  // days since Monday, 1 January 2001 (a Monday), by whole years and leap days
+  const y = year - 2001, days = 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + (doy - 1);
+  return ((days % 7) + 7) % 7;
 }
 
 /** The meteorological season of a day of the year: winter (Dec–Feb), spring, summer, autumn. */
@@ -65,16 +107,31 @@ export function seasonOf(doy) {
 }
 
 /**
+ * Summer time (clock + 1 h): from the last Sunday of March to the last Sunday of October, as days of
+ * the year (in a year; without one about 29 March to 24 October).
+ */
+export function summerTime(year = null) {
+  if (year == null) return [88, 298];
+  // the last day of the month, back to its Sunday (6)
+  const lastSunday = (month, days) => {
+    const last = dayOfYear(month, days, year);
+    return last - ((dayOfWeek(year, last) + 1) % 7);
+  };
+  return [lastSunday(3, 31), lastSunday(10, 31)];
+}
+
+/**
  * Sunrise and sunset on a day of the year at a latitude, in clock time (minutes after midnight) of
  * Central European Time with summer time, at the longitude of Dresden: from the sun's declination
  * and the equation of time, the sun's upper edge on the horizon with refraction (−0.833°). Where
  * the sun does not rise or set (polar night, midnight sun) the day has no length or all of it.
  * @param {number} doy day of the year (1 = 1 January)
  * @param {number} [latitude] °N
- * @param {{longitude?: number, zone_h?: number, summerTime?: boolean}} [place]
+ * @param {{longitude?: number, zone_h?: number, summer?: boolean, year?: number | null}} [place] `summer`:
+ *   with summer time (from the last Sunday of March to the last Sunday of October of the `year`)
  * @returns {{rise: number, set: number, noon: number, twilight: number}}
  */
-export function sunTimes(doy, latitude = DEFAULT_CLOCK.latitude, { longitude = 13.74, zone_h = 1, summerTime = true } = {}) {
+export function sunTimes(doy, latitude = DEFAULT_CLOCK.latitude, { longitude = 13.74, zone_h = 1, summer: dst = true, year = null } = {}) {
   const rad = Math.PI / 180;
   const decl = -23.44 * rad * Math.cos((2 * Math.PI * (doy + 10)) / YEAR_DAYS);
   const B = (2 * Math.PI * (doy - 81)) / 364;
@@ -82,7 +139,8 @@ export function sunTimes(doy, latitude = DEFAULT_CLOCK.latitude, { longitude = 1
   const lat = clamp(latitude, -89, 89) * rad;
   const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat) * Math.sin(decl)) / (Math.cos(lat) * Math.cos(decl));
   const half = (Math.acos(clamp(cosH, -1, 1)) / rad) * 4; // minutes from noon to sunset
-  const summer = summerTime && doy >= SUMMER_TIME[0] && doy < SUMMER_TIME[1] ? 60 : 0;
+  const [from, to] = summerTime(year);
+  const summer = dst && doy >= from && doy < to ? 60 : 0;
   const noon = 12 * 60 - equation - 4 * (longitude - 15 * zone_h) + summer;
   return { rise: noon - half, set: noon + half, noon, twilight: SUN.twilight };
 }
@@ -149,10 +207,13 @@ export class Clock {
     this.start = parseTime(c.start) ?? parseTime(DEFAULT_CLOCK.start);
     this.factor = Number(c.factor) >= 0 ? Number(c.factor) : DEFAULT_CLOCK.factor;
     this.profiles = c.profiles !== false;
-    /** The day of the year (1 = 1 January), or null: no date. It runs on at midnight. */
-    this.date = parseDate(c.date);
-    /** The date the layout starts with (null: none). */
-    this.startDate = this.date;
+    const d = parseDay(c.date);
+    /** The year (null: no date). */
+    this.year = d ? d.year ?? DEFAULT_YEAR : null;
+    /** The day of the year (1 = 1 January), or null: no date. It runs on at midnight, into the next year. */
+    this.date = d ? dayOfYear(d.month, d.day, this.year) : null;
+    /** The date the layout starts with ({year, doy}, or null: none). */
+    this.startDate = d ? { year: this.year, doy: this.date } : null;
     this.latitude = Number.isFinite(Number(c.latitude)) ? clamp(Number(c.latitude), -89, 89) : DEFAULT_CLOCK.latitude;
     /** Minutes after midnight (fractional). */
     this.minutes = this.start;
@@ -169,22 +230,55 @@ export class Clock {
     if (this.minutes < DAY_MINUTES) return false;
     const days = Math.floor(this.minutes / DAY_MINUTES);
     this.day += days;
-    if (this.date != null) this.date = ((this.date - 1 + days) % YEAR_DAYS) + 1;
+    if (this.date != null) {
+      this.date += days;
+      while (this.date > yearDays(this.year)) this.date -= yearDays(this.year++);
+    }
     this.minutes = wrapMinutes(this.minutes);
     return true;
   }
 
-  /** Set the date ("MM-DD" or a day of the year; null: no date). Returns the day of the year, or null. */
+  /**
+   * Set the date ("2026-12-06"; "12-06" in the year it has, else {@link DEFAULT_YEAR}; null: no
+   * date). What is no date changes nothing. Returns the day of the year, or null.
+   */
   setDate(value) {
-    this.date = value == null || value === "" ? null : parseDate(value) ?? this.date;
+    if (value == null || value === "") {
+      this.date = this.year = null;
+      return null;
+    }
+    const d = parseDay(value);
+    if (!d) return this.date;
+    const year = d.year ?? this.year ?? DEFAULT_YEAR;
+    if (d.month === 2 && d.day === 29 && !isLeapYear(year)) return this.date;
+    this.year = year;
+    this.date = dayOfYear(d.month, d.day, year);
     return this.date;
   }
 
-  /** "6 Dec", or "" without a date. */
-  dateLabel() {
+  /** The month (1…12) and the day of the month, or null without a date. */
+  monthDay() {
+    return this.date == null ? null : monthDay(this.date, this.year);
+  }
+
+  /** The day of the week (0 = Monday … 6 = Sunday), or null without a date. */
+  weekday() {
+    return this.date == null ? null : dayOfWeek(this.year, this.date);
+  }
+
+  /**
+   * The date in words: "Sun 6 Dec" (short), "Sunday, 6 December 2026" (`long`); "" without a date.
+   * @param {{long?: boolean}} [options]
+   */
+  dateLabel({ long = false } = {}) {
     if (this.date == null) return "";
-    const { month, day } = monthDay(this.date);
-    return `${day} ${MONTHS[month - 1]}`;
+    const { month, day } = this.monthDay(), wd = this.weekday();
+    return long ? `${DAY_NAMES[wd]}, ${day} ${MONTH_NAMES[month - 1]} ${this.year}` : `${DAYS[wd]} ${day} ${MONTHS[month - 1]}`;
+  }
+
+  /** The date as it is written ("2026-12-06"), or null. */
+  dateString() {
+    return this.date == null ? null : formatDate(this.date, this.year);
   }
 
   /** The season (winter, spring, summer, autumn), or null without a date. */
@@ -195,7 +289,8 @@ export class Clock {
   /** Sunrise and sunset today (minutes after midnight): by the date and the latitude, else {@link SUN}. */
   sun() {
     if (this.date == null) return SUN;
-    if (this._sun?.date !== this.date || this._sun.latitude !== this.latitude) this._sun = { date: this.date, latitude: this.latitude, times: sunTimes(this.date, this.latitude) };
+    const key = `${this.year}|${this.date}|${this.latitude}`;
+    if (this._sun?.key !== key) this._sun = { key, times: sunTimes(this.date, this.latitude, { year: this.year }) };
     return this._sun.times;
   }
 
@@ -245,7 +340,7 @@ export class Clock {
   toJSON() {
     return {
       start: formatTime(this.start), factor: this.factor, profiles: this.profiles,
-      ...(this.startDate != null ? { date: formatDate(this.startDate) } : {}),
+      ...(this.startDate != null ? { date: formatDate(this.startDate.doy, this.startDate.year) } : {}),
       ...(this.latitude !== DEFAULT_CLOCK.latitude ? { latitude: this.latitude } : {}),
     };
   }

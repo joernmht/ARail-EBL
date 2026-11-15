@@ -62,12 +62,12 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
       ctx.fillStyle = shade(crown, 1.25);
       ctx.fill();
       if (white) {
-        // snow on the upper branches
-        const mid = [(top[0] + cb[0]) / 2, (top[1] + cb[1]) / 2];
+        // snow on the branches, from the top down to near the bottom
+        const low = [top[0] + (cb[0] - top[0]) * 0.85, top[1] + (cb[1] - top[1]) * 0.85];
         ctx.beginPath();
         ctx.moveTo(top[0], top[1]);
-        ctx.lineTo(mid[0] + w * 0.5, mid[1]);
-        ctx.lineTo(mid[0] - w * 0.5, mid[1]);
+        ctx.lineTo(low[0] + w * 0.85, low[1]);
+        ctx.lineTo(low[0] - w * 0.85, low[1]);
         ctx.closePath();
         ctx.fillStyle = white;
         ctx.fill();

@@ -1,5 +1,5 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
-import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, MONTHS, monthDay, RAIL_CONDITIONS, WEATHER_PRESETS, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
+import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, MONTH_NAMES, DEFAULT_YEAR, isLeapYear, RAIL_CONDITIONS, WEATHER_PRESETS, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
 import { download, h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 /** Fast-clock ratios offered in Settings → Simulation. */
@@ -240,16 +240,20 @@ export class Panels {
     this.townBox = h("div", { class: "town-stats" });
     this.weatherNow = h("p", { class: "hint", id: "weatherNow", "aria-live": "off" });
     // the date: a month (or none: every day the same day) and the day of the month
-    const date = w.clock.date == null ? null : monthDay(w.clock.date);
+    // the date: a month (or none: every day the same day), the day of the month and the year
+    const date = w.clock.monthDay();
     const setDate = () => {
-      const month = Number(this.dateMonth.value);
-      this.dateDay.disabled = !month;
-      w.setDate(month ? `${month}-${Math.min(Number(this.dateDay.value) || 1, [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])}` : null);
+      const month = Number(this.dateMonth.value), year = Math.round(Number(this.dateYear.value)) || DEFAULT_YEAR;
+      const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+      this.dateDay.disabled = this.dateYear.disabled = !month;
+      const day = Math.min(Math.max(1, Math.round(Number(this.dateDay.value)) || 1), days ?? 31);
+      w.setDate(month ? `${String(Math.min(2200, Math.max(1900, year))).padStart(4, "0")}-${month}-${day}` : null);
       this.updateClock();
     };
     this.dateMonth = h("select", { id: "dateMonth", onchange: setDate },
-      h("option", { value: 0, selected: !date }, "No date"), MONTHS.map((m, i) => h("option", { value: i + 1, selected: date?.month === i + 1 }, m)));
+      h("option", { value: 0, selected: !date }, "No date"), MONTH_NAMES.map((m, i) => h("option", { value: i + 1, selected: date?.month === i + 1 }, m)));
     this.dateDay = h("input", { type: "number", id: "dateDay", min: 1, max: 31, step: 1, value: date?.day ?? 1, disabled: !date, onchange: setDate });
+    this.dateYear = h("input", { type: "number", id: "dateYear", min: 1900, max: 2200, step: 1, value: w.clock.year ?? DEFAULT_YEAR, disabled: !date, onchange: setDate });
     const weather = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
     this.weatherSelect = h("select", { id: "weatherSelect", onchange: (e) => { w.setWeather(e.target.value); this.updateClock(); } },
       h("option", { value: "off", selected: weather === "off" }, "Off"),
@@ -275,8 +279,9 @@ export class Panels {
       ),
       section("Date and weather",
         h("div", { class: "fields" },
-          h("label", { class: "field", for: "dateMonth" }, h("span", {}, "Month"), this.dateMonth),
           h("label", { class: "field", for: "dateDay" }, h("span", {}, "Day"), this.dateDay),
+          h("label", { class: "field", for: "dateMonth" }, h("span", {}, "Month"), this.dateMonth),
+          h("label", { class: "field", for: "dateYear" }, h("span", {}, "Year"), this.dateYear),
           h("label", { class: "field", for: "weatherSelect" }, h("span", {}, "Weather"), this.weatherSelect),
         ),
         this.weatherNow,
@@ -309,7 +314,9 @@ export class Panels {
     const w = this.world, c = w.clock;
     const d = c.daylight();
     const phase = d > 0.97 ? "day" : d < 0.03 ? "night" : c.minutes < 12 * 60 ? "dawn" : "dusk";
+    // with a date: the weekday, the date and the year above the time
     morph(this.clockFace,
+      c.date != null ? h("span", { class: "date", id: "clockDate" }, c.dateLabel({ long: true })) : null,
       h("span", { class: "time mono" }, c.label()),
       h("span", { class: `daytime ${phase}` }, `${phase} · day ${c.day + 1}${c.frozen ? " · clock stopped" : ""}`),
     );
@@ -323,10 +330,11 @@ export class Panels {
   /** The date and the weather of Settings → Simulation as they are now (a scenario may have set them). */
   updateWeather() {
     if (!this.weatherNow?.isConnected) return;
-    const w = this.world, c = w.clock, date = c.date == null ? null : monthDay(c.date);
+    const w = this.world, c = w.clock, date = c.monthDay();
     if (document.activeElement !== this.dateMonth) this.dateMonth.value = String(date?.month ?? 0);
     if (document.activeElement !== this.dateDay && date) this.dateDay.value = String(date.day);
-    this.dateDay.disabled = !date;
+    if (document.activeElement !== this.dateYear && date) this.dateYear.value = String(c.year);
+    this.dateDay.disabled = this.dateYear.disabled = !date;
     if (document.activeElement !== this.weatherSelect) this.weatherSelect.value = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
     const sun = c.sun(), parts = [];
     if (date) parts.push(h("span", {}, `Sunrise ${formatTime(sun.rise)}`), " · ", h("span", {}, `Sunset ${formatTime(sun.set)}`));

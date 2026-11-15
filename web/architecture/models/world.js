@@ -206,13 +206,13 @@ export const WORLD = [
     classes: [
       {
         name: "Clock", file: "web/arail/core/clock.js", kind: "class", role: "The world's time of day.",
-        attributes: ["minutes: number — time of day", "day: number", "date: number | null — the day of the year (1 = 1 January); null: no date, every day the same", "latitude: number — °N, for the sun", "factor: number — clock s per simulated s", "frozen: boolean", "profiles: boolean — demand over the day"],
-        operations: ["configure(config)", "advance(dt) — true at midnight; the date runs on", "set(value)", "setDate(value)", "label()", "dateLabel() — 6 Dec", "season()", "sun() — sunrise and sunset today: by the date and the latitude, else SUN", "daylight()", "night()", "demand(kind)"],
+        attributes: ["minutes: number — time of day", "day: number", "date: number | null — the day of the year (1 = 1 January); null: no date, every day the same", "year: number | null — 2026 for a date written without one", "latitude: number — °N, for the sun", "factor: number — clock s per simulated s", "frozen: boolean", "profiles: boolean — demand over the day"],
+        operations: ["configure(config)", "advance(dt) — true at midnight; the date runs on", "set(value)", "setDate(value) — YYYY-MM-DD, or MM-DD in the clock's year", "label()", "monthDay()", "weekday() — 0 Monday … 6 Sunday", "dateLabel(opts) — Sun 6 Dec; long: Sunday, 6 December 2026", "dateString() — 2026-12-06", "season()", "sun() — sunrise and sunset today: by the date and the latitude, else SUN", "daylight()", "night()", "demand(kind)"],
       },
       {
         name: "clock", file: "web/arail/core/clock.js", kind: "module", role: "Times and profiles.",
-        attributes: ["DAY_MINUTES — 1440", "YEAR_DAYS — 365 (no leap years: the clock has no year)", "SUN — without a date: rise 06:00, set 20:30; twilight 45 min", "PROFILES — rail, bus, car, passengers"],
-        operations: ["parseTime(value)", "formatTime(minutes)", "parseDate(value) — MM-DD to the day of the year", "formatDate(doy)", "monthDay(doy)", "seasonOf(doy) — meteorological", "sunTimes(doy, latitude, place) — from the sun's declination and the equation of time, in Central European Time with summer time", "profileAt(points, minutes)", "daylightAt(minutes, sun)"],
+        attributes: ["DAY_MINUTES — 1440", "YEAR_DAYS — 365 (the sun and the climate go by a common year)", "DEFAULT_YEAR — 2026", "MONTHS, MONTH_NAMES, DAYS, DAY_NAMES — Monday first", "SUN — without a date: rise 06:00, set 20:30; twilight 45 min", "PROFILES — rail, bus, car, passengers"],
+        operations: ["parseTime(value)", "formatTime(minutes)", "parseDay(value) — YYYY-MM-DD or MM-DD to {year, month, day}", "parseDate(value) — to the day of the year", "dayOfYear(month, day, year)", "isLeapYear(year)", "yearDays(year)", "formatDate(doy, year)", "monthDay(doy, year)", "dayOfWeek(year, doy) — Gregorian, 0 Monday", "seasonOf(doy) — meteorological", "summerTime(year) — from the last Sunday of March to the last Sunday of October", "sunTimes(doy, latitude, place) — from the sun's declination and the equation of time, in Central European Time with summer time", "profileAt(points, minutes)", "daylightAt(minutes, sun)"],
       },
     ],
     relations: [{ from: "Clock", to: "clock", kind: "depends" }],
@@ -232,10 +232,10 @@ export const WORLD = [
       { key: "clock.start", default: "07:00", meaning: "Time of day when the layout is loaded." },
       { key: "clock.factor", default: "12", meaning: "Clock seconds per simulated second (1:12: an hour in five simulated minutes)." },
       { key: "clock.profiles", default: "true", meaning: "Demand over the day: rush hours, no trains and buses 01:00–04:30." },
-      { key: "clock.date", default: "none", meaning: "The date (MM-DD): the sun rises and sets as on that day, the trees follow the season, the typical weather is that of the day. Without it every day is the same day." },
+      { key: "clock.date", default: "none", meaning: "The date (YYYY-MM-DD; MM-DD in 2026): the sun rises and sets as on that day, the trees follow the season, the typical weather is that of the day; with it the weekday. Without it every day is the same day." },
       { key: "clock.latitude", default: "51.05", meaning: "Latitude (°N) for sunrise and sunset by the date (Dresden)." },
     ],
-    rules: ["night() = 1 − daylight(); twilight 45 min around sunrise and sunset.", "With a date: Dresden's sun, 08:06 to 16:01 on 21 December, 04:49 to 21:23 on 21 June (summer time from 29 March to 24 October).", "demand(kind) = 1 without profiles, else the profile of that kind at this minute.", "The layout file keeps the start time, not the current time."],
+    rules: ["night() = 1 − daylight(); twilight 45 min around sunrise and sunset.", "With a date: Dresden's sun, 08:06 to 16:01 on 21 December, 04:49 to 21:23 on 21 June (summer time from the last Sunday of March to the last Sunday of October). The date runs on into the next year; leap years have 29 February.", "demand(kind) = 1 without profiles, else the profile of that kind at this minute.", "The layout file keeps the start time, not the current time."],
   },
   {
     id: "weather", group: "world", title: "Weather and seasons",
@@ -245,17 +245,17 @@ export const WORLD = [
     classes: [
       {
         name: "Weather", file: "web/arail/core/weather.js", kind: "class", role: "The world's weather.",
-        attributes: ["mode: string — off | typical | fixed", "preset: string | null — of the fixed weather", "state: object — quantities set one by one", "course: Array — key frames over the day", "ground: object — {wet 0…1, snow_cm}", "on: boolean — anything but off"],
+        attributes: ["mode: string — off | typical | fixed", "preset: string | null — of the fixed weather", "state: object — quantities set one by one", "course: Array — key frames over the day", "ground: object — {wet 0…1, snow_cm, cleared 0…1: the streets cleared of snow by the traffic}", "on: boolean — anything but off"],
         operations: [
           "configure(config)", "set(value) — a preset's name, typical, off, or an object", "air(minutes, doy) — temperature, cloud, precipitation, wind, fog", "now() — the air, the ground (wet, snow, frost, ice), the sky's word, season and leaves",
-          "settle() — the ground as this weather leaves it (the last 36 h gone through)", "step(dt) — the ground follows the clock", "_ground(air, hours, daylight)", "_courseAt(m)", "describe() — −2 °C · snow",
+          "settle() — the ground as this weather leaves it (the last 36 h gone through)", "step(dt) — the ground follows the clock", "_ground(air, hours, daylight, minutes) — wet, dried, snowed on, melted, the streets cleared by the hour's traffic", "_courseAt(m)", "describe() — −2 °C · snow",
           "railCondition() — dry, wet, leaves, ice", "walkFactor()", "driveFactor()", "cycleShare()", "comfort()", "look() — what the picture needs", "toJSON()",
         ],
       },
       {
         name: "weather", file: "web/arail/core/weather.js", kind: "module", role: "The climate, the presets, the leaves and the drawing.",
-        attributes: ["WEATHER_MODES — off, typical, fixed", "CLIMATE — Dresden by month: temperature, daily range, wet and fair days, wind, fog", "WEATHER_PRESETS — clear, cloudy, overcast, rain, heavy-rain, snow, frost, fog, heat", "WEATHER_EFFECTS — walking, driving, cycling in snow, ice and rain (estimates)", "MILD — the air without weather: 15 °C, dry", "SNOW_COVER_CM — 4 cm cover the ground in the picture"],
-        operations: ["typicalAir(seed, doy, minutes)", "leafState(doy) — bare, leafing, leaf, colouring, falling", "normalizeWeather(config)", "weatherProblems(config)", "leafTone(rgb, leaf, u) — a crown's colour through the year", "drawWeather(view, look) — the veil of cloud and fog, rain and snow falling"],
+        attributes: ["WEATHER_MODES — off, typical, fixed", "CLIMATE — Dresden by month: temperature, daily range, wet and fair days, wind, fog", "WEATHER_PRESETS — clear, cloudy, overcast, rain, heavy-rain, thunderstorm, snow, frost, fog, heat", "PRECIPITATION_LAYERS — snow and rain in three layers: tile size, count, speed, size, alpha", "WEATHER_EFFECTS — walking, driving, cycling in snow, ice and rain (estimates)", "MILD — the air without weather: 15 °C, dry", "SNOW_COVER_CM — 4 cm cover the ground in the picture"],
+        operations: ["typicalAir(seed, doy, minutes)", "leafState(doy) — bare, leafing, leaf, colouring, falling", "normalizeWeather(config)", "weatherProblems(config)", "leafTone(rgb, leaf, u) — a crown's colour through the year", "layerParticles(kind, i) — the flakes or drops of a layer's tile", "lightningAt(t) — strikes every 9 to 20 s, at most two flashes a second", "drawWeather(view, look) — the veil of cloud and fog, rain and snow as scrolled tiles (one fill per layer), lightning"],
       },
     ],
     relations: [
@@ -297,6 +297,8 @@ export const WORLD = [
     events: { emits: [{ name: "weather.changed", payload: "weather", when: "set by hand or a scenario; rain or snow starts or stops; ice forms; snow lies or is gone" }] },
     rules: [
       "Rails: ice on wet rails in frost; leaves in the weeks the leaves fall (31 October to 30 November) when damp; wet in rain, in snow and on wet ground. A track takes the worse of its own condition and the weather's; a low-adhesion disruption overrides both.",
+      "Snow covers everything that faces up, on slopes down to about 70° fully: the ground, roofs, a fir's tiers. The traffic clears the streets (0.6 per hour at the normal daytime traffic, less at night, more in the rush hours; snow falling covers them again), the sidewalks half as fast; warmth melts it.",
+      "Rain and snow are three layers of tiles painted once, filled over the picture as patterns moving with the real time; a summer shower of 3 mm/h and more at 18 °C and more is a thunderstorm. Lightning: no strike with reduced motion, never more than two flashes in a second.",
       "Walking: × 0.85 on snow, × 0.7 on ice. Driving: × 0.9 wet, × 0.7 snow, × 0.5 ice. Cyclists: from 35 % at −5 °C to all at 15 °C, half in rain, a quarter in heavy rain, a fifth on snow. (Estimates, #254.)",
       "Precipitation falls as snow below 0.5 °C, as sleet below 2 °C, unless a preset or a course names it. 1 mm of water is about 1 cm of fresh snow; snow melts by 0.15 cm per hour and degree above zero.",
       "The typical year gives Dresden's annual figures: about 10 °C, 600 to 680 mm on about 150 days.",

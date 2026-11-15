@@ -359,7 +359,7 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `minutes`, `hours`, `day`, `label()` | time of day (minutes after midnight), days since the start, `"07:32"` |
 | `factor`, `frozen` | clock seconds per simulated second; true while the clock is stopped |
 | `daylight()`, `night()` | 0 … 1, with a smooth twilight around sunrise and sunset (06:00 and 20:30; with a date, that day's: `sun()`) |
-| `date`, `dateLabel()`, `season()`, `sun()` | the day of the year (null: no date), `"6 Dec"`, the season, today's `{rise, set, twilight}` |
+| `date`, `year`, `weekday()`, `dateLabel()`, `season()`, `sun()` | the day of the year and the year (null: no date), the weekday (0 = Monday), `"Sun 6 Dec"` (`{long: true}`: `"Sunday, 6 December 2026"`), the season, today's `{rise, set, twilight}` |
 | `demand(kind)` | demand factor for `"rail"`, `"bus"`, `"car"` or `"passengers"` (1 = normal daytime level; 0 at night for rail and bus; 1 when profiles are off) |
 | `set(t)`, `secondsUntil(t)` | jump to `"HH:MM"` (or minutes); simulated seconds until the clock shows `t` |
 

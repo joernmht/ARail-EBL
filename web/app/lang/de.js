@@ -426,6 +426,7 @@ const APP_DE = {
   "A crowd surge on platform 1; extra trains are sent.": "Großer Andrang auf Bahnsteig 1; Sonderzüge werden geschickt.",
   "Date and weather": "Datum und Wetter",
   "Month": "Monat",
+  "Year": "Jahr",
   "Day": "Tag",
   "Weather": "Wetter",
   "No date": "Kein Datum",

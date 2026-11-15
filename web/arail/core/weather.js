@@ -22,7 +22,7 @@
  * @module arail/core/weather
  */
 import { clamp, hashKey, lerp, smoothstep } from "./math.js";
-import { DAY_MINUTES, YEAR_DAYS, monthDay, parseTime, seasonOf, wrapMinutes } from "./clock.js";
+import { DAY_MINUTES, PROFILES, YEAR_DAYS, monthDay, parseTime, profileAt, seasonOf, wrapMinutes } from "./clock.js";
 
 /** The modes of the weather. */
 export const WEATHER_MODES = { off: "Off", typical: "Typical for the date", fixed: "Fixed" };
@@ -54,7 +54,7 @@ export const CLIMATE = {
 };
 
 /** The air on a day without a date or with the weather off: mild and dry. */
-export const MILD = { temperature_c: 15, cloud: 0.3, precipitation: "none", rate_mm_h: 0, wind_mps: 3, wind_deg: 250, fog: 0 };
+export const MILD = { temperature_c: 15, cloud: 0.3, precipitation: "none", rate_mm_h: 0, wind_mps: 3, wind_deg: 250, fog: 0, thunder: false };
 
 /**
  * Weather set by hand or by a scenario: what each preset fixes (the rest follows the date's
@@ -67,6 +67,7 @@ export const WEATHER_PRESETS = {
   overcast: { label: "Overcast", cloud: 1, precipitation: "none", fog: 0 },
   rain: { label: "Rain", cloud: 0.95, precipitation: "rain", rate_mm_h: 1.5, min_c: 3, wet: 1, fog: 0 },
   "heavy-rain": { label: "Heavy rain", cloud: 1, precipitation: "rain", rate_mm_h: 8, wind_mps: 9, min_c: 5, wet: 1, fog: 0 },
+  thunderstorm: { label: "Thunderstorm", cloud: 1, precipitation: "rain", rate_mm_h: 15, wind_mps: 13, min_c: 14, wet: 1, fog: 0, thunder: true },
   snow: { label: "Snowfall", cloud: 1, precipitation: "snow", rate_mm_h: 1.5, temperature_c: -2, snow_cm: 6, fog: 0 },
   frost: { label: "Frost", cloud: 0.1, precipitation: "none", temperature_c: -6, wet: 0.5, fog: 0 },
   fog: { label: "Fog", cloud: 0.8, precipitation: "none", fog: 0.8, wind_mps: 1, max_c: 6 },
@@ -75,7 +76,7 @@ export const WEATHER_PRESETS = {
 
 /** The words for the sky (for people: the HUD, cards). */
 export const SKY_WORDS = {
-  clear: "clear", cloudy: "cloudy", overcast: "overcast", rain: "rain", "heavy-rain": "heavy rain", sleet: "sleet", snow: "snow", fog: "fog",
+  clear: "clear", cloudy: "cloudy", overcast: "overcast", rain: "rain", "heavy-rain": "heavy rain", thunderstorm: "thunderstorm", sleet: "sleet", snow: "snow", fog: "fog",
 };
 
 /** Snow this deep (cm) covers the ground entirely in the picture. */
@@ -91,6 +92,12 @@ export const WEATHER_EFFECTS = {
   cycle: { rain: 0.5, heavy_rain: 0.25, snow: 0.2, ice: 0.15, cold_c: -5, mild_c: 15, cold: 0.35 },
   /** The rails are slippery with leaves in the weeks the leaves fall, when it is at least this damp. */
   leaves_wet: 0.15,
+  /**
+   * How fast the traffic clears the snow off the streets: the share per hour at the normal daytime
+   * traffic (snow tracks, then slush; less at night, more in the rush hours). Sidewalks are trodden
+   * half as fast. (Estimate.)
+   */
+  clearing: 0.6,
 };
 
 /** The leaves of the deciduous trees through the year: [first day of the year, state]. */
@@ -174,10 +181,12 @@ export function typicalAir(seed, doy, minutes) {
   const precipitation = rate < 0.05 ? "none" : temperature_c < 0.5 ? "snow" : temperature_c < 2 ? "sleet" : "rain";
   // fog on calm mornings, gone by 10:00
   const fog = today.fog * (m < 480 ? 1 : clamp((600 - m) / 120, 0, 1));
+  // a summer shower that pours down on a warm afternoon is a thunderstorm, with gusts
+  const thunder = precipitation === "rain" && rate >= 3 && temperature_c >= 18;
   return {
     temperature_c: Math.round(temperature_c * 10) / 10, cloud: clamp(Math.max(mix("cloud"), rate > 0 ? 0.9 : 0, fog * 0.8), 0, 1),
     precipitation, rate_mm_h: precipitation === "none" ? 0 : Math.round(rate * 10) / 10,
-    wind_mps: Math.round(mix("wind") * 10) / 10, wind_deg: Math.round(today.wind_deg), fog,
+    wind_mps: Math.round(mix("wind") * (thunder ? 2.2 : 1) * 10) / 10, wind_deg: Math.round(today.wind_deg), fog, thunder,
   };
 }
 
@@ -202,6 +211,7 @@ function airOf(o) {
   if (!o || typeof o !== "object") return out;
   for (const k of [...AIR_KEYS, "min_c", "max_c", "wet", "snow_cm"]) if (Number.isFinite(Number(o[k])) && o[k] !== "" && o[k] != null) out[k] = Number(o[k]);
   if (KINDS.includes(o.precipitation)) out.precipitation = o.precipitation;
+  if (typeof o.thunder === "boolean") out.thunder = o.thunder;
   for (const k of ["cloud", "fog", "wet"]) if (out[k] != null) out[k] = clamp(out[k], 0, 1);
   for (const k of ["rate_mm_h", "wind_mps", "snow_cm"]) if (out[k] != null) out[k] = Math.max(0, out[k]);
   return out;
@@ -299,6 +309,7 @@ export class Weather {
       if (p.min_c != null && this.state.temperature_c == null) air.temperature_c = Math.max(air.temperature_c, p.min_c);
       if (p.max_c != null && this.state.temperature_c == null) air.temperature_c = Math.min(air.temperature_c, p.max_c);
       air.precipitation = p.precipitation ?? "none";
+      air.thunder = p.thunder === true;
       if (air.precipitation === "none") air.rate_mm_h = 0;
       else if (!(air.rate_mm_h > 0)) air.rate_mm_h = 1;
       named = air.precipitation !== "none";
@@ -324,6 +335,8 @@ export class Weather {
       if (a[1][k] != null && b[1][k] != null) out[k] = lerp(a[1][k], b[1][k], f);
       else if (a[1][k] != null) out[k] = a[1][k];
     }
+    const thunder = (f < 0.5 ? a : b)[1].thunder ?? a[1].thunder;
+    if (thunder != null) out.thunder = thunder;
     const kind = (f < 0.5 ? a : b)[1].precipitation ?? a[1].precipitation;
     if (kind) {
       out.precipitation = kind;
@@ -338,7 +351,7 @@ export class Weather {
    * through in steps of a quarter of an hour, for a fixed one where its preset starts.
    */
   settle() {
-    this.ground = { wet: 0, snow_cm: 0 };
+    this.ground = { wet: 0, snow_cm: 0, cleared: 0 };
     this._memo = null;
     this._sky = null;
     if (this.mode === "off") return;
@@ -353,7 +366,7 @@ export class Weather {
     for (let back = 36 * 60; back > 0; back -= 15) {
       const m = clock.minutes - back, days = Math.floor(m / DAY_MINUTES);
       const doy = clock.date == null ? null : ((clock.date - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
-      this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy));
+      this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m));
     }
   }
 
@@ -366,9 +379,17 @@ export class Weather {
     return minutes > 420 && minutes < 1080 ? 1 : 0;
   }
 
-  /** The ground over `hours` of this air: rain wets it, sun and wind dry it; snow settles and melts. */
-  _ground(air, hours, daylight) {
+  /**
+   * The ground over `hours` of this air at a time of day: rain wets it, sun and wind dry it; snow
+   * settles and melts; the traffic clears the streets of it (`cleared`, 0…1) by the hour's traffic,
+   * as the snow falling covers them again.
+   */
+  _ground(air, hours, daylight, minutes = this.world.clock.minutes) {
     const g = this.ground, T = air.temperature_c;
+    if (g.snow_cm > 0.5) {
+      const traffic = profileAt(PROFILES.car, minutes), falling = air.precipitation === "snow" ? air.rate_mm_h : 0;
+      g.cleared = clamp(g.cleared + hours * (WEATHER_EFFECTS.clearing * traffic - 0.4 * falling + (T > 0 ? 0.3 : 0)), 0, 1);
+    } else g.cleared = 0;
     if (air.precipitation === "rain" || air.precipitation === "sleet") g.wet = Math.min(1, g.wet + air.rate_mm_h * hours * 0.8);
     if (air.precipitation === "snow") g.snow_cm += air.rate_mm_h * hours; // 1 mm of water, about 1 cm of fresh snow
     if (g.snow_cm > 0 && T > 0) {
@@ -402,7 +423,7 @@ export class Weather {
     const air = this.air(), g = this.ground;
     const frost = this.on && air.temperature_c <= 0;
     const ice = frost && g.wet > 0.3 && g.snow_cm < 0.5;
-    const sky = air.fog > 0.4 ? "fog" : air.precipitation === "snow" ? "snow" : air.precipitation === "sleet" ? "sleet"
+    const sky = air.thunder && air.precipitation !== "none" ? "thunderstorm" : air.fog > 0.4 ? "fog" : air.precipitation === "snow" ? "snow" : air.precipitation === "sleet" ? "sleet"
       : air.precipitation === "rain" ? (air.rate_mm_h >= 4 ? "heavy-rain" : "rain") : air.cloud > 0.8 ? "overcast" : air.cloud > 0.35 ? "cloudy" : "clear";
     const value = {
       ...air, wet: g.wet, snow_cm: g.snow_cm, frost, ice, sky,
@@ -482,8 +503,8 @@ export class Weather {
     if (!this.on) return null;
     const n = this.now();
     return {
-      snow: clamp(n.snow_cm / SNOW_COVER_CM, 0, 1), wet: n.snow_cm > 0.5 ? 0 : n.wet, cloud: n.cloud, fog: n.fog,
-      precipitation: n.precipitation, rate: n.rate_mm_h, wind: n.wind_mps, leaf: n.leaf, season: n.season,
+      snow: clamp(n.snow_cm / SNOW_COVER_CM, 0, 1), cleared: this.ground.cleared, wet: n.snow_cm > 0.5 ? 0 : n.wet, cloud: n.cloud, fog: n.fog,
+      precipitation: n.precipitation, rate: n.rate_mm_h, wind: n.wind_mps, thunder: n.sky === "thunderstorm", leaf: n.leaf, season: n.season,
       daylight: this.world.clock.daylight(), still: this.world.settings?.weatherStill === true,
     };
   }
@@ -514,24 +535,152 @@ export function leafTone(rgb, leaf, u = 0.5) {
   return rgb;
 }
 
+/* ---------------------------------------------------------------- rain and snow: layers of tiles */
+
+/**
+ * Rain and snow are drawn as a few **layers** over the picture, far to near: each a square tile with
+ * its drops or flakes painted once (deterministic, seamless at its edges), then filled over the
+ * whole picture as a repeating pattern that moves down (and sideways with the wind) with the real
+ * time. A frame costs one fill per layer, whatever the number of flakes.
+ * `size` (CSS px) of the tile, `count` drops or flakes in it, `speed` (CSS px/s) of the fall,
+ * `r` their radius or length (CSS px), `alpha`, and for snow how far a layer sways (`sway`, px).
+ */
+export const PRECIPITATION_LAYERS = {
+  snow: [
+    { size: 220, count: 70, speed: 28, r: [0.7, 1.3], alpha: 0.75, sway: 6 },
+    { size: 300, count: 40, speed: 55, r: [1.4, 2.4], alpha: 0.85, sway: 10 },
+    { size: 420, count: 18, speed: 105, r: [2.8, 4.4], alpha: 0.9, sway: 16 },
+  ],
+  rain: [
+    { size: 200, count: 55, speed: 900, r: [7, 11], alpha: 0.35 },
+    { size: 280, count: 35, speed: 1300, r: [12, 18], alpha: 0.45 },
+    { size: 360, count: 16, speed: 1800, r: [20, 30], alpha: 0.5 },
+  ],
+};
+
+/**
+ * The drops or flakes of a layer's tile: [{x, y, r, a}] in CSS px within the tile (the same every
+ * time: the pattern is painted once).
+ * @param {"snow" | "rain"} kind
+ * @param {number} i the layer (0 far … 2 near)
+ */
+export function layerParticles(kind, i) {
+  const L = PRECIPITATION_LAYERS[kind][i], out = [];
+  for (let k = 0; k < L.count; k++) {
+    const u = (j) => h01("particle", kind, i, k, j);
+    out.push({ x: u(1) * L.size, y: u(2) * L.size, r: L.r[0] + (L.r[1] - L.r[0]) * u(3), a: L.alpha * (0.6 + 0.4 * u(4)) });
+  }
+  return out;
+}
+
+/** Tiles painted so far, by kind, layer, slant and pixel ratio (a few, kept for the page's life). */
+const TILES = new Map();
+
+/** A canvas to paint a tile on (null where there is none: in Node). */
+function tileCanvas(w, h) {
+  if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(w, h);
+  if (globalThis.document?.createElement) return Object.assign(document.createElement("canvas"), { width: w, height: h });
+  return null;
+}
+
+/** The tile of a layer, painted once: soft round flakes, or streaks slanted by the wind. */
+function layerTile(kind, i, slant, px) {
+  const key = `${kind}|${i}|${Math.round(slant * 10)}|${px}`;
+  if (TILES.has(key)) return TILES.get(key);
+  const L = PRECIPITATION_LAYERS[kind][i], n = Math.round(L.size * px), c = tileCanvas(n, n), g = c?.getContext?.("2d");
+  if (!g) {
+    TILES.set(key, null);
+    return null;
+  }
+  // each particle also at its copies across the edges, so that the tile repeats without a seam
+  const copies = (p, pad, fn) => {
+    for (const dx of [-n, 0, n]) for (const dy of [-n, 0, n]) if (p.x * px + dx > -pad && p.x * px + dx < n + pad && p.y * px + dy > -pad && p.y * px + dy < n + pad) fn(p.x * px + dx, p.y * px + dy);
+  };
+  for (const p of layerParticles(kind, i)) {
+    if (kind === "snow") {
+      const r = p.r * px;
+      copies(p, r * 2, (x, y) => {
+        // a soft flake: bright in the middle, fading out
+        const grad = g.createRadialGradient(x, y, 0, x, y, r * 1.6);
+        grad.addColorStop(0, `rgba(255,255,255,${p.a})`);
+        grad.addColorStop(0.45, `rgba(255,255,255,${(p.a * 0.75).toFixed(3)})`);
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = grad;
+        g.beginPath();
+        g.arc(x, y, r * 1.6, 0, 2 * Math.PI);
+        g.fill();
+      });
+    } else {
+      const len = p.r * px, dx = slant * len;
+      g.lineCap = "round";
+      g.lineWidth = Math.max(1, (0.6 + 0.4 * i) * px);
+      copies(p, len + Math.abs(dx), (x, y) => {
+        const grad = g.createLinearGradient(x, y, x + dx, y + len);
+        grad.addColorStop(0, "rgba(220,232,245,0)");
+        grad.addColorStop(1, `rgba(225,236,248,${p.a})`);
+        g.strokeStyle = grad;
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x + dx, y + len);
+        g.stroke();
+      });
+    }
+  }
+  TILES.set(key, c);
+  return c;
+}
+
+/**
+ * When lightning strikes in a thunderstorm: about every 9 to 20 seconds, each strike 0.35 s with a
+ * second, weaker pulse (never more than two flashes in a second). Null when none is lit at `t` (s);
+ * else the strike's number and how bright it is now (0…1).
+ */
+export function lightningAt(t) {
+  if (!(t > 0)) return null;
+  // strikes at deterministic times: the n-th falls in the n-th window of 14 s, somewhere in its middle
+  const n = Math.floor(t / 14), at = n * 14 + 2 + 9 * h01("strike", n), d = t - at;
+  if (d < 0 || d > 0.35) return null;
+  const bright = d < 0.08 ? 1 : d < 0.18 ? 0.25 : d < 0.26 ? 0.7 : 0.2 * (1 - (d - 0.26) / 0.09);
+  return { n, bright: clamp(bright, 0, 1) };
+}
+
+/**
+ * The bolt of a strike: a jagged line from the top edge of the picture down into the upper fifth,
+ * with a branch (fractions of the picture's width and height).
+ */
+function boltPaths(n) {
+  const main = [[0.12 + 0.76 * h01("bolt", n, 0), 0]];
+  for (let k = 1; k <= 8; k++) {
+    const [x, y] = main[k - 1];
+    main.push([x + (h01("bolt", n, k) - 0.5) * 0.035, y + 0.018 + 0.012 * h01("bolt", n, k, 1)]);
+  }
+  const from = main[3], side = h01("bolt", n, 20) < 0.5 ? -1 : 1, branch = [from];
+  for (let k = 1; k <= 4; k++) {
+    const [x, y] = branch[k - 1];
+    branch.push([x + side * (0.008 + 0.012 * h01("bolt", n, 30 + k)), y + 0.012 + 0.01 * h01("bolt", n, 40 + k)]);
+  }
+  return [main, branch];
+}
+
 /**
  * The weather over the picture: a grey veil under cloud and in fog (thicker towards the distance),
- * then the rain or the snow falling, slanted by the wind. One overlay under the labels; nothing in
- * the simple view. Precipitation stands still when `look.still` (reduced motion).
+ * rain or snow in three layers of tiles, and in a thunderstorm a darker sky with lightning now and
+ * then. One overlay under the labels; nothing in the simple view. With `look.still` (reduced
+ * motion) rain and snow stand still and no lightning flashes.
  * @param {import("./view.js").View} view
  * @param {ReturnType<Weather["look"]>} look
  */
 export function drawWeather(view, look) {
   if (!look || view.simple) return;
-  const veil = 0.2 * look.cloud * look.daylight * (1 - view.darkness), fog = look.fog;
-  const kind = look.precipitation, rate = look.rate;
-  if (veil < 0.01 && fog < 0.02 && kind === "none") return;
+  const storm = !!look.thunder, veil = (storm ? 0.45 : 0.2) * look.cloud * look.daylight * (1 - view.darkness), fog = look.fog;
+  const kind = look.precipitation === "snow" ? "snow" : look.precipitation === "none" ? null : "rain", rate = look.rate;
+  if (veil < 0.01 && fog < 0.02 && !kind) return;
   const t = look.still ? 0 : (globalThis.performance?.now?.() ?? view.time * 1000) / 1000;
   view.overlay((ctx) => {
     const W = ctx.canvas.width, H = ctx.canvas.height, px = view.px;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (veil >= 0.01) {
-      ctx.fillStyle = `rgba(128,136,146,${veil.toFixed(3)})`;
+      ctx.fillStyle = storm ? `rgba(70,76,92,${veil.toFixed(3)})` : `rgba(128,136,146,${veil.toFixed(3)})`;
       ctx.fillRect(0, 0, W, H);
     }
     if (fog >= 0.02) {
@@ -542,38 +691,50 @@ export function drawWeather(view, look) {
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
     }
-    if (kind === "none" || !(rate > 0)) return;
-    const u = (i, k) => (((i * 2654435761 + k * 40503) >>> 0) % 10007) / 10007;
-    const slant = clamp(look.wind / 14, 0, 0.9);
-    if (kind === "snow") {
-      const n = Math.round(clamp(90 + rate * 110, 60, 420));
-      ctx.fillStyle = view.darkness > 0.5 ? "rgba(225,232,245,0.75)" : "rgba(255,255,255,0.9)";
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const depth = 0.5 + u(i, 1), speed = (0.07 + 0.08 * u(i, 2)) * H * depth;
-        const y = (u(i, 3) * H + t * speed) % H;
-        const x = (u(i, 4) * W * 1.3 + slant * 2 * y + Math.sin(t * (0.6 + u(i, 5)) + i) * 9 * px + W) % (W * 1.3) - 0.15 * W;
-        const r = (0.8 + 1.4 * u(i, 6)) * depth * px;
-        ctx.moveTo(x + r, y);
-        ctx.arc(x, y, r, 0, 2 * Math.PI);
+    if (kind && rate > 0 && typeof ctx.createPattern === "function") {
+      // light rain or snow: the far layers only; more layers and more of them as it gets heavier
+      const slant = clamp(look.wind / 14, 0, 0.9), layers = PRECIPITATION_LAYERS[kind];
+      const heavy = clamp(rate / (kind === "snow" ? 2.5 : 6), 0.25, 1.6), night = view.darkness > 0.5 ? 0.7 : 1;
+      for (let i = 0; i < layers.length; i++) {
+        const L = layers[i], share = clamp(heavy * 1.6 - i * 0.55, 0, 1);
+        if (share <= 0.02) continue;
+        const tile = layerTile(kind, i, kind === "rain" ? slant : 0, px);
+        const pattern = tile && ctx.createPattern(tile, "repeat");
+        if (!pattern) continue;
+        const fall = t * L.speed * px, sway = kind === "snow" ? Math.sin(t * (0.5 + 0.2 * i) + i) * L.sway * px : 0;
+        const y = fall % (L.size * px), x = (fall * slant + sway) % (L.size * px);
+        pattern.setTransform?.(new DOMMatrix([1, 0, 0, 1, x, y]));
+        ctx.globalAlpha = share * night * (kind === "rain" && heavy > 1 ? 1 : 1);
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, W, H);
+        // heavy: the same layer once more, shifted, for twice as many drops
+        if (heavy > 1.1) {
+          pattern.setTransform?.(new DOMMatrix([1, 0, 0, 1, x + L.size * px * 0.5, y + L.size * px * 0.37]));
+          ctx.globalAlpha = clamp(heavy - 1, 0, 0.6) * night;
+          ctx.fillRect(0, 0, W, H);
+        }
       }
-      ctx.fill();
-      return;
+      ctx.globalAlpha = 1;
     }
-    // rain (sleet: fewer, shorter streaks)
-    const n = Math.round(clamp((kind === "sleet" ? 50 : 70) + rate * 45, 60, 420));
-    ctx.strokeStyle = view.darkness > 0.5 ? "rgba(190,205,230,0.32)" : "rgba(235,242,250,0.55)";
-    ctx.lineWidth = Math.max(1, 1.1 * px);
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const depth = 0.6 + 0.8 * u(i, 1), speed = (1.1 + 0.6 * u(i, 2)) * H * depth;
-      const y = (u(i, 3) * H + t * speed) % (H * 1.1) - 0.05 * H;
-      const x = (u(i, 4) * W * 1.4 + slant * y) % (W * 1.4) - 0.2 * W;
-      const len = (kind === "sleet" ? 7 : 13) * (0.7 + 0.8 * u(i, 5)) * depth * px;
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + slant * len, y + len);
+    // lightning: a short bolt from the top edge and a faint brightening of the upper part of the picture
+    const strike = storm && !look.still ? lightningAt(t) : null;
+    if (strike) {
+      const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+      sky.addColorStop(0, `rgba(220,226,255,${(0.16 * strike.bright).toFixed(3)})`);
+      sky.addColorStop(1, "rgba(220,226,255,0)");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H * 0.6);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(190,205,255,0.95)";
+      ctx.shadowBlur = 18 * px;
+      boltPaths(strike.n).forEach((path, j) => {
+        ctx.strokeStyle = `rgba(248,250,255,${((j ? 0.6 : 0.95) * strike.bright).toFixed(3)})`;
+        ctx.lineWidth = Math.max(1, (j ? 1.2 : 2.4) * px);
+        ctx.beginPath();
+        path.forEach(([x, y], k) => (k ? ctx.lineTo(x * W, y * H) : ctx.moveTo(x * W, y * H)));
+        ctx.stroke();
+      });
     }
-    ctx.stroke();
   }, -1000);
 }

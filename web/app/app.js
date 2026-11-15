@@ -1747,9 +1747,10 @@ export class App {
     if (disrupted) chips.push(["bad", `${disrupted} disruption${disrupted > 1 ? "s" : ""}`]);
     if (this.tourNav && !this.flyover.active) chips.unshift(...this.tourNav.hudChips());
     if (this.recorder) chips.push(["bad", "Recording"]);
-    // the date and the weather, when the layout or a scenario has them: "6 Dec · −2 °C · snow"
-    const weather = [this.world.clock.dateLabel(), this.world.weather.describe()].filter(Boolean).join(" · ");
-    if (weather) chips.push(["info weather", weather]);
+    // the clock with the weekday and the weather, when the layout or a scenario has a date or a
+    // weather: "Sun 6 Dec · 15:46 · −2 °C · snow"
+    const clock = this.world.clock, weather = this.world.weather.describe();
+    if (clock.date != null || weather) chips.push(["info weather", [clock.dateLabel(), clock.label(), weather].filter(Boolean).join(" · ")]);
     this.speed.update();
     this.flyover.syncView(); // the camera view is named after its source
     this._syncTour();

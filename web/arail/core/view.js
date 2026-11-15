@@ -20,6 +20,7 @@
  */
 import { poseFromHomography } from "./geometry.js";
 import { FONT, OVERLAY, parseColor, parseRgba, rgba } from "./colors.js";
+import { clamp } from "./math.js";
 
 const LIGHT = (() => {
   const l = [-0.45, 0.55, 0.7];
@@ -43,6 +44,11 @@ const CULL_MARGIN_PX = 4;
 const NIGHT_TINT = [0, 20, 80];
 /** The colour of snow on the ground and on what faces up. */
 const SNOW = [244, 247, 250];
+/**
+ * How steep a face may be and still hold snow: the upward part of its normal (the cosine of its
+ * slope) from which on it takes some (0.08: about 85°) and all of it (0.33: about 70°).
+ */
+const SNOW_SLOPE = [0.08, 0.33];
 
 /**
  * Share of the picture the labels may cover before it is crowded: then a label with a compact form
@@ -555,8 +561,9 @@ export class View {
         decals.push({ img: di, rgb: parseColor(d.color), k: d.emissive ? 1 : k, emissive: !!d.emissive, alpha: d.alpha ?? f.alpha ?? 1 });
       }
       if (off) continue;
-      // snow settles on what faces up (roofs, the tops of things), unless a face says no (`snow: false`)
-      const up = !f.emissive && f.snow !== false && !!f.normal && f.normal[2] > 0.5;
+      // snow settles on what faces up, on steep slopes too (roofs, the tiers of a fir), not on walls,
+      // unless a face says no (`snow: false`)
+      const up = f.emissive || f.snow === false || !f.normal ? 0 : clamp((f.normal[2] - SNOW_SLOPE[0]) / (SNOW_SLOPE[1] - SNOW_SLOPE[0]), 0, 1);
       drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals, up });
     }
     if (!drawn.length) return;
@@ -569,7 +576,7 @@ export class View {
       ctx.lineJoin = "round";
       for (const f of drawn) {
         tracePath(ctx, f.img);
-        ctx.fillStyle = faceFill(f, n, f.up ? snow : 0);
+        ctx.fillStyle = faceFill(f, n, f.up * snow);
         ctx.fill();
         const s = f.stroke || outline;
         if (s) {

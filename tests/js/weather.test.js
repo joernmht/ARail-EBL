@@ -7,8 +7,9 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  Camera, Clock, RAIL_CONDITIONS, SimpleView, SUN, View, WEATHER_PRESETS, createWorld, formatDate, formatTime, leafState, leafTone, parseDate, registry, seasonOf, sunTimes,
-  typicalAir, validateLayout, weatherProblems, withLayers,
+  Camera, Clock, DAY_NAMES, PRECIPITATION_LAYERS, RAIL_CONDITIONS, SimpleView, SUN, View, WEATHER_PRESETS, createWorld, dayOfWeek, dayOfYear, formatDate, formatTime,
+  isLeapYear, layerParticles, leafState, leafTone, lightningAt, monthDay, parseDate, parseDay, registry, seasonOf, summerTime, sunTimes, typicalAir, validateLayout,
+  weatherProblems, withLayers,
 } from "../../web/arail/index.js";
 import { railCondition } from "../../web/arail/rail/ahead.js";
 import registerWindmill from "../../web/plugins/windmill.js";
@@ -23,12 +24,33 @@ const run = (world, seconds, dt = 0.1) => {
 };
 const minutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
 
+test("dates with a year: leap years, weekdays, summer time", () => {
+  assert.deepEqual(parseDay("2026-12-06"), { year: 2026, month: 12, day: 6 });
+  assert.deepEqual(parseDay("12-06"), { year: null, month: 12, day: 6 });
+  assert.equal(parseDay("2026-02-29"), null, "2026 is no leap year");
+  assert.deepEqual(parseDay("2028-02-29"), { year: 2028, month: 2, day: 29 });
+  assert.equal(parseDay("1800-01-01"), null, "years from 1900 to 2200");
+  assert.deepEqual([2000, 2024, 2026, 2100].map(isLeapYear), [true, true, false, false]);
+  assert.equal(dayOfYear(3, 1, 2028), 61);
+  assert.equal(dayOfYear(3, 1, 2026), 60);
+  assert.deepEqual(monthDay(60, 2028), { month: 2, day: 29 });
+  assert.equal(formatDate(340, 2026), "2026-12-06");
+  // weekdays (Monday = 0): known days
+  const wd = (s) => DAY_NAMES[dayOfWeek(parseDay(s).year, parseDate(s))];
+  assert.deepEqual(["2026-12-06", "2026-11-15", "2000-01-01", "2024-02-29", "1970-01-01", "2001-01-01"].map(wd), ["Sunday", "Sunday", "Saturday", "Thursday", "Thursday", "Monday"]);
+  // summer time: from the last Sunday of March to the last Sunday of October
+  assert.deepEqual(summerTime(2026).map((d) => formatDate(d, 2026)), ["2026-03-29", "2026-10-25"]);
+  assert.deepEqual(summerTime(2027).map((d) => formatDate(d, 2027)), ["2027-03-28", "2027-10-31"]);
+  const rise = (s) => sunTimes(parseDate(s), 51.05, { year: 2026 }).rise;
+  assert.ok(rise("2026-03-29") - rise("2026-03-28") > 55, "an hour later on the day the clocks go forward");
+});
+
 test("dates: MM-DD and the day of the year, seasons; what is no date is null", () => {
   assert.equal(parseDate("01-01"), 1);
   assert.equal(parseDate("12-06"), 340);
   assert.equal(parseDate("12-31"), 365);
   assert.equal(parseDate(340), 340);
-  for (const bad of ["13-01", "02-30", "6.12.", "", null, 0, 366, "12-6-2026"]) assert.equal(parseDate(bad), null, String(bad));
+  for (const bad of ["13-01", "02-30", "6.12.", "", null, 0, 366, "12-6-2026", "2026-13-01"]) assert.equal(parseDate(bad), null, String(bad));
   assert.equal(formatDate(340), "12-06");
   assert.equal(formatDate(parseDate("2-9")), "02-09");
   assert.deepEqual(["01-15", "04-15", "07-15", "10-15", "12-01"].map((d) => seasonOf(parseDate(d))), ["winter", "spring", "summer", "autumn", "winter"]);
@@ -56,15 +78,24 @@ test("the clock: without a date as ever; with one the sun of that day, running o
   assert.equal(plain.season(), null);
   assert.deepEqual(plain.toJSON(), { start: "07:00", factor: 12, profiles: true }, "the layout file is as it was");
   const c = new Clock({ date: "12-31", start: "23:50" });
-  assert.equal(c.dateLabel(), "31 Dec");
+  assert.equal(c.year, 2026, "a date without a year is in 2026");
+  assert.equal(c.dateLabel(), "Thu 31 Dec");
+  assert.equal(c.dateLabel({ long: true }), "Thursday, 31 December 2026");
   assert.equal(c.season(), "winter");
   c.set("16:30");
   assert.ok(c.night() > 0.5, "dark at half past four in December");
   assert.ok(new Clock({ date: "06-21", start: "16:30" }).night() < 0.01);
   c.set("23:50");
   assert.ok(c.advance(100)); // 20 clock minutes
-  assert.equal(c.dateLabel(), "1 Jan");
-  assert.deepEqual(c.toJSON(), { start: "23:50", factor: 12, profiles: true, date: "12-31" }, "the start date is kept, not the current one");
+  assert.equal(c.dateLabel({ long: true }), "Friday, 1 January 2027", "into the next year");
+  assert.deepEqual(c.toJSON(), { start: "23:50", factor: 12, profiles: true, date: "2026-12-31" }, "the start date is kept, not the current one");
+  // a leap year: 28 February, then 29 February
+  const leap = new Clock({ date: "2028-02-28", start: "23:50" });
+  leap.advance(100);
+  assert.equal(leap.dateLabel({ long: true }), "Tuesday, 29 February 2028");
+  assert.equal(leap.setDate("02-29"), 60, "29 February in the clock's year 2028");
+  c.setDate("2026-12-06");
+  assert.equal(c.setDate("02-29"), c.date, "no 29 February in 2026: nothing changes");
   assert.equal(c.setDate("nonsense"), c.date, "what is no date changes nothing");
   assert.equal(c.setDate(null), null);
 });
@@ -210,7 +241,7 @@ test("a course over the day: key frames, in proportion between them; told when i
   assert.ok(w.now().snow_cm > 1, "snow lies by nine");
   // the layout's weather is saved as it was written
   assert.deepEqual(world.toJSON().weather, { mode: "typical", course: [["05:00", { temperature_c: 1, precipitation: "none", cloud: 1 }], ["07:00", { temperature_c: -3, precipitation: "snow", rate_mm_h: 2 }], ["10:00", { temperature_c: -1, precipitation: "none" }]] });
-  assert.equal(world.toJSON().clock.date, "01-20");
+  assert.equal(world.toJSON().clock.date, "2026-01-20");
 });
 
 test("the rails take the weather: wet in rain, leaves in November when damp, ice; a track's own condition and a disruption too", () => {
@@ -273,7 +304,7 @@ test("scenarios set the date and the weather; what is neither fails the step, an
   world.scenarios.load([{ id: "winter", steps: [{ at: 0, set: { date: "12-06", time: "15:45", weather: "snow" } }] }]);
   world.scenarios.play("winter");
   world.step(0.1);
-  assert.equal(world.clock.dateLabel(), "6 Dec");
+  assert.equal(world.clock.dateLabel(), "Sun 6 Dec");
   assert.equal(world.clock.label().slice(0, 4), "15:4");
   assert.equal(world.weather.now().sky, "snow");
   assert.deepEqual(messages, []);
@@ -308,7 +339,7 @@ function lookAt(camera, eye, target) {
   return [c0[0], c1[0], c2[0], c0[1], c1[1], c2[1], c0[2], c1[2], c2[2]];
 }
 
-/** Draw a world through a fake canvas: the fill colours, the arcs (snowflakes) and line segments drawn in overlays. */
+/** Draw a world through a fake canvas: the fill colours, the arcs and line segments, the full-picture fills (veils). */
 function draw(world) {
   const fills = [];
   let arcs = 0, lines = 0, rects = 0;
@@ -339,7 +370,7 @@ test("the weather in the picture: snow whitens the ground and the roofs, flakes 
   const snow = draw(world);
   assert.equal(snow.view.weather.snow, 1);
   assert.ok(white(snow.fills) > white(plain.fills) + 100, `${white(snow.fills)} white fills in snow, ${white(plain.fills)} without`);
-  assert.ok(snow.arcs > plain.arcs + 60, "snowflakes");
+  assert.ok(snow.rects > plain.rects, "the veil over the picture");
   // the view's tone: snow by the share a surface takes, wet darkens; no weather, no change
   assert.equal(plain.view.tone("#4a4f57"), "#4a4f57");
   assert.match(snow.view.tone("#4a4f57"), /^rgba\(244,247,250/);
@@ -347,7 +378,7 @@ test("the weather in the picture: snow whitens the ground and the roofs, flakes 
   world.setWeather("heavy-rain");
   const rain = draw(world);
   assert.ok(rain.view.weather.wet > 0.9 && rain.view.weather.snow === 0);
-  assert.ok(rain.lines > plain.lines + 100, "streaks of rain");
+
   assert.match(rain.view.tone("#808080"), /^rgba\(1\d\d,/, "wet ground is darker");
   // with reduced motion the rain stands still: two frames, the same streaks
   world.settings.weatherStill = true;
@@ -369,4 +400,115 @@ test("the weather in the picture: snow whitens the ground and the roofs, flakes 
     return m && Number(m[1]) > 150 && Number(m[1]) > Number(m[2]) + 15 && Number(m[3]) < 90;
   }).length;
   assert.ok(autumnal(october.fills) > autumnal(plain.fills) + 5, "yellow and orange crowns");
+});
+
+test("rain and snow over the picture: layers of tiles, the same each time; lightning now and then, never strobing", () => {
+  for (const kind of ["snow", "rain"]) {
+    PRECIPITATION_LAYERS[kind].forEach((L, i) => {
+      const a = layerParticles(kind, i), b = layerParticles(kind, i);
+      assert.deepEqual(a, b, "painted the same every time");
+      assert.equal(a.length, L.count);
+      for (const p of a) assert.ok(p.x >= 0 && p.x < L.size && p.y >= 0 && p.y < L.size && p.r >= L.r[0] && p.r <= L.r[1]);
+    });
+    // far layers fall slower than near ones
+    const speeds = PRECIPITATION_LAYERS[kind].map((L) => L.speed);
+    assert.deepEqual([...speeds].sort((x, y) => x - y), speeds);
+  }
+  assert.ok(PRECIPITATION_LAYERS.rain[0].speed > 10 * PRECIPITATION_LAYERS.snow[0].speed, "rain falls much faster than snow");
+  // lightning: a strike every 9 to 20 s; within any second at most two flashes (bright, dark, bright)
+  const strikes = new Set();
+  let flashes = 0, prev = 0, worst = 0;
+  const window = [];
+  for (let t = 0; t < 300; t += 0.01) {
+    const s = lightningAt(t), b = s ? s.bright : 0;
+    if (s) strikes.add(s.n);
+    if (b >= 0.5 && prev < 0.5) {
+      flashes++;
+      window.push(t);
+    }
+    while (window.length && window[0] < t - 1) window.shift();
+    worst = Math.max(worst, window.length);
+    prev = b;
+  }
+  assert.ok(strikes.size >= 15 && strikes.size <= 34, `${strikes.size} strikes in 5 minutes`);
+  assert.ok(worst <= 2, `${worst} flashes in a second`);
+  assert.equal(lightningAt(0), null);
+});
+
+test("thunderstorms: the preset, and summer showers in the typical weather", () => {
+  const world = lab();
+  world.setWeather("thunderstorm");
+  const n = world.weather.now();
+  assert.equal(n.sky, "thunderstorm");
+  assert.ok(n.rate_mm_h >= 10 && n.wind_mps >= 10);
+  assert.equal(world.weather.look().thunder, true);
+  assert.equal(world.weather.describe().split(" · ")[1], "thunderstorm");
+  assert.ok(world.weather.cycleShare() < 0.3);
+  world.setWeather("rain");
+  assert.equal(world.weather.look().thunder, false);
+  let storms = 0, winterStorms = 0;
+  for (let d = 1; d <= 365; d++) {
+    for (let m = 0; m < 1440; m += 30) {
+      const a = typicalAir(1, d, m);
+      if (a.thunder) {
+        storms++;
+        if (d < 80 || d > 300) winterStorms++;
+      }
+    }
+  }
+  assert.ok(storms > 0, "some summer afternoons with thunder");
+  assert.equal(winterStorms, 0, "none in winter");
+});
+
+test("snow covers everything until warmth or traffic clears it: streets in the rush hour first, sidewalks slower", () => {
+  const world = lab();
+  const w = world.weather;
+  world.setTime("03:00");
+  world.setWeather({ preset: "snow", snow_cm: 8 });
+  assert.equal(w.ground.cleared, 0, "fresh snow: nothing cleared");
+  // it stops snowing; at night the few cars hardly clear the streets, in the morning rush they do
+  w.state = { ...w.state, precipitation: "none", temperature_c: -4 };
+  w.preset = "frost";
+  world.speed = 30;
+  while (world.clock.minutes < 5 * 60) world.step(0.1);
+  const night = w.ground.cleared;
+  assert.ok(night < 0.25, `cleared ${night.toFixed(2)} by five`);
+  while (world.clock.minutes < 9 * 60) world.step(0.1);
+  assert.ok(w.ground.cleared > night + 0.4, `cleared ${w.ground.cleared.toFixed(2)} by nine`);
+  assert.ok(w.now().snow_cm > 6, "the snow still lies (frost)");
+  assert.equal(w.look().cleared, w.ground.cleared);
+  // the view: covered streets are white, cleared ones keep their colour; sidewalks half as cleared
+  const camera = new Camera(800, 600), ctx = { canvas: { width: 800, height: 600 } };
+  const view = new View({ ctx, camera, H: [1, 0, 0, 0, 1, 0, 0, 0, 1], scale: 87, weather: { snow: 1, wet: 0, cleared: 0 } });
+  assert.match(view.tone("#4a4f57", 1), /^rgba\(244,247,250/);
+  view.weather = { snow: 1, wet: 0, cleared: 1 };
+  assert.equal(view.tone("#4a4f57", 0), "#4a4f57");
+});
+
+test("snow lies on steep slopes too (roofs, the tiers of a fir), not on walls", () => {
+  const world = lab(["striezelmarkt"]);
+  world.setTime("12:00");
+  world.setWeather("snow");
+  const fills = [];
+  const noop = () => {};
+  const ctx = {
+    canvas: { width: 1600, height: 900 }, fillStyle: "#000", strokeStyle: "#000", lineWidth: 1, globalAlpha: 1,
+    save: noop, restore: noop, setTransform: noop, transform: noop, beginPath: noop, closePath: noop, stroke: noop, setLineDash: noop, strokeRect: noop,
+    ellipse: noop, quadraticCurveTo: noop, arcTo: noop, clip: noop, fillText: noop, drawImage: noop, moveTo: noop, lineTo: noop, arc: noop, fillRect: noop,
+    fill() { fills.push(this.fillStyle); }, measureText: (t) => ({ width: t.length * 6 }), createRadialGradient: () => ({ addColorStop: noop }), createLinearGradient: () => ({ addColorStop: noop }),
+  };
+  const camera = new Camera(1600, 900);
+  const view = new View({ ctx, camera, H: lookAt(camera, [-560, -1150, 700], [-560, -780, 150]), scale: world.scale });
+  // only the tree
+  const tree = world.getObject("christmas-tree");
+  view.weather = world.weather.look();
+  view.night = 0;
+  tree.draw(view);
+  view.render();
+  const green = fills.filter((f) => {
+    const m = String(f).match(/^rgba?\((\d+),(\d+),(\d+)/);
+    return m && Number(m[2]) > Number(m[1]) + 25 && Number(m[2]) > Number(m[3]) + 15;
+  });
+  assert.ok(fills.length > 20, `${fills.length} fills: the tree was drawn`);
+  assert.equal(green.length, 0, `the fir under snow: no green tier left (${green.slice(0, 3).join(", ")})`);
 });

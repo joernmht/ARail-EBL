@@ -165,7 +165,7 @@ The fast clock (see [Day and night](day-and-night.md)):
 | `start` | `"07:00"` | time of day when the layout is opened (`"HH:MM"`) |
 | `factor` | `12` | clock seconds per simulated second (1 = real time; 12 = one clock hour in five simulated minutes) |
 | `profiles` | `true` | timetables, bus lines, road traffic and random passengers follow the time of day |
-| `date` | none | the date the layout starts with (`"MM-DD"`, e.g. `"12-06"`): the sun rises and sets as on that day, the trees follow the season; without it every day is the same day (sun 06:00 to 20:30) |
+| `date` | none | the date the layout starts with (`"YYYY-MM-DD"`, or `"MM-DD"` in 2026): the sun rises and sets as on that day, the trees follow the season, the clock knows the weekday; without it every day is the same day (sun 06:00 to 20:30) |
 | `latitude` | `51.05` | °N, for sunrise and sunset by the date (Dresden) |
 
 The app writes the start time and the start date, not those shown when the layout is exported.
