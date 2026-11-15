@@ -204,9 +204,35 @@ export class Inspector {
       card.sections.map((s) => this.section(s)),
       card.text ? h("p", { class: "info-text" }, card.text) : null,
       card.actions.length ? h("div", { class: "row" }, card.actions.map((a) => h("button", { class: "btn small", type: "button", onclick: () => this.act(a.id) }, a.label))) : null,
+      this.calls(this.open.key),
     );
     this.card.hidden = false;
     return card;
+  }
+
+  /**
+   * The card of a stop (a platform, a bus terminal): a button per track or bay that sends a train
+   * or bus of the timetable there now, as its number key does (keys 1–9: the stop's place in the
+   * layout, said beside them). A track of the rail operations or of a rail line, a bay of the bus
+   * lines, a closed track or one kept for a story's train takes none; they say why.
+   */
+  calls(key) {
+    const w = this.world, obj = key.startsWith("object:") ? w.getObject(key.slice(7)) : null;
+    if (!obj) return null;
+    const areas = w.stopAreas(), mine = areas.filter((a) => a.owner === obj);
+    const docks = mine.flatMap((a) => w.services.forArea(a.id).filter((st) => !st.dock.managed).map((st) => ({ a, st })));
+    if (!docks.length) return null;
+    const n = areas.indexOf(mine[0]) + 1;
+    return h("div", { class: "info-section info-calls" },
+      h("h3", {}, n <= 9 ? `Call · key ${n}` : "Call"),
+      h("div", { class: "row" }, docks.map(({ a, st }) => {
+        const fx = w.disruptions.effectsFor(a, st.dock), closed = fx.closed || fx.reserved;
+        return h("button", {
+          class: "btn small", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || st.mode === "line" || closed,
+          title: st.mode === "plan" ? "Its trains run to the timetable of the rail operations" : st.mode === "line" ? "Only the trains of its rail line stop at this track" : fx.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : st.vehicle ? "Taken" : null,
+          onclick: () => { if (w.services.call(st.dock.id)) this.render(); },
+        }, `${a.kind === "bus" ? "Bus" : "Train"} → ${st.dock.label}`);
+      })));
   }
 
   /**
@@ -257,7 +283,7 @@ export class Inspector {
     world.compatibilityTrain = { name: world.card(hit).title, consist };
     world.settings.trackSystems = COMPATIBILITY;
     this.app.panels.renderViewIfShown();
-    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (Settings → Settings → View → Colour the tracks by).`, 6000);
+    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (Settings → View → Colour the tracks by).`, 6000);
   }
 
   /* ---------------------------------------------------------------- highlight */

@@ -88,13 +88,27 @@ test("its trains stand at the platforms with their units and driver; the boards 
     const w = window.__arail.world;
     return w.stopAreas().filter((a) => a.kind === "rail").map((a) => boardStatus(w, [a]).join(" · ")).join(" | ");
   })).toMatch(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
-  // trains cannot be called to the platforms of the operations (keys 1–9)
-  const called = await page.evaluate(() => {
-    const w = window.__arail.world;
-    return w.stopAreas().filter((a) => a.kind === "rail").map((a) => !!w.services.call(a.id));
+  // trains cannot be called to the platforms of the operations: its key says so ...
+  const platform = await page.evaluate(() => {
+    const areas = window.__arail.world.stopAreas(), i = areas.findIndex((a) => a.kind === "rail");
+    return { key: String(i + 1), id: areas[i].owner.id, name: areas[i].owner.name };
   });
-  expect(called.length).toBeGreaterThan(0);
-  expect(called.every((x) => !x)).toBe(true);
+  await page.locator("#stage").focus();
+  await page.keyboard.press(platform.key);
+  await expect(page.locator("#toast")).toHaveText(`${platform.name}: its trains run to the timetable of the rail operations.`);
+  // ... and so does its card: its call buttons are off, with the reason, beside the key that calls the stop
+  await page.evaluate((id) => {
+    const app = window.__arail, o = app.world.getObject(id);
+    app.inspector.show(app.world.findPickable(app.lastView, `object:${id}`) || { key: `object:${id}`, kind: "object", ref: o });
+  }, platform.id);
+  const calls = page.locator("#infoCard .info-calls");
+  await expect(calls.locator("h3")).toHaveText(`Call · key ${platform.key}`);
+  const buttons = calls.getByRole("button", { name: /^Train → / });
+  expect(await buttons.count()).toBeGreaterThan(0);
+  for (const b of await buttons.all()) {
+    await expect(b).toBeDisabled();
+    await expect(b).toHaveAttribute("title", "Its trains run to the timetable of the rail operations");
+  }
   expect(errors).toEqual([]);
 });
 

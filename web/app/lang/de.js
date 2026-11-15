@@ -284,6 +284,11 @@ const APP_DE = {
   "no pose yet": "noch keine Lage",
   "{n} of {all}": "{n} von {all}",
   "seen by their tags": "an ihren Markern erkannt",
+  // the card of a stop (inspect.js): call a train or bus to a track or bay
+  "Call": "Rufen",
+  "Call · key {n}": "Rufen · Taste {n}",
+  "Its trains run to the timetable of the rail operations": "Seine Züge fahren nach dem Fahrplan des Bahnbetriebs",
+  "Taken": "Belegt",
   // Settings → Simulation (panels.js): the presets
   "Season and weather": "Jahreszeit und Wetter",
   "Spring (15 April)": "Frühling (15. April)",

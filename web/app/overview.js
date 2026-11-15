@@ -87,7 +87,7 @@ export class Overview {
       out.push({ id: "trips", label: "Door to door", value: all ? `${Math.round(all.minutes)} min` : "–", note: all ? `mean of ${all.trips} trips` : "No trip finished yet",
         action: all ? h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)") : null });
     }
-    const areas = w.stopAreas(), sim = w.simulations.find((x) => typeof x.stats === "function");
+    const areas = w.stopAreas(), sim = w.simulations.find((x) => x.constructor.type === "passengers" && x.enabled !== false);
     if (areas.length && sim) {
       let waiting = 0, mood = 0;
       for (const a of areas) {

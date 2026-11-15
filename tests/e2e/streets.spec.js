@@ -176,6 +176,14 @@ test("the boards over the stops: both sides of a stop as Stop A and B; loop line
   // (unless a timetable bus of the terminal's third bay is there, then that one and the next line)
   await expect.poll(async () => (await boards()).find((b) => b.id === "bus-terminal-1")?.status).toMatch(/^Bus (62 Ring ↺.* · Bus 85 Ring ↻|30[58] .* · Bus (62|85) Ring)/);
   expect((await statuses()).filter((s) => /(^|· )30[58] /.test(s))).toEqual([]);
+  // the card of the terminal: a bus can be called to its own timetable bay, not to the bays of the lines
+  await page.evaluate(() => {
+    const app = window.__arail, o = app.world.getObject("bus-terminal-1");
+    app.inspector.show(app.world.findPickable(app.lastView, "object:bus-terminal-1") || { key: "object:bus-terminal-1", kind: "object", ref: o });
+  });
+  const key = await page.evaluate(() => window.__arail.world.stopAreas().findIndex((a) => a.owner.id === "bus-terminal-1") + 1);
+  await expect(page.locator("#infoCard .info-calls h3")).toHaveText(`Call · key ${key}`);
+  await expect(page.locator("#infoCard .info-calls").getByRole("button", { name: /^Bus → / }).first()).toBeVisible();
   // the inspector of a loop line says which way round its buses go
   await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-line-85")));
