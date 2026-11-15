@@ -145,7 +145,8 @@ test("the case Operations adds rail operations to a layout while it is off; in t
   expect(await caseReady(page, "terminal")).toBe(false);
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
   await expect(page.locator(".ops-tiles .tile")).toHaveCount(6);
-  // kept in this browser
+  // kept in this browser (the layout is saved 300 ms after its last change)
+  await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith("arail.layout:")));
   await page.reload();
   await page.waitForFunction(() => window.__arail?.operations.sim, null, { timeout: 60_000 });
   // the container terminal, a module of the lab: the case stays and offers the lab's module
