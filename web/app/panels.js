@@ -274,7 +274,12 @@ export class Panels {
 
   /** Set a situation (situations.js); the card keeps the focus. */
   async setSituation(x) {
-    await applySituation(this.app, x);
+    try {
+      await applySituation(this.app, x);
+    } catch (err) {
+      toast(`${x.label} could not be set: ${err.message}`, 7000);
+      return;
+    }
     this.situation = { id: x.id, layout: this.world.layout };
     if (this.app.activeTab === "settings" && this.settingsView === "simulate") {
       this.renderSettings(document.getElementById("panel-settings"));

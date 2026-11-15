@@ -300,6 +300,7 @@ const APP_DE = {
   "Events": "Ereignisse",
   "Clock": "Uhr",
   "Each on its own": "Jedes für sich",
+  "{name} could not be set: {error}": "{name} ließ sich nicht einstellen: {error}",
   "Winter weekday, morning rush": "Wintertag unter der Woche, Berufsverkehr am Morgen",
   "Tuesday, 13 January, 07:15: frost, commuters crowd the platforms": "Dienstag, 13. Januar, 07:15: Frost, Pendler drängen sich auf den Bahnsteigen",
   "Foggy Monday in November": "Nebliger Montag im November",

@@ -372,18 +372,20 @@ export class Clock {
   }
 
   /**
-   * Today's profile of a kind of traffic ([hour, factor] points): a weekend's on a Saturday or
-   * Sunday, else the working day's (for those who look ahead within the day: the journey planner,
-   * the traffic clearing the snow).
+   * The profile of a kind of traffic ([hour, factor] points) on a day: a weekend's on a Saturday or
+   * Sunday, else the working day's; `dayOffset` days from today (the journey planner looking past
+   * midnight; the town's daily totals, the traffic clearing the snow: today).
    */
-  profile(kind) {
-    return (this.weekend() ? WEEKEND_PROFILES : PROFILES)[kind];
+  profile(kind, dayOffset = 0) {
+    return (this.weekend(dayOffset) ? WEEKEND_PROFILES : PROFILES)[kind];
   }
 
-  /** Is it a Saturday or a Sunday? False without a date (every day is a working day then). */
-  weekend() {
+  /** Is it a Saturday or a Sunday (today, or `dayOffset` days on)? False without a date (every day is a working day then). */
+  weekend(dayOffset = 0) {
     const wd = this.weekday();
-    return wd === 5 || wd === 6;
+    if (wd == null) return false;
+    const d = (((wd + Math.round(dayOffset)) % 7) + 7) % 7;
+    return d === 5 || d === 6;
   }
 
   /** Simulated seconds until the clock shows `value` ("HH:MM" or minutes), at most one day. */

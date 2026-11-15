@@ -357,6 +357,25 @@ test("town: the timetable and the lines run as often as the town needs, unless t
   assert.ok(perHour > 0 && perHour < 10, `${perHour.toFixed(1)} other passengers an hour`);
 });
 
+test("town: the other passengers of a day are as many on a Saturday as on a working day, only spread otherwise", () => {
+  const { world, t } = built(HOMES);
+  const area = world.getStopArea("p1"), c = world.clock;
+  // the passengers of a whole day: the rate (per simulated second) times the day's demand, minute by minute
+  const day = (date) => {
+    c.setDate(date);
+    const rate = t.othersAt(area);
+    let sum = 0;
+    for (let m = 0; m < 1440; m++) {
+      c.minutes = m + 0.5;
+      sum += rate * c.demand("passengers") * (60 / c.factor);
+    }
+    return sum;
+  };
+  const tuesday = day("2026-01-13"), saturday = day("2026-01-17");
+  assert.ok(tuesday > 0);
+  assert.ok(Math.abs(saturday / tuesday - 1) < 0.01, `a Saturday ${saturday.toFixed(1)}, a Tuesday ${tuesday.toFixed(1)}`);
+});
+
 test("passengers: with a town the other passengers follow its residents, without one base_rate", () => {
   const withTown = built(HOMES);
   const pax = withTown.world.simulations.find((s) => s.constructor.type === "passengers");

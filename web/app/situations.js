@@ -84,6 +84,8 @@ export async function applySituation(app, s) {
   if (s.layers?.length) {
     const on = app.layersOn();
     if (s.layers.some((id) => !on.includes(id))) await app.chooseModules([...new Set([...on, ...s.layers])]);
+    // a switch that failed has said why (App#setLayers): nothing else is set then
+    if (s.layers.some((id) => !app.layersOn().includes(id))) throw new Error("its modules could not be switched on");
   }
   const w = app.world;
   // the crowd of the situation set before ends (another one's, or this one's: one at a time)

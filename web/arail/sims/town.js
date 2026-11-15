@@ -37,7 +37,7 @@
 import { Simulation } from "../core/simulation.js";
 import { CD, moodColor } from "../core/colors.js";
 import { createRng, dist2, hashKey, polylineAt, rectAround } from "../core/math.js";
-import { DAY_MINUTES, PROFILES, formatTime, wrapMinutes } from "../core/clock.js";
+import { DAY_MINUTES, formatTime, wrapMinutes } from "../core/clock.js";
 import { hiddenAt, straightWalk } from "../core/network.js";
 import { Person, Population, residentialBuildings } from "../core/people.js";
 import { GROUPS, canDrive, carLegTime, drawProfile, mobilityOf, profileGroups, profileWords, walkingSpeed } from "../core/mobility.js";
@@ -647,7 +647,7 @@ export class TownSimulation extends Simulation {
     }
     const perDay = this._othersPerDay.perDay.get(area.id) || 0;
     const clock = this.world.clock;
-    const hours = clock.profiles ? profileHours(PROFILES.passengers) : 24;
+    const hours = clock.profiles ? profileHours(clock.profile("passengers")) : 24;
     const factor = clock.factor > 0 ? clock.factor : 12;
     return (perDay * (this._shown || this.scale) * factor) / (hours * 3600);
   }
