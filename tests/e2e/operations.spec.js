@@ -102,7 +102,8 @@ test("its trains stand at the platforms with their units and driver; the boards 
     app.inspector.show(app.world.findPickable(app.lastView, `object:${id}`) || { key: `object:${id}`, kind: "object", ref: o });
   }, platform.id);
   const calls = page.locator("#infoCard .info-calls");
-  await expect(calls.locator("h3")).toHaveText(`Call · key ${platform.key}`);
+  await expect(calls.locator("h3")).toHaveText("Call");
+  await expect(calls.locator(".call-key").first()).toHaveText(`Key ${platform.key}`);
   const buttons = calls.getByRole("button", { name: /^Train → / });
   expect(await buttons.count()).toBeGreaterThan(0);
   for (const b of await buttons.all()) {

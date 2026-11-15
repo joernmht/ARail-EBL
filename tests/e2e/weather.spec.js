@@ -62,6 +62,12 @@ test("Settings → Simulation sets the season and the weather; the stage's chip 
   await expect(page.locator("#datePreset option:checked")).toHaveText("Monday, 10 July 2028");
   await expect(page.locator("#weatherSelect")).toHaveValue("off");
   await expect(page.locator("#hud .chip.weather")).toHaveText(/^Mon 10 Jul · \d\d:\d\d$/);
+  // the demand: a preset, and one a scenario set (not a preset) as an option of its own
+  await page.locator("#demandPreset").selectOption({ label: "Busy (× 2)" });
+  expect(await page.evaluate(() => window.__arail.world.demand)).toBe(2);
+  await page.evaluate(() => (window.__arail.world.demand = 1.5));
+  await expect(page.locator("#demandPreset")).toHaveValue("1.5");
+  await expect(page.locator("#demandPreset option:checked")).toHaveText("× 1.50");
   // no date again
   await page.locator("#datePreset").selectOption("");
   await expect(page.locator("#hud .chip.weather")).toHaveCount(0);

@@ -242,6 +242,8 @@ details.info-section > summary h3 { margin: 0; }
 details.info-section > summary:focus-visible { outline: 2px solid var(--overlay-ok); outline-offset: 2px; border-radius: 2px; }
 details.info-section[open] > summary { margin-bottom: 4px; }
 .info-text { margin: 0; color: var(--board-muted); font-size: .8rem; }
+.info-calls .row { align-items: center; }
+.call-key { color: var(--board-muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
 .info-card .row .btn { background: var(--board-2); color: var(--board-text); border-color: var(--board-line); }
 /* the consist of a train: its vehicles in order, as long as they are */
 .consist-strip { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }

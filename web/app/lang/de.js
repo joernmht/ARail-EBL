@@ -286,7 +286,7 @@ const APP_DE = {
   "seen by their tags": "an ihren Markern erkannt",
   // the card of a stop (inspect.js): call a train or bus to a track or bay
   "Call": "Rufen",
-  "Call · key {n}": "Rufen · Taste {n}",
+  "Key {n}": "Taste {n}",
   "Its trains run to the timetable of the rail operations": "Seine Züge fahren nach dem Fahrplan des Bahnbetriebs",
   "Taken": "Belegt",
   // Settings → Simulation (panels.js): the presets
@@ -441,7 +441,6 @@ const APP_DE = {
   "Speed is simulated time per real time. Space pauses.": "Das Tempo ist simulierte Zeit je Echtzeit. Leertaste hält an.",
   "Speed": "Tempo",
   "Stops": "Haltestellen",
-  "Key {n}": "Taste {n}",
   "Keys 1–9 send a vehicle to the stop with that position in the list.": "Die Tasten 1–9 schicken ein Fahrzeug zur Haltestelle an dieser Stelle der Liste.",
   "Add to this layout": "Zu dieser Anlage hinzufügen",
   "Connection": "Verbindung",
