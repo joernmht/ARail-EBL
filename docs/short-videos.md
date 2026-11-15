@@ -100,8 +100,9 @@ Each shot is a plan in `tools/video/plans/` and renders into `build/video/<name>
 | the container terminal | `terminal-photo.json`, `terminal-wagons-0.json`, `terminal-wagons.json`, `terminal-truck.json`, `crane-terminal.json`, `photos/141012.json`, `132253`, `132257` | the hybrid container train, the crane loading the truck |
 | travellers, close | `platform-people.json`, `platform-people-2.json` | busy platforms, a train boarding (flyover) |
 | bikes, close | `bikes.json` | riders on a bike lane beside a tram (flyover) |
+| trams and buses, close | `trams-buses.json` | the station square, a tram coming in (flyover) |
 | the whole town | `city-wide.json` | the town in the flyover, wide, turning |
-| night | `night-town.json`, `night-street.json` | the town (photo 132542) and a street at 22:30: lit windows, lamps, the traffic's lights |
+| night | `night-town.json`, `night-station.json` | the town (photo 132542) and the station square at 22:30: lit windows, lamps, the traffic's lights |
 | the wide hall | `photos/132821.json`, `132826` | the lab's hall with the town on the tables |
 | the game | `screens/game-title.json` | the game page's title, its menu opened (recorded) |
 | the missions | `screens/missions.json` | the big game's missions, one chosen, Play, the briefing (recorded) |
@@ -117,7 +118,10 @@ the chair's presentations (`visuals/arail-shots/`), to cut into talks.
    - a photo of the photo map with a digital layer: copy a plan in `plans/photos/` and change the id;
    - a frame of a lab clip: as `station.json` (`clip`, `start`, `track`, `freeze`);
    - a flyover close-up: as `platform-people.json` (`fly` with target, distance, yaw and pitch; `eval`
-     for more people or riders, said in the plan's `about`);
+     for more people or riders, said in the plan's `about`). Its frames are 1210 × 938: crop a 16:9
+     box within them (`[0, 129, 1210, 809]`); `arail-compose` refuses a crop outside the frames.
+     The first frames of a flyover can be odd (the camera inside a building, the night lighting
+     still settling): start the part later (`first`);
    - a page of the site: as `plans/screens/missions.json` (`goto`, `hover`, `click`, `wait`).
 
    Render it: `node tools/video/render.mjs <plan>` or `node tools/video/screen.mjs <plan>`; check a

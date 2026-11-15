@@ -432,6 +432,14 @@ def test_compose_cues_of_a_plan_with_a_missing_shot_say_so_and_write_nothing(tmp
     assert "missing" in capsys.readouterr().err and not out.exists()
 
 
+def test_compose_refuses_a_crop_outside_its_frames(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 4, (0, 0, 200))  # 200 x 100
+    plan = {"size": [100, 50], "parts": [{"frames": "a", "count": 4, "crop": [[0, 0, 200, 100], [0, 0, 240, 120]]}]}
+    with pytest.raises(OSError, match="outside its frames"):
+        cp.compose(plan, str(tmp_path / "out"), log=lambda *_: None)
+
+
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
 def test_compose_encodes_with_a_poster(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, "ROOT", str(tmp_path))

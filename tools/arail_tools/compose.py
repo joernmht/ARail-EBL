@@ -114,6 +114,7 @@ class Part:
         if not self.dir and not self.video:
             raise OSError("a shot needs `frames` or `clip`")
         self._reader = None
+        self._checked = False
         self.count = int(spec["count"])
         self.first = int(spec.get("first", 0))
         self.fade = int(spec.get("fade", 0))
@@ -210,6 +211,12 @@ class Part:
 
         k = max(0, i - self.hold)
         img = self._read(self.first + k)
+        if not self._checked:
+            h, w = img.shape[:2]
+            for x0, y0, x1, y1 in self.box:
+                if x0 < -0.5 or y0 < -0.5 or x1 > w + 0.5 or y1 > h + 0.5:
+                    raise OSError(f"{self.name}: crop {[x0, y0, x1, y1]} is outside its frames ({w} x {h})")
+            self._checked = True
         u = ease(k / max(1, self.count - 1))
         box = [p + (q - p) * u for p, q in zip(self.box[0], self.box[1], strict=True)]
         if self.bare:

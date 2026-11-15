@@ -105,7 +105,7 @@ The video spans the whole width of the project page, 16:9 (1280 × 720, 70 s, lo
 short story told after the concept of [Short videos](short-videos.md): the real lab (*A real lab is
 awesome.*), the one fade from the real lab into ARail (*But what if… there are houses.*), then views of
 ARail, each idea with its line typed into a terminal box: trees, cars, the ways to the office, the
-container terminal, travellers (close-ups on the platforms), trams and buses, bikes, the night, the
+container terminal, travellers (close-ups on the platforms), trams and buses (close), bikes, the night, the
 game, the missions; at the end the whole town in the chair's blue: *What if all that is possible? What
 if all this is customizable overnight? Would your work still be the same?*
 
@@ -144,7 +144,7 @@ What there is to cut from, and what the video uses (the clips are described in
 | `web/media/ebl-container-train.jpg` | photo, 1600 × 900 | the hybrid container train, the crane working |
 | `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 5 in this video (132542 also at night) (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
 | the game page and the big game | pages of this site | recorded as they are used (`screen.mjs`) |
-| the flyover | rendered | the travellers on the platforms, the bikes and a street at night, close; the whole town at the end |
+| the flyover | rendered | the travellers on the platforms, trams and buses at the station square, the bikes and the station square at night, close; the whole town at the end |
 | `examples/media/ebl-lab-video.mp4` | 16 s, 1920 × 1080 | not used: it carries an editor's watermark |
 | the hump simulation's diagrams | `tools/hump.mjs --svg` | not used: the hump is not in the app yet |
 | the EBL's digital twin (screen recording from the deck of 22 October 2026) | 70 s, 1600 × 900 | not used: the twin is the lab's own project, not ARail. Its first 14 s are on How it works (`web/media/ebl-twin.mp4`) |
