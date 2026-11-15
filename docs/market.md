@@ -6,7 +6,7 @@ For a railway lab the visitors matter beyond the market: about a third of them c
 
 ## In the app
 
-Open the lab example (`app/?layout=../layouts/ebl-lab.json`) and switch on the modules in **Interaction → Sandbox**, or with the address: `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
+Open the lab example (`app/?layout=../layouts/ebl-lab.json`) and switch on the modules in **Examples → Sandbox**, or with the address: `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
 
 | Module | What it adds |
 | --- | --- |

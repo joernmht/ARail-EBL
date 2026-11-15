@@ -8,11 +8,12 @@ This is the base of the concept in [#254](https://github.com/joernmht/ARail-EBL/
 
 ## In the app
 
-**Settings → Simulation → Date and weather**:
+**Settings → Simulation → Season and weather**, as presets:
 
-- **Day**, **Month** and **Year**: the date, or *No date* (every day is the same day). The date runs on at midnight, into the next year; leap years have 29 February. The clock face above shows the weekday, the date and the year (*Sunday, 6 December 2026*).
+- **Season**: *No date* (every day is the same day), or a day of each season: *Spring* (15 April), *Summer* (15 July), *Autumn* (15 October), *Winter* (15 December), in 2026. The date runs on at midnight, into the next year; leap years have 29 February. Another date (from a scenario, a layout or `world.setDate`) shows as an option of its own (*Sunday, 6 December 2026*).
 - **Weather**: *Off*, *Typical for the date*, or a fixed one: *Clear, Cloudy, Overcast, Rain, Heavy rain, Thunderstorm, Snowfall, Frost, Fog, Heat*.
-- The line below says what holds now: sunrise and sunset, the temperature and the sky, the ground (dry, wet, ice, centimetres of snow) and the rails.
+
+**Overview → Measured → Weather** says what holds now: the temperature and the sky, the rails, the ground (dry, wet, ice, centimetres of snow), sunrise and sunset.
 
 With a date or a weather, a clock on the stage shows them: *Sun 6 Dec · 15:46 · −2 °C · snow*. What is set here is not saved with the layout; a layout's own date and weather are ([layout file](#in-a-layout-file)).
 

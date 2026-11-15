@@ -117,7 +117,7 @@ export const WORLD = [
     parameters: [
       { key: "seed", default: "12345", meaning: "Random numbers of a world (createWorld); the simulations derive their streams from it." },
       { key: "speed", default: "2", meaning: "Simulated seconds per real second." },
-      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, Settings → Simulation → Stops has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default); ageYears: years added to the age of the infrastructure's assets in the maintenance story (Interaction → Sandbox, not kept)." },
+      { key: "settings", default: "labels, stopBoards, trails, spaceCircles, tracks, lighting, coverMarkers, trackSystems …", meaning: "What is drawn (Settings → View), kept in the browser; stopBoards: the full board over a stop (off by default: a badge with the people waiting, its card has the rest); spaceCircles: the room people take as circles on the ground and the loads of the vehicles in spaces (off by default); coverMarkers: grey plates with their numbers over the markers and the labels of model wagons (camera view, on by default); trackSystems: the railway system the tracks are coloured by (off by default); ageYears: years added to the age of the infrastructure's assets in the maintenance story (Examples → Sandbox, not kept)." },
     ],
     events: {
       emits: [
@@ -164,7 +164,7 @@ export const WORLD = [
     ],
     activities: [{
       id: "module", name: "Switching a module",
-      description: "Interaction → Sandbox (the module boxes), or the Start of an example of Interaction whose module is off: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
+      description: "Examples → Sandbox (the module boxes), or the Start of an example of Interaction whose module is off: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
       nodes: [
         ["s", "start"],
         ["d0", "decision", "A module of the app (Build, Disruptions)?"],

@@ -1,6 +1,6 @@
 # Disruptions and scenarios
 
-Disruptions change how vehicles run and how passengers behave. Start them in **Interaction → Disruptions** (switch on the module **Disruptions** in Interaction → Sandbox; it is offered for every layout), from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
+Disruptions change how vehicles run and how passengers behave. Start them in **Examples → Disruptions** (switch on the module **Disruptions** in Examples → Sandbox; it is offered for every layout), from a scenario, from the control system, or in code (`world.disruptions.start(...)`). Durations are in simulated minutes: at 2× speed (the default), a 10-minute delay lasts 5 real minutes.
 
 ## Built-in disruptions
 
@@ -15,7 +15,7 @@ Disruptions change how vehicles run and how passengers behave. Start them in **I
 | `track-closure` | Track closure | one track of a platform (`target`: its dock, e.g. `platform-2:left`) | No train stops at that track; the platform's other track runs as usual. The platform shows *Track G2 closed*; a red band with crosses lies along the track. The people waiting for that track go over to the other one. The maintenance story starts it for its repair and its renewal. |
 | `low-adhesion` | Slippery rails | one track of a platform (its dock) | Wet rails, leaves in autumn or ice (`condition`: `wet`, `leaves`, `ice`; `minutes`, 60): the wheels grip less, so trains start slower and need longer to brake. They come in and leave later, as much as the running dynamics of the train at that track say (a two-car Talent 2 on leaves takes about three times as long; a heavy freight train may not start at all), and the delays follow. A dashed band in Orange (Brillantblau for ice) lies along the track, the platform says *Leaves on the rails · trains run slower*, and the cards of its trains use the rails' condition: longer braking distances, a lower load limit. See [Adhesion and forces](rail-systems.md#adhesion-and-forces). |
 
-"Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. A target can also be one track of a platform or one bay of a bus terminal (its dock, e.g. `platform-1:right` in a scenario): a delay, cancellation or closure then acts on the vehicles at that track only (a closed track gets the red band), and the stop shows the message. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards. A closed track takes no train from the keys 1–9 or the Stops board either.
+"Any stop" means platforms, bus terminals and bus stops. Without a target (`"*"`), a disruption applies to all stops it can target. A target can also be one track of a platform or one bay of a bus terminal (its dock, e.g. `platform-1:right` in a scenario): a delay, cancellation or closure then acts on the vehicles at that track only (a closed track gets the red band), and the stop shows the message. Every active disruption shows a flashing warning sign over the affected stops, and its message replaces the next departures on their boards. A closed track takes no train from the keys 1–9 or the call buttons on the stop's card either.
 
 Stories hold the tracks and bays of their own trains and buses with `story-train` (not offered in the tab): no timetable vehicle comes to that track or bay, one standing there is taken away at once, and the stop shows the story's message (`params.text`); without a message it puts up no warning sign and does not count in the HUD. With `params.waiting` the passengers waiting there stay for the story's own vehicle (the dock is kept for it); without it the dock is closed and they go to another track. The [operations story](operations.md#the-operations-story) holds tracks G2 and G3 for RB 31 and its spare unit (the passengers go elsewhere: its train breaks down). The [journeys story](journeys.md#the-journeys-story) keeps the track of Ada's train and the bays of her bus, with the passengers waiting for them: the platform shows *RB 31 to Talsee about 20 min late*, a bay says nothing.
 
@@ -78,7 +78,7 @@ The services (trains and buses) and the passenger simulation only look at these 
 
 ## Scenarios
 
-A scenario is a timeline stored in the layout file. It is played from Interaction → Disruptions or with `?scenario=<id>` in the app URL (which switches the module Disruptions on). Switching the module off stops the scenario and the disruptions started there; those a simulation starts itself (the infrastructure's faults) go on.
+A scenario is a timeline stored in the layout file. It is played from Examples → Disruptions or with `?scenario=<id>` in the app URL (which switches the module Disruptions on). Switching the module off stops the scenario and the disruptions started there; those a simulation starts itself (the infrastructure's faults) go on.
 
 ```json
 {

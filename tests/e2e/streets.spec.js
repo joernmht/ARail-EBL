@@ -150,26 +150,57 @@ test("streets: a footpath chosen as a bus stop's street is named in the inspecto
   expect(errors).toEqual([]);
 });
 
-test("stops board: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json#simulate");
+test("the boards over the stops: both sides of a stop as Stop A and B; loop lines go round as Ring ↻ / Ring ↺", async ({ page }) => {
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-lab.json");
   await page.evaluate(() => {
     const w = window.__arail.world;
     w.setTime("10:00");
     w.speed = 10;
     w.paused = false;
   });
-  const board = page.locator(".board");
-  await expect(board.locator(".stop .title").filter({ hasText: /^Altmarkt · Stop A$/ })).toHaveCount(1);
-  await expect(board.locator(".stop .title").filter({ hasText: /^Altmarkt · Stop B$/ })).toHaveCount(1);
-  await expect(board.locator(".stop .title").filter({ hasText: /^Bahnhof$/ })).toHaveCount(1);
+  /** Each stop area: its stop's name, the letter of its side (its signs) and its board's text. */
+  const boards = () => page.evaluate(async () => {
+    const { boardStatus } = await import("/arail/index.js");
+    const w = window.__arail.world;
+    return w.stopAreas().map((a) => ({ id: a.id, name: a.owner.name, side: a.docks[0]?.label, status: boardStatus(w, [a]).join(" · ") }));
+  });
+  const altmarkt = (await boards()).filter((b) => b.name === "Altmarkt").map((b) => b.side).sort();
+  expect(altmarkt).toEqual(["Stop A", "Stop B"]);
+  expect((await boards()).filter((b) => b.name === "Bahnhof")).toHaveLength(1);
   // the example's two lines go round the town in opposite directions
-  await expect(board.locator(".stop .status").filter({ hasText: /^Bus 62 Ring ↺/ }).first()).toBeVisible();
-  await expect(board.locator(".stop .status").filter({ hasText: /^Bus 85 Ring ↻/ }).first()).toBeVisible();
-  await expect(board).not.toContainText("(loop)");
-  // both lines start at the station's bus terminal: its row shows the next bus of each
+  const statuses = async () => (await boards()).map((b) => b.status);
+  await expect.poll(async () => (await statuses()).some((s) => /^Bus 62 Ring ↺/.test(s))).toBe(true);
+  await expect.poll(async () => (await statuses()).some((s) => /^Bus 85 Ring ↻/.test(s))).toBe(true);
+  expect((await statuses()).join(" | ")).not.toContain("(loop)");
+  // both lines start at the station's bus terminal: its board shows the next bus of each
   // (unless a timetable bus of the terminal's third bay is there, then that one and the next line)
-  await expect(board.locator('.stop[data-id="bus-terminal-1"] .status')).toHaveText(/^Bus (62 Ring ↺.* · Bus 85 Ring ↻|30[58] .* · Bus (62|85) Ring)/);
-  await expect(board.locator(".stop .status").filter({ hasText: /(^|· )30[58] / })).toHaveCount(0);
+  await expect.poll(async () => (await boards()).find((b) => b.id === "bus-terminal-1")?.status).toMatch(/^Bus (62 Ring ↺.* · Bus 85 Ring ↻|30[58] .* · Bus (62|85) Ring)/);
+  expect((await statuses()).filter((s) => /(^|· )30[58] /.test(s))).toEqual([]);
+  // the card of a stop: a bus can be called to its timetable bays, each area beside its own key
+  const card = (id) => page.evaluate((id) => {
+    const app = window.__arail, o = app.world.getObject(id);
+    app.inspector.show(app.world.findPickable(app.lastView, `object:${id}`) || { key: `object:${id}`, kind: "object", ref: o });
+  }, id);
+  const keys = (id) => page.evaluate((id) => window.__arail.world.stopAreas().map((a, i) => (a.owner.id === id ? `Key ${i + 1}` : null)).filter(Boolean), id);
+  await card("bus-terminal-1");
+  await expect(page.locator("#infoCard .info-calls h3")).toHaveText("Call");
+  await expect(page.locator("#infoCard .info-calls .call-key")).toHaveText(await keys("bus-terminal-1"));
+  await expect(page.locator("#infoCard .info-calls").getByRole("button", { name: /^Bus → / }).first()).toBeVisible();
+  // Altmarkt, a stop on both sides of the street, is served by its bus lines: nothing to call there
+  await card("bus-stop-altmarkt");
+  await expect(page.locator("#infoCard .info-calls")).toHaveCount(0);
+  // with its bays taken from the lines (as a stop of the timetable): Stop A and Stop B each beside the key that calls it
+  await page.evaluate(() => {
+    const w = window.__arail.world;
+    for (const a of w.stopAreas()) if (a.owner.id === "bus-stop-altmarkt") for (const d of a.docks) d.managed = null;
+    w.services.sync();
+  });
+  await card("bus-stop-altmarkt");
+  const sides = page.locator("#infoCard .info-calls .row");
+  await expect(sides).toHaveCount(2);
+  await expect(sides.locator(".call-key")).toHaveText(await keys("bus-stop-altmarkt"));
+  await expect(sides.nth(0).getByRole("button")).toHaveText(/^Bus → Stop [AB]$/);
+  await expect(sides.nth(1).getByRole("button")).toHaveText(/^Bus → Stop [AB]$/);
   // the inspector of a loop line says which way round its buses go
   await openCase(page, "build");
   await page.evaluate(() => window.__arail.editor.select(window.__arail.world.getObject("bus-line-85")));

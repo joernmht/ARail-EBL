@@ -17,7 +17,7 @@ The rail operations come in three forms:
 `app/?layout=../layouts/ebl-neustadt.json&layers=plan#evu-operations` opens Bf Neustadt with its
 module **Operations** ([#191](https://github.com/joernmht/ARail-EBL/issues/191)): six trains of
 S 1, RB 71 and RE 2 between 07:02 and 07:52, each with the people it is expected to carry, the same
-for both sides of Interaction.
+for both sides in Examples.
 
 | Case | What you decide | What is checked at once |
 | --- | --- | --- |
@@ -155,7 +155,7 @@ for comparisons over weeks (in the game page's Compare view or with [`tools/ops-
 
 ## The example
 
-The module **Rail operations** of the lab example on the game page (Interaction → Sandbox, or Railway undertaking →
+The module **Rail operations** of the lab example on the game page (Examples → Sandbox, or Railway undertaking →
 Operations → Switch on “Rail operations”, or `game/?layout=../layouts/ebl-lab.json&layers=operations#ops`) adds to
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the EBL lab with its town:
 
@@ -589,7 +589,7 @@ stations, platforms, parties, vehicle types and depots in plain words.
 
 ## Disruptions and scenarios
 
-Five disruption types act on the operations; they are offered in Interaction → Disruptions (module Disruptions) only for
+Five disruption types act on the operations; they are offered in Examples → Disruptions (module Disruptions) only for
 layouts with rail operations, and they have no place on the layout:
 
 | Type | Parameters | Does |

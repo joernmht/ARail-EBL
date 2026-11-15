@@ -82,13 +82,34 @@ test("its trains stand at the platforms with their units and driver; the boards 
   });
   expect(label.label).toMatch(/^(RE|RB|S) \d/);
   expect(label.info.join(" ")).toMatch(/442 \d{3}/);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#panel-settings .board")).toContainText(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
-  // trains cannot be called to the platforms of the operations
-  const calls = await page.locator("#panel-settings .board .calls .btn", { hasText: "Train →" }).evaluateAll((b) => b.map((x) => x.disabled));
-  expect(calls.length).toBeGreaterThan(0);
-  expect(calls.every(Boolean)).toBe(true);
+  // the boards over the platforms show its departures
+  await expect.poll(() => page.evaluate(async () => {
+    const { boardStatus } = await import("/arail/index.js");
+    const w = window.__arail.world;
+    return w.stopAreas().filter((a) => a.kind === "rail").map((a) => boardStatus(w, [a]).join(" · ")).join(" | ");
+  })).toMatch(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
+  // trains cannot be called to the platforms of the operations: its key says so ...
+  const platform = await page.evaluate(() => {
+    const areas = window.__arail.world.stopAreas(), i = areas.findIndex((a) => a.kind === "rail");
+    return { key: String(i + 1), id: areas[i].owner.id, name: areas[i].owner.name };
+  });
+  await page.locator("#stage").focus();
+  await page.keyboard.press(platform.key);
+  await expect(page.locator("#toast")).toHaveText(`${platform.name}: its trains run to the timetable of the rail operations.`);
+  // ... and so does its card: its call buttons are off, with the reason, beside the key that calls the stop
+  await page.evaluate((id) => {
+    const app = window.__arail, o = app.world.getObject(id);
+    app.inspector.show(app.world.findPickable(app.lastView, `object:${id}`) || { key: `object:${id}`, kind: "object", ref: o });
+  }, platform.id);
+  const calls = page.locator("#infoCard .info-calls");
+  await expect(calls.locator("h3")).toHaveText("Call");
+  await expect(calls.locator(".call-key").first()).toHaveText(`Key ${platform.key}`);
+  const buttons = calls.getByRole("button", { name: /^Train → / });
+  expect(await buttons.count()).toBeGreaterThan(0);
+  for (const b of await buttons.all()) {
+    await expect(b).toBeDisabled();
+    await expect(b).toHaveAttribute("title", "Its trains run to the timetable of the rail operations");
+  }
   expect(errors).toEqual([]);
 });
 
@@ -139,7 +160,8 @@ test("the case Operations adds rail operations to a layout while it is off; in t
   expect(await caseReady(page, "terminal")).toBe(false);
   await page.waitForFunction(() => window.__arail.operations.sim?.engine, null, { timeout: 60_000 });
   await expect(page.locator(".ops-tiles .tile")).toHaveCount(6);
-  // kept in this browser
+  // kept in this browser (the layout is saved 300 ms after its last change)
+  await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.startsWith("arail.layout:")));
   await page.reload();
   await page.waitForFunction(() => window.__arail?.operations.sim, null, { timeout: 60_000 });
   // the container terminal, a module of the lab: the case stays and offers the lab's module

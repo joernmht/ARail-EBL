@@ -187,13 +187,13 @@ test("Disruptions is a module: its tool works only while it is on; switched off,
 test("Settings holds the simulation and the control system: #simulate and #control open those views, the last one is kept", async ({ page }) => {
   const errors = await open(page, `${LAB}#control`);
   // the three chapters, whatever the modules
-  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["Overview", "Interaction", "Settings"]);
+  expect(await page.locator(".tabs [role=tab]:not([hidden])").allTextContents()).toEqual(["Overview", "Examples", "Settings"]);
   await expect(page.locator("#tab-settings")).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#settingsView-control")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#feedUrl")).toBeVisible();
   await page.locator("#settingsView-simulate").click();
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("#timeOfDay")).toBeVisible();
+  await expect(page.locator("#datePreset")).toBeVisible();
   await expect(page.locator("#feedUrl")).toHaveCount(0);
   expect(new URL(page.url()).hash).toBe("#simulate");
   // the tab opens the view chosen last, also after a reload
@@ -246,7 +246,7 @@ test("Build is a module, on until switched off: off, the tool says so and placin
   await openCase(page, "build");
   await expect(page.locator("#caseOn")).toHaveText("Switch on");
   await expect(page.locator(".palette")).toHaveCount(0);
-  expect(await page.locator(".tabs [role=tab]").allTextContents()).toEqual(["Overview", "Interaction", "Settings"]);
+  expect(await page.locator(".tabs [role=tab]").allTextContents()).toEqual(["Overview", "Examples", "Settings"]);
   // kept over a reload, without counting as a change of the layout
   await page.goto(`${LAB}#modules`);
   await page.waitForFunction(() => window.__arail?.world?.getObject("station-1"));

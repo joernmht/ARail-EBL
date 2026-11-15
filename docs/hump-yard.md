@@ -144,7 +144,7 @@ the same layout humps the same trains. It keeps the last 200 cuts gone, 10 train
 
 ## In the app: Hump a train
 
-The app's example **Hump a train** (Interaction, Railway undertaking and Freight; Settings → View →
+The app's example **Hump a train** (Examples, Railway undertaking and Freight; Settings → View →
 Examples → *hump yard*) makes you the hump master: the object humps one train of its own into empty
 tracks (`startTask`: its wagons from the world's seed, its id and the task's seed; nothing pulled out
 by itself), and you push it slower or faster (0.4 to 3 m/s in steps of 0.2), stop it before the crest

@@ -48,8 +48,7 @@ table modules (**Build → Table**): a tap beside them places nothing (see
 7. **Parking lot**, **Parking garage**, **Bike stands**: see [Parking](#parking).
 
 The route of a line is drawn in its colour along the right lane of the streets (along the track
-for trams), with a dot at each stop. The board over each stop and the **Settings → Simulation →
-Stops** board show the next bus or tram, e.g. *Bus 62 to Station in 6 min* (in clock minutes),
+for trams), with a dot at each stop. The board over each stop and its card show the next bus or tram, e.g. *Bus 62 to Station in 6 min* (in clock minutes),
 *Tram 1 to Neustadt Bf boarding*, or *Bus 62 arrives in 3 min (terminus)* on the side where buses
 only arrive. The buses of a *loop* go round a ring, which the signs show like the Berlin Ringbahn:
 *Bus 62 Ring ↻ in 4 min* (clockwise, seen from above) or *Ring ↺* (counter-clockwise); the bus
@@ -63,8 +62,7 @@ timetable buses stands in its bay). Seen from far away (the stop shorter
 than 60 px on the screen, e.g. in the flyover's overview or on a phone) the board shrinks to a
 small badge with the stop sign and the number of people waiting; zoom in for the full board.
 Platforms and bus terminals are longer, so they keep their full boards unless they are tiny. The
-**Stops** board of Settings → Simulation lists both sides of such a stop as *Stop A* and *Stop B* (the letters
-on its signs).
+two sides of such a stop are *Stop A* and *Stop B* (the letters on its signs).
 
 ## Cross-sections
 

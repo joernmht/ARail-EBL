@@ -15,14 +15,14 @@ objects that you place in Build; the loading tracks are ordinary `track` objects
 
 Three examples have a terminal:
 
-- **Example: terminal at the crane** (`app/?example=crane-terminal`): the lab's real terminal
+- **Terminal at the crane** (`app/?example=crane-terminal`): the lab's real terminal
   tracks at the model gantry crane, in [`web/layouts/ebl-neustadt.json`](../web/layouts/ebl-neustadt.json)
-  (the layout of Bf Neustadt with its module **Terminal**, see [Getting started](getting-started.md#the-examples)): a virtual
+  (the layout of Bf Neustadt with its module **Terminal**, see [Getting started](getting-started.md#the-example-layouts)): a virtual
   gantry crane over the three real loading tracks G 14 to G 16, a truck lane in front of them and
   yard Block A behind them. KT 41 Hamburg stands on loading track 1; the scenario **Morning shift
   at the terminal** brings KT 52 on loading track 3. The real container train on the middle track
   is left alone.
-- **Example: hybrid container train** (`app/?example=container-train`): a real container train
+- **Hybrid container train** (`app/?example=container-train`): a real container train
   of the lab whose wagons carry AprilTag labels, and a real model truck with a label on each of
   its two trailers, in [`web/layouts/ebl-container-train.json`](../web/layouts/ebl-container-train.json).
   ARail puts virtual containers on the labels, and a virtual crane moves containers between the
@@ -30,14 +30,14 @@ Three examples have a terminal:
   barge MS Elbe 7 in a harbour on a virtual module below the table edge. The scenario **Loading the
   real train** does that. Its module **Loading task** (`app/?example=container-task`) makes the
   terminal full and gives the crane work orders; the app's example **Load the hybrid train**
-  (Interaction) plays it (see [The loading task](#the-loading-task)). How the labels sit on the wagons is described in
+  (Examples) plays it (see [The loading task](#the-loading-task)). How the labels sit on the wagons is described in
   [Labels where they fit](#labels-where-they-fit).
-- **Example: container terminal (virtual)**, below: a terminal of its own, in the flyover.
+- **Container terminal (virtual)**, below: a terminal of its own, in the flyover.
 
 ### The virtual terminal
 
-**Settings → View → Examples → Example: container terminal (virtual)** (on the game page **Layouts… →
-Example: container terminal (virtual)**, or `app/?layout=../layouts/container-terminal.json#terminal`) opens
+**Settings → View → Layouts → Container terminal (virtual)** (on the game page **Layouts… →
+Container terminal (virtual)**, or `app/?layout=../layouts/container-terminal.json#terminal`) opens
 [`web/layouts/container-terminal.json`](../web/layouts/container-terminal.json) in the flyover:
 
 - a gantry crane (100 m runway) over two loading tracks, the truck lane and yard **Block A** (12 bays × 4 rows × 3 tiers);
@@ -264,7 +264,7 @@ height once per wagon type:
 An error of 1 mm in the height moves the wagon by about 1 mm on the layout. To check: take a photo
 from a low angle (about 30°), switch to the flyover (F) and look at the wagon. It should stand on
 its track. If it appears shifted away from where the camera stood, the height is too low; towards
-it, too high. Settings → View → Camera → Tracking details shows the height the tags are lifted to.
+it, too high. The height the tags are lifted to is the layout's `markers.rolling.height_mm` (a wagon's own in `rolling_stock`).
 
 Do this check on a piece of track that has no `track` object yet, e.g. before you draw the loading
 tracks: a wagon within 8 mm of a `track` object is snapped onto it, and that hides an error of a
@@ -372,7 +372,7 @@ film the survey video.
 
 ## The terminal's panel, step by step
 
-The app's example **Load the hybrid train** (Interaction, pills Railway undertaking and Freight,
+The app's example **Load the hybrid train** (Examples, pills Railway undertaking and Freight,
 `#terminal` in the app URL) plays the [loading task](#the-loading-task) of the hybrid container
 train. Shown by a link, its panel runs the terminal of any layout that has one (Bf Neustadt: its
 module **Terminal**). The game page's case **Terminal** has no task. On a layout without a terminal, the case offers **Switch on
@@ -383,7 +383,7 @@ example**, and **Add to this layout**.
 the pictures with the terminal and the real train: those in which the app reads the model wagons'
 tags, which are this photo (from the front) and one along the train (from the front left). A
 change of perspective switches between them and comes back to the photo Start opened.
-The tour does the same when the task's example layout is opened (Settings → View → Examples, or a link), before Start (see
+The tour does the same when the task's example layout is opened (Settings → View → Layouts, or a link), before Start (see
 [The photo tour](getting-started.md#the-photo-tour)).
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
@@ -466,14 +466,14 @@ place in the yard that the crane has to clear first (two neighbouring bays empti
 a container for the train came from). It takes 11 moves, about 19 minutes on the terminal's
 clock, and no fewer will do: the six containers of the orders move, and the four on top of them in
 the yard; and with all of these gone the yard still has no place for the big one (no two empty bays
-side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the example **Load the hybrid train** in Interaction) opens the example layout with the module
+side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the example **Load the hybrid train** in Examples) opens the example layout with the module
 on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
 clock (from Start until the last order is done) and the moves the crane finished; **Restart**
 begins anew, as Start does (the clock 10 times as fast again). Every container of the task is in the photo; the barge and the yard's outer bays are
 not (the flyover shows them).
 
 The module brings its own version of the layout's scenario **Loading the real train**
-(Interaction → Disruptions): with the module on, it replaces the layout's own (the same id), whose
+(Examples → Disruptions): with the module on, it replaces the layout's own (the same id), whose
 containers stand elsewhere in the task; switched off again, or saved with the module on, the
 layout's own is kept. It shows one way to do the task: the crane works off the
 six orders in 11 moves, one every 150 s, with a message at each step.

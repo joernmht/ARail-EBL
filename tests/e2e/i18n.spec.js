@@ -39,6 +39,7 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.getByRole("tab", { name: "Übersicht" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Einstellungen" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Beispiele" })).toBeVisible();
   await expect(page.locator("#btnView")).toHaveText("Foto");
   await expect(page.locator("#btnView")).toHaveAttribute("title", "Nächste Ansicht: Überflug (F)");
   await expect(page.locator("#btnFullscreen")).toHaveAccessibleName("Vollbild");
@@ -51,14 +52,16 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await expect(page.locator("#panel-interaction")).toContainText("Szene 1 von");
   await page.evaluate(() => window.__arail.selectTab("overview"));
   await expect(page.locator("#panel-overview")).toContainText("Anlagen und Menschen");
+  await expect(page.locator("#panel-overview")).toContainText("Gemessen");
+  await expect(page.locator("#measures [data-measure=stops] .measure-value")).toHaveText(/^\d+ warten$/);
   await page.evaluate(() => window.__arail.selectTab("view"));
   const view = page.locator("#panel-settings");
   await expect(view).toContainText("Gleise färben nach");
   await expect(page.locator("#optLanguage")).toHaveValue("de");
   // the other panels
   await page.evaluate(() => window.__arail.selectTab("simulate"));
-  await expect(page.locator("#panel-settings .board")).toContainText("warten");
   await expect(page.locator("#panel-settings")).toContainText("Uhrzeit");
+  await expect(page.locator("#panel-settings")).toContainText("Jahreszeit und Wetter");
   await page.evaluate(() => window.__arail.selectTab("control"));
   await expect(page.locator("#panel-settings")).toContainText("Leitsystem");
   await page.evaluate(() => window.__arail.selectTab("build"));

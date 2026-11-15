@@ -44,7 +44,7 @@ All of them have GSM-R, standard gauge and line category D4; no ETCS unless a tr
 - **Tap a track** (outside Build): its info card lists all its systems, those usual in the country marked so.
 - **System change** (Build → Infrastructure): a board beside the track where a system changes: a *system separation section* (traction power), a *train control transition*, a *state border* or the boundary between *infrastructure managers*. Its card says what drivers and dispatchers do there and lists the systems of the two tracks beside it.
 
-**Example**: the lab example's module **Border station** (Interaction → Sandbox) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
+**Example**: the lab example's module **Border station** (Examples → Sandbox) makes the station a border station between Germany and Czechia: track G3 is Czech (3 kV DC, LS, Czech signals, Správa železnic), G1 and G2 stay German, and a board at the end of G3 marks the border.
 
 ## In the layout file
 
@@ -112,7 +112,7 @@ A **rail line** (`rail-line`, Build → Transport → Rail line) runs trains fro
 - **Its own platforms.** A platform whose `lines` name only this line (or only rail lines that all stop there) is the line's own: only its trains come there, and its board shows the line's next trains (*RB 30 → Neustadt in 40 s*). At a platform that lists other lines too, the timetable's trains run as well and the line's trains stop in between; the board shows both, the soonest first, and the timetable never sends a train of its own as the rail line, even when the platform's `lines` name it. Where a planner runs a platform (the operations plan, the journeys' trains) or the control system, the line's trains pass it.
 - **One track for both directions.** The tracks between two gaps are one track: a train goes onto them only when no train of the line comes the other way and the one ahead is far enough, and on them keeps 150 m behind the tail of the one ahead; where the trains turn, one at a time. Out of view any number of trains wait, the one that waited longest first.
 
-**Example**: the module **Waldhof** of Bf Neustadt (Interaction → Sandbox, on by default) has the RB 30 from Waldhof to Neustadt: its trains leave Waldhof on the second lap of the NBS, which passes behind Bf Neustadt, run once round the hall out of view (8.6 km, via the swing bridge and Adorf) and come back on the first lap into Bf Neustadt, track G2, where they turn. Waldhof's platform 1 is its own; at Bf Neustadt the S 1 and RB 71 of the timetable use the same platform, whose `lines` name the RB 30 as well. The module **S-Bahn** has the lab's light rail on its strip along the windows: the S 10 from Pirna to Heidenau, on one of its two tracks. Its tracks are one stretch with no gap, where the trains turn: only one train is on the line at a time, so its `headway_s` (300 s) is the shortest time between two trains, and they come about every 350 s.
+**Example**: the module **Waldhof** of Bf Neustadt (Examples → Sandbox, on by default) has the RB 30 from Waldhof to Neustadt: its trains leave Waldhof on the second lap of the NBS, which passes behind Bf Neustadt, run once round the hall out of view (8.6 km, via the swing bridge and Adorf) and come back on the first lap into Bf Neustadt, track G2, where they turn. Waldhof's platform 1 is its own; at Bf Neustadt the S 1 and RB 71 of the timetable use the same platform, whose `lines` name the RB 30 as well. The module **S-Bahn** has the lab's light rail on its strip along the windows: the S 10 from Pirna to Heidenau, on one of its two tracks. Its tracks are one stretch with no gap, where the trains turn: only one train is on the line at a time, so its `headway_s` (300 s) is the shortest time between two trains, and they come about every 350 s.
 
 ```json
 { "id": "line-rb30", "type": "rail-line", "number": "RB 30", "destination": "Neustadt", "origin": "Waldhof",
@@ -241,7 +241,7 @@ Two things limit trains in practice and are invisible from outside: the grip bet
 | leaves on the rails | 0.15 | 0.05 |
 | ice | 0.25 | 0.08 |
 
-Sand raises a low adhesion 1.6 times, at most to that of dry rails. The adhesion caps the tractive effort (wheel slip) and the braking of the wheels (wheel slide): on leaves a train starts slowly and its braking distance doubles or triples. A track has its `rail_condition`; **Slippery rails** (Interaction → Disruptions, `low-adhesion`) put wet rails, leaves or ice on one track of a platform for a while: its trains come in and leave slower, by as much as their running dynamics say, and their cards use the rails' condition.
+Sand raises a low adhesion 1.6 times, at most to that of dry rails. The adhesion caps the tractive effort (wheel slip) and the braking of the wheels (wheel slide): on leaves a train starts slowly and its braking distance doubles or triples. A track has its `rail_condition`; **Slippery rails** (Examples → Disruptions, `low-adhesion`) put wet rails, leaves or ice on one track of a platform for a while: its trains come in and leave slower, by as much as their running dynamics say, and their cards use the rails' condition.
 
 On the card (section *Adhesion and forces*):
 

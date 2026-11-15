@@ -204,9 +204,38 @@ export class Inspector {
       card.sections.map((s) => this.section(s)),
       card.text ? h("p", { class: "info-text" }, card.text) : null,
       card.actions.length ? h("div", { class: "row" }, card.actions.map((a) => h("button", { class: "btn small", type: "button", onclick: () => this.act(a.id) }, a.label))) : null,
+      this.calls(this.open.key),
     );
     this.card.hidden = false;
     return card;
+  }
+
+  /**
+   * The card of a stop (a platform, a bus terminal): a button per track or bay that sends a train
+   * or bus of the timetable there now, as its number key does (keys 1–9: the place of each of the
+   * stop's areas in the layout, said beside its buttons). A track of the rail operations or of a rail line, a bay of the bus
+   * lines, a closed track or one kept for a story's train takes none; they say why.
+   */
+  calls(key) {
+    const w = this.world, obj = key.startsWith("object:") ? w.getObject(key.slice(7)) : null;
+    if (!obj) return null;
+    const areas = w.stopAreas();
+    // each area of the stop (a bus stop on both sides of the street has two) with its own key
+    const rows = areas.map((a, i) => ({ a, n: i + 1, docks: a.owner === obj ? w.services.forArea(a.id).filter((st) => !st.dock.managed) : [] }))
+      .filter((r) => r.docks.length);
+    if (!rows.length) return null;
+    return h("div", { class: "info-section info-calls" },
+      h("h3", {}, "Call"),
+      rows.map(({ a, n, docks }) => h("div", { class: "row", "data-area": a.id },
+        n <= 9 ? h("span", { class: "call-key" }, `Key ${n}`) : null,
+        docks.map((st) => {
+          const fx = w.disruptions.effectsFor(a, st.dock), closed = fx.closed || fx.reserved;
+          return h("button", {
+            class: "btn small", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || st.mode === "line" || closed,
+            title: st.mode === "plan" ? "Its trains run to the timetable of the rail operations" : st.mode === "line" ? "Only the trains of its rail line stop at this track" : fx.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : st.vehicle ? "Taken" : null,
+            onclick: () => { if (w.services.call(st.dock.id)) this.render(); },
+          }, `${a.kind === "bus" ? "Bus" : "Train"} → ${st.dock.label}`);
+        }))));
   }
 
   /**
@@ -257,7 +286,7 @@ export class Inspector {
     world.compatibilityTrain = { name: world.card(hit).title, consist };
     world.settings.trackSystems = COMPATIBILITY;
     this.app.panels.renderViewIfShown();
-    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (Settings → Settings → View → Colour the tracks by).`, 6000);
+    toast(`The tracks show where ${world.compatibilityTrain.name} may run, and in red where not (Settings → View → Colour the tracks by).`, 6000);
   }
 
   /* ---------------------------------------------------------------- highlight */

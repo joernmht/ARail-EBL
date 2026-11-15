@@ -151,9 +151,11 @@ for (const [scheme, device, viewport] of STATES) {
     found.push(...(await violations(page, "Settings → View, locked map with moving markers")));
     await openSimulation(page);
     await page.getByRole("button", { name: "Night 22:30" }).click();
-    await expect(page.locator("#panel-settings .town-stats li").first()).toBeVisible();
-    found.push(...(await violations(page, "Settings → Simulation with the town at night")));
+    await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "true");
+    found.push(...(await violations(page, "Settings → Simulation at night")));
     await page.locator("#tab-overview").click();
+    await expect(page.locator("#measures [data-measure=town]")).toBeVisible();
+    found.push(...(await violations(page, "Overview, what is measured: the town at night")));
     await page.locator("#statesAll").click();
     await expect(page.locator(".kind").nth(2)).toBeVisible();
     found.push(...(await violations(page, "Overview with all kinds")));

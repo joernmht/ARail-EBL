@@ -1,5 +1,5 @@
-// The Interaction chapter: the examples to start (cases.js), as a list with filter pills (First
-// steps, the sides Infrastructure and Railway undertaking, Passengers, Freight, Tools), and the
+// The Examples chapter (its tab "Examples"; in the code Interaction): the examples to start (cases.js),
+// as a list with filter pills (First steps, the sides Infrastructure and Railway undertaking, Passengers, Freight, Tools), and the
 // example shown, light in text: the way back to the list, its name, Start until it is started, then
 // the bar of its task (and its figures), and its panel. What an example is about is said in the list.
 // Start sets up the stage for it (its module, its view).
@@ -97,7 +97,8 @@ export class Interaction {
     const pills = this.pills(), shown = this.shown(), filter = pills.some((p) => p.id === this.filter) ? this.filter : ALL.id;
     return h("div", { class: "cases" },
       h("div", { class: "section" },
-        h("h2", { id: "casesTitle", tabindex: "-1" }, "Examples"),
+        // the tab says "Examples": the heading is for screen readers only (and takes the focus coming back)
+        h("h2", { class: "visually-hidden", id: "casesTitle", tabindex: "-1" }, "Examples"),
         h("p", { class: "hint" }, "Each example sets up the stage and gives you a small task to try."),
         pills.length > 2 ? h("div", { class: "pills", role: "group", "aria-label": "Filter the examples" },
           pills.map((p) => h("button", { type: "button", class: "pill", id: `pill-${p.id}`, "aria-pressed": p.id === filter ? "true" : "false", onclick: () => this.choose(p.id) }, p.label))) : null),

@@ -23,13 +23,11 @@ test("Keep positions locks the marker map; Unlock and Measure again open it agai
   await expect(page.locator("#markerMapStatus")).toHaveText("Marker map locked: only these 5 markers are used; new markers are ignored.");
   await expect(page.locator("#toast")).toContainText("Marker map locked");
   expect(await codes(page)).toBe(5); // markers 0-4: five codes, further apart
-  // a tracked layout puts up no chip; the tracking details say it is locked
+  // a tracked layout puts up no chip; the Overview measures the tracking with the markers of the map
   await page.evaluate(() => window.__arail.render());
   await expect(page.locator("#hud")).not.toContainText("markers");
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-view").click();
-  await page.locator("details.tracking summary").click();
-  await expect(page.locator("details.tracking")).toContainText("5 markers (locked)");
+  await page.locator("#tab-overview").click();
+  await expect(page.locator("#measures [data-measure=tracking] .measure-value")).toHaveText("5 markers");
   await openCase(page, "build");
   // kept in the browser and in the exported layout
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith("arail.layout:"))) || "{}").markers?.locked)).toBe(true);

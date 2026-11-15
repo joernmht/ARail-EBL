@@ -1,8 +1,10 @@
-// The Overview chapter: the state of what the simulations keep (assets, people, vehicles;
-// core/states.js): one figure for the whole layout, a search, and per kind its mean and a histogram,
-// the worst and the best kind first. The modules are switched in Interaction.
-import { objectPickable, overallState, searchKinds, searchStates } from "../arail/index.js";
-import { h, morph, mount, section, toast } from "./ui.js";
+// The Overview chapter: what the app measures, in a few figures (Measured: the weather, the town, the
+// trips from door to door, the people waiting at the stops, the trains of a control system, the
+// tracking), and the state of what the simulations keep (assets, people, vehicles; core/states.js):
+// one figure for the whole layout, a search, and per kind its mean and a histogram, the worst and the
+// best kind first. What can be set is in Settings; the modules are switched in Examples → Sandbox.
+import { formatTime, MockFeed, objectPickable, overallState, RAIL_CONDITIONS, searchKinds, searchStates, terminalOf } from "../arail/index.js";
+import { download, h, morph, mount, section, toast } from "./ui.js";
 
 /** At most this many items found are listed. */
 const SEARCH_LIMIT = 30;
@@ -18,6 +20,7 @@ export class Overview {
     this.all = false;
     this.el = null;
     this.stateBox = null;
+    this.measureBox = null;
   }
 
   render(el) {
@@ -25,11 +28,13 @@ export class Overview {
     // a control that had the focus gets it back
     const focused = el.contains(document.activeElement) ? document.activeElement.id : null;
     this.stateBox = h("div", { class: "states", "aria-live": "off" });
+    this.measureBox = h("div", { class: "measures", id: "measures", "aria-live": "off" });
     const search = h("input", {
       type: "search", id: "stateSearch", value: this.query, placeholder: "Search assets and people", autocomplete: "off",
       oninput: (e) => { this.query = e.target.value; this.update(); },
     });
     mount(el,
+      section("Measured", this.measureBox),
       section("State",
         h("label", { class: "field", for: "stateSearch" }, h("span", { class: "visually-hidden" }, "Search assets and people"), search),
         this.stateBox),
@@ -41,6 +46,11 @@ export class Overview {
   /** The figures, every 400 ms while the chapter is shown (the search field and buttons keep the focus). */
   update() {
     if (!this.stateBox?.isConnected) return;
+    const measures = this.measures();
+    morph(this.measureBox, measures.length
+      ? measures.map((m) => h("article", { class: "measure", "data-measure": m.id },
+        h("h3", {}, m.label), h("p", { class: "measure-value" }, m.value), m.note ? h("p", { class: "measure-note" }, m.note) : null, m.action ?? null))
+      : h("p", { class: "hint" }, "Nothing measured yet: switch on a module, or start the camera."));
     const st = overallState(this.app.world);
     if (!st.groups.length) {
       morph(this.stateBox, h("p", { class: "hint" }, "Nothing to rate yet: switch on a module, or add stops and people."));
@@ -53,6 +63,46 @@ export class Overview {
         h("span", { class: "kpi-text" }, `Mean state · ${st.count} assets and people`)),
       q ? this._found(st.groups, q) : this._kinds(st.groups),
     );
+  }
+
+  /**
+   * What the app measures, each in one figure and a short note: only what this layout has and what
+   * runs (the weather with a date or weather, the town, its trips from door to door, the stops, a
+   * control system, the tracking of a camera image, the model wagons with tags).
+   * @returns {Array<{id: string, label: string, value: string, note?: string, action?: HTMLElement}>}
+   */
+  measures() {
+    const app = this.app, w = app.world, c = w.clock, out = [];
+    if (w.weather.on || c.date != null) {
+      const sun = c.sun(), n = w.weather.on ? w.weather.now() : null;
+      const ground = !n ? null : n.snow_cm > 0.5 ? `${Math.round(n.snow_cm)} cm of snow` : n.ice ? "ice on the ground" : n.wet > 0.3 ? "wet ground" : "dry ground";
+      out.push({ id: "weather", label: "Weather", value: w.weather.on ? w.weather.describe() : c.dateLabel(),
+        note: [n ? `Rails: ${RAIL_CONDITIONS[w.weather.railCondition()].label}` : null, ground, c.date != null ? `Sunrise ${formatTime(sun.rise)}` : null, c.date != null ? `Sunset ${formatTime(sun.set)}` : null].filter(Boolean).join(" · ") });
+    }
+    const town = w.simulations.find((x) => x.constructor.type === "town");
+    if (town) {
+      const st = town.townStats();
+      out.push({ id: "town", label: "Town", value: `${st.total} people`, note: `${st.walking} on their way · ${st.riding} on the bus · ${st.driving} by car` });
+      const all = town.tripStats()[0];
+      out.push({ id: "trips", label: "Door to door", value: all ? `${Math.round(all.minutes)} min` : "–", note: all ? `mean of ${all.trips} trips` : "No trip finished yet",
+        action: all ? h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)") : null });
+    }
+    const areas = w.stopAreas(), sim = w.simulations.find((x) => x.constructor.type === "passengers" && x.enabled !== false);
+    if (areas.length && sim) {
+      let waiting = 0, mood = 0;
+      for (const a of areas) {
+        const s = sim.stats(a.id);
+        if (s) { waiting += s.count; mood += s.count * s.mood; }
+      }
+      out.push({ id: "stops", label: "At the stops", value: `${waiting} waiting`, note: waiting ? `mood ${Math.round((100 * mood) / waiting)} %` : `${areas.length} stops` });
+    }
+    const f = app.feed, trains = w.trains;
+    if (f) out.push({ id: "trains", label: "Control system", value: `${trains.trains.size} trains`, note: f instanceof MockFeed ? "simulated" : f.status === "connected" ? `${f.messages} messages` : f.status === "connecting" ? "connecting" : "not connected" });
+    const st = app.tracker?.state;
+    if (app.source && st) out.push({ id: "tracking", label: "Tracking", value: `${st.visible.length} markers`, note: st.used.length ? `pose from ${st.used.length}, error ${st.rms.toFixed(1)} px` : "no pose yet" });
+    const rolling = w.layout.markers.rolling ? [...(terminalOf(w)?.rolling?.wagons.values() || [])] : null;
+    if (rolling && app.source) out.push({ id: "wagons", label: "Model wagons", value: `${rolling.filter((x) => x.state !== "lost").length} of ${rolling.length}`, note: "seen by their tags" });
+    return out;
   }
 
   /** No search: the worst and the best kind, or all of them. */
