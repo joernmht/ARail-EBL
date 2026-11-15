@@ -21,7 +21,7 @@ import { ServiceManager } from "./services.js";
 import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
-import { Clock, parseDate, parseTime } from "./clock.js";
+import { Clock, parseTime } from "./clock.js";
 import { Weather, drawWeather } from "./weather.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
@@ -408,8 +408,8 @@ export class World {
    * day of the year (or null), and the simulations re-place their people (`clock.date`, `clock.set`).
    */
   setDate(value) {
-    if (value != null && value !== "" && parseDate(value) == null) return undefined;
     const date = this.clock.setDate(value);
+    if (date === undefined) return undefined;
     this.weather.settle();
     this.events.emit("clock.date", { date });
     this.events.emit("clock.set", { minutes: this.clock.minutes });

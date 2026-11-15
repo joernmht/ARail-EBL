@@ -61,7 +61,8 @@ export function parseDay(value) {
   if (!m) return null;
   const year = m[1] != null ? Number(m[1]) : null, month = Number(m[2]), day = Number(m[3]);
   if (year != null && (year < YEARS[0] || year > YEARS[1])) return null;
-  if (month < 1 || month > 12 || day < 1 || day > monthDays(month, year ?? DEFAULT_YEAR)) return null;
+  // without a year, 29 February may be: the year it is set in decides (Clock.setDate)
+  if (month < 1 || month > 12 || day < 1 || day > (year == null && month === 2 ? 29 : monthDays(month, year))) return null;
   return { year, month, day };
 }
 
@@ -75,7 +76,8 @@ export function dayOfYear(month, day, year = null) {
 /** "2026-12-06", "12-06" or a day of the year -> the day of the year (1 = 1 January); invalid -> null. */
 export function parseDate(value) {
   const d = parseDay(value);
-  return d ? dayOfYear(d.month, d.day, d.year ?? DEFAULT_YEAR) : null;
+  const year = d?.year ?? DEFAULT_YEAR;
+  return d && !(d.month === 2 && d.day === 29 && !isLeapYear(year)) ? dayOfYear(d.month, d.day, year) : null;
 }
 
 /** The month (1…12) and the day of the month of a day of the year (in a year: leap years have 29 February). */
@@ -240,7 +242,8 @@ export class Clock {
 
   /**
    * Set the date ("2026-12-06"; "12-06" in the year it has, else {@link DEFAULT_YEAR}; null: no
-   * date). What is no date changes nothing. Returns the day of the year, or null.
+   * date). Returns the day of the year, or null; undefined, and nothing changed, for what is no date
+   * (also 29 February in a year that has none).
    */
   setDate(value) {
     if (value == null || value === "") {
@@ -248,9 +251,9 @@ export class Clock {
       return null;
     }
     const d = parseDay(value);
-    if (!d) return this.date;
+    if (!d) return undefined;
     const year = d.year ?? this.year ?? DEFAULT_YEAR;
-    if (d.month === 2 && d.day === 29 && !isLeapYear(year)) return this.date;
+    if (d.month === 2 && d.day === 29 && !isLeapYear(year)) return undefined;
     this.year = year;
     this.date = dayOfYear(d.month, d.day, year);
     return this.date;

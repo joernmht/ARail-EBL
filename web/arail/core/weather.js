@@ -26,6 +26,8 @@ import { DAY_MINUTES, PROFILES, YEAR_DAYS, monthDay, parseTime, profileAt, seaso
 
 /** The modes of the weather. */
 export const WEATHER_MODES = { off: "Off", typical: "Typical for the date", fixed: "Fixed" };
+/** The modes that may be written on their own, as a name (a fixed weather is named by its preset). */
+const NAMED_MODES = ["off", "typical"];
 
 /**
  * The climate of Dresden by month: mean temperature (°C), the range between night and afternoon
@@ -196,7 +198,8 @@ const KINDS = ["none", "rain", "sleet", "snow"];
 
 /** A layout's `weather` section, normalised (unknown keys dropped, defaults filled in). */
 export function normalizeWeather(config) {
-  const c = config && typeof config === "object" && !Array.isArray(config) ? config : typeof config === "string" ? { preset: config } : {};
+  const c = config && typeof config === "object" && !Array.isArray(config) ? config
+    : typeof config === "string" ? (NAMED_MODES.includes(config) ? { mode: config } : { preset: config }) : {};
   const preset = Object.hasOwn(WEATHER_PRESETS, c.preset) ? c.preset : null;
   const mode = Object.hasOwn(WEATHER_MODES, c.mode) ? c.mode : preset ? "fixed" : "off";
   const course = (Array.isArray(c.course) ? c.course : [])
@@ -220,7 +223,8 @@ function airOf(o) {
 /** Problems of a layout's `weather` section, in plain words (validateLayout). */
 export function weatherProblems(config) {
   if (config == null) return [];
-  if (typeof config === "string") return Object.hasOwn(WEATHER_PRESETS, config) ? [] : [`weather "${config}" is no preset (${Object.keys(WEATHER_PRESETS).join(", ")})`];
+  // a preset's name, or "typical" and "off" (the modes that need no preset)
+  if (typeof config === "string") return Object.hasOwn(WEATHER_PRESETS, config) || NAMED_MODES.includes(config) ? [] : [`weather "${config}" is no preset (${Object.keys(WEATHER_PRESETS).join(", ")}) and not typical or off`];
   if (typeof config !== "object" || Array.isArray(config)) return ["weather must be an object or the name of a preset"];
   const out = [];
   if (config.mode != null && !Object.hasOwn(WEATHER_MODES, config.mode)) out.push(`weather.mode "${config.mode}" must be one of ${Object.keys(WEATHER_MODES).join(", ")}`);
@@ -270,7 +274,7 @@ export class Weather {
    */
   set(value) {
     if (typeof value === "string") {
-      if (Object.hasOwn(WEATHER_MODES, value) && value !== "fixed") this.mode = value;
+      if (NAMED_MODES.includes(value)) this.mode = value;
       else if (Object.hasOwn(WEATHER_PRESETS, value)) Object.assign(this, { mode: "fixed", preset: value, state: {} });
       else return false;
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -403,9 +407,10 @@ export class Weather {
 
   /** Advance by `dt` simulated seconds (the ground follows the clock's time). */
   step(dt) {
-    if (this.mode === "off") return;
     const clock = this.world.clock;
-    this._ground(this.air(), (dt * Math.max(1, clock.factor || 1)) / 3600, this._daylight(clock.minutes, clock.date));
+    // the ground goes with the clock: nothing while it stands (stopped, or a factor of 0)
+    if (this.mode === "off" || clock.frozen || !(clock.factor > 0)) return;
+    this._ground(this.air(), (dt * clock.factor) / 3600, this._daylight(clock.minutes, clock.date));
     this._memo = null;
     // told when it starts or stops raining or snowing, when ice forms, when snow lies or is gone
     const n = this.now(), key = `${n.sky}|${n.ice}|${n.snow_cm > 0.5}`;
@@ -631,14 +636,15 @@ function layerTile(kind, i, slant, px) {
 }
 
 /**
- * When lightning strikes in a thunderstorm: about every 9 to 20 seconds, each strike 0.35 s with a
+ * When lightning strikes in a thunderstorm: every 8 to 20 seconds, each strike 0.35 s with a
  * second, weaker pulse (never more than two flashes in a second). Null when none is lit at `t` (s);
  * else the strike's number and how bright it is now (0…1).
  */
 export function lightningAt(t) {
   if (!(t > 0)) return null;
-  // strikes at deterministic times: the n-th falls in the n-th window of 14 s, somewhere in its middle
-  const n = Math.floor(t / 14), at = n * 14 + 2 + 9 * h01("strike", n), d = t - at;
+  // strikes at deterministic times: the n-th falls in the n-th window of 14 s, 3 to 9 s into it, so
+  // that two strikes are 8 to 20 s apart
+  const n = Math.floor(t / 14), at = n * 14 + 3 + 6 * h01("strike", n), d = t - at;
   if (d < 0 || d > 0.35) return null;
   const bright = d < 0.08 ? 1 : d < 0.18 ? 0.25 : d < 0.26 ? 0.7 : 0.2 * (1 - (d - 0.26) / 0.09);
   return { n, bright: clamp(bright, 0, 1) };

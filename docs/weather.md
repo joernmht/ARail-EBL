@@ -45,6 +45,8 @@ In the typical weather a summer shower that pours down (3 mm/h and more) on a wa
 
 A **course** (key frames over the day) lies on top of either: the first frost night, snow from six in the morning.
 
+The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster.
+
 The climate is Dresden's: the typical year gives about 10 °C, 600 to 680 mm of rain and snow on about 150 days (the German Weather Service's figures for Dresden-Klotzsche 1991–2020: 9.8 °C, about 640 mm, about 156 days). The split by month, the fair days, the wind and the fog are estimates until the DWD's monthly normals replace them.
 
 ## What it affects
@@ -64,7 +66,7 @@ These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weat
 - **Snow cover** whitens everything as it settles, fully at 4 cm: the ground, the tables, the paving, the tracks' sleepers, and what faces up, on slopes down to about 70° (roofs, the tiers of a fir, the tops of stalls and trees). It stays until warmth melts it or the **traffic clears the streets**: about 60 % an hour at normal daytime traffic, hardly at night, fast in the rush hours, while snow falling covers them again; the sidewalks are trodden half as fast. Clearing by hand and by ploughs comes with #243.
 - **Snow falling**: soft flakes at three depths, the near ones larger and faster, swaying and drifting with the wind.
 - **Rain**: streaks at three depths, slanted by the wind, denser with the rate; wet ground is darker.
-- **Thunderstorm**: a darker sky, heavy rain, and now and then (every 9 to 20 seconds) a short bolt from the top of the picture with a faint brightening of the sky. Never more than two flashes in a second, and none with reduced motion.
+- **Thunderstorm**: a darker sky, heavy rain, and now and then (every 8 to 20 seconds) a short bolt from the top of the picture with a faint brightening of the sky. Never more than two flashes in a second, and none with reduced motion.
 - **Cloud and fog**: a grey veil over the picture by day; fog thicker towards the distance. The flyover's sky turns grey.
 - **Trees**: deciduous trees are bare in winter, light green in spring, yellow to red-brown in October (each tree in its own time); conifers stay green. Grass pales in winter; fields are brown, green, yellow and stubble through the year.
 - **Over the camera image** the real model stays as it is: the virtual world gets its snow, the rain and the flakes lie over the whole picture.
@@ -84,7 +86,7 @@ These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weat
 | --- | --- | --- |
 | `clock.date` | none | the date the layout starts with (`"YYYY-MM-DD"`, or `"MM-DD"` in 2026) |
 | `clock.latitude` | `51.05` | °N, for the sun |
-| `weather` | off | a preset's name (`"snow"`), or an object: |
+| `weather` | off | a preset's name (`"snow"`), `"typical"`, `"off"`, or an object: |
 | `weather.mode` | `"off"` | `off`, `typical`, `fixed` |
 | `weather.preset` | | `clear`, `cloudy`, `overcast`, `rain`, `heavy-rain`, `thunderstorm`, `snow`, `frost`, `fog`, `heat` |
 | `weather.state` | | quantities over the preset: `temperature_c`, `cloud` (0…1), `precipitation` (`none`, `rain`, `sleet`, `snow`), `rate_mm_h`, `wind_mps`, `wind_deg`, `fog` (0…1), `thunder` (true, false); `wet` (0…1) and `snow_cm` for where the ground starts |
@@ -103,7 +105,8 @@ The layout check reports a date, a mode, a preset or a course that is none.
 ## For plugins and simulations
 
 ```js
-world.setDate("2026-11-10");            // or "11-10" (the clock's year), or null: no date; sends clock.date and clock.set
+world.setDate("2026-11-10");            // or "11-10" (the clock's year), or null: no date; sends clock.date and clock.set;
+                                        // undefined, and nothing changes, for what is no date ("02-29" in 2027)
 world.clock.weekday();                  // 0 = Monday … 6 = Sunday; dateLabel({long: true}): "Tuesday, 10 November 2026" 
 world.setWeather("typical");            // or a preset's name, "off", or {preset, mode, course, …quantities}
 const now = world.weather.now();        // {temperature_c, cloud, precipitation, rate_mm_h, wind_mps, wind_deg, fog, thunder,

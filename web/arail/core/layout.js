@@ -8,7 +8,7 @@
  */
 
 import { markersUsed } from "./anchors.js";
-import { DEFAULT_CLOCK, parseDate, parseTime } from "./clock.js";
+import { DEFAULT_CLOCK, parseDate, parseDay, parseTime } from "./clock.js";
 import { weatherProblems } from "./weather.js";
 import { DICTIONARIES } from "./detector.js";
 import { composeLayout, layerProblems } from "./layers.js";
@@ -263,7 +263,7 @@ export function validateLayout(json, registry) {
     if (!Array.isArray(s.steps)) problems.push(`scenarios[${i}].steps must be a list`);
     else s.steps.forEach((st, k) => {
       if (isObject(st?.set) && st.set.time != null && parseTime(st.set.time) == null) problems.push(`scenarios[${i}].steps[${k}].set.time "${st.set.time}" is no time of day (HH:MM)`);
-      if (isObject(st?.set) && st.set.date != null && parseDate(st.set.date) == null) problems.push(`scenarios[${i}].steps[${k}].set.date "${st.set.date}" is no date (MM-DD)`);
+      if (isObject(st?.set) && st.set.date != null && parseDay(st.set.date) == null) problems.push(`scenarios[${i}].steps[${k}].set.date "${st.set.date}" is no date (MM-DD)`);
       if (isObject(st?.set) && st.set.weather != null) for (const p of weatherProblems(st.set.weather)) problems.push(`scenarios[${i}].steps[${k}].set.${p}`);
     });
   });

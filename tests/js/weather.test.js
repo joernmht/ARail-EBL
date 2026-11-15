@@ -51,6 +51,11 @@ test("dates: MM-DD and the day of the year, seasons; what is no date is null", (
   assert.equal(parseDate("12-31"), 365);
   assert.equal(parseDate(340), 340);
   for (const bad of ["13-01", "02-30", "6.12.", "", null, 0, 366, "12-6-2026", "2026-13-01"]) assert.equal(parseDate(bad), null, String(bad));
+  // 29 February: a day of the year only in a leap year; written without a year, the year it is set in decides
+  assert.equal(parseDate("02-29"), null, "none in 2026");
+  assert.equal(parseDate("2028-02-29"), 60);
+  assert.deepEqual(parseDay("02-29"), { year: null, month: 2, day: 29 });
+  assert.equal(parseDay("2027-02-29"), null);
   assert.equal(formatDate(340), "12-06");
   assert.equal(formatDate(parseDate("2-9")), "02-09");
   assert.deepEqual(["01-15", "04-15", "07-15", "10-15", "12-01"].map((d) => seasonOf(parseDate(d))), ["winter", "spring", "summer", "autumn", "winter"]);
@@ -95,8 +100,21 @@ test("the clock: without a date as ever; with one the sun of that day, running o
   assert.equal(leap.dateLabel({ long: true }), "Tuesday, 29 February 2028");
   assert.equal(leap.setDate("02-29"), 60, "29 February in the clock's year 2028");
   c.setDate("2026-12-06");
-  assert.equal(c.setDate("02-29"), c.date, "no 29 February in 2026: nothing changes");
-  assert.equal(c.setDate("nonsense"), c.date, "what is no date changes nothing");
+  assert.equal(c.setDate("02-29"), undefined, "no 29 February in 2026");
+  assert.equal(c.setDate("nonsense"), undefined, "what is no date");
+  assert.equal(c.dateString(), "2026-12-06", "neither changes anything");
+  // the world: 29 February written without a year is the clock's, and what is none sends nothing
+  const world = lab();
+  const dates = [];
+  world.events.on("clock.date", ({ date }) => dates.push(date));
+  assert.equal(world.setDate("2028-01-10"), 10);
+  assert.equal(world.setDate("02-29"), 60, "29 February of the world's year 2028");
+  assert.equal(world.clock.dateString(), "2028-02-29");
+  world.setDate("2027-01-10");
+  assert.equal(world.setDate("02-29"), undefined, "none in 2027");
+  assert.equal(world.setDate("13-01"), undefined);
+  assert.deepEqual(dates, [10, 60, 10], "no event for what is no date");
+  assert.equal(world.clock.dateString(), "2027-01-10");
   assert.equal(c.setDate(null), null);
 });
 
@@ -224,6 +242,19 @@ test("the ground remembers: rain wets it and it dries; snow settles and melts", 
   run(world, 600);
   assert.ok(w.now().snow_cm < snow - 1.5, "it melts at 8 °C");
   assert.ok(w.now().wet > 0.3, "and leaves the ground wet");
+  // the ground goes with the clock: nothing while it is stopped or at a factor of 0
+  world.setWeather({ preset: "snow", snow_cm: 0 });
+  world.clock.frozen = true;
+  run(world, 600);
+  assert.equal(w.now().snow_cm, 0, "no snow settles while the clock is stopped");
+  world.clock.frozen = false;
+  world.clock.factor = 0;
+  run(world, 600);
+  assert.equal(w.now().snow_cm, 0, "nor at a factor of 0");
+  world.clock.factor = 1;
+  run(world, 600); // ten clock minutes
+  const slow = w.now().snow_cm;
+  assert.ok(slow > 0 && slow < snow / 6, `at a factor of 1, ${slow.toFixed(2)} cm in ten clock minutes`);
 });
 
 test("a course over the day: key frames, in proportion between them; told when it starts to snow", () => {
@@ -321,6 +352,23 @@ test("scenarios set the date and the weather; what is neither fails the step, an
   for (const text of ['clock.date "31-12" is no date', 'weather.mode "sunny"', 'weather.preset "blizzard"', "weather.course[0]", 'precipitation "hail"', 'set.date "6.12." is no date', 'set.weather "blizzard" is no preset']) assert.ok(problems.includes(text), `${text} in\n${problems}`);
   assert.deepEqual(weatherProblems("snow"), []);
   assert.deepEqual(weatherProblems({ mode: "typical" }), []);
+  // the modes that need no preset may be written as a name, as in a scenario's set.weather
+  assert.deepEqual(weatherProblems("typical"), []);
+  assert.deepEqual(weatherProblems("off"), []);
+  assert.equal(weatherProblems("fixed").length, 1, "a fixed weather needs its preset");
+  assert.equal(weatherProblems("hail").length, 1);
+  const typical = { ...withLayers(LAB, []), scenarios: [{ id: "back", steps: [{ at: 0, set: { weather: "typical" } }, { at: 1, set: { weather: "off" } }] }] };
+  assert.ok(!validateLayout(typical, registry).some((p) => /set\.weather/.test(p)), "a scenario may set the weather back to typical or off");
+  const leap = { ...withLayers(LAB, []), clock: { date: "02-29" }, scenarios: [{ id: "leap", steps: [{ at: 0, set: { date: "02-29" } }] }] };
+  const leapProblems = validateLayout(leap, registry);
+  assert.ok(leapProblems.some((p) => p.startsWith('clock.date "02-29"')), "the layout starts in 2026: no 29 February");
+  assert.ok(!leapProblems.some((p) => /set\.date/.test(p)), "a scenario's 29 February is the clock's year's");
+  world.scenarios.load(typical.scenarios);
+  world.scenarios.play("back");
+  world.step(0.1);
+  assert.equal(world.weather.mode, "typical");
+  run(world, 2);
+  assert.equal(world.weather.mode, "off");
   // the lab example and its modules are sound
   assert.deepEqual(validateLayout(withLayers(LAB, ["striezelmarkt", "market-visitors"]), registry), []);
 });
@@ -415,12 +463,13 @@ test("rain and snow over the picture: layers of tiles, the same each time; light
     assert.deepEqual([...speeds].sort((x, y) => x - y), speeds);
   }
   assert.ok(PRECIPITATION_LAYERS.rain[0].speed > 10 * PRECIPITATION_LAYERS.snow[0].speed, "rain falls much faster than snow");
-  // lightning: a strike every 9 to 20 s; within any second at most two flashes (bright, dark, bright)
-  const strikes = new Set();
+  // lightning: a strike every 8 to 20 s; within any second at most two flashes (bright, dark, bright)
+  const strikes = new Set(), starts = [];
   let flashes = 0, prev = 0, worst = 0;
   const window = [];
   for (let t = 0; t < 300; t += 0.01) {
     const s = lightningAt(t), b = s ? s.bright : 0;
+    if (s && !strikes.has(s.n)) starts.push(t);
     if (s) strikes.add(s.n);
     if (b >= 0.5 && prev < 0.5) {
       flashes++;
@@ -432,6 +481,8 @@ test("rain and snow over the picture: layers of tiles, the same each time; light
   }
   assert.ok(strikes.size >= 15 && strikes.size <= 34, `${strikes.size} strikes in 5 minutes`);
   assert.ok(worst <= 2, `${worst} flashes in a second`);
+  const gaps = starts.slice(1).map((t, i) => t - starts[i]);
+  assert.ok(Math.min(...gaps) >= 8 - 0.02 && Math.max(...gaps) <= 20 + 0.02, `strikes ${Math.min(...gaps).toFixed(1)} to ${Math.max(...gaps).toFixed(1)} s apart`);
   assert.equal(lightningAt(0), null);
 });
 
