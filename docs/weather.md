@@ -43,9 +43,9 @@ Where it comes from:
 
 In the typical weather a summer shower that pours down (3 mm/h and more) on a warm afternoon (18 °C and more) is a thunderstorm, with gusts.
 
-A **course** (key frames over the day) lies on top of either: the first frost night, snow from six in the morning.
+A **course** (key frames over the day) lies on top of either: the first frost night, snow from six in the morning. Given on its own (without a mode or a preset) it lies over the typical weather; with `"mode": "off"` it does nothing, and the layout check says so.
 
-The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster. What lies stays when a weather follows another or the time is set: frost after snowfall keeps the snow, the cleared streets stay cleared, and a weather that brings rain or snow starts at least as wet or as white as its preset; only `wet` and `snow_cm` given with it (or a weather after *Off*) set the ground anew. The typical weather is gone through again, over the day and a half before the time set.
+The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster. What lies stays when a weather follows another or the time is set: frost after snowfall keeps the snow, the cleared streets stay cleared, and a weather that brings rain or snow starts at least as wet or as white as its preset; only `wet` and `snow_cm` given with it (or a weather after *Off*) set the ground anew, once: what falls or melts afterwards stays when the time is set later. The typical weather is gone through again, over the day and a half before the time set.
 
 The climate is Dresden's: the typical year gives about 10 °C, 600 to 680 mm of rain and snow on about 150 days (the German Weather Service's figures for Dresden-Klotzsche 1991–2020: 9.8 °C, about 640 mm, about 156 days). The split by month, the fair days, the wind and the fog are estimates until the DWD's monthly normals replace them.
 
@@ -100,7 +100,7 @@ A scenario step sets them too ([Disruptions and scenarios](disruptions-and-scena
 { "at": 60, "set": { "weather": { "preset": "rain", "temperature_c": -2 } } }
 ```
 
-The layout check reports a date, a mode, a preset or a course that is none.
+The layout check reports a date, a mode, a preset or a course that is none, a course with mode off, and a step's `"02-29"` when the layout's year (2026 without one) has no 29 February. A step that fails (a date, time or weather that is none) changes none of them.
 
 ## For plugins and simulations
 

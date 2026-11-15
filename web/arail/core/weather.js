@@ -201,12 +201,16 @@ export function normalizeWeather(config) {
   const c = config && typeof config === "object" && !Array.isArray(config) ? config
     : typeof config === "string" ? (NAMED_MODES.includes(config) ? { mode: config } : { preset: config }) : {};
   const preset = Object.hasOwn(WEATHER_PRESETS, c.preset) ? c.preset : null;
-  const mode = Object.hasOwn(WEATHER_MODES, c.mode) ? c.mode : preset ? "fixed" : "off";
   const course = (Array.isArray(c.course) ? c.course : [])
     .map((k) => (Array.isArray(k) && parseTime(k[0]) != null && k[1] && typeof k[1] === "object" ? [parseTime(k[0]), airOf(k[1])] : null))
     .filter(Boolean).sort((a, b) => a[0] - b[0]);
+  // a course on its own lies over the typical weather
+  const mode = Object.hasOwn(WEATHER_MODES, c.mode) ? c.mode : preset ? "fixed" : course.length ? "typical" : "off";
   return { mode, preset: mode === "fixed" ? preset ?? "clear" : preset, state: airOf(c.state), course, seed: Number.isFinite(Number(c.seed)) ? Number(c.seed) : 1 };
 }
+
+/** The ground's values of an object (wet, snow_cm), only those given. */
+const groundOf = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null));
 
 /** The air's quantities of an object (numbers within their ranges; a preset's bounds and ground too). */
 function airOf(o) {
@@ -233,6 +237,7 @@ export function weatherProblems(config) {
   (Array.isArray(config.course) ? config.course : []).forEach((k, i) => {
     if (!Array.isArray(k) || parseTime(k[0]) == null || !k[1] || typeof k[1] !== "object") out.push(`weather.course[${i}] must be ["HH:MM", {…}]`);
   });
+  if (config.mode === "off" && Array.isArray(config.course) && config.course.length) out.push('weather.course does nothing with mode "off" (leave the mode out: it lies over the typical weather)');
   for (const o of [config.state, ...(Array.isArray(config.course) ? config.course.map((k) => k?.[1]) : [])]) {
     if (o && typeof o === "object" && o.precipitation != null && !KINDS.includes(o.precipitation)) out.push(`weather: precipitation "${o.precipitation}" must be one of ${KINDS.join(", ")}`);
   }
@@ -253,8 +258,11 @@ export class Weather {
     this.mode = c.mode;
     /** The preset of the fixed weather (a key of {@link WEATHER_PRESETS}), or null. */
     this.preset = c.preset;
+    // where the ground starts (wet, snow_cm) is applied once, by settle(); the rest is the air's
+    const { wet, snow_cm, ...air } = c.state;
     /** Quantities of the air set one by one on top of the preset. */
-    this.state = c.state;
+    this.state = air;
+    this._start = groundOf({ wet, snow_cm });
     /** Key frames over the day: [[minutes, {…}], …]. */
     this.course = c.course;
     this.seed = c.seed;
@@ -281,9 +289,13 @@ export class Weather {
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
       if (weatherProblems(value).length) return false;
       const quantities = { ...airOf(value), ...airOf(value.state) }, some = Object.keys(quantities).length > 0;
+      const { wet, snow_cm, ...air } = quantities;
       if (value.preset != null) Object.assign(this, { preset: value.preset, state: {} });
-      if (some) this.state = { ...this.state, ...quantities };
-      this.mode = value.mode ?? (value.preset != null || some ? "fixed" : this.mode);
+      if (Object.keys(air).length) this.state = { ...this.state, ...air };
+      // the ground as given: once, now; later settles carry it on
+      this._start = groundOf({ wet, snow_cm });
+      const course = value.course != null && this.mode === "off";
+      this.mode = value.mode ?? (value.preset != null || some ? "fixed" : course ? "typical" : this.mode);
       if (this.mode === "fixed" && !this.preset) this.preset = "clear";
       if (value.course != null) this.course = normalizeWeather({ course: value.course }).course;
       if (Number.isFinite(Number(value.seed))) this.seed = Number(value.seed);
@@ -292,6 +304,11 @@ export class Weather {
     this.settle({ keep: was !== "off" });
     this.world.events.emit("weather.changed", { weather: this.now() });
     return true;
+  }
+
+  /** Is it a weather {@link Weather#set} takes: a preset's name, "typical", "off", or an object? */
+  isWeather(value) {
+    return value != null && (typeof value === "string" || (typeof value === "object" && !Array.isArray(value))) && weatherProblems(value).length === 0;
   }
 
   /** The seed of the typical weather: the layout's and the world's. */
@@ -366,13 +383,14 @@ export class Weather {
    * set by hand replace it.
    */
   settle({ keep = false } = {}) {
-    const before = this.ground;
+    const before = this.ground, hand = this._start ?? {};
+    this._start = null;
     this.ground = { wet: 0, snow_cm: 0, cleared: 0 };
     this._memo = null;
     this._sky = null;
     if (this.mode === "off") return;
     if (this.mode === "fixed") {
-      const p = WEATHER_PRESETS[this.preset] ?? {}, air = this.air(), hand = this.state;
+      const p = WEATHER_PRESETS[this.preset] ?? {}, air = this.air();
       const wet = p.wet ?? (air.precipitation === "rain" ? 1 : 0), snow = p.snow_cm ?? (air.precipitation === "snow" ? SNOW_COVER_CM : 0);
       if (keep && before) {
         this.ground.wet = hand.wet ?? Math.max(before.wet, wet);

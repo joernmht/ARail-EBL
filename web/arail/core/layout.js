@@ -8,7 +8,7 @@
  */
 
 import { markersUsed } from "./anchors.js";
-import { DEFAULT_CLOCK, parseDate, parseDay, parseTime } from "./clock.js";
+import { DEFAULT_CLOCK, DEFAULT_YEAR, dateFits, parseDate, parseDay, parseTime } from "./clock.js";
 import { weatherProblems } from "./weather.js";
 import { DICTIONARIES } from "./detector.js";
 import { composeLayout, layerProblems } from "./layers.js";
@@ -257,13 +257,15 @@ export function validateLayout(json, registry) {
   }
   if (isObject(json.clock) && json.clock.date != null && parseDate(json.clock.date) == null) problems.push(`clock.date "${json.clock.date}" is no date (MM-DD)`);
   problems.push(...weatherProblems(json.weather));
+  const layoutYear = (isObject(json.clock) && parseDay(json.clock.date)?.year) || DEFAULT_YEAR;
   (Array.isArray(json.scenarios) ? json.scenarios : []).forEach((s, i) => {
     if (!isObject(s)) return problems.push(`scenarios[${i}] is not an object`);
     if (!s.id) problems.push(`scenarios[${i}] has no id`);
     if (!Array.isArray(s.steps)) problems.push(`scenarios[${i}].steps must be a list`);
     else s.steps.forEach((st, k) => {
       if (isObject(st?.set) && st.set.time != null && parseTime(st.set.time) == null) problems.push(`scenarios[${i}].steps[${k}].set.time "${st.set.time}" is no time of day (HH:MM)`);
-      if (isObject(st?.set) && st.set.date != null && parseDay(st.set.date) == null) problems.push(`scenarios[${i}].steps[${k}].set.date "${st.set.date}" is no date (MM-DD)`);
+      // "02-29" without a year is in the year of the layout's date (2026 without one), which needs to be a leap year
+      if (isObject(st?.set) && st.set.date != null && !dateFits(st.set.date, layoutYear)) problems.push(`scenarios[${i}].steps[${k}].set.date "${st.set.date}" is no date (MM-DD)${parseDay(st.set.date) ? ` in ${layoutYear}: write it with a leap year ("2028-02-29")` : ""}`);
       if (isObject(st?.set) && st.set.weather != null) for (const p of weatherProblems(st.set.weather)) problems.push(`scenarios[${i}].steps[${k}].set.${p}`);
     });
   });

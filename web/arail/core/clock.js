@@ -66,6 +66,15 @@ export function parseDay(value) {
   return { year, month, day };
 }
 
+/**
+ * Is it a date in that year? "2028-02-29" has its own year; "02-29" written without one needs `year`
+ * (else {@link DEFAULT_YEAR}) to be a leap year. Every other date fits any year.
+ */
+export function dateFits(value, year = null) {
+  const d = parseDay(value);
+  return !!d && !(d.month === 2 && d.day === 29 && !isLeapYear(d.year ?? year ?? DEFAULT_YEAR));
+}
+
 /** The day of the year (1 = 1 January) of a month and a day, in a year (a common year when null). */
 export function dayOfYear(month, day, year = null) {
   let doy = day;
@@ -255,15 +264,23 @@ export class Clock {
    * date). Returns the day of the year, or null; undefined, and nothing changed, for what is no date
    * (also 29 February in a year that has none).
    */
+  /** Is it a date the clock can be set to ("02-29" without a year: if the clock's year has one)? */
+  isDate(value) {
+    return dateFits(value, this.year);
+  }
+
+  /** Is it a time of day ("HH:MM" or minutes)? */
+  isTime(value) {
+    return parseTime(value) != null;
+  }
+
   setDate(value) {
     if (value == null || value === "") {
       this.date = this.year = null;
       return null;
     }
-    const d = parseDay(value);
-    if (!d) return undefined;
-    const year = d.year ?? this.year ?? DEFAULT_YEAR;
-    if (d.month === 2 && d.day === 29 && !isLeapYear(year)) return undefined;
+    if (!dateFits(value, this.year)) return undefined;
+    const d = parseDay(value), year = d.year ?? this.year ?? DEFAULT_YEAR;
     this.year = year;
     this.date = dayOfYear(d.month, d.day, year);
     return this.date;

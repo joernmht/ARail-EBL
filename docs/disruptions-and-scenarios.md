@@ -99,7 +99,7 @@ A scenario is a timeline stored in the layout file. It is played from Interactio
 
 | Action | Example | Effect |
 | --- | --- | --- |
-| `set` | `{"demand": 1.5, "speed": 5, "date": "12-06", "time": "15:45", "weather": "snow"}` | passenger demand, time-lapse speed, the date (`MM-DD`), the time of day (`HH:MM`) and the weather (a preset's name, `typical`, `off` or an object, see [Seasons and weather](weather.md#in-a-layout-file)), as Settings → Simulation sets them: the simulations put their people where they belong at that time. What is no date, time or weather fails the step, which says so, and the layout check reports it |
+| `set` | `{"demand": 1.5, "speed": 5, "date": "12-06", "time": "15:45", "weather": "snow"}` | passenger demand, time-lapse speed, the date (`MM-DD`), the time of day (`HH:MM`) and the weather (a preset's name, `typical`, `off` or an object, see [Seasons and weather](weather.md#in-a-layout-file)), as Settings → Simulation sets them: the simulations put their people where they belong at that time. What is no date, time or weather fails the step, which says so and changes none of the three, and the layout check reports it |
 | `message` | `"Signal failure!"` | shown in the app (event `scenario.message`) |
 | `call` | `"platform-1"` | send a vehicle to an object, stop area or dock (e.g. `"platform-1:left"`); not to tracks of the control system or of the rail operations |
 | `start` | `{"id": "sf", "type": "delay", "target": "platform-1", "params": {"minutes": 5}, "duration": 300}` | start a disruption; `duration` in seconds overrides the default |
