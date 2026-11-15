@@ -169,17 +169,17 @@ test("on a phone the three chapters, the filter pills, the scenarios and a case 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   // the list: the game page's pills and scenarios (the Sandbox first)
   await page.locator("#tab-interaction").click();
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.locator(".pill").allTextContents()).toEqual(["All", "First steps", "Infrastructure", "Railway undertaking", "Freight", "Tools"]);
-  expect(await page.locator(".scenario-card .scenario-name").allTextContents()).toEqual(["Sandbox", "Assets", "Operations", "Terminal", "Journeys", "Build", "Disruptions"]);
-  expect(await fits(".pill, .scenario-card"), "the pills and the scenarios at 390 px").toBe(true);
+  expect(await page.locator(".case-card .case-name").allTextContents()).toEqual(["Sandbox", "Assets", "Operations", "Terminal", "Journeys", "Build", "Disruptions"]);
+  expect(await fits(".pill, .case-card"), "the pills and the scenarios at 390 px").toBe(true);
   await page.locator("#pill-evu").click();
-  await expect(page.locator(".scenario-card")).toHaveCount(3);
-  await page.locator("#scenario-ops").focus();
+  await expect(page.locator(".case-card")).toHaveCount(3);
+  await page.locator("#case-ops").focus();
   await page.keyboard.press("Enter");
   await expectCase(page, "ops");
-  await expect(page.locator("#scenarioName")).toBeFocused();
-  expect(await fits("#casePanel .ops-views button, #scenarioStart, #scenariosBack"), "the case at 390 px").toBe(true);
+  await expect(page.locator("#caseName")).toBeFocused();
+  expect(await fits("#casePanel .ops-views button, #caseStart, #casesBack"), "the case at 390 px").toBe(true);
   expect(errors).toEqual([]);
 });
 

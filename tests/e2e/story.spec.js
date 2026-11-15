@@ -40,7 +40,7 @@ test("the app opens Bf Neustadt; Infrastructure → Disruption switches on the m
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "maintenance-story"), null, { timeout: 30_000 });
   await expectCase(page, "infra-disruption");
-  await expect(page.locator("#scenarioName")).toHaveText("A signal fails");
+  await expect(page.locator("#caseName")).toHaveText("A signal fails");
   await expect(title(page)).toHaveText("The station in normal service");
   expect(errors).toEqual([]);
 });
@@ -179,13 +179,13 @@ test("before Start no step is the one shown: Home on the bar, or its first segme
 
 test("left and shown again, a story's panel shows the step Start begins with", async ({ page }) => {
   const errors = await open(page, STORY);
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started);
   for (let i = 0; i < 3; i++) await page.locator("#infraStoryNext").click();
   await expect(page.locator("#casePanel .step-count")).toHaveText("Step 4 of 12");
   await page.locator("#infraStoryPlay").click();
   // left: the story that ran goes back to its beginning and stops playing (stage and panel agree)
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.evaluate(() => { const s = window.__arail.infra.story; return [s.index, s.playing]; })).toEqual([0, false]);
   await page.waitForFunction(() => !window.__arail._homing, null, { timeout: 30_000 });
   await page.evaluate(() => window.__arail.selectTab("infra-disruption"));
@@ -203,7 +203,7 @@ test("a story only shown, not started, is left as it is when the list is shown (
   await page.waitForFunction(() => window.__arail.journeys?.story, null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.caseById("journeys").started)).toBe(false);
   await page.evaluate(() => window.__arail.world.setTime("17:00"));
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.evaluate(() => window.__arail.world.clock.minutes)).toBeGreaterThanOrEqual(17 * 60);
   expect(errors).toEqual([]);
 });
@@ -211,7 +211,7 @@ test("a story only shown, not started, is left as it is when the list is shown (
 test("Start opens the flyover also when the story's first step has no place of its own", async ({ page }) => {
   const errors = await open(page, STORY);
   await page.evaluate(() => (window.__arail.infra.story.view = () => null));
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.caseById("infra-disruption").started && window.__arail.mode === "flyover", null, { timeout: 15_000 });
   expect(errors).toEqual([]);
 });

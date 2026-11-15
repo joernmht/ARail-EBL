@@ -106,18 +106,18 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await expect(page.locator("#tab-interaction")).toBeFocused();
   await expect(page.locator("#panel-interaction")).toBeVisible();
   // the scenarios: from the Introduction (shown first) back to the list, the pill Tools, the card Build
-  await tabTo(page, "#scenariosBack");
+  await tabTo(page, "#casesBack");
   await page.keyboard.press("Enter");
-  await expect(page.locator("#scenario-intro")).toBeFocused(); // the scenario left
+  await expect(page.locator("#case-intro")).toBeFocused(); // the scenario left
   await tabTo(page, "#pill-tools", { back: true });
   await page.keyboard.press("Enter");
   await expect(page.locator("#pill-tools")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#pill-tools")).toBeFocused();
-  await expect(page.locator(".scenario-card")).toHaveCount(2); // Build and Disruptions
-  await tabTo(page, "#scenario-build");
+  await expect(page.locator(".case-card")).toHaveCount(2); // Build and Disruptions
+  await tabTo(page, "#case-build");
   await page.keyboard.press("Enter");
   await expectCase(page, "build");
-  await expect(page.locator("#scenarioName")).toBeFocused();
+  await expect(page.locator("#caseName")).toBeFocused();
   // pick the tree in the palette
   const tree = page.locator(".palette").getByRole("button", { name: /^Tree/ });
   await tabTo(page, ".palette button[title='A single tree.']");
@@ -211,18 +211,18 @@ test("keyboard only: the chapter Interaction, the pill Freight, the scenario Loa
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("#tab-interaction")).toBeFocused();
   await expect(page.locator("#panel-interaction")).toBeVisible();
-  await tabTo(page, "#scenariosBack");
+  await tabTo(page, "#casesBack");
   await page.keyboard.press("Enter");
   await tabTo(page, "#pill-freight", { back: true });
   await page.keyboard.press("Enter");
-  await expect(page.locator(".scenario-card")).toHaveCount(1);
-  await tabTo(page, "#scenario-terminal");
+  await expect(page.locator(".case-card")).toHaveCount(1);
+  await tabTo(page, "#case-terminal");
   // Enter starts it: the loading task at the hybrid container train opens with its photo
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.__arail.caseById("terminal").started && /ebl-container-train\.json$/.test(window.__arail.layoutUrl), null, { timeout: 30_000 });
   await expectCase(page, "terminal");
-  await expect(page.locator("#scenarioName")).toBeFocused();
-  await expect(page.locator("#scenarioTask")).toContainText("0 of 6");
+  await expect(page.locator("#caseName")).toBeFocused();
+  await expect(page.locator("#caseTask")).toContainText("0 of 6");
   await expect(page.locator("#termList")).toBeVisible();
   // a work order: Move follows the orders, with the order's place first (a place on the real train)
   await tabTo(page, "#term-order-3");

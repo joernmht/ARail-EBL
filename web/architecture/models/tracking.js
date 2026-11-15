@@ -160,7 +160,7 @@ export const TRACKING = [
   {
     id: "flycam", group: "tracking", title: "The flyover's camera",
     summary: "A virtual orbit camera that gives the same homography and pose as a real one, so everything draws without video.",
-    description: "FlyCamera describes its image like a real camera's: H = K [r₁ r₂ t] for a pinhole camera of focal length f, so the View, the editor and the simulations work unchanged; the other way round, FlyCamera.fromPose gives the orbit camera that sees what a real camera's pose sees (a tracked photo's), so a scenario's flyover can start from the photo. The app's Flyover drives it (orbit, pan, zoom, twist, fit, following a traveller) and draws the table, the orthophoto, the grid and the markers under the world.",
+    description: "FlyCamera describes its image like a real camera's: H = K [r₁ r₂ t] for a pinhole camera of focal length f, so the View, the editor and the simulations work unchanged; the other way round, FlyCamera.fromPose gives the orbit camera that sees what a real camera's pose sees (a tracked photo's), so an example's flyover can start from the photo. The app's Flyover drives it (orbit, pan, zoom, twist, fit, following a traveller) and draws the table, the orthophoto, the grid and the markers under the world.",
     files: ["web/arail/core/flycam.js", "web/app/flyover.js"],
     classes: [
       {

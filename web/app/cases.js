@@ -1,4 +1,4 @@
-// The scenarios of the Interaction chapter, a class each (a "case"): examples to start, each with a
+// The examples of the Interaction chapter, a class each (a "case"): examples to start, each with a
 // small task to try (the work orders of the crane, the steps of a story) and its progress, and a view
 // of the stage chosen for it (the flyover at the terminal, the camera following a story), so that
 // what it is about is in the picture at once. A case belongs to a side, the infrastructure manager ("infra")
@@ -8,6 +8,7 @@
 // the app: Start switches that module on, or opens the example that has it, and then shows the
 // view. A page lists its case classes (main.js): a new case is one class and one line.
 import { boundsOf, planOf, storyOf, TERMINAL_EVENTS, terminalOf } from "../arail/index.js";
+import { HumpPanel, humpOf } from "./hump.js";
 import { IntroPanel } from "./intro.js";
 import { PlanPanel } from "./plan.js";
 import { SandboxPanel } from "./sandbox.js";
@@ -21,7 +22,7 @@ export const SIDES = [
   { id: "evu", label: "Railway undertaking", description: "The railway undertaking (EVU): its trains, staff and customers", icon: "operations" },
 ];
 
-/** The filter pills of the scenarios, in their order; a pill is shown when a case has its tag. */
+/** The filter pills of the examples, in their order; a pill is shown when a case has its tag. */
 export const TAGS = [
   { id: "explore", label: "First steps" },
   ...SIDES.map(({ id, label }) => ({ id, label })),
@@ -35,9 +36,9 @@ export class Case {
   static id = "";
   /** "infra" or "evu" (SIDES); null for a first step or a tool of the layout. */
   static side = null;
-  /** Its name in the list of scenarios. */
+  /** Its name in the list of examples. */
   static label = "";
-  /** What it is about, in one line: its card in the list says it (the scenario shown does not again). */
+  /** What it is about, in one line: its card in the list says it (the example shown does not again). */
   static description = "";
   /** The filter pills it is listed under (TAGS); null: its side, else "tools". */
   static tags = null;
@@ -467,6 +468,68 @@ export class TerminalCase extends Case {
   }
 }
 
+/**
+ * The hump yard: one train broken up over the hump (hump.js, the object's task). Start switches the
+ * module Hump yard on (or opens the example that has it), puts a train of its own on the push track
+ * of the empty yard and shows the yard in the flyover; the hump master pushes it at the speed chosen.
+ * Its task: every cut standing, timed on the yard's clock; its figures say how many went into the
+ * wrong track or met the wagons too hard.
+ */
+export class HumpCase extends Case {
+  static id = "hump";
+  static side = "evu";
+  static label = "Hump a train";
+  static description = "Push a freight train over the hump: fast, but every cut into its own track and gently onto the wagons there";
+  static tags = ["evu", "freight"];
+  static speed = 4;
+  static icon = "hump";
+  static example = "hump";
+  /** The layout's module (layer) that has the hump yard. */
+  static layer = "hump";
+
+  makePanel() {
+    return new HumpPanel(this.app, { owner: this });
+  }
+
+  /** The layout has a hump yard (it is no simulation of the world but an object with its own). */
+  get ready() {
+    return !!humpOf(this.app.world);
+  }
+
+  /** The module of this layout, off, that has the hump yard (Bf Neustadt's Hump yard), or null. */
+  module() {
+    if (this.ready) return null;
+    return this.app.modules().find((m) => !m.app && !m.enabled && m.id === this.constructor.layer) ?? null;
+  }
+
+  begin() {
+    const y = humpOf(this.app.world);
+    y.startTask();
+    this.panel.update();
+    // the yard in the flyover: the crest, the retarders, the switches and the tracks
+    this.app.showPlace(boundsOf([y], 0.05));
+  }
+
+  /** Left: the yard humps train after train by itself again. */
+  end() {
+    const y = humpOf(this.app.world);
+    if (y?.task) y.stopTask();
+  }
+
+  /** The cuts standing, of the train's cuts. */
+  progress() {
+    const st = humpOf(this.app.world)?.taskState();
+    return st?.of ? { done: st.done, of: st.of } : null;
+  }
+
+  /** The time on the yard's clock since Start, the cuts in the wrong track, the impacts too hard. */
+  figures() {
+    const st = this.started ? humpOf(this.app.world)?.taskState() : null;
+    if (!st) return null;
+    return [["Time", minutes(Math.max(0, st.time_s))], ["Wrong track", String(st.misrouted)], ["Too hard", String(st.hard)]];
+  }
+}
+
 /** Build, a tool of the layout: placing and editing its objects (editor.js). */
 export class BuildCase extends Case {
   static id = "build";
@@ -488,7 +551,7 @@ export class BuildCase extends Case {
   }
 }
 
-/** Disruptions, a tool of the layout: disruptions started by hand and the layout's scenarios (panels.js). */
+/** Disruptions, a tool of the layout: disruptions started by hand and the layout's scenarios of disruptions (panels.js). */
 export class DisruptionsCase extends Case {
   static id = "disrupt";
   static label = "Disruptions";

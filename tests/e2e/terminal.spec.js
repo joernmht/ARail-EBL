@@ -448,10 +448,10 @@ test("the morning shift scenario finishes its moves", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("on a phone the three chapters, the scenarios and the terminal's case fit, also at 300 px", async ({ page }) => {
+test("on a phone the three chapters, the examples and the terminal's case fit, also at 300 px", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await openTerminal(page);
-  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button, .pill, .scenario-card, #scenarioStart, #scenariosBack, #termList button")].filter((x) => x.getClientRects().length)
+  const fits = () => page.evaluate(() => [...document.querySelectorAll(".tabs button, .pill, .case-card, #caseStart, #casesBack, #termList button")].filter((x) => x.getClientRects().length)
     .every((x) => {
       const r = x.getBoundingClientRect();
       return r.left >= 0 && r.right <= innerWidth + 0.5;
@@ -459,7 +459,7 @@ test("on a phone the three chapters, the scenarios and the terminal's case fit, 
   expect(await page.locator(".tabs button").evaluateAll((b) => b.map((x) => x.id.slice(4)))).toEqual(["overview", "interaction", "settings"]);
   for (const width of [390, 300]) {
     await page.setViewportSize({ width, height: 760 });
-    for (const tab of ["overview", "settings", "scenarios", "sandbox", "build", "terminal"]) {
+    for (const tab of ["overview", "settings", "examples", "sandbox", "build", "terminal"]) {
       await page.evaluate((t) => window.__arail.selectTab(t), tab);
       expect(await fits(), `${tab} at ${width} px`).toBe(true);
     }

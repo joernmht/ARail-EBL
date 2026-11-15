@@ -44,8 +44,8 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await expect(page.locator("#btnFullscreen")).toHaveAccessibleName("Vollbild");
   await expect(page.locator("#stage")).toHaveAttribute("aria-label", "Kamerabild mit erweiterter Realität");
   // the app opens with the Introduction: Start and the scenes of the film
-  await expect(page.locator("#scenarioName")).toHaveText("Einführung");
-  await expect(page.locator("#scenarioStart")).toHaveText("Starten");
+  await expect(page.locator("#caseName")).toHaveText("Einführung");
+  await expect(page.locator("#caseStart")).toHaveText("Starten");
   await expect(page.locator('#casePanel .step-seg[title="Was echt ist"]')).toHaveCount(1);
   await expect(page.getByRole("slider", { name: "Szenen" })).toHaveAttribute("aria-valuetext", /^Szene 1 von \d+: /);
   await expect(page.locator("#panel-interaction")).toContainText("Szene 1 von");
@@ -64,12 +64,12 @@ test("?lang=de: the frame, the Introduction, Overview, Settings, Build, the scen
   await page.evaluate(() => window.__arail.selectTab("build"));
   await expect(page.locator("#casePanel")).toContainText("Zur Anlage hinzufügen");
   await expect(page.locator("#casePanel")).toContainText("Bahnsteig");
-  // the list of scenarios with its pills, the Sandbox, a scenario whose module is not in this layout
-  await page.evaluate(() => window.__arail.selectTab("scenarios"));
+  // the list of examples with its pills, the Sandbox, an example whose module is not in this layout
+  await page.evaluate(() => window.__arail.selectTab("examples"));
   await expect(page.locator("#pill-evu")).toHaveText("EVU");
   await expect(page.locator("#pill-explore")).toHaveText("Erste Schritte");
-  await expect(page.locator("#scenario-sandbox .scenario-name")).toHaveText("Sandkasten");
-  await expect(page.locator("#scenario-terminal .scenario-text")).toContainText("Echte Modellwagen mit Markern");
+  await expect(page.locator("#case-sandbox .case-name")).toHaveText("Sandkasten");
+  await expect(page.locator("#case-terminal .case-text")).toContainText("Echte Modellwagen mit Markern");
   await page.evaluate(() => window.__arail.selectTab("modules"));
   await expect(page.locator(".modules")).toContainText("Grenzbahnhof");
   await expect(page.locator("#casePanel")).toContainText("Umsehen");

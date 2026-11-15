@@ -34,7 +34,7 @@ test("Railway undertaking → Disruption switches on the module Breakdown of Bf 
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "ops-story"), null, { timeout: 30_000 });
   await expectCase(page, "evu-disruption");
-  await expect(page.locator("#scenarioName")).toHaveText("A train breaks down");
+  await expect(page.locator("#caseName")).toHaveText("A train breaks down");
   await expect(title(page)).toHaveText("RB 31 to Talsee boards at track G3");
   await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 10");
   // the depot on its table module came with the module
@@ -95,7 +95,7 @@ test("the operations story: Next and Back, the platform's message, the bar of th
 test("the camera follows the spare unit out of the depot and in at track G2", async ({ page }) => {
   const errors = await open(page, STORY);
   // Start: the flyover, its camera on the story (always, there is no switch)
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   const distance = () => page.evaluate(() => {
     const a = window.__arail, at = a.operations.story.view().at, t = a.flyover.cam.target;

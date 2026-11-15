@@ -21,9 +21,9 @@ export { cutBody, cutForces, coast, requiredSpeeds, timeRun, energyHeight } from
 export { HumpControl } from "./control.js";
 export { SIM_DEFAULTS, HumpSimulation } from "./simulation.js";
 export { DIAGRAM_COLOURS, CLASS_LABELS, niceTicks, simplify, cutClass, humpDiagrams } from "./diagrams.js";
-import { HumpYardObject } from "./object.js";
+import { HumpYardObject, TASK_PUSH } from "./object.js";
 
-export { HumpYardObject };
+export { HumpYardObject, TASK_PUSH };
 
 /**
  * Register the hump's object type (palette group "Hump yard").

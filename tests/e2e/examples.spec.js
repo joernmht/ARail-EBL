@@ -1,12 +1,12 @@
-// The scenarios of the app's Interaction (app/interaction.js, app/cases.js): the list with its filter
+// The examples of the app's Interaction (app/interaction.js, app/cases.js): the list with its filter
 // pills; the Introduction, a film of the layout that the app opens with (app/intro.js); the Sandbox
 // with the modules, the infrastructure aging and the colour of people (app/sandbox.js); and
-// scenarios with a task: Start sets up the stage (its module, the example it plays in, its view) and
+// examples with a task: Start sets up the stage (its module, the example it plays in, its view) and
 // the task counts from then (the operations plan, a story, the loading task at the hybrid container
-// train with its work orders, time and moves). A scenario shown is light in text: its name, Start or
+// train with its work orders, time and moves). An example shown is light in text: its name, Start or
 // the bar of its task, and its panel; a story and the film have the bar of their steps in their panel.
 import { expect, test } from "@playwright/test";
-import { expectCase, startScenario } from "./ui.js";
+import { expectCase, startExample } from "./ui.js";
 
 function trackErrors(page) {
   const errors = [];
@@ -23,42 +23,45 @@ async function open(page, path = "/app/") {
   return errors;
 }
 
-const task = (page) => page.locator("#scenarioTask");
+const task = (page) => page.locator("#caseTask");
 /** The bar of the steps of a story or the film (story.js, stepBar): where it is, and its segments. */
 const stepCount = (page) => page.locator("#casePanel .step-count");
 const segments = (page) => page.locator("#casePanel .step-seg");
 
-test("the app opens with the Introduction; the scenarios in a list with filter pills, the pill kept", async ({ page }) => {
+test("the app opens with the Introduction; the examples in a list with filter pills, the pill kept", async ({ page }) => {
   const errors = await open(page);
   await expect(page.locator("#tab-interaction")).toHaveAttribute("aria-selected", "true");
   await expectCase(page, "intro");
-  await expect(page.locator("#scenarioName")).toHaveText("Introduction");
+  await expect(page.locator("#caseName")).toHaveText("Introduction");
   // shown, not started: the stage stays as it is until Start
-  await expect(page.locator("#scenarioStart")).toHaveText("Start");
+  await expect(page.locator("#caseStart")).toHaveText("Start");
   expect(await page.evaluate(() => window.__arail.mode)).toBe("camera");
-  await page.locator("#scenariosBack").click();
-  await expect(page.locator("#scenario-intro")).toBeFocused();
+  await expect(page.locator("#casesBack")).toHaveText("← Examples");
+  await page.locator("#casesBack").click();
+  await expect(page.locator("#case-intro")).toBeFocused();
+  await expect(page.locator("#casesTitle")).toHaveText("Examples");
+  expect(page.url()).toMatch(/#examples$/);
   expect(await page.locator(".pill").allTextContents()).toEqual(["All", "First steps", "Infrastructure", "Railway undertaking", "Passengers", "Freight", "Tools"]);
   await expect(page.locator("#pill-all")).toHaveAttribute("aria-pressed", "true");
-  expect(await page.locator(".scenario-card .scenario-name").allTextContents()).toEqual([
+  expect(await page.locator(".case-card .case-name").allTextContents()).toEqual([
     "Introduction", "Sandbox", "Trains on tracks", "A signal fails", "Units and drivers", "A train breaks down", "Load the hybrid train", "A traveller's journey", "Build", "Disruptions",
   ]);
   // a card's name says its side; what it is about describes it
-  await expect(page.locator("#scenario-evu-disruption")).toHaveAccessibleName("Railway undertaking A train breaks down");
-  await expect(page.locator("#scenario-evu-disruption")).toHaveAccessibleDescription(/breaks down at the platform/);
+  await expect(page.locator("#case-evu-disruption")).toHaveAccessibleName("Railway undertaking A train breaks down");
+  await expect(page.locator("#case-evu-disruption")).toHaveAccessibleDescription(/breaks down at the platform/);
   for (const [pill, names] of [
     ["explore", ["Introduction", "Sandbox"]], ["infra", ["Trains on tracks", "A signal fails"]], ["evu", ["Units and drivers", "A train breaks down", "Load the hybrid train", "A traveller's journey"]],
     ["passengers", ["A traveller's journey"]], ["freight", ["Load the hybrid train"]], ["tools", ["Build", "Disruptions"]],
   ]) {
     await page.locator(`#pill-${pill}`).click();
     await expect(page.locator(`#pill-${pill}`)).toHaveAttribute("aria-pressed", "true");
-    expect(await page.locator(".scenario-card .scenario-name").allTextContents(), pill).toEqual(names);
+    expect(await page.locator(".case-card .case-name").allTextContents(), pill).toEqual(names);
   }
   // the list and its pill are kept over a reload
   await page.reload();
   await page.waitForFunction(() => window.__arail?.world?.objects.length);
   await expect(page.locator("#pill-tools")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".scenario-card")).toHaveCount(2);
+  await expect(page.locator(".case-card")).toHaveCount(2);
   expect(errors).toEqual([]);
 });
 
@@ -69,12 +72,12 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
     const app = window.__arail, p = app.caseById("intro").panel;
     return { index: p.index, id: p.scenes[p.index].id, count: p.scenes.length, playing: p.playing, active: p.active, mode: app.mode, fade: app.fade };
   });
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await expect.poll(film).toMatchObject({ index: 0, id: "welcome", playing: true, active: true, mode: "camera", fade: 1 });
   // started: Start is gone (Restart is the film's), nothing but the film's scene, its bar and its controls
-  await expect(page.locator("#scenarioStart")).toHaveCount(0);
+  await expect(page.locator("#caseStart")).toHaveCount(0);
   await expect(task(page)).toBeHidden();
-  await expect(page.locator("#scenarioName")).toBeFocused();
+  await expect(page.locator("#caseName")).toBeFocused();
   await expect(page.locator("#introPlay")).toHaveAttribute("aria-pressed", "true");
   // it goes on by itself: what is real, the photo alone with the real things outlined
   await expect.poll(async () => (await film()).id, { timeout: 15_000 }).toBe("real");
@@ -105,10 +108,10 @@ test("the Introduction plays as a film: the photo alone for what is real, what t
   expect(await page.evaluate(() => window.__arail.caseById("intro").done)).toBe(true);
   await expect(page.locator("#introNext")).toBeDisabled();
   // back to the list: the film stops, the photo shows everything; the card says it was done
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await film()).toMatchObject({ active: false, playing: false, fade: 1 });
-  await expect(page.locator("#scenario-intro .scenario-state")).toHaveText("Done");
-  await expect(page.locator("#scenario-sandbox .scenario-state")).toHaveCount(0);
+  await expect(page.locator("#case-intro .case-state")).toHaveText("Done");
+  await expect(page.locator("#case-sandbox .case-state")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -124,7 +127,7 @@ test("the Introduction's Play, Next and scenes work before Start: they start it"
   await page.locator("#introPlay").click();
   await expect.poll(film).toMatchObject({ started: true, id: "welcome", playing: true, active: true });
   // shown again by its link, not started: Next starts it at the second scene, which waits; a scene of the list too
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   await page.evaluate(() => window.__arail.selectTab("intro"));
   expect(await film()).toMatchObject({ started: false, active: false });
   // shown again, the panel shows the first scene, where Start begins; Page Up does nothing before Start
@@ -134,7 +137,7 @@ test("the Introduction's Play, Next and scenes work before Start: they start it"
   expect(await film()).toMatchObject({ started: false, active: false });
   await page.locator("#introNext").click();
   await expect.poll(film).toMatchObject({ started: true, id: "real", playing: false, active: true });
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   await page.evaluate(() => window.__arail.selectTab("intro"));
   await segments(page).nth(2).click();
   await expect.poll(film).toMatchObject({ started: true, id: "virtual", playing: false, active: true });
@@ -144,7 +147,7 @@ test("the Introduction's Play, Next and scenes work before Start: they start it"
 test("the Sandbox: the whole layout in the flyover, the modules, the infrastructure aging years ahead, the colour of people", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const errors = await open(page);
-  await startScenario(page, "sandbox");
+  await startExample(page, "sandbox");
   expect(await page.evaluate(() => window.__arail.mode)).toBe("flyover");
   await expect(task(page)).toBeHidden(); // no task: free to look around, its controls only
   await expect(page.locator(".modules").getByRole("button", { name: "Waldhof", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -166,7 +169,7 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
   expect(await page.evaluate(() => window.__arail.world.settings.peopleColour)).toBe("mood");
   // leaving the Sandbox brings the station back to today (the other scenarios play in its own year)
   // and the stage back to the town's photo; the modules switched in it stay
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.evaluate(() => window.__arail.world.settings.ageYears)).toBe(0);
   await page.waitForFunction(() => !window.__arail._homing && window.__arail.mode === "camera", null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["sbahn", "waldhof", "infrastructure"]);
@@ -177,7 +180,7 @@ test("the Sandbox: the whole layout in the flyover, the modules, the infrastruct
 test("Load the hybrid train: Start opens the loading task at the hybrid container train; the work orders, the time and the moves", async ({ page }) => {
   test.setTimeout(150_000);
   const errors = await open(page);
-  await startScenario(page, "terminal");
+  await startExample(page, "terminal");
   expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.layersOn(), window.__arail.mode, window.__arail.world.speed]))
     .toEqual(["ebl-container-train.json", ["task"], "camera", 10]);
   // light in text: the bar of the work orders with the time and the moves, no task text, no Save
@@ -188,7 +191,7 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   // empty, it is hidden but stays in the accessibility tree, so that Done is announced
   expect(await task(page).locator(".task-done").evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
   await expect(task(page).locator(".task-figures")).toContainText(/Time\s*\d+:\d\d min\s*Moves\s*0/);
-  await expect(page.locator("#scenarioStart")).toHaveCount(0);
+  await expect(page.locator("#caseStart")).toHaveCount(0);
   await expect(page.locator("#termSave")).toHaveCount(0);
   await expect(page.locator("#termStatus")).toHaveCount(0);
   // the camera finds the real wagons and the truck by their tags in the photo; seen, the task needs no model wagons section
@@ -245,10 +248,10 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
   await expect(page.locator("#termReset")).toBeFocused();
   await expect(orders.nth(0)).toContainText("under 2 containers");
   // back to the list: the scenario stops, the clock runs as before its (re)start
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.evaluate(() => [window.__arail.world.speed, window.__arail.caseById("terminal").started])).toEqual([1, false]);
   // started again: a speed chosen meanwhile stays when it ends; another layout ends it
-  await startScenario(page, "terminal");
+  await startExample(page, "terminal");
   expect(await page.evaluate(() => window.__arail.world.speed)).toBe(10);
   await page.evaluate(() => (window.__arail.world.speed = 5));
   await page.evaluate(() => window.__arail.openExample("neustadt"));
@@ -260,14 +263,14 @@ test("Load the hybrid train: Start opens the loading task at the hybrid containe
 test("the loading task's layout shown, its scenario not started: the terminal's whole panel, the task's after Start", async ({ page }) => {
   const errors = await open(page, "/app/?layout=../layouts/ebl-container-train.json&layers=task#terminal");
   await page.waitForFunction(() => window.__arail.terminal.sim?.orders().length, null, { timeout: 30_000 });
-  await expect(page.locator("#scenarioStart")).toHaveText("Start");
+  await expect(page.locator("#caseStart")).toHaveText("Start");
   // not started: no task yet, the terminal as a tool (its state, Reset terminal), but no Save as start
   // state: it would change the task's start
   await expect(page.locator("#termReset")).toHaveText("Reset terminal");
   await expect(page.locator("#termStatus")).toBeVisible();
   await expect(page.locator("#termSave")).toHaveCount(0);
   // started: only what the task needs
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.caseById("terminal").started, null, { timeout: 30_000 });
   await expect(page.locator("#termReset")).toHaveText("Restart");
   await expect(page.locator("#termSave")).toHaveCount(0);
@@ -278,7 +281,7 @@ test("the loading task's layout shown, its scenario not started: the terminal's 
 test("Trains on tracks: Start switches on the plan, alone, and shows the platforms; the task counts the trains without a problem", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const errors = await open(page);
-  await startScenario(page, "infra-operations");
+  await startExample(page, "infra-operations");
   expect(await page.evaluate(() => [window.__arail.layersOn(), window.__arail.mode])).toEqual([["plan"], "flyover"]);
   await expect(task(page)).toContainText("4 of 6");
   await page.locator("#plan-infra-s1-0725-track").selectOption("G2");
@@ -293,7 +296,7 @@ test("Trains on tracks: Start switches on the plan, alone, and shows the platfor
 test("A train breaks down: Start switches on its module, the camera follows the story; the task counts its steps", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const errors = await open(page);
-  await startScenario(page, "evu-disruption");
+  await startExample(page, "evu-disruption");
   expect(await page.evaluate(() => [window.__arail.layersOn(), window.__arail.mode])).toEqual([["operations"], "flyover"]);
   await expect(page.locator("#opsStoryFollow")).toHaveCount(0); // the camera always follows: no switch
   const n = await page.evaluate(() => window.__arail.caseById("evu-disruption").story.steps.length);
@@ -342,7 +345,7 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   expect(await stage()).toEqual(town);
   // the loading task at the hybrid train: the tour offers its photos only, those with the terminal and
   // the real train (from the front left and the front), and no arrows; the photo it opens with is its front
-  await startScenario(page, "terminal");
+  await startExample(page, "terminal");
   await page.waitForFunction(() => window.__arail.tourNav.scope && window.__arail.tourNav.showing(), null, { timeout: 30_000 });
   const tourAt = () => page.evaluate(() => [window.__arail.tourNav.at.photo.id, window.__arail.tourNav.at.perspective, window.__arail.source.el.src.replace(/.*\//, "")]);
   expect(await tourAt()).toEqual(["terminal-wagons", "front", "ebl-container-train.jpg"]);
@@ -359,14 +362,14 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   expect(await tourAt()).toEqual(["terminal-wagons", "front", "ebl-container-train.jpg"]);
   // its photos are of its layout: the scenario goes on
   expect(await page.evaluate(() => [window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.caseById("terminal").started, /photo=/.test(location.search)])).toEqual(["ebl-container-train.json", true, true]);
-  // ← Scenarios: back to the town with its photo, all photos again, the address without the photo
-  await page.locator("#scenariosBack").click();
+  // ← Examples: back to the town with its photo, all photos again, the address without the photo
+  await page.locator("#casesBack").click();
   await home();
   expect(await stage()).toEqual(town);
   expect(await page.evaluate(() => [window.__arail.tourNav.scope, window.__arail.tourNav.tour.parts.length > 10, location.search])).toEqual([null, true, ""]);
   await expect(page.locator("#tour .tour-step").first()).toBeVisible();
   // a scenario at the station switches its module on and flies into the flyover; its photos are Bf Neustadt's
-  await startScenario(page, "infra-disruption");
+  await startExample(page, "infra-disruption");
   // running: its module, the flyover, no way home, and the tour of its task's photos
   const running = () => page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.layersOn(), window.__arail.mode, !!window.__arail._homing, window.__arail.tourNav.scope?.key ?? null]);
   const scope = await page.evaluate(() => window.__arail.tourNav.scope?.key ?? null);
@@ -385,8 +388,8 @@ test("leaving a scenario for the list takes the stage back to the town, other ch
   await page.locator("#tab-interaction").click();
   await expectCase(page, "infra-disruption");
   expect(await running()).toEqual(runs);
-  // ← Scenarios ends it: the town as it was, without the scenario's module
-  await page.locator("#scenariosBack").click();
+  // ← Examples ends it: the town as it was, without the scenario's module
+  await page.locator("#casesBack").click();
   await home();
   expect(await stage()).toEqual(town);
   expect(await page.evaluate(() => [window.__arail.caseById("infra-disruption").started, window.__arail.tourNav.scope])).toEqual([false, null]);
@@ -435,7 +438,7 @@ test("a scenario only shown, not started, leaves the stage as it is when it is l
   });
   await page.locator("#tab-overview").click();
   await page.locator("#tab-interaction").click();
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   expect(await page.evaluate(() => [window.__homes, window.__arail.layoutUrl.replace(/.*\//, ""), window.__arail.mode])).toEqual([0, "ebl-lab.json", "camera"]);
   expect(errors).toEqual([]);
 });

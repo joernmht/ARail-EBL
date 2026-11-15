@@ -10,10 +10,14 @@
  * every wagon (a band in the colour of its rolling class, as in the diagrams), the locomotive
  * pushing, impacts too hard (a red flash) and the track numbers. Deterministic: its random numbers come from
  * the world's seed and its id.
+ *
+ * A task (`startTask`, the app's example "Hump a train") humps a train of its own instead, once, into
+ * empty tracks: the hump master pushes it at the speed chosen (`setPush`, also stopped), and
+ * `taskState` says what became of every cut; a cut can be chosen (`choose`, `cutAt`), it is outlined.
  * @module arail/hump/object
  */
 import { resolvePoint } from "../core/anchors.js";
-import { CD, CD_LIGHT, grey, shade } from "../core/colors.js";
+import { CD, CD_LIGHT, OVERLAY, grey, shade } from "../core/colors.js";
 import { createRng } from "../core/math.js";
 import { LayoutObject } from "../core/object.js";
 import { boxFaces } from "../core/transit.js";
@@ -40,6 +44,11 @@ const MAX_STEPS = 400;
  * (`HumpSimulation#forget`), once a list holds twice as much.
  */
 const KEEP = { cuts: 200, trains: 10, departures: 20, log: 1000 };
+/** The task's pushing speed (m/s): its range, its step, and how fast it starts. */
+export const TASK_PUSH = Object.freeze({ min_mps: 0.4, max_mps: 3, step_mps: 0.2, start_mps: 1.2 });
+
+/** A pushing speed within the task's range (m/s). */
+const clampPush = (v) => Math.min(TASK_PUSH.max_mps, Math.max(TASK_PUSH.min_mps, Number(v) || TASK_PUSH.start_mps));
 
 /** A small string hash (FNV-1a) for the object's own random stream. */
 function hash(s) {
@@ -77,6 +86,13 @@ export class HumpYardObject extends LayoutObject {
 
   /** What its simulation keeps of what is done (`HumpSimulation#forget`). */
   keep = { ...KEEP };
+  /**
+   * The task humped (`startTask`): `{wagons, seed, push_mps, stopped, since, train, cuts, hard}`, or
+   * null: train after train by itself.
+   */
+  task = null;
+  /** The id of the cut chosen (outlined), or null. */
+  chosen = null;
 
   /** The yard of the object's figures (kept while they stay the same). */
   get yard() {
@@ -98,14 +114,124 @@ export class HumpYardObject extends LayoutObject {
     if (key !== this._simKey) {
       this._simKey = key;
       const seed = hash(`${this.world.seed ?? 1}:hump:${this.id}`);
-      this._sim = new HumpSimulation(yard, { seed, season: s.season, dt: 0.1, pull_below_m: Number(s.pull_below_m) });
+      // a task fills the tracks once: nothing is pulled out by itself
+      this._sim = new HumpSimulation(yard, { seed, season: s.season, dt: 0.1, pull_below_m: this.task ? null : Number(s.pull_below_m) });
       this._rng = createRng(seed ^ 0x9e3779b9);
       this._trains = 0;
       this._acc = 0;
       this._flashes = [];
       this._seen = 0;
+      this.chosen = null;
+      if (this.task) this._queueTask();
     }
     return this._sim;
+  }
+
+  /**
+   * Hump a train of its own, once, into empty tracks (the yard starts anew): `wagons` random wagons
+   * from the world's seed, the object's id and `seed`, pushed at `push_mps`. Its figures changed in
+   * Build start it again.
+   * @param {{wagons?: number, seed?: number, push_mps?: number}} [options]
+   * @returns {object} the task
+   */
+  startTask({ wagons = Math.round(this.spec.wagons), seed = 1, push_mps = TASK_PUSH.start_mps } = {}) {
+    this.task = { wagons, seed, push_mps: clampPush(push_mps), stopped: false, since: 0, train: null, cuts: [], hard: new Set() };
+    this._simKey = null;
+    void this.sim;
+    return this.task;
+  }
+
+  /** Back to humping train after train by itself (the yard starts anew). */
+  stopTask() {
+    this.task = null;
+    this._simKey = null;
+  }
+
+  /** The task's train, queued in the simulation made for it. */
+  _queueTask() {
+    const t = this.task, sim = this._sim;
+    const rng = createRng(hash(`${this.world.seed ?? 1}:hump-task:${this.id}:${t.seed}`));
+    const wagons = randomTrain(rng, { wagons: t.wagons, tracks: this.yard.tracks.map((x) => x.name) });
+    const rec = sim.hump({ id: "T1", push_mps: t.stopped ? 0 : t.push_mps, wagons });
+    Object.assign(t, { since: sim.t, train: rec.id, cuts: [...rec.cuts], hard: new Set() });
+  }
+
+  /**
+   * The task's pushing speed (m/s, within TASK_PUSH), or the train stopped (`stopped`): the train being
+   * pushed changes speed at once; cuts already free roll on.
+   * @param {{push_mps?: number, stopped?: boolean}} change
+   */
+  setPush({ push_mps, stopped } = {}) {
+    const t = this.task, sim = this.sim;
+    if (!t) return;
+    if (push_mps != null) t.push_mps = clampPush(push_mps);
+    if (stopped != null) t.stopped = !!stopped;
+    const v = t.stopped ? 0 : t.push_mps;
+    for (const r of sim.queue) if (r.id === t.train) r.push_mps = v;
+    if (sim.pushing?.rec.id === t.train) sim.pushing.v = v;
+  }
+
+  /**
+   * What became of the task's cuts, from the hump end of its train: each with its wagons, its track,
+   * its rolling class and where it is (`waiting`, `pushed`, `rolling`, `standing`), the track it stands
+   * in, its speed, whether it went into the wrong track or met the wagons too hard; and the task's
+   * figures (`time_s` since its start on the yard's clock). Null without a task.
+   */
+  taskState() {
+    const t = this.task, sim = this.sim;
+    if (!t) return null;
+    const byId = new Map(sim.cuts.map((c) => [c.id, c]));
+    const cuts = t.cuts.map((id) => byId.get(id)).filter(Boolean).map((c) => {
+      const standing = c.state === "stopped" || c.state === "departed";
+      return {
+        id: c.id, wagons: c.wagons.map((w) => w.type), track: c.intended, now: c.track, cls: cutClass(c), careful: c.careful,
+        state: c.state === "queued" ? "waiting" : c.state === "pushed" ? "pushed" : standing ? "standing" : "rolling",
+        v_mps: c.v, stood: standing ? c.rec.stop?.track ?? null : null,
+        misrouted: !!c.misrouted, hard: t.hard.has(c.id), derailed: c.derailed,
+      };
+    });
+    const done = cuts.filter((c) => c.state === "standing").length;
+    return {
+      cuts, done, of: cuts.length, finished: cuts.length > 0 && done === cuts.length,
+      misrouted: cuts.filter((c) => c.misrouted).length, hard: cuts.filter((c) => c.hard).length,
+      short: cuts.filter((c) => c.state === "standing" && !c.stood).length,
+      time_s: sim.t - t.since, push_mps: t.push_mps, stopped: t.stopped,
+    };
+  }
+
+  /** Choose a cut (its id; outlined on the stage), or none (null). */
+  choose(id) {
+    this.chosen = id ?? null;
+  }
+
+  /**
+   * The wagons on the hump and in the tracks as boxes in layout mm (`{id, center, length, width,
+   * heading, z0, height}`, the id their cut's), for picking them on the stage (`pickBoxes`).
+   */
+  boxes() {
+    const g = this.geometry;
+    if (!g) return [];
+    const sim = this.sim, yard = this.yard, out = [];
+    for (const c of [...(sim.pushing ? sim.pushing.cuts : []), ...sim.bodies]) {
+      const route = c.state === "pushed" ? [yard.root] : c.route;
+      let front = c.s;
+      for (const w of c.wagons) {
+        const rear = front - w.length_m;
+        if (rear >= 0) out.push(this._box(g, route, rear + 0.4, front - 0.4, BODY_M[w.type] ?? [1.0, 3.2], c.id));
+        front = rear;
+      }
+    }
+    return out;
+  }
+
+  /** A wagon's box along the route from `rear` to `front` (m), its body from z0 to z1 (m above the rail). */
+  _box(g, route, rear, front, [z0, z1], id) {
+    const yard = this.yard, a = yard.planAt(route, rear), b = yard.planAt(route, front);
+    const A = g.at(a.x, a.y), B = g.at(b.x, b.y), zr = g.z(yard.height(route, (rear + front) / 2)) + 0.2 * g.k;
+    return {
+      id, center: [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], length: Math.hypot(B[0] - A[0], B[1] - A[1]), width: WAGON_W_M * g.k,
+      heading: Math.atan2(B[1] - A[1], B[0] - A[0]), z0: zr + z0 * g.k, height: (z1 - z0) * g.k,
+    };
   }
 
   computeGeometry() {
@@ -164,7 +290,7 @@ export class HumpYardObject extends LayoutObject {
   update(dt) {
     if (!this.geometry) return;
     const sim = this.sim, s = this.spec;
-    if (!sim.pushing && !sim.queue.length) {
+    if (!sim.pushing && !sim.queue.length && !this.task) {
       sim.hump({ id: `T${++this._trains}`, push_mps: Number(s.push_mps), wagons: randomTrain(this._rng, { wagons: Math.round(s.wagons), tracks: this.yard.tracks.map((t) => t.name) }) });
     }
     this._acc += dt;
@@ -179,7 +305,10 @@ export class HumpYardObject extends LayoutObject {
     // impacts too hard flash for a while: those the card counts (cut.hard; _seen counts the log's entries since the start)
     for (this._seen = Math.max(this._seen, sim.logStart); this._seen < sim.logStart + sim.log.length; this._seen++) {
       const e = sim.log[this._seen - sim.logStart];
-      if (e.type === "cut.hard") this._flashes.push({ t: sim.t, cut: e.cut });
+      if (e.type === "cut.hard") {
+        this._flashes.push({ t: sim.t, cut: e.cut });
+        this.task?.hard.add(e.cut);
+      }
     }
     this._flashes = this._flashes.filter((f) => sim.t - f.t < FLASH_S);
     // what is done goes, its figures stay
@@ -252,6 +381,17 @@ export class HumpYardObject extends LayoutObject {
         const rear = front - w.length_m;
         if (rear >= start) this._drawWagon(view, g, route, w, rear + 0.4, front - 0.4, cls, flashing.has(c.id));
         front = rear;
+      }
+    }
+    // the cut chosen, outlined
+    const chosen = this.chosen && cuts.find((c) => c.id === this.chosen);
+    if (chosen) {
+      const route = chosen.state === "pushed" ? [yard.root] : chosen.route, rear = Math.max(start, chosen.s - chosen.body.length_m);
+      if (chosen.s > start) {
+        const b = this._box(g, route, rear, chosen.s, [0, 4.4], chosen.id);
+        const c = Math.cos(b.heading), s = Math.sin(b.heading), l = b.length / 2 + view.m(1.5), w = b.width / 2 + view.m(1.2);
+        const pts = [[-l, -w], [l, -w], [l, w], [-l, w]].map(([x, y]) => [b.center[0] + x * c - y * s, b.center[1] + x * s + y * c]);
+        view.polygon(pts, { z: b.z0 + b.height, stroke: OVERLAY.selection, width: 2.5, layer: "overlay", order: 90 });
       }
     }
     // the locomotive pushing the train, behind its last cut
