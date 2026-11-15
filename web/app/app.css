@@ -51,6 +51,8 @@
   --font: "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: "Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --radius: 8px;
+  /* the rolling classes of the hump yard's cuts, as the bands on their wagons (hump/diagrams.js) */
+  --run-good: #0A777F; --run-medium: #00008C; --run-bad: #C85000;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -60,6 +62,7 @@
     --bar-primary: #36b8bf; --bar-primary-text: #001450;
     --board: #001450; --board-2: #0c2766; --board-line: #2a4a92; --board-text: #eaf1ff; --board-muted: #a0b4d8; --board-warn: #f0922e;
     --stage: #00030f; --focus: #36b8bf;
+    --run-good: #36b8bf; --run-medium: #8c8fdd; --run-bad: #f0922e;
     color-scheme: dark;
   }
 }
@@ -70,6 +73,7 @@
   --bar-primary: #36b8bf; --bar-primary-text: #001450;
   --board: #001450; --board-2: #0c2766; --board-line: #2a4a92; --board-text: #eaf1ff; --board-muted: #a0b4d8; --board-warn: #f0922e;
   --stage: #00030f; --focus: #36b8bf;
+  --run-good: #36b8bf; --run-medium: #8c8fdd; --run-bad: #f0922e;
   color-scheme: dark;
 }
 
@@ -288,30 +292,30 @@ details.info-section[open] > summary { margin-bottom: 4px; }
 @media (max-width: 640px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 @container panel (max-width: 480px) { .tabs button { padding-inline: 4px; font-size: .85rem; } }
 .tabpanel { padding: 14px 16px 28px; display: grid; gap: 18px; }
-/* Interaction: the scenarios as cards to click, with filter pills above them; a scenario shown, light
+/* Interaction: the examples as cards to click, with filter pills above them; an example shown, light
    and without boxes: the way back to the list, its name, Start or the bar of its task, then its panel */
-.scenarios { display: grid; gap: 14px; }
+.cases { display: grid; gap: 14px; }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .pill { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 5px 12px; min-height: 32px; font: inherit; font-size: .84rem; font-weight: 500; cursor: pointer; }
 .pill:hover { border-color: var(--accent); }
 .pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-.scenario-card { width: 100%; height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 2px 10px; text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface-2); color: var(--text); padding: 10px 12px 11px; font: inherit; cursor: pointer; }
-.scenario-card:hover { border-color: var(--accent); }
-.scenario-card[aria-current="true"] { border-color: var(--warn); border-left-color: var(--warn); }
-.scenario-card.off { border-left-color: var(--line); }
-.scenario-card > span { grid-column: 2; }
-.scenario-card > .scenario-icon { grid-column: 1; grid-row: 1 / span 3; width: 26px; height: 26px; margin-top: 3px; color: var(--accent-ink); }
-.scenario-icon svg, .module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.scenario-tag { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
-.scenario-card .scenario-name { font-weight: 700; font-size: .98rem; line-height: 1.25; overflow-wrap: anywhere; }
-.scenario-card.off .scenario-name { color: var(--text-2); }
-.scenario-text { color: var(--text-2); font-size: .84rem; line-height: 1.35; }
-.scenario-state { color: var(--accent-ink); font-weight: 600; }
+.case-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.case-card { width: 100%; height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; gap: 2px 10px; text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface-2); color: var(--text); padding: 10px 12px 11px; font: inherit; cursor: pointer; }
+.case-card:hover { border-color: var(--accent); }
+.case-card[aria-current="true"] { border-color: var(--warn); border-left-color: var(--warn); }
+.case-card.off { border-left-color: var(--line); }
+.case-card > span { grid-column: 2; }
+.case-card > .case-icon { grid-column: 1; grid-row: 1 / span 3; width: 26px; height: 26px; margin-top: 3px; color: var(--accent-ink); }
+.case-icon svg, .module-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.case-tag { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.case-card .case-name { font-weight: 700; font-size: .98rem; line-height: 1.25; overflow-wrap: anywhere; }
+.case-card.off .case-name { color: var(--text-2); }
+.case-text { color: var(--text-2); font-size: .84rem; line-height: 1.35; }
+.case-state { color: var(--accent-ink); font-weight: 600; }
 .interaction { display: grid; align-content: start; }
-.scenario-head { display: grid; gap: 10px; justify-items: start; margin-bottom: 14px; }
-.scenario-head h2 { margin: 0; font-size: 1.3rem; line-height: 1.25; }
-.scenario-task { display: grid; gap: 6px; margin-bottom: 18px; }
+.case-head { display: grid; gap: 10px; justify-items: start; margin-bottom: 14px; }
+.case-head h2 { margin: 0; font-size: 1.3rem; line-height: 1.25; }
+.case-task { display: grid; gap: 6px; margin-bottom: 18px; }
 .task-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
 .task-count { font-weight: 600; font-size: .86rem; font-variant-numeric: tabular-nums; }
 .task-done { font-weight: 700; font-size: .86rem; color: var(--accent-ink); }
@@ -710,6 +714,25 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent-ink);
 .plan-axis span { position: absolute; transform: translateX(-50%); }
 .plan-axis span:first-child { transform: none; }
 .plan-axis span:last-child { transform: translateX(-100%); }
+
+/* the hump yard (Hump a train, hump.js): the pushing speed and its buttons, how the train goes; its
+   cuts as buttons, a line at their side in the colour of their rolling class; the tracks as a table */
+.hump-push { align-items: center; }
+.hump-speed { min-width: 5.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hump-status { margin: 0; font-size: .86rem; font-weight: 600; color: var(--accent-ink); }
+.hump-status.bad { color: var(--danger); }
+.hump-cuts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.hump-cut { width: 100%; height: 100%; display: grid; gap: 1px; text-align: left; font: inherit; font-size: .84rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-left: 4px solid var(--run-good); border-radius: var(--radius); padding: 6px 9px; cursor: pointer; }
+.hump-cut.run-medium { border-left-color: var(--run-medium); }
+.hump-cut.run-bad { border-left-color: var(--run-bad); }
+.hump-cut.problem { border-top-color: var(--danger); border-right-color: var(--danger); border-bottom-color: var(--danger); }
+.hump-cut:hover { border-color: var(--accent); }
+.hump-cut[aria-pressed="true"] { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.hump-cut .meta, .hump-cut-state { color: var(--text-2); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.hump-bad { color: var(--danger); font-weight: 600; }
+.hump-tracks { border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
+.hump-tracks th, .hump-tracks td { padding: 3px 12px 3px 0; text-align: left; border-bottom: 1px solid var(--line); }
+.hump-tracks thead th { color: var(--text-2); font-weight: 600; }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

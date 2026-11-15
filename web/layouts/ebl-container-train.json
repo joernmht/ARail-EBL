@@ -90,7 +90,7 @@
     {
       "id": "task",
       "name": "Loading task",
-      "description": "Work orders for the crane in a full terminal: the yard full, its stacks at most three high, and the train full too. Three containers go onto the real container train: one from the bottom of a stack, one from under another, one from the real truck. A big 40 ft high cube comes off the train into the yard, where it has no place yet. Two containers go onto the real truck, one of them from under another. The scenario Load the hybrid train plays it and counts the time and the moves.",
+      "description": "Work orders for the crane in a full terminal: the yard full, its stacks at most three high, and the train full too. Three containers go onto the real container train: one from the bottom of a stack, one from under another, one from the real truck. A big 40 ft high cube comes off the train into the yard, where it has no place yet. Two containers go onto the real truck, one of them from under another. The example Load the hybrid train plays it and counts the time and the moves.",
       "simulations": [
         {
           "type": "terminal",

@@ -2,11 +2,12 @@
 // module, the push track meeting the table), the plan of the yard (a fan), train after train in the world
 // (deterministic, a change of figures makes it anew, moving it keeps it), drawing in the flyover (ballast,
 // wagons, retarders braking, only finite coordinates), its figures changed while paused, a run of hours (what is done
-// forgotten, the card and the flashes as they were), its card and its German texts.
+// forgotten, the card and the flashes as they were), its card and its German texts; the task of the app's
+// example "Hump a train" (one train of its own, pushed at the speed chosen, its cuts chosen on the stage).
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CD, Camera, FlyCamera, HumpYardObject, View, createWorld, registry, standardYard, toRad, validateLayout } from "../../web/arail/index.js";
+import { CD, Camera, FlyCamera, HumpYardObject, OVERLAY, TASK_PUSH, View, createWorld, pickBoxes, registry, standardYard, toRad, validateLayout } from "../../web/arail/index.js";
 import { withLayers } from "../../web/arail/core/layers.js";
 import { DE } from "../../web/arail/i18n/de.js";
 import { readJSON } from "./helpers.js";
@@ -208,6 +209,94 @@ test("for hours: what is done is forgotten, the card's figures and the flashes s
   const rows = Object.fromEntries(a.card().rows);
   assert.ok(Number(rows["Trains pulled out"]) >= 2, `${rows["Trains pulled out"]} trains pulled out`);
   assert.deepEqual(b.card().rows, a.card().rows, "the same card");
+});
+
+test("a task: one train of its own into empty tracks, pushed at the speed chosen; what became of every cut; a cut chosen on the stage", () => {
+  const world = lone(), hump = world.getObject("hump");
+  run(world, 200); // train after train by itself first
+  assert.ok(hump.sim.cuts.length > 5);
+  const task = hump.startTask({ wagons: 20, seed: 2 });
+  assert.equal(task.finished_s, null);
+  assert.equal(task.push_mps, TASK_PUSH.start_mps);
+  let st = hump.taskState();
+  assert.ok(st.of >= 6 && st.done === 0 && !st.finished, `${st.of} cuts, none standing`);
+  assert.deepEqual(hump.sim.bodies, [], "the tracks empty");
+  assert.equal(st.cuts.reduce((n, c) => n + c.wagons.length, 0), 20, "the train's 20 wagons");
+  assert.ok(st.cuts.every((c) => c.state === "waiting" && hump.yard.tracks.some((t) => t.name === c.track)));
+  // the same world's seed and task: the same train
+  const again = lone().getObject("hump");
+  again.startTask({ wagons: 20, seed: 2 });
+  assert.deepEqual(again.taskState().cuts.map((c) => [c.wagons, c.track]), st.cuts.map((c) => [c.wagons, c.track]));
+  // stopped, the train waits before the crest; pushed again, faster, at once
+  hump.setPush({ stopped: true });
+  run(world, 30);
+  assert.equal(hump.sim.pushing.v, 0);
+  st = hump.taskState();
+  assert.ok(st.stopped && st.cuts.every((c) => c.state === "pushed"), "nothing released while stopped");
+  hump.setPush({ stopped: false, push_mps: 1.6 });
+  assert.equal(hump.sim.pushing.v, 1.6);
+  hump.setPush({ push_mps: 99 });
+  assert.equal(hump.taskState().push_mps, TASK_PUSH.max_mps, "within its range");
+  hump.setPush({ push_mps: 1.4 });
+  run(world, 60);
+  st = hump.taskState();
+  assert.ok(st.cuts.some((c) => c.state === "rolling" || c.state === "standing"), "cuts released");
+  // a cut picked on the stage: the boxes of its wagons; chosen, it is outlined
+  const cam = new FlyCamera({ target: [-1800, 0], distance: 2600, yaw: toRad(100), pitch: toRad(35) });
+  const { view } = flyView(cam);
+  world.draw(view);
+  const boxes = hump.boxes();
+  assert.ok(boxes.length > 0 && boxes.every((b) => st.cuts.some((c) => c.id === b.id)), "the wagons of the task's cuts");
+  const b = boxes.find((x) => view.project(x.center[0], x.center[1], x.z0 + x.height / 2));
+  const [u, v] = view.project(b.center[0], b.center[1], b.z0 + b.height / 2);
+  assert.equal(pickBoxes(view, boxes, u, v) != null, true, "a wagon picked where it is drawn");
+  hump.choose(b.id);
+  const chosen = flyView(cam);
+  world.draw(chosen.view);
+  assert.ok(chosen.strokes.some((s) => same(s.color, OVERLAY.selection)), "the cut chosen outlined");
+  // to its end: every cut stands, the task finished; the count of cuts that stood never goes back
+  let last = st.done;
+  for (let i = 0; i < 9000 && !hump.taskState().finished; i++) {
+    world.step(0.1);
+    const now = hump.taskState();
+    assert.ok(now.done >= last, `the count goes on: ${now.done} after ${last}`);
+    last = now.done;
+  }
+  st = hump.taskState();
+  // the time stops when the train is broken up
+  const finishedAt = st.time_s;
+  assert.ok(finishedAt > 0 && finishedAt < hump.sim.t - hump.task.since + 1e-9);
+  run(world, 120);
+  assert.equal(hump.taskState().time_s, finishedAt, "the time stays as it was when the last cut stood");
+  assert.ok(st.finished, `${st.done} of ${st.of} standing`);
+  assert.equal(hump.sim.trains.length, 1, "no train of its own");
+  assert.ok(st.cuts.every((c) => c.state === "standing" && (c.stood === null || hump.yard.tracks.some((t) => t.name === c.stood))));
+  assert.equal(st.misrouted, st.cuts.filter((c) => c.now !== c.track).length);
+  assert.equal(st.short + st.derailed + st.cuts.filter((c) => c.stood).length, st.of, "every cut in a track, derailed or short of it");
+  // stopped: train after train again, in empty tracks
+  hump.stopTask();
+  const t0 = world.time;
+  run(world, 10);
+  assert.equal(hump.taskState(), null);
+  assert.equal(hump.sim.trains.length, 1);
+  near(hump.sim.t, world.time - t0, 0.2, "a new run of its own");
+});
+
+test("a task pushed too fast: the yard backs up to the crest, the task still ends; derailed cuts counted as derailed, not as short of their tracks", () => {
+  const world = lone({ design: "target" }), hump = world.getObject("hump");
+  hump.startTask({ wagons: 30, seed: 3, push_mps: TASK_PUSH.max_mps });
+  for (let i = 0; i < 20000 && !hump.taskState().finished; i++) world.step(0.1);
+  const st = hump.taskState();
+  assert.ok(st.finished);
+  assert.equal(st.derailed, st.cuts.filter((c) => c.derailed).length);
+  assert.ok(st.cuts.filter((c) => c.derailed).every((c) => c.state === "standing"), "a derailed cut stands");
+  assert.equal(st.short, st.cuts.filter((c) => c.state === "standing" && !c.stood && !c.derailed).length);
+  // the yard backed up to the crest: no held cut keeps a speed (it would roll for ever), the task ends
+  assert.ok(hump.sim.bodies.every((b) => !b.held || b.v === 0), "held cuts stand");
+  assert.equal(st.notHumped, st.cuts.filter((c) => c.state === "waiting" || c.state === "pushed").length);
+  const at = st.time_s;
+  run(world, 60);
+  assert.equal(hump.taskState().time_s, at);
 });
 
 test("the hump yard's texts in German", () => {

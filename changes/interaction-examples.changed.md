@@ -1,0 +1,1 @@
+- **Interaction lists examples** (`web/app/interaction.js`): the list of Interaction is called *Examples* now (*← Examples*, its address `#examples`); the former `#scenarios` still opens it. The layout's scenarios of disruptions (Interaction → Disruptions, `?scenario=`) keep their name.

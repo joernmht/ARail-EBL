@@ -164,7 +164,7 @@ export const WORLD = [
     ],
     activities: [{
       id: "module", name: "Switching a module",
-      description: "Interaction → Sandbox (the module boxes), or the Start of a scenario whose module is off: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
+      description: "Interaction → Sandbox (the module boxes), or the Start of an example of Interaction whose module is off: App.toggleModule, then the layout is saved with its edits and loaded again with the new choice.",
       nodes: [
         ["s", "start"],
         ["d0", "decision", "A module of the app (Build, Disruptions)?"],

@@ -103,7 +103,7 @@ test("two quick clicks on the perspective button go two sides on, also while the
 });
 
 test("the hybrid train's layout reopened with its own photo, no scenario: the tour knows the photo, and a change of perspective comes back to it", async ({ page }) => {
-  const errors = await openApp(page, "/app/?layout=../layouts/ebl-container-train.json#scenarios");
+  const errors = await openApp(page, "/app/?layout=../layouts/ebl-container-train.json#examples");
   await page.waitForFunction(() => window.__arail.tourNav.showing(), null, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__arail.tourNav.scope)).toBeNull();
   expect(await shown(page)).toEqual(["terminal-wagons", "front"]);
@@ -163,7 +163,7 @@ test("the hybrid container train's example with its scenario shown: the tour off
   expect(await shown(page)).toEqual(["terminal-wagons", "front"]);
   expect(await page.evaluate(() => window.__arail.tourNav.tour.photos().map((p) => p.id))).toEqual(["141012", "terminal-wagons"]);
   // the list of scenarios: all photos again
-  await page.locator("#scenariosBack").click();
+  await page.locator("#casesBack").click();
   await page.waitForFunction(() => !window.__arail.tourNav.scope);
   // the example opened again from Settings → View: its scenario shown, its photos only
   await page.locator("#tab-settings").click();

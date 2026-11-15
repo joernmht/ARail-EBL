@@ -102,7 +102,7 @@ export {
   ROLLING_DEFAULTS, decodeTag, encodeTag, RollingStock, registerTerminal,
 } from "./terminal/index.js";
 // the hump yard: the object on the table and its simulation (named exports only; its figures stay in hump/index.js)
-export { HumpYardObject, HumpSimulation, HumpYard, standardYard, humpDiagrams, registerHump } from "./hump/index.js";
+export { HumpYardObject, HumpSimulation, HumpYard, standardYard, humpDiagrams, registerHump, TASK_PUSH, CLASS_LABELS as HUMP_CLASS_LABELS } from "./hump/index.js";
 // rail operations: fleet, maintenance (ECM), crews and penalties (named exports only, like the terminal)
 export {
   OPS_DEFAULTS, DEFAULT_PROGRAM, DEFAULT_SOFT, DEFAULT_VEHICLE, DEFAULT_PARTIES, DEFAULT_CONTRACTS, PRESET_SETUPS, PRESET_STRESS,

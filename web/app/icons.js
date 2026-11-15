@@ -1,4 +1,4 @@
-// The icons of Interaction: line drawings in the colour of the text, for the scenarios in the list
+// The icons of Interaction: line drawings in the colour of the text, for the examples in the list
 // and the boxes of the modules (24 × 24, drawn with currentColor).
 import { h } from "./ui.js";
 
@@ -16,6 +16,7 @@ export const ICONS = {
   intro: '<svg viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M10 9v6l5-3-5-3Z"/></svg>',
   sandbox: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8 4.8-2.2Z"/></svg>',
   people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="6.5" r="2.5"/><path d="M4.5 20v-5a4.5 4.5 0 0 1 9 0v5"/><circle cx="17" cy="8.5" r="2"/><path d="M15 13.2a3.5 3.5 0 0 1 5.5 2.8V20"/></svg>',
+  hump: '<svg viewBox="0 0 24 24"><path d="M2 20h6l4-6h1l9 6"/><path d="M14.9 14.3 18.9 17l1.4-2.1-4-2.7Z"/></svg>',
   freight: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="1"/><path d="M7 7v10M11 7v10M15 7v10M5 20h.01M19 20h.01"/></svg>',
 };
 

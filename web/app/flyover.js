@@ -460,12 +460,14 @@ export class Flyover {
       this.app.terminal.pickAt([W / 2, H / 2], { keyboard: true });
       return true;
     }
-    // the info card of what is at the cross in the middle (outside Build and Terminal)
+    // the info card of what is at the cross in the middle (outside Build and Terminal; in Hump a train, the cut there)
     if (e.key === "Enter" && !placing && !this.app.showing("build") && t === c) {
       if (e.repeat) return true;
       if (this.anim) this.cam.set(this.anim.to);
       this.anim = null;
-      this.app.inspector.inspectCentre();
+      // Hump a train: the cut at the cross, else a hint to move the view
+      if (this.app.showing("hump")) this.app.hump.pickAt([W / 2, H / 2], { keyboard: true });
+      else this.app.inspector.inspectCentre();
       return true;
     }
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
@@ -698,7 +700,8 @@ export class Flyover {
       if (q) ed.placeAt(q, e);
     } else if (!g.moved && app.showing("build") && g.button === 0 && !g.shift) ed.select(null); // a tap on empty space
     else if (!g.moved && app.showing("terminal") && g.button === 0 && !g.shift) app.terminal.pickAt(p); // a container or a place
-    else if (!g.moved && g.button === 0 && !g.shift) app.inspector.tapAt(p, { touch: e.pointerType !== "mouse" }); // the info card
+    // a cut of the train humped (Hump a train), else the info card
+    else if (!g.moved && g.button === 0 && !g.shift && !(app.showing("hump") && app.hump.pickAt(p))) app.inspector.tapAt(p, { touch: e.pointerType !== "mouse" });
   }
 
   /** Centre, spread and angle of the two fingers on the canvas. */

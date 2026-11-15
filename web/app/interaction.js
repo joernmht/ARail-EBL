@@ -1,15 +1,17 @@
-// The Interaction chapter: the scenarios to start (cases.js), as a list with filter pills (First
+// The Interaction chapter: the examples to start (cases.js), as a list with filter pills (First
 // steps, the sides Infrastructure and Railway undertaking, Passengers, Freight, Tools), and the
-// scenario shown, light in text: the way back to the list, its name, Start until it is started, then
-// the bar of its task (and its figures), and its panel. What a scenario is about is said in the list.
+// example shown, light in text: the way back to the list, its name, Start until it is started, then
+// the bar of its task (and its figures), and its panel. What an example is about is said in the list.
 // Start sets up the stage for it (its module, its view).
 import { SIDES, TAGS } from "./cases.js";
 import { icon } from "./icons.js";
 import { h, morph, mount, storage } from "./ui.js";
 
-/** The list of scenarios: what Interaction shows when no scenario is (app.activeCase). */
-export const LIST = "scenarios";
-/** The pill that shows all scenarios. */
+/** The list of examples: what Interaction shows when no example is (app.activeCase). */
+export const LIST = "examples";
+/** Former addresses of the list (#scenarios: old links, and what a browser kept). */
+export const LIST_ALIASES = ["scenarios"];
+/** The pill that shows all examples. */
 const ALL = { id: "all", label: "All" };
 
 export class Interaction {
@@ -50,18 +52,18 @@ export class Interaction {
       return;
     }
     const panel = h("div", { class: "case-panel", id: "casePanel" });
-    this.taskBox = h("div", { class: "scenario-task", id: "scenarioTask" });
+    this.taskBox = h("div", { class: "case-task", id: "caseTask" });
     mount(el, h("div", { class: "interaction", "data-case": shown.id },
-      h("div", { class: "scenario-head" },
-        h("button", { class: "btn small scenario-back", type: "button", id: "scenariosBack", onclick: () => this.back() },
-          h("span", { "aria-hidden": "true" }, "← "), "Scenarios"),
-        h("h2", { class: "scenario-name", id: "scenarioName", tabindex: "-1" }, shown.label)),
+      h("div", { class: "case-head" },
+        h("button", { class: "btn small case-back", type: "button", id: "casesBack", onclick: () => this.back() },
+          h("span", { "aria-hidden": "true" }, "← "), "Examples"),
+        h("h2", { class: "case-name", id: "caseName", tabindex: "-1" }, shown.label)),
       this.taskBox,
       panel));
     this._task(shown);
     shown.render(panel);
     // Start is gone once started: its name takes the focus
-    if (focused) (document.getElementById(focused) ?? document.getElementById("scenarioName"))?.focus();
+    if (focused) (document.getElementById(focused) ?? document.getElementById("caseName"))?.focus();
   }
 
   /** Draw the chapter again if it is shown (a module switched). */
@@ -77,14 +79,14 @@ export class Interaction {
     c.update();
   }
 
-  /** Back to the list of scenarios; the one left has the focus there. */
+  /** Back to the list of examples; the one left has the focus there. */
   back() {
     const from = this.app.activeCase;
     this.app.selectTab(LIST);
-    document.getElementById(`scenario-${from}`)?.focus();
+    document.getElementById(`case-${from}`)?.focus();
   }
 
-  /** Outline what the scenario shown is about (the app draws it after the stage, camera view and flyover). */
+  /** Outline what the example shown is about (the app draws it after the stage, camera view and flyover). */
   drawFocus(ctx, view) {
     this.app.shownCase?.panel?.drawFocus?.(ctx, view);
   }
@@ -93,31 +95,31 @@ export class Interaction {
 
   _list() {
     const pills = this.pills(), shown = this.shown(), filter = pills.some((p) => p.id === this.filter) ? this.filter : ALL.id;
-    return h("div", { class: "scenarios" },
+    return h("div", { class: "cases" },
       h("div", { class: "section" },
-        h("h2", { id: "scenariosTitle", tabindex: "-1" }, "Scenarios"),
-        h("p", { class: "hint" }, "Each scenario sets up the stage and gives you a small task to try."),
-        pills.length > 2 ? h("div", { class: "pills", role: "group", "aria-label": "Filter the scenarios" },
+        h("h2", { id: "casesTitle", tabindex: "-1" }, "Examples"),
+        h("p", { class: "hint" }, "Each example sets up the stage and gives you a small task to try."),
+        pills.length > 2 ? h("div", { class: "pills", role: "group", "aria-label": "Filter the examples" },
           pills.map((p) => h("button", { type: "button", class: "pill", id: `pill-${p.id}`, "aria-pressed": p.id === filter ? "true" : "false", onclick: () => this.choose(p.id) }, p.label))) : null),
-      h("ul", { class: "scenario-list", "aria-labelledby": "scenariosTitle" }, shown.map((c) => h("li", {}, this._card(c)))));
+      h("ul", { class: "case-list", "aria-labelledby": "casesTitle" }, shown.map((c) => h("li", {}, this._card(c)))));
   }
 
   /**
-   * A scenario as a card to click: its icon, its side or kind, its name and what it is about, and
-   * that it was done (one scenario runs at a time: going back to the list ends it). Its accessible
+   * An example as a card to click: its icon, its side or kind, its name and what it is about, and
+   * that it was done (one example runs at a time: going back to the list ends it). Its accessible
    * name is its side and name, what it is about describes it.
    */
   _card(c) {
-    const id = `scenario-${c.id}`;
+    const id = `case-${c.id}`;
     const state = c.completed ? "Done" : !c.startable ? "Not in this layout" : null;
     return h("button", {
-      type: "button", class: `scenario-card${c.startable ? "" : " off"}`, id, "aria-labelledby": `${id}-tag ${id}-name`, "aria-describedby": `${id}-text`,
+      type: "button", class: `case-card${c.startable ? "" : " off"}`, id, "aria-labelledby": `${id}-tag ${id}-name`, "aria-describedby": `${id}-text`,
       onclick: () => this.app.startCase(c.id),
     },
-    icon(c.constructor.icon, "scenario-icon"),
-    h("span", { class: "scenario-tag", id: `${id}-tag` }, this._tagText(c)),
-    h("span", { class: "scenario-name", id: `${id}-name` }, c.label),
-    h("span", { class: "scenario-text", id: `${id}-text` }, c.constructor.description, state ? [" (", h("span", { class: "scenario-state" }, state), ")"] : null));
+    icon(c.constructor.icon, "case-icon"),
+    h("span", { class: "case-tag", id: `${id}-tag` }, this._tagText(c)),
+    h("span", { class: "case-name", id: `${id}-name` }, c.label),
+    h("span", { class: "case-text", id: `${id}-text` }, c.constructor.description, state ? [" (", h("span", { class: "case-state" }, state), ")"] : null));
   }
 
   /** The side of a case, else its first tag ("Railway undertaking", "First steps", "Tools"). */
@@ -138,7 +140,7 @@ export class Interaction {
       this.taskBox.hidden = false;
       // in place: Start keeps the focus
       morph(this.taskBox, h("div", { class: "row" },
-        h("button", { class: "btn primary", type: "button", id: "scenarioStart", disabled: !c.startable, onclick: () => this.app.startCase(c.id) }, "Start")));
+        h("button", { class: "btn primary", type: "button", id: "caseStart", disabled: !c.startable, onclick: () => this.app.startCase(c.id) }, "Start")));
       return;
     }
     const p = C.steps ? null : c.progress(), figures = c.figures();
@@ -146,7 +148,7 @@ export class Interaction {
     const n = p ? Math.min(p.done, p.of) : 0, pct = p?.of ? Math.round((100 * n) / p.of) : 0;
     morph(this.taskBox,
       p ? h("div", { class: "task-progress" },
-        h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "scenarioName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(n), "aria-valuetext": `${n} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
+        h("div", { class: "story-progress", role: "progressbar", "aria-labelledby": "caseName", "aria-valuemin": "0", "aria-valuemax": String(p.of), "aria-valuenow": String(n), "aria-valuetext": `${n} of ${p.of}` }, h("i", { style: { width: `${pct}%` } })),
         h("span", { class: "task-count" }, `${n} of ${p.of}`),
         // always there, so that Done is announced when it comes (and not every count)
         h("span", { class: "task-done", role: "status" }, c.done ? "Done" : "")) : null,

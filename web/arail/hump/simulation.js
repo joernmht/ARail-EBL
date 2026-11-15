@@ -56,7 +56,7 @@ export class HumpSimulation {
     this.bodies = [];
     /** Trains waiting to be humped. */
     this.queue = [];
-    /** The train being pushed: its record, the cuts still on it, its speed. */
+    /** The train being pushed: its record, the cuts still on it, its speed, whether a held cut blocks it. */
     this.pushing = null;
     /** The trains, as records. */
     this.trains = [];
@@ -254,24 +254,34 @@ export class HumpSimulation {
       Object.assign(c, { s: front, v: rec.push_mps, state: "pushed", route: [this.yard.root] });
       front -= c.body.length_m;
     }
-    this.pushing = { rec, cuts, v: rec.push_mps };
+    this.pushing = { rec, cuts, v: rec.push_mps, blocked: false };
     this.note("train.started", { train: rec.id, cuts: cuts.length });
     if (!cuts.length) this._humped();
   }
 
-  /** The train moves on at its pushing speed; its first cut runs free once gravity pulls it faster. */
+  /**
+   * The train moves on at its pushing speed; its first cut runs free once gravity pulls it faster. A
+   * cut held ahead of it (the yard backed up to the crest, its cuts held at the end of a track or
+   * derailed) cannot be pushed on: the train stops behind it (`blocked`, noted once) and releases nothing.
+   */
   _push(dt) {
     const P = this.pushing;
     if (!P) return;
+    const head = P.cuts[0], held = this._leader(head);
+    const room = held?.held ? Math.max(0, held.s - held.body.length_m - head.s) : Infinity;
+    const ds = Math.min(P.v * dt, room), blocked = P.v > 0 && ds < P.v * dt - 1e-9;
+    if (blocked && !P.blocked) this.note("train.blocked", { train: P.rec.id, by: held.id });
+    P.blocked = blocked;
     for (const c of P.cuts) {
-      c.s += P.v * dt;
-      c.v = P.v;
+      c.s += ds;
+      c.v = blocked ? 0 : P.v;
       c.a = 0;
     }
+    if (blocked) return;
     const first = P.cuts[0];
     // a cut standing just beyond the crest is pushed on by the train
     const ahead = this._leader(first);
-    if (ahead && ahead.s - ahead.body.length_m < first.s) {
+    if (ahead && !ahead.held && ahead.s - ahead.body.length_m < first.s) {
       ahead.s = first.s + ahead.body.length_m;
       ahead.v = Math.max(ahead.v, P.v);
       ahead.state = "running";
