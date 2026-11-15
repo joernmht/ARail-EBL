@@ -24,7 +24,7 @@ and at 10× a whole day passes in twelve minutes.
 "clock": { "start": "06:30", "factor": 12, "profiles": true }
 ```
 
-In the app (**Settings → Simulation → Time of day**) you can set the time with the slider or the presets
+In the app (**Settings → Simulation → Time of day**) you can set the time with the presets
 (morning, noon, evening, night), choose another fast-clock ratio, switch the day/night lighting
 off and stop the clock. The time is shown at the top left of the stage (*07:32*, with *· night*
 between sunset and sunrise).
@@ -32,7 +32,7 @@ between sunset and sunrise).
 ### Light
 
 Sunrise is at 06:00 and sunset at 20:30, each with a twilight of about an hour and a half; with a
-date on the clock (Settings → Simulation → Date and weather) the sun rises and sets as on that day
+date on the clock (Settings → Simulation → Season and weather) the sun rises and sets as on that day
 in Dresden, 08:06 to 16:01 on 21 December (see [Seasons and weather](weather.md)). At
 night the camera image and everything ARail draws get darker and bluer (towards the chair's
 Dunkelblau); lit windows, street lamps, head- and tail lights and the windows of trains and
@@ -162,9 +162,10 @@ when people are in (`world.occupancy`).
 People in the town are coloured by the purpose of their trip, in the chair's corporate-design
 colours: **to work** Türkis, **to school** Orange, **shopping** Gelb, **home** Brillantblau,
 **to the train** Rot. Other passengers at platforms and stops keep the mood colours (Türkis = happy,
-Gelb = so-so, Rot = annoyed). **Settings → Simulation → Town → Colour of people** switches between both, or
-everybody by purpose or by mood. The Town section also counts who is at home, at work, at school,
-shopping, on the bus, by car, at stops and away, the captive adults (no licence or no car), and how
+Gelb = so-so, Rot = annoyed). **Settings → View → Show → Colour of people** switches between both, or
+everybody by purpose or by mood. The **Overview → Measured → Town** counts the people of the town and
+how many are on their way, on the bus and by car; `town.townStats()` also counts who is at home, at
+work, at school, shopping, at stops and away, the captive adults (no licence or no car), and how
 often one of them gave up waiting at a stop or found it closed (a cancelled bus strands them: they have
 no car to take instead).
 
@@ -173,11 +174,12 @@ no car to take instead).
 Every trip of a resident is recorded from its door (or the train it came by) to the door it goes
 to, in clock minutes and in its parts: **on foot**, **waiting** at a stop, **at the doors** (getting
 on and off), **riding**, **by car**. The card of a person lists today's trips ("07:12 to work:
-23 min (on foot 9 min, waiting 6 min, riding 7 min)"). **Settings → Simulation → Town** shows the
-mean of the trips that reached their building by group: everybody, children, adults, old people,
-those with a walking stick, a rollator, a wheelchair or a pram, with heavy or bulky luggage, and
-those without a licence or a car; **Download the trips (CSV)** gives every trip for the debriefing.
-`town.tripStats()` and `town.tripsCSV()` give the same to scripts.
+23 min (on foot 9 min, waiting 6 min, riding 7 min)"). **Overview → Measured → Door to door** shows the
+mean minutes of all trips that reached their building; **Download the trips (CSV)** there gives every
+trip for the debriefing. `town.tripStats()` gives the mean by group to scripts (everybody, children,
+adults, old people, those with a walking stick, a rollator, a wheelchair or a pram, with heavy or
+bulky luggage, and those without a licence or a car), in all and in each part, and `town.tripsCSV()`
+every trip.
 
 ### Settings
 

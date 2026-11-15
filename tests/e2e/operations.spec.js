@@ -82,13 +82,19 @@ test("its trains stand at the platforms with their units and driver; the boards 
   });
   expect(label.label).toMatch(/^(RE|RB|S) \d/);
   expect(label.info.join(" ")).toMatch(/442 \d{3}/);
-  await page.locator("#tab-settings").click();
-  await page.locator("#settingsView-simulate").click();
-  await expect(page.locator("#panel-settings .board")).toContainText(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
-  // trains cannot be called to the platforms of the operations
-  const calls = await page.locator("#panel-settings .board .calls .btn", { hasText: "Train →" }).evaluateAll((b) => b.map((x) => x.disabled));
-  expect(calls.length).toBeGreaterThan(0);
-  expect(calls.every(Boolean)).toBe(true);
+  // the boards over the platforms show its departures
+  await expect.poll(() => page.evaluate(async () => {
+    const { boardStatus } = await import("/arail/index.js");
+    const w = window.__arail.world;
+    return w.stopAreas().filter((a) => a.kind === "rail").map((a) => boardStatus(w, [a]).join(" · ")).join(" | ");
+  })).toMatch(/(RE|RB|S) \d+ → \w+ \d\d:\d\d/);
+  // trains cannot be called to the platforms of the operations (keys 1–9)
+  const called = await page.evaluate(() => {
+    const w = window.__arail.world;
+    return w.stopAreas().filter((a) => a.kind === "rail").map((a) => !!w.services.call(a.id));
+  });
+  expect(called.length).toBeGreaterThan(0);
+  expect(called.every((x) => !x)).toBe(true);
   expect(errors).toEqual([]);
 });
 

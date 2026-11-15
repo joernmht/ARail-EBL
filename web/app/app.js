@@ -208,7 +208,7 @@ export class App {
       this.setAppModule("disruptions", true); // a scenario is played in the module Disruptions
       setTimeout(() => {
         if (this.world.scenarios.scenarios.some((s) => s.id === scenario)) this.world.scenarios.play(scenario);
-        else toast(`This layout has no scenario “${scenario}” (see Interaction → Disruptions).`, 7000);
+        else toast(`This layout has no scenario “${scenario}” (see Examples → Disruptions).`, 7000);
       }, 500);
     }
     const tab = linkedTab || example?.tab || this.page.start || "";
@@ -778,8 +778,8 @@ export class App {
       this.flyover.leave();
     }
     const src = new URL(x.video || x.image, location.href).href;
-    if (x.video) this.loadVideo(src, x.label.replace(/^Example: /, ""), null, null, { known: true });
-    else this.loadImage(src, x.label.replace(/^Example: /, ""), null, { known: true });
+    if (x.video) this.loadVideo(src, x.label, null, null, { known: true });
+    else this.loadImage(src, x.label, null, { known: true });
   }
 
   /**

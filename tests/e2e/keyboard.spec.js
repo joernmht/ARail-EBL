@@ -142,7 +142,7 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   expect(Math.abs(pos[1] % 50)).toBe(0);
   expect(Math.hypot(pos[0] - aim[0], pos[1] - aim[1])).toBeLessThan(40);
   await expect(page.locator("#stage")).toBeFocused();
-  // the time of day: Settings → Simulation, the slider and presets
+  // the time of day: Settings → Simulation, its presets
   await tabTo(page, "#tab-interaction");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#tab-settings")).toBeFocused();
@@ -150,13 +150,9 @@ test("keyboard only: switch panels, fly the virtual camera, place a tree on the 
   await tabTo(page, "#settingsView-simulate");
   await page.keyboard.press("Enter");
   await expect(page.locator("#settingsView-simulate")).toHaveAttribute("aria-pressed", "true");
-  await tabTo(page, "#timeOfDay");
-  const t0 = await a(() => window.__arail.world.clock.minutes);
-  await page.keyboard.press("ArrowRight"); // one quarter of an hour on from the quarter the slider shows
-  const t1 = await a(() => window.__arail.world.clock.minutes);
-  expect(t1).toBeGreaterThan(t0 + 1);
-  expect(t1).toBeLessThan(t0 + 23);
-  expect(t1 % 15).toBeLessThan(2);
+  await tabTo(page, "#panel-settings button:has-text('Noon 12:00')");
+  await page.keyboard.press("Enter");
+  expect(await a(() => window.__arail.world.clock.label())).toMatch(/^12:0/);
   await tabTo(page, "#panel-settings button:has-text('Night 22:30')");
   await page.keyboard.press("Enter");
   expect(await a(() => window.__arail.world.clock.label())).toMatch(/^22:3/);

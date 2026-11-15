@@ -40,7 +40,7 @@ for (const scheme of ["light", "dark"]) {
         return [...sim.crowds.values()].some((c) => c.visible().length > 0);
       }, null, { timeout: 30_000 });
       await page.waitForTimeout(500);
-      expect(await violations(page, "#panel-settings")).toEqual([]);
+      expect(await violations(page, "#panel-overview")).toEqual([]);
       await page.reload();
       await page.waitForFunction(() => window.__arail?.tracker.state.H, null, { timeout: 30_000 });
       expect(await page.evaluate(() => window.__arail.world.settings.spaceCircles)).toBe(true);
@@ -50,7 +50,7 @@ for (const scheme of ["light", "dark"]) {
       expect(errors).toEqual([]);
     });
 
-    test("Settings → Simulation: the town's trips from door to door by group, with the CSV", async ({ page }) => {
+    test("Overview → Measured: the town's trips from door to door, with the CSV", async ({ page }) => {
       const errors = await openApp(page);
       // a morning of the town, quickly
       await page.evaluate(() => {
@@ -61,16 +61,16 @@ for (const scheme of ["light", "dark"]) {
         for (let i = 0; i < 6000 && town.tripStats().length < 2; i++) w.step(0.1);
         w.speed = 1;
       });
-      await page.locator("#tab-settings").click();
-      await page.locator("#settingsView-simulate").click();
-      const table = page.getByRole("table", { name: /Door to door by group/ });
-      await expect(table).toBeVisible();
-      await expect(table.getByRole("rowheader", { name: "everybody" })).toBeVisible();
+      // the Overview measures them: the mean minutes of all trips, and the trips as CSV
+      await page.locator("#tab-overview").click();
+      const trips = page.locator("#measures [data-measure=trips]");
+      await expect(trips.locator(".measure-value")).toHaveText(/^\d+ min$/);
+      await expect(trips.locator(".measure-note")).toHaveText(/^mean of \d+ trips$/);
       await expect(page.locator("#townTripsCsv")).toBeVisible();
       const download = page.waitForEvent("download");
       await page.locator("#townTripsCsv").click();
       expect((await download).suggestedFilename()).toBe("town-trips.csv");
-      expect(await violations(page, "#panel-settings")).toEqual([]);
+      expect(await violations(page, "#panel-overview")).toEqual([]);
       expect(errors).toEqual([]);
     });
   });

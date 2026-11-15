@@ -14,7 +14,7 @@ The infrastructure comes in two forms:
 of the lab survey of 9 October 2026) with its module **Infrastructure**: the exit signals N1–N3 of the
 electronic interlocking at the masts on the platforms, the displays, the interlocking building
 (ESTW Neustadt) and a maintenance base on a table module at the end of Bahnhofstraße. The
-example **A signal fails** (Interaction, pill Infrastructure; its Start switches the module on)
+example **A signal fails** (Examples, pill Infrastructure; its Start switches the module on)
 tells the story in twelve steps:
 
 | Step | What happens on the layout |
@@ -58,7 +58,7 @@ the interlocking building. The repair van needs streets from the maintenance bas
 construction train needs a track of at least about 60 m. The track closure is a disruption of its own
 (see [Disruptions](disruptions-and-scenarios.md)); the layer's scenario *Track G2 closed* starts one.
 
-**How the assets age.** The app's **Sandbox** (Interaction) shows the station years ahead: its slider
+**How the assets age.** The app's **Sandbox** (Examples) shows the station years ahead: its slider
 *Infrastructure aging* adds up to 50 years to the story's year (the world setting `ageYears`, not kept
 in the layout), so the rings turn from Türkis to Rot as the assets age without renewals, and the
 Overview's condition of the assets follows. The story's texts then speak of that year too, as long
@@ -114,7 +114,7 @@ a fraction of a second).
 
 ## The example
 
-The module **Infrastructure** of the lab example Beta 0.1 on the game page (Interaction → Sandbox, or
+The module **Infrastructure** of the lab example Beta 0.1 on the game page (Examples → Sandbox, or
 `game/?layout=../layouts/ebl-lab.json&layers=infrastructure#infra`) turns
 [`web/layouts/ebl-lab.json`](../web/layouts/ebl-lab.json), the photo of
 the EBL lab, into the station **Bahnhof** at km 21.2 of the invented line **6250 Altstadt – Bahnhof –
@@ -137,7 +137,7 @@ On table modules beside the table:
   *Werkstraße*).
 
 Beyond the layout the network is a **line map** in Infrastructure → Assets. The scenario *Faults at
-the station* (Interaction → Disruptions) makes signal N2 and the level crossing fail.
+the station* (Examples → Disruptions) makes signal N2 and the level crossing fail.
 
 ## Infrastructure → Assets on the game page
 
@@ -496,7 +496,7 @@ camera image too) and `platform` objects are assets as well.
 
 ## Disruptions and events
 
-Offered in Interaction → Disruptions (module Disruptions) for layouts with the infrastructure:
+Offered in Examples → Disruptions (module Disruptions) for layouts with the infrastructure:
 
 | Type | Parameters | Does |
 | --- | --- | --- |

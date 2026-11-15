@@ -1,10 +1,14 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
-import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, moodColor, boardStatus, decodeTag, encodeTag, formatTime, MockFeed, MONTH_NAMES, DEFAULT_YEAR, isLeapYear, RAIL_CONDITIONS, WEATHER_PRESETS, PURPOSE_COLOURS, PURPOSE_LABELS, TRIP_PARTS, sectionSystems, SYSTEM_OVERLAYS, systemValue, terminalOf, WebSocketFeed } from "../arail/index.js";
-import { download, h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
+import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, MockFeed, WEATHER_PRESETS, sectionSystems, SYSTEM_OVERLAYS, systemValue, WebSocketFeed } from "../arail/index.js";
+import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 /** Fast-clock ratios offered in Settings → Simulation. */
 const CLOCK_FACTORS = [1, 4, 6, 12, 24, 60];
 const TIME_PRESETS = [["Morning", "06:30"], ["Noon", "12:00"], ["Evening", "17:00"], ["Night", "22:30"]];
+/** The seasons of Settings → Simulation: a day of each ("MM-DD"; "": no date, every day the same mild day). */
+const DATE_PRESETS = [["", "No date"], ["04-15", "Spring (15 April)"], ["07-15", "Summer (15 July)"], ["10-15", "Autumn (15 October)"], ["12-15", "Winter (15 December)"]];
+/** The passenger demand of Settings → Simulation (a factor on all the demand of the layout). */
+const DEMAND_PRESETS = [[0.5, "Quiet (× 0.5)"], [1, "Normal (× 1)"], [2, "Busy (× 2)"], [4, "Rush hour (× 4)"]];
 /** The views of the Settings panel. */
 const SETTINGS_VIEWS = [["view", "View"], ["simulate", "Simulation"], ["control", "Control system"]];
 /** "Platform 1, Track G2" for the id of a platform's track (a dock, "platform-1:left"), or null. */
@@ -36,7 +40,6 @@ export class Panels {
       h("input", { type: "checkbox", id, checked: get(), onchange: (e) => { set(e.target.checked); app.savePrefs(); } }), label);
     const placing = () => { app.saveLayout(); app.updateHud(); app.editor.renderPlacing(); };
     const sizes = [...new Set([10, 25, 50, 100, 250, g.size_mm])].sort((a, b) => a - b);
-    this.viewInfo = h("dl", { class: "kv" });
     this.focalRow = h("div", { class: "row" });
     // the image sources: the live camera (where the browser can open it: https), a photo or video taken
     // with the device's camera app, or a file
@@ -51,8 +54,8 @@ export class Panels {
           file("filePhoto", "Take photo", "image/*", "environment"),
           file("fileVideo", "Record video", "video/*", "environment"),
           file("fileOpen", "Open file", "image/*,video/*", null))),
-      // the app: the photo tour on the stage chooses what is shown; the examples with a clip, a tab or a layout of their own are here
-      app.tourNav ? section("Examples",
+      // the app: the photo tour on the stage chooses what is shown; the layouts with a clip, a tab or a layout of their own are here
+      app.tourNav ? section("Layouts",
         h("div", { class: "row examples" }, app.page.examples.map((x) => h("button", { class: "btn small", type: "button", id: `example-${x.id}`, onclick: () => app.openExample(x.id) }, x.label)))) : null,
       section("Show",
         h("div", { class: "fields" },
@@ -95,7 +98,6 @@ export class Panels {
           h("button", { class: "btn small", type: "button", onclick: () => { app.camera.setCalibration(null); storage.remove("arail.calibration"); toast("Calibration removed."); } }, "Remove calibration"),
           h("button", { class: "btn small", type: "button", id: "btnRecord", "aria-pressed": app.recorder ? "true" : "false", onclick: () => app.toggleRecording() }, "Record video of the stage"),
         ),
-        h("details", { class: "tracking" }, h("summary", {}, "Tracking details"), this.viewInfo),
       ),
       section("Language",
         h("label", { class: "field", for: "optLanguage" }, h("span", { class: "visually-hidden" }, "Language of the app"),
@@ -145,21 +147,10 @@ export class Panels {
     }
   }
 
+  /** The focal length of Settings → View → Camera as it is now (it is learned from the frames). */
   updateView() {
-    if (!this.viewInfo) return;
-    const app = this.app, st = app.tracker.state, cam = app.camera, map = app.world.map;
-    const rows = [
-      ["Source", app.source ? `${app.source.name} (${app.source.w} × ${app.source.h})` : "none"],
-      ["Markers seen", st.visible.length ? st.visible.join(", ") : "none"],
-      ["Used for the pose", st.used.length ? `${st.used.join(", ")}${st.holding ? " (holding last pose)" : ""}` : "–"],
-      ["Marker map", `${map.ids().length} markers${map.locked ? " (locked)" : ""}`],
-      ...(map.moving.size ? [["Moving markers", Object.keys(st.moving || {}).length ? `${Object.keys(st.moving).join(", ")} in view` : "none in view"]] : []),
-      ["Marker type", app.detector?.dictionaryLabel ? `${app.detector.dictionaryLabel}${app.detector.autoDetecting ? " (detecting…)" : ""}` : "detecting…"],
-      ...this._rollingRows(),
-      ["Reprojection error", st.used.length ? `${st.rms.toFixed(2)} px` : "–"],
-      ["Frame rate", app.source && app.source.kind !== "image" ? `${app.fps.toFixed(0)} fps, detection at ${Math.round(app.procMax)} px` : "–"],
-    ];
-    morph(this.viewInfo, rows.map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
+    if (!this.focalRow?.isConnected) return;
+    const cam = this.app.camera;
     const source = { calibrated: "calibrated", manual: "set by hand", estimated: "estimated", default: "initial guess" }[cam.focalSource];
     const step = (k) => () => { if (!cam.calibrated) { cam.setManualFocal(cam.focal * k); this.updateView(); } };
     morph(this.focalRow,
@@ -170,28 +161,9 @@ export class Panels {
     );
   }
 
-  /** Tracking details rows of the rolling-stock tags (layouts with `markers.rolling`): tags in view, model wagons. */
-  _rollingRows() {
-    const app = this.app, r = app.world.layout.markers.rolling;
-    if (!r) return [];
-    const tags = Object.keys(app.rollingDetections || {}).map(Number).sort((a, b) => a - b).map((id) => {
-      const { number, slot } = decodeTag(id, r.stride);
-      return `W${number}·${slot}`;
-    });
-    const term = terminalOf(app.world);
-    const wagons = [...(term?.rolling?.wagons.values() || [])].sort((a, b) => a.number - b.number);
-    // wagons with a height of their own (rolling_stock[].height_mm)
-    const own = (term?.markerWagons() || []).map((c) => [c.number, term.tagHeight(encodeTag(c.number, 0, r.stride))])
-      .filter(([, z]) => z !== r.height_mm).map(([n, z]) => `; W${n} ${z} mm`).join("");
-    return [
-      ["Rolling-stock tags", `${tags.length ? `${tags.join(", ")} in view` : "none in view"} (lifted to ${r.height_mm} mm${own})`],
-      ["Model wagons", wagons.length ? wagons.map((w) => `W${w.number} ${w.state === "lost" ? "not visible" : w.state}`).join(", ") : "none seen"],
-    ];
-  }
-
   /* ================================================================ Settings */
 
-  /** The Settings panel: its views View (examples, display, camera, language), Simulation (time, town, demand, stops) and Control system. */
+  /** The Settings panel, what can be set: its views View (image source, layouts, display, camera, language), Simulation (presets) and Control system. */
   renderSettings(el) {
     this.settingsBody = h("div", { class: "settings-body" });
     mount(el,
@@ -201,7 +173,7 @@ export class Panels {
       this.settingsBody,
     );
     // the other views' controls are gone: their live figures are not refreshed
-    this.viewInfo = this.board = this.clockFace = this.townBox = this.feedStatus = this.weatherNow = null;
+    this.focalRow = this.feedStatus = this.dateSelect = null;
     if (this.settingsView === "control") this.renderControl(this.settingsBody);
     else if (this.settingsView === "view") this.renderView(this.settingsBody);
     else this.renderSimulate(this.settingsBody);
@@ -221,83 +193,52 @@ export class Panels {
   updateSettings() {
     if (this.settingsView === "control") return this.updateControl();
     if (this.settingsView === "view") return this.updateView();
-    this.updateClock();
-    this.updateTown();
-    this.updateBoard();
+    this.updateSimulate();
   }
 
   /* ================================================================ Simulate */
 
+  /**
+   * Settings → Simulation: presets only, one choice each for what the simulation can be set to (the
+   * time of day, the speed of the clock, the season, the weather, the demand). What it measures is in
+   * the Overview.
+   */
   renderSimulate(el) {
-    const w = this.world;
-    this.board = h("div", { class: "board stops-board", "aria-live": "off" });
-    const demand = h("input", { type: "range", id: "demandRange", "aria-label": "Passenger demand", min: -2, max: 2, step: 0.1, value: Math.log2(w.demand),
-      oninput: (e) => { w.demand = 2 ** Number(e.target.value); demandOut.textContent = `× ${w.demand.toFixed(2)}`; } });
-    const demandOut = h("output", { for: "demandRange", class: "mono" }, `× ${w.demand.toFixed(2)}`);
-    this.clockFace = h("div", { class: "clockface", "aria-live": "off" });
-    this.timeRange = h("input", { type: "range", id: "timeOfDay", min: 0, max: 1439, step: 15, value: Math.round(w.clock.minutes),
-      "aria-valuetext": w.clock.label(), oninput: (e) => { w.setTime(Number(e.target.value)); this.updateClock(); } });
-    this.townBox = h("div", { class: "town-stats" });
-    this.weatherNow = h("p", { class: "hint", id: "weatherNow", "aria-live": "off" });
-    // the date: a month (or none: every day the same day) and the day of the month
-    // the date: a month (or none: every day the same day), the day of the month and the year
-    const date = w.clock.monthDay();
-    const setDate = () => {
-      const month = Number(this.dateMonth.value), year = Math.round(Number(this.dateYear.value)) || DEFAULT_YEAR;
-      const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
-      this.dateDay.disabled = this.dateYear.disabled = !month;
-      const day = Math.min(Math.max(1, Math.round(Number(this.dateDay.value)) || 1), days ?? 31);
-      w.setDate(month ? `${String(Math.min(2200, Math.max(1900, year))).padStart(4, "0")}-${month}-${day}` : null);
-      this.updateClock();
-    };
-    this.dateMonth = h("select", { id: "dateMonth", onchange: setDate },
-      h("option", { value: 0, selected: !date }, "No date"), MONTH_NAMES.map((m, i) => h("option", { value: i + 1, selected: date?.month === i + 1 }, m)));
-    this.dateDay = h("input", { type: "number", id: "dateDay", min: 1, max: 31, step: 1, value: date?.day ?? 1, disabled: !date, onchange: setDate });
-    this.dateYear = h("input", { type: "number", id: "dateYear", min: 1900, max: 2200, step: 1, value: w.clock.year ?? DEFAULT_YEAR, disabled: !date, onchange: setDate });
-    const weather = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
-    this.weatherSelect = h("select", { id: "weatherSelect", onchange: (e) => { w.setWeather(e.target.value); this.updateClock(); } },
-      h("option", { value: "off", selected: weather === "off" }, "Off"),
-      h("option", { value: "typical", selected: weather === "typical" }, "Typical for the date"),
-      Object.entries(WEATHER_PRESETS).map(([k, p]) => h("option", { value: k, selected: weather === k }, p.label)));
-    const app = this.app, s = w.settings;
-    const hasTown = w.simulations.some((x) => x.constructor.type === "town");
+    const w = this.world, app = this.app, s = w.settings;
+    const select = (id, options, value, set) => h("select", { id, onchange: (e) => { set(e.target.value); this.updateSimulate(); } },
+      options.map(([v, t]) => h("option", { value: v, selected: String(value) === String(v) }, t)));
+    this.dateSelect = h("select", { id: "datePreset", onchange: (e) => { w.setDate(e.target.value || null); this.updateSimulate(); } });
+    this.weatherSelect = select("weatherSelect", [["off", "Off"], ["typical", "Typical for the date"], ...Object.entries(WEATHER_PRESETS).map(([k, p]) => [k, p.label])],
+      w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode, (v) => w.setWeather(v));
+    this.demandSelect = h("select", { id: "demandPreset", onchange: (e) => { w.demand = Number(e.target.value); } });
+    this.timeButtons = TIME_PRESETS.map(([label, t]) => h("button", { class: "btn small", type: "button", "aria-pressed": "false", "data-time": t,
+      onclick: () => { w.setTime(t); this.updateSimulate(); } }, `${label} ${t}`));
     mount(el,
       section("Time of day",
-        this.clockFace,
-        h("label", { class: "field", for: "timeOfDay" }, h("span", {}, "Set the time"), this.timeRange),
-        h("div", { class: "row", role: "group", "aria-label": "Jump to a time of day" },
-          TIME_PRESETS.map(([label, t]) => h("button", { class: "btn small", type: "button", onclick: () => { w.setTime(t); this.updateClock(); } }, `${label} ${t}`))),
+        h("div", { class: "row", role: "group", "aria-label": "Time of day" }, this.timeButtons),
         h("div", { class: "fields" },
           h("label", { class: "field", for: "clockFactor" }, h("span", {}, "Fast clock"),
-            h("select", { id: "clockFactor", onchange: (e) => { w.clock.factor = Number(e.target.value); } },
-              [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => h("option", { value: f, selected: f === w.clock.factor }, f === 1 ? "1:1 (real time)" : `1:${f}`)))),
+            select("clockFactor", [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => [f, f === 1 ? "1:1 (real time)" : `1:${f}`]), w.clock.factor, (v) => (w.clock.factor = Number(v)))),
           h("label", { class: "field check", for: "optLighting" },
             h("input", { type: "checkbox", id: "optLighting", checked: s.lighting !== false, onchange: (e) => { s.lighting = e.target.checked; app.savePrefs(); } }), "Day and night lighting"),
           h("label", { class: "field check", for: "optFreeze" },
             h("input", { type: "checkbox", id: "optFreeze", checked: !!w.clock.frozen, onchange: (e) => { w.clock.frozen = e.target.checked; } }), "Stop the clock"),
         ),
+        h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage."),
       ),
-      section("Date and weather",
+      section("Season and weather",
         h("div", { class: "fields" },
-          h("label", { class: "field", for: "dateDay" }, h("span", {}, "Day"), this.dateDay),
-          h("label", { class: "field", for: "dateMonth" }, h("span", {}, "Month"), this.dateMonth),
-          h("label", { class: "field", for: "dateYear" }, h("span", {}, "Year"), this.dateYear),
+          h("label", { class: "field", for: "datePreset" }, h("span", {}, "Season"), this.dateSelect),
           h("label", { class: "field", for: "weatherSelect" }, h("span", {}, "Weather"), this.weatherSelect),
         ),
-        this.weatherNow,
-        h("p", { class: "hint" }, "With a date the sun rises and sets as on that day in Dresden, and the trees follow the season. The typical weather is that of the date; without a date it is a mild dry day."),
+        h("p", { class: "hint" }, "With a season the sun rises and sets as on that day in Dresden, and the trees follow it. The typical weather is that of the date; without a date it is a mild dry day."),
       ),
-      hasTown ? section("Town", this.townBox) : null,
-      section("Speed",
-        h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage: each click on the speed makes the simulation faster."),
+      section("Passengers",
+        h("label", { class: "field", for: "demandPreset" }, h("span", {}, "Demand"), this.demandSelect),
         h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
       ),
-      section("Passenger demand", h("div", { class: "row" }, h("span", { class: "grow", style: { flex: 1 } }, demand), demandOut)),
-      section("Stops", this.board),
     );
-    this.updateClock();
-    this.updateTown();
-    this.updateBoard();
+    this.updateSimulate();
   }
 
   /** "Clear passengers": every simulation removes what it simulates (the town and the cars start afresh). */
@@ -308,117 +249,36 @@ export class Panels {
     toast(afresh.length ? `All passengers removed; ${afresh.join(" and ")} ${afresh.length > 1 ? "start" : "starts"} afresh.` : "All passengers removed.");
   }
 
-  /** The clock face (refreshed periodically while Settings → Simulation is open). */
-  updateClock() {
-    if (!this.clockFace) return;
-    const w = this.world, c = w.clock;
-    const d = c.daylight();
-    const phase = d > 0.97 ? "day" : d < 0.03 ? "night" : c.minutes < 12 * 60 ? "dawn" : "dusk";
-    // with a date: the weekday, the date and the year above the time
-    morph(this.clockFace,
-      c.date != null ? h("span", { class: "date", id: "clockDate" }, c.dateLabel({ long: true })) : null,
-      h("span", { class: "time mono" }, c.label()),
-      h("span", { class: `daytime ${phase}` }, `${phase} · day ${c.day + 1}${c.frozen ? " · clock stopped" : ""}`),
-    );
-    if (this.timeRange && document.activeElement !== this.timeRange) {
-      this.timeRange.value = String(Math.round(c.minutes));
-    }
-    this.timeRange?.setAttribute("aria-valuetext", c.label());
-    this.updateWeather();
-  }
-
-  /** The date and the weather of Settings → Simulation as they are now (a scenario may have set them). */
-  updateWeather() {
-    if (!this.weatherNow?.isConnected) return;
+  /**
+   * The presets of Settings → Simulation as the world is now (a scenario or a story may have set
+   * another time, date, weather or demand): the time of day pressed, a date or a demand that is no
+   * preset as an option of its own.
+   */
+  updateSimulate() {
+    if (!this.dateSelect?.isConnected) return;
     const w = this.world, c = w.clock, date = c.monthDay();
-    if (document.activeElement !== this.dateMonth) this.dateMonth.value = String(date?.month ?? 0);
-    if (document.activeElement !== this.dateDay && date) this.dateDay.value = String(date.day);
-    if (document.activeElement !== this.dateYear && date) this.dateYear.value = String(c.year);
-    this.dateDay.disabled = this.dateYear.disabled = !date;
-    if (document.activeElement !== this.weatherSelect) this.weatherSelect.value = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
-    const sun = c.sun(), parts = [];
-    if (date) parts.push(h("span", {}, `Sunrise ${formatTime(sun.rise)}`), " · ", h("span", {}, `Sunset ${formatTime(sun.set)}`));
-    if (w.weather.on) {
-      const n = w.weather.now(), ground = n.snow_cm > 0.5 ? `${Math.round(n.snow_cm)} cm of snow` : n.ice ? "ice on the ground" : n.wet > 0.3 ? "wet ground" : "dry ground";
-      if (parts.length) parts.push(" · ");
-      parts.push(h("span", {}, w.weather.describe()), " · ", h("span", {}, ground), " · ", h("span", {}, `Rails: ${RAIL_CONDITIONS[w.weather.railCondition()].label}`));
+    const now = Math.round(c.minutes), at = (t) => { const [hh, mm] = t.split(":").map(Number); return hh * 60 + mm; };
+    // the part of the day it is: the latest preset not after now (before the first: the last, the night)
+    const part = [...TIME_PRESETS].reverse().find(([, t]) => at(t) <= now)?.[1] ?? TIME_PRESETS[TIME_PRESETS.length - 1][1];
+    for (const b of this.timeButtons) b.setAttribute("aria-pressed", b.dataset.time === part ? "true" : "false");
+    const key = date ? `${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}` : "";
+    const dates = DATE_PRESETS.some(([v]) => v === key) ? DATE_PRESETS : [...DATE_PRESETS, [key, c.dateLabel({ long: true })]];
+    if (document.activeElement !== this.dateSelect) {
+      morph(this.dateSelect, dates.map(([v, t]) => h("option", { value: v }, t)));
+      this.dateSelect.value = key;
     }
-    morph(this.weatherNow, parts.length ? parts : h("span", {}, "No date and no weather: every day is the same mild day."));
-  }
-
-  /** The town's people: where they are, and on their way by purpose (Settings → Simulation). */
-  updateTown() {
-    const town = this.world.simulations.find((x) => x.constructor.type === "town");
-    if (!town || !this.townBox?.isConnected) return;
-    const st = town.townStats();
-    const item = (label, n, colour = null) => h("li", {}, colour ? h("i", { class: "swatch", style: { background: colour } }) : null, h("span", {}, label), h("b", { class: "mono" }, String(n)));
-    morph(this.townBox,
-      h("p", { class: "hint" }, `${st.total} people (${town.config.people_per_100} per 100 residents). Where they are:`),
-      h("ul", { class: "legend-list" },
-        item("at home", st.home), item("at work", st.work), item("at school", st.school), item("shopping", st.shopping),
-        item("on the bus", st.riding), item("by car", st.driving), item("at stops", st.waiting), item("away (by train)", st.away)),
-      h("p", { class: "hint" }, `On their way (${st.walking}), coloured by where they are going:`),
-      h("ul", { class: "legend-list" }, Object.keys(PURPOSE_COLOURS).map((k) => item(PURPOSE_LABELS[k], st.byPurpose[k] || 0, PURPOSE_COLOURS[k]))),
-      h("p", { class: "hint" }, `${st.captive} adults without a driving licence or a car: they walk or take the bus and the train.`),
-      st.stranded ? h("p", { class: "hint" }, `${st.stranded} times one of them gave up waiting at a stop or found it closed.`) : null,
-      this._tripTable(town),
-    );
-  }
-
-  /** The town's trips from door to door by group (mean clock minutes in all and in their parts), with the CSV of all trips. */
-  _tripTable(town) {
-    const rows = town.tripStats();
-    if (!rows.length) return h("p", { class: "hint" }, "No trip from door to door finished yet.");
-    const parts = Object.keys(TRIP_PARTS);
-    return h("div", {},
-      h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Door to door by group" }, h("table", { class: "trip-table" },
-        h("caption", {}, "Door to door by group (mean clock minutes)"),
-        h("thead", {}, h("tr", {}, ["Group", "Trips", "In all", ...parts.map((k) => TRIP_PARTS[k])].map((x) => h("th", { scope: "col" }, x)))),
-        h("tbody", {}, rows.map((r) => h("tr", {}, h("th", { scope: "row" }, r.label), h("td", {}, String(r.trips)), h("td", {}, String(Math.round(r.minutes))),
-          ...parts.map((k) => h("td", {}, String(Math.round(r.parts[k]))))))))),
-      h("div", { class: "row" }, h("button", { class: "btn small", type: "button", id: "townTripsCsv", onclick: () => download("town-trips.csv", town.tripsCSV(), "text/csv") }, "Download the trips (CSV)")));
+    if (document.activeElement !== this.weatherSelect) this.weatherSelect.value = w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode;
+    const demand = Math.round(w.demand * 100) / 100;
+    const demands = DEMAND_PRESETS.some(([v]) => v === demand) ? DEMAND_PRESETS : [...DEMAND_PRESETS, [demand, `× ${demand.toFixed(2)}`]].sort((a, b) => a[0] - b[0]);
+    if (document.activeElement !== this.demandSelect) {
+      morph(this.demandSelect, demands.map(([v, t]) => h("option", { value: v }, t)));
+      this.demandSelect.value = String(demand);
+    }
   }
 
   /** The time and speed on the stage after the speed or Pause changed (app/speed.js). */
   updateSimulateControls() {
     this.app.speed?.update();
-  }
-
-  /** The stops of Settings → Simulation: people waiting, mood, the next vehicles; a button to call one (keys 1–9). */
-  updateBoard() {
-    if (!this.board?.isConnected) return;
-    const w = this.world, sim = w.simulations[0];
-    const areas = w.stopAreas();
-    if (!areas.length) {
-      morph(this.board, h("p", { class: "status" }, "No platforms or bus terminals on this layout yet (or their markers are not known yet). Add one in the Build panel."));
-      return;
-    }
-    morph(this.board, areas.map((a, i) => {
-      const s = sim?.stats(a.id) || { count: 0, mood: 1, inPerMin: 0, outPerMin: 0 };
-      const fx = w.disruptions.effectsFor(a);
-      // the next bus of each line at a terminal's bays, as on the board over the stop
-      const status = fx.messages[0] || boardStatus(w, [a]).join(" · ");
-      const docks = w.services.forArea(a.id);
-      const bus = a.kind === "bus";
-      return h("div", { class: "stop", "data-id": a.id },
-        h("div", { class: `num${bus ? " bus" : ""}`, title: `Key ${i + 1}` }, a.owner.spec.number || (bus ? "H" : String(i + 1))),
-        // a bus stop on both sides of the street: "Stop A" and "Stop B" (the letters on its signs)
-        h("div", { class: "title" }, areas.filter((x) => x.owner === a.owner).length > 1 && a.docks[0]?.label ? `${a.owner.name} · ${a.docks[0].label}` : a.owner.name),
-        // the people waiting; the bar is their mood
-        h("div", { class: "figures" }, h("span", {}, `${s.count} waiting`)),
-        h("div", { class: "meter", title: `mood ${(s.mood * 100).toFixed(0)} %` }, h("i", { style: { width: `${(s.mood * 100).toFixed(0)}%`, background: moodColor(s.mood) } })),
-        h("div", { class: `status${fx.messages.length ? " warn" : ""}` }, status),
-        h("div", { class: "calls" }, docks.filter((st) => !st.dock.managed).map((st) => {
-          // a closed track (a track closure, a story's train) takes no train, nor one kept for a story's own
-          const fxd = w.disruptions.effectsFor(a, st.dock), closed = fxd.closed || fxd.reserved;
-          return h("button", {
-            class: "btn", type: "button", disabled: !!st.vehicle || st.mode === "feed" || st.mode === "plan" || st.mode === "line" || closed,
-            title: st.mode === "plan" ? "The trains of this track are run by the rail operations (Operations panel)" : st.mode === "line" ? "Only the trains of its rail line stop at this track" : fxd.reserved ? "This track is kept for a story's train" : closed ? "This track is closed" : null,
-            onclick: () => { if (w.services.call(st.dock.id)) this.updateBoard(); },
-          }, `${bus ? "Bus" : "Train"} → ${st.dock.label}`);
-        })),
-      );
-    }));
   }
 
   /* ================================================================ Disruptions */
@@ -519,7 +379,6 @@ export class Panels {
   renderControl(el) {
     const app = this.app;
     this.feedStatus = h("p", { class: "hint" });
-    this.trainTable = h("div");
     const url = h("input", { type: "url", id: "feedUrl", value: app.feedUrl, placeholder: "ws://localhost:8765/feed", onchange: (e) => (app.feedUrl = e.target.value.trim()) });
     const s = this.world.settings;
     mount(el,
@@ -538,7 +397,6 @@ export class Panels {
         h("label", { class: "field", for: "feedVehicles" }, h("span", {}, "Draw trains from the control system as"),
           h("select", { id: "feedVehicles", onchange: (e) => { s.feedVehicles = e.target.value; app.savePrefs(); } },
             [["outline", "outline"], ["solid", "virtual train"], ["none", "nothing (only passengers react)"]].map(([v, t]) => h("option", { value: v, selected: s.feedVehicles === v }, t)))),
-        this.trainTable,
       ),
     );
     this.updateControl();
@@ -585,15 +443,5 @@ export class Panels {
       if (f.rejected) text += ` ${f.rejected} invalid messages (${f.error}).`;
     }
     morph(this.feedStatus, h("span", { class: `status-dot ${dot}` }), text);
-    const trains = [...tr.trains.values()];
-    morph(this.trainTable, trains.length
-      ? h("div", { class: "table-wrap", tabindex: "0", role: "region", "aria-label": "Trains" }, h("table", {},
-        h("thead", {}, h("tr", {}, ["Train", "Position", "Speed", "At"].map((t) => h("th", {}, t)))),
-        h("tbody", {}, trains.map((t) => h("tr", {},
-          h("td", {}, t.name),
-          h("td", {}, t.pos ? `${t.pos[0].toFixed(0)}, ${t.pos[1].toFixed(0)} mm` : t.track ? `track ${t.track}` : "unknown"),
-          h("td", {}, `${(t.speed ?? t.speedEst ?? 0).toFixed(0)} mm/s`),
-          h("td", {}, t.dockId ? this.world.services.docks.get(t.dockId)?.dock.area.owner.name || t.dockId : "–"))))))
-      : h("p", { class: "hint" }, tr.active ? "No trains reported." : "No control system connected."));
   }
 }

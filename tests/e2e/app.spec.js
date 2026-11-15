@@ -124,7 +124,7 @@ test("the lab examples: Bf Neustadt, the terminal at the crane and the hybrid co
   await page.waitForFunction(() => window.__arail.tracker.state.used.length >= 6 && window.__arail.world.map.locked);
   // the same layout with the photo of the terminal: its own photo, the module Terminal on, its case shown
   await chooseExample(page, "crane-terminal");
-  await page.waitForFunction(() => window.__arail.source?.name === "terminal at the crane" && window.__arail.tracker.state.used.includes(5));
+  await page.waitForFunction(() => window.__arail.source?.name === "Terminal at the crane" && window.__arail.tracker.state.used.includes(5));
   await expectCase(page, "terminal");
   expect(await page.evaluate(() => window.__arail.layersOn())).toEqual(["terminal"]);
   await expect(page.locator("#casePanel")).toContainText("KV terminal Neustadt");
@@ -383,14 +383,16 @@ test("Pause and the speed in the upper right corner of the stage: each click on 
   await page.keyboard.press("Space");
   expect(await page.evaluate(() => window.__arail.world.paused)).toBe(false);
   await expect(page.locator("#simPause")).toHaveAttribute("aria-pressed", "false");
-  // the time of day is in Settings → Simulation, which says night after sunset
+  // the time of day is in Settings → Simulation, as presets: the part of the day it is is pressed
   await page.evaluate(() => window.__arail.world.setTime("22:30"));
   await page.locator("#tab-settings").click();
   await page.locator("#settingsView-simulate").click();
   await page.locator("#optLighting").uncheck(); // only the drawing stays bright
-  await expect(page.locator(".clockface")).toContainText("night");
+  await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Noon 12:00" }).click();
-  await expect(page.locator(".clockface")).not.toContainText("night");
+  await expect(page.getByRole("button", { name: "Noon 12:00" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Night 22:30" })).toHaveAttribute("aria-pressed", "false");
+  expect(await page.evaluate(() => window.__arail.world.clock.label())).toMatch(/^12:0/);
   expect(errors).toEqual([]);
 });
 

@@ -83,11 +83,11 @@ const PAGE = {
   id: "game",
   cases: [SandboxCase, AssetsGame, OperationsGame, TerminalGame, JourneysGame, BuildCase, DisruptionsCase],
   examples: [
-    { id: "lab", label: "Example: the lab with its games (Beta 0.1)", layout: LAB },
-    { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
-    { id: "neustadt", label: "Example: Bf Neustadt and its terminal", layout: NEUSTADT, layers: ["terminal"] },
-    { id: "crane-terminal", label: "Example: terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal", layers: ["terminal"] },
-    { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
+    { id: "lab", label: "The lab with its games (Beta 0.1)", layout: LAB },
+    { id: "terminal", label: "Container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
+    { id: "neustadt", label: "Bf Neustadt and its terminal", layout: NEUSTADT, layers: ["terminal"] },
+    { id: "crane-terminal", label: "Terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal", layers: ["terminal"] },
+    { id: "container-train", label: "Hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
   ],
   exampleLayers: {
     operations: { layout: LAB, layer: "operations" }, infrastructure: { layout: LAB, layer: "infrastructure" }, journeys: { layout: LAB, layer: "journeys" },
