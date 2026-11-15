@@ -148,8 +148,9 @@ The app's example **Hump a train** (Interaction, Railway undertaking and Freight
 Examples → *hump yard*) makes you the hump master: the object humps one train of its own into empty
 tracks (`startTask`: its wagons from the world's seed, its id and the task's seed; nothing pulled out
 by itself), and you push it slower or faster (0.4 to 3 m/s in steps of 0.2), stop it before the crest
-and push on (`setPush`). `taskState` says where every cut is, whether it went into the wrong track or
-met the wagons too hard; the task is done when every cut stands. A cut chosen in the list or tapped on
+and push on (`setPush`). `taskState` says where every cut is, whether it went into the wrong track, met
+the wagons too hard or derailed; the task is done when every cut stands (or, the yard backed up to the
+crest, when the train is blocked and the cuts released stand), and its time stops then. A cut chosen in the list or tapped on
 the stage (`boxes`, `choose`) is outlined. Leaving it (`stopTask`) starts the yard's own run anew. See
 [Getting started](getting-started.md#hump-a-train-the-hump-yard).
 
@@ -197,6 +198,10 @@ branch: it is **misrouted** (Fehlläufer) and goes on to the first track behind 
 happens when a cut follows the one ahead too closely, typically a good runner behind a bad one, or
 when it **catches up** with it (Einholen). The yard never throws a switch under a cut; a derailment
 is counted to show that.
+
+**A yard backed up to the crest.** When the cuts stand back from a full track or a derailed cut up to
+the crest, a cut held there cannot be pushed on: the train stops behind it (`train.blocked`, noted
+once) and releases nothing more; its cuts stay on the hump.
 
 **Retarders.** The control measures each cut's rolling resistance on the ramp, with an error (0.4
 N/kN), and when the cut enters a retarder computes the speed it needs at every metre (`HumpControl.need`):

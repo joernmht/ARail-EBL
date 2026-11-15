@@ -87,7 +87,7 @@ export class HumpYardObject extends LayoutObject {
   /** What its simulation keeps of what is done (`HumpSimulation#forget`). */
   keep = { ...KEEP };
   /**
-   * The task humped (`startTask`): `{wagons, seed, push_mps, stopped, since, train, cuts, hard}`, or
+   * The task humped (`startTask`): `{wagons, seed, push_mps, stopped, since, train, cuts, hard, finished_s}`, or
    * null: train after train by itself.
    */
   task = null;
@@ -135,7 +135,7 @@ export class HumpYardObject extends LayoutObject {
    * @returns {object} the task
    */
   startTask({ wagons = Math.round(this.spec.wagons), seed = 1, push_mps = TASK_PUSH.start_mps } = {}) {
-    this.task = { wagons, seed, push_mps: clampPush(push_mps), stopped: false, since: 0, train: null, cuts: [], hard: new Set() };
+    this.task = { wagons, seed, push_mps: clampPush(push_mps), stopped: false, since: 0, train: null, cuts: [], hard: new Set(), finished_s: null };
     this._simKey = null;
     void this.sim;
     return this.task;
@@ -153,7 +153,7 @@ export class HumpYardObject extends LayoutObject {
     const rng = createRng(hash(`${this.world.seed ?? 1}:hump-task:${this.id}:${t.seed}`));
     const wagons = randomTrain(rng, { wagons: t.wagons, tracks: this.yard.tracks.map((x) => x.name) });
     const rec = sim.hump({ id: "T1", push_mps: t.stopped ? 0 : t.push_mps, wagons });
-    Object.assign(t, { since: sim.t, train: rec.id, cuts: [...rec.cuts], hard: new Set() });
+    Object.assign(t, { since: sim.t, train: rec.id, cuts: [...rec.cuts], hard: new Set(), finished_s: null });
   }
 
   /**
@@ -190,13 +190,30 @@ export class HumpYardObject extends LayoutObject {
         misrouted: !!c.misrouted, hard: t.hard.has(c.id), derailed: c.derailed,
       };
     });
-    const done = cuts.filter((c) => c.state === "standing").length;
+    // the cuts that have stood (a standing cut hit by the next one rolls on a little: the count does not go back)
+    const stood = t.cuts.filter((id) => byId.get(id)?.rec.stop).length;
+    const finished = t.finished_s != null;
     return {
-      cuts, done, of: cuts.length, finished: cuts.length > 0 && done === cuts.length,
+      cuts, done: finished ? cuts.length : Math.min(stood, cuts.length - 1), of: cuts.length, finished,
       misrouted: cuts.filter((c) => c.misrouted).length, hard: cuts.filter((c) => c.hard).length,
-      short: cuts.filter((c) => c.state === "standing" && !c.stood).length,
-      time_s: sim.t - t.since, push_mps: t.push_mps, stopped: t.stopped,
+      derailed: cuts.filter((c) => c.derailed).length, short: cuts.filter((c) => c.state === "standing" && !c.stood && !c.derailed).length,
+      blocked: sim.pushing?.rec.id === t.train && !!sim.pushing.blocked, notHumped: cuts.filter((c) => c.state === "waiting" || c.state === "pushed").length,
+      time_s: t.finished_s ?? sim.t - t.since, push_mps: t.push_mps, stopped: t.stopped,
     };
+  }
+
+  /**
+   * Is every cut of the task standing, or every cut released standing while the train is blocked by a
+   * cut held before it (the yard backed up to the crest: nothing more can happen)? Then its time stops
+   * (`finished_s`, on the yard's clock since its start).
+   */
+  _checkTask() {
+    const t = this.task, sim = this._sim;
+    if (!t || t.finished_s != null || !t.cuts.length) return;
+    const byId = new Map(sim.cuts.map((c) => [c.id, c]));
+    const blocked = sim.pushing?.rec.id === t.train && sim.pushing.blocked;
+    const rest = (id) => ["stopped", "departed"].includes(byId.get(id)?.state) || (blocked && byId.get(id)?.state === "pushed");
+    if (t.cuts.every(rest)) t.finished_s = sim.t - t.since;
   }
 
   /** Choose a cut (its id; outlined on the stage), or none (null). */
@@ -311,6 +328,7 @@ export class HumpYardObject extends LayoutObject {
       }
     }
     this._flashes = this._flashes.filter((f) => sim.t - f.t < FLASH_S);
+    this._checkTask();
     // what is done goes, its figures stay
     const k = this.keep;
     if (sim.cuts.length > 2 * k.cuts || sim.trains.length > 2 * k.trains || sim.departures.length > 2 * k.departures || sim.log.length > 2 * k.log) sim.forget(k);

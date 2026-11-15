@@ -71,7 +71,7 @@ export class HumpPanel {
         h("button", { class: "btn", type: "button", id: "humpFaster", disabled: humped || v >= TASK_PUSH.max_mps - 1e-9, onclick: () => this.push(1) }, "Faster"),
         h("button", { class: `btn${st.stopped ? " primary" : ""}`, type: "button", id: "humpStop", disabled: humped, onclick: () => this.stop(!st.stopped) }, st.stopped ? "Push on" : "Stop"),
         h("button", { class: "btn", type: "button", id: "humpRestart", title: "The same train again, in empty tracks", onclick: () => this.restart() }, "Restart")),
-      h("p", { class: `hump-status${st.finished && (st.misrouted || st.hard || st.short) ? " bad" : ""}`, id: "humpStatus", role: "status" }, this._status(st, humped)),
+      h("p", { class: `hump-status${st.finished && (st.misrouted || st.hard || st.derailed || st.short || st.notHumped) ? " bad" : ""}`, id: "humpStatus", role: "status" }, this._status(st, humped)),
     ];
   }
 
@@ -79,7 +79,9 @@ export class HumpPanel {
   _status(st, humped) {
     if (st.finished) {
       const bad = [st.misrouted ? `In the wrong track: ${st.misrouted}` : null, st.hard ? `Impacts too hard: ${st.hard}` : null,
-        st.short ? `Short of their track: ${st.short}` : null].filter(Boolean);
+        st.derailed ? `Derailed: ${st.derailed}` : null, st.short ? `Short of their track: ${st.short}` : null].filter(Boolean);
+      // the yard backed up to the crest: the rest of the train cannot be humped
+      if (st.notHumped) return ["Hump blocked: the cuts reach back to the crest", `Not humped: ${st.notHumped}`, ...bad].join(" · ");
       return ["Train broken up", ...(bad.length ? bad : ["every cut in its track"])].join(" · ");
     }
     if (humped) return "Over the hump: the last cuts roll into their tracks";
@@ -91,7 +93,7 @@ export class HumpPanel {
   _cut(c, chosen) {
     const where = c.state === "waiting" ? "waiting" : c.state === "pushed" ? "on the hump"
       : c.state === "rolling" ? `rolling at ${(c.v_mps * 3.6).toFixed(0)} km/h`
-        : c.stood ? `in track ${c.stood}` : "short of its track";
+        : c.derailed ? "derailed at a switch" : c.stood ? `in track ${c.stood}` : "short of its track";
     const bad = [c.misrouted ? "wrong track" : null, c.hard ? "impact too hard" : null].filter(Boolean);
     return h("button", {
       type: "button", class: `hump-cut run-${c.cls}${bad.length ? " problem" : ""}`, id: `hump-cut-${cutNumber(c.id)}`, "aria-pressed": chosen ? "true" : "false",

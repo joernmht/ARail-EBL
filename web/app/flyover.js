@@ -458,13 +458,14 @@ export class Flyover {
       this.app.terminal.pickAt([W / 2, H / 2], { keyboard: true });
       return true;
     }
-    // the info card of what is at the cross in the middle (outside Build and Terminal); in Hump a train, the cut there
+    // the info card of what is at the cross in the middle (outside Build and Terminal; in Hump a train, the cut there)
     if (e.key === "Enter" && !placing && !this.app.showing("build") && t === c) {
       if (e.repeat) return true;
       if (this.anim) this.cam.set(this.anim.to);
       this.anim = null;
-      if (this.app.showing("hump") && this.app.hump.pickAt([W / 2, H / 2])) return true;
-      this.app.inspector.inspectCentre();
+      // Hump a train: the cut at the cross, else a hint to move the view
+      if (this.app.showing("hump")) this.app.hump.pickAt([W / 2, H / 2], { keyboard: true });
+      else this.app.inspector.inspectCentre();
       return true;
     }
     // placing with the keyboard: the keys move the view under the cross in the middle, Enter places a point there
