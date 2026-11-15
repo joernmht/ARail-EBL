@@ -1,0 +1,10 @@
+{
+  "about": "Close-up in the flyover: the station square of Bf Neustadt, its tram stop (Neustadt Bf) and the bus station, trams and buses coming in.",
+  "page": "example=neustadt",
+  "warm_s": 40,
+  "warm_speed": 10,
+  "speed": 1,
+  "fly": { "target": [[3050, -215], [3350, -215]], "distance": [420, 360], "yaw_deg": [158, 170], "pitch_deg": [23, 19] },
+  "frames": 130,
+  "out": "build/video/trams-buses"
+}

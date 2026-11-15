@@ -35,17 +35,21 @@ export function rowsAt(cues, f, { fps, cps, box = BOX }) {
     }
     const prev = mine.at(-2), t = (f - cur.start) / fps;
     const wipe = prev ? prev.text.length / ERASE_CPS : 0;
-    let text, busy;
+    let text, busy, erasing = false;
     if (t < wipe) {
       text = prev.text.slice(0, Math.max(0, prev.text.length - Math.floor(t * ERASE_CPS)));
-      busy = true;
+      busy = erasing = true;
     } else {
       const typed = Math.min(cur.text.length, Math.floor((t - wipe) * cps));
       text = cur.text.slice(0, typed);
       busy = typed < cur.text.length;
     }
     const top = cur === newest;
-    out.push({ text, color: top ? color(cur) : box.kept, cursor: top ? (busy ? true : blink(t)) : false });
+    // a line being backspaced keeps the colour it had just before: its own if it was the newest
+    // line then, else the lighter one; the new line has its colour once it is typed
+    const before = cues.filter((c) => c.start < cur.start).reduce((a, c) => (!a || c.start >= a.start ? c : a), null);
+    const shown = erasing ? (before === prev ? color(prev) : box.kept) : color(cur);
+    out.push({ text, color: top ? shown : box.kept, cursor: top ? (busy ? true : blink(t)) : false });
   }
   return out;
 }

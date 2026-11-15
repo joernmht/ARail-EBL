@@ -138,13 +138,23 @@ class Part:
         if self.video:
             cap = cv2.VideoCapture(self.video)
             n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if cap.isOpened() else 0
+            w, h = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             cap.release()
             if n < self.first + self.count:
                 raise OSError(f"{spec['clip']}: {self.first + self.count} frames needed, {n} there")
-            return
-        missing = [i for i in (self.first, self.first + self.count - 1) if not os.path.exists(self._path(i))]
-        if missing:
-            raise OSError(f"{spec['frames']}: frame {missing[0]} is missing (render the shot first)")
+        else:
+            missing = [i for i in (self.first, self.first + self.count - 1) if not os.path.exists(self._path(i))]
+            if missing:
+                raise OSError(f"{spec['frames']}: frame {missing[0]} is missing (render the shot first)")
+            img = cv2.imread(self._path(self.first))
+            if img is None:
+                raise OSError(f"cannot read {self._path(self.first)}")
+            h, w = img.shape[:2]
+        # a crop outside the frames would smear their edges: refused when the plan is read, before
+        # anything is written
+        for x0, y0, x1, y1 in self.box:
+            if x0 < -0.5 or y0 < -0.5 or x1 > w + 0.5 or y1 > h + 0.5:
+                raise OSError(f"{self.name}: crop {[x0, y0, x1, y1]} is outside its frames ({w} x {h})")
 
     def _path(self, k: int) -> str:
         return os.path.join(self.dir, f"f{k:04d}.jpg")
