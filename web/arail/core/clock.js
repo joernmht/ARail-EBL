@@ -19,10 +19,150 @@ export const DEFAULT_CLOCK = {
   factor: 12,
   /** Vary timetables, traffic and passenger numbers with the time of day. */
   profiles: true,
+  /**
+   * The date ("YYYY-MM-DD", or "MM-DD" in {@link DEFAULT_YEAR}), or null: no date, every day the same
+   * day with the sun of {@link SUN}.
+   */
+  date: null,
+  /** Latitude of the place (°N), for sunrise and sunset by the date (Dresden). */
+  latitude: 51.05,
 };
 
-/** Sunrise and sunset (minutes after midnight) and the length of the twilight. */
+/** Sunrise and sunset (minutes after midnight) without a date, and the length of the twilight. */
 export const SUN = { rise: 6 * 60, set: 20 * 60 + 30, twilight: 45 };
+
+/** Days of the months (February of a common year). */
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** The days of the week, Monday first (as in Germany). */
+export const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+/** Days of a common year (the sun and the climate go by these). */
+export const YEAR_DAYS = 365;
+/** The year of a date written without one ("12-06"). */
+export const DEFAULT_YEAR = 2026;
+/** Years the clock takes. */
+const YEARS = [1900, 2200];
+
+/** Is it a leap year (Gregorian)? */
+export const isLeapYear = (year) => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+/** Days of a year (365 when the year is not known). */
+export const yearDays = (year = null) => (year != null && isLeapYear(year) ? 366 : 365);
+const monthDays = (month, year = null) => (month === 2 && year != null && isLeapYear(year) ? 29 : MONTH_DAYS[month - 1]);
+
+/**
+ * A date as it is written: "2026-12-06" (with the year) or "12-06" (without) -> {year (or null),
+ * month, day}; a day of the year (1…366) -> {year: null, month, day}. What is no date -> null.
+ */
+export function parseDay(value) {
+  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= YEAR_DAYS ? { year: null, ...monthDay(value) } : null;
+  const m = String(value ?? "").trim().match(/^(?:(\d{4})-)?(\d{1,2})-(\d{1,2})$/);
+  if (!m) return null;
+  const year = m[1] != null ? Number(m[1]) : null, month = Number(m[2]), day = Number(m[3]);
+  if (year != null && (year < YEARS[0] || year > YEARS[1])) return null;
+  // without a year, 29 February may be: the year it is set in decides (Clock.setDate)
+  if (month < 1 || month > 12 || day < 1 || day > (year == null && month === 2 ? 29 : monthDays(month, year))) return null;
+  return { year, month, day };
+}
+
+/**
+ * Is it a date in that year? "2028-02-29" has its own year; "02-29" written without one needs `year`
+ * (else {@link DEFAULT_YEAR}) to be a leap year. Every other date fits any year.
+ */
+export function dateFits(value, year = null) {
+  const d = parseDay(value);
+  return !!d && !(d.month === 2 && d.day === 29 && !isLeapYear(d.year ?? year ?? DEFAULT_YEAR));
+}
+
+/** The day of the year (1 = 1 January) of a month and a day, in a year (a common year when null). */
+export function dayOfYear(month, day, year = null) {
+  let doy = day;
+  for (let m = 1; m < month; m++) doy += monthDays(m, year);
+  return doy;
+}
+
+/** "2026-12-06", "12-06" or a day of the year -> the day of the year (1 = 1 January); invalid -> null. */
+export function parseDate(value) {
+  const d = parseDay(value);
+  const year = d?.year ?? DEFAULT_YEAR;
+  return d && !(d.month === 2 && d.day === 29 && !isLeapYear(year)) ? dayOfYear(d.month, d.day, year) : null;
+}
+
+/** The month (1…12) and the day of the month of a day of the year (in a year: leap years have 29 February). */
+export function monthDay(doy, year = null) {
+  const n = yearDays(year);
+  let d = ((Math.round(doy) - 1) % n + n) % n + 1, month = 1;
+  while (d > monthDays(month, year)) d -= monthDays(month++, year);
+  return { month, day: d };
+}
+
+/** A day of the year -> "12-06", with a year "2026-12-06". */
+export function formatDate(doy, year = null) {
+  const { month, day } = monthDay(doy, year);
+  const md = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return year == null ? md : `${year}-${md}`;
+}
+
+/** The day of the week (0 = Monday … 6 = Sunday) of a day of a year (Gregorian calendar). */
+export function dayOfWeek(year, doy) {
+  // days since Monday, 1 January 2001 (a Monday), by whole years and leap days
+  const y = year - 2001, days = 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + (doy - 1);
+  return ((days % 7) + 7) % 7;
+}
+
+/**
+ * The day of a common year that a day of `year` is on: from 1 March of a leap year one less, and
+ * 29 February is 28 February. The calendar of the climate, the seasons and the leaves is a common year's.
+ */
+export function commonDay(doy, year = null) {
+  return doy != null && year != null && isLeapYear(year) && doy >= 60 ? doy - 1 : doy;
+}
+
+/** The meteorological season of a day of a common year: winter (Dec–Feb), spring, summer, autumn. */
+export function seasonOf(doy) {
+  const { month } = monthDay(doy);
+  return month === 12 || month <= 2 ? "winter" : month <= 5 ? "spring" : month <= 8 ? "summer" : "autumn";
+}
+
+/**
+ * Summer time (clock + 1 h): from the last Sunday of March to the last Sunday of October, as days of
+ * the year (in a year; without one about 29 March to 24 October).
+ */
+export function summerTime(year = null) {
+  if (year == null) return [88, 298];
+  // the last day of the month, back to its Sunday (6)
+  const lastSunday = (month, days) => {
+    const last = dayOfYear(month, days, year);
+    return last - ((dayOfWeek(year, last) + 1) % 7);
+  };
+  return [lastSunday(3, 31), lastSunday(10, 31)];
+}
+
+/**
+ * Sunrise and sunset on a day of the year at a latitude, in clock time (minutes after midnight) of
+ * Central European Time with summer time, at the longitude of Dresden: from the sun's declination
+ * and the equation of time, the sun's upper edge on the horizon with refraction (−0.833°). Where
+ * the sun does not rise or set (polar night, midnight sun) the day has no length or all of it.
+ * @param {number} doy day of the year (1 = 1 January)
+ * @param {number} [latitude] °N
+ * @param {{longitude?: number, zone_h?: number, summer?: boolean, year?: number | null}} [place] `summer`:
+ *   with summer time (from the last Sunday of March to the last Sunday of October of the `year`)
+ * @returns {{rise: number, set: number, noon: number, twilight: number}}
+ */
+export function sunTimes(doy, latitude = DEFAULT_CLOCK.latitude, { longitude = 13.74, zone_h = 1, summer: dst = true, year = null } = {}) {
+  const rad = Math.PI / 180;
+  const decl = -23.44 * rad * Math.cos((2 * Math.PI * (doy + 10)) / YEAR_DAYS);
+  const B = (2 * Math.PI * (doy - 81)) / 364;
+  const equation = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B); // minutes
+  const lat = clamp(latitude, -89, 89) * rad;
+  const cosH = (Math.sin(-0.833 * rad) - Math.sin(lat) * Math.sin(decl)) / (Math.cos(lat) * Math.cos(decl));
+  const half = (Math.acos(clamp(cosH, -1, 1)) / rad) * 4; // minutes from noon to sunset
+  const [from, to] = summerTime(year);
+  const summer = dst && doy >= from && doy < to ? 60 : 0;
+  const noon = 12 * 60 - equation - 4 * (longitude - 15 * zone_h) + summer;
+  return { rise: noon - half, set: noon + half, noon, twilight: SUN.twilight };
+}
 
 /**
  * Demand over the day, as factors of the normal daytime level: [hour, factor] points,
@@ -86,6 +226,16 @@ export class Clock {
     this.start = parseTime(c.start) ?? parseTime(DEFAULT_CLOCK.start);
     this.factor = Number(c.factor) >= 0 ? Number(c.factor) : DEFAULT_CLOCK.factor;
     this.profiles = c.profiles !== false;
+    // "02-29" without a year is in 2026, which has none: no date (the layout check reports it)
+    const d0 = parseDay(c.date);
+    const d = d0 && !(d0.month === 2 && d0.day === 29 && !isLeapYear(d0.year ?? DEFAULT_YEAR)) ? d0 : null;
+    /** The year (null: no date). */
+    this.year = d ? d.year ?? DEFAULT_YEAR : null;
+    /** The day of the year (1 = 1 January), or null: no date. It runs on at midnight, into the next year. */
+    this.date = d ? dayOfYear(d.month, d.day, this.year) : null;
+    /** The date the layout starts with ({year, doy}, or null: none). */
+    this.startDate = d ? { year: this.year, doy: this.date } : null;
+    this.latitude = Number.isFinite(Number(c.latitude)) ? clamp(Number(c.latitude), -89, 89) : DEFAULT_CLOCK.latitude;
     /** Minutes after midnight (fractional). */
     this.minutes = this.start;
     /** Days passed since the start (0 on the first day). */
@@ -99,9 +249,79 @@ export class Clock {
     if (this.frozen || !(dt > 0)) return false;
     this.minutes += (dt * this.factor) / 60;
     if (this.minutes < DAY_MINUTES) return false;
-    this.day += Math.floor(this.minutes / DAY_MINUTES);
+    const days = Math.floor(this.minutes / DAY_MINUTES);
+    this.day += days;
+    if (this.date != null) {
+      this.date += days;
+      while (this.date > yearDays(this.year)) this.date -= yearDays(this.year++);
+    }
     this.minutes = wrapMinutes(this.minutes);
     return true;
+  }
+
+  /**
+   * Set the date ("2026-12-06"; "12-06" in the year it has, else {@link DEFAULT_YEAR}; null: no
+   * date). Returns the day of the year, or null; undefined, and nothing changed, for what is no date
+   * (also 29 February in a year that has none).
+   */
+  /** Is it a date the clock can be set to ("02-29" without a year: if the clock's year has one)? */
+  isDate(value) {
+    return dateFits(value, this.year);
+  }
+
+  /** Is it a time of day ("HH:MM" or minutes)? */
+  isTime(value) {
+    return parseTime(value) != null;
+  }
+
+  setDate(value) {
+    if (value == null || value === "") {
+      this.date = this.year = null;
+      return null;
+    }
+    if (!dateFits(value, this.year)) return undefined;
+    const d = parseDay(value), year = d.year ?? this.year ?? DEFAULT_YEAR;
+    this.year = year;
+    this.date = dayOfYear(d.month, d.day, year);
+    return this.date;
+  }
+
+  /** The month (1…12) and the day of the month, or null without a date. */
+  monthDay() {
+    return this.date == null ? null : monthDay(this.date, this.year);
+  }
+
+  /** The day of the week (0 = Monday … 6 = Sunday), or null without a date. */
+  weekday() {
+    return this.date == null ? null : dayOfWeek(this.year, this.date);
+  }
+
+  /**
+   * The date in words: "Sun 6 Dec" (short), "Sunday, 6 December 2026" (`long`); "" without a date.
+   * @param {{long?: boolean}} [options]
+   */
+  dateLabel({ long = false } = {}) {
+    if (this.date == null) return "";
+    const { month, day } = this.monthDay(), wd = this.weekday();
+    return long ? `${DAY_NAMES[wd]}, ${day} ${MONTH_NAMES[month - 1]} ${this.year}` : `${DAYS[wd]} ${day} ${MONTHS[month - 1]}`;
+  }
+
+  /** The date as it is written ("2026-12-06"), or null. */
+  dateString() {
+    return this.date == null ? null : formatDate(this.date, this.year);
+  }
+
+  /** The season (winter, spring, summer, autumn), or null without a date. */
+  season() {
+    return this.date == null ? null : seasonOf(commonDay(this.date, this.year));
+  }
+
+  /** Sunrise and sunset today (minutes after midnight): by the date and the latitude, else {@link SUN}. */
+  sun() {
+    if (this.date == null) return SUN;
+    const key = `${this.year}|${this.date}|${this.latitude}`;
+    if (this._sun?.key !== key) this._sun = { key, times: sunTimes(this.date, this.latitude, { year: this.year }) };
+    return this._sun.times;
   }
 
   /** Jump to a time of day ("HH:MM" or minutes). */
@@ -122,7 +342,7 @@ export class Clock {
 
   /** Daylight 0 (night) .. 1 (day). */
   daylight() {
-    return daylightAt(this.minutes);
+    return daylightAt(this.minutes, this.sun());
   }
 
   /** Darkness 0 (day) .. 1 (night), used for the lighting. */
@@ -148,6 +368,10 @@ export class Clock {
 
   /** The layout's `clock` section (the start time, not the current time). */
   toJSON() {
-    return { start: formatTime(this.start), factor: this.factor, profiles: this.profiles };
+    return {
+      start: formatTime(this.start), factor: this.factor, profiles: this.profiles,
+      ...(this.startDate != null ? { date: formatDate(this.startDate.doy, this.startDate.year) } : {}),
+      ...(this.latitude !== DEFAULT_CLOCK.latitude ? { latitude: this.latitude } : {}),
+    };
   }
 }

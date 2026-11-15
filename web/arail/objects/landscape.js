@@ -4,7 +4,7 @@
  */
 import { LayoutObject } from "../core/object.js";
 import { resolvePoints } from "../core/anchors.js";
-import { PALETTE } from "../core/colors.js";
+import { PALETTE, mix } from "../core/colors.js";
 
 const AREA_KINDS = {
   grass: { label: "grass", color: PALETTE.grass },
@@ -41,7 +41,7 @@ export class Area extends LayoutObject {
     const g = this.geometry;
     const kind = AREA_KINDS[this.spec.kind] || AREA_KINDS.grass;
     const alpha = +this.spec.opacity || 0.55;
-    view.polygon(g.points, { fill: kind.color, alpha, stroke: "rgba(255,255,255,0.35)", width: 1, order: 0 });
+    view.polygon(g.points, { fill: seasonColour(this.spec.kind, kind.color, view.weather), alpha, stroke: "rgba(255,255,255,0.35)", width: 1, order: 0, snow: this.spec.kind === "water" ? 0 : 1 });
     if (this.spec.kind === "water") {
       // a few slowly moving highlights, clipped to the water
       const img = view.projectAll(g.points);
@@ -70,6 +70,18 @@ export class Area extends LayoutObject {
       });
     }
   }
+}
+
+/** What grass and fields look like in the seasons: [colour to go towards, how far]. */
+const SEASON_TONES = {
+  grass: { winter: ["#a8a67c", 0.55], spring: ["#8fc76a", 0.3], autumn: ["#9aa860", 0.35] },
+  field: { winter: ["#8a6f4d", 0.75], spring: ["#86b85c", 0.7], autumn: ["#b89b5e", 0.6] },
+};
+
+/** The colour of an area in the season of the view's weather (grass pales, fields are ploughed, green, ripe, stubble). */
+function seasonColour(kind, colour, weather) {
+  const tone = SEASON_TONES[kind]?.[weather?.season];
+  return tone ? mix(colour, tone[0], tone[1]) : colour;
 }
 
 // Streets moved to objects/road.js; kept here for imports of older plugins.

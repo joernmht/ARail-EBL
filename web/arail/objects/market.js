@@ -224,7 +224,7 @@ export class MarketSquare extends LayoutObject {
 
   draw(view) {
     const g = this.geometry, slabs = this.spec.paving === "slabs";
-    view.polygon(g.points, { fill: slabs ? PALETTE.pavement : "#bdb4a5", alpha: 0.95, stroke: "rgba(90,85,75,0.5)", width: 1.2, order: 0.6 });
+    view.polygon(g.points, { fill: slabs ? PALETTE.pavement : "#bdb4a5", alpha: 0.95, stroke: "rgba(90,85,75,0.5)", width: 1.2, order: 0.6, snow: 1 });
     // the joints of the paving, close up only
     const spacing = this.mm(slabs ? 3 : 1.5), c = g.centroid;
     const s = view.pxPerMM(c[0], c[1], 0) * spacing;
@@ -245,6 +245,8 @@ export class MarketSquare extends LayoutObject {
           img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
           ctx.closePath();
           ctx.clip();
+          // the joints vanish under snow
+          ctx.globalAlpha *= 1 - (view.weather?.snow ?? 0);
           ctx.strokeStyle = view.dim("rgba(80,72,60,0.28)");
           ctx.lineWidth = 0.6 * view.px;
           ctx.beginPath();
@@ -1088,8 +1090,8 @@ export class MiniTrain extends Ride {
       return [p[0] - ((b[1] - a[1]) / l) * d * k, p[1] + ((b[0] - a[0]) / l) * d * k];
     });
     // the path runs counter-clockwise: + is inside, − outside
-    view.polygon(off(-0.7), { fill: PALETTE.ballast, alpha: 0.6, order: 1.2 });
-    view.polygon(off(0.7), { fill: "#bdb4a5", alpha: 0.95, order: 1.25 });
+    view.polygon(off(-0.7), { fill: PALETTE.ballast, alpha: 0.6, order: 1.2, snow: 1 });
+    view.polygon(off(0.7), { fill: "#bdb4a5", alpha: 0.95, order: 1.25, snow: 1 });
     for (const d of [0.3, -0.3]) view.line([...off(d), off(d)[0]], { stroke: PALETTE.rail, width: 1.2, order: 1.3 });
     // the station: a platform with a roof
     const faces = [];

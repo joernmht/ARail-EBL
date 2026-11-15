@@ -1374,7 +1374,8 @@ export class TownSimulation extends Simulation {
   _walk(a, dt) {
     const path = a.path;
     if (!path) return this._nextLeg(a);
-    const mmPerS = (a.speed * 1000) / this.world.scale;
+    // slower on snow and ice (the weather, core/weather.js)
+    const mmPerS = (a.speed * this.world.weather.walkFactor() * 1000) / this.world.scale;
     a.s += mmPerS * dt;
     a.phase += a.speed * dt * 5;
     if (a.s >= path.length) {

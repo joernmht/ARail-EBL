@@ -65,7 +65,14 @@ export { DisruptionManager, BUILTIN_DISRUPTIONS, affectedAreas, dockOf } from ".
 export { ScenarioPlayer } from "./core/scenarios.js";
 export { Story, storyOf, STORY_PAUSE_S, STORY_DISRUPTIONS } from "./core/story.js";
 export { introScenes, sceneSeconds, boundsOf, SCENE_SECONDS } from "./core/intro.js";
-export { Clock, DEFAULT_CLOCK, PROFILES, SUN, parseTime, formatTime, profileAt, daylightAt, DAY_MINUTES } from "./core/clock.js";
+export {
+  Clock, DEFAULT_CLOCK, PROFILES, SUN, MONTHS, MONTH_NAMES, DAYS, DAY_NAMES, YEAR_DAYS, DEFAULT_YEAR, parseTime, formatTime, parseDate, parseDay, dayOfYear, dayOfWeek, commonDay, dateFits,
+  isLeapYear, yearDays, formatDate, monthDay, seasonOf, summerTime, sunTimes, profileAt, daylightAt, DAY_MINUTES,
+} from "./core/clock.js";
+export {
+  Weather, WEATHER_MODES, WEATHER_PRESETS, WEATHER_EFFECTS, CLIMATE, MILD, SKY_WORDS, SNOW_COVER_CM, typicalAir, leafState, normalizeWeather, weatherProblems,
+  leafTone, drawWeather, PRECIPITATION_LAYERS, layerParticles, lightningAt,
+} from "./core/weather.js";
 export { TrainRegistry, parseFeedMessage, FEED_PROTOCOL } from "./core/trains.js";
 export { composeLayout, decomposeLayout, normalizeLayers, layersOn, withLayers, toggleLayer, layerChoice, layoutPlugins, layerProblems } from "./core/layers.js";
 export { LAYOUT_FORMAT, DEFAULT_SERVICES, DEFAULT_GRID, normalizeLayout, normalizeGrid, validateLayout, isLayout, orthoOf, extendBelowOf, EXTEND_BELOW_MAX, markerIds, DEFAULT_ROLLING, normalizeRollingMarkers } from "./core/layout.js";

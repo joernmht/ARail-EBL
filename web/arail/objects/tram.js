@@ -333,11 +333,11 @@ export class TramStop extends LayoutObject {
     for (const sd of g.sides) {
       const P = (s, t) => [sd.origin[0] + sd.dir[0] * s + sd.normal[0] * t, sd.origin[1] + sd.dir[1] * s + sd.normal[1] * t];
       const h = g.W / 2;
-      if (sd.band && kind !== "island") view.polygon(sd.band, { fill: kind === "road" ? grey(0.42) : COLOURS.raised, alpha: kind === "road" ? 0.25 : 0.9, order: 1.13 });
-      if (kind !== "road") view.polygon(sd.outline, { fill: COLOURS.area, alpha: 0.95, order: 3 });
+      if (sd.band && kind !== "island") view.polygon(sd.band, { fill: kind === "road" ? grey(0.42) : COLOURS.raised, alpha: kind === "road" ? 0.25 : 0.9, order: 1.13, snow: 1 });
+      if (kind !== "road") view.polygon(sd.outline, { fill: COLOURS.area, alpha: 0.95, order: 3, snow: 1 });
       // the platform edge, and the tactile strip along it
-      view.polygon([P(0, h - m(0.3)), P(g.L, h - m(0.3)), P(g.L, h), P(0, h)], { fill: COLOURS.curb, alpha: 0.95, order: 3.1 });
-      if (this.spec.tactile !== false && kind !== "road") view.polygon([P(m(1), h - m(0.95)), P(g.L - m(1), h - m(0.95)), P(g.L - m(1), h - m(0.35)), P(m(1), h - m(0.35))], { fill: COLOURS.tactile, alpha: 0.9, order: 3.15 });
+      view.polygon([P(0, h - m(0.3)), P(g.L, h - m(0.3)), P(g.L, h), P(0, h)], { fill: COLOURS.curb, alpha: 0.95, order: 3.1, snow: 1 });
+      if (this.spec.tactile !== false && kind !== "road") view.polygon([P(m(1), h - m(0.95)), P(g.L - m(1), h - m(0.95)), P(g.L - m(1), h - m(0.35)), P(m(1), h - m(0.35))], { fill: COLOURS.tactile, alpha: 0.9, order: 3.15, snow: 1 });
       if (this.spec.shelter !== false) {
         const s = g.L * 0.45, t = -h + m(0.8), w = m(5), d = m(1.4);
         const fp = [P(s - w / 2, t - d / 2), P(s + w / 2, t - d / 2), P(s + w / 2, t + d / 2), P(s - w / 2, t + d / 2)];
@@ -351,7 +351,7 @@ export class TramStop extends LayoutObject {
     const signals = this.world.transit?.signals;
     for (const sig of this.stopSignals()) {
       const [a, b] = sig.bar, u = sig.dir, w = m(0.3);
-      view.polygon([a, b, [b[0] + u[0] * w, b[1] + u[1] * w], [a[0] + u[0] * w, a[1] + u[1] * w]], { fill: COLOURS.curb, alpha: 0.9, order: 1.2 });
+      view.polygon([a, b, [b[0] + u[0] * w, b[1] + u[1] * w], [a[0] + u[0] * w, a[1] + u[1] * w]], { fill: COLOURS.curb, alpha: 0.9, order: 1.2, snow: 1 });
       if (sig.kind === "island") {
         // the edges of the crossing (Furt): dashes across the lane
         const back = m(STOP_LINE_M), across = [b[0] - a[0], b[1] - a[1]], n = Math.max(2, Math.round(Math.hypot(...across) / m(1)));
@@ -359,7 +359,7 @@ export class TramStop extends LayoutObject {
           for (let k = 0; k < n; k += 2) {
             const p0 = [a[0] + u[0] * along + (across[0] * k) / n, a[1] + u[1] * along + (across[1] * k) / n];
             const p1 = [a[0] + u[0] * along + (across[0] * (k + 1)) / n, a[1] + u[1] * along + (across[1] * (k + 1)) / n];
-            view.polygon([p0, p1, [p1[0] + u[0] * w, p1[1] + u[1] * w], [p0[0] + u[0] * w, p0[1] + u[1] * w]], { fill: COLOURS.curb, alpha: 0.9, order: 1.2 });
+            view.polygon([p0, p1, [p1[0] + u[0] * w, p1[1] + u[1] * w], [p0[0] + u[0] * w, p0[1] + u[1] * w]], { fill: COLOURS.curb, alpha: 0.9, order: 1.2, snow: 1 });
           }
         }
       }

@@ -189,8 +189,8 @@ export class BusStop extends LayoutObject {
       const P = (s, t) => [sd.origin[0] + sd.dir[0] * s + sd.normal[0] * t, sd.origin[1] + sd.dir[1] * s + sd.normal[1] * t];
       const h = g.W / 2;
       // waiting area with the raised curb (Kasseler Bord) on the street side
-      view.polygon(sd.outline, { fill: COLOURS.area, alpha: 0.92, order: 3 });
-      view.polygon([P(0, h - m(0.35)), P(g.L, h - m(0.35)), P(g.L, h), P(0, h)], { fill: COLOURS.curb, alpha: 0.95, order: 3.1 });
+      view.polygon(sd.outline, { fill: COLOURS.area, alpha: 0.92, order: 3, snow: 1 });
+      view.polygon([P(0, h - m(0.35)), P(g.L, h - m(0.35)), P(g.L, h), P(0, h)], { fill: COLOURS.curb, alpha: 0.95, order: 3.1, snow: 1 });
       // zig-zag line on the street along the stop (Zeichen 299)
       const zig = [];
       const n = Math.max(2, Math.round(g.L / m(1.5)));

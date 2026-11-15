@@ -16,7 +16,7 @@ Open the lab example (`app/?layout=../layouts/ebl-lab.json`) and switch on the m
 
 The rides board and run in turn also without visitors. The stalls light their counters and fairy lights while the market is open (10:00 to 22:00), the tree its lights all night, the lanterns round the square at dusk. Point at a stall for its goods, price, queue, waiting time, sales and takings today; at the square for the visitors now and what sold best; at a visitor for where they came from, what they bought and what they still want to do; at a ride for its places, runs and queue. The Overview rates the stalls by their queues and the visitors by their mood.
 
-The clock's sun follows a summer day (sunset 20:30): *Evening at the Striezelmarkt* sets the clock to 19:45, so that the lights come on at dusk while the market is open. *Closing time* starts at 20:30 on a busy evening; at 22:00 the market closes and everybody goes, many to the station.
+*Evening at the Striezelmarkt* sets the date to 6 December, the clock to 15:45 and the weather to snowfall ([Seasons and weather](weather.md)): dusk comes at four, and the lights come on while the market is busy. In the cold people want their Glühwein all the more; in rain fewer come. *Closing time* starts at 20:30 on a busy evening; at 22:00 the market closes and everybody goes, many to the station.
 
 ## The objects
 

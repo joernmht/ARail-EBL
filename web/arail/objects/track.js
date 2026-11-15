@@ -122,7 +122,7 @@ export class Track extends LayoutObject {
 
   /** The real track, for a virtual camera: ballast bed, sleepers (when large enough on screen), rails. */
   _drawTrack(view, g) {
-    view.ribbon(g.points, view.m(BED.width_m), { fill: BED.color, order: 4 });
+    view.ribbon(g.points, view.m(BED.width_m), { fill: BED.color, order: 4, snow: 1 });
     const mid = polylineAt(g.points, g.total / 2, g.lengths).point;
     const k = view.pxPerMM(mid[0], mid[1], 0);
     if (k * view.m(SLEEPER.spacing_m) >= 2.5 * view.px) {
@@ -135,7 +135,7 @@ export class Track extends LayoutObject {
           img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
           ctx.closePath();
         }
-        ctx.fillStyle = view.dim(SLEEPER.color);
+        ctx.fillStyle = view.dim(view.tone(SLEEPER.color));
         ctx.fill();
       });
     }

@@ -490,7 +490,7 @@
         { "id": "stall-22", "type": "market-stall", "position": [-510, -905], "rotation_deg": 180, "goods": "flammlachs", "tables": 1 }
       ],
       "scenarios": [
-        { "id": "striezelmarkt-evening", "name": "Evening at the Striezelmarkt", "description": "The clock jumps to the evening: the lights of the stalls, the tree and the rides come on at dusk.", "steps": [{ "at": 0, "set": { "time": "19:45" }, "message": "Evening at the Striezelmarkt: the lights come on at dusk." }] }
+        { "id": "striezelmarkt-evening", "name": "Evening at the Striezelmarkt", "description": "6 December, a quarter to four: snow is falling, dusk comes at four, and the lights of the stalls, the tree and the rides come on.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "15:45", "weather": "snow" }, "message": "6 December at the Striezelmarkt: snow is falling, and the lights come on at dusk." }] }
       ]
     },
     {
@@ -502,7 +502,7 @@
         { "type": "market", "visitors": 260, "open": "10:00", "close": "22:00" }
       ],
       "scenarios": [
-        { "id": "market-closing", "name": "Closing time at the Striezelmarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{ "at": 0, "set": { "time": "20:30" }, "message": "A busy evening at the Striezelmarkt." }, { "at": 450, "message": "The market closes: everybody goes home, many to the station." }] }
+        { "id": "market-closing", "name": "Closing time at the Striezelmarkt", "description": "The market closes at 22:00: the crowd leaves, many of them for the trains. Watch the platforms fill.", "steps": [{ "at": 0, "set": { "date": "12-06", "time": "20:30" }, "message": "A busy evening at the Striezelmarkt." }, { "at": 450, "message": "The market closes: everybody goes home, many to the station." }] }
       ]
     },
     {

@@ -192,7 +192,7 @@ export function drawTable(view, footprint, { surface = "grey", alpha = 1, thickn
         ctx.fill();
       });
     }
-    view.polygon(footprint, { z: level, fill: s.top, alpha, stroke: s.edge, width: 1, order: O.top + up });
+    view.polygon(footprint, { z: level, fill: s.top, alpha, stroke: s.edge, width: 1, order: O.top + up, snow: 1 });
   });
 }
 

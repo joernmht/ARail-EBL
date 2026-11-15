@@ -356,11 +356,11 @@ export class HumpYardObject extends LayoutObject {
         if (p.first) walls.push(wall(d, a, p.zs, p.zs));
         view.faces(walls, [p.mid[0], p.mid[1], p.z / 2]);
       }
-      view.polygon(p.poly, { z: p.z, fill: COLOURS.bank, order: 1.5 });
+      view.polygon(p.poly, { z: p.z, fill: COLOURS.bank, order: 1.5, snow: 1 });
     }
     for (const p of g.pieces) {
       if (!view.inImage(p.mid[0], p.mid[1], p.z, 400)) continue; // a piece far beyond the picture (polygon culls the rest)
-      view.polygon(p.bed, { z: p.z, fill: COLOURS.ballast, order: 2 });
+      view.polygon(p.bed, { z: p.z, fill: COLOURS.ballast, order: 2, snow: 1 });
       for (const r of p.rails) view.line(r, { z: p.z + view.m(0.2), stroke: COLOURS.rail, width: 1, order: 3 });
     }
     for (const r of this.yard.retarders) {

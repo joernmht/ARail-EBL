@@ -362,7 +362,7 @@ export const RAIL = [
         name: "ahead", file: "web/arail/rail/ahead.js", kind: "module", role: "The train on its track, the path and line ahead, signals and magnets, the bands on the table.",
         attributes: ["LINE_PARAMS — the line data of tracks: length_m, gradient_permille, curve_radius_m, rail_condition, braking_distance_m", "NEXT_STOP_M — 4000 m", "OPEN_LINE_KMH — 120 km/h", "MAGNET_MATCH_M — 30 m: a placed magnet stands for a signal's of its frequency"],
         operations: [
-          "trackLength(track) — prototype metres", "lineBrakingDistance(track)", "railCondition(world, track) — a slippery-rails disruption, else its own", "joining(world, track, end)", "into(track, end) — the direction into a track from an end",
+          "trackLength(track) — prototype metres", "lineBrakingDistance(track)", "railCondition(world, track) — a slippery-rails disruption, else the worse of its own and the weather's", "joining(world, track, end)", "into(track, end) — the direction into a track from an end",
           "pathAhead(world, track, at_mm, dir, length_m) — on over joined tracks, the one that turns least", "pathPoint(path, s)", "stretch(path, s0, s1)", "lineAlong(world, path, options) — the sections as the train runs, the line beyond",
           "besideTracks(world) — each signal and PZB magnet on its nearest track, kept until the layout changes", "alongPath(world, path, type, within_m)",
           "signalsAhead(world, path) — those of its tracks facing the train", "magnetsAhead(world, path, signals) — placed, and implied per signal", "trainOnTrack(world, hit)", "trackAheadOf(world, hit) — the run kept on the train", "speedAt(profile, s)",

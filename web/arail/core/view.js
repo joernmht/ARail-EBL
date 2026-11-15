@@ -20,6 +20,7 @@
  */
 import { poseFromHomography } from "./geometry.js";
 import { FONT, OVERLAY, parseColor, parseRgba, rgba } from "./colors.js";
+import { clamp } from "./math.js";
 
 const LIGHT = (() => {
   const l = [-0.45, 0.55, 0.7];
@@ -41,6 +42,13 @@ const CULL_MARGIN_PX = 4;
 
 /** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
 const NIGHT_TINT = [0, 20, 80];
+/** The colour of snow on the ground and on what faces up. */
+const SNOW = [244, 247, 250];
+/**
+ * How steep a face may be and still hold snow: the upward part of its normal (the cosine of its
+ * slope) from which on it takes some (0.08: about 85°) and all of it (0.33: about 70°).
+ */
+const SNOW_SLOPE = [0.08, 0.33];
 
 /**
  * Share of the picture the labels may cover before it is crowded: then a label with a compact form
@@ -74,7 +82,7 @@ export class View {
    * @param {number | null} [options.pulse] the beat of highlights that pulse to catch the eye (0 … 1, from
    *   the app's clock in real time, not the simulation's); null: they stay steady (reduced motion, Node)
    */
-  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null, pulse = null, labels = true }) {
+  constructor({ ctx, camera, H, scale, px = 1, opacity = 1, time = 0, labelScale = 1, night = null, virtual = false, darken = true, pose = null, translate = null, pulse = null, labels = true, weather = undefined }) {
     this.ctx = ctx;
     this.camera = camera;
     this.H = H;
@@ -84,6 +92,11 @@ export class View {
     this.time = time;
     this.labelScale = labelScale;
     this.night = night;
+    /**
+     * The weather's look (core/weather.js, `Weather#look`): `snow` (the cover, 0…1) whitens the ground
+     * and what faces up, `wet` darkens the ground; null: no weather; undefined: set by `World.draw`.
+     */
+    this.weather = weather;
     this.virtual = virtual;
     this.darken = darken;
     /** Texts of labels in the language shown (arail/i18n `translate`); English as they are without. */
@@ -252,6 +265,30 @@ export class View {
     const c = parseRgba(colour);
     const out = c ? rgba(dimRgb(c, n), c[3]) : colour;
     memo?.set(colour, out);
+    return out;
+  }
+
+  /**
+   * A ground colour as the weather leaves it: towards white under snow (`share`: how much of the
+   * cover this surface takes; streets in use take less), darker when wet. Alpha is kept. Before
+   * `dim`: `view.dim(view.tone(colour))`.
+   * @param {string} colour CSS colour
+   * @param {number} [share]
+   */
+  tone(colour, share = 1) {
+    const w = this.weather;
+    if (!w || !colour || (!(w.snow * share > 0.005) && !(w.wet > 0.02))) return colour;
+    const key = `${colour}|${share}`;
+    if (this._toned?.look !== w) this._toned = { look: w, memo: new Map() };
+    const hit = this._toned.memo.get(key);
+    if (hit !== undefined) return hit;
+    const c = parseRgba(colour);
+    let out = colour;
+    if (c) {
+      const s = w.snow * share, k = (1 - 0.22 * w.wet * (1 - s)) * (1 - s);
+      out = rgba([c[0] * k + SNOW[0] * s, c[1] * k + SNOW[1] * s, c[2] * k + SNOW[2] * s], c[3]);
+    }
+    this._toned.memo.set(key, out);
     return out;
   }
 
@@ -473,7 +510,9 @@ export class View {
     if (style.alpha != null) ctx.globalAlpha *= style.alpha;
     const lit = style.emissive || style.layer === "overlay";
     if (style.fill && closed) {
-      ctx.fillStyle = lit ? style.fill : this.dim(style.fill);
+      // a surface under the weather: snow cover and wet, for what says it is one (`style.snow`: the
+      // share of the cover it takes); markers, areas and status fills keep their colour
+      ctx.fillStyle = lit ? style.fill : this.dim(style.snow != null ? this.tone(style.fill, style.snow) : style.fill);
       ctx.fill();
     }
     if (style.stroke) {
@@ -523,19 +562,22 @@ export class View {
         decals.push({ img: di, rgb: parseColor(d.color), k: d.emissive ? 1 : k, emissive: !!d.emissive, alpha: d.alpha ?? f.alpha ?? 1 });
       }
       if (off) continue;
-      drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals });
+      // snow settles on what faces up, on steep slopes too (roofs, the tiers of a fir), not on walls,
+      // unless a face says no (`snow: false`)
+      const up = f.emissive || f.snow === false || !f.normal ? 0 : clamp((f.normal[2] - SNOW_SLOPE[0]) / (SNOW_SLOPE[1] - SNOW_SLOPE[0]), 0, 1);
+      drawn.push({ img, depth: Math.hypot(...centre), rgb: parseColor(f.color), k: f.emissive ? 1 : k, emissive: !!f.emissive, alpha: f.alpha ?? 1, stroke: f.stroke, decals, up });
     }
     if (!drawn.length) return;
     drawn.sort((a, b) => b.depth - a.depth);
     const outline = style.outline;
     const draw = (ctx) => {
       // colours are worked out when drawing, so that `night` may be set after queueing
-      const n = this.darkness;
+      const n = this.darkness, snow = this.weather?.snow || 0;
       let stroke = null, strokeStyle = null;
       ctx.lineJoin = "round";
       for (const f of drawn) {
         tracePath(ctx, f.img);
-        ctx.fillStyle = faceFill(f, n);
+        ctx.fillStyle = faceFill(f, n, f.up * snow);
         ctx.fill();
         const s = f.stroke || outline;
         if (s) {
@@ -665,10 +707,16 @@ function dimRgb(c, n) {
 
 /**
  * Fill colour of a queued face or decal ({rgb, k, emissive, alpha}) at darkness n: shaded by k and
- * darkened like {@link dimRgb} unless emissive (the same numbers, without arrays: hundreds a frame).
+ * darkened like {@link dimRgb} unless emissive (the same numbers, without arrays: hundreds a frame);
+ * `snow` (0…1): how far it is covered with snow.
  */
-function faceFill(it, n) {
+function faceFill(it, n, snow = 0) {
   let r = it.rgb[0] * it.k, g = it.rgb[1] * it.k, b = it.rgb[2] * it.k;
+  if (snow) {
+    r = r * (1 - snow) + SNOW[0] * snow;
+    g = g * (1 - snow) + SNOW[1] * snow;
+    b = b * (1 - snow) + SNOW[2] * snow;
+  }
   if (n && !it.emissive) {
     const k = 1 - 0.62 * n, t = 0.3 * n;
     r = r * k + NIGHT_TINT[0] * t;

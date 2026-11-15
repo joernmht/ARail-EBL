@@ -5,7 +5,8 @@
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint, resolvePoints } from "../core/anchors.js";
 import { createRng, pointInPolygon, polygonArea } from "../core/math.js";
-import { PALETTE, shade } from "../core/colors.js";
+import { PALETTE, parseColor, rgba, shade } from "../core/colors.js";
+import { leafTone } from "../core/weather.js";
 
 const KINDS = [["deciduous", "deciduous"], ["conifer", "conifer"]];
 
@@ -15,7 +16,13 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
   const base = view.project(p[0], p[1], 0), top = view.project(p[0], p[1], H);
   if (!base || !top) return;
   const scale = view.pxPerMM(p[0], p[1], H * 0.6);
-  const crown = view.dim(color || (kind === "conifer" ? PALETTE.conifer : PALETTE.leaves));
+  // the season (the view's weather): deciduous trees leaf out, colour and stand bare; snow lies on crowns
+  const leaf = kind === "conifer" ? null : view.weather?.leaf ?? null, snow = view.weather?.snow || 0;
+  const own = ((Math.abs(Math.round(p[0] * 7 + p[1] * 13)) % 97) / 97);
+  const bare = !!leaf && leaf.share < 0.12 + 0.2 * own;
+  const green = color || (kind === "conifer" ? PALETTE.conifer : PALETTE.leaves);
+  const crown = view.dim(leaf && !color ? rgba(leafTone(parseColor(green), leaf, own)) : green);
+  const white = snow > 0.05 ? view.dim(`rgba(244,247,250,${(0.9 * snow).toFixed(2)})`) : null;
   // shadow on the ground
   const sh = view.m(heightM * 0.22);
   const shadow = [];
@@ -23,7 +30,7 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
     const a = (k * Math.PI) / 6;
     shadow.push([p[0] + sh * Math.cos(a) + view.m(heightM * 0.12), p[1] + sh * 0.7 * Math.sin(a) - view.m(heightM * 0.1)]);
   }
-  view.polygon(shadow, { fill: "rgba(20,30,15,0.25)", order: 6 });
+  view.polygon(shadow, { fill: `rgba(20,30,15,${bare ? 0.1 : 0.25})`, order: 6, snow: 0 });
   // trunk and crown lie between base and top, at most a crown radius (the widest part) to the side
   const reach = Math.max(2 * view.px, scale * view.m(heightM * 0.3)) + view.px;
   if (view.boxOffImage(Math.min(base[0], top[0]) - reach, Math.min(base[1], top[1]) - reach, Math.max(base[0], top[0]) + reach, Math.max(base[1], top[1]) + reach)) return;
@@ -54,6 +61,34 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
       ctx.closePath();
       ctx.fillStyle = shade(crown, 1.25);
       ctx.fill();
+      if (white) {
+        // snow on the branches, from the top down to near the bottom
+        const low = [top[0] + (cb[0] - top[0]) * 0.85, top[1] + (cb[1] - top[1]) * 0.85];
+        ctx.beginPath();
+        ctx.moveTo(top[0], top[1]);
+        ctx.lineTo(low[0] + w * 0.85, low[1]);
+        ctx.lineTo(low[0] - w * 0.85, low[1]);
+        ctx.closePath();
+        ctx.fillStyle = white;
+        ctx.fill();
+      }
+    } else if (bare) {
+      // bare branches: the trunk goes on, boughs fan out
+      const r = Math.max(2 * view.px, scale * view.m(heightM * 0.3));
+      const cx = base[0] + (top[0] - base[0]) * 0.68, cy = base[1] + (top[1] - base[1]) * 0.68;
+      ctx.lineWidth = Math.max(0.8 * view.px, scale * view.m(heightM * 0.02));
+      ctx.beginPath();
+      for (let k = 0; k < 7; k++) {
+        const a = -Math.PI / 2 + (k - 3) * 0.42, l = r * (0.75 + 0.25 * ((k * 37 + Math.round(own * 97)) % 5) / 4);
+        ctx.moveTo(tx, ty);
+        ctx.quadraticCurveTo(cx + Math.cos(a) * l * 0.4, cy + r * 0.2, cx + Math.cos(a) * l, cy + Math.sin(a) * l * 0.9 + r * 0.1);
+      }
+      ctx.stroke();
+      if (white) {
+        ctx.strokeStyle = white;
+        ctx.lineWidth *= 0.8;
+        ctx.stroke();
+      }
     } else {
       const r = Math.max(2 * view.px, scale * view.m(heightM * 0.3));
       const cx = base[0] + (top[0] - base[0]) * 0.68, cy = base[1] + (top[1] - base[1]) * 0.68;
@@ -70,6 +105,13 @@ export function drawTree(view, p, heightM, kind = "deciduous", color = null) {
       ctx.beginPath();
       ctx.ellipse(cx, cy, r, r * 0.92, 0, 0, 2 * Math.PI);
       ctx.stroke();
+      if (white) {
+        // snow on the top of the crown
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - r * 0.35, r * 0.8, r * 0.5, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = white;
+        ctx.fill();
+      }
     }
   });
 }
@@ -154,7 +196,7 @@ export class Forest extends LayoutObject {
 
   draw(view) {
     const g = this.geometry;
-    view.polygon(g.points, { fill: PALETTE.forest, alpha: 0.35, order: 1 });
+    view.polygon(g.points, { fill: PALETTE.forest, alpha: 0.35, order: 1, snow: 1 });
     for (const t of g.trees) drawTree(view, t.p, t.h, t.kind);
   }
 }

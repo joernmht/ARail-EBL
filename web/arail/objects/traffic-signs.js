@@ -401,7 +401,7 @@ export class ZebraCrossing extends LayoutObject {
       view.polygon(g.footprint, { fill: rgba(OVERLAY.danger, 0.18), stroke: OVERLAY.danger, width: 2, dash: [6, 4], order: 3 });
       return;
     }
-    for (const b of g.bars) view.polygon(b, { fill: "#ffffff", alpha: 0.9, order: 1.21 });
+    for (const b of g.bars) view.polygon(b, { fill: "#ffffff", alpha: 0.9, order: 1.21, snow: 1 });
     if (this.spec.signs !== false) for (const p of g.signs) drawSign(view, p, "pedestrian-crossing");
   }
 }

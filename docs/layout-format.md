@@ -165,8 +165,14 @@ The fast clock (see [Day and night](day-and-night.md)):
 | `start` | `"07:00"` | time of day when the layout is opened (`"HH:MM"`) |
 | `factor` | `12` | clock seconds per simulated second (1 = real time; 12 = one clock hour in five simulated minutes) |
 | `profiles` | `true` | timetables, bus lines, road traffic and random passengers follow the time of day |
+| `date` | none | the date the layout starts with (`"YYYY-MM-DD"`, or `"MM-DD"` in 2026): the sun rises and sets as on that day, the trees follow the season, the clock knows the weekday; without it every day is the same day (sun 06:00 to 20:30) |
+| `latitude` | `51.05` | °N, for sunrise and sunset by the date (Dresden) |
 
-The app writes the start time, not the time shown when the layout is exported.
+The app writes the start time and the start date, not those shown when the layout is exported.
+
+## `weather`
+
+The weather of the world, off by default (see [Seasons and weather](weather.md#in-a-layout-file) for the keys): a preset's name (`"weather": "snow"`) or `{"mode": "off" | "typical" | "fixed", "preset": …, "state": {…}, "course": [["HH:MM", {…}], …], "seed": 1}`. `typical` is the typical weather of the clock's date.
 
 ## `grid`
 
@@ -713,7 +719,7 @@ The app and `validateLayout()` report:
 - an unknown `format` and a scale that is not a positive number;
 - malformed marker poses, a `locked` that is not true or false, a `moving` that is not a list of marker IDs, moving markers at or above `codes`, a moving origin marker, poses given for moving markers, and a locked map without poses;
 - objects without an id, duplicate ids, objects without a type, unknown types (missing plugin?) and objects placed relative to a moving marker;
-- a malformed `grid` or `view.ortho`, and scenarios without an id or steps, or with a step's `set.time` that is no time of day;
+- a malformed `grid` or `view.ortho`, a `clock.date` that is no date, a `weather` whose mode, preset, course or precipitation is none, and scenarios without an id or steps, or with a step's `set.time`, `set.date` or `set.weather` that is none;
 - in `markers.rolling`: a value that is not an object, an unknown marker type, the layout's own marker type, a type that is misread as ArUco Original (`ARUCO_4X4_1000`, `ARUCO_MIP_36h12` on an ArUco Original layout), numbers out of range, and `markers.dictionary: "auto"` together with rolling-stock markers;
 - the settings of simulations that check them (`static validate`, see [Extending](extending.md#checking-the-settings)), prefixed with `simulations[i] (type): `. The terminal reports lists that are not lists, missing or duplicate visit ids, ids with `/` or like `W1`, tracks, quays, truck lanes and yards that do not exist, unknown wagon types and sizes, wrong check digits, containers that cannot stand where they are (e.g. `simulations[0] (terminal): containers[13] (ARLU 100007 1): Nothing to stand on`), work orders without a container, for one that is not in `containers` or has an order already, or with an unknown target (`orders[2] (TUDU 601001 1): unknown target "Container trian"`; a model wagon needs its `rolling_stock` entry or a container on it), fill shares outside 0–1, model wagons whose tag IDs exceed `markers.rolling.codes`, `rolling_stock` without `markers.rolling`, and a second terminal. The operations report stations, platforms, docks, parties, vehicle types and depots that do not exist, malformed times and day sets, contracts whose payer is their payee, and setups and stress events without an id or type (e.g. `simulations[3] (operations): lines[0] (RE 1): no station "altstadt"`). The infrastructure reports unknown lines, stations, asset types, objects and roles (e.g. `simulations[4] (infrastructure): asset q: unknown type "teleporter"`). The journeys report stations and platforms that do not exist, lines with unknown stations or malformed times, and travellers without an id, with a start or aim that is not a building or station, or without a plan (e.g. `simulations[3] (journeys): travellers[0] (Ada): to: no building "gone" on the layout`).
 - in `layers`: a value that is not a list, layers without an id or with the same id, objects without an id, simulations without a type, an `exclusive` or `patch` that is not true or false, a `layout` that is not a path, and a layout of its own with objects, simulations, scenarios or plugins.

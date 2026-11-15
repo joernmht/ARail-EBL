@@ -141,12 +141,12 @@ export class CyclingSimulation extends Simulation {
     }
   }
 
-  /** Riders wanted now: density × street length × the hour's demand. */
+  /** Riders wanted now: density × street length × the hour's demand × the weather's share (fewer in the cold, in rain, on snow). */
   targetCount(net = this._network()) {
     if (!net) return 0;
     let km = 0;
     for (const e of net.edges) if (e.kind === "road" && e.car) km += this.meters(e.length) / 1000;
-    return Math.round((+this.config.riders_per_km || 0) * km * this.world.clock.demand("car"));
+    return Math.round((+this.config.riders_per_km || 0) * km * this.world.clock.demand("car") * this.world.weather.cycleShare());
   }
 
   /** The riders that hold up cars (in a car lane too narrow to pass them): road users for the cars and buses. */

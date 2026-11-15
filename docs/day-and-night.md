@@ -31,7 +31,9 @@ between sunset and sunrise).
 
 ### Light
 
-Sunrise is at 06:00 and sunset at 20:30, each with a twilight of about an hour and a half. At
+Sunrise is at 06:00 and sunset at 20:30, each with a twilight of about an hour and a half; with a
+date on the clock (Settings → Simulation → Date and weather) the sun rises and sets as on that day
+in Dresden, 08:06 to 16:01 on 21 December (see [Seasons and weather](weather.md)). At
 night the camera image and everything ARail draws get darker and bluer (towards the chair's
 Dunkelblau); lit windows, street lamps, head- and tail lights and the windows of trains and
 buses keep their brightness. Labels and the editor's markings are never darkened. Switch it off

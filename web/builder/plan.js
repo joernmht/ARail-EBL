@@ -142,7 +142,7 @@ export class PlanView {
     this.camera.setManualFocal(pose.focal);
     const view = new (this.simple ? SimpleView : View)({
       ctx, camera: this.camera, H: pose.H, pose: pose.pose, scale: world.scale, px: this.px, time: world.time,
-      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night: 0, virtual: true, translate: tr,
+      labelScale: Math.min(1, Math.max(0.72, canvas.clientWidth / 1000)), night: 0, weather: null, virtual: true, translate: tr,
     });
     this.view = view;
     // the photo of the table over the table modules (−95), under the grid (−80) and everything else

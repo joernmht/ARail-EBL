@@ -35,6 +35,11 @@ const SUBSTEP_S = 0.25;
 const QUEUE_M = 0.7;
 /** A queue this long sends people to the next best stall of the same kind; all that long, they give up what they wanted (people). */
 const QUEUE_MAX = 12;
+/**
+ * The market in the weather (core/weather.js; estimates): the share of the visitors who come in rain
+ * and heavy rain; hot drinks wanted more at or below `cold_c`, less at or above `warm_c`.
+ */
+export const MARKET_WEATHER = { rain: 0.55, heavy_rain: 0.3, cold_c: 3, cold_drinks: 1.5, warm_c: 18, warm_drinks: 0.5 };
 /** Flow fields a square keeps (the ones used last; the counters, gates and tables are far fewer). */
 const FIELDS_MAX = 160;
 /** Clock minutes people wait at the station for a train home before they go another way. */
@@ -391,7 +396,23 @@ export class MarketSimulation extends Simulation {
   /** How many people are at the market at this time of day (while it is open). */
   present() {
     if (!this.isOpen()) return 0;
-    return Math.round((+this.config.visitors || 0) * profileAt(MARKET_PROFILE, this.world.clock.minutes));
+    return Math.round((+this.config.visitors || 0) * profileAt(MARKET_PROFILE, this.world.clock.minutes) * this.weatherShare());
+  }
+
+  /** The share of the visitors who come in this weather: fewer in rain (1 while the weather is off). */
+  weatherShare() {
+    const w = this.world.weather;
+    if (!w.on) return 1;
+    const n = w.now();
+    return n.precipitation === "rain" || n.precipitation === "sleet" ? (n.rate_mm_h >= 4 ? MARKET_WEATHER.heavy_rain : MARKET_WEATHER.rain) : 1;
+  }
+
+  /** How much more (or less) people want a hot drink in this weather: more in the cold, less in the warm. */
+  hotDrinks() {
+    const w = this.world.weather;
+    if (!w.on) return 1;
+    const t = w.now().temperature_c;
+    return t <= MARKET_WEATHER.cold_c ? MARKET_WEATHER.cold_drinks : t >= MARKET_WEATHER.warm_c ? MARKET_WEATHER.warm_drinks : 1;
   }
 
   /** How many people should be at the market now: none come in the last half hour. */
@@ -870,10 +891,11 @@ export class MarketSimulation extends Simulation {
         return kinds.includes(g.kind) && (!child || g.kids || g.kind === "food");
       });
       if (!stalls.length) continue;
+      const hot = this.hotDrinks();
       const score = (o) => {
         const info = o.marketInfo(), g = MARKET_GOODS[info.goods], q = this._stall(o.id).queue.length;
         const d = Math.hypot(info.counter[0] - v.pos[0], info.counter[1] - v.pos[1]) / venue.k;
-        return (g.weight * (child && g.kids ? 3 : 1)) / (1 + q / 4) / (1 + d / 40) * rng.uniform(0.6, 1.4);
+        return (g.weight * (child && g.kids ? 3 : 1) * (g.kind === "drink" ? hot : 1)) / (1 + q / 4) / (1 + d / 40) * rng.uniform(0.6, 1.4);
       };
       // the best stall whose queue is not full; all full: give it up, annoyed
       const best = stalls.map((o) => [score(o), o]).sort((a, b) => b[0] - a[0]).map(([, o]) => o).find((o) => this._stall(o.id).queue.length < QUEUE_MAX);
@@ -990,7 +1012,7 @@ export class MarketSimulation extends Simulation {
     if (d > 0.25 * k) {
       const dir = venue.direction(venue.field(goal.field), v.pos, goal.at);
       if (dir) {
-        const speed = Math.min(v.speed * crowded, d / k / Math.max(dt, 0.05));
+        const speed = Math.min(v.speed * crowded * this.world.weather.walkFactor(), d / k / Math.max(dt, 0.05));
         vx = dir[0] * speed;
         vy = dir[1] * speed;
       }
@@ -1034,7 +1056,7 @@ export class MarketSimulation extends Simulation {
   _walkStreet(v, dt) {
     const w = v.walk;
     if (!w) return this._remove(v);
-    v.s += v.speed * 1.15 * dt * (1000 / (this.world.scale || 87));
+    v.s += v.speed * 1.15 * this.world.weather.walkFactor() * dt * (1000 / (this.world.scale || 87));
     if (v.s >= w.length) {
       if (v.state === "coming") {
         const venue = this._venue(v.venue);

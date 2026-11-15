@@ -454,9 +454,12 @@ export class BuildingModel {
     this.shadows.push(convexHull(pts.concat(pts.map((p) => [p[0] + dx, p[1] + dy]))));
   }
 
-  /** Flat polygon on the ground (paving, driveways, parking). `style` as for `view.polygon`. */
+  /**
+   * Flat polygon on the ground (paving, driveways, parking). `style` as for `view.polygon`; a surface,
+   * so snow lies on it unless `style.snow` says otherwise.
+   */
   plate(points, style) {
-    this.ground.push({ kind: "polygon", pts: points.map(([x, y]) => this.frame.xy(x, y)), style });
+    this.ground.push({ kind: "polygon", pts: points.map(([x, y]) => this.frame.xy(x, y)), style: { snow: 1, ...style } });
   }
 
   /** Line on the ground (plot boundaries, parking bays). `style` as for `view.line`. */

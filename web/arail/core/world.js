@@ -22,6 +22,7 @@ import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
 import { TrainRegistry } from "./trains.js";
 import { Clock, parseTime } from "./clock.js";
+import { Weather, drawWeather } from "./weather.js";
 import { RoadNetwork } from "./network.js";
 import { Transit } from "./transit.js";
 import { ParkingSpaces } from "./parking.js";
@@ -81,9 +82,12 @@ export class World {
       coverMarkers: true, // grey plates with their numbers over the markers and the labels of model wagons (camera view)
       trackSystems: "", // colour the tracks by one of their railway systems ("power", "train_control", …; rail/systems.js), "" = off
       ageYears: 0, // years added to the age of the infrastructure's assets (the maintenance story): how they age without renewals
+      weatherStill: false, // rain and snow drawn standing still (the system's "reduce motion")
     };
     /** Time of day (fast clock), see core/clock.js. */
     this.clock = new Clock();
+    /** The weather: the air, the ground and what they do to those who read them (core/weather.js). */
+    this.weather = new Weather(this);
     this.services = new ServiceManager(this);
     this.disruptions = new DisruptionManager(this);
     this.scenarios = new ScenarioPlayer(this);
@@ -128,6 +132,7 @@ export class World {
     this.time = 0;
     this.demand = 1;
     this.clock.configure(layout.clock);
+    this.weather.configure(layout.weather);
     this.rng = createRng(this.seed);
     this.services.reset();
     this.disruptions.reset();
@@ -206,6 +211,7 @@ export class World {
       markers,
       services: L.services,
       clock: this.clock.toJSON(),
+      ...(this.weather.toJSON() != null ? { weather: this.weather.toJSON() } : {}),
       grid: L.grid,
       simulations: this._simulationEntries.map((e) => (e.sim ? e.sim.toJSON() : e.cfg)),
       objects: this.objects.map((o) => o.toJSON()),
@@ -342,6 +348,7 @@ export class World {
     for (let i = 0; i < n; i++) {
       this.time += dt;
       if (this.clock.advance(dt)) this.events.emit("clock.day", { day: this.clock.day });
+      this.weather.step(dt);
       this.scenarios.step();
       this.disruptions.step();
       this.services.step(dt);
@@ -390,8 +397,32 @@ export class World {
   setTime(value) {
     if (parseTime(value) == null) return null;
     const minutes = this.clock.set(value);
+    // a fixed weather keeps what lies on the ground; the typical one is gone through again up to the new time
+    this.weather.settle({ keep: true });
     this.events.emit("clock.set", { minutes });
     return minutes;
+  }
+
+  /**
+   * Set the date ("MM-DD" or a day of the year; null: no date, every day the same): the sun and the
+   * typical weather follow it. A value that is no date changes nothing and gives undefined; else the
+   * day of the year (or null), and the simulations re-place their people (`clock.date`, `clock.set`).
+   */
+  setDate(value) {
+    const date = this.clock.setDate(value);
+    if (date === undefined) return undefined;
+    this.weather.settle({ keep: true });
+    this.events.emit("clock.date", { date });
+    this.events.emit("clock.set", { minutes: this.clock.minutes });
+    return date;
+  }
+
+  /**
+   * Set the weather: a preset's name ("rain", "snow", …), "typical", "off", or `{preset?, mode?,
+   * course?, …quantities}` (core/weather.js). False (and nothing changed) for what is none of them.
+   */
+  setWeather(value) {
+    return this.weather.set(value);
   }
 
   /** Darkness 0 (day) .. 1 (night) for drawing, 0 while the lighting is switched off. */
@@ -418,6 +449,9 @@ export class World {
    */
   draw(view, { selected = null, objects = null, moving = true } = {}) {
     if (view.night == null) view.night = this.night();
+    // the weather's look (snow cover, wet ground, the season's leaves) for everything drawn; the
+    // simple view (Map, 2.5D) shows no weather
+    if (view.weather === undefined) view.weather = view.simple ? null : this.weather.look();
     this._syncStops();
     const el = this.elevation.sync();
     const lifts = view.simple ? {} : { street: el.streetLift, ground: el.groundLift };
@@ -448,6 +482,7 @@ export class World {
       view.lift = lift(o);
       o.drawMoving(view);
     }
+    if (moving) drawWeather(view, view.weather);
     if (view.simple) view.flat = true;
     view.lift = lift(selected);
     if (selected && selected.geometry) selected.drawSelection(view);

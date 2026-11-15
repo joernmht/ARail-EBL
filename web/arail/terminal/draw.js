@@ -1149,7 +1149,7 @@ function batchedLines(view, segments, colour, width, order) {
 export function drawYardGround(view, geometry, { name = "" } = {}) {
   const g = geometry;
   if (!g?.footprint) return;
-  view.polygon(g.footprint, { fill: TERMINAL_COLOURS.concrete, alpha: 0.9, order: 2.5 });
+  view.polygon(g.footprint, { fill: TERMINAL_COLOURS.concrete, alpha: 0.9, order: 2.5, snow: 1 });
   const m1 = view.m(1);
   const bays = g.bays || 1, rows = g.rows || 1;
   const ha = (bays * BAY_M * m1) / 2, ht = (rows * ROW_M * m1) / 2;
@@ -1208,7 +1208,7 @@ export function drawCraneRails(view, geometry) {
   const g = geometry;
   if (!g?.railA || !g?.railB) return;
   for (const rail of [g.railA, g.railB]) {
-    view.ribbon(rail, view.m(1.0), { fill: TERMINAL_COLOURS.concrete, order: 3 });
+    view.ribbon(rail, view.m(1.0), { fill: TERMINAL_COLOURS.concrete, order: 3, snow: 1 });
     // the rail head as a ribbon (right in perspective, clipped at the camera) and a hairline on
     // it, so that it never vanishes in the distance
     view.ribbon(rail, view.m(0.072 * 1.6), { fill: TERMINAL_COLOURS.rail, order: 6 });
@@ -1232,7 +1232,7 @@ export function drawTruckLane(view, geometry, { positions = [] } = {}) {
   const m1 = view.m(1), side = g.side || 1, lane = 3.5 * m1;
   const off = g.passingOffset ?? side * lane;
   const a = offsetPolyline(g.points, -side * (lane / 2)), b = offsetPolyline(g.points, off + side * (lane / 2));
-  view.polygon(a.concat(b.slice().reverse()), { fill: CSS.asphalt, order: 2 });
+  view.polygon(a.concat(b.slice().reverse()), { fill: CSS.asphalt, order: 2, snow: 1 });
   // divider: 3 m dashes, 6 m gaps
   let dashes = DASHES.get(g);
   if (!dashes || dashes.m1 !== m1) {
@@ -1289,7 +1289,7 @@ export function drawQuay(view, geometry) {
   const g = geometry;
   if (!g?.points) return;
   if (g.water) view.polygon(g.water, { fill: PALETTE.water, alpha: 0.95, order: 0.6 });
-  if (g.wall) view.polygon(g.wall, { fill: TERMINAL_COLOURS.concrete, order: 3 });
+  if (g.wall) view.polygon(g.wall, { fill: TERMINAL_COLOURS.concrete, order: 3, snow: 1 });
   if (g.berth && Number.isFinite(g.quayOffset)) {
     const lengths = g.lengths || polylineLengths(g.points);
     const edge = slice(g.points, lengths, g.berth[0], g.berth[1]);

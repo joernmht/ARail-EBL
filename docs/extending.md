@@ -337,7 +337,8 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | `world.services` | timetable vehicles: `call(target)`, `vehicles()`, `forArea(areaId)`, `doors(vehicle)`, `placement(vehicle)` |
 | `world.network()` | the road network of the streets: places, routes, sidewalks, lanes (see [Streets, trams, buses and road traffic](streets-and-buses.md#for-plugins-and-simulations)) |
 | `world.transit` | bus lines in operation: `lines`, `connections(fromAreaId, toAreaId)`, `vehicleAt(dockId)`, `statusFor(dockId)`, `buses` |
-| `world.clock`, `world.setTime(t)`, `world.night()` | the time of day (below); `night()` is the darkness used for drawing (0 when the lighting is off) |
+| `world.clock`, `world.setTime(t)`, `world.setDate(d)`, `world.night()` | the time of day and the date (below); `night()` is the darkness used for drawing (0 when the lighting is off) |
+| `world.weather`, `world.setWeather(w)` | the weather: the air, the ground and what they do to those who read them (see [Seasons and weather](weather.md)) |
 | `world.occupancy` | `Map` building id → people inside, written by the town simulation (unset without one) |
 | `world.disruptions` | `start(spec)`, `stop(id)`, `active`, `effectsFor(area)` |
 | `world.scenarios` | `play(id)`, `stop()` |
@@ -357,11 +358,12 @@ To draw people like the built-in simulations do: `drawPerson(view, [x, y], {dir,
 | --- | --- |
 | `minutes`, `hours`, `day`, `label()` | time of day (minutes after midnight), days since the start, `"07:32"` |
 | `factor`, `frozen` | clock seconds per simulated second; true while the clock is stopped |
-| `daylight()`, `night()` | 0 … 1, with a smooth twilight around sunrise (06:00) and sunset (20:30) |
+| `daylight()`, `night()` | 0 … 1, with a smooth twilight around sunrise and sunset (06:00 and 20:30; with a date, that day's: `sun()`) |
+| `date`, `year`, `weekday()`, `dateLabel()`, `season()`, `sun()` | the day of the year and the year (null: no date), the weekday (0 = Monday), `"Sun 6 Dec"` (`{long: true}`: `"Sunday, 6 December 2026"`), the season, today's `{rise, set, twilight}` |
 | `demand(kind)` | demand factor for `"rail"`, `"bus"`, `"car"` or `"passengers"` (1 = normal daytime level; 0 at night for rail and bus; 1 when profiles are off) |
 | `set(t)`, `secondsUntil(t)` | jump to `"HH:MM"` (or minutes); simulated seconds until the clock shows `t` |
 
-Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`, so simulations can put their people where they belong at that time. `formatTime`, `parseTime`, `profileAt` and `PROFILES` are exported too.
+Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`, so simulations can put their people where they belong at that time. `world.setDate("12-06")` sets the date the same way, and `world.weather` is the weather that everybody reads (`now()`, `railCondition()`, `walkFactor()`, `cycleShare()`, …): see [Seasons and weather](weather.md#for-plugins-and-simulations). `formatTime`, `parseTime`, `profileAt` and `PROFILES` are exported too.
 
 ### Events
 
@@ -373,7 +375,9 @@ Use `world.setTime("06:30")` rather than `clock.set`: it also emits `clock.set`,
 | `passenger.removed` | `{agent, person}` |
 | `passenger.denied` | `{agent, person, vehicle, dock, area, reason}`: left behind (`step`, `full`, `wheelchair`) |
 | `clock.day` | `{day}` at midnight |
-| `clock.set` | `{minutes}` after `world.setTime()` |
+| `clock.set` | `{minutes}` after `world.setTime()` (and `world.setDate()`) |
+| `clock.date` | `{date}` after `world.setDate()` (the day of the year, or null) |
+| `weather.changed` | `{weather}`: the weather was set, or rain or snow starts or stops, ice forms, snow lies or is gone |
 | `disruption.started`, `disruption.ended` | `{disruption}` |
 | `scenario.started`, `scenario.ended`, `scenario.message` | `{scenario}`; `scenario.message` also `text` |
 | `object.added`, `object.changed`, `object.removed` | `{object}` |
