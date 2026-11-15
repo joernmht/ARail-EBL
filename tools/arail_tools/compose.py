@@ -311,10 +311,11 @@ def soundtrack(plan: dict, out: str) -> int:
         chain += f",volume={sd.get('gain', 0)}dB,adelay={round(sd['at'] * 1000)}|{round(sd['at'] * 1000)}[s{k}]"
         graph.append(chain)
     mix = "".join(f"[s{k}]" for k in range(len(sounds)))
-    graph.append(f"{mix}amix=inputs={len(sounds)}:normalize=0,atrim=0:{length},alimiter=limit=0.89[mix]")
+    # padded with silence, then cut: the track as long as the video, however early its last sound ends
+    graph.append(f"{mix}amix=inputs={len(sounds)}:normalize=0,apad,atrim=0:{length},alimiter=limit=0.89[mix]")
     tmp = out + ".tmp.mp4"
     cmd += ["-filter_complex", ";".join(graph), "-map", "0:v", "-map", "[mix]", "-c:v", "copy"]
-    cmd += ["-c:a", "aac", "-b:a", str(plan.get("audio_bitrate", "112k")), "-movflags", "+faststart", "-shortest", tmp]
+    cmd += ["-c:a", "aac", "-b:a", str(plan.get("audio_bitrate", "112k")), "-movflags", "+faststart", tmp]
     subprocess.run(cmd, check=True)
     os.replace(tmp, out)
     return len(sounds)

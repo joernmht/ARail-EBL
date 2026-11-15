@@ -371,6 +371,25 @@ def test_compose_writes_each_shot_on_its_own_and_mixes_the_sounds(tmp_path, monk
         text=True,
     ).stdout.split()
     assert probe == ["video", "audio"]
+    # the sounds end at 0.8 s, the video at 1.2 s: neither stream is cut to the sounds
+    for stream in ("v:0", "a:0"):
+        out = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                stream,
+                "-show_entries",
+                "stream=duration",
+                "-of",
+                "csv=p=0",
+                str(video),
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert abs(float(out) - 1.2) < 0.08, f"{stream} lasts {out} s"
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
