@@ -111,6 +111,9 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
   await page.locator("#situation-christmas-market").click();
   await expect(page.locator("#situation-christmas-market")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#situation-winter-rush")).toHaveAttribute("aria-pressed", "false");
+  // the fast clock is no part of a situation: it stays pressed
+  await page.locator("#clockFactor").selectOption("24");
+  await expect(page.locator("#situation-christmas-market")).toHaveAttribute("aria-pressed", "true");
   const market = await state();
   expect(market).toMatchObject({ date: "2026-12-05", demand: 2, weekend: true, weather: "−2 °C · snow" });
   expect(market.layers).toEqual(expect.arrayContaining(["striezelmarkt", "market-visitors"]));
@@ -118,9 +121,18 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
   await page.locator("#simByHand summary").click();
   await page.getByRole("button", { name: "Noon 12:00" }).click();
   await expect(page.locator(".situation[aria-pressed=true]")).toHaveCount(0);
-  // after the match: a crowd at every stop
+  // after the match: a crowd at every stop, one however often it is set
   await page.locator("#situation-after-match").click();
-  await expect.poll(() => page.evaluate(() => window.__arail.world.disruptions.active.map((d) => d.def.type))).toContain("crowd");
+  await page.locator("#situation-after-match").click();
+  await expect.poll(() => page.evaluate(() => window.__arail.world.disruptions.active.filter((d) => d.def.type === "crowd").length)).toBe(1);
+  // another layout: no situation is pressed there
+  await page.locator("#situation-spring-sunday").click();
+  await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate(() => window.__arail.openLayout("../layouts/ebl-neustadt.json"));
+  await page.waitForFunction(() => window.__arail.world.layout.name?.includes("Neustadt"));
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-simulate").click();
+  await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "false");
   expect(errors).toEqual([]);
 });
 

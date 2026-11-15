@@ -51,6 +51,12 @@ test("situations: setting one sets the date, the time, the weather, the demand a
   assert.equal(situationReady(a, match), true);
   await applySituation(a, match);
   assert.deepEqual(w.disruptions.active.map((d) => [d.def.type, d.target]), [["crowd", "*"]]);
+  // set again: still one crowd, not one on top of the other (× 6, not × 36)
+  await applySituation(a, match);
+  assert.equal(w.disruptions.active.length, 1);
+  // another situation: the crowd ends
+  await applySituation(a, SITUATIONS.find((s) => s.id === "spring-sunday"));
+  assert.deepEqual(w.disruptions.active, []);
 });
 
 test("situations: an event that needs modules the layout does not have is not ready", () => {

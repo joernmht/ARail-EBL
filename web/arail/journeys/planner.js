@@ -23,7 +23,7 @@
  * @module arail/journeys/planner
  */
 import { straightWalk } from "../core/network.js";
-import { PROFILES, profileAt } from "../core/clock.js";
+import { profileAt } from "../core/clock.js";
 import { towards } from "../core/transit.js";
 import { boardingTime, mobilityOf, walkingSpeed } from "../core/mobility.js";
 import { boardingAccess } from "../sims/passengers.js";
@@ -218,7 +218,7 @@ export class Planner {
   /** Clock minutes between two buses of a line at a time (world), or null at night (no buses). */
   _headwayMin(line, t) {
     const c = this.world.clock;
-    const demand = c.profiles ? profileAt(PROFILES.bus, ((t % DAY) + DAY) % DAY) : 1;
+    const demand = c.profiles ? profileAt(c.profile("bus"), ((t % DAY) + DAY) % DAY) : 1;
     return demand >= 0.05 ? this.clockMin(line.headway / demand) : null;
   }
 

@@ -94,6 +94,10 @@ test("clock: a Saturday or Sunday has the weekend's demand, without a date every
   assert.equal(c.weekend(), true);
   c.set("13:00");
   assert.equal(c.demand("passengers"), 1, "the most in the early afternoon");
+  // those who look ahead within the day read today's profile
+  assert.equal(c.profile("bus"), WEEKEND_PROFILES.bus);
+  c.setDate("2026-01-19"); // a Monday
+  assert.equal(c.profile("bus"), PROFILES.bus);
 });
 
 test("clock: layouts carry their clock settings; no trains during the night break", () => {

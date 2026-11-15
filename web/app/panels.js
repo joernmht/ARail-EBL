@@ -225,7 +225,9 @@ export class Panels {
       section("Clock",
         h("div", { class: "fields" },
           h("label", { class: "field", for: "clockFactor" }, h("span", {}, "Fast clock"),
-            select("clockFactor", [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => [f, f === 1 ? "1:1 (real time)" : `1:${f}`]), w.clock.factor, (v) => (w.clock.factor = Number(v)))),
+            // not part of a situation: the situation set stays pressed
+            h("select", { id: "clockFactor", onchange: (e) => { w.clock.factor = Number(e.target.value); } },
+              [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => h("option", { value: f, selected: f === w.clock.factor }, f === 1 ? "1:1 (real time)" : `1:${f}`)))),
           h("label", { class: "field check", for: "optLighting" },
             h("input", { type: "checkbox", id: "optLighting", checked: s.lighting !== false, onchange: (e) => { s.lighting = e.target.checked; app.savePrefs(); } }), "Day and night lighting"),
           h("label", { class: "field check", for: "optFreeze" },
@@ -262,15 +264,18 @@ export class Panels {
     h("span", { class: "situation-text", id: `${id}-text` }, x.text, ready ? null : [" (", h("span", { class: "case-state" }, "Not in this layout"), ")"]));
   }
 
-  /** The situation set last, while the world is the one it was set in (another layout: none). */
+  /**
+   * The situation set last, while the layout is the one it was set on (the world loads another
+   * layout, or the same one with other modules, into the same object: its layout is new then).
+   */
   _situationSet() {
-    return this.situation && this.situation.world === this.world ? this.situation.id : null;
+    return this.situation && this.situation.layout === this.world.layout ? this.situation.id : null;
   }
 
   /** Set a situation (situations.js); the card keeps the focus. */
   async setSituation(x) {
     await applySituation(this.app, x);
-    this.situation = { id: x.id, world: this.world };
+    this.situation = { id: x.id, layout: this.world.layout };
     if (this.app.activeTab === "settings" && this.settingsView === "simulate") {
       this.renderSettings(document.getElementById("panel-settings"));
       document.getElementById(`situation-${x.id}`)?.focus();

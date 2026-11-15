@@ -368,7 +368,16 @@ export class Clock {
    */
   demand(kind) {
     if (!this.profiles || !PROFILES[kind]) return 1;
-    return profileAt((this.weekend() ? WEEKEND_PROFILES : PROFILES)[kind], this.minutes);
+    return profileAt(this.profile(kind), this.minutes);
+  }
+
+  /**
+   * Today's profile of a kind of traffic ([hour, factor] points): a weekend's on a Saturday or
+   * Sunday, else the working day's (for those who look ahead within the day: the journey planner,
+   * the traffic clearing the snow).
+   */
+  profile(kind) {
+    return (this.weekend() ? WEEKEND_PROFILES : PROFILES)[kind];
   }
 
   /** Is it a Saturday or a Sunday? False without a date (every day is a working day then). */

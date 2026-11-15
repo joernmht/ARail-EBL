@@ -18,6 +18,9 @@
  * @property {{factor: number, minutes: number}} [crowd] a crowd surge at every stop (the disruption `crowd`)
  */
 
+/** The id of a situation's crowd: setting a situation again, or another one, ends it. */
+export const CROWD_ID = "situation-crowd";
+
 /** @type {Situation[]} */
 export const SITUATIONS = [
   {
@@ -72,7 +75,8 @@ export function situationReady(app, s) {
 
 /**
  * Set the world to the situation: the modules it needs on first (that starts the simulations
- * again), then the date, the time, the weather and the demand, and an event's crowd.
+ * again), then the date, the time, the weather and the demand, and an event's crowd (the crowd of
+ * the situation set before ends: one crowd at a time, never one on top of another).
  * @param {import("./app.js").App} app
  * @param {Situation} s
  */
@@ -82,9 +86,11 @@ export async function applySituation(app, s) {
     if (s.layers.some((id) => !on.includes(id))) await app.chooseModules([...new Set([...on, ...s.layers])]);
   }
   const w = app.world;
+  // the crowd of the situation set before ends (another one's, or this one's: one at a time)
+  w.disruptions.stop(CROWD_ID);
   w.setDate(s.date);
   w.setTime(s.time);
   w.setWeather(s.weather);
   w.demand = s.demand;
-  if (s.crowd) w.disruptions.start({ type: "crowd", target: "*", params: { factor: s.crowd.factor, minutes: s.crowd.minutes } });
+  if (s.crowd) w.disruptions.start({ id: CROWD_ID, type: "crowd", target: "*", params: { factor: s.crowd.factor, minutes: s.crowd.minutes } });
 }
