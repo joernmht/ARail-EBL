@@ -1,0 +1,10 @@
+{
+  "about": "Photo 132444 of the photo map (Neustadt), in ARail with the layout of its digital layer; the simulation running on.",
+  "page": "photo=132444",
+  "frames": 180,
+  "proc_max": 1600,
+  "warm_s": 30,
+  "speed": 3,
+  "each": "if (term) term.highlight.slots = false;",
+  "out": "build/video/photos/132444"
+}

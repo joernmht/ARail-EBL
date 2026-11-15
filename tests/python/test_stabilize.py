@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 
 import numpy as np
 import pytest
@@ -214,6 +215,246 @@ def test_compose_puts_the_bare_picture_first(tmp_path, monkeypatch):
     assert f(8)[25, 80, 2] > 180, "then the shot"
     with pytest.raises(OSError, match="missing"):
         cp.Part({"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1]}, (10, 10))
+
+
+def test_compose_starts_a_shot_later_over_one_frame_of_its_clip(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 20, (0, 0, 200))
+    frames_dir(tmp_path / "bare", 10, (200, 0, 0))
+    plan = {
+        "size": [200, 100],
+        "parts": [
+            {
+                "frames": "a",
+                "first": 8,
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "bare": {"image": "bare/f0003.jpg", "fade": [2, 6]},
+            }
+        ],
+    }
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 10
+    f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
+    assert f(0)[50, 100, 0] > 180, "the bare picture"
+    assert 40 < f(4)[50, 100, 0] < 180, "fading"
+    # from the shot's frame 8 on: its bar is 10 + 8 px wide at the start, 10 + 17 at the end
+    last = f(9)
+    assert last[50, 100, 2] > 180 and last[50, 10 + 17 + 3, 2] > 180 and last[50, 10 + 17 - 2, 0] > 180
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
+def test_compose_takes_a_clip_as_a_shot(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 12, (0, 0, 200), size=(160, 96))
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-framerate",
+            "30",
+            "-i",
+            str(tmp_path / "a" / "f%04d.jpg"),
+            "-c:v",
+            "libx264",
+            "-crf",
+            "10",
+            "-pix_fmt",
+            "yuv420p",
+            str(tmp_path / "a.mp4"),
+        ],
+        check=True,
+    )
+    plan = {"size": [160, 96], "parts": [{"clip": "a.mp4", "first": 4, "count": 6, "crop": [0, 0, 160, 96]}]}
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 6
+    bar = lambda i: int((cv2.imread(str(out / f"f{i:04d}.jpg"))[48, :, 0] > 150).sum())  # noqa: E731
+    assert abs(bar(0) - 14) <= 2 and abs(bar(5) - 19) <= 2, "the clip's frames 4 to 9"
+    # a frame of the clip held as the bare picture (a shot with the app's Freeze)
+    frames_dir(tmp_path / "b", 12, (0, 200, 0), size=(160, 96))
+    plan = {
+        "size": [160, 96],
+        "parts": [
+            {
+                "frames": "b",
+                "count": 8,
+                "crop": [0, 0, 160, 96],
+                "bare": {"clip": "a.mp4", "start": 6, "still": True, "fade": [6, 8]},
+            }
+        ],
+    }
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 8
+    assert abs(bar(0) - 16) <= 2 and abs(bar(4) - 16) <= 2, "the clip's frame 6, held"
+    with pytest.raises(OSError, match="frames needed"):
+        cp.Part({"clip": "a.mp4", "first": 10, "count": 6, "crop": [0, 0, 1, 1]}, (10, 10))
+
+
+def test_compose_tints_a_shot_and_lays_the_lines_over_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 20, (0, 0, 200))
+    plan = {
+        "size": [200, 100],
+        "fps": 10,
+        "overlay": "text",
+        "parts": [
+            {
+                "frames": "a",
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "say": [{"text": "What if", "at": 0.2, "hold": 0.5}],
+            },
+            {
+                "frames": "a",
+                "first": 10,
+                "count": 10,
+                "crop": [0, 0, 200, 100],
+                "fade": 2,
+                "tint": ["#001450", "#ffffff"],
+            },
+        ],
+    }
+    assert cp.cues(plan) == [{"text": "What if", "start": 2, "end": 7, "typing": 0.0}]
+    os.makedirs(tmp_path / "text")
+    line = np.zeros((20, 200, 4), np.uint8)
+    line[:, :100] = (0, 255, 0, 255)  # opaque green on the left, transparent on the right
+    cv2.imwrite(str(tmp_path / "text" / "f0003.png"), line)
+    out = tmp_path / "out"
+    assert cp.compose(plan, str(out), log=lambda *_: None) == 18
+    f = lambda i: cv2.imread(str(out / f"f{i:04d}.jpg")).astype(float)  # noqa: E731
+    assert f(3)[10, 50, 1] > 200 and f(3)[10, 50, 2] < 60, "the line over the frame"
+    assert f(3)[10, 150, 2] > 180, "beside it the frame"
+    assert f(2)[10, 50, 2] > 180, "no line where there is no PNG"
+    tinted = f(15)[60, 150]
+    assert tinted[0] > tinted[2] + 20 and tinted[2] < 60, "in the blue of the tint"
+
+
+def test_compose_writes_each_shot_on_its_own_and_mixes_the_sounds(tmp_path, monkeypatch):
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg is not installed")
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 12, (0, 0, 200), size=(160, 96))
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=440:d=2", str(tmp_path / "tone.wav")], check=True
+    )
+    plan = {
+        "size": [64, 48],
+        "fps": 10,
+        "parts": [
+            {
+                "name": "first",
+                "frames": "a",
+                "count": 6,
+                "crop": [0, 0, 160, 96],
+                "sounds": [{"file": "tone.wav", "dur": 0.4}],
+            },
+            {
+                "frames": "a",
+                "first": 6,
+                "count": 6,
+                "crop": [0, 0, 160, 96],
+                "say": [{"text": "Hi", "at": 0, "hold": 0.3}],
+            },
+        ],
+        "typing": {"file": "tone.wav", "gain": -6},
+        "cps": 10,
+    }
+    assert cp.shots(plan, str(tmp_path / "shots"), log=lambda *_: None) == ["01-first.mp4", "02-a.mp4"]
+    assert (tmp_path / "shots" / "02-a.mp4").stat().st_size > 0
+    video = tmp_path / "v.mp4"
+    cp.encode(str(tmp_path / "a"), str(video), 10, 30)
+    assert cp.soundtrack(plan, str(video)) == 2  # the shot's tone and the typing under the line
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(video)],
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    assert probe == ["video", "audio"]
+    # the sounds end at 0.8 s, the video at 1.2 s: neither stream is cut to the sounds
+    for stream in ("v:0", "a:0"):
+        out = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                stream,
+                "-show_entries",
+                "stream=duration",
+                "-of",
+                "csv=p=0",
+                str(video),
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert abs(float(out) - 1.2) < 0.08, f"{stream} lasts {out} s"
+
+
+def test_compose_types_a_line_after_the_row_s_old_line_is_backspaced(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 30, (0, 0, 200))
+    plan = {
+        "size": [200, 100],
+        "fps": 10,
+        "parts": [
+            {
+                "frames": "a",
+                "count": 30,
+                "crop": [0, 0, 200, 100],
+                "say": [
+                    {"text": "A real lab", "at": 0, "row": 1},
+                    {"text": "houses", "at": 1},
+                    {"text": "trees", "at": 2},
+                ],
+            }
+        ],
+    }
+    lines = cp.cues(plan)
+    assert [c["typing"] for c in lines] == [0.0, 0.0, len("houses") / cp.ERASE_CPS], "only a row's second line waits"
+    # the same speed as the box's (tools/video/story-box.mjs)
+    js = open(
+        os.path.join(os.path.dirname(__file__), "..", "..", "tools", "video", "story-box.mjs"), encoding="utf-8"
+    ).read()
+    assert f"export const ERASE_CPS = {cp.ERASE_CPS};" in js and f"rows: {cp.ROWS}," in js
+
+
+def test_compose_cues_of_a_plan_with_a_missing_shot_say_so_and_write_nothing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    plan = {
+        "size": [200, 100],
+        "parts": [{"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1], "say": [{"text": "x"}]}],
+    }
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    out = tmp_path / "cues.json"
+    assert cp.main([str(tmp_path / "plan.json"), "--cues", str(out)]) == 1
+    assert "missing" in capsys.readouterr().err and not out.exists()
+
+
+def test_compose_refuses_a_crop_outside_its_frames_before_it_writes_anything(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 4, (0, 0, 200))  # 200 x 100
+    part = lambda crop: {"frames": "a", "count": 4, "crop": crop}  # noqa: E731
+    # the whole frame, exactly, is a crop (as every recorded page's [0, 0, 1280, 720])
+    assert (
+        cp.compose({"size": [100, 50], "parts": [part([0, 0, 200, 100])]}, str(tmp_path / "ok"), log=lambda *_: None)
+        == 4
+    )
+    for crop in ([[0, 0, 200, 100], [0, 0, 240, 120]], [-10, 0, 190, 100], [0, -10, 200, 90], [0, 0, 201, 100]):
+        out = tmp_path / "bad"
+        plan = {"size": [100, 50], "parts": [part([0, 0, 200, 100]), {**part(crop), "fade": 1}]}
+        with pytest.raises(OSError, match="outside its frames"):
+            cp.compose(plan, str(out), log=lambda *_: None)
+        assert not out.exists() or not os.listdir(out), f"{crop}: nothing written before the error"
+    # a clip's crop is checked against the clip's size too
+    if shutil.which("ffmpeg"):
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=160x96:d=0.4", str(tmp_path / "c.mp4")],
+            check=True,
+        )
+        with pytest.raises(OSError, match=r"\(160 x 96\)"):
+            cp.Part({"clip": "c.mp4", "count": 4, "crop": [0, 0, 200, 96]}, (10, 10))
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")

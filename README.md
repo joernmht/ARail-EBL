@@ -87,7 +87,9 @@ Write an adapter for your system from the template; see [Control-system interfac
 
 ```
 web/                  the website (published with GitHub Pages)
-  index.html          project page: one page each for educators, scientists and practitioners, behind a switch
+  index.html          project page: the video of the lab, then one page each for educators, scientists and
+                      practitioners, behind a switch
+  how/                How it works: markers, a phone, the survey, the bridge; where it goes next
   references.json     what they brought (teaching concepts, papers, cases from practice), listed on its boards
   app/                the AR app (an interactive presentation: the modules as stories to click through), with the
                       flyover and the in-app video survey, in English and German; its shell is the game page's too
@@ -129,7 +131,7 @@ web/                  the website (published with GitHub Pages)
                       container train; the container terminal)
   media/              the images and clips of the example layouts and their orthophotos, the project
                       page's video
-  assets/             logos, icons and the website's images
+  assets/             logos, icons, the website's images and the styles its pages share (site.css)
   vendor/js-aruco2/   marker detection library (MIT)
 tools/                Python tools: control-system bridge, calibration, lab survey, synthetic test scenes;
                       ops-compare.mjs (comparing operations setups from the command line)

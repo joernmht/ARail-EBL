@@ -1,0 +1,11 @@
+{
+  "about": "Riders on bikes and e-scooters in the virtual town of Bf Neustadt, seen in the flyover close to a street (more riders than by default, for the video).",
+  "page": "example=neustadt",
+  "eval": "const c = app.world.simulations.find((s) => s.constructor.type === 'cycling'); if (c) c.config.riders_per_km = 55;",
+  "warm_s": 40,
+  "warm_speed": 10,
+  "speed": 1,
+  "fly": { "target": [-1460, -300], "distance": [330, 260], "yaw_deg": [140, 165], "pitch_deg": [22, 17] },
+  "frames": 170,
+  "out": "build/video/bikes"
+}

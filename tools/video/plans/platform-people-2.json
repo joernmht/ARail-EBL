@@ -1,0 +1,34 @@
+{
+  "about": "Close-up in the flyover: travellers at the east end of the platforms of Bf Neustadt, a train boarding (for the video, without the photo of the table, which is coarse this close, and the stations get a fixed, higher rate of passengers than the town would send).",
+  "page": "example=neustadt",
+  "warm_s": 35,
+  "warm_speed": 10,
+  "speed": 1,
+  "fly": {
+    "target": [
+      [
+        3500,
+        330
+      ],
+      [
+        3420,
+        330
+      ]
+    ],
+    "distance": [
+      400,
+      370
+    ],
+    "yaw_deg": [
+      200,
+      205
+    ],
+    "pitch_deg": [
+      26,
+      24
+    ]
+  },
+  "frames": 100,
+  "out": "build/video/platform-people-2",
+  "eval": "for (const s of app.world.simulations) if (s.constructor.type === 'passengers') { Object.assign(s.config, { base_rate: 1.1, max_per_area: 200 }); s._othersFromTown = () => null; } app.flyover.orthophoto = () => null;"
+}

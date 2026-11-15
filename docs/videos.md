@@ -72,9 +72,9 @@ per frame, and as the sum over one second, because a slow slide is what the eye 
    markers decide where it sits on average.
 5. **Rendering again.** The second pass draws every frame with its solved pose (the tracker is
    skipped) and the fixed focal length.
-6. **Composing.** The frames are cropped to a square and joined with crossfades. The last frames
-   fade into the first, so the loop has no seam. Then they are encoded as H.264 (CRF 27,
-   `-movflags +faststart`).
+6. **Composing.** The frames are cropped to 16:9 and joined with the other cameras (see
+   [The project page's video](#the-project-pages-video)). The last frames fade into the first, so
+   the loop has no seam. Then they are encoded as H.264 (CRF 25, `-movflags +faststart`).
 
 Before step 4, two simpler ways were tried; the table shows them too. Smoothing the corner paths
 over time (a median of 5, then a Gaussian) removes the jitter, but without the picture's motion it
@@ -98,6 +98,62 @@ The two causal filters are explained under [What could run live](#what-could-run
 three rows follow the same image motion that the slip is measured against, so check them by eye too:
 the town's rails on the curve's rails, frame by frame. The last column shows how far the overlay
 moves away from the markers to stay steady (a few pixels).
+
+## The project page's video
+
+The video spans the whole width of the project page, 16:9 (1280 × 720, 70 s, looping). It is a
+short story told after the concept of [Short videos](short-videos.md): the real lab (*A real lab is
+awesome.*), the one fade from the real lab into ARail (*But what if… there are houses.*), then views of
+ARail, each idea with its line typed into a terminal box: trees, cars, the ways to the office, the
+container terminal, travellers (close-ups on the platforms), trams and buses (close), bikes, the night, the
+game, the missions; at the end the whole town in the chair's blue: *What if all that is possible? What
+if all this is customizable overnight? Would your work still be the same?*
+
+Only the curve is shown moving in ARail over a real clip: its poses are stabilized as above. The
+other clips are drawn with the app's tracker alone, which is not steady enough for a moving shot. So
+each of them, like each photo, is one picture held: the simulation runs on (trains, buses, people),
+and a slow move within the picture (the `crop` from one box to another: a push in, or a pan) keeps it
+alive. The close-ups, the bikes and the town at the end are flyover shots.
+
+The station and the container train are rendered from copies of their clips at 1280 px
+(`page-videos.sh` makes them): the browser of the render loads the whole clip as one file, and the
+full-size station clip is too large for it.
+
+The video has no sound yet; see [Sound](short-videos.md#sound).
+
+### The shots on their own
+
+`arail-compose tools/video/plans/hero.json --shots <dir>` writes each view as a video of its own
+(`01-real-lab.mp4`, `02-town-curve.mp4` …): its crop, its fade from the real picture into ARail, no
+lines, no sound, no crossfade into its neighbours. The shots of this video are kept with the chair's
+presentations (`visuals/arail-shots/` in the presentations repository), to cut them into talks or
+combine them again after an update: a shot rendered anew replaces its file, a plan of `clip` parts
+joins them.
+
+### The material
+
+What there is to cut from, and what the video uses (the clips are described in
+[examples/README.md](../examples/README.md)):
+
+| Material | Size | In the video |
+| --- | --- | --- |
+| `examples/media/ebl-station-trains.mp4` | 10 s, 1920 × 1080 | the real lab at the start; frame 40, held, in ARail |
+| `examples/media/ebl-curve-trains.mp4` | 10 s, 1080 × 1920 | the turn: the real curve fading into the town, moving (frames 20–169) |
+| `examples/media/ebl-terminal-wagons.mp4` | 10 s, 1920 × 1080 | not in this video: its held frames cut off the truck's trailers (and at frame 200 its markers are not found) |
+| `examples/media/ebl-terminal-truck.mp4` | 10 s, 1920 × 1080 | frame 230, held: the crane loads the truck |
+| `web/media/ebl-container-train.jpg` | photo, 1600 × 900 | the hybrid container train, the crane working |
+| `web/lab-map/photos/` | 125 photos, 35 with a digital layer | 5 in this video (132542 also at night) (`plans/photos/`, each in the app with the layout of its digital layer, `?photo=`); 132730 is left out (seen from the far left, its buildings lean), the others of Waldhof show little of ARail |
+| the game page and the big game | pages of this site | recorded as they are used (`screen.mjs`) |
+| the flyover | rendered | the travellers on the platforms, trams and buses at the station square, the bikes and the station square at night, close; the whole town at the end |
+| `examples/media/ebl-lab-video.mp4` | 16 s, 1920 × 1080 | not used: it carries an editor's watermark |
+| the hump simulation's diagrams | `tools/hump.mjs --svg` | not used: the hump is not in the app yet |
+| the EBL's digital twin (screen recording from the deck of 22 October 2026) | 70 s, 1600 × 900 | not used: the twin is the lab's own project, not ARail. Its first 14 s are on How it works (`web/media/ebl-twin.mp4`) |
+
+How to make another short video, and the shots there are: [Short videos](short-videos.md). A new clip or photo of the lab joins as a new view: a clip goes to `examples/media/` and
+its README; write a plan for its shot (a frame held with `freeze`, as `station.json`, or a photo, as
+the plans in `plans/photos/`), render it, and add a part with `bare` to `hero.json`, keeping each part
+to 3 s or less. A photo of the photo map needs only its plan; a page of the site, a plan in
+`plans/screens/`.
 
 ## The terminal scene: one fixed frame
 
@@ -149,11 +205,29 @@ and a report of the slip of the markers' poses, the app's tracker and the result
 the `--ref` rectangle). Write the rectangles with `=`: they start with a minus sign. `--motion
 file` keeps the picture's motion, so trying other settings is quick.
 
-**`arail-compose <plan.json>`** joins rendered shots into a video: each shot cropped (a box, or
-`[from, to]` for a slow push), faded in from the one before (`fade`, frames), over the bare picture
-(`bare`: the photo or the clip without the overlay, faded in), the last frames into the first
-(`loop`); then H.264 for the web and a poster frame (`out`, `crf`, `poster`). The frames go to
-`build/video/<plan>-frames`.
+**`node tools/video/screen.mjs <plan.json>`** records a page of the site as it is used: the plan's
+steps go to a page, move the mouse, click, type and wait, a cursor is drawn into the page, and the
+picture is captured as it changes (Chrome's screencast) and resampled to 30 frames a second. A page
+that only runs CSS animations sends the screencast nothing: its `animate` step steps them frame by
+frame instead. The plans are in `plans/screens/`.
+
+**`node tools/video/typewriter.mjs <cues.json> <dir>`** draws the lines of a video's story into a
+terminal box of a fixed size (three rows, over the whole width at the top): a prompt per row, the text typed at 20
+letters a second behind a block cursor; each line stays in its row (`row`) until the next line of
+that row backspaces it; one PNG with alpha per frame, in the site's Noto Sans Mono. The cues
+come from the plan's `say` (`arail-compose <plan> --cues <file>`); `sh tools/video/story.sh <plan>`
+runs both and composes the video. The design: [Short videos](short-videos.md#the-design).
+
+**`arail-compose <plan.json>`** joins rendered shots into a video: each shot (a directory of
+frames, or a `clip`, from frame `first`) cropped (a box, or `[from, to]` for a slow push), faded in
+from the one before (`fade`, frames), over the bare picture (`bare`: the photo or the clip without
+the overlay, faded in; `still` holds one frame of the clip, for a shot with the app's Freeze), the
+last frames into the first (`loop`); then H.264 for
+the web and a poster frame (`out`, `crf`, `poster`). The frames go to `build/video/<plan>-frames`.
+A shot can also be tinted in one colour (`tint`, the blue of the end), carry lines (`say`: the
+text, when and how long; the PNGs of `typewriter.mjs` in the plan's `overlay` are laid over) and
+sounds (`sounds`, mixed into an AAC track with the plan's `typing` under each line). `--shots
+<dir>` writes each shot on its own; `--cues <file>` only the lines' cues.
 
 For the town video:
 
@@ -164,8 +238,8 @@ arail-stabilize build/video/town-raw.json -o build/video/town-poses.json --motio
 node tools/video/render.mjs tools/video/plans/town-pass2.json
 ```
 
-`tools/video/page-videos.sh` runs all shots (the town, the terminal's photo and frozen frame, the
-bus stop) and both compositions; it takes about an hour.
+`tools/video/page-videos.sh` runs all shots (the town; the held frames of the station, the container train and the truck; the terminal's photos; the photos of the photo map; the bikes; the game pages) and both compositions (`hero.json`, the project page's
+video, and `terminal-card.json`); it takes about an hour.
 
 ## What could run live
 

@@ -1,0 +1,16 @@
+{
+  "about": "The hybrid container train, frame 0 of the phone walking along it, held with the app's Freeze: the virtual terminal around the real wagons.",
+  "page": "example=container-train",
+  "clip": "build/video/clips/terminal-wagons-720.mp4",
+  "start": 0,
+  "frames": 180,
+  "proc_max": 1600,
+  "viewport": [1600, 1000],
+  "track": { "from": -40, "hold": 30 },
+  "keep_rolling": true,
+  "freeze": true,
+  "speed": 6,
+  "each": "if (term) term.highlight.slots = false;",
+  "setup": "for (const c of term.markerWagons()) if (!c.present) c.pose = null;",
+  "out": "build/video/terminal-wagons-0"
+}

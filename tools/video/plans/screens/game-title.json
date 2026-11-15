@@ -1,0 +1,14 @@
+{
+  "about": "The game page's title screen: the menu, Games opened, the cursor over its entries.",
+  "out": "build/video/game-title",
+  "steps": [
+    { "goto": "game/", "wait": 2500 },
+    { "record": true, "wait": 700 },
+    { "hover": ".title-item:has-text(\"Games\")", "ms": 700, "wait": 300 },
+    { "hover": ".title-item:has-text(\"Career\")", "ms": 350, "wait": 250 },
+    { "hover": ".title-item:has-text(\"Games\")", "ms": 350, "wait": 200 },
+    { "click": ".title-item:has-text(\"Games\")", "ms": 200, "wait": 900 },
+    { "move": [420, 410], "ms": 500, "wait": 400 },
+    { "move": [420, 440], "ms": 400, "wait": 2400 }
+  ]
+}
