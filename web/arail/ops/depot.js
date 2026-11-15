@@ -63,7 +63,7 @@ export class Depot extends BuildingBase {
     // the yard in front and the tracks (on the ground)
     m.plate(m.rect(office.x1, p.y0, x1, hall.y0), { fill: grey(0.62), order: 3 });
     for (const y of p.bayY) {
-      m.plate(m.rect(x0, y - 0.55, x1, y + 0.55), { fill: PIT, order: 4 });
+      m.plate(m.rect(x0, y - 0.55, x1, y + 0.55), { fill: PIT, order: 4, snow: 0 });
       for (const side of [-0.72, 0.72]) m.line([[x0 - 2, y + side], [x1 + 2, y + side]], { stroke: RAIL, width: 1, order: 5 });
     }
     for (const y of p.stableY) {

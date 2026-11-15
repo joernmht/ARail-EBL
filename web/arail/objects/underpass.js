@@ -111,7 +111,7 @@ function stairHousing(frame, seed) {
   const { length: L, width: W, height: H } = HOUSING;
   const x0 = -W / 2, x1 = W / 2, y0 = -L / 2, y1 = L / 2;
   m.setAnchor(0, 0, H / 2, L / 2 + 1);
-  m.plate(m.rect(x0 + 0.4, y0, x1 - 0.4, y1 - 0.8), { fill: grey(TONES.opening), alpha: 0.9, order: 2 });
+  m.plate(m.rect(x0 + 0.4, y0, x1 - 0.4, y1 - 0.8), { fill: grey(TONES.opening), alpha: 0.9, order: 2, snow: 0 });
   const glass = grey(TONES.glass);
   const body = m.box(x0, y0, x1, y1, 0, H, { wall: glass, skip: [0] });
   for (const f of body.walls) {

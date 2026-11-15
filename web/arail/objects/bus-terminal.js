@@ -102,8 +102,8 @@ export class BusTerminal extends LayoutObject {
   draw(view) {
     const g = this.geometry;
     const m = (x) => view.m(x);
-    view.polygon(g.laneRect, { fill: PALETTE.asphalt, alpha: 0.78, order: 2 });
-    view.polygon(g.wait, { fill: PALETTE.pavement, alpha: 0.8, order: 3 });
+    view.polygon(g.laneRect, { fill: PALETTE.asphalt, alpha: 0.78, order: 2, snow: 1 });
+    view.polygon(g.wait, { fill: PALETTE.pavement, alpha: 0.8, order: 3, snow: 1 });
     const P = (s, t) => add2(add2(g.origin, scale2(g.u, s)), scale2(g.n, t));
     // curb and bay markings
     view.line([P(0, -g.W / 2), P(g.L, -g.W / 2)], { stroke: "rgba(255,255,255,0.95)", width: 1.5, order: 4 });

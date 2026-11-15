@@ -160,13 +160,13 @@ export class Platform extends LayoutObject {
    * the image. Light concrete with edge stones and a white safety line along the tracks.
    */
   _drawSurface(view, g) {
-    view.polygon(g.corners, { fill: CONCRETE, order: 9 });
+    view.polygon(g.corners, { fill: CONCRETE, order: 9, snow: 1 });
     const sides = this.spec.sides || "both";
     const stone = Math.min(view.m(0.45), g.W * 0.12), line = Math.min(view.m(0.9), g.W * 0.22);
     for (const side of [1, -1]) {
       if (sides === "none" || (sides === "left" && side < 0) || (sides === "right" && side > 0)) continue;
       const at = (t) => [add2(g.a, scale2(g.n, side * t)), add2(g.b, scale2(g.n, side * t))];
-      view.ribbon(at(g.W / 2 - stone / 2), stone, { fill: EDGE_STONE, order: 9.2 });
+      view.ribbon(at(g.W / 2 - stone / 2), stone, { fill: EDGE_STONE, order: 9.2, snow: 1 });
       view.line(at(g.W / 2 - line), { stroke: SAFETY_LINE, width: 1, order: 9.3 });
     }
   }

@@ -510,8 +510,9 @@ export class View {
     if (style.alpha != null) ctx.globalAlpha *= style.alpha;
     const lit = style.emissive || style.layer === "overlay";
     if (style.fill && closed) {
-      // the ground under the weather: snow cover and wet (`style.snow`: the share of the cover it takes)
-      ctx.fillStyle = lit ? style.fill : this.dim(this.tone(style.fill, style.snow ?? 1));
+      // a surface under the weather: snow cover and wet, for what says it is one (`style.snow`: the
+      // share of the cover it takes); markers, areas and status fills keep their colour
+      ctx.fillStyle = lit ? style.fill : this.dim(style.snow != null ? this.tone(style.fill, style.snow) : style.fill);
       ctx.fill();
     }
     if (style.stroke) {

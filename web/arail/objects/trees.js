@@ -196,7 +196,7 @@ export class Forest extends LayoutObject {
 
   draw(view) {
     const g = this.geometry;
-    view.polygon(g.points, { fill: PALETTE.forest, alpha: 0.35, order: 1 });
+    view.polygon(g.points, { fill: PALETTE.forest, alpha: 0.35, order: 1, snow: 1 });
     for (const t of g.trees) drawTree(view, t.p, t.h, t.kind);
   }
 }

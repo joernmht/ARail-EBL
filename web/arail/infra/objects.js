@@ -270,7 +270,7 @@ export class LevelCrossing extends AssetObject {
     const w = (+this.spec.road_m || 7) / 2, st = this.state(), half = this._span() / 2;
     const down = !!st?.fault;
     // the crossing panels between and beside the rails
-    view.polygon([frame.xy(-w, -half - 1.6), frame.xy(w, -half - 1.6), frame.xy(w, half + 1.6), frame.xy(-w, half + 1.6)], { fill: grey(0.55), order: 7 });
+    view.polygon([frame.xy(-w, -half - 1.6), frame.xy(w, -half - 1.6), frame.xy(w, half + 1.6), frame.xy(-w, half + 1.6)], { fill: grey(0.55), order: 7, snow: 1 });
     for (const [sx, sy] of [[-1, -1], [1, 1]]) {
       const x = sx * (w + 0.8), y = sy * (half + 4.2);
       // light signal post with the red lights, and the barrier drive with its boom
@@ -438,7 +438,7 @@ export class CableRoute extends LinearAssetObject {
   static params = [...LINEAR_COMMON];
 
   drawModel(view, g) {
-    view.ribbon(g.points, this.mm(0.6), { fill: grey(0.74), order: 5 });
+    view.ribbon(g.points, this.mm(0.6), { fill: grey(0.74), order: 5, snow: 1 });
   }
 }
 

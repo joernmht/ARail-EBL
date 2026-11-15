@@ -265,7 +265,7 @@ export class AtGrade extends CrossingType {
   draw(view, g) {
     // concrete panels across the rails, St Andrew's crosses on the right of both approaches
     const s = view.m(2.2);
-    view.polygon([g.at(-s, -g.width / 2), g.at(s, -g.width / 2), g.at(s, g.width / 2), g.at(-s, g.width / 2)], { fill: grey(0.6), alpha: 0.8, order: 1.14 });
+    view.polygon([g.at(-s, -g.width / 2), g.at(s, -g.width / 2), g.at(s, g.width / 2), g.at(-s, g.width / 2)], { fill: grey(0.6), alpha: 0.8, order: 1.14, snow: 1 });
     const closed = this.closed(), C = /** @type {typeof AtGrade} */ (this.constructor);
     for (const k of [-1, 1]) {
       const foot = g.at(k * (s + view.m(3)), -k * (g.width / 2 + view.m(0.6)));

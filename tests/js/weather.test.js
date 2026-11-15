@@ -679,6 +679,38 @@ test("snow covers everything until warmth or traffic clears it: streets in the r
   assert.equal(view.tone("#4a4f57", 0), "#4a4f57");
 });
 
+test("under snow, markers and status fills keep their colour; only surfaces take the snow", () => {
+  const fills = [];
+  const noop = () => {};
+  const ctx = {
+    canvas: { width: 800, height: 600 }, fillStyle: "#000", strokeStyle: "#000", lineWidth: 1, globalAlpha: 1, save: noop, restore: noop, setTransform: noop,
+    beginPath: noop, closePath: noop, moveTo: noop, lineTo: noop, stroke: noop, setLineDash: noop, fill() { fills.push(this.fillStyle); },
+  };
+  const world = lab();
+  world.setTime("12:00");
+  world.setWeather("snow");
+  const camera = new Camera(800, 600);
+  const view = new View({ ctx, camera, H: lookAt(camera, [500, -2600, 1500], [500, -900, 0]), scale: world.scale, night: 0, weather: world.weather.look() });
+  const square = (x) => [[x, -900], [x + 200, -900], [x + 200, -700], [x, -700]];
+  view.polygon(square(300), { fill: "rgba(204,0,0,0.28)", order: 20 }); // a disruption's area
+  view.polygon(square(500), { fill: "rgb(30,160,60)", order: 5 }); // a crowd's mood
+  view.polygon(square(700), { fill: "rgb(120,120,120)", order: 2, snow: 1 }); // paving
+  view.render();
+  // drawn in ground order: the paving (2), the mood (5), the disruption (20)
+  assert.equal(fills.length, 3);
+  assert.match(fills[0], /^rgba?\(244,247,250/, "the paving is white");
+  assert.match(fills[1], /^rgb\(30,160,60\)$/, "the mood stays green");
+  assert.match(fills[2], /^rgba\(204,0,0,0\.28\)$/, "the disruption stays red");
+  // in the world: a disruption's area under snow is drawn in its red
+  const red = [];
+  const wctx = { ...ctx, fill() { red.push(this.fillStyle); }, fillRect: noop, arc: noop, ellipse: noop, quadraticCurveTo: noop, arcTo: noop, clip: noop, fillText: noop,
+    drawImage: noop, strokeRect: noop, transform: noop, measureText: (t) => ({ width: t.length * 6 }), createRadialGradient: () => ({ addColorStop: noop }), createLinearGradient: () => ({ addColorStop: noop }) };
+  world.disruptions.start({ type: "closure", target: "platform-2" });
+  world.step(0.1);
+  world.draw(new View({ ctx: wctx, camera, H: lookAt(camera, [500, -2600, 1500], [500, -900, 0]), scale: world.scale }));
+  assert.ok(red.some((f) => /^rgba\(\d+,\d+,\d+,0\.28\)$/.test(String(f)) && !String(f).startsWith("rgba(244,247,250")), "the closed area keeps its colour");
+});
+
 test("snow lies on steep slopes too (roofs, the tiers of a fir), not on walls", () => {
   const world = lab(["striezelmarkt"]);
   world.setTime("12:00");
