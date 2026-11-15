@@ -233,15 +233,24 @@ def schedule(plan: dict):
     return timeline, t
 
 
+# the typewriter's box (tools/video/story-box.mjs): its rows, and how fast it backspaces a row's old
+# line (characters a second) before it types the new one
+ROWS = 3
+ERASE_CPS = 60
+
+
 def cues(plan: dict) -> list[dict]:
-    """The lines to write over the video: [{"text", "start", "end"} (frames)]."""
+    """The lines to write over the video: [{"text", "start", "end"} (frames), "typing" (s after the
+    start the first letter appears: the time the row's line before it is backspaced)]."""
     fps = int(plan.get("fps", 30))
     timeline, _ = schedule(plan)
-    out = []
+    out, last = [], {}
     for p, b in timeline:
         for s in p.say:
-            at = s.get("at", 0)
+            at, row = s.get("at", 0), s.get("row", ROWS)
             cue = {"text": s["text"], "start": b + round(at * fps), "end": b + round((at + s.get("hold", 0)) * fps)}
+            cue["typing"] = len(last.get(row, "")) / ERASE_CPS
+            last[row] = s["text"]
             out.append({**cue, **{k: s[k] for k in ("style", "row") if s.get(k)}})
     return out
 
@@ -297,7 +306,7 @@ def soundtrack(plan: dict, out: str) -> int:
         cps = float(plan.get("cps", 20))
         for c in cues(plan):
             dur = len(c["text"]) / cps
-            sounds.append({**typing, "at": c["start"] / fps, "dur": dur, "fade": min(0.08, dur / 4)})
+            sounds.append({**typing, "at": c["start"] / fps + c["typing"], "dur": dur, "fade": min(0.08, dur / 4)})
     if not sounds:
         return 0
     cmd = ["ffmpeg", "-v", "error", "-y", "-i", out]
@@ -362,10 +371,14 @@ def main(argv=None) -> int:
     with open(args.plan, encoding="utf-8") as f:
         plan = json.load(f)
     if args.cues:
+        try:
+            frames, lines = schedule(plan)[1], cues(plan)
+        except OSError as e:
+            print(f"arail-compose: {e}", file=sys.stderr)
+            return 1
+        fps, cps = int(plan.get("fps", 30)), float(plan.get("cps", 20))
         with open(args.cues, "w", encoding="utf-8") as f:
-            fps, cps = int(plan.get("fps", 30)), float(plan.get("cps", 20))
-            frames = schedule(plan)[1]
-            json.dump({"size": plan["size"], "fps": fps, "cps": cps, "frames": frames, "cues": cues(plan)}, f, indent=1)
+            json.dump({"size": plan["size"], "fps": fps, "cps": cps, "frames": frames, "cues": lines}, f, indent=1)
         print(f"written {args.cues}")
         return 0
     if args.shots:

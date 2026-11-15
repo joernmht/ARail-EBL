@@ -315,7 +315,7 @@ def test_compose_tints_a_shot_and_lays_the_lines_over_it(tmp_path, monkeypatch):
             },
         ],
     }
-    assert cp.cues(plan) == [{"text": "What if", "start": 2, "end": 7}]
+    assert cp.cues(plan) == [{"text": "What if", "start": 2, "end": 7, "typing": 0.0}]
     os.makedirs(tmp_path / "text")
     line = np.zeros((20, 200, 4), np.uint8)
     line[:, :100] = (0, 255, 0, 255)  # opaque green on the left, transparent on the right
@@ -390,6 +390,46 @@ def test_compose_writes_each_shot_on_its_own_and_mixes_the_sounds(tmp_path, monk
             text=True,
         ).stdout.strip()
         assert abs(float(out) - 1.2) < 0.08, f"{stream} lasts {out} s"
+
+
+def test_compose_types_a_line_after_the_row_s_old_line_is_backspaced(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 30, (0, 0, 200))
+    plan = {
+        "size": [200, 100],
+        "fps": 10,
+        "parts": [
+            {
+                "frames": "a",
+                "count": 30,
+                "crop": [0, 0, 200, 100],
+                "say": [
+                    {"text": "A real lab", "at": 0, "row": 1},
+                    {"text": "houses", "at": 1},
+                    {"text": "trees", "at": 2},
+                ],
+            }
+        ],
+    }
+    lines = cp.cues(plan)
+    assert [c["typing"] for c in lines] == [0.0, 0.0, len("houses") / cp.ERASE_CPS], "only a row's second line waits"
+    # the same speed as the box's (tools/video/story-box.mjs)
+    js = open(
+        os.path.join(os.path.dirname(__file__), "..", "..", "tools", "video", "story-box.mjs"), encoding="utf-8"
+    ).read()
+    assert f"export const ERASE_CPS = {cp.ERASE_CPS};" in js and f"rows: {cp.ROWS}," in js
+
+
+def test_compose_cues_of_a_plan_with_a_missing_shot_say_so_and_write_nothing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    plan = {
+        "size": [200, 100],
+        "parts": [{"frames": "nowhere", "count": 3, "crop": [0, 0, 1, 1], "say": [{"text": "x"}]}],
+    }
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    out = tmp_path / "cues.json"
+    assert cp.main([str(tmp_path / "plan.json"), "--cues", str(out)]) == 1
+    assert "missing" in capsys.readouterr().err and not out.exists()
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")

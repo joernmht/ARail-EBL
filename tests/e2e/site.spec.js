@@ -114,6 +114,8 @@ test("the switch below the video shows the page of one group: its question, its 
     await expect(section.getByRole("heading", { level: 2 })).toHaveText(question);
     await expect(section.locator(".ways li")).toHaveCount(3);
     await expect(section.locator(".route .path li")).toHaveCount(3);
+    // the way's heading as before the page was split: large, with room above its first stop
+    expect(await section.locator(".route h3").first().evaluate((h) => [getComputedStyle(h).fontWeight, getComputedStyle(h).marginBottom])).toEqual(["800", "22px"]);
     await expect(section.getByRole("link", { name: cta })).toHaveAttribute("href", `https://github.com/joernmht/ARail-EBL/issues/new?template=${form}`);
     await expect(section.getByRole("heading", { name: board })).toBeVisible();
     expect(await page.locator(".app-card .teach").evaluateAll((els) => els.filter((e) => e.offsetParent).map((e) => e.dataset.aud))).toEqual(Array(6).fill(id));
