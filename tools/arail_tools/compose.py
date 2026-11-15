@@ -261,13 +261,14 @@ def compose(plan: dict, frames_dir: str, log=print) -> int:
         if len(on) > 1:
             p, i = on[1]
             img = blend(img, p.frame(i), ease((i + 1) / max(1, p.fade)))
+        # the lines first, so the last frames fade into the first one as it is shown, lines and all
+        text = os.path.join(overlay, f"f{f:04d}.png") if overlay else None
+        if text and os.path.exists(text):
+            img = over(img, cv2.imread(text, cv2.IMREAD_UNCHANGED))
         if f == 0:
             first = img.copy()
         if loop and f >= total - loop:
             img = blend(img, first, ease((f - (total - loop) + 1) / loop))
-        text = os.path.join(overlay, f"f{f:04d}.png") if overlay else None
-        if text and os.path.exists(text):
-            img = over(img, cv2.imread(text, cv2.IMREAD_UNCHANGED))
         cv2.imwrite(os.path.join(frames_dir, f"f{f:04d}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 94])
         if f % 100 == 0:
             log(f"frame {f} of {total}")

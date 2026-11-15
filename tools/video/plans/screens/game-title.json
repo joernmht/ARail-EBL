@@ -9,6 +9,6 @@
     { "hover": ".title-item:has-text(\"Games\")", "ms": 350, "wait": 200 },
     { "click": ".title-item:has-text(\"Games\")", "ms": 200, "wait": 900 },
     { "move": [420, 410], "ms": 500, "wait": 400 },
-    { "move": [420, 440], "ms": 400, "wait": 900 }
+    { "move": [420, 440], "ms": 400, "wait": 2400 }
   ]
 }

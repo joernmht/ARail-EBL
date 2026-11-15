@@ -16,9 +16,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
-
-/** The design of the box: its rows, its width in characters, the colours of its lines. */
-export const BOX = { rows: 3, columns: 56, text: "#e3f7f8", kept: "#9fbccb", accent: "#f0922e", prompt: "#36b8bf" };
+import { BOX, rowsAt, tooLong } from "./story-box.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const [cueFile, outDir] = process.argv.slice(2);
@@ -74,41 +72,9 @@ window.__draw = (rows) => {
 };
 </script></body></html>`;
 
-const ERASE_CPS = 60; // the old line of a row is backspaced this fast before the new one is typed
-const color = (c) => (c.style === "accent" ? BOX.accent : BOX.text);
-const blink = (t) => (Math.floor(t * 2.2) % 2 === 0 ? true : "off");
-const rowOf = (c) => (c.row ?? BOX.rows) - 1;
-/** What the box shows at frame f: in each row its latest line (the one before it backspaced first);
- * the newest line of all bright, with the cursor, the others a little lighter. */
-function rows(f) {
-  const begun = cues.filter((c) => c.start <= f);
-  const newest = begun.reduce((a, c) => (!a || c.start >= a.start ? c : a), null);
-  const out = [];
-  for (let r = 0; r < BOX.rows; r++) {
-    const mine = begun.filter((c) => rowOf(c) === r);
-    const cur = mine.at(-1);
-    if (!cur) {
-      out.push({ text: "", color: BOX.text, cursor: false });
-      continue;
-    }
-    const prev = mine.at(-2), t = (f - cur.start) / fps;
-    const wipe = prev ? prev.text.length / ERASE_CPS : 0;
-    let text, busy;
-    if (t < wipe) {
-      text = prev.text.slice(0, Math.max(0, prev.text.length - Math.floor(t * ERASE_CPS)));
-      busy = true;
-    } else {
-      const typed = Math.min(cur.text.length, Math.floor((t - wipe) * cps));
-      text = cur.text.slice(0, typed);
-      busy = typed < cur.text.length;
-    }
-    const top = cur === newest;
-    out.push({ text, color: top ? color(cur) : BOX.kept, cursor: top ? (busy ? true : blink(t)) : false });
-  }
-  return out;
-}
+const rows = (f) => rowsAt(cues, f, { fps, cps });
 
-const long = cues.find((c) => c.text.length > BOX.columns);
+const long = tooLong(cues);
 if (long) throw new Error(`a line longer than the box (${BOX.columns} characters): ${long.text}`);
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width, height: HEIGHT }, deviceScaleFactor: 1 });

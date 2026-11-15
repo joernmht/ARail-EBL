@@ -31,6 +31,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
+import { resample } from "./story-box.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const WEB = join(ROOT, "web"), BUILD = join(ROOT, "build", "video");
@@ -163,10 +164,7 @@ if (!shots.length) throw new Error("nothing recorded: the plan needs a `record` 
 // resampled to the frame rate: each output frame shows the last picture before its time
 shots.sort((a, b) => a.t - b.t);
 const t0 = Math.min(shots[0].t, started), count = Math.round((ended - t0) * fps);
-let k = 0;
-for (let i = 0; i < count; i++) {
-  const t = t0 + i / fps;
-  while (k + 1 < shots.length && shots[k + 1].t <= t) k++;
+resample(shots.map((x) => x.t), t0, count, fps).forEach((k, i) => {
   writeFileSync(join(out, `f${String(i).padStart(4, "0")}.jpg`), Buffer.from(shots[k].data, "base64"));
-}
+});
 console.log(`${count} frames (${(count / fps).toFixed(1)} s, ${shots.length} pictures): ${plan.out}`);

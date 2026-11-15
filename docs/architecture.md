@@ -154,7 +154,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `architecture/` | this architecture as data (`model.js`, `models/*.js`) and its UML diagrams (`uml.js`, laid out with dagre) on the architecture page |
 | `markers/markers.js`, `markers/deck-cards.js` | the marker sheet page; deck cards for model wagons (geometry and SVG, testable in Node) |
 | `tools/arail_tools/` | `bridge/` (control-system bridge and adapters), `calibrate.py`, `survey.py` (`arail-survey`), `mosaic.py` (`arail-mosaic`: one orthophoto of the linked parts of the lab), `synthetic.py`, `fixtures.py`, `stabilize.py` and `compose.py` (videos, see [Videos of the lab](videos.md)) |
-| `tools/video/` | `render.mjs` (the app rendered frame by frame after a plan, in Chromium), `screen.mjs` (a page of the site recorded as it is used: clicks, a cursor), `typewriter.mjs` (the lines of a video's story, typed into a terminal box), `story.sh` (a short video from its plan, [Short videos](short-videos.md)), `sky.js` (the town video's sky), the plans of the project page's videos |
+| `tools/video/` | `render.mjs` (the app rendered frame by frame after a plan, in Chromium), `screen.mjs` (a page of the site recorded as it is used: clicks, a cursor), `typewriter.mjs` (the lines of a video's story, typed into a terminal box; what the box shows at a frame is `story-box.mjs`, tested in `tests/js/video-tools.test.js`), `story.sh` (a short video from its plan, [Short videos](short-videos.md)), `sky.js` (the town video's sky), the plans of the project page's videos |
 
 ## Coordinate systems
 

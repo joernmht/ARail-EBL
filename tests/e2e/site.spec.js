@@ -34,6 +34,8 @@ test("project page: the video the whole width, with the ways in at its lower edg
   }
   const left = boxes[0].x, right = boxes[2].x + boxes[2].width;
   expect(Math.abs((left + right) / 2 - (box.x + box.width / 2))).toBeLessThan(2);
+  // what is staged in it, said below it
+  await expect(page.locator("#heroVideo figcaption")).toContainText("the sky is added for this video");
   // one sentence below it
   const title = await page.getByRole("heading", { level: 1 }).boundingBox();
   expect(title.y).toBeGreaterThanOrEqual(box.y + box.height);
@@ -45,6 +47,19 @@ test("project page: the video the whole width, with the ways in at its lower edg
   const scroll = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(scroll[0]).toBe(scroll[1]); // no horizontal scrolling
   expect(errors).toEqual([]);
+});
+
+test("project page on a screen too short for 16:9: the video is cut at the bottom, so its lines at the top stay in view", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 950 });
+  await page.goto("/");
+  const video = page.locator("#heroClip");
+  const box = await video.boundingBox();
+  expect(box.height).toBeLessThan((box.width * 9) / 16 - 50); // capped by the window's height
+  expect(await video.evaluate((v) => getComputedStyle(v).objectPosition)).toBe("50% 0%");
+  // the buttons stay on the picture, at its lower edge
+  const play = await page.locator("#heroVideo").getByRole("link", { name: "Play the game" }).boundingBox();
+  expect(play.y + play.height).toBeLessThanOrEqual(box.y + box.height);
+  expect(play.y).toBeGreaterThan(box.y + box.height / 2);
 });
 
 test("How it works: how ARail gets onto a lab's table, and where it goes next", async ({ page }) => {
