@@ -432,12 +432,29 @@ def test_compose_cues_of_a_plan_with_a_missing_shot_say_so_and_write_nothing(tmp
     assert "missing" in capsys.readouterr().err and not out.exists()
 
 
-def test_compose_refuses_a_crop_outside_its_frames(tmp_path, monkeypatch):
+def test_compose_refuses_a_crop_outside_its_frames_before_it_writes_anything(tmp_path, monkeypatch):
     monkeypatch.setattr(cp, "ROOT", str(tmp_path))
     frames_dir(tmp_path / "a", 4, (0, 0, 200))  # 200 x 100
-    plan = {"size": [100, 50], "parts": [{"frames": "a", "count": 4, "crop": [[0, 0, 200, 100], [0, 0, 240, 120]]}]}
-    with pytest.raises(OSError, match="outside its frames"):
-        cp.compose(plan, str(tmp_path / "out"), log=lambda *_: None)
+    part = lambda crop: {"frames": "a", "count": 4, "crop": crop}  # noqa: E731
+    # the whole frame, exactly, is a crop (as every recorded page's [0, 0, 1280, 720])
+    assert (
+        cp.compose({"size": [100, 50], "parts": [part([0, 0, 200, 100])]}, str(tmp_path / "ok"), log=lambda *_: None)
+        == 4
+    )
+    for crop in ([[0, 0, 200, 100], [0, 0, 240, 120]], [-10, 0, 190, 100], [0, -10, 200, 90], [0, 0, 201, 100]):
+        out = tmp_path / "bad"
+        plan = {"size": [100, 50], "parts": [part([0, 0, 200, 100]), {**part(crop), "fade": 1}]}
+        with pytest.raises(OSError, match="outside its frames"):
+            cp.compose(plan, str(out), log=lambda *_: None)
+        assert not out.exists() or not os.listdir(out), f"{crop}: nothing written before the error"
+    # a clip's crop is checked against the clip's size too
+    if shutil.which("ffmpeg"):
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=160x96:d=0.4", str(tmp_path / "c.mp4")],
+            check=True,
+        )
+        with pytest.raises(OSError, match=r"\(160 x 96\)"):
+            cp.Part({"clip": "c.mp4", "count": 4, "crop": [0, 0, 200, 96]}, (10, 10))
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg is not installed")
