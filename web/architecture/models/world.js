@@ -212,7 +212,7 @@ export const WORLD = [
       {
         name: "clock", file: "web/arail/core/clock.js", kind: "module", role: "Times and profiles.",
         attributes: ["DAY_MINUTES — 1440", "YEAR_DAYS — 365 (the sun and the climate go by a common year)", "DEFAULT_YEAR — 2026", "MONTHS, MONTH_NAMES, DAYS, DAY_NAMES — Monday first", "SUN — without a date: rise 06:00, set 20:30; twilight 45 min", "PROFILES — rail, bus, car, passengers"],
-        operations: ["parseTime(value)", "formatTime(minutes)", "parseDay(value) — YYYY-MM-DD or MM-DD to {year, month, day}", "parseDate(value) — to the day of the year", "dayOfYear(month, day, year)", "isLeapYear(year)", "yearDays(year)", "formatDate(doy, year)", "monthDay(doy, year)", "dayOfWeek(year, doy) — Gregorian, 0 Monday", "seasonOf(doy) — meteorological", "summerTime(year) — from the last Sunday of March to the last Sunday of October", "sunTimes(doy, latitude, place) — from the sun's declination and the equation of time, in Central European Time with summer time", "profileAt(points, minutes)", "daylightAt(minutes, sun)"],
+        operations: ["parseTime(value)", "formatTime(minutes)", "parseDay(value) — YYYY-MM-DD or MM-DD to {year, month, day}", "parseDate(value) — to the day of the year", "dayOfYear(month, day, year)", "isLeapYear(year)", "yearDays(year)", "formatDate(doy, year)", "monthDay(doy, year)", "dayOfWeek(year, doy) — Gregorian, 0 Monday", "commonDay(doy, year) — the day of a common year: the calendar of the climate, the seasons and the leaves", "seasonOf(doy) — meteorological", "summerTime(year) — from the last Sunday of March to the last Sunday of October", "sunTimes(doy, latitude, place) — from the sun's declination and the equation of time, in Central European Time with summer time", "profileAt(points, minutes)", "daylightAt(minutes, sun)"],
       },
     ],
     relations: [{ from: "Clock", to: "clock", kind: "depends" }],
@@ -235,7 +235,7 @@ export const WORLD = [
       { key: "clock.date", default: "none", meaning: "The date (YYYY-MM-DD; MM-DD in 2026): the sun rises and sets as on that day, the trees follow the season, the typical weather is that of the day; with it the weekday. Without it every day is the same day." },
       { key: "clock.latitude", default: "51.05", meaning: "Latitude (°N) for sunrise and sunset by the date (Dresden)." },
     ],
-    rules: ["night() = 1 − daylight(); twilight 45 min around sunrise and sunset.", "With a date: Dresden's sun, 08:06 to 16:01 on 21 December, 04:49 to 21:23 on 21 June (summer time from the last Sunday of March to the last Sunday of October). The date runs on into the next year; leap years have 29 February.", "demand(kind) = 1 without profiles, else the profile of that kind at this minute.", "The layout file keeps the start time, not the current time."],
+    rules: ["night() = 1 − daylight(); twilight 45 min around sunrise and sunset.", "With a date: Dresden's sun, 08:06 to 16:01 on 21 December, 04:49 to 21:23 on 21 June (summer time from the last Sunday of March to the last Sunday of October). The date runs on into the next year; leap years have 29 February. The season goes by the month and day (commonDay).", "demand(kind) = 1 without profiles, else the profile of that kind at this minute.", "The layout file keeps the start time, not the current time."],
   },
   {
     id: "weather", group: "world", title: "Weather and seasons",
@@ -248,7 +248,7 @@ export const WORLD = [
         attributes: ["mode: string — off | typical | fixed", "preset: string | null — of the fixed weather", "state: object — quantities set one by one", "course: Array — key frames over the day", "ground: object — {wet 0…1, snow_cm, cleared 0…1: the streets cleared of snow by the traffic}", "on: boolean — anything but off"],
         operations: [
           "configure(config)", "set(value) — a preset's name, typical, off, or an object", "air(minutes, doy) — temperature, cloud, precipitation, wind, fog", "now() — the air, the ground (wet, snow, frost, ice), the sky's word, season and leaves",
-          "settle() — the ground as this weather leaves it (the last 36 h gone through)", "step(dt) — the ground follows the clock", "_ground(air, hours, daylight, minutes) — wet, dried, snowed on, melted, the streets cleared by the hour's traffic", "_courseAt(m)", "describe() — −2 °C · snow",
+          "settle(opts) — the ground as this weather leaves it: the typical one the last 36 h gone through; a fixed one where its preset starts, or with keep (set after another, the time set) what lies stays", "_doy() — the clock's date as a day of the common year", "step(dt) — the ground follows the clock", "_ground(air, hours, daylight, minutes) — wet, dried, snowed on, melted, the streets cleared by the hour's traffic", "_courseAt(m)", "describe() — −2 °C · snow",
           "railCondition() — dry, wet, leaves, ice", "walkFactor()", "driveFactor()", "cycleShare()", "comfort()", "look() — what the picture needs", "toJSON()",
         ],
       },

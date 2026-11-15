@@ -397,7 +397,8 @@ export class World {
   setTime(value) {
     if (parseTime(value) == null) return null;
     const minutes = this.clock.set(value);
-    this.weather.settle();
+    // a fixed weather keeps what lies on the ground; the typical one is gone through again up to the new time
+    this.weather.settle({ keep: true });
     this.events.emit("clock.set", { minutes });
     return minutes;
   }
@@ -410,7 +411,7 @@ export class World {
   setDate(value) {
     const date = this.clock.setDate(value);
     if (date === undefined) return undefined;
-    this.weather.settle();
+    this.weather.settle({ keep: true });
     this.events.emit("clock.date", { date });
     this.events.emit("clock.set", { minutes: this.clock.minutes });
     return date;

@@ -102,7 +102,15 @@ export function dayOfWeek(year, doy) {
   return ((days % 7) + 7) % 7;
 }
 
-/** The meteorological season of a day of the year: winter (Dec–Feb), spring, summer, autumn. */
+/**
+ * The day of a common year that a day of `year` is on: from 1 March of a leap year one less, and
+ * 29 February is 28 February. The calendar of the climate, the seasons and the leaves is a common year's.
+ */
+export function commonDay(doy, year = null) {
+  return doy != null && year != null && isLeapYear(year) && doy >= 60 ? doy - 1 : doy;
+}
+
+/** The meteorological season of a day of a common year: winter (Dec–Feb), spring, summer, autumn. */
 export function seasonOf(doy) {
   const { month } = monthDay(doy);
   return month === 12 || month <= 2 ? "winter" : month <= 5 ? "spring" : month <= 8 ? "summer" : "autumn";
@@ -209,7 +217,9 @@ export class Clock {
     this.start = parseTime(c.start) ?? parseTime(DEFAULT_CLOCK.start);
     this.factor = Number(c.factor) >= 0 ? Number(c.factor) : DEFAULT_CLOCK.factor;
     this.profiles = c.profiles !== false;
-    const d = parseDay(c.date);
+    // "02-29" without a year is in 2026, which has none: no date (the layout check reports it)
+    const d0 = parseDay(c.date);
+    const d = d0 && !(d0.month === 2 && d0.day === 29 && !isLeapYear(d0.year ?? DEFAULT_YEAR)) ? d0 : null;
     /** The year (null: no date). */
     this.year = d ? d.year ?? DEFAULT_YEAR : null;
     /** The day of the year (1 = 1 January), or null: no date. It runs on at midnight, into the next year. */
@@ -286,7 +296,7 @@ export class Clock {
 
   /** The season (winter, spring, summer, autumn), or null without a date. */
   season() {
-    return this.date == null ? null : seasonOf(this.date);
+    return this.date == null ? null : seasonOf(commonDay(this.date, this.year));
   }
 
   /** Sunrise and sunset today (minutes after midnight): by the date and the latitude, else {@link SUN}. */

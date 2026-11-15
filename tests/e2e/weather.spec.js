@@ -60,7 +60,8 @@ test("Settings → Simulation sets the date and the weather; the stage's chip sh
     return sum / n;
   });
   const snowy = await white();
-  await page.evaluate(() => window.__arail.world.setWeather("overcast"));
+  // overcast on bare ground (after snowfall, the snow would lie on)
+  await page.evaluate(() => window.__arail.world.setWeather({ preset: "overcast", snow_cm: 0 }));
   const overcast = await white();
   expect(snowy).toBeGreaterThan(overcast + 8); // the same grey sky, but the ground and the roofs are white
   // a scenario may have set them: the fields follow

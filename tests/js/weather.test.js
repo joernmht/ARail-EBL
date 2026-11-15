@@ -8,7 +8,7 @@ import test from "node:test";
 
 import {
   Camera, Clock, DAY_NAMES, PRECIPITATION_LAYERS, RAIL_CONDITIONS, SimpleView, SUN, View, WEATHER_PRESETS, createWorld, dayOfWeek, dayOfYear, formatDate, formatTime,
-  isLeapYear, layerParticles, leafState, leafTone, lightningAt, monthDay, parseDate, parseDay, registry, seasonOf, summerTime, sunTimes, typicalAir, validateLayout,
+  commonDay, drawWeather, isLeapYear, layerParticles, leafState, leafTone, lightningAt, monthDay, parseDate, parseDay, registry, seasonOf, summerTime, sunTimes, typicalAir, validateLayout,
   weatherProblems, withLayers,
 } from "../../web/arail/index.js";
 import { railCondition } from "../../web/arail/rail/ahead.js";
@@ -99,6 +99,9 @@ test("the clock: without a date as ever; with one the sun of that day, running o
   leap.advance(100);
   assert.equal(leap.dateLabel({ long: true }), "Tuesday, 29 February 2028");
   assert.equal(leap.setDate("02-29"), 60, "29 February in the clock's year 2028");
+  // a layout that starts on "02-29" (in 2026) has no date, rather than 1 March
+  assert.equal(new Clock({ date: "02-29" }).date, null);
+  assert.equal(new Clock({ date: "2028-02-29" }).dateString(), "2028-02-29");
   c.setDate("2026-12-06");
   assert.equal(c.setDate("02-29"), undefined, "no 29 February in 2026");
   assert.equal(c.setDate("nonsense"), undefined, "what is no date");
@@ -164,6 +167,26 @@ test("the typical weather: the same for the same seed and date, a year like Dres
   }
 });
 
+test("leap years: the seasons, the leaves and the climate go by the month and day, not the day of the year", () => {
+  assert.equal(commonDay(335, 2028), 334, "30 November 2028 is the 30 November of a common year");
+  assert.equal(commonDay(60, 2028), 59, "29 February is 28 February");
+  assert.equal(commonDay(59, 2028), 59);
+  assert.equal(commonDay(335, 2026), 335);
+  for (const [a, b] of [["2028-11-30", "2026-11-30"], ["2028-03-01", "2026-03-01"], ["2028-05-31", "2026-05-31"], ["2028-08-31", "2026-08-31"]]) {
+    const leap = lab(), common = lab();
+    leap.setDate(a);
+    common.setDate(b);
+    for (const w of [leap, common]) {
+      w.setTime("14:00");
+      w.setWeather("typical");
+    }
+    assert.equal(leap.clock.season(), common.clock.season(), `the season on ${a}`);
+    assert.equal(leap.weather.now().season, common.weather.now().season);
+    assert.deepEqual(leap.weather.now().leaf, common.weather.now().leaf, `the leaves on ${a}`);
+    assert.equal(leap.weather.air().temperature_c, common.weather.air().temperature_c, `the same climate on ${a}`);
+  }
+});
+
 test("the leaves through the year, and a crown's colour", () => {
   assert.deepEqual(["01-10", "04-20", "07-01", "10-15", "11-10", "12-20"].map((d) => leafState(parseDate(d)).state), ["bare", "leafing", "leaf", "colouring", "falling", "bare"]);
   assert.deepEqual(leafState(null), { state: "leaf", share: 1, colour: 0 });
@@ -190,7 +213,7 @@ test("fixed weather: the presets, the ground they leave, and what others read", 
   assert.ok(w.now().snow_cm >= 4 && w.look().snow === 1, "snow lies");
   assert.deepEqual([w.walkFactor(), w.driveFactor(), w.railCondition()], [0.85, 0.7, "wet"]);
   assert.ok(w.cycleShare() < 0.15, "hardly anybody cycles in snow at −2 °C");
-  world.setWeather("frost");
+  world.setWeather({ preset: "frost", snow_cm: 0 }); // the snow cleared away: the wet ground freezes
   assert.ok(w.now().ice && w.now().frost);
   assert.deepEqual([w.walkFactor(), w.driveFactor(), w.railCondition()], [0.7, 0.5, "ice"]);
   world.setWeather("rain");
@@ -202,6 +225,8 @@ test("fixed weather: the presets, the ground they leave, and what others read", 
   assert.ok(w.cycleShare() < rain);
   world.setWeather("heat");
   assert.equal(Math.round(w.now().temperature_c), 33);
+  assert.equal(w.railCondition(), "wet", "right after the downpour the rails are still wet");
+  run(world, 900); // three clock hours of sun at 33 °C
   assert.deepEqual([w.cycleShare(), w.railCondition()], [1, "dry"]);
   assert.ok(w.comfort() < 0.5, "33 °C is not comfortable");
   world.setWeather("fog");
@@ -257,6 +282,33 @@ test("the ground remembers: rain wets it and it dries; snow settles and melts", 
   assert.ok(slow > 0 && slow < snow / 6, `at a factor of 1, ${slow.toFixed(2)} cm in ten clock minutes`);
 });
 
+test("what lies on the ground stays when the weather or the time is set: snow under frost, cleared streets", () => {
+  const world = lab();
+  const w = world.weather;
+  world.setTime("07:00");
+  world.setWeather("snow");
+  assert.equal(w.now().snow_cm, 6, "snowfall after no weather: as the preset starts");
+  world.setWeather({ preset: "frost" });
+  assert.equal(w.now().snow_cm, 6, "frost after snowfall: the snow stays");
+  run(world, 900); // three clock hours of morning traffic
+  const cleared = w.ground.cleared;
+  assert.ok(cleared > 0.3, `the streets ${cleared.toFixed(2)} cleared`);
+  world.setTime("11:00");
+  assert.equal(w.ground.cleared, cleared, "setting the time leaves the streets as cleared as they were");
+  assert.ok(w.now().snow_cm > 5, "and the snow where it was");
+  world.setWeather("clear");
+  assert.ok(w.now().snow_cm > 5 && w.ground.cleared === cleared, "a clear sky melts nothing at once");
+  world.setWeather("snow");
+  assert.equal(w.ground.cleared, cleared, "snowfall on top: the streets stay cleared until fresh snow covers them");
+  world.setWeather({ preset: "clear", snow_cm: 0 });
+  assert.equal(w.now().snow_cm, 0, "set by hand, the ground is as set");
+  world.setWeather("rain");
+  assert.equal(w.now().wet, 1);
+  world.setWeather("off");
+  world.setWeather("frost");
+  assert.equal(w.now().snow_cm, 0, "after no weather the ground starts as the preset says");
+});
+
 test("a course over the day: key frames, in proportion between them; told when it starts to snow", () => {
   const world = lab([], { clock: { start: "04:00", date: "01-20" }, weather: { mode: "typical", course: [["05:00", { temperature_c: 1, precipitation: "none", cloud: 1 }], ["07:00", { temperature_c: -3, precipitation: "snow", rate_mm_h: 2 }], ["10:00", { temperature_c: -1, precipitation: "none" }]] } });
   const w = world.weather;
@@ -284,8 +336,7 @@ test("the rails take the weather: wet in rain, leaves in November when damp, ice
   world.setDate("11-10");
   assert.equal(world.weather.now().leaf.state, "falling");
   assert.equal(railCondition(world, track), "leaves", "leaf-fall weeks, damp");
-  world.setWeather("clear");
-  world.weather.ground.wet = 0;
+  world.setWeather({ preset: "clear", wet: 0 });
   assert.equal(railCondition(world, track), "dry", "dry leaves do not stick");
   world.setDate("07-10");
   world.setWeather("rain");
@@ -423,12 +474,12 @@ test("the weather in the picture: snow whitens the ground and the roofs, flakes 
   assert.equal(plain.view.tone("#4a4f57"), "#4a4f57");
   assert.match(snow.view.tone("#4a4f57"), /^rgba\(244,247,250/);
   assert.notEqual(snow.view.tone("#4a4f57", 0.5), snow.view.tone("#4a4f57"));
-  world.setWeather("heavy-rain");
+  world.setWeather({ preset: "heavy-rain", snow_cm: 0 });
   const rain = draw(world);
   assert.ok(rain.view.weather.wet > 0.9 && rain.view.weather.snow === 0);
 
   assert.match(rain.view.tone("#808080"), /^rgba\(1\d\d,/, "wet ground is darker");
-  // with reduced motion the rain stands still: two frames, the same streaks
+  // with reduced motion the rain stands still (drawn: the test of reduced motion below)
   world.settings.weatherStill = true;
   assert.equal(world.weather.look().still, true);
   // the Map and 2.5D show no weather
@@ -484,6 +535,54 @@ test("rain and snow over the picture: layers of tiles, the same each time; light
   const gaps = starts.slice(1).map((t, i) => t - starts[i]);
   assert.ok(Math.min(...gaps) >= 8 - 0.02 && Math.max(...gaps) <= 20 + 0.02, `strikes ${Math.min(...gaps).toFixed(1)} to ${Math.max(...gaps).toFixed(1)} s apart`);
   assert.equal(lightningAt(0), null);
+});
+
+test("with reduced motion, rain and snow stand still and no lightning flashes", () => {
+  const noop = () => {};
+  const gradient = () => ({ addColorStop: noop });
+  const g = { createRadialGradient: gradient, createLinearGradient: gradient, beginPath: noop, arc: noop, fill: noop, moveTo: noop, lineTo: noop, stroke: noop };
+  const saved = { OffscreenCanvas: globalThis.OffscreenCanvas, DOMMatrix: globalThis.DOMMatrix, now: performance.now };
+  globalThis.OffscreenCanvas = class { constructor(w, h) { Object.assign(this, { width: w, height: h }); } getContext() { return g; } };
+  globalThis.DOMMatrix = class { constructor(m) { this.m = m; } };
+  try {
+    const frame = (look, seconds) => {
+      performance.now = () => seconds * 1000;
+      const out = { shifts: [], flashes: 0 };
+      const ctx = {
+        canvas: { width: 1600, height: 900 }, setTransform: noop, fillRect: noop, createLinearGradient: gradient, beginPath: noop, moveTo: noop,
+        lineTo: noop, stroke() { out.flashes++; },
+        createPattern: () => ({ setTransform: (m) => out.shifts.push(m.m.join(",")) }),
+      };
+      drawWeather({ simple: false, px: 1, darkness: 0, time: 0, overlay: (fn) => fn(ctx) }, look);
+      return out;
+    };
+    for (const preset of ["snow", "heavy-rain", "thunderstorm"]) {
+      const world = lab();
+      world.setTime("13:00");
+      world.setWeather(preset);
+      const moving = world.weather.look();
+      assert.notDeepEqual(frame(moving, 100).shifts, frame(moving, 101.5).shifts, `${preset} falls`);
+      world.settings.weatherStill = true;
+      const still = world.weather.look();
+      const first = frame(still, 100);
+      assert.ok(first.shifts.length > 0, `${preset} is drawn`);
+      for (let t = 100; t < 160; t += 0.05) {
+        const f = frame(still, t);
+        assert.deepEqual(f.shifts, first.shifts, `${preset} stands still at ${t.toFixed(2)} s`);
+        assert.equal(f.flashes, 0, `no lightning at ${t.toFixed(2)} s`);
+      }
+    }
+    // without reduced motion the thunderstorm does flash
+    const world = lab();
+    world.setWeather("thunderstorm");
+    let flashes = 0;
+    for (let t = 100; t < 160; t += 0.05) flashes += frame(world.weather.look(), t).flashes;
+    assert.ok(flashes > 0);
+  } finally {
+    globalThis.OffscreenCanvas = saved.OffscreenCanvas;
+    globalThis.DOMMatrix = saved.DOMMatrix;
+    performance.now = saved.now;
+  }
 });
 
 test("thunderstorms: the preset, and summer showers in the typical weather", () => {

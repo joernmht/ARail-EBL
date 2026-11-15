@@ -21,7 +21,7 @@ The lab example's scenario *Evening at the Striezelmarkt* (module Striezelmarkt)
 ## The date and the sun
 
 - The date has a year (`"2026-12-06"`; written without one, `"12-06"`, it is in 2026), so it has a weekday; leap years have 29 February. Holidays are not there yet.
-- **Seasons** are the meteorological ones (winter: December to February).
+- **Seasons** are the meteorological ones (winter: December to February). The seasons, the leaves and the climate go by the month and the day, so a leap year is no day ahead after February.
 - **Sunrise and sunset** come from the date and the latitude (`clock.latitude`, 51.05° N), in Central European Time with summer time (from the last Sunday of March to the last Sunday of October), at Dresden's longitude: 08:06 to 16:01 on 21 December, 04:49 to 21:23 on 21 June. Twilight is as before (45 minutes to either side). Lamps and windows follow the light, so they come on at four in December.
 - **Leaves**: bare until early April, leafing until early May, in leaf, colouring in October, falling in November, bare from December.
 
@@ -45,7 +45,7 @@ In the typical weather a summer shower that pours down (3 mm/h and more) on a wa
 
 A **course** (key frames over the day) lies on top of either: the first frost night, snow from six in the morning.
 
-The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster.
+The ground goes with the clock: while it is stopped nothing settles, dries or melts, and at a faster clock it all goes faster. What lies stays when a weather follows another or the time is set: frost after snowfall keeps the snow, the cleared streets stay cleared, and a weather that brings rain or snow starts at least as wet or as white as its preset; only `wet` and `snow_cm` given with it (or a weather after *Off*) set the ground anew. The typical weather is gone through again, over the day and a half before the time set.
 
 The climate is Dresden's: the typical year gives about 10 °C, 600 to 680 mm of rain and snow on about 150 days (the German Weather Service's figures for Dresden-Klotzsche 1991–2020: 9.8 °C, about 640 mm, about 156 days). The split by month, the fair days, the wind and the fog are estimates until the DWD's monthly normals replace them.
 
@@ -70,7 +70,7 @@ These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weat
 - **Cloud and fog**: a grey veil over the picture by day; fog thicker towards the distance. The flyover's sky turns grey.
 - **Trees**: deciduous trees are bare in winter, light green in spring, yellow to red-brown in October (each tree in its own time); conifers stay green. Grass pales in winter; fields are brown, green, yellow and stubble through the year.
 - **Over the camera image** the real model stays as it is: the virtual world gets its snow, the rain and the flakes lie over the whole picture.
-- **Map and 2.5D**: no weather drawn.
+- **Map and 2.5D**, and the builder's plan: no weather drawn.
 - With *reduce motion* set in the system, rain and snow stand still and no lightning flashes. Labels and boards are drawn above the weather.
 
 **How it is drawn.** The weather is one overlay over the picture. Rain and snow are three layers, each a tile painted once (its flakes or drops at fixed places, seamless at its edges) and filled over the picture as a repeating pattern that moves with the real time: a frame costs one fill per layer (two for heavy rain or snow), whatever the number of flakes, about 0.01 to 0.08 ms. Snow cover and wet ground are colours of what is drawn anyway (`view.tone`), no extra drawing.
@@ -84,7 +84,7 @@ These numbers are starting values and estimates (`WEATHER_EFFECTS` in `core/weat
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `clock.date` | none | the date the layout starts with (`"YYYY-MM-DD"`, or `"MM-DD"` in 2026) |
+| `clock.date` | none | the date the layout starts with (`"YYYY-MM-DD"`, or `"MM-DD"` in 2026, so `"02-29"` needs a leap year written with it: without, the layout has no date and the check reports it) |
 | `clock.latitude` | `51.05` | °N, for the sun |
 | `weather` | off | a preset's name (`"snow"`), `"typical"`, `"off"`, or an object: |
 | `weather.mode` | `"off"` | `off`, `typical`, `fixed` |
@@ -118,7 +118,7 @@ world.events.on("weather.changed", ({ weather }) => { /* rain or snow starts or 
 ```
 
 - Read the derived quantities where they fit instead of setting thresholds of your own; with the weather off they are neutral (1, `"dry"`), so nothing needs an `if`.
-- `world.clock.sun()` gives today's sunrise and sunset, `clock.season()` the season; `sunTimes(doy, latitude, {year})`, `parseDay`, `parseDate`, `formatDate`, `dayOfWeek`, `isLeapYear`, `summerTime`, `seasonOf`, `leafState(doy)` and `typicalAir(seed, doy, minutes)` are exported.
+- `world.clock.sun()` gives today's sunrise and sunset, `clock.season()` the season; `sunTimes(doy, latitude, {year})`, `parseDay`, `parseDate`, `formatDate`, `dayOfWeek`, `isLeapYear`, `summerTime`, `seasonOf`, `leafState(doy)` and `typicalAir(seed, doy, minutes)` are exported; the last three take the day of a common year: `commonDay(clock.date, clock.year)`.
 - Drawing: `view.weather` is the weather's look (`{snow, cleared, wet, cloud, fog, precipitation, rate, wind, thunder, leaf, season}`, or null). Polygons on the ground and faces that look up take the snow by themselves (a polygon's style `snow: 0…1` is its share, a face's `snow: false` keeps it clear); in your own canvas code use `view.dim(view.tone(colour, share))`, with `1 - look.cleared` as the share for what traffic clears.
 
 ## What is not there yet

@@ -22,7 +22,7 @@
  * @module arail/core/weather
  */
 import { clamp, hashKey, lerp, smoothstep } from "./math.js";
-import { DAY_MINUTES, PROFILES, YEAR_DAYS, monthDay, parseTime, profileAt, seasonOf, wrapMinutes } from "./clock.js";
+import { DAY_MINUTES, PROFILES, YEAR_DAYS, commonDay, monthDay, parseTime, profileAt, seasonOf, wrapMinutes } from "./clock.js";
 
 /** The modes of the weather. */
 export const WEATHER_MODES = { off: "Off", typical: "Typical for the date", fixed: "Fixed" };
@@ -273,6 +273,7 @@ export class Weather {
    * `{mode?, preset?, course?, …quantities}`. Returns false (and changes nothing) for a name that is none.
    */
   set(value) {
+    const was = this.mode;
     if (typeof value === "string") {
       if (NAMED_MODES.includes(value)) this.mode = value;
       else if (Object.hasOwn(WEATHER_PRESETS, value)) Object.assign(this, { mode: "fixed", preset: value, state: {} });
@@ -287,7 +288,8 @@ export class Weather {
       if (value.course != null) this.course = normalizeWeather({ course: value.course }).course;
       if (Number.isFinite(Number(value.seed))) this.seed = Number(value.seed);
     } else return false;
-    this.settle();
+    // a weather that follows another takes over what lies on the ground
+    this.settle({ keep: was !== "off" });
     this.world.events.emit("weather.changed", { weather: this.now() });
     return true;
   }
@@ -303,7 +305,7 @@ export class Weather {
    * @param {number} [minutes] after midnight
    * @param {number | null} [doy] day of the year
    */
-  air(minutes = this.world.clock.minutes, doy = this.world.clock.date) {
+  air(minutes = this.world.clock.minutes, doy = this._doy()) {
     if (this.mode === "off") return { ...MILD };
     let air = doy == null ? { ...MILD } : typicalAir(this._seed(), doy, minutes), named = false;
     if (this.mode === "fixed") {
@@ -350,33 +352,51 @@ export class Weather {
     return out;
   }
 
+  /** The clock's date as a day of the common year the climate is written for (or null). */
+  _doy() {
+    const clock = this.world.clock;
+    return commonDay(clock.date, clock.year);
+  }
+
   /**
    * The ground as this weather leaves it now: for the typical weather the last day and a half gone
-   * through in steps of a quarter of an hour, for a fixed one where its preset starts.
+   * through in steps of a quarter of an hour, for a fixed one where its preset starts. With `keep`
+   * (a fixed weather set after another, or the time set), what lies stays: snow and wet only grow to
+   * where the preset starts, the streets stay as cleared as they were, and only `wet` or `snow_cm`
+   * set by hand replace it.
    */
-  settle() {
+  settle({ keep = false } = {}) {
+    const before = this.ground;
     this.ground = { wet: 0, snow_cm: 0, cleared: 0 };
     this._memo = null;
     this._sky = null;
     if (this.mode === "off") return;
     if (this.mode === "fixed") {
-      const p = { ...WEATHER_PRESETS[this.preset], ...this.state }, air = this.air();
-      this.ground.wet = p.wet ?? (air.precipitation === "rain" ? 1 : 0);
-      this.ground.snow_cm = p.snow_cm ?? (air.precipitation === "snow" ? SNOW_COVER_CM : 0);
+      const p = WEATHER_PRESETS[this.preset] ?? {}, air = this.air(), hand = this.state;
+      const wet = p.wet ?? (air.precipitation === "rain" ? 1 : 0), snow = p.snow_cm ?? (air.precipitation === "snow" ? SNOW_COVER_CM : 0);
+      if (keep && before) {
+        this.ground.wet = hand.wet ?? Math.max(before.wet, wet);
+        this.ground.snow_cm = hand.snow_cm ?? Math.max(before.snow_cm, snow);
+        // fresh snow on cleared streets covers them again
+        this.ground.cleared = this.ground.snow_cm > before.snow_cm + 0.5 ? 0 : before.cleared;
+      } else {
+        this.ground.wet = hand.wet ?? wet;
+        this.ground.snow_cm = hand.snow_cm ?? snow;
+      }
       return;
     }
-    const clock = this.world.clock;
-    if (clock.date == null && !this.course.length) return;
+    const clock = this.world.clock, today = this._doy();
+    if (today == null && !this.course.length) return;
     for (let back = 36 * 60; back > 0; back -= 15) {
       const m = clock.minutes - back, days = Math.floor(m / DAY_MINUTES);
-      const doy = clock.date == null ? null : ((clock.date - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
+      const doy = today == null ? null : ((today - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
       this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m));
     }
   }
 
   _daylight(minutes, doy) {
     const clock = this.world.clock;
-    if (doy == null || doy === clock.date) {
+    if (doy == null || doy === this._doy()) {
       const s = clock.sun();
       return minutes > s.rise && minutes < s.set ? 1 : 0;
     }
@@ -410,7 +430,7 @@ export class Weather {
     const clock = this.world.clock;
     // the ground goes with the clock: nothing while it stands (stopped, or a factor of 0)
     if (this.mode === "off" || clock.frozen || !(clock.factor > 0)) return;
-    this._ground(this.air(), (dt * clock.factor) / 3600, this._daylight(clock.minutes, clock.date));
+    this._ground(this.air(), (dt * clock.factor) / 3600, this._daylight(clock.minutes, this._doy()));
     this._memo = null;
     // told when it starts or stops raining or snowing, when ice forms, when snow lies or is gone
     const n = this.now(), key = `${n.sky}|${n.ice}|${n.snow_cm > 0.5}`;
@@ -432,7 +452,7 @@ export class Weather {
       : air.precipitation === "rain" ? (air.rate_mm_h >= 4 ? "heavy-rain" : "rain") : air.cloud > 0.8 ? "overcast" : air.cloud > 0.35 ? "cloudy" : "clear";
     const value = {
       ...air, wet: g.wet, snow_cm: g.snow_cm, frost, ice, sky,
-      season: clock.date == null ? null : seasonOf(clock.date), leaf: leafState(this.on ? clock.date : null),
+      season: clock.date == null ? null : seasonOf(this._doy()), leaf: leafState(this.on ? this._doy() : null),
     };
     this._memo = { key, value };
     return value;

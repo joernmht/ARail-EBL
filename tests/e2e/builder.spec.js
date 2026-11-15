@@ -135,6 +135,18 @@ test("houses are built on table modules: a click beside them places nothing", as
   expect(errors).toEqual([]);
 });
 
+test("the plan shows no weather: a layout in snow is edited as it is, without cover, flakes or veil", async ({ page }) => {
+  const errors = await openBuilder(page);
+  const weather = await page.evaluate(() => {
+    const b = window.__builder;
+    b.world.setWeather("snow");
+    b.plan.render();
+    return b.plan.view.weather;
+  });
+  expect(weather).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test("a selected street: drag a corner, add one with a double click, Delete takes the element away", async ({ page }) => {
   await fakeGitHub(page);
   const errors = await openBuilder(page);
