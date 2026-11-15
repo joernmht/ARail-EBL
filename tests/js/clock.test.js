@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { Clock, createWorld, daylightAt, formatTime, parseTime, profileAt, PROFILES } from "../../web/arail/index.js";
+import { Clock, createWorld, daylightAt, formatTime, parseTime, profileAt, PROFILES, WEEKEND_PROFILES } from "../../web/arail/index.js";
 
 test("clock: times are parsed, formatted and wrapped", () => {
   assert.equal(parseTime("07:30"), 450);
@@ -43,10 +43,11 @@ test("clock: daylight, night and demand profiles", () => {
   assert.equal(c.demand("unknown"), 1);
 });
 
-test("clock: the demand table of docs/day-and-night.md matches PROFILES", () => {
+for (const [name, first, profiles] of [["PROFILES", "Time", PROFILES], ["WEEKEND_PROFILES", "Saturday, Sunday", WEEKEND_PROFILES]]) test(`clock: the demand table of docs/day-and-night.md matches ${name}`, () => {
   // read the table itself, so that the docs and the profiles cannot drift apart
+  const PROFILES = profiles;
   const md = readFileSync(new URL("../../docs/day-and-night.md", import.meta.url), "utf8").split("\n");
-  const head = md.findIndex((l) => l.startsWith("| Time | Trains and buses | Cars | Random passengers |"));
+  const head = md.findIndex((l) => l.startsWith(`| ${first} | Trains and buses | Cars | Random passengers |`));
   assert.ok(head >= 0, "the demand table is in the docs");
   const rows = [];
   for (let i = head + 2; md[i]?.startsWith("|"); i++) rows.push(md[i].split("|").slice(1, -1).map((c) => c.trim()));
@@ -76,6 +77,33 @@ test("clock: the demand table of docs/day-and-night.md matches PROFILES", () => 
       }
     });
   }
+});
+
+test("clock: a Saturday or Sunday has the weekend's demand, without a date every day is a working day", () => {
+  const c = new Clock({ start: "07:30" });
+  assert.equal(c.weekend(), false);
+  assert.equal(c.demand("rail"), 1.5, "no date: the morning rush");
+  c.setDate("2026-01-13"); // a Tuesday
+  assert.equal(c.weekend(), false);
+  assert.equal(c.demand("rail"), 1.5);
+  c.setDate("2026-01-17"); // a Saturday
+  assert.equal(c.weekend(), true);
+  assert.equal(c.demand("rail"), profileAt(WEEKEND_PROFILES.rail, 7.5 * 60));
+  assert.ok(c.demand("rail") < 0.5, "no rush hour on a Saturday morning");
+  c.setDate("2026-01-18"); // a Sunday
+  assert.equal(c.weekend(), true);
+  c.set("13:00");
+  assert.equal(c.demand("passengers"), 1, "the most in the early afternoon");
+  // those who look ahead within the day read today's profile
+  assert.equal(c.profile("bus"), WEEKEND_PROFILES.bus);
+  c.setDate("2026-01-19"); // a Monday
+  assert.equal(c.profile("bus"), PROFILES.bus);
+  // looking past midnight: the profile of that day (the journey planner)
+  c.setDate("2026-01-16"); // a Friday
+  assert.equal(c.profile("bus", 1), WEEKEND_PROFILES.bus, "Friday night into Saturday");
+  c.setDate("2026-01-18"); // a Sunday
+  assert.equal(c.profile("bus", 1), PROFILES.bus, "Sunday night into Monday");
+  assert.equal(c.profile("bus", -1), WEEKEND_PROFILES.bus);
 });
 
 test("clock: layouts carry their clock settings; no trains during the night break", () => {

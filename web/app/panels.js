@@ -1,5 +1,6 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
 import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, MockFeed, WEATHER_PRESETS, sectionSystems, SYSTEM_OVERLAYS, systemValue, WebSocketFeed } from "../arail/index.js";
+import { applySituation, SITUATIONS, situationReady } from "./situations.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 /** Fast-clock ratios offered in Settings → Simulation. */
@@ -199,45 +200,97 @@ export class Panels {
   /* ================================================================ Simulate */
 
   /**
-   * Settings → Simulation: presets only, one choice each for what the simulation can be set to (the
-   * time of day, the speed of the clock, the season, the weather, the demand). What it measures is in
-   * the Overview.
+   * Settings → Simulation: situations, each a characteristic combination of the day (its weekday
+   * counts), the time, the weather and the demand, or an event (situations.js); the clock; and,
+   * folded away, each of them on its own as presets. What the simulation measures is in the Overview.
    */
   renderSimulate(el) {
     const w = this.world, app = this.app, s = w.settings;
-    const select = (id, options, value, set) => h("select", { id, onchange: (e) => { set(e.target.value); this.updateSimulate(); } },
+    const select = (id, options, value, set) => h("select", { id, onchange: (e) => { set(e.target.value); this.byHand(); } },
       options.map(([v, t]) => h("option", { value: v, selected: String(value) === String(v) }, t)));
-    this.dateSelect = h("select", { id: "datePreset", onchange: (e) => { w.setDate(e.target.value || null); this.updateSimulate(); } });
+    this.dateSelect = h("select", { id: "datePreset", onchange: (e) => { w.setDate(e.target.value || null); this.byHand(); } });
     this.weatherSelect = select("weatherSelect", [["off", "Off"], ["typical", "Typical for the date"], ...Object.entries(WEATHER_PRESETS).map(([k, p]) => [k, p.label])],
       w.weather.mode === "fixed" ? w.weather.preset : w.weather.mode, (v) => w.setWeather(v));
-    this.demandSelect = h("select", { id: "demandPreset", onchange: (e) => { w.demand = Number(e.target.value); } });
+    this.demandSelect = h("select", { id: "demandPreset", onchange: (e) => { w.demand = Number(e.target.value); this.byHand(); } });
     this.timeButtons = TIME_PRESETS.map(([label, t]) => h("button", { class: "btn small", type: "button", "aria-pressed": "false", "data-time": t,
-      onclick: () => { w.setTime(t); this.updateSimulate(); } }, `${label} ${t}`));
+      onclick: () => { w.setTime(t); this.byHand(); } }, `${label} ${t}`));
+    const list = (kind, label) => h("ul", { class: "situations", "aria-label": label }, SITUATIONS.filter((x) => x.kind === kind).map((x) => h("li", {}, this._situationCard(x))));
     mount(el,
-      section("Time of day",
-        h("div", { class: "row", role: "group", "aria-label": "Time of day" }, this.timeButtons),
+      section("Situations",
+        h("p", { class: "hint" }, "Each sets the day, the time, the weather and how many travel, at once. On a Saturday or Sunday there is no rush hour."),
+        list("day", "Days"),
+        h("h3", { class: "situations-head" }, "Events"),
+        list("event", "Events"),
+      ),
+      section("Clock",
         h("div", { class: "fields" },
           h("label", { class: "field", for: "clockFactor" }, h("span", {}, "Fast clock"),
-            select("clockFactor", [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => [f, f === 1 ? "1:1 (real time)" : `1:${f}`]), w.clock.factor, (v) => (w.clock.factor = Number(v)))),
+            // not part of a situation: the situation set stays pressed
+            h("select", { id: "clockFactor", onchange: (e) => { w.clock.factor = Number(e.target.value); } },
+              [...new Set([...CLOCK_FACTORS, w.clock.factor])].sort((a, b) => a - b).map((f) => h("option", { value: f, selected: f === w.clock.factor }, f === 1 ? "1:1 (real time)" : `1:${f}`)))),
           h("label", { class: "field check", for: "optLighting" },
             h("input", { type: "checkbox", id: "optLighting", checked: s.lighting !== false, onchange: (e) => { s.lighting = e.target.checked; app.savePrefs(); } }), "Day and night lighting"),
           h("label", { class: "field check", for: "optFreeze" },
             h("input", { type: "checkbox", id: "optFreeze", checked: !!w.clock.frozen, onchange: (e) => { w.clock.frozen = e.target.checked; } }), "Stop the clock"),
         ),
         h("p", { class: "hint" }, "Pause and the speed are in the upper right corner of the stage."),
+        h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
       ),
-      section("Season and weather",
+      h("details", { class: "section by-hand", id: "simByHand", open: !!this.byHandOpen, ontoggle: (e) => (this.byHandOpen = e.currentTarget.open) },
+        h("summary", {}, h("h2", {}, "Each on its own")),
+        h("div", { class: "field" }, h("span", {}, "Time of day"), h("div", { class: "row", role: "group", "aria-label": "Time of day" }, this.timeButtons)),
         h("div", { class: "fields" },
           h("label", { class: "field", for: "datePreset" }, h("span", {}, "Season"), this.dateSelect),
           h("label", { class: "field", for: "weatherSelect" }, h("span", {}, "Weather"), this.weatherSelect),
+          h("label", { class: "field", for: "demandPreset" }, h("span", {}, "Demand"), this.demandSelect),
         ),
         h("p", { class: "hint" }, "With a season the sun rises and sets as on that day in Dresden, and the trees follow it. The typical weather is that of the date; without a date it is a mild dry day."),
       ),
-      section("Passengers",
-        h("label", { class: "field", for: "demandPreset" }, h("span", {}, "Demand"), this.demandSelect),
-        h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => this.clearSimulations() }, "Clear passengers")),
-      ),
     );
+    this.updateSimulate();
+  }
+
+  /**
+   * A situation as a card to press: its name and what it is; pressed while it is the one set (until
+   * something is set on its own, or another layout opens); off where the layout lacks what it needs.
+   */
+  _situationCard(x) {
+    const ready = situationReady(this.app, x), id = `situation-${x.id}`;
+    return h("button", {
+      type: "button", class: "situation", id, disabled: !ready, "aria-pressed": this._situationSet() === x.id ? "true" : "false",
+      "aria-labelledby": `${id}-name`, "aria-describedby": `${id}-text`, onclick: () => this.setSituation(x),
+    },
+    h("span", { class: "situation-name", id: `${id}-name` }, x.label),
+    h("span", { class: "situation-text", id: `${id}-text` }, x.text, ready ? null : [" (", h("span", { class: "case-state" }, "Not in this layout"), ")"]));
+  }
+
+  /**
+   * The situation set last, while the layout is the one it was set on (the world loads another
+   * layout, or the same one with other modules, into the same object: its layout is new then).
+   */
+  _situationSet() {
+    return this.situation && this.situation.layout === this.world.layout ? this.situation.id : null;
+  }
+
+  /** Set a situation (situations.js); the card keeps the focus. */
+  async setSituation(x) {
+    try {
+      await applySituation(this.app, x);
+    } catch (err) {
+      toast(`${x.label} could not be set: ${err.message}`, 7000);
+      return;
+    }
+    this.situation = { id: x.id, layout: this.world.layout };
+    if (this.app.activeTab === "settings" && this.settingsView === "simulate") {
+      this.renderSettings(document.getElementById("panel-settings"));
+      document.getElementById(`situation-${x.id}`)?.focus();
+    }
+  }
+
+  /** Something set on its own: no situation is the one set any more. */
+  byHand() {
+    this.situation = null;
+    for (const b of document.querySelectorAll(".situation[aria-pressed=true]")) b.setAttribute("aria-pressed", "false");
     this.updateSimulate();
   }
 
@@ -250,7 +303,7 @@ export class Panels {
   }
 
   /**
-   * The presets of Settings → Simulation as the world is now (a scenario or a story may have set
+   * The presets of Settings → Simulation → Each on its own as the world is now (a scenario or a story may have set
    * another time, date, weather or demand): the time of day pressed, a date or a demand that is no
    * preset as an option of its own.
    */

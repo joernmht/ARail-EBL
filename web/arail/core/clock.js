@@ -176,6 +176,17 @@ export const PROFILES = {
   passengers: [[0, 0.3], [1, 0.05], [4.5, 0.05], [5, 0.4], [6, 1], [6.5, 1.6], [8.5, 1.6], [9, 1], [15.5, 1], [16, 1.5], [18.5, 1.5], [19, 1], [21, 0.5], [24, 0.3]],
 };
 
+/**
+ * Demand over a Saturday or Sunday (with a date on the clock): no morning rush, service and traffic
+ * start later, a long leisure day with its most in the early afternoon. Estimates, as {@link PROFILES}.
+ */
+export const WEEKEND_PROFILES = {
+  rail: [[0, 0.5], [0.75, 0.3], [1, 0], [5, 0], [6, 0.3], [8, 0.5], [10, 0.9], [13, 1], [18, 0.9], [20, 0.7], [22, 0.6], [24, 0.5]],
+  bus: [[0, 0.4], [0.75, 0.2], [1, 0], [5, 0], [6, 0.3], [8, 0.4], [10, 0.8], [13, 0.9], [18, 0.8], [20, 0.6], [22, 0.5], [24, 0.4]],
+  car: [[0, 0.2], [6, 0.15], [8, 0.4], [10, 0.9], [13, 1], [18, 0.9], [21, 0.5], [24, 0.2]],
+  passengers: [[0, 0.4], [1, 0.05], [5, 0.05], [6, 0.2], [8, 0.4], [10, 0.9], [13, 1], [18, 0.9], [20, 0.6], [22, 0.5], [24, 0.4]],
+};
+
 /** "07:30" -> 450 (minutes after midnight); numbers are taken as minutes. Invalid -> null. */
 export function parseTime(value) {
   if (typeof value === "number") return Number.isFinite(value) ? wrapMinutes(value) : null;
@@ -352,11 +363,29 @@ export class Clock {
 
   /**
    * Demand factor for a kind of traffic at the current time ("rail", "bus", "car",
-   * "passengers"); 1 when profiles are switched off or the kind is unknown.
+   * "passengers"), by the weekday's profile (a weekend's with a date on a Saturday or Sunday); 1 when
+   * profiles are switched off or the kind is unknown.
    */
   demand(kind) {
     if (!this.profiles || !PROFILES[kind]) return 1;
-    return profileAt(PROFILES[kind], this.minutes);
+    return profileAt(this.profile(kind), this.minutes);
+  }
+
+  /**
+   * The profile of a kind of traffic ([hour, factor] points) on a day: a weekend's on a Saturday or
+   * Sunday, else the working day's; `dayOffset` days from today (the journey planner looking past
+   * midnight; the town's daily totals, the traffic clearing the snow: today).
+   */
+  profile(kind, dayOffset = 0) {
+    return (this.weekend(dayOffset) ? WEEKEND_PROFILES : PROFILES)[kind];
+  }
+
+  /** Is it a Saturday or a Sunday (today, or `dayOffset` days on)? False without a date (every day is a working day then). */
+  weekend(dayOffset = 0) {
+    const wd = this.weekday();
+    if (wd == null) return false;
+    const d = (((wd + Math.round(dayOffset)) % 7) + 7) % 7;
+    return d === 5 || d === 6;
   }
 
   /** Simulated seconds until the clock shows `value` ("HH:MM" or minutes), at most one day. */

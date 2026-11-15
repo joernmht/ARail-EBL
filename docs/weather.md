@@ -8,7 +8,7 @@ This is the base of the concept in [#254](https://github.com/joernmht/ARail-EBL/
 
 ## In the app
 
-**Settings → Simulation → Season and weather**, as presets:
+**Settings → Simulation**: a situation sets the date, the time and the weather together (the *Thunderstorm on an autumn night*, the *Hot weekend in the summer of 2050* at 39 °C, the *Christmas market* in the snow; see [Getting started](getting-started.md#settings)). **Each on its own** sets them one by one, as presets:
 
 - **Season**: *No date* (every day is the same day), or a day of each season: *Spring* (15 April), *Summer* (15 July), *Autumn* (15 October), *Winter* (15 December), in 2026. The date runs on at midnight, into the next year; leap years have 29 February. Another date (from a scenario, a layout or `world.setDate`) shows as an option of its own (*Sunday, 6 December 2026*).
 - **Weather**: *Off*, *Typical for the date*, or a fixed one: *Clear, Cloudy, Overcast, Rain, Heavy rain, Thunderstorm, Snowfall, Frost, Fog, Heat*.

@@ -429,7 +429,7 @@ export class Weather {
   _ground(air, hours, daylight, minutes = this.world.clock.minutes) {
     const g = this.ground, T = air.temperature_c;
     if (g.snow_cm > 0.5) {
-      const traffic = profileAt(PROFILES.car, minutes), falling = air.precipitation === "snow" ? air.rate_mm_h : 0;
+      const traffic = profileAt(this.world.clock.profile?.("car") ?? PROFILES.car, minutes), falling = air.precipitation === "snow" ? air.rate_mm_h : 0;
       g.cleared = clamp(g.cleared + hours * (WEATHER_EFFECTS.clearing * traffic - 0.4 * falling + (T > 0 ? 0.3 : 0)), 0, 1);
     } else g.cleared = 0;
     if (air.precipitation === "rain" || air.precipitation === "sleet") g.wet = Math.min(1, g.wet + air.rate_mm_h * hours * 0.8);
