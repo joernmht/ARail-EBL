@@ -7,7 +7,7 @@ export const HUMP = [
     id: "hump", group: "hump", title: "Hump yard (Ablaufberg)",
     summary: "Trains broken up over a hump: a locomotive pushes a train over the crest, its cuts run free, roll through the main retarder, the switch zone and their group retarder into the classification tracks and meet the wagons there. The physics of every cut, the control's switches and retarders, misroutes, catching up, impacts and gaps; parameters from the literature on hump design (#236). On the table, the object hump-yard runs it and draws it: Bf Neustadt's module Hump yard (#237).",
     description: "A HumpYard is a tree of segments from the push track to the classification tracks: grades (‰, linear between their points, so a change of grade is a vertical curve), curves, turnouts and retarders; a position is metres along a route, the same on every route up to where they part. standardYard builds the usual shape from a few figures (params.js, each with its source). A train is a list of wagons (the freight wagons of the vehicle catalogue, rail/vehicles.js VEHICLE_TYPES, and the hump's own 2-axle type), each with a rolling resistance drawn by its class and the season; consecutive wagons for the same track are one cut. HumpSimulation pushes the train at its pushing speed; its first cut runs free as soon as gravity pulls it faster. Every step, cutForces gives each free cut its forces (gravity over its whole length, rolling, curve and switch resistance, air with the wind, the retarders on the axles inside them, speed-holding units by themselves); cuts that touch move together while the one behind would be faster; a cut that meets another one does so plastically. At a switch a cut takes the branch the switch lies in: if that is not its own, it is misrouted. HumpControl throws each switch for the next cut that needs it when no cut is in its detection section and the throw is done in time, and closes each retarder while a cut in it is faster than it needs: the main retarder to reach the group retarder at 4.5 m/s (never below 3 m/s), the group retarder to meet the wagons in the track at the coupling speed (requiredSpeeds: the cut's run backwards with its measured, imperfect resistance), no faster than lets it meet a cut still rolling ahead gently (safeExit, both runs over time, with the speed-holding units). A track short of room at its entrance (pull_below_m) is pushed up and, if still full, pulled out as a train. results() gives every cut's run and the figures: cuts per hour, misroutes, catching up, hard impacts, gaps; humpDiagrams draws a traced run as the diagrams of hump design (height and energy line, speed over distance, distance over time) in SVG. tools/hump.mjs runs it on the command line. On the table, HumpYardObject (hump-yard) holds a standard yard of its figures and a simulation, humps one random train after the other in update, and draws the yard along the plan of HumpYard.planAt (a fan of the tracks, spacing_m apart) at the layout's scale: the formation with its banks, ballast and rails, retarders orange while they brake, every wagon with a band in its rolling class's colour.",
-    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js", "web/arail/hump/object.js"],
+    files: ["web/arail/hump/index.js", "web/arail/hump/params.js", "web/arail/hump/yard.js", "web/arail/hump/cuts.js", "web/arail/hump/physics.js", "web/arail/hump/control.js", "web/arail/hump/simulation.js", "web/arail/hump/diagrams.js", "web/arail/hump/object.js", "web/app/hump.js"],
     classes: [
       {
         name: "hump params", file: "web/arail/hump/params.js", kind: "module", role: "The figures of hump design, each with its source (estimates marked).",
@@ -50,7 +50,7 @@ export const HUMP = [
       {
         name: "HumpSimulation", file: "web/arail/hump/simulation.js", kind: "class", role: "Trains humped over a yard.",
         attributes: ["yard: HumpYard", "options: object — SIM_DEFAULTS", "wind_mps: number", "rng — createRng(seed)", "control: HumpControl", "t: number", "cuts: object[] — every cut with its plan, route, s, v and record", "bodies: object[] — the free cuts", "queue: object[] — trains waiting", "pushing: object|null — the train on the hump", "trains: object[]", "log: object[] — {t, type, …}", "logStart: number — log entries forgotten; an entry's place since the start is logStart + its index", "departures: object[]", "movers — pushed and free cuts", "idle — nothing waiting or moving", "SIM_DEFAULTS — dt, seed, season, wind, time between trains, limits, trace"],
-        operations: ["hump(train) — the train checked first (types, tracks by name); wagons → cuts, each with its plan and measured resistance", "step()", "run(options) — until idle, or its longest time (limitReached, logged)", "note(type, data)", "switchState(id)", "retarderState(id)", "targetPoint(c) — where it should meet the wagons in its track", "enteredRetarder(c, r)", "leftRetarder(c, r)", "trackContents(name) — cuts, gaps, room at the entrance, length occupied", "pullOut(name) — a formed train: the cuts of trackContents; a cut stopped short stays", "results() — every cut kept and the figures of the whole run; trains humped, waiting, limit_reached, pushed_up_m, pulled_out", "_judge(c, v_mps) — a cut judged once, by its first impact in its track or at its end; too hard: noted cut.hard", "tooHard(careful, v_mps) — the one rule for too hard: the count, the flash on the table, the marks of the diagrams", "forget(keep) — drops departed cuts, humped trains, departures and log entries but the newest; their figures stay in results()", "_cutResult(c) — one cut's run", "_figures(perCut) — counts and the hardest impact", "_startTrain()", "_push(dt)", "_move(dt)", "_pass(c)", "_misroute(c, switchId, next)", "_leader(c)", "_pullFull() — tracks short of room at the entrance: pushed up, then pulled out once quiet", "pushUp(name) — buffer to buffer up to the end (Beidrücken); the room gained", "_standing(leaf) — the cuts standing in a track, also one across its entrance"],
+        operations: ["hump(train) — the train checked first (types, tracks by name); wagons → cuts, each with its plan and measured resistance", "step()", "run(options) — until idle, or its longest time (limitReached, logged)", "note(type, data)", "switchState(id)", "retarderState(id)", "targetPoint(c) — where it should meet the wagons in its track", "enteredRetarder(c, r)", "leftRetarder(c, r)", "trackContents(name) — cuts, gaps, room at the entrance, length occupied", "pullOut(name) — a formed train: the cuts of trackContents; a cut stopped short stays", "results() — every cut kept and the figures of the whole run; trains humped, waiting, limit_reached, pushed_up_m, pulled_out", "_judge(c, v_mps) — a cut judged once, by its first impact in its track or at its end; too hard: noted cut.hard", "tooHard(careful, v_mps) — the one rule for too hard: the count, the flash on the table, the marks of the diagrams", "forget(keep) — drops departed cuts, humped trains, departures and log entries but the newest; their figures stay in results()", "_cutResult(c) — one cut's run", "_figures(perCut) — counts and the hardest impact", "_startTrain()", "_push(dt) — the train on at its pushing speed; stopped behind a cut held ahead (blocked, train.blocked noted once)", "_move(dt)", "_pass(c)", "_misroute(c, switchId, next)", "_leader(c)", "_pullFull() — tracks short of room at the entrance: pushed up, then pulled out once quiet", "pushUp(name) — buffer to buffer up to the end (Beidrücken); the room gained", "_standing(leaf) — the cuts standing in a track, also one across its entrance"],
       },
       {
         name: "hump diagrams", file: "web/arail/hump/diagrams.js", kind: "module", role: "The diagrams of hump design for a traced run, as SVG.",
@@ -59,8 +59,15 @@ export const HUMP = [
       },
       {
         name: "HumpYardObject", file: "web/arail/hump/object.js", kind: "class", extends: "LayoutObject", role: "The hump yard on the table (`hump-yard`): its own simulation, drawn where it is placed.",
-        attributes: ["yard — the standard yard of its figures (kept while they stay the same)", "sim — its HumpSimulation (made again when its figures change; draw, drawMoving and card read it too, so a change while paused shows at once)", "keep — what the simulation keeps of what is done (forget, once a list holds twice as much)", "COLOURS — greys for ground, ballast, rails and wagons; CD Rot, Orange for what happens"],
-        operations: ["computeGeometry() — the crest, the fan in layout mm, the formation's slices and the pieces of ballast and rails", "footprint()", "anchorPoint() — the crest", "update(dt) — the next train when none waits; the simulation in steps of 0.1 s; a flash for every cut.hard in the log; what is done forgotten", "draw(view) — formation and banks, ballast, rails, retarders (orange while they brake), track numbers", "drawMoving(view) — every wagon (a band in its rolling class's colour, red after an impact too hard), the locomotive pushing", "card() — tracks, trains humped, cuts per hour, misroutes, hard impacts, trains pulled out"],
+        attributes: ["yard — the standard yard of its figures (kept while they stay the same)", "sim — its HumpSimulation (made again when its figures change; draw, drawMoving and card read it too, so a change while paused shows at once)", "keep — what the simulation keeps of what is done (forget, once a list holds twice as much)", "COLOURS — greys for ground, ballast, rails and wagons; CD Rot, Orange for what happens", "task — the train humped once by hand (startTask), or null: train after train by itself", "chosen — the id of the cut chosen (outlined), or null", "TASK_PUSH — the task's pushing speed: 0.4 to 3 m/s in steps of 0.2, 1.2 at its start"],
+        operations: ["computeGeometry() — the crest, the fan in layout mm, the formation's slices and the pieces of ballast and rails", "footprint()", "anchorPoint() — the crest", "update(dt) — the next train when none waits; the simulation in steps of 0.1 s; a flash for every cut.hard in the log; what is done forgotten", "draw(view) — formation and banks, ballast, rails, retarders (orange while they brake), track numbers", "drawMoving(view) — every wagon (a band in its rolling class's colour, red after an impact too hard), the locomotive pushing", "card() — tracks, trains humped, cuts per hour, misroutes, hard impacts, trains pulled out", "startTask(options) — one train of its own (wagons, seed: from the world's seed and its id), into empty tracks (the yard anew, nothing pulled out by itself), pushed at push_mps", "stopTask() — train after train by itself again, the yard anew", "_queueTask() — the task's train queued in the simulation made for it", "_checkTask() — every cut standing (or the train blocked and the cuts released standing): the task's time stops (finished_s)", "setPush(change) — the task's pushing speed (within TASK_PUSH) or the train stopped; the train being pushed changes at once", "taskState() — every cut of the task (its wagons, track, rolling class, where it is, wrong track, too hard, derailed) and the task's figures: the cuts that have stood (never fewer), derailed, short, not humped, blocked, the time (stopped once finished); null without a task", "choose(id) — the cut chosen", "boxes() — the wagons as boxes in layout mm, their cut's id (for pickBoxes)", "_box(g, route, rear, front, heights, id) — a wagon's box along the route"],
+      },
+      {
+        name: "HumpPanel", file: "web/app/hump.js", kind: "class", role: "The panel of the app's example Hump a train (HumpCase), light in text: the pushing speed with Slower, Faster, Stop (or Push on) and Restart, how the train goes (at its end how it went); the train's cuts from the hump end as buttons (wagons, track, rolling class, where each is, wrong track, too hard): one chosen is outlined on the stage; the classification tracks (wagons in each of those due, room left).",
+        attributes: ["owner: Case | null — the case it is the panel of", "yard — the layout's hump yard (humpOf)"],
+        operations: ["render(el)", "update()", "_head(st) — the pushing speed and its buttons, the status", "_status(st, humped)", "_cut(c, chosen)", "_tracks(y, st)", "push(dir) — one step slower or faster; a stopped train goes on", "stop(stopped)", "restart() — the same train again, in empty tracks", "choose(id)", "pickAt(p, options) — a tap on the stage or Enter at the cross: the cut whose wagon is there"],
+      },
+      { name: "hump panel", file: "web/app/hump.js", kind: "module", role: "The hump yard of a layout.", operations: ["humpOf(world) — the layout's hump yard (the object), or null"] 
       },
       { name: "hump", file: "web/arail/hump/index.js", kind: "module", role: "The public names; registerHump(registry) registers the object type.", operations: ["registerHump(registry)"] },
     ],
@@ -73,6 +80,7 @@ export const HUMP = [
       { from: "hump yard", to: "HumpYard", kind: "creates" },
       { from: "hump diagrams", to: "HumpSimulation", kind: "uses", label: "a traced run" },
       { from: "HumpYardObject", to: "HumpSimulation", kind: "composes" },
+      { from: "HumpPanel", to: "HumpYardObject", kind: "uses", label: "startTask, setPush, taskState" },
       { from: "HumpYardObject", to: "HumpYard", kind: "uses", label: "planAt" },
       { from: "HumpYard", to: "hump params", kind: "depends" },
       { from: "hump physics", to: "hump params", kind: "depends" },
@@ -85,7 +93,7 @@ export const HUMP = [
           ["s", "start"],
           ["m0", "merge"],
           ["a1", "action", "The next train starts when the one before is humped and the time between trains has passed", "HumpSimulation._startTrain"],
-          ["a2", "action", "The train moves on at its pushing speed", "HumpSimulation._push"],
+          ["a2", "action", "The train moves on at its pushing speed, not past a cut held ahead (then it is blocked)", "HumpSimulation._push"],
           ["d1", "decision", "Gravity pulls its first cut faster than the train?"],
           ["a3", "action", "The cut runs free", "HumpSimulation._push"],
           ["m1", "merge"],
@@ -108,7 +116,7 @@ export const HUMP = [
         description: "HumpYardObject in the world: World.step calls update, World.draw calls draw and drawMoving.",
         nodes: [
           ["s", "start"],
-          ["d1", "decision", "A train waiting or pushed?"],
+          ["d1", "decision", "A train waiting or pushed, or a task?"],
           ["a1", "action", "A random train for the yard's tracks, from the object's own random stream", "HumpYardObject.update"],
           ["m1", "merge"],
           ["a2", "action", "The simulation on, in steps of 0.1 s (at most 400 a frame)", "HumpSimulation.step"],
@@ -119,6 +127,25 @@ export const HUMP = [
           ["e", "end"],
         ],
         edges: [["s", "d1"], ["d1", "a1", "no"], ["d1", "m1", "yes"], ["a1", "m1"], ["m1", "a2"], ["a2", "a3"], ["a3", "a4"], ["a4", "a5"], ["a5", "a6"], ["a6", "e"]],
+      },
+      {
+        id: "hump-task", name: "Humping a train by hand (the app's example Hump a train)",
+        description: "HumpCase.begin starts the task; the hump master pushes in HumpPanel; World.step runs the yard on (hump-table) until every cut stands.",
+        nodes: [
+          ["s", "start"],
+          ["a1", "action", "The yard anew, its tracks empty, nothing pulled out by itself; the task's train on the push track", "HumpYardObject.startTask"],
+          ["a2", "action", "The yard in the flyover", "App.showPlace"],
+          ["m1", "merge"],
+          ["d1", "decision", "Slower, Faster, Stop or Push on?"],
+          ["a3", "action", "The train being pushed at the speed chosen (0 while stopped); cuts already free roll on", "HumpYardObject.setPush"],
+          ["m2", "merge"],
+          ["a4", "action", "What became of every cut: waiting, on the hump, rolling, standing; wrong track, too hard", "HumpYardObject.taskState"],
+          ["d2", "decision", "Every cut standing, or the train blocked and the cuts released standing?"],
+          ["a6", "action", "The task's time stops", "HumpYardObject._checkTask"],
+          ["a5", "action", "How it went: the time on the yard's clock, cuts in the wrong track, impacts too hard", "HumpCase.figures"],
+          ["e", "end"],
+        ],
+        edges: [["s", "a1"], ["a1", "a2"], ["a2", "m1"], ["m1", "d1"], ["d1", "a3", "yes"], ["d1", "m2", "no"], ["a3", "m2"], ["m2", "a4"], ["a4", "d2"], ["d2", "m1", "no"], ["d2", "a6", "yes"], ["a6", "a5"], ["a5", "e"]],
       },
       {
         id: "hump-need", name: "The speed a cut needs through a retarder",

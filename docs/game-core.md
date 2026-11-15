@@ -394,7 +394,7 @@ How the modes of #104 map onto the engine:
 
 | Mode | In the engine |
 | --- | --- |
-| Sandbox | No game: the app and its Sandbox scenario |
+| Sandbox | No game: the app and its Sandbox (an example of Interaction) |
 | Mission | One session of one mission: a briefing, objectives, a result, a debrief |
 | Campaign | Missions in a row with what is carried over: the career mode takes each round's `result()` (passed, a danger to people) as a step of a working life |
 | Cooperative | `mode: "cooperative"`: the score of the whole counts |

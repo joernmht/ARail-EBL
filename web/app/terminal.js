@@ -149,7 +149,7 @@ export class TerminalPanel {
     mount(el, e.head, e.orders, e.arrivals, e.add, e.containers, e.move, e.jobs, e.wagons);
     this.update();
     // a control that is not there any more hands the focus to the panel's heading (in a task, the scenario's)
-    if (focused) (document.getElementById(focused) || e.head.querySelector("h2") || document.getElementById("scenarioName"))?.focus();
+    if (focused) (document.getElementById(focused) || e.head.querySelector("h2") || document.getElementById("caseName"))?.focus();
   }
 
   /** Refresh the panel in place (every 400 ms while it is shown, and after every action). */

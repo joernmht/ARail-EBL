@@ -5,7 +5,7 @@
 import * as ARail from "../arail/index.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
-import { Interaction, LIST } from "./interaction.js";
+import { Interaction, LIST, LIST_ALIASES } from "./interaction.js";
 import { drawGrid, drawGroundImage, Flyover, SKY } from "./flyover.js";
 import { Overview } from "./overview.js";
 import { Panels } from "./panels.js";
@@ -18,9 +18,9 @@ const params = new URLSearchParams(location.search);
 /**
  * A page with a stage (the app, the game page):
  * - `id`: "app" or "game" (the game page keeps what it remembers in the browser apart);
- * - `cases`: the classes of its cases in Interaction (cases.js): its scenarios, in the order of their list;
+ * - `cases`: the classes of its cases in Interaction (cases.js): the examples of its list, in their order;
  * - `defaultCase`: the case Interaction shows until another one is chosen (the app: the Introduction),
- *   else the list of scenarios;
+ *   else the list of examples;
  * - `start`: the chapter shown when the link names none (the app: Interaction), else the Overview;
  * - `examples`: example layouts `{id, label, layout, image?, video?, tab?, layers?, home?}` (`home`: the
  *   layout it is a module of; `image` or `video`: opened with this photo or clip; `tab`: the case or
@@ -101,7 +101,7 @@ export class App {
     this.tabNames = [...document.querySelectorAll(".tabs [role=tab]")].map((b) => b.id.replace(/^tab-/, ""));
     /** The cases of Interaction (cases.js), in the page's order. @type {import("./cases.js").Case[]} */
     this.cases = [];
-    /** What Interaction shows: a case's id, or the list of scenarios ("scenarios"). */
+    /** What Interaction shows: a case's id, or the list of examples ("examples"). */
     this.activeCase = page.defaultCase ?? LIST;
     /** How much of what the app draws is shown over the camera image (0…1; the introduction fades it). */
     this.fade = 1;
@@ -175,7 +175,7 @@ export class App {
     this.overview = new Overview(this);
     this.cases = this.page.cases.map((C) => new C(this));
     this.interaction = new Interaction(this);
-    const kept = storage.get(this.key("case"));
+    const stored = storage.get(this.key("case")), kept = LIST_ALIASES.includes(stored) ? LIST : stored;
     if (kept === LIST || this.caseFor(kept)) this.activeCase = kept === LIST ? LIST : this.caseFor(kept).id;
     this.inspector = new Inspector(this);
     /** The photo tour on the stage (the app), or null (the game page). */
@@ -388,7 +388,7 @@ export class App {
     return c?.ready ? c : null;
   }
 
-  /** Is this case shown? (Build: taps place and select; Terminal: taps pick containers.) */
+  /** Is this case shown? (Build: taps place and select; Terminal: taps pick containers; Hump a train: taps choose cuts.) */
   showing(id) {
     return this.shownCase?.id === id;
   }
@@ -396,6 +396,11 @@ export class App {
   /** The panel of the container terminal, or null. */
   get terminal() {
     return this.caseFor("terminal")?.panel ?? null;
+  }
+
+  /** The panel of the hump yard (the app: Hump a train), or null. */
+  get hump() {
+    return this.caseFor("hump")?.panel ?? null;
   }
 
   /** The panel of the rail operations (the app: the breakdown story), or null. */
@@ -421,7 +426,7 @@ export class App {
   /**
    * Show a chapter (overview, interaction, settings), a view of Settings (view, simulate, control),
    * or in Interaction a case (its id, or a former tab name: build, terminal, ops, modules, …) or the
-   * list of scenarios ("scenarios"). The case shown until then stops. On a page with a home (the
+   * list of examples ("examples"; the former "scenarios" too). The case shown until then stops. On a page with a home (the
    * app), a scenario that was started and is left for the list or another scenario takes the stage
    * back to the town (`showHome`); another chapter (Overview, Settings) leaves it running, its stage
    * as it is, and one only shown, not started, leaves the stage as it is too. The address links to
@@ -433,6 +438,7 @@ export class App {
       storage.set("arail.settingsView", TAB_VIEWS[name][1]);
       name = TAB_VIEWS[name][0];
     }
+    if (LIST_ALIASES.includes(name)) name = LIST;
     const c = this.caseFor(name);
     let home = false;
     if (c || name === LIST) {
@@ -482,7 +488,7 @@ export class App {
     const ok = await c.start();
     if (this.activeTab === "interaction" && this.activeCase === c.id) {
       this.renderPanel("interaction");
-      if (fromList) $("#scenarioName")?.focus();
+      if (fromList) $("#caseName")?.focus();
     }
     return ok;
   }

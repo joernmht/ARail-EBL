@@ -1,0 +1,1 @@
+- **A hump yard backed up to the crest** (`web/arail/hump/simulation.js`): the train no longer pushes a cut held ahead of it (standing back from a full track or a derailed cut), which gave that cut a speed it never lost, so that it and the cuts behind it "rolled" for ever and a run never ended. The train stops behind it instead (`train.blocked`).

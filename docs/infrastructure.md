@@ -14,7 +14,7 @@ The infrastructure comes in two forms:
 of the lab survey of 9 October 2026) with its module **Infrastructure**: the exit signals N1–N3 of the
 electronic interlocking at the masts on the platforms, the displays, the interlocking building
 (ESTW Neustadt) and a maintenance base on a table module at the end of Bahnhofstraße. The
-scenario **A signal fails** (Interaction, pill Infrastructure; its Start switches the module on)
+example **A signal fails** (Interaction, pill Infrastructure; its Start switches the module on)
 tells the story in twelve steps:
 
 | Step | What happens on the layout |
@@ -35,7 +35,7 @@ tells the story in twelve steps:
 **Back**, **Next**, a step on the bar of the steps (a segment per step; above it only the step
 shown), **Play** (each step to its end, a pause, the next one) and
 **Restart**; a presenter's clicker works too (Page Down, Page Up). Every step looks the same each
-time it is shown, so a presenter can go back and forth. Start opens the flyover, and while the scenario runs its
+time it is shown, so a presenter can go back and forth. Start opens the flyover, and while the example runs its
 camera always follows the story (a photo chosen by hand stays) where it happens: the van on its way, the signal from above, the works on track G3.
 Over the photo of the station (the camera view) the story is drawn on the real table, but the van and
 the base are beside it.
@@ -62,7 +62,7 @@ construction train needs a track of at least about 60 m. The track closure is a 
 *Infrastructure aging* adds up to 50 years to the story's year (the world setting `ageYears`, not kept
 in the layout), so the rings turn from Türkis to Rot as the assets age without renewals, and the
 Overview's condition of the assets follows. The story's texts then speak of that year too, as long
-as the Sandbox is shown: leaving it brings the station back to today, so that the scenario *A signal
+as the Sandbox is shown: leaving it brings the station back to today, so that the example *A signal
 fails* plays in the story's own year.
 
 ## The asset management game

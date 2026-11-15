@@ -40,7 +40,7 @@ test("the app opens Bf Neustadt; the case Journeys switches on the journeys stor
   await on.click();
   await page.waitForFunction(() => window.__arail.world.simulations.some((s) => s.constructor.type === "journeys-story"), null, { timeout: 30_000 });
   await expectCase(page, "journeys");
-  await expect(page.locator("#scenarioName")).toHaveText("A traveller's journey");
+  await expect(page.locator("#caseName")).toHaveText("A traveller's journey");
   await expect(title(page)).toHaveText("Ada sets off");
   await expect(page.locator("#casePanel .step-count")).toHaveText("Step 1 of 11");
   expect(errors).toEqual([]);
@@ -113,7 +113,7 @@ test("the journeys story: Next and Back, the bar of the steps, a clicker; her tr
 test("the camera follows: the flyover goes with Ada through the town and with her bus", async ({ page }) => {
   const errors = await open(page, STORY);
   // Start: the flyover, its camera on the story (always, there is no switch)
-  await page.locator("#scenarioStart").click();
+  await page.locator("#caseStart").click();
   await page.waitForFunction(() => window.__arail.mode === "flyover");
   /** Where the camera looks from above (degrees). */
   const yaw = () => page.evaluate(() => Math.round((window.__arail.flyover.cam.yaw * 180) / Math.PI));

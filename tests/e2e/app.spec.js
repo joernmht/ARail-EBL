@@ -293,12 +293,12 @@ test("another chapter or scenario opens at its top, also when the panel was scro
   await expect(page.locator("#stateSearch")).toBeInViewport();
   // back to the list: the scenario left has the focus, in view; another scenario opens at its top
   await page.locator("#tab-interaction").click();
-  await page.locator("#scenariosBack").click();
-  await expect(page.locator("#scenario-build")).toBeFocused();
-  await expect(page.locator("#scenario-build")).toBeInViewport();
+  await page.locator("#casesBack").click();
+  await expect(page.locator("#case-build")).toBeFocused();
+  await expect(page.locator("#case-build")).toBeInViewport();
   await page.locator("#panel").evaluate((p) => (p.scrollTop = p.scrollHeight));
   expect(await top()).toBeGreaterThan(100);
-  await page.locator("#scenario-sandbox").click();
+  await page.locator("#case-sandbox").click();
   await expectCase(page, "sandbox");
   expect(await top()).toBe(0);
   // the same scenario again (e.g. its panel drawn anew) stays where it is; in a short window, so

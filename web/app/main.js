@@ -1,15 +1,15 @@
-// The ARail app: an interactive presentation of the lab. Its scenarios in Interaction, examples to
-// start, each with a small task: first the Introduction, a short film of the layout (what is real,
-// what the app adds), and the Sandbox to look around freely; then by side the operations of a
-// morning (the infrastructure puts the trains on tracks, the railway undertaking puts units and
-// drivers on them), the infrastructure's disruption (a signal fails, a track is renewed), the
-// railway undertaking's (a train breaks down), the container terminal and a traveller's journey;
-// Build and Disruptions are tools of the layout. The games and exercises are on the game page (../game/).
+// The ARail app: an interactive presentation of the lab. Its examples in Interaction, to start, each
+// with a small task: first the Introduction, a short film of the layout (what is real, what the app
+// adds), and the Sandbox to look around freely; then by side the operations of a morning (the
+// infrastructure puts the trains on tracks, the railway undertaking puts units and drivers on them),
+// the infrastructure's disruption (a signal fails, a track is renewed), the railway undertaking's (a
+// train breaks down), the container terminal, the hump yard and a traveller's journey; Build and
+// Disruptions are tools of the layout. The games and exercises are on the game page (../game/).
 import { App } from "./app.js";
-import { BuildCase, DisruptionsCase, IntroCase, PlanCase, SandboxCase, StoryCase, TerminalCase } from "./cases.js";
+import { BuildCase, DisruptionsCase, HumpCase, IntroCase, PlanCase, SandboxCase, StoryCase, TerminalCase } from "./cases.js";
 
 const LAB = "../layouts/ebl-lab.json", NEUSTADT = "../layouts/ebl-neustadt.json", TRAIN = "../layouts/ebl-container-train.json";
-/** The parts of the lab table that show Bf Neustadt (its photos, while a scenario at the station runs). */
+/** The parts of the lab table that show Bf Neustadt (its photos, while an example at the station runs). */
 const STATION = ["Neustadt"];
 
 /** Infrastructure → Operations: the trains of the operations plan on the tracks of the station. */
@@ -77,7 +77,7 @@ class JourneysStory extends StoryCase {
 /** @type {import("./app.js").Page} */
 const PAGE = {
   id: "app",
-  cases: [IntroCase, SandboxCase, InfraOperations, InfraDisruption, EvuOperations, EvuDisruption, TerminalCase, JourneysStory, BuildCase, DisruptionsCase],
+  cases: [IntroCase, SandboxCase, InfraOperations, InfraDisruption, EvuOperations, EvuDisruption, TerminalCase, HumpCase, JourneysStory, BuildCase, DisruptionsCase],
   // a first visit: Interaction with the Introduction
   defaultCase: "intro",
   start: "interaction",
@@ -88,12 +88,13 @@ const PAGE = {
     { id: "container-train", label: "Example: hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
     { id: "container-task", label: "Example: loading task at the hybrid container train", layout: TRAIN, tab: "terminal", layers: ["task"] },
     { id: "terminal", label: "Example: container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
+    { id: "hump", label: "Example: hump yard (virtual)", layout: NEUSTADT, tab: "hump", layers: ["sbahn", "waldhof", "hump"] },
     { id: "lab", label: "Example: Beta 0.1 (EBL lab photo, older)", layout: LAB },
   ],
   exampleLayers: { plan: { layout: NEUSTADT, layer: "plan" }, operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
   // the photos of the lab as a Street View: they choose what the stage shows (the examples are in Settings → View)
   tour: { data: "../lab-map/data.json" },
-  // leaving a scenario: back to the town, the photo of Bf Neustadt
+  // leaving an example: back to the town, the photo of Bf Neustadt
   home: "neustadt",
 };
 

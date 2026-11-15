@@ -29,8 +29,8 @@ Three examples have a terminal:
   real wagons, the real truck, the virtual train KT 61 Rostock, road trucks, a yard block and the
   barge MS Elbe 7 in a harbour on a virtual module below the table edge. The scenario **Loading the
   real train** does that. Its module **Loading task** (`app/?example=container-task`) makes the
-  terminal full and gives the crane work orders; the app's scenario **Load the hybrid train** plays
-  it (see [The loading task](#the-loading-task)). How the labels sit on the wagons is described in
+  terminal full and gives the crane work orders; the app's example **Load the hybrid train**
+  (Interaction) plays it (see [The loading task](#the-loading-task)). How the labels sit on the wagons is described in
   [Labels where they fit](#labels-where-they-fit).
 - **Example: container terminal (virtual)**, below: a terminal of its own, in the flyover.
 
@@ -372,18 +372,18 @@ film the survey video.
 
 ## The terminal's panel, step by step
 
-The app's scenario **Load the hybrid train** (Interaction, pills Railway undertaking and Freight,
+The app's example **Load the hybrid train** (Interaction, pills Railway undertaking and Freight,
 `#terminal` in the app URL) plays the [loading task](#the-loading-task) of the hybrid container
 train. Shown by a link, its panel runs the terminal of any layout that has one (Bf Neustadt: its
 module **Terminal**). The game page's case **Terminal** has no task. On a layout without a terminal, the case offers **Switch on
 “Terminal”** (Bf Neustadt), **Switch on “Container terminal”** (the lab example) or **Open the
 example**, and **Add to this layout**.
 
-**Start** opens the example with its photo, the real wagons close up. The photo tour then offers only
+**Start** opens the example layout with its photo, the real wagons close up. The photo tour then offers only
 the pictures with the terminal and the real train: those in which the app reads the model wagons'
 tags, which are this photo (from the front) and one along the train (from the front left). A
-change of perspective switches between them and comes back to the photo the scenario opened with.
-The tour does the same when the scenario's example is opened (Settings → View → Examples, or a link), before Start (see
+change of perspective switches between them and comes back to the photo Start opened.
+The tour does the same when the task's example layout is opened (Settings → View → Examples, or a link), before Start (see
 [The photo tour](getting-started.md#the-photo-tour)).
 
 1. **Look at the state.** The heading is the terminal's name, with a status line (moves waiting,
@@ -466,7 +466,7 @@ place in the yard that the crane has to clear first (two neighbouring bays empti
 a container for the train came from). It takes 11 moves, about 19 minutes on the terminal's
 clock, and no fewer will do: the six containers of the orders move, and the four on top of them in
 the yard; and with all of these gone the yard still has no place for the big one (no two empty bays
-side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the scenario **Load the hybrid train**) opens the example with the module
+side by side, no 40 ft stack that is not full), so one more container has to make room. Start (the example **Load the hybrid train** in Interaction) opens the example layout with the module
 on, resets the terminal, runs the clock 10 times as fast and counts the time on the terminal's
 clock (from Start until the last order is done) and the moves the crane finished; **Restart**
 begins anew, as Start does (the clock 10 times as fast again). Every container of the task is in the photo; the barge and the yard's outer bays are
