@@ -365,3 +365,29 @@ test("the flow fields a square keeps stay few; opening hours that are no time of
   json.layers.find((l) => l.id === "market-visitors").simulations[0].close = "23.30";
   assert.ok(validateLayout(json, registry).some((x) => /\(market\): close "23\.30" is no time of day/.test(x)), validateLayout(json, registry).join("\n"));
 });
+
+test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, behind St. Marien", () => {
+  const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
+  assert.deepEqual(validateLayout(json, registry), []);
+  const world = createWorld(json);
+  const on = world.layers().filter((l) => l.enabled).map((l) => l.id);
+  for (const id of MARKET) assert.ok(on.includes(id), `${id} is on by default`);
+  assert.equal(world.objects.filter((o) => o.type === "market-stall").length, 22);
+  for (const type of ["christmas-tree", "ferris-wheel", "carousel", "mini-train"]) assert.equal(world.objects.filter((o) => o.type === type).length, 1, type);
+  assert.ok(marketOf(world), "the visitors' simulation runs");
+  // the square on its table module, its gates on the Wallanlagen, each arch over a gate
+  const square = world.getObject("market-square");
+  const table = world.getObject("table-markt-am-wall");
+  const [x, y] = table.spec.position, w = table.spec.width_mm / 2, d = table.spec.depth_mm / 2;
+  for (const [px, py] of square.spec.points) assert.ok(px >= x - w && px <= x + w && py >= y - d && py <= y + d, `${px}, ${py} on the table module`);
+  const gates = square.entrances();
+  assert.ok(gates.length >= 2);
+  for (const arch of world.objects.filter((o) => o.type === "market-gate")) {
+    assert.ok(gates.some((g) => Math.hypot(g.pos[0] - arch.spec.position[0], g.pos[1] - arch.spec.position[1]) < 10), `${arch.spec.name} stands at a gate`);
+  }
+  // the evening: visitors come and buy
+  world.setTime("16:30");
+  for (let i = 0; i < 1500; i++) world.step(0.1);
+  const sold = Object.values(marketOf(world).today.sold).reduce((a, b) => a + b, 0);
+  assert.ok(sold > 50, `${sold} sold`);
+});

@@ -1,16 +1,21 @@
 # The market square and the Striezelmarkt
 
-A market square (Marktplatz) on a table module of its own, west of the town of the lab example, and on it, as two modules that are switched on and off, a German Christmas market (in Dresden the Striezelmarkt) and its visitors. The stalls sell Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Aachener Printen, Nürnberger Lebkuchen, Dresdner Stollen, Lübecker Marzipan, Marzipan, Langos, Flammlachs, Maronen, Pilze (from a stall built like a steam locomotive), Strickwaren, Lederwaren, Holzkunst aus dem Erzgebirge and Kerzen: the goods keep their German names in every language. A big decorated Christmas tree stands in the middle, with a ferris wheel, a carousel and a mini train round it.
+A market square on a table module of its own, and on it, as two modules that are switched on and off, a German Christmas market (in Dresden the Striezelmarkt) and its visitors. The stalls sell Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Aachener Printen, Nürnberger Lebkuchen, Dresdner Stollen, Lübecker Marzipan, Marzipan, Langos, Flammlachs, Maronen, Pilze (from a stall built like a steam locomotive), Strickwaren, Lederwaren, Holzkunst aus dem Erzgebirge and Kerzen: the goods keep their German names in every language. A big decorated Christmas tree stands in the middle, with a ferris wheel, a carousel and a mini train round it.
 
 For a railway lab the visitors matter beyond the market: about a third of them come by train and go home by train, so the market fills the platforms in the evening and, at closing time, all at once.
 
 ## In the app
 
-Open the lab example (`app/?layout=../layouts/ebl-lab.json`) and switch on the modules in **Examples → Sandbox**, or with the address: `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
+Both examples have it:
+
+- **Bf Neustadt** (the app's own layout, `app/`): on the Festplatz am Wall, a module of its own behind St. Marien, with its gates on the Wallanlagen. The two modules are **on by default**; in the flyover it is north of the Altstadt, behind the Kirchplatz.
+- **The lab example** (`app/?layout=../layouts/ebl-lab.json`): on the Marktplatz, a module of its own west of the town; switch the two modules on in **Examples → Sandbox**, or with the address `app/?layout=../layouts/ebl-lab.json&layers=striezelmarkt,market-visitors`.
+
+Switch them on or off in **Examples → Sandbox**; the situation *Christmas market* (Settings → Simulation) switches them on and sets a snowy Saturday evening in December.
 
 | Module | What it adds |
 | --- | --- |
-| *(the base)* | the market module M with the paved Marktplatz, Lindenallee leading to it and the Altbau Am Markt on its south side |
+| *(the base)* | the market's table module with the paved square: on Bf Neustadt the Festplatz am Wall (module Am Wall), on the lab example the Marktplatz with Lindenallee leading to it and the Altbau Am Markt on its south side (module M) |
 | **Striezelmarkt** (`striezelmarkt`) | 22 stalls with their signs, two arches over the entrances reading *Striezelmarkt*, the Christmas tree, the ferris wheel (Riesenrad), the carousel (Kinderkarussell) and the mini train (Kindereisenbahn); the scenario *Evening at the Striezelmarkt* |
 | **Market visitors** (`market-visitors`) | the visitor simulation `market`; the scenario *Closing time at the Striezelmarkt*. Needs the Striezelmarkt: without stalls and rides the visitors have nothing to do |
 
