@@ -59,6 +59,7 @@ test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of mo
   expect(await on()).toContain("striezelmarkt");
   expect(await on()).toContain("market-visitors");
   expect(await on()).toContain("hump");
+  expect(await on()).not.toContain("sbahn"); // switched off before: it stays off
   // switched off by hand, it stays off
   await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "striezelmarkt" && id !== "market-visitors")));
   await page.reload();

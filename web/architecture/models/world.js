@@ -150,7 +150,7 @@ export const WORLD = [
       },
       {
         name: "layers", file: "web/arail/core/layers.js", kind: "module", role: "Switchable parts of one layout: the app's modules.",
-        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from; a scenario a layer replaced back where it was", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "withNewLayers(layers, chosen, known) — a saved choice with the layers on by default the layout has gained since (App: arail.layersKnown)", "layoutPlugins(json)", "layerProblems(json)"],
+        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from; a scenario a layer replaced back where it was", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "withNewLayers(layers, chosen, known) — a saved choice with the layers on by default the layout has gained since (App: arail.layersKnown); without known only those with since", "layoutPlugins(json)", "layerProblems(json)"],
       },
       {
         name: "anchors", file: "web/arail/core/anchors.js", kind: "module", role: "Points as [x, y] or {marker, offset}, through the marker map.",
@@ -194,7 +194,7 @@ export const WORLD = [
     rules: [
       "World.load composes first, then fills in the defaults.",
       "The base is always on; the layers that are on apply in their order.",
-      "The app keeps the choice of layers per layout (arail.layers) with the layer ids it had then (arail.layersKnown): a layer on by default that the layout gains later is added to a saved choice once (withNewLayers); a choice saved before layersKnown gains every layer on by default it lacks, once.",
+      "The app keeps the choice of layers per layout (arail.layers) with the layer ids it had then (arail.layersKnown): a layer on by default that the layout gains later is added to a saved choice once (withNewLayers); a choice saved before layersKnown gains, once, only the layers on by default that have since (the date they came), so what was switched off by hand stays off.",
       "A layer's object with an id that exists patches it (keys merged); a simulation entry with patch: true merges into the first simulation of its type.",
       "Decomposing: an object back to its layer; a key back to the last layer that patched it; a new object to the active layer (or the base).",
       "Validation and plugins include the layers that are off.",

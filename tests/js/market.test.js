@@ -419,3 +419,15 @@ test("the market has its season: outside it nothing stands on the square and nob
   world.setDate("2027-01-07");
   assert.ok(!marketInSeason(world));
 });
+
+test("the season's days are checked: what is no date (MM-DD) is reported", () => {
+  for (const [from, until, bad] of [["26.11", "12-23", 'from "26.11" is no date (MM-DD)'], ["11-26", "12-32", 'until "12-32" is no date (MM-DD)'], ["11-31", "12-23", 'from "11-31" is no date (MM-DD)'], ["2026-11-26", "12-23", 'from "2026-11-26" is no date (MM-DD)']]) {
+    const json = withLayers(LAB, MARKET);
+    json.layers = json.layers.map((l) => (l.id === "market-visitors" ? { ...l, simulations: [{ ...l.simulations[0], from, until }] } : l));
+    const problems = validateLayout(json, registry);
+    assert.ok(problems.some((p) => p.includes(bad)), `${bad} in\n${problems.join("\n")}`);
+  }
+  const ok = withLayers(LAB, MARKET);
+  ok.layers = ok.layers.map((l) => (l.id === "market-visitors" ? { ...l, simulations: [{ ...l.simulations[0], from: "12-01", until: "01-06" }] } : l));
+  assert.deepEqual(validateLayout(ok, registry), []);
+});

@@ -57,6 +57,7 @@ export function normalizeLayers(layers) {
       description: typeof l.description === "string" ? l.description : "",
       enabled: l.enabled === true,
       exclusive: l.exclusive === true || !!layout,
+      since: typeof l.since === "string" && l.since ? l.since : null,
       layout,
       objects: layout ? [] : list(l.objects, (o) => isObject(o) && typeof o.id === "string" && !!o.id),
       simulations: layout ? [] : list(l.simulations, (s) => isObject(s) && typeof s.type === "string"),
@@ -121,7 +122,8 @@ export function layerChoice(layers, ids) {
 /**
  * A saved choice of layers, with the layers the layout has gained since it was saved: those on by
  * default that were not among its layers then (`known`, the ids it had) are added. A choice saved
- * without `known` (before it was kept) gains every layer on by default that it lacks, once.
+ * without `known` (by the app before it kept the ids) gains, once, only the layers on by default that
+ * say when they came (`since`): what was switched off by hand stays off.
  * @param {Array<{id: string, enabled?: boolean, exclusive?: boolean}>} layers the layout's layers
  * @param {Iterable<string>} chosen the saved choice
  * @param {Iterable<string> | null} known the layer ids of the layout when the choice was saved
@@ -129,7 +131,7 @@ export function layerChoice(layers, ids) {
  */
 export function withNewLayers(layers, chosen, known) {
   const had = known ? new Set(known) : null, ids = new Set(chosen);
-  const added = layers.filter((l) => l.enabled && !l.exclusive && !ids.has(l.id) && (!had || !had.has(l.id))).map((l) => l.id);
+  const added = layers.filter((l) => l.enabled && !l.exclusive && !ids.has(l.id) && (had ? !had.has(l.id) : !!l.since)).map((l) => l.id);
   return layerChoice(layers, [...ids, ...added]);
 }
 
@@ -338,6 +340,7 @@ export function layerProblems(json) {
     else if (ids.has(l.id)) problems.push(`${where}: duplicate id "${l.id}"`);
     ids.add(l.id);
     if (l.exclusive != null && typeof l.exclusive !== "boolean") problems.push(`${where}.exclusive must be true or false`);
+    if (l.since != null && (typeof l.since !== "string" || !/^\d{4}-\d\d-\d\d$/.test(l.since))) problems.push(`${where}.since must be a date (YYYY-MM-DD)`);
     if (l.layout != null) {
       if (typeof l.layout !== "string" || !l.layout) problems.push(`${where}.layout must be the path of a layout file`);
       else if (["objects", "simulations", "scenarios", "plugins"].some((k) => Array.isArray(l[k]) && l[k].length)) {

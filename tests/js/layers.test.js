@@ -245,7 +245,7 @@ test("the lab example: one layout with the modules Striezelmarkt, market visitor
 
 test("a saved choice of modules gains the modules on by default that the layout has got since, once", () => {
   const layers = normalizeLayers([
-    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true }, { id: "market-visitors", enabled: true },
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true, since: "2026-11-16" }, { id: "market-visitors", enabled: true, since: "2026-11-16" },
     { id: "infrastructure" }, { id: "operations", exclusive: true }, { id: "hump" },
   ]);
   // saved when the layout had no market: the market comes in, the choice as it was otherwise
@@ -253,8 +253,11 @@ test("a saved choice of modules gains the modules on by default that the layout 
   assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], before), ["waldhof", "striezelmarkt", "market-visitors", "hump"]);
   // saved since, with the market switched off: it stays off, and S-Bahn switched off stays off
   assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], layers.map((l) => l.id)), ["waldhof", "hump"]);
-  // a choice saved before the ids were kept gains every module on by default it lacks
-  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], null), ["sbahn", "waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  // a choice saved before the ids were kept gains only the modules that say when they came: S-Bahn,
+  // switched off by hand, stays off
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], null), ["waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  // the layout check: since is a date
+  assert.ok(validateLayout({ objects: [], layers: [{ id: "x", since: "16.11.2026" }] }, registry).some((p) => /since must be a date/.test(p)));
   // an exclusive module chosen stays alone
   assert.deepEqual(withNewLayers(layers, ["operations"], before), ["operations"]);
 });

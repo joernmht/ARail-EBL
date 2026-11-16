@@ -695,6 +695,7 @@
       "name": "Striezelmarkt",
       "description": "The Christmas market on the Festplatz am Wall, behind St. Marien: a big decorated Christmas tree, a ferris wheel, a carousel and a mini train, and stalls with Glühwein, Punsch, Eierpunsch, Kakao, Baumstriezel, Handbrot, Stollen, Lebkuchen, Printen, Marzipan, Langos, Flammlachs, Maronen, Pilze from a steam locomotive, and crafts. Lit at night; switch on Market visitors for the crowd.",
       "enabled": true,
+      "since": "2026-11-16",
       "objects": [
         {"id": "market-gate", "type": "market-gate", "name": "Eingang Wallanlagen", "position": [2550, -2084], "rotation_deg": 180, "text": "Striezelmarkt"},
         {"id": "market-gate-2", "type": "market-gate", "name": "Eingang Kirchgasse", "position": [2174, -2194], "rotation_deg": -90, "width_m": 4, "text": "Striezelmarkt"},
@@ -734,6 +735,7 @@
       "name": "Market visitors",
       "description": "People come to the Striezelmarkt from the houses of the town, from the ends of the streets and by train: they queue at the stalls, drink their Glühwein at the standing tables, look at the tree and ride the ferris wheel, the carousel and the mini train, then go home, many of them to the station. Needs the module Striezelmarkt.",
       "enabled": true,
+      "since": "2026-11-16",
       "simulations": [
         {"type": "market", "visitors": 260, "open": "10:00", "close": "22:00"}
       ],

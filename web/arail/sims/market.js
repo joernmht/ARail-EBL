@@ -19,7 +19,7 @@ import { Population, Person, residentialBuildings } from "../core/people.js";
 import { drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
 import { hiddenAt } from "../core/network.js";
 import { clamp, createRng, hashKey, pointInPolygon, pointSegment, polylineAt, rectAround } from "../core/math.js";
-import { formatTime, parseTime, profileAt } from "../core/clock.js";
+import { formatTime, parseDay, parseTime, profileAt } from "../core/clock.js";
 import { CD, grey, moodColor } from "../core/colors.js";
 import { MARKET_GOODS, MARKET_SEASON, Ride, marketInSeason } from "../objects/market.js";
 import { crowdForces, drawPerson, personLooks, profileRows } from "./passengers.js";
@@ -312,7 +312,12 @@ export class MarketSimulation extends Simulation {
   static description = "Visitors of a market on a market square: they come from the town, the streets and by train, queue at the stalls, stay at standing tables, look at the tree, take rides and go home.";
   /** The opening hours must be times of day (validateLayout). */
   static validate(config) {
-    return ["open", "close"].filter((k) => config[k] != null && parseTime(config[k]) == null).map((k) => `${k} "${config[k]}" is no time of day (HH:MM)`);
+    return [
+      ...["open", "close"].filter((k) => config[k] != null && parseTime(config[k]) == null).map((k) => `${k} "${config[k]}" is no time of day (HH:MM)`),
+      // the season: a day of a year without its year ("11-26"; "02-29" is in a leap year only and taken)
+      ...["from", "until"].filter((k) => config[k] != null && (typeof config[k] !== "string" || !/^\d{1,2}-\d{1,2}$/.test(config[k].trim()) || !parseDay(config[k])))
+        .map((k) => `${k} "${config[k]}" is no date (MM-DD)`),
+    ];
   }
 
   static params = [
