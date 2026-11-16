@@ -461,14 +461,14 @@ export class World {
       // the simple view (core/simple.js): objects flat, what moves as plain blocks
       view.flat = true;
       for (const o of drawn) {
-        if (!o.geometry) continue;
+        if (!o.geometry || !o.shown()) continue;
         if (typeof o.drawSimple === "function") o.drawSimple(view);
         else drawFlat(view, o);
       }
       view.flat = false;
     } else {
       for (const o of drawn) {
-        if (!o.geometry) continue;
+        if (!o.geometry || !o.shown()) continue;
         view.lift = lift(o);
         o.draw(view);
       }

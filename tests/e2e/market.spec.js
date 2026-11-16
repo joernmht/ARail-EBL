@@ -38,3 +38,31 @@ test("the Striezelmarkt and its visitors: switched on in Sandbox, drawn in the f
   expect(state.card.rows.map((r) => r[0])).toEqual(expect.arrayContaining(["Sells", "Queue now", "Takings today"]));
   expect(errors).toEqual([]);
 });
+
+test("Bf Neustadt: the Striezelmarkt is on by default, also where a choice of modules was saved before it came", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const url = "/app/?layout=../layouts/ebl-neustadt.json";
+  const on = () => page.evaluate(() => window.__arail.layersOn());
+  await page.goto(url);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(url);
+  await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  expect(await on()).toEqual(["sbahn", "waldhof", "striezelmarkt", "market-visitors"]);
+  // a choice saved before the market came (S-Bahn switched off, the hump yard on), without the ids of then
+  await page.evaluate((key) => {
+    localStorage.clear();
+    localStorage.setItem(key, JSON.stringify(["waldhof", "hump"]));
+  }, `arail.layers:${new URL("/layouts/ebl-neustadt.json", page.url()).href}`);
+  await page.reload();
+  await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  expect(await on()).toContain("striezelmarkt");
+  expect(await on()).toContain("market-visitors");
+  expect(await on()).toContain("hump");
+  // switched off by hand, it stays off
+  await page.evaluate(() => window.__arail.setLayers(window.__arail.layersOn().filter((id) => id !== "striezelmarkt" && id !== "market-visitors")));
+  await page.reload();
+  await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  expect(await on()).not.toContain("striezelmarkt");
+  expect(errors).toEqual([]);
+});

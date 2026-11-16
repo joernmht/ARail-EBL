@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  Camera, MARKET_GOODS, Ride, View, composeLayout, createWorld, marketOpen, pointInPolygon, registry, validateLayout, withLayers,
+  Camera, MARKET_GOODS, Ride, View, composeLayout, createWorld, marketInSeason, marketOpen, pointInPolygon, registry, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import registerWindmill from "../../web/plugins/windmill.js";
 import { ROOT } from "./helpers.js";
@@ -390,4 +390,32 @@ test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, be
   for (let i = 0; i < 1500; i++) world.step(0.1);
   const sold = Object.values(marketOf(world).today.sold).reduce((a, b) => a + b, 0);
   assert.ok(sold > 50, `${sold} sold`);
+});
+
+test("the market has its season: outside it nothing stands on the square and nobody comes; without a date it is there", () => {
+  const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
+  const world = createWorld(json);
+  const stall = world.objects.find((o) => o.type === "market-stall");
+  const parts = world.objects.filter((o) => ["market-stall", "christmas-tree", "market-gate", "ferris-wheel", "carousel", "mini-train"].includes(o.type));
+  assert.ok(parts.every((o) => o.shown()), "no date: every day is a market day");
+  world.setTime("17:00");
+  for (const [date, there] of [["2026-11-25", false], ["2026-11-26", true], ["2026-12-06", true], ["2026-12-23", true], ["2026-12-24", false], ["2027-04-05", false], ["2027-07-12", false]]) {
+    world.setDate(date);
+    assert.equal(marketOpen(world), there, `open on ${date}`);
+    assert.equal(stall.shown(), there, `the stalls on ${date}`);
+    assert.ok(parts.every((o) => o.shown() === there), `everything of the market on ${date}`);
+  }
+  // in July: nobody comes, nothing is drawn or picked
+  world.setDate("2027-07-12");
+  for (let i = 0; i < 600; i++) world.step(0.1);
+  assert.equal(marketOf(world).visitors.length, 0, "nobody at the market in July");
+  assert.equal(marketOf(world).present(), 0);
+  // a season over the new year
+  const sim = marketOf(world);
+  sim.config.from = "12-01";
+  sim.config.until = "01-06";
+  world.setDate("2027-01-03");
+  assert.ok(marketInSeason(world) && stall.shown());
+  world.setDate("2027-01-07");
+  assert.ok(!marketInSeason(world));
 });

@@ -918,6 +918,7 @@ export class App {
   async setLayers(ids) {
     const json = ARail.withLayers(this.world.toJSON(), ids);
     storage.set(this._layersKey(), [...ids]);
+    storage.set(this._layersKnownKey(), this.world.layers().map((l) => l.id));
     const edited = this._pendingSave != null || storage.get(this._layoutKey()) != null;
     try {
       await this._applyLayout(json);
@@ -962,8 +963,13 @@ export class App {
     storage.set(this.key("lastLayout"), url);
     this.moduleHome = await this._moduleHome(absolute);
     // layers: as asked for, else as last time, else as the file has them
-    if (layers) storage.set(this._layersKey(), layers);
-    const chosen = layers || storage.get(this._layersKey()) || null;
+    // a saved choice gains the modules on by default that the layout has got since (ARail.withNewLayers)
+    const saved = layers ? null : storage.get(this._layersKey());
+    const chosen = layers || (Array.isArray(saved) ? ARail.withNewLayers(fileLayers, saved, storage.get(this._layersKnownKey())) : null);
+    if (chosen) {
+      storage.set(this._layersKey(), chosen);
+      storage.set(this._layersKnownKey(), fileLayers.map((l) => l.id));
+    }
     // (an exclusive module alone)
     const pick = (j) => (chosen && Array.isArray(j.layers) ? ARail.withLayers(j, ARail.layerChoice(ARail.normalizeLayers(j.layers), chosen)) : j);
     // a covered photo (the room painted over, made in an image editor) is shown instead of the photo
@@ -1037,6 +1043,11 @@ export class App {
   /** Where the choice of layers of this layout is kept (it is no change of the layout). */
   _layersKey() {
     return `arail.layers:${this.layoutUrl}`;
+  }
+
+  /** The layer ids the layout had when its choice of layers was saved (to add those it gains later). */
+  _layersKnownKey() {
+    return `arail.layersKnown:${this.layoutUrl}`;
   }
 
   /** Load a layout into the world; on an error the previous layout stays loaded and the error is thrown. */

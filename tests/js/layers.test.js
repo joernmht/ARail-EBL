@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   composeLayout, createWorld, decomposeLayout, infraOf, journeysOf, layerChoice, layersOn, layoutPlugins, loadPlugins, normalizeLayers, opsOf, registry,
-  toggleLayer, validateLayout, withLayers,
+  toggleLayer, validateLayout, withLayers, withNewLayers,
 } from "../../web/arail/index.js";
 import { readJSON, ROOT } from "./helpers.js";
 
@@ -241,4 +241,20 @@ test("the lab example: one layout with the modules Striezelmarkt, market visitor
   assert.equal(world.services.planner, opsOf(world), "the rail operations run the trains");
   assert.equal(journeysOf(world).rail().kind, "operations", "the journeys take their trains");
   assert.deepEqual(world.scenarios.scenarios.map((s) => s.id), ["signal-failure", "football", "closure", "crew-shortage", "infra-faults"]);
+});
+
+test("a saved choice of modules gains the modules on by default that the layout has got since, once", () => {
+  const layers = normalizeLayers([
+    { id: "sbahn", enabled: true }, { id: "waldhof", enabled: true }, { id: "striezelmarkt", enabled: true }, { id: "market-visitors", enabled: true },
+    { id: "infrastructure" }, { id: "operations", exclusive: true }, { id: "hump" },
+  ]);
+  // saved when the layout had no market: the market comes in, the choice as it was otherwise
+  const before = ["sbahn", "waldhof", "infrastructure", "operations", "hump"];
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], before), ["waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  // saved since, with the market switched off: it stays off, and S-Bahn switched off stays off
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], layers.map((l) => l.id)), ["waldhof", "hump"]);
+  // a choice saved before the ids were kept gains every module on by default it lacks
+  assert.deepEqual(withNewLayers(layers, ["waldhof", "hump"], null), ["sbahn", "waldhof", "striezelmarkt", "market-visitors", "hump"]);
+  // an exclusive module chosen stays alone
+  assert.deepEqual(withNewLayers(layers, ["operations"], before), ["operations"]);
 });

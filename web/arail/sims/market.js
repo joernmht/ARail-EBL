@@ -21,7 +21,7 @@ import { hiddenAt } from "../core/network.js";
 import { clamp, createRng, hashKey, pointInPolygon, pointSegment, polylineAt, rectAround } from "../core/math.js";
 import { formatTime, parseTime, profileAt } from "../core/clock.js";
 import { CD, grey, moodColor } from "../core/colors.js";
-import { MARKET_GOODS, Ride } from "../objects/market.js";
+import { MARKET_GOODS, MARKET_SEASON, Ride, marketInSeason } from "../objects/market.js";
 import { crowdForces, drawPerson, personLooks, profileRows } from "./passengers.js";
 
 /** How many people are at the market over the day, as a share of `visitors` ([hour, share]). */
@@ -319,6 +319,8 @@ export class MarketSimulation extends Simulation {
     { key: "visitors", label: "Visitors at the busiest time", type: "number", min: 0, max: 2000, step: 10, default: 240, help: "People on the market at once in the evening" },
     { key: "open", label: "Opens", type: "text", default: "10:00" },
     { key: "close", label: "Closes", type: "text", default: "22:00" },
+    { key: "from", label: "First day", type: "text", default: "11-26", help: "The market's season, MM-DD: on a date outside it the market is not there and nobody comes (without a date every day is in it)" },
+    { key: "until", label: "Last day", type: "text", default: "12-23", help: "MM-DD; a season over the new year (from 12-01 until 01-06) runs on into January" },
     { key: "by_train", label: "Come by train", type: "number", min: 0, max: 1, step: 0.05, default: 0.3, help: "Share of the visitors who come by train and go back to the station" },
     { key: "from_homes", label: "Come from the town", type: "number", min: 0, max: 1, step: 0.05, default: 0.45, help: "Of the others, the share who come from the houses of the town; the rest come from the ends of the streets" },
     { key: "children", label: "Children", type: "number", min: 0, max: 0.6, step: 0.05, default: 0.15 },
@@ -380,8 +382,14 @@ export class MarketSimulation extends Simulation {
     return { open: parseTime(this.config.open) ?? 600, close: parseTime(this.config.close) ?? 1320 };
   }
 
-  /** Is the market open (at a time of day, default now)? */
+  /** The season ({from, until}, "MM-DD"): the days of the year the market is there. */
+  season() {
+    return { from: this.config.from || MARKET_SEASON.from, until: this.config.until || MARKET_SEASON.until };
+  }
+
+  /** Is the market open (at a time of day, default now)? Only on a day of its season. */
   isOpen(minutes = this.world.clock.minutes) {
+    if (!marketInSeason(this.world, this.season())) return false;
     const { open, close } = this.hours();
     return close > open ? minutes >= open && minutes < close : minutes >= open || minutes < close;
   }

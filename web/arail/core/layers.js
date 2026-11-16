@@ -118,6 +118,21 @@ export function layerChoice(layers, ids) {
   return alone ? [alone.id] : chosen.map((l) => l.id);
 }
 
+/**
+ * A saved choice of layers, with the layers the layout has gained since it was saved: those on by
+ * default that were not among its layers then (`known`, the ids it had) are added. A choice saved
+ * without `known` (before it was kept) gains every layer on by default that it lacks, once.
+ * @param {Array<{id: string, enabled?: boolean, exclusive?: boolean}>} layers the layout's layers
+ * @param {Iterable<string>} chosen the saved choice
+ * @param {Iterable<string> | null} known the layer ids of the layout when the choice was saved
+ * @returns {string[]} a valid choice (see {@link layerChoice})
+ */
+export function withNewLayers(layers, chosen, known) {
+  const had = known ? new Set(known) : null, ids = new Set(chosen);
+  const added = layers.filter((l) => l.enabled && !l.exclusive && !ids.has(l.id) && (!had || !had.has(l.id))).map((l) => l.id);
+  return layerChoice(layers, [...ids, ...added]);
+}
+
 /** All plugins of a layout, of the base and of every layer (on or off), each once. */
 export function layoutPlugins(json) {
   const all = [...list(json?.plugins, (u) => typeof u === "string"), ...normalizeLayers(json?.layers).flatMap((l) => l.plugins)];
