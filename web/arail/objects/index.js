@@ -46,7 +46,7 @@ export {
 } from "./building-kit.js";
 export { drawTree } from "./trees.js";
 export {
-  MarketSquare, MarketStall, MarketGate, ChristmasTree, Ride, paintSign, FerrisWheel, Carousel, MiniTrain, MARKET_GOODS, GOODS_KINDS, MARKET_HOURS, marketHours, marketOpen, parseHours,
+  MarketSquare, MarketStall, MarketGate, ChristmasTree, Ride, paintSign, FerrisWheel, Carousel, MiniTrain, MARKET_GOODS, GOODS_KINDS, MARKET_HOURS, marketHours, marketOpen, MARKET_SEASON, marketSeason, marketInSeason, parseHours,
 } from "./market.js";
 
 /** The built-in object types, in the order of the Build tab's lists. */

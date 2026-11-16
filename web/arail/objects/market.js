@@ -18,7 +18,7 @@
 import { LayoutObject } from "../core/object.js";
 import { resolvePoint, resolvePoints } from "../core/anchors.js";
 import { clamp, createRng, hashKey, pointInPolygon, pointSegment, polygonCentroid, polylineAt, polylineLengths, toRad } from "../core/math.js";
-import { parseTime } from "../core/clock.js";
+import { parseDay, parseTime } from "../core/clock.js";
 import { CD, FONT, PALETTE, grey, shade } from "../core/colors.js";
 import { BuildingBase, TIER, TONES, gableRoof, polygonNormal } from "./building-kit.js";
 
@@ -74,8 +74,34 @@ export function marketHours(world) {
   return sim?.hours?.() ?? MARKET_HOURS;
 }
 
-/** Is the market open at this time of day (clock minutes)? */
+/**
+ * The season of a Christmas market when no market simulation says otherwise: from the Wednesday
+ * before the first Sunday of Advent (at the earliest 26 November) to 23 December, as the Striezelmarkt.
+ */
+export const MARKET_SEASON = { from: "11-26", until: "12-23" };
+
+/** The season of the market ({from, until}, "MM-DD"): the market simulation's, else {@link MARKET_SEASON}. */
+export function marketSeason(world) {
+  const sim = world?.simulations?.find?.((s) => s.constructor.type === "market" && s.enabled);
+  return sim?.season?.() ?? MARKET_SEASON;
+}
+
+/**
+ * Is the market there on the clock's date (in its season, which may run over the new year)? Without
+ * a date every day is the same day, and it is there.
+ */
+export function marketInSeason(world, season = marketSeason(world)) {
+  const md = world?.clock?.monthDay?.();
+  if (!md) return true;
+  const f = parseDay(season.from), u = parseDay(season.until);
+  if (!f || !u) return true;
+  const at = md.month * 100 + md.day, from = f.month * 100 + f.day, until = u.month * 100 + u.day;
+  return from <= until ? at >= from && at <= until : at >= from || at <= until;
+}
+
+/** Is the market open at this time of day (clock minutes), on a day of its season? */
 export function marketOpen(world, minutes = world?.clock?.minutes ?? 720) {
+  if (!marketInSeason(world)) return false;
   const { open, close } = marketHours(world);
   return close > open ? minutes >= open && minutes < close : minutes >= open || minutes < close;
 }
@@ -441,6 +467,11 @@ export class MarketStall extends BuildingBase {
     return card;
   }
 
+  /** Only in the market's season (marketInSeason): between markets the square is empty. */
+  shown() {
+    return marketInSeason(this.world);
+  }
+
   draw(view) {
     super.draw(view);
     const g = this.geometry;
@@ -607,6 +638,11 @@ export class ChristmasTree extends LayoutObject {
     return g ? { kind: "sight", at: g.center, radius: g.radius } : null;
   }
 
+  /** Only in the market's season (marketInSeason): between markets the square is empty. */
+  shown() {
+    return marketInSeason(this.world);
+  }
+
   draw(view) {
     const g = this.geometry;
     view.faces(g.faces, [g.center[0], g.center[1], 0]);
@@ -708,6 +744,11 @@ export class MarketGate extends LayoutObject {
     return this.geometry?.height ?? 0;
   }
 
+  /** Only in the market's season (marketInSeason): between markets the square is empty. */
+  shown() {
+    return marketInSeason(this.world);
+  }
+
   draw(view) {
     const g = this.geometry;
     view.faces(g.faces, [g.center[0], g.center[1], 0], { outline: "rgba(40,30,20,0.3)" });
@@ -727,6 +768,11 @@ export class MarketGate extends LayoutObject {
 export class Ride extends LayoutObject {
   static category = "Market";
   static placement = "point";
+
+  /** Only in the market's season (marketInSeason): between markets the square is empty. */
+  shown() {
+    return marketInSeason(this.world);
+  }
 
   /** Places for riders. */
   places() {

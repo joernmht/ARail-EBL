@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  Camera, MARKET_GOODS, Ride, View, composeLayout, createWorld, marketOpen, pointInPolygon, registry, validateLayout, withLayers,
+  Camera, MARKET_GOODS, Ride, View, composeLayout, createWorld, marketInSeason, marketOpen, pointInPolygon, registry, validateLayout, withLayers,
 } from "../../web/arail/index.js";
 import registerWindmill from "../../web/plugins/windmill.js";
 import { ROOT } from "./helpers.js";
@@ -364,4 +364,70 @@ test("the flow fields a square keeps stay few; opening hours that are no time of
   const json = withLayers(LAB, MARKET);
   json.layers.find((l) => l.id === "market-visitors").simulations[0].close = "23.30";
   assert.ok(validateLayout(json, registry).some((x) => /\(market\): close "23\.30" is no time of day/.test(x)), validateLayout(json, registry).join("\n"));
+});
+
+test("Bf Neustadt, the app's own layout, has the Striezelmarkt on by default, behind St. Marien", () => {
+  const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
+  assert.deepEqual(validateLayout(json, registry), []);
+  const world = createWorld(json);
+  const on = world.layers().filter((l) => l.enabled).map((l) => l.id);
+  for (const id of MARKET) assert.ok(on.includes(id), `${id} is on by default`);
+  assert.equal(world.objects.filter((o) => o.type === "market-stall").length, 22);
+  for (const type of ["christmas-tree", "ferris-wheel", "carousel", "mini-train"]) assert.equal(world.objects.filter((o) => o.type === type).length, 1, type);
+  assert.ok(marketOf(world), "the visitors' simulation runs");
+  // the square on its table module, its gates on the Wallanlagen, each arch over a gate
+  const square = world.getObject("market-square");
+  const table = world.getObject("table-markt-am-wall");
+  const [x, y] = table.spec.position, w = table.spec.width_mm / 2, d = table.spec.depth_mm / 2;
+  for (const [px, py] of square.spec.points) assert.ok(px >= x - w && px <= x + w && py >= y - d && py <= y + d, `${px}, ${py} on the table module`);
+  const gates = square.entrances();
+  assert.ok(gates.length >= 2);
+  for (const arch of world.objects.filter((o) => o.type === "market-gate")) {
+    assert.ok(gates.some((g) => Math.hypot(g.pos[0] - arch.spec.position[0], g.pos[1] - arch.spec.position[1]) < 10), `${arch.spec.name} stands at a gate`);
+  }
+  // the evening: visitors come and buy
+  world.setTime("16:30");
+  for (let i = 0; i < 1500; i++) world.step(0.1);
+  const sold = Object.values(marketOf(world).today.sold).reduce((a, b) => a + b, 0);
+  assert.ok(sold > 50, `${sold} sold`);
+});
+
+test("the market has its season: outside it nothing stands on the square and nobody comes; without a date it is there", () => {
+  const json = JSON.parse(readFileSync(join(ROOT, "web/layouts/ebl-neustadt.json"), "utf8"));
+  const world = createWorld(json);
+  const stall = world.objects.find((o) => o.type === "market-stall");
+  const parts = world.objects.filter((o) => ["market-stall", "christmas-tree", "market-gate", "ferris-wheel", "carousel", "mini-train"].includes(o.type));
+  assert.ok(parts.every((o) => o.shown()), "no date: every day is a market day");
+  world.setTime("17:00");
+  for (const [date, there] of [["2026-11-25", false], ["2026-11-26", true], ["2026-12-06", true], ["2026-12-23", true], ["2026-12-24", false], ["2027-04-05", false], ["2027-07-12", false]]) {
+    world.setDate(date);
+    assert.equal(marketOpen(world), there, `open on ${date}`);
+    assert.equal(stall.shown(), there, `the stalls on ${date}`);
+    assert.ok(parts.every((o) => o.shown() === there), `everything of the market on ${date}`);
+  }
+  // in July: nobody comes, nothing is drawn or picked
+  world.setDate("2027-07-12");
+  for (let i = 0; i < 600; i++) world.step(0.1);
+  assert.equal(marketOf(world).visitors.length, 0, "nobody at the market in July");
+  assert.equal(marketOf(world).present(), 0);
+  // a season over the new year
+  const sim = marketOf(world);
+  sim.config.from = "12-01";
+  sim.config.until = "01-06";
+  world.setDate("2027-01-03");
+  assert.ok(marketInSeason(world) && stall.shown());
+  world.setDate("2027-01-07");
+  assert.ok(!marketInSeason(world));
+});
+
+test("the season's days are checked: what is no date (MM-DD) is reported", () => {
+  for (const [from, until, bad] of [["26.11", "12-23", 'from "26.11" is no date (MM-DD)'], ["11-26", "12-32", 'until "12-32" is no date (MM-DD)'], ["11-31", "12-23", 'from "11-31" is no date (MM-DD)'], ["2026-11-26", "12-23", 'from "2026-11-26" is no date (MM-DD)']]) {
+    const json = withLayers(LAB, MARKET);
+    json.layers = json.layers.map((l) => (l.id === "market-visitors" ? { ...l, simulations: [{ ...l.simulations[0], from, until }] } : l));
+    const problems = validateLayout(json, registry);
+    assert.ok(problems.some((p) => p.includes(bad)), `${bad} in\n${problems.join("\n")}`);
+  }
+  const ok = withLayers(LAB, MARKET);
+  ok.layers = ok.layers.map((l) => (l.id === "market-visitors" ? { ...l, simulations: [{ ...l.simulations[0], from: "12-01", until: "01-06" }] } : l));
+  assert.deepEqual(validateLayout(ok, registry), []);
 });

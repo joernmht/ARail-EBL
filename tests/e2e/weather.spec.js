@@ -137,9 +137,15 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
 });
 
 test("Settings → Simulation: an event whose module the layout has not is offered, but off", async ({ page }) => {
-  const errors = await open(page, "/app/?layout=../layouts/ebl-neustadt.json#simulate");
+  // the hybrid container train has no Christmas market
+  const errors = await open(page, "/app/?layout=../layouts/ebl-container-train.json#simulate");
   await expect(page.locator("#situation-christmas-market")).toBeDisabled();
   await expect(page.locator("#situation-christmas-market")).toContainText("(Not in this layout)");
   await expect(page.locator("#situation-spring-sunday")).toBeEnabled();
+  // Bf Neustadt, the app's own layout, has it (on by default)
+  await page.goto("/app/?layout=../layouts/ebl-neustadt.json#simulate");
+  await page.waitForFunction(() => window.__arail?.world?.objects?.length, null, { timeout: 30_000 });
+  await expect(page.locator("#situation-christmas-market")).toBeEnabled();
+  await expect(page.locator("#situation-christmas-market")).not.toContainText("(Not in this layout)");
   expect(errors).toEqual([]);
 });

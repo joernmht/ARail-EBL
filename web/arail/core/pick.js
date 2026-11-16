@@ -186,7 +186,7 @@ export function pickObject(world, view, [u, v], ground, tol) {
   const rank = (o) => (o.constructor.background ? 2 : o.constructor.placement === "point" ? 0 : 1);
   let best = null;
   for (const o of world.objects) {
-    if (!o.geometry || typeof o.footprint !== "function") continue;
+    if (!o.geometry || typeof o.footprint !== "function" || o.shown?.() === false) continue;
     if (o.physical && !view.virtual) continue;
     const fp = o.footprint();
     if (!fp?.length) continue;

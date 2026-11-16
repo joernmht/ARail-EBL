@@ -150,7 +150,7 @@ export const WORLD = [
       },
       {
         name: "layers", file: "web/arail/core/layers.js", kind: "module", role: "Switchable parts of one layout: the app's modules.",
-        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from; a scenario a layer replaced back where it was", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "layoutPlugins(json)", "layerProblems(json)"],
+        operations: ["composeLayout(json) — the layers that are on merged into the base", "decomposeLayout(flat, composed, opts) — edits back where they came from; a scenario a layer replaced back where it was", "normalizeLayers(layers)", "withLayers(json, ids)", "toggleLayer(layers, on, id)", "layerChoice(layers, ids)", "withNewLayers(layers, chosen, known) — a saved choice with the layers on by default the layout has gained since (App: arail.layersKnown); without known only those with since", "layoutPlugins(json)", "layerProblems(json)"],
       },
       {
         name: "anchors", file: "web/arail/core/anchors.js", kind: "module", role: "Points as [x, y] or {marker, offset}, through the marker map.",
@@ -194,6 +194,7 @@ export const WORLD = [
     rules: [
       "World.load composes first, then fills in the defaults.",
       "The base is always on; the layers that are on apply in their order.",
+      "The app keeps the choice of layers per layout (arail.layers) with the layer ids it had then (arail.layersKnown): a layer on by default that the layout gains later is added to a saved choice once (withNewLayers); a choice saved before layersKnown gains, once, only the layers on by default that have since (the date they came), so what was switched off by hand stays off.",
       "A layer's object with an id that exists patches it (keys merged); a simulation entry with patch: true merges into the first simulation of its type.",
       "Decomposing: an object back to its layer; a key back to the last layer that patched it; a new object to the active layer (or the base).",
       "Validation and plugins include the layers that are off.",
@@ -314,7 +315,7 @@ export const WORLD = [
       {
         name: "LayoutObject", file: "web/arail/core/object.js", kind: "class", stereotype: "base class", role: "Base of all objects.",
         attributes: ["type: string — static, the key in the registry", "params: object[] — static, the inspector's fields", "spec: object — as in the layout file", "id: string", "world: World", "real: boolean — a real thing of the lab, in the camera image (spec.real; tracks, platforms and real tables say so themselves): drawn only for a virtual camera"],
-        operations: ["defaults() — static", "computeGeometry()", "set(patch)", "footprint()", "contains(p, toleranceMM)", "pickHeight() — pointed at up to this height (0: on the ground)", "card() — its info card", "translate(dx, dy)", "stopAreas()", "update(dt)", "draw(view)", "toJSON()"],
+        operations: ["defaults() — static", "computeGeometry()", "set(patch)", "footprint()", "contains(p, toleranceMM)", "pickHeight() — pointed at up to this height (0: on the ground)", "shown() — is it there now (false: not drawn, not picked; a market stall outside its season)", "card() — its info card", "translate(dx, dy)", "stopAreas()", "update(dt)", "draw(view)", "toJSON()"],
       },
       { name: "UnknownObject", file: "web/arail/core/object.js", kind: "class", extends: "LayoutObject", role: "A type nobody registered: kept as it is." },
       {

@@ -203,6 +203,14 @@ export class LayoutObject {
   /** Advance object-specific animation/state by `dt` simulated seconds. */
   update(dt) {}
 
+  /**
+   * Is it there now? False keeps it out of the picture and of picking (a Christmas market's stalls
+   * outside its season); it stays in the layout.
+   */
+  shown() {
+    return true;
+  }
+
   /** Queue drawing operations on the view. */
   draw(view) {}
 

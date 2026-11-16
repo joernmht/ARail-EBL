@@ -88,7 +88,7 @@ const PAGE = {
     { id: "container-train", label: "Hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
     { id: "container-task", label: "Loading task at the hybrid container train", layout: TRAIN, tab: "terminal", layers: ["task"] },
     { id: "terminal", label: "Container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
-    { id: "hump", label: "Hump yard (virtual)", layout: NEUSTADT, tab: "hump", layers: ["sbahn", "waldhof", "hump"] },
+    { id: "hump", label: "Hump yard (virtual)", layout: NEUSTADT, tab: "hump", layers: ["sbahn", "waldhof", "striezelmarkt", "market-visitors", "hump"] },
     { id: "lab", label: "Beta 0.1 (EBL lab photo, older)", layout: LAB },
   ],
   exampleLayers: { plan: { layout: NEUSTADT, layer: "plan" }, operations: { layout: NEUSTADT, layer: "operations" }, infrastructure: { layout: NEUSTADT, layer: "infrastructure" }, journeys: { layout: NEUSTADT, layer: "journeys" } },
