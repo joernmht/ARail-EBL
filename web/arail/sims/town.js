@@ -250,6 +250,10 @@ export class TownSimulation extends Simulation {
     this._lastMinutes = null;
     this._lastDay = null;
     this._check = 0;
+    /** Agents that began a walk (`_beginLeg`): all who walk now are among them (see `_walking`). */
+    this._walkers = new Set();
+    this._walkingList = null;
+    this._agentIndex = null;
     world.occupancy = new Map();
     const on = (name, fn) => world.events.on(name, fn);
     this._unsubscribe = [
@@ -1082,6 +1086,8 @@ export class TownSimulation extends Simulation {
         leg.path = this._walkPath(a.pos, dest, null, `building:${leg.toBuilding}:0`);
       }
       a.state = "walking";
+      this._walkers.add(a);
+      this._walkingList = null;
       a.path = leg.path;
       a.s = 0;
       a.person = null;
@@ -1562,8 +1568,28 @@ export class TownSimulation extends Simulation {
   pedestrians() {
     if (!this.enabled) return [];
     const out = [];
-    for (const a of this.agents) if (a.state === "walking" && a.pos && !hiddenAt(a.path, a.s)) out.push({ pos: a.pos, dir: a.dir || [1, 0], agent: a });
+    for (const a of this._walking()) if (a.pos && !hiddenAt(a.path, a.s)) out.push({ pos: a.pos, dir: a.dir || [1, 0], agent: a });
     return out;
+  }
+
+  /**
+   * The agents walking now, in the order of `agents`. Only `_beginLeg` sets an agent walking and
+   * notes it: those who walk now are among the noted ones (no need to look at all agents, most of
+   * them are inside); who stopped walking, or is no agent any more, is dropped.
+   */
+  _walking() {
+    if (this._agentIndex?.agents !== this.agents) {
+      this._agentIndex = { agents: this.agents, of: new Map(this.agents.map((a, i) => [a, i])) };
+      this._walkingList = null;
+    }
+    const of = this._agentIndex.of;
+    for (const a of this._walkers) {
+      if (a.state === "walking" && of.has(a)) continue;
+      this._walkers.delete(a);
+      this._walkingList = null;
+    }
+    this._walkingList ||= [...this._walkers].sort((x, y) => of.get(x) - of.get(y));
+    return this._walkingList;
   }
 
   /** Somebody got in a walker's way (a bike on the sidewalk): the mood drops, and comes back slowly. */

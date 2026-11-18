@@ -248,6 +248,28 @@ export function leaderAhead(self, front, dir, users, lookMM, laneMM, skip = null
   return { gap: best, user: who };
 }
 
+/** Where the last search of a list of junctions ended: list -> {s, i} (see `junctionAhead`). */
+const junctionSearch = new WeakMap();
+
+/**
+ * The junction on a vehicle's way that it is in or about to enter: the first of its `junctions`
+ * (`junctionsAlong`, in the order of the way) whose far side is beyond `s`, i.e.
+ * `junctions.find((x) => x.s + x.r > s)`. The search goes on from where the last one ended for
+ * the list: a vehicle only moves forward along it, so the junctions before that are behind it.
+ * @param {Array<{s: number, r: number}>} junctions
+ * @param {number} s the vehicle's arc length on its driving line (mm)
+ */
+export function junctionAhead(junctions, s) {
+  const last = junctionSearch.get(junctions);
+  let i = last && s >= last.s ? last.i : 0;
+  while (i < junctions.length && !(junctions[i].s + junctions[i].r > s)) i++;
+  if (last) {
+    last.s = s;
+    last.i = i;
+  } else junctionSearch.set(junctions, { s, i });
+  return junctions[i];
+}
+
 /** How long (s) vehicles stand in a circle of vehicles that wait for each other before they squeeze past. */
 export const GRIDLOCK_S = 8;
 /** How long (s) a vehicle squeezes past (it does not wait for the vehicle ahead then). */

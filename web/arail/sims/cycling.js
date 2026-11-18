@@ -26,7 +26,7 @@
 import { Simulation } from "../core/simulation.js";
 import { createRng, dist2, dot2, polylineAt, rectBetween, sub2, unit2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
-import { APPROACH_M, approachPrio, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
+import { APPROACH_M, approachPrio, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
 import { bikeColour, drawBike } from "../core/vehicles.js";
 
@@ -48,6 +48,9 @@ const GAP_M = 1.5;
 const NEAR_M = 0.9;
 /** Colours of the riders' clothes and bikes. */
 const RIDER_COLOURS = [CD.tuerkis, CD.orange, CD.brillantblau, grey(0.25), grey(0.6), mix(CD.rot, grey(0.5), 0.3), mix(CD.gelb, grey(0.4), 0.3)];
+
+/** Kilometres of street for cars per network: {scale, km} (see `targetCount`). */
+const STREET_KM = new WeakMap();
 
 function hash(...parts) {
   let h = 2166136261;
@@ -144,9 +147,14 @@ export class CyclingSimulation extends Simulation {
   /** Riders wanted now: density × street length × the hour's demand × the weather's share (fewer in the cold, in rain, on snow). */
   targetCount(net = this._network()) {
     if (!net) return 0;
-    let km = 0;
-    for (const e of net.edges) if (e.kind === "road" && e.car) km += this.meters(e.length) / 1000;
-    return Math.round((+this.config.riders_per_km || 0) * km * this.world.clock.demand("car") * this.world.weather.cycleShare());
+    // the streets' length, summed once per network and scale (the network does not change once built)
+    let known = STREET_KM.get(net);
+    if (!known || known.scale !== this.world.scale) {
+      let km = 0;
+      for (const e of net.edges) if (e.kind === "road" && e.car) km += this.meters(e.length) / 1000;
+      STREET_KM.set(net, (known = { scale: this.world.scale, km }));
+    }
+    return Math.round((+this.config.riders_per_km || 0) * known.km * this.world.clock.demand("car") * this.world.weather.cycleShare());
   }
 
   /** The riders that hold up cars (in a car lane too narrow to pass them): road users for the cars and buses. */
@@ -255,7 +263,7 @@ export class CyclingSimulation extends Simulation {
     const rear = polylineAt(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths).point;
     const d = sub2(front, rear);
     const dir = Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : polylineAt(L.points, rider.s, L.lengths).dir;
-    const j = rider.junctions.find((x) => x.s + x.r > rider.s);
+    const j = junctionAhead(rider.junctions, rider.s);
     const approach = j && rider.s < j.s - j.r && j.s - rider.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - rider.s, prio: approachPrio(j, this.world.time) } : null;
     const pose = { vehicle: rider, front, rear, dir, speed: rider.v, approach };
     rider._pose = pose;
@@ -360,7 +368,7 @@ export class CyclingSimulation extends Simulation {
     };
     // junctions: lights (rule-breakers now and then ride through red), Stop, give way
     const now = this.world.time;
-    const j = rider.junctions.find((x) => x.s + x.r > rider.s);
+    const j = junctionAhead(rider.junctions, rider.s);
     if (j && sf.where !== "sidewalk" && sf.where !== "sidewalk-allowed") {
       const line = j.s - j.r - this.mm(0.5) - rider.s, dStop = this.meters(line);
       const light = lightAt(j, now), prio = approachPrio(j, now);
