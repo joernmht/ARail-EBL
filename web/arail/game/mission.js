@@ -184,8 +184,10 @@ export function validateMission(doc, games, { places = null, portraits = null } 
     // a line that could never be said: after the end of its shift, or to a seat that is not at work in its phase
     else if (phase?.kind === "shift" && line?.at > phase.length) out.push(`${at}: at is ${line.at} s, after the end of the shift (${phase.length} s)`);
     if (line?.on != null) {
-      const at_work = (line.seats ?? phase?.roles ?? []).map((id) => games.get(seats.get(id)?.game)).filter(Boolean);
+      const at_work = (Array.isArray(line.seats) ? line.seats : phase?.roles ?? []).map((id) => games.get(seats.get(id)?.game)).filter(Boolean);
       if (typeof line.on !== "string" || !KEBAB.test(line.on)) out.push(`${at}: on must be the kebab-case kind of an irregularity`);
+      // (a turn has no moment for it: what is reported is answered only while a shift runs)
+      else if (phase && phase.kind !== "shift") out.push(`${at}: on is answered only in a shift, and "${phase.id}" is a turn`);
       else if (phase && !at_work.some((G) => (G.irregularities ?? []).includes(line.on))) out.push(`${at}: on "${line.on}": no game at work there reports it`);
     }
     if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);

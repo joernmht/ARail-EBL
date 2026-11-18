@@ -1013,7 +1013,7 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   await expect(ok).toHaveText("OKSpace");
   await ok.click();
   // (the routes in for the first two trains, as told: no train stands at its signal, and nobody calls about it)
-  await page.evaluate(() => ["A-G2", "F-G3"].forEach((r) => window.__play.session.seat("signaller-relay").game.setRoute(r)));
+  await page.evaluate(() => ["A-G2", "F-G3"].forEach((r) => window.__play.act("signaller-relay", "setRoute", r)));
   await expect(story).toBeHidden();
   await expect(part(page, seat, ".vn-tools").locator("button").first()).toBeFocused();
   // answered: the clock runs again (and is paused for what follows)

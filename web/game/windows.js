@@ -71,14 +71,15 @@ export class Windows {
   /** Put a window at its place (kept inside its stage), or where the page has it when none is kept. */
   apply(el) {
     const place = this.places[el.dataset.win], stage = this.stageOf(el);
-    el.classList.toggle("placed", !!place);
     if (!place || !stage) {
+      el.classList.remove("placed");
       for (const k of ["left", "top", "width", "height"]) el.style[k] = "";
       return;
     }
     const W = stage.clientWidth, H = stage.clientHeight;
-    // (a stage not laid out, hidden: the window is placed when it is shown)
+    // (a stage not laid out, hidden: the window is placed when it is shown, not before with no size and place)
     if (!W || !H) return;
+    el.classList.add("placed");
     const w = clamp(place.w, WINDOW_MIN_W, W), hh = clamp(place.h, WINDOW_MIN_H, H);
     Object.assign(el.style, { left: `${clamp(place.x, 0, W - w)}px`, top: `${clamp(place.y, 0, H - hh)}px`, width: `${w}px`, height: `${hh}px` });
   }

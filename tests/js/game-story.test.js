@@ -172,4 +172,9 @@ test("story: a line on a kind of irregularity is said each time a seat's game re
   assert.match(bad({ phase: "shift", on: "rain", say: "Rain." }), /story 1: on "rain": no game at work there reports it/);
   assert.match(bad({ phase: "shift", on: "Held At Entry", say: "Held." }), /story 1: on must be the kebab-case kind/);
   assert.equal(bad({ phase: "shift", on: "late-departure", say: "{train} is late." }), "");
+  // seats that are not a list: the problem of the mission, not a crash
+  assert.match(bad({ phase: "shift", on: "held-at-entry", say: "Held.", seats: "signaller-relay" }), /story 1: seats must be a list of seats/);
+  // in a turn nothing is answered: a line on a kind there could never be said
+  const turns = missions.find((x) => x.id === "neustadt-years"), turn = turns.phases.find((p) => p.kind === "turn");
+  assert.match(validateMission({ ...turns, story: [{ phase: turn.id, on: "signal-failed", say: "Failed." }] }, GAMES).join(" | "), new RegExp(`story 1: on is answered only in a shift, and "${turn.id}" is a turn`));
 });
