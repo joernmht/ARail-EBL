@@ -37,14 +37,19 @@ export class VideoDetection {
     this.worker = null;
     /** The settings the worker has (JSON of settingsOf), or null. */
     this.settings = null;
-    /** The frame in the worker: {id, source, settings, picture, at}, or null. */
+    /** The frame in the worker: {id, source, settings, picture, at} (picture: null for a bitmap), or null. */
     this.pending = null;
     /** The worker's answer for `pending`, until it is taken. */
     this.result = null;
     /** The frame searched last with its markers (the picture shown with them): {source, picture}. */
     this.shown = null;
-    /** Pictures of frames: the one shown and the one in the worker, by turns. */
+    /** Pictures of frames: the one shown and the one in the worker, by turns (without bitmaps). */
     this.pictures = [];
+    /**
+     * Frames go to the worker as bitmaps (createImageBitmap; the worker reads their pixels and sends them
+     * back to be shown), not as pixels read on the main thread: when the worker can draw them.
+     */
+    this.bitmaps = false;
     this.frameId = 0;
     /** The video and its callback for new frames (requestVideoFrameCallback), or null. */
     this.watched = null;
@@ -74,8 +79,10 @@ export class VideoDetection {
       if (msg.type === "ready") {
         clearTimeout(timeout);
         if (this.state === "starting") this.state = "ready";
+        this.bitmaps = !!msg.bitmaps && typeof createImageBitmap === "function";
       } else if (msg.type === "markers") {
         if (this.pending?.id === msg.id) this.result = msg;
+        else msg.bitmap?.close?.();
       } else if (msg.type === "error") {
         clearTimeout(timeout);
         fail();
@@ -101,8 +108,17 @@ export class VideoDetection {
 
   /** Forget the frames of a picture that is no longer shown (another source, the layout loads anew). */
   reset() {
-    this.pending = this.result = this.shown = null;
+    this._show(null);
+    this.result?.bitmap?.close?.();
+    this.pending = this.result = null;
     this.newFrame = true;
+  }
+
+  /** The frame shown from now on ({source, picture}, or null: the video itself); a bitmap shown before is freed. */
+  _show(shown) {
+    const old = this.shown?.picture;
+    if (old && old !== shown?.picture) old.close?.();
+    this.shown = shown;
   }
 
   /**
@@ -133,22 +149,26 @@ export class VideoDetection {
   }
 
   /**
-   * Search a frame. On the main thread its markers come back at once; in the worker the frame is kept
-   * (its picture drawn from `el`) and they come with `take` in a later frame of the screen.
-   * @param {{width: number, height: number, data: Uint8ClampedArray}} image the frame at its processing size
-   * @param {number} scale processing px → picture px
+   * Search the video's current frame at the processing size `size`. On the main thread its markers come
+   * back at once. In the worker they come with `take` in a later frame of the screen, and the frame is
+   * kept to be shown with them: as a bitmap that the worker reads and sends back (the main thread neither
+   * reads its pixels nor copies it), else drawn into a picture of its own while `read` reads its pixels.
+   * @param {object} source the app's source: its element (`el`) and the size of the picture (`w`, `h`)
+   * @param {{w: number, h: number}} size the processing size
    * @param {import("../arail/core/detector.js").MarkerDetector} detector the app's detector (its settings)
-   * @param {object} source the app's source: its element and size of the picture
+   * @param {() => {width: number, height: number, data: Uint8ClampedArray}} read the frame's pixels at the
+   *   processing size, read on the main thread
    * @returns {{markers: object, rolling: object, ms: number} | null} the markers now, or null (in the worker)
    */
-  search(image, scale, detector, source) {
+  search(source, size, detector, read) {
     if (this.watched) {
       this.newFrame = false;
       this.watched.at = performance.now();
     }
+    const scale = source.w / size.w;
     if (this.state !== "ready") {
-      this.shown = null; // the video itself is shown: its frame is the one searched
-      const t0 = performance.now();
+      this._show(null); // the video itself is shown: its frame is the one searched
+      const image = read(), t0 = performance.now();
       const found = typeof detector.detectAll === "function" ? detector.detectAll(image, scale) : { markers: detector.detect(image, scale) };
       return { markers: found.markers, rolling: found.rolling || {}, ms: performance.now() - t0 };
     }
@@ -157,13 +177,31 @@ export class VideoDetection {
       this.worker.postMessage({ type: "init", ...settingsOf(detector) });
       this.settings = settings;
     }
+    const id = ++this.frameId;
+    if (this.bitmaps) {
+      // as large as the picture shown, or as the processing size if that is larger
+      const big = size.w > source.w ? size : { w: source.w, h: source.h };
+      this.pending = { id, source, settings, picture: null, at: performance.now() };
+      createImageBitmap(source.el, { resizeWidth: big.w, resizeHeight: big.h, resizeQuality: "medium" }).then(
+        (bitmap) => {
+          if (this.pending?.id !== id || !this.worker) return bitmap.close();
+          this.worker.postMessage({ type: "bitmap", id, bitmap, width: size.w, height: size.h, scale }, [bitmap]);
+        },
+        () => {
+          // this browser cannot make a bitmap of the video: its pixels are read here from now on
+          this.bitmaps = false;
+          if (this.pending?.id === id) this.pending = null;
+        },
+      );
+      return null;
+    }
     const picture = this.pictures.find((p) => p !== this.shown?.picture) || this._picture();
     if (picture.width !== source.w || picture.height !== source.h) {
       picture.width = source.w;
       picture.height = source.h;
     }
     picture.getContext("2d").drawImage(source.el, 0, 0, source.w, source.h);
-    const id = ++this.frameId;
+    const image = read();
     this.pending = { id, source, settings, picture, at: performance.now() };
     this.worker.postMessage({ type: "frame", id, width: image.width, height: image.height, scale, buffer: image.data.buffer }, [image.data.buffer]);
     return null;
@@ -186,8 +224,11 @@ export class VideoDetection {
     const r = this.result, p = this.pending;
     if (!r || !p) return null;
     this.result = this.pending = null;
-    if (p.source !== source || p.settings !== JSON.stringify(settingsOf(detector))) return null;
-    this.shown = { source, picture: p.picture };
+    if (p.source !== source || p.settings !== JSON.stringify(settingsOf(detector))) {
+      r.bitmap?.close?.();
+      return null;
+    }
+    this._show({ source, picture: r.bitmap ?? p.picture });
     return { markers: r.markers, rolling: r.rolling || {}, ms: r.ms, selected: r.selected };
   }
 

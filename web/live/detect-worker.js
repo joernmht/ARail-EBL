@@ -35,28 +35,54 @@ async function loadVendor(dictionary, rolling = null) {
 }
 
 let detector = null;
+/** The canvas a bitmap is read on (the app's frames), kept for the next one of the same size. */
+let canvas = null;
+
+/** Can this worker draw a bitmap and read its pixels (OffscreenCanvas with a 2D context)? */
+function drawsBitmaps() {
+  try {
+    return typeof OffscreenCanvas === "function" && !!new OffscreenCanvas(1, 1).getContext("2d");
+  } catch {
+    return false;
+  }
+}
+
+/** The pixels of a bitmap at a size (the processing size). */
+function pixelsOf(bitmap, width, height) {
+  if (!canvas || canvas.width !== width || canvas.height !== height) canvas = new OffscreenCanvas(width, height);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  return ctx.getImageData(0, 0, width, height);
+}
 
 /**
  * One message: `init` sets up the detector (dictionary or "auto", codes, and the tags of model wagons,
- * `rolling`, as MarkerDetector takes them); `frame` searches a frame and answers with its markers, the
- * wagons' tags and the dictionary chosen (or voted for so far).
+ * `rolling`, as MarkerDetector takes them) and answers whether bitmaps can be sent; `frame` searches a
+ * frame's pixels and answers with its markers, the wagons' tags and the dictionary chosen (or voted for
+ * so far); `bitmap` does so for a bitmap of the frame, read here at the processing size, and sends the
+ * bitmap back with them (it is the picture shown with its markers).
  */
 async function handle(m) {
   try {
     if (m.type === "init") {
       await loadVendor(m.dictionary, m.rolling ? m.rolling.dictionary || ROLLING_DICTIONARY : null);
       detector = new MarkerDetector({ dictionary: m.dictionary === "auto" ? null : m.dictionary, codes: m.codes, rolling: m.rolling || null });
-      self.postMessage({ type: "ready" });
-    } else if (m.type === "frame") {
+      self.postMessage({ type: "ready", bitmaps: drawsBitmaps() });
+    } else if (m.type === "frame" || m.type === "bitmap") {
+      const image = m.type === "bitmap" ? pixelsOf(m.bitmap, m.width, m.height) : { width: m.width, height: m.height, data: new Uint8ClampedArray(m.buffer) };
       const t0 = performance.now();
-      const image = { width: m.width, height: m.height, data: new Uint8ClampedArray(m.buffer) };
       const found = detector.detectAll(image, m.scale);
-      self.postMessage({
+      const msg = {
         type: "markers", id: m.id, markers: found.markers, rolling: found.rolling, ms: performance.now() - t0,
         selected: detector.selected?.name ?? null, last: detector.last?.name ?? null,
-      });
+      };
+      if (m.bitmap) {
+        msg.bitmap = m.bitmap;
+        self.postMessage(msg, [m.bitmap]);
+      } else self.postMessage(msg);
     }
   } catch (err) {
+    m.bitmap?.close();
     self.postMessage({ type: "error", id: m.id, message: err.message });
   }
 }

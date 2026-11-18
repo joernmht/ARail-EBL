@@ -1539,14 +1539,18 @@ export class App {
     if (!vd.wanted()) return;
     const s = Math.min(1, this.procMax / Math.max(nw, nh));
     const pw = Math.round(nw * s), ph = Math.round(nh * s);
-    if (this.proc.width !== pw || this.proc.height !== ph) {
-      this.proc.width = pw;
-      this.proc.height = ph;
-    }
-    this.pctx.drawImage(el, 0, 0, pw, ph);
+    // the frame's pixels, when they are read on the main thread
+    const read = () => {
+      if (this.proc.width !== pw || this.proc.height !== ph) {
+        this.proc.width = pw;
+        this.proc.height = ph;
+      }
+      this.pctx.drawImage(el, 0, 0, pw, ph);
+      return this.pctx.getImageData(0, 0, pw, ph);
+    };
     let found;
     try {
-      found = vd.search(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw, this.detector, this.source);
+      found = vd.search(this.source, { w: pw, h: ph }, this.detector, read);
     } catch (err) {
       if (!this._detectError) toast(`The video cannot be analysed: ${err.message}`, 7000);
       this._detectError = true;
