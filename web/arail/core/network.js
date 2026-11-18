@@ -1204,22 +1204,13 @@ export class RoadNetwork {
     if (a == null || b == null) return null;
     const E = this.edges;
     // arcs: 2 * edge id (+1 when driven from b to a)
-    const leaving = (u) => {
-      const out = [];
-      for (const id of this.nodes[u].edges) {
-        const e = E[id];
-        if (!this._usable(e, mode)) continue;
-        if (e.a === u && this._allowed(e, true, mode)) out.push(2 * id);
-        if (e.b === u && this._allowed(e, false, mode)) out.push(2 * id + 1);
-      }
-      return out;
-    };
+    const leaving = this._leaving(mode);
     const head = (arc) => (arc & 1 ? E[arc >> 1].a : E[arc >> 1].b);
     const startDir = (arc) => (arc & 1 ? [-E[arc >> 1].dirB[0], -E[arc >> 1].dirB[1]] : E[arc >> 1].dirA);
     const endDir = (arc) => (arc & 1 ? [-E[arc >> 1].dirA[0], -E[arc >> 1].dirA[1]] : E[arc >> 1].dirB);
     const aligned = (d, want) => !want || dot2(d, want) > 0.2;
-    let starts = leaving(a).filter((arc) => aligned(startDir(arc), fromDir));
-    if (!starts.length) starts = leaving(a);
+    let starts = leaving[a].filter((arc) => aligned(startDir(arc), fromDir));
+    if (!starts.length) starts = leaving[a];
     const goal = (arc) => head(arc) === b && aligned(endDir(arc), toDir);
     let anyGoal = false;
     for (const id of this.nodes[b].edges) {
@@ -1228,47 +1219,84 @@ export class RoadNetwork {
       if ((e.b === b && this._allowed(e, true, mode) && goal(2 * id)) || (e.a === b && this._allowed(e, false, mode) && goal(2 * id + 1))) anyGoal = true;
     }
     const isGoal = anyGoal ? goal : (arc) => head(arc) === b;
-    const dist = new Map(), prev = new Map(), heap = new Heap();
+    // the distance and the arc before of each arc reached: arrays kept for the network, an arc is
+    // reached in this search when its stamp is this search's (else its distance is Infinity)
+    const { stamp, dist, prev, gen } = this._arcSearch();
+    const distOf = (arc) => (stamp[arc] === gen ? dist[arc] : Infinity);
+    const heap = new Heap();
     for (const arc of starts) {
       const c = this._cost(E[arc >> 1], mode);
-      if (c < (dist.get(arc) ?? Infinity)) {
-        dist.set(arc, c);
-        prev.set(arc, -1);
+      if (c < distOf(arc)) {
+        stamp[arc] = gen;
+        dist[arc] = c;
+        prev[arc] = -1;
         heap.push(arc, c);
       }
     }
     let found = -1;
     while (heap.size) {
-      const [x, d] = heap.pop();
-      if (d > dist.get(x)) continue;
+      const x = heap.popId(), d = heap.lastKey;
+      if (d > dist[x]) continue;
       if (isGoal(x)) {
         found = x;
         break;
       }
       const v = head(x), dx = endDir(x);
       const degree = mode === "tram" ? this.nodes[v].tramDegree : this.nodes[v].carDegree;
-      for (const y of leaving(v)) {
+      for (const y of leaving[v]) {
         if ((y >> 1) !== (x >> 1) && !this.turnAllowed(v, x >> 1, y >> 1, mode)) continue;
         let c = d + this._cost(E[y >> 1], mode);
         if ((y >> 1) === (x >> 1) && E[y >> 1].a !== E[y >> 1].b) c += degree <= 1 && this.nodes[v].kind !== "lane" ? UTURN_DEAD_END_S : UTURN_S;
         else if (dot2(dx, startDir(y)) < -0.95) c += UTURN_S;
-        if (c < (dist.get(y) ?? Infinity)) {
-          dist.set(y, c);
-          prev.set(y, x);
+        if (c < distOf(y)) {
+          stamp[y] = gen;
+          dist[y] = c;
+          prev[y] = x;
           heap.push(y, c);
         }
       }
     }
     if (found < 0) return null;
     const arcs = [];
-    for (let x = found; x !== -1; x = prev.get(x)) arcs.push(x);
+    for (let x = found; x !== -1; x = prev[x]) arcs.push(x);
     arcs.reverse();
     let uturns = 0;
     for (let i = 1; i < arcs.length; i++) if ((arcs[i] >> 1) === (arcs[i - 1] >> 1) || dot2(endDir(arcs[i - 1]), startDir(arcs[i])) < -0.95) uturns++;
     const path = this._path(a, arcs.map((x) => ({ e: E[x >> 1], forward: !(x & 1) })));
-    path.cost = dist.get(found);
+    path.cost = dist[found];
     path.uturns = uturns;
     return path;
+  }
+
+  /**
+   * The arcs leaving each node in a mode (2 * edge id, + 1 against the edge), in the order of the
+   * node's edges: worked out once per mode (the network does not change once built).
+   * @returns {number[][]}
+   */
+  _leaving(mode) {
+    let list = (this._leavingArcs ||= new Map()).get(mode);
+    if (list) return list;
+    list = this.nodes.map((n, u) => {
+      const out = [];
+      for (const id of n.edges) {
+        const e = this.edges[id];
+        if (!this._usable(e, mode)) continue;
+        if (e.a === u && this._allowed(e, true, mode)) out.push(2 * id);
+        if (e.b === u && this._allowed(e, false, mode)) out.push(2 * id + 1);
+      }
+      return out;
+    });
+    this._leavingArcs.set(mode, list);
+    return list;
+  }
+
+  /** The arrays of a search over the arcs (`routeDirected`), with a new stamp for it. */
+  _arcSearch() {
+    const n = 2 * this.edges.length;
+    let a = this._arcArrays;
+    if (!a || a.dist.length !== n || a.gen >= 0xfffffffe) a = this._arcArrays = { stamp: new Uint32Array(n), dist: new Float64Array(n), prev: new Int32Array(n), gen: 0 };
+    a.gen++;
+    return a;
   }
 
   /** Build a Path from a start node and a sequence of edges. */
