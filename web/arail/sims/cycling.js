@@ -24,7 +24,7 @@
  * @module arail/sims/cycling
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, polylineAt, polylinePoint, rectBetween, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, polylineAt, polylinePoint, rectBetween, sub2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
 import { APPROACH_M, approachPrio, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
@@ -262,7 +262,9 @@ export class CyclingSimulation extends Simulation {
     const front = polylinePoint(L.points, rider.s, L.lengths);
     const rear = polylinePoint(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths);
     const d = sub2(front, rear);
-    const dir = Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : polylineAt(L.points, rider.s, L.lengths).dir;
+    // (unit2(d), with the length worked out once)
+    const l = Math.hypot(d[0], d[1]);
+    const dir = l > 1e-6 ? [d[0] / l, d[1] / l] : polylineAt(L.points, rider.s, L.lengths).dir;
     const j = junctionAhead(rider.junctions, rider.s);
     const approach = j && rider.s < j.s - j.r && j.s - rider.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - rider.s, prio: approachPrio(j, this.world.time) } : null;
     const pose = { vehicle: rider, front, rear, dir, speed: rider.v, approach };

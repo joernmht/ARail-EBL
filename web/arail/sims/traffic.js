@@ -37,7 +37,7 @@
  * @module arail/sims/traffic
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2 } from "../core/math.js";
 import { CD, grey, mix, shade } from "../core/colors.js";
 import { APPROACH_M, approachPrio, boxFaces, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, roomAfter, squeezing, waitFor } from "../core/transit.js";
 import { hiddenAt, joinPaths } from "../core/network.js";
@@ -259,7 +259,9 @@ export class TrafficSimulation extends Simulation {
     let front = polylinePoint(p.points, car.s, p.lengths);
     let rear = polylinePoint(p.points, Math.max(0, car.s - this.mm(LENGTH_M)), p.lengths);
     const d = sub2(front, rear);
-    const dir = Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : polylineAt(p.points, car.s, p.lengths).dir;
+    // (unit2(d), with the length worked out once)
+    const l = Math.hypot(d[0], d[1]);
+    const dir = l > 1e-6 ? [d[0] / l, d[1] / l] : polylineAt(p.points, car.s, p.lengths).dir;
     // overtaking a bike: on the other lane for a while
     if (car.shift) {
       const n = [-dir[1] * car.shift, dir[0] * car.shift];

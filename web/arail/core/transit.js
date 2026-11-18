@@ -1036,7 +1036,9 @@ export class Transit {
     const d = sub2(front, rear);
     const j = this._nextJunction(bus, line);
     const approach = j && j.d > j.r && j.d < this.mm(APPROACH_M) ? { key: j.key, d: j.d, prio: approachPrio(j, this.world.time) } : null;
-    const pose = { vehicle: bus, front, rear, dir: Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : [1, 0], speed: bus.v, approach };
+    // (unit2(d), with the length worked out once)
+    const l = Math.hypot(d[0], d[1]);
+    const pose = { vehicle: bus, front, rear, dir: l > 1e-6 ? [d[0] / l, d[1] / l] : [1, 0], speed: bus.v, approach };
     bus._pose = pose;
     return pose;
   }
