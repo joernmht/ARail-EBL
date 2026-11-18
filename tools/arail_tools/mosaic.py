@@ -127,7 +127,8 @@ def _features(piece: Piece, sift):
     grey = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
     mask = cv2.resize(covered(piece.image), (grey.shape[1], grey.shape[0]), interpolation=cv2.INTER_NEAREST)
     kp, desc = sift.detectAndCompute(grey, mask)
-    if desc is None:
+    # no features: OpenCV 4 gives no descriptors (None), OpenCV 5 an empty array
+    if desc is None or not len(kp):
         return np.zeros((0, 2)), None
     uv = np.array([p.pt for p in kp], float) / k
     xy = (piece.to_frame @ np.column_stack([uv, np.ones(len(uv))]).T).T[:, :2]

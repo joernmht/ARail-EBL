@@ -1,0 +1,1 @@
+- **`arail-mosaic` with OpenCV 5** (`tools/arail_tools/mosaic.py`): a picture without features (a blank one) stopped the registration with a numpy error, because OpenCV 5 gives an empty array of descriptors where OpenCV 4 gave none; it is reported again as before ("no features in the reference orthophoto").
