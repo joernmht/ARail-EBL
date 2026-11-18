@@ -24,7 +24,7 @@
  * @module arail/sims/cycling
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, dot2, polylineAt, polylinePoint, rectBetween, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, polylineAt, polylinePoint, rectBetween, sub2, unit2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
 import { APPROACH_M, approachPrio, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
@@ -422,11 +422,13 @@ export class CyclingSimulation extends Simulation {
    * rider should not be on the sidewalk), both get angry and the street counts it.
    */
   _meetPeople(rider, me, sf, people, slow) {
-    const e = sf.edge, tol = this.mm(NEAR_M + 1.5 * (e.conflict || 0)), ahead = this.mm(4);
+    const e = sf.edge, tol = this.mm(NEAR_M + 1.5 * (e.conflict || 0)), ahead = this.mm(4), behind = -this.mm(0.5);
+    // (the vector sums of sub2 and dot2 written out: no array for each person)
+    const fx = me.front[0], fy = me.front[1], ux = me.dir[0], uy = me.dir[1];
     for (const p of people) {
-      const d = sub2(p.pos, me.front), along = dot2(d, me.dir);
-      if (along < -this.mm(0.5) || along > ahead) continue;
-      if (Math.abs(d[0] * me.dir[1] - d[1] * me.dir[0]) > tol) continue;
+      const dx = p.pos[0] - fx, dy = p.pos[1] - fy, along = dx * ux + dy * uy;
+      if (along < behind || along > ahead) continue;
+      if (Math.abs(dx * uy - dy * ux) > tol) continue;
       slow();
       const key = p.agent?.id ?? `${Math.round(p.pos[0])},${Math.round(p.pos[1])}`;
       if (rider.met.has(key)) continue;

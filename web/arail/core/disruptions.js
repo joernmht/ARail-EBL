@@ -172,6 +172,12 @@ function drawHatch(view, area) {
 
 let nextId = 1;
 
+/** What `effectsFor` gives while no disruption is active (shared by all stops: not to be changed). */
+const NO_EFFECTS = Object.freeze({
+  closed: false, reserved: false, hold: false, cancel: false, leave: false, demand: 1, frequency: 1, slow: 1, mood: 0,
+  messages: Object.freeze([]), disruptions: Object.freeze([]),
+});
+
 export class DisruptionManager {
   /** @param {import("./world.js").World} world */
   constructor(world) {
@@ -230,6 +236,8 @@ export class DisruptionManager {
    * @param {object|null} [dock] one of the area's docks (the vehicles at it), or null for the stop
    */
   effectsFor(area, dock = null) {
+    // no disruption (most of the time): the effects of none, for every stop and track
+    if (!this.active.length) return NO_EFFECTS;
     const key = dock ? `${area.id}|${dock.id}` : area.id;
     let fx = this._cache.get(key);
     if (fx) return fx;
