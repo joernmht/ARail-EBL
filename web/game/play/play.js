@@ -6,7 +6,7 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, flowOf, lineFor, normalizeMission, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, answerFor, answersOf, flowOf, lineFor, normalizeMission, staleAnswers, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { PORTRAITS, faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
@@ -16,6 +16,7 @@ import { factChips } from "../scene.js";
 import { NEUSTADT, shotOf } from "../shots.js";
 import { hasMore, lead } from "../short.js";
 import { SOUND_KEY, Sound } from "../sound.js";
+import { Windows } from "../windows.js";
 
 /** What a mission is checked against beyond its games: the places and the portraits the game has pictures of. */
 const CHECKS = { places: PLACES.map((p) => p.id), portraits: Object.keys(PORTRAITS) };
@@ -29,7 +30,7 @@ const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
 const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
-const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .vn-talk, .play-rail, .play-hud, .play-toast";
+const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .play-window, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
 /** What the table is seen through (SOURCES of live.js), as its buttons name them. */
@@ -224,7 +225,9 @@ class PlayPage {
      * lines answered in the phase it stood in.
      */
     this.beats = [];
-    /** @type {Map<string, Set<number>>} */
+    /** The lines of the story that answer what does not go to plan (answersOf); answered as `key`s in heardLines. */
+    this.answers = [];
+    /** @type {Map<string, Set<number | string>>} */
     this.heardLines = new Map();
     this.saidLines = new Set();
     this.keptHeard = null;
@@ -246,6 +249,8 @@ class PlayPage {
     /** Only the picture is shown (H). */
     this.bare = false;
     this.sound = new Sound({ on: storage.get(SOUND_KEY, true) !== false });
+    /** The windows of the stage a person places and sizes (the game's picture, a table kept in view): where each was left. */
+    this.windows = new Windows(storage, { stage: ".vn-stage" });
     this.speed = 1;
     this.lastSpeed = 1;
     /** The seat shown, the flow the list is filtered by, the phase the page has seen (index of the session's plan). */
@@ -323,7 +328,7 @@ class PlayPage {
     document.addEventListener("keydown", (e) => this.key(e));
     addEventListener("popstate", () => this.route());
     // the little train stands at its stop also after the window has changed its size
-    addEventListener("resize", () => this.screen === "choose" && this.train());
+    addEventListener("resize", () => (this.screen === "choose" ? this.train() : this.windows.fit()));
     addEventListener("pagehide", () => {
       this.save();
       // also a page the browser keeps for "back": it may be thrown away later without another word, and what a
@@ -846,6 +851,24 @@ class PlayPage {
         h("tbody", {}, m.roles.map((r) => h("tr", {}, h("th", { scope: "row" }, this.seatName(r.id, m.roles)), h("td", {}, cell(r.id, "takes")), h("td", {}, cell(r.id, "gives"))))))));
   }
 
+  /**
+   * The tables a game keeps in view at work (`window` in its view: the signaller's timetable), each a
+   * window on the stage that a person places and sizes; the desk has them too.
+   */
+  sheets(seat, p, tables) {
+    keyed(p.sheets, tables, (t) => t.id, (t) => {
+      const title = h("h4", { id: `sheet-${safe(seat.id)}-${safe(t.id)}` });
+      const body = h("div", { class: "sheet-body", tabindex: "0", role: "group", "aria-labelledby": title.id });
+      const el = h("section", { class: "play-sheet", "aria-labelledby": title.id }, title, body);
+      el._parts = { title, body };
+      return el;
+    }, (el, t) => {
+      if (!el.dataset.win) this.windows.frame(el, `${seat.Game.id}|${t.id}`, `the ${t.title.toLowerCase()}`);
+      el._parts.title.textContent = t.title;
+      morph(el._parts.body, t.rows?.length ? this.table(t) : h("p", { class: "hint" }, t.empty ?? "Nothing here."));
+    });
+  }
+
   /** A table in a frame that scrolls sideways where the table is too wide (then the frame can be reached with the keyboard, `fit`). */
   scroller(key, label, table) {
     return h("div", { class: "table-scroll", "data-scroll": key, role: "group", "aria-label": label, tabindex: this.wide.has(key) ? "0" : null }, table);
@@ -1000,10 +1023,11 @@ class PlayPage {
     if (!mine(s.seat(this.tab))) this.tab = (s.active.find(mine) ?? s.active.find((seat) => this.view(seat.game).sketch) ?? s.active[0])?.id ?? this.tab;
     this.say(`${s.rounds > 1 ? `Round ${s.round} of ${s.rounds}. ` : ""}${ph.title}: ${ph.kind === "shift" ? "a shift" : "a turn"}.`);
     this.beats = storyOf(this.mission, ph.id, s.round);
+    this.answers = answersOf(this.mission, ph.id, s.round);
     // of a session taken up again in this phase, the lines answered before stay answered (and are not said aloud again)
     this.heardLines = new Map(this.keptHeard?.phase === s.index ? Object.entries(this.keptHeard.seats).map(([seat, lines]) => [seat, new Set(lines)])
       // (taken up in the middle of a shift with nothing kept of it: only the latest line that is due is said)
-      : ph.kind === "shift" && s.t > 0 ? s.active.filter(mine).map((seat) => [seat.id, new Set(staleLines(this.beats, seat.id, s.t))]) : []);
+      : ph.kind === "shift" && s.t > 0 ? s.active.filter(mine).map((seat) => [seat.id, new Set(this.stale(seat))]) : []);
     this.saidLines = new Set([...this.heardLines].flatMap(([seat, lines]) => [...lines].map((i) => `${seat}|${i}`)));
     this.keptHeard = null;
     const you = s.active.filter(mine).map((seat) => this.seatName(seat.id));
@@ -1107,6 +1131,8 @@ class PlayPage {
     this.flows(force);
     this.hear();
     this.fit($("#play"));
+    // the windows of the stage at their places (a seat shown for the first time, a stage that has changed its size)
+    this.windows.fit();
   }
 
   /** At the side: where the seat shown works, and how many of its messages are new (the bell). */
@@ -1285,6 +1311,8 @@ class PlayPage {
       /** The seat's own heading, for who does not see the stage: whose seat it is, and who plays it. */
       title: h("h3", { class: "visually-hidden" }),
       sketch: h("div", { class: "play-sketch", hidden: true }),
+      /** The tables the game keeps in view at work (`window`), each a window on the stage. */
+      sheets: h("div", { class: "vn-sheets" }),
       gauges: h("dl", { class: "vn-gauges", "data-seat": seat.id }),
       speaker: h("figure", { class: "vn-speaker" }),
       name: h("p", { class: "vn-name" }),
@@ -1318,6 +1346,7 @@ class PlayPage {
       h("div", { class: "vn-stage" },
         p.title,
         p.sketch,
+        p.sheets,
         p.talk),
       p.desk);
     return p;
@@ -1362,6 +1391,7 @@ class PlayPage {
 
     p.sketch.hidden = !view.sketch;
     if (view.sketch) this.sketch(seat, p, view.sketch, can, view.figures);
+    this.sheets(seat, p, view.tables.filter((t) => t.window));
 
     // in a turn a person reads what happened line by line (the game's messages not read yet); in a shift
     // they pass in the ticker, and what passed there or at a computer's seat counts as read
@@ -1394,8 +1424,8 @@ class PlayPage {
           h("button", { class: "btn primary", type: "button", onclick: () => this.readOn(seat.id, 1) }, left > 1 ? "Next" : open.length ? "To the decisions" : "Go on", h("kbd", { "aria-hidden": "true" }, "Space")),
           left > 2 ? h("button", { class: "btn", type: "button", onclick: () => this.readOn(seat.id, left) }, `Skip ${left - 1} more`) : null));
     } else if (beat) {
-      if (!this.saidLines.has(`${seat.id}|${beat.index}`)) {
-        this.saidLines.add(`${seat.id}|${beat.index}`);
+      if (!this.saidLines.has(`${seat.id}|${beat.key ?? beat.index}`)) {
+        this.saidLines.add(`${seat.id}|${beat.key ?? beat.index}`);
         this.say(`${who.name}: ${beat.say}`);
         this.sound.play("next");
       }
@@ -1538,11 +1568,19 @@ class PlayPage {
 
   /**
    * The line of the mission's story that is said to a seat now, or null (lineFor): the first of the
-   * lines for this seat that is not answered yet, in a shift of those whose moment has come.
+   * lines for this seat that is not answered yet, in a shift of those whose moment has come; then, in a
+   * shift, the answer to what its game reported as not going to plan (answerFor).
    */
   beat(seatId) {
     const s = this.session;
-    return lineFor(this.beats, seatId, this.heardLines.get(seatId) ?? new Set(), s.phase.kind === "turn" ? null : s.t);
+    const heard = this.heardLines.get(seatId) ?? new Set();
+    return lineFor(this.beats, seatId, heard, s.phase.kind === "turn" ? null : s.t)
+      ?? (s.phase.kind === "shift" ? answerFor(this.answers, seatId, heard, s.seat(seatId)?.game?.irregulars ?? []) : null);
+  }
+
+  /** What a seat a person sits down at in the middle of a shift is not told any more: the lines due before but the latest, the answers to what has passed. */
+  stale(seat) {
+    return [...staleLines(this.beats, seat.id, this.session.t), ...staleAnswers(this.answers, seat.id, seat.game?.irregulars ?? [])];
   }
 
   /**
@@ -1561,7 +1599,7 @@ class PlayPage {
   heardBeat(seatId, beat) {
     // at this seat: a line for everybody is still to be said at the others
     const heard = this.heardLines.get(seatId) ?? new Set();
-    heard.add(beat.index);
+    heard.add(beat.key ?? beat.index);
     this.heardLines.set(seatId, heard);
     this.term = null;
     // the session's save holds the lines answered: it is due again
@@ -1606,6 +1644,7 @@ class PlayPage {
       p.board = h("div", { class: "play-board", "data-scroll": `sketch|${seat.id}` }, p.svg);
       p.pick = h("div", { class: "play-pick" });
       mount(p.sketch, p.sketchTitle, p.board, p.pick);
+      this.windows.frame(p.sketch, `${seat.Game.id}|sketch`, (sk.title ?? "the picture").replace(/^The /, "the "));
     }
     p.sketchTitle.textContent = sk.title ?? "The picture";
     p.svg.setAttribute("viewBox", `0 0 ${sk.width} ${sk.height}`);
@@ -1914,7 +1953,7 @@ class PlayPage {
     const s = this.session;
     s.sit(seatId, by);
     // a seat taken in the middle of a shift: the lines whose moment has passed are not said any more, but for the latest
-    if (by === "human" && s.phase?.kind === "shift") this.heardLines.set(seatId, new Set([...(this.heardLines.get(seatId) ?? []), ...staleLines(this.beats, seatId, s.t)]));
+    if (by === "human" && s.phase?.kind === "shift") this.heardLines.set(seatId, new Set([...(this.heardLines.get(seatId) ?? []), ...this.stale(s.seat(seatId))]));
     this.say(`${by === "human" ? "You play" : "The computer plays"} ${this.seatName(seatId)} now.`);
     this.after();
     // the tools are drawn anew, more or fewer of them: the focus stays on the seat's switch (the last of them)

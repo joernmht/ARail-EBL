@@ -143,3 +143,33 @@ test("story: a line in a round its phase is not played in, a time that is no num
   assert.equal(bad(doc, { phase: first.id, say: "Who?", who: { name: "S. Fink", portrait: "astronaut" } }), "", "without the page's portraits it is not checked");
   for (const m of missions) assert.deepEqual(validateMission(m, GAMES, { portraits }), [], m.id);
 });
+
+test("story: a line on a kind of irregularity is said each time a seat's game reports one, with its words; not at a time", async () => {
+  const { answerFor, answersOf, staleAnswers, SignallerGame } = await import("../../web/arail/game/index.js");
+  const doc = missions.find((m) => m.id === "first-shift"), m = normalizeMission(doc, GAMES), seat = doc.roles[0].role;
+  // the first shift: a few lines that teach, then the dispatcher speaks only when something does not go to plan
+  const timed = storyOf(m, "shift", 1), answers = answersOf(m, "shift", 1);
+  assert.ok(timed.length >= 3 && timed.every((l) => l.on == null), "the tutorial is said at its times");
+  assert.ok(answers.length >= 3 && answers.every((l) => SignallerGame.irregularities.includes(l.on)), "the rest answers what the signaller's game reports");
+  const heard = new Set();
+  assert.equal(answerFor(answers, seat, heard, []), null, "nothing went wrong: nobody calls");
+  const held = { t: 120, kind: "held-at-entry", key: "held:RB 31", train: "RB 31", signal: "A", track: "G2" };
+  const line = answerFor(answers, seat, heard, [held]);
+  assert.match(line.say, /^RB 31 is standing at signal A\. Set its route into G2/);
+  assert.equal(line.key, `${line.index}|held:RB 31`);
+  heard.add(line.key);
+  assert.equal(answerFor(answers, seat, heard, [held]), null, "answered once, not again");
+  const next = { t: 150, kind: "held-at-entry", key: "held:RB 32", train: "RB 32", signal: "F", track: "G3" };
+  assert.match(answerFor(answers, seat, heard, [held, next]).say, /^RB 32 is standing at signal F/, "the same kind for another train is said again");
+  // a placeholder the game has no word for stays as it is; a line from `at` on does not answer what came before
+  assert.equal(answerFor([{ index: 0, at: 0, on: "x", say: "{train} {nothing}" }], seat, new Set(), [{ t: 1, kind: "x", key: "k", train: "T" }]).say, "T {nothing}");
+  assert.equal(answerFor([{ index: 0, at: 100, on: "x", say: "late" }], seat, new Set(), [{ t: 1, kind: "x", key: "k" }]), null);
+  assert.equal(answerFor([{ index: 0, at: 0, on: "x", say: "not yours", seats: ["other"] }], seat, new Set(), [{ t: 1, kind: "x", key: "k" }]), null);
+  // a seat taken in the middle of a shift is not told what was reported before
+  assert.deepEqual(staleAnswers(answers, seat, [held]), answers.filter((l) => l.on === "held-at-entry").map((l) => `${l.index}|held:RB 31`));
+  // a line on a kind no game at work reports, or that is not a kind, is a problem of the mission
+  const bad = (line) => validateMission({ ...doc, story: [line] }, GAMES).join(" | ");
+  assert.match(bad({ phase: "shift", on: "rain", say: "Rain." }), /story 1: on "rain": no game at work there reports it/);
+  assert.match(bad({ phase: "shift", on: "Held At Entry", say: "Held." }), /story 1: on must be the kebab-case kind/);
+  assert.equal(bad({ phase: "shift", on: "late-departure", say: "{train} is late." }), "");
+});

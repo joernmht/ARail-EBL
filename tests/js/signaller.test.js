@@ -430,3 +430,54 @@ test("a closure request is the failure's only with its fault, or without one for
   ask(g, {});
   assert.equal(g.team.state, "waiting");
 });
+
+test("the timetable: a window kept in view, with each train's tracks and times; arrivals a minute before departure", () => {
+  const g = new SignallerGame({ level: "training" });
+  const tt = g.view().tables.find((t) => t.window);
+  assert.equal(tt.title, "Timetable");
+  assert.deepEqual(tt.columns, ["Train", "From", "To", "Track", "Arr", "Dep", "Note", "Now", "Late"]);
+  assert.deepEqual(tt.rows[0], ["RB 31", "Bergheim", "Talsee", "G2", "08:02", "08:03", "connection to RB 32", "due", "–"]);
+  assert.deepEqual(tt.rows.find((r) => r[0] === "GZ 47").slice(4, 6), ["–", "08:09 pass"]);
+  for (const s of TIMETABLE) if (s.dep != null) assert.equal(s.dep - s.arr, 60, s.id);
+  assert.equal(g.view().tables.filter((t) => t.window).length, 1);
+});
+
+test("irregularities: the careful signaller has none in training; a train held at its entry signal, late, sent elsewhere, a connection missed", async () => {
+  const { SignallerAutopilot } = await import("../../web/arail/game/index.js");
+  const good = new SignallerGame({ level: "training" }), pilot = new SignallerAutopilot();
+  run(good, 2400, (x) => pilot.think(x), 0.5);
+  assert.deepEqual(good.irregulars, [], "by the book, nothing to call about");
+  // nobody sets a route: RB 31 stands at A, RB 32 at F, each told once
+  const idle = new SignallerGame({ level: "training" });
+  const reported = [];
+  idle.on((name, x) => name === "irregular" && reported.push(x.key));
+  run(idle, 400);
+  const held = idle.irregulars.filter((x) => x.kind === "held-at-entry");
+  assert.deepEqual(held.map((x) => [x.train, x.signal, x.track]), [["RB 31", "A", "G2"], ["RB 32", "F", "G3"]]);
+  assert.deepEqual(reported, idle.irregulars.map((x) => x.key));
+  // RB 31 into G1 instead of G2; RB 32 let out before RB 31's passengers could change; RB 31 left standing past its time
+  const g = new SignallerGame({ level: "training" });
+  run(g, 60, (x) => {
+    if (x.t >= 20 && !x.routeFrom("A")) x.setRoute("A-G1");
+    if (x.t >= 40 && !x.routeFrom("F")) x.setRoute("F-G3");
+  });
+  assert.deepEqual(g.irregulars.map((x) => [x.kind, x.train, x.track, x.plan]), [["wrong-track", "RB 31", "G1", "G2"]]);
+  run(g, 120);
+  g.setRoute("P3-B");
+  run(g, 200);
+  const kinds = g.irregulars.map((x) => `${x.kind} ${x.train}`);
+  assert.ok(kinds.includes("late-departure RB 31"), kinds.join(", "));
+  const late = g.irregulars.find((x) => x.kind === "late-departure");
+  assert.deepEqual([late.signal, late.time], ["N1", "08:03"]);
+  // RB 32 went at its time from G3 while RB 31 stood at platform 1: too short to change platforms
+  assert.ok(g.irregulars.some((x) => x.kind === "connection-missed" && x.train === "RB 32" && x.feeder === "RB 31"), kinds.join(", "));
+});
+
+test("irregularities: a train announced late, and the failed signal, at the normal level", () => {
+  const g = new SignallerGame({ level: "normal", late: { "RB 33": 240 } });
+  run(g, 800);
+  const late = g.irregulars.find((x) => x.kind === "came-late" && x.train === "RB 33");
+  assert.deepEqual([late.train, late.min], ["RB 33", "4"]);
+  assert.ok(late.t <= 720 - 120 + 1, "told when the neighbouring station announces it");
+  assert.deepEqual(g.irregulars.filter((x) => x.kind === "signal-failed").map((x) => x.signal), ["N2"]);
+});

@@ -25,6 +25,10 @@
  * shift; in a turn, at its beginning, in their order), each by `who` says it (a name, a role, the
  * kind of portrait; left out: whoever the page has for the seat's game), to the `seats` named or to
  * everybody, in the `rounds` named or in all. It tells and teaches; it changes nothing in a game.
+ * A line `on` a kind of irregularity (a game's `irregularities`, such as "held-at-entry") is said not at
+ * a time but each time a seat's game reports one of that kind (from `at` on, if given), with the
+ * game's words for it in its placeholders: `"{train} is standing at signal {signal}."`. So somebody
+ * can speak only when something does not go to plan.
  *
  * A seat's `id` is its role unless given (two seats of one role need ids). A phase is a `turn` (the
  * slow roles decide, no clock) or a `shift` (the fast roles work at the same time for `length`
@@ -179,6 +183,11 @@ export function validateMission(doc, games, { places = null, portraits = null } 
     if (line?.at != null && !(typeof line.at === "number" && line.at >= 0)) out.push(`${at}: at must be a number of seconds, 0 or more`);
     // a line that could never be said: after the end of its shift, or to a seat that is not at work in its phase
     else if (phase?.kind === "shift" && line?.at > phase.length) out.push(`${at}: at is ${line.at} s, after the end of the shift (${phase.length} s)`);
+    if (line?.on != null) {
+      const at_work = (line.seats ?? phase?.roles ?? []).map((id) => games.get(seats.get(id)?.game)).filter(Boolean);
+      if (typeof line.on !== "string" || !KEBAB.test(line.on)) out.push(`${at}: on must be the kebab-case kind of an irregularity`);
+      else if (phase && !at_work.some((G) => (G.irregularities ?? []).includes(line.on))) out.push(`${at}: on "${line.on}": no game at work there reports it`);
+    }
     if (line?.who != null && (typeof line.who.name !== "string" || !line.who.name.trim())) out.push(`${at}: who needs a name`);
     if (line?.rounds != null && !(Array.isArray(line.rounds) && line.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
     else if (line?.rounds && phase?.rounds && !line.rounds.some((n) => phase.rounds.includes(n))) out.push(`${at}: rounds names none of the rounds the phase "${phase.id}" is played in`);
@@ -195,17 +204,63 @@ export function validateMission(doc, games, { places = null, portraits = null } 
 
 /**
  * The lines of a mission's story for a phase of a round, in the order they are said (by `at`, then
- * as written), each with its place in the story (`index`).
+ * as written), each with its place in the story (`index`); not those that answer an irregularity
+ * (answersOf).
  * @param {object} mission a mission with its defaults (normalizeMission)
  * @param {string} phase a phase's id
  * @param {number} round
  * @returns {Array<{index: number, phase: string, at: number, say: string, who?: object, seats?: string[]}>}
  */
 export function storyOf(mission, phase, round) {
+  return linesOf(mission, phase, round).filter((line) => line.on == null);
+}
+
+/**
+ * The lines of a mission's story for a phase of a round that answer irregularities (those `on` a kind),
+ * as storyOf gives the others.
+ * @returns {Array<{index: number, phase: string, at: number, on: string, say: string, who?: object, seats?: string[]}>}
+ */
+export function answersOf(mission, phase, round) {
+  return linesOf(mission, phase, round).filter((line) => line.on != null);
+}
+
+function linesOf(mission, phase, round) {
   return (mission.story ?? [])
     .map((line, index) => ({ ...line, at: line.at ?? 0, index }))
     .filter((line) => line.phase === phase && (!line.rounds || line.rounds.includes(round)))
     .sort((a, b) => a.at - b.at || a.index - b.index);
+}
+
+/**
+ * The line that answers an irregularity of a seat's game now, or null: of what the game reported (its
+ * `irregulars`, in their order), the first that a line `on` its kind answers and that is not answered
+ * at this seat yet, said with its placeholders filled in (`{train}`: the irregularity's `train`). Its
+ * `key` (the line and the irregularity) is what a page keeps as answered.
+ * @param {ReturnType<typeof answersOf>} lines a phase's answers (answersOf)
+ * @param {string} seat a seat's id
+ * @param {Set<number | string>} heard what was answered at this seat (lines' `index`, answers' `key`)
+ * @param {Array<{t: number, kind: string, key: string}>} irregulars what the seat's game reported
+ * @returns {null | {index: number, key: string, say: string, who?: object}}
+ */
+export function answerFor(lines, seat, heard, irregulars = []) {
+  for (const x of irregulars) {
+    for (const l of lines) {
+      if (l.on !== x.kind || (l.seats && !l.seats.includes(seat)) || x.t < l.at) continue;
+      const key = `${l.index}|${x.key}`;
+      if (heard.has(key)) continue;
+      return { ...l, key, say: l.say.replace(/\{([a-z]+)\}/g, (all, k) => (x[k] != null ? String(x[k]) : all)) };
+    }
+  }
+  return null;
+}
+
+/**
+ * The answers a seat is not told any more when a person sits down at it in the middle of a shift: those
+ * of everything its game reported before (it spoke of what has passed).
+ * @returns {string[]} their `key`
+ */
+export function staleAnswers(lines, seat, irregulars = []) {
+  return irregulars.flatMap((x) => lines.filter((l) => l.on === x.kind && (!l.seats || l.seats.includes(seat)) && x.t >= l.at).map((l) => `${l.index}|${x.key}`));
 }
 
 /**

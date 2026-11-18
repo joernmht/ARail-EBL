@@ -26,6 +26,8 @@ const PROGRESS = "arail.game.progress";
 const MISSIONS = new URL("../../web/game/missions/", import.meta.url);
 const LINE = JSON.parse(readFileSync(new URL("missions.json", MISSIONS), "utf8")).missions.map((file) => JSON.parse(readFileSync(new URL(file, MISSIONS), "utf8")));
 const missionOf = (id) => LINE.find((m) => m.id === id);
+/** How many trains the first shift's timetable has (the signaller's game at its level "training"). */
+const TIMETABLE_TRAINS = 9;
 
 /** Open the page with nothing stored; it is ready when the missions are loaded. */
 async function open(page, path = PAGE) {
@@ -495,7 +497,7 @@ test("a move through its form on the desk: a route is set; a move the game refus
   await expect(close.getByLabel("Track")).toHaveValue("G2");
   // RB 31 comes and stops at G2
   await run(page, 230);
-  await expect(tableOf(page, SIGNALLER, "Trains").locator("tbody tr").filter({ has: page.locator("th", { hasText: "RB 31" }) })).toContainText("at G2");
+  await expect(tableOf(page, SIGNALLER, "Timetable").locator("tbody tr").filter({ has: page.locator("th", { hasText: "RB 31" }) })).toContainText("at G2");
   // Escape closes the desk; the focus is back on the stage, whose gauges and newest message have followed
   await page.keyboard.press("Escape");
   await expect(desk).toBeHidden();
@@ -1010,6 +1012,8 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   const ok = story.getByRole("button", { name: "OK" });
   await expect(ok).toHaveText("OKSpace");
   await ok.click();
+  // (the routes in for the first two trains, as told: no train stands at its signal, and nobody calls about it)
+  await page.evaluate(() => ["A-G2", "F-G3"].forEach((r) => window.__play.session.seat("signaller-relay").game.setRoute(r)));
   await expect(story).toBeHidden();
   await expect(part(page, seat, ".vn-tools").locator("button").first()).toBeFocused();
   // answered: the clock runs again (and is paused for what follows)
@@ -1026,25 +1030,17 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
   // a line is said once: time passing does not bring it back
   await run(page, 5);
   await expect(story).toBeHidden();
-  // the next line at its time; Space answers it (with the focus off the buttons)
+  // two lines come due without an answer: none is passed over, they are said one after the other; Space answers
+  // one (with the focus off the buttons)
   await page.evaluate((t) => {
     const p = window.__play;
     while (p.session.t < t) p.session.step(1);
     p.draw(true);
-  }, Math.ceil(lines[1].at));
+  }, Math.ceil(lines[2].at) + 1);
   await expect(line).toHaveText(lines[1].say);
   await page.locator("#stripTitle").focus();
   await page.keyboard.press("Space");
-  await expect(story).toBeHidden();
-  // two more lines come due without an answer: none is passed over, they are said one after the other
-  await page.evaluate((t) => {
-    const p = window.__play;
-    while (p.session.t < t) p.session.step(1);
-    p.draw(true);
-  }, Math.ceil(lines[3].at) + 1);
   await expect(line).toHaveText(lines[2].say);
-  await ok.click();
-  await expect(line).toHaveText(lines[3].say);
   await ok.click();
   await expect(story).toBeHidden();
   // a seat handed to the computer and taken again later: of the lines that came due meanwhile only the latest is said
@@ -1053,13 +1049,89 @@ test("the mission's story: somebody speaks when the moment has come, answered wi
     const p = window.__play;
     while (p.session.t < t) p.session.step(1);
     p.draw(true);
-  }, Math.ceil(lines[5].at) + 1);
+  }, Math.ceil(lines[3].at) + 1);
   await expect(story).toBeHidden();
   await tool(page, seat, "Take over").click();
-  await expect(line).toHaveText(lines[5].say);
+  await expect(line).toHaveText(lines[3].say);
   await ok.click();
   await expect(story).toBeHidden();
-  expect(await page.evaluate((id) => [...window.__play.heardLines.get(id)].sort((a, b) => a - b), first.roles[0].role)).toEqual(lines.slice(0, 6).map((l) => l.index));
+  expect(await page.evaluate((id) => [...window.__play.heardLines.get(id)].sort((a, b) => a - b), first.roles[0].role)).toEqual(lines.slice(0, 4).map((l) => l.index));
+  expect(errors).toEqual([]);
+});
+
+test("the first shift: after the dispatcher's first lines the timetable is the player's; the dispatcher calls only when something does not go to plan", async ({ page }) => {
+  const first = LINE[0], errors = await start(page, `${PAGE}?mission=${first.id}`);
+  const seat = `#seat-${first.roles[0].role}`, stage = stageOf(page, seat), story = stage.locator(".vn-story"), line = story.locator(".vn-line");
+  // the timetable is a window on the stage, from the start: every train with its track and times
+  const sheet = page.locator(`${seat} .play-sheet`);
+  await expect(sheet.getByRole("heading", { name: "Timetable" })).toBeVisible();
+  await expect(sheet.locator("tbody tr")).toHaveCount(TIMETABLE_TRAINS);
+  await expect(sheet.locator("tbody tr").first()).toContainText(["RB 31", "Bergheim", "Talsee", "G2", "08:02", "08:03", "connection to RB 32"].join(""));
+  // the tutorial: answered line by line at its times, with the routes set as it says
+  const lines = await storyNow(page);
+  for (const l of lines) {
+    await page.evaluate((t) => {
+      const p = window.__play;
+      while (p.session.t < t) p.session.step(1);
+      p.draw(true);
+    }, Math.ceil(l.at));
+    await expect(line).toHaveText(l.say);
+    await story.getByRole("button", { name: "OK" }).click();
+    // (the routes as told, but none for RB 32 at F)
+    if (l === lines[0]) await page.evaluate(() => window.__play.act("signaller-relay", "setRoute", "A-G2"));
+    if (l === lines[2]) await page.evaluate(() => window.__play.act("signaller-relay", "setRoute", "N2-T"));
+  }
+  // RB 32 has no route at F: it stands there, and the dispatcher calls (once), the clock waiting for the answer
+  await run(page, 30);
+  await expect(line).toHaveText(/^RB 32 is standing at signal F\. Set its route into G3, please/);
+  await expect(stage.locator(".vn-name strong")).toHaveText("R. Dohle");
+  expect(await page.evaluate(() => window.__play.listening())).toBe(true);
+  await story.getByRole("button", { name: "OK" }).click();
+  await expect(story).toBeHidden();
+  await run(page, 20);
+  await expect(story).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("the stage's windows: the panel and the timetable are moved and sized with the pointer or the keys, kept for the next time, and put back", async ({ page }) => {
+  const first = LINE[0], errors = await start(page, `${PAGE}?mission=${first.id}`);
+  const seat = `#seat-${first.roles[0].role}`, panel = page.locator(`${seat} .play-sketch`), sheet = page.locator(`${seat} .play-sheet`);
+  await expect(sheet).toBeVisible();
+  const box = async (loc) => loc.boundingBox();
+  // the panel's handle with the arrow keys: up, out of the way of the stage's foot
+  await page.getByRole("button", { name: "Move the panel" }).focus();
+  await page.keyboard.press("Shift+ArrowUp");
+  await page.keyboard.press("Shift+ArrowUp");
+  const before = await box(panel);
+  // the grip in the panel's corner: dragged, the panel is larger, and so is its picture
+  const grip = page.getByRole("button", { name: "Size the panel" }), g = await box(grip);
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(g.x + g.width / 2 + 120, g.y + g.height / 2 + 80, { steps: 4 });
+  await page.mouse.up();
+  const after = await box(panel);
+  expect(after.width).toBeGreaterThan(before.width + 100);
+  expect(after.height).toBeGreaterThan(before.height + 60);
+  await expect(panel).toHaveClass(cls("placed"));
+  // the timetable's handle with the arrow keys: moved to the right
+  const handle = page.getByRole("button", { name: "Move the timetable" }), was = await box(sheet);
+  await handle.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  expect((await box(sheet)).x).toBeCloseTo(was.x + 96, 0);
+  // the places are kept: the next time the windows stand where they were left
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("arail.play.windows")));
+  expect(Object.keys(kept).sort()).toEqual(["signaller|sketch", "signaller|trains"]);
+  await page.reload();
+  await page.waitForFunction(() => window.__play?.ready);
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  await expect(panel).toHaveClass(cls("placed"));
+  expect(Math.round((await box(panel)).width)).toBe(Math.round(after.width));
+  // Home on its grip puts the panel back where the page has it
+  await page.getByRole("button", { name: "Size the panel" }).focus();
+  await page.keyboard.press("Home");
+  await expect(panel).not.toHaveClass(cls("placed"));
+  expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("arail.play.windows"))))).toEqual(["signaller|trains"]);
   expect(errors).toEqual([]);
 });
 

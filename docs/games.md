@@ -465,12 +465,22 @@ and for the heads of the other pages of the games:
   counterpart (`GAME_CAST` in `web/game/cast.js`). In a turn, what happened is read line by line
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second
   time." A mission can also tell a **story** as data (`story` in its JSON): lines somebody says at
-  a moment of a phase, as the train dispatcher who talks a beginner through *Your first shift*.
+  a moment of a phase, or `on` something that does not go to plan. In *Your first shift* the train
+  dispatcher talks a beginner through the first trains; then the timetable is theirs, and the
+  dispatcher calls only when a train stands at a signal, leaves late, goes to another track or
+  misses its connection.
   While somebody speaks in a shift, its clock waits for the answer (**OK** or **Space**), so no
   line is passed over, at any speed.
   The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,
   high-visibility vest, uniform, headset): put a picture there and name it in `PORTRAITS` to
   replace one.
+- **Windows a person places.** The game's picture (the signaller's panel) and a table it keeps in
+  view at work (the signaller's **timetable**: each train with its track, arrival, departure or
+  passing, note, where it is now and how late) stand on the stage as windows. The handle at the
+  middle of a window's upper edge moves it, the grip in its lower right corner sizes it (with the
+  pointer, or the arrow keys on them; Shift goes farther); a double-click or **Home** puts it back.
+  Where a window was left is kept in the browser (`web/game/windows.js`). On a phone the panel stays
+  where the page has it and the timetable is in the desk.
 - **A railway term can be tapped.** The terms of `web/game/glossary.js` (Zs 1, LuFV, the asset
   responsible, a qualified block, …) are marked where a question or a message names them; a tap
   shows what the term is, in a line or two, with its German word. A term shown counts as met.

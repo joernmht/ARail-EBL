@@ -2,9 +2,9 @@
  "format": "arail-mission/1",
  "id": "first-shift",
  "title": "Your first shift",
- "hook": "Nine trains, three tracks, nothing fails. Get them all through on time.",
+ "hook": "Nine trains, three tracks, nothing fails. Your timetable, your panel: get them all through on time.",
  "place": "signal-box",
- "text": "08:00 to 08:40 in the signal box of Bf Neustadt, alone and with nothing going wrong: the place to learn the panel. Choose a start signal in the picture, then its destination: the interlocking moves the points, locks the route and clears the signal. Regional trains meet at the island platform, and the intercity wants to pass the freight train. Nobody else is seated; no signal fails.",
+ "text": "08:00 to 08:40 in the signal box of Bf Neustadt, alone and with nothing going wrong: the place to learn the panel. Choose a start signal in the picture, then its destination: the interlocking moves the points, locks the route and clears the signal. The dispatcher shows you the first trains; then you work by the timetable, and the dispatcher calls only when something does not go to plan. Regional trains meet at the island platform, and the intercity wants to pass the freight train. Nobody else is seated; no signal fails.",
  "mode": "solo",
  "seed": 1,
  "roles": [
@@ -37,7 +37,7 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "Morning! Your first train is RB 31 from Bergheim, for track G2. Tap signal A, on the table or in the panel, then the route to G2. That is all a route is."
+   "say": "Morning! Your timetable shows every train with its track and times. First is RB 31 from Bergheim, for G2: tap signal A, on the table or in the panel, then the route to G2."
   },
   {
    "phase": "shift",
@@ -47,7 +47,7 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "RB 32 comes from Talsee: signal F, route to G3. The two meet at platform 2 so that passengers can change."
+   "say": "RB 32 comes from Talsee: signal F, route to G3. The two meet at platform 2 so that passengers can change: that is what the timetable's notes say."
   },
   {
    "phase": "shift",
@@ -57,47 +57,57 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "A train leaves by a route too. N2 lets RB 31 out to Talsee, P3 lets RB 32 out to Bergheim. Let them go at their time, not before."
+   "say": "A train leaves by a route too: N2 lets RB 31 out to Talsee, P3 lets RB 32 out to Bergheim. Let them go at their time in the Dep column, not before."
   },
   {
    "phase": "shift",
-   "at": 225,
+   "at": 215,
    "who": {
     "name": "R. Dohle",
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "Freight train GZ 47 is next. Take it into G3 and keep it there: the intercity is faster and passes on G1."
+   "say": "That is the whole craft. From here on the timetable is yours; mind its notes: GZ 47 waits in G3 until IC 2045 has passed on G1. I call only when something does not go to plan."
   },
   {
    "phase": "shift",
-   "at": 395,
+   "on": "held-at-entry",
    "who": {
     "name": "R. Dohle",
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "IC 2045 is coming. Signal A, route to G1, then N1 straight on to Talsee. It does not stop here."
+   "say": "{train} is standing at signal {signal}. Set its route into {track}, please: every minute it waits there, it loses."
   },
   {
    "phase": "shift",
-   "at": 560,
+   "on": "late-departure",
    "who": {
     "name": "R. Dohle",
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "The intercity is through. Now let the freight train out of G3: N3."
+   "say": "{train} should have left at {time} and is still at signal {signal}. Set its route out, please."
   },
   {
    "phase": "shift",
-   "at": 700,
+   "on": "wrong-track",
    "who": {
     "name": "R. Dohle",
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "You know the pattern now. RB 33 and RB 34 meet next, then one more freight train, then RB 35 and RB 36. All yours."
+   "say": "{train} is going to {track}; the timetable has it on {plan}. Mind the trains after it, and the passengers who change."
+  },
+  {
+   "phase": "shift",
+   "on": "connection-missed",
+   "who": {
+    "name": "R. Dohle",
+    "role": "Train dispatcher, on the line",
+    "portrait": "headset"
+   },
+   "say": "{train} has left before the passengers of {feeder} could change. A connection is worth a minute or two of waiting."
   }
  ],
  "debrief": [

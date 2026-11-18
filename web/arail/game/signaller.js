@@ -109,20 +109,20 @@ const KINDS = {
 };
 
 /**
- * The timetable (s after 08:00): when a train comes onto the panel, its planned track (`plan`), and its
- * departure (stopping trains) or its passing time (through trains, at the exit signal). Pairs of
- * regional trains meet at platform 2 for passengers to change. `level`: from which level it runs.
+ * The timetable (s after 08:00): when a train comes onto the panel, its planned track (`plan`), its
+ * arrival at the platform (`arr`, stopping trains: a minute before their departure) and its departure
+ * (stopping trains) or its passing time (through trains, at the exit signal). Pairs of regional trains meet at platform 2 for passengers to change. `level`: from which level it runs.
  */
 export const TIMETABLE = [
-  { id: "RB 31", kind: "RB", dir: 1, enter: 30, plan: "G2", dep: 180, note: "connection to RB 32" },
-  { id: "RB 32", kind: "RB", dir: -1, enter: 60, plan: "G3", dep: 210, note: "waits for RB 31" },
+  { id: "RB 31", kind: "RB", dir: 1, enter: 30, plan: "G2", arr: 120, dep: 180, note: "connection to RB 32" },
+  { id: "RB 32", kind: "RB", dir: -1, enter: 60, plan: "G3", arr: 150, dep: 210, note: "waits for RB 31" },
   { id: "GZ 47", kind: "GZ", dir: 1, enter: 230, plan: "G3", pass: 580, note: "waits in G3 for IC 2045 to pass" },
-  { id: "IC 2045", kind: "IC", dir: 1, enter: 400, plan: "G1", pass: 470 },
-  { id: "RB 33", kind: "RB", dir: 1, enter: 720, plan: "G2", dep: 870, note: "connection to RB 34" },
-  { id: "RB 34", kind: "RB", dir: -1, enter: 750, plan: "G3", dep: 900, note: "waits for RB 33" },
+  { id: "IC 2045", kind: "IC", dir: 1, enter: 400, plan: "G1", pass: 470, note: "passes GZ 47" },
+  { id: "RB 33", kind: "RB", dir: 1, enter: 720, plan: "G2", arr: 810, dep: 870, note: "connection to RB 34" },
+  { id: "RB 34", kind: "RB", dir: -1, enter: 750, plan: "G3", arr: 840, dep: 900, note: "waits for RB 33" },
   { id: "GZ 49", kind: "GZ", dir: -1, enter: 1080, plan: "G2", pass: 1215 },
-  { id: "RB 35", kind: "RB", dir: 1, enter: 1440, plan: "G2", dep: 1590, note: "connection to RB 36" },
-  { id: "RB 36", kind: "RB", dir: -1, enter: 1470, plan: "G3", dep: 1620, note: "waits for RB 35" },
+  { id: "RB 35", kind: "RB", dir: 1, enter: 1440, plan: "G2", arr: 1530, dep: 1590, note: "connection to RB 36" },
+  { id: "RB 36", kind: "RB", dir: -1, enter: 1470, plan: "G3", arr: 1560, dep: 1620, note: "waits for RB 35" },
   { id: "GZ 51", kind: "GZ", dir: 1, enter: 1500, plan: "G1", pass: 1700, level: "hard" },
 ];
 
@@ -150,6 +150,11 @@ const TEAM_DRIVE_S = 300, TEAM_WORK_S = 360;
 const NOTICE_S = 60;
 /** A late train is announced by the neighbouring station this long before its planned time on the panel (s). */
 const FORECAST_S = 120;
+/**
+ * Irregularities: a train stopped at an entry signal this long (s) is held there; one still waiting at
+ * its exit signal this long after its time leaves late.
+ */
+const HELD_S = 20, OVERDUE_S = 60;
 /**
  * How likely an exit signal fails in a shift, by the condition grade of the assets (1 very good …
  * 6 unusable): hardly below grade 2, nearly always from grade 3.5.
@@ -227,6 +232,8 @@ class Train {
     this.track = null;
     this.routes = [];
     this.zs1Until = -1;
+    /** Since when it stands at a signal at stop (s), or null. */
+    this.heldSince = null;
   }
 
   /** Where each section of its path starts (m from the start of the path). */
@@ -335,6 +342,14 @@ export class SignallerGame extends Game {
     openTrack: { label: "Open a track" },
   };
   static player = SignallerAutopilot;
+  /**
+   * What does not go to plan (`irregular`, with the texts a mission's story names): a train announced late
+   * (`train`, `min`); held at an entry signal at stop (`train`, `signal`, `track`: its planned track); still
+   * at its exit signal after its time (`train`, `signal`, `time`); sent to another track than planned
+   * (`train`, `track`, `plan`); a connecting train gone before the passengers of its feeder could change
+   * (`train`, `feeder`); a signal that has failed (`signal`).
+   */
+  static irregularities = ["came-late", "held-at-entry", "late-departure", "wrong-track", "connection-missed", "signal-failed"];
 
   /**
    * @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, late?: Record<string, number>}} [options]
@@ -573,6 +588,7 @@ export class SignallerGame extends Game {
     const t0 = this.t - dt;
     for (let i = 1; i <= n; i++) this._step(t0 + i * h, h);
     this._events();
+    this._irregularities();
     // with a maintenance dispatcher in the session, the shift goes on while the failure is theirs to end: the team
     // needs the closure, the track is to be opened after it, and a provisional repair may not hold
     const f = this.failure, pending = this.team.remote && f?.started && (f.repaired == null || f.provisional || this.team.state === "done");
@@ -743,6 +759,38 @@ export class SignallerGame extends Game {
   /** When a train was measured: departed (stopping), passed (through); while it is still here, now. */
   _measured(tr) {
     return (tr.stops ? tr.departed : tr.passed) ?? this.t;
+  }
+
+  /** What does not go to plan (static irregularities), each told once (Game.irregular). */
+  _irregularities() {
+    const by = new Map(this.trains.map((tr) => [tr.id, tr])), at = (t) => clockOf(t).slice(0, 5);
+    for (const tr of this.trains) {
+      if (tr.state === "coming" && tr.enterAt - tr.enter >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
+        this.irregular("came-late", `came-late:${tr.id}`, { train: tr.id, min: String(Math.round((tr.enterAt - tr.enter) / 60)) });
+      }
+      if (tr.state === "coming" || tr.state === "gone") continue;
+      const sig = this.nextSignal(tr), def = sig ? STATION.signals[sig] : null;
+      // stopped at a signal at stop: since when
+      const stands = tr.state === "running" && tr.v === 0 && !!sig && !this._mayPass(tr, sig);
+      if (!stands) tr.heldSince = null;
+      else tr.heldSince ??= this.t;
+      if (def?.kind === "entry" && stands && this.t - tr.heldSince >= HELD_S) this.irregular("held-at-entry", `held:${tr.id}`, { train: tr.id, signal: sig, track: tr.plan });
+      // ready to leave, or to pass, and still at the exit signal after its time
+      const ready = tr.stops ? tr.state === "dwelling" && tr.dwell >= DWELL_S : stands;
+      if (def?.kind === "exit" && ready && this.t >= tr.due + OVERDUE_S && !this._mayPass(tr, sig) && !this.holds.has(tr.id)) this.irregular("late-departure", `late:${tr.id}`, { train: tr.id, signal: sig, time: at(tr.due) });
+      // its route goes to another platform track than the timetable's
+      const track = tr.path.map((sec) => STATION.sections[sec].track).find(Boolean);
+      if (track && track !== tr.plan) this.irregular("wrong-track", `track:${tr.id}`, { train: tr.id, track, plan: tr.plan });
+    }
+    // a connecting train has left before the passengers of its feeder could change
+    for (const [a, b] of CONNECTIONS) {
+      const feeder = by.get(a), tr = by.get(b);
+      if (!feeder || tr?.departed == null) continue;
+      const same = feeder.track && tr.track && STATION.sections[TRACKS[feeder.track]].platform === STATION.sections[TRACKS[tr.track]].platform;
+      if (feeder.arrived == null || tr.departed < feeder.arrived + (same ? TRANSFER_SAME_S : TRANSFER_OTHER_S)) this.irregular("connection-missed", `connection:${b}`, { train: b, feeder: a });
+    }
+    const f = this.failure;
+    if (f?.started) this.irregular("signal-failed", `failed:${f.signal}`, { signal: f.signal });
   }
 
   /** Events of the morning: the failure, the repair team, questions. */
@@ -1044,7 +1092,8 @@ export class SignallerGame extends Game {
   /** The game for a page that does not know it (the play page): the trains, the routes, the tracks, and the moves with their fields. */
   view() {
     const st = this.state(), rep = this.report(), f = st.failure;
-    const where = (tr) => (tr.state === "coming" ? (st.t >= tr.due - 240 ? "due" : "later") : tr.state === "gone" ? "gone" : tr.state === "dwelling" ? `at ${tr.track}` : tr.next ? `to ${tr.next}, ${tr.speed} km/h` : `${tr.speed} km/h`);
+    const where = (tr) => (tr.state === "coming" ? (st.t >= tr.due - 240 ? "due" : "later") : tr.state === "gone" ? "gone" : tr.state === "dwelling" ? `at ${tr.track}`
+      : !tr.speed && tr.next ? `stands at ${tr.next}` : tr.next ? `to ${tr.next}, ${tr.speed} km/h` : `${tr.speed} km/h`);
     const can = STATION.routes.filter((r) => !this.blocked(r.id)).map((r) => ({ id: r.id, label: `${r.from} → ${r.to}` }));
     const set = st.routes.filter((r) => !r.train).map((r) => ({ id: r.id, label: `${r.from} → ${r.to}` }));
     const stopped = Object.keys(STATION.signals).filter((id) => st.signals[id].aspect === "stop" && !st.signals[id].zs1 && (st.signals[id].failed || st.trains.some((tr) => tr.next === id && tr.speed === 0)));
@@ -1062,10 +1111,16 @@ export class SignallerGame extends Game {
       ],
       tables: [
         {
-          id: "trains", title: "Trains", columns: ["Train", "From – to", "Planned", "Due", "Where", "Late"],
+          // the timetable, kept in view at work: each train with its tracks and times, its note, and where it is now
+          id: "trains", title: "Timetable", window: true, columns: ["Train", "From", "To", "Track", "Arr", "Dep", "Note", "Now", "Late"],
           rows: st.trains.map((tr) => {
-            const r = rep.find((x) => x.id === tr.id);
-            return [tr.id, tr.dir > 0 ? `${STATION.west} – ${STATION.east}` : `${STATION.east} – ${STATION.west}`, tr.track && tr.track !== tr.plan ? `${tr.plan} (${tr.track})` : tr.plan, `${tr.stops ? "dep" : "pass"} ${clockOf(tr.due).slice(0, 5)}`, where(tr), r.delay >= 1 ? `+${Math.round(r.delay)}` : "–"];
+            const r = rep.find((x) => x.id === tr.id), spec = this.trains.find((x) => x.id === tr.id);
+            return [
+              tr.id, tr.dir > 0 ? STATION.west : STATION.east, tr.dir > 0 ? STATION.east : STATION.west,
+              tr.track && tr.track !== tr.plan ? `${tr.plan} (${tr.track})` : tr.plan,
+              spec.arr != null ? clockOf(spec.arr).slice(0, 5) : "–", tr.stops ? clockOf(tr.due).slice(0, 5) : `${clockOf(tr.due).slice(0, 5)} pass`,
+              tr.note || "–", where(tr), r.delay >= 1 ? `+${Math.round(r.delay)}` : "–",
+            ];
           }),
         },
         { id: "routes", title: "Routes set", columns: ["Route", "State"], rows: st.routes.map((r) => [`${r.from} → ${r.to}`, r.train ? r.train : r.state === "locked" ? "locked" : "points moving"]), empty: "No route set." },
