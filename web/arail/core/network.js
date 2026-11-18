@@ -41,7 +41,7 @@
  * walk or drive straight (a straight walk that would cross a track is out of sight).
  * @module arail/core/network
  */
-import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylineProject, smoothstep, sub2, unit2 } from "./math.js";
+import { clamp, dist2, dot2, lerp, polylineAt, polylineLengths, polylinePoint, polylineProject, smoothstep, sub2, unit2 } from "./math.js";
 
 /**
  * @typedef {object} Edge
@@ -359,7 +359,7 @@ export class RoadNetwork {
     const pos = [], rank = [], parent = [];
     const split = (r, s, rk, p = null) => {
       const id = pos.length;
-      pos.push(p || polylineAt(r.pts, s, r.cum).point);
+      pos.push(p || polylinePoint(r.pts, s, r.cum));
       rank.push(rk);
       parent.push(id);
       r.splits.push({ s, id });
@@ -422,7 +422,7 @@ export class RoadNetwork {
         if (!ok(r)) continue;
         const pr = polylineProject(r.pts, p, r.cum);
         if (pr.distance > maxMM || (best && pr.distance >= best.distance)) continue;
-        if (clear && !clear(polylineAt(r.pts, pr.s, r.cum).point)) continue;
+        if (clear && !clear(polylinePoint(r.pts, pr.s, r.cum))) continue;
         best = { r, s: pr.s, distance: pr.distance };
       }
       return best;
@@ -819,7 +819,7 @@ export class RoadNetwork {
     const ids = [];
     for (const st of stops) {
       if (!last || st.s - last.s >= eps) {
-        const n = this._node(polylineAt(l.pts, st.s, l.cum).point, "lane");
+        const n = this._node(polylinePoint(l.pts, st.s, l.cum), "lane");
         if (last) {
           const pts = [this.nodes[last.n].pos];
           for (let i = 1; i < l.pts.length - 1; i++) if (l.cum[i] > last.s + 1e-6 && l.cum[i] < st.s - 1e-6) pts.push(l.pts[i]);
@@ -1453,7 +1453,7 @@ export class RoadNetwork {
         const r = right(dOut);
         while (k < extra.length && extra[k] <= s) k++;
         for (; k < extra.length && extra[k] < cum[i + 1]; k++) {
-          const t = extra[k], q = polylineAt(P, t, cum).point, oo = offset(t);
+          const t = extra[k], q = polylinePoint(P, t, cum), oo = offset(t);
           if (t - s < setback(i, oo) || cum[i + 1] - t < setback(i + 1, oo)) continue;
           push([q[0] + r[0] * oo, q[1] + r[1] * oo], t);
         }

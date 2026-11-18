@@ -361,7 +361,7 @@ export const WORLD = [
     files: ["web/arail/core/math.js"],
     classes: [{
       name: "math", file: "web/arail/core/math.js", kind: "module", role: "Pure functions, no state.",
-      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylineProject(pts, p)", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
+      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylinePoint(pts, s) — the point of polylineAt, without the direction", "polylineProject(pts, p)", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
     }],
     rules: [
       "Random numbers are seeded (createRng): the same seed gives the same run; simulations take streams of their own (hash of the world's seed and their name).",

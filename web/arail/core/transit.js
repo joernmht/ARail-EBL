@@ -28,7 +28,7 @@
  * `riders`, an array the town fills with the people on board).
  * @module arail/core/transit
  */
-import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
+import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
 import { driveS, joinPaths } from "./network.js";
 import { TRAM_CURVES, roundCorners } from "./curves.js";
 import { StopSignals } from "./stop-signals.js";
@@ -795,7 +795,7 @@ export class Transit {
 
   /** Part of a circuit between two arc lengths (to may exceed the length: it wraps). */
   _slice(c, from, to) {
-    const pts = [polylineAt(c.points, from, c.lengths).point];
+    const pts = [polylinePoint(c.points, from, c.lengths)];
     const L = c.length;
     for (let lap = 0; lap < 2; lap++) {
       for (let i = 0; i < c.points.length; i++) {
@@ -803,7 +803,7 @@ export class Transit {
         if (s > from && s < to) pts.push(c.points[i]);
       }
     }
-    pts.push(polylineAt(c.points, to % L || (to > from ? L : 0), c.lengths).point);
+    pts.push(polylinePoint(c.points, to % L || (to > from ? L : 0), c.lengths));
     let len = 0;
     const lengths = [0];
     for (let i = 1; i < pts.length; i++) lengths.push((len += dist2(pts[i - 1], pts[i])));
@@ -883,7 +883,7 @@ export class Transit {
   /** The line changed: put the bus on the new circuit near where it was. */
   _reattach(bus, line, before) {
     let front = null;
-    if (before?.circuit) front = polylineAt(before.circuit.points, bus.s, before.circuit.lengths).point;
+    if (before?.circuit) front = polylinePoint(before.circuit.points, bus.s, before.circuit.lengths);
     const atStop = bus.phase === "dwelling" || (bus.phase === "departing" && bus.doorsLeft > 0) ? bus.dock : null;
     const visit = atStop ? line.visits.find((v) => v.dockId === atStop.id) : null;
     bus.kind = line.vehicle;
@@ -1031,8 +1031,8 @@ export class Transit {
 
   _pose(bus, line) {
     const c = line.circuit, L = c.length;
-    const front = polylineAt(c.points, ((bus.s % L) + L) % L, c.lengths).point;
-    const rear = polylineAt(c.points, (((bus.s - this.mm(line.length)) % L) + L) % L, c.lengths).point;
+    const front = polylinePoint(c.points, ((bus.s % L) + L) % L, c.lengths);
+    const rear = polylinePoint(c.points, (((bus.s - this.mm(line.length)) % L) + L) % L, c.lengths);
     const d = sub2(front, rear);
     const j = this._nextJunction(bus, line);
     const approach = j && j.d > j.r && j.d < this.mm(APPROACH_M) ? { key: j.key, d: j.d, prio: approachPrio(j, this.world.time) } : null;
@@ -1196,7 +1196,7 @@ export class Transit {
   /** Is a vehicle's place on its line free with its front at s (no other road user on it)? */
   _clearAt(bus, line, s, users) {
     const c = line.circuit, L = c.length;
-    const front = polylineAt(c.points, ((s % L) + L) % L, c.lengths).point, rear = polylineAt(c.points, (((s - this.mm(line.length)) % L) + L) % L, c.lengths).point;
+    const front = polylinePoint(c.points, ((s % L) + L) % L, c.lengths), rear = polylinePoint(c.points, (((s - this.mm(line.length)) % L) + L) % L, c.lengths);
     const room = this.mm(line.width / 2 + 0.5), mid = [(front[0] + rear[0]) / 2, (front[1] + rear[1]) / 2];
     for (const u of around(users, mid, this.mm(line.length) / 2 + room)) {
       if (u.vehicle === bus) continue;
@@ -1210,7 +1210,7 @@ export class Transit {
     const v = line.visits[st.index], L = line.circuit.length;
     const back = Math.min(this.mm(SPAWN_M + line.length - 12), this._ahead(line, line.visits[(st.index - 1 + line.visits.length) % line.visits.length].s, v.s) * 0.8);
     const s = (((v.s - back) % L) + L) % L;
-    const front = polylineAt(line.circuit.points, s, line.circuit.lengths).point;
+    const front = polylinePoint(line.circuit.points, s, line.circuit.lengths);
     const clear = this.mm(line.length + 4);
     const users = this._users.slice();
     for (const sim of this.world.simulations || []) if (typeof sim.roadUsers === "function") users.push(...sim.roadUsers());

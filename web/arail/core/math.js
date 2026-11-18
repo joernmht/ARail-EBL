@@ -352,16 +352,41 @@ export function polylineAt(pts, s, cum = polylineLengths(pts)) {
   const total = cum[cum.length - 1];
   if (pts.length < 2) return { point: pts[0] || [0, 0], dir: [1, 0] };
   s = clamp(s, 0, total);
-  // the first point at or beyond s (the last one at most): by bisection, the lengths only grow
+  const i = segmentEnd(cum, s);
+  const seg = cum[i] - cum[i - 1] || 1;
+  const t = (s - cum[i - 1]) / seg;
+  return { point: lerp2(pts[i - 1], pts[i], t), dir: unit2(sub2(pts[i], pts[i - 1])) };
+}
+
+/**
+ * The point at arc length `s` along a polyline: `polylineAt(pts, s, cum).point`, without working out
+ * the direction (for the poses of vehicles, which need two points).
+ * @param {number[][]} pts polyline points
+ * @param {number} s arc length from the first point
+ * @param {number[]} [cum] cached result of {@link polylineLengths}
+ */
+export function polylinePoint(pts, s, cum = polylineLengths(pts)) {
+  const total = cum[cum.length - 1];
+  if (pts.length < 2) return pts[0] || [0, 0];
+  s = clamp(s, 0, total);
+  const i = segmentEnd(cum, s);
+  const seg = cum[i] - cum[i - 1] || 1;
+  const t = (s - cum[i - 1]) / seg;
+  return lerp2(pts[i - 1], pts[i], t);
+}
+
+/**
+ * The first point at or beyond arc length s (the last one at most), from 1: by bisection over the
+ * cumulative lengths, which only grow.
+ */
+function segmentEnd(cum, s) {
   let i = 1, hi = cum.length - 1;
   while (i < hi) {
     const mid = (i + hi) >> 1;
     if (cum[mid] < s) i = mid + 1;
     else hi = mid;
   }
-  const seg = cum[i] - cum[i - 1] || 1;
-  const t = (s - cum[i - 1]) / seg;
-  return { point: lerp2(pts[i - 1], pts[i], t), dir: unit2(sub2(pts[i], pts[i - 1])) };
+  return i;
 }
 
 /** Closest point on a polyline: arc length, lateral distance and signed side (+1 = left). */

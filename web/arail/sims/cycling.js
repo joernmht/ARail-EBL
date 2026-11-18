@@ -24,7 +24,7 @@
  * @module arail/sims/cycling
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, dot2, polylineAt, rectBetween, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, dot2, polylineAt, polylinePoint, rectBetween, sub2, unit2 } from "../core/math.js";
 import { CD, OVERLAY, grey, mix, moodColor } from "../core/colors.js";
 import { APPROACH_M, approachPrio, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, squeezing, waitFor } from "../core/transit.js";
 import { Person, Population } from "../core/people.js";
@@ -259,8 +259,8 @@ export class CyclingSimulation extends Simulation {
 
   _pose(rider) {
     const L = rider.line, R = RIDERS[rider.kind];
-    const front = polylineAt(L.points, rider.s, L.lengths).point;
-    const rear = polylineAt(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths).point;
+    const front = polylinePoint(L.points, rider.s, L.lengths);
+    const rear = polylinePoint(L.points, Math.max(0, rider.s - this.mm(R.length_m)), L.lengths);
     const d = sub2(front, rear);
     const dir = Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : polylineAt(L.points, rider.s, L.lengths).dir;
     const j = junctionAhead(rider.junctions, rider.s);
