@@ -132,8 +132,8 @@ export class Track extends LayoutObject {
         for (const quad of quads) {
           const img = view.projectAll(quad);
           if (!img) continue;
+          // no closePath(): fill() closes each sleeper itself (see fillPolygons in road.js)
           img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-          ctx.closePath();
         }
         ctx.fillStyle = view.dim(view.tone(SLEEPER.color));
         ctx.fill();

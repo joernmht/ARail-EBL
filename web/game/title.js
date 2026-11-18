@@ -65,7 +65,7 @@ export function withLang(href, loc = location) {
  * the shell instead of the title screen. The script in index.html decides with the same list
  * (tests/js/game-title.test.js checks it).
  */
-export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock"];
+export const SHELL_KEYS = ["layout", "layers", "example", "photo", "image", "camera", "scenario", "feed", "mock", "worker"];
 
 /** The pages the main menu opens, which Continue may open again. */
 export const PAGES = ["play/", "signaller/", "career/", "roles/", "logbook/"];

@@ -212,7 +212,7 @@ export default function register(arail) {
 | `view.prism(footprint, z0, z1, colors)` | a vertical prism, shaded and back-face culled (`colors`: `side`, `top`, `alpha`, `outline`) |
 | `view.faces(faces, ref, style)` | any set of 3D faces (`{pts, normal, color, alpha, twoSided, emissive, decals}`) as one solid |
 | `view.label([x, y, z], text, style)` | a sign or text anchored at a layout point; labels avoid overlapping each other (placed in `order`; a later one moves up, or with `optional: true` is left out, with `fit: true` left out where it finds no room). Where the picture is crowded (it would overlap one, or the labels so far cover `LABEL_SHARE`, a tenth, of the picture) a label with `compact: {text, style}` takes that form, as stop boards become badges, and optional labels are left out |
-| `view.glow([x, y, z], radiusMM, colour, strength)` | a soft light (lamp, headlight), drawn only at night |
+| `view.glow([x, y, z], radiusMM, colour, strength)` | a soft light (lamp, headlight), drawn only at night; a glow near the camera, larger than a quarter of the picture's diagonal, fades out and is gone at half of it (else a lamp passed by the flyover's camera would turn the whole picture white) |
 | `view.lightPool([x, y], radiusMM, colour, strength)` | light falling on the ground (under a street lamp), only at night |
 | `view.ground(order, fn)`, `view.solid(depth, fn)`, `view.overlay(fn)` | custom drawing with the canvas context: `fn(ctx, view)` |
 

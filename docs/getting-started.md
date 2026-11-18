@@ -21,6 +21,8 @@ The app wears the corporate design of the Chair of Railway Operations (TU Dresde
 | **Record video** | Records a video with the phone's camera app and plays it in a loop. |
 | **Open file** | A photo or video from the device. |
 
+The markers of the live camera and of a video are found in a worker beside the page, so the app goes on drawing and simulating while a frame is searched; each new frame of the video is searched once. The picture shown is the frame searched last, with the pose found in it, so the layout and the picture always fit together (the picture is a moment behind the camera). Where the browser cannot run the worker, the markers are found on the page itself, as with `?worker=0`.
+
 The stage itself walks round the lab from photo to photo: the [photo tour](#the-photo-tour). The examples with a clip, a case or a layout of their own are in **Settings → View → Layouts** (on the game page in the list **Layouts…** of the top bar).
 
 ### The photo tour
@@ -356,6 +358,7 @@ Parameters can be combined, e.g. `app/?layout=../layouts/ebl-lab.json&scenario=c
 | `photo=<id>` | the app: a photo of the [photo tour](#the-photo-tour) by its id (the time it was taken, `hhmmss`, as on the photo map), with the layout of its digital layer |
 | `image=<url>` | load this image instead of the layout's example image |
 | `camera=1` | start the live camera |
+| `worker=0` | find the markers of the live camera and of videos on the page's main thread instead of in a worker (for comparison; see [Image sources](#image-sources)) |
 | `feed=<ws url>` | connect to a bridge, e.g. `ws://localhost:8765/feed` |
 | `mock=1` | start the simulated control system |
 | `lang=de`, `lang=en` | the app in German or English for this link (e.g. the projector), without changing the choice of the device |

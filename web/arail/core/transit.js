@@ -28,7 +28,7 @@
  * `riders`, an array the town fills with the people on board).
  * @module arail/core/transit
  */
-import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
+import { clamp, createRng, cross2, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2, unit2 } from "./math.js";
 import { driveS, joinPaths } from "./network.js";
 import { TRAM_CURVES, roundCorners } from "./curves.js";
 import { StopSignals } from "./stop-signals.js";
@@ -132,6 +132,17 @@ export function boxFaces(rear, front, width, z0, z1, colours, decorate = null) {
   return faces;
 }
 
+/** Grid cells per direction (either side of 0) that get a number as their key (beyond: a string). */
+const CELL_SPAN = 1 << 20;
+
+/**
+ * The key of a grid cell (integer cell coordinates): a number (cheaper to make and look up than a
+ * string) for any layout, "x,y" for cells beyond `CELL_SPAN` and NaN or infinite coordinates.
+ */
+function cellKey(x, y) {
+  return x >= -CELL_SPAN && x < CELL_SPAN && y >= -CELL_SPAN && y < CELL_SPAN ? (x + CELL_SPAN) * 2 * CELL_SPAN + (y + CELL_SPAN) : `${x},${y}`;
+}
+
 /**
  * Road users (vehicles: {vehicle, front, rear, dir, approach}) in a grid, for the neighbours of a
  * point without looking at every vehicle.
@@ -155,7 +166,7 @@ export class RoadUsers {
   }
 
   _key(p) {
-    return `${Math.floor(p[0] / this.cell)},${Math.floor(p[1] / this.cell)}`;
+    return cellKey(Math.floor(p[0] / this.cell), Math.floor(p[1] / this.cell));
   }
 
   _add(key, u) {
@@ -172,7 +183,9 @@ export class RoadUsers {
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > this.cells.size) return this.list;
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
-        for (const u of this.cells.get(`${x},${y}`) || []) {
+        const c = this.cells.get(cellKey(x, y));
+        if (!c) continue;
+        for (const u of c) {
           if (u._query === q) continue;
           u._query = q;
           out.push(u);
@@ -206,31 +219,55 @@ export function gapAhead(self, front, dir, users, lookMM, laneMM, skip = null) {
 /** The nearest road user ahead in a vehicle's lane: {gap (mm, or Infinity), user (or null)}; see gapAhead. */
 export function leaderAhead(self, front, dir, users, lookMM, laneMM, skip = null) {
   let best = Infinity, who = null;
+  // (the vector products written out: the same sums as sub2, dot2 and cross2, without an array for each)
+  const fx = front[0], fy = front[1], ux = dir[0], uy = dir[1];
   for (const o of around(users, front, lookMM + laneMM)) {
     if (o.vehicle === self || o.vehicle.owner === self || skip?.has(o.vehicle)) continue;
     // traffic lights at tram stops hold everybody but trams (at amber those who can still stop)
     if (o.vehicle.obeys && !o.vehicle.obeys(self, front)) continue;
-    const d = sub2(o.rear, front);
-    const along = dot2(d, dir);
-    if (along < -laneMM && best > 0 && dot2(o.dir, dir) >= 0.3) {
+    const dx = o.rear[0] - fx, dy = o.rear[1] - fy;
+    const along = dx * ux + dy * uy;
+    if (along < -laneMM && best > 0 && o.dir[0] * ux + o.dir[1] * uy >= 0.3) {
       // side by side in the lane (e.g. both turned into it at a junction): the one behind waits;
       // "behind" along both directions, so that two vehicles in different directions do not both wait
-      const f = sub2(o.front, front);
-      if (dot2(f, [dir[0] + o.dir[0], dir[1] + o.dir[1]]) > 0 && Math.abs(cross2(dir, f)) <= laneMM) {
+      const gx = o.front[0] - fx, gy = o.front[1] - fy;
+      if (gx * (ux + o.dir[0]) + gy * (uy + o.dir[1]) > 0 && Math.abs(ux * gy - uy * gx) <= laneMM) {
         best = 0;
         who = o;
       }
       continue;
     }
     if (along < -laneMM || along > lookMM || along >= best) continue;
-    if (Math.abs(cross2(dir, d)) > laneMM) continue;
-    if (dot2(o.dir, dir) < 0.3) continue;
+    if (Math.abs(ux * dy - uy * dx) > laneMM) continue;
+    if (o.dir[0] * ux + o.dir[1] * uy < 0.3) continue;
     // level with or behind this one (two vehicles on one spot would wait for each other for good)
-    if (along <= 0 && dot2(sub2(o.front, front), dir) <= 0) continue;
+    if (along <= 0 && (o.front[0] - fx) * ux + (o.front[1] - fy) * uy <= 0) continue;
     best = Math.max(0, along);
     who = o;
   }
   return { gap: best, user: who };
+}
+
+/** Where the last search of a list of junctions ended: list -> {s, i} (see `junctionAhead`). */
+const junctionSearch = new WeakMap();
+
+/**
+ * The junction on a vehicle's way that it is in or about to enter: the first of its `junctions`
+ * (`junctionsAlong`, in the order of the way) whose far side is beyond `s`, i.e.
+ * `junctions.find((x) => x.s + x.r > s)`. The search goes on from where the last one ended for
+ * the list: a vehicle only moves forward along it, so the junctions before that are behind it.
+ * @param {Array<{s: number, r: number}>} junctions
+ * @param {number} s the vehicle's arc length on its driving line (mm)
+ */
+export function junctionAhead(junctions, s) {
+  const last = junctionSearch.get(junctions);
+  let i = last && s >= last.s ? last.i : 0;
+  while (i < junctions.length && !(junctions[i].s + junctions[i].r > s)) i++;
+  if (last) {
+    last.s = s;
+    last.i = i;
+  } else junctionSearch.set(junctions, { s, i });
+  return junctions[i];
 }
 
 /** How long (s) vehicles stand in a circle of vehicles that wait for each other before they squeeze past. */
@@ -293,10 +330,11 @@ export function squeezing(self) {
  * @param {number} [prio] the vehicle's own priority (1: none)
  */
 export function mustYield(self, j, d, users, prio = 1) {
+  const jx = j.pos[0], jy = j.pos[1], r = j.r;
   for (const u of around(users, j.pos, Math.max(j.r, APPROACH_MM_MAX))) {
     if (u.vehicle === self) continue;
-    const mid = [(u.front[0] + u.rear[0]) / 2, (u.front[1] + u.rear[1]) / 2];
-    if (dist2(u.front, j.pos) < j.r || dist2(u.rear, j.pos) < j.r || dist2(mid, j.pos) < j.r) {
+    if (within(u.front[0] - jx, u.front[1] - jy, r) || within(u.rear[0] - jx, u.rear[1] - jy, r)
+      || within((u.front[0] + u.rear[0]) / 2 - jx, (u.front[1] + u.rear[1]) / 2 - jy, r)) {
       if (u.vehicle.phase === "block") continue;
       return true;
     }
@@ -307,6 +345,16 @@ export function mustYield(self, j, d, users, prio = 1) {
     if (p === prio && (a.d < d || (a.d === d && firstOf(u.vehicle, self)))) return true;
   }
   return false;
+}
+
+/**
+ * Is the point (dx, dy) from a centre closer to it than r: `dist2 < r`, with the same Math.hypot.
+ * Most are far: hypot is never less than the larger of |dx| and |dy|, so those need no hypot (NaN
+ * passes on to hypot, which gives NaN, as before).
+ */
+function within(dx, dy, r) {
+  if (Math.abs(dx) >= r || Math.abs(dy) >= r) return false;
+  return Math.hypot(dx, dy) < r;
 }
 
 /** Who goes first of two road users as close to a junction: trams, buses, cars, bikes, then the one that came first. */
@@ -747,7 +795,7 @@ export class Transit {
 
   /** Part of a circuit between two arc lengths (to may exceed the length: it wraps). */
   _slice(c, from, to) {
-    const pts = [polylineAt(c.points, from, c.lengths).point];
+    const pts = [polylinePoint(c.points, from, c.lengths)];
     const L = c.length;
     for (let lap = 0; lap < 2; lap++) {
       for (let i = 0; i < c.points.length; i++) {
@@ -755,7 +803,7 @@ export class Transit {
         if (s > from && s < to) pts.push(c.points[i]);
       }
     }
-    pts.push(polylineAt(c.points, to % L || (to > from ? L : 0), c.lengths).point);
+    pts.push(polylinePoint(c.points, to % L || (to > from ? L : 0), c.lengths));
     let len = 0;
     const lengths = [0];
     for (let i = 1; i < pts.length; i++) lengths.push((len += dist2(pts[i - 1], pts[i])));
@@ -835,7 +883,7 @@ export class Transit {
   /** The line changed: put the bus on the new circuit near where it was. */
   _reattach(bus, line, before) {
     let front = null;
-    if (before?.circuit) front = polylineAt(before.circuit.points, bus.s, before.circuit.lengths).point;
+    if (before?.circuit) front = polylinePoint(before.circuit.points, bus.s, before.circuit.lengths);
     const atStop = bus.phase === "dwelling" || (bus.phase === "departing" && bus.doorsLeft > 0) ? bus.dock : null;
     const visit = atStop ? line.visits.find((v) => v.dockId === atStop.id) : null;
     bus.kind = line.vehicle;
@@ -983,12 +1031,14 @@ export class Transit {
 
   _pose(bus, line) {
     const c = line.circuit, L = c.length;
-    const front = polylineAt(c.points, ((bus.s % L) + L) % L, c.lengths).point;
-    const rear = polylineAt(c.points, (((bus.s - this.mm(line.length)) % L) + L) % L, c.lengths).point;
+    const front = polylinePoint(c.points, ((bus.s % L) + L) % L, c.lengths);
+    const rear = polylinePoint(c.points, (((bus.s - this.mm(line.length)) % L) + L) % L, c.lengths);
     const d = sub2(front, rear);
     const j = this._nextJunction(bus, line);
     const approach = j && j.d > j.r && j.d < this.mm(APPROACH_M) ? { key: j.key, d: j.d, prio: approachPrio(j, this.world.time) } : null;
-    const pose = { vehicle: bus, front, rear, dir: Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : [1, 0], speed: bus.v, approach };
+    // (unit2(d), with the length worked out once)
+    const l = Math.hypot(d[0], d[1]);
+    const pose = { vehicle: bus, front, rear, dir: l > 1e-6 ? [d[0] / l, d[1] / l] : [1, 0], speed: bus.v, approach };
     bus._pose = pose;
     return pose;
   }
@@ -1148,7 +1198,7 @@ export class Transit {
   /** Is a vehicle's place on its line free with its front at s (no other road user on it)? */
   _clearAt(bus, line, s, users) {
     const c = line.circuit, L = c.length;
-    const front = polylineAt(c.points, ((s % L) + L) % L, c.lengths).point, rear = polylineAt(c.points, (((s - this.mm(line.length)) % L) + L) % L, c.lengths).point;
+    const front = polylinePoint(c.points, ((s % L) + L) % L, c.lengths), rear = polylinePoint(c.points, (((s - this.mm(line.length)) % L) + L) % L, c.lengths);
     const room = this.mm(line.width / 2 + 0.5), mid = [(front[0] + rear[0]) / 2, (front[1] + rear[1]) / 2];
     for (const u of around(users, mid, this.mm(line.length) / 2 + room)) {
       if (u.vehicle === bus) continue;
@@ -1162,7 +1212,7 @@ export class Transit {
     const v = line.visits[st.index], L = line.circuit.length;
     const back = Math.min(this.mm(SPAWN_M + line.length - 12), this._ahead(line, line.visits[(st.index - 1 + line.visits.length) % line.visits.length].s, v.s) * 0.8);
     const s = (((v.s - back) % L) + L) % L;
-    const front = polylineAt(line.circuit.points, s, line.circuit.lengths).point;
+    const front = polylinePoint(line.circuit.points, s, line.circuit.lengths);
     const clear = this.mm(line.length + 4);
     const users = this._users.slice();
     for (const sim of this.world.simulations || []) if (typeof sim.roadUsers === "function") users.push(...sim.roadUsers());

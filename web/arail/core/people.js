@@ -88,6 +88,15 @@ export const LANGUAGES = [
 ];
 const WEIGHT = LANGUAGES.reduce((s, l) => s + l.weight, 0);
 
+/** FNV-1a of a text, as `hashKey` (math.js) hashes the joined parts, going on from `h`; not yet `>>> 0`. */
+function fnv(text, h = 2166136261) {
+  for (const c of text) {
+    h ^= c.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return h;
+}
+
 /** The language for a hash (by weight). */
 function languageOf(h) {
   let r = h % WEIGHT;
@@ -100,6 +109,7 @@ function languageOf(h) {
 
 /** The particle before the family name with its space ("van "), or "" (by the per cent of the language). */
 function particleOf(lang, h) {
+  if (!lang.particles) return "";
   let r = h % 100;
   for (const [word, share] of Object.entries(lang.particles ?? {})) {
     if (r < share) return `${word} `;
@@ -164,12 +174,16 @@ export class Population {
   /** A free name for the key: {name, given, family, lang}, two different birds of one language. */
   name(key) {
     const k = [this.seed, this.scope, ...[key].flat()];
-    const lang = languageOf(hashKey(...k, "lang")), birds = lang.birds;
+    // hashKey(...k, x, y) goes on from the hash of the key's part (FNV-1a is char by char): that
+    // part once, then only what comes after it (a crowded language needs many tries)
+    const head = fnv(`${k.join("|")}|`);
+    const lang = languageOf(fnv("lang", head) >>> 0), birds = lang.birds;
     let out;
     for (let i = 0; i < 50; i++) {
-      const f = hashKey(...k, i, "f") % birds.length;
-      const l = (f + 1 + (hashKey(...k, i, "l") % (birds.length - 1))) % birds.length;
-      const given = birds[f], family = `${particleOf(lang, hashKey(...k, i, "p"))}${birds[l]}`;
+      const at = fnv(`${i}|`, head);
+      const f = (fnv("f", at) >>> 0) % birds.length;
+      const l = (f + 1 + ((fnv("l", at) >>> 0) % (birds.length - 1))) % birds.length;
+      const given = birds[f], family = `${particleOf(lang, fnv("p", at) >>> 0)}${birds[l]}`;
       out = { name: `${given[0]}. ${family}`, given, family, lang: lang.lang };
       if (!this.names.has(out.name)) break;
     }

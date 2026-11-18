@@ -93,6 +93,6 @@ Keys: **S** settings, **H** numbers, **F** full screen, **C** the town's picture
 | `web/live/live.js` | the page: sources, the worker, the frame loop, the three canvases of the stage, the numbers, settings and keys |
 | `web/live/scene.js` | the reduced layout and registry, the buildings that may hide a car and their cut-outs, the demo's visitor (testable in Node) |
 | `web/live/cache.js` | the town's picture: its size, the fit, the horizon, the CSS matrix (testable in Node) |
-| `web/live/detect-worker.js` | marker detection in a module worker |
+| `web/live/detect-worker.js` | marker detection in a module worker (the app uses it, too, for its live camera and clips: `web/app/detection.js`) |
 
 `World.draw(view, {objects, moving})` draws a part of the world: the live page draws the town with `moving: false` and what moves with `objects: []`. Tests: `tests/js/live.test.js` (the reduction, the fit of a turning and a moving camera, the horizon, the CSS matrix, the cut-outs, the visitor, the parts of `World.draw`) and `tests/e2e/live.spec.js` (the demo, drawing in every frame, settings and keys, markers found in the worker). The architecture page has the page as the model *ARail Live*.

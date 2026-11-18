@@ -192,6 +192,157 @@ function cellsToBits(cells, n) {
   return bits;
 }
 
+/* ---------------------------------------------------------------- binary image and contours */
+
+// The grey image, the adaptive threshold and the contours exactly as js-aruco2's cv.js computes
+// them (CV.grayscale, CV.adaptiveThreshold with kernel 2 and threshold 7, CV.binaryBorder,
+// CV.findContours), ported to typed arrays that are kept from frame to frame: cv.js works on plain
+// arrays and makes an object for every point of every contour, which made these steps most of the
+// time of a frame. The results are the same to the bit (tests/js/detector.test.js compares them).
+// Ported from js-aruco2 (MIT, (c) 2011 Juan Mellado, (c) 2020 Damiano Falcioni; THIRD_PARTY_NOTICES.md).
+
+/** Box blur radius and the threshold of js-aruco2's adaptive threshold (`CV.adaptiveThreshold(grey, thres, 2, 7)`). */
+const BLUR_KERNEL = 2, THRESHOLD = 7;
+/** js-aruco2's stack blur divides by the box size as a multiplication and a shift (CV.stackBoxBlurMult/-Shift). */
+const BLUR_MULT = 205, BLUR_SHIFT = 10;
+/** The eight neighbours of a pixel, counter-clockwise from the right (CV.neighborhood). */
+const NEIGHBOUR_X = [1, 1, 0, -1, -1, -1, 0, 1], NEIGHBOUR_Y = [0, -1, -1, -1, 0, 1, 1, 1];
+
+/**
+ * Grey values of an RGBA image (BT.601 weights, rounded as CV.grayscale).
+ * @param {{width: number, height: number, data: Uint8ClampedArray}} image
+ * @param {Uint8Array} out at least width × height values
+ * @returns {Uint8Array} out
+ */
+export function greyscale(image, out) {
+  const src = image.data, n = image.width * image.height;
+  for (let i = 0, j = 0; j < n; i += 4, j++) out[j] = (src[i] * 0.299 + src[i + 1] * 0.587 + src[i + 2] * 0.114 + 0.5) & 0xff;
+  return out;
+}
+
+/**
+ * Adaptive threshold of a grey image as CV.adaptiveThreshold(grey, thres, 2, 7) and CV.binaryBorder
+ * compute it: 1 where a pixel is darker by at least 7 than the mean of the 5 × 5 pixels around it
+ * (the box clamped at the image's edges, rounded per pass as js-aruco2's stack blur), else 0; written
+ * with a border of 0 one pixel wide, (width + 2) × (height + 2) values, row by row.
+ * @param {Uint8Array} grey width × height grey values
+ * @param {number} width at least 3
+ * @param {number} height at least 3
+ * @param {Int32Array} out (width + 2) × (height + 2) values
+ * @param {{rows?: Uint8Array, sums?: Int32Array}} [scratch] buffers kept between calls
+ * @returns {Int32Array} out
+ */
+export function thresholdBordered(grey, width, height, out, scratch = {}) {
+  const r = BLUR_KERNEL, wm = width - 1, hm = height - 1, stride = width + 2;
+  // horizontal pass: each row's box sums, rounded like the stack blur's first pass
+  const rows = scratch.rows?.length >= width * height ? scratch.rows : (scratch.rows = new Uint8Array(width * height));
+  for (let y = 0; y < height; y++) {
+    const o = y * width;
+    let sum = (r + 1) * grey[o];
+    for (let i = 1; i <= r; i++) sum += grey[o + i];
+    for (let x = 0; x < width; x++) {
+      rows[o + x] = (sum * BLUR_MULT) >>> BLUR_SHIFT;
+      sum += grey[o + Math.min(x + r + 1, wm)] - grey[o + Math.max(x - r, 0)];
+    }
+  }
+  // vertical pass over the rows with a running sum per column, then the threshold
+  const sums = scratch.sums?.length >= width ? scratch.sums : (scratch.sums = new Int32Array(width));
+  for (let x = 0; x < width; x++) {
+    let s = (r + 1) * rows[x];
+    for (let i = 1; i <= r; i++) s += rows[i * width + x];
+    sums[x] = s;
+  }
+  // the border: the first and last rows and, below, the first and last value of every row
+  out.fill(0, 0, stride);
+  out.fill(0, (height + 1) * stride, (height + 2) * stride);
+  for (let y = 0; y < height; y++) {
+    const o = y * width, d = (y + 1) * stride + 1;
+    out[d - 1] = out[d + width] = 0;
+    const add = Math.min(y + r + 1, hm) * width, sub = Math.max(y - r, 0) * width;
+    for (let x = 0; x < width; x++) {
+      const mean = (sums[x] * BLUR_MULT) >>> BLUR_SHIFT;
+      out[d + x] = grey[o + x] - mean <= -THRESHOLD ? 1 : 0;
+      sums[x] += rows[add + x] - rows[sub + x];
+    }
+  }
+  return out;
+}
+
+/**
+ * The contours of a bordered binary image as CV.findContours finds them (Suzuki's border following;
+ * the image is marked as it is followed), the same contours in the same order, but only those of at
+ * least `minLength` points are returned: js-aruco2's `findCandidates` drops the others anyway.
+ * @param {Int32Array} src (width + 2) × (height + 2) values of 0 and 1 (see thresholdBordered); changed
+ * @param {number} width
+ * @param {number} height
+ * @param {number} minLength
+ * @param {{points?: Int32Array}} [scratch] buffers kept between calls
+ * @returns {{x: number, y: number}[][]} contours (each with `hole`), as js-aruco2's contours
+ */
+export function traceContours(src, width, height, minLength, scratch = {}) {
+  const stride = width + 2, contours = [];
+  const deltas = new Int32Array(16);
+  for (let i = 0; i < 16; i++) deltas[i] = NEIGHBOUR_X[i & 7] + NEIGHBOUR_Y[i & 7] * stride;
+  let points = scratch.points || (scratch.points = new Int32Array(4096));
+  let n = 0; // points of the contour followed (x, y pairs)
+  const push = (x, y) => {
+    if (2 * n + 2 > points.length) {
+      const more = new Int32Array(points.length * 2);
+      more.set(points);
+      points = scratch.points = more;
+    }
+    points[2 * n] = x;
+    points[2 * n + 1] = y;
+    n++;
+  };
+  let nbd = 1;
+  for (let i = 0, pos = stride + 1; i < height; i++, pos += 2) {
+    for (let j = 0; j < width; j++, pos++) {
+      const pix = src[pos];
+      if (pix === 0) continue;
+      let hole = false;
+      if (pix === 1 && src[pos - 1] === 0) hole = false;
+      else if (pix >= 1 && src[pos + 1] === 0) hole = true;
+      else continue;
+      nbd++;
+      // follow the border (CV.borderFollowing)
+      n = 0;
+      let x = j, y = i, s = hole ? 0 : 4, sEnd = s, pos1 = pos;
+      do {
+        s = (s - 1) & 7;
+        pos1 = pos + deltas[s];
+        if (src[pos1] !== 0) break;
+      } while (s !== sEnd);
+      if (s === sEnd) {
+        src[pos] = -nbd;
+        push(x, y);
+      } else {
+        let pos3 = pos, pos4;
+        for (;;) {
+          sEnd = s;
+          do pos4 = pos3 + deltas[++s];
+          while (src[pos4] === 0);
+          s &= 7;
+          if ((s - 1) >>> 0 < sEnd >>> 0) src[pos3] = -nbd;
+          else if (src[pos3] === 1) src[pos3] = nbd;
+          push(x, y);
+          x += NEIGHBOUR_X[s];
+          y += NEIGHBOUR_Y[s];
+          if (pos4 === pos && pos3 === pos1) break;
+          pos3 = pos4;
+          s = (s + 4) & 7;
+        }
+      }
+      if (n < minLength) continue;
+      const contour = new Array(n);
+      for (let k = 0; k < n; k++) contour[k] = { x: points[2 * k], y: points[2 * k + 1] };
+      contour.hole = hole;
+      contours.push(contour);
+    }
+  }
+  return contours;
+}
+
 /* ---------------------------------------------------------------- detector */
 
 /** Number of codes of the default configuration: fewer codes accept no more chance matches than these. */
@@ -421,6 +572,28 @@ export class MarkerDetector {
   }
 
   /**
+   * The grey image of a frame and its contours that are long enough to be candidates, in buffers
+   * kept for the next frame of the same size (see greyscale, thresholdBordered, traceContours). An
+   * image smaller than 3 × 3 goes through js-aruco2's own functions.
+   * @param {{width: number, height: number, data: Uint8ClampedArray}} imageData RGBA image
+   * @returns {{g: Uint8Array | number[], w: number, h: number, contours: {x: number, y: number}[][]}}
+   */
+  _contours(imageData) {
+    const { width: w, height: h } = imageData, minLength = w * 0.01;
+    if (w < 3 || h < 3) {
+      const { CV, det } = this;
+      CV.grayscale(imageData, det.grey);
+      CV.adaptiveThreshold(det.grey, det.thres, BLUR_KERNEL, THRESHOLD);
+      return { g: det.grey.data, w, h, contours: CV.findContours(det.thres, det.binary).filter((c) => c.length >= minLength) };
+    }
+    let b = this._buffers;
+    if (!b || b.w !== w || b.h !== h) b = this._buffers = { w, h, grey: new Uint8Array(w * h), binary: new Int32Array((w + 2) * (h + 2)) };
+    const g = greyscale(imageData, b.grey);
+    thresholdBordered(g, w, h, b.binary, b);
+    return { g, w, h, contours: traceContours(b.binary, w, h, minLength, b) };
+  }
+
+  /**
    * Detect markers.
    * @param {{width: number, height: number, data: Uint8ClampedArray}} imageData RGBA image
    * @param {number} [scale=1] factor from `imageData` pixels to output pixels
@@ -443,15 +616,12 @@ export class MarkerDetector {
    *   and rolling-stock tags (two ID namespaces): ID -> four corners (TL, TR, BR, BL) in output pixels
    */
   detectAll(imageData, scale = 1) {
-    const { CV, det, rolling } = this;
-    CV.grayscale(imageData, det.grey);
-    CV.adaptiveThreshold(det.grey, det.thres, 2, 7);
-    det.contours = CV.findContours(det.thres, det.binary);
-    const g = det.grey.data, w = det.grey.width, h = det.grey.height;
+    const { det, rolling } = this;
+    const { g, w, h, contours } = this._contours(imageData);
     // js-aruco2's notTooNear() would drop the smaller of two nearby outlines. For small markers
     // the outline of the white paper border lies within a few pixels of the black square, so the
     // real marker would be dropped; instead all candidates are decoded and duplicates removed by ID.
-    const raw = det.clockwiseCorners(det.findCandidates(det.contours, imageData.width * 0.01, 0.05, 10));
+    const raw = det.clockwiseCorners(det.findCandidates(contours, imageData.width * 0.01, 0.05, 10));
     // the rolling family never votes: its tags must not make it the layout's dictionary
     const voters = this.selected ? [this.selected] : rolling ? this.dictionaries.filter((d) => d.name !== rolling.name) : this.dictionaries;
     const sizes = [...new Set((rolling ? [...voters, rolling] : voters).map((d) => d.cells))];

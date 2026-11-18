@@ -16,7 +16,7 @@ import { EventBus } from "./events.js";
 import { normalizeLayout, LAYOUT_FORMAT } from "./layout.js";
 import { composeLayout, decomposeLayout, withLayers } from "./layers.js";
 import { MarkerMap } from "./tracker.js";
-import { UnknownObject } from "./object.js";
+import { LayoutObject, UnknownObject } from "./object.js";
 import { ServiceManager } from "./services.js";
 import { DisruptionManager } from "./disruptions.js";
 import { ScenarioPlayer } from "./scenarios.js";
@@ -345,6 +345,8 @@ export class World {
     // sub-steps keep the crowd model stable at high time-lapse factors
     const n = Math.max(1, Math.ceil(dt / 0.25));
     dt /= n;
+    // most objects do nothing in `update` (LayoutObject's): only the others are called
+    const idle = LayoutObject.prototype.update;
     for (let i = 0; i < n; i++) {
       this.time += dt;
       if (this.clock.advance(dt)) this.events.emit("clock.day", { day: this.clock.day });
@@ -353,7 +355,7 @@ export class World {
       this.disruptions.step();
       this.services.step(dt);
       this.transit.step(dt);
-      for (const o of this.objects) o.update(dt);
+      for (const o of this.objects) if (o.update !== idle) o.update(dt);
       for (const s of this.simulations) s.step(dt);
     }
   }

@@ -83,7 +83,7 @@ export const WORLD = [
           ["a6", "action", "Disruptions that expire", "DisruptionManager.step"],
           ["a7", "action", "Timetable trains and buses at the docks", "ServiceManager.step"],
           ["a8", "action", "Line buses: dispatch, drive, stop", "Transit.step"],
-          ["a9", "action", "Object animations", "LayoutObject.update"],
+          ["a9", "action", "Object animations (the objects with an update of their own)", "LayoutObject.update"],
           ["a10", "action", "The simulations, in the order of the layout (base, then the modules on)", "Simulation.step"],
           ["e", "end"],
         ],
@@ -361,7 +361,7 @@ export const WORLD = [
     files: ["web/arail/core/math.js"],
     classes: [{
       name: "math", file: "web/arail/core/math.js", kind: "module", role: "Pure functions, no state.",
-      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylineProject(pts, p)", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
+      operations: ["solve(A, b) — a linear system", "homography4(src, dst) — exact from four points", "homographyLS(src, dst) — normalised least squares (DLT)", "applyH(H, p)", "poseApply(pose, p)", "polygonArea(poly)", "pointInPolygon(p, poly)", "polylineAt(pts, s)", "polylinePoint(pts, s) — the point of polylineAt, without the direction", "polylineProject(pts, p)", "createRng(seed) — seeded random numbers: uniform, int, pick, chance, normal, truncNormal, poisson, weighted", "normalCdf(x) — Φ (Abramowitz and Stegun 26.2.17)", "normalQuantile(p) — the inverse of Φ (Acklam)", "hashKey(...parts)"],
     }],
     rules: [
       "Random numbers are seeded (createRng): the same seed gives the same run; simulations take streams of their own (hash of the world's seed and their name).",
@@ -478,7 +478,7 @@ export const WORLD = [
       {
         name: "View", file: "web/arail/core/view.js", kind: "class", role: "Projection and display list of one frame.",
         attributes: ["ctx: CanvasRenderingContext2D", "camera: Camera", "H: number[] — layout → image", "night: number | null — 0 day … 1 night", "weather: object | null — the weather's look (Weather.look): snow cover, wet ground, the season's leaves", "virtual: boolean — the flyover", "items: object[] — the display list", "translate: Function | null — the texts of labels in the language shown", "labels: boolean — false: label() draws nothing (the game's backdrop: a picture that is only a picture; signs of the world stay)", "lift: Function | null — the height added to every point drawn (core/elevation.js)", "pulse: number | null — the beat of highlights that pulse (0 … 1, from the app's clock in real time); null: steady (less motion, Node)", "placed: object[] — the rectangles of the labels so far (and of the app's HUD); area: what the labels cover", "LABEL_SHARE — 0.1: the share of the picture the labels may cover before it is crowded"],
-        operations: ["project(x, y, z)", "cam(x, y, z) — camera coordinates, lifted", "depth(x, y, z)", "withLift(lift, draw) — draw with another lift", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength)", "label(at, text, style) — nothing without labels; placed so labels do not overlap; where crowded the compact form, optional ones left out; a badge in its colour (badgeColor, badgeText)", "dim(colour, amount)", "tone(colour, share) — a ground colour under snow and in the wet", "render()"],
+        operations: ["project(x, y, z)", "cam(x, y, z) — camera coordinates, lifted", "depth(x, y, z)", "withLift(lift, draw) — draw with another lift", "add(layer, key, draw)", "polygon(points, style)", "plate(center, heading, length, width, style) — a flat plate with a text, e.g. a marker cover", "line(points, style)", "prism(footprint, z0, z1, colors)", "glow(at, radiusMM, colour, strength) — at night; fades out near the camera (GLOW_FADE: from a quarter to half of the picture's diagonal)", "label(at, text, style) — nothing without labels; placed so labels do not overlap; where crowded the compact form, optional ones left out; a badge in its colour (badgeColor, badgeText)", "dim(colour, amount)", "tone(colour, share) — a ground colour under snow and in the wet", "render()"],
       },
       { name: "SimpleView", file: "web/arail/core/simple.js", kind: "class", extends: "View", role: "Map and 2.5D: flat footprints, plain blocks, always day.", operations: ["block(footprint, z0, z1, colour)"] },
       { name: "colors", file: "web/arail/core/colors.js", kind: "module", role: "The corporate-design colours.", attributes: ["CD — the colours of the corporate design", "OVERLAY — colours over the camera image (task: Gelb, what a task asks to be done)", "FONT"], operations: ["mix(a, b, t, alpha)", "shade(c, factor, alpha)", "moodColor(m, alpha, k)"] },

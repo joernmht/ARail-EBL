@@ -558,6 +558,8 @@ The widths, gradients and rules come from these German guidelines and laws:
   People do not cross tracks on their own (`crossesBarrier(a, b)`): only on streets and footpaths
   over them. Where the streets do not connect start and goal, the whole walk is out of sight
   (`offstage`); without any streets it is straight (`straightWalk`), out of sight only over a track.
+  `walkLength(from, to, {fromKey, toKey})` is the length of such a walk alone, kept by the network
+  (the town weighs the walks to every stop before it walks one).
   The town, the journeys and the crews of the operations walk this way.
 - Objects take part through methods: `roadInfo()` (a street: points, width, cross-section, speed,
   offsets, `deadEnds`: its first and last point dead ends or not), `entrances()` (doors of a building), `stopAreas()`, `busLane()` (a lane for buses),

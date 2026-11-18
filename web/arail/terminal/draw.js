@@ -1267,11 +1267,11 @@ function fillQuads(view, quads, colour, order) {
   }
   if (!imgs.length) return;
   const draw = (ctx) => {
+    // no closePath(): fill() closes each quad itself (see fillPolygons in objects/road.js)
     ctx.beginPath();
     for (const img of imgs) {
       ctx.moveTo(img[0][0], img[0][1]);
       for (let i = 1; i < img.length; i++) ctx.lineTo(img[i][0], img[i][1]);
-      ctx.closePath();
     }
     ctx.fillStyle = view.dim(colour);
     ctx.fill();

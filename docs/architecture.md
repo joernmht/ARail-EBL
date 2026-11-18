@@ -17,6 +17,8 @@ The app has two modes. Over the **camera image** the markers in each frame give 
 <sub>Diagram source: [architecture-01.mmd](diagrams/architecture-01.mmd)</sub>
 <!-- /cro-diagram -->
 
+With the live camera or a clip, the `MarkerDetector` of the diagram runs in a worker (`app/detection.js`, `VideoDetection`, with the live page's `live/detect-worker.js`): each new frame of the video goes to the worker once, as a bitmap (`createImageBitmap`) that the worker reads at the processing size (an `OffscreenCanvas`), while the page goes on stepping the world and drawing; the markers come back a frame or two later, together with that bitmap, which the stage then shows, so the picture and the pose drawn over it stay together. A browser whose worker cannot read bitmaps gets the frame's pixels, read on the page. One frame is in the worker at a time. Until the worker is ready, where the browser has none, and with `?worker=0` the frame is searched on the main thread, in the frame loop. A still photo is searched once on the main thread (`redetect`).
+
 The editor works in both modes through `app.pose()` and `app.eventToLayout()` (a pointer event → a point on the layout, on a raised table module or a bridge where one is: `surfacePoint`), so placing, selecting and dragging are the same on the camera image and in the flyover. Tooltips and info cards (`app/inspect.js`) use the view of the last frame drawn: `World.pick` projects the box of every person and vehicle and finds what is at the pixel, else a layout object (`core/pick.js`).
 
 With rolling-stock markers (`markers.rolling`, model wagons of the [container terminal](container-terminal.md)) the camera mode reads a second marker family in the same pass:
@@ -39,7 +41,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `core/math.js` | vectors, 2D poses, linear solver, homographies (exact and normalised least squares), polygons, polylines, seeded RNG |
 | `core/geometry.js` | marker geometry without calibration: relative marker pose, focal length from a homography, camera pose of the plane, the camera centre and the homography of a plane above the layout |
 | `core/camera.js` | pinhole camera with estimated, manual or calibrated intrinsics and OpenCV lens distortion |
-| `core/detector.js` | marker detection on top of js-aruco2: sub-pixel corners, centre-of-cell bit sampling, error correction per code count, dictionary voting; the rolling-stock family in the same pass (`detectAll`) |
+| `core/detector.js` | marker detection on top of js-aruco2: its grey image, threshold and contours on typed arrays, sub-pixel corners, centre-of-cell bit sampling, error correction per code count, dictionary voting; the rolling-stock family in the same pass (`detectAll`) |
 | `core/tracker.js` | `MarkerMap` (marker poses in the layout frame; locked and moving markers) and `PlaneTracker` (survey, pose, smoothing, hold, moving markers, rolling-stock tags lifted to their height) |
 | `core/flycam.js` | the flyover's virtual orbit camera: homography and pose for the `View`, orbit, pan, zoom, twist, fit, plan view; grid lines and snapping |
 | `core/world.js` | the loaded layout: objects, simulations, services, bus lines, disruptions, scenarios, trains, the clock; `step` and `draw` |
@@ -124,6 +126,7 @@ The tags are lifted with the smoothed pose of the same frame, after `update`, so
 | `app/flyover.js` | the flyover: virtual camera, input, background, orthophoto, grid, markers; an example's flyover starts where the photo's camera stands (`FlyCamera.fromPose`); the stage's view button, going through the camera image, the flyover, its map and its 2.5D view (`cycleView`) |
 | `app/tour.js`, `app/tour-nav.js` | the photo tour of the app: the photo map's photos in parts of the table round the ring, at most one per perspective (front, back, the four diagonals), the next part on either side (`PhotoTour`, testable in Node); on the stage the perspective button (each click the part's next side round the table, `ROUND`) and the arrows, the keys ← and →, opening a photo with the layout of its digital layer or as the photo only, and while an example runs only the photos of its task (`TourNav`) |
 | `app/survey.js` | Build → Marker map → Survey a video |
+| `app/detection.js` | the markers of the live camera and of clips (`VideoDetection`): each new frame of the video once (`requestVideoFrameCallback`), in the live page's worker (`live/detect-worker.js`) while the page draws and simulates, sent as a bitmap and read there, the frame searched shown with its markers; on the main thread until the worker is ready, where there is none, or with `?worker=0` |
 | `builder/*` | the builder, a street and layout editor beside the app ([The builder](world-builder.md)): the plan from above (`plan.js`), snapping and placing at streets (`place.js`), undo (`history.js`), a file changed only where it was edited (`json-text.js`), commits through GitHub's API (`github.js`) |
 | `plan/*` (in `web/arail`), `web/plan/` | plan documents ([Plan documents](plan-documents.md)): the infrastructure as [rail-infra/1](rail-infra-format.md) data, the exchange format shared with the EBL's digital twin (`infra.js`: a layout as such data, the checks), one plan sheet as SVG at a standard scale with frame, title block and legend (`drawing.js`), DXF for CAD (`dxf.js`); the page that prints them and saves SVG, DXF and data (`plan.js`) |
 | `live/*` | ARail Live ([Live AR on XR glasses](live-ar.md)), a page of its own for XR glasses and phones: the layout reduced to its town and road traffic (`scene.js`), the town drawn once and fitted to the camera (`cache.js`), markers found in a worker (`detect-worker.js`), the page with its numbers (`live.js`) |
@@ -194,7 +197,7 @@ Measured accuracy (automated tests, synthetic H0 scene with known camera, 960×5
 
 ## Marker detection
 
-js-aruco2 finds candidate quadrilaterals (adaptive threshold, contours). ARail then
+js-aruco2 finds candidate quadrilaterals (adaptive threshold, contours). The grey image, the adaptive threshold and the contours are computed as js-aruco2's `cv.js` computes them, to the bit, but on typed arrays kept from frame to frame (`greyscale`, `thresholdBordered`, `traceContours`): `cv.js` works on plain arrays and makes an object for every point of every contour, and these steps took most of a frame's time; only the contours long enough to be candidates are kept. On the clips and photos of the lab a frame is searched in about half the time, with the same markers (`tests/js/detector.test.js` compares the steps with js-aruco2's on random images and a frame). ARail then
 
 1. keeps all candidates. js-aruco2 would drop the smaller of two nearby outlines, but for small markers the outline of the white paper border lies within a few pixels of the black square, so the marker itself would be dropped;
 2. refines the corners to sub-pixel accuracy by fitting lines to grey-value edges;
@@ -256,7 +259,9 @@ The `View` projects layout points with the camera pose and queues drawing operat
 | Suite | Checks |
 | --- | --- |
 | `tests/js/math.test.js` | linear algebra, homographies, poses, polygons, RNG, marker geometry, focal length, camera distortion |
-| `tests/js/detector.test.js` | js-aruco2 vs OpenCV (IDs, corner order, printable bits) for 7 dictionaries; markers on the real lab photo; error correction with fewer codes; best match per ID |
+| `tests/js/detector.test.js` | js-aruco2 vs OpenCV (IDs, corner order, printable bits) for 7 dictionaries; markers on the real lab photo; error correction with fewer codes; best match per ID; grey image, threshold and contours the same as js-aruco2's on random images and a frame |
+| `tests/js/detection.test.js` | the app's markers of videos (`VideoDetection`, with a stand-in worker): each new frame once, in the worker or on the main thread; the frame shown with its markers; nothing of another source or of a detector set up otherwise applied; a dictionary voted for in the worker; a worker that fails or never answers; an old frame after a pause; bitmaps that failed stay off |
+| `tests/js/shortcuts.test.js` | the simulation's shortcuts against the plain way they replace, to the bit: the junction ahead searched on from where it ended, `polylineAt`/`polylinePoint` by bisection (repeated points too), the walk lengths the road network keeps, a path's offsets per run of edges |
 | `tests/js/tracker.test.js` | survey from an empty map along a synthetic camera path with occlusions; accuracy thresholds above; locked maps, moving markers, detector codes; how often the survey writes into the map |
 | `tests/js/world.test.js` | example layouts (also the lab town and the container terminal), round trips, passengers, disruptions, scenarios, control-system feed, plugins, locked and moving markers in layout files |
 | `tests/js/smoke.test.js` | every example layout through the morning rush (05:30–09:30): trains and buses come, passengers wait, board and get off, the town gets to work, the terminal finishes moves, the occupancy adds up, nothing turns into NaN |

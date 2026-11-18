@@ -37,9 +37,9 @@
  * @module arail/sims/traffic
  */
 import { Simulation } from "../core/simulation.js";
-import { createRng, dist2, dot2, pointSegment, polylineAt, polylineProject, rectBetween, sub2, unit2 } from "../core/math.js";
+import { createRng, dist2, dot2, pointSegment, polylineAt, polylinePoint, polylineProject, rectBetween, sub2 } from "../core/math.js";
 import { CD, grey, mix, shade } from "../core/colors.js";
-import { APPROACH_M, approachPrio, boxFaces, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, roomAfter, squeezing, waitFor } from "../core/transit.js";
+import { APPROACH_M, approachPrio, boxFaces, junctionAhead, junctionPatience, leaderAhead, lightAt, mustYield, RoadUsers, roomAfter, squeezing, waitFor } from "../core/transit.js";
 import { hiddenAt, joinPaths } from "../core/network.js";
 import { Person, Population } from "../core/people.js";
 import { carLegTime, drawProfile, mobilityOf, walkingSpeed } from "../core/mobility.js";
@@ -81,6 +81,9 @@ const EUR_PER_MIN = 0.2; // what a minute is worth to a driver (12 € an hour):
 const PASS_AFTER_S = 2; // a car behind a bike waits this long before it looks for a chance to overtake
 const ONCOMING_M = 60; // overtaking needs the other lane free this far ahead (m)
 const SHIFT_MS = 1.2; // how fast a car moves over to the other lane and back (m/s)
+
+/** Kilometres of street for cars per network: {scale, km} (see `targetCount`). */
+const STREET_KM = new WeakMap();
 
 function hash(...parts) {
   let h = 2166136261;
@@ -231,9 +234,14 @@ export class TrafficSimulation extends Simulation {
   /** Cars wanted now: density × street length × demand at this time of day. */
   targetCount(net = networkOf(this.world)) {
     if (!net) return 0;
-    let km = 0;
-    for (const e of net.edges) if (e.kind === "road" && e.car) km += this.meters(e.length) / 1000;
-    return Math.round((+this.config.cars_per_km || 0) * km * this.world.clock.demand("car"));
+    // the streets' length, summed once per network and scale (the network does not change once built)
+    let known = STREET_KM.get(net);
+    if (!known || known.scale !== this.world.scale) {
+      let km = 0;
+      for (const e of net.edges) if (e.kind === "road" && e.car) km += this.meters(e.length) / 1000;
+      STREET_KM.set(net, (known = { scale: this.world.scale, km }));
+    }
+    return Math.round((+this.config.cars_per_km || 0) * known.km * this.world.clock.demand("car"));
   }
 
   /** Front, rear and direction of every car (for gaps; transit reads them for its buses). */
@@ -248,10 +256,12 @@ export class TrafficSimulation extends Simulation {
 
   _pose(car) {
     const p = car.path;
-    let front = polylineAt(p.points, car.s, p.lengths).point;
-    let rear = polylineAt(p.points, Math.max(0, car.s - this.mm(LENGTH_M)), p.lengths).point;
+    let front = polylinePoint(p.points, car.s, p.lengths);
+    let rear = polylinePoint(p.points, Math.max(0, car.s - this.mm(LENGTH_M)), p.lengths);
     const d = sub2(front, rear);
-    const dir = Math.hypot(d[0], d[1]) > 1e-6 ? unit2(d) : polylineAt(p.points, car.s, p.lengths).dir;
+    // (unit2(d), with the length worked out once)
+    const l = Math.hypot(d[0], d[1]);
+    const dir = l > 1e-6 ? [d[0] / l, d[1] / l] : polylineAt(p.points, car.s, p.lengths).dir;
     // overtaking a bike: on the other lane for a while
     if (car.shift) {
       const n = [-dir[1] * car.shift, dir[0] * car.shift];
@@ -259,7 +269,7 @@ export class TrafficSimulation extends Simulation {
       rear = [rear[0] + n[0], rear[1] + n[1]];
     }
     // the junction it is about to enter (others give way to the first, or to a green light)
-    const j = car.junctions.find((x) => x.s + x.r > car.s);
+    const j = junctionAhead(car.junctions, car.s);
     const approach = j && car.s < j.s - j.r && j.s - car.s < this.mm(APPROACH_M) ? { key: j.key, d: j.s - car.s, prio: approachPrio(j, this.world.time) } : null;
     const pose = { vehicle: car, front, rear, dir, speed: car.v, approach };
     car._pose = pose;
@@ -386,6 +396,8 @@ export class TrafficSimulation extends Simulation {
   _fill(net, n) {
     const anywhere = net.nodes.filter((x) => x.carDegree >= 1);
     const ends = net.boundaryNodes();
+    // the poses of the cars there are (they stand still while the streets fill)
+    const poses = this.cars.map((c) => this._pose(c));
     for (let k = 0, tries = 0; k < n && tries < n * 6; tries++) {
       const from = this.rng.pick(ends.length > 1 ? ends : anywhere), to = this.rng.pick(ends.length > 1 ? ends : anywhere);
       if (!from || !to || from === to) continue;
@@ -396,10 +408,11 @@ export class TrafficSimulation extends Simulation {
       car.s = this.rng.uniform(this.mm(LENGTH_M), car.path.length - this.mm(LENGTH_M));
       const pose = this._pose(car);
       const clear = this.mm(LENGTH_M + 8);
-      const others = this.cars.map((c) => this._pose(c)).concat(this.world.transit?.roadUsers?.() || []);
+      const others = poses.concat(this.world.transit?.roadUsers?.() || []);
       if (others.some((q) => dist2(q.front, pose.front) < clear || dist2(q.rear, pose.front) < clear || dist2(q.front, pose.rear) < clear || dist2(midpoint(q), pose.front) < clear)) continue;
       car.v = (car.path.speeds[0] || 8) * 0.7;
       this.cars.push(car);
+      poses.push(this._pose(car));
       k++;
     }
   }
@@ -708,7 +721,7 @@ export class TrafficSimulation extends Simulation {
       stopAt = Math.min(stopAt, Math.max(0, mm));
     };
     const now = this.world.time;
-    const j = car.junctions.find((x) => x.s + x.r > car.s);
+    const j = junctionAhead(car.junctions, car.s);
     if (j) {
       const line = j.s - j.r - this.mm(1) - car.s, dStop = this.meters(line);
       const light = lightAt(j, now), prio = approachPrio(j, now);
@@ -765,7 +778,7 @@ export class TrafficSimulation extends Simulation {
     const at = net.edgeAt(car.route, this._centreS(car));
     const e = at?.edge;
     if (!e || e.carDir || (e.lanes ?? 1) > 1 || e.laneOffset <= 0) return false;
-    const j = car.junctions.find((x) => x.s + x.r > car.s);
+    const j = junctionAhead(car.junctions, car.s);
     if (j && j.s - car.s < this.mm(30)) return false;
     const back = this.meters(lead.gap) + LENGTH_M + 12 + (Math.max(car.v, 5) * this.meters(this._passShift(car))) / SHIFT_MS + 10;
     for (const sig of this.world.transit?.signals?.list() || []) {

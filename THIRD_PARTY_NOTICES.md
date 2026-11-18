@@ -7,6 +7,7 @@ ARail-EBL includes or uses the following third-party components.
 | Component | Where | License |
 | --- | --- | --- |
 | [js-aruco2](https://github.com/damianofalcioni/js-aruco2) 2.0.0 (`cv.js`, `aruco.js`), Copyright (c) 2020 Damiano Falcioni, (c) 2011 Juan Mellado | `web/vendor/js-aruco2/` | MIT |
+| Ports of js-aruco2's `CV.grayscale`, `CV.adaptiveThreshold` (with `CV.stackBoxBlur` and `CV.binaryBorder`) and `CV.findContours` (with `CV.borderFollowing`) to typed arrays, Copyright (c) 2011 Juan Mellado, (c) 2020 Damiano Falcioni | `web/arail/core/detector.js` (`greyscale`, `thresholdBordered`, `traceContours`) | MIT |
 | ArUco 4x4–7x7 dictionaries (extracted from OpenCV by js-aruco2), Copyright (C) 2013, OpenCV Foundation | `web/vendor/js-aruco2/dictionaries/aruco_*` | BSD-3-Clause |
 | AprilTag 36h11 dictionary, Copyright (C) 2013-2016, The Regents of The University of Michigan | `web/vendor/js-aruco2/dictionaries/apriltag_36h11.js` | BSD-2-Clause |
 | [dagre](https://github.com/dagrejs/dagre) 3.1.1 (`dist/dagre.esm.js`, which includes [graphlib](https://github.com/dagrejs/graphlib) 4.0.5), Copyright (c) 2012-2014 Chris Pettitt; lays out the diagrams of the architecture page | `web/vendor/dagre/` | MIT |

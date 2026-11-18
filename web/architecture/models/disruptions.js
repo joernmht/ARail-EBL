@@ -12,7 +12,7 @@ export const DISRUPTIONS = [
       {
         name: "DisruptionManager", file: "web/arail/core/disruptions.js", kind: "class", role: "The disruptions running, and their effects per stop area.",
         attributes: ["world: World", "active: object[] — {id, type, def, target, params, started, until}"],
-        operations: ["start(spec) — {type, target, params, duration, id}", "stop(id)", "step() — stops those that expired", "effectsFor(area, dock) — the merged effects at a stop area, or at one of its tracks", "reset()", "draw(view) — hatching, a blinking sign at each stop (a quiet one only with a message)"],
+        operations: ["start(spec) — {type, target, params, duration, id}", "stop(id)", "step() — stops those that expired", "effectsFor(area, dock) — the merged effects at a stop area, or at one of its tracks (kept for the step; while none is active, one shared object of no effects)", "reset()", "draw(view) — hatching, a blinking sign at each stop (a quiet one only with a message)"],
       },
       {
         name: "disruptions", file: "web/arail/core/disruptions.js", kind: "module", role: "The built-in types and where a disruption applies.",
