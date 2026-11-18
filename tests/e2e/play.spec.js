@@ -1135,6 +1135,31 @@ test("the stage's windows: the panel and the timetable are moved and sized with 
   expect(errors).toEqual([]);
 });
 
+test("a window kept on a larger screen: drawn inside the stage, and moved and sized from where it is drawn", async ({ page }) => {
+  const first = LINE[0], errors = await open(page, `${PAGE}?mission=${first.id}`);
+  const seat = `#seat-${first.roles[0].role}`, panel = page.locator(`${seat} .play-sketch`);
+  // kept far to the right of a wider stage than this one
+  await page.evaluate(() => localStorage.setItem("arail.play.windows", JSON.stringify({ "signaller|sketch": { x: 1900, y: 20, w: 420, h: 260 } })));
+  await page.reload();
+  await page.waitForFunction(() => window.__play?.ready);
+  await page.locator("#start").click();
+  await page.waitForFunction(() => window.__play.session);
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(panel).toHaveClass(cls("placed"));
+  const stage = await page.locator(`${seat} .vn-stage`).boundingBox(), drawn = await panel.boundingBox();
+  expect(Math.round(drawn.x + drawn.width)).toBe(Math.round(stage.x + stage.width));
+  expect(Math.round(drawn.width)).toBe(420);
+  // a step to the left moves it a step from where it is drawn (not from the place kept)
+  await page.getByRole("button", { name: "Move the panel" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  expect((await panel.boundingBox()).x).toBeCloseTo(drawn.x - 24, 0);
+  // a step narrower makes it a step narrower (not as narrow as a window may be)
+  await page.getByRole("button", { name: "Size the panel" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  expect((await panel.boundingBox()).width).toBeCloseTo(420 - 24, 0);
+  expect(errors).toEqual([]);
+});
+
 test("a railway term in a text can be tapped: what it is, with its German word; a term shown counts as met", async ({ page }) => {
   const errors = await open(page, `${PAGE}?mission=budget-years`);
   expect(await kept(page)).toBeNull();

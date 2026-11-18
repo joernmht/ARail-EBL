@@ -662,7 +662,10 @@ export const GAMES = [
     }, {
       name: "Windows", file: "web/game/windows.js", kind: "class", role: "The windows of the play page's stage that a person places and sizes (the game's picture, the timetable): a handle to move and a grip to size each, with the pointer or the arrow keys; where each was left is kept in the browser.",
       attributes: ["WINDOWS_KEY — arail.play.windows", "WINDOW_STEP_PX — 24: an arrow key's step", "WINDOW_MIN_W — 240", "WINDOW_MIN_H — 120", "WINDOW_LAYERS — 500: the highest layer of a window, below the band of who speaks", "places: object — by key, x, y, w, h in px of the stage", "els: Map — the windows framed", "top: number — the layer of the window in front"],
-      operations: ["frame(el, key, name) — make an element a window, at its place if one is kept", "stageOf(el)", "apply(el) — at its place, inside the stage; else where the page has it", "fit() — every window at its place again", "rect(el)", "raise(el)", "place(el, mode, from, dx, dy) — moved or sized", "drag(e, el, mode)", "key(e, el, mode) — the arrow keys; Home puts it back", "reset(el)", "keep()"],
+      operations: ["frame(el, key, name) — make an element a window, at its place if one is kept", "stageOf(el)", "apply(el) — at its place, inside the stage; else where the page has it", "fit() — every window at its place again", "rect(el)", "shown(el) — where it is drawn now: its kept place as it fits the stage, else where the page has it; a move or a size starts from here", "raise(el)", "place(el, mode, from, dx, dy) — moved or sized", "drag(e, el, mode)", "key(e, el, mode) — the arrow keys; Home puts it back", "reset(el)", "keep()"],
+    }, {
+      name: "windows", file: "web/game/windows.js", kind: "module", role: "Where a window fits a stage.",
+      operations: ["inside(place, W, H) — a place as it fits a stage of W × H px: no larger, and inside it"],
     }, {
       name: "play", file: "web/game/play/play.js", kind: "module", role: "Texts for times, values and a flow's payload; SVG elements for a sketch.",
       operations: ["clockOf(start, t)", "valueText(v, deep)", "payloadLine(payload, most) — a payload in one line", "s(tag, attrs, ...children) — an SVG element", "textWidth(text, small)"],

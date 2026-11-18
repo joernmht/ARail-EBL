@@ -17,6 +17,12 @@ export const WINDOW_LAYERS = 500;
 /** A number of px kept between `lo` and `hi` (when `hi` is below `lo`, `lo`). */
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 
+/** A place as it fits a stage of `W` × `H` px: no larger than the stage, and inside it. */
+export function inside(place, W, H) {
+  const w = clamp(place.w, WINDOW_MIN_W, W), h = clamp(place.h, WINDOW_MIN_H, H);
+  return { x: clamp(place.x, 0, W - w), y: clamp(place.y, 0, H - h), w, h };
+}
+
 export class Windows {
   /**
    * @param {{get: (key: string, fallback: any) => any, set: (key: string, value: any) => void}} storage where the places are kept (ui.js)
@@ -80,8 +86,17 @@ export class Windows {
     // (a stage not laid out, hidden: the window is placed when it is shown, not before with no size and place)
     if (!W || !H) return;
     el.classList.add("placed");
-    const w = clamp(place.w, WINDOW_MIN_W, W), hh = clamp(place.h, WINDOW_MIN_H, H);
-    Object.assign(el.style, { left: `${clamp(place.x, 0, W - w)}px`, top: `${clamp(place.y, 0, H - hh)}px`, width: `${w}px`, height: `${hh}px` });
+    const at = inside(place, W, H);
+    Object.assign(el.style, { left: `${at.x}px`, top: `${at.y}px`, width: `${at.w}px`, height: `${at.h}px` });
+  }
+
+  /**
+   * Where a window is drawn now, in px of its stage: its kept place as it fits the stage (kept on a larger
+   * screen, it is drawn smaller or nearer), else where the page has it. A move or a size starts from here.
+   */
+  shown(el) {
+    const place = this.places[el.dataset.win], stage = this.stageOf(el);
+    return place && stage?.clientWidth && stage.clientHeight ? inside(place, stage.clientWidth, stage.clientHeight) : this.rect(el);
   }
 
   /** Put every window at its place again (the screen has changed its size). */
@@ -121,7 +136,7 @@ export class Windows {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    const from = this.places[el.dataset.win] ?? this.rect(el), x0 = e.clientX, y0 = e.clientY, target = e.currentTarget;
+    const from = this.shown(el), x0 = e.clientX, y0 = e.clientY, target = e.currentTarget;
     this.raise(el);
     el.classList.add("dragging");
     target.setPointerCapture?.(e.pointerId);
@@ -151,7 +166,7 @@ export class Windows {
     e.preventDefault();
     e.stopPropagation();
     const by = WINDOW_STEP_PX * (e.shiftKey ? 4 : 1);
-    this.place(el, mode, this.places[el.dataset.win] ?? this.rect(el), step[0] * by, step[1] * by);
+    this.place(el, mode, this.shown(el), step[0] * by, step[1] * by);
     this.keep();
   }
 
