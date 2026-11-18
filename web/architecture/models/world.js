@@ -83,7 +83,7 @@ export const WORLD = [
           ["a6", "action", "Disruptions that expire", "DisruptionManager.step"],
           ["a7", "action", "Timetable trains and buses at the docks", "ServiceManager.step"],
           ["a8", "action", "Line buses: dispatch, drive, stop", "Transit.step"],
-          ["a9", "action", "Object animations", "LayoutObject.update"],
+          ["a9", "action", "Object animations (the objects with an update of their own)", "LayoutObject.update"],
           ["a10", "action", "The simulations, in the order of the layout (base, then the modules on)", "Simulation.step"],
           ["e", "end"],
         ],
