@@ -148,23 +148,35 @@ const hm = (h, m = 0) => h * 60 + m;
 class Agent extends Person {
   constructor(spec) {
     super(spec);
+    // (what the loop over all agents in `TownSimulation.step` reads in every step comes first: next
+    // to each other in memory)
+    /** "inside" | "walking" | "stop" (with the passenger simulation) | "riding" | "driving" (by car, not drawn) | "away" */
+    this.state = "inside";
+    this.planDay = -1;
+    /** The trip being recorded from door to door (`_newRecord`), or null (undefined before the first). */
+    this.record = undefined;
+    /** Today's plan: [{at: minutes, purpose, to: {kind: "building", id} | {kind: "home"} | {kind: "station"} | {kind: "shop"}}]. */
+    this.plan = [];
+    this.next = 0;
+    /**
+     * The step of the plan due next (`plan[next]`) and its time, as they were for this plan and
+     * index (see `TownSimulation._due`): plans are not changed once made, but for a step put in.
+     */
+    this._dueFor = null;
+    this._dueIndex = -1;
+    this._dueStep = undefined;
+    this._dueAt = undefined;
+    /** Current trip: {legs, leg, purpose, dest} */
+    this.trip = null;
     this.job = null;
     this.school = null;
     /** Visitors: the shop they come to. */
     this.shop = null;
     /** Visitors: what brings them ("work", "school", "shopping"); commuters: what takes them away ("work", "school"). */
     this.visit = null;
-    /** Today's plan: [{at: minutes, purpose, to: {kind: "building", id} | {kind: "home"} | {kind: "station"} | {kind: "shop"}}]. */
-    this.plan = [];
-    this.planDay = -1;
-    this.next = 0;
-    /** "inside" | "walking" | "stop" (with the passenger simulation) | "riding" | "driving" (by car, not drawn) | "away" */
-    this.state = "inside";
     /** Building id while inside, else null. */
     this.inside = null;
     this.purpose = "home";
-    /** Current trip: {legs, leg, purpose, dest} */
-    this.trip = null;
     this.pos = null;
     this.path = null;
     this.s = 0;
@@ -182,8 +194,6 @@ class Agent extends Person {
     this.trainFrom = null;
     // set later (undefined until then); declared here so that all agents have the same shape, which
     // keeps the loop over them in `step` fast
-    /** The trip being recorded from door to door (`_newRecord`), or null. */
-    this.record = undefined;
     /** Simulated time before which the agent stays where it arrived. */
     this.stayUntil = undefined;
     /** Today by car on the long ways (`_makePlan`). */
@@ -195,14 +205,6 @@ class Agent extends Person {
     /** Mood 0..1 after somebody got in the way (`annoy`), and when that was. */
     this.mood = undefined;
     this.annoyed = undefined;
-    /**
-     * The step of the plan due next (`plan[next]`) and its time, as they were for this plan and
-     * index (see `TownSimulation._due`): plans are not changed once made, but for a step put in.
-     */
-    this._dueFor = null;
-    this._dueIndex = -1;
-    this._dueStep = undefined;
-    this._dueAt = undefined;
   }
 
   /** The home building ({building, entrance}), null for people who live beyond the layout. */
