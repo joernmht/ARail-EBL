@@ -207,6 +207,9 @@ export function wrapMinutes(m) {
   return ((m % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
 }
 
+/** The last value `Clock.demand` worked out of a profile: points -> {minutes, value}. */
+const LAST_DEMAND = new WeakMap();
+
 /** Interpolated value of a profile ([hour, factor] points) at a time of day (minutes). */
 export function profileAt(points, minutes) {
   const h = wrapMinutes(minutes) / 60;
@@ -368,7 +371,13 @@ export class Clock {
    */
   demand(kind) {
     if (!this.profiles || !PROFILES[kind]) return 1;
-    return profileAt(this.profile(kind), this.minutes);
+    // asked for again and again in a step (every stop, line and timetable): the last value of each
+    // profile is kept for the time it was worked out for
+    const points = this.profile(kind), m = this.minutes, last = LAST_DEMAND.get(points);
+    if (last && last.minutes === m) return last.value;
+    const value = profileAt(points, m);
+    LAST_DEMAND.set(points, { minutes: m, value });
+    return value;
   }
 
   /**

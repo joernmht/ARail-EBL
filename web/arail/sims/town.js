@@ -195,6 +195,14 @@ class Agent extends Person {
     /** Mood 0..1 after somebody got in the way (`annoy`), and when that was. */
     this.mood = undefined;
     this.annoyed = undefined;
+    /**
+     * The step of the plan due next (`plan[next]`) and its time, as they were for this plan and
+     * index (see `TownSimulation._due`): plans are not changed once made, but for a step put in.
+     */
+    this._dueFor = null;
+    this._dueIndex = -1;
+    this._dueStep = undefined;
+    this._dueAt = undefined;
   }
 
   /** The home building ({building, entrance}), null for people who live beyond the layout. */
@@ -1308,6 +1316,7 @@ export class TownSimulation extends Simulation {
         if (shopId) {
           a.purpose = "shopping";
           a.plan.splice(a.next, 0, { at: now + 25, purpose: "home", to: { kind: "home" } });
+          a._dueFor = null; // the plan changed (see `_due`)
           destId = shopId;
         }
       }
@@ -1352,12 +1361,15 @@ export class TownSimulation extends Simulation {
     }
     this._lastMinutes = now;
     this._lastDay = clock.day;
+    const day = clock.day;
     for (const a of this.agents) {
-      this._ensurePlan(a);
+      if (a.planDay !== day) this._ensurePlan(a);
       if (a.record) this._tally(a, dt);
       if (a.state === "inside" || (a.state === "away" && !a.trip)) {
-        const step = a.plan[a.next];
-        if (!step || step.at > now) continue;
+        // most wait for the next step of their plan: its time is kept on the agent (see `_due`)
+        if (a._dueFor !== a.plan || a._dueIndex !== a.next) this._due(a);
+        const step = a._dueStep;
+        if (!step || a._dueAt > now) continue;
         if (a.state === "away") {
           // away agents come (back) by train (see _trainArrivals); other steps wait for that
           if (step.to.kind === "station") a.next++;
@@ -1389,6 +1401,19 @@ export class TownSimulation extends Simulation {
       this._check = 0;
       this._sanity();
     }
+  }
+
+  /**
+   * Keep the step of an agent's plan due next (`plan[next]`) and its time on the agent, for this plan
+   * and index: the loop over all agents in `step` then need not look into every plan. A plan's steps
+   * do not change once made; where a step is put into a plan, what is kept is dropped.
+   */
+  _due(a) {
+    const step = a.plan[a.next];
+    a._dueFor = a.plan;
+    a._dueIndex = a.next;
+    a._dueStep = step;
+    a._dueAt = step ? step.at : undefined;
   }
 
   /**
