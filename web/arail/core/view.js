@@ -40,6 +40,14 @@ const NEAR_MM = 2;
  */
 const CULL_MARGIN_PX = 4;
 
+/**
+ * A light's glow grows as the camera comes near it. One right in front of the camera would be far
+ * larger than the picture and, added up with its white middle, turn all of it white: the whole picture
+ * flashed as the flyover's camera passed a street lamp at night. A glow fades out from this share of the
+ * picture's diagonal (its radius) and is not drawn from the second one.
+ */
+const GLOW_FADE = [0.25, 0.5];
+
 /** Colour the night fades towards (Dunkelblau, corporate design) and how far. */
 const NIGHT_TINT = [0, 20, 80];
 /** The colour of snow on the ground and on what faces up. */
@@ -625,12 +633,18 @@ export class View {
     if (!p) return;
     const r = Math.max(1.5 * this.px, this.pxPerMM(at[0], at[1], at[2] || 0) * radiusMM);
     if (this.boxOffImage(p[0] - r, p[1] - r, p[0] + r, p[1] + r)) return;
+    // too near the camera: faded out (GLOW_FADE)
+    const canvas = this.ctx?.canvas;
+    const diag = Math.hypot(Math.max(this.camera.width, canvas?.width || 0), Math.max(this.camera.height, canvas?.height || 0));
+    const near = Math.min(1, Math.max(0, (GLOW_FADE[1] * diag - r) / ((GLOW_FADE[1] - GLOW_FADE[0]) * diag)));
+    if (!(near > 0)) return;
+    const k = a * near;
     const [cr, cg, cb] = parseColor(colour);
     // slightly in front of what the light is attached to
     this.solid(this.depth(at[0], at[1], at[2] || 0) - 1, (ctx) => {
       const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
-      g.addColorStop(0, `rgba(255,255,255,${a})`);
-      g.addColorStop(0.25, `rgba(${cr},${cg},${cb},${0.85 * a})`);
+      g.addColorStop(0, `rgba(255,255,255,${k})`);
+      g.addColorStop(0.25, `rgba(${cr},${cg},${cb},${0.85 * k})`);
       g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
       ctx.globalCompositeOperation = "lighter";
       ctx.fillStyle = g;

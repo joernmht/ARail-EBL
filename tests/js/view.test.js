@@ -170,6 +170,40 @@ test("faces outside the image are left out, unless a decal reaches into it", () 
   assert.deepEqual(rec.ops.map((o) => o.op), ["fill", "fill"], "the face and its decal");
 });
 
+test("a light's glow fades out as the camera comes near it, instead of turning the whole picture white", () => {
+  // the camera of topView looks down from 1 m; a lamp with a glow of 4 cm under the middle of the
+  // picture, ever nearer (up to 12 mm from the camera: nearer, pxPerMM looks past the camera)
+  const diag = Math.hypot(W, H);
+  const glowAt = (z) => {
+    const rec = stateContext();
+    const view = topView(rec.ctx, { night: 1 });
+    const x = xAt(view, W / 2), r = view.pxPerMM(x, 0, z) * 40;
+    view.glow([x, 0, z], 40);
+    view.render();
+    const fill = rec.ops.find((o) => o.op === "fill" && o.composite === "lighter");
+    return { r, drawn: fill ? { r: fill.fillStyle.a[5], alpha: Number(fill.fillStyle.stops[0][1].match(/,([\d.e-]+)\)$/)[1]) } : null };
+  };
+  /** The height under the camera at which the glow has the radius `share` × the picture's diagonal. */
+  const heightFor = (share) => {
+    let lo = 0, hi = 988;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (glowAt(mid).r < share * diag) lo = mid;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const far = glowAt(0);
+  assert.ok(far.r < 30 && far.drawn?.alpha === 1, "a lamp 1 m away: its glow as ever");
+  assert.equal(glowAt(heightFor(0.24)).drawn.alpha, 1, "up to a quarter of the diagonal: as ever");
+  const half = glowAt(heightFor(0.375)).drawn;
+  assert.ok(half.alpha > 0.4 && half.alpha < 0.6, `between a quarter and a half: fading (${half.alpha})`);
+  assert.equal(glowAt(heightFor(0.51)).drawn, null, "from half the diagonal: not drawn");
+  const near = glowAt(988);
+  assert.ok(near.r > diag, `right in front of the camera it would be ${Math.round(near.r)} px`);
+  assert.equal(near.drawn, null, "and is not drawn");
+});
+
 test("lights and trees outside the image are not queued", () => {
   const { ctx } = stateContext();
   const view = topView(ctx, { night: 1 });
