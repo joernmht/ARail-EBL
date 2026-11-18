@@ -22,13 +22,15 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: tools/pyproject.toml
-      - run: pip install -e "tools[headless,bridge,dev]"
+          cache-dependency-path: |
+            tools/pyproject.toml
+            hardware/camera-bridge/requirements.txt
+      - run: pip install -e "tools[headless,bridge,dev]" -r hardware/camera-bridge/requirements.txt
       - name: Lint
         working-directory: tools
         run: |
-          ruff check . ../tests/python
-          ruff format --check . ../tests/python
+          ruff check . ../tests/python ../hardware
+          ruff format --check . ../tests/python ../hardware
       - run: python -m pytest tests/python -q
 
   web:
