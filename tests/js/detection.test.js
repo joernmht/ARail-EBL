@@ -228,3 +228,49 @@ test("with bitmaps the frame goes to the worker unread, and comes back as the pi
   assert.equal(w.sent.at(-1).type, "frame");
   delete globalThis.createImageBitmap;
 });
+
+test("after a pause (frozen, the flyover) the frame that was in the worker is neither applied nor shown", () => {
+  setup();
+  now = 0;
+  const vd = new VideoDetection(), det = detector("ARUCO"), src = source("camera");
+  vd.start(det);
+  const w = FakeWorker.last;
+  w.reply({ type: "ready" });
+  vd.take(src, det);
+  vd.search(src, SIZE, det, image);
+  w.answer({ 4: [] });
+  const shown = vd.take(src, det) && vd.picture(src);
+  assert.notEqual(shown, src.el);
+  // the next frame goes to the worker, then the camera view pauses for 30 s while it answers
+  vd.search(src, SIZE, det, image);
+  w.answer({ 4: [] });
+  now += 30_000;
+  assert.equal(vd.take(src, det), null, "its markers are old");
+  assert.equal(vd.picture(src), src.el, "the video itself until the next frame is searched");
+  assert.equal(vd.wanted(), true);
+  // asked every frame again: the next answer counts
+  now += 16;
+  vd.search(src, SIZE, det, image);
+  w.answer({ 5: [] });
+  now += 16;
+  assert.deepEqual(Object.keys(vd.take(src, det).markers), ["5"]);
+});
+
+test("bitmaps that failed for the video stay off when the worker is set up anew", async () => {
+  setup();
+  globalThis.createImageBitmap = () => Promise.reject(new Error("not for videos here"));
+  const vd = new VideoDetection(), det = detector("ARUCO"), src = source("camera");
+  vd.start(det);
+  const w = FakeWorker.last;
+  w.reply({ type: "ready", bitmaps: true });
+  vd.search(src, SIZE, det, image);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(vd.bitmaps, false);
+  // another dictionary: the worker is set up anew and says again that it can read bitmaps
+  det.setDictionary("ARUCO_4X4_1000");
+  vd.search(src, SIZE, det, image);
+  w.reply({ type: "ready", bitmaps: true });
+  assert.equal(vd.bitmaps, false, "the frames are read on the main thread");
+  assert.equal(w.sent.at(-1).type, "frame");
+  delete globalThis.createImageBitmap;
+});

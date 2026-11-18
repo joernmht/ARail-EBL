@@ -17,6 +17,11 @@ const WORKER_TIMEOUT = 8000;
 const FRAME_SILENCE = 500;
 /** A frame the worker has not answered for this long (ms) is given up: the next one is sent. */
 const FRAME_LOST = 3000;
+/**
+ * Not asked for markers for this long (ms; the picture frozen, the flyover, a layout loading): what
+ * was in the worker then is old, and neither applied nor shown when the camera view goes on.
+ */
+const PAUSE = 1000;
 
 /**
  * What the detector does, as the worker's `init` takes it: the dictionary chosen (or "auto"), the codes
@@ -50,6 +55,10 @@ export class VideoDetection {
      * back to be shown), not as pixels read on the main thread: when the worker can draw them.
      */
     this.bitmaps = false;
+    /** createImageBitmap failed for the video once: frames are read on the main thread from then on. */
+    this.bitmapsFailed = false;
+    /** When `take` was last asked (performance.now()), or null. */
+    this.asked = null;
     this.frameId = 0;
     /** The video and its callback for new frames (requestVideoFrameCallback), or null. */
     this.watched = null;
@@ -79,7 +88,8 @@ export class VideoDetection {
       if (msg.type === "ready") {
         clearTimeout(timeout);
         if (this.state === "starting") this.state = "ready";
-        this.bitmaps = !!msg.bitmaps && typeof createImageBitmap === "function";
+        // also answering a worker set up anew: a bitmap path that failed stays off
+        this.bitmaps = !!msg.bitmaps && typeof createImageBitmap === "function" && !this.bitmapsFailed;
       } else if (msg.type === "markers") {
         if (this.pending?.id === msg.id) this.result = msg;
         else msg.bitmap?.close?.();
@@ -190,6 +200,7 @@ export class VideoDetection {
         () => {
           // this browser cannot make a bitmap of the video: its pixels are read here from now on
           this.bitmaps = false;
+          this.bitmapsFailed = true;
           if (this.pending?.id === id) this.pending = null;
         },
       );
@@ -216,11 +227,17 @@ export class VideoDetection {
   /**
    * The worker's markers for the frame it was given, if they are there and still belong to what is
    * shown (the same source, a worker with the same settings); that frame becomes the picture shown.
+   * Asked again after a pause (PAUSE: the picture frozen, the flyover, a layout loading), the frame
+   * that was in the worker is old: it is forgotten, and the video itself is shown until the next one.
    * @param {object} source the app's current source
    * @param {import("../arail/core/detector.js").MarkerDetector} detector the app's detector
    * @returns {{markers: object, rolling: object, ms: number, selected: string | null} | null}
    */
   take(source, detector) {
+    // after a pause (frozen, the flyover, a layout loading) the frame in the worker is an old one
+    const now = performance.now(), paused = this.asked != null && now - this.asked > PAUSE;
+    this.asked = now;
+    if (paused) this.reset();
     const r = this.result, p = this.pending;
     if (!r || !p) return null;
     this.result = this.pending = null;
