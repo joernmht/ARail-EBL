@@ -235,6 +235,8 @@ class Heap {
   constructor() {
     this.ids = [];
     this.keys = [];
+    /** The key of the entry `popId` removed last. */
+    this.lastKey = 0;
   }
 
   get size() {
@@ -259,8 +261,16 @@ class Heap {
 
   /** Remove the smallest entry; returns [id, key]. */
   pop() {
+    const top = [this.ids[0], this.keys[0]];
+    this.popId();
+    return top;
+  }
+
+  /** Remove the smallest entry; returns its id (its key is `lastKey`), without an array for the pair. */
+  popId() {
     const { ids, keys } = this;
-    const top = [ids[0], keys[0]];
+    const topId = ids[0];
+    this.lastKey = keys[0];
     const id = ids.pop(), key = keys.pop();
     const n = ids.length;
     if (n) {
@@ -281,7 +291,7 @@ class Heap {
       ids[i] = id;
       keys[i] = key;
     }
-    return top;
+    return topId;
   }
 }
 
@@ -1104,21 +1114,17 @@ export class RoadNetwork {
     }
     const n = this.nodes.length;
     const dist = new Float64Array(n).fill(Infinity), via = new Int32Array(n).fill(-1);
-    const heap = new Heap();
+    const heap = new Heap(), { start, to, edge, cost } = this._adjacency(mode);
     dist[src] = 0;
     heap.push(src, 0);
     while (heap.size) {
-      const [u, d] = heap.pop();
+      const u = heap.popId(), d = heap.lastKey;
       if (d > dist[u]) continue;
-      for (const id of this.nodes[u].edges) {
-        const e = this.edges[id];
-        if (e.a === e.b || !this._usable(e, mode)) continue;
-        const forward = e.a === u;
-        if (!this._allowed(e, forward, mode)) continue;
-        const v = forward ? e.b : e.a, nd = d + this._cost(e, mode);
+      for (let k = start[u]; k < start[u + 1]; k++) {
+        const v = to[k], nd = d + cost[k];
         if (nd < dist[v]) {
           dist[v] = nd;
-          via[v] = id;
+          via[v] = edge[k];
           heap.push(v, nd);
         }
       }
@@ -1127,6 +1133,34 @@ export class RoadNetwork {
     this._trees.set(key, t);
     if (this._trees.size > TREE_CACHE) this._trees.delete(this._trees.keys().next().value);
     return t;
+  }
+
+  /**
+   * The ways out of each node in a mode, in the order of the node's edges (the network does not
+   * change once built: worked out once per mode): for node u, the arcs start[u] … start[u + 1] - 1
+   * lead to node `to` over `edge` at `cost` (`_cost`). For the shortest-path trees.
+   * @returns {{start: Int32Array, to: Int32Array, edge: Int32Array, cost: Float64Array}}
+   */
+  _adjacency(mode) {
+    let adj = (this._arcs ||= new Map()).get(mode);
+    if (adj) return adj;
+    const n = this.nodes.length, start = new Int32Array(n + 1), to = [], edge = [], cost = [];
+    for (let u = 0; u < n; u++) {
+      start[u] = to.length;
+      for (const id of this.nodes[u].edges) {
+        const e = this.edges[id];
+        if (e.a === e.b || !this._usable(e, mode)) continue;
+        const forward = e.a === u;
+        if (!this._allowed(e, forward, mode)) continue;
+        to.push(forward ? e.b : e.a);
+        edge.push(id);
+        cost.push(this._cost(e, mode));
+      }
+    }
+    start[n] = to.length;
+    adj = { start, to: Int32Array.from(to), edge: Int32Array.from(edge), cost: Float64Array.from(cost) };
+    this._arcs.set(mode, adj);
+    return adj;
   }
 
   /**
@@ -1271,28 +1305,52 @@ export class RoadNetwork {
    * the edge says; mm) at arc length `s` of a path, blended at changes.
    */
   offsetAt(path, s, key = "walkOffset") {
+    return this.offsets(path, key)(s);
+  }
+
+  /**
+   * `offsetAt` of a path as a function of the arc length, for many points of one path (a driving
+   * line): the run of edges with the same offset around an edge, and the blends into the runs
+   * before and after it, are found once for each run.
+   * @param {Path} path
+   * @param {string | ((edge: Edge) => number)} [key]
+   * @returns {(s: number) => number}
+   */
+  offsets(path, key = "walkOffset") {
     const E = path?.edges;
-    if (!E?.length) return 0;
+    if (!E?.length) return () => 0;
+    // (never -0 or NaN: `|| 0`; so all edges of a run give the same run)
     const val = typeof key === "function" ? (k) => key(E[k].edge) || 0 : (k) => E[k].edge[key] || 0;
-    const i = edgeIndex(E, s), o = val(i);
-    // the run of edges with this offset, and the runs before and after it
-    let a = i, b = i;
-    while (a > 0 && val(a - 1) === o) a--;
-    while (b < E.length - 1 && val(b + 1) === o) b++;
-    const run = E[b].s1 - E[a].s0, blend = this.mm(BLEND_M);
-    if (a > 0) {
-      let p = a - 1;
-      while (p > 0 && val(p - 1) === val(a - 1)) p--;
-      const B = Math.min(blend, run / 2, (E[a - 1].s1 - E[p].s0) / 2);
-      if (B > 1e-9 && s - E[a].s0 < B) return lerp(val(a - 1), o, 0.5 + (0.5 * (s - E[a].s0)) / B);
-    }
-    if (b < E.length - 1) {
-      let n = b + 1;
-      while (n < E.length - 1 && val(n + 1) === val(b + 1)) n++;
-      const B = Math.min(blend, run / 2, (E[n].s1 - E[b + 1].s0) / 2);
-      if (B > 1e-9 && E[b].s1 - s < B) return lerp(val(b + 1), o, 0.5 + (0.5 * (E[b].s1 - s)) / B);
-    }
-    return o;
+    const blend = this.mm(BLEND_M), runs = new Array(E.length);
+    const runOf = (i) => {
+      if (runs[i]) return runs[i];
+      const o = val(i);
+      // the run of edges with this offset, and the runs before and after it
+      let a = i, b = i;
+      while (a > 0 && val(a - 1) === o) a--;
+      while (b < E.length - 1 && val(b + 1) === o) b++;
+      const run = E[b].s1 - E[a].s0, r = { o, a, b, before: 0, blendIn: 0, after: 0, blendOut: 0 };
+      if (a > 0) {
+        let p = a - 1;
+        while (p > 0 && val(p - 1) === val(a - 1)) p--;
+        r.before = val(a - 1);
+        r.blendIn = Math.min(blend, run / 2, (E[a - 1].s1 - E[p].s0) / 2);
+      }
+      if (b < E.length - 1) {
+        let n = b + 1;
+        while (n < E.length - 1 && val(n + 1) === val(b + 1)) n++;
+        r.after = val(b + 1);
+        r.blendOut = Math.min(blend, run / 2, (E[n].s1 - E[b + 1].s0) / 2);
+      }
+      for (let k = a; k <= b; k++) runs[k] = r;
+      return r;
+    };
+    return (s) => {
+      const { o, a, b, before, blendIn: B0, after, blendOut: B1 } = runOf(edgeIndex(E, s));
+      if (a > 0 && B0 > 1e-9 && s - E[a].s0 < B0) return lerp(before, o, 0.5 + (0.5 * (s - E[a].s0)) / B0);
+      if (b < E.length - 1 && B1 > 1e-9 && E[b].s1 - s < B1) return lerp(after, o, 0.5 + (0.5 * (E[b].s1 - s)) / B1);
+      return o;
+    };
   }
 
   /** The edge of a path at arc length `s`: {edge, forward, s0, s1}. */
@@ -1319,8 +1377,9 @@ export class RoadNetwork {
     const P = path.points, cum = path.lengths, n = P.length;
     const ramp = this.mm(BLEND_M * 3), step = this.mm(2);
     const off = typeof offsetKey === "function" ? offsetKey : (e) => e[offsetKey] || 0;
+    const offsetOf = this.offsets(path, offsetKey);
     const offset = (s) => {
-      let o = this.offsetAt(path, s, offsetKey);
+      let o = offsetOf(s);
       for (const p of pulls) {
         const a = p.s - p.before, b = p.s + p.after;
         if (s >= a && s <= b) return p.offset;
@@ -1353,12 +1412,18 @@ export class RoadNetwork {
     // the lane's corner point stands in for the samples close to a vertex where the path turns:
     // offset samples there would fold the lane back on itself (e.g. where a main road with a wider
     // lane offset meets a street), and a vehicle on such a fold blocks the others for good
+    // (what depends on the vertex only is worked out once for it)
+    const corners = new Array(n);
     const setback = (j, o) => {
       if (j <= 0 || j >= n - 1) return 0;
-      const a = unit2(sub2(P[j], P[j - 1])), b = unit2(sub2(P[j + 1], P[j]));
-      const c = clamp(dot2(a, b), -1, 1);
-      if (c > 0.9995) return 0;
-      return Math.max(Math.abs(o), Math.abs(offset(cum[j]))) * Math.tan(Math.min(Math.acos(c) / 2, 1.3));
+      let k = corners[j];
+      if (!k) {
+        const a = unit2(sub2(P[j], P[j - 1])), b = unit2(sub2(P[j + 1], P[j]));
+        const c = clamp(dot2(a, b), -1, 1);
+        k = corners[j] = c > 0.9995 ? { straight: true } : { straight: false, at: Math.abs(offset(cum[j])), tan: Math.tan(Math.min(Math.acos(c) / 2, 1.3)) };
+      }
+      if (k.straight) return 0;
+      return Math.max(Math.abs(o), k.at) * k.tan;
     };
     let k = 0;
     for (let i = 0; i < n; i++) {

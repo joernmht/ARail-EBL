@@ -386,6 +386,8 @@ export class TrafficSimulation extends Simulation {
   _fill(net, n) {
     const anywhere = net.nodes.filter((x) => x.carDegree >= 1);
     const ends = net.boundaryNodes();
+    // the poses of the cars there are (they stand still while the streets fill)
+    const poses = this.cars.map((c) => this._pose(c));
     for (let k = 0, tries = 0; k < n && tries < n * 6; tries++) {
       const from = this.rng.pick(ends.length > 1 ? ends : anywhere), to = this.rng.pick(ends.length > 1 ? ends : anywhere);
       if (!from || !to || from === to) continue;
@@ -396,10 +398,11 @@ export class TrafficSimulation extends Simulation {
       car.s = this.rng.uniform(this.mm(LENGTH_M), car.path.length - this.mm(LENGTH_M));
       const pose = this._pose(car);
       const clear = this.mm(LENGTH_M + 8);
-      const others = this.cars.map((c) => this._pose(c)).concat(this.world.transit?.roadUsers?.() || []);
+      const others = poses.concat(this.world.transit?.roadUsers?.() || []);
       if (others.some((q) => dist2(q.front, pose.front) < clear || dist2(q.rear, pose.front) < clear || dist2(q.front, pose.rear) < clear || dist2(midpoint(q), pose.front) < clear)) continue;
       car.v = (car.path.speeds[0] || 8) * 0.7;
       this.cars.push(car);
+      poses.push(this._pose(car));
       k++;
     }
   }
