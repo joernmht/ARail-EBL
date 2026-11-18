@@ -352,8 +352,13 @@ export function polylineAt(pts, s, cum = polylineLengths(pts)) {
   const total = cum[cum.length - 1];
   if (pts.length < 2) return { point: pts[0] || [0, 0], dir: [1, 0] };
   s = clamp(s, 0, total);
-  let i = 1;
-  while (i < cum.length - 1 && cum[i] < s) i++;
+  // the first point at or beyond s (the last one at most): by bisection, the lengths only grow
+  let i = 1, hi = cum.length - 1;
+  while (i < hi) {
+    const mid = (i + hi) >> 1;
+    if (cum[mid] < s) i = mid + 1;
+    else hi = mid;
+  }
   const seg = cum[i] - cum[i - 1] || 1;
   const t = (s - cum[i - 1]) / seg;
   return { point: lerp2(pts[i - 1], pts[i], t), dir: unit2(sub2(pts[i], pts[i - 1])) };
