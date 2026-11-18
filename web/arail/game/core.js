@@ -86,6 +86,12 @@ export class Game {
    * @type {string | null}
    */
   static clock = null;
+  /**
+   * The kinds of irregularities the game reports (`irregular`): what did not go to plan, such as a
+   * train held at a signal. A mission's story can answer them (a line `on` one of these kinds).
+   * @type {string[]}
+   */
+  static irregularities = [];
 
   /**
    * @param {object} [options]
@@ -118,6 +124,8 @@ export class Game {
     this.outbox = [];
     /** The moves made with `act`: `{t, name, args}`. */
     this.moves = [];
+    /** What did not go to plan, in the order it happened (`irregular`): `{t, kind, key, ...data}`. */
+    this.irregulars = [];
     this._handlers = new Map();
     this._listeners = new Set();
   }
@@ -306,6 +314,22 @@ export class Game {
     return v;
   }
 
+  /**
+   * Something did not go to plan (a kind of the game's `irregularities`): reported once per `key`
+   * (one train held at one signal is one irregularity, however long it stands). `data` holds what a
+   * line of a mission's story names in its placeholders (`{train}`), as texts.
+   * @param {string} kind
+   * @param {string} key
+   * @param {Record<string, string>} [data]
+   */
+  irregular(kind, key, data = {}) {
+    if (this.irregulars.some((x) => x.key === key)) return null;
+    const x = { ...data, t: this.t, kind, key };
+    this.irregulars.push(x);
+    this.emit("irregular", x);
+    return x;
+  }
+
   /** Go on by `dt` simulated seconds: deadlines of decisions, then the game's own `tick`. */
   step(dt) {
     if (this.over || !(dt > 0)) return;
@@ -353,8 +377,10 @@ export class Game {
    * disabled}`): a signal with its routes, a fault with the teams to send. An item's `alert` ("bad",
    * "warn") says that something about it needs attention: the page makes it pulse. A figure about one
    * item of the sketch names it as its `asset`: the page shows the figure on the item (its tone as
-   * the pulse, its value when the item is chosen) instead of writing it out.
-   * @returns {{sketch?: {title?: string, width: number, height: number, label: string, items: object[]}, figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad", asset?: string}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
+   * the pulse, its value when the item is chosen) instead of writing it out. A table marked `window`
+   * is one the player keeps in view at work (the signaller's timetable): the page shows it on the
+   * stage as a window of its own, besides the desk.
+   * @returns {{sketch?: {title?: string, width: number, height: number, label: string, items: object[]}, figures: Array<{label: string, value: string | number, unit?: string, tone?: "ok" | "warn" | "bad", asset?: string}>, tables: Array<{id: string, title: string, columns: string[], rows: Array<Array<string | number>>, empty?: string, window?: boolean}>, actions: Array<{name: string, label: string, hint?: string, primary?: boolean, disabled?: string, args?: any[], fields?: Array<{id: string, label: string, options?: Array<{id: string, label: string}>, type?: "number", min?: number, max?: number, step?: number, value?: number | string, unit?: string}>}>}}
    */
   view() {
     return { figures: [...this.resources.values()].map((r) => ({ label: r.label, value: r.value, unit: r.unit })), tables: [], actions: [] };

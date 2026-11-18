@@ -322,6 +322,50 @@ body[data-screen="play"] .site-where { display: block; }
 .play-pick [aria-disabled="true"] { background: var(--surface-2); border: 1px dashed var(--line); color: var(--text-2); cursor: not-allowed; }
 @media (forced-colors: active) { .play-board { forced-color-adjust: none; } }
 
+/* windows of the stage a person places and sizes (windows.js): the game's picture and the tables it keeps in view (the
+   timetable). A handle at the middle of the upper edge moves one, the grip in its lower right corner sizes it (both also
+   with the arrow keys; a double-click or Home puts it back). Placed, a window stands where it was left; the talk stays above */
+.vn-stage { position: relative; isolation: isolate; }
+.vn-talk { z-index: 1000; }
+.vn-sheets { display: contents; }
+.play-window { position: relative; }
+.play-window.placed { position: absolute; max-width: none !important; margin: 0 !important; display: flex; flex-direction: column; overflow: hidden; z-index: 2; }
+.play-window.dragging { opacity: .92; }
+.win-move, .win-grip { all: unset; box-sizing: border-box; position: absolute; z-index: 1; cursor: move; touch-action: none; }
+.win-move { top: 0; left: 50%; width: 56px; height: 24px; margin-left: -28px; display: grid; place-items: start center; padding-top: 6px; border-radius: 0 0 8px 8px; }
+.win-move span { width: 28px; height: 4px; border-radius: 2px; background: var(--board-muted); opacity: .7; }
+.win-move:hover span, .win-move:focus-visible span { opacity: 1; background: var(--board-text); }
+.win-grip { right: 0; bottom: 0; width: 24px; height: 24px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 62%, var(--board-muted) 62% 68%, transparent 68% 78%, var(--board-muted) 78% 84%, transparent 84%); opacity: .75; }
+.win-grip:hover, .win-grip:focus-visible { opacity: 1; }
+.win-move:focus-visible, .win-grip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* the game's picture, placed: it takes the window's size (as large as fits, its shape kept) */
+.vn-stage .play-sketch.placed { padding-top: 14px; }
+/* (with a table kept in view in the upper left, the picture stands at the foot of the stage, out of its way) */
+.vn-stage:has(.play-sheet) .play-sketch:not(.placed) { align-self: end; }
+.vn-stage .play-sketch.placed .play-board { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.vn-stage .play-sketch.placed .play-board svg { width: 100%; height: 100%; min-width: 0 !important; max-height: none; }
+.vn-stage .play-sketch.placed .play-pick { flex: none; }
+/* a table kept in view: a small window in the upper left of the stage, its rows scroll in it */
+.play-sheet { position: absolute; top: 6px; left: 12px; z-index: 2; width: min(780px, 58%); max-height: min(42%, 340px); display: flex; flex-direction: column; color: var(--board-text);
+  background: color-mix(in srgb, var(--board) 92%, transparent); border: 1px solid var(--board-line); border-radius: 6px; padding: 14px 10px 10px; box-shadow: 0 10px 30px color-mix(in srgb, var(--board) 70%, transparent); }
+.play-sheet h4 { flex: none; margin: 0 0 4px; font-family: var(--mono); font-size: .72rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
+.play-sheet .sheet-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.play-sheet .sheet-body:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.play-sheet .game-table { font-size: .8rem; }
+.play-sheet .game-table th, .play-sheet .game-table td { border-bottom-color: var(--board-line); padding: 3px 6px; white-space: nowrap; }
+.play-sheet .game-table th { color: var(--board-muted); }
+.play-sheet .game-table tbody th { color: var(--board-text); }
+.play-sheet .game-table thead th { position: sticky; top: 0; background: var(--board); }
+.play-sheet .hint { color: var(--board-muted); }
+/* (on the table it stands at the foot of the stage, left of the panel: the station keeps the middle) */
+body.tabled .play-sheet:not(.placed) { top: auto; bottom: 0; width: min(600px, 44%); max-height: min(40%, 300px); }
+/* a phone has no room for windows: the picture stays where the page has it, the timetable is in the desk */
+@media (max-width: 640px) {
+  .play-sheet, .win-move, .win-grip { display: none; }
+  .vn-stage .play-window.placed { position: relative; display: grid; left: auto !important; top: auto !important; width: 100% !important; height: auto !important; }
+  .vn-stage .play-sketch.placed .play-board svg { height: auto; }
+}
+
 /* the table (T): the signaller's game on the lab's layout (table.js). The picture is the game's own, so nothing
    shades it but the line at the top; the panel stands small in the lower right corner (the speaker stands at
    the left), with what is chosen below it; the table's controls are in the side bar, its note in the line at the top */

@@ -95,13 +95,22 @@ What every game has, from the base class:
   name against `static actions` and keeps the move (`moves`); a decision is the move `decide`;
 - **rules** (`violate`): a rule broken, with its severity: 1 a slip, 2 a breach, 3 a danger to
   people;
+- **irregularities** (`irregular(kind, key, data)`): what did not go to plan, of the kinds the game
+  names in `static irregularities`, reported once per `key` into `irregulars` with the words a line
+  of a mission's story names (`train`, `signal`). The signaller's game reports a train announced
+  late (`came-late`), held at an entry signal at stop (`held-at-entry`), still at its exit signal a
+  minute after its time (`late-departure`), sent to another track than planned (`wrong-track`), a
+  connecting train gone before its feeder's passengers could change (`connection-missed`) and a
+  failed signal (`signal-failed`); the careful computer signaller has none in training;
 - **objectives** with weights and the **score** (0–100); a round is passed with 50 points and no
   danger to people;
 - **ports**: `give(flow, payload)` (only flows of `static gives`), `take(msg)` for what arrives,
   `conditions` (the latest of each state flow it takes) and `isWired(flow)` (is another seat at the
   other end?);
 - **a view** (`view()`): key figures, tables, and the moves that can be made now, each with the
-  fields to fill. The play page draws any game from it, as settings forms are drawn from a
+  fields to fill. A table marked `window` is one the player keeps in view at work (the signaller's
+  timetable: each train with its tracks, arrival, departure or passing, its note, where it is now and
+  how late): the play page shows it on the stage as a window, besides the desk. The play page draws any game from it, as settings forms are drawn from a
   simulation's parameters; a game's own page (the signaller's panel) may draw more. A game can add
   a **sketch** to its view: a picture of its world as plain shapes (lines, dots, texts, tags, boxes
   in a `width` × `height`, coloured by a `tone`), which the play page draws as it is. A shape with
@@ -309,7 +318,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
 | `text`, `debrief[]` | The briefing, and questions for the debrief |
-| `story[]` | What people say to the players: `phase`, `at` (s into a shift; in a turn the lines come at its beginning, in their order), `say` (a line of at most 220 characters, `SAY_CHARS`), `who` (`name`, `role`, `portrait`: who says it; left out, whoever the page has for the seat's game), `seats` (to whom; left out, to everybody), `rounds`. It tells and teaches, and changes nothing in a game; `storyOf(mission, phase, round)` gives a phase's lines, `lineFor(lines, seat, heard, t)` the one said to a seat now: the first not answered there yet, in a shift of those whose moment has come (a line that names seats is said only at those and does not stand in the way of the others; a line that names none is said at every seat, and what is answered is kept seat by seat). The play page holds a shift's clock while a line waits for its answer, so none is passed over; `staleLines(lines, seat, t)` are the lines a seat taken in the middle of a shift is not told any more |
+| `story[]` | What people say to the players: `phase`, `at` (s into a shift; in a turn the lines come at its beginning, in their order), `say` (a line of at most 220 characters, `SAY_CHARS`), `who` (`name`, `role`, `portrait`: who says it; left out, whoever the page has for the seat's game), `seats` (to whom; left out, to everybody), `rounds`. It tells and teaches, and changes nothing in a game; `storyOf(mission, phase, round)` gives a phase's lines, `lineFor(lines, seat, heard, t)` the one said to a seat now: the first not answered there yet, in a shift of those whose moment has come (a line that names seats is said only at those and does not stand in the way of the others; a line that names none is said at every seat, and what is answered is kept seat by seat). The play page holds a shift's clock while a line waits for its answer, so none is passed over; `staleLines(lines, seat, t)` are the lines a seat taken in the middle of a shift is not told any more. A line `on` a kind of irregularity (one of a seated game's `static irregularities`; in a shift only) instead of `at` a time is said each time that game reports one (from `at` on, if given), with the game's words in its placeholders: `"{train} is standing at signal {signal}."`; so somebody can speak only when something does not go to plan. `answersOf(mission, phase, round)` gives these lines, `answerFor(lines, seat, heard, irregulars)` the one said now (answered by its `key`: the line and the irregularity), `staleAnswers(lines, seat, irregulars)` those a seat taken in the middle of a shift is not told |
 | `hook` | The mission in a line or two, at most 110 characters (`HOOK_CHARS`): what its card shows first. The `text` stays the briefing, opened when asked for |
 | `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game. The play page checks the name against its places (`validateMission(doc, games, { places })`): a misspelled one is a problem of the mission |
 
