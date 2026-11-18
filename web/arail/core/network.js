@@ -100,6 +100,8 @@ const LANE_SPEED = 20 / 3.6;
 const TREE_CACHE = 400;
 /** Points whose nearest node is kept (see `nearestNode`). */
 const NEAREST_MEMO = 4000;
+/** Walks whose length is kept (see `walkLength`). */
+const WALK_MEMO = 20000;
 
 /**
  * Where a bus stands at a dock: front and rear point (layout mm) on its centre line, the
@@ -112,6 +114,11 @@ export function dockPose(dock, def) {
   const [rear, front] = def.extent(dock);
   const t = dock.side * (area.W / 2 + (def.gap_m ?? 0.4) + (def.width_m ?? 2.55) / 2);
   return { front: area.toLayout(front, t), rear: area.toLayout(rear, t), dir: area.dir, t, length: front - rear };
+}
+
+/** The key of a walk (`RoadNetwork.walk`) by its ends and their place keys. */
+function walkKey(from, to, fromKey, toKey) {
+  return `${from[0]}:${from[1]}:${to[0]}:${to[1]}\u0000${fromKey}\u0000${toKey}`;
 }
 
 /** Drop repeated points of a polyline. */
@@ -955,11 +962,43 @@ export class RoadNetwork {
    * @returns {{points: number[][], lengths: number[], length: number, hidden: number[][], route: Path | null, offstage?: boolean}}
    */
   walk(from, to, { fromKey = null, toKey = null } = {}) {
+    // the walk that `walkLength` made last, when it is this one (nobody has it yet)
+    const kept = this._keptWalk;
+    if (kept) {
+      this._keptWalk = null;
+      if (kept.key === walkKey(from, to, fromKey, toKey)) return kept.walk;
+    }
+    return this._walk(from, to, fromKey, toKey);
+  }
+
+  _walk(from, to, fromKey, toKey) {
     const a = this.place(fromKey) ?? this.nearestNode(from, { mode: "walk" });
     const b = this.place(toKey) ?? this.nearestNode(to, { mode: "walk" });
     const route = a && b ? this.route(a, b, { mode: "walk" }) : null;
     if (route) return { ...this.walkLine(route, from, to), route };
     return straightWalk(from, to, !this.empty || this.crossesBarrier(from, to));
+  }
+
+  /**
+   * The length (mm) of `walk(from, to, keys)`. The same walks are asked for again and again (from
+   * the entrances of buildings to the access points of the stops, when the town weighs a trip by bus
+   * against walking), and the network does not change once built: the lengths are kept.
+   * @param {number[]} from
+   * @param {number[]} to
+   * @param {{fromKey?: string | null, toKey?: string | null}} [keys] place keys of the ends
+   */
+  walkLength(from, to, { fromKey = null, toKey = null } = {}) {
+    const memo = (this._walkLengths ||= new Map()), key = walkKey(from, to, fromKey, toKey);
+    let length = memo.get(key);
+    if (length === undefined) {
+      // the walk is kept for the next `walk`: often the same one is walked next
+      const walk = this._walk(from, to, fromKey, toKey);
+      this._keptWalk = { key, walk };
+      length = walk.length;
+      memo.set(key, length);
+      if (memo.size > WALK_MEMO) memo.delete(memo.keys().next().value);
+    }
+    return length;
   }
 
   /**

@@ -180,6 +180,21 @@ class Agent extends Person {
     this.vehicle = null;
     /** Visitors and commuters: earliest clock time to come (back) by train. */
     this.trainFrom = null;
+    // set later (undefined until then); declared here so that all agents have the same shape, which
+    // keeps the loop over them in `step` fast
+    /** The trip being recorded from door to door (`_newRecord`), or null. */
+    this.record = undefined;
+    /** Simulated time before which the agent stays where it arrived. */
+    this.stayUntil = undefined;
+    /** Today by car on the long ways (`_makePlan`). */
+    this.drives = undefined;
+    /** Simulated time when the car trip is over (state "driving"). */
+    this.carUntil = undefined;
+    /** Walking direction (unit vector). */
+    this.dir = undefined;
+    /** Mood 0..1 after somebody got in the way (`annoy`), and when that was. */
+    this.mood = undefined;
+    this.annoyed = undefined;
   }
 
   /** The home building ({building, entrance}), null for people who live beyond the layout. */
@@ -857,6 +872,13 @@ export class TownSimulation extends Simulation {
     return straightWalk(from, to);
   }
 
+  /** The length (mm) of `_walkPath(from, to, …)`, without the walk itself (the network keeps the lengths). */
+  _walkLength(from, to, fromKey = null, toKey = null) {
+    const net = this._network();
+    if (net && typeof net.walkLength === "function") return net.walkLength(from, to, { fromKey, toKey });
+    return this._walkPath(from, to, fromKey, toKey).length;
+  }
+
   _metres(mm) {
     return (mm * this.world.scale) / 1000;
   }
@@ -934,12 +956,12 @@ export class TownSimulation extends Simulation {
     const dest = this._buildingPos(destId);
     if (!dest) return [];
     const destKey = `building:${destId}:0`;
-    const walk = this._walkPath(from, dest, fromKey, destKey);
-    const walkM = this._metres(walk.length);
+    // the length decides; the walk itself is made only when it is walked
+    const walkM = this._metres(this._walkLength(from, dest, fromKey, destKey));
     if (a.drives && walkM > (+this.config.walk_max_m || 150)) return [{ type: "car", toBuilding: destId, seconds: this._carSeconds(a, from, dest) }];
     const bus = this._busChoice(a, from, fromKey, dest, destKey, walkM);
     if (bus) return [...this._busLegs(bus), { type: "walk", path: null, toBuilding: destId }];
-    return [{ type: "walk", path: walk, toBuilding: destId }];
+    return [{ type: "walk", path: this._walkPath(from, dest, fromKey, destKey), toBuilding: destId }];
   }
 
   /**
@@ -981,11 +1003,15 @@ export class TownSimulation extends Simulation {
     if (typeof transit?.connections !== "function") return null;
     const stops = this._busStops();
     if (!stops.length) return null;
+    // the walks to and from every stop by their lengths (the network keeps them); the walk to the
+    // stop taken is made at the end
     const near = (p, key) => stops.map((area) => {
       const i = this._nearestAccess(area, p);
       const access = { pos: this._accessPoint(area, i), key: `area:${area.id}:${i}` };
-      const path = key === "dest" ? this._walkPath(access.pos, p, access.key, destKey) : this._walkPath(p, access.pos, fromKey, access.key);
-      return { area, path, access, m: this._metres(path.length) };
+      // no walk is shorter than the straight line (a metre to spare): a stop farther away is out of reach
+      if (this._metres(dist2(p, access.pos)) > ACCESS_M + 1) return { area, access, m: Infinity };
+      const length = key === "dest" ? this._walkLength(access.pos, p, access.key, destKey) : this._walkLength(p, access.pos, fromKey, access.key);
+      return { area, access, m: this._metres(length) };
     }).filter((x) => x.m <= ACCESS_M);
     const origins = near(from, "from"), targets = near(dest, "dest");
     let best = null;
@@ -996,12 +1022,13 @@ export class TownSimulation extends Simulation {
           const headway = this._headway(conn.lineId);
           const ride = this._metres(conn.rideMM || 0) / BUS_SPEED;
           const time = (o.m + t.m) / speed + headway / 2 + ride;
-          if (!best || time < best.time) best = { time, conn, fromArea: o.area, toArea: t.area, walk1: o.path, access: o.access };
+          if (!best || time < best.time) best = { time, conn, fromArea: o.area, toArea: t.area, walk1: null, access: o.access };
         }
       }
     }
-    if (!best) return null;
-    return best.time < (walkM / speed) * 1.3 ? best : null;
+    if (!best || !(best.time < (walkM / speed) * 1.3)) return null;
+    best.walk1 = this._walkPath(from, best.access.pos, fromKey, best.access.key);
+    return best;
   }
 
   _headway(lineId) {
@@ -1018,20 +1045,24 @@ export class TownSimulation extends Simulation {
   _trainLegs(a, from, fromKey) {
     const areas = this._railAreas();
     if (!areas.length) return null;
+    // the nearest platform by the length of the walk; the walk itself only when it is walked from here
     let best = null;
     for (const area of areas) {
       const i = this._nearestAccess(area, from);
-      const path = this._walkPath(from, this._accessPoint(area, i), fromKey, `area:${area.id}:${i}`);
-      if (!best || path.length < best.path.length) best = { area, path, i };
+      const length = this._walkLength(from, this._accessPoint(area, i), fromKey, `area:${area.id}:${i}`);
+      if (!best || length < best.length) best = { area, length, i };
     }
     const target = { pos: this._accessPoint(best.area, best.i), key: `area:${best.area.id}:${best.i}` };
     const toTrain = [
-      { type: "walk", path: best.path, target, to: { area: best.area.id } },
+      { type: "walk", path: null, target, to: { area: best.area.id } },
       { type: "wait", area: best.area.id, dockId: null, line: null, train: true },
     ];
-    const bus = this._busChoice(a, from, fromKey, target.pos, target.key, this._metres(best.path.length));
-    if (!bus) return toTrain;
-    toTrain[0].path = null; // from the stop where the bus stops
+    const bus = this._busChoice(a, from, fromKey, target.pos, target.key, this._metres(best.length));
+    if (!bus) {
+      toTrain[0].path = this._walkPath(from, this._accessPoint(best.area, best.i), fromKey, target.key);
+      return toTrain;
+    }
+    // (the walk to the platform starts from the stop where the bus stops)
     return [...this._busLegs(bus), ...toTrain];
   }
 
@@ -1342,7 +1373,7 @@ export class TownSimulation extends Simulation {
         this._walk(a, dt);
         // anger at a bike on the sidewalk passes slowly
         if (a.mood != null && a.mood < 0.85) a.mood = Math.min(0.85, a.mood + 0.003 * dt);
-      } else if (a.state === "stop" && a.person && a.person.state === "waiting" && this.world.time - a.waitSince > this._patience(a)) {
+      } else if (a.state === "stop" && a.person && a.person.state === "waiting" && this._impatient(a)) {
         this.passengers?.release(a.person);
         a.waitSince = Infinity;
       }
@@ -1352,6 +1383,16 @@ export class TownSimulation extends Simulation {
       this._check = 0;
       this._sanity();
     }
+  }
+
+  /**
+   * Has an agent waited at its stop longer than its patience (`_patience`)? Never before the 20
+   * clock minutes all wait at least: until then the rest need not be worked out.
+   */
+  _impatient(a) {
+    const waited = this.world.time - a.waitSince;
+    if (waited <= (PATIENCE_MIN * 60) / Math.max(1e-6, this.world.clock.factor)) return false;
+    return waited > this._patience(a);
   }
 
   /**
@@ -1470,13 +1511,16 @@ export class TownSimulation extends Simulation {
   _sanity() {
     const transit = this.world.transit;
     const buses = new Set(transit?.buses || []);
+    // the ids of the objects there are, once (most agents are inside a building)
+    const ids = new Set();
+    for (const o of this.world.objects) ids.add(o.id);
     for (const a of this.agents) {
       if (a.state === "riding") {
         // the bus is gone (line deleted or changed, out of service) or the agent is not on board
         const rider = a.vehicle?.riders?.find?.((r) => r.agent === a);
         if (!a.vehicle || (transit && !buses.has(a.vehicle)) || !rider) this._finishTrip(a);
         else this._checkRide(a, rider);
-      } else if (a.state === "inside" && a.inside && !this.world.getObject(a.inside)) {
+      } else if (a.state === "inside" && a.inside && !ids.has(a.inside)) {
         this._goHome(a);
       } else if (a.state === "stop" && !a.person && !a.trip) {
         this._goHome(a);
