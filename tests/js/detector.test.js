@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { acceptedBitErrors, DICTIONARIES, MarkerDetector, markerBits, orientedDistance } from "../../web/arail/core/detector.js";
+import {
+  acceptedBitErrors, DICTIONARIES, greyscale, MarkerDetector, markerBits, orientedDistance, thresholdBordered, traceContours,
+} from "../../web/arail/core/detector.js";
+import { createRng } from "../../web/arail/core/math.js";
 import { FIXTURE_HINT, fixtureImage, fixtureMeta, hasFixtures, loadAruco } from "./helpers.js";
 
 const skip = hasFixtures() ? false : FIXTURE_HINT;
@@ -112,4 +115,64 @@ test("a sticker misread as a known ID does not replace the real marker (fewest b
   assert.deepEqual(Object.keys(found), ["0"]);
   const cx = found[0].reduce((s, p) => s + p[0], 0) / 4;
   assert.ok(Math.abs(cx - 420) < 2, `marker 0 found at x = ${cx.toFixed(1)} (the real one is at 420, the misread one at 120)`);
+});
+
+/* ---------------------------------------------------------------- the same as js-aruco2, to the bit */
+
+/** Grey image, bordered threshold and contours of an image by js-aruco2's cv.js, as plain arrays. */
+function byCv(CV, image) {
+  const grey = new CV.Image(), thres = new CV.Image();
+  CV.grayscale(image, grey);
+  CV.adaptiveThreshold(grey, thres, 2, 7);
+  const n = image.width * image.height, bordered = (image.width + 2) * (image.height + 2);
+  const binary = Array.from(CV.binaryBorder(thres, []).slice(0, bordered));
+  // Array.from: arrays of this realm (cv.js runs in a context of its own), to be compared deeply
+  const contours = Array.from(CV.findContours(thres, []), (c) => ({ hole: c.hole, points: Array.from(c, (p) => [p.x, p.y]) }));
+  return { grey: Array.from(grey.data.slice(0, n)), binary, contours };
+}
+
+/** The same by the detector's typed-array ports. */
+function byPorts(image, minLength) {
+  const { width: w, height: h } = image;
+  const grey = greyscale(image, new Uint8Array(w * h));
+  const binary = thresholdBordered(grey, w, h, new Int32Array((w + 2) * (h + 2)).fill(9)); // the border is written, too
+  const contours = traceContours(binary.slice(), w, h, minLength).map((c) => ({ hole: c.hole, points: c.map((p) => [p.x, p.y]) }));
+  return { grey: Array.from(grey), binary: Array.from(binary), contours };
+}
+
+test("grey image, threshold and contours are js-aruco2's to the bit, on random images of every shape", () => {
+  const { CV } = loadAruco();
+  const rng = createRng(7);
+  for (let k = 0; k < 120; k++) {
+    const w = 3 + rng.int(48), h = 3 + rng.int(48), cell = 1 + rng.int(6), blocks = rng.chance(0.5);
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const v = blocks ? (((x / cell) | 0) * 7 + ((y / cell) | 0) * 13) % 5 < 2 ? 20 : 230 : rng.int(256);
+        data.set([v, rng.int(256), v, 255], (y * w + x) * 4);
+      }
+    }
+    const image = { width: w, height: h, data }, cv = byCv(CV, image);
+    for (const min of [0, 6]) {
+      const ported = byPorts(image, min);
+      const label = `${w} × ${h}, contours of at least ${min} points`;
+      assert.deepEqual(ported.grey, cv.grey, `grey ${label}`);
+      assert.deepEqual(ported.binary, cv.binary, `threshold ${label}`);
+      assert.deepEqual(ported.contours, cv.contours.filter((c) => c.points.length >= min), `contours ${label}`);
+    }
+  }
+});
+
+test("on a real frame, too: the same contours and the same markers as with js-aruco2's own steps", { skip }, () => {
+  const meta = fixtureMeta();
+  const [w, h] = meta.example_size;
+  const image = fixtureImage("example.rgba", w, h), aruco = loadAruco();
+  const cv = byCv(aruco.CV, image), ported = byPorts(image, w * 0.01);
+  assert.deepEqual(ported.contours, cv.contours.filter((c) => c.points.length >= w * 0.01));
+  assert.ok(ported.contours.length > 20, `${ported.contours.length} contours`);
+  // the detector itself, frame after frame in the same buffers
+  const det = new MarkerDetector({ ...aruco, dictionary: "ARUCO" });
+  const first = det.detect(image), again = det.detect(image);
+  assert.deepEqual(again, first);
+  assert.ok(Object.keys(first).length > 0);
 });

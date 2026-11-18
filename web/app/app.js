@@ -3,6 +3,7 @@
 // (main.js) shows the modules as cases to click through; the game page (../game/main.js) has the games
 // and exercises as its cases. A page says which cases it has and its examples (see `Page`).
 import * as ARail from "../arail/index.js";
+import { VideoDetection } from "./detection.js";
 import { Editor } from "./editor.js";
 import { Inspector } from "./inspect.js";
 import { Interaction, LIST, LIST_ALIASES } from "./interaction.js";
@@ -115,6 +116,8 @@ export class App {
     this.world.settings.weatherStill = reducedMotion();
     this.tracker = new ARail.PlaneTracker(this.world.map);
     this.detector = null;
+    /** The markers of the camera and of clips: each new frame once, in a worker (?worker=0: on the main thread). */
+    this.videoDetection = new VideoDetection({ worker: params.get("worker") !== "0" });
     this.source = null;
     this.detections = {};
     /** Rolling-stock tags of the last frame (image corners by tag ID; see MarkerDetector.detectAll). */
@@ -1242,6 +1245,10 @@ export class App {
     this.rollingDetections = {};
     ARail.terminalOf(this.world)?.forgetObservations();
     if (this.world.layout.markers.dictionary === "auto") this.detector?.setDictionary(null);
+    // the frames of a video are searched once each, in the worker (started with the first video)
+    this.videoDetection.reset();
+    this.videoDetection.watch(kind === "image" ? null : el);
+    if (kind !== "image") this.videoDetection.start(this.detector);
     this.setFrozen(false);
     $("#emptyStage").hidden = true;
     this.canvas.hidden = false;
@@ -1373,7 +1380,8 @@ export class App {
       const still = document.createElement("canvas");
       still.width = this.source.w;
       still.height = this.source.h;
-      still.getContext("2d").drawImage(this.source.el, 0, 0, still.width, still.height);
+      // the frame shown, with its pose (the frame searched last)
+      still.getContext("2d").drawImage(this.videoDetection.picture(this.source), 0, 0, still.width, still.height);
       this.frozenFrame = still;
     } else this.frozenFrame = null;
   }
@@ -1519,9 +1527,16 @@ export class App {
     }, 30);
   }
 
+  /**
+   * The markers of the video: those of the frame searched last are applied (from the worker), and a new
+   * frame of the video is searched when there is one and none is being searched (VideoDetection).
+   */
   _processVideo() {
-    const { el, nw, nh } = this.source;
+    const { el, nw, nh } = this.source, vd = this.videoDetection;
     if (el.readyState < 2 || !this.detector) return;
+    const taken = vd.take(this.source, this.detector);
+    if (taken) this._applyVideoMarkers(taken);
+    if (!vd.wanted()) return;
     const s = Math.min(1, this.procMax / Math.max(nw, nh));
     const pw = Math.round(nw * s), ph = Math.round(nh * s);
     if (this.proc.width !== pw || this.proc.height !== ph) {
@@ -1529,15 +1544,27 @@ export class App {
       this.proc.height = ph;
     }
     this.pctx.drawImage(el, 0, 0, pw, ph);
-    const t0 = performance.now();
+    let found;
     try {
-      this._detect(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw);
+      found = vd.search(this.pctx.getImageData(0, 0, pw, ph), this.source.w / pw, this.detector, this.source);
     } catch (err) {
       if (!this._detectError) toast(`The video cannot be analysed: ${err.message}`, 7000);
       this._detectError = true;
       return;
     }
-    const ms = performance.now() - t0;
+    if (found) this._applyVideoMarkers(found);
+  }
+
+  /**
+   * The markers of a frame of the video: the pose, the layout found in it, the wagons' tags; the size the
+   * frames are searched at follows the time a search takes (45 ms and more: smaller, below 20 ms: larger).
+   * @param {{markers: object, rolling: object, ms: number, selected?: string | null}} found
+   */
+  _applyVideoMarkers(found) {
+    this.detections = found.markers;
+    this.rollingDetections = found.rolling;
+    if (found.selected) this.videoDetection.adopt(this.detector, found.selected);
+    const ms = found.ms;
     const [lo, hi] = this.detector.rolling ? PROC_RANGE_ROLLING : PROC_RANGE;
     this.procMax = ms > 45 ? Math.max(lo, this.procMax * 0.9) : ms < 20 ? Math.min(hi, this.procMax * 1.05) : this.procMax;
     this.tracker.update(this.detections, this.clock, this.camera);
@@ -1606,7 +1633,7 @@ export class App {
       ctx.fillStyle = SKY.floorNear;
       ctx.fillRect(ox, oy, source.w, source.h);
     }
-    ctx.drawImage(this.frozenFrame || source.el, ox, oy, source.w, source.h);
+    ctx.drawImage(this.frozenFrame || this.videoDetection.picture(source), ox, oy, source.w, source.h);
     if (view) {
       view.sourceH = Hs; // the tracker's homography (photo px): picking compares it
       view.placed.push(...this.hudRects); // the labels keep clear of the HUD

@@ -182,6 +182,36 @@ test("a layout chosen from the examples gets only its own markers, not those of 
   expect(errors).toEqual([]);
 });
 
+test("a video's markers are found in the worker, and the frame shown is the one they were found in", async ({ page }) => {
+  test.skip(!hasScene(), "run `npm run fixtures` first");
+  await routeScene(page);
+  const errors = await openApp(page, `/app/?layout=${SCENE}#build`);
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
+  await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
+  await page.waitForFunction(() => window.__arail.videoDetection.state === "ready" && window.__arail.videoDetection.shown && window.__arail.tracker.state.H, null, { timeout: 30_000 });
+  const s = await page.evaluate(() => {
+    const a = window.__arail, vd = a.videoDetection;
+    return { found: Object.keys(a.detections).length, shown: vd.picture(a.source) !== a.source.el, size: [vd.shown.picture.width, vd.shown.picture.height], source: [a.source.w, a.source.h] };
+  });
+  expect(s.found).toBeGreaterThan(2);
+  expect(s.shown).toBe(true);
+  expect(s.size).toEqual(s.source);
+  expect(errors).toEqual([]);
+});
+
+test("with ?worker=0 a video's markers are found on the page itself", async ({ page }) => {
+  test.skip(!hasScene(), "run `npm run fixtures` first");
+  await routeScene(page);
+  const errors = await openApp(page, `/app/?layout=${SCENE}&worker=0#build`);
+  await page.locator("#tab-settings").click();
+  await page.locator("#settingsView-view").click();
+  await page.locator("#fileVideo").setInputFiles(SCENE_VIDEO);
+  await page.waitForFunction(() => window.__arail.source?.kind === "video" && window.__arail.tracker.state.H);
+  expect(await page.evaluate(() => ({ state: window.__arail.videoDetection.state, worker: !!window.__arail.videoDetection.worker, shown: window.__arail.videoDetection.shown }))).toEqual({ state: "failed", worker: false, shown: null });
+  expect(errors).toEqual([]);
+});
+
 test("a layout chosen from the examples while a video plays is not tracked in that video", async ({ page }) => {
   test.skip(!hasScene(), "run `npm run fixtures` first");
   await routeScene(page);

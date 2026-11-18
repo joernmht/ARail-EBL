@@ -279,11 +279,12 @@ function fillPolygons(view, quads, colour, order, alpha = 0.92, snow = "street")
     // under snow until the traffic clears it; wet, darker
     const cleared = view.weather?.cleared ?? 0;
     ctx.fillStyle = view.dim(view.tone(colour, snow === "walk" ? 1 - 0.5 * cleared : 1 - cleared));
+    // no closePath(): fill() closes every piece itself, and in Chromium each closePath() takes the
+    // longer the more the path holds already (the street layer of a town: thousands of pieces)
     ctx.beginPath();
     for (const p of b.polys) {
       ctx.moveTo(p[0][0], p[0][1]);
       for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
-      ctx.closePath();
     }
     ctx.fill();
   });

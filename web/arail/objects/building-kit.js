@@ -559,11 +559,9 @@ export function drawModel(view, g, { outline = OUTLINE } = {}) {
     }
     if (imgs.length) {
       view.ground(5, (ctx) => {
+        // no closePath(): fill() closes each shadow itself (see fillPolygons in road.js)
         ctx.beginPath();
-        for (const img of imgs) {
-          img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
-          ctx.closePath();
-        }
+        for (const img of imgs) img.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
         ctx.fillStyle = `rgba(0,0,0,${shade.toFixed(3)})`;
         ctx.fill("nonzero");
       });
