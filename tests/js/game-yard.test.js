@@ -217,8 +217,10 @@ test("what comes of it: a wagon left behind, a path lost, a cut fetched from the
 });
 
 test("the three people: the hump operator's limit, a stop of the hump, a promise to the production dispatcher and what breaks it", () => {
-  // flat out: the hump operator phones; "1.4 at most" is kept by the game from then on
-  const meet = play((g, d) => (d.id.startsWith("push-") ? d.scale.max : d.id === "call-hump" ? "limit" : onTheMinute(g, d)), { seed: 2, each: tidy });
+  // pushed fast: the hump operator phones; "1.4 at most" is kept by the game from then on
+  // (a morning on which the operator phones and, the limit agreed, has no reason to do more)
+  const met = (seed) => play((g, d) => (d.id.startsWith("push-") ? Math.min(d.scale.max, 1.8) : d.id === "call-hump" ? "limit" : onTheMinute(g, d)), { seed, each: tidy });
+  const meet = [1, 2, 3, 4, 5, 6].map(met).find((g) => g.decisions.some((d) => d.id === "call-hump") && !g.acted.has("hump"));
   const call = meet.decisions.find((d) => d.id === "call-hump");
   assert.match(call.title, /^S\. Pirol, the hump operator, is on the phone: “/);
   assert.deepEqual([call.options.map((o) => o.id), call.made, meet.cap], [["rule", "limit", "insist"], "limit", PUSH.limit]);
@@ -237,6 +239,69 @@ test("the three people: the hump operator's limit, a stop of the hump, a promise
   // the one who is worst off counts most
   const part = g.result().parts.find((x) => x.id === "people"), moods = Object.values(g.account().moods);
   assert.ok(Math.abs(part.value - (0.6 * Math.min(...moods) + 0.4 * (moods.reduce((s, v) => s + v, 0) / 3)) / 100) < 1e-9);
+});
+
+test("cuts that stand where they do not belong: one across its own track's entrance leaves with its train; one put into a wrong track is asked about; the operator's patience ends without an impact too", () => {
+  // the first train over the hump, all its cuts standing
+  const ready = () => {
+    const g = play(onTheMinute, { seed: 1, until: 330 });
+    while (g.sim.bodies.some((b) => b.v > 0)) g.step(0.5);
+    return g;
+  };
+  // a cut for track 2 (the 06:14) is made to stand across the entrance of its track, as a bad runner in the frost does
+  let g = ready();
+  const leaf = g.sim.yard.trackSegment("2"), c = g.sim.bodies.filter((b) => b.intended === "2" && b.rec.stop?.track === "2").sort((a, b) => a.s - b.s)[0];
+  Object.assign(c, { s: leaf.track.s0 + 3, held: false }).rec.stop = { t: g.sim.t, s: c.s, track: null };
+  g.sim.note("cut.stopped", { cut: c.id, s: c.s, track: null });
+  g.step(0.5);
+  assert.deepEqual([g.wrong.get(c.id)?.track, g.irregulars.some((x) => x.kind === "short" && x.track === "2")], [null, true]);
+  assert.equal(g.inPlace(g.wagons.get(c.wagons[0].id)), true, "across the entrance it leaves with the train");
+  // the 06:14 is pulled out with it: it is no longer a cut that stands wrong, and the score does not count it as left there
+  while (g.train("51208").pulled_t == null) {
+    for (const d of g.open) g.act("decide", d.id, onTheMinute(g, d));
+    g.step(0.5);
+  }
+  assert.deepEqual([g.wrong.has(c.id), g.wagons.get(c.wagons[0].id).made], [false, true]);
+  assert.ok(![...g.wrong.keys()].some((id) => !g.sim.bodies.some((b) => b.id === id)), "nothing that has left is counted as left in a wrong track");
+  // a cut that ran towards a wrong track and stopped before it: closed up, it stands in that track, and the yard master is asked when to fetch it
+  g = ready();
+  const x = g.sim.bodies.find((b) => b.intended === "2" && b.rec.stop?.track === "2");
+  Object.assign(x, { track: "4", misrouted: { switch: "s", intended: "2" } }).rec.stop = { t: g.sim.t, s: x.s, track: null };
+  g.sim.note("cut.stopped", { cut: x.id, s: x.s, track: null });
+  g.step(0.5);
+  assert.deepEqual([g.wrong.get(x.id).track, g.open.some((d) => d.id === `wrong-${x.id}`)], [null, false]);
+  assert.equal(g.sim.moveCut(x.id, "4"), true);
+  g.step(0.5);
+  assert.equal(g.wrong.get(x.id).track, "4");
+  const asked = g.open.find((d) => d.id === `wrong-${x.id}`);
+  assert.match(asked.title, /stands in track 4\. When does the locomotive fetch it\?$/);
+  assert.deepEqual(g.view().sketch.items.find((it) => it.id === `cut-${x.id}`).menu.map((m) => m.label), ["Fetch it before the next train", "Fetch it when no train waits"]);
+  // fetched, it is where it belongs again
+  g.act("decide", asked.id, "now");
+  while (g.wrong.has(x.id) && g.t < 900) {
+    for (const d of g.open) g.act("decide", d.id, onTheMinute(g, d));
+    g.step(0.5);
+  }
+  assert.deepEqual([g.wrong.has(x.id), x.rec.stop.track], [false, "2"]);
+  // the hump operator's patience ends by cuts in wrong tracks and speed alone: the hump is stopped though no impact was too hard
+  g = ready();
+  g.called.add("hump");
+  g._mood("hump", MOOD.act + 5 - g.mood("hump"));
+  const any = g.sim.bodies[0];
+  g.sim.note("cut.misrouted", { cut: any.id, switch: "s", intended: any.intended, now: any.track });
+  g.step(0.5);
+  assert.deepEqual([g.hard.length, g.mood("hump") < MOOD.act, g.inspection != null, g.cap], [0, true, true, PUSH.auto]);
+  assert.ok(g.irregulars.some((i) => i.kind === "hump-stopped"));
+  // and after a train pushed flat out
+  g = ready();
+  g.called.add("hump");
+  g._mood("hump", MOOD.act + 5 - g.mood("hump"));
+  g.cap = PUSH.max;
+  while (!g.inbound.some((t) => t.state === "done" && t.vmax > PUSH.limit) && g.t < 900) {
+    for (const d of g.open) g.act("decide", d.id, d.id.startsWith("push-") ? PUSH.max : onTheMinute(g, d));
+    g.step(0.5);
+  }
+  assert.ok(g.irregulars.some((i) => i.kind === "hump-stopped") && g.cap === PUSH.auto);
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the yard as a picture", () => {

@@ -155,7 +155,10 @@ const mins = (s) => String(Math.round(s / 6) / 10);
 /** A time of day without its seconds, of a time of the shift (s); with them where it has some. */
 const START = 6 * 3600;
 const hm = (t) => clockAt(t, START);
-const hms = (t) => (Math.round(t) % 60 ? `${hm(t)}:${String(((Math.round(t) % 60) + 60) % 60).padStart(2, "0")}` : hm(t));
+const hms = (t) => {
+  const r = Math.round(t);
+  return r % 60 ? `${hm(r)}:${String(((r % 60) + 60) % 60).padStart(2, "0")}` : hm(r);
+};
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 /** A pushing speed as it is said: "1.4". */
 const speed = (v) => (Math.round(v * 10) / 10).toFixed(1);
@@ -738,7 +741,7 @@ export class YardGame extends Game {
     this.log(`${hms(this.t)} ${tr.id} is over the hump${tr.vmax > PUSH.limit ? `, pushed at up to ${speed(tr.vmax)} m/s` : ""}.`, "train");
     const left = tr.wagons.filter((w) => w.noHump);
     if (left.length) this._askRound(tr, left);
-    this._call("hump");
+    this._patience("hump");
   }
 
   /** A wagon that must not be humped stands in the arrival tracks: when does the locomotive take it round? One of a few choices. */
@@ -767,11 +770,11 @@ export class YardGame extends Game {
 
   /** A cut stands in the wrong track: when does the locomotive fetch it? One of a few choices. */
   _askWrong(c) {
-    const id = `wrong-${c.id}`;
-    if (this._asked.has(id)) return;
-    this._asked.add(id);
+    const id = `wrong-${c.id}`, now = c.rec.stop?.track;
+    if (this._asked.has(`${id}|${now}`)) return;
+    this._asked.add(`${id}|${now}`);
     const ws = c.wagons.map((w) => this.wagons.get(w.id)), o = this.outbound.find((x) => x.id === ws[0]?.out && x.pulled_t == null);
-    const now = c.rec.stop?.track, there = this.outbound.find((x) => x.track === now && x.pulled_t == null);
+    const there = this.outbound.find((x) => x.track === now && x.pulled_t == null);
     const s = this._jobTime({ kind: "fetch", cut: c.id });
     this.about.set(id, [`cut-${c.id}`, `track-${c.intended}`]);
     this.ask({
@@ -993,6 +996,7 @@ export class YardGame extends Game {
         this._mood("hump", MOOD.misrouted);
         this.log(`${hms(this.t)} A switch did not get between two cuts: the ${this._cutName(c)} runs into track ${e.now}.`, "fault");
         this.irregular("misrouted", `misrouted:${c.id}`, { cut: this._cutName(c), track: e.now, intended: e.intended });
+        this._patience("hump");
       } else if (e.type === "cut.hard") {
         if (tr) tr.clean = false;
         const ws = c.wagons.map((w) => this.wagons.get(w.id)).filter(Boolean), tank = c.careful;
@@ -1006,31 +1010,42 @@ export class YardGame extends Game {
           this.give("incident-report", { kind: "hard impact on a dangerous goods wagon", cut: c.id, v_mps: e.v_mps, track: c.track });
         } else this.log(`${hms(this.t)} Too hard: the ${this._cutName(c)} met the wagons in track ${c.track} at ${e.v_mps.toFixed(1)} m/s (the limit is 1.25).`, "fault");
         this.irregular("hard-impact", `hard:${c.id}`, { cut: this._cutName(c), speed: e.v_mps.toFixed(1), track: c.track });
-        this._call("hump");
-        this._act("hump");
+        this._patience("hump");
       } else if (e.type === "cut.derailed") {
         this._mood("hump", MOOD.careful);
         this.violate("derailed", `${hms(this.t)} A cut derailed in a switch that was moving.`, 2);
-      } else if (e.type === "cut.stopped" && c) {
-        const here = c.rec.stop?.track;
-        if (here !== c.intended && !this.wrong.has(c.id) && c.state === "stopped") {
-          this.wrong.set(c.id, { track: here ?? null, t: this.t });
-          if (here) this._askWrong(c);
-          else {
-            // it stopped before its track, or sticks out of it: the hump operator says so, and closing up the track brings it in
-            if (tr) tr.clean = false;
-            this.log(`${hms(this.t)} ${PEOPLE.hump.name}: "The ${this._cutName(c)} stopped before its track. Close up track ${c.track}, or the next ones run into it."`, "fault");
-            this.irregular("short", `short:${c.id}`, { cut: this._cutName(c), track: c.track });
-          }
-        } else if (here === c.intended) this.wrong.delete(c.id);
-      } else if (e.type === "cut.moved" && c) {
-        if (c.rec.stop?.track === c.intended) this.wrong.delete(c.id);
-      } else if (e.type === "train.blocked") {
+        this._patience("hump");
+      } else if ((e.type === "cut.stopped" || e.type === "cut.moved") && c) this._stood(c);
+      else if (e.type === "train.blocked") {
         const by = sim.cuts.find((x) => x.id === e.by);
         this.log(`${hms(this.t)} The yard is backed up to the crest: ${e.train} cannot be pushed on until track ${by?.track ?? "?"} is closed up.`, "fault");
         this.irregular("blocked", `blocked:${e.train}:${by?.track}`, { train: e.train, track: by?.track ?? "" });
       }
     }
+  }
+
+  /**
+   * A cut has come to stand, or the locomotive has put it somewhere: where it belongs it is no
+   * longer wrong; in another track the yard master is asked when to fetch it (once for each track it
+   * comes to stand in); before a track, or across its entrance, the hump operator says so, and
+   * closing up that track brings it in.
+   */
+  _stood(c) {
+    const here = c.rec.stop?.track ?? null, was = this.wrong.get(c.id);
+    if (here === c.intended) return void this.wrong.delete(c.id);
+    if (c.state !== "stopped" || (was && was.track === here)) return;
+    this.wrong.set(c.id, { track: here, t: this.t });
+    if (here) return void this._askWrong(c);
+    const tr = this.train(c.train);
+    if (tr) tr.clean = false;
+    this.log(`${hms(this.t)} ${PEOPLE.hump.name}: "The ${this._cutName(c)} stopped before its track. Close up track ${c.track}, or the next ones run into it."`, "fault");
+    this.irregular("short", `short:${c.id}`, { cut: this._cutName(c), track: c.track });
+  }
+
+  /** Somebody's patience has fallen: below the first mark they phone (once), below the second they act (once). */
+  _patience(who) {
+    this._call(who);
+    this._act(who);
   }
 
   /** An inbound train comes in, or its forecast is made exact. */
@@ -1079,11 +1094,14 @@ export class YardGame extends Game {
     // (a booked wagon that left with another train, in a wrong track, was counted then)
     const booked = this.booked(o), p = PEOPLE, miss = booked.filter((w) => w.made == null && !ids.has(w.id));
     for (const w of booked) if (w.made == null) w.made = ids.has(w.id);
+    // (whatever left with the train stands nowhere any more: also a cut that stood across the track's entrance)
+    for (const id of out.cuts) {
+      this.wrong.delete(id);
+      if (this.withdraw(`wrong-${id}`)) this.about.delete(`wrong-${id}`);
+      this.jobs = this.jobs.filter((j) => j.cut !== id);
+    }
     const wrongCuts = out.cuts.map((id) => sim.cuts.find((c) => c.id === id)).filter((c) => c && c.intended !== o.track);
     for (const c of wrongCuts) {
-      this.wrong.delete(c.id);
-      if (this.withdraw(`wrong-${c.id}`)) this.about.delete(`wrong-${c.id}`);
-      this.jobs = this.jobs.filter((j) => j.cut !== c.id);
       for (const w of c.wagons) {
         const x = this.wagons.get(w.id);
         if (x?.out && x.made == null) this._mood("customers", x.priority ? MOOD.priority : MOOD.missed);
@@ -1124,10 +1142,7 @@ export class YardGame extends Game {
       }
     }
     if (!this.outbound.some((x) => x.pulled_t == null)) for (const pr of this.promises.filter((x) => x.who === "production" && x.kept == null)) pr.kept = true;
-    for (const who of ["production", "customers"]) {
-      this._call(who);
-      this._act(who);
-    }
+    for (const who of ["production", "customers"]) this._patience(who);
   }
 
   tick(dt) {

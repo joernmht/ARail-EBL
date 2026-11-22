@@ -316,6 +316,7 @@ body[data-screen="play"] .site-where { display: block; }
 .play-board .tag text { fill: var(--board); font-size: 12px; font-weight: 700; }
 .play-board .tag.t-warn rect { fill: var(--board-warn); }
 .play-board .tag.t-ok rect { fill: var(--overlay-ok); }
+.play-board .tag.t-bad rect { fill: var(--overlay-bad); }
 .play-board .tag.t-idle rect { fill: var(--board-2); stroke: var(--board-muted); }
 .play-board .tag.t-idle text { fill: var(--board-text); }
 .play-board .pick { cursor: pointer; }
