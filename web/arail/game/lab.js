@@ -345,7 +345,7 @@ export class LabGame extends Game {
     this.team = { state: "called" };
     this.give("fault-report", { fault: f.signal, asset: `Signal ${f.signal}`, kind: "does not clear", place: this.stationName, track: this.trackName(f.track), holds: 4, since_s: Math.round(this.t - f.at) });
     this.log(`${clockAt(this.t, this.start)} Fault of ${f.signal} reported to the maintenance dispatcher.`, "fault");
-    const d = this.decisions.find((x) => x.id === "report" && !x.made);
+    const d = this.decisions.find((x) => x.id === "report" && x.made == null);
     if (d) this.decide("report", "now");
     return true;
   }

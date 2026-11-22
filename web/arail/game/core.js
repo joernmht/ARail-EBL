@@ -40,8 +40,31 @@ export const secondsOf = (clock) => String(clock).split(":").reduce((a, x, i) =>
 export class Player {
   /** @param {Game} game */
   think(game) {
-    for (const d of game.open) game.act("decide", d.id, d.fallback ?? d.options[0].id);
+    for (const d of game.open) game.act("decide", d.id, fallbackOf(d));
   }
+}
+
+/**
+ * What a decision comes to when nobody takes it: its fallback, else its first option, else the value
+ * its scale starts from.
+ * @param {{fallback?: string | number | null, options?: Array<{id: string}>, scale?: {min: number, value?: number} | null}} d
+ * @returns {string | number | null}
+ */
+export const fallbackOf = (d) => d.fallback ?? d.options?.[0]?.id ?? d.scale?.value ?? d.scale?.min ?? null;
+
+/**
+ * A number as a decision's scale takes it: within its ends, on its steps; null when it is no number
+ * or outside the scale.
+ * @param {{min: number, max: number, step?: number} | null | undefined} scale
+ * @param {unknown} value
+ * @returns {number | null}
+ */
+export function onScale(scale, value) {
+  if (!scale || typeof value !== "number" || !Number.isFinite(value) || value < scale.min || value > scale.max) return null;
+  const step = scale.step > 0 ? scale.step : 1;
+  // (rounded to the step's own digits: 0.1 + 0.2 is 0.3 here)
+  const digits = (String(step).split(".")[1] ?? "").length;
+  return Math.min(scale.max, Number((scale.min + Math.round((value - scale.min) / step) * step).toFixed(digits)));
 }
 
 export class Game {
@@ -111,7 +134,7 @@ export class Game {
     this.over = null;
     /** @type {Map<string, {id: string, label: string, value: number, unit: string}>} */
     this.resources = new Map();
-    /** @type {Array<{id: string, title: string, text: string, options: Array<{id: string, label: string}>, deadline: number | null, fallback: string | null, made: string | null, at: number | null}>} */
+    /** @type {Array<{id: string, title: string, text: string, options: Array<{id: string, label: string}>, scale: {min: number, max: number, step: number, unit: string, value: number, label: string} | null, deadline: number | null, fallback: string | number | null, made: string | number | null, at: number | null}>} */
     this.decisions = [];
     /** @type {Array<{t: number, rule: string, text: string, severity: number}>} */
     this.violations = [];
@@ -180,11 +203,19 @@ export class Game {
   /**
    * Ask the player to decide. Without a decision by the deadline (simulated s from now), the
    * fallback option is taken; in a turn, at the end of the turn.
-   * @param {{id: string, title: string, text?: string, options: Array<{id: string, label: string, hint?: string}>, within?: number | null, fallback?: string | null, then?: (option: string, decision: object) => void}} spec
+   *
+   * A decision is one of its `options`, or a number on its `scale` (how many minutes a train waits,
+   * how much of a budget goes where): `{min, max, step, unit, value, label}`, `value` where it stands
+   * when asked, `label` what the number is. A decision can have both: a scale, and options beside it
+   * (not at all; as the rule says). What is decided is then an option's id or a number of the scale.
+   * @param {{id: string, title: string, text?: string, options?: Array<{id: string, label: string, hint?: string}>, scale?: {min: number, max: number, step?: number, unit?: string, value?: number, label?: string} | null, within?: number | null, fallback?: string | number | null, then?: (option: string | number, decision: object) => void}} spec
    */
-  ask({ id, title, text = "", options, within = null, fallback = null, then = null }) {
-    const d = { id, title, text, options, deadline: within == null ? null : this.t + within, fallback, made: null, at: null };
-    this.decisions = this.decisions.filter((x) => x.id !== id || x.made);
+  ask({ id, title, text = "", options = [], scale = null, within = null, fallback = null, then = null }) {
+    if (scale && !(scale.max > scale.min)) throw new Error(`${this.constructor.id}: the scale of "${id}" needs a max above its min`);
+    if (!scale && !options.length) throw new Error(`${this.constructor.id}: the decision "${id}" needs options or a scale`);
+    const sc = scale ? { step: 1, unit: "", label: "", ...scale, value: onScale({ step: 1, ...scale }, scale.value ?? scale.min) ?? scale.min } : null;
+    const d = { id, title, text, options, scale: sc, deadline: within == null ? null : this.t + within, fallback, made: null, at: null };
+    this.decisions = this.decisions.filter((x) => x.id !== id || x.made != null);
     this.decisions.push(d);
     if (then) this._handlers.set(id, then);
     this.emit("decision", { decision: d });
@@ -193,7 +224,7 @@ export class Game {
 
   /** The decisions waiting for the player. */
   get open() {
-    return this.decisions.filter((d) => !d.made);
+    return this.decisions.filter((d) => d.made == null);
   }
 
   /**
@@ -203,7 +234,7 @@ export class Game {
    * @returns {boolean} whether one was open
    */
   withdraw(id) {
-    const d = this.decisions.find((x) => x.id === id && !x.made);
+    const d = this.decisions.find((x) => x.id === id && x.made == null);
     if (!d) return false;
     this.decisions = this.decisions.filter((x) => x !== d);
     this._handlers.delete(id);
@@ -212,12 +243,16 @@ export class Game {
   }
 
   /**
-   * Take a decision.
-   * @returns {boolean} whether there was such an open decision with that option
+   * Take a decision: one of its options (by its id), or a number on its scale (taken to the scale's
+   * nearest step).
+   * @returns {boolean} whether there was such an open decision with that option, or that number on its scale
    */
   decide(id, option, { auto = false } = {}) {
-    const d = this.decisions.find((x) => x.id === id && !x.made);
-    if (!d || !d.options.some((o) => o.id === option)) return false;
+    const d = this.decisions.find((x) => x.id === id && x.made == null);
+    if (!d) return false;
+    if (typeof option === "number") option = onScale(d.scale, option);
+    else if (!d.options.some((o) => o.id === option)) option = null;
+    if (option == null) return false;
     d.made = option;
     // a fallback is taken at the deadline
     d.at = auto && d.deadline != null ? d.deadline : this.t;
@@ -334,7 +369,7 @@ export class Game {
   step(dt) {
     if (this.over || !(dt > 0)) return;
     this.t += dt;
-    for (const d of this.open) if (d.deadline != null && this.t >= d.deadline && d.fallback) this.decide(d.id, d.fallback, { auto: true });
+    for (const d of this.open) if (d.deadline != null && this.t >= d.deadline && d.fallback != null) this.decide(d.id, d.fallback, { auto: true });
     this.tick(dt);
   }
 
@@ -395,7 +430,7 @@ export class Game {
       score: total, parts, violations: this.violations.length, worst,
       // a danger to people ends a round as failed, whatever the score (in the career: an investigation)
       passed: total >= 50 && worst < 3,
-      decisions: this.decisions.filter((d) => d.made).map((d) => ({ id: d.id, option: d.made, at: d.at, auto: !!d.auto })),
+      decisions: this.decisions.filter((d) => d.made != null).map((d) => ({ id: d.id, option: d.made, at: d.at, auto: !!d.auto })),
     };
   }
 }

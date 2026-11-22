@@ -8,7 +8,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  FLOWS, GAMES, Game, MISSION_FORMAT, Player, SCALES, STRETCHES, Session, clockAt, flowOf, gameOfRole, normalizeMission, play, playedIn, testRun, threads, validateFlows, validateMission, wiring,
+  FLOWS, GAMES, Game, MISSION_FORMAT, Player, SCALES, STRETCHES, Session, clockAt, flowOf, gameOfRole, gamesOfRole, normalizeMission, play, playedIn, testRun, threads, validateFlows, validateMission, wiring,
 } from "../../web/arail/game/index.js";
 import { ROOT } from "./helpers.js";
 
@@ -166,13 +166,17 @@ test("the flows: a sound catalogue; events and states; scales played in shifts o
   assert.equal(flowOf("no-such-flow"), undefined);
   assert.deepEqual(SCALES.map(playedIn), ["shift", "shift", "shift", "turn", "turn", "turn"]);
   assert.ok(validateFlows([{ id: "Bad Id", name: "", name_de: "x", kind: "thing", scale: "weeks", group: "none", text: "x" }]).length >= 5);
-  // every game's ports are flows of the catalogue; its role has one game
+  // every game's ports are flows of the catalogue; it is a game of its role (the train dispatcher has two: its own and the lab's seat)
   for (const G of GAMES.values()) {
     for (const p of [...G.takes, ...G.gives]) assert.ok(flowOf(p.flow), `${G.id}: ${p.flow}`);
     assert.ok(SCALES.includes(G.scale), G.id);
-    assert.equal(gameOfRole(G.role), G);
+    assert.ok(gamesOfRole(G.role).includes(G));
+    assert.equal(gameOfRole(G.role).role, G.role);
     for (const name of Object.keys(G.actions)) assert.equal(typeof G.prototype[name], "function", `${G.id}: the move ${name} is a method`);
   }
+  assert.deepEqual(gamesOfRole("train-dispatcher").map((G) => G.id), ["dispatcher", "lab"]);
+  assert.equal(gameOfRole("train-dispatcher").id, "dispatcher");
+  assert.deepEqual(gamesOfRole("astronaut"), []);
   assert.equal(new Set(FLOWS.map((f) => f.id)).size, FLOWS.length);
 });
 
@@ -761,7 +765,9 @@ test("people who play at random, on every mission of the site: no move a page of
           for (const a of v.actions) assert.ok(Object.hasOwn(seat.Game.actions, a.name), `${file}, ${seat.id}: ${a.name}`);
           if (k < 0.35 && g.open.length) {
             const d = pick(g.open);
-            act(seat.id, "decision", "decide", d.id, pick(d.options).id);
+            // one of its options, or a number on its scale
+            const n = d.scale ? Math.min(d.scale.max, d.scale.min + Math.round((rnd() * (d.scale.max - d.scale.min)) / d.scale.step) * d.scale.step) : null;
+            act(seat.id, "decision", "decide", d.id, d.scale && (!d.options.length || rnd() < 0.7) ? n : pick(d.options).id);
           } else if (k < 0.7) {
             const a = pick(v.actions.filter((y) => !y.disabled));
             if (a) act(seat.id, "form", a.name, ...(a.args ?? []), ...(a.fields ?? []).map(value));
@@ -787,7 +793,7 @@ test("people who play at random, on every mission of the site: no move a page of
       played++;
     }
   }
-  assert.ok(played >= 18 && moves > 2000, `${played} sessions, ${moves} moves`);
+  assert.ok(played >= 21 && moves > 2000, `${played} sessions, ${moves} moves`);
 });
 
 test("whose a seat was: by the part of its work a person held it, not by who holds it at the end", () => {

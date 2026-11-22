@@ -90,7 +90,11 @@ What every game has, from the base class:
   `tick`;
 - **resources** (`resource`, `add`, `value`): money, time, staff, counters;
 - **decisions** (`ask`, `open`): a title, options, a deadline and a fallback; without a decision by
-  the deadline (in a turn: by its end) the fallback is taken;
+  the deadline (in a turn: by its end) the fallback is taken. A decision can also be a **number on
+  a scale** (`scale: {min, max, step, unit, value, label}`: how many minutes a train waits), alone
+  or with options beside it ("however late it comes"): it is decided with a number, which is taken
+  to the scale's nearest step, or with an option's id (`onScale`, `fallbackOf`). The play page shows
+  a scale as a slider;
 - **moves** (`act(name, ...args)`): everything a player does goes through `act`, which checks the
   name against `static actions` and keeps the move (`moves`); a decision is the move `decide`;
 - **rules** (`violate`): a rule broken, with its severity: 1 a slip, 2 a breach, 3 a danger to
@@ -101,7 +105,11 @@ What every game has, from the base class:
   late (`came-late`), held at an entry signal at stop (`held-at-entry`), still at its exit signal a
   minute after its time (`late-departure`), sent to another track than planned (`wrong-track`), a
   connecting train gone before its feeder's passengers could change (`connection-missed`) and a
-  failed signal (`signal-failed`); the careful computer signaller has none in training;
+  failed signal (`signal-failed`); the careful computer signaller has none in training. The train
+  dispatcher's game reports a train that comes otherwise than announced (`forecast-off`), a train
+  that waited and left without the passengers it waited for (`wait-wasted`), a train that runs
+  behind a slower one (`followed`), a complaint to the regulator (`complaint`), a promise not kept
+  (`promise-broken`) and a freight train put aside (`put-aside`);
 - **objectives** with weights and the **score** (0–100); a round is passed with 50 points and no
   danger to people;
 - **ports**: `give(flow, payload)` (only flows of `static gives`), `take(msg)` for what arrives,
@@ -194,9 +202,9 @@ The flows of the first games and what they carry: the contract between the games
 | `repair-status` | event | maintenance dispatcher → signaller | `fault`, `state` (dispatched, arrived, working, done), `eta_s`, `team` |
 | `closure-request` | event | maintenance dispatcher → signaller | `fault`, `place`, `track`, `team` |
 | `track-closure` | event | signaller → maintenance dispatcher | `place`, `track`, `closed`, `fault` |
-| `delay-notice` | event | signaller, dispatcher → dispatcher, operations control | `train`, `kind`, `place`, `stage`, `delay_min`, `connection`, `cause` |
+| `delay-notice` | event | signaller, dispatcher → dispatcher, operations control | `train`, `kind`, `place`, `stage` (approaching, waiting, departed, passed; to a seated dispatcher also arrived), `delay_min`, `connection`, `cause`; a forecast that may be off: `spread_min`, and `exact` once the train is on its way; to a seated dispatcher `at_s`, the time to the second |
 | `connection-request` | event | operations control → the dispatcher (without one seated: the signaller) | `hold`, `for`, `minutes` |
-| `dispatching-order` | event | dispatcher → signaller | `hold`, `for`, `minutes` (a train to hold) |
+| `dispatching-order` | event | dispatcher → signaller | `hold`, `for`, `minutes`: a train waits for another at most so many minutes beyond its own time, for its passengers or to let it go first (0: it does not wait); or `train`, `track`: a train that is still to come takes another platform track |
 | `passenger-information` | event | operations control → passengers | `train`, `text`, `delay_min` |
 | `penalty`, `payment` | event | contract manager → undertaking | `year`, `eur`, `for` |
 | `performance-report` | event | every game, at the end of its period | `scope`, `kind`, the period's numbers, `score` |
@@ -311,7 +319,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 
 | Field | Meaning |
 | --- | --- |
-| `roles[]` | The seats: `role` (catalogue id), `game` (the game's id), `seat` (`human` or `computer`, the suggestion; the players choose), `level`, `options` (passed to the game), `weight` (in the score of the whole), `id` (the role unless given; two seats of one role need ids) |
+| `roles[]` | The seats: `role` (catalogue id), `game` (the game's id), `seat` (`human` or `computer`, the suggestion; the players choose), `level`, `options` (passed to the game: the signaller's `late`, the trains that come late, and `spread`, how far each may be off its forecast, both in seconds by the train's id), `weight` (in the score of the whole), `id` (the role unless given; two seats of one role need ids) |
 | `rounds` | How often the phases are played |
 | `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound); `rounds` (only in these rounds) |
 | `conditions` | What holds and no seat gives: state flows by their id, with their payload |
@@ -320,7 +328,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | `text`, `debrief[]` | The briefing, and questions for the debrief |
 | `story[]` | What people say to the players: `phase`, `at` (s into a shift; in a turn the lines come at its beginning, in their order), `say` (a line of at most 220 characters, `SAY_CHARS`), `who` (`name`, `role`, `portrait`: who says it; left out, whoever the page has for the seat's game), `seats` (to whom; left out, to everybody), `rounds`. It tells and teaches, and changes nothing in a game; `storyOf(mission, phase, round)` gives a phase's lines, `lineFor(lines, seat, heard, t)` the one said to a seat now: the first not answered there yet, in a shift of those whose moment has come (a line that names seats is said only at those and does not stand in the way of the others; a line that names none is said at every seat, and what is answered is kept seat by seat). The play page holds a shift's clock while a line waits for its answer, so none is passed over; `staleLines(lines, seat, t)` are the lines a seat taken in the middle of a shift is not told any more. A line `on` a kind of irregularity (one of a seated game's `static irregularities`; in a shift only) instead of `at` a time is said each time that game reports one (from `at` on, if given), with the game's words in its placeholders: `"{train} is standing at signal {signal}."`; so somebody can speak only when something does not go to plan. `answersOf(mission, phase, round)` gives these lines, `answerFor(lines, seat, heard, irregulars)` the one said now (answered by its `key`: the line and the irregularity), `staleAnswers(lines, seat, irregulars)` those a seat taken in the middle of a shift is not told |
 | `hook` | The mission in a line or two, at most 110 characters (`HOOK_CHARS`): what its card shows first. The `text` stays the briefing, opened when asked for |
-| `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game. The play page checks the name against its places (`validateMission(doc, games, { places })`): a misspelled one is a problem of the mission |
+| `place` | Where it is played on the lab's layout: a place of `web/game/places.js` (`signal-box`, `track`, `district`, `trains`, `station`, `lab`, `terminal`, `town`, `town-night`), shown as a photo. Without it, the place of its first seat's game. The play page checks the name against its places (`validateMission(doc, games, { places })`): a misspelled one is a problem of the mission |
 
 Without `phases`, a mission gets a plan turn, a shift and a review turn, as far as it has roles for
 them. `validateMission(doc, games)` names what is wrong (a seat without a game of its role, a slow
@@ -479,9 +487,10 @@ the desks as requests, not to the layout.
 
 | Game | Role | Played in | Takes | Gives | Alone, it plays |
 | --- | --- | --- | --- | --- | --- |
-| `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails; a mission can say which trains come late (`late`) |
+| `signaller` (Signaller at Bf Neustadt; also its own page `game/signaller/`) | Signaller in a relay interlocking | shifts (seconds) | asset condition, repair status, closure request, dispatching order, connection request | fault report, track closure, delay notice, performance report | its own repair team (five minutes to come, six to repair); its level decides whether the signal fails; a mission can say which trains come late (`late`) and how far each may be off its forecast (`spread`); without a dispatcher it keeps an undertaking's wish to hold a train itself |
 | `maintenance` (Fault Night) | Maintenance and fault dispatcher | shifts (minutes) | staff plan, asset condition, fault report, track closure | repair status, closure request, performance report | the signaller's fault (exit signal N2), and the signallers who close the tracks |
 | `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
+| `dispatcher` (Who goes first) | Train dispatcher in an operations centre | shifts (minutes) | delay notice, connection request | dispatching order, performance report (dispatching) | the morning itself: the signaller's game with the computer's signaller, whose trains come late as its level says, and the regional undertaking's wishes to hold a train |
 | `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
 | `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
 | `contract` (Malus Month) | Transport authority's contract manager | turns (months) | performance report (undertaking, operations) | transport contract, penalty, payment, performance report (contract) | the operator: its incident list by the usual rates, its finances and its learning |
@@ -509,7 +518,18 @@ Seated together:
   computer's and its trains come late as the mission says (`options.late`); the delay notices are
   the signaller's, and a hold the operations control asks for is kept on the signaller's panel.
   The signaller's score does not count (`weight: 0`).
+- **`whose-minutes`** (train dispatcher, signaller; one shift): the signaller's seat is the
+  computer's and its trains come late as the mission says, with forecasts that may be off
+  (`options.late`, `options.spread`); the delay notices are the signaller's (a forecast, the
+  forecast made exact, every arrival and leaving), the dispatcher's orders are kept on the
+  signaller's panel (a train waits for another, a train takes another track), and the
+  dispatcher's count of minutes and connections is the signaller's trains' doing. The signaller's
+  score does not count (`weight: 0`). With an operations control seated as well, its connection
+  request is the dispatcher's to grant, and the signaller takes only the dispatcher's order.
 - Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`.
+
+A role can have two games: the train dispatcher has its own (`dispatcher`) and the lab's seat
+(`lab`), the same role with the lab as its world (`gamesOfRole`; `gameOfRole` gives the first).
 
 ## The parked games
 
@@ -544,7 +564,9 @@ the same ports would be its full form.
 3. **Make it work alone.** For every flow it takes: what does the game do when nobody gives it
    (a default, an event of its own, a counterpart it plays itself)? `isWired(flow)` tells.
 4. **Everything a player does is a move** in `static actions`, with plain arguments; decisions
-   have a fallback, in a shift a deadline. A question stays open only while its occasion lasts:
+   have a fallback, in a shift a deadline. Ask a choice where there are a few ways to go, and a
+   number (`scale`) where the question is how much: how long, how many, what share. A number
+   has no right option to recognise. A question stays open only while its occasion lasts:
    when the state it asked about has passed (the team has gone, the track is open), take it back
    (`withdraw`), or a person will answer it into a state it was not asked in.
 5. **Rules have a severity.** What must never happen in this role is severity 3: the round fails
@@ -572,6 +594,9 @@ the same ports would be its full form.
     matter; each flow it takes and gives; in a session), and its model on the architecture page. Give its faults and what they did as flows that name the fault, so
     that the result can say what led to what.
 13. People in a game get bird names (see [CONTRIBUTING](../CONTRIBUTING.md)).
+14. The mission that seats it follows [How to develop the game](mission-design.md): an aim that
+    can be said in a sentence, decisions nobody can look up, results the seed decides, roles that
+    react, and the layout's world in the game.
 
 ## What comes next
 
@@ -584,7 +609,8 @@ the same ports would be its full form.
 - A mission editor (#105): seats, phases, conditions and injects on a timeline; content packs.
 - The parked games behind the same ports (#144), the next role games of the catalogue
   (#148–#155), each with a mission alone and a place in a mission with others.
-- The career mode on sessions: each step of a career a round of the role's game (#146).
+- The career mode on sessions: each step of a career a round of the role's game (#146); missions
+  and seats that open by what was reached in others, and the career as the badges earned (#273).
 - The lab behind the lab's seat: the Zentralrechner's telegrams instead of the simulation's API
   (reading), and the way back under the lecturer's control (#77); more of the lab at the seat (the
   other stations, the lab's own signal failures, connections between its trains).

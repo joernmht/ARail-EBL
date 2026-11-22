@@ -6,7 +6,7 @@
 // with what can be chosen in it, figures, tables, the moves that can be made now with their fields),
 // its open decisions, its messages and its score.
 // The session itself is arail/game/session.js; this page passes the people's moves to it and draws it.
-import { GAMES, MISSION, Session, answerFor, answersOf, flowOf, lineFor, normalizeMission, staleAnswers, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
+import { GAMES, MISSION, Session, answerFor, answersOf, fallbackOf, flowOf, lineFor, normalizeMission, onScale, staleAnswers, staleLines, storyOf, validateMission, wiring } from "../../arail/game/index.js";
 import { $, download, h, morph, mount, storage } from "../../app/ui.js";
 import { PORTRAITS, faceOf, quoteIn, selfPortrait, speakerOf } from "../cast.js";
 import { mark, termOf } from "../glossary.js";
@@ -29,7 +29,7 @@ const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
  * district.js, control.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
-const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "dispatcher", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
 const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .play-window, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
@@ -101,6 +101,9 @@ function num(v) {
   const r = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10;
   return Math.abs(r) >= 10000 ? r.toLocaleString("en-GB") : String(r);
 }
+
+/** A number of a decision's scale with its unit: "2.5 min". */
+const scaleText = (scale, v) => `${num(v)}${scale?.unit ? ` ${scale.unit}` : ""}`;
 
 /** A unit at the end of a payload's key (CONTRIBUTING.md, units in names): `eta_s: 300` reads "eta: 300 s". */
 const UNIT = /_(s|min|h|m|km|mm|deg|eur)$/;
@@ -1731,7 +1734,7 @@ class PlayPage {
    * buttons for a person at work, numbered as their keys.
    */
   decision(seat, d, can) {
-    const shift = this.session.phase.kind === "shift", label = (id) => d.options.find((o) => o.id === id)?.label ?? "";
+    const shift = this.session.phase.kind === "shift", label = (id) => (typeof id === "number" ? scaleText(d.scale, id) : d.options.find((o) => o.id === id)?.label ?? "");
     const key = `${seat.id}|${d.id}`, whole = this.whole.has(key);
     // how much of its time is left, from when it was first shown
     if (shift && d.deadline != null && !this.asked.has(key)) this.asked.set(key, seat.game.t);
@@ -1741,8 +1744,8 @@ class PlayPage {
       this.sound.play("hurry");
     }
     let left = "";
-    if (shift && d.deadline != null) left = `${Math.max(0, Math.ceil(d.deadline - seat.game.t))} s left${d.fallback ? `, then: ${label(d.fallback)}` : ""}`;
-    else if (!shift) left = `If you skip it: ${label(d.fallback ?? d.options[0]?.id)}`;
+    if (shift && d.deadline != null) left = `${Math.max(0, Math.ceil(d.deadline - seat.game.t))} s left${d.fallback != null ? `, then: ${label(d.fallback)}` : ""}`;
+    else if (!shift) left = `If you skip it: ${label(fallbackOf(d))}`;
     return [
       h("h5", {}, this.rich(d.title, true)),
       h("p", { class: "text" }, this.rich(whole ? d.text ?? "" : lead(d.text)), " ",
@@ -1750,10 +1753,43 @@ class PlayPage {
       share != null ? h("div", { class: `vn-countdown${share < LOW_SHARE ? " low" : ""}`, "aria-hidden": "true" }, h("i", { style: { width: `${Math.round(share * 1000) / 10}%` } })) : null,
       // (what happens to a decision that is skipped in a turn is said to who does not see the page; the time left in a shift to all)
       h("p", { class: shift ? "hint" : "hint visually-hidden" }, left),
-      can ? h("div", { class: "row play-options-row" }, d.options.map((o, i) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) },
-        i < 9 ? h("kbd", { "aria-hidden": "true" }, String(i + 1)) : null, h("span", {}, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null))))
-        : h("ul", { class: "play-options" }, d.options.map((o) => h("li", {}, o.label))),
+      // a number on a scale: a slider with what it stands at, and a button that takes it
+      can && d.scale ? this.scale(seat, d, key) : null,
+      can ? (d.options.length ? h("div", { class: "row play-options-row" }, d.options.map((o, i) => h("button", { class: "btn", type: "button", onclick: () => this.decide(seat.id, d.id, o.id) },
+        i < 9 ? h("kbd", { "aria-hidden": "true" }, String(i + 1)) : null, h("span", {}, o.label, o.hint ? h("small", {}, ` (${o.hint})`) : null)))) : null)
+        : h("ul", { class: "play-options" }, d.scale ? h("li", {}, `${d.scale.label ? `${d.scale.label}: ` : ""}${scaleText(d.scale, d.scale.min)} to ${scaleText(d.scale, d.scale.max)}`) : null, d.options.map((o) => h("li", {}, o.label))),
     ];
+  }
+
+  /**
+   * The scale of a decision that is a number (`d.scale`): a slider from its least to its most, in its steps,
+   * the number it stands at, and the button that decides it (Enter in the slider does the same). Where it
+   * stands is kept while the page draws on.
+   */
+  scale(seat, d, key) {
+    const sc = d.scale, id = `scale-${safe(key)}`, at = this.drafts.get(id) ?? sc.value;
+    const take = () => this.decide(seat.id, d.id, Number(document.getElementById(id)?.value ?? at));
+    return h("div", { class: "play-scale" },
+      h("label", { for: id }, sc.label || "How much"),
+      h("span", { class: "play-scale-end", "aria-hidden": "true" }, scaleText(sc, sc.min)),
+      h("input", {
+        type: "range", id, min: sc.min, max: sc.max, step: sc.step, value: at, "aria-valuetext": scaleText(sc, at),
+        oninput: (e) => {
+          // (where it stands is said beside it at once; the next drawing keeps it)
+          const v = Number(e.target.value);
+          this.drafts.set(id, v);
+          e.target.setAttribute("aria-valuetext", scaleText(sc, v));
+          e.target.parentNode.querySelector("output").textContent = scaleText(sc, v);
+        },
+        onkeydown: (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          take();
+        },
+      }),
+      h("span", { class: "play-scale-end", "aria-hidden": "true" }, scaleText(sc, sc.max)),
+      h("output", { for: id }, scaleText(sc, at)),
+      h("button", { class: "btn play-scale-take", type: "button", onclick: take }, "Decide", h("kbd", { "aria-hidden": "true" }, "Enter")));
   }
 
   /** The moves of a seat: a form per action for a person at work, else their names. */
@@ -1932,19 +1968,22 @@ class PlayPage {
   /** Take a decision at a seat; what a person decided goes into the session's diary (with its seat), for the mission's sheet. */
   decide(seatId, id, option) {
     const seat = this.session.seat(seatId), d = seat?.game?.open.find((x) => x.id === id), o = d?.options.find((x) => x.id === option);
+    // (a number: as the decision's scale takes it, with what the number is)
+    const chose = typeof option === "number" && d?.scale ? `${d.scale.label ? `${d.scale.label} ` : ""}${scaleText(d.scale, onScale(d.scale, option) ?? option)}` : o?.label;
     const res = this.act(seatId, "decide", id, option);
     if (refusedBy(res)) {
       this.say(res?.reason ?? "This decision is not open any more.");
       this.sound.play("refuse");
     } else {
-      if (d && o && seat.by === "human") this.diary.push({ seat: seatId, who: this.seatName(seatId), title: d.title, chose: o.label, round: this.session.round });
+      if (d && chose && seat.by === "human") this.diary.push({ seat: seatId, who: this.seatName(seatId), title: d.title, chose, round: this.session.round });
+      this.drafts.delete(`scale-${safe(`${seatId}|${id}`)}`);
       this.sound.play("choose");
     }
     this.term = null;
     this.after();
     this.refocus(() => {
       const p = this.panels.get(seatId);
-      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-options-row button, button") ?? p.tools.querySelector("button") ?? p.decisionsTitle;
+      return p.story.querySelector(".btn") ?? p.decisions.querySelector(".play-scale input, .play-options-row button, button") ?? p.tools.querySelector("button") ?? p.decisionsTitle;
     });
   }
 

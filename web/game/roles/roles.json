@@ -10606,8 +10606,8 @@
     ],
     "bigGame": "Takes the timetable (timetable-planner), possessions, faults and the RUs' wishes, and gives its orders to the signaller games. Gives delay minutes with their codes to the performance regime (payments between IM and RUs, settled by track-access-sales), passenger delays to the transport authorities' penalties, and big events to the network controller.",
     "effort": "medium",
-    "page": "play/?mission=lab-morning",
-    "first": "A first form is playable at the lab's seat: on the lab's own timetable (the EBL's simulation API), report a failed signal, close and open a station track for the repair team, hold trains; without the time-distance diagram and the order of trains."
+    "page": "play/?mission=whose-minutes",
+    "first": "A first form is playable as the mission Whose minutes?: one morning at Bf Neustadt on the lab's table, with the computer's signaller. Three undertakings' trains, forecasts that may be off; the player orders who waits for whom and how long, and which track a train takes; the undertakings' goodwill falls with every minute added to their trains, they phone, and a complaint to the regulator holds where the orders left the rules of the line. With a chart of the platform tracks instead of the time-distance diagram, without diversions and delay codes. At the lab's seat (the mission A morning in the lab) the same role works on the lab's own timetable, behind the EBL's simulation API."
    }
   },
   {

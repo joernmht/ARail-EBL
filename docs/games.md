@@ -16,6 +16,7 @@ to fit together, and the first role game, the signaller of Bf Neustadt.
   [its shift on the table](#the-shift-on-the-table): the game on the lab's layout, in augmented
   reality, with the maintenance dispatcher's district beside it
 - [How a game looks](#how-a-game-looks): a line or two, a picture of where you work
+- [What a mission needs](#what-a-mission-needs): the rules for a new mission ([How to develop the game](mission-design.md))
 - [Where the games are](#where-the-games-are) and [what comes next](#what-comes-next)
 
 ## The idea
@@ -158,7 +159,8 @@ and the fast ones in shifts, a turn's decisions reach the shift as state (a staf
 condition of the assets), and the shift's reports reach the next turn; a shift is a sample of its
 period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
 computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
-of its district for a morning (the mission `neustadt-morning`), and with the undertaking's
+of its district for a morning (the mission `neustadt-morning`), the train dispatcher above the
+signaller, between three undertakings (`whose-minutes`), and with the undertaking's
 operations control, the asset manager, the transport authority's contract manager and the budget
 committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
 money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
@@ -228,12 +230,18 @@ passed with 50 points, no danger to people and every train through.
 
 **Levels.** *Training*: no failures. *Normal*: the signal fails at 08:13. *Hard*: trains up to three
 minutes late, the signal fails at 08:11:40, one more freight train. A mission can say which trains
-come late, whatever the level (the seat's option `late`: a train's id and its seconds).
+come late, whatever the level (the seat's option `late`: a train's id and its seconds), and how
+far each may come earlier or later than it was announced (`spread`, drawn by the seed): the
+neighbouring station's forecast is then told first, and the true figure when the train is on its
+way.
 
 **In the big game.** The signaller takes the timetable (from the capacity planning and the railway
 undertakings) and the trains' delays; gives delays to the undertakings' dispatchers and to
 passenger information, fault reports to the maintenance dispatcher (the maintenance story's repair
-team), and closures and reopenings for works. In the career mode the role is open after the
+team), and closures and reopenings for works. With a train dispatcher seated it takes the
+dispatcher's orders: a train waits for another at most so many minutes (for its passengers, or to
+let it go first: a freight train then no longer waits for a late train planned before it), and a
+train that is still to come takes another platform track. In the career mode the role is open after the
 apprenticeship in railway operations or, for career changers, after the signaller's function training
 (in a lab like the EBL); from it, among other ways, the dispatcher of an operations centre, the
 instructor or the emergency manager become possible.
@@ -334,6 +342,21 @@ A hold that is asked for is the signaller's to keep: the train stands at the pla
 doors open until the changers have crossed. Code: `web/game/control.js` (`ControlBoard`; Node
 tests in `tests/js/game-control.test.js`).
 
+**The dispatcher's trains are on the table too.** *Whose minutes?* is played on the table of the
+signaller's game that runs the same morning: the signaller's seat is the computer's, and the
+mission says which trains come late and how far their forecasts may be off (the intercity, RB 33
+and RB 35). Every train has a thin ring: Türkis while it runs as planned, orange once it is known
+to be late; a train that waits by an order has a full ring, and the trains a question is about
+pulse in the choice's colour (the freight train in G3 and the intercity it could let pass). A click
+on a train chooses it; its orders are its moves, below the picture of the tracks beside the table:
+a chart of the three platform tracks over the morning, with a thin line where each train is
+planned on its track and a thick one where it is expected now (green as planned, orange late,
+red where two trains are expected on one track at once). What is ordered happens on the table:
+the freight train stands in G3 until its wait is over, a train sent to G1 runs in there, the
+people on platform 2 wait for the train that is held for them. Code: `web/game/dispatch.js`
+(`DispatchBoard`, a `ControlBoard`; Node tests in `tests/js/game-control.test.js`, the game's in
+`tests/js/game-dispatcher.test.js`, browser tests in `tests/e2e/dispatcher.spec.js`).
+
 **A turn is on the table too.** The asset manager, the contract manager and the budget
 rapporteur decide for a year or a month: their games have no trains to run, but what they decide
 about lies on the layout. In their turns the table shows the scene of their game, thing by thing:
@@ -422,7 +445,8 @@ and for the heads of the other pages of the games:
   `tests/js/game-shots.test.js` check this. **H** leaves only the picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
-  the lab, the terminal, the station forecourt, the town, the town at night), and every mission
+  the station from the dispatcher's desk, the lab, the terminal, the station forecourt, the town,
+  the town at night), and every mission
   names one. More pictures (`BACKDROPS`) come in by rule: `backdropFor` reads what a question or a
   message speaks of (a level crossing, a technician on call, passengers and their connection, the
   night session) and the stage fades to the picture that fits. The pictures are in
@@ -435,8 +459,8 @@ and for the heads of the other pages of the games:
   stands where the still picture was taken (`web/game/shots.js`), sways a little, and flies on
   when a question is about something else. It is an ornament and changes nothing in a game; on a
   phone, where less motion is asked for, or where it is too slow, the still pictures stay.
-- **A shift's picture is the table.** For a signaller's, a maintenance dispatcher's and an
-  operations control's seat the live picture is the game's own (the rail's **Table**, or **T**):
+- **A shift's picture is the table.** For a signaller's, a maintenance dispatcher's, an
+  operations control's and a train dispatcher's seat the live picture is the game's own (the rail's **Table**, or **T**):
   the trains run on the lab's layout and the signals stand there, the vans drive its streets to the
   faults, the undertaking's trains are marked, and what is clicked
   on the table is chosen; on the table's photo from above, on a photo of the lab, or through the
@@ -459,7 +483,10 @@ and for the heads of the other pages of the games:
 - **Somebody asks, and a story is told.** At the bottom somebody speaks, as in a visual novel: a
   portrait that stands taller than the band, a name, the question, and the choices as filled
   buttons (keys **1** to **9**), one decision at a time (others that wait are dots to press); a
-  decision with a deadline counts down. The band holds only this: who speaks, the story, the
+  decision with a deadline counts down. A decision can be a number instead of a choice, or
+  beside one: how many minutes a train waits. It is a slider between its ends, with where it
+  stands beside it and a button that takes it (**Enter** in the slider does the same; the arrow
+  keys move it by its step). The band holds only this: who speaks, the story, the
   question with what is needed to decide, the choices. A decision is asked by the person its
   text names ("E. Kiebitz, the asset responsible (ALV), proposes …"), else by the game's own
   counterpart (`GAME_CAST` in `web/game/cast.js`). In a turn, what happened is read line by line
@@ -509,12 +536,21 @@ A new game adds its place to `GAME_PLACES` and who asks in it to `GAME_CAST`; a 
 `tests/js/game-places.test.js`, `game-cast.test.js`, `game-glossary.test.js` and
 `game-progress.test.js` check that none is missing and that every picture exists.
 
+## What a mission needs
+
+A mission is worth playing when two people decide differently in it and both have reasons.
+[How to develop the game](mission-design.md) says what every new or reworked mission must have
+(a clear educational aim, unclear decisions, results that are not certain, roles that react and
+ask for compromise, decisions that are one of a few choices and decisions that are a number, a
+part that is played and not answered, and the layout's world in it), shows how *Whose minutes?*
+meets each point, and lists the steps from the idea to the pull request.
+
 ## Where the games are
 
 | Page | What |
 | --- | --- |
 | `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu, at most five choices: Continue, Games (Missions, Signaller, Free play), Career (Logbook, Career planner, Roles), Options, Leave. Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
-| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
+| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Whose minutes? (the train dispatcher between three undertakings, with the computer's signaller), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's, the train dispatcher's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/logbook/` | The logbook: the rank, the stars and the badges reached, the railway terms met as cards with a quiz, a sheet per mission played |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
@@ -530,8 +566,12 @@ A new game adds its place to `GAME_PLACES` and who asks in it to `GAME_CAST`; a 
 
 - The role games of the catalogue, one by one, each on the game core and with its ports, so that it
   joins a mission with the others; next those whose flows the first games already speak: the
-  infrastructure manager's train dispatcher between the undertaking and the signaller, the
   undertaking's managers who take the contract's penalties, then the passenger with the journeys.
+  The train dispatcher has its first form (*Whose minutes?*); what it lacks of the catalogue's
+  game: the time-distance diagram of the whole line, diversions, the delay codes of the
+  performance regime, and the undertakings' control rooms as seats for people.
+- Missions that open one another: a mission or a role is open once another is passed or a share
+  of its points is reached, and the career becomes what the badges show (#273).
 - The career mode on the planner's model: each step a round of the role's game, applications and
   elections that can fail, pay, reputation and stress (#146); qualifications earned by exams, quizzes
   and practical rounds in the role's game (#158); starting points as people, such as a wheelchair user

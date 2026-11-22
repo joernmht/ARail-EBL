@@ -27,6 +27,19 @@ by hand (a driver in a layout, an example in a guide, a test, a story), pick the
 real name like "Weber" or "Müller". `tests/js/people.test.js` checks the JSON of layouts, examples and guides; for
 names in code and prose, check yourself.
 
+## Developing the game
+
+When asked to develop the game (a mission to find, fix or make up), this is the standing instruction, as the maintainer gave it:
+
+> Find, fix or make up a mission for the game. Be inspired by the first one, it's relatively good. Make it interesting, with a clear educational aim. Always include unclear decisions, stochastic results, and negative role reaction, demanding for compromise. Include both discrete multiple choice decisions, scalar decisions and a gaming aspect, also include the virtual world somehow dynamically. After you're done, PR and watch and show me a walk-through.
+
+[docs/mission-design.md](docs/mission-design.md) works it out: the eight points every mission has, with how to check each, the example (*Whose minutes?*), and the steps from the idea to the pull request. In short:
+
+- **Every mission has**: a clear educational aim (one sentence, in its `text`, asked for in its `debrief`); decisions without a right answer; results the seed decides; other roles that react badly to what was decided and ask for compromise; decisions that are one of a few choices (`ask` with `options`) and decisions that are a number (`ask` with `scale`); a part that is played in the picture by the player's own timing; and the lab's layout in it, on the table, changing with what is decided.
+- **"The first one"** is *Your first shift* (`web/game/missions/first-shift.json`): the model for how a mission talks to a beginner and for work done in the picture.
+- **Check it by playing**: the computer on many seeds with fixed ways of playing (nobody at the desk fails, by the book passes, judgment beats the book on some mornings and not on others), then the mission in the browser on the table, start to end.
+- **When it is done**: open the pull request, watch it (its checks and reviews, until it is green), and show the maintainer a walk-through of the mission played, with pictures of what is asked, what was answered and what came of it.
+
 ## Teaching concepts, papers and cases from practice
 
 The project page has a board for each (`web/references.json`; see "The boards of the project page" in CONTRIBUTING.md). When you work on an issue labelled `teaching-concept`, `paper` or `practice-case`:
