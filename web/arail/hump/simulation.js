@@ -599,15 +599,16 @@ export class HumpSimulation {
    * that must not be humped, RID label 15): one cut, behind the wagons standing there. Instant.
    * @param {{id?: string, train?: string, wagons: object[]}} cut wagon specs (see makeWagon; `noHump` is not asked again)
    * @param {string} name the track
-   * @returns {object | null} the cut, or null when the track has no room for it (nothing changes)
+   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls in it (nothing
+   *   changes then: no cut, no random number drawn)
    */
   setOut({ id, train = "", wagons }, name) {
     const leaf = this.yard.trackSegment(name);
-    for (const w of wagons) wagonType(w.type);
+    // room first, from the types' lengths: a call that fails makes no wagon and draws no random number
+    const s = this._place(leaf, wagons.reduce((m, w) => m + wagonType(w.type).length_m, 0));
+    if (s == null) return null;
     const made = wagons.map((w, i) => makeWagon({ ...w, track: leaf.track.name, id: w.id ?? `${id ?? train}.${i + 1}` }, this.rng, this.options.season));
     const c = this._cut(String(id ?? `${train}/set${this.cuts.length + 1}`), String(train), made, leaf.track.name);
-    const s = this._place(leaf, c.body.length_m);
-    if (s == null) return null;
     // (without an order: it did not go over the hump, and the figures of the humping do not count it)
     Object.assign(c, { route: this.yard.pathTo(leaf.id), s, state: "stopped", held: s >= leaf.s1 - 1e-9 });
     c.rec.stop = { t: round(this.t), s: round(s), track: leaf.track.name };

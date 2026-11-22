@@ -259,6 +259,8 @@ export class YardGame extends Game {
     this.loco = { state: "back", until: FIRST_S, job: null, train: null, resume: 0, goOn: false };
     /** What the locomotive is to do besides pushing: `{kind, track?, cut?, train?, first}` (`first`: before the next train). */
     this.jobs = [];
+    /** Wagons that must not be humped and found no room in their track: `{train, track}`, taken round again once it has room. */
+    this.waiting = [];
     /** The train chosen for the hump next (its id), the pushing speed now, and the highest the hump operator takes. */
     this.nextUp = null;
     this.v = 0;
@@ -383,7 +385,8 @@ export class YardGame extends Game {
     }
     if (w.noHump) {
       const job = this.jobs.concat(this.loco.job ?? []).find((j) => j.kind === "round" && j.train === w.train);
-      return { t: job ? this._jobEnd(job) : null, spread: 30, needs: job ? undefined : "the locomotive", where: "not to be humped" };
+      const room = this.waiting.some((x) => x.train === w.train);
+      return { t: job ? this._jobEnd(job) : null, spread: 30, needs: job ? undefined : room ? `room in track ${w.track}` : "the locomotive", where: "not to be humped" };
     }
     // still in its train: when the train is on the hump, how far the wagon is from the crest
     const before = tr.wagons.slice(0, tr.wagons.findIndex((x) => x.id === w.id)).filter((x) => !x.noHump).length;
@@ -617,6 +620,13 @@ export class YardGame extends Game {
     if (!chosen && waiting.length > 1 && !this.open.some((d) => d.id === "next")) this._askNext(waiting);
     if (chosen && chosen.push == null && !this.open.some((d) => d.id === `push-${chosen.id}`)) this._askPush(chosen);
     if (L.state !== "idle" || this.inspection != null) return;
+    // a wagon that found no room in its track is taken round again once the track has room for it
+    for (const x of [...this.waiting]) {
+      const ws = [...this.wagons.values()].filter((w) => w.train === x.train && w.noHump && !this.cutOf(w.id)), c = sim.trackContents(x.track);
+      if (ws.length && c.free_m < ws.length * WAGON_M + 1) continue;
+      this.waiting = this.waiting.filter((y) => y !== x);
+      if (ws.length) this.jobs.push({ kind: "round", train: x.train, track: x.track, first: false });
+    }
     // jobs before the next train; those for later only while no train waits
     const j = this.jobs.find((x) => (x.first || !waiting.length) && this._quiet(this._tracksOf(x)));
     if (j) return void this._start(j, false);
@@ -648,11 +658,13 @@ export class YardGame extends Game {
         this.log(`${hms(this.t)} ${ok ? `The ${this._cutName(c)} stands in track ${c.intended} now.` : `No room in track ${c.intended} for the ${this._cutName(c)}: it stays where it is.`}`, ok ? "info" : "fault");
       }
     } else if (j.kind === "round") {
-      const ws = [...this.wagons.values()].filter((w) => w.train === j.train && w.noHump && w.made == null && !this.cutOf(w.id));
+      const ws = [...this.wagons.values()].filter((w) => w.train === j.train && w.noHump && !this.cutOf(w.id));
       const put = (group) => sim.setOut({ id: `${j.train}/r`, train: j.train, wagons: group.map((w) => ({ id: w.id, type: w.type, loaded: w.loaded, careful: w.careful })) }, j.track);
       if (ws.length) {
         const c = put(ws) ?? (sim.pushUp(j.track), put(ws));
-        this.log(`${hms(this.t)} ${c ? `The wagon that must not be humped stands in track ${j.track}.` : `No room in track ${j.track}: the wagon stays in the arrival tracks.`}`, c ? "info" : "fault");
+        // (no room: it is taken round again when the track has some, after its train has gone at the latest)
+        if (!c) this.waiting.push({ train: j.train, track: j.track });
+        this.log(`${hms(this.t)} ${c ? `The wagon that must not be humped stands in track ${j.track}.` : `No room in track ${j.track}: the wagon is back in the arrival tracks, until the track has room.`}`, c ? "info" : "fault");
       }
     }
     if (L.state === "job") Object.assign(L, { state: "back", until: this.t + 20 });
@@ -812,7 +824,7 @@ export class YardGame extends Game {
       text: `Its path waits ${HOLD.slot_min} min; held longer, the train loses it and goes ${NEXT_PATH.min[0]} or ${NEXT_PATH.min[1]} min late. Left at its cut-off, the wagons stay behind until the next train to ${o.to}, twelve hours on. `
         + `${this.booked(o).length - miss.length} of ${this.booked(o).length} booked wagons stand in track ${o.track}; missing: ${where}${prio ? ` (${prio} of them a customer's priority wagons)` : ""}. `
         + `${coming.length ? `As it looks, ${coming.length === miss.length ? "they are" : `${coming.length} of them are`} in about ${mins(mid)} min after the cut-off (it may be ${mins(lo)} to ${mins(hi)}). ` : ""}`
-        + `${stuck.length ? `${plural(stuck.length, "wagon")} will not come without the locomotive. ` : ""}`
+        + `${stuck.length ? `${plural(stuck.length, "wagon")} will not come without ${[...new Set(stuck.map((e) => e.needs))].join(" and ")}. ` : ""}`
         + `${p ? `You promised ${PEOPLE.production.name}: no train waits longer than ${mins(p.max_min * 60)} min. ` : ""}The train is pulled out as soon as its wagons are in; without your word it waits for them as long as it may, ${HOLD.max_min} min.`,
       scale: { min: 0, max: HOLD.max_min, step: HOLD.step_min, unit: "min", value: Math.min(HOLD.slot_min, Math.ceil(mid / 30) / 2), label: `The ${hm(o.pull)} waits at most` },
       within: DECIDE_S.hold, fallback: HOLD.max_min,
@@ -831,9 +843,11 @@ export class YardGame extends Game {
     this.log(`${hms(this.t)} ${p.name}, ${p.role}, is on the phone.`, "request");
     if (who === "hump") {
       this.about.set(id, ["hump"]);
-      const hard = this.hard.length, wrong = this.wrong.size;
+      // (what the operator names: the impacts, the cuts that ran into a wrong track, or the speed alone)
+      const hard = this.hard.length, wrong = this.irregulars.filter((x) => x.kind === "misrouted").length, fastest = Math.max(...this.inbound.map((x) => x.vmax));
+      const what = hard ? `${plural(hard, "impact")} over the limit${wrong ? ` and ${plural(wrong, "cut")} in the wrong track` : ""} this morning` : wrong ? `${plural(wrong, "cut")} in the wrong track this morning` : `${speed(fastest)} m/s over my hump`;
       this.ask({
-        id, title: `${p.name}, ${p.role}, is on the phone: “${hard ? `${plural(hard, "impact")} over the limit` : "Cuts in the wrong tracks"}${hard && wrong ? ` and ${plural(wrong, "cut")} in the wrong track` : ""} tonight. At that speed, in this frost, I am not letting the next train go.”`,
+        id, title: `${p.name}, ${p.role}, is on the phone: “${what.replace(/^./, (ch) => ch.toUpperCase())}. At that speed, in this frost, I am not letting the next train go.”`,
         text: `Give in, and the trains still to come take longer over the hump; insist, and the next impact is yours. The hump operator answers for every impact: below ${MOOD.act} of 100 the operator stops the hump to inspect the retarders (${mins(LOCO.inspect_s)} min) and pushes at ${speed(PUSH.auto)} m/s from then on. ${p.name}'s patience is at ${this.mood(who)}.`,
         options: [
           { id: "rule", label: `Back to ${speed(PUSH.rule)} m/s for the rest of the shift` },
@@ -1160,7 +1174,7 @@ export class YardGame extends Game {
       }
     }
     if (this.t >= this.length) this.end(`${hm(this.length)}: the shift is over.`);
-    else if (this.outbound.every((o) => o.pulled_t != null) && this.inbound.every((x) => x.state === "done") && !sim.bodies.some((b) => b.v > 0) && !this.open.length && !this.jobs.length && !this.loco.job) this.end(`${hms(this.t)} Every train is broken up and every outbound train has gone.`);
+    else if (this.outbound.every((o) => o.pulled_t != null) && this.inbound.every((x) => x.state === "done") && !sim.bodies.some((b) => b.v > 0) && !this.open.length && !this.jobs.length && !this.waiting.length && !this.loco.job) this.end(`${hms(this.t)} Every train is broken up and every outbound train has gone.`);
   }
 
   /* ---------------------------------------------------------------- the account */
@@ -1179,7 +1193,8 @@ export class YardGame extends Game {
       priority: booked.filter((w) => w.priority).length, priority_made: booked.filter((w) => w.priority && made(w)).length,
       trains: this.outbound.length, gone: gone.length, on_time: gone.filter((o) => o.late_min < 0.5).length, late_min: Math.round(gone.reduce((s, o) => s + o.late_min, 0) * 10) / 10, lost: gone.filter((o) => o.lost).length,
       hard: this.hard.length, careful: this.hard.filter((h) => h.careful).length, damaged: all.filter((w) => w.damaged).length,
-      misrouted: sim.misrouted, wrong: this.wrong.size + gone.reduce((n, o) => n + o.wrong, 0), cuts: sim.cuts, humped: this.inbound.filter((x) => x.state === "done").length,
+      // (left in a wrong track: those that stand in one, and those that were shunted out of a train; stopped before their own track is another matter)
+      misrouted: sim.misrouted, wrong: [...this.wrong.values()].filter((w) => w.track).length + gone.reduce((n, o) => n + o.wrong, 0), short: [...this.wrong.values()].filter((w) => !w.track).length, cuts: sim.cuts, humped: this.inbound.filter((x) => x.state === "done").length,
       moods, lowest: Math.min(...Object.values(moods)), promises: this.promises.length, broken: this.promises.filter((p) => p.kept === false).length,
     };
   }
@@ -1203,7 +1218,7 @@ export class YardGame extends Game {
       // (a yard that leaves four in ten booked wagons behind does not work: worth nothing)
       { id: "wagons", label: "Wagons on their trains", weight: 30, value: a.weight ? (a.weight_made / a.weight - WAGONS_NONE) / (1 - WAGONS_NONE) : 1, note: a.decided ? `${a.made} of ${a.decided} booked wagons left with their train${a.priority ? ` (${a.priority_made} of ${a.priority} priority wagons)` : ""}` : "no train has gone yet" },
       { id: "departures", label: "Trains out on time", weight: 30, value: punctual, note: a.gone ? `${a.on_time} of ${a.gone} on time, ${a.late_min} min late in all${a.lost ? `, ${plural(a.lost, "path")} lost` : ""}` : "no train has gone yet" },
-      { id: "damage", label: "Without damage or complaint", weight: 15, value: 1 - 0.18 * (a.hard - a.careful) - 0.1 * a.wrong - sev, note: `${plural(a.hard, "impact")} too hard, ${plural(a.misrouted, "cut")} into a wrong track (${a.wrong} left there), ${plural(a.broken, "promise")} not kept` },
+      { id: "damage", label: "Without damage or complaint", weight: 15, value: 1 - 0.18 * (a.hard - a.careful) - 0.1 * a.wrong - sev, note: `${plural(a.hard, "impact")} too hard, ${plural(a.misrouted, "cut")} into a wrong track (${a.wrong} left there)${a.short ? `, ${plural(a.short, "cut")} stopped short of ${a.short === 1 ? "its" : "their"} track` : ""}, ${plural(a.broken, "promise")} not kept` },
       // the one who is worst off counts most: a shift that is good for two of three is not good enough
       { id: "people", label: "The people you work with", weight: 25, value: (0.6 * a.lowest + 0.4 * mean) / 100, note: `patience of 100: ${names}` },
     ];

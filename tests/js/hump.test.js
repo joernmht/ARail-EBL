@@ -598,6 +598,9 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   const five = Array.from({ length: 5 }, () => ({ type: "eanos", loaded: 1 }));
   assert.equal(small.setOut({ train: "S", wagons: five }, "1"), null);
   assert.deepEqual([small.cuts.length, small.bodies.length], [0, 0]);
+  // (not even a random number is drawn: the run goes on as one in which nothing was tried)
+  const untouched = new HumpSimulation(standardYard({ tracks: 2, track_m: 60 }), { seed: 1, dt: 0.1 });
+  assert.equal(small.rng.next(), untouched.rng.next());
   assert.ok(small.setOut({ train: "S", wagons: five.slice(0, 3) }, "1"));
   const two = small.setOut({ train: "S", wagons: five.slice(0, 2) }, "2");
   assert.equal(small.moveCut(two.id, "1"), false);
@@ -607,7 +610,13 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   busy.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
   while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 3)) busy.step();
   assert.equal(busy.moveCut(busy.bodies[0].id, "1"), false);
-  busy.run({ until_s: busy.t + 40 });
-  if (busy.bodies[0].v > 0 && busy.bodies[0].route.at(-1) === yard.trackSegment("4").id) assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
+  // (until the cut is in its track and still rolls there)
+  const four = yard.trackSegment("4");
+  while (!(busy.bodies[0].route.at(-1) === four.id && busy.bodies[0].s > four.track.s0) && busy.t < 600) busy.step();
+  assert.ok(busy.bodies[0].v > 0 && busy.bodies[0].route.at(-1) === four.id, "the cut rolls in track 4");
+  assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
+  assert.equal(busy.bodies.length, 1);
+  busy.run();
+  assert.ok(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), "once it stands, the wagon is set behind it");
   assert.throws(() => sim.setOut({ train: "T", wagons: [{ type: "no-such-wagon" }] }, "2"), /no wagon type/);
 });

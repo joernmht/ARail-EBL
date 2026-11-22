@@ -256,6 +256,9 @@ test("cuts that stand where they do not belong: one across its own track's entra
   g.step(0.5);
   assert.deepEqual([g.wrong.get(c.id)?.track, g.irregulars.some((x) => x.kind === "short" && x.track === "2")], [null, true]);
   assert.equal(g.inPlace(g.wagons.get(c.wagons[0].id)), true, "across the entrance it leaves with the train");
+  // (it stopped short of its own track: that is not a cut in a wrong track, and the score does not take it for one)
+  assert.deepEqual([g.account().wrong, g.account().short], [0, 1]);
+  assert.match(g.result().parts.find((x) => x.id === "damage").note, /\(0 left there\), 1 cut stopped short of its track/);
   // the 06:14 is pulled out with it: it is no longer a cut that stands wrong, and the score does not count it as left there
   while (g.train("51208").pulled_t == null) {
     for (const d of g.open) g.act("decide", d.id, onTheMinute(g, d));
@@ -292,6 +295,12 @@ test("cuts that stand where they do not belong: one across its own track's entra
   g.step(0.5);
   assert.deepEqual([g.hard.length, g.mood("hump") < MOOD.act, g.inspection != null, g.cap], [0, true, true, PUSH.auto]);
   assert.ok(g.irregulars.some((i) => i.kind === "hump-stopped"));
+  // on the phone the operator names what it was: with no impact and no cut gone wrong, the speed
+  g = ready();
+  g._mood("hump", MOOD.call - 5 - g.mood("hump"));
+  g._patience("hump");
+  assert.deepEqual([g.hard.length, g.irregulars.filter((i) => i.kind === "misrouted").length], [0, 0]);
+  assert.match(g.open.find((d) => d.id === "call-hump").title, /is on the phone: “1\.2 m\/s over my hump\. At that speed, in this frost, I am not letting the next train go\.”$/);
   // and after a train pushed flat out
   g = ready();
   g.called.add("hump");
@@ -302,6 +311,38 @@ test("cuts that stand where they do not belong: one across its own track's entra
     g.step(0.5);
   }
   assert.ok(g.irregulars.some((i) => i.kind === "hump-stopped") && g.cap === PUSH.auto);
+});
+
+test("the wagon that must not be humped finds no room in its track: it goes back, the yard master is told what it waits for, and it is taken round again", () => {
+  const g = play((game, d) => (d.id === "round-56034" ? "now" : onTheMinute(game, d)), { seed: 1, until: 20 });
+  const answer = (d) => (d.id === "round-56034" ? "now" : d.id === "hold-51204" ? 1 : onTheMinute(g, d));
+  const to = (done) => {
+    while (!done() && !g.over) {
+      for (const d of g.open) g.act("decide", d.id, answer(d));
+      g.step(0.5);
+    }
+  };
+  // the locomotive is on its way round the hump; meanwhile track 1 is filled to its entrance (wagons of another shift)
+  to(() => g.loco.job?.kind === "round");
+  g.sim.pushUp("1");
+  const fill = Math.floor(g.sim.trackContents("1").free_m / 15.7);
+  assert.ok(g.sim.setOut({ id: "X/1", train: "X", wagons: Array.from({ length: fill }, () => ({ type: "eanos", loaded: 1 })) }, "1"));
+  assert.ok(g.sim.trackContents("1").free_m < 15.5);
+  // (the way round is cut short here, so that the wagon is back before the train's cut-off is asked about)
+  g.loco.until = g.t;
+  to(() => !g.loco.job);
+  const tank = [...g.wagons.values()].find((w) => w.noHump);
+  assert.deepEqual([g.waiting, g.cutOf(tank.id)], [[{ train: "56034", track: "1" }], null]);
+  assert.ok(g.logs.some((l) => /No room in track 1: the wagon is back in the arrival tracks, until the track has room\.$/.test(l.text)));
+  assert.equal(g.eta(tank).needs, "room in track 1");
+  // at the cut-off the yard master is told what the wagon waits for
+  to(() => g.decisions.some((d) => d.id === "hold-51204"));
+  assert.match(g.decisions.find((d) => d.id === "hold-51204").text, /will not come without room in track 1\./);
+  // the 06:10 goes without it; the track has room then, and the wagon is taken round again and stands in it
+  to(() => g.train("51204").pulled_t != null);
+  assert.equal(tank.made, false);
+  to(() => g.cutOf(tank.id) != null || g.t > 1500);
+  assert.deepEqual([g.waiting, g.cutOf(tank.id)?.rec.stop.track, g.sim.log.filter((e) => e.type === "cut.set-out" && e.cut === "56034/r").length], [[], "1", 1]);
 });
 
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the yard as a picture", () => {
