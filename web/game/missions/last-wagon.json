@@ -1,0 +1,260 @@
+{
+ "format": "arail-mission/1",
+ "id": "last-wagon",
+ "title": "The last wagon",
+ "hook": "Frost on the hump, four trains to break up, one locomotive. At each cut-off a wagon is in, or stays behind.",
+ "place": "yard",
+ "text": "06:00 to 06:35 at the hump yard Neustadt West, on the lab's table: the first half hour of an early shift in the frost. Three trains stand in the arrival tracks, a fourth comes late by a forecast. You say which goes over the hump next and how fast it is pushed; the cuts roll down through the retarders into six classification tracks. Four trains go out, each pulled out of its track at its cut-off: a wagon that is not in then stays behind for twelve hours. Pushed faster, a train is over sooner, and a good runner catches up the bad runner ahead: a switch cannot be thrown between them, wagons meet too hard. A train can wait for its last wagons, three minutes before its path is lost. And there is one locomotive for everything: pushing, taking round the wagon that must not be humped, fetching a cut from the wrong track, closing up a track. The hump operator counts the impacts, the production dispatcher the minutes, the customer service agent the wagons left behind; no order suits all three. What you practise: what a hump's pushing speed gains and costs, reading a train's list for good and bad runners, weighing a wagon's connection against a train's path at the cut-off, and sharing one locomotive between jobs that all are urgent.",
+ "mode": "cooperative",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "yard-master",
+   "game": "yard",
+   "seat": "human",
+   "level": "normal"
+  }
+ ],
+ "rounds": 1,
+ "phases": [
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The start of the early shift",
+   "roles": [
+    "yard-master"
+   ],
+   "length": 2100,
+   "clock": "06:00"
+  }
+ ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "Six in the morning, minus eight. The night leaves you three trains in the arrival tracks, a fourth is late. Four go out, each from its own track at its cut-off. What is not in then stays behind for twelve hours."
+  },
+  {
+   "phase": "shift",
+   "at": 8,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "The window shows the yard: arrival tracks on the left, the hump, the six tracks on the right. A wagon's colour says how it rolls: green well, orange badly. A good runner right behind a bad one is where trouble starts."
+  },
+  {
+   "phase": "shift",
+   "at": 110,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "S. Pirol",
+    "role": "Hump operator, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "Tap the hump while I push, and I go faster, slower or stop. Up to 1.4 the automatic gets every switch between two cuts. Beyond that it is your judgment, and your name in the book."
+  },
+  {
+   "phase": "shift",
+   "at": 200,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "You have one locomotive. It pushes the hump, takes round what must not be humped, fetches what went wrong and closes up the tracks. While it does one thing, everything else waits."
+  },
+  {
+   "phase": "shift",
+   "at": 330,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "Three numbers at the top: the patience of S. Pirol at the hump, of D. Turna who wants the trains out on the minute, and of N. Wachtel who answers for the wagons. Below 60 they phone. Below 30 they act."
+  },
+  {
+   "phase": "shift",
+   "at": 500,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "Before each cut-off you are asked how long the train may wait for what is missing. Three minutes its path forgives. Beyond that the path is gone, and the next is ten or twenty-five minutes off."
+  },
+  {
+   "phase": "shift",
+   "at": 900,
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "The late train carries three priority wagons for the 06:21. A forecast is a guess from the last station: its true time you learn only shortly before it is here."
+  },
+  {
+   "phase": "shift",
+   "on": "misrouted",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "S. Pirol",
+    "role": "Hump operator, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "The {cut} ran into track {track}: I could not throw the switch between two cuts. That is what pushing fast costs. Fetch it, or it leaves with the wrong train."
+  },
+  {
+   "phase": "shift",
+   "on": "hard-impact",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "S. Pirol",
+    "role": "Hump operator, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "{speed} m/s into the wagons in track {track}. The limit is 1.25. Each of those goes into the book, and one on a tank wagon is an incident."
+  },
+  {
+   "phase": "shift",
+   "on": "short",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "S. Pirol",
+    "role": "Hump operator, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "The {cut} stopped short: a bad runner in the frost. Tap track {track} and have it closed up, or what comes next runs into it out there."
+  },
+  {
+   "phase": "shift",
+   "on": "blocked",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "S. Pirol",
+    "role": "Hump operator, on the radio",
+    "portrait": "uniform"
+   },
+   "say": "Track {track} is full back to the crest. {train} stands on the hump until the locomotive has closed that track up."
+  },
+  {
+   "phase": "shift",
+   "on": "hump-stopped",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "{who} has stopped the hump for {min} min and pushes at walking pace from now on. A hump operator can do that when asked for more than the yard gives."
+  },
+  {
+   "phase": "shift",
+   "on": "missed",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "{wagons} missed the {train}. {who} will hear of it from the customer. Would a faster push, another order of the trains or a minute of waiting have brought them in?"
+  },
+  {
+   "phase": "shift",
+   "on": "path-lost",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "The {train} has lost its path and goes {min} min late. {who} counts every one of them. Three minutes is what a path forgives."
+  },
+  {
+   "phase": "shift",
+   "on": "forecast-off",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "{train} comes {min} min late, not {told}. Look at your waits again: tap a track's train to change how long it waits."
+  },
+  {
+   "phase": "shift",
+   "on": "promise-broken",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "A promise to {who} is broken. What you promise one of the three, another has to pay. Promise only what the yard can give."
+  },
+  {
+   "phase": "shift",
+   "on": "complaint",
+   "seats": [
+    "yard-master"
+   ],
+   "who": {
+    "name": "G. Bussard",
+    "role": "Yard master of the night, on the way home",
+    "portrait": "headset"
+   },
+   "say": "{who} has put it in writing. A shift that suits two of the three is not good enough."
+  }
+ ],
+ "debrief": [
+  "Which train did you push fastest, and what came of it? What in a train's list would you look at before you choose its speed?",
+  "Where did you let a train wait for its wagons, and where did you let it go without them? What did each cost, and whom?",
+  "When did the locomotive do something other than push the hump, and what waited meanwhile? Would you send it in the same order again?",
+  "Whose patience was lowest at the end of the shift, and which of your decisions would that person name?"
+ ]
+}

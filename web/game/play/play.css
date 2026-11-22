@@ -297,7 +297,13 @@ body[data-screen="play"] .site-where { display: block; }
 .play-board line.t-occupied { stroke: var(--overlay-bad); }
 .play-board line.t-closed { stroke: var(--board-warn); stroke-dasharray: 10 7; }
 .play-board line.t-warn { stroke: var(--board-warn); }
+.play-board rect { fill: var(--board-muted); }
 .play-board rect.t-muted { fill: var(--board-2); stroke: var(--board-line); }
+.play-board rect.t-ok { fill: var(--overlay-ok); }
+.play-board rect.t-warn { fill: var(--board-warn); }
+.play-board rect.t-bad { fill: var(--overlay-bad); }
+.play-board rect.t-train { fill: #ffffff; }
+.play-board rect.t-closed { fill: none; stroke: var(--board-warn); stroke-width: 1.5; stroke-dasharray: 3 2; }
 .play-board circle { fill: var(--board-muted); stroke: var(--board); stroke-width: 2; }
 .play-board circle.t-ok { fill: #3ed37a; }
 .play-board circle.t-bad { fill: #ff667e; }

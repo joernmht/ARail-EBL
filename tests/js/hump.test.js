@@ -568,3 +568,46 @@ test("a track blocked at its entrance with room further in is pushed up, not pul
   const rn = named.run();
   assert.deepEqual(rn.perCut.map((c) => [c.track, c.ended]), [["3", "3"], ["6", "6"]]);
 });
+
+test("the shunting locomotive: a standing cut taken to another track, wagons set out that are not humped", () => {
+  const yard = standardYard({ tracks: 6, track_m: 120 });
+  const sim = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
+  sim.hump({ id: "T", wagons: [{ type: "eanos", loaded: 1, track: "2" }, { type: "eanos", loaded: 1, track: "5" }, { type: "zacns", loaded: 1, track: "2", noHump: true }] });
+  const before = sim.run();
+  assert.deepEqual([before.cuts, sim.trains[0].skipped], [2, ["T.3"]]);
+  const [a, b] = sim.bodies;
+  assert.deepEqual([a.track, b.track, a.rec.stop.track, b.rec.stop.track], ["2", "5", "2", "5"]);
+  // a cut that rolls, is unknown or has no room is not moved
+  assert.equal(sim.moveCut("nope", "5"), false);
+  // moved: behind the wagons standing in the other track, buffer to buffer; that track is its own from then on
+  assert.equal(sim.moveCut(a.id, "5"), true);
+  near(a.s, b.s - b.body.length_m, 1e-9, "behind the cut standing there");
+  assert.deepEqual([a.track, a.rec.stop.track, a.v, a.state, a.held], ["5", "5", 0, "stopped", false]);
+  assert.deepEqual([sim.trackContents("2").cuts, sim.trackContents("5").cuts], [[], [b.id, a.id]]);
+  assert.deepEqual(sim.log.at(-1), { t: sim.log.at(-1).t, type: "cut.moved", cut: a.id, from: "2", track: "5" });
+  // into an empty track: at its end, held by its stop
+  assert.equal(sim.moveCut(a.id, "1"), true);
+  assert.deepEqual([a.s, a.held, sim.trackContents("1").end_m], [yard.trackSegment("1").s1, true, 0]);
+  // set out: the wagon that was not humped stands in its track as a cut of its own; the figures of the humping do not count it
+  const c = sim.setOut({ id: "T/r", train: "T", wagons: [{ id: "T.3", type: "zacns", loaded: 1 }] }, "2");
+  assert.deepEqual([c.id, c.track, c.state, c.s, c.order, c.wagons.map((w) => w.id)], ["T/r", "2", "stopped", yard.trackSegment("2").s1, null, ["T.3"]]);
+  assert.deepEqual([sim.results().cuts, sim.results().hard, sim.trackContents("2").wagons], [2, 0, 1]);
+  assert.deepEqual(sim.pullOut("2").wagons.map((w) => w.id), ["T.3"]);
+  // no room: nothing changes (five wagons do not fit a track of 60 m; a cut of two does not fit behind three)
+  const small = new HumpSimulation(standardYard({ tracks: 2, track_m: 60 }), { seed: 1, dt: 0.1 });
+  const five = Array.from({ length: 5 }, () => ({ type: "eanos", loaded: 1 }));
+  assert.equal(small.setOut({ train: "S", wagons: five }, "1"), null);
+  assert.deepEqual([small.cuts.length, small.bodies.length], [0, 0]);
+  assert.ok(small.setOut({ train: "S", wagons: five.slice(0, 3) }, "1"));
+  const two = small.setOut({ train: "S", wagons: five.slice(0, 2) }, "2");
+  assert.equal(small.moveCut(two.id, "1"), false);
+  assert.equal(two.track, "2");
+  // while a cut rolls into a track, nothing is put there; a rolling cut is not moved
+  const busy = new HumpSimulation(yard, { seed: 3, dt: 0.1 });
+  busy.hump({ id: "B", wagons: [{ type: "eanos", loaded: 1, track: "4" }] });
+  while (!busy.bodies.some((x) => x.v > 0 && x.route.length > 3)) busy.step();
+  assert.equal(busy.moveCut(busy.bodies[0].id, "1"), false);
+  busy.run({ until_s: busy.t + 40 });
+  if (busy.bodies[0].v > 0 && busy.bodies[0].route.at(-1) === yard.trackSegment("4").id) assert.equal(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), null);
+  assert.throws(() => sim.setOut({ train: "T", wagons: [{ type: "no-such-wagon" }] }, "2"), /no wagon type/);
+});

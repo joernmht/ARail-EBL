@@ -305,3 +305,43 @@ test("the hump yard's texts in German", () => {
   }
   assert.equal(DE["Hump yard"], "Ablaufberg");
 });
+
+test("a run made elsewhere is shown instead of its own: drawn, not stepped; its own run again when it is let go of", async () => {
+  const { HumpSimulation } = await import("../../web/arail/hump/index.js");
+  const world = lone(), o = world.objects[0];
+  run(world, 30);
+  const own = o.sim, ownT = own.t;
+  assert.ok(ownT > 20 && o.external === null);
+  // a simulation on a yard of the object's figures, with a train on the hump and one wagon in a track
+  const sim = new HumpSimulation(standardYard({ tracks: 6, track_m: 120, design: "speed", push_m: 100 }), { seed: 9, dt: 0.1 });
+  sim.hump({ id: "G", push_mps: 1.2, wagons: [{ type: "eanos", loaded: 1, track: "2" }, { type: "hbbillns", loaded: 0, track: "5" }, { type: "eanos", loaded: 1, track: "2" }] });
+  sim.run({ until_s: 40 });
+  o.show(sim);
+  assert.deepEqual([o.sim === sim, o.external === sim], [true, true]);
+  // the world goes on: the run shown is not stepped by the object
+  const at = sim.t;
+  run(world, 20);
+  assert.equal(sim.t, at);
+  // its wagons are the ones drawn and picked: as many boxes as wagons on the hump and in the tracks
+  const count = () => sim.bodies.reduce((n, b) => n + b.wagons.length, 0) + (sim.pushing?.cuts.reduce((n, c) => n + c.wagons.filter((w, i, all) => c.s - all.slice(0, i + 1).reduce((m, x) => m + x.length_m, 0) >= 0).length, 0) ?? 0);
+  assert.equal(o.boxes().length, count());
+  sim.run();
+  assert.equal(o.boxes().length, 3);
+  assert.equal(o.card().rows.find((r) => r[0] === "Trains humped")[1], "1");
+  // an impact too hard in the run shown flashes on the object as its own would
+  sim.note("cut.hard", { cut: sim.cuts[0].id, v_mps: 2 });
+  run(world, 0.2);
+  assert.deepEqual(o._flashes.map((f) => f.cut), [sim.cuts[0].id]);
+  // a point of the yard on the layout: the crest is the object's position, a track's end lies beyond it in its direction
+  const crest = o.pointAt(null, o.yard.crest_m), end = o.pointAt("3", o.yard.tracks[2].s1);
+  near(crest[0], 0, 1e-6, "the crest's x");
+  near(crest[1], 0, 1e-6, "the crest's y");
+  assert.ok(end[0] < -3000 && crest[2] > end[2], "rotated by 180°: the tracks lie towards −x, below the crest");
+  // a run of another yard is refused; let go of, the object runs its own again, from its start
+  assert.throws(() => o.show(new HumpSimulation(standardYard({ tracks: 4, track_m: 120 }), { seed: 1 })), /of another yard/);
+  o.show(null);
+  assert.equal(o.external, null);
+  assert.ok(o.sim !== sim && o.sim !== own && o.sim.t === 0);
+  run(world, 5);
+  assert.ok(o.sim.t > 4);
+});

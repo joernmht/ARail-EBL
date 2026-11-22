@@ -160,7 +160,8 @@ condition of the assets), and the shift's reports reach the next turn; a shift i
 period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are played by the
 computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
 of its district for a morning (the mission `neustadt-morning`), the train dispatcher above the
-signaller, between three undertakings (`whose-minutes`), and with the undertaking's
+signaller, between three undertakings (`whose-minutes`), the yard master at the hump yard west
+of the station (`last-wagon`, alone so far), and with the undertaking's
 operations control, the asset manager, the transport authority's contract manager and the budget
 committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
 money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
@@ -357,6 +358,37 @@ people on platform 2 wait for the train that is held for them. Code: `web/game/d
 (`DispatchBoard`, a `ControlBoard`; Node tests in `tests/js/game-control.test.js`, the game's in
 `tests/js/game-dispatcher.test.js`, browser tests in `tests/e2e/dispatcher.spec.js`).
 
+**The hump yard is on the table too.** *The last wagon* is the yard master's first half hour of an
+early shift, 06:00 to 06:35 in the frost, at the layout's module Hump yard west of the station (off
+by default; the table switches it on, and the camera stays over it: a board says which modules
+are on with it, where the camera may look and what the parts of its picture are called). The
+game's world is ARail's [hump simulation](hump-yard.md), and while the game is shown the layout's
+hump yard draws the game's run instead of its own: the train pushed over the crest, the cuts
+rolling through the retarders (orange while they brake) into six classification tracks, a wagon
+red after an impact too hard, a track emptied when its train is pulled out. Three trains stand in
+the arrival tracks and a fourth comes late by a forecast; four trains go out, each from its own
+track at its cut-off, and a booked wagon that is not in then stays behind for twelve hours. The
+yard master says which train goes over the hump next (one of a few) and how fast it is pushed (a
+number, 0.8 to 2 m/s: up to 1.4 the automatic gets every switch between two cuts; faster, a
+train is over sooner, and a good runner catches up the bad runner ahead), how long an outbound
+train waits for its last wagons (a number of minutes: three its path forgives, beyond that the
+path is lost), and what the one locomotive does besides pushing (take the wagon that must not be
+humped round to its track, fetch a cut from the wrong track, close up a track): while it does one
+thing, everything else waits. The board marks what can be chosen: a ring at the crest (orange
+above the automatic's limit), one at the end of each track with an outbound train (orange once
+it is due and wagons are missing, full while it waits), one round a cut in the wrong track. A tap
+on the crest changes the pushing speed while a train is pushed (faster, slower, stop): slower just
+before a good runner follows a bad one is what a hump master does by hand. The picture of the
+yard beside the table has the arrival tracks, the train on the hump with each wagon in the colour
+of how it rolls, the six tracks with their wagons, and for each its train's cut-off and how many
+of its booked wagons are in. Three people count differently: the hump operator the impacts and
+the speed, the production dispatcher the minutes a train leaves late, the customer service agent
+the wagons left behind; below a mark each phones and asks for a promise that another of them
+pays, and at the end of their patience the operator stops the hump and the other two put it in
+writing. Code: `web/arail/game/yard.js` (`YardGame`), `web/game/yard.js` (`YardBoard`),
+`web/game/missions/last-wagon.json`; Node tests in `tests/js/game-yard.test.js`, browser tests in
+`tests/e2e/yard.spec.js`.
+
 **A turn is on the table too.** The asset manager, the contract manager and the budget
 rapporteur decide for a year or a month: their games have no trains to run, but what they decide
 about lies on the layout. In their turns the table shows the scene of their game, thing by thing:
@@ -543,7 +575,7 @@ A mission is worth playing when two people decide differently in it and both hav
 (a clear educational aim, unclear decisions, results that are not certain, roles that react and
 ask for compromise, decisions that are one of a few choices and decisions that are a number, a
 part that is played and not answered, and the layout's world in it), shows how *Whose minutes?*
-meets each point, and lists the steps from the idea to the pull request.
+and *The last wagon* meet each point, and lists the steps from the idea to the pull request.
 
 ## Where the games are
 
@@ -570,6 +602,10 @@ meets each point, and lists the steps from the idea to the pull request.
   The train dispatcher has its first form (*Whose minutes?*); what it lacks of the catalogue's
   game: the time-distance diagram of the whole line, diversions, the delay codes of the
   performance regime, and the undertakings' control rooms as seats for people.
+  The yard master, the first role of the freight family, has its first form too (*The last
+  wagon*); what it lacks of the catalogue's game: twenty tracks and their allocation, the staff of
+  the shift, a broken retarder, and its neighbours as seats (the hump operator, the production
+  dispatcher, the wagon inspector, the train dispatcher who gives the paths).
 - Missions that open one another: a mission or a role is open once another is passed or a share
   of its points is reached, and the career becomes what the badges show (#273).
 - The career mode on the planner's model: each step a round of the role's game, applications and

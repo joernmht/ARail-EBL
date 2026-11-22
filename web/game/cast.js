@@ -48,6 +48,7 @@ export const GAME_CAST = {
   lab: { name: "J. Reiher", role: "Signaller in the lab", portrait: "uniform", self: "headset" },
   "transport-control": { name: "A. Schwalbe", role: "Driver, on the radio", portrait: "uniform", self: "headset" },
   dispatcher: { name: "R. Dohle", role: "Senior dispatcher, at the next desk", portrait: "headset", self: "headset" },
+  yard: { name: "S. Pirol", role: "Hump operator, on the radio", portrait: "uniform", self: "hivis" },
   "asset-manager": { name: "E. Kiebitz", role: "Asset responsible (ALV)", portrait: "hivis", self: "office" },
   contract: { name: "T. Lerche", role: "The operator's contract manager", portrait: "office", self: "office" },
   budget: { name: "E. Wiedehopf", role: "The coalition partner's rapporteur", portrait: "suit", self: "suit" },
@@ -59,8 +60,8 @@ export const NARRATOR = { name: "The railway", role: "", portrait: "office" };
 /** Words in a person's role that say which portrait fits. */
 const KINDS = [
   [/team|technician|track|asset responsible|inspector|worker|foreman/i, "hivis"],
-  [/driver|signaller|guard|conductor|shunter/i, "uniform"],
-  [/dispatcher|control|centre|center|radio|phone/i, "headset"],
+  [/driver|signaller|guard|conductor|shunter|hump operator/i, "uniform"],
+  [/dispatcher|control|centre|center|radio|phone|service agent/i, "headset"],
   [/rapporteur|minister|member|committee|partner|mayor|auditor|politic/i, "suit"],
 ];
 

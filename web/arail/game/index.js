@@ -3,7 +3,7 @@
  * roles, sessions and missions (the big game), the role catalogue's checks, the career mode's model
  * and the role games. They need no world; the framework never imports them, so a layout, a
  * simulation or a plugin loads none of this, and a game page loads only this (and what it imports:
- * the framework's math).
+ * the framework's math, and for the yard master's game the hump's simulation, which runs on its own).
  * @module arail/game
  */
 export { Game, GAME_KINDS, Player, clockAt, fallbackOf, onScale, secondsOf } from "./core.js";
@@ -27,3 +27,4 @@ export { LEVELS as TRANSPORT_CONTROL_LEVELS, TransportControlGame, TransportCont
 export { DispatcherGame, DispatcherPlayer, GOODWILL, HOURS, LEVELS as DISPATCHER_LEVELS, UNDERTAKINGS, WAIT_MAX_MIN, WAIT_RULE_MIN, behind } from "./dispatcher.js";
 export { CHUNK_S, EblApi, LAG_S, LATE_MIN, LabGame, LabPlayer } from "./lab.js";
 export { DIAGNOSE_S, DISTRICT, DRIVE, EXPOSED_MIN, FAULTS, LEVELS as MAINTENANCE_LEVELS, MaintenanceGame, MaintenancePlayer, ON_CALL, RESTORE_MIN, TRADES, driveTime, likely } from "./maintenance.js";
+export { HOLD, INBOUND, LEVELS as YARD_LEVELS, LOCO, MOOD, NEXT_PATH, OUTBOUND, PEOPLE as YARD_PEOPLE, PUSH, SIDINGS, WRONG_MIN, YARD, YardGame, YardPlayer } from "./yard.js";

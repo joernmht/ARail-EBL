@@ -27,13 +27,17 @@ import { DistrictBoard } from "./district.js";
 import { between, seenFrom } from "./shots.js";
 import { TableBoard } from "./table.js";
 import { TurnBoard } from "./turn.js";
+import { YardBoard } from "./yard.js";
 
 /**
  * The boards of the games that are played on the table, by the game's id: each draws its game on
  * the layout's world and says what of it is at a pixel (`show`, `draw`, `hit`, `placeOf`, `partOf`,
- * `bounds`, `dispose`; `active`, `picked`, `offers`).
+ * `bounds`, `dispose`; `active`, `picked`, `offers`). A board that is played elsewhere than at the
+ * station says so on its class: `layers` (the modules of the layout that are on with it, instead of
+ * TABLE_VIEW.layers), `area` (where the camera may look, instead of TABLE_VIEW.area) and `parts`
+ * (what the parts of its picture are called).
  */
-export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, dispatcher: DispatchBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
+export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, dispatcher: DispatchBoard, yard: YardBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
 
 /** Where the pages keep whether the backdrop is live. */
 export const LIVE_KEY = "arail.game.live";
@@ -159,9 +163,9 @@ export class LiveScene {
     }
   }
 
-  /** Whether a shot can be shown: the layout it is of runs. */
+  /** Whether a shot can be shown: the layout it is of runs, with its own modules (not a shot of a module that is off by default). */
   can(shot) {
-    return !this.failed && !!this.world && !!shot && shot.layout === this.layout;
+    return !this.failed && !!this.world && !!shot && shot.layout === this.layout && !shot.layers;
   }
 
   /**
@@ -296,7 +300,7 @@ export class LiveScene {
     }
     if (table) {
       // nothing is drawn between the camera and the table: the cars and lines of the town there would lie on the lab's floor
-      const a = view.project(TABLE_VIEW.area[0] - 20000, TABLE_VIEW.front_mm, 0), b = view.project(TABLE_VIEW.area[2] + 20000, TABLE_VIEW.front_mm, 0);
+      const a = view.project(this.area[0] - 20000, TABLE_VIEW.front_mm, 0), b = view.project(this.area[2] + 20000, TABLE_VIEW.front_mm, 0);
       ctx.save();
       // (as long as the camera looks over the table from the windows: turned round, the town is behind the station)
       if (a && b && Math.abs(a[0] - b[0]) > 1 && Math.cos(this.cam.yaw - toRad(TABLE_VIEW.yaw_deg)) > 0.8) {
@@ -503,11 +507,23 @@ export class LiveScene {
     if (game && !this.table) {
       // (the modules on before: the backdrop gets them back when the table is left)
       this.layersBefore = this.world.layers().filter((l) => l.enabled).map((l) => l.id);
-      this.world.setLayers(this.world.layers().filter((l) => TABLE_VIEW.layers.includes(l.id)).map((l) => l.id));
       this.world.clock.factor = 1;
       this.boxes.clear();
       this.near = this.nearFrom = null;
       this.loadOrtho();
+    }
+    if (game) {
+      // the modules of the layout that are on with the game's board (at the station: those whose trains do not run into it)
+      const want = BOARDS[idOf(game)].layers ?? TABLE_VIEW.layers, now = this.world.layers().filter((l) => l.enabled).map((l) => l.id);
+      const ids = this.world.layers().filter((l) => want.includes(l.id)).map((l) => l.id);
+      if (ids.join() !== now.join()) {
+        // (the world is made anew with its modules: the boards in it leave it, and are made again below)
+        for (const b of this.boards.values()) b.dispose();
+        this.boards.clear();
+        this.world.setLayers(ids);
+        this.boxes.clear();
+        this.near = this.nearFrom = null;
+      }
     }
     // a board for every game shown; one whose game is gone leaves the world
     for (const [id, b] of this.boards) {
@@ -527,6 +543,7 @@ export class LiveScene {
     }
     const before = this.board, on = !!game;
     this.board = game ? this.boards.get(idOf(game)) : null;
+
     if (on !== this.table) {
       this.table = on;
       this.flight = null;
@@ -549,6 +566,16 @@ export class LiveScene {
       }
     } else if (on && before !== this.board) this.show("all");
     return on;
+  }
+
+  /** Where the camera may look while the table is shown ([x0, y0, x1, y1], layout mm): the board's own area, else the lab's table. */
+  get area() {
+    return this.board?.constructor.area ?? TABLE_VIEW.area;
+  }
+
+  /** What the parts of the picture are called for the board shown (`[part, label]`), or null: those of the station. */
+  get parts() {
+    return this.board?.constructor.parts ?? null;
   }
 
   /** The canvas as it is drawn: its size in px (the size of the frame drawn last). */
@@ -599,7 +626,7 @@ export class LiveScene {
 
   /** The camera stays over the table, neither too near nor too far. */
   keep() {
-    const a = TABLE_VIEW.area, c = this.cam;
+    const a = this.area, c = this.cam;
     c.distance = Math.min(TABLE_VIEW.max_mm, Math.max(TABLE_VIEW.min_mm, c.distance));
     c.target = [Math.min(a[2], Math.max(a[0], c.target[0])), Math.min(a[3], Math.max(a[1], c.target[1]))];
     this.flight = null;

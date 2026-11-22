@@ -153,6 +153,7 @@ export const BADGES = [
   { id: "many-hats", title: "Many hats", how: "Sit in four different roles.", earned: (p) => p.roles.length >= 4 },
   { id: "word-collector", title: "Speaks railway", how: "Meet ten railway terms.", earned: (p) => p.terms.length >= 10 },
   { id: "fair-desk", title: "Fair desk", how: "Pass Whose minutes? with three stars: nobody's train paid for everybody else's.", earned: (p) => p.missions["whose-minutes"]?.stars >= 3 },
+  { id: "nobody-left", title: "Nobody left behind", how: "Pass The last wagon with three stars: the wagons on their trains, the trains on their paths, nobody at the end of their patience.", earned: (p) => p.missions["last-wagon"]?.stars >= 3 },
   { id: "night-owl", title: "Night owl", how: "Pass The Night Session.", earned: (p) => !!p.missions["night-session"]?.passed },
   { id: "full-house", title: "Full house", how: "Pass Three years of Neustadt.", earned: (p) => !!p.missions["neustadt-years"]?.passed },
   { id: "all-aboard", title: "All aboard", how: "Play every mission.", earned: (p, missions) => missions.length > 0 && missions.every((id) => p.missions[id]) },

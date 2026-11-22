@@ -17,6 +17,10 @@ export const DAY = 8 * 60 + 30, NIGHT = 22 * 60 + 30;
  * @property {number} yaw_deg its direction seen from above (0 = along +x)
  * @property {number} pitch_deg its tilt (90 = straight down)
  * @property {number} time the time of day (minutes after midnight)
+ * @property {string[]} [layers] the modules of the layout that are on in the picture, where they are not the
+ *   layout's own (the hump yard is off by default); the live backdrop runs the layout's own and does not fly there
+ * @property {number} [run_s] how long the world runs before the picture is taken (simulated s), where what it
+ *   shows takes its time (a hump yard with wagons in its tracks)
  */
 
 /** @type {Shot[]} */
@@ -36,6 +40,7 @@ export const SHOTS = [
   { name: "night-line-fly", layout: NEUSTADT, target: [5200, 300], distance_mm: 900, yaw_deg: 10, pitch_deg: 14, time: NIGHT },
   { name: "night-office-fly", layout: NEUSTADT, target: [-2050, -750], distance_mm: 700, yaw_deg: 250, pitch_deg: 16, time: NIGHT },
   { name: "night-crossing-fly", layout: NEUSTADT, target: [-560, 404], distance_mm: 650, yaw_deg: 40, pitch_deg: 18, time: NIGHT },
+  { name: "hump-fly", layout: NEUSTADT, target: [-5900, 322], distance_mm: 1000, yaw_deg: 18, pitch_deg: 17, time: DAY, layers: ["hump"], run_s: 520 },
   { name: "terminal-fly", layout: TERMINAL, target: [750, 420], distance_mm: 900, yaw_deg: 60, pitch_deg: 20, time: DAY },
   { name: "quay-fly", layout: TERMINAL, target: [600, 560], distance_mm: 800, yaw_deg: 300, pitch_deg: 18, time: DAY },
 ];

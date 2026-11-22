@@ -48,6 +48,10 @@ export const PLACES = [
     photo: "game/places/throat-fly.jpg", alt: "Bf Neustadt in the flyover: its tracks towards Bergheim, a regional train at the island platform, the town behind",
   },
   {
+    id: "yard", name: "The hump yard Neustadt West", line: "Four trains in, four out, one hump, one locomotive.",
+    photo: "game/places/hump-fly.jpg", alt: "The hump yard in the flyover: a train is pushed over the crest, its wagons roll through the retarders into the classification tracks",
+  },
+  {
     id: "lab", name: "The EBL lab", line: "The real lab: its own simulation runs these trains.",
     photo: "game/places/lab-trains.jpg", alt: "Container wagons with their markers on the tracks of the lab, close up",
     wide: "media/ebl-container-train.jpg", wideFocus: "40% 35%",
@@ -160,6 +164,7 @@ export const GAME_PLACES = {
   lab: "lab",
   "transport-control": "trains",
   dispatcher: "station",
+  yard: "yard",
   "asset-manager": "district",
   contract: "town",
   budget: "town-night",
