@@ -115,14 +115,15 @@ test("who gives what to whom: every role has a party, a rhythm and flows; every 
 
 test("the playable games belong to their roles in the catalogue; a role's page is the game's or a mission that seats it", () => {
   const missions = (id) => readJSON(`web/game/missions/${id}.json`);
-  assert.deepEqual(CAT.roles.filter((r) => r.game.page).map((r) => r.id).sort(), [...GAMES.values()].map((G) => G.role).sort());
+  assert.deepEqual(CAT.roles.filter((r) => r.game.page).map((r) => r.id).sort(), [...new Set([...GAMES.values()].map((G) => G.role))].sort());
   assert.equal(CAT.roles.find((r) => r.id === SignallerGame.role).game.page, "signaller/");
   for (const G of GAMES.values()) {
     const page = CAT.roles.find((r) => r.id === G.role).game.page;
     const m = page.match(/^play\/\?mission=([a-z-]+)$/);
     if (G === SignallerGame) continue;
     assert.ok(m, `${G.role}: ${page}`);
-    assert.ok(missions(m[1]).roles.some((r) => r.role === G.role && r.game === G.id && r.seat === "human"), `${page} seats ${G.role} for a person`);
+    // (a role with two games, as the train dispatcher's own and the lab's seat, names the mission of one of them)
+    assert.ok(missions(m[1]).roles.some((r) => r.role === G.role && GAMES.get(r.game)?.role === G.role && r.seat === "human"), `${page} seats ${G.role} for a person`);
   }
 });
 

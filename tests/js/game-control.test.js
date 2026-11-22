@@ -1,12 +1,15 @@
 // The undertaking's operations control on the table (web/game/control.js): its trains are those of
 // the signaller's game on the same table; where each is marked, what pulses, what a click chooses.
+// And the train dispatcher's board (web/game/dispatch.js), which marks every train of that table.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { Camera, FlyCamera, View, createWorld } from "../../web/arail/index.js";
+import { DispatcherGame } from "../../web/arail/game/dispatcher.js";
 import { SignallerGame } from "../../web/arail/game/signaller.js";
 import { TransportControlGame } from "../../web/arail/game/transport-control.js";
 import { AHEAD_S, ControlBoard, HIT_PX } from "../../web/game/control.js";
+import { DispatchBoard, LATE_S } from "../../web/game/dispatch.js";
 import { BOARDS, TABLE_VIEW } from "../../web/game/live.js";
 import { TABLE_LAYOUT, TableBoard } from "../../web/game/table.js";
 
@@ -128,4 +131,58 @@ test("the board of the operations control: a train is marked where it is on the 
   to(700);
   assert.equal(sig.trains.find((tr) => tr.id === "RB 31").state, "gone");
   assert.equal(board.where("RB 31"), null);
+});
+
+test("the board of the train dispatcher: every train of the signaller's table is marked, what a question is about is asked about, a click chooses a train", () => {
+  assert.equal(BOARDS.dispatcher, DispatchBoard);
+  assert.ok(new DispatchBoard(createWorld(structuredClone(NEUSTADT), { seed: 1 })) instanceof ControlBoard);
+  const world = createWorld(structuredClone(NEUSTADT), { seed: 1 });
+  world.setLayers(TABLE_VIEW.layers);
+  // the morning of the mission: the signaller's trains late as told, the dispatcher's game wired to it by hand
+  const sig = new SignallerGame({ seed: 1, level: "training", late: { "IC 2045": 300 }, wired: ["dispatching-order"] });
+  const d = new DispatcherGame({ seed: 1, level: "training", wired: ["dispatching-order", "delay-notice"] });
+  const table = new TableBoard(world), board = new DispatchBoard(world), auto = new SignallerGame.player();
+  table.show(sig);
+  board.show(d);
+  const to = (t) => {
+    while (sig.t < t) {
+      auto.think(sig);
+      sig.step(1);
+      d.step(1);
+      for (const m of sig.outbox.splice(0)) if (m.flow === "delay-notice") d.take(m);
+      for (const m of d.outbox.splice(0)) if (m.flow === "dispatching-order") sig.receive(m);
+    }
+  };
+  assert.deepEqual([d.own, d.world, board.trains, board.config.type], [false, null, table, "dispatch-board"]);
+  // every train is the dispatcher's, also the intercity and the freight train; a train to come is at the table's end
+  to(1);
+  assert.ok(board.where("RB 31")[0] > 7000 && board.where("RB 32")[0] < -1500);
+  to(290);
+  assert.ok(d.open.some((x) => x.id === "first-GZ 47"));
+  assert.deepEqual([...board.asked()].sort(), ["GZ 47", "IC 2045"]);
+  assert.ok(d.train("IC 2045").in_s >= LATE_S && board.where("IC 2045")[0] > 7000, "a late train is marked as soon as it is known to be late");
+  // (the freight train is out on the line, beyond the table's end: it is marked once it is on the table)
+  for (let t = 300; t < 480 && !board.where("GZ 47"); t += 5) to(t);
+  assert.ok(board.where("GZ 47") && d.open.some((x) => x.id === "first-GZ 47"), "the freight train is marked too");
+  // drawn: rings and no text; a click on the freight train chooses it
+  const ctx = countingContext(), view = viewOf(world, board.bounds("all"), ctx);
+  board.draw(view);
+  view.render();
+  assert.ok(ctx.counts.fill >= 2);
+  assert.deepEqual(ctx.counts.text, []);
+  const p = board.where("GZ 47"), px = view.project(p[0], p[1], 0);
+  assert.deepEqual(board.hit(view, px), { item: "train-GZ 47" });
+  assert.deepEqual(board.placeOf("train-GZ 47"), p);
+  // the order is kept on the same table: the freight train stands on G3 beyond its time, and is gone after its wait
+  d.act("decide", "first-GZ 47", 2);
+  assert.deepEqual([...board.asked()], []);
+  to(650);
+  const gz = sig.trains.find((tr) => tr.id === "GZ 47");
+  assert.ok(gz.passed == null && gz.v === 0 && board.where("GZ 47")[0] > 1500 && board.where("GZ 47")[0] < 4300, JSON.stringify(board.where("GZ 47")));
+  to(820);
+  assert.ok(gz.passed != null && Math.abs(gz.passed - 700) < 45);
+  to(1000);
+  assert.equal(board.where("GZ 47"), null, "gone, a train has no mark any more");
+  board.dispose();
+  assert.ok(!world.simulations.includes(board));
 });

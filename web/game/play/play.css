@@ -296,6 +296,7 @@ body[data-screen="play"] .site-where { display: block; }
 .play-board line.t-route { stroke: var(--overlay-ok); }
 .play-board line.t-occupied { stroke: var(--overlay-bad); }
 .play-board line.t-closed { stroke: var(--board-warn); stroke-dasharray: 10 7; }
+.play-board line.t-warn { stroke: var(--board-warn); }
 .play-board rect.t-muted { fill: var(--board-2); stroke: var(--board-line); }
 .play-board circle { fill: var(--board-muted); stroke: var(--board); stroke-width: 2; }
 .play-board circle.t-ok { fill: #3ed37a; }
@@ -439,6 +440,17 @@ body.tabled .vn-talk { cursor: auto; touch-action: auto; }
 .play-options-row .btn { display: flex; align-items: baseline; gap: 10px; text-align: left; justify-content: flex-start; white-space: normal; font-size: 1.02rem; font-weight: 800; padding: 12px 16px; background: var(--overlay-ok); color: var(--board); border: 0; border-radius: 8px; box-shadow: 0 4px 0 var(--edge); }
 .play-options-row .btn kbd { background: var(--board); color: var(--board-text); border-color: var(--board); }
 .play-options-row .btn small { font-weight: 600; color: inherit; }
+/* a decision that is a number: a slider between its ends, what it stands at, and the button that takes it */
+.play-scale { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; max-width: 760px; }
+.play-scale label { font-size: 1.02rem; font-weight: 800; }
+.play-scale input[type="range"] { flex: 1 1 200px; min-width: 160px; width: auto; height: 28px; accent-color: var(--overlay-ok); cursor: pointer; }
+.play-scale input[type="range"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.play-scale-end { font-size: .8rem; color: var(--board-muted); white-space: nowrap; }
+.play-scale output { min-width: 4.6em; text-align: center; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 6px; background: var(--board-2); border: 1px solid var(--board-line); }
+.play-scale .btn { font-size: 1.02rem; font-weight: 800; padding: 10px 18px; background: var(--overlay-ok); color: var(--board); border: 0; border-radius: 8px; box-shadow: 0 4px 0 var(--edge); }
+.play-scale .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge); }
+.play-scale .btn kbd { background: var(--board); color: var(--board-text); border-color: var(--board); }
+@media (prefers-reduced-motion: reduce) { .play-scale .btn:active { transform: none; } }
 .play-options { margin: 0; padding-left: 1.2em; font-size: .9rem; }
 .play-next { all: unset; box-sizing: border-box; display: grid; place-items: center; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; background: var(--board-2); border: 1px solid var(--board-line); }
 .play-next::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--overlay-ok); }

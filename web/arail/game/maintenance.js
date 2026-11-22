@@ -486,7 +486,7 @@ export class MaintenanceGame extends Game {
 
   /** A team at the asset (in the track: with the closure): it looks for the cause, unless that is known. */
   _look(tm, f) {
-    const d = this.decisions.find((x) => x.id === `closure-${f.id}` && !x.made);
+    const d = this.decisions.find((x) => x.id === `closure-${f.id}` && x.made == null);
     if (d) this.decide(d.id, "ask");
     if (f.known) return this._plan(tm, f);
     Object.assign(tm, { state: "diagnosing", until: this.t + DIAGNOSE_S });

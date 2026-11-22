@@ -423,6 +423,20 @@ for (const [scheme, device, viewport] of STATES) {
     for (let i = 0; i < 6 && (await manager.locator(".vn-story .btn").count()); i++) await manager.locator(".vn-story .btn").first().click();
     await expect(manager.locator(".play-decision")).toHaveCount(5);
     await check("a turn with decisions");
+    // a decision that is a number: a slider between its ends with an option beside it; and the picture of the tracks with a train chosen
+    await page.goto("/game/play/?mission=whose-minutes");
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#start").click();
+    await page.getByRole("button", { name: "Pause" }).click();
+    await step(285);
+    const dispatcher = page.locator("#seat-train-dispatcher");
+    for (let i = 0; i < 8 && (await dispatcher.locator(".vn-story .btn").count()); i++) await dispatcher.locator(".vn-story .btn").first().click();
+    await expect(dispatcher.locator(".play-scale input[type=range]")).toBeVisible();
+    await check("a decision that is a number: the slider, and the option beside it");
+    await dispatcher.locator(".play-scale .btn").click();
+    await page.evaluate(() => window.__play.pick("train-dispatcher", "train-GZ 47"));
+    await expect(dispatcher.locator(".play-pick button").first()).toBeVisible();
+    await check("the picture of the tracks, a train chosen with its orders");
     // the logbook, with what such a session leaves in it
     await page.goto("/game/logbook/");
     await page.evaluate(async () => {

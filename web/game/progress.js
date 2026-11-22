@@ -152,6 +152,7 @@ export const BADGES = [
   { id: "clean-sheet", title: "By the book", how: "Pass a mission without breaking a rule.", earned: (p) => p.clean > 0 },
   { id: "many-hats", title: "Many hats", how: "Sit in four different roles.", earned: (p) => p.roles.length >= 4 },
   { id: "word-collector", title: "Speaks railway", how: "Meet ten railway terms.", earned: (p) => p.terms.length >= 10 },
+  { id: "fair-desk", title: "Fair desk", how: "Pass Whose minutes? with three stars: nobody's train paid for everybody else's.", earned: (p) => p.missions["whose-minutes"]?.stars >= 3 },
   { id: "night-owl", title: "Night owl", how: "Pass The Night Session.", earned: (p) => !!p.missions["night-session"]?.passed },
   { id: "full-house", title: "Full house", how: "Pass Three years of Neustadt.", earned: (p) => !!p.missions["neustadt-years"]?.passed },
   { id: "all-aboard", title: "All aboard", how: "Play every mission.", earned: (p, missions) => missions.length > 0 && missions.every((id) => p.missions[id]) },

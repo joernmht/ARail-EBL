@@ -1,0 +1,228 @@
+{
+ "format": "arail-mission/1",
+ "id": "whose-minutes",
+ "title": "Whose minutes?",
+ "hook": "Three undertakings, nine trains, forecasts that may be off. Every minute you give one train, another pays.",
+ "place": "station",
+ "text": "08:00 to 08:40 at the dispatcher's desk above the signal box of Bf Neustadt, on the lab's table. The signaller (the computer's seat) sets the routes; you say who waits for whom and how long, and which track a train takes. The regional trains, the intercity and the freight trains belong to three undertakings. Three trains come late, and how late is a forecast that may be off by minutes. Hold a train for a late feeder, and everybody aboard pays; let it go, and the changers wait half an hour. Let the freight train out before the late intercity, and the intercity may crawl behind it to the next loop; make it wait, and it stands on a track the next train needs. Each undertaking counts the minutes you add to its trains: its goodwill falls, it phones, and below a mark it writes to the regulator, whose verdict depends on whether you kept the rules of the line. No order suits all three. What you practise: the dispatching rules (a train on time before a late one, three minutes of waiting time), what an overtaking and a kept connection cost, reading a track occupation chart, deciding on a forecast, and staying fair between undertakings.",
+ "mode": "cooperative",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "train-dispatcher",
+   "game": "dispatcher",
+   "seat": "human",
+   "level": "normal"
+  },
+  {
+   "role": "signaller-relay",
+   "game": "signaller",
+   "seat": "computer",
+   "level": "training",
+   "options": {
+    "late": {
+     "IC 2045": 300,
+     "RB 33": 240,
+     "RB 35": 150
+    },
+    "spread": {
+     "IC 2045": 150,
+     "RB 33": 80,
+     "RB 35": 60
+    }
+   },
+   "weight": 0
+  }
+ ],
+ "rounds": 1,
+ "phases": [
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The morning shift",
+   "roles": [
+    "train-dispatcher",
+    "signaller-relay"
+   ],
+   "length": 2400,
+   "clock": "08:00"
+  }
+ ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "Morning. Today the desk above the signal box is yours: nine trains of three undertakings. You set no routes. You say who waits for whom, and how long. The signaller does the rest."
+  },
+  {
+   "phase": "shift",
+   "at": 45,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "The window shows the three platform tracks over the morning: thin lines are the plan, thick ones what we expect now. Red: two trains want one track. Tap a train, on the table or in the window, to give it an order."
+  },
+  {
+   "phase": "shift",
+   "at": 140,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "Mind the three numbers at the top: the goodwill of each undertaking. Every minute you add to a train costs its owner's. Below 62 they phone. Below 28 they write to the regulator."
+  },
+  {
+   "phase": "shift",
+   "at": 225,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "The rule of the line: a train on time goes before a late one, and nobody is made to wait more than 3 min for another. Inside the rule you are covered. Whether it was wise is another matter."
+  },
+  {
+   "phase": "shift",
+   "at": 400,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "A forecast is a guess from the next station. Once the train is really on its way you get the true figure: look at your orders again then. You can change one as long as its train stands."
+  },
+  {
+   "phase": "shift",
+   "at": 690,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "A track can be changed only before a train comes: the signaller sets its route a minute ahead. G1 is the through track. What runs there crosses nobody at the island platform."
+  },
+  {
+   "phase": "shift",
+   "at": 1250,
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "One more late feeder to come. By now you know whom you have asked to pay this morning. Spread it: an order that suits two of three is not good enough."
+  },
+  {
+   "phase": "shift",
+   "on": "forecast-off",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "{train} comes {min} min late, not {told}. Does your order still fit? Tap the train and change it: a wait can be cut short or made longer while the train stands."
+  },
+  {
+   "phase": "shift",
+   "on": "wait-wasted",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "{train} waited {min} min and left without the passengers of {feeder}. A wait that is too short costs twice: the minutes and the connection. Long enough, or not at all."
+  },
+  {
+   "phase": "shift",
+   "on": "followed",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "{train} is crawling behind {slow} as far as the next loop: {min} min more. Letting the slow one out first is free only when the fast one is far behind."
+  },
+  {
+   "phase": "shift",
+   "on": "complaint",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "{who} has written to the regulator, and the complaint is {verdict}. It holds when an on-time train of theirs waited beyond the rule for somebody else's late one."
+  },
+  {
+   "phase": "shift",
+   "on": "promise-broken",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "You promised {who} a clear run for {train}, and it did not get one. Promise only what your own orders can keep. The rest is weather."
+  },
+  {
+   "phase": "shift",
+   "on": "put-aside",
+   "seats": [
+    "train-dispatcher"
+   ],
+   "who": {
+    "name": "R. Dohle",
+    "role": "Senior dispatcher, at the next desk",
+    "portrait": "headset"
+   },
+   "say": "{train} is put aside: its driver's time ran out while it stood. Two minutes here have become an hour for the freight customer, and a track at the next station is blocked."
+  }
+ ],
+ "debrief": [
+  "Whose minutes did your orders move this morning: from which train to which, from which undertaking to which? Would the three undertakings tell it the same way?",
+  "Where did a forecast turn out wrong? What would you have ordered had you known, and what does that say about waiting until you are sure?",
+  "Where did you leave the rule of the line (a train on time before a late one, three minutes of waiting), and could you defend that to the regulator?",
+  "What did you promise on the phone, and which other train paid for keeping it, or for breaking it?"
+ ]
+}

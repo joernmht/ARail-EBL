@@ -6,6 +6,7 @@
 import { AssetManagerGame } from "./asset-manager.js";
 import { BudgetGame } from "./budget.js";
 import { ContractGame } from "./contract-manager.js";
+import { DispatcherGame } from "./dispatcher.js";
 import { LabGame } from "./lab.js";
 import { MaintenanceGame } from "./maintenance.js";
 import { normalizeMission } from "./mission.js";
@@ -17,6 +18,7 @@ import { TransportControlGame } from "./transport-control.js";
 export const GAMES = new Map([
   SignallerGame,
   MaintenanceGame,
+  DispatcherGame,
   LabGame,
   TransportControlGame,
   AssetManagerGame,
@@ -24,8 +26,15 @@ export const GAMES = new Map([
   BudgetGame,
 ].map((G) => [G.id, G]));
 
-/** The game of a role (an id of the role catalogue), or undefined. */
-export const gameOfRole = (role) => [...GAMES.values()].find((G) => G.role === role);
+/**
+ * The games of a role (an id of the role catalogue). Most roles have one; the train dispatcher has
+ * its own ("Who goes first") and the lab's seat, the same role with the lab as its world.
+ * @returns {Function[]}
+ */
+export const gamesOfRole = (role) => [...GAMES.values()].filter((G) => G.role === role);
+
+/** The game of a role (an id of the role catalogue): the first of its games, or undefined. */
+export const gameOfRole = (role) => gamesOfRole(role)[0];
 
 /**
  * A session of a mission (a document of format arail-mission/1) with the role games of ARail.

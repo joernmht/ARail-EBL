@@ -66,6 +66,7 @@ Tracking changes must keep the accuracy thresholds in `tests/js/tracker.test.js`
 ## Adding things
 
 - **Object types, simulations, disruptions, vehicles**: see [docs/extending.md](docs/extending.md) (new building types extend `BuildingBase`). Generally useful ones can become built-ins (add them to `web/arail/objects/index.js` or `web/arail/sims/index.js`, one per line, document them in `docs/layout-format.md`, add tests); specialised ones fit well as example plugins in `web/plugins/`.
+- **Missions and role games**: see [How to develop the game](docs/mission-design.md) for what every mission needs (a clear educational aim, decisions without a right answer, results that are not certain, roles that react, choices and numbers to decide, a part that is played, the layout's world in it) and [The game core](docs/game-core.md#writing-a-role-game) for the engine.
 - **Control-system adapters**: see [docs/control-system-interface.md](docs/control-system-interface.md). Adapters for widely used systems are welcome; add a test with recorded data.
 - **Layouts of your lab**: example layouts help others; please add a photo of the layout with its markers.
 

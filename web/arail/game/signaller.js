@@ -20,8 +20,9 @@
  * In a session (session.js) the game is wired to other roles: the fault report goes to the
  * maintenance dispatcher, whose team comes, asks for the closure and reports back (instead of the
  * game's own repair team); delays are told (to the dispatcher, the undertaking's operations
- * control), and a train is held for a connection on the dispatcher's order or the undertaking's
- * wish; the condition of the assets decides whether the signal fails at all.
+ * control), and a train waits for another on the dispatcher's order (for its passengers, or to let
+ * it go first, at most so many minutes) or, without a dispatcher, on the undertaking's wish; the
+ * condition of the assets decides whether the signal fails at all.
  * @module arail/game/signaller
  */
 import { Game, Player } from "./core.js";
@@ -32,8 +33,10 @@ export const BRAKE = 0.6, ACCEL = 0.5, SIGHT_M = 400, DISTANT_M = 1000;
 export const POINT_S = 6, ZS1_MS = 40 / 3.6, DWELL_S = 40;
 /** Where a train stops before a signal at stop (m), and at its platform before the end of the track. */
 const STOP_GAP_M = 10, PLATFORM_STOP_M = 40;
-/** Transfer time between two trains at the same platform, and between platforms 1 and 2 (s). */
-const TRANSFER_SAME_S = 30, TRANSFER_OTHER_S = 150;
+/** Transfer time between two trains at the same platform (s). */
+export const TRANSFER_SAME_S = 30;
+/** Transfer time between platforms 1 and 2 (s). */
+export const TRANSFER_OTHER_S = 150;
 /** The game ends when all trains have left, at the latest at 08:40 (s after 08:00). */
 export const END_S = 40 * 60;
 
@@ -98,11 +101,14 @@ export const STATION = {
   ],
 };
 
+/** The role whose orders a signaller takes, and who is told of every train while seated. */
+const DISPATCHER = "train-dispatcher";
+
 /** The platform tracks by their name. */
 const TRACKS = Object.fromEntries(Object.entries(STATION.sections).filter(([, s]) => s.track).map(([id, s]) => [s.track, id]));
 
 /** Kinds of trains: length (m), top speed (m/s), weight in the punctuality score. */
-const KINDS = {
+export const KINDS = {
   RB: { label: "Regional train", length: 70, vmax: 120 / 3.6, weight: 1 },
   IC: { label: "Intercity", length: 200, vmax: 160 / 3.6, weight: 2 },
   GZ: { label: "Freight train", length: 600, vmax: 80 / 3.6, weight: 0.5, accel: 0.25 },
@@ -150,6 +156,8 @@ const TEAM_DRIVE_S = 300, TEAM_WORK_S = 360;
 const NOTICE_S = 60;
 /** A late train is announced by the neighbouring station this long before its planned time on the panel (s). */
 const FORECAST_S = 120;
+/** A train that comes otherwise than announced is told again this long before it comes (s), if it is off by this much (s). */
+const FORECAST_EXACT_S = 60, FORECAST_FINE_S = 30;
 /**
  * Irregularities: a train stopped at an entry signal this long (s) is held there; one still waiting at
  * its exit signal this long after its time leaves late.
@@ -234,6 +242,11 @@ class Train {
     this.zs1Until = -1;
     /** Since when it stands at a signal at stop (s), or null. */
     this.heldSince = null;
+    /** How late it is announced (s) where that is not how late it comes: a forecast the train may not keep; and how far it may be off (s). */
+    this.announced = null;
+    this.spread = 0;
+    /** The trains it need not let go first any more, though they were planned before it: its wait for them is over. */
+    this.ahead = new Set();
   }
 
   /** Where each section of its path starts (m from the start of the path). */
@@ -250,6 +263,11 @@ class Train {
     return this.head - this.length;
   }
 
+  /** How late the neighbouring station announces it (s): its forecast, else how late it comes. */
+  get told() {
+    return this.announced ?? Math.max(0, this.enterAt - this.enter);
+  }
+
   /** The time it is measured at: its departure (stopping trains) or its passing (through trains). */
   get due() {
     return this.stops ? this.dep : this.pass;
@@ -258,8 +276,9 @@ class Train {
 
 /**
  * The computer's signaller, careful and by the book: routes as planned (another track while G2 is
- * kept free for the repair), a freight train waits for the trains planned before it, departures at
- * their time or after a connection the undertaking asked for, the failure reported at once, Zs 1
+ * kept free for the repair), a freight train waits for the trains planned before it (until a wait
+ * ordered for one of them is over), departures at their time or after a wait that was ordered or
+ * asked for, the failure reported at once, Zs 1
  * with its checks and its reason, the closure for the repair team and the track opened after its
  * report, every question right.
  */
@@ -295,14 +314,14 @@ export class SignallerAutopilot extends Player {
         set(`${sig}-${(repair || g.closed.has("g2")) && tr.plan === "G2" ? (tr.dir > 0 ? "G1" : "G3") : tr.plan}`);
         continue;
       }
-      // a freight train lets the trains planned before it go first, unless it stands in their way
+      // a freight train lets the trains planned before it go first, unless it stands in their way, or its wait for one is over
       const here = STATION.sections[tr.path.at(-1)]?.track;
-      if (tr.kind === "GZ" && g.trains.some((x) => x !== tr && x.dir === tr.dir && x.state !== "gone" && x.due < tr.due && (x.stops ? x.departed : x.passed) == null && x.plan !== here)) continue;
+      if (tr.kind === "GZ" && g.trains.some((x) => x !== tr && x.dir === tr.dir && x.state !== "gone" && x.due < tr.due && (x.stops ? x.departed : x.passed) == null && x.plan !== here && !tr.ahead.has(x.id))) continue;
       if (tr.stops && (tr.state !== "dwelling" || g.t < tr.dep - 20)) continue;
-      // a connection asked for: until the other train's passengers have changed, or the time agreed is over
+      // a wait ordered or asked for: until the other train's passengers have changed (two trains that stop), or the
+      // other has gone ahead (one that passes through), or the time agreed is over
       const hold = g.holds.get(tr.id), other = hold && by.get(hold.for);
-      const change = other?.track && tr.track && STATION.sections[TRACKS[other.track]].platform === STATION.sections[TRACKS[tr.track]].platform ? TRANSFER_SAME_S : TRANSFER_OTHER_S;
-      if (hold && g.t < hold.until && (!other || other.arrived == null || g.t < other.arrived + change)) continue;
+      if (hold && g.t < hold.until && !(other && g.waitedFor(tr, other))) continue;
       set(`${sig}-${tr.dir > 0 ? "T" : "B"}`);
     }
   }
@@ -322,7 +341,8 @@ export class SignallerGame extends Game {
     { flow: "repair-status", from: ["maintenance-dispatcher"] },
     { flow: "closure-request", from: ["maintenance-dispatcher"] },
     // a train to hold: the dispatcher's order; in a mission without a dispatcher between them, the undertaking's wish itself
-    { flow: "dispatching-order", from: ["train-dispatcher"] },
+    // (with a dispatcher seated the wish is the dispatcher's to grant, and is not taken here)
+    { flow: "dispatching-order", from: [DISPATCHER] },
     { flow: "connection-request" },
   ];
   static gives = [
@@ -352,8 +372,10 @@ export class SignallerGame extends Game {
   static irregularities = ["came-late", "held-at-entry", "late-departure", "wrong-track", "connection-missed", "signal-failed"];
 
   /**
-   * @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, late?: Record<string, number>}} [options]
-   *   `late`: the trains a mission lets come late, whatever the level (a train's id → seconds)
+   * @param {{seed?: number, level?: keyof LEVELS, conditions?: object, wired?: Iterable<string>, late?: Record<string, number>, spread?: Record<string, number>}} [options]
+   *   `late`: the trains a mission lets come late, whatever the level (a train's id → seconds); `spread`: how far
+   *   such a train may come earlier or later than it was announced (a train's id → seconds, drawn by the seed): a
+   *   forecast is not a promise
    */
   constructor(options = {}) {
     super({ ...options, level: LEVELS[options.level] ? options.level : "normal" });
@@ -367,7 +389,11 @@ export class SignallerGame extends Game {
     this.trains = TIMETABLE.filter((s) => !s.level || s.level === this.level).map((s) => {
       const told = Number(options.late?.[s.id]);
       const late = Number.isFinite(told) ? Math.max(0, Math.round(told)) : lv.lateMax ? Math.round(this.rng("late", s.id).next() * lv.lateMax) : 0;
-      return new Train(s, s.enter + late);
+      const spread = Math.max(0, Number(options.spread?.[s.id]) || 0);
+      const tr = new Train(s, s.enter + Math.max(0, late + (spread ? Math.round((this.rng("spread", s.id).next() * 2 - 1) * spread) : 0)));
+      // what is announced is the forecast; the train keeps it, or not
+      if (spread) Object.assign(tr, { announced: late, spread });
+      return tr;
     });
     this.resource("zs1", "Substitute signals (counter)", 0);
     this.resource("cancel", "Routes cancelled", 0);
@@ -381,7 +407,7 @@ export class SignallerGame extends Game {
      * maintenance dispatcher in the session (`remote`), the team is theirs.
      */
     this.team = { state: "none", at: null, waited: 0, remote: this.isWired("repair-status") };
-    /** Trains to hold for a connection, as the undertaking asked: train → {for, until}. */
+    /** Trains that wait for another, as the dispatcher ordered or the undertaking asked: train → {for, until}. */
     this.holds = new Map();
     /** Answers to the short questions: id → correct. */
     this.answers = new Map();
@@ -414,6 +440,18 @@ export class SignallerGame extends Game {
   routeFrom(signal) {
     for (const r of this.routes.values()) if (r.def.from === signal && !r.passed) return r;
     return null;
+  }
+
+  /**
+   * Whether a train's wait for another has reached its end: the other train's passengers have had the time to
+   * change (two trains that stop), or the other has gone ahead (one of them passes through).
+   * @param {Train} tr the train that waits
+   * @param {Train} other the train it waits for
+   */
+  waitedFor(tr, other) {
+    if (!(tr.stops && other.stops)) return (other.stops ? other.departed : other.passed) != null;
+    const same = other.track && tr.track && STATION.sections[TRACKS[other.track]].platform === STATION.sections[TRACKS[tr.track]].platform;
+    return other.arrived != null && this.t >= other.arrived + (same ? TRANSFER_SAME_S : TRANSFER_OTHER_S);
   }
 
   /** What a signal shows: "proceed", "stop" (and whether a substitute signal is lit). */
@@ -532,7 +570,7 @@ export class SignallerGame extends Game {
       this.team = { ...this.team, state: "driving", at: this.t + TEAM_DRIVE_S, waited: 0 };
       this.log(`${clockOf(this.t)} Fault of ${f.signal} reported to the maintenance dispatcher; the repair team drives out from the maintenance base.`, "fault");
     }
-    const d = this.decisions.find((x) => x.id === "report" && !x.made);
+    const d = this.decisions.find((x) => x.id === "report" && x.made == null);
     if (d) this.decide("report", "now");
     return true;
   }
@@ -621,6 +659,8 @@ export class SignallerGame extends Game {
       tr.v = Math.min(tr.vmax, 22);
       tr.came = now;
       this.log(`${clockOf(now)} ${tr.id} (${tr.label.toLowerCase()}) is coming from ${tr.dir > 0 ? STATION.west : STATION.east}${tr.enterAt > tr.enter ? `, ${Math.round((tr.enterAt - tr.enter) / 60)} min late` : ""}.`, "train");
+      // it comes later than it was last told (the line was not clear of the train before it): a dispatcher who is seated is told
+      if (now - Math.max(tr.enterAt, tr.enter + tr.told) >= FORECAST_FINE_S && this.isWired("dispatching-order")) this._notice(tr, "approaching", now - tr.enter, { exact: true }, [DISPATCHER]);
     }
     this._extend(tr);
     if (tr.state === "dwelling") {
@@ -632,7 +672,8 @@ export class SignallerGame extends Game {
       tr.state = "running";
       tr.departed = now;
       this.log(`${clockOf(now)} ${tr.id} departs from ${tr.track}${now - tr.dep >= 60 ? `, ${Math.round((now - tr.dep) / 60)} min late` : ""}.`, "train");
-      if (now - tr.dep >= NOTICE_S) this._notice(tr, "departed", now - tr.dep);
+      if (now - tr.dep >= NOTICE_S) this._notice(tr, "departed", now - tr.dep, this._at(now));
+      else this._ran(tr, "departed", now - tr.dep);
     }
     const end = tr.starts.at(-1) + STATION.sections[tr.path.at(-1)].len;
     const exit = !!STATION.sections[tr.path.at(-1)].line && tr.path.length > 1;
@@ -678,6 +719,7 @@ export class SignallerGame extends Game {
         tr.v = 0;
         tr.track = STATION.sections[tr.path[i]].track;
         this.log(`${clockOf(now)} ${tr.id} has arrived at ${tr.track}${tr.track !== tr.plan ? ` (planned ${tr.plan})` : ""}.`, "train");
+        this._ran(tr, "arrived", now - tr.arr);
       }
     }
     // signals passed: they go back to stop, the substitute signal goes out
@@ -692,7 +734,8 @@ export class SignallerGame extends Game {
         if (s.kind === "exit" && !tr.stops && tr.passed == null) {
           tr.passed = now;
           tr.track = STATION.sections[s.section].track;
-          if (now - tr.pass >= NOTICE_S) this._notice(tr, "passed", now - tr.pass);
+          if (now - tr.pass >= NOTICE_S) this._notice(tr, "passed", now - tr.pass, this._at(now));
+          else this._ran(tr, "passed", now - tr.pass);
         }
       }
     }
@@ -765,8 +808,8 @@ export class SignallerGame extends Game {
   _irregularities() {
     const by = new Map(this.trains.map((tr) => [tr.id, tr])), at = (t) => clockOf(t).slice(0, 5);
     for (const tr of this.trains) {
-      if (tr.state === "coming" && tr.enterAt - tr.enter >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
-        this.irregular("came-late", `came-late:${tr.id}`, { train: tr.id, min: String(Math.round((tr.enterAt - tr.enter) / 60)) });
+      if (tr.state === "coming" && tr.told >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
+        this.irregular("came-late", `came-late:${tr.id}`, { train: tr.id, min: String(Math.round(tr.told / 60)) });
       }
       if (tr.state === "coming" || tr.state === "gone") continue;
       const sig = this.nextSignal(tr), def = sig ? STATION.signals[sig] : null;
@@ -827,18 +870,28 @@ export class SignallerGame extends Game {
     if (!team.remote && team.state === "driving" && this.t >= team.at) this._teamArrived();
     if (team.state === "waiting") team.waited = this.t - team.since;
     if (!team.remote && team.state === "working" && this.t >= team.at) this._teamDone();
-    // a train that comes late: told when the neighbouring station announces it; one that stands at its platform beyond its time: told once
+    // a train that comes late: told when the neighbouring station announces it (the forecast), and once more when it
+    // is on its way and comes otherwise than announced; one that stands at its platform beyond its time: told once
     for (const tr of this.trains) {
-      if (tr.state === "coming" && !tr.forecast && tr.enterAt - tr.enter >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
+      if (tr.state === "coming" && !tr.forecast && tr.told >= NOTICE_S && this.t >= tr.enter - FORECAST_S) {
         tr.forecast = true;
-        this._notice(tr, "approaching", tr.enterAt - tr.enter);
+        this._notice(tr, "approaching", tr.told, tr.spread ? { spread_min: Math.round(tr.spread / 6) / 10 } : {});
+      }
+      if (tr.state === "coming" && tr.forecast && !tr.exact && Math.abs(tr.enterAt - tr.enter - tr.told) >= FORECAST_FINE_S && this.t >= tr.enterAt - FORECAST_EXACT_S) {
+        tr.exact = true;
+        this._notice(tr, "approaching", tr.enterAt - tr.enter, { exact: true });
       }
       if (tr.state === "dwelling" && !tr.noticed && this.t - tr.dep >= 2 * NOTICE_S) {
         tr.noticed = true;
         this._notice(tr, "waiting", this.t - tr.dep);
       }
     }
-    for (const [id, hold] of this.holds) if (this.t >= hold.until) this.holds.delete(id);
+    for (const [id, hold] of this.holds) {
+      if (this.t < hold.until) continue;
+      // the wait is over: the train need not let the other go first any more
+      if (hold.for) this.trains.find((tr) => tr.id === id)?.ahead.add(hold.for);
+      this.holds.delete(id);
+    }
     this._tidy();
   }
 
@@ -927,14 +980,30 @@ export class SignallerGame extends Game {
     team.at = team.remote ? Infinity : this.t + TEAM_WORK_S;
     team.waited = this.t - (team.since ?? this.t);
     this.log(`${clockOf(this.t)} The repair team goes onto track G2.`, "fault");
-    const d = this.decisions.find((x) => x.id === "closure" && !x.made);
+    const d = this.decisions.find((x) => x.id === "closure" && x.made == null);
     if (d) this.decide("closure", "close");
   }
 
-  /** Tell the undertaking of a train's delay (a delay notice). */
-  _notice(tr, stage, late) {
+  /**
+   * Tell the dispatcher and the undertaking of a train's delay (a delay notice); `more`: what else is known (how
+   * far a forecast may be off, that it is exact now); `to`: only to these roles.
+   */
+  _notice(tr, stage, late, more = {}, to = null) {
     const partner = CONNECTIONS.find((c) => c.includes(tr.id))?.find((id) => id !== tr.id) ?? null;
-    this.give("delay-notice", { train: tr.id, kind: tr.kind, place: STATION.name, stage, delay_min: Math.round(late / 6) / 10, connection: partner, cause: this.failure?.started && this.failure.repaired == null && tr.plan === "G2" ? "signal failure" : "" });
+    this.give("delay-notice", { train: tr.id, kind: tr.kind, place: STATION.name, stage, delay_min: Math.round(late / 6) / 10, connection: partner, cause: this.failure?.started && this.failure.repaired == null && tr.plan === "G2" ? "signal failure" : "", ...more }, { to });
+  }
+
+  /**
+   * A train has arrived at its platform, or has left or passed within a minute of its time: no delay to tell, but a
+   * dispatcher who is seated follows every train, to the second.
+   */
+  _ran(tr, stage, late) {
+    if (this.isWired("dispatching-order")) this._notice(tr, stage, Math.max(0, late), this._at(this.t), [DISPATCHER]);
+  }
+
+  /** When it happened, to the second, for a dispatcher who is seated (`at_s`, s of the shift). */
+  _at(now) {
+    return this.isWired("dispatching-order") ? { at_s: Math.round(now * 10) / 10 } : {};
   }
 
   /** Flows from the other roles of a session: the maintenance dispatcher's team, the undertaking's wishes. */
@@ -965,13 +1034,27 @@ export class SignallerGame extends Game {
       // the dispatcher asks for other signallers' tracks too: only the closure for this station's failure is meant
       // here (a request that names no fault: only one for the failed signal's own track)
       this._teamArrived();
-    } else if (msg.flow === "connection-request" || (msg.flow === "dispatching-order" && p.hold)) {
-      const tr = this.trains.find((x) => x.id === p.hold);
+    } else if (msg.flow === "dispatching-order" && p.track) {
+      // another platform track than the timetable's, for a train that is still to come: the plan is the dispatcher's
+      const tr = this.trains.find((x) => x.id === p.train);
+      if (!tr || tr.state !== "coming" || tr.plan === p.track || !STATION.routes.some((r) => r.from === (tr.dir > 0 ? "A" : "F") && r.to === p.track)) return;
+      this.log(`${clockOf(this.t)} The dispatcher orders: ${tr.id} to ${p.track} instead of ${tr.plan}.`, "request");
+      tr.plan = p.track;
+    } else if ((msg.flow === "connection-request" && !this.isWired("dispatching-order")) || (msg.flow === "dispatching-order" && p.hold)) {
+      // (with a dispatcher seated, an undertaking's wish is the dispatcher's to grant: the order is what counts here)
+      const tr = this.trains.find((x) => x.id === p.hold), other = this.trains.find((x) => x.id === p.for);
       if (!tr || tr.state === "gone") return;
-      // up to so many minutes beyond the train's own time
-      const until = Math.max(this.t, tr.dep ?? this.t) + (p.minutes ?? 3) * 60;
-      this.holds.set(tr.id, { for: p.for ?? null, until });
-      this.log(`${clockOf(this.t)} ${msg.flow === "dispatching-order" ? "The dispatcher orders" : "The undertaking's operations control asks"}: hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}, until ${clockOf(until).slice(0, 5)} at the latest.`, "request");
+      const order = msg.flow === "dispatching-order", minutes = Math.max(0, Number(p.minutes ?? 3) || 0);
+      // up to so many minutes beyond the train's own time (a train that passes through: beyond its passing time)
+      const until = Math.max(this.t, order ? tr.due : tr.dep ?? this.t) + minutes * 60;
+      // a new word on the same train takes the place of the old one
+      if (other) tr.ahead.delete(other.id);
+      // no wait at all: a train that stops leaves as it is ready; one that passes through goes at its time, also before the other
+      if (order && !minutes && tr.stops) this.holds.delete(tr.id);
+      else this.holds.set(tr.id, { for: p.for ?? null, until });
+      const passengers = !other || (tr.stops && other.stops);
+      this.log(`${clockOf(this.t)} ${order ? "The dispatcher orders" : "The undertaking's operations control asks"}: ${!minutes && order ? `${tr.id} does not wait${p.for ? ` for ${p.for}` : ""}`
+        : `${passengers ? `hold ${tr.id}${p.for ? ` for the passengers of ${p.for}` : ""}` : `${tr.id} lets ${p.for} go first`}${until > END_S ? "" : `, until ${clockOf(until).slice(0, 5)} at the latest`}`}.`, "request");
     }
     this._tidy();
   }

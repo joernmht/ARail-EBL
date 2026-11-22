@@ -47,6 +47,7 @@ export const GAME_CAST = {
   maintenance: { name: "M. Specht", role: "Team leader, signalling", portrait: "hivis", self: "headset" },
   lab: { name: "J. Reiher", role: "Signaller in the lab", portrait: "uniform", self: "headset" },
   "transport-control": { name: "A. Schwalbe", role: "Driver, on the radio", portrait: "uniform", self: "headset" },
+  dispatcher: { name: "R. Dohle", role: "Senior dispatcher, at the next desk", portrait: "headset", self: "headset" },
   "asset-manager": { name: "E. Kiebitz", role: "Asset responsible (ALV)", portrait: "hivis", self: "office" },
   contract: { name: "T. Lerche", role: "The operator's contract manager", portrait: "office", self: "office" },
   budget: { name: "E. Wiedehopf", role: "The coalition partner's rapporteur", portrait: "suit", self: "suit" },

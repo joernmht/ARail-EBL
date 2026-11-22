@@ -22,6 +22,7 @@
  */
 import { hashKey } from "../core/math.js";
 import { threads } from "./chain.js";
+import { fallbackOf } from "./core.js";
 import { flowOf } from "./flows.js";
 
 /** Who plays a seat. */
@@ -345,7 +346,7 @@ export class Session {
     for (const seat of this.active) {
       const g = seat.game;
       // in a turn, what was not decided is decided by its fallback
-      if (ph.kind === "turn" && !g.over) for (const d of g.open) g.decide(d.id, d.fallback ?? d.options[0].id, { auto: true });
+      if (ph.kind === "turn" && !g.over) for (const d of g.open) g.decide(d.id, fallbackOf(d), { auto: true });
       if (ph.kind === "shift" || !g.over) g.finish(ctx);
       if (ph.kind === "shift") {
         g.end("The shift is over.");

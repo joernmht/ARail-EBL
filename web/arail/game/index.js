@@ -6,23 +6,24 @@
  * the framework's math).
  * @module arail/game
  */
-export { Game, GAME_KINDS, Player, clockAt, secondsOf } from "./core.js";
+export { Game, GAME_KINDS, Player, clockAt, fallbackOf, onScale, secondsOf } from "./core.js";
 export { FLOWS, FLOW_GROUPS, FLOW_KINDS, PARTIES, PARTY_KINDS, SCALES, SCALE_S, flowOf, playedIn, validateFlows } from "./flows.js";
 export { MISSION, SEATS, Session } from "./session.js";
 export { STRETCHES, threads } from "./chain.js";
 export { HOOK_CHARS, MISSION_FORMAT, MISSION_MODES, SAY_CHARS, SHIFT_S, TICK_S, answerFor, answersOf, lineFor, normalizeMission, staleAnswers, staleLines, storyOf, testRun, validateMission, wiring } from "./mission.js";
-export { GAMES, gameOfRole, play } from "./games.js";
+export { GAMES, gameOfRole, gamesOfRole, play } from "./games.js";
 export { ROLE_SETTINGS, GAME_EFFORTS, validateRoles, careerGraph, flowGraph, roleCounts, takesOf } from "./roles.js";
 export {
   SELECTIONS, QUALIFICATION_KINDS, qualificationsOf, startPoints, createCareer, ageOf, yearsIn, canStart, routeStatus, roleStatus, options as careerOptions,
   takeRole, study, work, missingText, prerequisiteTree, reachable,
 } from "./career.js";
 export {
-  SignallerAutopilot, SignallerGame, STATION, TIMETABLE, CONNECTIONS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf, failureChance,
+  SignallerAutopilot, SignallerGame, STATION, TIMETABLE, CONNECTIONS, KINDS, LEVELS, ZS1_REASONS, BRAKE, ACCEL, SIGHT_M, DISTANT_M, POINT_S, ZS1_MS, DWELL_S, END_S, clockOf, failureChance,
 } from "./signaller.js";
 export { AssetManagerGame, AssetManagerPlayer, LEVELS as ASSET_MANAGER_LEVELS, TARGET_GRADE, minutesPerFault, renewalsOf, yearOf } from "./asset-manager.js";
 export { BudgetGame, BudgetPlayer, LEVELS as BUDGET_LEVELS, LINES as BUDGET_LINES } from "./budget.js";
 export { CLASSES as CONTRACT_CLASSES, ContractGame, ContractPlayer, LEVELS as CONTRACT_LEVELS, consequence, ruleFor } from "./contract-manager.js";
 export { LEVELS as TRANSPORT_CONTROL_LEVELS, TransportControlGame, TransportControlPlayer } from "./transport-control.js";
+export { DispatcherGame, DispatcherPlayer, GOODWILL, HOURS, LEVELS as DISPATCHER_LEVELS, UNDERTAKINGS, WAIT_MAX_MIN, WAIT_RULE_MIN, behind } from "./dispatcher.js";
 export { CHUNK_S, EblApi, LAG_S, LATE_MIN, LabGame, LabPlayer } from "./lab.js";
 export { DIAGNOSE_S, DISTRICT, DRIVE, EXPOSED_MIN, FAULTS, LEVELS as MAINTENANCE_LEVELS, MaintenanceGame, MaintenancePlayer, ON_CALL, RESTORE_MIN, TRADES, driveTime, likely } from "./maintenance.js";

@@ -44,6 +44,10 @@ export const PLACES = [
     photo: "game/places/platform-fly.jpg", alt: "Regional trains at the platform of Bf Neustadt, in the flyover",
   },
   {
+    id: "station", name: "Bf Neustadt, from the dispatcher's desk", line: "Three undertakings' trains, three tracks, one desk.",
+    photo: "game/places/throat-fly.jpg", alt: "Bf Neustadt in the flyover: its tracks towards Bergheim, a regional train at the island platform, the town behind",
+  },
+  {
     id: "lab", name: "The EBL lab", line: "The real lab: its own simulation runs these trains.",
     photo: "game/places/lab-trains.jpg", alt: "Container wagons with their markers on the tracks of the lab, close up",
     wide: "media/ebl-container-train.jpg", wideFocus: "40% 35%",
@@ -155,6 +159,7 @@ export const GAME_PLACES = {
   maintenance: "track",
   lab: "lab",
   "transport-control": "trains",
+  dispatcher: "station",
   "asset-manager": "district",
   contract: "town",
   budget: "town-night",
