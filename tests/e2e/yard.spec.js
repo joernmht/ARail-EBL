@@ -151,8 +151,11 @@ test("the picture of the yard: the hump chosen changes the speed while a train i
   const board = page.locator(`${SEAT} .play-board`), pick = page.locator(`${SEAT} .play-pick`), tag = (id) => board.locator(`.pick[data-id="${id}"]`);
   await expect(page.locator(`${SEAT} .play-sketch h4`)).toHaveText("The yard");
   await expect(board).toHaveAttribute("aria-label", /^The hump yard Neustadt West: on the left the trains in the arrival tracks and the train on the hump/);
-  // the trains still waiting, the hump and the six tracks can be chosen; every wagon of the train on the hump is drawn
-  for (const id of ["train-56034", "train-56058", "train-56071", "hump", "track-1", "track-6"]) await expect(tag(id)).toHaveCount(1);
+  // the trains waiting, the hump and the six tracks can be chosen; every wagon of the train on the hump is drawn
+  for (const id of ["train-56034", "train-56058", "hump", "track-1", "track-6"]) await expect(tag(id)).toHaveCount(1);
+  // (the late train is shown with the time it is announced for; it cannot be chosen before it is in)
+  await expect(tag("train-56071")).toHaveCount(0);
+  await expect(board).toContainText("56071");
   expect(await board.locator("rect:not(.hit)").count()).toBeGreaterThanOrEqual(30);
   // the hump: what the locomotive does, and the speed as moves
   await tag("hump").click({ force: true });

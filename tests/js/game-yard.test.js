@@ -345,6 +345,50 @@ test("the wagon that must not be humped finds no room in its track: it goes back
   assert.deepEqual([g.waiting, g.cutOf(tank.id)?.rec.stop.track, g.sim.log.filter((e) => e.type === "cut.set-out" && e.cut === "56034/r").length], [[], "1", 1]);
 });
 
+test("one locomotive: while it is away on a job the train on the hump stands; a hump stopped by its operator is pushed on afterwards; a train that is not in cannot be chosen", () => {
+  // the second train is on the hump; the first one's wagons stand in their tracks
+  const ready = () => {
+    const g = play(onTheMinute, { seed: 1, until: 240 });
+    assert.deepEqual([g.loco.state, g.loco.train, g.v], ["push", "56034", PUSH.rule]);
+    return g;
+  };
+  let g = ready();
+  const hump = () => g.view().sketch.items.find((it) => it.id === "hump");
+  const track = g.sim.yard.tracks.map((t) => t.name).find((name) => g.sim.trackContents(name).cuts.length);
+  // the yard master stops the train and sends the locomotive to close up a track (it goes once no cut rolls towards that track)
+  g.act("push", 0);
+  assert.deepEqual(g.act("close", track), { ok: true });
+  while (!g.loco.job && g.t < 500) g.step(0.5);
+  assert.deepEqual([g.loco.job.kind, g.loco.state], ["close", "push"]);
+  // the train cannot be pushed meanwhile, and the picture does not offer it
+  const at = g.sim.pushing.cuts[0].s;
+  assert.match(g.act("push", 1.2).reason, new RegExp(`^The locomotive is away from the train: it closes up track ${track} until `));
+  assert.deepEqual([g.v, hump().menu, hump().text], [0, undefined, "stopped"]);
+  while (g.loco.job) g.step(0.5);
+  assert.equal(g.sim.pushing.cuts[0].s, at, "the train stood for the whole job");
+  // stopped by the yard master, it stays stopped after the job; pushed on, it goes
+  for (let i = 0; i < 20; i++) g.step(0.5);
+  assert.deepEqual([g.v, hump().menu.map((m) => m.label)], [0, ["Push on at 1.2 m/s"]]);
+  assert.deepEqual([g.act("push", 1.2), g.v], [{ ok: true }, 1.2]);
+  // the hump operator stops the hump while a train is pushed: it stands, cannot be pushed, and goes on by itself afterwards at the operator's speed
+  g = ready();
+  g.called.add("hump");
+  g._mood("hump", MOOD.act + 5 - g.mood("hump"));
+  g.sim.note("cut.misrouted", { cut: g.sim.bodies[0].id, switch: "s", intended: g.sim.bodies[0].intended, now: g.sim.bodies[0].track });
+  g.step(0.5);
+  assert.deepEqual([g.inspection != null, g.v, hump().menu], [true, 0, undefined]);
+  assert.match(g.act("push", 1).reason, /stopped while its retarders are checked/);
+  while (g.inspection != null) g.step(0.5);
+  g.step(0.5);
+  assert.deepEqual([g.loco.state, g.v, g.cap], ["push", PUSH.auto, PUSH.auto]);
+  // a train that is not in yet cannot be chosen for the hump, and the picture does not offer it
+  g = ready();
+  assert.deepEqual([g.train("56071").state, g.act("hump", "56071")], ["coming", { ok: false, reason: "56071 is not in yet." }]);
+  assert.equal(g.nextUp === "56071", false);
+  assert.equal(g.view().sketch.items.find((it) => it.id === "train-56071").menu, undefined);
+  assert.deepEqual(g.view().sketch.items.find((it) => it.id === "train-56058").menu.map((m) => m.label), ["Over the hump next"]);
+});
+
 test("the view for a page that does not know the game: figures, tables, the moves as forms, the yard as a picture", () => {
   const g = play(computer, { seed: 1, until: 420, each: tidy });
   const v = g.view();

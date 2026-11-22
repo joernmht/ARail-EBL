@@ -254,7 +254,8 @@ export class YardGame extends Game {
     /**
      * The shunting locomotive: what it does (`idle`, `push`, `back`, `job`), until when, its job, the
      * train it pushes, the speed it pushes on at after it stood (`resume`), and whether it does so by
-     * itself after a job (`goOn`: the train was blocked, not stopped by the yard master).
+     * itself once what holds it is over (`goOn`: the train was blocked or the hump was stopped by its
+     * operator; not when the yard master stopped it).
      */
     this.loco = { state: "back", until: FIRST_S, job: null, train: null, resume: 0, goOn: false };
     /** What the locomotive is to do besides pushing: `{kind, track?, cut?, train?, first}` (`first`: before the next train). */
@@ -456,6 +457,10 @@ export class YardGame extends Game {
     if (this.loco.state !== "push" || !sim.pushing) return { ok: false, reason: "No train is on the hump." };
     if (n > this.cap + 1e-9) return { ok: false, reason: `${PEOPLE.hump.name} pushes at ${speed(this.cap)} m/s at most.` };
     if (this.inspection != null && n > 0) return { ok: false, reason: "The hump is stopped while its retarders are checked." };
+    // (one locomotive: while it is away on a job, the train it left on the hump stands)
+    if (this.loco.job && n > 0) return { ok: false, reason: `The locomotive is away from the train: it ${this._locoText()}.` };
+    // (the yard master's own word: nothing pushes on by itself afterwards)
+    this.loco.goOn = false;
     this._push(Math.round(n * 10) / 10);
     return { ok: true };
   }
@@ -474,7 +479,7 @@ export class YardGame extends Game {
   }
 
   /**
-   * Choose the train that goes over the hump next (one that waits in the arrival tracks, or is still to come).
+   * Choose the train that goes over the hump next: one that waits in the arrival tracks (a train that is not in yet cannot be chosen).
    * @param {string} train
    * @returns {{ok: boolean, reason?: string}}
    */
@@ -482,6 +487,7 @@ export class YardGame extends Game {
     const tr = this.inbound.find((x) => x.id === train);
     if (!tr) return { ok: false, reason: "There is no such train." };
     if (tr.state === "hump" || tr.state === "done") return { ok: false, reason: `${tr.id} ${tr.state === "done" ? "is humped" : "is on the hump"}.` };
+    if (tr.state === "coming") return { ok: false, reason: `${tr.id} is not in yet.` };
     this.nextUp = tr.id;
     if (this.withdraw("next")) this.about.delete("next");
     // (a speed asked for another train that has not started is asked again when its turn comes)
@@ -489,7 +495,7 @@ export class YardGame extends Game {
       this.withdraw(d.id);
       this.about.delete(d.id);
     }
-    this.log(`${hms(this.t)} ${tr.id} goes over the hump next${tr.state === "coming" ? ", when it is in" : ""}.`, "request");
+    this.log(`${hms(this.t)} ${tr.id} goes over the hump next.`, "request");
     return { ok: true };
   }
 
@@ -595,7 +601,11 @@ export class YardGame extends Game {
     if (this.inspection != null && this.t >= this.inspection) {
       this.inspection = null;
       this.log(`${hms(this.t)} ${PEOPLE.hump.name}: "Retarders checked. From now on I push at ${speed(this.cap)}, whatever you say."`, "request");
-      if (L.state === "push" && sim.pushing) this._push(Math.min(this.cap, L.resume || PUSH.auto));
+      // (a train that was moving when the hump was stopped is pushed on, unless the locomotive is away on a job: then after it)
+      if (L.state === "push" && sim.pushing && L.goOn && !L.job) {
+        L.goOn = false;
+        this._push(Math.min(this.cap, L.resume || PUSH.auto));
+      }
     }
     if (L.state === "push") {
       const tr = this.train(L.train);
@@ -638,7 +648,7 @@ export class YardGame extends Game {
     this.jobs = this.jobs.filter((x) => x !== j);
     const L = this.loco, s = this._jobTime(j);
     // (a train that was blocked is pushed on after the job; one the yard master stopped stays stopped)
-    Object.assign(L, { job: j, until: this.t + s, goOn: onHump && this.v > 0, ...(onHump ? {} : { state: "job" }) });
+    Object.assign(L, { job: j, until: this.t + s, goOn: L.goOn || (onHump && this.v > 0), ...(onHump ? {} : { state: "job" }) });
     if (onHump && this.v > 0) this._push(0);
     this.log(`${hms(this.t)} The locomotive ${j.kind === "close" ? `closes up track ${j.track}` : j.kind === "round" ? `takes the wagon that must not be humped round to track ${j.track}` : `fetches the ${this._cutName(this.sim.bodies.find((b) => b.id === j.cut))}`}: until ${hms(this.t + s)}.`, "info");
   }
@@ -668,7 +678,10 @@ export class YardGame extends Game {
       }
     }
     if (L.state === "job") Object.assign(L, { state: "back", until: this.t + 20 });
-    else if (L.state === "push" && L.goOn && this.inspection == null) this._push(Math.min(this.cap, L.resume || PUSH.auto));
+    else if (L.state === "push" && L.goOn && this.inspection == null) {
+      L.goOn = false;
+      this._push(Math.min(this.cap, L.resume || PUSH.auto));
+    }
   }
 
   /** A cut in words: "tank wagon for track 2", "2 wagons for track 3". */
@@ -952,7 +965,10 @@ export class YardGame extends Game {
     }
     this.inspection = this.t + LOCO.inspect_s;
     this.cap = PUSH.auto;
-    if (this.v > 0) this._push(0);
+    if (this.v > 0) {
+      this.loco.goOn = true;
+      this._push(0);
+    }
     this.log(`${hms(this.t)} ${PEOPLE.hump.name} stops the hump: the retarders are inspected until ${hms(this.inspection)}.`, "fault");
     this.irregular("hump-stopped", "hump-stopped", { who: PEOPLE.hump.name, min: mins(LOCO.inspect_s) });
   }
@@ -1317,7 +1333,7 @@ export class YardGame extends Game {
         id: `train-${tr.id}`, kind: "tag", x: 8, y, anchor: "start", text: tr.id, tone: coming ? "idle" : this.nextUp === tr.id ? "ok" : undefined,
         alert: asked.has(`train-${tr.id}`) ? "warn" : undefined,
         title: `${tr.id} from ${tr.from}: ${this._load(tr)}; ${coming ? `announced for ${hm(tr.planned + tr.told_s)}${tr.spread_s ? `, give or take ${mins(tr.spread_s)} min` : ""}` : "in the arrival tracks"}`,
-        menu: this.nextUp === tr.id ? undefined : [{ label: "Over the hump next", name: "hump", args: [tr.id] }],
+        menu: coming || this.nextUp === tr.id ? undefined : [{ label: "Over the hump next", name: "hump", args: [tr.id] }],
       });
       if (coming) items.push({ kind: "text", x: 70, y: y + 4, small: true, tone: "muted", text: `${hm(tr.planned + tr.told_s)}${tr.spread_s ? ` ±${mins(tr.spread_s)}` : ""}` });
       else tr.wagons.forEach((w, k) => items.push({ kind: "box", x: 70 + k * 9, y: y - 9, w: 7, h: 11, tone: w.noHump ? "closed" : cls[classOf(w)] }));
@@ -1339,7 +1355,7 @@ export class YardGame extends Game {
       id: "hump", kind: "tag", x: crestX, y: hy - 30, anchor: "middle", text: pushing ? (P?.blocked ? "blocked" : this.v ? `${speed(this.v)} m/s` : "stopped") : "hump",
       tone: !pushing ? "idle" : P?.blocked || this.inspection != null ? "bad" : this.v > PUSH.limit ? "warn" : this.v ? "ok" : "warn", alert: asked.has("hump") ? "warn" : undefined,
       title: `The hump: the locomotive ${this._locoText()}${this.cap < PUSH.max ? `; ${PEOPLE.hump.name} pushes at ${speed(this.cap)} m/s at most` : ""}`,
-      menu: pushing && this.inspection == null ? [
+      menu: pushing && this.inspection == null && !this.loco.job ? [
         ...(this.v > 0 && this.v + PUSH.tap <= this.cap + 1e-9 ? [{ label: `Faster: ${speed(this.v + PUSH.tap)} m/s`, name: "push", args: [Math.round((this.v + PUSH.tap) * 10) / 10] }] : []),
         ...(this.v - PUSH.tap >= PUSH.min - 1e-9 ? [{ label: `Slower: ${speed(this.v - PUSH.tap)} m/s`, name: "push", args: [Math.round((this.v - PUSH.tap) * 10) / 10] }] : []),
         this.v > 0 ? { label: "Stop the train", name: "push", args: [0] } : { label: `Push on at ${speed(Math.min(this.cap, this.loco.resume || PUSH.rule))} m/s`, name: "push", args: [Math.min(this.cap, this.loco.resume || PUSH.rule)] },
