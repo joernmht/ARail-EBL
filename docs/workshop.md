@@ -118,7 +118,7 @@ unit that runs with a finding fleet management would have kept it in for.
 | Score | trains with their unit 35, the night's orders 20, nothing comes back 15, the people 30 |
 
 Played by the computer on 24 seeds of the level *normal*: nobody at the desk 19 points (nothing
-comes into the hall: no train has a unit); by the book 85 (a train lost on four nights in ten);
+comes into the hall: no train has a unit); by the book 85 (a train cancelled on three nights in ten, late on a few more);
 with the pit kept free for the inspection and the brake pads done on the jacks 93; hasty all
 round 71. Taking the reading at a limit, repairing a finding unasked and leaving it in the
 release each beat the book on some nights and lose on others.
