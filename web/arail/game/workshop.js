@@ -961,8 +961,9 @@ export class WorkshopGame extends Game {
   /** A train is due, a unit is released to service and not yet returned to operation, its driver stands at the door. One of a few choices. */
   _askDoor(pl, u) {
     const id = `door-${u.id}`, p = PEOPLE.fleet;
-    if (this._asked.has(id)) return;
-    this._asked.add(id);
+    // (once for a unit and a train: a driver who was told to wait does not ask again for the same train)
+    if (this._asked.has(`${id}:${pl.n}`) || this.open.some((d) => d.id === id)) return;
+    this._asked.add(`${id}:${pl.n}`);
     const open = u.findings.filter((f) => f.state === "noted").length;
     // (phoned for already, fleet management is not phoned again: the answer is on its way)
     const phoned = !!u.phoned;
@@ -981,6 +982,8 @@ export class WorkshopGame extends Game {
       within: DECIDE_S.door, fallback: "wait",
       then: (x) => {
         this.about.delete(id);
+        // (fleet management has decided meanwhile: there is nothing left to hand over)
+        if (u.rto_t != null || u.kept || u.gone_t != null) return;
         if (x === "phone") this.phone(u.id);
         else if (x === "go") this._handOver(u);
         else this.log(`${hm(this.t)} The driver of the ${hm(pl.at)} waits at ${u.name}.`, "request");
@@ -1316,6 +1319,11 @@ export class WorkshopGame extends Game {
     this._answers();
     this._returns();
     this._pullouts();
+    // the driver's question at a door is over once fleet management has decided on the unit, or no train waits for one any more
+    for (const d of this.open.filter((x) => x.id.startsWith("door-"))) {
+      const u = this.unit(d.id.slice(5)), waits = this.pullouts.some((p) => p.unit == null && !p.cancelled && this.t >= p.at);
+      if (u.rto_t != null || u.kept || u.gone_t != null || !waits) this._drop(d.id);
+    }
     this._failures();
     this._wordDue();
     this._hourly();

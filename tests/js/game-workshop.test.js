@@ -239,6 +239,43 @@ test("released is not returned: fleet management returns a unit to operation; ha
   assert.deepEqual(door.options.map((o) => o.id), ["wait", "go"]);
   assert.match(door.text, /has been phoned about it/);
   assert.equal(g2.advice("door-101"), "wait");
+  // the question is over once fleet management has decided: returned to operation, the unit can no longer be "taken on its release alone"
+  g2.pullouts[0].at = g2.t;
+  run(g2, S(3));
+  assert.ok(g2.unit("101").rto_t != null, "the return to operation came");
+  assert.ok(!g2.open.some((d) => d.id === "door-101"), "the driver's question is taken back");
+  assert.equal(g2.hall().driver, null, "and no driver stands at the door on the table");
+  assert.equal(g2.act("decide", "door-101", "go"), false);
+  assert.ok(!g2.violations.some((v) => v.rule === "return-to-operation") && !g2.unit("101").handed);
+  // kept in by fleet management (a signature without authorisation), the unit cannot be let go afterwards either
+  const g3 = new WorkshopGame({ seed: 1 });
+  run(g3, S(3));
+  g3.unit("101").void = true;
+  g3.act("release", "101");
+  g3.pullouts[0].at = g3.t;
+  g3._askDoor(g3.pullouts[0], g3.unit("101"));
+  assert.match(g3.open.find((d) => d.id === "door-101").text, /signed by V\. Ammer/);
+  while (!g3.unit("101").kept && g3.t < S(40)) g3.step(0.5);
+  assert.ok(g3.unit("101").kept && !g3.open.some((d) => d.id === "door-101"));
+  assert.ok(!g3.violations.some((v) => v.rule === "unsafe" || v.rule === "return-to-operation"), "nothing ran");
+  // and when its train is cancelled, nobody stands at the door any more; for the next train the driver asks again
+  const g4 = new WorkshopGame({ seed: 1 });
+  run(g4, S(3));
+  g4.act("release", "101");
+  g4.unit("101").rto_due = Infinity;
+  g4.pullouts[0].at = g4.t;
+  g4.pullouts[1].at = g4.t + S(LATE_MAX_MIN) + S(2);
+  run(g4, 1);
+  assert.ok(g4.open.some((d) => d.id === "door-101"), "asked when the train is due");
+  g4.act("decide", "door-101", "wait");
+  run(g4, S(LATE_MAX_MIN));
+  assert.equal(g4.pullouts[0].cancelled, true);
+  assert.ok(!g4.open.some((d) => d.id === "door-101"));
+  run(g4, S(3));
+  assert.ok(g4.open.some((d) => d.id === "door-101"), "the next train's driver asks again");
+  run(g4, S(1));
+  g4.act("decide", "door-101", "go");
+  assert.ok(g4.unit("101").handed && g4.violations.some((v) => v.rule === "return-to-operation"));
 });
 
 test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, it is decided when nothing can be repaired", () => {
