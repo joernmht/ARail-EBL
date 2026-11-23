@@ -292,7 +292,7 @@ export class WorkshopGame extends Game {
      */
     this.units = UNITS.map((spec) => this._unit(spec, lv));
     /** The trains of the morning: when their unit must leave (`at`), the unit that left for them, how late, whether they were cancelled (`true`, or `"planned"`: in good time). */
-    this.pullouts = PULLOUTS.map((p, i) => ({ ...p, n: i, at: S(p.at_min), unit: null, late_min: null, cancelled: false, restricted: false, failed: false, slipped: false }));
+    this.pullouts = PULLOUTS.map((p, i) => ({ ...p, n: i, at: S(p.at_min), unit: null, late_min: null, cancelled: false, restricted: false, failed: false, slipped: false, unsafe: false }));
     /** The throat: the move that goes now (`{unit, from, to, kind, t0, t1}`), and those that wait. */
     this.shunt = { now: null, queue: [] };
     /** The one person authorised for brake tests, who also runs the lathe: the task they work on (null: free), and the lathe's task that waits for them. */
@@ -964,14 +964,17 @@ export class WorkshopGame extends Game {
     if (this._asked.has(id)) return;
     this._asked.add(id);
     const open = u.findings.filter((f) => f.state === "noted").length;
+    // (phoned for already, fleet management is not phoned again: the answer is on its way)
+    const phoned = !!u.phoned;
     this.about.set(id, [`unit-${u.id}`]);
     this.ask({
       id, title: `The driver of the ${hm(pl.at)} ${pl.id} stands at ${u.name}: “It is released, the paper lies on the desk. Do I take it?”`,
       text: `Released to service is not returned to operation: that word is fleet management's, and it has not come. `
         + `${p.name} may know what the hall does not: a restriction, an open campaign, a booking. ${open ? `${plural(open, "finding")} of tonight ${open === 1 ? "is" : "are"} written into this release as open. ` : ""}`
-        + `Phoned, ${p.name} answers within ${ON_CALL.quick_min} min, and it is another call at night. Without a call the return to operation comes when it comes, and the train waits ${LATE_MAX_MIN} min at most.`,
+        + `${u.void ? `Its brake test is signed by ${HANDS.lapsed}, whose authorisation has run out. ` : ""}`
+        + `${phoned ? `${p.name} has been phoned about it: the answer is on its way. ` : `Phoned, ${p.name} answers within ${ON_CALL.quick_min} min, and it is another call at night. Without a call the return to operation comes when it comes. `}The train waits ${LATE_MAX_MIN} min at most.`,
       options: [
-        { id: "phone", label: `Phone ${p.name} now; the driver waits` },
+        ...(phoned ? [] : [{ id: "phone", label: `Phone ${p.name} now; the driver waits` }]),
         { id: "wait", label: "The driver waits for the return to operation" },
         { id: "go", label: "Take it: it is released" },
       ],
@@ -988,6 +991,8 @@ export class WorkshopGame extends Game {
   /** A unit goes to its driver without its return to operation. */
   _handOver(u) {
     const p = PEOPLE.fleet, must = u.findings.find((f) => f.state === "noted" && f.must_have);
+    // (what fleet management would have kept it in for: a finding that must be repaired, a brake test nobody authorised signed)
+    const unsafe = must?.what ?? (u.void ? `a brake test signed by ${HANDS.lapsed}, whose authorisation has run out` : null);
     const unsaid = [...u.findings.filter((f) => f.state === "noted" && !f.must_have).map((f) => f.restriction), ...(u.tasks.some((t) => t.id === "door" && t.state === "open") ? ["door 3 locked"] : [])];
     u.handed = true;
     u.rto_t = this.t;
@@ -995,9 +1000,10 @@ export class WorkshopGame extends Game {
     this.violate("return-to-operation", `${hm(this.t)} ${u.name} went to its driver without a return to operation. That decision is fleet management's, not the workshop's.`, 2);
     this.irregular("bypassed", `handed:${u.id}`, { who: p.name, unit: u.name });
     this.log(`${hm(this.t)} ${u.name} is handed to its driver on the release alone.`, "request");
-    if (must) {
-      this.violate("unsafe", `${hm(this.t)} ${u.name} runs with ${must.what}: ${p.name} would not have returned it to operation.`, 3);
-      this.give("incident-report", { unit: u.name, what: must.what, ran: true });
+    if (unsafe) {
+      u.unsafe = true;
+      this.violate("unsafe", `${hm(this.t)} ${u.name} runs with ${unsafe}: ${p.name} would not have returned it to operation.`, 3);
+      this.give("incident-report", { unit: u.name, what: unsafe, ran: true });
     }
     for (const f of u.findings.filter((x) => x.state === "noted")) f.state = "ran";
     if (unsaid.length) this.log(`${hm(this.t)} Nobody told the driver: ${unsaid.join("; ")}.`, "fault");
@@ -1161,7 +1167,7 @@ export class WorkshopGame extends Game {
       return lathe && lathe.work - lathe.done > S(25) ? "now" : "after";
     }
     if (id === "word") return Math.min(d.scale.max, d.scale.value + 15);
-    if (id.startsWith("door-")) return "phone";
+    if (id.startsWith("door-")) return d.options.some((x) => x.id === "phone") ? "phone" : "wait";
     if (id === "call-fleet") return "two";
     if (id === "call-development" || id === "call-dispatch") return d.options.some((x) => x.id === "try") ? "try" : "no";
     return d.fallback ?? d.options[0]?.id ?? null;
@@ -1219,6 +1225,7 @@ export class WorkshopGame extends Game {
         u.train = pl.n;
         pl.late_min = Math.max(0, Math.round(((this.t - pl.at) * PACE) / 60));
         pl.restricted = u.restrictions.length > 0 && !u.handed;
+        pl.unsafe = !!u.unsafe;
         this.shunt.queue.unshift({ unit: u.id, from: u.track, to: null, kind: "out" });
         for (const f of u.findings) if (f.state === "within" && f.truth < 0) u.fails_t = Math.min(this.length - 2, this.t + S(FAILS_AFTER_MIN[0] + this.rng("fails", u.id).next() * (FAILS_AFTER_MIN[1] - FAILS_AFTER_MIN[0])));
         this.log(`${hm(this.t)} ${u.name} leaves the depot for the ${hm(pl.at)} ${pl.id} to ${pl.to}${pl.late_min ? `, ${pl.late_min} min late` : ""}${pl.restricted ? ` (${u.restrictions.join("; ")})` : ""}.`, "train");
@@ -1345,8 +1352,8 @@ export class WorkshopGame extends Game {
 
   objectives() {
     const a = this.account(), m = Object.values(a.moods), mean = m.reduce((s, v) => s + v, 0) / m.length;
-    // a train: with a unit on time 1, with a restricted unit a little less, late by its minutes, failed in service a little; cancelled less than nothing (buses, and passengers who do not come back), in good time not quite as bad
-    const worth = (p) => (p.cancelled ? (p.cancelled === "planned" ? CANCELLED.planned : CANCELLED.late) : p.unit == null ? (this.over ? CANCELLED.late : 1) : p.failed ? 0.25 : Math.max(0.2, 1 - p.late_min / LATE_MAX_MIN) * (p.restricted ? 0.85 : 1));
+    // a train: with a unit on time 1, with a restricted unit a little less, late by its minutes, failed in service a little; cancelled less than nothing (buses, and passengers who do not come back), in good time not quite as bad; one that ran with a unit that should have been kept in is worth what a cancelled one is
+    const worth = (p) => (p.cancelled ? (p.cancelled === "planned" ? CANCELLED.planned : CANCELLED.late) : p.unit == null ? (this.over ? CANCELLED.late : 1) : p.unsafe ? CANCELLED.late : p.failed ? 0.25 : Math.max(0.2, 1 - p.late_min / LATE_MAX_MIN) * (p.restricted ? 0.85 : 1));
     const trains = this.pullouts.reduce((s, p) => s + worth(p), 0) / this.pullouts.length;
     const sev = this.violations.reduce((s, v) => s + (v.severity >= 3 ? 1 : v.severity === 2 ? 0.4 : 0.15), 0);
     const names = Object.entries(PEOPLE).map(([k, p]) => `${p.label} ${a.moods[k]}`).join(", ");

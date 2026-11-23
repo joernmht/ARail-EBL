@@ -155,8 +155,11 @@ export function validateMission(doc, games, { places = null, portraits = null } 
       const r = seats.get(id), G = r && games.get(r.game);
       if (!r) out.push(`${at}: no seat "${id}"`);
       else if (G && playedIn(G.scale) !== p.kind) out.push(`${at}: ${id} decides in ${G.scale} and is played in a ${playedIn(G.scale)}, not in a ${p.kind}`);
-      else if (G?.clock && p.kind === "shift" && (p.clock ?? "08:00") !== G.clock) out.push(`${at}: the shift begins at ${p.clock}, but ${id}'s game ("${G.id}") begins at ${G.clock}`);
-      else if (G && p.kind === "shift" && (G.pace ?? 1) !== (p.pace ?? 1)) out.push(`${at}: the shift's pace is ${p.pace ?? 1}, but ${id}'s game ("${G.id}") runs at ${G.pace ?? 1} seconds of the day per second`);
+      else if (G && p.kind === "shift") {
+        // (each on its own: a shift with both wrong is told both)
+        if (G.clock && (p.clock ?? "08:00") !== G.clock) out.push(`${at}: the shift begins at ${p.clock}, but ${id}'s game ("${G.id}") begins at ${G.clock}`);
+        if ((G.pace ?? 1) !== (p.pace ?? 1)) out.push(`${at}: the shift's pace is ${p.pace ?? 1}, but ${id}'s game ("${G.id}") runs at ${G.pace ?? 1} seconds of the day per second`);
+      }
       played.add(id);
     }
   }

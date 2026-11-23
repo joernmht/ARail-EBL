@@ -219,6 +219,26 @@ test("released is not returned: fleet management returns a unit to operation; ha
   assert.ok(risky.violations.some((v) => v.rule === "unsafe" && v.severity >= 3), "it runs with what should have kept it in");
   assert.ok(!risky.result().passed);
   assert.ok(risky.outbox.some((m) => m.flow === "incident-report" && m.payload.ran));
+  // the same for a unit whose brake test was signed without authorisation: handed over, it runs unsafe, and its train is worth what a cancelled one is
+  const lapsed = Array.from({ length: 40 }, (_, i) => i + 1).find((x) => play(computer, { seed: x }).decisions.some((d) => d.id === "brake-test"));
+  const voided = play(always("brake-test", "other"), { seed: lapsed, each: (game) => {
+    const u = game.unit("105");
+    if (u.released_t != null && u.rto_t == null && !u.kept && !u.handed) game._handOver(u);
+  } });
+  assert.ok(voided.unit("105").void && voided.unit("105").handed && voided.unit("105").gone_t != null);
+  assert.ok(voided.violations.some((v) => v.rule === "unsafe" && /signed by V\. Ammer/.test(v.text)));
+  const ran = voided.pullouts.find((p) => p.unit === "105"), trains = voided.objectives().find((o) => o.id === "trains").value;
+  assert.ok(ran.unsafe && trains < 0.7, `the train it took is not a train served (${trains})`);
+  // a unit that was phoned for is not phoned for again at the door: the question offers the wait and the hand-over only
+  const g2 = new WorkshopGame({ seed: 1 });
+  run(g2, S(3));
+  g2.act("release", "101");
+  g2.act("phone", "101");
+  g2._askDoor(g2.pullouts[0], g2.unit("101"));
+  const door = g2.open.find((d) => d.id === "door-101");
+  assert.deepEqual(door.options.map((o) => o.id), ["wait", "go"]);
+  assert.match(door.text, /has been phoned about it/);
+  assert.equal(g2.advice("door-101"), "wait");
 });
 
 test("a finding beyond the order: asked, fleet management extends the order or lets the unit run with a restriction; repaired unasked, it is within the standing order or not; left in the release, it is decided when nothing can be repaired", () => {
@@ -438,6 +458,17 @@ test("the mission Fit to run: sound, at the game's pace, a line for everything t
   const off = structuredClone(MISSION);
   delete off.phases[0].pace;
   assert.match(validateMission(normalizeMission(off, GAMES), GAMES).join("\n"), /the shift's pace is 1, but workshop-manager's game \("workshop"\) runs at 12/);
+  // a shift with the wrong time and the wrong pace is told both at once
+  const both = structuredClone(MISSION);
+  both.phases[0].clock = "21:00";
+  both.phases[0].pace = 6;
+  const told = validateMission(normalizeMission(both, GAMES), GAMES).join("\n");
+  assert.match(told, /begins at 21:00, but workshop-manager's game/);
+  assert.match(told, /the shift's pace is 6, but workshop-manager's game/);
+  // what the story says of a time of the night is said before that time: the hourly status before one o'clock, the dispatcher's question before ten past three
+  const saidAt = (re) => m.story.find((x) => re.test(x.say)).at * m.phases[0].pace / 60;
+  assert.ok(saidAt(/From one o'clock your status goes out/) < 180, "before 01:00");
+  assert.ok(saidAt(/At ten past three/) < 310, "before 03:10");
   const zero = structuredClone(MISSION);
   zero.phases[0].pace = 0;
   assert.match(validateMission(normalizeMission(zero, GAMES), GAMES).join("\n"), /pace .* must be more than 0/);

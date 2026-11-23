@@ -105,7 +105,8 @@ reads every release line by line, the engineer gives no concessions any more, th
 orders buses. The lowest patience counts 60 % of that objective.
 
 Two things end the round whatever the score: a release signed by somebody not authorised, and a
-unit that runs with a finding fleet management would have kept it in for.
+unit that runs with what fleet management would have kept it in for (a finding that must be
+repaired, or such a signature); its train is then worth what a cancelled one is.
 
 ## The numbers
 

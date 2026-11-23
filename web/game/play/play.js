@@ -1161,8 +1161,8 @@ class PlayPage {
   clock() {
     const s = this.session, ph = s.phase;
     if (ph?.kind !== "shift") return;
-    // (a shift that runs faster than the clock shows no seconds: they would jump)
-    const pace = ph.pace ?? 1, text = pace > 1 ? clockOf(ph.clock, s.t * pace).slice(0, 5) : clockOf(ph.clock, s.t), el = $("#clock");
+    // (the time of day at the shift's pace; one that runs faster than the clock shows no seconds: they would jump)
+    const pace = ph.pace ?? 1, time = clockOf(ph.clock, s.t * pace), text = pace > 1 ? time.slice(0, 5) : time, el = $("#clock");
     if (el.textContent === text) return;
     el.textContent = text;
     const pct = Math.round((100 * Math.min(s.t, ph.length)) / ph.length), bar = $("#progress");
