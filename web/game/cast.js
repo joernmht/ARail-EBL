@@ -50,6 +50,7 @@ export const GAME_CAST = {
   dispatcher: { name: "R. Dohle", role: "Senior dispatcher, at the next desk", portrait: "headset", self: "headset" },
   yard: { name: "S. Pirol", role: "Hump operator, on the radio", portrait: "uniform", self: "hivis" },
   workshop: { name: "C. Gimpel", role: "Foreman of the night, in the hall", portrait: "hivis", self: "hivis" },
+  works: { name: "L. Zaunkönig", role: "Work planner of the district", portrait: "hivis", self: "office" },
   "asset-manager": { name: "E. Kiebitz", role: "Asset responsible (ALV)", portrait: "hivis", self: "office" },
   contract: { name: "T. Lerche", role: "The operator's contract manager", portrait: "office", self: "office" },
   budget: { name: "E. Wiedehopf", role: "The coalition partner's rapporteur", portrait: "suit", self: "suit" },

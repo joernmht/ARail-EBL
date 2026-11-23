@@ -471,6 +471,25 @@ for (const [scheme, device, viewport] of STATES) {
     await page.evaluate(() => window.__play.pick("workshop-manager", "unit-101"));
     await expect(hall.locator(".play-pick button").first()).toBeVisible();
     await check("the picture of the depot with a unit on the pit, a unit chosen with its tracks and its release");
+    // the district manager's week: the chart of the week with a person chosen, and the possession's length as a number with an option beside it
+    await page.goto("/game/play/?mission=short-notice");
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#start").click();
+    await page.getByRole("button", { name: "Pause" }).click();
+    await step(20);
+    const week = page.locator("#seat-maintenance-district-manager");
+    for (let i = 0; i < 8 && (await week.locator(".vn-story .btn").count()); i++) await week.locator(".vn-story .btn").first().click();
+    await page.evaluate(() => window.__play.pick("maintenance-district-manager", "person-p1"));
+    await expect(week.locator(".play-pick button").first()).toBeVisible();
+    await check("the chart of the week with a person chosen: where they live, their week, the works they can go onto");
+    await page.evaluate(() => {
+      const p = window.__play;
+      for (const id of ["p2", "p5"]) p.session.act("maintenance-district-manager", "assign", "rail", id);
+      p.session.act("maintenance-district-manager", "tell", "ops", "rail");
+      p.draw(true);
+    });
+    await expect(week.locator(".play-scale input[type=range]")).toBeVisible();
+    await check("for how many hours the possession is registered: a number on a scale, and the welder's look beside it");
     // the logbook, with what such a session leaves in it
     await page.goto("/game/logbook/");
     await page.evaluate(async () => {

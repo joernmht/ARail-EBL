@@ -170,6 +170,7 @@ export const GAME_PLACES = {
   dispatcher: "station",
   yard: "yard",
   workshop: "workshop",
+  works: "district",
   "asset-manager": "district",
   contract: "town",
   budget: "town-night",
