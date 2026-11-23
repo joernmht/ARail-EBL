@@ -29,7 +29,7 @@ const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
  * district.js, control.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
-const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "dispatcher", "yard", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "dispatcher", "yard", "workshop", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
 const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .play-window, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
@@ -766,7 +766,7 @@ class PlayPage {
   standing(m, saved) {
     try {
       const ph = new Session(m, { games: this.games }).plan[saved.at?.phase ?? 0];
-      return `${m.rounds > 1 ? `round ${ph.round} of ${m.rounds}, ` : ""}${ph.title}${ph.kind === "shift" ? `, ${clockOf(ph.clock, (saved.at?.tick ?? 0) * ph.tick)}` : ""}`;
+      return `${m.rounds > 1 ? `round ${ph.round} of ${m.rounds}, ` : ""}${ph.title}${ph.kind === "shift" ? `, ${clockOf(ph.clock, (saved.at?.tick ?? 0) * ph.tick * (ph.pace ?? 1))}` : ""}`;
     } catch {
       return "its place is unknown";
     }
@@ -1161,7 +1161,8 @@ class PlayPage {
   clock() {
     const s = this.session, ph = s.phase;
     if (ph?.kind !== "shift") return;
-    const text = clockOf(ph.clock, s.t), el = $("#clock");
+    // (the time of day at the shift's pace; one that runs faster than the clock shows no seconds: they would jump)
+    const pace = ph.pace ?? 1, time = clockOf(ph.clock, s.t * pace), text = pace > 1 ? time.slice(0, 5) : time, el = $("#clock");
     if (el.textContent === text) return;
     el.textContent = text;
     const pct = Math.round((100 * Math.min(s.t, ph.length)) / ph.length), bar = $("#progress");
@@ -1494,12 +1495,12 @@ class PlayPage {
     // behind it all: the picture that fits what is read or asked, else the place where the role works
     // (a shift by day gets no picture of the night; in a turn of months or years the time is open); it may be
     // live, in a shift at the shift's own time of day
-    const night = turn ? null : nightAt(s.phase.clock, s.t);
+    const night = turn ? null : nightAt(s.phase.clock, s.t * (s.phase.pace ?? 1));
     // the signaller's picture can be the table itself: the game on the layout, with what is chosen and the routes offered from a signal chosen
     const item = view.sketch?.items.find((it) => it.id === this.picked.get(seat.id));
     const table = this.tableOn && g && active ? this.tableOf(seat, can, item, turn ? focus : null) : null;
     this.backdrop((line ? backdropAt(night, line.text) : beat ? null : focus ? backdropAt(night, focus.title, focus.text) : null) ?? wideOf(placeOfGame(seat.Game.id)),
-      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t), table });
+      { live: true, time: turn ? null : dayMinutes(s.phase.clock, s.t * (s.phase.pace ?? 1)), table });
 
     // the desk (a dialog): drawn also while it is closed, so that it is true when it opens
     p.deskTitle.textContent = seat.Game.title;
@@ -1887,7 +1888,7 @@ class PlayPage {
     $("#flowScroll").hidden = !lines.length;
     morph($("#flowList"), lines.map((f) => {
       const ph = s.plan[f.phase];
-      const when = ph?.kind === "shift" ? `${s.rounds > 1 ? `Round ${f.round} · ` : ""}${clockOf(ph.clock, f.t)}` : `Round ${f.round}${ph ? ` · ${ph.title}` : ""}`;
+      const when = ph?.kind === "shift" ? `${s.rounds > 1 ? `Round ${f.round} · ` : ""}${clockOf(ph.clock, f.t * (ph.pace ?? 1))}` : `Round ${f.round}${ph ? ` · ${ph.title}` : ""}`;
       const to = f.to.length ? f.to.map((id) => this.seatName(id)).join(", ") : "no seat";
       return h("li", {},
         h("span", { class: "when" }, when),
@@ -2115,7 +2116,7 @@ class PlayPage {
     const all = [...total.values()].reduce((a, b) => a + b, 0);
     const phases = [...new Set(threads.map((th) => th.phase))];
     const thread = (th) => {
-      const ph = s.plan[th.phase], length = ph.length || Math.max(1, th.to), at = (t) => clockOf(ph.clock, t).slice(0, 5);
+      const ph = s.plan[th.phase], length = ph.length || Math.max(1, th.to), at = (t) => clockOf(ph.clock, t * (ph.pace ?? 1)).slice(0, 5);
       const pct = (t) => `${Math.round((1000 * Math.max(0, Math.min(length, t))) / length) / 10}%`;
       const state = th.state === "repaired" ? ["ok", "repaired"] : th.state === "provisional" ? ["warn", "repaired provisionally"] : ["bad", "not repaired"];
       const parts = Object.entries(th.by).sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])).map(([by, sec]) => `${who(by)} ${min(sec)}`).join(", ");

@@ -28,25 +28,28 @@ export {
   WEEKDAYS, WEEKDAY_LABELS,
 } from "./util.js";
 export { Depot } from "./depot.js";
+export { WorkshopHall, HALL_PLAN } from "./workshop.js";
 export { OperationsSimulation, opsOf, CREW_COLOURS } from "./simulation.js";
 export { OPS_DISRUPTIONS } from "./disruptions.js";
 export { OpsStory } from "./story.js";
 export { OpsPlan, planOf, PLAN_KEYS, PLAN_SIDES } from "./plan.js";
 
 import { Depot } from "./depot.js";
+import { WorkshopHall } from "./workshop.js";
 import { OperationsSimulation } from "./simulation.js";
 import { OPS_DISRUPTIONS } from "./disruptions.js";
 import { OpsStory } from "./story.js";
 import { OpsPlan } from "./plan.js";
 
 /**
- * Register the depot object (palette group Transport), the "operations" simulation, the
+ * Register the depot object and the workshop hall seen inside (palette group Transport), the "operations" simulation, the
  * "ops-story", the "ops-plan" and the disruption types of the operations.
  * @param {import("../core/registry.js").Registry} registry
  * @returns {import("../core/registry.js").Registry}
  */
 export function registerOperations(registry) {
   registry.registerObject(Depot);
+  registry.registerObject(WorkshopHall);
   registry.registerSimulation(OperationsSimulation);
   registry.registerSimulation(OpsStory);
   registry.registerSimulation(OpsPlan);

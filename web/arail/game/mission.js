@@ -75,7 +75,7 @@ export function normalizeMission(doc, games = null) {
     if (fast.length) m.phases.push({ id: "shift", kind: "shift", title: "The shift", roles: fast });
     if (slow.length) m.phases.push({ id: "review", kind: "turn", title: "The account", roles: slow });
   }
-  m.phases = m.phases.map((p) => ({ title: p.id, ...p, roles: p.roles ?? [], ...(p.kind === "shift" ? { length: p.length ?? SHIFT_S, tick: p.tick ?? TICK_S, clock: p.clock ?? "08:00" } : {}) }));
+  m.phases = m.phases.map((p) => ({ title: p.id, ...p, roles: p.roles ?? [], ...(p.kind === "shift" ? { length: p.length ?? SHIFT_S, tick: p.tick ?? TICK_S, clock: p.clock ?? "08:00", pace: p.pace ?? 1 } : {}) }));
   m.conditions ??= {};
   m.injects ??= [];
   m.story ??= [];
@@ -149,12 +149,17 @@ export function validateMission(doc, games, { places = null, portraits = null } 
     if (p.kind !== "turn" && p.kind !== "shift") out.push(`${at}: kind must be turn or shift`);
     if (!p.roles.length) out.push(`${at}: no roles`);
     if (p.kind === "shift" && !(p.length > 0 && p.tick > 0)) out.push(`${at}: a shift needs a length and a tick of more than 0 s`);
+    if (p.kind === "shift" && !(p.pace > 0)) out.push(`${at}: a shift's pace (seconds of the day per second of the shift) must be more than 0`);
     if (p.rounds && !(Array.isArray(p.rounds) && p.rounds.every((n) => Number.isInteger(n) && n >= 1 && n <= m.rounds))) out.push(`${at}: rounds must be a list of rounds of the mission`);
     for (const id of p.roles) {
       const r = seats.get(id), G = r && games.get(r.game);
       if (!r) out.push(`${at}: no seat "${id}"`);
       else if (G && playedIn(G.scale) !== p.kind) out.push(`${at}: ${id} decides in ${G.scale} and is played in a ${playedIn(G.scale)}, not in a ${p.kind}`);
-      else if (G?.clock && p.kind === "shift" && (p.clock ?? "08:00") !== G.clock) out.push(`${at}: the shift begins at ${p.clock}, but ${id}'s game ("${G.id}") begins at ${G.clock}`);
+      else if (G && p.kind === "shift") {
+        // (each on its own: a shift with both wrong is told both)
+        if (G.clock && (p.clock ?? "08:00") !== G.clock) out.push(`${at}: the shift begins at ${p.clock}, but ${id}'s game ("${G.id}") begins at ${G.clock}`);
+        if ((G.pace ?? 1) !== (p.pace ?? 1)) out.push(`${at}: the shift's pace is ${p.pace ?? 1}, but ${id}'s game ("${G.id}") runs at ${G.pace ?? 1} seconds of the day per second`);
+      }
       played.add(id);
     }
   }

@@ -131,7 +131,7 @@ export const RAIL = [
       {
         name: "rail draw", file: "web/arail/rail/draw.js", kind: "module", role: "Drawing trains along a line.",
         attributes: ["LIVERIES — talent, regio, coach, loco, wagon, plain"],
-        operations: ["drawTrain(view, line, t, o) — car by car: body, band, windows (two rows on double-deck coaches, lit at night), doors open on the platform's side, cab windscreens, pantographs, head and tail lights", "turnCars(cars) — the driver changed ends", "carsLength(cars)", "drawPantograph(view, A, ax, m, mz, roof, up, a, colour, ref) — folded down or raised"],
+        operations: ["drawTrain(view, line, t, o) — car by car: body, band, windows (two rows on double-deck coaches, lit at night), doors open on the platform's side, cab windscreens, pantographs, head and tail lights; bright: under the lamps of a hall, shaded and then left as it is by the night", "turnCars(cars) — the driver changed ends", "carsLength(cars)", "drawPantograph(view, A, ax, m, mz, roof, up, a, colour, ref) — folded down or raised"],
       },
     ],
     relations: [

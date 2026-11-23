@@ -161,7 +161,8 @@ period ([The game core](game-core.md#turns-and-shifts)). Roles nobody plays are 
 computer. The first roles are joined: the signaller of Bf Neustadt and the maintenance dispatcher
 of its district for a morning (the mission `neustadt-morning`), the train dispatcher above the
 signaller, between three undertakings (`whose-minutes`), the yard master at the hump yard west
-of the station (`last-wagon`, alone so far), and with the undertaking's
+of the station (`last-wagon`, alone so far), the workshop manager in the hall of Betriebswerk
+Neustadt (`fit-to-run`, alone so far), and with the undertaking's
 operations control, the asset manager, the transport authority's contract manager and the budget
 committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
 money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
@@ -389,6 +390,28 @@ writing. Code: `web/arail/game/yard.js` (`YardGame`), `web/game/yard.js` (`YardB
 `web/game/missions/last-wagon.json`; Node tests in `tests/js/game-yard.test.js`, browser tests in
 `tests/e2e/yard.spec.js`.
 
+**And the workshop hall.** *Fit to run* is a night in the hall of Betriebswerk Neustadt, 22:00 to
+05:24 in 37 minutes (its shift has a pace: a second is twelve of the night), on the layout's
+module Workshop hall beside the hump yard's. The module's object is a hall seen inside, without
+its roof: the pit with its roof platforms, the lifting jacks, the underfloor wheel lathe, three
+stabling tracks outside and the one throat every move goes through. While the game is shown the
+hall draws the game's night: a unit moving out through the throat and in again, raised on the
+jacks with its bogies left on the rails, fitters beside the unit they work on, the lathe's chips
+glowing, a lamp at each track in the colour of its unit's state, a driver at the door of a unit
+that is released and not yet returned to operation. The player is maintenance delivery, the
+fourth of the four functions of the entity in charge of maintenance, and the mission teaches who
+decides what by what the workshop may not decide: a finding beyond the order is fleet
+management's (phone and wait while the pit stands, repair it under the standing order and hope
+it is small, or write it into the release), a limit is maintenance development's (measure again,
+change the part, ask for a concession, or take the reading), and a unit released to service runs
+only once fleet management has returned it to operation. How deep the lathe cuts and what time
+the operator's dispatcher is given are numbers. The board marks every unit (orange while its work
+waits for a word, full once it can be released) and every free track; a tap on a unit offers its
+moves: a track, the release, the phone. Guide: [The workshop hall](workshop.md). Code:
+`web/arail/game/workshop.js` (`WorkshopGame`), `web/arail/ops/workshop.js` (`WorkshopHall`),
+`web/game/workshop.js` (`WorkshopBoard`), `web/game/missions/fit-to-run.json`; Node tests in
+`tests/js/game-workshop.test.js`, browser tests in `tests/e2e/workshop.spec.js`.
+
 **A turn is on the table too.** The asset manager, the contract manager and the budget
 rapporteur decide for a year or a month: their games have no trains to run, but what they decide
 about lies on the layout. In their turns the table shows the scene of their game, thing by thing:
@@ -606,6 +629,10 @@ and *The last wagon* meet each point, and lists the steps from the idea to the p
   wagon*); what it lacks of the catalogue's game: twenty tracks and their allocation, the staff of
   the shift, a broken retarder, and its neighbours as seats (the hump operator, the production
   dispatcher, the wagon inspector, the train dispatcher who gives the paths).
+  The workshop manager, the first role of the rolling stock family, has its first form (*Fit to
+  run*); what it lacks of the catalogue's game: the month at the workshop company (shift model,
+  headcount, an investment, the works council), the catenary of the hall and its earthing, parts
+  that are missing, and the other three ECM functions as seats for people.
 - Missions that open one another: a mission or a role is open once another is passed or a share
   of its points is reached, and the career becomes what the badges show (#273).
 - The career mode on the planner's model: each step a round of the role's game, applications and

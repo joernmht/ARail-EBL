@@ -52,6 +52,10 @@ export const PLACES = [
     photo: "game/places/hump-fly.jpg", alt: "The hump yard in the flyover: a train is pushed over the crest, its wagons roll through the retarders into the classification tracks",
   },
   {
+    id: "workshop", name: "Betriebswerk Neustadt, the hall", line: "Four units, three tracks, one throat, four trains at dawn.",
+    photo: "game/places/night-workshop-fly.jpg", alt: "The workshop hall at night, seen inside from above: a unit over the pit between its roof platforms, the lifting jacks, a unit on the wheel lathe, another outside in the dark",
+  },
+  {
     id: "lab", name: "The EBL lab", line: "The real lab: its own simulation runs these trains.",
     photo: "game/places/lab-trains.jpg", alt: "Container wagons with their markers on the tracks of the lab, close up",
     wide: "media/ebl-container-train.jpg", wideFocus: "40% 35%",
@@ -165,6 +169,7 @@ export const GAME_PLACES = {
   "transport-control": "trains",
   dispatcher: "station",
   yard: "yard",
+  workshop: "workshop",
   "asset-manager": "district",
   contract: "town",
   budget: "town-night",

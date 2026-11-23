@@ -107,8 +107,8 @@ export const PACKAGES = [
   },
   {
     id: "ops", name: "ops", group: "framework", path: "web/arail/ops",
-    summary: "Rail operations: the operations plan of a morning (units and drivers on the trains, the trains on tracks; Run plays it); the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock.",
-    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js", "web/arail/ops/plan.js"],
+    summary: "Rail operations: the operations plan of a morning (units and drivers on the trains, the trains on tracks; Run plays it); the operations story to click through (a train breaks down, the spare unit, the workshop); the game, a discrete-event simulation of units, maintenance (ECM), crews and penalties, on the world's clock; the depot, and its workshop hall seen inside, which draws a night played elsewhere.",
+    files: ["web/arail/ops/index.js", "web/arail/ops/config.js", "web/arail/ops/util.js", "web/arail/ops/timetable.js", "web/arail/ops/fleet.js", "web/arail/ops/crew.js", "web/arail/ops/engine.js", "web/arail/ops/crewdesk.js", "web/arail/ops/contracts.js", "web/arail/ops/experiment.js", "web/arail/ops/simulation.js", "web/arail/ops/depot.js", "web/arail/ops/workshop.js", "web/arail/ops/disruptions.js", "web/arail/ops/story.js", "web/arail/ops/plan.js"],
     uses: ["core-math", "core-world", "core-transport", "core-drawing", "objects", "sims", "rail"],
   },
   {
@@ -126,7 +126,7 @@ export const PACKAGES = [
   {
     id: "games", name: "game", group: "framework", path: "web/arail/game",
     summary: "The role games, apart from the framework (their own entry, game/index.js; no framework package imports them): the game core (a role at work: clock, resources, decisions, moves, rules, objectives, score, ports), the flows between roles, sessions and missions (the big game: roles wired by their flows, in turns and shifts; what led to what, read from the flows), the role catalogue's checks, the career mode's model (qualifications and ways into the roles as a graph of possibilities), and the role games. One of them, the yard master's, runs the hump simulation as its world (arail/hump: the simulation, the yard and the wagons; not the object on the table).",
-    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/chain.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js", "web/arail/game/lab.js", "web/arail/game/transport-control.js", "web/arail/game/dispatcher.js", "web/arail/game/yard.js", "web/arail/game/asset-manager.js", "web/arail/game/contract-manager.js", "web/arail/game/budget.js"],
+    files: ["web/arail/game/index.js", "web/arail/game/core.js", "web/arail/game/flows.js", "web/arail/game/session.js", "web/arail/game/chain.js", "web/arail/game/mission.js", "web/arail/game/games.js", "web/arail/game/roles.js", "web/arail/game/career.js", "web/arail/game/signaller.js", "web/arail/game/maintenance.js", "web/arail/game/lab.js", "web/arail/game/transport-control.js", "web/arail/game/dispatcher.js", "web/arail/game/yard.js", "web/arail/game/workshop.js", "web/arail/game/asset-manager.js", "web/arail/game/contract-manager.js", "web/arail/game/budget.js"],
     uses: ["core-math", "hump"],
   },
   {
@@ -174,7 +174,7 @@ export const PACKAGES = [
   {
     id: "game", name: "game", group: "pages", path: "web/game",
     summary: "The game page: a title screen (the lab's photos full screen, drifting from one to the next, and the main menu), then the app's shell with the games and exercises as its cases (infrastructure asset management, rail operations, journeys, the full terminal); beside it the pages of the role games, each with its scene (the game in a line or two, and a photo of the place on the layout where the role works): the signaller's panel, the play page of the big game (missions, seats, turns and shifts; a shift on the table itself, the signaller's trains, the maintenance dispatcher's vans, the trains of the undertaking's operations control, and what a slow role's turn decides about: on the photo of the real table, on a photo of the lab or through the camera), the role catalogue, the career planner, and the logbook (the stars, the rank, the badges and the railway terms a player has collected, and a sheet per mission played).",
-    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/progress.js", "web/game/glossary.js", "web/game/sound.js", "web/game/shots.js", "web/game/live.js", "web/game/table.js", "web/game/district.js", "web/game/control.js", "web/game/dispatch.js", "web/game/yard.js", "web/game/turn.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/windows.js", "web/game/logbook/logbook.js", "web/game/roles/roles.js", "web/game/career/career.js"],
+    files: ["web/game/main.js", "web/game/title.js", "web/game/places.js", "web/game/scene.js", "web/game/short.js", "web/game/cast.js", "web/game/progress.js", "web/game/glossary.js", "web/game/sound.js", "web/game/shots.js", "web/game/live.js", "web/game/table.js", "web/game/district.js", "web/game/control.js", "web/game/dispatch.js", "web/game/yard.js", "web/game/workshop.js", "web/game/turn.js", "web/game/infra.js", "web/game/operations.js", "web/game/journeys.js", "web/game/signaller/signaller.js", "web/game/play/play.js", "web/game/windows.js", "web/game/logbook/logbook.js", "web/game/roles/roles.js", "web/game/career/career.js"],
     uses: ["app", "api", "games"], links: [["vendor", "script tags"]],
   },
   {
@@ -510,6 +510,7 @@ export const REGISTRY = {
     obj("reach-stacker", "ReachStacker", "web/arail/terminal/objects.js", "terminal-objects"),
     obj("hump-yard", "HumpYardObject", "web/arail/hump/object.js", "hump"),
     obj("depot", "Depot", "web/arail/ops/depot.js", "ops-world"),
+    obj("workshop-hall", "WorkshopHall", "web/arail/ops/workshop.js", "ops-world"),
     obj("signal", "Signal", "web/arail/infra/objects.js", "infra-world"),
     obj("switch", "Switch", "web/arail/infra/objects.js", "infra-world"),
     obj("balise", "Balise", "web/arail/infra/objects.js", "infra-world"),

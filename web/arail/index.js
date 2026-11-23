@@ -113,7 +113,7 @@ export {
   CrewDesk, Ledger, CAUSE_FUNCTION, CAUSE_LABELS, FUNCTION_LABELS, OpsEngine, causeWord, jobWord,
   KPIS, kpis, runOne, runExperiment, summarize, toCSV, weekOvertime, causeKeyLabel,
   normalizeHours, isOpen, nextOpen, addWork, workBetween, hoursLabel, weekdaySet, weekdayIndex, clockMinutes, dayTime, durationLabel,
-  WEEKDAYS, WEEKDAY_LABELS, Depot, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, OpsPlan, planOf, PLAN_KEYS, PLAN_SIDES, registerOperations,
+  WEEKDAYS, WEEKDAY_LABELS, Depot, WorkshopHall, HALL_PLAN, OperationsSimulation, opsOf, CREW_COLOURS, OPS_DISRUPTIONS, OpsStory, OpsPlan, planOf, PLAN_KEYS, PLAN_SIDES, registerOperations,
 } from "./ops/index.js";
 // infrastructure: assets, maintenance, projects (named exports only; names that the core or the
 // operations use too get an "infra" prefix)

@@ -455,6 +455,22 @@ for (const [scheme, device, viewport] of STATES) {
     await page.evaluate(() => window.__play.pick("yard-master", "hump"));
     await expect(yard.locator(".play-pick button").first()).toBeVisible();
     await check("the picture of the yard with a train on the hump, the hump chosen with its speeds");
+    // the workshop manager's night: a free track with the units that can go in, and the picture of the depot with a unit chosen
+    await page.goto("/game/play/?mission=fit-to-run");
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#start").click();
+    await page.getByRole("button", { name: "Pause" }).click();
+    await step(20);
+    const hall = page.locator("#seat-workshop-manager");
+    for (let i = 0; i < 8 && (await hall.locator(".vn-story .btn").count()); i++) await hall.locator(".vn-story .btn").first().click();
+    await expect(hall.locator(".play-options-row .btn")).toHaveCount(3);
+    await check("which unit goes onto the free track: the units with their work, or none yet");
+    await hall.locator(".play-options-row .btn").first().click();
+    await step(60);
+    for (let i = 0; i < 8 && (await hall.locator(".vn-story .btn").count()); i++) await hall.locator(".vn-story .btn").first().click();
+    await page.evaluate(() => window.__play.pick("workshop-manager", "unit-101"));
+    await expect(hall.locator(".play-pick button").first()).toBeVisible();
+    await check("the picture of the depot with a unit on the pit, a unit chosen with its tracks and its release");
     // the logbook, with what such a session leaves in it
     await page.goto("/game/logbook/");
     await page.evaluate(async () => {

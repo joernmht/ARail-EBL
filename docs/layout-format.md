@@ -253,6 +253,7 @@ Every object has a unique `id`, a `type` and, except labels, an optional `name`.
 | [`reach-stacker`](#reach-stacker) | Reach stacker (Terminal) | `position` |
 | [`hump-yard`](#hump-yard) | Hump yard (Hump yard) | `position` |
 | [`depot`](#depot-depot-and-workshop) | Depot and workshop (Transport) | `position` |
+| [`workshop-hall`](#workshop-hall-a-workshop-hall-seen-inside) | Workshop hall, inside (Transport) | `position` |
 | [`signal`, `switch`, `balise`, `level-crossing`, `gsmr-mast`, `lift`, `passenger-display`, `interlocking`, `maintenance-base`, `crossing-plant`](infrastructure.md#objects) | Signal, Switch, Balise, Level crossing, GSM-R mast, Lift, Passenger display, Interlocking, Maintenance base, Level crossing plant (Infrastructure) | `position` |
 | [`catenary`, `cable-route`](infrastructure.md#objects) | Overhead line, Cable route (Infrastructure) | `points` (polyline) |
 
@@ -672,6 +673,22 @@ own units on the first workshop and stabling track and fills the board (its sett
 | `length_m` | `64` | length of the hall and the tracks (30–250) |
 | `bays` | `2` | workshop tracks in the hall (1–6); the operations work on as many as `maintenance.workshop.bays` |
 | `stabling` | `3` | stabling tracks (0–10), two units each |
+
+### `workshop-hall`: a workshop hall seen inside
+
+Geometry: `position` (the middle of the hall). A depot's workshop hall of 68 m by 27 m without its
+roof, its walls drawn from within (each only while the camera looks at its inner side): the
+inspection pit with roof platforms on track 1, the lifting jacks along track 2, the underfloor
+wheel lathe in track 3, a crane, shelves, the foreman's cabin; beside the hall three stabling
+tracks, and beyond its doors the throat in which all six tracks run into one lead track (about
+220 m by 55 m in all, the lead track towards +x). The hall is lit: nothing in it is darkened at
+night. By itself it shows a quiet night (a unit over the pit, one on the lathe, one outside); a
+game's night is shown in it by the game's board, see [The workshop hall](workshop.md). Its size is
+fixed: the tracks' places are what the night is played on.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rotation_deg` | `0` | direction of the tracks (the throat towards +x) |
 
 ### Market square and Christmas market
 

@@ -232,6 +232,9 @@ the depot until the workshop has done the job.
 
 ### Maintenance: the four ECM functions
 
+(The game's mission *Fit to run* plays one night as the fourth of them, with the other three on the
+phone: [The workshop hall](workshop.md).)
+
 | Function | In the simulation | Settings |
 | --- | --- | --- |
 | **1 ECM management** | is responsible for the fleet's condition: failures and defects are its incidents | `ecm.management` |

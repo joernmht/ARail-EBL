@@ -221,7 +221,9 @@ seconds, and it does not reduce a shift to a dice roll. It plays both, each at i
   still open is decided by its fallback.
 - In a **shift** the fast roles (seconds to hours) work at the same time on one clock, in fixed
   ticks of half a second. Each shift is a new game for its seats (one morning at Bf Neustadt),
-  begun with what holds now.
+  begun with what holds now. A shift has a **pace**: how many seconds of the day one of its
+  seconds is. Most run as the clock does (1); a night in a workshop hall is played in half an
+  hour (12).
 
 A mission lays the phases out for a **round** (a budget year) and says how many rounds are played.
 The round of the mission `neustadt-years`:
@@ -321,7 +323,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | --- | --- |
 | `roles[]` | The seats: `role` (catalogue id), `game` (the game's id), `seat` (`human` or `computer`, the suggestion; the players choose), `level`, `options` (passed to the game: the signaller's `late`, the trains that come late, and `spread`, how far each may be off its forecast, both in seconds by the train's id), `weight` (in the score of the whole), `id` (the role unless given; two seats of one role need ids) |
 | `rounds` | How often the phases are played |
-| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound); `rounds` (only in these rounds) |
+| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound) and `pace` (seconds of the day per second of the shift, 1; the page shows the time of day by it, and a game that runs at another pace says so in `static pace`: the workshop manager's night has 12, and a mission that differs is not sound); `rounds` (only in these rounds) |
 | `conditions` | What holds and no seat gives: state flows by their id, with their payload |
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
@@ -492,6 +494,7 @@ the desks as requests, not to the layout.
 | `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
 | `dispatcher` (Who goes first) | Train dispatcher in an operations centre | shifts (minutes) | delay notice, connection request | dispatching order, performance report (dispatching) | the morning itself: the signaller's game with the computer's signaller, whose trains come late as its level says, and the regional undertaking's wishes to hold a train |
 | `yard` (Before the cut-off) | Marshalling yard production manager (yard master) | shifts (minutes) | – | handling order (the pushing speed), train report (an outbound train and how late it leaves), delay notice (wagons left behind), incident report, performance report (yard) | the hump itself (ARail's hump simulation on the yard of the lab's table), the trains that come in, and the three people on the phone: the hump operator, the production dispatcher, the customer service agent |
+| `workshop` (A night in the hall) | Workshop manager (maintenance delivery) | shifts (minutes; a second is twelve of the night) | – | vehicle release (a unit released to service, with what was done and what stays open), incident report, performance report (workshop) | the units that come in with their orders, and the people on the phone: the fleet manager and the maintenance development engineer on call, the operator's vehicle dispatcher |
 | `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
 | `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
 | `contract` (Malus Month) | Transport authority's contract manager | turns (months) | performance report (undertaking, operations) | transport contract, penalty, payment, performance report (contract) | the operator: its incident list by the usual rates, its finances and its learning |
@@ -527,9 +530,11 @@ Seated together:
   dispatcher's count of minutes and connections is the signaller's trains' doing. The signaller's
   score does not count (`weight: 0`). With an operations control seated as well, its connection
   request is the dispatcher's to grant, and the signaller takes only the dispatcher's order.
-- Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`, and `last-wagon` (the
+- Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`, `last-wagon` (the
   yard master at the hump yard; its neighbours, the hump operator, the production dispatcher and
-  the customer service agent, are the game's own until they have games).
+  the customer service agent, are the game's own until they have games) and `fit-to-run` (the
+  workshop manager in the hall of Betriebswerk Neustadt; the other three ECM functions and the
+  operator's dispatcher are the game's own until they have games).
 
 A role can have two games: the train dispatcher has its own (`dispatcher`) and the lab's seat
 (`lab`), the same role with the lab as its world (`gamesOfRole`; `gameOfRole` gives the first).

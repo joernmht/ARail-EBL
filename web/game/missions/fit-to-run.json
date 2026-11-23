@@ -1,0 +1,301 @@
+{
+ "format": "arail-mission/1",
+ "id": "fit-to-run",
+ "title": "Fit to run",
+ "hook": "Four units, four orders, four trains at dawn. You release to service. Who returns to operation?",
+ "place": "workshop",
+ "text": "22:00 to 05:24 in the hall of Betriebswerk Neustadt, on the lab's table: a night shift in half an hour. Four units come in with their orders: brake pads, a door's drive, a wheel flat, an inspection. Four trains want a unit from 04:24. You are maintenance delivery, the fourth of the four functions of the entity in charge of maintenance (ECM): you do the work that is ordered, as the maintenance file says, with authorised staff, and release to service what is done. The other three are on the phone. Fleet maintenance management orders the work, decides what may wait and returns a unit to operation; maintenance development owns the maintenance file and its limits; the ECM manager answers for all of it. The hall has a pit, lifting jacks and a wheel lathe, and one throat for every move. What a fitter finds beyond the order, what measures at its limit, how deep the lathe cuts, what time you give the operator's dispatcher: none of it has an answer that suits everybody. What you practise: telling the four ECM functions apart by what each may decide, the difference between a release to service and a return to operation, what a finding beyond the order and a value at its limit ask of a workshop, and sharing a hall's tracks through a night.",
+ "mode": "cooperative",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "workshop-manager",
+   "game": "workshop",
+   "seat": "human",
+   "level": "normal"
+  }
+ ],
+ "rounds": 1,
+ "phases": [
+  {
+   "id": "shift",
+   "kind": "shift",
+   "title": "The night shift",
+   "roles": [
+    "workshop-manager"
+   ],
+   "length": 2220,
+   "clock": "22:00",
+   "pace": 12
+  }
+ ],
+ "story": [
+  {
+   "phase": "shift",
+   "at": 2,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "Ten at night. Four units, four orders, four trains from 04:24. Tonight you are maintenance delivery: you do the work that is ordered, as the maintenance file says, and release to service what is done."
+  },
+  {
+   "phase": "shift",
+   "at": 8,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "Three others have their part. O. Stieglitz, fleet management, orders the work and returns a unit to operation. I. Zeisig, maintenance development, owns the limits. I answer for all of it. Released is not returned."
+  },
+  {
+   "phase": "shift",
+   "at": 14,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "The hall: track 1 the pit, track 2 the jacks, track 3 the wheel lathe. Three tracks outside, one throat, one move at a time. Tap a unit and say where it goes; tap it when its work is done, and release it."
+  },
+  {
+   "phase": "shift",
+   "at": 150,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "The inspection needs the pit, nothing else does. Look at who is still to come before you give a track away: a unit on a track keeps it until its work is done or you move it out."
+  },
+  {
+   "phase": "shift",
+   "at": 330,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "Three numbers at the top: the patience of O. Stieglitz, of I. Zeisig, and of F. Sokół, who needs the trains. Below 70 they phone. Below 35 they act."
+  },
+  {
+   "phase": "shift",
+   "at": 520,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "Y. Şahin runs the lathe and is the only one tonight who may sign a brake test. One person, two jobs: think about who waits."
+  },
+  {
+   "phase": "shift",
+   "at": 840,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "From one o'clock your status goes out every hour. F. Sokół reads it against the timetable: a train that looks short of its unit costs you before it is cancelled."
+  },
+  {
+   "phase": "shift",
+   "at": 1480,
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "At ten past three F. Sokół wants a time. A time said and missed is a train cancelled at the platform; a time said too late cancels one that could have run."
+  },
+  {
+   "phase": "shift",
+   "on": "finding",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "A finding beyond the order on {unit}. The order is fleet management's: their standing order covers half an hour of work. Beyond that, what is repaired and what may wait is O. Stieglitz's to say."
+  },
+  {
+   "phase": "shift",
+   "on": "limit",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "On {unit}, {what} is at its limit. The limit is not ours: it is in the maintenance file, and the file is I. Zeisig's. We measure, we change the part, or we ask."
+  },
+  {
+   "phase": "shift",
+   "on": "second-pass",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "The flat on {unit} went deeper than the cut. The lathe sets up again: a quarter of an hour and more. A measurement first would have cost ten minutes."
+  },
+  {
+   "phase": "shift",
+   "on": "bypassed",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "What happens to {unit} is {who}'s decision, not the hall's. Whether it went well tonight or not: in the morning I am asked who decided."
+  },
+  {
+   "phase": "shift",
+   "on": "kept",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "{who} does not return {unit} to operation: {what}. Left in the release, a finding is decided when nothing can be repaired any more."
+  },
+  {
+   "phase": "shift",
+   "on": "restricted",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "{unit} runs with a restriction: {what}. That was {who}'s decision to take, and F. Sokół's trains carry it."
+  },
+  {
+   "phase": "shift",
+   "on": "late",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "C. Gimpel",
+    "role": "Foreman of the night, in the hall",
+    "portrait": "hivis"
+   },
+   "say": "The {train} left {min} min late. {who} counts every one of them. Where did the night lose them?"
+  },
+  {
+   "phase": "shift",
+   "on": "cancelled",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "The {train} does not run, and {who} tells the passengers. Which hour of the night would you play differently?"
+  },
+  {
+   "phase": "shift",
+   "on": "repeat",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "{unit} failed in service: {what}. It was passed tonight on one reading at its limit. {who} will read every figure of this night."
+  },
+  {
+   "phase": "shift",
+   "on": "promise-broken",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "A promise to {who} is broken. What you promise one of them, another pays: promise only what the hall can give."
+  },
+  {
+   "phase": "shift",
+   "on": "complaint",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "{who} has put it in writing. A night that suits two of the three is not good enough."
+  },
+  {
+   "phase": "shift",
+   "on": "void-release",
+   "seats": [
+    "workshop-manager"
+   ],
+   "who": {
+    "name": "K. Eisvogel",
+    "role": "ECM manager, on the way home",
+    "portrait": "office"
+   },
+   "say": "{who} signed for {unit} without authorisation. That release is void, and this ECM's certificate answers for it. No train of the morning is worth that."
+  }
+ ],
+ "debrief": [
+  "Which decisions of the night were yours as maintenance delivery, and which were fleet management's or maintenance development's? Where were you tempted to take one of theirs?",
+  "What did you do with the finding beyond the order: ask, repair it or write it into the release? What did that cost, and whom?",
+  "How deep did the lathe cut, and what did you know when you said so? What would a measurement first have changed?",
+  "When was a unit released to service, and when was it returned to operation? What happened in between, and who waited?",
+  "Whose patience was lowest in the morning, and which of your decisions would that person name?"
+ ]
+}

@@ -12,7 +12,9 @@ import { AHEAD_S, ControlBoard, HIT_PX } from "../../web/game/control.js";
 import { DispatchBoard, LATE_S } from "../../web/game/dispatch.js";
 import { BOARDS, TABLE_VIEW } from "../../web/game/live.js";
 import { TABLE_LAYOUT, TableBoard } from "../../web/game/table.js";
+import { WorkshopGame, WorkshopPlayer } from "../../web/arail/game/workshop.js";
 import { YardGame } from "../../web/arail/game/yard.js";
+import { WorkshopBoard } from "../../web/game/workshop.js";
 import { FAST_MPS, YardBoard } from "../../web/game/yard.js";
 
 const NEUSTADT = JSON.parse(readFileSync(new URL(`../../web/${TABLE_LAYOUT}`, import.meta.url), "utf8"));
@@ -38,11 +40,11 @@ function countingContext() {
   });
 }
 
-function viewOf(world, bounds, ctx = countingContext()) {
+function viewOf(world, bounds, ctx = countingContext(), labels = true) {
   const cam = new FlyCamera({ yaw: (270 * Math.PI) / 180, pitch: (48 * Math.PI) / 180 }).fit(bounds, W / H, 0.03);
   const pose = cam.homography(W, H), camera = new Camera(W, H);
   camera.setManualFocal(pose.focal);
-  return new View({ ctx, camera, H: pose.H, pose: pose.pose, scale: world.scale, time: world.time, virtual: true, pulse: 1 });
+  return new View({ ctx, camera, H: pose.H, pose: pose.pose, scale: world.scale, time: world.time, virtual: true, pulse: 1, labels });
 }
 
 /** The morning on the table: the signaller's game with RB 33 six and a half minutes late, the operations control told of it by hand. */
@@ -245,4 +247,90 @@ test("the board of the yard master: the layout's hump yard draws the game's run;
   board.show(g);
   board.dispose();
   assert.ok(yard.external === null && !world.simulations.includes(board));
+});
+
+test("the workshop manager's board: the layout's hall draws the game's night; a unit and a free track are marked where they are, a click chooses them; nothing is written", () => {
+  assert.equal(BOARDS.workshop, WorkshopBoard);
+  assert.deepEqual(WorkshopBoard.layers, ["workshop"]);
+  const world = createWorld(structuredClone(NEUSTADT), { seed: 1 });
+  world.setLayers(WorkshopBoard.layers);
+  const board = new WorkshopBoard(world), hall = world.objects.find((o) => o.type === "workshop-hall"), g = new WorkshopGame({ seed: 3 }), hands = new WorkshopPlayer();
+  assert.ok(hall?.geometry && board.hall === hall && world.simulations.includes(board));
+  // by itself the hall shows a quiet night of its own; with the board, the game's
+  assert.equal(hall.picture().units.length, 3);
+  board.show(g);
+  assert.deepEqual(hall.picture().units.map((u) => u.id), ["105", "101"]);
+  const to = (t, answer = (d) => g.advice(d.id)) => {
+    while (g.t < t && !g.over) {
+      for (const d of g.open) {
+        const x = answer(d);
+        if (x != null) g.act("decide", d.id, x);
+      }
+      hands.hands(g);
+      g.step(0.5);
+    }
+  };
+  // the shift begins: two units outside, every other track free and faint; the first question is about the pit and the units that can go in
+  to(13, () => null);
+  let marks = board.marks();
+  assert.deepEqual(marks.map((m) => m.item), ["unit-105", "unit-101", "track-1", "track-2", "track-3", "track-C"]);
+  assert.ok(marks.slice(2).every((m) => m.faint) && !marks[0].faint);
+  assert.deepEqual([...board.asked()].sort(), ["track-1", "unit-101", "unit-105"]);
+  // where things are: the units on the stabling tracks beside the hall, the hall's tracks side by side, the throat beyond the doors
+  const P = hall.constructor.plan, u105 = board.placeOf("unit-105"), t1 = board.placeOf("track-1"), t3 = board.placeOf("track-3"), tA = board.placeOf("track-A");
+  assert.ok(Math.hypot(u105[0] - tA[0], u105[1] - tA[1]) < 1, "a unit that stands on a track is at the track's place");
+  assert.ok(Math.abs(Math.abs(t3[1] - t1[1]) - hall.mm(P.tracks[3] - P.tracks[1])) < 1);
+  assert.deepEqual([board.partOf(t1), board.partOf(tA), board.partOf(hall.at(P.lead.x0 + 20, P.lead.y)), board.placeOf("track-9"), board.placeOf("unit-none"), board.placeOf("train-0")], ["east", "platforms", "west", null, null, null]);
+  // the picture: the hall and the stabling tracks within the camera's area; its parts
+  const all = board.bounds("all"), [a0, a1, a2, a3] = WorkshopBoard.area;
+  assert.ok(all[0] >= a0 && all[1] >= a1 && all[2] <= a2 && all[3] <= a3 && all[2] - all[0] > 900);
+  assert.ok(board.bounds("east")[2] < board.bounds("west")[2] && board.bounds("west")[2] > all[2], "the lead track is beyond the whole picture: a unit on the move leaves it there");
+  // a unit on the move is where the hall draws it: on the way out of its track, then in the other
+  g.act("decide", "free-1", "105");
+  to(13 + 5);
+  const moving = board.placeOf("unit-105");
+  assert.ok(g.unit("105").moving && moving[0] > u105[0] + 50, "on its way to the throat");
+  to(100);
+  assert.ok(Math.hypot(board.placeOf("unit-105")[0] - t1[0], board.placeOf("unit-105")[1] - t1[1]) < 1);
+  // raised on the jacks, a unit is marked where it is drawn: higher
+  const j = new WorkshopGame({ seed: 1 });
+  board.show(j);
+  while (j.t < 160) {
+    for (const d of j.open) j.act("decide", d.id, d.id === "free-1" ? "leave" : d.id === "free-2" ? "105" : j.advice(d.id));
+    j.step(0.5);
+  }
+  assert.equal(j.unit("105").lift, 1);
+  assert.ok(board.placeOf("unit-105")[2] > u105[2] + hall.mm(1));
+  board.show(g);
+  // a unit whose work waits for a word pulses orange; one that can be released is full
+  to(1200, (d) => (d.id.startsWith("finding-") ? null : g.advice(d.id)));
+  const waiting = g.units.find((u) => u.hold?.why === "decision");
+  assert.ok(waiting, "a finding waits for a word");
+  marks = board.marks();
+  assert.deepEqual([marks.find((m) => m.item === `unit-${waiting.id}`).tone, marks.find((m) => m.item === `unit-${waiting.id}`).pulse], ["warn", true]);
+  assert.ok(board.asked().has(`unit-${waiting.id}`));
+  // drawn as the table draws it (a view without labels): the hall, rings and no text; a click on a unit chooses it, one on a free track the track
+  const ctx = countingContext(), view = viewOf(world, board.bounds("all"), ctx, false);
+  hall.draw(view);
+  board.draw(view);
+  view.render();
+  assert.ok(ctx.counts.fill >= 20);
+  assert.deepEqual(ctx.counts.text, []);
+  const at = (item) => {
+    const p = board.placeOf(item);
+    return view.project(p[0], p[1], p[2]);
+  };
+  assert.deepEqual(board.hit(view, at(`unit-${waiting.id}`)), { item: `unit-${waiting.id}` });
+  const free = board.marks().find((m) => m.faint);
+  assert.deepEqual(board.hit(view, at(free.item)), { item: free.item });
+  assert.equal(board.hit(view, [5, 5]), null);
+  // without a game nothing is marked; taken out of its world, the hall shows its own night again
+  const px = at(free.item);
+  board.show(null);
+  assert.deepEqual([board.marks(), board.hit(view, px), board.placeOf("track-1"), hall.external], [[], null, null, null]);
+  board.show(g);
+  assert.equal(typeof hall.external, "function");
+  board.dispose();
+  assert.ok(hall.external === null && !world.simulations.includes(board));
+  assert.equal(hall.picture().units.length, 3);
 });

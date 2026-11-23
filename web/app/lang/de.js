@@ -235,6 +235,7 @@ const APP_DE = {
   "{n} places": "{n} Plätze",
   "Units and drivers": "Fahrzeuge und Fahrer",
   "Breakdown": "Fahrzeugstörung",
+  "Workshop hall": "Werkstatthalle",
   // the stories of the app's module tabs (story.js); the steps themselves stay English
   "Story": "Geschichte",
   "Back": "Zurück",

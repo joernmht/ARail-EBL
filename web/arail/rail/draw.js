@@ -62,10 +62,11 @@ export function carsLength(cars) {
  * @param {{head: number, dir: number, cars: Car[], doors?: number, area?: object | null, powered?: boolean, pantograph?: number}} t
  *   dir: +1 towards the line's end; doors: how far they are open (0…1, on the platform's side of
  *   `area`); powered: lights on; pantograph: how far the pantographs are raised (0…1, default up)
- * @param {{ref?: number[] | null}} [o] a reference point to sort it by (a unit in a hall: behind it)
+ * @param {{ref?: number[] | null, bright?: boolean}} [o] `ref`: a reference point to sort it by (a unit
+ *   in a hall: behind it); `bright`: under the lamps of a hall, so not darkened at night
  * @returns {number[] | null} the middle of the first car drawn (for a label), or null
  */
-export function drawTrain(view, line, t, { ref = null } = {}) {
+export function drawTrain(view, line, t, { ref = null, bright = false } = {}) {
   const { head, dir } = t, m = line.m, mz = view.m(1);
   const powered = t.powered !== false, lit = powered && view.darkness > 0.35;
   let front = head, top = null;
@@ -112,6 +113,13 @@ export function drawTrain(view, line, t, { ref = null } = {}) {
     });
     for (const face of faces) {
       if ((face.side === "front" && cabFront) || (face.side === "back" && cabBack)) face.color = L.cab;
+    }
+    if (bright) {
+      // lit by the hall: shaded here, and then left as it is by the night
+      for (const face of faces) {
+        Object.assign(face, { color: shade(face.color, view.light(face.normal)), flat: true, emissive: true });
+        for (const d of face.decals ?? []) d.emissive = true;
+      }
     }
     const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
     view.faces(faces, ref || [mid[0], mid[1], 2 * mz]);

@@ -41,6 +41,7 @@ export const SHOTS = [
   { name: "night-office-fly", layout: NEUSTADT, target: [-2050, -750], distance_mm: 700, yaw_deg: 250, pitch_deg: 16, time: NIGHT },
   { name: "night-crossing-fly", layout: NEUSTADT, target: [-560, 404], distance_mm: 650, yaw_deg: 40, pitch_deg: 18, time: NIGHT },
   { name: "hump-fly", layout: NEUSTADT, target: [-5900, 322], distance_mm: 1000, yaw_deg: 18, pitch_deg: 17, time: DAY, layers: ["hump"], run_s: 520 },
+  { name: "night-workshop-fly", layout: NEUSTADT, target: [-5560, -500], distance_mm: 640, yaw_deg: 270, pitch_deg: 40, time: NIGHT, layers: ["workshop"] },
   { name: "terminal-fly", layout: TERMINAL, target: [750, 420], distance_mm: 900, yaw_deg: 60, pitch_deg: 20, time: DAY },
   { name: "quay-fly", layout: TERMINAL, target: [600, 560], distance_mm: 800, yaw_deg: 300, pitch_deg: 18, time: DAY },
 ];
