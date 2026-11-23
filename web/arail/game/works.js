@@ -455,7 +455,7 @@ export class WorksGame extends Game {
 
   /** A work from its spec: its slot from the draft, and what the seed has hidden in it. */
   _work(spec) {
-    const w = { ...spec, crew_n: spec.crew, crew: [...(spec.pencilled ?? [])], start: spec.draft, len: spec.h, state: "planned", told: {}, t0: null, t1: null, room: null, misses: 0, applied: null, late_by: null, moved: false, need: spec.h, guess: null };
+    const w = { ...spec, crew_n: spec.crew, crew: [...(spec.pencilled ?? [])], start: spec.draft, len: spec.h, state: "planned", told: {}, t0: null, t1: null, until: null, room: null, misses: 0, applied: null, late_by: null, moved: false, need: spec.h, guess: null };
     if (spec.registered) w.told.ops = { at: -24 * 60, start: spec.draft, len: spec.h };
     if (spec.id === "rail") {
       const r = this.rng("rail"), steps = Math.round((RAIL.need[1] - RAIL.need[0]) / 0.5);
@@ -1023,8 +1023,10 @@ export class WorksGame extends Game {
     this._judge(w);
     w.state = "running";
     w.t0 = h;
+    // (the possession is the registered one: from the slot, however late the work began)
+    w.until = w.start + w.len;
     w.t1 = h + w.need;
-    this.log(`${when(h)} ${cap(w.name)} begins: ${list(there.map((p) => p.name))}${w.possession ? `, the possession on ${AREAS[w.area].line} holds until ${when(h + w.len)}` : ""}.`, "train");
+    this.log(`${when(h)} ${cap(w.name)} begins: ${list(there.map((p) => p.name))}${w.possession ? `, the possession on ${AREAS[w.area].line} holds until ${when(w.until)}` : ""}.`, "train");
     for (const p of there) {
       if (this.outside(w)) this._strain(p, STRAIN.night);
       if (p.drive[w.area] > FAR_MIN) this._strain(p, STRAIN.drive);
@@ -1115,7 +1117,7 @@ export class WorksGame extends Game {
       if (w.state === "planned" && w.start != null && h >= w.start && !this.open.some((d) => d.id === `rest-${w.id}`)) this._begin(w);
       if (w.state !== "running" || h < w.t1) continue;
       w.state = "done";
-      const over = Math.max(0, w.t1 - (w.t0 + w.len));
+      const over = Math.max(0, w.t1 - w.until);
       this.log(`${when(h)} ${cap(w.name)} is done${w.possession ? `, the track handed back${over > 0.01 ? ` ${Math.round(over * 60)} min after the possession ended` : ""}` : ""}.`, "train");
       if (over > 0.01) {
         w.late_by = over;
@@ -1231,7 +1233,12 @@ export class WorksGame extends Game {
     if (f.kind === "knock") {
       if (c.id === "nothing") f.mode = "none";
       else if (c.id === "break") {
-        if (f.mode !== "closed") {
+        if (f.mode === "watch") {
+          // (left at line speed on a driver's report: what that was shows only now)
+          this._mood("safety", MOOD.over_break);
+          this.violate("danger", `${when(h)} Trains ran at line speed over ${a.line} for ${hrs(h - f.at)} after a driver's report: the rail was broken. A report from the track is answered by a restriction until somebody has looked.`, 3);
+          this.give("incident-report", { what: "trains at line speed over a broken rail", where: a.name });
+        } else if (f.mode !== "closed") {
           this._mood("safety", MOOD.over_break);
           this.log(`${when(h)} ${AUDIENCES.safety.name} will ask how many trains ran over a broken rail at ${f.mode === "sight" ? "sight" : "20 km/h"}.`, "fault");
         }
@@ -1358,10 +1365,6 @@ export class WorksGame extends Game {
         if (x === "close") {
           f.told.safety = h;
           this._report(f);
-        }
-        if (x === "watch" && f.cause.id === "break") {
-          this.violate("danger", `${when(h)} Trains ran at line speed over ${a.line} after a driver's report: the rail was broken. A report from the track is answered by a restriction until somebody has looked.`, 3);
-          this.give("incident-report", { what: "trains at line speed over a broken rail", where: a.name });
         }
       },
     });
@@ -1726,12 +1729,12 @@ export class WorksGame extends Game {
       if (w.id === "rail" && w.state !== "done") add(w.area, w.due != null && h >= w.due ? EFFECT.slow40 : EFFECT.slow70);
       if (!w.possession || w.start == null || w.state === "off") continue;
       if (w.state === "running") {
-        const over = h > w.t0 + w.len;
+        const over = h > w.until;
         if (this.inWindow(w)) add(w.area, EFFECT.single, 0.5);
         else add(w.area, over ? EFFECT.closed : EFFECT.single, over ? 1.5 : 1);
-      } else if (w.state === "done" && w.t0 != null && h < w.t0 + w.len && !this.inWindow(w)) {
+      } else if (w.state === "done" && w.t0 != null && h < w.until && !this.inWindow(w)) {
         // (a possession longer than the work: the trains were planned round all of it; into the morning, taken out)
-        add(w.area, isNight(w.t0) && hourOfDay(h) >= FIRST_TRAIN && hourOfDay(h) < 12 ? EFFECT.planned : EFFECT.single, isNight(w.t0) && hourOfDay(h) >= FIRST_TRAIN && hourOfDay(h) < 12 ? 1 : 0.5);
+        add(w.area, isNight(w.start) && hourOfDay(h) >= FIRST_TRAIN && hourOfDay(h) < 12 ? EFFECT.planned : EFFECT.single, isNight(w.start) && hourOfDay(h) >= FIRST_TRAIN && hourOfDay(h) < 12 ? 1 : 0.5);
       }
     }
     for (const f of this.faults) {
@@ -2040,11 +2043,11 @@ export class WorksGame extends Game {
     for (const k of Object.keys(AREAS)) areas[k] = { possession: null, mode: null, queue: 0, awake: false, told: false };
     for (const w of this.works) {
       const a = areas[w.area];
-      if (w.possession && w.start != null && (w.state === "running" || (w.state === "done" && h < w.t0 + w.len))) a.possession = w.id;
+      if (w.possession && w.start != null && (w.state === "running" || (w.state === "done" && h < w.until))) a.possession = w.id;
       if (w.id === "rail" && w.state !== "done") a.mode ??= "slow";
       if (w.state === "planned" && w.start != null && this.needs(w, "town")) a.told = !!w.told.town && !this.stale(w, "town");
-      if (w.state === "running" && this.needs(w, "town") && (!w.told.town || w.told.town.start !== w.t0)) a.awake = true;
-      if (w.state === "running") a.queue += (trainsAt(w.area, h) * (this.inWindow(w) ? 2 : h > w.t0 + w.len ? 12 : 4)) / 12;
+      if (w.state === "running" && this.needs(w, "town") && (!w.told.town || w.told.town.start !== w.start)) a.awake = true;
+      if (w.state === "running") a.queue += (trainsAt(w.area, h) * (this.inWindow(w) ? 2 : h > w.until ? 12 : 4)) / 12;
     }
     for (const f of this.faults) {
       if (f.state === "done" || f.mode === "none" || f.mode === "watch") continue;

@@ -140,6 +140,14 @@ test("the choices matter: somebody sent at once beats the rota; the storm, a dri
   // line speed after a driver's report: fine when it was the train's wheel, a danger to people when the rail was broken
   const watch = SEEDS.map((seed) => play(always("fault-", "watch"), { seed }));
   assert.ok(watch.some((g) => g.result().worst === 3 && !g.result().passed) && watch.some((g) => g.result().passed));
+  // ... and which of the two it was is known only when somebody has looked: the decision itself says nothing
+  const broken = SEEDS.find((seed) => new WorksGame({ seed })._coming.find((x) => x.kind === "knock").u >= 0.7);
+  const blind = play((g, d) => (d.id.startsWith("fault-") ? "watch" : undefined), { seed: broken, until: 1e9, each: (g) => {
+    const f = g.fault("knock");
+    if (f && !f.known) assert.ok(!g.violations.some((v) => v.rule === "danger") && !g.outbox.some((m) => m.flow === "incident-report"), "nothing is said before the track has been looked at");
+  } });
+  const danger = blind.violations.find((v) => v.rule === "danger");
+  assert.ok(danger && danger.t >= S(blind.fault("knock").known_at) - 1 && /Trains ran at line speed over the line to \w+ for [\d.]+ h after a driver's report: the rail was broken/.test(danger.text));
   // who needs it, and only who needs it
   const all = scores(book, everybody), few = scores(book, silent);
   assert.deepEqual([against(all, base)[0], against(few, base)[0]], [0, 0]);
@@ -471,6 +479,11 @@ test("the people: where they live decides how fast they are at a fault; the day 
     r.act("decide", "rest-tamp", "stay");
     run(r, 1);
     assert.ok(r.violations.some((v) => v.rule === "rest" && v.severity === 2) && r.tally.rest_cut === 1 && r.mood("council") <= was + WORKS_MOOD.rest_cut && kinds(r).has("rest-cut") && r.work("tamp").state === "running");
+    // the possession counts from the slot: begun ten minutes late, the work is done ten minutes after the possession ended
+    const w = r.work("tamp");
+    assert.ok(w.t0 > w.start && w.until === w.start + w.len && w.t1 > w.until);
+    runTo(r, w.t1 + 0.1);
+    assert.ok(kinds(r).has("overrun") && Math.abs(w.late_by - (w.t0 - w.start)) < 1e-6, `seed ${seed}: over by as long as it began late`);
   }
   assert.ok(asked >= 1, `asked on ${asked} weeks`);
   assert.equal(f.person("p2").drive.east, 35);
