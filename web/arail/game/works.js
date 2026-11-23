@@ -443,8 +443,8 @@ export class WorksGame extends Game {
     this.promises = [];
     /** The things an open decision is about: its id → items of the picture. */
     this.about = new Map();
-    /** What the week adds up: train-minutes lost, news in time, late, missing, for nothing, corrected; formal steps; requests to the council; extra cost (EUR); routine rounds made. */
-    this.tally = { lost_min: 0, in_time: 0, late: 0, missing: 0, needless: 0, corrected: 0, charges: 0, requests: 0, cost: 0, rounds: 0, rest_cut: 0 };
+    /** What the week adds up: train-minutes lost, news in time, late, too early (and forgotten), missing, for nothing, corrected; formal steps; requests to the council; extra cost (EUR); routine rounds made. */
+    this.tally = { lost_min: 0, in_time: 0, late: 0, early: 0, missing: 0, needless: 0, corrected: 0, charges: 0, requests: 0, cost: 0, rounds: 0, rest_cut: 0 };
     this._asked = new Set();
     this._day = -1;
     this._lostMood = 0;
@@ -941,10 +941,12 @@ export class WorksGame extends Game {
     return out;
   }
 
-  /** Whether a person is on call by the published rota at an hour of the week (outside the day shift). */
+  /** Whether a person is on call by the published rota at an hour of the week: in the hours between two day shifts, on the nights the rota names. */
   onCall(p, h) {
-    const night = Math.floor((h + START_H - SHIFT.to) / 24);
-    return !this.onShift(p, h) && p.on_call.includes(Math.max(0, night));
+    const x = hourOfDay(h), night = Math.floor((h + START_H - SHIFT.to) / 24);
+    // (on call is from the end of a day shift to the beginning of the next: whoever rests by day after a night is neither on shift nor on call)
+    if (x >= SHIFT.from && x < SHIFT.to) return false;
+    return p.on_call.includes(Math.max(0, night));
   }
 
   /** Whether a person can leave for a fault now, and why not. */
@@ -1079,7 +1081,7 @@ export class WorksGame extends Game {
         this.irregular("late-news", `late:${who}:${w.id}`, { who: a.name, what });
         if (this.rng("charge", who, w.id).next() < CHANCE.charge) this._charge(who, `${what}, announced ${hrs(lead)} ahead`, who === "town" ? "a fine for night work announced too late" : "a claim of the undertakings for a possession inside the period");
       } else if (a.early_h && lead > a.early_h && this.rng("forgot", w.id).next() < 0.6) {
-        this.tally.late++;
+        this.tally.early++;
         this._mood(who, MOOD.forgotten);
         this.log(`${when(h)} ${a.name}: "The note came ${Math.round(lead / 24)} days ago. Nobody in those houses remembers it tonight; my phone does."`, "fault");
         this.irregular("late-news", `early:${who}:${w.id}`, { who: a.name, what: `${what}, announced too early` });
@@ -1871,7 +1873,7 @@ export class WorksGame extends Game {
   finish() {
     const a = this.account();
     this.give("performance-report", {
-      scope: "District Neustadt, a week", kind: "maintenance", works_done: a.done, works: a.works, periods_missed: a.overdue, routine_rounds: a.rounds, train_minutes_lost: a.lost_min, news_in_time: a.in_time, news_late: a.late, news_missing: a.missing,
+      scope: "District Neustadt, a week", kind: "maintenance", works_done: a.done, works: a.works, periods_missed: a.overdue, routine_rounds: a.rounds, train_minutes_lost: a.lost_min, news_in_time: a.in_time, news_late: a.late, news_too_early: a.early, news_missing: a.missing,
       news_for_nothing: a.needless, corrections: a.corrected, formal_steps: a.charges, extra_cost_eur: a.cost, patience: a.moods, strain: a.strain, violations: this.violations.length, score: this.score().total,
     });
   }
@@ -1881,12 +1883,12 @@ export class WorksGame extends Game {
     // a work: done 1; run on by an application in good time a little more than half; called off or left a quarter; its period missed nothing
     const worth = (w) => (w.state === "done" ? 1 : w.overdue && !w.applied ? 0 : w.applied ? (w.applied.late ? 0.45 : 0.6) : w.state === "running" ? 0.8 : this.over ? 0.2 : 0.5);
     const works = this.works.reduce((s, w) => s + worth(w), 0) / this.works.length;
-    const news = a.in_time + a.late + a.missing;
+    const news = a.in_time + a.late + a.early + a.missing;
     const names = Object.entries(AUDIENCES).map(([k, x]) => `${x.label} ${a.moods[k]}`).join(", ");
     return [
       { id: "works", label: "The week's works", weight: 25, value: 0.8 * works + 0.2 * Math.min(1, a.rounds / ROUNDS_DUE) - a.cost / 60000, note: `${a.done} of ${a.works} done${a.applied ? `, ${a.applied} running on by an application` : ""}${a.overdue ? `, ${plural(a.overdue, "period")} missed` : ""}, ${a.rounds} of ${ROUNDS_DUE} routine rounds, ${a.cost} EUR beside the plan` },
       { id: "trains", label: "Trains kept running", weight: 20, value: 1 - a.lost_min / 700, note: `${a.lost_min} train-minutes lost to works and faults` },
-      { id: "news", label: "Told in time, and only who needs it", weight: 20, value: (news ? (a.in_time + 0.4 * a.late) / news : this.over ? 0 : 1) - 0.06 * a.needless - 0.05 * a.corrected - 0.1 * a.charges, note: `${a.in_time} in time, ${a.late} late, ${a.missing} missing, ${a.needless} for nothing, ${plural(a.corrected, "correction")}, ${plural(a.charges, "formal step")}` },
+      { id: "news", label: "Told in time, and only who needs it", weight: 20, value: (news ? (a.in_time + 0.4 * (a.late + a.early)) / news : this.over ? 0 : 1) - 0.06 * a.needless - 0.05 * a.corrected - 0.1 * a.charges, note: `${a.in_time} in time, ${a.late} late, ${a.early ? `${a.early} too early, ` : ""}${a.missing} missing, ${a.needless} for nothing, ${plural(a.corrected, "correction")}, ${plural(a.charges, "formal step")}` },
       // the one who is worst off counts most: a week that suits three of four is not good enough
       { id: "people", label: "The people you inform", weight: 25, value: (0.6 * a.lowest + 0.4 * mean) / 100, note: `patience of 100: ${names}` },
       { id: "team", label: "The team", weight: 10, value: 1 - (0.5 * a.strain + 0.5 * a.worst_strain) / 100 - 0.25 * a.rest_cut, note: `strain ${a.strain} of 100 on average, ${a.worst_strain} at the most${a.rest_cut ? `, rest cut ${a.rest_cut} time${a.rest_cut === 1 ? "" : "s"}` : ""}` },

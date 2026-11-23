@@ -350,6 +350,9 @@ test("the news of a work: in time it is thanked; late it may be a claim or a fin
   }) }));
   const forgot = early.filter((gm) => gm.irregulars.some((x) => x.key === "early:town:rail")).length;
   assert.ok(forgot >= 8 && forgot <= 20, `forgotten on ${forgot} of 24 weeks`);
+  // ... and that is counted as too early, not as late
+  const one = early.find((gm) => gm.irregulars.some((x) => x.key === "early:town:rail"));
+  assert.ok(one.tally.early === 1 && one.tally.late === 0 && /1 too early/.test(one.objectives().find((o) => o.id === "news").note));
   assert.ok(AUDIENCES.town.early_h > AUDIENCES.town.late_h && AUDIENCES.ops.late_h > AUDIENCES.ops.least_h && STAFF.late_h > STAFF.least_h);
 });
 
@@ -441,6 +444,21 @@ test("the people: where they live decides how fast they are at a fault; the day 
   assert.deepEqual(g.people.filter((p) => g.onCall(p, at("Mon", 23))).map((p) => p.id), ["p3", "p5"]);
   assert.deepEqual(g.people.filter((p) => g.onCall(p, at("Thu", 2))).map((p) => p.id), ["p2", "p3"], "on Wednesday night the track's on-call lives 45 km away");
   assert.deepEqual(g.people.filter((p) => g.onCall(p, at("Tue", 10))).map((p) => p.id), [], "by day everybody is on shift");
+  // whoever rests by day after a night is neither on shift nor on call: the rota's on-call begins again in the afternoon
+  const resting = Array.from({ length: 40 }, (_, i) => new WorksGame({ seed: i + 1, level: "training" })).find((k) => k._coming[0].at === at("Thu", 7, 6));
+  resting.person("p3").busy.push({ from: at("Wed", 23), to: at("Thu", 2), day: false });
+  const dogan = resting.person("p3");
+  assert.deepEqual([resting.onShift(dogan, at("Thu", 7, 6)), resting.onCall(dogan, at("Thu", 7, 6)), resting.onCall(dogan, at("Thu", 5)), resting.onCall(dogan, at("Thu", 16))], [false, false, true, true]);
+  // a point fails that morning and nobody says a word: by the rota whoever is on shift goes, not the one who rests
+  runTo(resting, at("Thu", 7, 45));
+  assert.deepEqual([resting.faults[0].kind, resting.faults[0].person, resting.logs.some((l) => /by the rota E\. Schwalbe goes/.test(l.text))], ["points", "p4", true]);
+  // sent all the same, it is a favour, and the works council counts it
+  const woken = new WorksGame({ seed: resting.seed, level: "training" });
+  woken.person("p3").busy.push({ from: at("Wed", 23), to: at("Thu", 2), day: false });
+  runTo(woken, at("Thu", 7, 8));
+  const before = woken.mood("council");
+  assert.equal(woken.act("send", "points", "p3").ok, true);
+  assert.deepEqual([woken.mood("council"), woken.logs.some((l) => /T\. Doğan sets off for Bf Neustadt, as a favour: not on call/.test(l.text))], [before + WORKS_MOOD.favour, true]);
   // a night on a work costs the day shifts round it
   run(g, 20);
   g.act("assign", "tamp", "p1");
