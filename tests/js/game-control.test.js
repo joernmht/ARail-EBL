@@ -12,6 +12,8 @@ import { AHEAD_S, ControlBoard, HIT_PX } from "../../web/game/control.js";
 import { DispatchBoard, LATE_S } from "../../web/game/dispatch.js";
 import { BOARDS, TABLE_VIEW } from "../../web/game/live.js";
 import { TABLE_LAYOUT, TableBoard } from "../../web/game/table.js";
+import { YardGame } from "../../web/arail/game/yard.js";
+import { FAST_MPS, YardBoard } from "../../web/game/yard.js";
 
 const NEUSTADT = JSON.parse(readFileSync(new URL(`../../web/${TABLE_LAYOUT}`, import.meta.url), "utf8"));
 const W = 1280, H = 800;
@@ -185,4 +187,62 @@ test("the board of the train dispatcher: every train of the signaller's table is
   assert.equal(board.where("GZ 47"), null, "gone, a train has no mark any more");
   board.dispose();
   assert.ok(!world.simulations.includes(board));
+});
+
+test("the board of the yard master: the layout's hump yard draws the game's run; the crest, the tracks and a cut gone wrong can be chosen", () => {
+  assert.equal(BOARDS.yard, YardBoard);
+  assert.deepEqual([YardBoard.layers, YardBoard.parts.map((p) => p[0])], [["hump"], ["west", "platforms", "east", "all"]]);
+  const world = createWorld(structuredClone(NEUSTADT), { seed: 1 });
+  world.setLayers(YardBoard.layers);
+  const board = new YardBoard(world), yard = world.objects.find((o) => o.type === "hump-yard"), g = new YardGame({ seed: 3 });
+  assert.ok(yard && board.yard === yard && world.simulations.includes(board));
+  board.show(g);
+  assert.equal(yard.sim, g.sim, "the object draws the game's own simulation");
+  // the first train over the hump, pushed fast: the crest is marked orange and full, the tracks with a train thin
+  const to = (t, answer) => {
+    while (g.t < t && !g.over) {
+      for (const d of g.open) g.act("decide", d.id, answer(d));
+      g.step(0.5);
+    }
+  };
+  to(60, (d) => (d.id.startsWith("push-") ? 1.8 : d.options[0]?.id));
+  assert.ok(g.v > FAST_MPS);
+  const marks = board.marks();
+  assert.deepEqual(marks.map((m) => m.item), ["hump", "track-1", "track-2", "track-3", "track-4", "track-5", "track-6"]);
+  assert.deepEqual([marks[0].tone, marks[0].full, marks[1].tone, marks[5].faint], ["warn", true, "plan", true]);
+  // where things are: the crest at the object's place, the tracks' ends beyond it to the west, the waiting trains before it
+  const crest = board.placeOf("hump"), t1 = board.placeOf("track-1"), tr = board.placeOf("train-56034");
+  assert.ok(Math.abs(crest[0] - yard.geometry.center[0]) < 1 && t1[0] < crest[0] - 4000 && tr[0] > crest[0]);
+  assert.deepEqual([board.partOf(crest), board.partOf(t1), board.partOf([crest[0] - 1500, crest[1]]), board.placeOf("track-9"), board.placeOf("cut-none")], ["east", "west", "platforms", null, null]);
+  // the picture: the whole yard within the camera's area, its parts side by side
+  const all = board.bounds("all"), [a0, , a2] = YardBoard.area;
+  assert.ok(all[0] >= a0 && all[2] <= a2 && all[2] - all[0] > 5000);
+  assert.ok(board.bounds("west")[2] < board.bounds("east")[0] && board.bounds("platforms")[0] < board.bounds("platforms")[2]);
+  // what a question is about is asked about; pushed fast, a cut goes wrong and is marked where it stands
+  const standsWrong = () => [...g.wrong.entries()].find(([id, w]) => w.track && g.sim.bodies.some((b) => b.id === id))?.[0];
+  for (let t = 60; t < 1500 && !standsWrong(); t += 2) to(t, (d) => (d.id.startsWith("push-") ? d.scale.max : d.id.startsWith("wrong-") ? null : g.advice(d.id)));
+  const wrong = standsWrong();
+  assert.ok(wrong, "a cut in a wrong track");
+  assert.ok(board.marks().some((m) => m.item === `cut-${wrong}` && m.tone === "bad"));
+  assert.ok([...board.asked()].some((x) => x === `cut-${wrong}` || x.startsWith("track-")));
+  // drawn: rings and no text; a click on the crest chooses the hump, one on the cut the cut
+  const ctx = countingContext(), view = viewOf(world, board.bounds("all"), ctx);
+  board.draw(view);
+  view.render();
+  assert.ok(ctx.counts.fill >= 5);
+  assert.deepEqual(ctx.counts.text, []);
+  const at = (item) => {
+    const p = board.placeOf(item);
+    return view.project(p[0], p[1], p[2]);
+  };
+  assert.deepEqual(board.hit(view, at("hump")), { item: "hump" });
+  assert.deepEqual(board.hit(view, at(`cut-${wrong}`)), { item: `cut-${wrong}` });
+  assert.equal(board.hit(view, [5, 5]), null);
+  // without a game nothing is marked; taken out of its world, the hump yard runs by itself again
+  const px = at("hump");
+  board.show(null);
+  assert.deepEqual([board.marks(), board.hit(view, px), board.placeOf("hump"), yard.external], [[], null, null, null]);
+  board.show(g);
+  board.dispose();
+  assert.ok(yard.external === null && !world.simulations.includes(board));
 });

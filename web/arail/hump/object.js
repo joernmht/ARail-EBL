@@ -14,6 +14,9 @@
  * A task (`startTask`, the app's example "Hump a train") humps a train of its own instead, once, into
  * empty tracks: the hump master pushes it at the speed chosen (`setPush`, also stopped), and
  * `taskState` says what became of every cut; a cut can be chosen (`choose`, `cutAt`), it is outlined.
+ *
+ * It can also show a run that is made elsewhere (`show`: the hump simulation of a game on a yard of
+ * the same figures): then it draws that run and steps nothing itself.
  * @module arail/hump/object
  */
 import { resolvePoint } from "../core/anchors.js";
@@ -93,6 +96,8 @@ export class HumpYardObject extends LayoutObject {
   task = null;
   /** The id of the cut chosen (outlined), or null. */
   chosen = null;
+  /** A run made elsewhere that the object draws instead of its own (`show`), or null. */
+  external = null;
 
   /** The yard of the object's figures (kept while they stay the same). */
   get yard() {
@@ -107,8 +112,38 @@ export class HumpYardObject extends LayoutObject {
     return this._yard;
   }
 
-  /** The simulation (made again when its figures change; moving the object keeps it). */
+  /**
+   * Draw a hump simulation that runs elsewhere instead of the object's own (a game's, see
+   * arail/game/yard.js): the object steps nothing then, and shows the cuts, the retarders and the
+   * impacts of that run. Its yard must have the object's figures (tracks, their length, the push
+   * track, the design): the cuts are drawn on the object's plan. Null: the object's own run again,
+   * from its start.
+   * @param {import("./simulation.js").HumpSimulation | null} sim
+   */
+  show(sim) {
+    if ((sim ?? null) === this.external) return;
+    if (sim && (sim.yard.tracks.length !== this.yard.tracks.length || Math.abs(sim.yard.crest_m - this.yard.crest_m) > 1e-6 || sim.yard.tracks.some((t, i) => Math.abs(t.s1 - this.yard.tracks[i].s1) > 1e-6))) {
+      throw new Error(`hump yard ${this.id}: the run to show is of another yard`);
+    }
+    this.external = sim ?? null;
+    this._flashes = [];
+    this._seen = sim ? sim.logStart + sim.log.length : 0;
+    this.chosen = null;
+    // (its own run starts anew when the other is let go of)
+    if (!sim) this._simKey = null;
+  }
+
+  /** Where a point of the yard lies on the layout: `s` metres along the way to a classification track (its name; null: the push track and the ramp), as [x, y, z] in layout mm; null without a place. */
+  pointAt(track, s) {
+    const g = this.geometry;
+    if (!g) return null;
+    const yard = this.yard, route = track == null ? [yard.root] : yard.routeTo(track), p = yard.planAt(route, s);
+    return [...g.at(p.x, p.y), g.z(yard.height(route, s))];
+  }
+
+  /** The simulation (made again when its figures change; moving the object keeps it); the run shown, if one is (`show`). */
   get sim() {
+    if (this.external) return this.external;
     const s = this.spec, yard = this.yard;
     const key = `${this._yardKey}:${s.season}:${s.push_mps}:${s.wagons}:${s.pull_below_m}:${this.world.seed}:${this.id}`;
     if (key !== this._simKey) {
@@ -303,22 +338,24 @@ export class HumpYardObject extends LayoutObject {
     return this.mm(5);
   }
 
-  /** Hump the next train when none waits, and run the simulation on (in its own steps of 0.1 s). */
+  /** Hump the next train when none waits, and run the simulation on (in its own steps of 0.1 s). A run shown (`show`) is not stepped: only its impacts are followed. */
   update(dt) {
     if (!this.geometry) return;
-    const sim = this.sim, s = this.spec;
-    if (!sim.pushing && !sim.queue.length && !this.task) {
+    const sim = this.sim, s = this.spec, own = !this.external;
+    if (own && !sim.pushing && !sim.queue.length && !this.task) {
       sim.hump({ id: `T${++this._trains}`, push_mps: Number(s.push_mps), wagons: randomTrain(this._rng, { wagons: Math.round(s.wagons), tracks: this.yard.tracks.map((t) => t.name) }) });
     }
-    this._acc += dt;
-    const h = sim.options.dt;
-    let n = 0;
-    while (this._acc >= h && n < MAX_STEPS) {
-      sim.step();
-      this._acc -= h;
-      n++;
+    if (own) {
+      this._acc += dt;
+      const h = sim.options.dt;
+      let n = 0;
+      while (this._acc >= h && n < MAX_STEPS) {
+        sim.step();
+        this._acc -= h;
+        n++;
+      }
+      if (n >= MAX_STEPS) this._acc = 0;
     }
-    if (n >= MAX_STEPS) this._acc = 0;
     // impacts too hard flash for a while: those the card counts (cut.hard; _seen counts the log's entries since the start)
     for (this._seen = Math.max(this._seen, sim.logStart); this._seen < sim.logStart + sim.log.length; this._seen++) {
       const e = sim.log[this._seen - sim.logStart];
@@ -328,6 +365,7 @@ export class HumpYardObject extends LayoutObject {
       }
     }
     this._flashes = this._flashes.filter((f) => sim.t - f.t < FLASH_S);
+    if (!own) return;
     this._checkTask();
     // what is done goes, its figures stay
     const k = this.keep;

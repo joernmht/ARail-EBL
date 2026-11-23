@@ -2,13 +2,15 @@
 
 The games are developed mission by mission: find a mission that is weak and fix it, or make up a
 new one. This guide says what every mission must have, shows it on *Whose minutes?* (the train
-dispatcher between three undertakings), and lists the steps from the idea to the pull request.
+dispatcher between three undertakings) and *The last wagon* (the yard master at the hump), and
+lists the steps from the idea to the pull request.
 The engine is described in [The game core](game-core.md), how the games look in
 [Games](games.md#how-a-game-looks).
 
 - [The brief](#the-brief): the standing instruction for work on the game
 - [What every mission has](#what-every-mission-has): eight points, with what each means and how to check it
 - [The example](#the-example-whose-minutes): how *Whose minutes?* meets them
+- [A second example](#a-second-example-the-last-wagon): *The last wagon*, the yard master at the hump
 - [From the idea to the pull request](#from-the-idea-to-the-pull-request)
 - [What a mission must not be](#what-a-mission-must-not-be)
 
@@ -65,6 +67,32 @@ and RB 35 come late, by forecasts that may be off by minutes.
 
 Code: `web/arail/game/dispatcher.js`, `web/game/missions/whose-minutes.json`,
 `web/game/dispatch.js`; tests in `tests/js/game-dispatcher.test.js` and `tests/e2e/dispatcher.spec.js`.
+
+## A second example: The last wagon
+
+The player is the yard master (Schichtleiter/in einer Zugbildungsanlage) of the hump yard west of
+Bf Neustadt, 06:00 to 06:35 in the frost: the first mission of the freight roles. Four trains in,
+four out, one hump, one locomotive.
+
+| Point | In the mission |
+| --- | --- |
+| Aim | What a hump's pushing speed gains and costs, reading a train's list for good and bad runners, weighing a wagon's connection against a train's path at the cut-off, sharing one locomotive between jobs that all are urgent |
+| Unclear decisions | Which of three waiting trains first: the one that came first, or the one with more wagons for the next cut-off? Push faster (the wagons are in sooner; a good runner catches up a bad one) or by the instructions? Hold the train for its last wagons (its path, its driver) or let it go (the wagons wait twelve hours)? The locomotive round the hump with the tank wagon now (the next train waits) or later (the wagon misses its train)? |
+| Results not certain | How each wagon rolls (drawn by the seed, in the hump simulation's physics), so whether a switch gets between two cuts at 1.6 m/s; when the late train really comes; whether a path lost costs ten minutes or twenty-five; whether an explanation is taken |
+| Roles that react | The hump operator (impacts, speed), the production dispatcher (minutes late), the customer service agent (wagons left behind), each with a patience of 0 to 100. Below 60 they phone and ask for a promise that another of them pays ("no train waits from now on" against "the 06:21 waits for its wagons"). Below 30 the operator stops the hump and pushes at walking pace from then on; the other two put it in writing. The lowest patience counts 60 % of that objective |
+| One of a few | The next train for the hump; when the locomotive takes the wagon that must not be humped round, and when it fetches a cut from the wrong track; the three phone calls |
+| A number | "56012 is pushed at … m/s" (0.8 to 2 in tenths) and "The 06:10 waits at most … min" (0 to 8 in half minutes). Too slow and too fast both cost, too short and too long too; the best number depends on how the wagons roll and when the late train comes |
+| Played | Tap the hump while a train is pushed: faster, slower, stop and on again (slower just before a good runner follows a bad one). Tap a track: a minute more of waiting, no wait, close it up. Tap a cut in the wrong track: fetch it. Each of the locomotive's jobs takes its time, and the hump waits |
+| The world | The layout's hump yard draws the game's own run of ARail's hump simulation: the train on the crest, the cuts through the retarders into the six tracks, a wagon red after an impact too hard, a track emptied when its train is pulled out. Pushed at 1.8, cuts stand in wrong tracks; pushed at 1.2, they do not |
+
+What it added to the engine, for the next mission to use: a question without a time to answer by
+(no train goes over the hump without the word; with nobody at the desk nothing moves, and the
+shift fails by that), a game whose world is one of ARail's simulations (the hump's), and a table
+that is another part of the layout than the station (a board names its modules, its area and its
+parts).
+
+Code: `web/arail/game/yard.js`, `web/game/missions/last-wagon.json`, `web/game/yard.js`; tests in
+`tests/js/game-yard.test.js` and `tests/e2e/yard.spec.js`.
 
 ## From the idea to the pull request
 

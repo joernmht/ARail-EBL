@@ -437,6 +437,24 @@ for (const [scheme, device, viewport] of STATES) {
     await page.evaluate(() => window.__play.pick("train-dispatcher", "train-GZ 47"));
     await expect(dispatcher.locator(".play-pick button").first()).toBeVisible();
     await check("the picture of the tracks, a train chosen with its orders");
+    // the yard master's shift: three trains to choose from with what each carries, and the picture of the yard with its wagons, the hump chosen
+    await page.goto("/game/play/?mission=last-wagon");
+    await page.waitForFunction(() => window.__play?.ready);
+    await page.locator("#start").click();
+    await page.getByRole("button", { name: "Pause" }).click();
+    await step(20);
+    const yard = page.locator("#seat-yard-master");
+    for (let i = 0; i < 8 && (await yard.locator(".vn-story .btn").count()); i++) await yard.locator(".vn-story .btn").first().click();
+    await expect(yard.locator(".play-options-row .btn")).toHaveCount(3);
+    await check("which train goes over the hump next: three options, each with what it carries");
+    await yard.locator(".play-options-row .btn").first().click();
+    await step(4);
+    await yard.locator(".play-scale .btn").click();
+    await step(60);
+    for (let i = 0; i < 8 && (await yard.locator(".vn-story .btn").count()); i++) await yard.locator(".vn-story .btn").first().click();
+    await page.evaluate(() => window.__play.pick("yard-master", "hump"));
+    await expect(yard.locator(".play-pick button").first()).toBeVisible();
+    await check("the picture of the yard with a train on the hump, the hump chosen with its speeds");
     // the logbook, with what such a session leaves in it
     await page.goto("/game/logbook/");
     await page.evaluate(async () => {

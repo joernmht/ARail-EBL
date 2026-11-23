@@ -29,7 +29,7 @@ const LIVE_KEY = "arail.game.live", LIVE_MIN_PX = 700;
  * district.js, control.js), the games that have a board there (BOARDS of live.js), what of the page is not the table (a click there is the page's), how far a pointer may move
  * and still click (px), and how much a key or a button moves the camera (px of the page, a factor).
  */
-const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "dispatcher", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
+const TABLE_KEY = "arail.game.table", TABLE_GAMES = new Set(["signaller", "maintenance", "transport-control", "dispatcher", "yard", "asset-manager", "contract", "budget"]), TABLE_CLICK_PX = 6, TABLE_STEP_PX = 90, TABLE_ZOOM = 1.35;
 const NOT_TABLE = "button, a, input, select, textarea, summary, dialog, [role=button], [role=tab], .play-sketch, .play-window, .vn-talk, .play-rail, .play-hud, .play-toast";
 /** The parts of the table the camera shows (LiveScene.show), as their buttons name them, from left to right. */
 const TABLE_PARTS = [["west", "Bergheim end"], ["platforms", "Platforms"], ["east", "Talsee end"], ["all", "Whole station"]];
@@ -541,6 +541,9 @@ class PlayPage {
     $("#tableSources").hidden = !on;
     // the camera over the table can be moved; a photo and the device's camera show what they show
     $("#tableParts").hidden = !on || source !== "table";
+    // (the parts are the station's, or those of the board shown: a yard has no platforms)
+    const names = new Map(this.live?.parts ?? TABLE_PARTS);
+    for (const b of $("#tableParts").querySelectorAll("[data-part]")) b.textContent = names.get(b.dataset.part) ?? b.textContent;
   }
 
   /**

@@ -129,7 +129,10 @@ test("packages: the framework never imports the role games (pages, tools and tes
   for (const p of PACKAGES.filter((x) => x.group === "framework" && x.id !== "games")) {
     assert.ok(!(p.uses || []).includes("games"), `package ${p.id} must not use the role games`);
   }
-  assert.deepEqual(games.uses, ["core-math"], "the games need only the framework's math");
+  // (and the yard master's game the hump's simulation, which runs on its own: no world, no DOM)
+  assert.deepEqual(games.uses, ["core-math", "hump"], "the games need only the framework's math, and one of them the hump's simulation");
+  const yard = readFileSync(join(ROOT, "web", "arail", "game", "yard.js"), "utf8"), fromHump = [...yard.matchAll(/from "\.\.\/hump\/([a-z]+)\.js"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(fromHump, ["cuts", "simulation", "yard"], "of the hump: the simulation, the yard and the wagons, not the object on the table");
 });
 
 test("models: every source file is described by a model; the models' files and groups exist", () => {

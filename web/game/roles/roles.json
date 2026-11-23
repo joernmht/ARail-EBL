@@ -24551,7 +24551,9 @@
      "new"
     ],
     "bigGame": "Takes arriving trains from the train driver and dispatcher games and wagons booked by sales and customer service. Gives formed trains to the inspector and driver games, a humping programme to the hump operator, and dwell times to the economics simulator.",
-    "effort": "large"
+    "effort": "large",
+    "page": "play/?mission=last-wagon",
+    "first": "A first form is playable as the mission The last wagon: the first half hour of an early shift at the hump yard of the lab's table, in the frost. Four trains come in and are humped by ARail's hump simulation, four go out at their cut-offs; the player says which train goes next and how fast it is pushed, how long an outbound train waits for wagons that are not in, and what the one locomotive does besides pushing. The hump operator, the production dispatcher and the customer service agent count impacts, minutes and wagons left behind, phone, and ask for promises. With six classification tracks instead of twenty, without staff deployment, track allocation and a broken retarder."
    }
   },
   {

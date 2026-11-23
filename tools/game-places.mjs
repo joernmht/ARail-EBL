@@ -19,6 +19,8 @@ import { SHOTS } from "../web/game/shots.js";
 const WIDTH = 1440, HEIGHT = 810, QUALITY = 80;
 /** How long the world runs before a picture is taken (ms), so that trains, buses and people are on their way. */
 const SETTLE_MS = 2500;
+/** How fast the world runs while a picture waits for what it shows (a shot's `run_s`). */
+const RUN_SPEED = 20;
 
 // the pictures and their camera positions: web/game/shots.js (the live backdrop of the game flies between the same)
 export { SHOTS };
@@ -38,10 +40,13 @@ export function parseArgs(argv) {
   return { names, base: base.replace(/\/$/, "") };
 }
 
-/** Take the pictures of one layout: the app in the flyover, its interface hidden, the camera put where each picture wants it. */
-async function takeLayout(browser, base, layout, shots, out) {
+/**
+ * Take the pictures of one layout: the app in the flyover, its interface hidden, the camera put where each picture
+ * wants it. `layers`: the modules switched on (null: the layout's own).
+ */
+async function takeLayout(browser, base, layout, layers, shots, out) {
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT } });
-  const url = `${base}/app/?layout=../${layout}#sandbox`;
+  const url = `${base}/app/?layout=../${layout}${layers ? `&layers=${layers.join(",")}` : ""}#sandbox`;
   await page.goto(url);
   // nothing kept from an earlier visit: the layout as it is in its file
   await page.evaluate(() => localStorage.clear());
@@ -78,6 +83,16 @@ async function takeLayout(browser, base, layout, shots, out) {
       fly.anim = null;
       fly.cam.set({ target: s.target, distance: s.distance_mm, yaw: (s.yaw_deg * Math.PI) / 180, pitch: (s.pitch_deg * Math.PI) / 180 });
     }, shot);
+    if (shot.run_s) {
+      // what the picture shows takes its time: the world runs faster until then
+      const speed = await page.evaluate((v) => {
+        const w = window.__arail.world, was = w.speed;
+        w.speed = v;
+        return was;
+      }, RUN_SPEED);
+      await page.waitForTimeout((shot.run_s / RUN_SPEED) * 1000);
+      await page.evaluate((v) => (window.__arail.world.speed = v), speed);
+    }
     await page.waitForTimeout(SETTLE_MS / 2);
     await page.locator("#stage").screenshot({ path: join(out, `${shot.name}.jpg`), type: "jpeg", quality: QUALITY });
     console.log(`${shot.name}.jpg`);
@@ -99,7 +114,12 @@ async function main() {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch();
   try {
-    for (const layout of [...new Set(shots.map((s) => s.layout))]) await takeLayout(browser, base, layout, shots.filter((s) => s.layout === layout), out);
+    // (the pictures of one layout with the same modules on are taken in one visit)
+    const visit = (s) => `${s.layout}|${s.layers?.join(",") ?? ""}`;
+    for (const key of [...new Set(shots.map(visit))]) {
+      const group = shots.filter((s) => visit(s) === key);
+      await takeLayout(browser, base, group[0].layout, group[0].layers ?? null, group, out);
+    }
   } finally {
     await browser.close();
   }

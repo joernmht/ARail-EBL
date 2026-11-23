@@ -159,6 +159,34 @@ Pushing speed is the trade-off of a real hump. In one train of 24 wagons into th
 at 2 m/s cuts caught up, a switch could not be thrown between two of them, and three went into the
 wrong track and two met the wagons too hard.
 
+## In the game: The last wagon
+
+The mission *The last wagon* (`game/play/?mission=last-wagon`) makes you the yard master of this
+yard for the first half hour of an early shift in the frost ([Games](games.md#the-shift-on-the-table)).
+The game (`web/arail/game/yard.js`) holds a simulation of its own on the yard of the table
+(`standardYard` with the object's figures, winter, a head wind of 3 m/s, steps of 0.1 s) and
+drives it from outside:
+
+- a train is queued (`hump`) when the yard master has said which and how fast, and its pushing
+  speed is changed while it is pushed (`sim.pushing.v`: faster, slower, 0 to stop);
+- an outbound train is pulled out of its track at its cut-off (`pullOut`), a track is closed up
+  by the locomotive (`pushUp`);
+- **`moveCut(id, track)`**: the locomotive takes a standing cut to a track, behind the wagons
+  there: a cut that went into the wrong track, or stopped before its own;
+- **`setOut({id, train, wagons}, track)`**: wagons that were not humped (`noHump`, RID label 15)
+  are set into their track as a cut of their own; the figures of the humping do not count them.
+
+Both are instant in the simulation, like pushing up and pulling out; the game gives them their
+time (the locomotive is busy, and no train is pushed meanwhile). Neither puts a cut into a track
+without room for it, or into one a cut still rolls in. The game reads what the simulation notes
+(`log`: a cut in the wrong track, an impact too hard, a cut stopped, the yard backed up to the
+crest) and makes of it what the people of the yard say.
+
+On the table the object draws the game's run instead of its own: `HumpYardObject.show(sim)`
+(null: its own run again, from its start). It steps nothing then; the cuts, the retarders and the
+red flash of an impact too hard are those of the run shown. The run's yard must have the object's
+figures. `pointAt(track, s)` gives a point of the yard in layout mm, for what a board marks there.
+
 ## A cut and its forces
 
 Every step (0.05 s) each free cut gets its forces (`cutForces`), in kN over its mass in t:
@@ -341,6 +369,8 @@ The geometry's sources are in the table of [the yard](#the-yard): [Pachl][pachl]
   (a weight-proportional retarder), closing and opening take a fixed time.
 - **The shunting locomotive** that pushes tracks up and pulls trains out: both take no time and
   no locomotive here; a yard planner who keeps cuts away from a track while it is being pushed up.
+  (The yard master's game gives the locomotive its times and makes the hump wait for it:
+  [In the game](#in-the-game-the-last-wagon).)
 - **The plan**: the yard is a profile along its routes, not drawn on the table (#237).
 - **Rolling back**, couplers (buffers touching count as coupled), and the train being pulled out
   taking time.
@@ -356,5 +386,9 @@ energy height), separating at the crest, a train humped on the standard yard (ev
 track, the retarders within their limits, no switch under a cut, the tracks holding every wagon),
 impacts keeping the momentum, misroutes when pushed too fast, target braking with and without the
 error, winter, wagons not to be humped and to shunt with care, several trains, determinism, pulling a
-train out by hand and when a track is full, and the diagrams (a line per cut in each panel, the
-problems marked, the same picture for the same run).
+train out by hand and when a track is full, the shunting locomotive (a standing cut taken to
+another track, wagons set out that were not humped, nothing put where there is no room or a cut
+still rolls), and the diagrams (a line per cut in each panel, the problems marked, the same
+picture for the same run). `tests/js/hump-world.test.js` has the object on the table, also when
+it shows a run made elsewhere; `tests/js/game-yard.test.js` the yard master's game on the
+simulation.

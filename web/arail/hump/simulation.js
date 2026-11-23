@@ -133,16 +133,7 @@ export class HumpSimulation {
         this.note("cut.not-humped", { train: id, wagons: g.wagons.map((w) => w.id) });
         continue;
       }
-      const plan = this.yard.routeTo(g.track);
-      const body = cutBody(g.wagons);
-      const last = body.parts[body.parts.length - 1];
-      const cut = {
-        id: `${id}/${rec.cuts.length + 1}`, train: id, wagons: g.wagons, body, track: g.track, intended: g.track, plan, route: [this.yard.root],
-        s: -Infinity, v: 0, a: 0, state: "queued", order: null, careful: g.wagons.some((w) => w.careful), misrouted: null, held: false,
-        derailed: false, pushedOver: false, firstAxle: body.parts[0].axles[0], lastAxle: last.axles[last.axles.length - 1],
-        need: new Map(), inRetarder: null, w_est: 0, f: null, F: 0,
-        rec: { released_t: null, released_s: null, max_mps: 0, retarders: {}, impacts: [], hitBy: [], end: null, stop: null, judged: false }, trace: [],
-      };
+      const cut = this._cut(`${id}/${rec.cuts.length + 1}`, id, g.wagons, g.track);
       cut.w_est = this.control.measure(cut, this.rng);
       rec.cuts.push(cut.id);
       this.cuts.push(cut);
@@ -153,6 +144,18 @@ export class HumpSimulation {
     this._trainCount++;
     this.queue.push(rec);
     return rec;
+  }
+
+  /** A cut of a train: its wagons as one body, for a track, not yet on the hump. */
+  _cut(id, train, wagons, track) {
+    const body = cutBody(wagons), last = body.parts[body.parts.length - 1];
+    return {
+      id, train, wagons, body, track, intended: track, plan: this.yard.routeTo(track), route: [this.yard.root],
+      s: -Infinity, v: 0, a: 0, state: "queued", order: null, careful: wagons.some((w) => w.careful), misrouted: null, held: false,
+      derailed: false, pushedOver: false, firstAxle: body.parts[0].axles[0], lastAxle: last.axles[last.axles.length - 1],
+      need: new Map(), inRetarder: null, w_est: 0, f: null, F: 0,
+      rec: { released_t: null, released_s: null, max_mps: 0, retarders: {}, impacts: [], hitBy: [], end: null, stop: null, judged: false }, trace: [],
+    };
   }
 
   /** Advance by one time step. */
@@ -552,6 +555,68 @@ export class HumpSimulation {
     this.departures.push(out);
     this.note("track.pulled", { track: out.track, wagons: out.wagons.length });
     return out;
+  }
+
+  /**
+   * Where a cut set into a classification track by locomotive comes to stand: behind the wagons
+   * standing there (at the track's end if it is empty); null when it does not fit, or while a cut
+   * still rolls in the track.
+   * @param {object} leaf the track's segment
+   * @param {number} length_m the cut's length
+   * @param {object} [but] a cut not counted (the one that is moved)
+   */
+  _place(leaf, length_m, but = null) {
+    if (this.bodies.some((b) => b !== but && b.v > 0 && b.route[b.route.length - 1] === leaf.id)) return null;
+    const here = this._standing(leaf).filter((b) => b !== but);
+    const edge = here.length ? Math.min(...here.map((b) => b.s - b.body.length_m)) : leaf.s1;
+    return edge - length_m < leaf.track.s0 - 1e-6 ? null : edge;
+  }
+
+  /**
+   * The shunting locomotive takes a standing cut to a classification track (a cut that went into
+   * the wrong one, or stopped before its own): it is put behind the wagons standing there, buffer
+   * to buffer, and that track is its own from then on. Instant, like pushing up and pulling out; the
+   * cut is not judged again.
+   * @param {string} id the cut
+   * @param {string} name the track
+   * @returns {boolean} whether it was moved: not a cut that rolls, is pushed or has left, not into a
+   *   track without room for it or with a cut still rolling in it
+   */
+  moveCut(id, name) {
+    const c = this.bodies.find((b) => b.id === id), leaf = this.yard.trackSegment(name);
+    if (!c || c.v > 0) return false;
+    const s = this._place(leaf, c.body.length_m, c);
+    if (s == null) return false;
+    const from = c.rec.stop?.track ?? null;
+    Object.assign(c, { route: this.yard.pathTo(leaf.id), plan: this.yard.pathTo(leaf.id), track: leaf.track.name, s, v: 0, a: 0, state: "stopped", held: s >= leaf.s1 - 1e-9, derailed: false });
+    c.rec.stop = { t: round(this.t), s: round(s), track: leaf.track.name };
+    this.note("cut.moved", { cut: c.id, from, track: leaf.track.name });
+    return true;
+  }
+
+  /**
+   * The shunting locomotive sets wagons into a classification track without humping them (wagons
+   * that must not be humped, RID label 15): one cut, behind the wagons standing there. Instant.
+   * @param {{id?: string, train?: string, wagons: object[]}} cut wagon specs (see makeWagon; `noHump` is not asked again)
+   * @param {string} name the track
+   * @returns {object | null} the cut, or null when the track has no room for it or a cut still rolls in it (nothing
+   *   changes then: no cut, no random number drawn)
+   */
+  setOut({ id, train = "", wagons }, name) {
+    const leaf = this.yard.trackSegment(name);
+    // room first, from the types' lengths: a call that fails makes no wagon and draws no random number
+    const s = this._place(leaf, wagons.reduce((m, w) => m + wagonType(w.type).length_m, 0));
+    if (s == null) return null;
+    const made = wagons.map((w, i) => makeWagon({ ...w, track: leaf.track.name, id: w.id ?? `${id ?? train}.${i + 1}` }, this.rng, this.options.season));
+    const c = this._cut(String(id ?? `${train}/set${this.cuts.length + 1}`), String(train), made, leaf.track.name);
+    // (without an order: it did not go over the hump, and the figures of the humping do not count it)
+    Object.assign(c, { route: this.yard.pathTo(leaf.id), s, state: "stopped", held: s >= leaf.s1 - 1e-9 });
+    c.rec.stop = { t: round(this.t), s: round(s), track: leaf.track.name };
+    c.rec.judged = true;
+    this.cuts.push(c);
+    this.bodies.push(c);
+    this.note("cut.set-out", { cut: c.id, track: leaf.track.name, wagons: made.map((w) => w.id) });
+    return c;
   }
 
   /**

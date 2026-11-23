@@ -491,6 +491,7 @@ the desks as requests, not to the layout.
 | `maintenance` (Fault Night) | Maintenance and fault dispatcher | shifts (minutes) | staff plan, asset condition, fault report, track closure | repair status, closure request, performance report | the signaller's fault (exit signal N2), and the signallers who close the tracks |
 | `lab` (The lab's morning) | Train dispatcher, at the lab | shifts (minutes) | repair status, closure request, connection request | fault report, track closure, delay notice, performance report | the repair team (ten minutes to come, six to repair); the trains are always the lab's |
 | `dispatcher` (Who goes first) | Train dispatcher in an operations centre | shifts (minutes) | delay notice, connection request | dispatching order, performance report (dispatching) | the morning itself: the signaller's game with the computer's signaller, whose trains come late as its level says, and the regional undertaking's wishes to hold a train |
+| `yard` (Before the cut-off) | Marshalling yard production manager (yard master) | shifts (minutes) | – | handling order (the pushing speed), train report (an outbound train and how late it leaves), delay notice (wagons left behind), incident report, performance report (yard) | the hump itself (ARail's hump simulation on the yard of the lab's table), the trains that come in, and the three people on the phone: the hump operator, the production dispatcher, the customer service agent |
 | `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
 | `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
 | `contract` (Malus Month) | Transport authority's contract manager | turns (months) | performance report (undertaking, operations) | transport contract, penalty, payment, performance report (contract) | the operator: its incident list by the usual rates, its finances and its learning |
@@ -526,7 +527,9 @@ Seated together:
   dispatcher's count of minutes and connections is the signaller's trains' doing. The signaller's
   score does not count (`weight: 0`). With an operations control seated as well, its connection
   request is the dispatcher's to grant, and the signaller takes only the dispatcher's order.
-- Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`.
+- Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`, and `last-wagon` (the
+  yard master at the hump yard; its neighbours, the hump operator, the production dispatcher and
+  the customer service agent, are the game's own until they have games).
 
 A role can have two games: the train dispatcher has its own (`dispatcher`) and the lab's seat
 (`lab`), the same role with the lab as its world (`gamesOfRole`; `gameOfRole` gives the first).
@@ -554,6 +557,12 @@ decisions as its own and gives the engine's events as flows. The adapters must l
 `web/arail/game/` (which imports only the framework's math), in a package that may import both. The
 asset manager's game above is a compact model made to be wired; the infrastructure engine behind
 the same ports would be its full form.
+
+One game holds an engine already: the yard master's (`yard.js`) runs the hump simulation of
+`web/arail/hump/` as its world. That simulation needs no world and no DOM (it runs on its own, in
+Node as in the browser), so the game imports it directly: the simulation, the yard and the wagons
+(`simulation.js`, `yard.js`, `cuts.js`), not the object on the table. `tests/js/architecture.test.js`
+holds the games to exactly that.
 
 ## Writing a role game
 
