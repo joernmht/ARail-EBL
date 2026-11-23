@@ -27,6 +27,7 @@ import { DistrictBoard } from "./district.js";
 import { between, seenFrom } from "./shots.js";
 import { TableBoard } from "./table.js";
 import { TurnBoard } from "./turn.js";
+import { WorkshopBoard } from "./workshop.js";
 import { YardBoard } from "./yard.js";
 
 /**
@@ -37,7 +38,7 @@ import { YardBoard } from "./yard.js";
  * TABLE_VIEW.layers), `area` (where the camera may look, instead of TABLE_VIEW.area) and `parts`
  * (what the parts of its picture are called).
  */
-export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, dispatcher: DispatchBoard, yard: YardBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
+export const BOARDS = { signaller: TableBoard, maintenance: DistrictBoard, "transport-control": ControlBoard, dispatcher: DispatchBoard, yard: YardBoard, workshop: WorkshopBoard, "asset-manager": TurnBoard, contract: TurnBoard, budget: TurnBoard };
 
 /** Where the pages keep whether the backdrop is live. */
 export const LIVE_KEY = "arail.game.live";

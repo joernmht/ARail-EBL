@@ -903,6 +903,16 @@
         {"id": "table-hump", "type": "tabletop", "name": "Hump yard module", "position": [-5450, 290], "width_mm": 6100, "depth_mm": 600, "level_mm": -45},
         {"id": "hump-yard", "type": "hump-yard", "name": "Hump yard Neustadt West", "position": [-3518, 322], "rotation_deg": 180}
       ]
+    },
+    {
+      "id": "workshop",
+      "name": "Workshop hall",
+      "description": "The workshop hall of Betriebswerk Neustadt seen inside, on a virtual table module beyond the west end of the table, beside the hump yard's: the hall without its roof, with the inspection pit and its roof platforms on track 1, the lifting jacks along track 2 and the underfloor wheel lathe in track 3, three stabling tracks beside it and the throat every move goes through. By itself it shows a quiet night; the game's mission Fit to run plays its night in it. See docs/workshop.md.",
+      "enabled": false,
+      "objects": [
+        {"id": "table-workshop", "type": "tabletop", "name": "Workshop module", "position": [-4900, -450], "width_mm": 2400, "depth_mm": 760},
+        {"id": "workshop-hall", "type": "workshop-hall", "name": "Betriebswerk Neustadt, the hall", "position": [-5601, -562]}
+      ]
     }
   ],
   "view": {

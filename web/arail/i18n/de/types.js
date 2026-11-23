@@ -24,6 +24,8 @@ export const TEXTS = {
   "Bus line": "Buslinie",
   "Buses that drive along the streets from stop to stop. Tap the bus stops (or bus terminals) in order, then press Finish.": "Busse, die auf den Straßen von Haltestelle zu Haltestelle fahren. Tippen Sie die Haltestellen (oder Busbahnhöfe) der Reihe nach an und drücken Sie dann Fertig.",
   "Depot and workshop": "Betriebs\u00ADwerk und Werkstatt",
+  "Workshop hall, inside": "Werkstatt\u00ADhalle, von innen",
+  "A depot's workshop hall seen inside: the pit, the lifting jacks and the wheel lathe on its three tracks, stabling tracks and the throat outside. A game's night in the hall shows its units in it.": "Die Werkstatthalle eines Betriebswerks von innen: Arbeitsgrube, Hebeböcke und Unterflur-Radsatzdrehmaschine an ihren drei Gleisen, davor Abstellgleise und die Gleisharfe. Die Nacht eines Spiels zeigt ihre Fahrzeuge darin.",
   "Maintenance depot: workshop tracks in a hall, stabling tracks and the crew room where drivers sign on. With rail operations it shows the units being maintained.": "Betriebswerk: Werkstattgleise in einer Halle, Abstellgleise und der Personalraum, in dem sich die Triebfahrzeugführer zum Dienst melden. Mit dem Bahnbetrieb zeigt es die Fahrzeuge in der Instandhaltung.",
   "Building": "Gebäude",
   "Generic house or other building. Sizes are in prototype metres.": "Allgemeines Haus oder anderes Gebäude. Maße in Metern des Vorbilds.",

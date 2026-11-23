@@ -2,8 +2,8 @@
 
 The games are developed mission by mission: find a mission that is weak and fix it, or make up a
 new one. This guide says what every mission must have, shows it on *Whose minutes?* (the train
-dispatcher between three undertakings) and *The last wagon* (the yard master at the hump), and
-lists the steps from the idea to the pull request.
+dispatcher between three undertakings), *The last wagon* (the yard master at the hump) and *Fit
+to run* (the workshop manager in the hall), and lists the steps from the idea to the pull request.
 The engine is described in [The game core](game-core.md), how the games look in
 [Games](games.md#how-a-game-looks).
 
@@ -11,6 +11,7 @@ The engine is described in [The game core](game-core.md), how the games look in
 - [What every mission has](#what-every-mission-has): eight points, with what each means and how to check it
 - [The example](#the-example-whose-minutes): how *Whose minutes?* meets them
 - [A second example](#a-second-example-the-last-wagon): *The last wagon*, the yard master at the hump
+- [A third example](#a-third-example-fit-to-run): *Fit to run*, the workshop manager in the hall
 - [From the idea to the pull request](#from-the-idea-to-the-pull-request)
 - [What a mission must not be](#what-a-mission-must-not-be)
 
@@ -93,6 +94,41 @@ parts).
 
 Code: `web/arail/game/yard.js`, `web/game/missions/last-wagon.json`, `web/game/yard.js`; tests in
 `tests/js/game-yard.test.js` and `tests/e2e/yard.spec.js`.
+
+## A third example: Fit to run
+
+The player is the workshop manager (Werkstattleiter/in) of Betriebswerk Neustadt for a night,
+22:00 to 05:24 in 37 minutes: the first mission of the rolling stock roles. Four units with their
+orders, four trains in the morning, three hall tracks and one throat. What it teaches is a set of
+rules: who decides what among the four functions of the entity in charge of maintenance. A rule
+taught as a rule is a quiz; here it is taught from the one seat that may not decide, with a clock
+running. Guide: [The workshop hall](workshop.md).
+
+| Point | In the mission |
+| --- | --- |
+| Aim | Telling the four ECM functions apart by what each may decide, the difference between a release to service and a return to operation, what a finding beyond the order and a value at its limit ask of a workshop, sharing a hall's tracks through a night |
+| Unclear decisions | A finding beyond the order: phone fleet management and let the pit stand for the answer, repair it under the standing order (it covers half an hour, the estimate is 25 to 50 minutes), or write it into the release and leave it to the morning? A part at its limit: measure again, change it, ask for a concession, or take the reading? Which unit over the pit, when the inspection comes in at 23:40? |
+| Results not certain | Whether fleet management wants the finding repaired before the unit runs, how long the repair really takes, on which side of its limit the part truly is, how deep the wheel flat's damage goes, how long somebody on call takes to answer |
+| Roles that react | The fleet manager on call (orders, calls at night, the return to operation), the maintenance development engineer (limits, wheel life, parts that come back), the operator's vehicle dispatcher (trains). Below 70 they phone and ask for a promise that another of them pays ("nothing on my units without my order" against the dispatcher's trains). Below 35 the fleet manager reads every release line by line, the engineer gives no concessions any more, the dispatcher orders buses |
+| One of a few | Who goes onto a free track; the finding; the limit; who waits when the one person authorised for brake tests is at the lathe; the driver at the door of a unit that is released and not yet returned; the three phone calls |
+| A number | "The lathe cuts … mm" (1 to 6 in halves: too shallow and it sets up again, too deep and wheel life is gone and the other wheelset must follow; beside the number: measure first) and "442 103 is released in at most … min" for the dispatcher (too early and a train stands without its unit, too late and one is cancelled that could have run) |
+| Played | Tap a unit: to a track, release it to service, phone for its return to operation. One move goes through the throat at a time, and a unit whose work waits for an answer still holds its track: move it out for another, or let the pit stand? |
+| The world | The layout's workshop hall, seen inside, draws the game's night: units out through the throat and in again, raised on the jacks with their bogies left on the rails, fitters at the unit they work on, the lathe's chips glowing, a lamp at each track in the colour of its unit's state, a driver at a door. The brake pads done on the jacks or over the pit are two different pictures, and two different nights |
+
+What it added to the engine, for the next mission to use: a shift with a **pace** (a second of the
+shift is twelve of the night; the page's clock and the table's night follow it), a layout object
+that draws a picture a game hands it without knowing the game (`show(picture)`), a decision that
+is a number with an option beside it (measure first), and a computer player whose hands
+(`hands`: what is done without being asked) are apart from its answers, so that fixed ways of
+answering can be played with the same hands.
+
+What it does not do, on purpose: it has options that leave a rule (a signature without
+authorisation, a unit let go on its release alone). They are there because the temptation is the
+lesson; each says in its own words what it is, and none of them is the fallback.
+
+Code: `web/arail/game/workshop.js`, `web/arail/ops/workshop.js`, `web/game/workshop.js`,
+`web/game/missions/fit-to-run.json`; tests in `tests/js/game-workshop.test.js` and
+`tests/e2e/workshop.spec.js`.
 
 ## From the idea to the pull request
 

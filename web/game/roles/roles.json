@@ -28677,7 +28677,9 @@
      "town"
     ],
     "bigGame": "Takes booked jobs from fleet planning and the contract price from the ECM; gives released units and penalties to the ECM and RU, labour demand to HR and the unions.",
-    "effort": "medium"
+    "effort": "medium",
+    "page": "play/?mission=fit-to-run",
+    "first": "A first form is playable as the mission Fit to run: one night in the hall of Betriebswerk Neustadt on the lab's table, 22:00 to 05:24 in half an hour, as maintenance delivery among the four ECM functions. Four units come in with their orders (brake pads, a door's drive, a wheel flat, an inspection), four trains want a unit from 04:24. The player says which unit stands on the pit, the lifting jacks and the wheel lathe, what happens to a finding beyond the order (ask fleet management, repair it under the standing order, write it into the release), what to do with a value at its limit (measure again, change the part, ask maintenance development for a concession, take the reading), how deep the lathe cuts, and what time the operator's dispatcher is given; units are released to service by the player and returned to operation by fleet management. The month at the workshop company (shift model, headcount, an investment, the works council) is still to come."
    }
   },
   {

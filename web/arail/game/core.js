@@ -110,6 +110,12 @@ export class Game {
    */
   static clock = null;
   /**
+   * How many seconds of the day one second of a shift of this game is (1: as the clock runs). A game
+   * that plays a night in half an hour has more; a mission's shift with such a game has the same
+   * `pace` (`validateMission`), and a page shows the time of day by it.
+   */
+  static pace = 1;
+  /**
    * The kinds of irregularities the game reports (`irregular`): what did not go to plan, such as a
    * train held at a signal. A mission's story can answer them (a line `on` one of these kinds).
    * @type {string[]}

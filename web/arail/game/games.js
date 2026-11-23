@@ -13,6 +13,7 @@ import { normalizeMission } from "./mission.js";
 import { Session } from "./session.js";
 import { SignallerGame } from "./signaller.js";
 import { TransportControlGame } from "./transport-control.js";
+import { WorkshopGame } from "./workshop.js";
 import { YardGame } from "./yard.js";
 
 /** @type {Map<string, Function>} */
@@ -23,6 +24,7 @@ export const GAMES = new Map([
   LabGame,
   TransportControlGame,
   YardGame,
+  WorkshopGame,
   AssetManagerGame,
   ContractGame,
   BudgetGame,
