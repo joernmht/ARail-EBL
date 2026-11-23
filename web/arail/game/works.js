@@ -569,7 +569,8 @@ export class WorksGame extends Game {
       if (o === w || o.start == null || !o.crew.includes(p.id) || o.state === "done" || o.state === "off" || but.includes(o.id)) continue;
       if (overlaps(start - rest, end + rest, o.start, o.start + o.len)) return { ok: false, reason: `${p.name} is on ${o.name} (${when(o.start)}): eleven hours of rest lie between two shifts.` };
     }
-    const last = me.busy.filter((b) => b.to > start - rest && b.from < end).at(-1);
+    // (what was done within a day shift does not stand against more work in that shift; against a night it does)
+    const day = !this.outside(w, start), last = me.busy.filter((b) => b.to > start - rest && b.from < end && !(b.day && day)).at(-1);
     if (last && this.now >= last.from) return { ok: false, reason: `${p.name} was out until ${when(last.to)}: eleven hours of rest first.` };
     return { ok: true };
   }
@@ -1452,7 +1453,11 @@ export class WorksGame extends Game {
         }
         this._asked.add("length");
         w.len = Number(x);
-        if (w.state === "planned" && w.start != null) this._tellWork("ops", w);
+        if (w.state === "planned" && w.start != null) {
+          // (the answer may have come too late for the slot: said, not swallowed)
+          const told = this._tellWork("ops", w);
+          if (!told.ok) this.log(`${when(this.now)} ${told.reason} The possession is not registered.`, "fault");
+        }
         this._syncRota();
       },
     });

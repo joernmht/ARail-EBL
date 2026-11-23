@@ -212,6 +212,19 @@ test("the numbers cost at both ends: a possession too short runs over, one too l
   assert.deepEqual([g.open.map((d) => d.id), g.open[0].options], [["length-rail"], []]);
   g.act("decide", "length-rail", 4.5);
   assert.deepEqual([w.len, w.told.ops.len, w.told.ops.start], [4.5, 4.5, w.start]);
+  // the answer comes too late for the slot: the registration is refused, and that is said
+  const slow = new WorksGame({ seed: 2, level: "training" });
+  run(slow, 20);
+  slow.act("assign", "rail", "p2");
+  slow.act("assign", "rail", "p1");
+  slow.act("schedule", "rail", at("Tue", 23, 30));
+  runTo(slow, at("Tue", 15, 30));
+  assert.equal(slow.act("tell", "ops", "rail").ok, true);
+  runTo(slow, at("Tue", 18));
+  assert.deepEqual(slow.open.map((d) => d.id), ["length-rail"]);
+  slow.act("decide", "length-rail", 5);
+  assert.ok(slow.logs.some((l) => /Tue 23:30 is 5\.5 h away\. No signal box and no undertaking can be told any more\. Not that night\." The possession is not registered\./.test(l.text)));
+  assert.ok(!slow.work("rail").told.ops && slow.missing(slow.work("rail")).includes("the possession") && slow.work("rail").len === 5);
   // a forecast: said too short it is missed, said too long the trains stay cancelled, no time at all costs at once
   const fc = (x) => SEEDS.map((seed) => play(always("forecast", x), { seed }));
   const [short, mid, long, none] = [fc(0.5), SEEDS.map((seed) => play(book, { seed })), fc(6), fc("none")];
@@ -487,6 +500,28 @@ test("the people: where they live decides how fast they are at a fault; the day 
   }
   assert.ok(asked >= 1, `asked on ${asked} weeks`);
   assert.equal(f.person("p2").drive.east, 35);
+  // a fault cleared within the day shift does not stand against more work in that shift; against that night it does
+  // (a week whose knock comes on Wednesday at one and turns out to be the train's wheel: looked at and done within the shift)
+  const wed = Array.from({ length: 80 }, (_, i) => new WorksGame({ seed: i + 1 })).find((k) => k._coming.some((x) => x.kind === "knock" && x.at === at("Wed", 13) && x.u < 0.35));
+  runTo(wed, at("Wed", 13, 3));
+  assert.equal(wed.act("send", "knock", "p1").ok, true);
+  while (wed.fault("knock").state !== "done") {
+    for (const d of wed.open) wed.act("decide", d.id, wed.advice(d.id));
+    wed.step(0.5);
+  }
+  const out = wed.person("p1").busy.at(-1);
+  assert.ok(out.day && out.to < at("Wed", 20) && out.to > at("Wed", 13));
+  assert.match(wed.fits(wed.person("p1"), wed.work("tamp")).reason, /was out until Wed 1\d:\d\d: eleven hours of rest first/);
+  assert.equal(wed.fits(wed.person("p1"), wed.work("veg"), at("Thu", 9)).ok, true);
+  const thu = SEEDS.map((seed) => new WorksGame({ seed, level: "training" })).find((k) => k._coming[0].at === at("Thu", 7, 6));
+  runTo(thu, at("Thu", 7, 8));
+  thu.act("send", "points", "p4");
+  while (thu.faults[0].state !== "done") {
+    for (const d of thu.open) thu.act("decide", d.id, thu.advice(d.id));
+    thu.step(0.5);
+  }
+  assert.ok(thu.now < at("Thu", 10) && thu.person("p4").busy.at(-1).day);
+  assert.deepEqual([thu.fits(thu.person("p4"), thu.work("points")).ok, thu.work("points").crew], [true, ["p3", "p4"]], "the point cleared at half past eight, the inspection at ten: one shift");
   // 45 km home after a night: with a room nobody drives tired
   const drive = (room) => SEEDS.map((seed) => play(book, { seed, level: "training", hands: without((gm, name) => !room && name === "room") })).filter((gm) => gm.violations.some((v) => v.rule === "care")).length;
   const [tired, rested] = [drive(false), drive(true)];
