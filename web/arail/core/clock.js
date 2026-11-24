@@ -75,6 +75,16 @@ export function dateFits(value, year = null) {
   return !!d && !(d.month === 2 && d.day === 29 && !isLeapYear(d.year ?? year ?? DEFAULT_YEAR));
 }
 
+/**
+ * Why a value is no date in that year, in words, or null when it is one ({@link dateFits}): no date
+ * at all, or "02-29" written without its year in a year (else {@link DEFAULT_YEAR}) that has none.
+ */
+export function dateProblem(value, year = null) {
+  if (dateFits(value, year)) return null;
+  if (!parseDay(value)) return `"${value}" is no date (MM-DD)`;
+  return `"${value}" is no date in ${year ?? DEFAULT_YEAR}, which has no 29 February: write it with a leap year ("2028-02-29")`;
+}
+
 /** The day of the year (1 = 1 January) of a month and a day, in a year (a common year when null). */
 export function dayOfYear(month, day, year = null) {
   let doy = day;
@@ -273,14 +283,18 @@ export class Clock {
     return true;
   }
 
-  /**
-   * Set the date ("2026-12-06"; "12-06" in the year it has, else {@link DEFAULT_YEAR}; null: no
-   * date). Returns the day of the year, or null; undefined, and nothing changed, for what is no date
-   * (also 29 February in a year that has none).
-   */
   /** Is it a date the clock can be set to ("02-29" without a year: if the clock's year has one)? */
   isDate(value) {
     return dateFits(value, this.year);
+  }
+
+  /**
+   * Why the clock cannot be set to a date, in words (a scenario's step that fails says it), or null
+   * when it can: no date at all, or 29 February written without its year in the clock's year (else
+   * {@link DEFAULT_YEAR}), which has none.
+   */
+  dateProblem(value) {
+    return dateProblem(value, this.year);
   }
 
   /** Is it a time of day ("HH:MM" or minutes)? */
@@ -288,6 +302,11 @@ export class Clock {
     return parseTime(value) != null;
   }
 
+  /**
+   * Set the date ("2026-12-06"; "12-06" in the year it has, else {@link DEFAULT_YEAR}; null: no
+   * date). Returns the day of the year, or null; undefined, and nothing changed, for what is no date
+   * (also 29 February in a year that has none: {@link Clock#dateProblem} says why).
+   */
   setDate(value) {
     if (value == null || value === "") {
       this.date = this.year = null;
@@ -383,7 +402,7 @@ export class Clock {
   /**
    * The profile of a kind of traffic ([hour, factor] points) on a day: a weekend's on a Saturday or
    * Sunday, else the working day's; `dayOffset` days from today (the journey planner looking past
-   * midnight; the town's daily totals, the traffic clearing the snow: today).
+   * midnight, the weather going through the days before; the town's daily totals: today).
    */
   profile(kind, dayOffset = 0) {
     return (this.weekend(dayOffset) ? WEEKEND_PROFILES : PROFILES)[kind];

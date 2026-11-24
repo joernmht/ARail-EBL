@@ -74,7 +74,7 @@ export const MARKET = [
         name: "MarketSimulation", file: "web/arail/sims/market.js", kind: "class", extends: "Simulation", role: "The visitors of the market squares.",
         attributes: ["visitors: Visitor[] — {origin, state, task, plan, bought, spent, mood}", "stalls: Map — per stall: queue, serving, sold, takings, waits", "rideQueues: Map — per ride: its queue", "tables: Map — the people at each standing table", "today: object — sold by goods, takings, came and left by how, rides (since midnight)"],
         operations: [
-          "validate(config) — static: open and close must be times of day", "hours()", "season() — {from, until}, MM-DD", "isOpen(minutes) — in its season and its hours", "present() — people at the market at this time of day, fewer in rain", "weatherShare() — 55 % in rain, 30 % in heavy rain", "hotDrinks() — hot drinks wanted 1.5 times at 3 °C and below, half at 18 °C and above", "target() — people who should be there now: none come in the last half hour", "venues() — the squares as walking grids", "step(dt)", "_spawn(dt) — from the town and the ends of the streets",
+          "validate(config) — static: open and close must be times of day", "hours()", "season() — {from, until}, MM-DD", "isOpen(minutes) — in its season and its hours", "present() — people at the market at this time of day, fewer in rain", "weatherShare() — 55 % in rain, 30 % in heavy rain", "hotDrinks() — hot drinks wanted 1.5 times at 3 °C and below, half at 18 °C and above", "target() — people who should be there now: none come in the last half hour", "venues() — the squares as walking grids", "step(dt)", "_noMarket(open) — open, but no square with stalls or rides: said once (scenario.message)", "_spawn(dt) — from the town and the ends of the streets",
           "_vehicleArrived(e) — visitors get off a train", "_comeIn(v, from, fromKey)", "_enterSquare(v, venue, gate)", "_plan(v, rng) — 2 to 5 things to do", "_nextTask(v, venue)", "_serve(dt)",
           "_stayAt(v, venue, o, info, minutes, goods) — at a standing table", "_rides(venue)", "_move(dt)", "_stepOnSquare(v, venue, dt, push, neighbours)", "_goOut(v, t)", "_walkStreet(v, dt)", "_giveUp() — after 75 clock minutes at the station: home another way", "_afterJump() — the clock was set: the market as it would be", "_newDay() — midnight: the figures of today start again",
           "clear()", "doing(v)", "describeAgent(agent)", "describeObject(o, card) — queue, waiting time, sold and takings of a stall; queue of a ride; visitors and sales of a square",
@@ -150,6 +150,8 @@ export const MARKET = [
       "Serving takes serve_s × 0.7 to 1.4; at a craft stall 45 % buy. Drinks and food are eaten on the spot at a standing table (four places), else in front of the stall, for the goods' stay in clock minutes.",
       "Who came by train goes back to the station and waits there for any train; after 75 clock minutes (no trains after midnight), or when the passengers give up, they go home another way.",
       "When the clock is set, the market is filled to 80 % of the people it should have, on the square.",
+      "Open, but no square with stalls or rides (the visitors' module on without the market's): nobody comes, and the simulation says so once (scenario.message).",
     ],
+    events: { emits: [{ name: "scenario.message", payload: "scenario, text", when: "open, but no market square has stalls or rides: said once" }] },
   },
 ];

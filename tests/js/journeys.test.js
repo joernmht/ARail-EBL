@@ -211,6 +211,32 @@ test("travellers are kept in the layout; loaded again or with the clock set back
   assert.equal(journeysOf(world).travellers.length, 0);
 });
 
+test("Start all again sets the clock back, and says that the rest of the simulation goes back with it, in German too", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] }); // the toast's timer
+  const shown = { textContent: "", hidden: true };
+  globalThis.document = { querySelector: (sel) => (sel === "#toast" ? shown : null) };
+  try {
+    const { JourneysPanel } = await import("../../web/game/journeys.js");
+    const { i18n } = await import("../../web/app/i18n.js");
+    const { world, j } = lab();
+    const plan = j.plan({ from: S("bergheim"), to: B("school-1"), leave: "07:10" })[0];
+    j.addTraveller({ name: "Amsel", from: S("bergheim"), to: B("school-1"), plan });
+    runUntil(world, "07:55");
+    const panel = new JourneysPanel({ world, saveLayout: () => {} });
+    panel.update = () => {};
+    const set = [];
+    world.events.on("clock.set", () => set.push(world.clock.label()));
+    panel.restartAll();
+    assert.deepEqual(set, ["07:05"], "every simulation hears the clock set back");
+    assert.equal(shown.textContent, "All start again; the clock is set back to 07:05, and with it the rest of the simulation: the other people are placed as at that time.");
+    i18n.setLanguage("de");
+    assert.equal(i18n.translate(shown.textContent), "Alle beginnen von vorn; die Uhr ist auf 07:05 zurückgestellt und mit ihr der Rest der Simulation: Die anderen Menschen sind verteilt wie zu dieser Zeit.");
+    i18n.setLanguage("en");
+  } finally {
+    delete globalThis.document;
+  }
+});
+
 test("with rail operations: the journeys take the operations' trains", () => {
   const { world, j } = lab(["operations"]);
   for (let i = 0; i < 10; i++) world.step(0.1);

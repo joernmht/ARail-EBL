@@ -16,9 +16,10 @@
  *
  * `at` is simulated seconds after the start of the scenario. Actions:
  * - `set`: world settings (`demand`, `speed`), the time of day (`time`: "HH:MM", as `world.setTime`),
- *   the date (`date`: "MM-DD", as `world.setDate`) and the weather (`weather`: a preset's name,
- *   "typical", "off" or an object, as `world.setWeather`); what is none of them fails the step,
- *   which says so and changes none of them
+ *   the date (`date`: "MM-DD" in the clock's year when the step runs, or "YYYY-MM-DD", as
+ *   `world.setDate`) and the weather (`weather`: a preset's name, "typical", "off" or an object, as
+ *   `world.setWeather`); what is none of them fails the step, which says so and changes nothing.
+ *   "02-29" is a date in a leap year: in another year the step fails and names the year
  * - `message`: text for the app (event `scenario.message`)
  * - `call`: send a vehicle to an object / stop area / dock
  * - `start`: start a disruption (same fields as `DisruptionManager.start`)
@@ -82,13 +83,13 @@ export class ScenarioPlayer {
     const w = this.world;
     try {
       if (step.set) {
-        if (step.set.demand != null) w.demand = Number(step.set.demand);
-        if (step.set.speed != null) w.speed = Number(step.set.speed);
         // all of it checked first, so that a step that fails changes nothing
         const { date, time, weather } = step.set;
-        if (date != null && date !== "" && !w.clock.isDate(date)) throw new Error(`"${date}" is no date (MM-DD)`);
+        if (date != null && date !== "" && !w.clock.isDate(date)) throw new Error(w.clock.dateProblem(date));
         if (time != null && !w.clock.isTime(time)) throw new Error(`"${time}" is no time of day (HH:MM)`);
         if (weather != null && !w.weather.isWeather(weather)) throw new Error(`${JSON.stringify(weather)} is no weather`);
+        if (step.set.demand != null) w.demand = Number(step.set.demand);
+        if (step.set.speed != null) w.speed = Number(step.set.speed);
         // the date first: the time and the weather are those of that day
         if (date != null) w.setDate(date);
         if (time != null) w.setTime(time);
