@@ -121,8 +121,9 @@ repaired, or such a signature); its train is then worth what a cancelled one is.
 Played by the computer on 24 seeds of the level *normal*: nobody at the desk 19 points (nothing
 comes into the hall: no train has a unit); by the book 85 (a train cancelled on three nights in ten, late on a few more);
 with the pit kept free for the inspection and the brake pads done on the jacks 93; hasty all
-round 71. Taking the reading at a limit, repairing a finding unasked and leaving it in the
-release each beat the book on some nights and lose on others.
+round 71. Taking the reading at a limit and repairing a finding unasked each beat the book on
+some nights and lose on others; leaving it in the release beats the book only rarely (on one of
+the first 40 nights).
 
 Levels: *training* (one finding beyond the order, nobody slow on the phone), *normal*, *hard* (a
 fitter short, the phones slower, the foreman's guesses wider).

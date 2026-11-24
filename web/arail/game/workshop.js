@@ -1289,7 +1289,8 @@ export class WorkshopGame extends Game {
     this._status = hour;
     // (from one o'clock: before that nobody is far enough to say)
     if (hour < 3) return;
-    const etas = this.units.filter((u) => u.gone_t == null && !u.kept).map((u) => ({ u, t: (u.rto_t ?? (u.released_t != null ? u.rto_due : this.eta(u) + S(RTO_GUESS_MIN))) })).sort((a, b) => a.t - b.t);
+    // the units that can still take one of the trains to come: not one on its way out to its train, not one fleet management will keep in
+    const etas = this.units.filter((u) => u.gone_t == null && u.train == null && !u.kept && !(u.void && u.rto_t == null)).map((u) => ({ u, t: (u.rto_t ?? (u.released_t != null ? u.rto_due : this.eta(u) + S(RTO_GUESS_MIN))) })).sort((a, b) => a.t - b.t);
     const open = this.pullouts.filter((x) => x.unit == null && !x.cancelled);
     const short = open.filter((pl, i) => !etas[i] || etas[i].t > pl.at + S(1));
     const lines = this.units.filter((u) => u.gone_t == null && u.released_t == null && u.tasks.some((t) => t.state === "open" && t.required)).map((u) => `${u.name} at about ${hm(S(Math.ceil(mins(this.eta(u)) / 5) * 5))}`);
