@@ -61,15 +61,19 @@ export class HumpPanel {
     morph(e.tracks, ...this._tracks(y, st));
   }
 
-  /** The pushing speed, Slower, Faster, Stop (or Push on), Restart, and how the train goes. */
+  /**
+   * The pushing speed, Slower, Faster, Stop (or Push on), Restart, and how the train goes. The three
+   * push controls are off once every cut is released, and once the task is over with cuts still on
+   * the hump (the hump blocked: nothing can be pushed on).
+   */
   _head(st) {
-    const v = st.push_mps, humped = st.cuts.every((c) => c.state !== "waiting" && c.state !== "pushed");
+    const v = st.push_mps, humped = st.cuts.every((c) => c.state !== "waiting" && c.state !== "pushed"), off = humped || st.finished;
     return [
       h("div", { class: "row hump-push", role: "group", "aria-label": "Pushing speed" },
-        h("button", { class: "btn", type: "button", id: "humpSlower", disabled: humped || v <= TASK_PUSH.min_mps + 1e-9, onclick: () => this.push(-1) }, "Slower"),
+        h("button", { class: "btn", type: "button", id: "humpSlower", disabled: off || v <= TASK_PUSH.min_mps + 1e-9, onclick: () => this.push(-1) }, "Slower"),
         h("output", { class: "hump-speed", id: "humpSpeed", "aria-live": "off" }, st.stopped ? "Stopped" : `${v.toFixed(1)} m/s`),
-        h("button", { class: "btn", type: "button", id: "humpFaster", disabled: humped || v >= TASK_PUSH.max_mps - 1e-9, onclick: () => this.push(1) }, "Faster"),
-        h("button", { class: `btn${st.stopped ? " primary" : ""}`, type: "button", id: "humpStop", disabled: humped, onclick: () => this.stop(!st.stopped) }, st.stopped ? "Push on" : "Stop"),
+        h("button", { class: "btn", type: "button", id: "humpFaster", disabled: off || v >= TASK_PUSH.max_mps - 1e-9, onclick: () => this.push(1) }, "Faster"),
+        h("button", { class: `btn${st.stopped ? " primary" : ""}`, type: "button", id: "humpStop", disabled: off, onclick: () => this.stop(!st.stopped) }, st.stopped ? "Push on" : "Stop"),
         h("button", { class: "btn", type: "button", id: "humpRestart", title: "The same train again, in empty tracks", onclick: () => this.restart() }, "Restart")),
       h("p", { class: `hump-status${st.finished && (st.misrouted || st.hard || st.derailed || st.short || st.notHumped) ? " bad" : ""}`, id: "humpStatus", role: "status" }, this._status(st, humped)),
     ];

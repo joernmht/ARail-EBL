@@ -299,6 +299,39 @@ test("a task pushed too fast: the yard backs up to the crest, the task still end
   assert.equal(hump.taskState().time_s, at);
 });
 
+test("the yard's own run does not stand still: cuts held before a track pulled out stand free again; a derailed cut is taken away after five minutes", () => {
+  // pushed at 3 m/s, long cuts ran into a full track's wagons before its entrance and stayed held there once the track was
+  // pulled out, and the cuts behind them up to the crest: the train was blocked from 137 s on, and no train was ever humped
+  const fast = lone({ push_mps: 3 }), f = fast.getObject("hump");
+  let blocked = 0, longest = 0;
+  while (f.sim.t < 900) {
+    fast.step(0.1);
+    blocked = f.sim.pushing?.blocked ? blocked + 0.1 : 0;
+    longest = Math.max(longest, blocked);
+  }
+  assert.ok(f.sim.results().trains >= 3, `${f.sim.results().trains} trains humped`);
+  assert.ok(longest < 120, `blocked for ${longest.toFixed(0)} s`);
+  // a switch moving for good under the first cut: it derails, the cuts stand behind it up to the crest
+  const world = lone(), hump = world.getObject("hump");
+  world.step(0.1);
+  const sim = hump.sim, sw = sim.switchState(sim.yard.root);
+  Object.assign(sw, { moving: true, until: Infinity });
+  while (!sim.bodies.some((b) => b.derailed)) world.step(0.1);
+  sw.until = sim.t;
+  const cut = sim.bodies.find((b) => b.derailed), since = sim.t;
+  while (sim.t < since + 290) world.step(0.1);
+  assert.ok(sim.bodies.includes(cut) && sim.pushing?.blocked && sim.results().trains === 0, "derailed, the hump blocked");
+  while (sim.t < since + 600) world.step(0.1);
+  const off = sim.log.find((e) => e.type === "cut.rerailed");
+  assert.ok(off && off.cut === cut.id && !sim.bodies.includes(cut), "taken away");
+  near(off.t - since, 300, 0.3, "after five minutes");
+  assert.ok(!sim.pushing?.blocked && sim.results().trains >= 1, "humping goes on");
+  assert.equal(sim.results().derailed, 1, "still counted");
+  // a task's run takes nothing away: its hump stays blocked
+  hump.startTask({ wagons: 12, seed: 1 });
+  assert.equal(hump.sim.options.rerail_s, null);
+});
+
 test("the hump yard's texts in German", () => {
   for (const key of [HumpYardObject.label, HumpYardObject.category, HumpYardObject.description, ...HumpYardObject.params.map((p) => p.label), "Speed-holding units", "Target braking", "Summer", "Trains humped"]) {
     assert.ok(DE[key], `no German for "${key}"`);

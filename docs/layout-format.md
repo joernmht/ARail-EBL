@@ -640,7 +640,7 @@ Geometry: `position`, its parking place. It moves containers where no crane reac
 Geometry: `position`, the crest of the hump; the cuts roll away from it in the direction of
 `rotation_deg`, the train is pushed towards it from behind. A hump yard with a simulation of its
 own: it humps one random train after the other, pushes its tracks up and pulls them out as trains
-when they are full, and draws the yard (the formation, ballast and rails, the retarders, orange
+when they are full (a derailed cut is taken away after five minutes), and draws the yard (the formation, ballast and rails, the retarders, orange
 while they brake), every wagon and the locomotive pushing. Its heights are drawn above its lowest
 track end: put it on a table module low enough for its push track to meet the table. See
 [Hump yard](hump-yard.md#on-the-table).

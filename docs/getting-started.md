@@ -244,7 +244,7 @@ What you decide is how fast the train is pushed: **Slower** and **Faster** chang
 
 **The train** lists its cuts from the hump end: their number, their track, their wagons, how well they roll (the line at their side has the colour of the band on their wagons: Türkis good, Brillantblau medium, Orange bad runners), and where they are: waiting, on the hump, rolling, in their track, in the wrong track, short of their track, derailed at a switch (it reached the switch while it was being thrown), or met the wagons too hard. Choose a cut in the list, or tap one of its wagons in the flyover (Enter at the cross in the middle), to follow it: the yard outlines it in Orange. **Classification tracks** says for each track how many of its wagons are in it and how much room is left.
 
-The task is done when every cut stands, and its time stops then; the time counts on the yard's clock, beside it the cuts in the wrong track and the impacts too hard. Pushed far too fast, the cuts can stand back up to the crest: the hump is blocked, the rest of the train stays on it, and the task ends with the cuts not humped. Leaving the example switches the module off again, and the yard humps train after train by itself.
+The task is done when every cut stands, and its time stops then; the time counts on the yard's clock, beside it the cuts in the wrong track and the impacts too hard. Pushed far too fast, the cuts can stand back up to the crest: the hump is blocked, the rest of the train stays on it, and the task ends with the cuts not humped (Slower, Faster and Stop are off then). Leaving the example switches the module off again, and the yard humps train after train by itself.
 
 ### Trains on tracks and Units and drivers (the operations plan)
 

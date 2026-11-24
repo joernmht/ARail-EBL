@@ -21,13 +21,14 @@ import { cutBody, cutForces, energyHeight } from "./physics.js";
  * two trains (s), how far before the crest a train's front starts (m), how far beyond the crest the
  * locomotive pushes a cut that does not run free (m), the space between two cuts that counts as a
  * gap (m), the impact limits (m/s), trace (s, v and energy height of every cut every `trace_s`), the
- * longest run (s), and `pull_below_m`: a track with less room than this at its entrance is pushed up
- * and, if still too full, pulled out as a train (null: only by hand, `pushUp` and `pullOut`).
+ * longest run (s), `pull_below_m`: a track with less room than this at its entrance is pushed up
+ * and, if still too full, pulled out as a train (null: only by hand, `pushUp` and `pullOut`), and
+ * `rerail_s`: a derailed cut is taken away once it has stood this long (null: only by hand, `rerail`).
  */
 export const SIM_DEFAULTS = Object.freeze({
   dt: 0.05, seed: 1, season: "summer", wind_mps: null, train_gap_s: 120, start_m: 15, push_over_m: 25, gap_m: 1,
   impact_mps: SPEEDS.impact_mps, careful_mps: SPEEDS.careful_mps, trace: false, trace_s: 0.5, max_s: 4 * 3600, control: {},
-  pull_below_m: null,
+  pull_below_m: null, rerail_s: null,
 });
 
 /** Closer than this (m), two cuts touch. */
@@ -176,6 +177,8 @@ export class HumpSimulation {
       this._nextPull = this.t + 1;
       this._pullFull();
     }
+    const rerail = this.options.rerail_s;
+    if (rerail != null) for (const c of this.bodies) if (c.derailed && this.t - (c.rec.stop?.t ?? this.t) >= rerail) this.rerail(c.id);
   }
 
   /**
@@ -226,7 +229,44 @@ export class HumpSimulation {
     }
     this.pushedUp_m = (this.pushedUp_m || 0) + gained;
     this.note("track.pushed-up", { track: tr.name, m: round(gained) });
+    this._release();
     return gained;
+  }
+
+  /**
+   * The breakdown crew takes a derailed cut away (it leaves the yard, noted `cut.rerailed`; the figures
+   * still count it as derailed): the switch it stood in is free again, and the cuts that stood against
+   * it are no longer held (`_release`).
+   * @param {string} id
+   * @returns {boolean} whether it was taken away: only a derailed cut
+   */
+  rerail(id) {
+    const c = this.bodies.find((b) => b.id === id);
+    if (!c?.derailed) return false;
+    c.state = "departed";
+    this.bodies = this.bodies.filter((b) => b !== c);
+    this.note("cut.rerailed", { cut: c.id });
+    this._release();
+    return true;
+  }
+
+  /**
+   * Holds that have lost their reason, once the wagons a cut stood against have moved or left (pushed
+   * up, pulled out, a derailed cut taken away): a cut stays held only at the end of its track, derailed,
+   * or touching a row of cuts that is held; the others stand free again and roll on where gravity starts
+   * them. Without this, cuts held in front of a track pulled out stood there for good, and the cuts
+   * behind them up to the crest: the train was blocked and the yard stood still.
+   */
+  _release() {
+    const touching = (x, n) => x.s >= n.s - n.body.length_m - TOUCH_M;
+    for (const c of [...this.bodies].sort((a, b) => b.s - a.s)) {
+      if (!c.held || c.derailed) continue;
+      const seg = this.yard.segments.get(c.route[c.route.length - 1]);
+      if (!seg.children.length && c.s >= seg.s1 - 1e-9) continue; // its track's stop holds it
+      let held = false;
+      for (let x = c, n = this._leader(c); n && touching(x, n) && !held; x = n, n = this._leader(n)) held = n.held;
+      if (!held) c.held = false;
+    }
   }
 
   /**
@@ -554,6 +594,7 @@ export class HumpSimulation {
     };
     this.departures.push(out);
     this.note("track.pulled", { track: out.track, wagons: out.wagons.length });
+    this._release();
     return out;
   }
 

@@ -630,3 +630,48 @@ test("the shunting locomotive: a standing cut taken to another track, wagons set
   assert.ok(busy.setOut({ train: "B", wagons: [{ type: "eanos", loaded: 1 }] }, "4"), "once it stands, the wagon is set behind it");
   assert.throws(() => sim.setOut({ train: "T", wagons: [{ type: "no-such-wagon" }] }, "2"), /no wagon type/);
 });
+
+test("a derailed cut taken away (rerail), by hand or after rerail_s; cuts held against wagons that have gone stand free again", () => {
+  const yard = standardYard({ tracks: 4, track_m: 300 });
+  /** A train of single wagons whose first cut derails in the first switch (moving for good until then): the others stand behind it up to the crest. */
+  const derail = (options = {}) => {
+    const sim = new HumpSimulation(yard, { seed: 2, dt: 0.1, ...options });
+    sim.hump({ id: "D", wagons: Array.from({ length: 8 }, (_, i) => ({ type: "eanos", loaded: 1, track: String(1 + (i % 4)) })) });
+    const sw = sim.switchState(yard.root);
+    Object.assign(sw, { moving: true, until: Infinity });
+    while (!sim.bodies.some((b) => b.derailed)) sim.step();
+    sw.until = sim.t;
+    return sim;
+  };
+  const atEnd = (b) => !yard.segment(b.route.at(-1)).children.length && b.s >= yard.segment(b.route.at(-1)).s1 - 1e-9;
+  const sim = derail();
+  sim.run({ until_s: sim.t + 600 });
+  assert.ok(sim.pushing?.blocked, "the train stands behind the cuts held up to the crest");
+  const d = sim.bodies.find((b) => b.derailed);
+  assert.ok(sim.bodies.filter((b) => b.held && !b.derailed).length >= 2, "cuts held behind the derailed one");
+  assert.equal(sim.rerail(sim.bodies.find((b) => !b.derailed).id), false, "only a derailed cut is taken away");
+  assert.equal(sim.rerail(d.id), true);
+  assert.deepEqual([sim.log.at(-1).type, sim.log.at(-1).cut, d.state, sim.bodies.includes(d)], ["cut.rerailed", d.id, "departed", false]);
+  assert.ok(sim.bodies.every((b) => !b.held || atEnd(b)), "nothing held but at the end of a track");
+  const r = sim.run();
+  assert.deepEqual([r.trains, r.waiting, r.limit_reached, r.derailed], [1, 0, false, 1], "humped to its end; the derailed cut still counted");
+  assert.ok(r.perCut.filter((c) => !c.derailed).every((c) => c.ended), "every other cut in a track");
+  // by itself, once it has stood rerail_s
+  const auto = derail({ rerail_s: 120 });
+  const ra = auto.run();
+  const off = auto.log.find((e) => e.type === "cut.derailed"), on = auto.log.find((e) => e.type === "cut.rerailed");
+  assert.ok(on && on.cut === off.cut, "taken away by itself");
+  near(on.t - off.t, 120, 0.2, "after standing 120 s");
+  assert.deepEqual([ra.trains, ra.waiting, ra.derailed], [1, 0, 1]);
+  // a track pulled out: the cuts that stood held against its wagons, wholly in front of it, stand free again
+  const small = standardYard({ tracks: 2, track_m: 60 });
+  const full = new HumpSimulation(small, { seed: 1, dt: 0.1 });
+  full.hump({ id: "S", wagons: Array.from({ length: 12 }, (_, i) => ({ type: "eanos", loaded: 1, track: String(1 + (i % 2)) })) });
+  full.run();
+  const one = small.trackSegment("1");
+  const before = full.bodies.filter((b) => b.track === "1" && b.s < one.track.s0);
+  assert.ok(before.length >= 1 && before.every((b) => b.held), "held in front of track 1");
+  const out = full.pullOut("1");
+  assert.ok(before.every((b) => !out.cuts.includes(b.id) && !b.held), "not pulled out, no longer held");
+  assert.ok(full.bodies.filter((b) => b.track === "2").every((b) => b.held), "track 2 as it was");
+});
