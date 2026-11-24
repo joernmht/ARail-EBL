@@ -540,6 +540,25 @@ def test_compose_check_finds_a_shot_longer_than_its_plan_renders_before_anything
     assert "too-long" in err and "fits" not in err and not (tmp_path / "build").exists()
 
 
+def test_compose_check_finds_two_plans_that_render_into_the_same_shot(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    plans = tmp_path / "tools" / "video" / "plans"
+    plans.mkdir(parents=True)
+    # a copy that is never rendered, sorted before the real one: which of them made the frames is not known
+    (plans / "a-copy.json").write_text(json.dumps({"out": "build/video/x", "frames": 300}))
+    (plans / "x.json").write_text(json.dumps({"out": "build/video/x", "frames": 100}))
+    (plans / "y.json").write_text(json.dumps({"out": "build/video/y", "frames": 100}))
+    where = lambda *p: os.path.join("tools", "video", "plans", *p)  # noqa: E731
+    assert cp.rendered()["build/video/x"] == (300, where("a-copy.json"), True)
+    assert [p for _, p, _ in cp.renderers()["build/video/x"]] == [where("a-copy.json"), where("x.json")]
+    shot = lambda frames, count: {"frames": frames, "count": count, "crop": [0, 0, 1, 1]}  # noqa: E731
+    plan = {"parts": [{**shot("build/video/x", 200), "name": "town"}, {**shot("build/video/y", 50), "name": "fine"}]}
+    assert cp.check_frames(plan) == [
+        f"town: {where('a-copy.json')} and {where('x.json')} all render build/video/x; which of them made its frames "
+        "is not known"
+    ]
+
+
 def test_compose_check_passes_the_plans_of_the_project_page_s_videos():
     for name in ("hero", "terminal-card", "story-template"):
         with open(os.path.join(cp.ROOT, "tools", "video", "plans", f"{name}.json"), encoding="utf-8") as f:

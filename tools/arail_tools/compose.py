@@ -40,9 +40,9 @@ video, ``clip`` in place of ``frames``)::
 and tint, no lines, no sound, no fades into the shots beside it), to combine them again later.
 
 ``--check`` only checks the plan, before anything is rendered: every shot within the frames its plan in
-``tools/video/plans`` renders (``first`` + ``count``; a screen recording at the least its steps' times), every
-clip long enough (``tools/video/page-videos.sh`` runs it first, so a shot too long fails at once, not after
-an hour of rendering).
+``tools/video/plans`` renders (``first`` + ``count``; a screen recording at the least its steps' times), no
+shot's frames rendered by two plans, every clip long enough (``tools/video/page-videos.sh`` runs it first, so a
+shot too long fails at once, not after an hour of rendering).
 
 Paths are relative to the repository.
 
@@ -380,7 +380,14 @@ def recorded_frames(plan: dict) -> int:
 def rendered(plans_dir: str | None = None) -> dict[str, tuple[int, str, bool]]:
     """What the shot plans in `plans_dir` (default tools/video/plans) and its folders render, by their `out`
     directory: (frames, the plan's path, exact). A plan of render.mjs writes exactly its `frames` (none with
-    `images: false`); a recording of screen.mjs at least `recorded_frames`."""
+    `images: false`); a recording of screen.mjs at least `recorded_frames`. Of plans that share an `out`, the
+    first in sorted order (`renderers` has them all)."""
+    return {k: v[0] for k, v in renderers(plans_dir).items()}
+
+
+def renderers(plans_dir: str | None = None) -> dict[str, list[tuple[int, str, bool]]]:
+    """As `rendered`, with every plan that renders into an `out` directory, in sorted order: more than one,
+    and which of them made the frames there is not known."""
     plans_dir = plans_dir or os.path.join(ROOT, "tools", "video", "plans")
     out = {}
     for base, _, files in sorted(os.walk(plans_dir)):
@@ -396,29 +403,36 @@ def rendered(plans_dir: str | None = None) -> dict[str, tuple[int, str, bool]]:
                 n, exact = recorded_frames(p), False
             else:
                 n, exact = int(p.get("frames", 0)), True
-            out.setdefault(os.path.normpath(p["out"]), (n, os.path.relpath(path, ROOT), exact))
+            out.setdefault(os.path.normpath(p["out"]), []).append((n, os.path.relpath(path, ROOT), exact))
     return out
 
 
 def check_frames(plan: dict, plans_dir: str | None = None) -> list[str]:
     """Before anything is rendered: is every shot of a plan within the frames its shot plan (in `plans_dir`,
-    default tools/video/plans) renders (`first` + `count`), and is every clip long enough? Returns the
+    default tools/video/plans) renders (`first` + `count`), and is every clip long enough? A shot's frames
+    that two plans render into are a problem too: which of them made the frames is not known. Returns the
     problems, one line each (none: fine)."""
     import cv2
 
     plans_dir = plans_dir or os.path.join(ROOT, "tools", "video", "plans")
-    shots_of = rendered(plans_dir)
+    shots_of = renderers(plans_dir)
     problems = []
     for k, spec in enumerate(plan.get("parts", [])):
         name = spec.get("name") or spec.get("frames") or spec.get("clip") or f"part {k + 1}"
         first, count = int(spec.get("first", 0)), int(spec.get("count", 0))
         need = first + count
         if spec.get("frames"):
-            src = shots_of.get(os.path.normpath(spec["frames"]))
-            if src is None:
+            srcs = shots_of.get(os.path.normpath(spec["frames"]))
+            if not srcs:
                 problems.append(f"{name}: no plan in {os.path.relpath(plans_dir, ROOT)} renders {spec['frames']}")
                 continue
-            n, path, exact = src
+            if len(srcs) > 1:
+                paths = " and ".join(path for _, path, _ in srcs)
+                problems.append(
+                    f"{name}: {paths} all render {spec['frames']}; which of them made its frames is not known"
+                )
+                continue
+            n, path, exact = srcs[0]
             if need > n:
                 renders = f"renders {n}" if exact else f"is sure to record only {n} (its steps' times)"
                 problems.append(f"{name}: frames {first} to {need - 1} of {spec['frames']}, but {path} {renders}")

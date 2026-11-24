@@ -229,8 +229,8 @@ text, when and how long; the PNGs of `typewriter.mjs` in the plan's `overlay` ar
 sounds (`sounds`, mixed into an AAC track with the plan's `typing` under each line). `--shots
 <dir>` writes each shot on its own; `--cues <file>` only the lines' cues; `--check` only checks,
 before anything is rendered, that every shot lies within the frames its plan in `tools/video/plans`
-renders (`first` + `count`; a page's recording at the least its steps' times) and every clip is
-long enough.
+renders (`first` + `count`; a page's recording at the least its steps' times), that no two plans
+render into the same shot's frames, and that every clip is long enough.
 
 For the town video:
 
