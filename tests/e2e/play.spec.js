@@ -1097,6 +1097,14 @@ test("the stage's windows: the panel and the timetable are moved and sized with 
   const first = LINE[0], errors = await start(page, `${PAGE}?mission=${first.id}`);
   const seat = `#seat-${first.roles[0].role}`, panel = page.locator(`${seat} .play-sketch`), sheet = page.locator(`${seat} .play-sheet`);
   await expect(sheet).toBeVisible();
+  // only the picture (H): the windows go with the rest of the game's interface, and come back with it
+  await page.keyboard.press("h");
+  await expect(page.locator("body")).toHaveClass(cls("bare"));
+  await expect(sheet).toBeHidden();
+  await expect(panel).toBeHidden();
+  await page.keyboard.press("h");
+  await expect(sheet).toBeVisible();
+  await expect(panel).toBeVisible();
   const box = async (loc) => loc.boundingBox();
   // the panel's handle with the arrow keys: up, out of the way of the stage's foot
   await page.getByRole("button", { name: "Move the panel" }).focus();
