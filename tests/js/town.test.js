@@ -156,6 +156,37 @@ test("town: the occupancy of a building is the people inside, also after the clo
   check("set to 10:00");
 });
 
+test("town: a step put into a plan is the one due next, though the step due before was kept (_insertStep)", () => {
+  const world = townWorld();
+  world.step(0.1);
+  const t = town(world), now = world.clock.minutes;
+  const a = t.agents.find((x) => x.state === "inside" && x.plan[x.next]?.at > now + 60 && !x.plan[x.next].byTrain);
+  assert.ok(a, "somebody at home who leaves later");
+  world.step(0.1);
+  assert.equal(a._dueFor, a.plan, "its next step kept (_due)");
+  // (the shops are closed at 05:00: to the place of its next step, now)
+  const later = a.plan[a.next], now2 = { ...later, at: now };
+  t._insertStep(a, now2);
+  assert.deepEqual([a.plan[a.next], a.plan[a.next + 1]], [now2, later]);
+  world.step(0.1);
+  assert.notEqual(a.state, "inside", "it left for the step put in");
+  assert.equal(a.plan[a.next], later, "the step due before is next again");
+});
+
+test("town: everybody walking is among the pedestrians, in the order of the agents (zebra crossings and riders see them all)", () => {
+  const world = townWorld();
+  const t = town(world);
+  let seen = 0, checks = 0;
+  while (world.clock.minutes < 8 * 60) {
+    for (let i = 0; i < 25; i++) world.step(0.1);
+    const walking = t.agents.filter((a) => a.state === "walking");
+    assert.deepEqual(t._walking(), walking, `at ${world.clock.minutes.toFixed(1)} min`);
+    seen += walking.length;
+    checks++;
+  }
+  assert.ok(seen > checks, `people walked (${seen} over ${checks} checks)`);
+});
+
 test("town: works without platforms, schools or shops", () => {
   const world = townWorld({
     objects: [

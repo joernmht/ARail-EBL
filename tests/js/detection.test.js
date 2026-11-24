@@ -165,7 +165,8 @@ test("a worker that fails, or never answers a frame, does not stop the search", 
   assert.equal(vd.wanted(), false);
   now += 3500;
   assert.equal(vd.wanted(), true, "a frame lost in the worker is given up");
-  w.reply({ type: "error", id: 1, message: "broken" });
+  // its script failed
+  w.onerror({ preventDefault() {} });
   assert.equal(vd.state, "failed");
   assert.ok(w.terminated);
   assert.ok(vd.search(src, SIZE, det, image), "searched here from now on");
@@ -176,6 +177,63 @@ test("a worker that fails, or never answers a frame, does not stop the search", 
   const other = new VideoDetection();
   other.start(det);
   assert.equal(other.state, "failed");
+});
+
+test("a frame the worker cannot search is skipped; setting it up that fails is asked once more, then it is given up", () => {
+  setup();
+  now = 0;
+  const vd = new VideoDetection(), det = detector("ARUCO"), src = source("camera");
+  vd.start(det);
+  const w = FakeWorker.last;
+  // a script of a dictionary not loaded (the network): once more
+  w.reply({ type: "error", of: "init", message: "dictionaries/aruco.js: 503" });
+  assert.equal(vd.state, "starting");
+  assert.deepEqual(w.sent.map((m) => m.type), ["init", "init"]);
+  assert.deepEqual(w.sent[1], w.sent[0]);
+  w.reply({ type: "ready" });
+  assert.equal(vd.state, "ready");
+  // a frame that failed: skipped, the next one goes to the worker
+  vd.search(src, SIZE, det, image);
+  w.reply({ type: "error", of: "frame", id: w.sent.at(-1).id, message: "broken" });
+  assert.equal(vd.state, "ready");
+  assert.ok(!w.terminated);
+  assert.equal(vd.wanted(), true, "the next frame, without waiting for the lost one");
+  assert.equal(vd.search(src, SIZE, det, image), null, "in the worker");
+  w.answer({ 5: [] });
+  assert.deepEqual(Object.keys(vd.take(src, det).markers), ["5"]);
+  // set up anew (another dictionary), and failed once: asked once more with the settings of now
+  det.setDictionary("ARUCO_4X4_1000");
+  vd.search(src, SIZE, det, image);
+  w.reply({ type: "error", of: "init", message: "dictionaries/aruco_4x4_1000.js: 503" });
+  assert.deepEqual([w.sent.at(-1).type, w.sent.at(-1).dictionary], ["init", "ARUCO_4X4_1000"]);
+  w.reply({ type: "ready" });
+  // the next failure of setting it up is asked again once, too; the second time it is given up
+  det.setDictionary("ARUCO_5X5_1000");
+  vd.search(src, SIZE, det, image);
+  w.reply({ type: "error", of: "init", message: "503" });
+  assert.equal(vd.state, "ready");
+  w.reply({ type: "error", of: "init", message: "503" });
+  assert.equal(vd.state, "failed");
+  assert.ok(w.terminated);
+  assert.ok(vd.search(src, SIZE, det, image), "searched here from now on");
+  // a worker whose frames all fail is given up after five in a row
+  const again = new VideoDetection();
+  again.start(det);
+  const v = FakeWorker.last;
+  v.reply({ type: "ready" });
+  for (let i = 0; i < 4; i++) {
+    again.search(src, SIZE, det, image);
+    v.reply({ type: "error", of: "frame", id: v.sent.at(-1).id, message: "broken" });
+  }
+  assert.equal(again.state, "ready");
+  again.search(src, SIZE, det, image);
+  v.answer({});
+  again.take(src, det);
+  for (let i = 0; i < 5; i++) {
+    again.search(src, SIZE, det, image);
+    v.reply({ type: "error", of: "frame", id: v.sent.at(-1).id, message: "broken" });
+  }
+  assert.equal(again.state, "failed", "five in a row");
 });
 
 test("with bitmaps the frame goes to the worker unread, and comes back as the picture shown", async () => {
