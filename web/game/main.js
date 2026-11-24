@@ -85,7 +85,7 @@ const PAGE = {
   examples: [
     { id: "lab", label: "The lab with its games (Beta 0.1)", layout: LAB },
     { id: "terminal", label: "Container terminal (virtual)", layout: "../layouts/container-terminal.json", home: LAB },
-    { id: "neustadt", label: "Bf Neustadt and its terminal", layout: NEUSTADT, layers: ["terminal"] },
+    { id: "neustadt", label: "Bf Neustadt and its terminal", layout: NEUSTADT, switchOn: ["terminal"] },
     { id: "crane-terminal", label: "Terminal at the crane", layout: NEUSTADT, image: "../media/ebl-terminal.jpg", tab: "terminal", layers: ["terminal"] },
     { id: "container-train", label: "Hybrid container train", layout: TRAIN, tab: "terminal", layers: [] },
   ],
