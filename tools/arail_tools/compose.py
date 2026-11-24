@@ -39,6 +39,11 @@ video, ``clip`` in place of ``frames``)::
 ``--shots DIR`` writes each shot as a video of its own (``01-town.mp4`` …: its crop, its bare picture
 and tint, no lines, no sound, no fades into the shots beside it), to combine them again later.
 
+``--check`` only checks the plan, before anything is rendered: every shot within the frames its plan in
+``tools/video/plans`` renders (``first`` + ``count``; a screen recording at the least its steps' times), every
+clip long enough (``tools/video/page-videos.sh`` runs it first, so a shot too long fails at once, not after
+an hour of rendering).
+
 Paths are relative to the repository.
 
     arail-compose tools/video/plans/hero.json
@@ -335,9 +340,101 @@ def soundtrack(plan: dict, out: str) -> int:
     tmp = out + ".tmp.mp4"
     cmd += ["-filter_complex", ";".join(graph), "-map", "0:v", "-map", "[mix]", "-c:v", "copy"]
     cmd += ["-c:a", "aac", "-b:a", str(plan.get("audio_bitrate", "112k")), "-movflags", "+faststart", tmp]
-    subprocess.run(cmd, check=True)
-    os.replace(tmp, out)
+    try:
+        subprocess.run(cmd, check=True)
+        os.replace(tmp, out)
+    finally:
+        # (a failed mix leaves no half-written file beside the video)
+        if os.path.exists(tmp):
+            os.remove(tmp)
     return len(sounds)
+
+
+# what the steps of a recording (tools/video/screen.mjs) take at the least (ms): the cursor's glide and the
+# press of a click, a key typed, a scroll
+GLIDE_MS, CLICK_MS, TYPE_MS, SCROLL_MS = 600, 90, 60, 800
+
+
+def recorded_frames(plan: dict) -> int:
+    """The frames a recording of screen.mjs writes at the least: its `animate` steps' frames, or its steps' times
+    from its `record` step on at its frame rate (a slower computer takes longer and records more)."""
+    fps = int(plan.get("fps", 30))
+    steps = plan.get("steps", [])
+    if any(s.get("animate") for s in steps):
+        return sum(round(s["animate"] * fps) for s in steps if s.get("animate"))
+    ms, recording = 0.0, False
+    for s in steps:
+        recording = recording or bool(s.get("record"))
+        if not recording:
+            continue
+        if s.get("move") or s.get("hover") or s.get("click"):
+            ms += s.get("ms", GLIDE_MS) + (CLICK_MS if s.get("click") else 0)
+        elif s.get("type"):
+            ms += len(s["type"]) * s.get("ms", TYPE_MS)
+        elif s.get("scroll"):
+            ms += s.get("ms", SCROLL_MS)
+        ms += s.get("wait", 0)
+    return int(ms * fps / 1000)
+
+
+def rendered(plans_dir: str | None = None) -> dict[str, tuple[int, str, bool]]:
+    """What the shot plans in `plans_dir` (default tools/video/plans) and its folders render, by their `out`
+    directory: (frames, the plan's path, exact). A plan of render.mjs writes exactly its `frames` (none with
+    `images: false`); a recording of screen.mjs at least `recorded_frames`."""
+    plans_dir = plans_dir or os.path.join(ROOT, "tools", "video", "plans")
+    out = {}
+    for base, _, files in sorted(os.walk(plans_dir)):
+        for name in sorted(files):
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(base, name)
+            with open(path, encoding="utf-8") as f:
+                p = json.load(f)
+            if not p.get("out") or "parts" in p or p.get("images") is False:
+                continue
+            if "steps" in p:
+                n, exact = recorded_frames(p), False
+            else:
+                n, exact = int(p.get("frames", 0)), True
+            out.setdefault(os.path.normpath(p["out"]), (n, os.path.relpath(path, ROOT), exact))
+    return out
+
+
+def check_frames(plan: dict, plans_dir: str | None = None) -> list[str]:
+    """Before anything is rendered: is every shot of a plan within the frames its shot plan (in `plans_dir`,
+    default tools/video/plans) renders (`first` + `count`), and is every clip long enough? Returns the
+    problems, one line each (none: fine)."""
+    import cv2
+
+    plans_dir = plans_dir or os.path.join(ROOT, "tools", "video", "plans")
+    shots_of = rendered(plans_dir)
+    problems = []
+    for k, spec in enumerate(plan.get("parts", [])):
+        name = spec.get("name") or spec.get("frames") or spec.get("clip") or f"part {k + 1}"
+        first, count = int(spec.get("first", 0)), int(spec.get("count", 0))
+        need = first + count
+        if spec.get("frames"):
+            src = shots_of.get(os.path.normpath(spec["frames"]))
+            if src is None:
+                problems.append(f"{name}: no plan in {os.path.relpath(plans_dir, ROOT)} renders {spec['frames']}")
+                continue
+            n, path, exact = src
+            if need > n:
+                renders = f"renders {n}" if exact else f"is sure to record only {n} (its steps' times)"
+                problems.append(f"{name}: frames {first} to {need - 1} of {spec['frames']}, but {path} {renders}")
+        elif spec.get("clip"):
+            clip = os.path.join(ROOT, spec["clip"])
+            if not os.path.exists(clip):
+                # (the clips of build/ are cut by the scripts before they are used)
+                if not os.path.normpath(spec["clip"]).startswith("build" + os.sep):
+                    problems.append(f"{name}: {spec['clip']} is missing")
+                continue
+            cap = cv2.VideoCapture(clip)
+            n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if cap.isOpened() else 0
+            cap.release()
+            if need > n:
+                problems.append(f"{name}: frames {first} to {need - 1} of {spec['clip']}, but it has {n}")
+    return problems
 
 
 def shots(plan: dict, out_dir: str, crf: int = 20, log=print) -> list[str]:
@@ -373,6 +470,12 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-encode", action="store_true", help="only the frames")
     ap.add_argument("--cues", metavar="FILE", help="only write the lines to write over the video (JSON) to FILE")
     ap.add_argument("--shots", metavar="DIR", help="only write each shot as a video of its own to DIR")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="only check, before anything is rendered, that every shot is within the frames its plan in "
+        "tools/video/plans renders",
+    )
     return ap
 
 
@@ -380,6 +483,14 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     with open(args.plan, encoding="utf-8") as f:
         plan = json.load(f)
+    if args.check:
+        problems = check_frames(plan)
+        for p in problems:
+            print(f"arail-compose: {args.plan}: {p}", file=sys.stderr)
+        if problems:
+            return 1
+        print(f"{args.plan}: every shot within the frames its plan renders")
+        return 0
     if args.cues:
         try:
             frames, lines = schedule(plan)[1], cues(plan)

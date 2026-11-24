@@ -13,7 +13,13 @@ shots=""
 [ -z "$2" ] || shots=$(abs "$2")
 cd "$(dirname "$0")/../.."
 name=$(basename "$plan" .json)
+# the directory the lines are typed into, which arail-compose lays over the video: the plan must name it
+overlay=$(python3 -c "
+import json, sys
+o = json.load(open(sys.argv[1], encoding='utf-8')).get('overlay')
+print(o) if o else sys.exit(sys.argv[1] + ': no \"overlay\": the directory the lines are typed into, e.g. \"build/video/' + sys.argv[2] + '-text\"')
+" "$plan" "$name")
 arail-compose "$plan" --cues "build/video/$name-cues.json"
-node tools/video/typewriter.mjs "build/video/$name-cues.json" "$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['overlay'])" "$plan")"
+node tools/video/typewriter.mjs "build/video/$name-cues.json" "$overlay"
 arail-compose "$plan"
 [ -z "$shots" ] || arail-compose "$plan" --shots "$shots"

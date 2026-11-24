@@ -7,6 +7,10 @@ set -e
 cd "$(dirname "$0")/../.."
 render() { node tools/video/render.mjs "tools/video/plans/$1.json"; }
 
+# first, every shot of both videos within the frames its plan renders: a shot too long fails here, not
+# after an hour of rendering
+for p in hero terminal-card; do arail-compose "tools/video/plans/$p.json" --check; done
+
 # the clips of the station and the container train at 1280 px (the browser of the render loads the
 # whole clip; at full size the station clip is too large for it), the station's clip in two parts
 mkdir -p build/video/clips
