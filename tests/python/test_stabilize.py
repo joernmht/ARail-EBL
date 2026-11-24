@@ -470,3 +470,87 @@ def test_compose_encodes_with_a_poster(tmp_path, monkeypatch):
     (tmp_path / "plan.json").write_text(json.dumps(plan))
     assert cp.main([str(tmp_path / "plan.json"), "--frames", str(tmp_path / "frames")]) == 0
     assert (tmp_path / "v.mp4").stat().st_size > 0 and (tmp_path / "v.jpg").exists()
+
+
+def test_compose_mixing_the_sounds_leaves_no_half_written_file_when_ffmpeg_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    frames_dir(tmp_path / "a", 6, (0, 0, 200))
+    plan = {
+        "size": [100, 50],
+        "parts": [{"frames": "a", "count": 6, "crop": [0, 0, 200, 100], "sounds": [{"file": "t.wav", "dur": 0.4}]}],
+    }
+    video, tmp = tmp_path / "v.mp4", tmp_path / "v.mp4.tmp.mp4"
+    video.write_bytes(b"the video")
+
+    def fails(cmd, check):
+        with open(cmd[-1], "wb") as f:
+            f.write(b"half a video")
+        raise subprocess.CalledProcessError(1, cmd)
+
+    monkeypatch.setattr(cp.subprocess, "run", fails)
+    with pytest.raises(subprocess.CalledProcessError):
+        cp.soundtrack(plan, str(video))
+    assert not tmp.exists() and video.read_bytes() == b"the video", "the video as it was, nothing beside it"
+
+    def mixes(cmd, check):
+        with open(cmd[-1], "wb") as f:
+            f.write(b"the video with sound")
+
+    monkeypatch.setattr(cp.subprocess, "run", mixes)
+    assert cp.soundtrack(plan, str(video)) == 1
+    assert not tmp.exists() and video.read_bytes() == b"the video with sound"
+
+
+def test_compose_check_finds_a_shot_longer_than_its_plan_renders_before_anything_is_rendered(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(cp, "ROOT", str(tmp_path))
+    plans = tmp_path / "tools" / "video" / "plans"
+    (plans / "screens").mkdir(parents=True)
+    (plans / "x.json").write_text(json.dumps({"out": "build/video/x", "frames": 100}))
+    (plans / "pass1.json").write_text(json.dumps({"frames": 300, "images": False, "record": "build/video/raw.json"}))
+    # a recording: from its record step on 500 + (700 + a click's 90) + 1500 + a hover's 600 ms: 101 frames at the least
+    steps = [{"goto": "game/", "wait": 2500}, {"record": True, "wait": 500}, {"click": "#a", "ms": 700, "wait": 1500}]
+    (plans / "screens" / "s.json").write_text(json.dumps({"out": "build/video/s", "steps": [*steps, {"hover": "#b"}]}))
+    where = lambda *p: os.path.join("tools", "video", "plans", *p)  # noqa: E731
+    assert cp.rendered()["build/video/s"] == (101, where("screens", "s.json"), False)
+    shot = lambda frames, count, first=0: {"frames": frames, "first": first, "count": count, "crop": [0, 0, 1, 1]}  # noqa: E731
+    plan = {
+        "size": [100, 50],
+        "parts": [
+            {**shot("build/video/x", 90, 10), "name": "fits"},
+            {**shot("build/video/x", 90, 20), "name": "too-long"},
+            {**shot("build/video/s", 101), "name": "recorded"},
+            {**shot("build/video/s", 101, 1), "name": "recorded-too-long"},
+            {**shot("build/video/nowhere", 10), "name": "unknown"},
+            {"name": "lost-clip", "clip": "a.mp4", "count": 10, "crop": [0, 0, 1, 1]},
+            {"name": "cut-later", "clip": "build/video/clips/b.mp4", "count": 10, "crop": [0, 0, 1, 1]},
+        ],
+    }
+    assert cp.check_frames(plan) == [
+        f"too-long: frames 20 to 109 of build/video/x, but {where('x.json')} renders 100",
+        f"recorded-too-long: frames 1 to 101 of build/video/s, but {where('screens', 's.json')} is sure to record "
+        "only 101 (its steps' times)",
+        f"unknown: no plan in {where()} renders build/video/nowhere",
+        "lost-clip: a.mp4 is missing",
+    ]
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    assert cp.main([str(tmp_path / "plan.json"), "--check"]) == 1
+    err = capsys.readouterr().err
+    assert "too-long" in err and "fits" not in err and not (tmp_path / "build").exists()
+
+
+def test_compose_check_passes_the_plans_of_the_project_page_s_videos():
+    for name in ("hero", "terminal-card", "story-template"):
+        with open(os.path.join(cp.ROOT, "tools", "video", "plans", f"{name}.json"), encoding="utf-8") as f:
+            assert cp.check_frames(json.load(f)) == [], name
+
+
+def test_story_without_an_overlay_says_so_before_it_builds_anything(tmp_path):
+    plan = tmp_path / "short.json"
+    plan.write_text(json.dumps({"size": [1280, 720], "parts": []}))
+    p = subprocess.run(
+        ["sh", os.path.join(cp.ROOT, "tools", "video", "story.sh"), str(plan)], capture_output=True, text=True
+    )
+    assert p.returncode == 1 and 'no "overlay"' in p.stderr and "build/video/short-text" in p.stderr
+    assert "Traceback" not in p.stderr

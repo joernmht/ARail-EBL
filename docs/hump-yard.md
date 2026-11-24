@@ -59,8 +59,11 @@ way roll on into it. So train after train can be humped (`sim.departures` lists 
 `results().pushed_up_m` the room gained by pushing up). A train pulled out, by hand or by
 itself, takes the cuts standing in the track (`trackContents`), also one that stopped across its
 entrance, coupled to the last wagons with its rear still outside: it fills the track, which is then
-pulled out with it. A cut stopped wholly in front of the track stays there, and an empty track is
-never pulled out. `run()` stops at `max_s` (4 h) at the
+pulled out with it, and it ended in that track. A cut stopped across the entrance and pushed up
+wholly into the track stands in it (its stop moves with it): neither counts as stopped short any more.
+A cut stopped wholly in front of the track stays there, and an empty track is
+never pulled out. `run()` goes on until the trains are humped and nothing moves or would start
+again (a retarder still opening, a standing cut that gravity starts again); it stops at `max_s` (4 h) at the
 latest: `results()` then says `limit_reached`, with the trains humped (`trains`) and those not
 (`waiting`). Wagons without an id are numbered by their train (`T2.14`).
 
@@ -134,7 +137,8 @@ the yard is 6 m long and 0.36 m wide) and draws:
   **locomotive** pushing the train;
 - the track numbers behind the group retarders.
 
-Its card says how many trains it humped, its cuts per hour, misroutes, impacts too hard and trains
+It has a derailed cut taken away after five minutes (`rerail_s`), so that the yard does not stand
+still behind it. Its card says how many trains it humped, its cuts per hour, misroutes, impacts too hard and trains
 pulled out. Its settings (Build) are the yard's (tracks, their length, the push track, the design),
 the season, the pushing speed, the wagons per train and when a track is pulled out
 ([layout format](layout-format.md#hump-yard)); moving it keeps its run, other figures start it anew,
@@ -147,7 +151,7 @@ the same layout humps the same trains. It keeps the last 200 cuts gone, 10 train
 The app's example **Hump a train** (Examples, Railway undertaking and Freight; Settings → View →
 Examples → *hump yard*) makes you the hump master: the object humps one train of its own into empty
 tracks (`startTask`: its wagons from the world's seed, its id and the task's seed; nothing pulled out
-by itself), and you push it slower or faster (0.4 to 3 m/s in steps of 0.2), stop it before the crest
+or taken away by itself), and you push it slower or faster (0.4 to 3 m/s in steps of 0.2), stop it before the crest
 and push on (`setPush`). `taskState` says where every cut is, whether it went into the wrong track, met
 the wagons too hard or derailed; the task is done when every cut stands (or, the yard backed up to the
 crest, when the train is blocked and the cuts released stand), and its time stops then. A cut chosen in the list or tapped on
@@ -178,7 +182,8 @@ drives it from outside:
 
 Both are instant in the simulation, like pushing up and pulling out; the game gives them their
 time (the locomotive is busy, and no train is pushed meanwhile). Neither puts a cut into a track
-without room for it, or into one a cut still rolls in. The game reads what the simulation notes
+without room for it, or into one a cut still rolls towards (in it, or through the switches on its
+way there: the wagons would stand at the entrance as it arrives). The game reads what the simulation notes
 (`log`: a cut in the wrong track, an impact too hard, a cut stopped, the yard backed up to the
 crest) and makes of it what the people of the yard say.
 
@@ -229,7 +234,12 @@ is counted to show that.
 
 **A yard backed up to the crest.** When the cuts stand back from a full track or a derailed cut up to
 the crest, a cut held there cannot be pushed on: the train stops behind it (`train.blocked`, noted
-once) and releases nothing more; its cuts stay on the hump.
+once) and releases nothing more; its cuts stay on the hump. A cut is held only at the end of its
+track, derailed, or standing against a row of cuts that is held: once the wagons it stood against
+have moved or left (pushed up, pulled out), it stands free again and rolls on where gravity starts
+it, and the train pushes on. A derailed cut stays until it is taken away: `rerail(id)` (noted
+`cut.rerailed`; the figures still count it), or by itself once it has stood `rerail_s` seconds
+(null by default: only by hand).
 
 **Retarders.** The control measures each cut's rolling resistance on the ramp, with an error (0.4
 N/kN), and when the cut enters a retarder computes the speed it needs at every metre (`HumpControl.need`):
@@ -239,7 +249,9 @@ N/kN), and when the cut enters a retarder computes the speed it needs at every m
 - the **group retarder** brings it to where it should meet the wagons in its track: the rear of the
   last one standing there, less the length of the cuts on their way there before it
   (`targetPoint`), at the coupling speed of 1.0 m/s (DB allows impacts up to 1.25 m/s), never slower
-  than that. If a cut is still rolling ahead of it in the track, both runs are predicted over time
+  than that. It is worked out when the cut enters the retarder, and again if the wagons of its track
+  are pushed up or pulled out while it is in it: it aims at where they stand now, not at the rear of
+  wagons that have left. If a cut is still rolling ahead of it in the track, both runs are predicted over time
   and the exit speed is lowered until it would meet that one gently (`safeExit`): a gap to push up
   is better than a damaged wagon. Into a track with speed-holding units it lets a cut go at their
   speed, or faster where a bad runner needs it to get far enough, but never faster than meets a cut

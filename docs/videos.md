@@ -227,7 +227,10 @@ the web and a poster frame (`out`, `crf`, `poster`). The frames go to `build/vid
 A shot can also be tinted in one colour (`tint`, the blue of the end), carry lines (`say`: the
 text, when and how long; the PNGs of `typewriter.mjs` in the plan's `overlay` are laid over) and
 sounds (`sounds`, mixed into an AAC track with the plan's `typing` under each line). `--shots
-<dir>` writes each shot on its own; `--cues <file>` only the lines' cues.
+<dir>` writes each shot on its own; `--cues <file>` only the lines' cues; `--check` only checks,
+before anything is rendered, that every shot lies within the frames its plan in `tools/video/plans`
+renders (`first` + `count`; a page's recording at the least its steps' times) and every clip is
+long enough.
 
 For the town video:
 
@@ -239,7 +242,8 @@ node tools/video/render.mjs tools/video/plans/town-pass2.json
 ```
 
 `tools/video/page-videos.sh` runs all shots (the town; the held frames of the station, the container train and the truck; the terminal's photos; the photos of the photo map; the bikes; the game pages) and both compositions (`hero.json`, the project page's
-video, and `terminal-card.json`); it takes about an hour.
+video, and `terminal-card.json`); it takes about an hour. It checks both compositions first
+(`arail-compose --check`), so a shot longer than what its plan renders fails at once, not at the end.
 
 ## What could run live
 

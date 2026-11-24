@@ -54,6 +54,18 @@ export function rowsAt(cues, f, { fps, cps, box = BOX }) {
   return out;
 }
 
+/**
+ * The frames the box is drawn in: from the first line's start to the end of the video (`frames`; without
+ * it, the last line's end). Null without lines: there is nothing to draw.
+ * @param {{start: number, end: number}[]} cues the lines (frames)
+ * @param {number} [frames] the video's frames
+ * @returns {{first: number, last: number} | null} the first frame drawn, and the one after the last
+ */
+export function boxFrames(cues, frames) {
+  if (!cues?.length) return null;
+  return { first: Math.min(...cues.map((c) => c.start)), last: frames ?? Math.max(...cues.map((c) => c.end)) };
+}
+
 /** The first line longer than the box, or null. */
 export const tooLong = (cues, box = BOX) => cues.find((c) => c.text.length > box.columns) ?? null;
 
