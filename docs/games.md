@@ -289,7 +289,8 @@ same moves, so the score, the stars and a saved session are the same.
 
 **T** (or *Play on the table*, behind the side bar's button) switches the table off and on; the
 choice is kept in the browser. Whether the table's markers are in view, and why a camera cannot be
-used, is said in the line at the top. The table is there wherever the live picture runs (not in a narrow window, where less
+used, is said in the line at the top (where the markers cannot be searched in the browser, choosing
+the photo or the camera again tries once more). The table is there wherever the live picture runs (not in a narrow window, where less
 motion is asked for, or where the device is too slow: there the panel is the picture, as before).
 
 **How the station lies on the table.** `TABLE` in `web/game/table.js` gives every section of the
@@ -479,7 +480,9 @@ new game gets on the table with a board of its own (`show`, `draw`, `hit`, `plac
 station are off, the board (`TableBoard`, one of the world's simulations) is the planner of the
 platform tracks, and the world runs at the game's speed. A train of the game that stands at a
 platform is told to the world's services as a control system's train is (`feedArrived`, with a
-vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. The
+vehicle of its own, `TABLE_TRAIN`, that says where its doors are): the people get on there. A
+train of the world's own timetable still standing there from before the table was taken gives the
+platform to the game's train (`ServiceManager.free`). The
 level crossing of Brückenstraße, on the line to Talsee, closes for the game's trains (from 250 m
 before a train reaches it until its end has passed; a freight train held at signal F stands across
 it) and no longer by the clock: the town's cars wait at its barriers (`TableBoard.trainsNear`,
@@ -490,7 +493,7 @@ board leaves the world, and the backdrop gets its modules and its own timetable 
 The code: `web/game/table.js` (the station on the layout, the board: drawing, what is clicked, the
 world's services; Node tests in `tests/js/game-table.test.js`), `web/game/live.js` (the table's
 camera, the table's photo, the lab's photo and the device's camera with the markers found in a
-worker), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
+worker, which goes when the table is seen from above again or left), the play page (`tablePick`, `setSource`; browser tests in `tests/e2e/table.spec.js`).
 
 ## How a game looks
 
@@ -513,7 +516,8 @@ and for the heads of the other pages of the games:
     seat's tools (its moves, its desk, handing it to the computer), where you work, the messages
     (a bell that counts the new ones), what the roles gave each other, the sound, the live
     picture, only the picture, and the way back to the line. A click does what an icon says, or
-    opens what is behind it beside the rail; the icon's name is its tooltip.
+    opens what is behind it beside the rail (Escape, a click elsewhere, or the focus leaving the
+    rail closes it again); the icon's name is its tooltip.
   - **The band at the bottom**, as a visual novel has it, there while somebody speaks or asks. It
     lets the picture through (the board's colour at 76 %, its text a little lighter, so it stays
     readable whatever the picture shows). A text longer than the band scrolls in the band.
@@ -521,14 +525,17 @@ and for the heads of the other pages of the games:
   **No information stands in a box on the picture.** It is in the line at the top or at the side,
   in the rail; the band at the bottom is only for who speaks. A new message comes into the line
   at the top, below the figures, one at a time (a newer one takes its place, and it goes by
-  itself); all of them are under the bell, each on its own card with its time, the new ones
-  marked. Something in the game's picture that a figure is about, or that needs attention, is not
+  itself or when another seat is shown; one longer than the line is cut off, and its tooltip has
+  all of it); all of them are under the bell, each on its own card with its time, the new ones
+  marked (a session taken up again starts with none new). Something in the game's picture that a figure is about, or that needs attention, is not
   written out: it **pulses** in its colour (red for a problem, orange for a worry: the failed
   signal, a fault where a danger is not guarded), and a click on it says what is known of it. The
   pictures themselves carry no labels either: the live picture draws none (`View` with `labels:
   false`), and the still ones are taken without them and without the marker plates (signs that
   are part of the world, such as a station's name board, stay). `tests/e2e/play.spec.js` and
-  `tests/js/game-shots.test.js` check this. **H** leaves only the picture.
+  `tests/js/game-shots.test.js` check this (of the game's own picture, only what it draws itself
+  may hold text: its heading, the names on its shapes, what is chosen in it; `tests/e2e/picture.js`).
+  **H** leaves only the picture.
 - **A place for every game, a picture for every topic.** Every game has a **place** on the lab's
   layout (`web/game/places.js`: the signal box of Bf Neustadt, the line, the district, the trains,
   the station from the dispatcher's desk, the lab, the terminal, the station forecourt, the town,

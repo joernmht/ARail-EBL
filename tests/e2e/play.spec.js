@@ -346,6 +346,18 @@ test("a mission is chosen and started: its stop, its seats, the briefing and the
   await page.keyboard.press("Escape");
   await expect(page.locator("#missionPanel")).toBeHidden();
   await expect(page.locator("#missionBtn")).toBeFocused();
+  // opened with the keyboard, it stays open while the focus moves within the rail, and closes once it leaves the rail
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#missionPanel")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.locator("#leave")).toBeFocused();
+  await expect(page.locator("#missionPanel")).toBeVisible();
+  const inRail = () => page.evaluate(() => !!document.activeElement?.closest("#rail"));
+  for (let i = 0; i < 40 && (await inRail()); i++) await page.keyboard.press("Shift+Tab");
+  expect(await inRail()).toBe(false);
+  await expect(page.locator("#missionPanel")).toBeHidden();
+  await expect(page.locator("#missionBtn")).toHaveAttribute("aria-expanded", "false");
+  expect(await inRail()).toBe(false);
   expect(await page.evaluate((title) => [...document.querySelectorAll("#play *")].filter((el) => !el.closest("#chapter, .visually-hidden") && el.checkVisibility?.() && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.includes(title))).length, "A morning at Bf Neustadt")).toBe(0);
   await expect(page.locator("#placePanel .vn-where strong")).toHaveText(await page.evaluate(async () => (await import("/game/places.js")).placeOfGame("signaller").name));
   await expect(part(page, SIGNALLER, ".vn-gauges").locator("dt")).toContainText(["Trains through"]);
@@ -700,6 +712,9 @@ test("messages: one pops up at a time, a newer one takes its place and it goes b
   await say("Second of two.");
   await expect(toast(page)).toHaveText("Second of two.");
   await expect(page.locator(".play-toast")).toHaveCount(1);
+  // cut off where it is longer than the line: the whole of it is its tooltip (and its name, with what a click does)
+  await expect(toast(page)).toHaveAttribute("title", "Second of two.");
+  await expect(toast(page)).toHaveAccessibleName("Second of two. (all messages)");
   const fresh = await page.evaluate(() => window.__play.session.seat("signaller-relay").game.logs.length);
   await expect(badge).toHaveText(String(fresh));
   await expect(bell).toHaveAccessibleName(`Messages, ${fresh} new`);
@@ -742,6 +757,13 @@ test("messages: one pops up at a time, a newer one takes its place and it goes b
   await expect(toast(page)).toBeHidden();
   await page.locator("#tab-maintenance-dispatcher").click();
   await expect(toast(page)).toBeHidden();
+  await page.locator("#tab-signaller-relay").click();
+  // another seat shown: the message that popped up was this seat's, and goes with it
+  await say("Fifth.");
+  await expect(toast(page)).toHaveText("Fifth.");
+  await page.locator("#tab-maintenance-dispatcher").click();
+  // (at once, not when its time is up)
+  expect(await toast(page).isHidden()).toBe(true);
   await page.locator("#tab-signaller-relay").click();
   // a long shift: the game keeps only its newest messages, and what is new is still counted right
   await page.evaluate(() => {
@@ -1097,6 +1119,14 @@ test("the stage's windows: the panel and the timetable are moved and sized with 
   const first = LINE[0], errors = await start(page, `${PAGE}?mission=${first.id}`);
   const seat = `#seat-${first.roles[0].role}`, panel = page.locator(`${seat} .play-sketch`), sheet = page.locator(`${seat} .play-sheet`);
   await expect(sheet).toBeVisible();
+  // only the picture (H): the windows go with the rest of the game's interface, and come back with it
+  await page.keyboard.press("h");
+  await expect(page.locator("body")).toHaveClass(cls("bare"));
+  await expect(sheet).toBeHidden();
+  await expect(panel).toBeHidden();
+  await page.keyboard.press("h");
+  await expect(sheet).toBeVisible();
+  await expect(panel).toBeVisible();
   const box = async (loc) => loc.boundingBox();
   // the panel's handle with the arrow keys: up, out of the way of the stage's foot
   await page.getByRole("button", { name: "Move the panel" }).focus();
@@ -1774,6 +1804,18 @@ test("autosave and resume: after a reload the session goes on at the same time, 
   await expect(live(page)).toContainText("Paused.");
   await expect(tableOf(page, SIGNALLER, "Routes set").locator("tbody tr")).toContainText(["A → G2"]);
   expect(await page.evaluate(() => [window.__play.session.ticks, window.__play.session.record.length])).toEqual(at);
+  // what the games said up to there, played again from the record, is not new: nothing pops up, the bell counts nothing
+  await expect(toast(page)).toBeHidden();
+  await expect(page.locator("#bellBadge")).toBeHidden();
+  await expect(page.locator("#bellBtn")).toHaveAccessibleName("Messages");
+  // what is said after it is
+  await page.evaluate(() => {
+    const p = window.__play;
+    p.session.seat("signaller-relay").game.logs.push({ t: 0, kind: "info", text: "After the break." });
+    p.draw(true);
+  });
+  await expect(toast(page)).toHaveText("After the break.");
+  await expect(page.locator("#bellBadge")).toHaveText("1");
   // a new session replaces the save
   await page.getByRole("button", { name: "Other missions" }).click();
   await expect(page.locator("#setupTitle")).toHaveText("A morning at Bf Neustadt");
@@ -2439,6 +2481,17 @@ test("no information box on the picture: in every state of a mission, text is on
   await expect(page.locator(`${SIGNALLER} .play-board .pick.alert`).first()).toBeVisible();
   await page.locator(`${SIGNALLER} .play-board .pick.alert`).first().click();
   await check("an asset chosen in the game's picture");
+  // the game's own picture may hold only what it draws itself: a box added to the panel, or a callout drawn into its
+  // picture, is text in the picture
+  await page.locator(`${SIGNALLER} .play-sketch`).evaluate((el) => {
+    el.append(Object.assign(document.createElement("p"), { id: "box", textContent: "Signal N2 has failed." }));
+    const ns = "http://www.w3.org/2000/svg", callout = el.querySelector(".play-board svg").appendChild(document.createElementNS(ns, "g"));
+    callout.id = "callout";
+    callout.append(document.createElementNS(ns, "rect"), Object.assign(document.createElementNS(ns, "text"), { textContent: "Look here" }));
+    callout.lastChild.setAttribute("y", "40");
+  });
+  expect(await inPicture(page)).toEqual(["Look here (in text.)", "Signal N2 has failed. (in p#box.)"]);
+  await page.evaluate(() => ["#box", "#callout"].forEach((sel) => document.querySelector(sel).remove()));
   await page.locator("#bellBtn").click();
   await check("the messages at the side");
   await page.keyboard.press("Escape");
