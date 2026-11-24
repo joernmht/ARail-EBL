@@ -108,7 +108,7 @@ const DISPATCHER = "train-dispatcher";
 const holdKey = (train, other) => `${train}|${other ?? ""}`;
 
 /** The platform tracks by their name. */
-const TRACKS =Object.fromEntries(Object.entries(STATION.sections).filter(([, s]) => s.track).map(([id, s]) => [s.track, id]));
+const TRACKS = Object.fromEntries(Object.entries(STATION.sections).filter(([, s]) => s.track).map(([id, s]) => [s.track, id]));
 
 /** Kinds of trains: length (m), top speed (m/s), weight in the punctuality score. */
 export const KINDS = {

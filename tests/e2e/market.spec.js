@@ -101,5 +101,11 @@ test("Bf Neustadt: an example brings back no module switched off by hand; a choi
   // left for S-Bahn: the market comes with it
   await page.evaluate(() => window.__arail.toggleModule("sbahn"));
   await expect.poll(on).toEqual(["sbahn", "striezelmarkt", "market-visitors"]);
+  // the Plan (an exclusive module) chosen last, then Examples → Hump yard: the hump yard beside the town's own
+  // modules, not alone
+  await page.evaluate(() => window.__arail.setLayers(["plan"]));
+  await expect.poll(on).toEqual(["plan"]);
+  await page.evaluate(() => window.__arail.openExample("hump"));
+  await expect.poll(on).toEqual(["sbahn", "waldhof", "striezelmarkt", "market-visitors", "hump"]);
   expect(errors).toEqual([]);
 });

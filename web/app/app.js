@@ -969,9 +969,13 @@ export class App {
     const absolute = new URL(url, location.href).href;
     const fileLayers = ARail.normalizeLayers(json.layers);
     // layers: as asked for, else as last time, else as the file has them; an example's modules switched on with them
+    // (beside the file's own modules when the choice before was an exclusive module, which is left for it)
     const saved = layers ? null : storage.get(this._layersKey(absolute));
     let asked = layers || (Array.isArray(saved) ? saved : null);
-    if (switchOn?.length) asked = ARail.switchOnLayers(fileLayers, asked ?? ARail.layersOn(json), switchOn);
+    if (switchOn?.length) {
+      const alone = asked && ARail.layerChoice(fileLayers, asked).some((id) => fileLayers.find((l) => l.id === id)?.exclusive);
+      asked = ARail.switchOnLayers(fileLayers, asked && !alone ? asked : ARail.layersOn(json), switchOn);
+    }
     // a module that is a layout of its own (asked for, or chosen last time): that layout, with this one as its home
     const wanted = ARail.layerChoice(fileLayers, asked || []);
     const own = fileLayers.find((l) => l.layout && wanted.includes(l.id));
