@@ -238,6 +238,9 @@ export function weatherProblems(config) {
     if (!Array.isArray(k) || parseTime(k[0]) == null || !k[1] || typeof k[1] !== "object") out.push(`weather.course[${i}] must be ["HH:MM", {…}]`);
   });
   if (config.mode === "off" && Array.isArray(config.course) && config.course.length) out.push('weather.course does nothing with mode "off" (leave the mode out: it lies over the typical weather)');
+  // where the ground starts: in any weather but none (set by hand also as quantities of their own)
+  const ground = [config, config.state].some((o) => o && typeof o === "object" && (o.wet != null || o.snow_cm != null));
+  if (config.mode === "off" && ground) out.push('weather.state: wet and snow_cm do nothing with mode "off" (without weather the ground is dry)');
   for (const o of [config.state, ...(Array.isArray(config.course) ? config.course.map((k) => k?.[1]) : [])]) {
     if (o && typeof o === "object" && o.precipitation != null && !KINDS.includes(o.precipitation)) out.push(`weather: precipitation "${o.precipitation}" must be one of ${KINDS.join(", ")}`);
   }
@@ -258,7 +261,7 @@ export class Weather {
     this.mode = c.mode;
     /** The preset of the fixed weather (a key of {@link WEATHER_PRESETS}), or null. */
     this.preset = c.preset;
-    // where the ground starts (wet, snow_cm) is applied once, by settle(); the rest is the air's
+    // where the ground starts (wet, snow_cm; in any mode but off) is applied once, by settle(); the rest is the air's
     const { wet, snow_cm, ...air } = c.state;
     /** Quantities of the air set one by one on top of the preset. */
     this.state = air;
@@ -380,7 +383,9 @@ export class Weather {
    * through in steps of a quarter of an hour, for a fixed one where its preset starts. With `keep`
    * (a fixed weather set after another, or the time set), what lies stays: snow and wet only grow to
    * where the preset starts, the streets stay as cleared as they were, and only `wet` or `snow_cm`
-   * set by hand replace it.
+   * set by hand replace it. Set by hand (the layout's `state`, or with the weather set), `wet` and
+   * `snow_cm` are where the ground starts in the typical weather too: over what the day and a half
+   * left, until it is gone through anew (the time or the date set).
    */
   settle({ keep = false } = {}) {
     const before = this.ground, hand = this._start ?? {};
@@ -404,12 +409,20 @@ export class Weather {
       return;
     }
     const clock = this.world.clock, today = this._doy();
-    if (today == null && !this.course.length) return;
-    for (let back = 36 * 60; back > 0; back -= 15) {
-      const m = clock.minutes - back, days = Math.floor(m / DAY_MINUTES);
-      const doy = today == null ? null : ((today - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
-      // each day with its own traffic: the Sunday before a Monday morning has no rush hour
-      this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m), days);
+    // without a date and a course the typical weather is the mild dry day: nothing to go through
+    if (today != null || this.course.length) {
+      for (let back = 36 * 60; back > 0; back -= 15) {
+        const m = clock.minutes - back, days = Math.floor(m / DAY_MINUTES);
+        const doy = today == null ? null : ((today - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
+        // each day with its own traffic: the Sunday before a Monday morning has no rush hour
+        this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m), days);
+      }
+    }
+    // the ground set by hand lies over it; fresh snow on cleared streets covers them again
+    if (hand.wet != null) this.ground.wet = hand.wet;
+    if (hand.snow_cm != null) {
+      if (hand.snow_cm > this.ground.snow_cm + 0.5) this.ground.cleared = 0;
+      this.ground.snow_cm = hand.snow_cm;
     }
   }
 

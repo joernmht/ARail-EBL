@@ -337,6 +337,28 @@ test("a course on its own lies over the typical weather; with mode off the check
   assert.match(weatherProblems({ mode: "off", course }).join(), /does nothing with mode "off"/);
 });
 
+test("where the ground starts, set by hand: in the typical weather too, over what the day and a half left; with mode off the check says it does nothing", () => {
+  // a summer morning: the typical weather leaves no snow
+  const summer = { clock: { start: "08:00", date: "07-15" } };
+  assert.equal(lab([], { ...summer, weather: { mode: "typical" } }).weather.now().snow_cm, 0);
+  const world = lab([], { ...summer, weather: { mode: "typical", state: { snow_cm: 10, wet: 1 } } });
+  const w = world.weather;
+  assert.equal(w.mode, "typical");
+  assert.deepEqual([w.now().snow_cm, w.now().wet, w.ground.cleared], [10, 1, 0], "the layout's ground; fresh snow covers the streets");
+  assert.equal(lab([], { ...summer, weather: { course: [["06:00", { cloud: 1 }]], state: { snow_cm: 5 } } }).weather.now().snow_cm, 5, "under a course on its own too");
+  // set with the weather: once; the time set goes through the typical weather anew
+  const later = lab([], summer);
+  assert.ok(later.setWeather({ mode: "typical", snow_cm: 3 }));
+  assert.equal(later.weather.now().snow_cm, 3);
+  later.setTime("09:00");
+  assert.equal(later.weather.now().snow_cm, 0, "gone through anew: July leaves no snow");
+  // no weather, no ground: the check says so, and a weather set so is none
+  assert.deepEqual(weatherProblems({ mode: "typical", state: { snow_cm: 10 } }), []);
+  assert.match(weatherProblems({ mode: "off", state: { snow_cm: 10 } }).join(), /wet and snow_cm do nothing with mode "off"/);
+  assert.ok(validateLayout({ ...withLayers(LAB, []), weather: { mode: "off", state: { wet: 1 } } }, registry).some((p) => /wet and snow_cm do nothing with mode "off"/.test(p)));
+  assert.equal(later.setWeather({ mode: "off", snow_cm: 3 }), false);
+});
+
 test("a course over the day: key frames, in proportion between them; told when it starts to snow", () => {
   const world = lab([], { clock: { start: "04:00", date: "01-20" }, weather: { mode: "typical", course: [["05:00", { temperature_c: 1, precipitation: "none", cloud: 1 }], ["07:00", { temperature_c: -3, precipitation: "snow", rate_mm_h: 2 }], ["10:00", { temperature_c: -1, precipitation: "none" }]] } });
   const w = world.weather;
@@ -438,26 +460,42 @@ test("scenarios set the date and the weather; what is neither fails the step, an
   assert.equal(weatherProblems("hail").length, 1);
   const typical = { ...withLayers(LAB, []), scenarios: [{ id: "back", steps: [{ at: 0, set: { weather: "typical" } }, { at: 1, set: { weather: "off" } }] }] };
   assert.ok(!validateLayout(typical, registry).some((p) => /set\.weather/.test(p)), "a scenario may set the weather back to typical or off");
-  // 29 February: in a layout that starts in 2026, also a scenario's "02-29" is none; in 2028 it is
+  // 29 February: the layout's own date written without its year is in 2026, which has none
   const leap = { ...withLayers(LAB, []), clock: { date: "02-29" }, scenarios: [{ id: "leap", steps: [{ at: 0, set: { date: "02-29" } }] }] };
   const leapProblems = validateLayout(leap, registry);
-  assert.ok(leapProblems.some((p) => p.startsWith('clock.date "02-29"')), "the layout starts in 2026: no 29 February");
-  assert.ok(leapProblems.some((p) => /set\.date "02-29" is no date \(MM-DD\) in 2026: write it with a leap year/.test(p)), leapProblems.join("\n"));
-  const leap28 = validateLayout({ ...leap, clock: { date: "2028-01-10" } }, registry);
-  assert.ok(!leap28.some((p) => /date/.test(p)), "in a layout that starts in 2028, a scenario's 29 February is that year's");
-  assert.ok(!validateLayout({ ...leap, clock: {}, scenarios: [{ id: "leap", steps: [{ at: 0, set: { date: "2028-02-29" } }] }] }, registry).some((p) => /set\.date/.test(p)));
+  assert.ok(leapProblems.includes('clock.date "02-29" is no date in 2026, which has no 29 February: write it with a leap year ("2028-02-29")'), leapProblems.join("\n"));
+  // a step's "02-29" is in the year the clock has when it runs, which the check cannot know: it takes it
+  assert.ok(!leapProblems.some((p) => /set\.date/.test(p)), leapProblems.join("\n"));
+  assert.ok(!validateLayout({ ...leap, clock: { date: "2028-01-10" } }, registry).some((p) => /date/.test(p)));
+  const leapSteps = (...dates) => validateLayout({ ...leap, clock: {}, scenarios: [{ id: "leap", steps: dates.map((date, at) => ({ at, set: { date } })) }] }, registry).filter((p) => /set\.date/.test(p));
+  assert.deepEqual(leapSteps("2028-03-01", "02-29"), [], "an earlier step sets 2028: its 29 February runs");
+  assert.deepEqual(leapSteps("2028-02-29"), []);
+  assert.deepEqual(leapSteps("2027-02-29", "02-30"), ['scenarios[0].steps[0].set.date "2027-02-29" is no date (MM-DD)', 'scenarios[0].steps[1].set.date "02-30" is no date (MM-DD)'], "what is no date in any year");
+  // and so it runs: in 2028 it is 29 February, in 2027 the step fails and names the year
+  const leapWorld = lab([], { clock: { start: "07:00" } });
+  leapWorld.speed = 1;
+  const said = [];
+  leapWorld.events.on("scenario.message", ({ text }) => said.push(text));
+  leapWorld.scenarios.load([{ id: "leap", steps: [{ at: 0, set: { date: "2028-03-01" } }, { at: 1, set: { date: "02-29" } }, { at: 2, set: { date: "2027-03-01" } }, { at: 3, set: { date: "02-29", time: "10:00" } }] }]);
+  leapWorld.scenarios.play("leap");
+  run(leapWorld, 1.5);
+  assert.equal(leapWorld.clock.dateString(), "2028-02-29");
+  run(leapWorld, 2);
+  assert.equal(leapWorld.clock.dateString(), "2027-03-01", "the date stays");
+  assert.ok(leapWorld.clock.label() !== "10:00", "nor is the time of the failed step set");
+  assert.deepEqual(said, ['Scenario step failed: "02-29" is no date in 2027, which has no 29 February: write it with a leap year ("2028-02-29")']);
   // a step that fails changes nothing, not even what comes first in it
-  const before = [world.clock.dateString(), Math.round(world.clock.minutes), world.weather.preset];
+  const before = [world.clock.dateString(), Math.round(world.clock.minutes), world.weather.preset, world.demand];
   const sent = [], seen = messages.length;
   for (const name of ["clock.date", "clock.set", "weather.changed"]) world.events.on(name, () => sent.push(name));
-  world.scenarios.load([{ id: "half", steps: [{ at: 0, set: { date: "07-10", time: "25:00" } }, { at: 1, set: { date: "07-10", weather: "hail" } }, { at: 2, set: { date: "02-29", time: "10:00" } }] }]);
+  world.scenarios.load([{ id: "half", steps: [{ at: 0, set: { date: "07-10", time: "25:00", demand: 3 } }, { at: 1, set: { date: "07-10", weather: "hail" } }, { at: 2, set: { date: "02-29", time: "10:00" } }] }]);
   world.scenarios.play("half");
   world.clock.frozen = true;
   run(world, 3);
   world.clock.frozen = false;
-  assert.deepEqual([world.clock.dateString(), Math.round(world.clock.minutes), world.weather.preset], before);
+  assert.deepEqual([world.clock.dateString(), Math.round(world.clock.minutes), world.weather.preset, world.demand], before);
   assert.deepEqual(sent, [], "and sends nothing");
-  assert.equal(messages.slice(seen).filter((m) => /no time of day|is no weather|"02-29" is no date/.test(m)).length, 3, "each of the three steps failed");
+  assert.equal(messages.slice(seen).filter((m) => /no time of day|is no weather|"02-29" is no date in 2026/.test(m)).length, 3, "each of the three steps failed");
   world.scenarios.load(typical.scenarios);
   world.scenarios.play("back");
   world.step(0.1);
