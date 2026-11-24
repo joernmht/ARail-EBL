@@ -61,7 +61,7 @@ export const LOCO = { back_s: 70, close_s: 60, fetch_s: 150, per_cut_s: 30, roun
  * question waits (s). No train goes over the hump without the yard master's word: which train and
  * how fast are asked without a time.
  */
-const HOLD_ASK_S = 90;
+export const HOLD_ASK_S = 90;
 /** The shift's first seconds: the locomotive is coupled to nothing yet, and nothing is asked (the hand-over). */
 const FIRST_S = 15;
 /** A late train's time is known exactly this long before it comes in (s): it has passed the last station. */
