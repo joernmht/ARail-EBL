@@ -205,7 +205,7 @@ Three views: **View**, **Simulation** and **Control system**. The tab opens the 
 
 Situations: each a characteristic combination of what the simulation can be set to, in one click. What it measures is in the [Overview](#overview).
 
-- *Situations*: days, each with its weekday, time, weather and demand, and events. The situation set is pressed until something is set on its own or another layout opens. An event the layout lacks the modules for is shown, but off (*Not in this layout*).
+- *Situations*: days, each with its weekday, time, weather and demand, and events. The situation set is pressed while it holds: until the time, the date, the weather or the demand is set otherwise (on its own here, or by a scenario, a story or a plugin) or another layout opens; the clock running on and the weather changing by itself leave it pressed. An event the layout lacks the modules for is shown, but off (*Not in this layout*). A situation is checked before anything is set: one that does not fit changes nothing.
 
   | Situation | Day and time | Weather | Demand |
   | --- | --- | --- | --- |

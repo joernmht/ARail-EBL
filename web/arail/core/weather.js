@@ -408,7 +408,8 @@ export class Weather {
     for (let back = 36 * 60; back > 0; back -= 15) {
       const m = clock.minutes - back, days = Math.floor(m / DAY_MINUTES);
       const doy = today == null ? null : ((today - 1 + days + 2 * YEAR_DAYS) % YEAR_DAYS) + 1;
-      this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m));
+      // each day with its own traffic: the Sunday before a Monday morning has no rush hour
+      this._ground(this.air(wrapMinutes(m), doy), 0.25, this._daylight(wrapMinutes(m), doy), wrapMinutes(m), days);
     }
   }
 
@@ -423,13 +424,14 @@ export class Weather {
 
   /**
    * The ground over `hours` of this air at a time of day: rain wets it, sun and wind dry it; snow
-   * settles and melts; the traffic clears the streets of it (`cleared`, 0…1) by the hour's traffic,
-   * as the snow falling covers them again.
+   * settles and melts; the traffic clears the streets of it (`cleared`, 0…1) by the hour's traffic
+   * on that day (`days` from today: a weekend's on a Saturday or Sunday), as the snow falling covers
+   * them again.
    */
-  _ground(air, hours, daylight, minutes = this.world.clock.minutes) {
+  _ground(air, hours, daylight, minutes = this.world.clock.minutes, days = 0) {
     const g = this.ground, T = air.temperature_c;
     if (g.snow_cm > 0.5) {
-      const traffic = profileAt(this.world.clock.profile?.("car") ?? PROFILES.car, minutes), falling = air.precipitation === "snow" ? air.rate_mm_h : 0;
+      const traffic = profileAt(this.world.clock.profile?.("car", days) ?? PROFILES.car, minutes), falling = air.precipitation === "snow" ? air.rate_mm_h : 0;
       g.cleared = clamp(g.cleared + hours * (WEATHER_EFFECTS.clearing * traffic - 0.4 * falling + (T > 0 ? 0.3 : 0)), 0, 1);
     } else g.cleared = 0;
     if (air.precipitation === "rain" || air.precipitation === "sleet") g.wet = Math.min(1, g.wet + air.rate_mm_h * hours * 0.8);

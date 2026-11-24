@@ -1,6 +1,6 @@
 // Panels: Settings (view, simulation and control system), Disruptions.
 import { UI_LANGUAGES, CD, checkSection, COMPATIBILITY, MockFeed, WEATHER_PRESETS, sectionSystems, SYSTEM_OVERLAYS, systemValue, WebSocketFeed } from "../arail/index.js";
-import { applySituation, SITUATIONS, situationReady } from "./situations.js";
+import { applySituation, markSituation, SITUATIONS, situationHolds, situationReady } from "./situations.js";
 import { h, morph, mount, paramFields, readFile, section, storage, toast } from "./ui.js";
 
 /** Fast-clock ratios offered in Settings → Simulation. */
@@ -251,8 +251,9 @@ export class Panels {
   }
 
   /**
-   * A situation as a card to press: its name and what it is; pressed while it is the one set (until
-   * something is set on its own, or another layout opens); off where the layout lacks what it needs.
+   * A situation as a card to press: its name and what it is; pressed while the situation set holds
+   * (until the time, the date, the weather or the demand is set otherwise, here or by a scenario, a
+   * story or a plugin, or another layout opens); off where the layout lacks what it needs.
    */
   _situationCard(x) {
     const ready = situationReady(this.app, x), id = `situation-${x.id}`;
@@ -264,12 +265,9 @@ export class Panels {
     h("span", { class: "situation-text", id: `${id}-text` }, x.text, ready ? null : [" (", h("span", { class: "case-state" }, "Not in this layout"), ")"]));
   }
 
-  /**
-   * The situation set last, while the layout is the one it was set on (the world loads another
-   * layout, or the same one with other modules, into the same object: its layout is new then).
-   */
+  /** The id of the situation set last, while it holds (situations.js situationHolds), else null. */
   _situationSet() {
-    return this.situation && this.situation.layout === this.world.layout ? this.situation.id : null;
+    return situationHolds(this.world, this.situation) ? this.situation.id : null;
   }
 
   /** Set a situation (situations.js); the card keeps the focus. */
@@ -280,7 +278,8 @@ export class Panels {
       toast(`${x.label} could not be set: ${err.message}`, 7000);
       return;
     }
-    this.situation = { id: x.id, layout: this.world.layout };
+    this.situation?.off();
+    this.situation = markSituation(this.world, x);
     if (this.app.activeTab === "settings" && this.settingsView === "simulate") {
       this.renderSettings(document.getElementById("panel-settings"));
       document.getElementById(`situation-${x.id}`)?.focus();
@@ -289,8 +288,8 @@ export class Panels {
 
   /** Something set on its own: no situation is the one set any more. */
   byHand() {
+    this.situation?.off();
     this.situation = null;
-    for (const b of document.querySelectorAll(".situation[aria-pressed=true]")) b.setAttribute("aria-pressed", "false");
     this.updateSimulate();
   }
 
@@ -303,12 +302,14 @@ export class Panels {
   }
 
   /**
-   * The presets of Settings → Simulation → Each on its own as the world is now (a scenario or a story may have set
-   * another time, date, weather or demand): the time of day pressed, a date or a demand that is no
-   * preset as an option of its own.
+   * Settings → Simulation as the world is now (a scenario or a story may have set another time,
+   * date, weather or demand): the situation pressed while it holds; the presets of Each on its own
+   * with the time of day pressed, a date or a demand that is no preset as an option of its own.
    */
   updateSimulate() {
     if (!this.dateSelect?.isConnected) return;
+    const set = this._situationSet();
+    for (const b of this.settingsBody.querySelectorAll("button.situation")) b.setAttribute("aria-pressed", b.id === `situation-${set}` ? "true" : "false");
     const w = this.world, c = w.clock, date = c.monthDay();
     const now = Math.round(c.minutes), at = (t) => { const [hh, mm] = t.split(":").map(Number); return hh * 60 + mm; };
     // the part of the day it is: the latest preset not after now (before the first: the last, the night)

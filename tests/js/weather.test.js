@@ -679,6 +679,23 @@ test("snow covers everything until warmth or traffic clears it: streets in the r
   assert.equal(view.tone("#4a4f57", 0), "#4a4f57");
 });
 
+test("the day and a half the typical weather goes through: each day's streets cleared by that day's traffic", () => {
+  // Monday 06:00, snowing for days: the streets of Saturday evening and of Sunday were cleared by a
+  // weekend's traffic (no rush hour), those of Monday's first hours by a working day's
+  const world = lab([], { clock: { start: "06:00", date: "2026-01-12" }, weather: { course: [["00:00", { precipitation: "snow", rate_mm_h: 1, temperature_c: -5 }]] } });
+  const clock = world.clock, profile = clock.profile.bind(clock), days = [];
+  assert.equal(clock.dateLabel(), "Mon 12 Jan");
+  clock.profile = (kind, d = 0) => {
+    if (kind === "car") days.push(d);
+    return profile(kind, d);
+  };
+  world.weather.settle();
+  const weekend = days.filter((d) => clock.weekend(d));
+  assert.equal(days.length - weekend.length, 24, "Monday from midnight to six: 24 quarter hours of a working day");
+  assert.ok(weekend.length > 100, `${weekend.length} quarter hours of Saturday and Sunday with a weekend's traffic`);
+  assert.deepEqual([...new Set(days)].sort((a, b) => a - b), [-2, -1, 0]);
+});
+
 test("under snow, markers and status fills keep their colour; only surfaces take the snow", () => {
   const fills = [];
   const noop = () => {};

@@ -383,7 +383,7 @@ export class Clock {
   /**
    * The profile of a kind of traffic ([hour, factor] points) on a day: a weekend's on a Saturday or
    * Sunday, else the working day's; `dayOffset` days from today (the journey planner looking past
-   * midnight; the town's daily totals, the traffic clearing the snow: today).
+   * midnight, the weather going through the days before; the town's daily totals: today).
    */
   profile(kind, dayOffset = 0) {
     return (this.weekend(dayOffset) ? WEEKEND_PROFILES : PROFILES)[kind];

@@ -125,6 +125,11 @@ test("Settings → Simulation: a situation sets the day, the time, the weather a
   await page.locator("#situation-after-match").click();
   await page.locator("#situation-after-match").click();
   await expect.poll(() => page.evaluate(() => window.__arail.world.disruptions.active.filter((d) => d.def.type === "crowd").length)).toBe(1);
+  // the time set by a scenario, a story or a plugin: the situation no longer holds
+  await page.locator("#situation-spring-sunday").click();
+  await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate(() => window.__arail.world.setTime("06:30"));
+  await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "false");
   // another layout: no situation is pressed there
   await page.locator("#situation-spring-sunday").click();
   await expect(page.locator("#situation-spring-sunday")).toHaveAttribute("aria-pressed", "true");
