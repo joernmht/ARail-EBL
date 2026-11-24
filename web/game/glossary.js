@@ -65,6 +65,12 @@ export const TERMS = [
   { id: "wheel-flat", term: "Wheel flat", de: "Flachstelle", line: "A flat spot on a wheel's tread, from sliding under braking. It hammers the rail at every turn; beyond a length the wheelset must be turned round again.", find: /\bwheel flat\b/i },
   { id: "emergency-team", term: "Emergency team", de: "Entstörtrupp", line: "Technicians on shift for faults, by trade: signalling or track. What is behind a fault is known only when a team has looked.", find: /\b(emergency teams?|Entstör)/ },
   { id: "on-call", term: "On call", de: "Rufbereitschaft", line: "A technician at home who can be called in when the teams on shift are not enough: paid for standing by, and overtime for every call-out.", find: /\bon call\b/ },
+  { id: "notice-period", term: "Notice period", de: "Ankündigungsfrist", line: "How long before a work, a shift or a closure the people it touches must be told. It is the time they need to do their own part: plan round it, arrange a life, tell others.", find: /\bnotice periods?\b/i },
+  { id: "works-council", term: "Works council", de: "Betriebsrat (Mitbestimmung)", line: "The employees' elected body. A shift outside the published rota needs its consent before the people are told: co-determination under the Works Constitution Act (BetrVG § 87).", find: /\bworks council\b/i },
+  { id: "rest-period", term: "Rest period", de: "Ruhezeit", line: "Eleven hours without work between two shifts, by the working-time law (ArbZG § 5). A call-out at night begins it anew.", find: /\b(eleven hours of rest|rest periods?)\b/i },
+  { id: "dangerous-event", term: "Dangerous event", de: "Gefährliches Ereignis", line: "An event that could have led to an accident: a broken rail under traffic, a signal passed at danger, something left in the track. It is reported at once, up to the supervisory authority.", find: /\bdangerous events?\b/i },
+  { id: "standing-window", term: "Standing maintenance window", de: "Instandhaltungsfenster", line: "Hours of the timetable in which a track is kept free of trains for maintenance, every day or every week. Work in it needs no possession registered of its own.", find: /\bstanding (maintenance )?windows?\b/i },
+  { id: "single-line", term: "Single-line working", de: "eingleisiger Betrieb (Fahren auf dem Gegengleis)", line: "With one track of a double-track line closed, the other carries both directions: every train waits its turn.", find: /\bsingle-line working\b/i },
 ];
 
 /** A term by its id, or null. */

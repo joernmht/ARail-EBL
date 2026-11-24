@@ -162,7 +162,8 @@ computer. The first roles are joined: the signaller of Bf Neustadt and the maint
 of its district for a morning (the mission `neustadt-morning`), the train dispatcher above the
 signaller, between three undertakings (`whose-minutes`), the yard master at the hump yard west
 of the station (`last-wagon`, alone so far), the workshop manager in the hall of Betriebswerk
-Neustadt (`fit-to-run`, alone so far), and with the undertaking's
+Neustadt (`fit-to-run`, alone so far), the maintenance district manager for a week of works
+(`short-notice`, alone so far), and with the undertaking's
 operations control, the asset manager, the transport authority's contract manager and the budget
 committee's rapporteur for three budget years (`neustadt-years`): the budget is the district's
 money, the district's plan is the dispatcher's teams and the signal's chance to fail, the contract
@@ -412,6 +413,34 @@ moves: a track, the release, the phone. Guide: [The workshop hall](workshop.md).
 `web/game/workshop.js` (`WorkshopBoard`), `web/game/missions/fit-to-run.json`; Node tests in
 `tests/js/game-workshop.test.js`, browser tests in `tests/e2e/workshop.spec.js`.
 
+**And a week of works.** *Short notice* is a working week in the maintenance district around Bf
+Neustadt, Monday 06:00 to Friday 06:00 in 32 minutes (a second is three minutes of the week), on
+the station's table by day and by night. Four works are in the plan: the contractor's tamping
+machine at Bergheim in the night of Wednesday, the inspection of two points in the station's
+standing window, a rail with a known defect at Talsee that must be changed by Thursday midnight,
+the trees along the branch to Waldau. A driver's report of a hard knock, a point that fails in the
+morning peak and a storm come unplanned. Five technicians do the work, and each has a home and a
+week: two children and a partner on night shifts, a mother to care for, an evening school, the
+fire brigade, 45 km to drive. Four people must hear of it, each in their time: the possession
+planner a day and a half ahead (later, the undertakings claim), the works council a day ahead and
+before the people (else: the labour court), the people two days ahead, the town between three days
+and one (earlier is forgotten, later is a fine), the railway operations manager within the hour of
+a dangerous event. What is told and then moved must be told again; what nobody needed costs
+patience too. On the table the people are vans: each drives from its home to the base in the
+morning and back, to a night's site, to a fault. A work is a ring at its site while it is planned
+(orange while something is missing for it) and a building site while it runs: its possession a
+band on the rails, the tamping machine, lamps in the dark. The trains a work or a fault holds are
+discs beside the track, more of them in the peak; the houses beside a night's site show a note at
+the door, or lit windows and a red ring when nobody told them. The four people are pins where they
+sit (operations at the platform tracks, the works council and the team at the base, the town at
+the town hall, safety at the station building), in the colour of their patience. A tap on a van
+and then on a site puts the person on the work, a pin and then a site tells of it, a fault and
+then a van sends somebody. In the storm the layout's weather is the storm. Beside the table the
+week is a chart: the nights shaded, a bar for every work at its slot, a line where its period
+ends, a row for every person with the hours their life forbids. Code: `web/arail/game/works.js`
+(`WorksGame`), `web/game/works.js` (`WorksBoard`), `web/game/missions/short-notice.json`; Node
+tests in `tests/js/game-works.test.js`, browser tests in `tests/e2e/works.spec.js`.
+
 **A turn is on the table too.** The asset manager, the contract manager and the budget
 rapporteur decide for a year or a month: their games have no trains to run, but what they decide
 about lies on the layout. In their turns the table shows the scene of their game, thing by thing:
@@ -597,15 +626,16 @@ A mission is worth playing when two people decide differently in it and both hav
 [How to develop the game](mission-design.md) says what every new or reworked mission must have
 (a clear educational aim, unclear decisions, results that are not certain, roles that react and
 ask for compromise, decisions that are one of a few choices and decisions that are a number, a
-part that is played and not answered, and the layout's world in it), shows how *Whose minutes?*
-and *The last wagon* meet each point, and lists the steps from the idea to the pull request.
+part that is played and not answered, and the layout's world in it), shows how *Whose minutes?*,
+*The last wagon*, *Fit to run* and *Short notice* meet each point, and lists the steps from the
+idea to the pull request.
 
 ## Where the games are
 
 | Page | What |
 | --- | --- |
 | `game/` | The game page. It opens like a game: the lab's photos full screen, drifting from one to the next, and the main menu, at most five choices: Continue, Games (Missions, Signaller, Free play), Career (Logbook, Career planner, Roles), Options, Leave. Free play holds the games and exercises that were in the app: on the lab's layout the Sandbox, infrastructure asset management, rail operations and journeys, and the full terminal on the virtual container terminal; a link with a layout or a case (`game/?layout=…#infra`) goes straight to them, and the bar's Menu leads back |
-| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Whose minutes? (the train dispatcher between three undertakings, with the computer's signaller), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's, the train dispatcher's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
+| `game/play/` | The play page of the big game: the line of missions; choose one and your seats (the others are the computer's), play its turns and shifts on the stage (a role that works on a picture has it: the signaller's panel, the dispatcher's district map; what is chosen in the picture offers its moves), read what happened, and the verdict with its stars; the numbers, what the roles give each other and the full report open as dialogs. Missions, in the order of the line: Your first shift (the signaller, nothing fails), a morning at Bf Neustadt (signaller and maintenance dispatcher), Fault Night alone, Transportleitung (the undertaking's operations control, with the computer's signaller), Whose minutes? (the train dispatcher between three undertakings, with the computer's signaller), The last wagon (the yard master at the hump yard), Fit to run (the workshop manager in the hall), Short notice (the maintenance district manager's week of works), Malus Month, Budget Years and The Night Session alone, Rush hour (the signaller on a bad morning), three years of Neustadt (six roles: with the undertaking's operations control, the asset manager, the contract manager and the budget rapporteur), a morning in the lab (on the EBL's simulation API). The shifts at Bf Neustadt (the signaller's, the maintenance dispatcher's, the operations control's, the train dispatcher's) are played on the table: the game on the lab's layout, on the table's photo, a photo of the lab or through the camera ([the shift on the table](#the-shift-on-the-table)) |
 | `game/signaller/` | The signaller of Bf Neustadt |
 | `game/logbook/` | The logbook: the rank, the stars and the badges reached, the railway terms met as cards with a quiz, a sheet per mission played |
 | `game/roles/` | The role catalogue: every role with its decisions, means, limits, risks, ways in and mini game |
@@ -633,6 +663,11 @@ and *The last wagon* meet each point, and lists the steps from the idea to the p
   run*); what it lacks of the catalogue's game: the month at the workshop company (shift model,
   headcount, an investment, the works council), the catenary of the hall and its earthing, parts
   that are missing, and the other three ECM functions as seats for people.
+  The maintenance district manager has a first form (*Short notice*); what it lacks of the
+  catalogue's game: the year in monthly turns with forty technicians, their qualifications by
+  installation type and their training, posts and apprentices, the real notice periods, and its
+  neighbours as seats (the possession planner, the works council, the maintenance dispatcher,
+  whose teams the staff plan is).
 - Missions that open one another: a mission or a role is open once another is passed or a share
   of its points is reached, and the career becomes what the badges show (#273).
 - The career mode on the planner's model: each step a round of the role's game, applications and

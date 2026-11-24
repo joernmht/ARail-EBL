@@ -1,0 +1,355 @@
+{
+ "format": "arail-mission/1",
+ "id": "short-notice",
+ "title": "Short notice",
+ "hook": "Four works, five people, a storm. Tell who needs it in time: not too late, not too early, not for nothing.",
+ "place": "district",
+ "text": "Monday 06:00 to Friday 06:00 in the maintenance district around Bf Neustadt, on the lab's table: a working week in half an hour. You stand in for the district manager. Four works are in the plan: the contractor's tamping machine at Bergheim in the night of Wednesday, the inspection of two points at the station, a rail with a known defect at Talsee that must be changed by Thursday midnight, the trees along the branch to Waldau. What nobody planned comes too: a driver reports a hard knock, a point fails in the morning peak, a storm is forecast. Five technicians do the work. They live at Bergheim, in the town, at Talsee, at Waldau and 45 km away, and each has a week of their own: children, a mother to care for, an evening school, the fire brigade. Four people must hear from you, each in their time: the possession planner (for the signal boxes and the undertakings), the works council, the town's public order office (for the houses along the line), and the railway operations manager. Told too late, they have the law on their side: a claim, a fine, the labour court. Told too early, the week moves and it was wrong. Told what they do not need, they stop reading. And a work by day costs trains, a work at night costs notices and sleep. What you practise: deciding for every piece of news who needs it, by when at the latest and from when it will hold; what a correction costs; planning people by where they live and what their week allows; and weighing a possession by day against one at night by the trains that run.",
+ "mode": "solo",
+ "seed": 1,
+ "roles": [
+  {
+   "role": "maintenance-district-manager",
+   "game": "works",
+   "seat": "human",
+   "level": "normal"
+  }
+ ],
+ "rounds": 1,
+ "phases": [
+  {
+   "id": "week",
+   "kind": "shift",
+   "title": "The week",
+   "roles": [
+    "maintenance-district-manager"
+   ],
+   "length": 1920,
+   "clock": "06:00",
+   "pace": 180
+  }
+ ],
+ "story": [
+  {
+   "phase": "week",
+   "at": 2,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "Monday, six o'clock, and the district is yours for a week. Four works are on the chart. Our people have homes and lives; four others must hear what we do, each in their time. L. Zaunkönig knows the plan."
+  },
+  {
+   "phase": "week",
+   "at": 8,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The draft: the day crews are pencilled in, the two nights have nobody. Tap a van, then the site: that puts a person on a work. Tap a site for its other slots. The small houses are where our people live."
+  },
+  {
+   "phase": "week",
+   "at": 14,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The pins are who must hear from you: operations at the platform tracks, the works council and the team at the base, the town at the town hall, safety at the station building. Tap a pin, then what you tell."
+  },
+  {
+   "phase": "week",
+   "at": 60,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "Everybody has a period. A possession: a day and a half ahead. A night shift: the council a day ahead, then the people, two days ahead. A night beside houses: one to three days ahead, and not earlier."
+  },
+  {
+   "phase": "week",
+   "at": 120,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "Told early, it must still be true on the day. Told late, it is a claim, a fine, the labour court. Told for nothing, they stop reading you. Tell who needs it, when it will hold."
+  },
+  {
+   "phase": "week",
+   "at": 200,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The rail at Talsee has a period, Thursday midnight, and the draft has it in the last night. By day a possession is kinder to our people and dearer in trains: look at how many run at that hour."
+  },
+  {
+   "phase": "week",
+   "at": 330,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "At night whoever is on call by the rota goes to a fault, from home. Look where they live before you rely on that: tap the fault, then the van of somebody nearer. A favour is a favour, though."
+  },
+  {
+   "phase": "week",
+   "at": 520,
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The numbers at the top are the patience of the four. Below 62 they phone and want a promise. Below 35 they act. What you promise one of them, another pays."
+  },
+  {
+   "phase": "week",
+   "on": "fault",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "{what} at {where}. Somebody must look before we know what it is: tap the fault, then a van. Without your word the rota's person on call goes, from wherever they live."
+  },
+  {
+   "phase": "week",
+   "on": "dangerous",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{what}: that is a dangerous event. G. Adler must have it within the hour of its being known, whatever the hour is. The full picture can follow; the first word cannot."
+  },
+  {
+   "phase": "week",
+   "on": "storm",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The storm is here: {what}. The fire brigade may call R. Pirol, the branch has trees over the wire, and nothing with a mast works above 90 km/h."
+  },
+  {
+   "phase": "week",
+   "on": "late-news",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{who} heard of {what} too late. A period is not a courtesy: it is the time the other side needs to do its own part, and the law knows it."
+  },
+  {
+   "phase": "week",
+   "on": "missing-news",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{who} never heard of {what}, and should have. Who needs it was known the moment the work was planned: the night, the houses, the possession, the shift."
+  },
+  {
+   "phase": "week",
+   "on": "needless-news",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "{who} did not need that: {what}. Every note for nothing makes the next one count less. Ask first what the other side would do with it."
+  },
+  {
+   "phase": "week",
+   "on": "corrected",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "A correction to {who}: {what}. What was told early was planned round, and is planned again now. Was it firm when you said it?"
+  },
+  {
+   "phase": "week",
+   "on": "charge",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{who}: {what}. That is on paper now, and it stays there. Which hour of the week would have avoided it?"
+  },
+  {
+   "phase": "week",
+   "on": "work-missed",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "{work} did not begin: {why}. Its slot is gone. Plan it again, and tell again whoever heard of the old one."
+  },
+  {
+   "phase": "week",
+   "on": "overrun",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "{work} ran {min} min over its possession. The trains {who} had planned ran into it. Too short a possession is no saving."
+  },
+  {
+   "phase": "week",
+   "on": "refusal",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "{person} cannot: {why}. Had it been said in time, it could have been arranged. Who else fits, and how short is their notice now?"
+  },
+  {
+   "phase": "week",
+   "on": "rest-cut",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{person} worked without the eleven hours. {who} has the hours on paper, and I have a tired crew in a possession. Not again."
+  },
+  {
+   "phase": "week",
+   "on": "overdue",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{work} has passed its period, and {who} was not asked. A period that cannot be kept is applied for before it ends, never after."
+  },
+  {
+   "phase": "week",
+   "on": "forecast-missed",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "L. Zaunkönig",
+    "role": "Work planner of the district",
+    "portrait": "hivis"
+   },
+   "say": "The time you gave {who} for {what} has passed. A forecast is a promise to people who plan by it: correct it before it breaks."
+  },
+  {
+   "phase": "week",
+   "on": "promise-broken",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "A promise to {who} is broken. Promise only what the week can keep: the faults do not ask what you promised."
+  },
+  {
+   "phase": "week",
+   "on": "complaint",
+   "seats": [
+    "maintenance-district-manager"
+   ],
+   "who": {
+    "name": "A. Kranich",
+    "role": "District manager, on leave from today",
+    "portrait": "office"
+   },
+   "say": "{who} has put the week in writing. A week that suits three of the four is not good enough."
+  }
+ ],
+ "debrief": [
+  "Who heard of the tamping night, and how many hours ahead each? Who had to be told a second time, and what had changed?",
+  "Which news of your week came too late, which too early, and which did nobody need? What did each cost, and whom?",
+  "A driver reported a hard knock. What did you order before anybody had looked, who was told at once, and what did it turn out to be?",
+  "Whom did you put on the nights? What did you know of where they live and what their week allows, and who went to a fault at night, from where?",
+  "The storm's forecast came on Tuesday at seven. Keep, move or call off: who had been told by then, and what would you have held back, knowing a forecast was due?",
+  "The rail change by day or at night, and for how many hours? What did you know when you registered the possession?",
+  "Whose patience was lowest on Friday morning, and which hour of the week would that person name?"
+ ]
+}

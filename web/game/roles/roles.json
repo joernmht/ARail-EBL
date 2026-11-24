@@ -15732,6 +15732,31 @@
       "catenary-technician"
      ],
      "what": "safety instruction, protective equipment and changed procedures from the risk assessment"
+    },
+    {
+     "flow": "situation-report",
+     "to": [
+      "possession-planner",
+      "train-dispatcher",
+      "network-controller"
+     ],
+     "what": "a fault in the district with the restriction on the track and the forecast of its end"
+    },
+    {
+     "flow": "press-report",
+     "to": [
+      "resident",
+      "mayor"
+     ],
+     "what": "the notice of night works to the houses along the line and to the town hall: what, where and which nights"
+    },
+    {
+     "flow": "incident-report",
+     "to": [
+      "im-operations-manager",
+      "safety-manager"
+     ],
+     "what": "a dangerous event on the district's assets or in its works, within the hour of its being known"
     }
    ],
    "game": {
@@ -15746,7 +15771,9 @@
      "operations"
     ],
     "bigGame": "Takes posts and the budget from the asset manager, faults from the dispatcher, and rota approval from the works council member. Gives available technicians and on-call cover to the dispatcher, inspection compliance to the ALV and the EBA, and overtime costs to the asset manager.",
-    "effort": "medium"
+    "effort": "medium",
+    "page": "play/?mission=short-notice",
+    "first": "A first form is playable as the mission Short notice: one working week in the district around Bf Neustadt on the lab's table, Monday 06:00 to Friday 06:00 in half an hour. Four works are in the plan (a tamping night, the inspection of two points, a rail with a known defect, the vegetation on a branch), and a driver's report, a failed point and a storm come unplanned. The player gives each work its slot and its people, five technicians with their homes and lives, sends somebody to a fault, and tells four people in their time: the possession planner, the works council, the town for the houses along the line, the railway operations manager. News that comes late is a claim, a fine or the labour court; news that comes early is wrong when the week moves; news nobody needs is noise. How long a possession is registered for and when a track is forecast to be open again are numbers. The year in monthly turns (the rota of forty technicians, qualifications, training, posts) is still to come."
    }
   },
   {

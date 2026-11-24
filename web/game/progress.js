@@ -155,6 +155,7 @@ export const BADGES = [
   { id: "fair-desk", title: "Fair desk", how: "Pass Whose minutes? with three stars: nobody's train paid for everybody else's.", earned: (p) => p.missions["whose-minutes"]?.stars >= 3 },
   { id: "nobody-left", title: "Nobody left behind", how: "Pass The last wagon with three stars: the wagons on their trains, the trains on their paths, nobody at the end of their patience.", earned: (p) => p.missions["last-wagon"]?.stars >= 3 },
   { id: "clean-release", title: "Released, and returned", how: "Pass Fit to run with three stars: four trains with their units, nothing that came back, nobody at the end of their patience.", earned: (p) => p.missions["fit-to-run"]?.stars >= 3 },
+  { id: "in-good-time", title: "In good time", how: "Pass Short notice with three stars: everybody told when they needed it, nothing for nothing, nobody at the end of their patience.", earned: (p) => p.missions["short-notice"]?.stars >= 3 },
   { id: "night-owl", title: "Night owl", how: "Pass The Night Session.", earned: (p) => !!p.missions["night-session"]?.passed },
   { id: "full-house", title: "Full house", how: "Pass Three years of Neustadt.", earned: (p) => !!p.missions["neustadt-years"]?.passed },
   { id: "all-aboard", title: "All aboard", how: "Play every mission.", earned: (p, missions) => missions.length > 0 && missions.every((id) => p.missions[id]) },

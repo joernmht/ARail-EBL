@@ -109,7 +109,12 @@ What every game has, from the base class:
   dispatcher's game reports a train that comes otherwise than announced (`forecast-off`), a train
   that waited and left without the passengers it waited for (`wait-wasted`), a train that runs
   behind a slower one (`followed`), a complaint to the regulator (`complaint`), a promise not kept
-  (`promise-broken`) and a freight train put aside (`put-aside`);
+  (`promise-broken`) and a freight train put aside (`put-aside`). The maintenance district
+  manager's game reports news that came late, was missing, was for nothing or had to be
+  corrected (`late-news`, `missing-news`, `needless-news`, `corrected`), a formal step
+  (`charge`), a work that did not begin (`work-missed`), a possession that ran over (`overrun`),
+  a person who says no (`refusal`), rest cut (`rest-cut`), a period missed (`overdue`), a fault,
+  a dangerous event and the storm;
 - **objectives** with weights and the **score** (0–100); a round is passed with 50 points and no
   danger to people;
 - **ports**: `give(flow, payload)` (only flows of `static gives`), `take(msg)` for what arrives,
@@ -223,7 +228,7 @@ seconds, and it does not reduce a shift to a dice roll. It plays both, each at i
   ticks of half a second. Each shift is a new game for its seats (one morning at Bf Neustadt),
   begun with what holds now. A shift has a **pace**: how many seconds of the day one of its
   seconds is. Most run as the clock does (1); a night in a workshop hall is played in half an
-  hour (12).
+  hour (12), a week in a maintenance district too (180).
 
 A mission lays the phases out for a **round** (a budget year) and says how many rounds are played.
 The round of the mission `neustadt-years`:
@@ -323,7 +328,7 @@ A mission is a JSON document (`web/game/missions/*.json`, listed in `missions.js
 | --- | --- |
 | `roles[]` | The seats: `role` (catalogue id), `game` (the game's id), `seat` (`human` or `computer`, the suggestion; the players choose), `level`, `options` (passed to the game: the signaller's `late`, the trains that come late, and `spread`, how far each may be off its forecast, both in seconds by the train's id), `weight` (in the score of the whole), `id` (the role unless given; two seats of one role need ids) |
 | `rounds` | How often the phases are played |
-| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound) and `pace` (seconds of the day per second of the shift, 1; the page shows the time of day by it, and a game that runs at another pace says so in `static pace`: the workshop manager's night has 12, and a mission that differs is not sound); `rounds` (only in these rounds) |
+| `phases[]` | `id`, `kind` (`turn` or `shift`), `title`, `roles` (seat ids), for a shift `length` (s), `tick` (s, 0.5) and `clock` (the time of day it begins, 08:00; the page shows it and every game of the shift is told it; a game bound to a time of its own, as the signaller's to its morning timetable, says so in `static clock`, and a mission that differs is not sound) and `pace` (seconds of the day per second of the shift, 1; the page shows the time of day by it, and a game that runs at another pace says so in `static pace`: the workshop manager's night has 12, the district manager's week 180, and a mission that differs is not sound); `rounds` (only in these rounds) |
 | `conditions` | What holds and no seat gives: state flows by their id, with their payload |
 | `injects[]` | What happens and no seat gives: `phase`, `at` (s into a shift), `flow`, `payload`, `to` (roles), `rounds` |
 | `mode` | `solo`, `cooperative` (one score for all) or `competitive` (the parties' scores side by side) |
@@ -495,6 +500,7 @@ the desks as requests, not to the layout.
 | `dispatcher` (Who goes first) | Train dispatcher in an operations centre | shifts (minutes) | delay notice, connection request | dispatching order, performance report (dispatching) | the morning itself: the signaller's game with the computer's signaller, whose trains come late as its level says, and the regional undertaking's wishes to hold a train |
 | `yard` (Before the cut-off) | Marshalling yard production manager (yard master) | shifts (minutes) | – | handling order (the pushing speed), train report (an outbound train and how late it leaves), delay notice (wagons left behind), incident report, performance report (yard) | the hump itself (ARail's hump simulation on the yard of the lab's table), the trains that come in, and the three people on the phone: the hump operator, the production dispatcher, the customer service agent |
 | `workshop` (A night in the hall) | Workshop manager (maintenance delivery) | shifts (minutes; a second is twelve of the night) | – | vehicle release (a unit released to service, with what was done and what stays open), incident report, performance report (workshop) | the units that come in with their orders, and the people on the phone: the fleet manager and the maintenance development engineer on call, the operator's vehicle dispatcher |
+| `works` (A week of works) | Maintenance district manager | shifts (hours; a second is three minutes of the week) | – | possession request (a possession registered or corrected), staff plan (the shifts outside the rota, to the works council for consent and to the people), work order, situation report (a fault and its restriction), press report (the notice of a night to the houses and the town), incident report (a dangerous event), application (to run on beyond a period), performance report (maintenance) | the week's works and faults, the five technicians, and the four people who are told: the possession planner, the works council's chair, the head of the town's public order office, the railway operations manager |
 | `transport-control` (Transportleitung) | Dispatcher in the undertaking's operations control | shifts (minutes) | delay notice, transport contract | connection request, passenger information, performance report (undertaking) | the morning's late trains, and the infrastructure manager, who keeps a hold asked for |
 | `asset-manager` (Budget Years) | Asset manager | turns (years) | budget, performance report (operations, maintenance) | staff plan, asset condition, performance report (infrastructure) | the year's money (the level's, cut after a missed target) and the operators (minutes per fault from the teams) |
 | `contract` (Malus Month) | Transport authority's contract manager | turns (months) | performance report (undertaking, operations) | transport contract, penalty, payment, performance report (contract) | the operator: its incident list by the usual rates, its finances and its learning |
@@ -532,7 +538,9 @@ Seated together:
   request is the dispatcher's to grant, and the signaller takes only the dispatcher's order.
 - Alone: `fault-night`, `budget-years`, `malus-month`, `night-session`, `last-wagon` (the
   yard master at the hump yard; its neighbours, the hump operator, the production dispatcher and
-  the customer service agent, are the game's own until they have games) and `fit-to-run` (the
+  the customer service agent, are the game's own until they have games), `short-notice` (the
+  maintenance district manager's week; who is told is the game's own until they have games) and
+  `fit-to-run` (the
   workshop manager in the hall of Betriebswerk Neustadt; the other three ECM functions and the
   operator's dispatcher are the game's own until they have games).
 

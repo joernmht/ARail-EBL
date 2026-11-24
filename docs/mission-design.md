@@ -2,8 +2,9 @@
 
 The games are developed mission by mission: find a mission that is weak and fix it, or make up a
 new one. This guide says what every mission must have, shows it on *Whose minutes?* (the train
-dispatcher between three undertakings), *The last wagon* (the yard master at the hump) and *Fit
-to run* (the workshop manager in the hall), and lists the steps from the idea to the pull request.
+dispatcher between three undertakings), *The last wagon* (the yard master at the hump), *Fit
+to run* (the workshop manager in the hall) and *Short notice* (the maintenance district manager's
+week), and lists the steps from the idea to the pull request.
 The engine is described in [The game core](game-core.md), how the games look in
 [Games](games.md#how-a-game-looks).
 
@@ -12,6 +13,7 @@ The engine is described in [The game core](game-core.md), how the games look in
 - [The example](#the-example-whose-minutes): how *Whose minutes?* meets them
 - [A second example](#a-second-example-the-last-wagon): *The last wagon*, the yard master at the hump
 - [A third example](#a-third-example-fit-to-run): *Fit to run*, the workshop manager in the hall
+- [A fourth example](#a-fourth-example-short-notice): *Short notice*, the maintenance district manager's week
 - [From the idea to the pull request](#from-the-idea-to-the-pull-request)
 - [What a mission must not be](#what-a-mission-must-not-be)
 
@@ -129,6 +131,41 @@ lesson; each says in its own words what it is, and none of them is the fallback.
 Code: `web/arail/game/workshop.js`, `web/arail/ops/workshop.js`, `web/game/workshop.js`,
 `web/game/missions/fit-to-run.json`; tests in `tests/js/game-workshop.test.js` and
 `tests/e2e/workshop.spec.js`.
+
+## A fourth example: Short notice
+
+The player stands in for the maintenance district manager (Bezirksleiter/in Instandhaltung) of
+the district around Bf Neustadt for a working week, Monday 06:00 to Friday 06:00 in 32 minutes:
+the first mission that plays days, and the first whose subject is not a decision but its news.
+What it teaches is a question every planner of works answers many times a day: who must hear of
+this, by when at the latest, and from when will it hold?
+
+| Point | In the mission |
+| --- | --- |
+| Aim | Deciding for every piece of news who needs it, by when at the latest (a notice period, a duty to report) and from when it will hold; what a correction costs; planning people by where they live and what their week allows; weighing a possession by day against one at night by the trains that run |
+| Unclear decisions | Tell early (it is planned round, and wrong when the week moves) or late (it is true, and may be inside its period)? A driver reports a hard knock: close the track on a suspicion and report it (three times in ten it is a broken rail), slow it, or leave it? A storm is forecast for the night the tamping machine is booked: keep the night, move it while everybody can still be told, or call it off? The rail change in the last night before its period ends, earlier at shorter notice for the people, or by day in the traffic? The nearest person to a fault, who is not on call, or the one on call, 45 km away? |
+| Results not certain | Whether the storm is strong, what a driver's knock turns out to be, how long the rail change truly takes, when the works council answers, whether somebody told late can still arrange their life, whether late news ends in a claim or a fine, whether a note that came too early is remembered |
+| Roles that react | The possession planner (for the signal boxes and the undertakings), the works council's chair, the head of the town's public order office (for the houses along the line), the railway operations manager. Each has a patience of 0 to 100 and a period: told late, they have the law on their side (a claim of the undertakings, the labour court, a fine, proceedings); told for nothing, they stop reading. Below 62 they phone and ask for a promise that another of them pays ("nothing registered moves any more" against a night a fault has emptied). Below 35 they act. The lowest patience counts 60 % of that objective, and the team's strain is a fifth number |
+| One of a few | The driver's report; the storm's forecast; a dangerous event reported now or later with the full picture; somebody who says no to a night (somebody else, an offer, an order); somebody whose rest a fault has cut (home, a replacement, or "I am fine"); the four phone calls |
+| A number | "The possession is registered for … h" (3 to 8 in halves: too short and the work runs over into trains nobody warned, too long and trains are taken out that could have run; beside the number: the welder looks first) and "Open again in … h" for a fault, before the repair is done (beside it: no time yet) |
+| Played | Tap a van, then a site: a person is on a work. Tap a pin, then a site: somebody is told. Tap a site: another slot. Tap a fault, then a van: somebody goes, and from where they are. When each thing is told is the player's own timing against a clock that runs three minutes a second; without a word to a fault the rota's person on call goes, half an hour later and from home |
+| The world | The week runs on the lab's table by day and by night: the people's vans drive from their homes to the base in the morning and back, to a night's site, to a fault with the beacon on; a work is a building site with its possession as a band on the rails and lamps in the dark, the tamping machine on it; the trains held by a work or a fault are discs beside the track, more in the peak; the houses beside a night's site have a note at the door, or lit windows and a red ring when nobody told them; in the storm the layout's weather is the storm. The rail changed by day and at night are two different pictures, and two different weeks |
+
+What it added to the engine, for the next mission to use: nothing in the core. It is the proof
+that a week fits what the last three built: a shift with a pace (180 here), a question without a
+right answer beside a number, hands apart from answers. What is new is in the game: news as a
+thing with a period at both ends (`needs`, `stale`, the judgment when a work begins), people with
+homes and lives (`whereabouts`, `blocked`, `fits`), and a board that makes the layout's weather
+the game's.
+
+What it does not do, on purpose: its periods are not the real ones. A possession is registered
+weeks to months ahead, a rota change four days; the game scales them to a week and keeps their
+order, and says so. It has options that leave a rule (line speed over a reported knock, a night
+worked without rest, a dangerous event reported "later"): each says in its own words what it is,
+and none of them is the fallback.
+
+Code: `web/arail/game/works.js`, `web/game/works.js`, `web/game/missions/short-notice.json`;
+tests in `tests/js/game-works.test.js` and `tests/e2e/works.spec.js`.
 
 ## From the idea to the pull request
 
