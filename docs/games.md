@@ -325,7 +325,8 @@ the dispatcher's vans come, whoever sits at the dispatcher's sees the trains tha
   Night*), a platform track closed for a team is kept free of the layout's own trains.
 
 **How to play.** Click a fault, then the van to send (the vans that can go pulse); or a van first,
-then where it goes. A click on the base offers the technicians on call. The district's map stands
+then where it goes (a van is marked while there is a fault it can be sent to). A click on the base
+offers the technicians on call, while one can still be called. The district's map stands
 small in the lower right corner, as the signaller's panel does: it has the names and the minutes,
 what is chosen says below it what is known of it, and its moves are buttons there. The decisions
 (the closure, a repair for good or a quick one, guarding a danger) are asked at the bottom as
