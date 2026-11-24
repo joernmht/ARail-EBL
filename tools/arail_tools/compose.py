@@ -377,17 +377,11 @@ def recorded_frames(plan: dict) -> int:
     return int(ms * fps / 1000)
 
 
-def rendered(plans_dir: str | None = None) -> dict[str, tuple[int, str, bool]]:
-    """What the shot plans in `plans_dir` (default tools/video/plans) and its folders render, by their `out`
-    directory: (frames, the plan's path, exact). A plan of render.mjs writes exactly its `frames` (none with
-    `images: false`); a recording of screen.mjs at least `recorded_frames`. Of plans that share an `out`, the
-    first in sorted order (`renderers` has them all)."""
-    return {k: v[0] for k, v in renderers(plans_dir).items()}
-
-
 def renderers(plans_dir: str | None = None) -> dict[str, list[tuple[int, str, bool]]]:
-    """As `rendered`, with every plan that renders into an `out` directory, in sorted order: more than one,
-    and which of them made the frames there is not known."""
+    """What the shot plans in `plans_dir` (default tools/video/plans) and its folders render, by their `out`
+    directory: every plan that renders into it, in sorted order, as (frames, the plan's path, exact). A plan of
+    render.mjs writes exactly its `frames` (none with `images: false`); a recording of screen.mjs at least
+    `recorded_frames`. More than one plan for an `out`: which of them made the frames there is not known."""
     plans_dir = plans_dir or os.path.join(ROOT, "tools", "video", "plans")
     out = {}
     for base, _, files in sorted(os.walk(plans_dir)):

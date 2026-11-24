@@ -513,7 +513,7 @@ def test_compose_check_finds_a_shot_longer_than_its_plan_renders_before_anything
     steps = [{"goto": "game/", "wait": 2500}, {"record": True, "wait": 500}, {"click": "#a", "ms": 700, "wait": 1500}]
     (plans / "screens" / "s.json").write_text(json.dumps({"out": "build/video/s", "steps": [*steps, {"hover": "#b"}]}))
     where = lambda *p: os.path.join("tools", "video", "plans", *p)  # noqa: E731
-    assert cp.rendered()["build/video/s"] == (101, where("screens", "s.json"), False)
+    assert cp.renderers()["build/video/s"] == [(101, where("screens", "s.json"), False)]
     shot = lambda frames, count, first=0: {"frames": frames, "first": first, "count": count, "crop": [0, 0, 1, 1]}  # noqa: E731
     plan = {
         "size": [100, 50],
@@ -549,8 +549,7 @@ def test_compose_check_finds_two_plans_that_render_into_the_same_shot(tmp_path, 
     (plans / "x.json").write_text(json.dumps({"out": "build/video/x", "frames": 100}))
     (plans / "y.json").write_text(json.dumps({"out": "build/video/y", "frames": 100}))
     where = lambda *p: os.path.join("tools", "video", "plans", *p)  # noqa: E731
-    assert cp.rendered()["build/video/x"] == (300, where("a-copy.json"), True)
-    assert [p for _, p, _ in cp.renderers()["build/video/x"]] == [where("a-copy.json"), where("x.json")]
+    assert cp.renderers()["build/video/x"] == [(300, where("a-copy.json"), True), (100, where("x.json"), True)]
     shot = lambda frames, count: {"frames": frames, "count": count, "crop": [0, 0, 1, 1]}  # noqa: E731
     plan = {"parts": [{**shot("build/video/x", 200), "name": "town"}, {**shot("build/video/y", 50), "name": "fine"}]}
     assert cp.check_frames(plan) == [
