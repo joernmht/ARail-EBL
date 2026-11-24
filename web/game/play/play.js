@@ -323,6 +323,11 @@ class PlayPage {
     document.addEventListener("pointerdown", (e) => {
       if (this.opened && !e.target.closest?.("#rail")) this.flyout(null);
     });
+    // and so does the focus leaving the rail (Tab past it), so that it is not left open over the stage; the focus moving
+    // within the rail (into what is open) leaves it, and so does the focus going nowhere (another window)
+    $("#rail").addEventListener("focusout", (e) => {
+      if (this.opened && e.relatedTarget && !e.relatedTarget.closest?.("#rail")) this.flyout(null);
+    });
     $("#flowFilter").onchange = (e) => {
       this.filter = e.target.value;
       this.flows(true);
@@ -993,6 +998,15 @@ class PlayPage {
     const seats = [...session.seats.values()];
     this.tab = (seats.find((s) => s.by === "human") ?? seats[0]).id;
     this.panels = new Map(seats.map((s) => [s.id, this.panel(s)]));
+    // a saved session taken up again: what its games said up to there (played again from its record) is not new, and
+    // nothing of it pops up
+    if (kept) {
+      for (const s of seats) {
+        if (!s.game) continue;
+        this.seen.set(s.game, said(s.game));
+        this.panels.get(s.id).lastLine = s.game.logs.at(-1) ?? null;
+      }
+    }
     mount($("#panels"), [...this.panels.values()].map((p) => p.el));
     // a seat's figures and the note on its state stand in the line at the top, its tools at the side, its messages
     // under the bell: those of the seat shown are seen
@@ -1285,6 +1299,9 @@ class PlayPage {
 
   /** Show a seat's panel. */
   select(id, focus = false) {
+    // another seat shown: the message in the line at the top was the other seat's, and goes (pressed, it would open the
+    // messages of this one)
+    if (id !== this.tab) this.hideToast();
     this.tab = id;
     // a seat shown anew: what it said before is not a new message to pop up; with the messages open, its new ones are marked
     const p = this.panels?.get(id);

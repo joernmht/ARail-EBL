@@ -485,7 +485,8 @@ and for the heads of the other pages of the games:
     seat's tools (its moves, its desk, handing it to the computer), where you work, the messages
     (a bell that counts the new ones), what the roles gave each other, the sound, the live
     picture, only the picture, and the way back to the line. A click does what an icon says, or
-    opens what is behind it beside the rail; the icon's name is its tooltip.
+    opens what is behind it beside the rail (Escape, a click elsewhere, or the focus leaving the
+    rail closes it again); the icon's name is its tooltip.
   - **The band at the bottom**, as a visual novel has it, there while somebody speaks or asks. It
     lets the picture through (the board's colour at 76 %, its text a little lighter, so it stays
     readable whatever the picture shows). A text longer than the band scrolls in the band.
@@ -493,8 +494,9 @@ and for the heads of the other pages of the games:
   **No information stands in a box on the picture.** It is in the line at the top or at the side,
   in the rail; the band at the bottom is only for who speaks. A new message comes into the line
   at the top, below the figures, one at a time (a newer one takes its place, and it goes by
-  itself; one longer than the line is cut off, and its tooltip has all of it); all of them are under the bell, each on its own card with its time, the new ones
-  marked. Something in the game's picture that a figure is about, or that needs attention, is not
+  itself or when another seat is shown; one longer than the line is cut off, and its tooltip has
+  all of it); all of them are under the bell, each on its own card with its time, the new ones
+  marked (a session taken up again starts with none new). Something in the game's picture that a figure is about, or that needs attention, is not
   written out: it **pulses** in its colour (red for a problem, orange for a worry: the failed
   signal, a fault where a danger is not guarded), and a click on it says what is known of it. The
   pictures themselves carry no labels either: the live picture draws none (`View` with `labels:
