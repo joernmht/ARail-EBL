@@ -1,0 +1,1 @@
+- **Short notice: the layout's own weather comes back whole after the storm** (`web/game/works.js`): the board kept only the name of the weather's preset and set it again once the storm had passed, so what a layout with a fixed weather sets on top of its preset (a temperature, the wind) was lost. It keeps the weather's mode, preset and setting now and restores all of it.
