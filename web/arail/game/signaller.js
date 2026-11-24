@@ -854,7 +854,8 @@ export class SignallerGame extends Game {
       if (feeder.arrived == null || tr.departed < feeder.arrived + (same ? TRANSFER_SAME_S : TRANSFER_OTHER_S)) this.irregular("connection-missed", `connection:${b}`, { train: b, feeder: a });
     }
     const f = this.failure;
-    if (f?.started) this.irregular("signal-failed", `failed:${f.signal}`, { signal: f.signal });
+    // (again when a provisional repair did not hold)
+    if (f?.started) this.irregular("signal-failed", `failed:${f.signal}:${f.relapses ?? 0}`, { signal: f.signal });
   }
 
   /** Events of the morning: the failure, the repair team, questions. */

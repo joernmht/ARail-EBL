@@ -578,9 +578,9 @@ and for the heads of the other pages of the games:
   (**Space** reads on): the year's faults, the delay minutes, the coalition partner's "Not a second
   time." A mission can also tell a **story** as data (`story` in its JSON): lines somebody says at
   a moment of a phase, or `on` something that does not go to plan. In *Your first shift* the train
-  dispatcher talks a beginner through the first trains; then the timetable is theirs, and the
-  dispatcher calls only when a train stands at a signal, leaves late, goes to another track or
-  misses its connection.
+  dispatcher talks a beginner through the first trains and then leaves the timetable to them;
+  otherwise the dispatcher calls, from the first train on, only when a train stands at a signal,
+  leaves late, goes to another track or misses its connection.
   While somebody speaks in a shift, its clock waits for the answer (**OK** or **Space**), so no
   line is passed over, at any speed.
   The portraits are **placeholders**, silhouettes in `web/game/cast/` (office, suit,

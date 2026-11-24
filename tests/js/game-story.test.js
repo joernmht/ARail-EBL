@@ -151,6 +151,11 @@ test("story: a line on a kind of irregularity is said each time a seat's game re
   const timed = storyOf(m, "shift", 1), answers = answersOf(m, "shift", 1);
   assert.ok(timed.length >= 3 && timed.every((l) => l.on == null), "the tutorial is said at its times");
   assert.ok(answers.length >= 3 && answers.every((l) => SignallerGame.irregularities.includes(l.on)), "the rest answers what the signaller's game reports");
+  // the calls are not kept for after the tutorial (an `at` would leave unanswered what came before it): they may come
+  // between its lines, and the mission does not promise otherwise
+  assert.ok(answers.every((l) => l.at === 0));
+  assert.match(doc.text, /from the first train on, the dispatcher calls whenever something does not go to plan/);
+  assert.doesNotMatch(timed.at(-1).say, /only when/);
   const heard = new Set();
   assert.equal(answerFor(answers, seat, heard, []), null, "nothing went wrong: nobody calls");
   const held = { t: 120, kind: "held-at-entry", key: "held:RB 31", train: "RB 31", signal: "A", track: "G2" };

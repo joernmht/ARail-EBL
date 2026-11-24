@@ -105,7 +105,8 @@ What every game has, from the base class:
   late (`came-late`), held at an entry signal at stop (`held-at-entry`), still at its exit signal a
   minute after its time (`late-departure`), sent to another track than planned (`wrong-track`), a
   connecting train gone before its feeder's passengers could change (`connection-missed`) and a
-  failed signal (`signal-failed`); the careful computer signaller has none in training. The train
+  failed signal (`signal-failed`, again when a provisional repair did not hold); the careful
+  computer signaller has none in training. The train
   dispatcher's game reports a train that comes otherwise than announced (`forecast-off`), a train
   that waited and left without the passengers it waited for (`wait-wasted`), a train that runs
   behind a slower one (`followed`), a complaint to the regulator (`complaint`), a promise not kept

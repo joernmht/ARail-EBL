@@ -4,7 +4,7 @@
  "title": "Your first shift",
  "hook": "Nine trains, three tracks, nothing fails. Your timetable, your panel: get them all through on time.",
  "place": "signal-box",
- "text": "08:00 to 08:40 in the signal box of Bf Neustadt, alone and with nothing going wrong: the place to learn the panel. Choose a start signal in the picture, then its destination: the interlocking moves the points, locks the route and clears the signal. The dispatcher shows you the first trains; then you work by the timetable, and the dispatcher calls only when something does not go to plan. Regional trains meet at the island platform, and the intercity wants to pass the freight train. Nobody else is seated; no signal fails.",
+ "text": "08:00 to 08:40 in the signal box of Bf Neustadt, alone and with nothing going wrong: the place to learn the panel. Choose a start signal in the picture, then its destination: the interlocking moves the points, locks the route and clears the signal. The dispatcher shows you the first trains and then leaves the timetable to you; from the first train on, the dispatcher calls whenever something does not go to plan. Regional trains meet at the island platform, and the intercity wants to pass the freight train. Nobody else is seated; no signal fails.",
  "mode": "solo",
  "seed": 1,
  "roles": [
@@ -67,7 +67,7 @@
     "role": "Train dispatcher, on the line",
     "portrait": "headset"
    },
-   "say": "That is the whole craft. From here on the timetable is yours; mind its notes: GZ 47 waits in G3 until IC 2045 has passed on G1. I call only when something does not go to plan."
+   "say": "That is the whole craft. From here on the timetable is yours; mind its notes: GZ 47 waits in G3 until IC 2045 has passed on G1. I call whenever something does not go to plan, and otherwise leave you to it."
   },
   {
    "phase": "shift",
