@@ -340,14 +340,26 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   await page.goto("/game/");
   await page.waitForSelector(".title-item");
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", /^\?layout=..%2Flayouts%2Febl-neustadt\.json#/);
-  // a page opened from the menu is Continue then
+  // a page opened from a submenu: coming back, that submenu is open again with the cursor on it, and the page is
+  // Continue in the main menu
   await page.getByRole("button", { name: /Career/ }).click();
   await page.getByRole("link", { name: /Roles/ }).click();
   await page.waitForURL(/\/game\/roles\//);
   await page.goto("/game/");
   await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-menu-head")).toHaveText("Career");
+  await expect(page.getByRole("link", { name: /Roles/ })).toBeFocused();
+  // (a new visit, in another tab, opens the main menu with Continue)
+  const other = await page.context().newPage();
+  await other.goto("/game/");
+  await other.waitForSelector(".title-item");
+  await expect(other.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(other.locator(".title-item").first()).toHaveAttribute("href", "roles/");
+  await other.close();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: /Career/ })).toBeFocused();
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", "roles/");
-  // also one opened with a middle click (in a new tab)
+  // also one opened with a middle click (in a new tab); this tab has not left the title for it
   await page.getByRole("button", { name: /Career/ }).click();
   await page.getByRole("link", { name: /Career planner/ }).evaluate((a) => {
     a.addEventListener("auxclick", (e) => e.preventDefault(), { once: true }); // no new tab in the test
@@ -355,7 +367,16 @@ test("Free play lists the page's cases, each with its layout; Escape goes back; 
   });
   await page.reload();
   await page.waitForSelector(".title-item");
+  await expect(page.getByRole("link", { name: /Roles/ })).toBeFocused();
+  await page.keyboard.press("Escape");
   await expect(page.locator(".title-item").first()).toHaveAttribute("href", "career/");
+  // Continue chosen in the main menu: coming back, the main menu
+  await page.locator(".title-item").first().click();
+  await page.waitForURL(/\/game\/career\//);
+  await page.goto("/game/");
+  await page.waitForSelector(".title-item");
+  await expect(page.locator(".title-menu-head")).toHaveText("Main menu");
+  await expect(page.locator(".title-item").first()).toBeFocused();
   expect(errors).toEqual([]);
 });
 
